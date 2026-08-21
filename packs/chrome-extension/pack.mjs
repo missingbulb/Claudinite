@@ -2,6 +2,7 @@ import { findExtensionManifest } from '../../engine/checks/helpers/chrome-manife
 import contentScriptModuleSyntax from './content-script-module-syntax.mjs';
 import declarativeContentSetIcon from './declarative-content-set-icon.mjs';
 import releaseWorkflows from './release-workflows.mjs';
+import versionBumped from './version-bumped.mjs';
 
 // Everything about a Chrome extension in one pack: the MV3 build/runtime gotchas
 // that apply while you are writing one, and the Chrome-Web-Store release standard
@@ -27,7 +28,9 @@ export default {
   // and standard live here now, relevance-gated on the repo shipping the pipeline.
   // 5: the generic-workflow-lint neighbour is git-github now that github-actions
   // collapsed into it (#1079).
-  version: '60820.1',
+  // 60821.1: the version bump moved out of the release flow and into the change
+  // that earns it (cer/version-bumped); the pipeline ships what it finds on main.
+  version: '60821.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'writing and shipping a Chrome extension: MV3 service-worker, permission, content-script and auth gotchas, plus Web Store release, versioning and privacy',
@@ -38,6 +41,9 @@ export default {
   detect: (ctx) => findExtensionManifest(ctx) !== null,
   prose: 'RULES.md',
   worldRules: [contentScriptModuleSyntax, declarativeContentSetIcon, releaseWorkflows],
+  // Delivery, not state: the tree always carries a version, and only the diff
+  // says whether it moved with the shipped files beside it.
+  workRules: [versionBumped],
   // The standard itself — the pipeline's contract, the setup for a new extension
   // repo, and the store steps no automation can take. A skill rather than prose: it
   // is long, and only the checks need to be eager.

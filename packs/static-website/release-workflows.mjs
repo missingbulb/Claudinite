@@ -17,9 +17,11 @@ export const STUB_NAME = 'Release static site';
 export const CI_STUB_FILE = 'static-site-ci.yml';
 
 // The reusable workflows the pipeline runs on (the orchestrator calls the
-// publish one; the publish one calls the deploy one).
+// publish one and, on a bump dispatch, the bump one; the publish one calls the
+// deploy one).
 export const ORCHESTRATOR_CALL = 'static-site-publish.yml';
-export const VENDORED_WORKFLOWS = [ORCHESTRATOR_CALL, 'static-site-deploy-pages.yml'];
+export const BUMP_CALL = 'static-site-bump-version.yml';
+export const VENDORED_WORKFLOWS = [ORCHESTRATOR_CALL, BUMP_CALL, 'static-site-deploy-pages.yml'];
 // The composite actions those workflows use, at .github/actions/<name>/.
 export const VENDORED_ACTIONS = ['read-site-config', 'bump-site-version', 'assemble-site'];
 

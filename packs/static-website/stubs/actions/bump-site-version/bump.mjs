@@ -33,9 +33,16 @@
 // bare version file whose whole content is the version. Every file is read and
 // validated BEFORE any is written, so a failure never leaves a half-bumped tree.
 //
-// Args: <version_file> [<version_file> ...] (repo-relative; the repo's
-// `version_files` config). Prints the new version and writes it to
-// GITHUB_OUTPUT as `version`.
+// WHO RUNS IT. The routine bump belongs to the CHANGE, not to the pipeline: a
+// PR that touches the published site raises the version in the same PR (the
+// pack's `sw/version-bumped` check holds that line), and the release flow ships
+// whatever version it finds on main. The pipeline runs this only for the
+// deliberate `--major` generation bump, dispatched by hand.
+//
+// Args: [--major] [--print] <version_file> [<version_file> ...] (repo-relative;
+// the repo's `version_files` config). Prints the version and writes it to
+// GITHUB_OUTPUT as `version`; `--print` reads the current one instead of
+// raising it.
 
 import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -55,9 +62,33 @@ export function ymmdd(date) {
 
 export class BumpError extends Error {}
 
+// The scheme's ORDERING, which is the whole point of the year digit: -1/0/1 for
+// a < b / a == b / a > b, comparing major, then ymmdd, then the day counter,
+// each numerically. Lives here beside the scheme rather than beside either of
+// its callers — the pack's `sw/version-bumped` check asks whether a change
+// raised the version, and the release flow asks whether main is ahead of the
+// latest release. An off-scheme version has no place in the ordering at all.
+export function compare(a, b) {
+  const parse = (v) => {
+    const m = VERSION_RE.exec(v ?? '');
+    if (!m) throw new BumpError(`version '${v}' is not <major>.<ymmdd>.<n> (e.g. 1.61231.3)`);
+    return [Number(m[1]), Number(m[2]), Number(m[3])];
+  };
+  const [x, y] = [parse(a), parse(b)];
+  for (let i = 0; i < 3; i += 1) {
+    if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+  }
+  return 0;
+}
+
 // The next version after `current`, released `now`. Pure — the caller supplies
 // the clock, so this is testable without one.
-export function nextVersion(current, now) {
+//
+// `major: true` is the DELIBERATE generation bump — "this is a new site" — and is
+// the one thing about the scheme a human chooses rather than computes. It raises
+// the major and restarts the day counter at today, so it is strictly greater than
+// what it replaces no matter which of the branches below would otherwise apply.
+export function nextVersion(current, now, { major: raiseMajor = false } = {}) {
   const m = VERSION_RE.exec(current ?? '');
   if (!m) {
     throw new BumpError(`current version '${current}' is not <major>.<ymmdd>.<n> (e.g. 1.61231.3)`);
@@ -65,6 +96,7 @@ export function nextVersion(current, now) {
   const [, major, curDay, n] = m;
   const today = ymmdd(now);
 
+  if (raiseMajor) return `${Number(major) + 1}.${today}.1`;
   if (today === curDay) return `${major}.${today}.${Number(n) + 1}`;
   if (Number(today) > Number(curDay)) return `${major}.${today}.1`;
 
@@ -105,11 +137,11 @@ export function readVersion(path, text) {
   return m[1];
 }
 
-export function bump(files, now, { read = (f) => readFileSync(f, 'utf8'), write = writeFileSync } = {}) {
-  if (!files.length) throw new BumpError('usage: bump.mjs <version_file> [<version_file> ...]');
+export function bump(files, now, { read = (f) => readFileSync(f, 'utf8'), write = writeFileSync, major = false } = {}) {
+  if (!files.length) throw new BumpError('usage: bump.mjs [--major] [--print] <version_file> [<version_file> ...]');
   const texts = files.map((f) => [f, read(f)]);
   const current = readVersion(texts[0][0], texts[0][1]);
-  const next = nextVersion(current, now);
+  const next = nextVersion(current, now, { major });
   // Validate every file first; only then write, so a mid-run failure can't leave
   // the version records disagreeing.
   const writes = texts.map(([f, text]) => [f, rewrite(f, text, current, next)]);
@@ -117,11 +149,23 @@ export function bump(files, now, { read = (f) => readFileSync(f, 'utf8'), write 
   return next;
 }
 
+// `--print` reads the version instead of raising it, and exists so nothing else
+// has to know how a version record is shaped: the release pipeline needs the
+// version currently on `main` to decide whether it has been released yet, and
+// asking the script that writes the version is what keeps that knowledge in one
+// place. `--major` is the deliberate generation bump.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
-    const next = bump(process.argv.slice(2), new Date());
-    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `version=${next}\n`);
-    console.log(next);
+    const argv = process.argv.slice(2);
+    const major = argv.includes('--major');
+    const print = argv.includes('--print');
+    const files = argv.filter((a) => !a.startsWith('--'));
+    if (!files.length) throw new BumpError('usage: bump.mjs [--major] [--print] <version_file> [<version_file> ...]');
+    const version = print
+      ? readVersion(files[0], readFileSync(files[0], 'utf8'))
+      : bump(files, new Date(), { major });
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
+    console.log(version);
   } catch (err) {
     console.error(`bump-site-version: ${err.message}`);
     process.exit(1);

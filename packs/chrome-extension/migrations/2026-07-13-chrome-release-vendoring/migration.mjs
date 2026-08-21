@@ -8,7 +8,7 @@
 //   - appliesTo    — the gate: only a repo whose orchestrator is named
 //                    "Release to Chrome Store" (the consumers). Claudinite carries
 //                    a file of the same path named "… (reusable)", so it's skipped.
-//   - materialize  — vendor the four reusable workflows + three composite actions
+//   - materialize  — vendor the five reusable workflows + three composite actions
 //                    verbatim into the consumer's .github/ (idempotent; overwrites
 //                    on drift, so a hand-edited copy self-heals).
 //   - rewrite      — repoint the orchestrator's three cross-repo @main calls at the
@@ -53,6 +53,7 @@ export default {
     { template: `${S}/workflows/chrome-extension-create-package.yml`, dest: '.github/workflows/chrome-extension-create-package.yml' },
     { template: `${S}/workflows/chrome-extension-publish-store.yml`, dest: '.github/workflows/chrome-extension-publish-store.yml' },
     { template: `${S}/workflows/chrome-extension-daily-release.yml`, dest: '.github/workflows/chrome-extension-daily-release.yml' },
+    { template: `${S}/workflows/chrome-extension-bump-version.yml`, dest: '.github/workflows/chrome-extension-bump-version.yml' },
     { template: `${S}/workflows/deploy-privacy-page.yml`, dest: '.github/workflows/deploy-privacy-page.yml' },
     { template: `${S}/actions/read-release-config/action.yml`, dest: '.github/actions/read-release-config/action.yml' },
     { template: `${S}/actions/read-release-config/read-config.mjs`, dest: '.github/actions/read-release-config/read-config.mjs' },

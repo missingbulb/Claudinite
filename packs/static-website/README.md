@@ -11,19 +11,21 @@ Fingerprint: the `Release static site` orchestrator (`.github/workflows/static-s
 | `sw/release-workflows` | high | correctness | check: blocking |
 | `sw/site-config` | high | correctness | check: blocking |
 | `sw/version-scheme` | medium | correctness | check: blocking |
+| `sw/version-bumped` | high | correctness | check: blocking |
 
 What each holds:
 
 - `sw/release-workflows` — the orchestrator (named, push-triggered, calling the local publish reusable), both reusable workflows, all three composite actions, and a PR gate are vendored.
 - `sw/site-config` — `.github/site.config` exists with its five explicit keys, no unknown keys, every publish path tracked, no tooling directory published, and an `index.html` in the set.
 - `sw/version-scheme` — every declared version record carries the same `<major>.<ymmdd>.<n>` version.
+- `sw/version-bumped` — a change that touches the publish set raises the version in the same change. Work-scope: the tree always carries a version, and only the diff says whether it moved with the published files beside it.
 
 ## Skills
 
 [**static-site-releases**](skills/static-site-releases/SKILL.md) is the standard itself — the
 version scheme, the publish set, `.github/site.config`, the vendored workflows and actions, the
 setup a new site repo needs, and the one-time GitHub settings no automation can turn on. It is the
-contract the three checks above judge against, reached when a pipeline is being set up or debugged
+contract the four checks above judge against, reached when a pipeline is being set up or debugged
 rather than carried by every session in the repo.
 
 ## Rules (`RULES.md`)
@@ -31,7 +33,7 @@ rather than carried by every session in the repo.
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | The publish set names every published file | high | correctness | prose: 120 words + check (`sw/site-config`) |
-| Never hand-edit the version. | high | correctness | prose: 81 words + check (`sw/version-scheme`) |
+| The version moves with the change | high | correctness | prose: 133 words + checks (`sw/version-bumped`, `sw/version-scheme`) |
 | The pipeline files are managed stub copies | high | correctness | prose: 55 words + check (`sw/release-workflows`) |
 | The site is served from a subpath | high | correctness | prose: 64 words |
 | Freshness is a published manifest's job | high | correctness | prose: 174 words |

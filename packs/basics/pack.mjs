@@ -34,7 +34,9 @@ export default {
   // 60821.2: writing-migration-plans is built around chained continuations — all the
   // code written and approved in one pass, every execution step armed on the previous
   // step's verification rather than on anyone remembering it.
-  version: '60821.2',
+  // 60821.3: bump-version reads for a world where the routine bump belongs to the
+  // change — what is left to ask for is the minor or the major (#1150).
+  version: '60821.3',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',

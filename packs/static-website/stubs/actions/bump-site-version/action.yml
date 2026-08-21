@@ -3,10 +3,15 @@ description: >-
   Raises the site's DATE-ANCHORED version — <major>.<ymmdd>.<n> — across every
   file the repo declares as a version record (its `version_files` config), and
   outputs the new version. The scheme and its rules (the year digit, the day
-  counter, the decade wrap) live in bump.mjs beside this file; the pipeline
-  passes only the paths, so no repo carries a bump script of its own. Composite
-  so it adds no reusable-workflow nesting level, and dependency-free so it runs
-  on a bare runner.
+  counter, the decade wrap) live in bump.mjs beside this file; the caller passes
+  only the paths, so no repo carries a bump script of its own. Composite so it
+  adds no reusable-workflow nesting level, and dependency-free so it runs on a
+  bare runner.
+
+  The ROUTINE bump is not this action: a change that touches the published site
+  raises the version in its own PR (`sw/version-bumped`), and the release flow
+  ships whatever version it finds on main. What runs here is the deliberate
+  generation bump — `major: true`, dispatched by hand.
 
 inputs:
   version_files:
@@ -14,6 +19,13 @@ inputs:
       Space-separated version-record paths (the repo's `version_files`). The
       first is the source of truth; the rest must already agree with it.
     required: true
+  major:
+    description: >-
+      Raise the MAJOR — the deliberate "new generation of the site" statement —
+      restarting the day counter at today. Anything else takes the ordinary
+      date-anchored step.
+    required: false
+    default: "false"
 
 outputs:
   version:
@@ -25,4 +37,7 @@ runs:
   steps:
     - id: bump
       shell: bash
-      run: node "${{ github.action_path }}/bump.mjs" ${{ inputs.version_files }}
+      run: >-
+        node "${{ github.action_path }}/bump.mjs"
+        ${{ inputs.major == 'true' && '--major' || '' }}
+        ${{ inputs.version_files }}

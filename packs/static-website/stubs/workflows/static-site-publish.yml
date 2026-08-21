@@ -6,18 +6,24 @@ name: "Static site: Publish (reusable)"
 # values; everything repo-specific comes from `.github/site.config` via the
 # read-site-config composite action.
 #
-# The pipeline, in order — and the order is the point: nothing is bumped,
-# tagged or deployed until the tests that guard the site have passed.
+# THIS PIPELINE WRITES NO VERSION. The version belongs to the change that
+# earned it: a PR touching the published site raises it in the same PR (the
+# pack's `sw/version-bumped` check holds that line), so what reaches main is
+# already the number to release. A deliberate generation bump — the major — is
+# the orchestrator's `bump` dispatch, which pushes a bump and lets the ordinary
+# push trigger release it.
 #
-#   check    is a release due? A push that touched the declared publish set,
-#            or `force`, or a repo with no release yet. The baseline is the
-#            LATEST RELEASE TAG, not a time window, so a day whose run failed
-#            is caught by the next push instead of stranded.
+# The pipeline, in order — and the order is the point: nothing is tagged or
+# deployed until the tests that guard the site have passed.
+#
+#   check    is a release due? The version on main has no release of its own
+#            yet — or `force`. Asking the RELEASE for the current version
+#            (rather than diffing files against a tag) is what makes the flow
+#            idempotent: a day whose run failed retries on the next push with
+#            nothing to undo, and a push that only touched tooling carries the
+#            same version and is a clean no-op.
 #   verify   the repo's own gate (`test_command`), on the tree being released.
-#   bump     the date-anchored version (bump-site-version), pushed to main.
-#            Pushed with GITHUB_TOKEN, which fires no workflow — hence the
-#            explicit deploy call below rather than a second push trigger.
-#   release  GitHub Release `v<major>.<ymmdd>.<n>` at the bump commit, with
+#   release  GitHub Release `v<major>.<ymmdd>.<n>` at that tree, with
 #            auto-generated notes.
 #   deploy   the Pages deploy of that exact commit, from the explicit publish
 #            set.
@@ -28,7 +34,7 @@ on:
   workflow_call:
     inputs:
       force:
-        description: "Release even when no published file changed"
+        description: "Release even when the version on main is already released"
         required: false
         type: boolean
         default: false
@@ -43,7 +49,9 @@ jobs:
     permissions:
       contents: read
     outputs:
-      release: ${{ steps.diff.outputs.release }}
+      release: ${{ steps.due.outputs.release }}
+      version: ${{ steps.due.outputs.version }}
+      released: ${{ steps.due.outputs.released }}
       test_command: ${{ steps.cfg.outputs.test_command }}
       sha: ${{ steps.head.outputs.sha }}
     steps:
@@ -52,64 +60,49 @@ jobs:
           # The branch tip as of now, not github.sha (the tip when the push
           # landed) — anything merged in between rides along in this release.
           ref: main
-          # Full history + tags: the diff below is against the latest release tag.
+          # Full history + tags: the tag test below reads them.
           fetch-depth: 0
 
       # Pin that tip once, here: every later stage checks out THIS sha, so the
-      # tree that is tested is the tree that is bumped, tagged and deployed.
+      # tree that is tested is the tree that is tagged and deployed.
       - id: head
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - id: cfg
         uses: ./.github/actions/read-site-config
 
-      - name: Look for published-file changes since the last release
-        id: diff
+      - name: Has the version on main been released yet?
+        id: due
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORCE: ${{ inputs.force }}
-          PUBLISH_ROOT: ${{ steps.cfg.outputs.publish_root }}
-          # Intentionally word-split below into the individual publish paths.
-          PUBLISH_PATHS: ${{ steps.cfg.outputs.publish_paths }}
+          # Intentionally word-split below into the individual version records.
+          VERSION_FILES: ${{ steps.cfg.outputs.version_files }}
         run: |
           set -euo pipefail
-          if [ "$FORCE" = "true" ]; then
-            echo "Forced — releasing the current tree." | tee -a "$GITHUB_STEP_SUMMARY"
-            echo "release=true" >> "$GITHUB_OUTPUT"
-            exit 0
+          # The bump script is also the version READER, so nothing else has to
+          # know how a repo's version record is shaped.
+          version="$(node .github/actions/bump-site-version/bump.mjs --print $VERSION_FILES)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          released=false
+          if gh release view "v$version" >/dev/null 2>&1 || git rev-parse "v$version" >/dev/null 2>&1; then
+            released=true
           fi
-          latest="$(gh release view --json tagName -q .tagName 2>/dev/null || true)"
-          if [ -z "$latest" ]; then
-            echo "No published release to diff against — releasing the current tree." | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "released=$released" >> "$GITHUB_OUTPUT"
+          if [ "$released" = "false" ]; then
+            echo "v$version is not released yet — releasing." | tee -a "$GITHUB_STEP_SUMMARY"
             echo "release=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # Repo-relative prefixes of the publish set (publish paths are relative
-          # to publish_root; "." means they already are repo-relative).
-          prefixes=""
-          for p in $PUBLISH_PATHS; do
-            if [ "$PUBLISH_ROOT" = "." ]; then prefixes="$prefixes $p"; else prefixes="$prefixes $PUBLISH_ROOT/$p"; fi
-          done
-          changed=""
-          while IFS= read -r f; do
-            [ -z "$f" ] && continue
-            for root in $prefixes; do
-              case "$f" in
-                "$root"|"$root"/*) changed="${changed}${f}"$'\n'; break;;
-              esac
-            done
-          done < <(git diff --name-only "$latest" HEAD)
-          if [ -z "$changed" ]; then
-            echo "No published-file changes since $latest — nothing to release." | tee -a "$GITHUB_STEP_SUMMARY"
-            echo "release=false" >> "$GITHUB_OUTPUT"
+          elif [ "$FORCE" = "true" ]; then
+            echo "v$version is already released — forced, so redeploying it without a new tag." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "release=true" >> "$GITHUB_OUTPUT"
           else
-            { echo "Published files changed since $latest — releasing:"; printf '%s' "$changed"; } | tee -a "$GITHUB_STEP_SUMMARY"
-            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "v$version is already released — nothing to do. Raise the version in the change that needs releasing." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "release=false" >> "$GITHUB_OUTPUT"
           fi
 
-  # The repo's own gate, on the tree about to be released. Before the bump on
-  # purpose: a failed gate must leave the version, the tag and the live site
-  # exactly as they were.
+  # The repo's own gate, on the tree about to be released. Before the tag on
+  # purpose: a failed gate must leave the tag and the live site exactly as they
+  # were.
   verify:
     needs: check
     if: needs.check.outputs.release == 'true' && needs.check.outputs.test_command != ''
@@ -129,61 +122,29 @@ jobs:
       - name: Run the repo's gate
         run: ${{ needs.check.outputs.test_command }}
 
-  bump:
+  release:
     needs: [check, verify]
     # `always()` so the skipped verify job (a repo that states test_command="")
     # does not skip the release with it; the explicit result test still stops a
-    # real failure.
-    if: always() && needs.check.outputs.release == 'true' && needs.verify.result != 'failure' && needs.verify.result != 'cancelled'
+    # real failure. A forced redeploy of an already-released version has nothing
+    # to cut, so the job runs only for a version with no release of its own.
+    if: >-
+      always() && needs.check.outputs.release == 'true' &&
+      needs.check.outputs.released == 'false' &&
+      needs.verify.result != 'failure' && needs.verify.result != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    outputs:
-      version: ${{ steps.bump.outputs.version }}
-      sha: ${{ steps.push.outputs.sha }}
     steps:
       - uses: actions/checkout@v5
         with:
-          # The exact tree `verify` passed. If main has moved since, the push
-          # below fails non-fast-forward — a loud red the reporter turns into an
-          # issue, and the next push releases everything at once. That is the
-          # right trade: a release always ships a tested tree.
           ref: ${{ needs.check.outputs.sha }}
-
-      - id: cfg
-        uses: ./.github/actions/read-site-config
-
-      - id: bump
-        uses: ./.github/actions/bump-site-version
-        with:
-          version_files: ${{ steps.cfg.outputs.version_files }}
-
-      - name: Push the bump to main
-        id: push
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "Release v${{ steps.bump.outputs.version }} [skip ci]"
-          git push origin HEAD:main
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "Bumped to v${{ steps.bump.outputs.version }}." >> "$GITHUB_STEP_SUMMARY"
-
-  release:
-    needs: bump
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.bump.outputs.sha }}
           fetch-depth: 0
       - name: Cut the GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.bump.outputs.version }}
-          SHA: ${{ needs.bump.outputs.sha }}
+          VERSION: ${{ needs.check.outputs.version }}
+          SHA: ${{ needs.check.outputs.sha }}
         run: |
           set -euo pipefail
           gh release create "v$VERSION" --target "$SHA" --title "v$VERSION" --generate-notes
@@ -191,14 +152,17 @@ jobs:
 
   # The site itself, from the exact commit that was released.
   deploy:
-    needs: [bump, release]
+    needs: [check, release]
+    if: >-
+      always() && needs.check.outputs.release == 'true' &&
+      needs.release.result != 'failure' && needs.release.result != 'cancelled'
     permissions:
       contents: read
       pages: write
       id-token: write
     uses: ./.github/workflows/static-site-deploy-pages.yml
     with:
-      ref: ${{ needs.bump.outputs.sha }}
+      ref: ${{ needs.check.outputs.sha }}
 
   # Release-on-push is unattended once the merge is done — a red run in the
   # Actions list reaches nobody. Converge any failure in this pipeline (its own
@@ -206,7 +170,7 @@ jobs:
   # earlier open ones for this workflow so the newest failure is always the
   # single open bug to triage.
   report-failure:
-    needs: [check, verify, bump, release, deploy]
+    needs: [check, verify, release, deploy]
     if: failure()
     runs-on: ubuntu-latest
     permissions:

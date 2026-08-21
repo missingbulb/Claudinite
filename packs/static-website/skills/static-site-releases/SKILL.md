@@ -10,9 +10,10 @@ publish-set rules, same CI gate. This skill is that contract, the setup for a ne
 one-time GitHub settings the automation cannot turn on for itself.
 
 The workflow **logic** is authored once, in this pack's [`stubs/`](../../stubs/) — the
-[orchestrator](../../stubs/workflows/static-site-release.yml), two `workflow_call`-only **reusable
+[orchestrator](../../stubs/workflows/static-site-release.yml), three `workflow_call`-only **reusable
 workflows** ([publish](../../stubs/workflows/static-site-publish.yml),
-[deploy](../../stubs/workflows/static-site-deploy-pages.yml)), the
+[deploy](../../stubs/workflows/static-site-deploy-pages.yml),
+[bump](../../stubs/workflows/static-site-bump-version.yml)), the
 [CI gate](../../stubs/workflows/static-site-ci.yml), and three composite actions
 ([read-site-config](../../stubs/actions/read-site-config/action.yml),
 [bump-site-version](../../stubs/actions/bump-site-version/action.yml),
@@ -46,10 +47,22 @@ which is the one thing every reader of a version assumes. Prefixing the year dig
 holds forever. Any *other* decrease (a version dated in the future — a hand edit, a wrong clock) is
 an error and fails the bump loudly; burning a major to paper over it would hide a real problem.
 
+**The bump belongs to the change, not to the pipeline.** A change that touches the publish set
+raises the version in the same PR — `node .github/actions/bump-site-version/bump.mjs $(the repo's
+version_files)` writes every record together — and `sw/version-bumped` is what holds that line. The
+release flow writes no version at all: it releases whatever it finds on `main`, and no-ops when that
+version already has a release. So the number a reviewer sees on a PR is the number that ships, and a
+published change that forgot its bump fails on the PR rather than silently never deploying. A change
+that publishes nothing needs no bump and redeploys nothing.
+
+**The major is the one bump the pipeline still performs**, because it belongs to no single change:
+dispatch **Release static site** with `bump: major` and it raises the major, pushes it, and releases
+the result. That dispatch is what **"bump version"** means on a site repo.
+
 **Moving an existing site onto the scheme** is a one-line edit, once: rewrite the current version
 in place with the year digit inserted (`1.1231.3` → `1.61231.3`). The result is strictly greater
 than what it replaces (`61231 > 1231`), so no tag or release ordering is disturbed and no major
-bump is needed. Every release after that is the pipeline's.
+bump is needed. Every version after that is the next change's bump.
 
 The version lives in the files the repo names in `version_files` — the first is the source of
 truth, the rest must agree. `sw/version-scheme` holds them to the scheme and to each other; the
@@ -135,17 +148,17 @@ named exactly `Release static site`. It owns only the triggers (push to `main`, 
 
 | Stage | What it does |
 |---|---|
-| `check` | is a release due? A push that touched the publish set, or `force`, or a repo with no release yet. The baseline is the **latest release tag**, not a time window, so a failed run is caught by the next push instead of stranded. |
-| `verify` | the repo's `test_command`, on the tree being released — **before** anything is bumped, tagged or deployed. |
-| `bump` | the date-anchored version across `version_files`, pushed to `main` as `Release v… [skip ci]`. |
-| `release` | GitHub Release `v<major>.<ymmdd>.<n>` at the bump commit, auto-generated notes. |
+| `check` | is a release due? The version on `main` has no release of its own yet — or `force`. Asking the **release list** for the current version (rather than diffing files against a tag) is what makes the flow idempotent: a failed run retries on the next push with nothing to undo, and a push carrying an already-released version is a clean no-op. |
+| `verify` | the repo's `test_command`, on the tree being released — **before** anything is tagged or deployed. |
+| `release` | GitHub Release `v<major>.<ymmdd>.<n>` at that tree, auto-generated notes. |
 | `deploy` | the Pages deploy of that exact commit, from the explicit publish set. |
 | `report-failure` | any failure above opens a fresh `workflow-failure` issue and closes earlier open ones for this workflow as duplicates, so the newest failure is the single open bug to triage. |
 
-The bump is pushed with `GITHUB_TOKEN`, which fires no workflow — which is why the deploy is an
-explicit call rather than a second push trigger, and why the push cannot loop.
+The `bump: major` dispatch pushes with `GITHUB_TOKEN`, which fires no workflow — which is why the
+orchestrator runs the release explicitly after it rather than relying on the push trigger, and why
+the push cannot loop.
 
-A push that touches nothing published is a clean no-op: no bump, no tag, no redeploy.
+A push carrying a version that is already released is a clean no-op: no tag, no redeploy.
 
 **CI** — [`static-site-ci.yml`](../../stubs/workflows/static-site-ci.yml) runs on every pull request with
 **no `paths:` filter**: the Claudinite world sweep, the repo's `test_command`, the build, and a dry
@@ -160,7 +173,7 @@ flow arms auto-merge and then never runs, so the repo's own maintenance PR waits
 2. **Vendor the pipeline** into the repo's own `.github/`: everything under
    [`stubs/workflows/`](../../stubs/workflows/) and [`stubs/actions/`](../../stubs/actions/). There are no
    tokens to replace. A repo whose site deploys somewhere **other** than Pages takes the CI stub
-   and the versioning half only, and skips the orchestrator + the two reusables — every rule in
+   and the versioning half only, and skips the orchestrator + the three reusables — every rule in
    this pack is gated on the orchestrator, so nothing here fires on it.
 3. **Write `.github/site.config`** with all five required keys, from the adoption answers (plus
    `build_vars` if the build needs repo variables).
@@ -169,7 +182,8 @@ flow arms auto-merge and then never runs, so the repo's own maintenance PR waits
 5. **Open the one-time settings issue** (below) — idempotent: search the tracker first and skip if
    one already exists, open or closed.
 6. Run the world sweep; `sw/release-workflows`, `sw/site-config` and `sw/version-scheme` are the
-   checklist for whether the wiring is complete.
+   checklist for whether the wiring is complete. `sw/version-bumped` is work-scope and shows up on
+   the first PR that touches the publish set.
 
 ## The settings only a human can turn on
 
@@ -188,8 +202,8 @@ the first release-on-push run fails and opens a `workflow-failure` issue.
 - [ ] **Pages → Build and deployment → Source = "GitHub Actions"** (not "Deploy from a branch").
       Without it `actions/deploy-pages` fails and nothing is served.
 - [ ] **Actions → General → Workflow permissions = "Read and write permissions"**, so the pipeline
-      can push the version bump and create the release. (Not needed if the repo is already on
-      read/write.)
+      can create the release and push a `bump: major` dispatch. (Not needed if the repo is already
+      on read/write.)
 - [ ] **Environments → `github-pages` → deployment branches** must allow `main` — the default
       "protected branches only" rule already does; check it if the repo renamed its default branch.
 - [ ] Optional: **Pages → Custom domain**, if this site has one. Note that a custom domain moves
@@ -201,13 +215,15 @@ Close this issue once the first release-on-push run has deployed successfully.
 
 ## Routine work
 
-- **Ship a change**: merge it to `main`. If it touched the publish set, the site redeploys under a
-  new `v<major>.<ymmdd>.<n>` on its own — that is the whole release procedure.
+- **Ship a change**: raise the version in the same PR (it touched the publish set, so
+  `sw/version-bumped` requires it) and merge to `main`. The site redeploys under that
+  `v<major>.<ymmdd>.<n>` on its own — that is the whole release procedure.
 - **Redeploy without a content change** (a settings fix, a first deploy): run **Release static
-  site** from its dispatch page with `force: true`.
+  site** from its dispatch page with `force: true`. It redeploys the existing tag rather than
+  cutting a second one.
 - **"bump version"** on a site repo means the **major** — the deliberate "new generation" statement.
-  Edit it in every `version_files` record together, in one PR; the pipeline's next run takes the
-  date and the counter from there.
-- **A failed release** leaves a `workflow-failure` issue with the run link. The stages are ordered
-  so a failure before `bump` changes nothing at all; a failure after it leaves the version bumped
-  on `main`, and the next push (or a `force` dispatch) releases from there.
+  Run **Release static site** with `bump: major`; it writes every `version_files` record together,
+  pushes, and releases.
+- **A failed release** leaves a `workflow-failure` issue with the run link. Nothing before the tag
+  changes anything at all, and the version is already on `main` either way — so the next push (or a
+  `force` dispatch) releases from there with nothing to unwind.

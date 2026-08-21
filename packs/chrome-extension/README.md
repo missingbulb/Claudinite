@@ -55,12 +55,13 @@ hand-kept one drifted into claiming a prose rule that never existed (#777).
 | `cer/template-tokens` | high | correctness | check: blocking |
 | `cer/release-config` | high | correctness | check: blocking |
 | `cer/version-sync` | high | correctness | check: blocking |
+| `cer/version-bumped` | high | correctness | check: blocking |
 | `cer/release-layout` | medium | correctness | check: blocking |
 | `cer/readme-sections` | low | complexity | check: blocking |
 | `cer/privacy-permission-alignment` | critical | legal | check: blocking |
 | `cer/permission-added-store-issue` | high | legal | check: advisory |
 
-Every `cer/` rule is about a release that would otherwise fail — or publish the wrong thing — only once it reached the store, and every one of them is inert until this repo ships the pipeline.
+Every `cer/` rule is about a release that would otherwise fail — or publish the wrong thing — only once it reached the store, and every one of them is inert until this repo ships the pipeline. `cer/version-bumped` is the one work-scope rule among them: the tree always carries a version, and only the diff says whether it moved with the shipped files beside it.
 
 ## Skills
 

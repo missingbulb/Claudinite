@@ -370,18 +370,18 @@ test('chrome-release-vendoring migration: gate, telemetry, and the vendoring rou
   const readTemplate = (p) => `TEMPLATE:${p}`;
   const read = (p) => repo.get(p) ?? null;
   const write = (p, c) => repo.set(p, c);
-  // Four of this record's nine materializations are WORKFLOW files, so the caller has to
+  // Five of this record's ten materializations are WORKFLOW files, so the caller has to
   // be one that can deliver them — the same handshake baselining's worker makes. Run it
-  // without the announcement and those four are skipped instead of wedging the push, which
+  // without the announcement and those five are skipped instead of wedging the push, which
   // is the hazard a workflow materialization carries for a caller that cannot push one.
   const capable = { [WITHHOLD_CAPABLE_ENV]: '1' };
   const incapable = await applyMaterializations(m, { readTemplate, read, write, env: {} });
-  assert.equal(incapable.filter((l) => l.startsWith('SKIPPED')).length, 4);
+  assert.equal(incapable.filter((l) => l.startsWith('SKIPPED')).length, 5);
   assert.equal(repo.size, 6, 'orchestrator + the 5 non-workflow files');
 
   await applyMaterializations(m, { readTemplate, read, write, env: capable });
   await applyRewrites(m, { read, write });
-  assert.equal(repo.size, 10, 'orchestrator + 9 vendored files');
+  assert.equal(repo.size, 11, 'orchestrator + 10 vendored files');
   assert.match(repo.get('.github/workflows/chrome-extension-release.yml'), /\.\/\.github\/workflows\/chrome-extension-create-package\.yml/);
   assert.ok(!repo.get('.github/workflows/chrome-extension-release.yml').includes('missingbulb/Claudinite'));
 });
