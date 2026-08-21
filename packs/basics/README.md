@@ -22,6 +22,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Choosing an automerge policy | high | correctness | prose: 65 words |
 | Predicting an irreversible change | critical | correctness | prose: 42 words |
 | Handing over a wider diff than asked | medium | complexity | prose: 63 words |
+| Retiring a system into another | high | correctness | prose: 117 words |
 | When verifying now is genuinely impossible | high | correctness | prose: 138 words + skill (`verify-in-production`) |
 | Finishing a larger element | medium | correctness | prose: 94 words + skill (`production-retrospective`) |
 | Receiving feedback that flags a misunderstanding | medium | complexity | prose: 29 words |
@@ -34,6 +35,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Needing exact text from the web | high | correctness | prose: 56 words |
 | Hitting a denied fetch | critical | legal | prose: 152 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
+| Reaching for AskUserQuestion | medium | complexity | prose: 86 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
 | Waiving a finding on text | low | complexity | prose: 26 words |
