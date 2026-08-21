@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../../engine/checks/helpers/work.mjs';
-import rule, { packsTouched, declaredPackVersion } from './pack-version-bumped.mjs';
+import rule, { packsTouched, declaredPackVersion, versionRecorded } from './pack-version-bumped.mjs';
 
 const manifest = (version) => `export default {\n  id: 'demo',\n  version: ${version},\n  minEngineVersion: 3,\n};\n`;
+const versionsRow = (version) => `# Version history\n\n| Version | Date | What changed |\n|---|---|---|\n| ${version} | 2026-08-21 | Demo change. |\n`;
 
 // The work context a work rule receives — only the three members this rule reads.
 const work = (changedFiles, files = {}, base = {}) => ({
@@ -39,11 +40,25 @@ test('a pack\'s own tests are out of scope — no vendor set carries one, so no 
   assert.deepEqual(packsTouched(['packs/demo/pack.test.mjs', 'packs/demo/RULES.md']), ['demo']);
 });
 
+test('VERSIONS.md alone does not touch the pack — it is the log of bumps, not content a bump ships', () => {
+  assert.deepEqual(packsTouched(['packs/demo/VERSIONS.md']), []);
+  // The pack is still touched when a shipping file changes in the same commit.
+  assert.deepEqual(packsTouched(['packs/demo/VERSIONS.md', 'packs/demo/RULES.md']), ['demo']);
+});
+
 // --- reading the declared version -------------------------------------------
 
 test('the manifest\'s own version is read, never minEngineVersion beside it', () => {
   assert.equal(declaredPackVersion(manifest(2)), 2);
   assert.equal(declaredPackVersion("export default { id: 'demo', minEngineVersion: 4 };\n"), null);
+});
+
+// --- reading the version-history record -------------------------------------
+
+test('a row is found by its bare leading cell, whatever version it names', () => {
+  assert.equal(versionRecorded(versionsRow(2), 2), true);
+  assert.equal(versionRecorded(versionsRow(2), 3), false);
+  assert.equal(versionRecorded(null, 2), false);
 });
 
 // --- the invariant ----------------------------------------------------------
@@ -59,8 +74,34 @@ test('editing a pack without bumping its version fires, naming the next version'
   assert.match(findings[0].fix, /to '\d{5,6}\.1'/);
 });
 
-test('a bump alongside the edit passes', () => {
-  assert.deepEqual(run(['packs/demo/RULES.md', 'packs/demo/pack.mjs'], { 'packs/demo/pack.mjs': manifest(2) }, { 'packs/demo/pack.mjs': manifest(1) }), []);
+test('a bump with its VERSIONS.md row passes', () => {
+  assert.deepEqual(run(
+    ['packs/demo/RULES.md', 'packs/demo/pack.mjs', 'packs/demo/VERSIONS.md'],
+    { 'packs/demo/pack.mjs': manifest(2), 'packs/demo/VERSIONS.md': versionsRow(2) },
+    { 'packs/demo/pack.mjs': manifest(1) },
+  ), []);
+});
+
+test('a bump with no VERSIONS.md row fires, naming the file the row belongs in', () => {
+  const findings = run(
+    ['packs/demo/RULES.md', 'packs/demo/pack.mjs'],
+    { 'packs/demo/pack.mjs': manifest(2) },
+    { 'packs/demo/pack.mjs': manifest(1) },
+  );
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].severity, 'blocking');
+  assert.equal(findings[0].file, 'packs/demo/VERSIONS.md');
+  assert.match(findings[0].what, /bumps its version to 2.*carries no row/);
+});
+
+test('a bump whose VERSIONS.md row names a different version still fires', () => {
+  const findings = run(
+    ['packs/demo/pack.mjs', 'packs/demo/VERSIONS.md'],
+    { 'packs/demo/pack.mjs': manifest(3), 'packs/demo/VERSIONS.md': versionsRow(2) },
+    { 'packs/demo/pack.mjs': manifest(1) },
+  );
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].what, /bumps its version to 3/);
 });
 
 test('a version that moves backwards fires — every member would read it as "already current"', () => {
@@ -103,12 +144,28 @@ test('end to end: an unbumped pack edit on a branch fires against the merge-base
   } finally { cleanup(root); }
 });
 
-test('end to end: the same edit with the bump is silent', () => {
+test('end to end: the same edit with the bump and its VERSIONS.md row is silent', () => {
+  const root = makeRepo({
+    base: { 'packs/demo/pack.mjs': manifest(1), 'packs/demo/RULES.md': '# Demo\n' },
+    changed: {
+      'packs/demo/pack.mjs': manifest(2),
+      'packs/demo/RULES.md': '# Demo\n\nA new rule.\n',
+      'packs/demo/VERSIONS.md': versionsRow(2),
+    },
+  });
+  try {
+    assert.deepEqual(runRule(rule, buildContext({ root, mode: 'changed' })), []);
+  } finally { cleanup(root); }
+});
+
+test('end to end: a bump with no VERSIONS.md row fires', () => {
   const root = makeRepo({
     base: { 'packs/demo/pack.mjs': manifest(1), 'packs/demo/RULES.md': '# Demo\n' },
     changed: { 'packs/demo/pack.mjs': manifest(2), 'packs/demo/RULES.md': '# Demo\n\nA new rule.\n' },
   });
   try {
-    assert.deepEqual(runRule(rule, buildContext({ root, mode: 'changed' })), []);
+    const findings = runRule(rule, buildContext({ root, mode: 'changed' }));
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'packs/demo/VERSIONS.md');
   } finally { cleanup(root); }
 });

@@ -1,5 +1,5 @@
 import { finding } from '../../../../engine/checks/helpers/findings.mjs';
-import { VERSION_SOURCE, versionFromLiteral, compareVersions, nextVersion } from '../../../../engine/version.mjs';
+import { VERSION_SOURCE, versionFromLiteral, compareVersions, versionsEqual, nextVersion } from '../../../../engine/version.mjs';
 
 // A PACK'S CONTENT IS DELIVERED ON ITS VERSION NUMBER, and on nothing else. The
 // engine tree vendors wholesale on every converge; a pack's directory ships only
@@ -29,15 +29,22 @@ import { VERSION_SOURCE, versionFromLiteral, compareVersions, nextVersion } from
 // version number; only the diff says whether it moved with the content beside it.
 const LOCAL_PACKS = '.claudinite/local/packs';
 
+// Each pack's version-bump log, next to its manifest — see `versionRecorded`
+// below for what it must carry once a bump lands.
+export const VERSIONS_FILENAME = 'VERSIONS.md';
+
 // The pack ids a changed-file list touches, in first-seen order. Anchored at
 // `packs/<id>/` so the canon's own local packs (which vendor nowhere, carry no
 // version and reach no member) and the tree's own files (`packs/README.md`,
 // `packs/directory.GENERATED.md`) are outside it by construction. Tests drop out for
-// the same reason the local packs do: nothing delivers them.
+// the same reason the local packs do: nothing delivers them. `VERSIONS.md` drops
+// out too — it is the log OF bumps, not content a bump ships, so editing it alone
+// (recording a bump made elsewhere in the same change, or a wording fix to an old
+// row) must never itself demand another bump.
 export function packsTouched(changed) {
   const ids = [];
   for (const file of changed ?? []) {
-    if (file.startsWith(`${LOCAL_PACKS}/`) || file.endsWith('.test.mjs')) continue;
+    if (file.startsWith(`${LOCAL_PACKS}/`) || file.endsWith('.test.mjs') || file.endsWith(`/${VERSIONS_FILENAME}`)) continue;
     const m = /^packs\/([^/]+)\//.exec(file);
     if (m && !ids.includes(m[1])) ids.push(m[1]);
   }
@@ -53,13 +60,28 @@ export function declaredPackVersion(text) {
   return m ? versionFromLiteral(m[1]) : null;
 }
 
+// Does the pack's VERSIONS.md carry a row for this version? A row is a table row
+// whose first cell is the bare version — the same shape `engine/RELEASES.md`
+// rows use, so the log reads as a table a human maintains, not a format this
+// check invented. No run link is required here (unlike an engine release): a
+// pack bump has no canary rehearsal to cite, so the row's own prose is the
+// record.
+const ROW_VERSION_RE = new RegExp(String.raw`^\|\s*(${VERSION_SOURCE})\s*\|`);
+export function versionRecorded(text, version) {
+  for (const line of (text ?? '').split('\n')) {
+    const m = ROW_VERSION_RE.exec(line.trim());
+    if (m && versionsEqual(versionFromLiteral(m[1]), version)) return true;
+  }
+  return false;
+}
+
 const rule = {
   id: 'pack-version-bumped',
   severity: 'blocking',
   scope: 'work',
-  description: 'A change under packs/<id>/ bumps that pack\'s version',
+  description: 'A change under packs/<id>/ bumps that pack\'s version, and a bump lands with its VERSIONS.md row',
   doc: 'docs/versioned-updates/DESIGN.md',
-  why: 'a member receives a pack directory only when the canon\'s version exceeds the one it has installed, so content edited without a bump reaches nobody while canon CI reports it shipped (#939 froze seven repos for five days that way)',
+  why: 'a member receives a pack directory only when the canon\'s version exceeds the one it has installed, so content edited without a bump reaches nobody while canon CI reports it shipped (#939 froze seven repos for five days that way); an unrecorded bump is the same evidence gap on a smaller scale — "what did version N change?" becomes unanswerable once the commit scrolls out of history',
 
   run(work) {
     const findings = [];
@@ -70,19 +92,30 @@ const rule = {
       const base = declaredPackVersion(work.readBase(manifest));
       if (base === null) continue;                     // a pack this change introduces: its first version ships to everyone
       const moved = compareVersions(head, base);
-      if (moved > 0) continue;
 
-      findings.push(finding(rule, {
-        file: manifest,
-        what: moved === 0
-          ? `this change edits packs/${id}/ but leaves its version at ${head}`
-          : `packs/${id}/ moves its version backwards, ${base} → ${head}`,
-        fix: moved === 0
-          ? `raise \`version\` in ${manifest} to '${nextVersion(base)}' — the version is the whole delivery signal, so an edit `
-            + 'that does not move it stays in the canon forever'
-          : 'pack versions only ever increase — the update flow reads them as an ordering, so a lowered number tells '
-            + 'every member it is already up to date',
-      }));
+      if (moved <= 0) {
+        findings.push(finding(rule, {
+          file: manifest,
+          what: moved === 0
+            ? `this change edits packs/${id}/ but leaves its version at ${head}`
+            : `packs/${id}/ moves its version backwards, ${base} → ${head}`,
+          fix: moved === 0
+            ? `raise \`version\` in ${manifest} to '${nextVersion(base)}' — the version is the whole delivery signal, so an edit `
+              + 'that does not move it stays in the canon forever'
+            : 'pack versions only ever increase — the update flow reads them as an ordering, so a lowered number tells '
+              + 'every member it is already up to date',
+        }));
+        continue;
+      }
+
+      const versionsFile = `packs/${id}/${VERSIONS_FILENAME}`;
+      if (!versionRecorded(work.read(versionsFile), head)) {
+        findings.push(finding(rule, {
+          file: versionsFile,
+          what: `packs/${id}/ bumps its version to ${head}, and ${versionsFile} carries no row for it`,
+          fix: `add a row to ${versionsFile} for version ${head} saying what changed`,
+        }));
+      }
     }
     return findings;
   },
