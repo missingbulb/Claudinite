@@ -61,6 +61,15 @@ change, independent of any one project.
   remember to close. Order the plan's phases by what blocks rather than by subject —
   [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns that sort.
 
+- **Retiring a system by folding its function into another** — verify the *machinery* came over,
+  not just its historical output: a copied directory of the old system's artifacts visually
+  launders the absence of the live generator that produced them, so audit for the generator
+  explicitly, in the same pass, rather than inferring it from the presence of past output. And
+  before dropping a carried-over aggregate on the assumption "the next run recomputes it," check
+  whether the new generator's own inputs retain the same history the aggregate already holds — a
+  stateless recompute over inputs the new system keeps only for a bounded window starts the series
+  shorter than a file carried over from elsewhere already carries.
+
 - **When verifying now is genuinely impossible** (an external release window, an upstream fix in
   flight, an effect that only appears once the change is deployed, converged or loaded by a later
   session) — the follow-up is a mechanism that comes to you, never a human's memory and never an
@@ -126,6 +135,13 @@ Contracts worth knowing before you spend a call rediscovering them.
   act on, on any call that isn't `stop: true`; a no-op flag and a stated `reason` do not exempt it,
   and the call is rejected without it. A rejection leaves no fallback armed, which is what the
   `unattended-agents` skill's re-issue rule is for.
+
+- **Reaching for `AskUserQuestion`** — it blocks for real human wall-clock time, so spend it only
+  on a fork you cannot resolve yourself. Check first whether the answer is already decided: by a
+  rule already loaded in context, by state one read away (a sibling's config, a pending record), or
+  by the option marked recommended simply being the status quo. Batch every open decision a run
+  will need into **one** question rather than asking serially — each round-trip costs the same wait
+  again, whatever it's about.
 
 ## Warnings and findings
 
