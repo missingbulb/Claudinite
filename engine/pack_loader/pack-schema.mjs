@@ -80,6 +80,7 @@ export const PACK_FIELDS = {
   adoptionHandover: { describe: 'steps only a human can do after adoption, as { step, breaks, done } — printed by the install flow and filed as a tracking issue', valid: isAdoptionHandover },
   ruleRoutingGuidance: { required: true, describe: 'what belongs in this pack and what does not, each at most 20 words', valid: isPlainObject },
   badge: { describe: 'the pack badge filename, resolved off the pack directory', valid: (v) => typeof v === 'string' },
+  hidden: { describe: 'whether the pack is withheld from the adoptable-pack catalog (packs/directory.GENERATED.md) — for a pack that exists to serve the corpus itself rather than to be adopted', valid: (v) => typeof v === 'boolean' },
   detect: { describe: 'a fingerprint predicate over the repo context, or null', valid: (v) => v === null || typeof v === 'function' },
   marker: { describe: 'a human-readable glob naming what detect looks for, or null', valid: (v) => v === null || typeof v === 'string' },
   prose: { describe: 'the RULES.md filename injected at session start, or null', valid: (v) => v === null || typeof v === 'string' },

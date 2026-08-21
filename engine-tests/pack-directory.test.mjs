@@ -29,8 +29,12 @@ function activation(pack) {
   return parts.length ? parts.join('; ') : 'declared by hand (opt-in)';
 }
 
+// The catalog is what the corpus OFFERS, not everything it holds: a `hidden`
+// pack (pack-schema.mjs) is left out of it entirely, so no session routes a
+// lesson to it or suggests adopting it. It stays declarable by hand.
 export function renderPackDirectory(packs) {
   const rows = [...packs]
+    .filter((p) => !p.hidden)
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((p) => `| \`${p.id}\` | ${cell(p.ruleRoutingGuidance?.belongs ?? '')} | ${cell(p.ruleRoutingGuidance?.excludes ?? '')} | ${activation(p)} | ${p.requires?.length ? p.requires.map((r) => `\`${r}\``).join(', ') : '—'} |`);
   return `# Claudinite packs — the full directory
@@ -55,6 +59,10 @@ test('packs/directory.GENERATED.md is current with the pack manifests', async ()
 
   const rendered = renderPackDirectory(packs);
   for (const p of packs) {
+    if (p.hidden) {
+      assert.doesNotMatch(rendered, new RegExp(`^\\| \`${p.id}\` \\|`, 'm'), `hidden pack "${p.id}" is rendered into the catalog`);
+      continue;
+    }
     assert.match(rendered, new RegExp(`^\\| \`${p.id}\` \\|`, 'm'), `no row rendered for pack "${p.id}"`);
   }
 
@@ -67,4 +75,15 @@ test('packs/directory.GENERATED.md is current with the pack manifests', async ()
     readFileSync(path, 'utf8'), rendered,
     `${PACK_DIRECTORY_FILE} is stale against the pack manifests — run this test locally (it regenerates the file) and commit the result in the same change that touched the packs`
   );
+});
+
+// A hidden pack is content the corpus carries but does not offer: it loads,
+// runs and stays declarable by hand, and the catalog simply never names it.
+// Asserted against a synthetic manifest as well as the real tree, so the rule
+// keeps its teeth in a corpus where nothing happens to be hidden.
+test('renderPackDirectory omits a hidden pack', () => {
+  const pack = (id, extra) => ({ id, ruleRoutingGuidance: { belongs: `${id} belongs`, excludes: `${id} excludes` }, ...extra });
+  const rendered = renderPackDirectory([pack('visible-pack'), pack('hidden-pack', { hidden: true })]);
+  assert.match(rendered, /^\| `visible-pack` \|/m);
+  assert.doesNotMatch(rendered, /hidden-pack/);
 });
