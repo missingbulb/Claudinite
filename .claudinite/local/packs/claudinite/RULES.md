@@ -73,6 +73,22 @@ lesson at the strongest mechanism available — a check where the rule is determ
   the window-over-window shape for counts genuinely built from things that happened inside the
   window (#1008).
 
+- **Classifying an issue or work item by deriving it structurally from other live state** (a
+  title match against what's declared at HEAD, a computed membership test) — reconsider once the
+  derivation's own inputs can mutate while the classified object stays open. A "standing vs
+  ad-hoc" task classification computed live from whether an issue's title matched a task declared
+  at HEAD silently reinterpreted an open issue's own history the moment that task's frequency or
+  name changed underneath it. An explicit marker stamped once at creation and never revisited
+  doesn't have that failure mode — the general preference for a structural classifier over a
+  hand-set field holds only for state that isn't itself still in flight (#1120).
+
+- **Scheduling the removal of a temporary compatibility tolerance** (an old-format reader, a
+  legacy-field fallback) — gate the removal on a converge-cycle-confirmable precondition ("no
+  member still stamps the legacy format"), never a calendar date alone. Retiring the tolerance
+  while a member is still on the old format doesn't just leave that member behind: the value it
+  stamps starts reading as "no version installed" to the now-stricter reader, which re-applies
+  every migration record in the corpus (#1106).
+
 ## Working with the owner and the session's tools
 
 - **Answering "why did it fail?"** — lead with the throwing call site: `file:line`, the
@@ -128,6 +144,14 @@ lesson at the strongest mechanism available — a check where the rule is determ
   before ever asserting the stale version again. One reversal (turning local scheduling on,
   moving `canon-curation`) had to be repeated five times before a session treated it as a
   durable-artifact problem rather than a one-off answer (#364).
+
+- **Firing `AskUserQuestion` on a vague, destructive-sounding instruction** ("remove the entire
+  mechanism," "get rid of the whole thing") — scope the question to pin down the boundary of the
+  vague noun itself, not just the downstream consequences of one reading of it. A question that
+  asked only what happens to the one dependent check, while silently assuming "entire mechanism"
+  meant the whole engine surface, let 15 minutes of deletion, test-authoring and PR/issue
+  bookkeeping land before the owner caught it nine minutes later and all of it was discarded with
+  a hard reset (#1114).
 
 ## Authoring packs, prose and checks
 
@@ -198,6 +222,22 @@ lesson at the strongest mechanism available — a check where the rule is determ
   also the thing that silences the check — the run that should say "rename it back" never fires.
   Use two independent signals, either sufficient, so at least one survives when the other is the
   thing that broke (#1060).
+
+- **Deciding whether an enforced check still earns its keep** — measure its actual blocking-firing
+  rate against what it buys, not vibes. A check whose firings are dominated by cases where the
+  agent had already done the right thing, and the check only wants the exact tokens for it, is a
+  demotion candidate (check → prose-only), justified by the firing-frequency data itself:
+  `comment-classification` fired 204 times in 31 days, 21% of all blocking findings, each one a
+  blocked Stop-hook turn spent re-emitting a line the session had already been told to emit
+  (#1118).
+
+- **A documented multi-step procedure the agent re-derives interactively every time it runs** —
+  that pattern, not the doc's polish, is the signal to mechanize it into a script the agent runs
+  once. A nine-part prose bootstrap doc cost ~90 exploratory tool calls and ~11 minutes per
+  adoption for work that runs in seconds once scripted. Part of that cost was sequencing, not
+  exploration: the tracking issue was created only after the first commit had already failed the
+  issue-reference check, costing a full amend/force-push/CI cycle — create the artifact a check
+  will demand *before* the action it gates, not after (#1132).
 
 ## The engine, the mount and what reaches members
 
@@ -351,6 +391,44 @@ lesson at the strongest mechanism available — a check where the rule is determ
   parameter's producer and consumer still agree after every interface migration (#974,
   owner-authored).
 
+- **Relying on a push to trigger further Actions workflows** — a push authored with the default
+  `GITHUB_TOKEN` (which every converge and auto-merge in this repo's own machinery uses) fires no
+  `on: push` workflow; only a push carrying a real user or app credential cascades. A dashboard
+  stuck showing a stale "hasn't converged" banner traced back to exactly this: the deploy
+  workflow's trigger never fired for the pushes that actually moved a mount (#1094). The same
+  platform fact is why `.github/workflows/` is the one path a converge cannot push into — it lands
+  only through a PR a human merges — so a renamed or removed entry point that a workflow file
+  references by literal path needs a shim held open until every consumer's own copy has moved, by
+  the same rule as an `engine/` module a `packs/` file imports (#1108).
+
+- **A script written for one execution context silently breaking in another** — audit every
+  script's environment assumptions (a real `GITHUB_TOKEN`, `gh`/`curl` reachability) whenever the
+  execution context of its caller changes, not just at the one call site that surfaced the break.
+  A script written when the queue ran as an Actions job (a real token, shell GitHub access) 401'd
+  once the same work started running inside an agent session (MCP-only, a proxy-scoped token, no
+  `gh`) — and per the owner, every other script built against the old assumption fails identically
+  in the new context, not just the one that broke first (#1133).
+
+- **Finding a check that watches only one of two structurally-identical surfaces** — widen it to
+  the sibling in the same change rather than filing it separately. A check exercising the
+  scheduler's own vendored stub had never been extended to the executor's stub, which is just as
+  much a fleet-wide vendored surface and just as capable of drifting unnoticed (#1138).
+
+- **Picking a compact date-encoded identifier** (a version stamp, a compact timestamp) — check
+  the encoding's own rollover boundary years ahead, not just today's decode correctness: anchoring
+  a year on its last digit wraps to 0 in 2030 and sorts a decade of releases underneath every 2029
+  one, so the anchor point matters (`year - 2020`, not `year % 10`). And keep the identifier
+  string-typed everywhere it travels — `'60820.10'` and `'60820.1'` are different versions and the
+  same float, so nothing in the corpus may parse one as a number (#1105).
+
+- **Designing text that instructs a model to echo an exact string** (a session-start directive, a
+  generated title) — don't reference the payload anaphorically from later text ("that line," "the
+  above"); state the instruction first, have it disclaim itself as instruction-not-payload, and
+  put the literal string once, last, introduced by the instruction's own colon. Recency is what an
+  LLM actually resolves ambiguous reference against: putting the directive *after* the payload
+  line made "that line" read as the directive sentence itself, and a session opened two replies in
+  a row reciting the instruction verbatim instead of the summary (#1126).
+
 ## Scheduled tasks
 
 - **Choosing a task's cadence** — take it from how often the signal actually moves. A
@@ -404,6 +482,22 @@ lesson at the strongest mechanism available — a check where the rule is determ
   ceiling** — write it to the live output stream (stdout/stderr), never to a file meant to be
   written at exit: already-printed output survives a `SIGKILL`, a file written on the way out is
   never written at all if the kill lands first (#1051).
+
+- **Writing a stateless reconciliation or repair rule over a live, mutating collection** (a
+  janitor sweep, a stale-item rule) — distinguish rules gated on a *clock* (elapsed time, safe
+  against snapshot staleness) from rules gated on *current state* (need a fresh, targeted read of
+  the specific item immediately before acting, never the snapshot that triggered the sweep). An
+  item that settled between the sweep's read and its write is otherwise indistinguishable from a
+  genuinely torn state machine: a claim-to-close window that had shrunk to ~4 seconds let a janitor
+  rule stamp `task:done` and `needs-human` on an issue that had already succeeded (#1101, fixed in
+  #1108).
+
+- **Solving a "must act again later" or "must verify eventually" problem** — check whether an
+  existing generic lane already gives you everything before building new standing machinery for
+  it. A first cut added a whole new daily task, keyed on a title-prefix scan, to handle deferred
+  production-verification; the owner pointed at the deferred-request queue's existing
+  `Blocked-by`/`Not-before` lane, which already carried it end to end, and the bespoke task — a
+  second queue standing beside the first — came back out (#1092).
 
 ## Proving a change
 
@@ -492,6 +586,15 @@ lesson at the strongest mechanism available — a check where the rule is determ
   `null` — silently, and only for the old rows. And on a *second* rename of one name, map every
   legacy spelling **straight to today's** rather than chaining one normalization onto the last, so
   a declaration written for the oldest vocabulary still normalizes in a single pass (#1013).
+
+- **Writing a "this period is covered" marker in an at-least-once or idempotent pipeline** (a
+  watermark row, a dedup stamp) — write it strictly after the durable effect it is guarding, and
+  never let it stand in as proof the effect happened. Modeling a decision row as sufficient cover
+  for its period ate a real occurrence whenever the item the row promised had failed to actually
+  get created: a write failure was silently read as "already handled," the exact inversion of the
+  system's own fail-open policy. Caught by the simulator before any engine code shipped; the fix
+  scopes the marker to the *declined* case only — a go verdict's coverage is judged by the item it
+  actually created, never by the row (#1123).
 
 ## Editing, branching and merging here
 
