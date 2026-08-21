@@ -18,6 +18,13 @@ the self-refresh. The contract a scheduled task is written to is claudinite-grow
   activates by being mounted, fingerprinted or present on disk, so a pack whose files you can see
   but whose id is undeclared contributes no prose, no checks, no skills and no tasks.
 
+- **Renaming or removing a pack's declaration** — re-run
+  `node .claudinite/shared/engine/scheduler/converge-wiring.mjs <owner/repo> --badges` in the same
+  change. The README's `<!-- claudinite:packs -->` badge row is a one-time seed the update flow
+  deliberately never re-derives on its own, so a declaration change made outside the `adopt-pack`
+  skill (which already runs this) leaves the row silently stale — surfacing only later as a
+  blocking `reference-integrity` finding, sometimes on the *second* rename of the same pack.
+
 - **Adding a pack** — run the `adopt-pack` skill, which declares it, asks its adoption questions,
   re-vendors and scaffolds. Never hand-copy a pack's content into the repo.
 

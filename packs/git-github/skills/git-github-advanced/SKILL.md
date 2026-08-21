@@ -21,6 +21,10 @@ To post a **status update** on an issue (the lifecycle's "update the issue's sta
 
 Never re-arm on a loop hoping the answer changes — observed runs answered "unstable" then "clean" seconds later with nothing changed in between, and one spent ~6 minutes of a 13-minute budget circling a single PR without merging it.
 
+## After a bulk sweep, subscribe every PR it leaves open — not a sample
+
+A fleet-wide or bulk sweep can leave many PRs open at once; subscribing to only some of them means the rest get no activity signal at all, so detecting their merges falls back to repeated re-polling — real API and wall-clock cost, spent on state that never changes between polls. The subscribed few, by contrast, report back the instant the owner acts. Call the PR-activity subscription on **every** PR the run leaves open, not just the ones that look interesting.
+
 ## Don't prune a `.gitignore` section in the same commit that deletes what produced its artifacts
 
 Removing a toolchain invites tidying away its ignore rules alongside it — but the artifacts it already produced are usually still sitting untracked in the worktree (`__pycache__/` from an earlier run, `build/` from an earlier build). The moment those rules go, the next `git add -A` sweeps the junk *into* the commit that was supposed to remove it, and nothing complains: the commit is valid and the tests still pass. Delete (or `git clean`) the artifacts first, then drop their ignore lines. And after any bulk `git add -A`, read `git diff --cached --stat` — staged additions are exactly what a clean `git status` stops telling you about.
@@ -171,6 +175,12 @@ In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a r
 ## When access is scoped to an explicit repo list, query per-repo — never an org/user-wide search
 
 A broad call (e.g. `search_repositories` with `org:X`, or any list/search tool that takes no repo argument) returns every repo the token can see, not just an allowed subset — filtering the result afterward doesn't undo the fact that disallowed repos' data was already pulled into the call. When operating under a repo allowlist, scope every call explicitly instead: pass the specific `owner`/`repo` params, or anchor the query to `repo:owner/name`, one call per repo in the allowlist rather than one broad call filtered after the fact.
+
+A session scoped to a **single** repo hits the same boundary from the other side: a call naming a *different* repo is denied outright, not merely filtered. Before spending a call rediscovering that denial, check what repo the session is actually scoped to — and look for the answer in what you already have. An issue or PR body that references the other repo often already carries its own self-description of the state you were about to go fetch.
+
+## `search_code`'s index can lag — don't trust it alone to enumerate a population
+
+Reconnaissance across many repos (which ones reference X, which ones need a given change) often reaches for `search_code`, but its index is not the source of truth for coverage: it can silently undercount, missing repos that genuinely match. Where you have a way to enumerate the true candidate set directly — fetching each candidate's own file, walking a known roster — cross-check `search_code`'s result against that before trusting it as complete; one fleet-wide sweep found only 3 of 11 actually-affected repos through `search_code` alone.
 
 ## Cap *and* qualify every list/search call — an unbounded one blows the tool-result limit
 
