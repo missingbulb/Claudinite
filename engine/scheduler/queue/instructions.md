@@ -16,13 +16,22 @@ instructions.
 2. **Validate in code before acting**, never by judgment:
    - the task file exists at HEAD,
    - its pack is declared in `.claudinite-checks.json`,
-   - the issue's title names that same task,
+   - the issue's title names that same task, **or** — for a marked issue, whose
+     title is the person's own — its machine block's first line is that task's
+     worker path,
    - the issue carries `task:agent`,
    - and its newest hand-off comment carries **the nonce you were given**.
 
    And **if the item carries a `Request: #N` field**, one more: that issue is open
-   and carries `claude-queued`. It is the issue this run implements, and a request
-   that was withdrawn between being queued and being started is one you do not run.
+   and still carries the mark (`task:origin:ad-hoc`, or a legacy `claude-queued` on
+   an item filed before the one-issue model). It is the issue this run implements —
+   usually this very issue — and a request withdrawn between being queued and being
+   started is one you do not run.
+
+   On a marked issue the item and the issue are **one object**: the machine block is
+   the machine's half of the body and everything outside it is the person's, so
+   never rewrite their prose, and never close their issue — the terminal status
+   standing on an open issue is the correct end (the command handles both).
 
    Any of those failing means you are not this item's session. Comment saying
    which check failed, and stop — do not label, do not close, do not run the task.
@@ -99,12 +108,13 @@ instructions.
    | `task:needs-human-decision` | you stopped mid-flight and what happens next is a choice — you ran out of time, or you exceeded the declared ceiling and someone must say whether that stands |
    | `task:needs-human-failure` | the run broke: a bug, a contract-forbidden shape, a malformed or forged item. Use this when you are unsure |
 
-   **A `Request: #N` item writes back to that issue too**, and the command does
-   it: on the approval park it swaps `claude-queued` for `claude-in-review` and
-   names the pull request (which is why `--pr` is required there); on a failure it
-   writes nothing at all and leaves `claude-queued` standing — re-arming work that
-   writes code is a person's decision, and that standing label is what stops the
-   next scheduler run queueing a second run of the same request.
+   **A marked issue needs no write-back at all**: it is the item, so the approval
+   park it wears *is* the in-review state and the failure park *is* the report (which
+   is why `--pr` is still required on an approval — a park nobody can act on is not
+   a park). The standing status is also what stops the next scheduler run adopting
+   the same issue again; clearing it is a person's decision, made after reading what
+   the run said. Only an item filed under the older shadow model writes back to a
+   different issue, and the command does that too.
 
    Only `task:needs-human-failure` (and a park with no sub-label at all) holds the
    task's lane — while one is open the generator files no further occurrence of

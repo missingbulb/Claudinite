@@ -11,7 +11,7 @@ import { runExecutor } from '../../../engine/scheduler/queue/executor.mjs';
 import { collectSignals } from '../../../engine/scheduler/signals/index.mjs';
 import requestTask, { eligibility } from '../../../engine/scheduler/queue/tasks/implement-request/task.mjs';
 import { REQUEST_TASK_ID } from '../../../engine/scheduler/built-in-tasks.mjs';
-import { parseWorkItemBody } from '../../../engine/scheduler/queue/work-item.mjs';
+import { parseWorkItemBody, machineBlockOf, ORIGIN_AD_HOC } from '../../../engine/scheduler/queue/work-item.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const NOW = '2026-08-19T09:17:00Z';
@@ -22,7 +22,19 @@ const REQUEST_TASK = {
   taskPath: TASK_PATH, decl: requestTask,
 };
 
-const marked = (number, labels = ['claude-task'], body = '') => ({ number, title: `A thing to do`, body, state: 'open', labels });
+// A MARKED ISSUE — an ordinary issue wearing the origin and no status, which is the
+// whole of the exactly-once guard (§16.3). `authorHasPush` is what the shell read
+// from the permission API, and it gates the body's parameters (§16.7).
+const marked = (number, labels = [ORIGIN_AD_HOC], body = '', over = {}) =>
+  ({ number, title: 'A thing to do', body, state: 'open', labels, author: 'dev', authorHasPush: true, ...over });
+
+// The adopted issue: same issue, plus the machine block and a status.
+const adopted = (number, status, over = {}) => ({
+  number, title: 'A thing to do', state: 'open',
+  labels: [ORIGIN_AD_HOC, status],
+  body: `Do the thing.\n\n<!-- claudinite-item -->\n${TASK_PATH}\n\nRequest: #${number}\nModel: opus\n<!-- /claudinite-item -->\n`,
+  created_at: NOW, updated_at: NOW, closed_at: null, ...over,
+});
 
 let seq = 700;
 const requestItem = (request, labels, over = {}) => ({
@@ -38,29 +50,41 @@ const ops = async (over = {}) => (await planSchedulerRun({
 
 // --- S44: a marked issue becomes exactly one run ------------------------------
 
-test('S44 — a marked issue becomes one item, and the consumed mark is the exactly-once guard', async () => {
-  const adopts = (await ops({ requests: [marked(500)] })).filter((o) => o.kind === 'adopt');
+test('S44 — the marked issue BECOMES the item, and any status holds the mark', async () => {
+  const adopts = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Do it.\n')] })).filter((o) => o.kind === 'adopt');
   assert.equal(adopts.length, 1);
   const [adopt] = adopts;
-  assert.equal(adopt.request, 500);
-  assert.equal(adopt.title, '[claudinite-work] engine/implement-request #500');
-  assert.deepEqual(adopt.labels, ['task:ready'], 'born ready — a request has no anchor to wait for');
+  assert.equal(adopt.request, 500, 'the issue adoption writes to is the issue itself — nothing is filed');
+  assert.equal(adopt.task, REQUEST_TASK_ID);
+  assert.equal(adopt.status, 'task:ready', 'born ready — a request has no anchor to wait for');
+  // The block is the machine's half of a body the person authored and keeps editing.
+  assert.match(adopt.body, /^Do it\.\n/);
+  assert.ok(machineBlockOf(adopt.body), 'the machine block is appended, never the whole body');
   assert.deepEqual(parseWorkItemBody(adopt.body), {
-    taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'opus', merge: null,
+    taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: null, merge: null,
   });
-  assert.deepEqual(adopt.consume, ['claude-task']);
 
-  // The item is structurally ad-hoc — a `manual` task, and a qualified title — so it
-  // sits outside every scheduled family (§3) rather than being anybody's occurrence.
+  // The item is structurally ad-hoc — a `manual` task, and a title that names no
+  // task — so it sits outside every scheduled family (§3).
   assert.equal(requestTask.frequency, 'manual');
 
-  // The scheduler run after the mark was consumed adopts nothing: the issue now carries only
-  // the queued label, and no state anywhere says "this was already done".
-  const later = await ops({
-    requests: [marked(500, ['claude-queued'])],
-    items: [requestItem(500, ['task:agent'])],
-  });
-  assert.deepEqual(later.filter((o) => o.kind === 'adopt'), []);
+  // ONE LEVER (§16.3): every status blocks re-adoption, live, parked and terminal
+  // alike, and clearing it is the only re-ask. Nothing is superseded, because there
+  // is no second object to supersede.
+  for (const status of ['task:ready', 'task:executing', 'task:agent', 'needs-human',
+    'task:status:needs-human-approval', 'task:status:rejected', 'task:done']) {
+    const plan = await ops({ requests: [marked(500, [ORIGIN_AD_HOC, status])] });
+    assert.deepEqual(plan.filter((o) => o.kind === 'adopt'), [], `a ${status} issue is not re-adopted`);
+    assert.deepEqual(plan.filter((o) => o.kind === 'supersede'), [], 'and nothing is superseded');
+  }
+  // Clearing the status is the re-ask, and it re-enters as the same record.
+  assert.equal((await ops({ requests: [marked(500)] })).filter((o) => o.kind === 'adopt').length, 1);
+});
+
+test('the retired `claude-task` mark still adopts, and gains the origin it will be read by', async () => {
+  const [adopt] = (await ops({ requests: [marked(500, ['claude-task'])] })).filter((o) => o.kind === 'adopt');
+  assert.equal(adopt.request, 500);
+  assert.equal(adopt.origin, ORIGIN_AD_HOC, 'origins are for life, so the issue gains today\'s spelling');
 });
 
 test('a repo whose engine has no request task adopts nothing — the marks simply wait', async () => {
@@ -69,45 +93,73 @@ test('a repo whose engine has no request task adopts nothing — the marks simpl
   assert.deepEqual(adopts, []);
 });
 
-// --- S47: the model label routes the run --------------------------------------
+// --- S47: the body's `Model:` routes the run, and the author gate fences it -----
 
-test('S47 — the model label reaches the item, an unknown family falls back, and both are consumed (F29)', async () => {
-  const [sonnet] = (await ops({ requests: [marked(500, ['claude-task', 'claude-model:sonnet'])] })).filter((o) => o.kind === 'adopt');
+test('S47 — the body\'s Model reaches the item, an unknown family falls back, and an ungated one is ignored', async () => {
+  const [sonnet] = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Do it.\n\nModel: sonnet\n')] })).filter((o) => o.kind === 'adopt');
   assert.equal(parseWorkItemBody(sonnet.body).model, 'sonnet');
-  assert.deepEqual(sonnet.consume.sort(), ['claude-model:sonnet', 'claude-task']);
 
-  // An unrecognised family runs at the default rather than parking a request nobody
-  // can start — and its label is consumed too, so the next ask starts clean.
-  const [unknown] = (await ops({ requests: [marked(500, ['claude-task', 'claude-model:gpt-9'])] })).filter((o) => o.kind === 'adopt');
-  assert.equal(parseWorkItemBody(unknown.body).model, 'opus');
-  assert.deepEqual(unknown.consume.sort(), ['claude-model:gpt-9', 'claude-task']);
+  // An unrecognised family runs at the task's own default rather than parking a
+  // request nobody can start.
+  const [unknown] = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Do it.\n\nModel: gpt-9\n')] })).filter((o) => o.kind === 'adopt');
+  assert.equal(parseWorkItemBody(unknown.body).model, null);
 
-  // Two marked issues make two items, neither aware of the other.
+  // THE AUTHOR GATE (§16.7). A body is editable by whoever opened the issue where a
+  // label was platform-write-gated, so a drive-by author gets the defaults — and is
+  // told so rather than left wondering.
+  const [ungated] = (await ops({
+    requests: [marked(500, [ORIGIN_AD_HOC], 'Do it.\n\nModel: sonnet\nAutomerge: yes\n', { authorHasPush: false })],
+  })).filter((o) => o.kind === 'adopt');
+  assert.equal(parseWorkItemBody(ungated.body).model, null);
+  assert.equal(parseWorkItemBody(ungated.body).merge, null);
+  assert.equal(ungated.ungated, true);
+
+  // A permission read that could not answer gates the same way: the safe end of a
+  // field that chooses a task, a model, or the right to land a change unreviewed.
+  const [unread] = (await ops({
+    requests: [marked(500, [ORIGIN_AD_HOC], 'Do it.\n\nModel: sonnet\n', { authorHasPush: null })],
+  })).filter((o) => o.kind === 'adopt');
+  assert.equal(parseWorkItemBody(unread.body).model, null);
+
+  // Two marked issues make two runs, neither aware of the other.
   const two = (await ops({ requests: [marked(500), marked(501)] })).filter((o) => o.kind === 'adopt');
   assert.deepEqual(two.map((o) => o.request), [500, 501]);
 });
 
-// --- S51 / S49: one issue, one live item (F28) --------------------------------
+// --- the `Task:` targeting field ----------------------------------------------
 
-test('S51 — a re-ask waits, unconsumed, while the previous run is still live', async () => {
-  for (const state of ['task:ready', 'task:executing', 'task:agent']) {
-    const plan = await ops({ requests: [marked(500)], items: [requestItem(500, [state])] });
-    assert.deepEqual(plan.filter((o) => o.kind === 'adopt'), [], `a ${state} prior item holds the mark back`);
-    assert.deepEqual(plan.filter((o) => o.kind === 'supersede'), [], 'and nothing is closed while it runs');
-  }
+test('a marked issue may name WHICH task it asks for, gated like every other parameter', async () => {
+  const other = { pack: 'p', id: 'chore', taskPath: 'packs/p/tasks/chore/task.md', decl: { id: 'chore', frequency: 'manual' } };
+  const plan = (over) => ops({ tasks: [REQUEST_TASK, other], ...over });
+
+  const [targeted] = (await plan({ requests: [marked(500, [ORIGIN_AD_HOC], 'Run it.\n\nTask: p/chore\n')] })).filter((o) => o.kind === 'adopt');
+  assert.equal(targeted.task, 'p/chore');
+  assert.equal(parseWorkItemBody(targeted.body).taskPath, 'packs/p/tasks/chore/task.md');
+
+  // Absent, the ask is the built-in request implementer — what an ordinary
+  // "implement this issue" mark means.
+  const [plain] = (await plan({ requests: [marked(500)] })).filter((o) => o.kind === 'adopt');
+  assert.equal(plain.task, REQUEST_TASK_ID);
+
+  // A task this repo does not carry is not adopted at all: the mark waits, exactly
+  // as it waits on an engine too old to carry the mode.
+  assert.deepEqual((await plan({ requests: [marked(500, [ORIGIN_AD_HOC], 'Task: p/nope\n')] })).filter((o) => o.kind === 'adopt'), []);
+
+  // And an ungated author cannot choose what runs.
+  const [defaulted] = (await plan({
+    requests: [marked(500, [ORIGIN_AD_HOC], 'Task: p/chore\n', { authorHasPush: false })],
+  })).filter((o) => o.kind === 'adopt');
+  assert.equal(defaulted.task, REQUEST_TASK_ID);
 });
 
-test('S49 — a re-ask supersedes a PARKED prior run rather than queueing beside it', async () => {
-  const parked = requestItem(500, ['needs-human', 'task:needs-human-failure']);
-  const plan = await ops({ requests: [marked(500)], items: [parked] });
-  const [supersede] = plan.filter((o) => o.kind === 'supersede');
-  assert.equal(supersede.issue, parked.number);
-  assert.match(supersede.reason, /#500 was marked again/);
-  assert.equal(plan.filter((o) => o.kind === 'adopt').length, 1, 'and the re-ask is adopted in the same scheduler run');
-});
+// --- one issue, one item (F28, collapsed by the one-issue model) --------------
+// S51 (a re-ask waits while a run is live) and S49 (a re-ask supersedes a parked
+// run) are both the status test in S44 above now: there is one object, its status
+// is the guard, and clearing it is the only re-ask. What remains to pin is that the
+// guard is per-issue.
 
-test('an item for a DIFFERENT request never holds this one back', async () => {
-  const other = requestItem(499, ['task:agent']);
+test('another issue\'s run never holds this mark back', async () => {
+  const other = adopted(499, 'task:agent');
   assert.equal((await ops({ requests: [marked(500)], items: [other] })).filter((o) => o.kind === 'adopt').length, 1);
 });
 
@@ -267,6 +319,58 @@ const drive = (repo, signalRequest, over = {}) => runExecutor({
   ...over,
 });
 
+// --- the one-issue model, end to end on the executor ---------------------------
+// The item and the issue are one object here, which is what these three pin: the
+// run finds it, converges it where the person is looking, and never closes it.
+
+test('a marked issue is picked up as the item it is, and handed to a session at its own Model', async () => {
+  const issue = adopted(500, 'task:ready', {
+    body: `Implement the thing.\n\n<!-- claudinite-item -->\n${TASK_PATH}\n\nRequest: #500\nModel: haiku\n\n### Context\n\n- Implement this issue, #500.\n<!-- /claudinite-item -->\n`,
+  });
+  const repo = fakeRepo([issue]);
+  const invoked = [];
+  const done = await drive(repo, req({ authorPermission: 'admin' }), {
+    invokeAgent: async (args) => { invoked.push(args); return { ok: true, sessionId: 's-1' }; },
+  });
+
+  assert.deepEqual(done.map((d) => d.outcome), ['agent']);
+  assert.equal(invoked.length, 1, 'one call per item, ever');
+  assert.equal(parseWorkItemBody(invoked[0].item.body).model, 'haiku');
+  assert.ok(repo.find(500).labels.includes('task:agent'));
+  assert.equal(repo.find(500).title, 'A thing to do', 'the person\'s issue keeps its own title');
+  // The hand-off rewrites the machine block and nothing else: the item's binding
+  // scope stays inside it, in one copy, and the prose above it is untouched.
+  const body = repo.find(500).body;
+  assert.equal(body.split('### Context').length - 1, 1, 'one Context section, replaced rather than appended');
+  assert.match(machineBlockOf(body), /### Context/);
+  assert.equal(body.split('<!-- claudinite-item -->')[0].trim(), 'Implement the thing.');
+});
+
+test('a declined marked issue wears the terminal status and stays OPEN — the run\'s verdict is not the issue\'s', async () => {
+  const repo = fakeRepo([adopted(500, 'task:ready')]);
+  const done = await drive(repo, req());
+
+  assert.deepEqual(done.map((d) => d.outcome), ['obsolete']);
+  const issue = repo.find(500);
+  assert.equal(issue.state, 'open', 'the issue belongs to the person who opened it');
+  assert.ok(issue.labels.includes('task:obsolete'), 'and carries the refusal as its status');
+  assert.ok(issue.labels.includes(ORIGIN_AD_HOC), 'the mark never comes off — origins are for life');
+  assert.match(issue.comments.at(-1).body, /neither opened nor approved/);
+  // One write-back, not two: there is no second issue to tell.
+  assert.equal(issue.comments.filter((c) => /Not implementing this/.test(c.body)).length, 0);
+  // The exec record still names the task, which the human title cannot supply.
+  assert.match(issue.comments.map((c) => c.body).join('\n'), /engine[/ ]implement-request|implement-request/);
+});
+
+test('an unreadable request parks the marked issue open, in the failure lane', async () => {
+  const repo = fakeRepo([adopted(500, 'task:ready')]);
+  const done = await drive(repo, { number: 500, unreadable: true, error: 'the issues API answered 502' });
+
+  assert.deepEqual(done.map((d) => d.outcome), ['needs-human']);
+  assert.equal(repo.find(500).state, 'open', 'open and visible, so the re-queue lever can retry it');
+  assert.ok(repo.find(500).labels.includes('task:needs-human-failure'));
+});
+
 test('S45 — a declined request is disarmed on the issue in the same convergence', async () => {
   const item = requestItem(500, ['task:ready'], { number: 1 });
   const repo = fakeRepo([item, { number: 500, title: 'a thing', labels: ['claude-queued'], body: '' }]);
@@ -342,11 +446,11 @@ test('the request task is the one task allowed to read its item\'s model', () =>
 // --- §16.11: a deferred request — blocked, chained, and its merge authorization --
 
 test('a marked issue that names open blockers is adopted BLOCKED, and released when they close', async () => {
-  const req = marked(500, ['claude-task'], 'Do the rename after the current work.\n\nBlocked-by: #480, #481\n');
-  const [adopt] = (await ops({ requests: [req], stateOf: (n) => (n === 481 ? 'closed' : 'open') }))
+  const request = marked(500, [ORIGIN_AD_HOC], 'Do the rename after the current work.\n\nBlocked-by: #480, #481\n');
+  const [adopt] = (await ops({ requests: [request], stateOf: (n) => (n === 481 ? 'closed' : 'open') }))
     .filter((o) => o.kind === 'adopt');
 
-  assert.deepEqual(adopt.labels, ['task:blocked'], 'born blocked — the follow-up waits on the work in flight');
+  assert.equal(adopt.status, 'task:blocked', 'born blocked — the follow-up waits on the work in flight');
   // The closed blocker is dropped: an item is not born waiting on something that
   // already happened.
   assert.deepEqual(parseWorkItemBody(adopt.body).blockedBy, [480]);
@@ -354,7 +458,9 @@ test('a marked issue that names open blockers is adopted BLOCKED, and released w
 
   // Job 2 releases it, on any origin, once the blocker closes — the same mechanic a
   // fan-in rides, which is what makes the chain of deferrals work at all.
-  const item = requestItem(500, ['task:blocked'], { body: `${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\nModel: opus\n` });
+  const item = adopted(500, 'task:blocked', {
+    body: `Do it.\n\n<!-- claudinite-item -->\n${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\n<!-- /claudinite-item -->\n`,
+  });
   assert.deepEqual(
     (await ops({ items: [item], stateOf: () => 'open' })).filter((o) => o.kind === 'ready'), [],
     'while the blocker is open the item stays blocked',
@@ -366,40 +472,44 @@ test('a marked issue that names open blockers is adopted BLOCKED, and released w
 });
 
 // `Not-before:` rides the same rule as `Blocked-by:` — the field a work item
-// already uses, carried at adoption — so a deferred request can wait on a moment
-// as well as an issue. The re-arm loop depends on it: a run that finds its world
-// not ready re-marks its issue with a bumped date, and without the carry the next
-// pick comes within the hour, forever.
+// already uses, read off the person's own text — so a deferred request can wait on
+// a moment as well as an issue. The re-arm loop depends on it: a run that finds its
+// world not ready re-marks its issue with a bumped date, and without the carry the
+// next pick comes within the hour, forever.
 test('a marked issue with a future Not-before is adopted BLOCKED until that moment', async () => {
-  const [adopt] = (await ops({ requests: [marked(500, ['claude-task'], 'Verify once live.\n\nNot-before: 2099-01-01T00:00:00Z\n')] }))
+  const [adopt] = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Verify once live.\n\nNot-before: 2099-01-01T00:00:00Z\n')] }))
     .filter((o) => o.kind === 'adopt');
-  assert.deepEqual(adopt.labels, ['task:blocked']);
+  assert.equal(adopt.status, 'task:blocked');
   assert.equal(parseWorkItemBody(adopt.body).notBefore, '2099-01-01T00:00:00Z');
 });
 
 test('a Not-before already past holds nothing back', async () => {
-  const [adopt] = (await ops({ requests: [marked(500, ['claude-task'], 'Late.\n\nNot-before: 2020-01-01T00:00:00Z\n')] }))
+  const [adopt] = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Late.\n\nNot-before: 2020-01-01T00:00:00Z\n')] }))
     .filter((o) => o.kind === 'adopt');
-  assert.deepEqual(adopt.labels, ['task:ready']);
+  assert.equal(adopt.status, 'task:ready');
 });
 
 test('an unreadable blocker delays the request rather than releasing it', async () => {
-  const item = requestItem(500, ['task:blocked'], { body: `${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\n` });
+  const item = adopted(500, 'task:blocked', {
+    body: `Do it.\n\n<!-- claudinite-item -->\n${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\n<!-- /claudinite-item -->\n`,
+  });
   assert.deepEqual((await ops({ items: [item], stateOf: () => null })).filter((o) => o.kind === 'ready'), []);
 });
 
-test('`claude-automerge` becomes the item\'s Merge field, and is consumed with the mark', async () => {
-  const [authorized] = (await ops({ requests: [marked(500, ['claude-task', 'claude-automerge'])] }))
+test('the body\'s `Automerge:` becomes the item\'s Merge field, and only for a gated author', async () => {
+  const [authorized] = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Do it.\n\nAutomerge: if-narrow\n')] }))
     .filter((o) => o.kind === 'adopt');
   assert.equal(parseWorkItemBody(authorized.body).merge, 'if-narrow');
   assert.equal(authorized.merge, 'if-narrow');
-  // Consumed with the mark, so an authorization can never linger into a later ask.
-  assert.deepEqual(authorized.consume.sort(), ['claude-automerge', 'claude-task']);
+
+  // Re-read at every adoption, so an authorization can never linger into a later
+  // ask: it is in the person's own text, and clearing the status re-reads it.
+  const [withdrawn] = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Do it.\n')] })).filter((o) => o.kind === 'adopt');
+  assert.equal(parseWorkItemBody(withdrawn.body).merge, null);
 
   // …and the ordinary marked issue is untouched by any of this: no field, and the
   // worker's default is to open a pull request and park.
-  const [plain] = (await ops({ requests: [marked(501)] })).filter((o) => o.kind === 'adopt');
-  assert.equal(parseWorkItemBody(plain.body).merge, null);
+  assert.equal(withdrawn.merge, null);
 });
 
 test('the ceiling permits the authorized merge, and an unrecognised authorization reads as absent', () => {

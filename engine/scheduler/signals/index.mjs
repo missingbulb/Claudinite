@@ -10,7 +10,7 @@
 // retention) are read off the checkout by signals/context.mjs — see signals/local.mjs.
 
 import { LOCAL_PACK_ROOTS } from './local.mjs';
-import { QUEUED_LABEL } from '../queue/work-item.mjs';
+import { QUEUED_LABEL, ORIGIN_AD_HOC, REQUEST_LABEL } from '../queue/work-item.mjs';
 import { APPROVAL_RE } from '../built-in-tasks.mjs';
 
 // A default-branch commit is genuine project work unless it is bot/CI
@@ -353,7 +353,11 @@ const COLLECTORS = {
       number,
       state: json.state,
       labels: (json.labels ?? []).map((l) => l.name ?? l),
-      queued: (json.labels ?? []).map((l) => l.name ?? l).includes(QUEUED_LABEL),
+      // STILL MARKED, in any spelling this repo's issues may carry: the origin the
+      // one-issue model applies, and the two retired `claude-*` labels a shadow item's
+      // issue wears. Withdrawing is removing what marked it, whichever that was.
+      queued: (json.labels ?? []).map((l) => l.name ?? l)
+        .some((l) => [ORIGIN_AD_HOC, QUEUED_LABEL, REQUEST_LABEL].includes(l)),
       author,
       authorPermission,
       approvals,

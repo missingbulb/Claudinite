@@ -1899,6 +1899,35 @@ model family read off the running session, and the one case that withholds the
 authorization outright — an explicit ask to review this change outranks any
 measurement of how small it is.
 
+### 16.12 Which task a mark asks for — the `Task:` field
+
+A mark means *implement this issue* by default, and that default is the whole of
+§16 above. The body's **`Task: <pack>/<task>`** widens it to *run this task, for
+this issue*: adoption resolves the id against the repo's own tasks at HEAD and
+writes that task's worker path into the machine block, so everything downstream —
+the ceiling, the model, the instructions, the record — is that task's, exactly as
+for an item the schedule filed.
+
+Three rules, each the same one the other parameters carry:
+
+- **It is author-gated** (§16.7). Naming the task is choosing what runs, so an
+  ungated body's field is ignored and the ask is the built-in implementer.
+- **An id this repo does not carry is not adopted at all.** The mark waits, as it
+  waits on an engine too old to carry the mode: a request that named a task that
+  does not exist is not a failure to report, it is a mark whose target may yet
+  arrive.
+- **It changes nothing else.** The item is still a marked issue: its status is the
+  request state, its terminal stands on the open issue, and clearing the status is
+  still the one re-ask.
+
+What it buys is the retirement of every bespoke "the fleet places work here and
+fires the scheduler" protocol: a work-list issue in a member becomes a marked
+issue naming the task that drains it, with its payload in its own body, and the
+member's ordinary hourly scheduler run adopts it with no dispatch at all. The
+first of those folds (`add-packs`) is tracked separately — it changes a
+cross-repo contract, and its one real failure mode is a member whose mark label
+does not exist yet, where the enforcer's write is refused and nothing runs.
+
 ## Appendix A — the owner's sketch (2026-08-12, verbatim)
 
 > Can we think of a mechanism where the work items are available for work, and

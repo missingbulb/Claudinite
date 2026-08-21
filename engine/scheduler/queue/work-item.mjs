@@ -250,17 +250,19 @@ export function outcomeOf(issue) {
   return hasLabel(issue, OUTCOME_DELIVERED) ? 'delivered' : null;
 }
 
-// --- the request vocabulary (DESIGN §16.1) ------------------------------------
-// Five labels in their own namespace, worn by an ORDINARY issue somebody marked —
-// never by a work item, which is why they are not in the `task:` namespace and why
-// nothing here reads them off an item. They are here beside the item's own
-// vocabulary because they are the other half of the same compatibility surface.
+// --- the request vocabulary, retired (DESIGN §4's legacy table, §16.1) --------
+// @deprecated The five labels the SHADOW-ITEM request model used. The mark is
+// `task:origin:ad-hoc` now and the marked issue is the item itself, so nothing here
+// applies these — but they are read forever: `claude-task` is still accepted as a
+// mark (a person with it in muscle memory, a template that carries it), and an
+// issue whose shadow item is still draining wears `claude-queued`.
 //
-// The mark is a LABEL rather than a body syntax or a command comment for one
-// reason: it must be appliable from the issue page on a phone. It is also
-// write-gated by the platform — applying a label needs triage or write access —
-// which is the first half of the security story (the second is the precondition's
-// permission read at pickup, §16.4).
+// What survives the retirement is the reason the mark is a LABEL at all: it must be
+// appliable from the issue page on a phone, and it is write-gated by the platform —
+// applying a label needs triage or write access — which is the first half of the
+// security story (the second is the precondition's permission read at pickup,
+// §16.4). The parameters that were labels are body fields now, gated on the
+// author's push access instead (`parseRequestFields`).
 export const REQUEST_LABEL = 'claude-task';
 export const QUEUED_LABEL = 'claude-queued';
 export const IN_REVIEW_LABEL = 'claude-in-review';
@@ -281,9 +283,9 @@ export const DEFAULT_REQUEST_MODEL = 'opus';
 
 export const MODEL_LABELS = REQUEST_MODELS.map((f) => `${MODEL_LABEL_PREFIX}${f}`);
 
-// Every label the request mode applies, ensured like the queue's own. `claude-task`
-// is ensured too although only a person applies it: a label that does not exist is
-// one nobody can find in the picker, and the mark is the whole entry point.
+// @deprecated The set the shadow-item model ensured. Nothing ensures it now — the
+// entry point is `task:origin:ad-hoc`, which the queue's own set carries — and it
+// stays exported because a fielded pack version may still import it.
 export const REQUEST_LABELS = [
   { name: REQUEST_LABEL, color: '1d76db', description: 'Claudinite: implement this issue — the next scheduler run queues a run for it' },
   { name: QUEUED_LABEL, color: 'fbca04', description: 'Claudinite: a work item exists for this issue' },
@@ -427,6 +429,13 @@ export const BLOCKED_BY_FIELD = 'Blocked-by';
 export const REQUEST_FIELD = 'Request';
 export const MODEL_FIELD = 'Model';
 
+// `Task` is the TARGETING field (DESIGN §16, the one-issue request): which task a
+// marked issue asks for, as `<pack>/<task>`. Absent, the ask is the built-in
+// request implementer, which is what an ordinary "implement this issue" mark means.
+// It rides the same author gate as `Model` and `Merge`: naming a task is choosing
+// what runs, and a body is editable by whoever opened the issue.
+export const TASK_FIELD = 'Task';
+
 // `Merge` is the asker's standing authorization, copied here from the
 // write-gated `claude-automerge` label. Its one value is `if-narrow`: the run may
 // land its own pull request when the diff classifier calls the diff narrow, and
@@ -447,6 +456,52 @@ export const LEGACY_DELIVERED_HEADINGS = Object.freeze([
   'Delivered by prework',
   'Delivered by code_work',
 ]);
+
+// --- the machine block (DESIGN §16.1, §16.3) ----------------------------------
+// A one-issue request's item IS the issue somebody marked, so the item's fields
+// share a body a person authored and keeps editing. They live in one delimited
+// block, appended at adoption and rewritten in place after that: everything outside
+// it belongs to the human, everything inside it to the machine, and a parser that
+// read the whole body would take a sentence of prose for a field.
+//
+// A `[claudinite-work]` item has no block — its whole body is the machine's — so
+// every reader here falls back to the whole text, which is what keeps items filed
+// before the one-issue model draining unchanged.
+export const MACHINE_BLOCK_START = '<!-- claudinite-item -->';
+export const MACHINE_BLOCK_END = '<!-- /claudinite-item -->';
+
+const BLOCK_RE = /<!-- claudinite-item -->\n?([\s\S]*?)\n?<!-- \/claudinite-item -->/;
+
+// The machine's half of a body, or null where there is no block at all.
+export const machineBlockOf = (body) => BLOCK_RE.exec(String(body ?? ''))?.[1] ?? null;
+
+// The machine's half to read fields out of: the block where there is one, the whole
+// body otherwise.
+export const itemFieldText = (body) => machineBlockOf(body) ?? String(body ?? '');
+
+// Replace the block, or append one to a body that has none. The human's text is
+// never rewritten — an append lands after it, separated by a blank line.
+export function withMachineBlock(body, block) {
+  const text = String(body ?? '');
+  const wrapped = `${MACHINE_BLOCK_START}\n${block.replace(/\s*$/, '')}\n${MACHINE_BLOCK_END}`;
+  if (BLOCK_RE.test(text)) return text.replace(BLOCK_RE, wrapped);
+  return `${text.replace(/\s*$/, '')}\n\n${wrapped}\n`;
+}
+
+// Apply an edit to whichever half is the machine's. Every writer that reshapes an
+// item body — a Context section, code-work's delivered list, a stamped
+// `Not-before` — goes through here, so it edits the block on a marked issue and the
+// whole body on a `[claudinite-work]` item, with one call site either way.
+export function editItemBody(body, edit) {
+  const block = machineBlockOf(body);
+  return block === null ? edit(String(body ?? '')) : withMachineBlock(body, edit(block));
+}
+
+// The human's half of a body — everything the machine block is not. A marked
+// issue's PARAMETERS are read from here and never from the block: re-asking clears
+// the status and leaves the previous run's block standing, and a parser that read
+// the whole body would find that stale copy beside the person's own field.
+export const humanTextOf = (body) => String(body ?? '').replace(BLOCK_RE, '').trim();
 
 const NOT_BEFORE_RE = /^Not-before:[ \t]*(.*)$/m;
 const BLOCKED_BY_RE = /^Blocked-by:[ \t]*(.*)$/m;
@@ -496,7 +551,7 @@ export function parseBlockedBy(body) {
 // with no first line, or whose fields are absent, yields nulls — absence is
 // meaningful everywhere here and is never filled in with a default.
 export function parseWorkItemBody(body) {
-  const text = String(body ?? '');
+  const text = itemFieldText(body);
   const taskPath = text.split('\n').map((l) => l.trim()).find((l) => l !== '') ?? null;
   const nb = NOT_BEFORE_RE.exec(text)?.[1]?.trim() || null;
   const blockedBy = parseBlockedBy(text);
@@ -512,6 +567,37 @@ export function parseWorkItemBody(body) {
   const askedMerge = MERGE_RE.exec(text)?.[1] ?? null;
   const merge = askedMerge === MERGE_IF_NARROW ? askedMerge : null;
   return { taskPath, notBefore: nb, blockedBy, request, model, merge };
+}
+
+// WHAT A MARKED ISSUE ASKS FOR (DESIGN §16.3, §16.7, §16.11) — read from the
+// person's own text at every adoption, so each ask names its parameters afresh and
+// nothing stale outranks a new one.
+//
+// `gated` is whether the issue's AUTHOR holds push access. A body is editable by
+// whoever opened the issue where a label was write-gated by the platform, so the
+// three behaviour-defining fields are honoured only for an author who could have
+// applied them as labels anyway; an ungated ask still runs, at the default task and
+// model and with no authorization to land anything.
+export function parseRequestFields(body, { gated = false } = {}) {
+  const text = humanTextOf(body);
+  const asked = {
+    task: /^Task:[ \t]*(\S+)/m.exec(text)?.[1] ?? null,
+    model: MODEL_RE.exec(text)?.[1] ?? null,
+    automerge: /^Automerge:[ \t]*(\S+)/m.exec(text)?.[1]?.toLowerCase() ?? null,
+  };
+  const blockedBy = parseBlockedBy(text);
+  const notBefore = NOT_BEFORE_RE.exec(text)?.[1]?.trim() || null;
+  if (!gated) return { task: null, model: null, merge: null, blockedBy, notBefore, ungated: Object.values(asked).some(Boolean) };
+  return {
+    task: /^[^/\s]+\/[^/\s]+$/.test(asked.task ?? '') ? asked.task : null,
+    // An unrecognised family reads as absent rather than failing the request: a run
+    // nobody can start would look accepted forever.
+    model: REQUEST_MODELS.includes(asked.model) ? asked.model : null,
+    merge: ['if-narrow', 'yes', 'true'].includes(asked.automerge) ? MERGE_IF_NARROW : null,
+    blockedBy,
+    notBefore,
+    ungated: false,
+  };
 }
 
 // The item's own `### Context` bullets, in order — the binding scope a hand-created

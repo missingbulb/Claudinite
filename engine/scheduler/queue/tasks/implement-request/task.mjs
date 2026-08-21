@@ -1,11 +1,13 @@
 // The request implementer (tasks-dispatch DESIGN §16) — the engine's one built-in
 // task, and the only one that may read an item's `Model`.
 //
-// A person marks an ordinary issue `claude-task`; the scheduler run adopts it into a work
-// item naming that issue; this task's precondition decides, at pickup, whether the
-// run happens; the session implements the issue and leaves a pull request. There is
-// no code-work phase at all: the authorization a worker would have performed is the
-// precondition's, and the item's `Request:` field is the whole payload.
+// A person marks an ordinary issue `task:origin:ad-hoc`; the scheduler run adopts
+// it by writing the machine block onto that issue and applying the first status —
+// the issue IS the item (§16.1); this task's precondition decides, at pickup,
+// whether the run happens; the session implements the issue and leaves a pull
+// request. There is no code-work phase at all: the authorization a worker would
+// have performed is the precondition's, and the item's `Request:` field — which
+// names the item's own issue — is the whole payload.
 
 // Push permission, as the permission API answers it. `triage` and `read` are
 // deliberately not here: the ask was push access, and a read-only collaborator
@@ -56,8 +58,9 @@ export default {
 
   // THE SECURITY CHECK, and it happens where every verdict happens: once, at pickup,
   // on the executor (§6.4). Three refusals, each a plain no-go that converges the
-  // item `task:obsolete` — a refusal is nobody's inbox, and an ad-hoc item has no
-  // anchor to roll to.
+  // item to the rejected terminal — a refusal is nobody's inbox, and an ad-hoc item
+  // has no anchor to roll to. On a marked issue that terminal stands on the OPEN
+  // issue: the run's verdict is not the issue's validity (§16.5).
   //
   // A READ FAILURE IS NOT A VERDICT (F27). The decline's write-back cannot reach an
   // issue it cannot read, so declining on a rate limit or a 500 would strand
@@ -73,7 +76,7 @@ export default {
     if (req.gone) return { run: false, reason: `issue #${req.number} does not exist` };
     if (req.state !== 'open') return { run: false, reason: `issue #${req.number} was closed before this ran` };
     if (!req.queued) {
-      return { run: false, reason: `issue #${req.number} no longer carries \`claude-queued\` — the request was withdrawn` };
+      return { run: false, reason: `issue #${req.number} no longer carries the mark — the request was withdrawn` };
     }
     const verdict = eligibility(req);
     return verdict.ok

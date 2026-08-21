@@ -143,7 +143,10 @@ export function parseDeclaration(text) {
 
 // --- work items ----------------------------------------------------------------
 
-export const isWorkItem = (issue) => String(issue?.title ?? '').startsWith(WORK_PREFIX);
+// An item is a filed `[claudinite-work]` issue OR an adopted marked issue — the
+// one-issue request model's other shape, which keeps the person's own title
+// (tasks-dispatch DESIGN §16.1). One definition, shared with the queue's own reader.
+export { isQueueItem as isWorkItem } from '../../engine/scheduler/queue/read.mjs';
 
 // The page's five state keys, one per decoded status. The keys are the engine's
 // own constants rather than the canonical spellings, because a page groups the four

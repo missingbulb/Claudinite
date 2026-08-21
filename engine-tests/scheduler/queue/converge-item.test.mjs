@@ -70,7 +70,14 @@ test('the command refuses a plan it cannot perform rather than guessing', () => 
 
 test('an item this session does not hold is refused, not converged', () => {
   assert.match(refusal(null, 7), /could not be read/);
-  assert.match(refusal(item({ title: 'just an issue' }), 7), /not a Claudinite work item/);
+  // Membership is naming a task, not carrying the title: a marked issue keeps its
+  // own human title and is its own item (DESIGN §16.1).
+  assert.match(refusal(item({ title: 'just an issue', body: 'please do the thing\n' }), 7),
+    /not a Claudinite work item/);
+  assert.equal(refusal(item({
+    title: 'Implement the thing',
+    body: 'do it\n\n<!-- claudinite-item -->\nengine/scheduler/queue/tasks/implement-request/task.md\n\nRequest: #7\n<!-- /claudinite-item -->\n',
+  }), 7), null);
   assert.match(refusal(item({ state: 'closed' }), 7), /already closed/);
   assert.match(refusal(item({ labels: ['task:executing'] }), 7), /task:agent/);
   assert.equal(refusal(item(), 7), null);
