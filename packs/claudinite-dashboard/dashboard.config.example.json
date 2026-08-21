@@ -6,13 +6,15 @@
     "never committed here: the site that DEPLOYS the dashboard writes it next to its own",
     "copy. Absent config is a valid deployment, not a broken one — it means the",
     "token-paste fallback and whatever repo the URL names.",
-    "Every key below is optional. `canonRepo` is what the fleet view compares each",
+    "`mode` is required and has no default: \"repo\" for this repo's own page,",
+    "\"fleet\" for the overview. Every other key below is optional. `canonRepo` is what the fleet view compares each",
     "member's mount against; unset means member freshness reads unknown rather than",
-    "being guessed. `rosterUrl`/`repos` with more than one member makes the fleet",
-    "overview the landing view. `digestsRepo` is where the fleet's morning briefs are",
+    "being guessed. A \"fleet\" mode names where its members come from — `owner`,",
+    "`repos` or `rosterUrl`. `digestsRepo` is where the fleet's morning briefs are",
     "written — unset simply turns that panel off."
   ],
 
+  "mode": "fleet",
   "clientId": "Iv1.0123456789abcdef",
   "exchangeUrl": "https://claudinite-oauth.example.workers.dev",
   "redirectUri": "https://missingbulb.github.io/Shepherd/",

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  rosterFrom, loadConfig, loadRoster, DEFAULTS, isFleetConfig, inFleet, resolveRoster,
+  rosterFrom, loadConfig, loadRoster, DEFAULTS, isFleetConfig, inFleet, resolveRoster, resolveMode,
 } from '../../packs/claudinite-dashboard/config.mjs';
 import { isOAuthConfigured } from '../../packs/claudinite-dashboard/auth.mjs';
 
@@ -75,14 +75,65 @@ test('OAuth counts as configured only with both a client id and an exchange url'
 // fleet contains is decided at read time by what this person can see. These are the
 // rules that decision follows.
 
-test('the deployment\'s SHAPE decides whether it is a fleet page', () => {
-    assert.equal(isFleetConfig({ owner: 'missingbulb' }), true);
-  assert.equal(isFleetConfig({ rosterUrl: './roster.json' }), true);
-  assert.equal(isFleetConfig({ repos: ['o/a', 'o/b'] }), true);
-  // One repo is that repo's own page, not a one-row fleet overview.
-  assert.equal(isFleetConfig({ repos: ['o/a'] }), false);
+test('the deployment STATES which page it is — the roster source no longer implies it', () => {
+  assert.equal(isFleetConfig({ mode: 'fleet', owner: 'missingbulb' }), true);
+  assert.equal(isFleetConfig({ mode: 'repo' }), false);
+  // The shapes that used to MEAN fleet no longer do on their own. This is the whole
+  // point of the key: a fleet deployment whose roster source went missing must not
+  // quietly re-read as a repo page, and it cannot, because the mode is not derived
+  // from the roster at all.
+  assert.equal(isFleetConfig({ owner: 'missingbulb' }), false);
+  assert.equal(isFleetConfig({ rosterUrl: './roster.json' }), false);
+  assert.equal(isFleetConfig({ repos: ['o/a', 'o/b'] }), false);
   assert.equal(isFleetConfig({}), false);
   assert.equal(isFleetConfig(null), false);
+});
+
+// --- the mode, which has no default ----------------------------------------------
+
+// The build refuses to publish a site whose declaration did not say which dashboard it
+// is. Silence used to mean "repo", which is exactly the default the owner ruled out:
+// a fleet deployment that lost its roster source published as a one-repo page and
+// looked intentional. `resolveMode` is where that judgment lives, so the page and the
+// build agree by construction rather than by two matching expressions.
+
+test('a declaration that states no mode is refused, not defaulted', () => {
+  assert.throws(() => resolveMode({}), /no default/);
+  assert.throws(() => resolveMode({ owner: 'missingbulb' }), /no default/);
+  assert.throws(() => resolveMode(null), /no default/);
+});
+
+test('a mode outside the vocabulary names the two that exist', () => {
+  assert.throws(() => resolveMode({ mode: 'single' }), /"repo".*"fleet"|"fleet".*"repo"/s);
+  assert.throws(() => resolveMode({ mode: 'FLEET' }), /single|unknown|not a mode|"repo"/i);
+});
+
+test('a stated mode that contradicts the config is refused in BOTH directions', () => {
+  // The two halves of the same guard. Either alone leaves a way to publish the wrong
+  // page: without the first, `mode: fleet` with no roster silently covers one repo;
+  // without the second, `mode: repo` beside an owner silently ignores the owner.
+  assert.throws(() => resolveMode({ mode: 'fleet' }), /names no roster source/);
+  assert.throws(() => resolveMode({ mode: 'repo', owner: 'missingbulb' }), /roster source/);
+  assert.throws(() => resolveMode({ mode: 'repo', rosterUrl: './r.json' }), /roster source/);
+  assert.throws(() => resolveMode({ mode: 'repo', repos: ['o/a', 'o/b'] }), /roster source/);
+});
+
+test('the agreeing shapes pass, and a rosterFile counts as a roster source', () => {
+  assert.equal(resolveMode({ mode: 'fleet', owner: 'missingbulb' }), 'fleet');
+  assert.equal(resolveMode({ mode: 'fleet', rosterUrl: './r.json' }), 'fleet');
+  assert.equal(resolveMode({ mode: 'fleet', repos: ['o/a', 'o/b'] }), 'fleet');
+  // The build reads `rosterFile` (a path in the repo) where the page reads `rosterUrl`;
+  // both are roster sources and the guard has to know it, or Shepherd's legacy
+  // declaration reads as a fleet mode naming nothing.
+  assert.equal(resolveMode({ mode: 'fleet', rosterFile: 'usage-fleet.GENERATED.json' }), 'fleet');
+  assert.equal(resolveMode({ mode: 'repo' }), 'repo');
+  // A single-entry `repos` is not a roster: it is this repo, named.
+  assert.equal(resolveMode({ mode: 'repo', repos: ['o/a'] }), 'repo');
+});
+
+test('DEFAULTS carries no mode — there is nothing for silence to fall back to', () => {
+  assert.equal(DEFAULTS.mode, null);
+  assert.ok(!isFleetConfig(DEFAULTS));
 });
 
 test('archived and forked repos leave the fleet by their own state, not by a list', () => {

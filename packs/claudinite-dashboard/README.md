@@ -3,10 +3,19 @@
 A read-only view of what a repo's — or a fleet's — Claudinite is doing: what is stuck,
 what is queued, what has run, and what the corpus has been costing and catching.
 
-**Two modes, decided by shape rather than by a switch.** A declaration that says where
-more than one member comes from builds the **fleet dashboard**; anything else builds
-that repo's own **repo dashboard**. Nothing to ask at adoption and nothing to hold in
-step — the roster source *is* the mode.
+**Two modes, and a deployment states which one it is.** `mode` is `"repo"` — that
+repo's own page — or `"fleet"` — the overview across a roster. It is the one key with
+**no default**: the build refuses to publish a deployment that did not say, and refuses
+a mode that contradicts the rest of the config (`fleet` naming no roster source,
+`repo` naming one).
+
+It used to be inferred: a config that named where more than one member came from was a
+fleet, and silence was a repo page. That reads fine until a fleet deployment loses its
+roster source — a dropped key, a renamed artifact, an enumeration that was never
+configured — and publishes a one-repo dashboard that looks entirely intentional. An
+inference cannot tell "this repo only" from "the fleet, whose members went missing";
+a stated mode can, and the disagreement becomes a failed build instead of a quietly
+wrong site.
 
 **Opt-in.** Nothing fingerprints it and `--init` never seeds it: a repo carries this
 because someone declared it. Adopting it wires the GitHub Pages deploy.
@@ -40,6 +49,7 @@ Everything else is optional `config` on the declaration:
 
 | Key | Default | What it buys |
 |---|---|---|
+| `mode` | **none — required** | `"repo"` or `"fleet"`. The build fails without it, and fails when it disagrees with the roster keys below |
 | `owner` | — | Whose repos this deployment covers. The page **enumerates them in the browser, as the viewer** — so this is a fleet deployment, and the fleet a person sees is exactly the fleet they can read. The way to build a fleet dashboard |
 | `exclude` | none | Repos under that owner that are not members (either `owner/name` or the bare name). Archived and forked repos leave by their own state |
 | `repos` | — | An explicit member list instead, for a deployment that wants a fixed set |
