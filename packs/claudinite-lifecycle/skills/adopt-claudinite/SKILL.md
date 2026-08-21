@@ -9,9 +9,11 @@ adoption is five steps: open the adoption issue **first** (the work-scope sweep 
 that references no issue), fetch the canon and run the script, ask **all** the pending interview
 questions it reports in one batched `AskUserQuestion` pass (up to 4 per call, the project-class
 question folded in) and record the answers via `--answer` re-runs, land the adoption as one
-commit referencing the issue, then hand over the human-only halves the script's report names (the
-executor routine + repo binding, the web environment Setup script). Never re-enact the doc's
-parts step by step — they document what the script converges.
+commit referencing the issue, capture the adoption session itself once the PR lands (the fast
+path's capture step — no SessionEnd hook was loaded when this session started, so nothing else
+will), then hand over the human-only halves the script's report names (the executor routine +
+repo binding, the web environment Setup script). Never re-enact the doc's parts step by step —
+they document what the script converges.
 
 Bootstrap is the one place `apply-vendor-set.mjs` is the right tool, and only because the repo is at
 version zero: it stamps every declared pack at the newest version, and with no older state there is

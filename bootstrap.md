@@ -37,7 +37,13 @@ interview waits on a human. Don't re-enact the parts below by hand — they are 
    where the question's distill note (printed beside it) says how.
 4. **Land it** (Part 8): clear or accept what the world sweep reported, commit the adoption as
    one change referencing the issue, push, PR.
-5. **Finish the human-only halves**: the executor routine and its repo binding (Part 6), and —
+5. **Capture the adoption session** once the PR lands: from the repo root,
+   `node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --issue <adoption-issue>`.
+   This session started with no Claudinite loaded, so the SessionEnd capture hook it just wired
+   fires only in *later* sessions — nothing captures this one unless bootstrap does. The
+   adoption log is the repo's first growth input, and what the canon reads to judge real
+   adoption timings. Delta-aware, so a later double-capture is safe.
+6. **Finish the human-only halves**: the executor routine and its repo binding (Part 6), and —
    for Claude Code on the web — the environment Setup script (Part 9).
 
 ## Part 1 — fetch the canon (the network moment)
