@@ -81,7 +81,9 @@ export default {
   // precondition gives when it cannot answer.
   // 60820.2: writing-tasks stops teaching the roll — a decline is a schedule-board
   // row at the anchor, and a pick-time no-go closes its item (#1115).
-  version: '60820.2',
+  // 60821.1: writing-tasks states today's label vocabulary — one `task:status:*` per
+  // item, the origin beside it, and a park as one label rather than a pair (#1119).
+  version: '60821.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',

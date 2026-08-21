@@ -56,7 +56,7 @@ test('S44 — the marked issue BECOMES the item, and any status holds the mark',
   const [adopt] = adopts;
   assert.equal(adopt.request, 500, 'the issue adoption writes to is the issue itself — nothing is filed');
   assert.equal(adopt.task, REQUEST_TASK_ID);
-  assert.equal(adopt.status, 'task:ready', 'born ready — a request has no anchor to wait for');
+  assert.equal(adopt.status, 'task:status:waiting-for-executor', 'born ready — a request has no anchor to wait for');
   // The block is the machine's half of a body the person authored and keeps editing.
   assert.match(adopt.body, /^Do it\.\n/);
   assert.ok(machineBlockOf(adopt.body), 'the machine block is appended, never the whole body');
@@ -71,8 +71,8 @@ test('S44 — the marked issue BECOMES the item, and any status holds the mark',
   // ONE LEVER (§16.3): every status blocks re-adoption, live, parked and terminal
   // alike, and clearing it is the only re-ask. Nothing is superseded, because there
   // is no second object to supersede.
-  for (const status of ['task:ready', 'task:executing', 'task:agent', 'needs-human',
-    'task:status:needs-human-approval', 'task:status:rejected', 'task:done']) {
+  for (const status of ['task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent',
+    'task:status:needs-human-approval', 'task:status:rejected', 'task:status:done']) {
     const plan = await ops({ requests: [marked(500, [ORIGIN_AD_HOC, status])] });
     assert.deepEqual(plan.filter((o) => o.kind === 'adopt'), [], `a ${status} issue is not re-adopted`);
     assert.deepEqual(plan.filter((o) => o.kind === 'supersede'), [], 'and nothing is superseded');
@@ -159,7 +159,7 @@ test('a marked issue may name WHICH task it asks for, gated like every other par
 // guard is per-issue.
 
 test('another issue\'s run never holds this mark back', async () => {
-  const other = adopted(499, 'task:agent');
+  const other = adopted(499, 'task:status:running-agent');
   assert.equal((await ops({ requests: [marked(500)], items: [other] })).filter((o) => o.kind === 'adopt').length, 1);
 });
 
@@ -324,7 +324,7 @@ const drive = (repo, signalRequest, over = {}) => runExecutor({
 // run finds it, converges it where the person is looking, and never closes it.
 
 test('a marked issue is picked up as the item it is, and handed to a session at its own Model', async () => {
-  const issue = adopted(500, 'task:ready', {
+  const issue = adopted(500, 'task:status:waiting-for-executor', {
     body: `Implement the thing.\n\n<!-- claudinite-item -->\n${TASK_PATH}\n\nRequest: #500\nModel: haiku\n\n### Context\n\n- Implement this issue, #500.\n<!-- /claudinite-item -->\n`,
   });
   const repo = fakeRepo([issue]);
@@ -336,7 +336,7 @@ test('a marked issue is picked up as the item it is, and handed to a session at 
   assert.deepEqual(done.map((d) => d.outcome), ['agent']);
   assert.equal(invoked.length, 1, 'one call per item, ever');
   assert.equal(parseWorkItemBody(invoked[0].item.body).model, 'haiku');
-  assert.ok(repo.find(500).labels.includes('task:agent'));
+  assert.ok(repo.find(500).labels.includes('task:status:running-agent'));
   assert.equal(repo.find(500).title, 'A thing to do', 'the person\'s issue keeps its own title');
   // The hand-off rewrites the machine block and nothing else: the item's binding
   // scope stays inside it, in one copy, and the prose above it is untouched.
@@ -347,13 +347,13 @@ test('a marked issue is picked up as the item it is, and handed to a session at 
 });
 
 test('a declined marked issue wears the terminal status and stays OPEN — the run\'s verdict is not the issue\'s', async () => {
-  const repo = fakeRepo([adopted(500, 'task:ready')]);
+  const repo = fakeRepo([adopted(500, 'task:status:waiting-for-executor')]);
   const done = await drive(repo, req());
 
   assert.deepEqual(done.map((d) => d.outcome), ['obsolete']);
   const issue = repo.find(500);
   assert.equal(issue.state, 'open', 'the issue belongs to the person who opened it');
-  assert.ok(issue.labels.includes('task:obsolete'), 'and carries the refusal as its status');
+  assert.ok(issue.labels.includes('task:status:rejected'), 'and carries the refusal as its status');
   assert.ok(issue.labels.includes(ORIGIN_AD_HOC), 'the mark never comes off — origins are for life');
   assert.match(issue.comments.at(-1).body, /neither opened nor approved/);
   // One write-back, not two: there is no second issue to tell.
@@ -363,41 +363,41 @@ test('a declined marked issue wears the terminal status and stays OPEN — the r
 });
 
 test('an unreadable request parks the marked issue open, in the failure lane', async () => {
-  const repo = fakeRepo([adopted(500, 'task:ready')]);
+  const repo = fakeRepo([adopted(500, 'task:status:waiting-for-executor')]);
   const done = await drive(repo, { number: 500, unreadable: true, error: 'the issues API answered 502' });
 
   assert.deepEqual(done.map((d) => d.outcome), ['needs-human']);
   assert.equal(repo.find(500).state, 'open', 'open and visible, so the re-queue lever can retry it');
-  assert.ok(repo.find(500).labels.includes('task:needs-human-failure'));
+  assert.ok(repo.find(500).labels.includes('task:status:needs-human-failure'));
 });
 
 test('S45 — a declined request is disarmed on the issue in the same convergence', async () => {
-  const item = requestItem(500, ['task:ready'], { number: 1 });
+  const item = requestItem(500, ['task:status:waiting-for-executor'], { number: 1 });
   const repo = fakeRepo([item, { number: 500, title: 'a thing', labels: ['claude-queued'], body: '' }]);
   const done = await drive(repo, req());
 
   assert.deepEqual(done.map((d) => d.outcome), ['obsolete']);
   assert.equal(repo.find(1).state, 'closed');
-  assert.ok(repo.find(1).labels.includes('task:obsolete'));
+  assert.ok(repo.find(1).labels.includes('task:status:rejected'));
   // The disarm is the point: without it every scheduler run from here re-adopts and re-refuses.
   assert.deepEqual(repo.find(500).labels, []);
   assert.match(repo.find(500).comments.at(-1).body, /Not implementing this/);
 });
 
 test('S50 — an unreadable request parks the item open and touches the issue not at all', async () => {
-  const item = requestItem(500, ['task:ready'], { number: 1 });
+  const item = requestItem(500, ['task:status:waiting-for-executor'], { number: 1 });
   const repo = fakeRepo([item, { number: 500, title: 'a thing', labels: ['claude-queued'], body: '' }]);
   const done = await drive(repo, { number: 500, unreadable: true, error: 'the issues API answered 502' });
 
   assert.deepEqual(done.map((d) => d.outcome), ['needs-human']);
   assert.equal(repo.find(1).state, 'open', 'open and visible, so the re-queue lever can retry it');
-  assert.ok(repo.find(1).labels.includes('task:needs-human-failure'));
+  assert.ok(repo.find(1).labels.includes('task:status:needs-human-failure'));
   assert.deepEqual(repo.find(500).labels, ['claude-queued'], 'the request stays armed');
   assert.deepEqual(repo.find(500).comments, [], 'and is told nothing, since nothing is known');
 });
 
 test('an eligible request is handed to a session, at the model its item names', async () => {
-  const item = requestItem(500, ['task:ready'], { number: 1 });
+  const item = requestItem(500, ['task:status:waiting-for-executor'], { number: 1 });
   item.body = `${TASK_PATH}\n\nRequest: #500\nModel: haiku\n`;
   const repo = fakeRepo([item, { number: 500, title: 'a thing', labels: ['claude-queued'], body: '' }]);
   const invoked = [];
@@ -408,7 +408,7 @@ test('an eligible request is handed to a session, at the model its item names', 
   assert.deepEqual(done.map((d) => d.outcome), ['agent']);
   assert.equal(invoked.length, 1, 'one call per item, ever');
   assert.equal(parseWorkItemBody(invoked[0].item.body).model, 'haiku');
-  assert.ok(repo.find(1).labels.includes('task:agent'));
+  assert.ok(repo.find(1).labels.includes('task:status:running-agent'));
   // The session owns the rest: the issue keeps `claude-queued` until it swaps it for
   // `claude-in-review` at the approval park (§16.5).
   assert.deepEqual(repo.find(500).labels, ['claude-queued']);
@@ -419,7 +419,7 @@ test('the precondition is handed THIS occurrence\'s own facts, not just the sign
   // else in this file would notice it going missing: the request task reads its
   // issue out of the signal the collector filled from that same field.
   const seen = [];
-  const item = requestItem(500, ['task:ready'], { number: 1 });
+  const item = requestItem(500, ['task:status:waiting-for-executor'], { number: 1 });
   item.body = `${TASK_PATH}\n\nRequest: #500\nModel: sonnet\n`;
   const repo = fakeRepo([item, { number: 500, title: 'a thing', labels: ['claude-queued'], body: '' }]);
   const spy = {
@@ -450,7 +450,7 @@ test('a marked issue that names open blockers is adopted BLOCKED, and released w
   const [adopt] = (await ops({ requests: [request], stateOf: (n) => (n === 481 ? 'closed' : 'open') }))
     .filter((o) => o.kind === 'adopt');
 
-  assert.equal(adopt.status, 'task:blocked', 'born blocked — the follow-up waits on the work in flight');
+  assert.equal(adopt.status, 'task:status:blocked', 'born blocked — the follow-up waits on the work in flight');
   // The closed blocker is dropped: an item is not born waiting on something that
   // already happened.
   assert.deepEqual(parseWorkItemBody(adopt.body).blockedBy, [480]);
@@ -458,7 +458,7 @@ test('a marked issue that names open blockers is adopted BLOCKED, and released w
 
   // Job 2 releases it, on any origin, once the blocker closes — the same mechanic a
   // fan-in rides, which is what makes the chain of deferrals work at all.
-  const item = adopted(500, 'task:blocked', {
+  const item = adopted(500, 'task:status:blocked', {
     body: `Do it.\n\n<!-- claudinite-item -->\n${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\n<!-- /claudinite-item -->\n`,
   });
   assert.deepEqual(
@@ -479,18 +479,18 @@ test('a marked issue that names open blockers is adopted BLOCKED, and released w
 test('a marked issue with a future Not-before is adopted BLOCKED until that moment', async () => {
   const [adopt] = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Verify once live.\n\nNot-before: 2099-01-01T00:00:00Z\n')] }))
     .filter((o) => o.kind === 'adopt');
-  assert.equal(adopt.status, 'task:blocked');
+  assert.equal(adopt.status, 'task:status:blocked');
   assert.equal(parseWorkItemBody(adopt.body).notBefore, '2099-01-01T00:00:00Z');
 });
 
 test('a Not-before already past holds nothing back', async () => {
   const [adopt] = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Late.\n\nNot-before: 2020-01-01T00:00:00Z\n')] }))
     .filter((o) => o.kind === 'adopt');
-  assert.equal(adopt.status, 'task:ready');
+  assert.equal(adopt.status, 'task:status:waiting-for-executor');
 });
 
 test('an unreadable blocker delays the request rather than releasing it', async () => {
-  const item = adopted(500, 'task:blocked', {
+  const item = adopted(500, 'task:status:blocked', {
     body: `Do it.\n\n<!-- claudinite-item -->\n${TASK_PATH}\n\nBlocked-by: #480\nRequest: #500\n<!-- /claudinite-item -->\n`,
   });
   assert.deepEqual((await ops({ items: [item], stateOf: () => null })).filter((o) => o.kind === 'ready'), []);
