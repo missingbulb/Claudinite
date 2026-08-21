@@ -33,8 +33,9 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
 | Waiving a finding on text | low | complexity | prose: 26 words |
 | Working around a vendored check's finding | medium | complexity | prose: 29 words |
-| Deferring a warning you can't fix now | medium | complexity | prose: 199 words |
+| Deferring a warning you can't fix now | medium | complexity | prose: 282 words |
 | Spotting a change that should wait | medium | complexity | prose: 46 words + skill (`do-later`) |
+| Filing an issue under another | medium | complexity | prose: 69 words |
 | Handing over a human-only step | high | complexity | prose: 142 words |
 | Naming a file, module, or symbol | low | complexity | prose: 22 words |
 | Referring to a value from two places | high | correctness | prose: 117 words + check (`shared-constants`) |
