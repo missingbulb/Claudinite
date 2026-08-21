@@ -386,7 +386,7 @@ export const groupStarts = (groups) => {
 //
 // The scale is stated, never implied: an unlabelled column chart invites reading two
 // panels' bars against each other when their maxima differ.
-export function stackedColumns(days, series, { height = 84, label = (d) => d.day } = {}) {
+export function stackedColumns(days, series, { height = 84, label = (d) => d.day, detail = null } = {}) {
   const NS = 'http://www.w3.org/2000/svg';
   const svgEl = (tag, attrs = {}) => {
     const n = document.createElementNS(NS, tag);
@@ -404,8 +404,12 @@ export function stackedColumns(days, series, { height = 84, label = (d) => d.day
   const totals = days.map((d) => series.reduce((n, s) => n + (s.value(d) || 0), 0));
   const peak = Math.max(1, ...totals);
   const cols = Math.max(1, days.length);
-  const gap = 3;
   const width = 100;                       // a viewBox unit grid; the CSS sizes it
+  // The gap is a FRACTION of a column, never a fixed 3 units: at a fortnight of columns
+  // three units is a hairline, and at two days of hourly ones the gaps alone exceed the
+  // chart and every bar is drawn at a negative width. Scaling it keeps the same look at
+  // fourteen columns and keeps the arithmetic valid at any count.
+  const gap = Math.min(3, (width / cols) * 0.25);
   const colW = (width - gap * (cols - 1)) / cols;
 
   const svg = svgEl('svg', {
@@ -413,6 +417,15 @@ export function stackedColumns(days, series, { height = 84, label = (d) => d.day
     class: 'chart', role: 'img',
     'aria-label': `${days.length} days, peak ${peak} on ${days[totals.indexOf(peak)]?.day ?? '—'}`,
   });
+
+  // What a column is ABOUT, appended to every segment's hover. A stacked bar answers
+  // "how much"; the reader's next question is always "of what", and on this page that
+  // means the task names behind the hour — which the tooltip can carry and the chart
+  // itself has no room for.
+  const more = (d) => {
+    const text = detail?.(d);
+    return text ? `\n${text}` : '';
+  };
 
   days.forEach((d, i) => {
     const x = i * (colW + gap);
@@ -425,11 +438,16 @@ export function stackedColumns(days, series, { height = 84, label = (d) => d.day
       y -= h;
       drawn = true;
       svg.append(titled(svgEl('rect', { x, y, width: colW, height: h, fill: s.color, class: 'col' }),
-        `${label(d)} — ${v} ${s.label}`));
+        `${label(d)} — ${v} ${s.label}${more(d)}`));
     }
     if (!drawn) {
-      svg.append(titled(svgEl('rect', { x, y: height - 1, width: colW, height: 1, fill: 'var(--rule)' }),
-        `${label(d)} — nothing`));
+      // An empty column is not one thing. A period that was READ and held nothing is a
+      // floor line; one nothing has answered for yet is left blank, because drawing it
+      // at the floor would claim a quiet hour the page cannot vouch for.
+      const unread = d.source === 'none';
+      svg.append(titled(svgEl('rect', {
+        x, y: height - 1, width: colW, height: 1, fill: unread ? 'transparent' : 'var(--rule)',
+      }), `${label(d)} — ${unread ? 'not read' : 'nothing'}${more(d)}`));
     }
   });
 
@@ -446,6 +464,125 @@ export function stackedColumns(days, series, { height = 84, label = (d) => d.day
 export const chartLegend = (series) =>
   el('div', { className: 'legend' }, series.map((s) =>
     el('span', {}, [el('i', { className: 'sw', style: `background:${s.color}` }), s.label])));
+
+// --- two series, two scales -------------------------------------------------------
+
+// A line per series, each scaled to ITS OWN maximum, with both maxima printed. Rule
+// tokens are five figures and check runs are single ones; on a shared axis the second
+// line is the x-axis and the panel says nothing. On separate scales it says what each
+// is doing over the month, which is the only question this panel is for.
+//
+// THE SCALES ARE STATED, never implied. Two lines at the same height mean nothing
+// alike, so each axis label carries its series' colour and its own peak, and the panel
+// is the one place on this page where a reader must not compare heights across lines.
+//
+// A NULL BREAKS THE LINE. A day the fold had no opinion on is not a day with zero of
+// something — a repo that had not folded yet, a shallow checkout that could not see
+// that far — and drawing it at the floor would be the page inventing a quiet day.
+export function dualAxisChart(rows, left, right, { height = 96, label = (r) => r.day } = {}) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svgEl = (tag, attrs = {}) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+    return n;
+  };
+
+  const width = 100;                       // a viewBox unit grid; the CSS sizes it
+  const step = rows.length > 1 ? width / (rows.length - 1) : width;
+  const svg = svgEl('svg', {
+    viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'none', class: 'chart dual', role: 'img',
+    'aria-label': `${left.label} and ${right.label} over ${rows.length} days, each on its own scale`,
+  });
+
+  const peaks = [left, right].map((s) => rows.reduce((n, r) => Math.max(n, s.value(r) ?? 0), 0));
+
+  [left, right].forEach((s, si) => {
+    const peak = peaks[si] || 1;
+    let run = [];
+    const flush = () => {
+      if (run.length > 1) {
+        svg.append(svgEl('path', {
+          d: run.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '),
+          class: 'series-line', stroke: s.color,
+        }));
+      } else if (run.length === 1) {
+        // A single read day surrounded by unread ones still has to be visible: a line
+        // needs two points, so it is drawn as a dot rather than dropped.
+        svg.append(svgEl('circle', { cx: run[0].x.toFixed(2), cy: run[0].y.toFixed(2), r: 1.2, fill: s.color }));
+      }
+      run = [];
+    };
+    rows.forEach((r, i) => {
+      const v = s.value(r);
+      if (v === null || v === undefined) { flush(); return; }
+      run.push({ x: i * step, y: height - 2 - (v / peak) * (height - 6) });
+    });
+    flush();
+  });
+
+  const axis = (s, peak, cls) => el('span', { className: `sub axis ${cls}` }, [
+    el('i', { className: 'sw', style: `background:${s.color}` }),
+    `${s.label} · peak ${s.format ? s.format(peak) : peak}/day`,
+  ]);
+
+  return el('div', { className: 'chart-wrap' }, [
+    el('div', { className: 'chart-axis' }, [axis(left, peaks[0], 'left'), axis(right, peaks[1], 'right')]),
+    svg,
+    el('div', { className: 'chart-axis' }, [
+      el('span', { className: 'sub', textContent: rows.length ? label(rows[0]) : '' }),
+      el('span', { className: 'sub', textContent: rows.length ? label(rows[rows.length - 1]) : '' }),
+    ]),
+  ]);
+}
+
+// --- moving between views ----------------------------------------------------------
+
+// FLIP, hand-rolled: measure where each row is, repaint, then animate it from where it
+// WAS to where it is now. The page carries no dependencies and this is about forty
+// lines, so it stays that way.
+//
+// Why animate at all on a fault-finding page: switching between stuck / pending / all
+// is not a new table, it is the SAME rows filtered — and a repaint that swaps one wall
+// of text for another makes the reader re-find the row they were looking at. Watching
+// it move keeps it identified.
+//
+// Rows are matched across the repaint by `data-k`, because the node is not the same
+// node: the repaint replaces the body outright.
+//
+// A row that LEAVES simply goes. A `<tr>` cannot be animated out of a table's flow
+// without collapsing the layout around it, and a half-height ghost row is worse than a
+// clean removal — the arriving and moving rows already carry the change.
+//
+// Motion is decoration on a page whose job is fault-finding, so a reader who asked the
+// platform for less of it gets the repaint and none of the movement.
+const MOVE_MS = 260;
+const ENTER_MS = 200;
+
+export function flipRows(body, paint) {
+  const before = new Map();
+  if (typeof body.getBoundingClientRect === 'function') {
+    for (const row of body.children) {
+      if (row.dataset?.k) before.set(row.dataset.k, row.getBoundingClientRect().top);
+    }
+  }
+
+  paint();
+
+  if (stillness() || typeof Element === 'undefined' || typeof Element.prototype.animate !== 'function') return;
+  for (const row of body.children) {
+    const k = row.dataset?.k;
+    const from = k === undefined ? undefined : before.get(k);
+    if (from === undefined) {
+      row.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+        { duration: ENTER_MS, easing: 'ease-out' });
+      continue;
+    }
+    const dy = from - row.getBoundingClientRect().top;
+    if (Math.abs(dy) < 1) continue;
+    row.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }],
+      { duration: MOVE_MS, easing: 'cubic-bezier(.2,.7,.3,1)' });
+  }
+}
 
 // --- windowed figures -----------------------------------------------------------
 

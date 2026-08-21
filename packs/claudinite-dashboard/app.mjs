@@ -208,13 +208,20 @@ async function render() {
       renderCrumb(repo);
       showView('repo');
       $('footnote').textContent = `Reading ${repo}…`;
-      const r = await loadRepo({ repo, token, onError: showError });
+      const r = await loadRepo({ repo, token, config: CONFIG, onError: showError });
       footer([
         `${repo} @ ${r.branch} (${r.sha.slice(0, 7)})`,
         `${r.taskCount} declared tasks`,
         `${r.itemCount} work items in the ${r.issuePage.complete
           ? `full issue history (${r.issuePage.scanned} issues)`
           : `most recent ${r.issuePage.scanned} issues — older history not scanned`}`,
+        // The past-data plane's own freshness, which is NOT this load's: the panels
+        // reaching further back than the live window are only as current as the repo's
+        // last fold, and a page that showed one timestamp for both would be claiming
+        // the older half is as fresh as the newer.
+        r.usage
+          ? `usage folded ${r.generated ? r.generated.replace('T', ' ').slice(0, 16) : 'at an unstated time'}`
+          : 'no usage fold — past-data panels are limited to the live window',
       ]);
     }
     $('setup').open = false;
