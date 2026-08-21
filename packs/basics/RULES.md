@@ -58,8 +58,11 @@ change, independent of any one project.
 - **Planning a migration** — prefer the design that converges in one forced pass to the one that
   trickles across nightly cycles, accept legacy input at the door so nothing has to wait for
   stragglers, and drive the stragglers with a standing mechanism rather than a phase someone must
-  remember to close. Order the plan's phases by what blocks rather than by subject —
-  [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns that sort.
+  remember to close. Write every phase's code — the cleanup and the destructive tail included —
+  before asking for approval, and chain each execution step to the verification of the one before
+  it rather than to anyone's memory;
+  [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns that ordering and the
+  chain's mechanics.
 
 - **When verifying now is genuinely impossible** (an external release window, an upstream fix in
   flight, an effect that only appears once the change is deployed, converged or loaded by a later

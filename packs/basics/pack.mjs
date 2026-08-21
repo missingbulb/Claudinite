@@ -31,7 +31,10 @@ export default {
   // state, rationale and alternatives only.
   // 60821.1: the janitor's queue sweep decodes an item's status rather than testing
   // label literals, so it reads items filed in either vocabulary (#1119).
-  version: '60821.1',
+  // 60821.2: writing-migration-plans is built around chained continuations — all the
+  // code written and approved in one pass, every execution step armed on the previous
+  // step's verification rather than on anyone remembering it.
+  version: '60821.2',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',
