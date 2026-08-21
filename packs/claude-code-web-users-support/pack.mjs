@@ -43,7 +43,7 @@ import storeFileNames from './store-file-names.mjs';
 
 export default {
   id: 'claude-code-web-users-support',
-  version: '60820.1',
+  version: '60821.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'what a project offers people working from Claude Code on the web, where the session knows who they are',
@@ -59,6 +59,19 @@ export default {
       id: 'store',
       prompt: 'Where do this project\'s people keep their personal interaction preferences — the repository holding one `<email>.md` per person? Give an `owner/name` (a fleet usually has one repo for this), or say "n/a — none" if this project has no such store.',
       distill: 'the answer\'s `owner/name` becomes this entry\'s `config.repo` (add `config.path` only when the files do not sit in `preferences/`); "n/a" leaves the entry without a config and the preferences feature inert',
+    },
+  ],
+  // The Setup script field belongs to a managed container's configuration, not to the
+  // checkout, so no run of anything in this repo can fill it — and until someone does,
+  // a web session has no toolchain and the env check halt-gates it. Declared here so
+  // the install flow prints it and the adopting session files it as an issue, rather
+  // than mentioning it once in a PR body nobody returns to (#1167).
+  adoptionHandover: [
+    {
+      step: 'Paste this pack\'s environment-setup-command.sh, whole and unedited, into the web environment\'s Setup script field and rebuild '
+        + '(`find .claudinite/shared -name environment-setup-command.sh` locates it in the mount).',
+      breaks: 'a Claude Code web session on this repo has none of the toolchains the active packs need, and the session-start env check halt-gates it before any work',
+      done: 'a web session on this repo starts with no missing-requirement halt-gate',
     },
   ],
   // Both audit the repo as it stands, whatever this session touched: a store broken by

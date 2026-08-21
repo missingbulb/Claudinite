@@ -10,7 +10,7 @@ overwritten.
 
 ## The fast path
 
-Everything mechanical is one script invocation, so the whole adoption is five steps and only the
+Everything mechanical is one script invocation, so the whole adoption is seven steps and only the
 interview waits on a human. Don't re-enact the parts below by hand — they are the reference for
 *what* each converged artifact is; the script performs them.
 
@@ -27,24 +27,34 @@ interview waits on a human. Don't re-enact the parts below by hand — they are 
    node "$scratch/bootstrap.mjs" --target . --repo <owner>/<repo> ${ref:+--ref "$ref"} --packs <requested,…>
    ```
 
-   One idempotent, sub-second invocation converges Parts 2–6 and Part 8's CI seed, then
+   One idempotent invocation — a few seconds — converges Parts 2–6 and Part 8's CI seed, then
    self-tests, sweeps, and reports what is left: the pending interview questions, the sweep's
-   findings, and the steps only a human can take.
-3. **Run the interview** (Part 2): ask **all** pending questions in one `AskUserQuestion` pass —
-   batch up to 4 per call, never one popup per pack — folding in the project-class question
-   (Part 7) when the project is fresh. Record the answers by re-running the same command with
-   `--answer '<pack>/<question>=<verbatim answer>'` per reply, and derive each entry's `config`
-   where the question's distill note (printed beside it) says how.
-4. **Land it** (Part 8): clear or accept what the world sweep reported, commit the adoption as
+   findings, and the steps only a human can take. Expect to run it once per interview pass, not
+   once in total: recording answers is the same command with `--answer`.
+3. **Run the interview** (Part 2): ask **every** question the script reported in one
+   `AskUserQuestion` pass — batch up to 4 per call, never one popup per pack — folding in the
+   project-class question (Part 7) when the project is fresh. Record the answers by re-running the
+   same command with `--answer '<pack>/<question>=<verbatim answer>'` per reply, and derive each
+   entry's `config` where the question's distill note (printed beside it) says how. **Two passes
+   is the floor on a fresh project**, not a failure: declaring a class pack pulls in its `requires`
+   closure, whose questions cannot exist until it is declared. Every pass after those two is
+   waste — an answer is recorded *verbatim*, so an ambiguous or open-ended one is already a valid
+   answer and never earns a clarifying popup.
+4. **Create the executor routine** (Part 6) — before the commit, so its endpoint lands in the
+   adoption PR rather than a second one.
+5. **Land it** (Part 8): clear or accept what the world sweep reported, commit the adoption as
    one change referencing the issue, push, PR.
-5. **Capture the adoption session** once the PR lands: from the repo root,
+6. **Capture the adoption session** once the PR lands: from the repo root,
    `node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --issue <adoption-issue>`.
    This session started with no Claudinite loaded, so the SessionEnd capture hook it just wired
    fires only in *later* sessions — nothing captures this one unless bootstrap does. The
    adoption log is the repo's first growth input, and what the canon reads to judge real
    adoption timings. Delta-aware, so a later double-capture is safe.
-6. **Finish the human-only halves**: the executor routine and its repo binding (Part 6), and —
-   for Claude Code on the web — the environment Setup script (Part 9).
+7. **File the hand-over issue**: one issue, a checkbox per step the script's HANDOVER block
+   printed — the `CCR_ROUTINE_TOKEN` secret (Part 6) and, for Claude Code on the web, the
+   environment Setup script (Part 9). Each is a repository or console setting no session can
+   reach; the block states what breaks while each is off and what closes it. Never a note in the
+   PR body: that is a hand-over nobody comes back to.
 
 ## Part 1 — fetch the canon (the network moment)
 
@@ -125,17 +135,42 @@ executor workflow, the `taskScheduler` anchors
 one-time seeds the repo owns from there (baselining deliberately re-passes neither). Labels need
 no step either: the scheduler run and the executor create the queue's labels if missing.
 
-What remains is the half only a human-facing session can do — **create the executor routine and
-wire it as an invocation endpoint**. The executor starts an agent session with an **API call**,
-not a label event, so this is two halves that only work together; a repo with one half has a
-queue that fills and never hands anything off.
+What remains is **the executor routine and the endpoint that points at it** — the adopting
+session's work, not the owner's. The executor starts an agent session with an **API call**, not a
+label event, so this is two halves that only work together; a repo with one half has a queue that
+fills and never hands anything off. Do both **before the adoption commit**: the endpoint is one
+line of `.claudinite-checks.json`, and splitting it out costs a second issue, a second PR and a
+push over already-squashed history for nothing.
 
-a. **Create the routine** via the trigger API, named `Claudinite executor - <repo>`, whose whole
-   stored prompt is the one line
+a. **Create the routine** — `create_trigger` on the Claude Code Remote MCP server, named
+   `Claudinite executor - <repo>`, `create_new_session_on_fire`, whose stored prompt starts with
+   the one line
    `Execute the Claudinite work item: .claudinite/shared/engine/scheduler/queue/instructions.md`.
    Everything a task session does comes from that tracked file; a prompt carrying instructions of
-   its own is behavior nobody reviews. Sources = **this repo alone** (not the Claudinite canon —
-   the update runner fetches canon Action-side, so no task needs it in session).
+   its own is behavior nobody reviews.
+
+   The call takes no repo and no model, and sets neither: the returned `session_context` carries
+   `allowed_tools` and nothing else, so **the repo binding and the model are UI-only** and every
+   routine an agent creates arrives unfinished. Do not file a separate issue for the remainder — a
+   config that lives away from the thing it configures is a config someone reads once and never
+   reconciles. **Carry the leftover steps in the routine's own prompt**, as a block below the
+   launcher line whose last instruction is to delete itself:
+
+   > `--- SETUP — delete this block once done, leaving only the line above ---`
+   > 1. Model → Sonnet 5.
+   > 2. Repo → `<owner>/<repo>`, and that repo alone (source and outcome).
+
+   The routine then states its own unfinished-ness where the owner is already looking to fix it,
+   and finishing it and clearing the block are the same edit — so a half-configured executor
+   cannot quietly pass for a working one. `list_triggers` reads the routine back afterwards, and
+   its `job_config.ccr.session_context` is where the owner's edit becomes visible: `model` set,
+   `sources` and `outcomes` naming this repo and nothing else, the block gone from the prompt.
+
+   **Unfinished is not the same as human-only.** Creating the routine is this session's work
+   wherever the trigger tool is present, and only a session with no Claude Code Remote server at
+   all (a terminal one) hands the creation itself over. Telling the owner the routine is UI-only,
+   ending the session, and then creating it in thirty seconds when they ask for it anyway is the
+   adoption this doc was corrected for (#1167).
 
 b. **Point the repo at it.** Take the routine's API trigger URL and add it to
    `.claudinite-checks.json` under the key every task uses unless it names another:
@@ -148,21 +183,15 @@ b. **Point the repo at it.** Take the routine's API trigger URL and add it to
    ```
 
    `tokenSecret` is the **name** of a repo Actions secret, never a token — the config is tracked,
-   so nothing adjacent to a credential goes in it. Set that secret to the routine's bearer token.
+   so nothing adjacent to a credential goes in it.
 
-The API sets only name, prompt and environment; **the repo binding and the model are UI-only**,
-so every routine an agent creates arrives unfinished. Do not file a separate issue for the
-remainder — a config that lives away from the thing it configures is a config someone reads once
-and never reconciles. **Carry the leftover steps in the routine's own prompt**, as a block below
-the launcher line whose last instruction is to delete itself:
-
-> `--- SETUP — delete this block once done, leaving only the line above ---`
-> 1. Model → Sonnet 5.
-> 2. Repo → `<owner>/<repo>`, and that repo alone (source and outcome).
-
-The routine then states its own unfinished-ness where the owner is already looking to fix it, and
-finishing it and clearing the block are the same edit — so a half-configured executor cannot
-quietly pass for a working one.
+c. **Hand over the secret.** `CCR_ROUTINE_TOKEN` is the one part of this no session can reach
+   from either end: the create call returns no bearer token — the owner mints it on the routine,
+   in the same UI visit the SETUP block asks for — and writing a repo Actions secret is console
+   work. So it is a declared hand-over step: the script prints it in the HANDOVER block and the
+   fast path's last step files it, beside the SETUP block that produces the token in the first
+   place. It is the routine's setup and the repo's setting in one visit, which is why the two are
+   worth naming together.
 
 Neither half fails silently if it is missing: the hand-off names exactly what is unset — the
 endpoint, its `url`, its `tokenSecret`, or the secret itself — on the work item, and converges
@@ -219,7 +248,10 @@ change referencing the adoption issue, and push it through the normal PR flow.
 ## Part 9 — cloud environment setup (Claude Code on the web)
 
 The web base image ships no toolchains; installs belong in the environment **image** (built
-once, snapshotted), not a per-session hook. The script to paste is a pack's, not core's —
+once, snapshotted), not a per-session hook. That field belongs to the container's configuration
+rather than the checkout, so this is a hand-over step — the owning pack declares it, the script
+prints it in the HANDOVER block, and the fast path's last step files it. The script to paste is a
+pack's, not core's —
 [`packs/README.md`](packs/README.md#environment-requirements) names it and the pack that owns it.
 Its body is identical for every project: paste it whole into the environment's **Setup script**
 field and rebuild (`find .claudinite/shared -name environment-setup-command.sh` locates it in a

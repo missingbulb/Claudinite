@@ -119,3 +119,29 @@ test('bootstrap refuses an answer that names no question', () => {
     (e) => e.status === 1 && /nope/.test(`${e.stdout}${e.stderr}`),
   );
 });
+
+// The hand-over block, and what it must never depend on. Before #1167 it was
+// assembled from `adoptionHandover` on the DECLARED packs alone, so a repo whose
+// packs happen to declare none printed nothing — and the two steps every adoption
+// actually leaves a human (the executor's token, the web environment's Setup
+// script) reached the owner as a line in a PR body, if at all.
+test('the report hands over the executor secret in every adoption, and the web Setup script wherever that pack is on', () => {
+  const root = freshRepo();
+  const out = run(root, '--packs', 'product-wiki');
+
+  const block = out.slice(out.indexOf('\nHANDOVER'), out.indexOf('\nNEXT:'));
+  assert.ok(block.startsWith('\nHANDOVER'), `report carries a HANDOVER block:\n${out}`);
+  assert.match(block, /file them as ONE issue/, 'the block says where the steps go');
+  assert.match(block, /CCR_ROUTINE_TOKEN/, 'core hands over the executor token secret');
+  // Seeded by default, so its step is here without anyone asking for the pack.
+  assert.match(block, /Setup script/, 'the web pack hands over its environment Setup script');
+  for (const step of block.split('\n').filter((l) => l.startsWith('  [ ] '))) {
+    assert.ok(step.length > 40, `a hand-over step says what it is: ${step}`);
+  }
+
+  // The routine itself is NOT in there: creating it is the adopting session's
+  // work, and the NEXT line has to say so before the commit rather than after.
+  assert.doesNotMatch(block, /create the executor routine/i);
+  const next = out.slice(out.indexOf('\nNEXT:'));
+  assert.match(next, /create the executor routine[\s\S]*before the commit/i, `NEXT orders the routine before the commit:\n${next}`);
+});
