@@ -82,7 +82,12 @@ export default {
   // an `owner` as the viewer rather than from a stored list. Which dashboard a
   // deployment builds is decided by that config's shape, so nothing is asked at
   // adoption. Page-only: a member gains panels and nothing in its tree changes shape.
-  version: '60821.2',
+  // 60821.3: which dashboard a deployment builds is DECLARED, not inferred from whether
+  // a roster source happens to be present. `mode` is the one config key with no
+  // default: the build refuses to publish without it, and refuses a mode that
+  // contradicts the rest of the config. A member that had let silence mean "repo" is
+  // stamped with `mode: "repo"` by this pack's migration record.
+  version: '60821.3',
   minEngineVersion: 4,
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',
@@ -105,13 +110,16 @@ export default {
   worldRules: [digestPlainText, datedFixtureCollision],
   workRules: [],
 
-  // Nothing to ask. Every fork this pack has is answered by a default that is right for
-  // nearly every project: a member's dashboard shows that member, signs in with a
-  // pasted token, and compares against no canon. The fleet deployment — one repo, not
-  // twelve — says so in its declaration's `config`, which is read as optional
-  // throughout: an unset key is the default, never a misconfiguration.
+  // ONE question, and it is the one thing this pack cannot pick for a repo: which
+  // dashboard the deployment is. Everything else has a default that is right for nearly
+  // every project — a pasted token, no canon reference, no digests panel — and is read
+  // as optional throughout, an unset key meaning the default rather than a
+  // misconfiguration. The mode is not like that: both answers are ordinary, neither is
+  // rarer, and guessing it wrong publishes a plausible-looking site covering the wrong
+  // thing. So it is asked, and the build refuses to publish without it.
   //
-  // config keys, all optional:
+  // config keys — `mode` is REQUIRED, the rest optional:
+  //   mode        — "repo" (this repo's own page) or "fleet" (the overview); no default
   //   canonRepo   — the reference member mounts are compared against (fleet view)
   //   rosterUrl   — a roster artifact; more than one member makes the fleet the landing view
   //   repos       — an inline roster instead of a URL
@@ -122,7 +130,13 @@ export default {
   //   owner       — whose repos the fleet-digest task covers (defaults to this repo's owner)
   //   exclude     — repos it keeps out (defaults to none)
   //   digest      — { pick, nudge } — how many items a brief names, and the quiet-project prod
-  questions: [],
+  questions: [
+    {
+      id: 'mode',
+      prompt: 'Is this deployment this repo\'s OWN dashboard, or the fleet overview across many repos? A fleet deployment also needs to name where its members come from — an "owner" whose repos are enumerated in the browser as the viewer (the one to prefer), or an explicit "repos" list or roster artifact.',
+      distill: 'set config.mode to "repo" or "fleet" — there is no default and the build refuses to publish without it; a "fleet" answer must come with a roster source (owner/repos/rosterUrl), and a "repo" answer with none',
+    },
+  ],
 
   // The one step adoption CANNOT take, stated where the install flow can print it and
   // the adopting session can file it. Enabling Pages is a repository setting, and

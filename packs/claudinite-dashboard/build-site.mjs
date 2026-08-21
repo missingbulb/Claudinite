@@ -20,6 +20,7 @@
 import { cp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { resolveMode } from './config.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -152,9 +153,19 @@ if (repos.length) {
 // --- the config the page reads -------------------------------------------------------
 
 const repoSlug = process.env.GITHUB_REPOSITORY ?? null;
-// The one line that decides which dashboard this is. Everything below reads off it.
-const fleetMode = Boolean(repos.length || rosterUrl || cfg.owner);
+// Which dashboard this is — STATED by the declaration, and refused when it is not. The
+// judgment is resolveMode's alone so the build and the page cannot drift apart; what is
+// added here is that the build reads the roster off `rosterFile` too, and by this point
+// has already resolved it into `repos`.
+let fleetMode;
+try {
+  fleetMode = resolveMode({ ...cfg, rosterUrl: rosterUrl ?? cfg.rosterUrl }) === 'fleet';
+} catch (e) {
+  process.stderr.write(`claudinite-dashboard: ${e.message}\n`);
+  process.exit(1);
+}
 const config = {
+  mode: fleetMode ? 'fleet' : 'repo',
   clientId: cfg.clientId ?? null,
   exchangeUrl: cfg.exchangeUrl ?? null,
   redirectUri: cfg.redirectUri ?? null,
@@ -190,7 +201,7 @@ const covers = repos.length ? `${repos.length} named members`
       : `this repo${config.defaultRepo ? ` (${config.defaultRepo})` : ''}`;
 process.stdout.write(
   `Built ${OUT}\n`
-  + `  mode: ${fleetMode ? 'fleet-dashboard' : 'repo-dashboard'}\n`
+  + `  mode: ${fleetMode ? 'fleet-dashboard' : 'repo-dashboard'} (declared)\n`
   + `  covers: ${covers}\n`
   + `  canon reference: ${config.canonRepo ?? 'not set — member mount freshness reads unknown'}\n`
   + `  digests: ${config.digestsRepo ? `${config.digestsRepo}/${config.digestsPath ?? 'digests'}` : 'not set — the morning-brief panel is off'}\n`
