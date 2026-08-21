@@ -18,11 +18,7 @@ import conformanceWorkScope from './conformance-work-scope.mjs';
 // than being what puts it there.
 export default {
   id: 'claudinite-lifecycle',
-  // 13: two task comments name the terminal a run closes with in its current
-  // spelling; no behaviour moves.
-  // 60821.1: adopt-requested-packs runs ON the work-list issue the fleet marked — no
-  // code-work gate, no worker, and the item is the list itself (#1119).
-  version: '60821.2',
+  version: '60821.3',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'using Claudinite itself — the vendored mount, the pack declaration, bootstrapping, adopting packs, the self-refresh update',

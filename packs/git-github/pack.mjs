@@ -13,10 +13,7 @@
 // re-declare (#1079).
 export default {
   id: 'git-github',
-  // 6: the github-actions pack is absorbed here — its skill, its nine `gha/`
-  // checks, and the routing that used to name it as the neighbour.
-  // 60820.2: merge-to-main step 7 is named as verify-in-production's only trigger (#1128).
-  version: '60820.2',
+  version: '60821.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'git and GitHub procedure and platform: commit layering, branch and merge mechanics, workflow YAML, triggers, secrets, scheduling',
