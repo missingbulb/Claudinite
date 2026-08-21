@@ -213,7 +213,7 @@ export const SCHEDULER = 'claudinite-scheduler.yml';
 // be `main`): workflow_dispatch resolves the workflow file on the ref it is given,
 // and a repo whose trunk is `master` would otherwise 404 as if it carried no
 // scheduler at all.
-export async function fireScheduler(gh, fullName, ref, taskId) {
+export async function fireScheduler(gh, fullName, ref, taskId = '') {
   const { status } = await gh(`/repos/${fullName}/actions/workflows/${SCHEDULER}/dispatches`, {
     method: 'POST',
     body: { ref, inputs: { wake: taskId } },

@@ -95,7 +95,10 @@ export default {
   // 18: renamed from `sheepdog` — the pack's subject is a Claudinite feature, so it
   // carries the prefix that says so. The config reader takes an enforcer's entry under
   // either spelling, since a declaration converges on its own schedule.
-  version: '60820.1',
+  // 60821.1: a member's add-packs work list is a MARKED issue targeting the member
+  // task, so the member's own scheduler run adopts it and the wake dispatch becomes a
+  // latency nudge (#1119).
+  version: '60821.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',

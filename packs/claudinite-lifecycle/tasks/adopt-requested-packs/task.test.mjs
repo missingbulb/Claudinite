@@ -6,14 +6,14 @@ import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../engine/scheduler/task-contract.mjs';
 import decl from '../../../../packs/claudinite-lifecycle/tasks/adopt-requested-packs/task.mjs';
 
-// The MEMBER half of the fleet fan-out (#749): the enforcer places an `add-packs`
-// work-list issue here and fires this scheduler; this task's agent adopts with the
-// repo checked out. Everything asserted here is a property whose drift would either
-// let the task fire on its own (nagging every member on a cadence) or move the
-// adoption back outside the member's own guards.
+// The MEMBER half of the fleet fan-out (#749, folded onto the request mode in
+// #1119): the enforcer places an `add-packs` work-list issue here and MARKS it, so
+// this repo's own scheduler run adopts it and the issue becomes the work item; this
+// task's agent then adopts with the repo checked out. Everything asserted here is a
+// property whose drift would either let the task fire on its own (nagging every
+// member on a cadence) or move the adoption back outside the member's own guards.
 
 const taskDir = join(dirname(fileURLToPath(import.meta.url)), '../../../../packs/claudinite-lifecycle/tasks/adopt-requested-packs');
-const workerSrc = readFileSync(join(taskDir, 'worker.mjs'), 'utf8');
 const briefSrc = readFileSync(join(taskDir, 'task.md'), 'utf8');
 
 test('adopt-requested-packs: the declaration satisfies the task contract', () => {
@@ -53,24 +53,18 @@ test('adopt-requested-packs: its precondition admits its own forced item', () =>
   assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS|CLAUDINITE_OVERRIDES/, 'the slot-era force lever is deleted');
 });
 
-test('adopt-requested-packs: two stages — a cheap gate, then the agent, iff work exists', () => {
-  assert.equal(decl.code_work, 'node worker.mjs');
-  assert.ok(!decl.code_work.includes('..'));
-  assert.ok(Number.isInteger(decl.code_work_timeout) && decl.code_work_timeout > 0);
+test('adopt-requested-packs: one stage — the agent, because the item IS the work list', () => {
+  // THE FOLD (#1119). The gate that counted labelled issues is gone with the
+  // dispatch that made it necessary: an item exists only because an issue was
+  // marked, so "is there work?" is answered by the item's existence. A code-work
+  // phase here would be a second answer to a question already settled.
+  assert.equal(decl.code_work, undefined);
+  assert.equal(decl.code_work_timeout, undefined);
+  assert.ok(!existsSync(join(taskDir, 'worker.mjs')));
   assert.notEqual(decl.agent_model, 'none');
   assert.equal(decl.agent_instructions, 'task.md');
   assert.ok(existsSync(join(taskDir, 'task.md')));
   assert.ok(Number.isInteger(decl.agent_execution_timeout) && decl.agent_execution_timeout > 0);
-  // The conditional handoff: a forced run with an empty work list must end quietly,
-  // with no agent phase — a re-fire after the work landed is normal.
-  assert.match(workerSrc, /CLAUDINITE_REQUEST_AGENT/);
-});
-
-test('adopt-requested-packs: the worker reads only its OWN repo\'s issues', () => {
-  assert.match(workerSrc, /GITHUB_REPOSITORY/);
-  assert.match(workerSrc, /from '\.\/protocol\.mjs'/);
-  assert.ok(!workerSrc.includes('FLEET_GITHUB_TOKEN'));
-  assert.ok(!workerSrc.includes('/user/repos'));   // no fleet enumeration — that is the enforcer's
 });
 
 test('adopt-requested-packs: the brief routes the HOW to adopt-pack and splits request from suspicion', () => {
@@ -90,6 +84,7 @@ test('adopt-requested-packs: the brief forbids merging, cross-repo reach, and th
   // The work list is an ordinary issue. A `task:` label on it would be read as
   // queue state by the scheduler run and the executor, which is not what anyone applying it
   // meant.
-  assert.match(briefSrc, /Never apply a `task:` label/);
+  assert.match(briefSrc, /Never apply a `task:` label by hand/);
+  assert.match(briefSrc, /Never close the issue/);
   assert.doesNotMatch(briefSrc, /ready-for-agent/, 'the slot dispatch labels are gone');
 });

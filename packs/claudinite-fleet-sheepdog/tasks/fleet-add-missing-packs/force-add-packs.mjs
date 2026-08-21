@@ -26,7 +26,8 @@
 // `requires` closure.
 
 import { readDeclaration, isDormant } from '../../fleet-api.mjs';
-import { LABEL, REQUESTED_TITLE, entriesIn } from './protocol.mjs';
+import { LABEL, MARK, REQUESTED_TITLE, entriesIn } from './protocol.mjs';
+import { ensureMark, markedBody, remarkWorkList, otherOpenWorkList } from './mark-work-list.mjs';
 import { ensureLabel, labeledIssues } from '../../fleet-api.mjs';
 
 // --- validation (pure) --------------------------------------------------------
@@ -162,16 +163,25 @@ export async function convergeRequestedIssue(gh, fullName, { body }) {
   const { open } = await labeledIssues(gh, fullName, LABEL);
   const existing = open.find((i) => i.title === REQUESTED_TITLE);
   if (existing) {
-    if (existing.body === body) return { number: existing.number, action: null };
     // A prior request may still be outstanding; MERGE rather than replace would need
     // the member's declaration re-read against both bodies. Simpler and honest: the
     // new body is built from the full current ask (resolveTargets recomputed what is
-    // missing), so it already IS the merge.
-    await gh(`/repos/${fullName}/issues/${existing.number}`, { method: 'PATCH', body: { body } });
-    return { number: existing.number, action: `updated #${existing.number}` };
+    // missing), so it already IS the merge. What the member has written into the
+    // issue since — its machine block — is kept (mark-work-list.mjs).
+    const wanted = markedBody(body, existing);
+    const written = await remarkWorkList(gh, fullName, existing, wanted);
+    return { number: existing.number, action: written ? `updated #${existing.number}` : null };
   }
+  await ensureMark(gh, fullName);
   const { status, json } = await gh(`/repos/${fullName}/issues`, {
-    method: 'POST', body: { title: REQUESTED_TITLE, body, labels: [LABEL] },
+    method: 'POST',
+    body: {
+      title: REQUESTED_TITLE,
+      // A member with a suspected list open already has an item of this task in
+      // flight, so this one queues behind it rather than beside it.
+      body: markedBody(body, null, { blockedBy: otherOpenWorkList(open, REQUESTED_TITLE) }),
+      labels: [LABEL, MARK],
+    },
   });
   if (status !== 201) throw new Error(`creating the requested-packs issue in ${fullName} returned ${status}`);
   return { number: json.number, action: `opened #${json.number}` };
