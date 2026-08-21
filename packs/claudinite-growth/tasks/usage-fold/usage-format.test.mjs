@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   USAGE_FIELDS, USAGE_VERSION, COUNTER_GROUPS, encodeCounters, decodeCounters,
   encodeRow, decodeRow, encodeUsageFile, decodeUsageFile, isTupleFormat, fieldsOf, renderUsageFile,
+  withoutStamp, hourKey,
 } from '../../../../packs/claudinite-growth/tasks/usage-fold/usage-format.mjs';
 import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES } from '../../../../engine/scheduler/run-record.mjs';
 
@@ -46,20 +47,41 @@ test('a row decodes against the FILE\'s declared vocabulary, not this code\'s', 
 });
 
 test('a whole file round-trips, and version 1 decodes as itself', () => {
+  const groups = { checks: {}, checkFindings: {}, tasks: {}, taskExec: {}, queue: {} };
   const named = {
+    generated: '2026-07-27T04:00:00Z',
     foldedThrough: '2026-07-26',
     runsFoldedThrough: '2026-07-26T03:00:00Z',
-    days: { '2026-07-26': { captures: 2, merges: 2, sessions: 1, userMessages: 9, userCommands: 0, skillLoads: { s: 1 }, checks: {}, checkFindings: {}, tasks: {}, taskExec: {} } },
-    weeks: { '2026-W30': { days: 1, captures: 2, merges: 2, sessionDays: 1, userMessages: 9, userCommands: 0, skillLoads: { s: 1 }, checks: {}, checkFindings: {}, tasks: {}, taskExec: {} } },
+    queueFoldedThrough: '2026-07-26T02:00:00Z',
+    hours: { '2026-07-26T03': { scheduler: 2, executor: 1, agentic: 1, failed: 0, taskExec: {} } },
+    days: { '2026-07-26': { captures: 2, merges: 2, sessions: 1, userMessages: 9, userCommands: 0, skillLoads: { s: 1 }, ...groups } },
+    weeks: { '2026-W30': { days: 1, captures: 2, merges: 2, sessionDays: 1, userMessages: 9, userCommands: 0, skillLoads: { s: 1 }, ...groups } },
   };
   const file = encodeUsageFile(named);
   assert.equal(file.version, USAGE_VERSION);
   assert.equal(isTupleFormat(file), true);
-  assert.deepEqual(decodeUsageFile(file), named);
+  // An hour row carries only its own group; the decode fills the rest in empty, since
+  // every consumer folds them key-wise.
+  const back = decodeUsageFile(file);
+  assert.deepEqual(back.hours['2026-07-26T03'], { ...named.hours['2026-07-26T03'], ...groups, skillLoads: {} });
+  assert.deepEqual({ ...back, hours: named.hours }, named);
 
   const v1 = { version: 1, ...named };
   assert.equal(isTupleFormat(v1), false);
   assert.deepEqual(decodeUsageFile(v1).weeks, named.weeks, 'the original shape passes through untouched');
+  assert.deepEqual(decodeUsageFile(v1).hours, {}, 'a file that predates the hour tier starts it empty');
+});
+
+test('the stamp is the one line the unchanged-compare ignores', () => {
+  // The whole reason the file can carry a freshness stamp at all: it moves every run
+  // by construction, so a compare that read it would open a PR an hour on a repo where
+  // nothing happened.
+  const of = (generated) => renderUsageFile(encodeUsageFile({ generated, foldedThrough: '2026-07-26' }));
+  assert.notEqual(of('2026-07-27T04:00:00Z'), of('2026-07-27T05:00:00Z'));
+  assert.equal(withoutStamp(of('2026-07-27T04:00:00Z')), withoutStamp(of('2026-07-27T05:00:00Z')));
+  // …and it ignores ONLY that line: a day row that moved still reads as a change.
+  const moved = renderUsageFile(encodeUsageFile({ generated: '2026-07-27T05:00:00Z', foldedThrough: '2026-07-27' }));
+  assert.notEqual(withoutStamp(moved), withoutStamp(of('2026-07-27T04:00:00Z')));
 });
 
 test('fieldsOf defaults per key, so a truncated or hand-written header still reads', () => {
@@ -93,6 +115,11 @@ test('the file is written one line per row, and parses back to what went in', ()
   const lines = text.split('\n');
   assert.equal(lines.filter((l) => l.startsWith('    "2026-07-2')).length, 2, 'one line per day row');
   assert.ok(text.endsWith('}\n'), 'and the file ends with exactly one newline');
+});
+
+test('hourKey files a timestamp under its UTC hour', () => {
+  assert.equal(hourKey('2026-08-21T10:41:07Z'), '2026-08-21T10');
+  assert.equal(hourKey(null), '');
 });
 
 test('an empty row map is written inline, not as an empty block', () => {

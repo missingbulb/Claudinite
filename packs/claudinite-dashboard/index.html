@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fleet status</title>
+<title>Claudinite</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <style>
   /* Light is the base palette; the dark steps are their own selected values under
@@ -247,6 +247,28 @@
   .chart-card.digest ul.digest-items li { margin-bottom: 6px; }
   .movement .k { font-size: 12px; color: var(--ink-2); margin: 2px 0 6px; }
 
+  /* The work table's view switcher. A segmented control rather than a dropdown: there
+     are three, they are always all available, and each carries its own count so the
+     reader knows what a click is offering before making it. */
+  .views { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  button.view-tab { font-size: 12px; padding: 4px 11px; border-radius: 999px;
+                    color: var(--ink-2); text-transform: capitalize; }
+  button.view-tab.on { border-color: var(--ink-2); color: var(--ink); font-weight: 600; }
+  /* The rows animate from where they were to where they are now, which needs each row
+     to be its own containing block for the transform. */
+  #work tbody tr { will-change: transform; }
+  #work { min-width: 900px; }
+
+  /* Two series, two scales. The right-hand axis label sits at the right so it reads
+     against the axis it belongs to. */
+  .chart-axis .axis.right { text-align: right; }
+  .series-line { fill: none; stroke-width: 1.5; vector-effect: non-scaling-stroke;
+                 stroke-linejoin: round; stroke-linecap: round; }
+  svg.chart.dual { height: 96px; }
+  /* The growth chart earns the full width: a month at daily resolution squeezed into a
+     third of the row is a smear. */
+  .chart-card.wide { grid-column: 1 / -1; }
+
   tr.pending-row td { color: var(--muted); }
   #fleet-progress { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
   .pill { font-size: 12px; border: 1px solid var(--border); border-radius: 999px;
@@ -333,7 +355,7 @@
 
 <header class="topbar">
   <div class="topbar-in">
-    <h1>Fleet status</h1>
+    <h1 id="title">Claudinite</h1>
     <span id="crumb" class="crumb" hidden></span>
     <button id="reload" title="Re-read (cached data is revalidated, not refetched)">Reload</button>
     <span class="grow"></span>
@@ -486,46 +508,84 @@
   <div id="repo-view" hidden>
   <h2>This repo at a glance <button class="info" type="button" data-info="repo-tiles" aria-expanded="false" title="Why these numbers">&#9432;</button></h2>
   <p class="info-body" id="info-repo-tiles" hidden>
-    <strong>Parked</strong> and <strong>past a leash</strong> are the two that mean work has stopped:
-    the first is waiting on a person, the second has been sitting in a machine state longer than its
-    cadence allows. The rest are context for reading those two.
+    The first two tiles are the ones that mean work has <strong>stopped</strong> and is waiting on a
+    person; the rest are context for reading them. A tile is coloured only when it is reporting
+    something, so a coloured tile always means look here.
+  </p>
+  <p class="info-body" id="info-repo-tiles-2" hidden>
+    <strong>Minutes</strong> is deliberately crude: every item parked for a person, at a flat
+    <strong>7 minutes</strong> each. Nothing here measures how long a park actually takes, and the
+    honest way to publish a number nothing measures is to publish the assumption where you can argue
+    with it. <strong>Drift</strong> compares this repo's stamped engine and pack versions against the
+    canon's live ones — and reads <em>unknown</em> when no canon is configured, never <em>current</em>.
+    <strong>Issues</strong> and <strong>pull requests</strong> are counted within the issue window,
+    so one older than it is not counted rather than counted wrongly.
   </p>
   <div class="tiles" id="tiles"></div>
 
   <section>
-    <h2>Task roster — every declared task <button class="info" type="button" data-info="roster" aria-expanded="false" title="Why every task">&#9432;</button></h2>
-    <p class="info-body" id="info-roster" hidden>
-      Every <strong>declared</strong> task gets a row, including one that has never run — which is
-      usually the thing you opened this for. A list derived from the work items would omit it
-      silently, and a task that never fired looks identical to one that has nothing to do.
+    <h2>Work <button class="info" type="button" data-info="work" aria-expanded="false" title="What these three views are">&#9432;</button></h2>
+    <p class="info-body" id="info-work" hidden>
+      One row per piece of work — every <strong>declared</strong> task, including one that has never
+      run, plus any open item whose task this repo no longer declares. The three views are three
+      questions, and each shows the columns its own question needs: <strong>stuck</strong> is what has
+      stopped and how long it has been, <strong>pending</strong> is what is moving and what happens
+      next, <strong>all</strong> is what each task is and what it has done.
     </p>
-    <div class="legend">
-      <span><i class="sw" style="background:var(--good)"></i>done</span>
-      <span><i class="sw" style="background:var(--s-violet)"></i>delivered</span>
-      <span><i class="sw" style="background:var(--muted)"></i>obsolete</span>
-      <span><i class="sw" style="background:var(--critical)"></i>no outcome</span>
-    </div>
-    <div class="panel scroll"><table id="roster"></table></div>
+    <p class="info-body" id="info-work-2" hidden>
+      Everything flagged mirrors a rule the engine will actually act on — a blown leash the next run
+      reclaims, a dependency past the janitor's threshold, a park holding its task's lane — never a
+      display heuristic. The page opens on the worst non-empty view, and the rows keep their identity
+      across a switch: they move rather than being redrawn, so the row you were reading stays findable.
+    </p>
+    <div class="views" id="work-views"></div>
+    <div class="panel scroll"><table id="work"></table></div>
   </section>
 
   <section>
-    <h2>Queue — open work items <button class="info" type="button" data-info="queue" aria-expanded="false" title="What the queue is">&#9432;</button></h2>
-    <p class="info-body" id="info-queue" hidden>
-      One open issue per piece of scheduled work, labelled with the state it is in. <strong>Idle</strong>
-      is how long it has sat in that state: a long idle in a machine state is the queue stuck, and a
-      long idle in <em>needs human</em> is you.
+    <h2>What the queue closed <button class="info" type="button" data-info="outcomes" aria-expanded="false" title="Where this comes from">&#9432;</button></h2>
+    <p class="info-body" id="info-outcomes" hidden>
+      Every occurrence is a work item, and a converged one closes wearing its outcome. Today is
+      counted from the live issue page; the days before it come from this repo's own
+      <code>usage.GENERATED.json</code>, folded hourly. A day neither source reached is left
+      <strong>blank</strong> rather than drawn at the floor — "not read" and "nothing happened" are
+      different facts and this chart keeps them apart.
     </p>
-    <div class="panel scroll"><table id="queue"></table></div>
+    <div class="charts" id="work-chart"></div>
   </section>
 
   <section>
-    <h2>Scheduler runs <button class="info" type="button" data-info="runs" aria-expanded="false" title="Which runs these are">&#9432;</button></h2>
+    <h2>What ran — the last 48 hours <button class="info" type="button" data-info="runs" aria-expanded="false" title="Which runs these are">&#9432;</button></h2>
     <p class="info-body" id="info-runs" hidden>
-      The Actions runs behind the queue. A run that fails is not the same as a task that fails —
-      the first means the scheduler never got to decide anything, which is why a member whose runs
-      are red reads as broken even when every task looks healthy.
+      Three different things per hour: <strong>scheduler</strong> runs (the hourly tick that decides
+      what is due), <strong>executor</strong> runs (a dispatch actually being run), and
+      <strong>agent sessions</strong> (a session that opened and captured). A scheduler run that fails
+      is not a task that fails — it means nothing got to be decided at all.
     </p>
-    <div class="panel scroll"><table id="runs"></table></div>
+    <p class="info-body" id="info-runs-2" hidden>
+      The freshest hours come from the live run listing this page already fetched; the rest from the
+      usage fold. <strong>Hover an hour</strong> for the tasks that executed in it — the run listing
+      cannot say, since nothing in it names a task, so that detail is the fold's or it is absent.
+    </p>
+    <div class="charts" id="runs-chart"></div>
+  </section>
+
+  <section>
+    <h2>What Claudinite is doing here <button class="info" type="button" data-info="growth" aria-expanded="false" title="What these figures are">&#9432;</button></h2>
+    <p class="info-body" id="info-growth" hidden>
+      The two halves of what the corpus costs and buys: <strong>rule tokens</strong> are what the mount
+      puts into every session's prompt before its first turn, and <strong>checks executed</strong> is
+      how often the conformance rules ran. A check that <em>fails</em> is a win — the finding goes back
+      into the session and the agent corrects before the work leaves the branch.
+    </p>
+    <p class="info-body" id="info-growth-2" hidden>
+      The two lines are on <strong>separate scales</strong>, stated on each axis: rule tokens are five
+      figures a day and check runs are single ones, so on a shared axis the second would be drawn as
+      the x-axis. Two heights here never compare. A break in a line is a day nothing answered for —
+      never a day drawn as quiet. Everything in this panel comes from the repo's own usage fold; a
+      repo that does not run it says so instead of showing an empty chart.
+    </p>
+    <div class="charts" id="growth"></div>
   </section>
   </div>
 

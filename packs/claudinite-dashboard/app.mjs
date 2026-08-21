@@ -1,13 +1,17 @@
 // The shell: configure, authenticate, and route between the two views.
 //
-// ROUTING IS THE URL. No `?repo=` and a roster with more than one member means the
-// fleet; anything else means that repo. So the fleet page is what a fleet deployment
-// opens on, a single-member deployment goes straight to its own dashboard with no
-// pointless one-row overview, and every view is a link someone can send.
+// TWO MODES, DECIDED BY THE DEPLOYMENT'S SHAPE. A config that says where more than one
+// member comes from — an `owner` to enumerate, a roster artifact, an explicit list — is
+// a FLEET deployment and opens on the overview; anything else is one repo's own page
+// and opens straight on it, with no pointless one-row fleet view. Not a mode switch
+// anyone sets: the roster source IS the mode, so there is nothing to keep in step.
+//
+// ROUTING WITHIN A MODE IS THE URL. `?repo=` is the deep dive, its absence the landing
+// view, so every view is a link someone can send and the back button works.
 
 import * as gh from './github.mjs';
 import * as auth from './auth.mjs';
-import { loadConfig, loadRoster } from './config.mjs';
+import { loadConfig, resolveRoster, isFleetConfig } from './config.mjs';
 import { clearAll, stats } from './cache.mjs';
 import { planPolicy, credentialAdvice, MINUTE_MS } from './budget.mjs';
 import { $, el, resetCountUps } from './ui.mjs';
@@ -82,7 +86,11 @@ function ratePillLater() {
 }
 
 const repoParam = () => new URL(location.href).searchParams.get('repo');
-const wantsFleet = () => !repoParam() && ROSTER.length > 1;
+// The fleet view is what a fleet DEPLOYMENT opens on, decided by the config's shape
+// rather than by how many members the enumeration happened to return: a fleet whose
+// roster read failed, or one that is momentarily down to a single readable member, is
+// still a fleet page and must say so rather than silently becoming that member's own.
+const wantsFleet = () => !repoParam() && isFleetConfig(CONFIG);
 const currentRepo = () => repoParam() || CONFIG?.defaultRepo || ROSTER[0] || '';
 
 function go(repo) {
@@ -141,10 +149,15 @@ function renderCrumb(repo) {
 // Switching views is not a change in a number, it is a DIFFERENT set of numbers under
 // the same labels — so the counters forget rather than tween from one to the other and
 // draw a movement nothing made.
-const showView = (which) => {
+const showView = (which, repo = null) => {
   if ($('fleet-view').hidden !== (which !== 'fleet')) resetCountUps();
   $('fleet-view').hidden = which !== 'fleet';
   $('repo-view').hidden = which !== 'repo';
+  // The heading says what you are looking at. A repo-mode deployment titled "Fleet
+  // status" is the page telling its one member it is something else.
+  const title = which === 'fleet' ? 'Fleet status' : (repo ? repo.split('/')[1] ?? repo : 'Claudinite');
+  $('title').textContent = title;
+  document.title = which === 'fleet' ? 'Fleet status' : `${title} · Claudinite`;
 };
 
 function footer(parts) {
@@ -170,6 +183,11 @@ async function render() {
   $('reload').disabled = true;
 
   const token = auth.currentToken();
+  // The roster is resolved inside the load, not at boot: an `owner` deployment
+  // enumerates as the VIEWER, so it needs the credential — and the enumeration is
+  // ETag-revalidated, which makes re-resolving it per load free once warm.
+  const roster = await resolveRoster(CONFIG, token, gh);
+  ROSTER = roster.repos;
   const plan = await planBudget(token);
   renderRatePill(plan);
   const advice = credentialAdvice(plan.tier, { oauth: auth.isOAuthConfigured(CONFIG), hasToken: Boolean(token) });
@@ -189,6 +207,8 @@ async function render() {
       renderCrumb(null);
       showView('fleet');
       $('footnote').textContent = `Reading ${ROSTER.length} members…`;
+      if (roster.error) showError('The owner\'s repositories could not be listed — sign in with an account that can see them.');
+      else if (!roster.complete) showNotice('This owner has more repositories than one enumeration reaches; the fleet below is the most recently pushed of them.');
       await loadFleet({
         repos: ROSTER,
         token,
@@ -197,7 +217,7 @@ async function render() {
         onError: showError,
         onProgress: (done, total, repo) => { $('footnote').textContent = `Reading ${done}/${total} — ${repo}…`; },
       });
-      footer([`${ROSTER.length} members`]);
+      footer([`${ROSTER.length} members${roster.source === 'owner' ? ` under ${CONFIG.owner}, as you can see them` : ''}`]);
     } else {
       const repo = currentRepo();
       if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) {
@@ -206,15 +226,22 @@ async function render() {
         return;
       }
       renderCrumb(repo);
-      showView('repo');
+      showView('repo', repo);
       $('footnote').textContent = `Reading ${repo}…`;
-      const r = await loadRepo({ repo, token, onError: showError });
+      const r = await loadRepo({ repo, token, config: CONFIG, onError: showError });
       footer([
         `${repo} @ ${r.branch} (${r.sha.slice(0, 7)})`,
         `${r.taskCount} declared tasks`,
         `${r.itemCount} work items in the ${r.issuePage.complete
           ? `full issue history (${r.issuePage.scanned} issues)`
           : `most recent ${r.issuePage.scanned} issues — older history not scanned`}`,
+        // The past-data plane's own freshness, which is NOT this load's: the panels
+        // reaching further back than the live window are only as current as the repo's
+        // last fold, and a page that showed one timestamp for both would be claiming
+        // the older half is as fresh as the newer.
+        r.usage
+          ? `usage folded ${r.generated ? r.generated.replace('T', ' ').slice(0, 16) : 'at an unstated time'}`
+          : 'no usage fold — past-data panels are limited to the live window',
       ]);
     }
     $('setup').open = false;
@@ -243,7 +270,6 @@ async function boot() {
   const back = await auth.completeSignIn(CONFIG);
   if (back.status === 'error') showError(back.message);
 
-  ROSTER = await loadRoster(CONFIG);
   renderAuth(null);
 
   // The pill tracks the budget as the sweep spends it, rather than reporting what it
@@ -286,7 +312,11 @@ async function boot() {
   // Back/forward move between the fleet and a deep dive, because the views are URLs.
   addEventListener('popstate', render);
 
-  if (auth.currentToken() || ROSTER.length || repoParam()) render();
+  // Something to show without asking first: a credential, a repo named in the URL, or a
+  // deployment that knows what it covers. The roster itself is no longer part of that
+  // test — an `owner` deployment cannot enumerate anything until there is a credential
+  // to enumerate as.
+  if (auth.currentToken() || repoParam() || isFleetConfig(CONFIG) || CONFIG?.defaultRepo) render();
   else { showView('repo'); $('setup').open = true; }
 }
 

@@ -104,6 +104,10 @@ test('projectIssue drops a closed item\'s body and keeps an open one\'s fields',
 
 test('projectRun keeps only the rendered fields', async () => {
   const c = await load();
-  const r = c.projectRun({ name: 'CI', status: 'completed', conclusion: 'success', event: 'push', head_branch: 'main', created_at: 'x', html_url: 'u', repository: { huge: true } });
-  assert.deepEqual(Object.keys(r).sort(), ['conclusion', 'created_at', 'event', 'head_branch', 'html_url', 'name', 'status']);
+  const r = c.projectRun({ name: 'CI', path: '.github/workflows/ci.yml', status: 'completed', conclusion: 'success', event: 'push', head_branch: 'main', created_at: 'x', html_url: 'u', repository: { huge: true } });
+  assert.deepEqual(Object.keys(r).sort(), ['conclusion', 'created_at', 'event', 'head_branch', 'html_url', 'name', 'path', 'status']);
+  // The workflow file, which is how a scheduler or executor run is told from the
+  // repo's own CI. A payload without one keeps the key as null rather than dropping
+  // it, so a reader never has to distinguish "absent" from "old cache entry".
+  assert.equal(c.projectRun({ name: 'CI' }).path, null);
 });

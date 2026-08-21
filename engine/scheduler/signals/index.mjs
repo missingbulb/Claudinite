@@ -262,7 +262,9 @@ const COLLECTORS = {
   async conversationLogs(gh, ctx) {
     const retentionDays = ctx.retentionDays ?? null;
     const branch = await gh(`/repos/${ctx.repo}/branches/conversation-logs`);
-    if (branch.status !== 200) return { present: false, retentionDays, oldestLogAgeDays: null, logCount: 0 };
+    if (branch.status !== 200) {
+      return { present: false, retentionDays, oldestLogAgeDays: null, newestLogAgeDays: null, logCount: 0 };
+    }
 
     // Logs sit flat at the branch root beside its README; a non-200 tree read (or
     // anything unparsable on it) is "no age to judge", never a failed collection.
@@ -271,10 +273,19 @@ const COLLECTORS = {
       .map((e) => logStampMs(e?.path ?? ''))
       .filter((ms) => ms !== null);
     const now = new Date(ctx.now).getTime();
-    const oldestLogAgeDays = stamps.length && Number.isFinite(now)
-      ? (now - Math.min(...stamps)) / 86400000
-      : null;
-    return { present: true, retentionDays, oldestLogAgeDays, logCount: stamps.length };
+    const age = (ms) => (stamps.length && Number.isFinite(now) ? (now - ms) / 86400000 : null);
+    // Both ends, because they answer opposite questions. The OLDEST drives the
+    // age-based prune (is anything past retention). The NEWEST is the only NEWNESS
+    // this dimension has: "did a session capture in the window", which is what a
+    // precondition gated on repo movement needs and which a total count — true
+    // forever once true — cannot say.
+    return {
+      present: true,
+      retentionDays,
+      oldestLogAgeDays: stamps.length ? age(Math.min(...stamps)) : null,
+      newestLogAgeDays: stamps.length ? age(Math.max(...stamps)) : null,
+      logCount: stamps.length,
+    };
   },
 
   // The vendored-mount provenance stamp and its age; the canon head sha when the

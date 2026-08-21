@@ -110,9 +110,20 @@ await writeFile(join(OUT, '.nojekyll'), '');
 
 // --- the roster --------------------------------------------------------------------
 
-// An inline `repos` list wins; otherwise a roster artifact in this repo is copied in.
-// Absent both, the site is this repo's own dashboard — the default that is right for
-// nearly every member.
+// WHICH DASHBOARD THIS DEPLOYMENT IS, and it is decided by SHAPE rather than by a mode
+// switch: a declaration that says where more than one member comes from builds the
+// fleet dashboard, and anything else builds this repo's own. So there is nothing to ask
+// at adoption, nothing to keep in step, and no way to configure a roster and still get
+// the wrong landing page.
+//
+// Three ways to say where the members come from, in precedence order:
+//   repos      — an explicit list, for a deployment that wants a fixed set;
+//   rosterFile — a generated artifact in this repo (the legacy shape);
+//   owner      — enumerate that owner's repos IN THE BROWSER, as the viewer.
+//
+// The third is the one to use. It stores no repo list anywhere, and it means the fleet
+// a person sees is exactly the fleet they can read — a member outside their access is
+// not in it, rather than being in it as a row they cannot open.
 let repos = Array.isArray(cfg.repos) ? cfg.repos.filter((r) => /^[^/\s]+\/[^/\s]+$/.test(r)) : [];
 let rosterUrl = null;
 
@@ -141,11 +152,19 @@ if (repos.length) {
 // --- the config the page reads -------------------------------------------------------
 
 const repoSlug = process.env.GITHUB_REPOSITORY ?? null;
+// The one line that decides which dashboard this is. Everything below reads off it.
+const fleetMode = Boolean(repos.length || rosterUrl || cfg.owner);
 const config = {
   clientId: cfg.clientId ?? null,
   exchangeUrl: cfg.exchangeUrl ?? null,
   redirectUri: cfg.redirectUri ?? null,
   canonRepo: cfg.canonRepo ?? null,
+  // Whose repos a fleet deployment covers, enumerated in the browser as the viewer, and
+  // which of them are not members. Both travel through as they stand: this build has no
+  // credential to enumerate with, and would be the wrong place to try — a list resolved
+  // here would be the same list for every viewer.
+  owner: cfg.owner ?? null,
+  exclude: Array.isArray(cfg.exclude) ? cfg.exclude : [],
   // Where the fleet's morning briefs are written. Named rather than assumed: the
   // digest task runs in the enforcer's repo, which is usually not the one publishing
   // this page.
@@ -153,9 +172,9 @@ const config = {
   digestsPath: cfg.digestsPath ?? null,
   rosterUrl,
   repos: [],
-  // With a roster the fleet overview is the landing view, so nothing is preselected;
-  // without one there is exactly one repo to show and it is this one.
-  defaultRepo: rosterUrl ? null : (cfg.defaultRepo ?? repoSlug),
+  // In fleet mode the overview is the landing view, so nothing is preselected; in repo
+  // mode there is exactly one repo to show and it is this one.
+  defaultRepo: fleetMode ? null : (cfg.defaultRepo ?? repoSlug),
 };
 await writeFile(join(OUT, HOME, 'dashboard.config.json'), `${JSON.stringify(config, null, 2)}\n`);
 
@@ -165,9 +184,14 @@ await writeFile(join(OUT, HOME, 'dashboard.config.json'), `${JSON.stringify(conf
 const signIn = config.clientId && config.exchangeUrl
   ? 'configured'
   : `NOT configured — the site will ask for a token${config.clientId ? ' (exchangeUrl missing)' : ''}${config.exchangeUrl ? ' (clientId missing)' : ''}`;
+const covers = repos.length ? `${repos.length} named members`
+  : cfg.owner ? `every repo under ${cfg.owner} the viewer can read${config.exclude.length ? `, less ${config.exclude.length} excluded` : ''}`
+    : rosterUrl ? `whatever ${rosterUrl} names`
+      : `this repo${config.defaultRepo ? ` (${config.defaultRepo})` : ''}`;
 process.stdout.write(
   `Built ${OUT}\n`
-  + `  covers: ${repos.length ? `${repos.length} members (fleet overview is the landing view)` : `this repo${config.defaultRepo ? ` (${config.defaultRepo})` : ''}`}\n`
+  + `  mode: ${fleetMode ? 'fleet-dashboard' : 'repo-dashboard'}\n`
+  + `  covers: ${covers}\n`
   + `  canon reference: ${config.canonRepo ?? 'not set — member mount freshness reads unknown'}\n`
   + `  digests: ${config.digestsRepo ? `${config.digestsRepo}/${config.digestsPath ?? 'digests'}` : 'not set — the morning-brief panel is off'}\n`
   + `  sign-in: ${signIn}\n`,

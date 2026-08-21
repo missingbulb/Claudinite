@@ -11,7 +11,7 @@ import { USAGE_PATH } from '../../../../packs/claudinite-growth/tasks/usage-fold
 // member published beside its rows. The codec is imported here only to BUILD a
 // realistic member fixture and to read one back, never by the code under test.
 import {
-  USAGE_FIELDS, decodeRow, encodeUsageFile,
+  USAGE_FIELDS, USAGE_VERSION, decodeRow, encodeUsageFile,
 } from '../../../../packs/claudinite-growth/tasks/usage-fold/usage-format.mjs';
 
 const member = (repo, weeks, days = {}, foldedThrough = '2026-07-27') => ({
@@ -202,7 +202,10 @@ test('each member publishes the vocabulary its own rows are spelled in', () => {
   });
   assert.equal(file.repos['owner/alpha'].format, 1);
   assert.equal(file.repos['owner/alpha'].fields, null, 'nothing to declare — the rows name their own fields');
-  assert.equal(file.repos['owner/beta'].format, 2);
+  // The member's OWN version, whatever it is: this sweep copies rows it does not
+  // understand, so pinning a literal here would fail every time the writing side moves
+  // — which is exactly the drift the per-repo header exists to absorb.
+  assert.equal(file.repos['owner/beta'].format, USAGE_VERSION);
   assert.deepEqual(file.repos['owner/beta'].fields.checks, [...USAGE_FIELDS.checks]);
 
   // Read through their own headers, both members say the same thing.

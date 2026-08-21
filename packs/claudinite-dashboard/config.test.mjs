@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rosterFrom, loadConfig, loadRoster, DEFAULTS } from '../../packs/claudinite-dashboard/config.mjs';
+import {
+  rosterFrom, loadConfig, loadRoster, DEFAULTS, isFleetConfig, inFleet, resolveRoster,
+} from '../../packs/claudinite-dashboard/config.mjs';
 import { isOAuthConfigured } from '../../packs/claudinite-dashboard/auth.mjs';
 
 // The roster's source is a fleet artifact this page does not own, so it accepts the
@@ -65,4 +67,64 @@ test('OAuth counts as configured only with both a client id and an exchange url'
   assert.equal(isOAuthConfigured({ clientId: 'a' }), false);
   assert.equal(isOAuthConfigured({ exchangeUrl: 'https://x' }), false);
   assert.equal(isOAuthConfigured(null), false);
+});
+
+// --- the roster ------------------------------------------------------------------
+
+// A fleet deployment names an OWNER and the page enumerates as the viewer, so what the
+// fleet contains is decided at read time by what this person can see. These are the
+// rules that decision follows.
+
+test('the deployment\'s SHAPE decides whether it is a fleet page', () => {
+    assert.equal(isFleetConfig({ owner: 'missingbulb' }), true);
+  assert.equal(isFleetConfig({ rosterUrl: './roster.json' }), true);
+  assert.equal(isFleetConfig({ repos: ['o/a', 'o/b'] }), true);
+  // One repo is that repo's own page, not a one-row fleet overview.
+  assert.equal(isFleetConfig({ repos: ['o/a'] }), false);
+  assert.equal(isFleetConfig({}), false);
+  assert.equal(isFleetConfig(null), false);
+});
+
+test('archived and forked repos leave the fleet by their own state, not by a list', () => {
+    const repo = (full_name, over = {}) => ({ full_name, archived: false, fork: false, ...over });
+  assert.equal(inFleet(repo('o/a')), true);
+  assert.equal(inFleet(repo('o/a', { archived: true })), false);
+  assert.equal(inFleet(repo('o/a', { fork: true })), false);
+  // `exclude` takes either spelling, because a member writes whichever reads naturally
+  // in its own declaration.
+  assert.equal(inFleet(repo('o/a'), ['o/a']), false);
+  assert.equal(inFleet(repo('o/a'), ['a']), false);
+  assert.equal(inFleet(repo('o/a'), ['b']), true);
+});
+
+test('resolveRoster enumerates the owner, sorted, and says how far it got', async () => {
+    const gh = {
+    listOwnerRepos: async () => ({
+      repos: [
+        { full_name: 'o/zeta', archived: false, fork: false },
+        { full_name: 'o/alpha', archived: false, fork: false },
+        { full_name: 'o/old', archived: true, fork: false },
+        { full_name: 'o/skip', archived: false, fork: false },
+      ],
+      complete: true,
+    }),
+  };
+  const out = await resolveRoster({ owner: 'o', exclude: ['o/skip'] }, 't', gh);
+  assert.deepEqual(out.repos, ['o/alpha', 'o/zeta']);
+  assert.equal(out.source, 'owner');
+  assert.equal(out.complete, true);
+});
+
+test('a stated roster wins over enumeration, and a failed enumeration is not an empty fleet', async () => {
+    const gh = { listOwnerRepos: async () => { throw new Error('403'); } };
+  const stated = await resolveRoster({ owner: 'o', repos: ['o/a', 'o/b'] }, 't', gh);
+  assert.deepEqual(stated.repos, ['o/a', 'o/b']);
+  assert.equal(stated.source, 'configured');
+
+  const failed = await resolveRoster({ owner: 'o' }, 't', gh);
+  assert.deepEqual(failed.repos, []);
+  // `complete: false` plus the error is what makes the page say the list could not be
+  // read rather than render a fleet that happens to have nobody in it.
+  assert.equal(failed.complete, false);
+  assert.ok(failed.error);
 });

@@ -24,7 +24,7 @@
 const NS = 'claudinite-dashboard';
 // Bump when a stored shape changes: entries from an older writer are dropped rather
 // than misread, which is cheaper and safer than migrating a cache.
-const VERSION = 2;
+const VERSION = 3;
 export const DAY_MS = 24 * 3600e3;
 
 const key = (k) => `${NS}:v${VERSION}:${k}`;
@@ -198,6 +198,11 @@ export const projectPull = (p) => ({
 
 export const projectRun = (r) => ({
   name: r.name,
+  // The workflow FILE this run came from, which is how a scheduler or executor run is
+  // told from the repo's own CI. Kept beside the display name rather than instead of
+  // it: the name is a member's to change, the path is the engine's, and either alone
+  // would misread a run the other would have caught.
+  path: r.path ?? null,
   status: r.status,
   conclusion: r.conclusion ?? null,
   event: r.event,

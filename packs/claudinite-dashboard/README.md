@@ -1,8 +1,12 @@
 <img src="badge.svg" width="24" height="24" alt=""> claudinite-dashboard
 
-A read-only view of what a repo's — or a fleet's — Claudinite scheduler is doing: the
-declared task roster, the live work-item queue, the outcome history, and the Actions
-runs behind them.
+A read-only view of what a repo's — or a fleet's — Claudinite is doing: what is stuck,
+what is queued, what has run, and what the corpus has been costing and catching.
+
+**Two modes, decided by shape rather than by a switch.** A declaration that says where
+more than one member comes from builds the **fleet dashboard**; anything else builds
+that repo's own **repo dashboard**. Nothing to ask at adoption and nothing to hold in
+step — the roster source *is* the mode.
 
 **Opt-in.** Nothing fingerprints it and `--init` never seeds it: a repo carries this
 because someone declared it. Adopting it wires the GitHub Pages deploy.
@@ -36,12 +40,14 @@ Everything else is optional `config` on the declaration:
 
 | Key | Default | What it buys |
 |---|---|---|
-| `rosterFile` | — | A file in the repo listing members; more than one makes the **fleet overview** the landing view |
-| `repos` | — | An inline roster instead of a file |
+| `owner` | — | Whose repos this deployment covers. The page **enumerates them in the browser, as the viewer** — so this is a fleet deployment, and the fleet a person sees is exactly the fleet they can read. The way to build a fleet dashboard |
+| `exclude` | none | Repos under that owner that are not members (either `owner/name` or the bare name). Archived and forked repos leave by their own state |
+| `repos` | — | An explicit member list instead, for a deployment that wants a fixed set |
+| `rosterFile` | — | A generated artifact in the repo listing members — the legacy shape, still read |
 | `canonRepo` | — | The repo whose live engine and pack versions member stamps are compared against; unset means freshness reads *unknown* rather than being guessed |
 | `digestsRepo` | — | The repo the fleet's morning briefs are read from; unset turns the digests panel off |
 | `digestsPath` | `digests` | The directory inside it |
-| `owner`, `exclude`, `digest` | this repo's owner; none; `pick` 4, `nudge` on | The [fleet-digest task's](#the-morning-briefs) knobs — whose repos a brief covers and what it names |
+| `digest` | `pick` 4, `nudge` on | The [fleet-digest task's](#the-morning-briefs) knobs — how many items a brief names and whether it prods a quiet project. It reads `owner` and `exclude` too, so a fleet deployment states them once |
 | `clientId`, `exchangeUrl` | — | Both together turn on **Sign in with GitHub**; either alone does nothing |
 | `redirectUri` | the page's URL | Override when the callback differs |
 | `defaultRepo` | this repo | Which repo a single-repo deployment shows |
@@ -70,17 +76,84 @@ fleet overview would be nothing but a click in the way.
 node packs/claudinite-dashboard/serve.mjs missingbulb/Claudinite
 ```
 
-## What it shows
+## Two kinds of data, read two different ways
+
+Everything on both pages is one of two things, and the difference is the whole reason
+the page can afford what it shows.
+
+**What is true right now** is a live read, and there are few of them: the repo, its
+head commit, one page of issues, one page of Actions runs. All are ETag-revalidated,
+and a `304` costs no rate-limit budget at all.
+
+**What happened before** is one file: the repo's own
+`.claudinite/local/usage.GENERATED.json`, folded hourly by the
+[usage-fold task](../claudinite-growth/tasks/usage-fold/README.md) in the
+claudinite-growth pack. It is content at a sha, so it is read once when the default
+branch moves and **not at all** while it has not. Reaching a month back over the API
+instead would be a paginated crawl per repo per load, which is exactly the shape this
+client is built to avoid.
+
+Measured against a stubbed API, one repo with five declared tasks:
+
+| | Requests | Of those, free |
+|---|---|---|
+| Cold (empty cache) | 14 | 0 |
+| Warm (same head sha) | 5 | **5** — every one a `304`, nothing spent |
+
+So a warm reload of a repo page costs **nothing** against the viewer's budget.
+
+The two freshnesses are reported separately in the footer, because they are not the
+same: the live half is as fresh as this load, the past half as fresh as the repo's last
+fold. A page that showed one timestamp for both would be claiming the older half is as
+current as the newer.
+
+A repo that does not fold the file is a normal state, not a fault: the panels that
+wanted it say so, and nothing else on the page is affected.
+
+## What the repo page shows
 
 | Panel | Answers |
 |---|---|
-| **Stat tiles** | How many tasks exist, what is open, what is parked or tripping a recovery rule, what is running, when the next ask falls |
-| **Task roster** | Every *declared* task — cadence, model, outcome ceiling, precondition signals, its current work item, its **next ask**, its outcome history. The next ask is derived from the standing item where one exists — its stamped wake, a held lane behind a blocking park, a queued or running item — and from the calendar only when no item does |
-| **Queue** | Open `[claudinite-work]` items by state, what each waits on, why its last ask declined, how long it has sat, and which recovery rule is about to claim it |
-| **Scheduler runs** | Recent and in-flight Actions runs |
+| **At a glance** | Minutes waiting on a person and what they are made of, items parked, open pull requests and issues, CI on the default branch, runs in flight, stars, and drift against the canon |
+| **Work** | One row per piece of work, in three views — **stuck** (what has stopped, and for how long), **pending** (what is moving, and what happens next), **all** (what each task is and what it has done). The page opens on the worst view that has anything in it |
+| **What the queue closed** | Per-day outcomes over a fortnight — today from the live issue page, the days before it from the fold |
+| **What ran** | 48 hours of scheduler runs, executor runs and agent sessions per hour; hovering an hour names the tasks that executed in it |
+| **What Claudinite is doing here** | 30 days of rule tokens against checks executed, on two stated scales — plus tokens spent, lines committed and releases where the fold carries them |
 
-A task with no work item still gets a row: "never ran" is usually the thing you
-opened this for, and an issue-derived list would omit it silently.
+### One table, not two
+
+The roster and the queue used to be separate tables, and they were the same rows
+twice: a task's row could not say what its item was doing without repeating the item
+table, and an item's row could not say what it was *for* without repeating the roster.
+Worse, the reader had to join them by eye to answer the question they opened the page
+with — is anything stuck.
+
+So there is one row per piece of work and the **view decides which rows and which
+columns**. The three views are three genuinely different questions, which is why they
+do not share a column set. Switching between them moves the rows rather than redrawing
+them, so the row you were reading stays findable; a reader who has asked their platform
+for less motion gets the repaint and none of the movement.
+
+Two rows exist that neither old table could show. A **declared task that has never
+run** — usually the thing you opened the page for, and invisible in any list built from
+work items. And an **open item whose task this repo no longer declares**: nothing will
+ever pick it up, and no recovery rule will say so.
+
+Everything flagged mirrors a rule the engine will actually act on — a blown leash the
+next run reclaims, a dependency past the janitor's threshold, a park holding its task's
+lane — never a display heuristic.
+
+### Not read is not zero
+
+The rule that runs through every panel here. A day the fold has not reached is drawn
+**blank**, not at the floor; a line breaks over a day nothing answered for rather than
+dipping through it; a series the file does not carry is **named as absent** instead of
+rendering as an empty chart; and a total sums only the days that had an opinion, or
+reports nothing at all.
+
+This matters most where a number is a report card. "No session recorded its token
+spend" and "the sessions were free" are different facts, and a page that draws them
+identically is worse than one that omits the panel.
 
 ## The fleet view
 
@@ -91,13 +164,37 @@ second. So nothing on it is a total for its own sake.
 
 | Panel | Answers |
 |---|---|
-| **What Claudinite did this week** | The work the machinery did that nobody had to do — this week against last |
+| **What Claudinite did this week** | The work the machinery did that nobody had to do — this week against last, including the check findings caught inside sessions and what the corpus costs each of them |
 | **The last two mornings** | Yesterday's and the day before's fleet digest, when the deployment names a `digestsRepo` |
-| **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, which members moved at all |
+| **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, **how often the checks ran and caught something**, and which members moved at all |
 | **Rollup tiles** | How many *members* need a human — not how many items exist |
 | **Members** | Every member ranked worst-first, in three column groups asked in the order a reader asks them: **Activity** (90 days of commits, as a weekly curve), **Waiting on a person** (an estimate in minutes, what it is made of, then issues and pull requests) and **Claudinite** (packs wearing the mount's verdict, queue, outcomes, scheduler). Stars and CI ride in the member cell — they are how you recognise a row, not findings about it |
 | **Tasks across the fleet** | One task, everywhere it runs — a shared pack's task parked in four members at once is a canon problem no single repo's page reveals |
 | **Pack adoption** | Which packs are in use and how widely — who a change to a pack would reach |
+
+### The roster is enumerated, not stored
+
+A fleet deployment names an `owner`, and the page lists that owner's repos **as the
+viewer**. So membership is decided at read time by what this person can actually see: a
+repo outside their access is not in their fleet, rather than being in it as a row they
+cannot open. No repo list is baked into any file, which is also why a fleet's numbers
+cannot leak from a shared artifact to someone without access to the repos behind them.
+
+Archived and forked repos leave the fleet by their own state; `exclude` covers the rest.
+An enumeration that could not be read is said out loud, never rendered as a fleet that
+happens to be empty.
+
+### What only the members' own files can say
+
+Two figures used to be named as *absent* here, because nothing the page read could count
+them: how often each member's checks actually ran, and how much corpus each session is
+paying for. Both are in each member's usage file, which the sweep now reads at the head
+sha it already has — so both are panels rather than apologies.
+
+A member with **no** usage file is named, never averaged in as a repo where nothing
+happens. That census is the same fact a fleet-wide aggregate would carry as
+`coverage.absent`, derived live from the members instead of stored in one file that
+shows everyone the whole fleet.
 
 Three rules shape it, and they are in [`fleet.mjs`](fleet.mjs):
 
@@ -451,6 +548,13 @@ API's shape, not a decision either pack can drift on.
   when reading another repo over the API. A field it cannot read renders *unknown*
   and is never defaulted — a confident wrong cadence would move a next-anchor the
   roster is read for.
+- **The past-data half is only as fresh as the repo's last fold**, which the footer
+  states separately from this load's own time. A repo that folds nothing has no past
+  half at all, and the panels that wanted it say which task writes the file.
+- **Which tasks a given hour *evaluated* is not shown**, only what executed. Nothing in
+  a run listing names a task, and reading each run's job log to find out would be two
+  API calls per run — the cost the fold itself dropped for the same reason. Why a task
+  declined its last ask is on its own row instead, from the verdict the item carries.
 
 ## Checks
 

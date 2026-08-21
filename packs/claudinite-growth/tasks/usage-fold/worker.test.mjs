@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseLogName, parseEntries, withMergeAttribute, MERGE_ATTR, USAGE_PATH,
+  parseCommitLog, dayFieldsFrom, dayLadder,
 } from '../../../../packs/claudinite-growth/tasks/usage-fold/worker.mjs';
 import { parseLogFilename, logFilename } from '../../../../packs/claudinite-growth/capture-log.mjs';
 
@@ -27,7 +28,7 @@ test('parseLogName agrees with the capture step that writes the name', () => {
 
 test('parseLogName takes the collision suffix and the issue-0 form, and rejects everything else', () => {
   assert.deepEqual(parseLogName('2026-07-28T0940Z-2--issue-9--s1.jsonl'),
-    { date: '2026-07-28', issue: 9, sessionId: 's1' });
+    { date: '2026-07-28', stamp: '2026-07-28T09:40:00Z', issue: 9, sessionId: 's1' });
   assert.equal(parseLogName('2026-07-28T0940Z--issue-0--s1.jsonl').issue, 0);
   // The branch also carries its README; anything unparsable is simply not a capture.
   assert.equal(parseLogName('README.md'), null);
@@ -50,4 +51,49 @@ test('the aggregate lives under the repo-owned local root, never inside the moun
   // there would be silently reverted; .claudinite/local/ is the repo's own area.
   assert.ok(USAGE_PATH.startsWith('.claudinite/local/'), USAGE_PATH);
   assert.ok(USAGE_PATH.includes('GENERATED'), 'a machine-written file says so in its name');
+});
+
+// --- the local-git day series -----------------------------------------------------
+
+test('parseCommitLog attributes each numstat block to the commit that opened it', () => {
+  const log = [
+    '\u00012026-08-21T10:00:00+00:00',
+    '10\t2\tsrc/a.mjs',
+    '4\t0\tsrc/b.mjs',
+    '\u00012026-08-21T18:30:00+00:00',
+    '1\t1\tREADME.md',
+    '-\t-\tlogo.png',                    // a binary file moves no LINES
+    '\u00012026-08-20T09:00:00+00:00',
+    '\u00012026-08-20T11:00:00+00:00',    // a merge: a commit with no numstat of its own
+    '7\t3\tsrc/c.mjs',
+  ].join('\n');
+  assert.deepEqual(parseCommitLog(log), {
+    '2026-08-21': { commits: 2, linesAdded: 15, linesRemoved: 3 },
+    '2026-08-20': { commits: 2, linesAdded: 7, linesRemoved: 3 },
+  });
+  assert.deepEqual(parseCommitLog(''), {});
+});
+
+test('dayFieldsFrom leaves days the history could not reach WITHOUT keys', () => {
+  // The shallow-checkout case, which is the normal one in Actions: writing 0 for a day
+  // the clone simply does not contain would draw a busy week as an idle one.
+  const ladder = ['2026-08-18', '2026-08-19', '2026-08-20'];
+  const fields = dayFieldsFrom({
+    commits: { coveredFrom: '2026-08-19', days: { '2026-08-20': { commits: 2, linesAdded: 9, linesRemoved: 1 } } },
+    releases: { days: { '2026-08-20': 1 } },
+    ladder,
+  });
+  assert.equal(fields['2026-08-18'].commits, undefined, 'before the history starts — unknown');
+  assert.equal(fields['2026-08-18'].releases, 0, 'but the releases listing did reach it');
+  assert.deepEqual(fields['2026-08-19'], { commits: 0, linesAdded: 0, linesRemoved: 0, releases: 0 });
+  assert.deepEqual(fields['2026-08-20'], { commits: 2, linesAdded: 9, linesRemoved: 1, releases: 1 });
+});
+
+test('dayFieldsFrom writes nothing at all when neither source could be read', () => {
+  assert.deepEqual(dayFieldsFrom({ commits: null, releases: null, ladder: ['2026-08-20'] }), {});
+});
+
+test('dayLadder is a UTC ladder ending today', () => {
+  const ladder = dayLadder('2026-08-21T11:00:00Z', 3);
+  assert.deepEqual(ladder, ['2026-08-19', '2026-08-20', '2026-08-21']);
 });

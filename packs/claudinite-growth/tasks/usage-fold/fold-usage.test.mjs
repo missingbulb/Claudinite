@@ -3,12 +3,24 @@ import assert from 'node:assert/strict';
 import {
   isUserMessage, commandName, skillToolLoads, countEntries,
   hookCheckRuns, checkSummaries, findingHeaders, checkInvocations, checkOutputs, countChecks,
-  foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage, foldTaskRuns, withinTaskWindow,
+  foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage, carryTaskRuns, withinTaskWindow,
   countTaskExecs, emptyTaskExec, encodeUsage, decodeUsage,
+  ruleTokensIn, tokensIn, foldDayFields, foldQueueOutcomes, foldHours, withinHourWindow, captureHours,
 } from '../../../../packs/claudinite-growth/tasks/usage-fold/fold-usage.mjs';
 import {
-  USAGE_FIELDS, USAGE_VERSION, renderUsageFile,
+  USAGE_FIELDS, USAGE_VERSION, QUEUE_OUTCOMES, renderUsageFile,
 } from '../../../../packs/claudinite-growth/tasks/usage-fold/usage-format.mjs';
+import {
+  outcomeOf, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
+} from '../../../../engine/scheduler/queue/work-item.mjs';
+
+// A day row as `foldDays` builds an empty one: the capture-derived scalars zeroed and
+// every other field absent. Spelled here so a test about the absent ones does not have
+// to build a row by hand and accidentally assert its own construction.
+const blankDay = () => ({
+  captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0, ruleTokens: 0, ruleTokenSessions: 0,
+  skillLoads: {}, checks: {}, checkFindings: {}, tasks: {}, taskExec: {}, queue: {},
+});
 
 // --- entry fixtures -----------------------------------------------------------
 // Every shape below is copied from real captured transcripts on a conversation-logs
@@ -376,9 +388,13 @@ test('foldDays: captures, merges and DISTINCT sessions per day', () => {
     userMessages: 11,
     userCommands: 1,
     skillLoads: { a: 2, b: 3 },
+    // No capture printed the mount's session-start line, so the rules it carried are a
+    // real zero rather than an absent key — the fixtures are transcripts, not stubs.
+    ruleTokens: 0,
+    ruleTokenSessions: 0,
     checks: {},
     checkFindings: {},
-    tasks: {}, taskExec: {},
+    tasks: {}, taskExec: {}, queue: {},
   });
   assert.equal(days['2026-07-27'].merges, 0);
 });
@@ -438,7 +454,7 @@ test('addDayToWeek sums the counters and declares how many days it absorbed', ()
     days: 2, captures: 4, merges: 2, sessionDays: 4, userMessages: 20, userCommands: 2, skillLoads: { a: 2 },
     checks: { work: { runs: 6, failures: 2, errors: 0, blocking: 2, advisory: 0 } },
     checkFindings: { 'task-lifecycle': { blocking: 2, advisory: 0 } },
-    tasks: {}, taskExec: {},
+    tasks: {}, taskExec: {}, queue: {},
   });
 });
 
@@ -533,80 +549,271 @@ test('foldUsage: a mounted skill that never loads has no key — the zero set is
   assert.deepEqual(never, ['writing-tests', 'bug-investigation']);
 });
 
-// --- task invocations -----------------------------------------------------------
-// The second source: what the SCHEDULER did with each task, from its own run
-// records. Unlike everything above, these rows are appended once past their own
-// watermark rather than recomputed — the trade the fold makes because the scheduler's
-// logs are a rate-limited REST read and the logs branch is local git.
+// --- what Claudinite put in, and what the session cost --------------------------
+// Two per-session figures read off the transcript itself. Both are allowed to be
+// ABSENT — a mount that prints no summary line, a transcript shape carrying no usage
+// records — and absent must never render as zero.
 
-const runOf = (date, task, outcome, pack = 'claudinite-growth') => ({ date, pack, task, outcome });
+test('ruleTokensIn reads the mount\'s own session-start line, separators and all', () => {
+  const line = 'Claudinite loaded, 8 packs, 35 checks, 16,500 rule tokens, 23 available skills, 530 personal preference tokens.';
+  assert.equal(ruleTokensIn(line), 16500);
+  assert.equal(ruleTokensIn(`prose before\n${line}\nprose after`), 16500);
+  assert.equal(ruleTokensIn('Claudinite loaded, 8 packs, 35 checks, 900 rule tokens'), 900);
+});
 
-test('foldTaskRuns counts each outcome per task, on the day the run started', () => {
+test('ruleTokensIn answers null — never zero — when the line is not there', () => {
+  assert.equal(ruleTokensIn('a session that said nothing about rule tokens'), null);
+  assert.equal(ruleTokensIn(''), null);
+  assert.equal(ruleTokensIn(null), null);
+  // A sentence merely ABOUT rule tokens is not the mount stating its own size.
+  assert.equal(ruleTokensIn('we should cut the rule tokens down'), null);
+});
+
+test('tokensIn sums the usage records the transcript carries, and probes rather than assumes', () => {
+  const assistant = (usage) => ({ type: 'assistant', message: { content: [], usage } });
+  assert.deepEqual(
+    tokensIn([
+      assistant({ input_tokens: 10, output_tokens: 3, cache_read_input_tokens: 100 }),
+      assistant({ input_tokens: 5, output_tokens: 2, cache_creation_input_tokens: 40 }),
+    ]),
+    { input: 155, output: 5 },
+  );
+  // A transcript shape that records no usage at all reports NOTHING, so the consumer
+  // can say the series is absent instead of drawing a free session.
+  assert.equal(tokensIn([{ type: 'assistant', message: { content: [] } }, human('hi')]), null);
+  assert.equal(tokensIn([]), null);
+});
+
+test('countEntries carries both, and foldDays counts them once per SESSION', () => {
+  const summary = 'Claudinite loaded, 8 packs, 35 checks, 16,500 rule tokens, 23 available skills, 530 personal preference tokens.';
+  const counts = countEntries([
+    { type: 'system', subtype: 'session_start', content: summary },
+    { type: 'assistant', message: { content: [], usage: { input_tokens: 7, output_tokens: 1 } } },
+  ]);
+  assert.equal(counts.ruleTokens, 16500);
+  assert.deepEqual(counts.tokens, { input: 7, output: 1 });
+
+  // One session, captured twice — a merge capture and the session-end tail. The
+  // second file repeats the same facts, so summing them would double both figures.
+  const file = (issue, extra) => ({
+    date: '2026-08-20', stamp: '2026-08-20T09:30:00Z', issue, sessionId: 'sess-1',
+    counts: {
+      userMessages: 0, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: {},
+      ...extra,
+    },
+  });
+  const days = foldDays([
+    file(12, { ruleTokens: 16500, tokens: { input: 100, output: 10 } }),
+    file(0, { ruleTokens: 16500, tokens: { input: 260, output: 30 } }),
+  ]);
+  assert.equal(days['2026-08-20'].captures, 2, 'both captures still count as captures');
+  assert.equal(days['2026-08-20'].sessions, 1);
+  assert.equal(days['2026-08-20'].ruleTokens, 16500, 'the prompt was paid for once');
+  assert.equal(days['2026-08-20'].ruleTokenSessions, 1);
+  assert.equal(days['2026-08-20'].tokensIn, 260, 'the fuller capture wins — the tail is a superset, not a second spend');
+  assert.equal(days['2026-08-20'].tokenSessions, 1);
+});
+
+test('a day whose transcripts carried no usage records has NO token keys at all', () => {
+  const days = foldDays([{
+    date: '2026-08-20', stamp: '2026-08-20T09:30:00Z', issue: 0, sessionId: 's1',
+    counts: { userMessages: 1, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: {}, ruleTokens: null, tokens: null },
+  }]);
+  const day = days['2026-08-20'];
+  assert.ok(!('tokensIn' in day), 'unknown is a state, not a zero');
+  assert.ok(!('tokenSessions' in day));
+  assert.equal(day.ruleTokens, 0, 'but a captured session that printed no summary line genuinely loaded no counted rules');
+});
+
+// --- the sources outside the capture files ---------------------------------------
+
+test('foldDayFields writes only the days a source could speak for', () => {
+  const days = { '2026-08-20': { ...blankDay() } };
+  foldDayFields(days, {
+    '2026-08-20': { commits: 3, linesAdded: 40, linesRemoved: 5 },
+    '2026-08-19': { commits: 0, linesAdded: 0, linesRemoved: 0 },
+  });
+  assert.equal(days['2026-08-20'].commits, 3);
+  assert.equal(days['2026-08-19'].commits, 0, 'a covered day with nothing in it is a real zero');
+  assert.ok(!('releases' in days['2026-08-20']), 'a source that said nothing leaves no key');
+});
+
+test('addDayToWeek adds nothing for a field the day has no opinion on', () => {
+  // The case this exists for: a week half of whose days came from a checkout with the
+  // history and half from one without. The week must report the days it could read,
+  // not seven days' worth of understated lines.
+  const known = { ...blankDay(), captures: 1, commits: 4, linesAdded: 10, linesRemoved: 2 };
+  const unknown = { ...blankDay(), captures: 1 };
+  const week = addDayToWeek(addDayToWeek(null, known), unknown);
+  assert.equal(week.days, 2);
+  assert.equal(week.captures, 2);
+  assert.equal(week.commits, 4, 'only the day that knew contributed');
+  assert.equal(week.linesAdded, 10);
+  // …and a field NO day had an opinion on gets no key at all, rather than a zero that
+  // would read as a week nobody released anything in.
+  assert.ok(!('releases' in week), Object.keys(week).join(','));
+  assert.ok(!('tokensIn' in week));
+});
+
+// --- the queue's own outcome record ----------------------------------------------
+// The successor to the retired slot scheduler's log lines (#994): every occurrence is
+// a work item, and a closed one wears the outcome it came to.
+
+const closed = (date, task, outcome, pack = 'claudinite-growth') => ({ date, pack, task, outcome });
+
+test('foldQueueOutcomes counts each closed item under its task and outcome word', () => {
   const days = {};
-  foldTaskRuns(days, {}, [
-    runOf('2026-07-28', 'usage-fold', 'code-work'),
-    runOf('2026-07-28', 'usage-fold', 'skipped'),
-    runOf('2026-07-28', 'usage-fold', 'skipped'),
-    runOf('2026-07-28', 'growth-extract', 'agent'),
-    runOf('2026-07-27', 'growth-extract', 'failed'),
-  ], '2026-07-28');
-  assert.deepEqual(days['2026-07-28'].tasks['claudinite-growth/usage-fold'],
-    { agent: 0, 'code-work': 1, skipped: 2, failed: 0, deferred: 0 });
-  assert.equal(days['2026-07-28'].tasks['claudinite-growth/growth-extract'].agent, 1);
-  assert.equal(days['2026-07-27'].tasks['claudinite-growth/growth-extract'].failed, 1);
-  // A day with scheduler activity and no captures still gets a row: a repo whose
-  // sessions are all unattended would otherwise show nothing at all for that day.
-  assert.equal(days['2026-07-27'].captures, 0);
+  foldQueueOutcomes(days, {}, [
+    closed('2026-08-20', 'usage-fold', 'done'),
+    closed('2026-08-20', 'usage-fold', 'done'),
+    closed('2026-08-20', 'growth-extract', 'delivered'),
+    closed('2026-08-19', 'growth-extract', 'none'),
+  ], '2026-08-20');
+  assert.deepEqual(days['2026-08-20'].queue['claudinite-growth/usage-fold'],
+    { done: 2, delivered: 0, obsolete: 0, none: 0 });
+  assert.equal(days['2026-08-20'].queue['claudinite-growth/growth-extract'].delivered, 1);
+  assert.equal(days['2026-08-19'].queue['claudinite-growth/growth-extract'].none, 1);
+  assert.equal(days['2026-08-19'].captures, 0, 'a day with queue activity and no captures still gets a row');
 });
 
-test('foldTaskRuns carries prior day rows forward — they are appended, never recomputed', () => {
-  const prior = { '2026-07-28': { tasks: { 'p/t': { agent: 2, 'code-work': 0, skipped: 5, failed: 0, deferred: 0 } } } };
-  const days = { '2026-07-28': { captures: 1, tasks: {} } };
-  foldTaskRuns(days, prior, [{ date: '2026-07-28', pack: 'p', task: 't', outcome: 'agent' }], '2026-07-28');
-  assert.deepEqual(days['2026-07-28'].tasks['p/t'], { agent: 3, 'code-work': 0, skipped: 5, failed: 0, deferred: 0 });
-  assert.equal(days['2026-07-28'].captures, 1, 'the recomputed capture counts are untouched');
-});
-
-test('foldTaskRuns drops prior task rows past the day window, and ignores unknown outcomes', () => {
+test('foldQueueOutcomes appends onto what earlier folds counted, and ages rows out', () => {
   const prior = {
-    '2026-07-28': { tasks: { 'p/fresh': { agent: 1 } } },
-    '2026-06-01': { tasks: { 'p/ancient': { agent: 9 } } },   // long since folded into its week
+    '2026-08-20': { queue: { 'p/t': { done: 2, delivered: 0, obsolete: 0, none: 0 } } },
+    '2026-06-01': { queue: { 'p/ancient': { done: 9, delivered: 0, obsolete: 0, none: 0 } } },
   };
   const days = {};
-  foldTaskRuns(days, prior, [{ date: '2026-07-28', pack: 'p', task: 't', outcome: 'exploded' }], '2026-07-28');
-  assert.ok(days['2026-07-28'].tasks['p/fresh']);
-  assert.equal(days['2026-06-01'], undefined);
-  assert.equal(days['2026-07-28'].tasks['p/t'], undefined, 'an outcome word the fold does not know mints no counter');
+  foldQueueOutcomes(days, prior, [closed('2026-08-20', 't', 'done', 'p')], '2026-08-20');
+  assert.equal(days['2026-08-20'].queue['p/t'].done, 3, 'appended, never recomputed');
+  assert.equal(days['2026-06-01'], undefined, 'past the day window, its week row carries it now');
 });
 
-test('foldUsage folds task rows into the closing day\'s week, and carries the run watermark', () => {
-  const first = foldUsage({
-    files: [], prior: {}, today: '2026-07-29',
-    taskRuns: [runOf('2026-07-28', 'usage-fold', 'code-work'), runOf('2026-07-29', 'usage-fold', 'agent')],
-    runsFoldedThrough: '2026-07-29T04:44:00Z',
-  });
-  assert.equal(first.runsFoldedThrough, '2026-07-29T04:44:00Z');
-  assert.equal(first.weeks['2026-W31'].tasks['claudinite-growth/usage-fold']['code-work'], 1,
-    'the day that closed carried its task counts into its week');
-  assert.equal(first.weeks['2026-W31'].tasks['claudinite-growth/usage-fold'].agent, 0,
-    'today is not folded — its runs are still arriving');
+test('the queue vocabulary matches what the engine\'s own decoder can return', () => {
+  // The drift guard for a vocabulary this pack spells rather than imports (see
+  // usage-format.mjs for why it cannot import it). Drive the REAL decoder over every
+  // outcome label the queue writes, plus an item wearing none, and demand that the
+  // words that come back are exactly the ones the counter rows are keyed by.
+  const words = new Set([
+    outcomeOf({ labels: [] }) ?? 'none',
+    ...[OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE].map((l) => outcomeOf({ labels: [{ name: l }] }) ?? 'none'),
+  ]);
+  assert.deepEqual([...words].sort(), [...QUEUE_OUTCOMES].sort());
+});
 
-  // A run that read no new records leaves both the counts and the watermark alone.
-  const second = foldUsage({ files: [], prior: first, today: '2026-07-29', taskRuns: [], runsFoldedThrough: null });
-  assert.equal(second.runsFoldedThrough, '2026-07-29T04:44:00Z');
-  assert.deepEqual(second.days['2026-07-29'].tasks, first.days['2026-07-29'].tasks);
-  assert.equal(second.weeks['2026-W31'].tasks['claudinite-growth/usage-fold']['code-work'], 1,
+// --- the hour tier ----------------------------------------------------------------
+
+test('foldHours counts runs by workflow and sessions by their capture stamp', () => {
+  const hours = foldHours({
+    prior: {},
+    runs: [
+      { startedAt: '2026-08-21T10:03:00Z', workflow: 'scheduler', conclusion: 'success', id: 1 },
+      { startedAt: '2026-08-21T10:41:00Z', workflow: 'executor', conclusion: 'failure', id: 2 },
+      { startedAt: '2026-08-21T11:03:00Z', workflow: 'scheduler', conclusion: 'success', id: 3 },
+    ],
+    captureHours: { '2026-08-21T10': { agentic: 2, taskExec: { 'p/t': { success: 1, failed: 0, 'task-gone': 0, invalid: 0 } } } },
+    now: '2026-08-21T11:30:00Z',
+  });
+  assert.deepEqual(hours['2026-08-21T10'], {
+    scheduler: 1, executor: 1, agentic: 2, failed: 1,
+    taskExec: { 'p/t': { success: 1, failed: 0, 'task-gone': 0, invalid: 0 } },
+  });
+  assert.deepEqual(hours['2026-08-21T11'], { scheduler: 1, executor: 0, agentic: 0, failed: 0, taskExec: {} });
+});
+
+test('foldHours appends run counts onto prior rows but OVERWRITES the recomputed ones', () => {
+  // The two sources meet in one row on different clocks: the runs are read once past a
+  // watermark, the capture-derived counts are recomputed from scratch every fold. If
+  // the second were added rather than set, every fold would double it.
+  const prior = { '2026-08-21T10': { scheduler: 1, executor: 0, agentic: 2, failed: 0, taskExec: { 'p/t': { success: 1 } } } };
+  const hours = foldHours({
+    prior,
+    runs: [{ startedAt: '2026-08-21T10:41:00Z', workflow: 'executor', conclusion: 'success', id: 2 }],
+    captureHours: { '2026-08-21T10': { agentic: 2, taskExec: { 'p/t': { success: 1, failed: 0, 'task-gone': 0, invalid: 0 } } } },
+    now: '2026-08-21T11:30:00Z',
+  });
+  assert.equal(hours['2026-08-21T10'].scheduler, 1, 'carried forward');
+  assert.equal(hours['2026-08-21T10'].executor, 1, 'appended');
+  assert.equal(hours['2026-08-21T10'].agentic, 2, 'recomputed, not doubled');
+  assert.equal(hours['2026-08-21T10'].taskExec['p/t'].success, 1, 'recomputed, not doubled');
+});
+
+test('foldHours keeps three days of rows and drops everything older', () => {
+  const now = '2026-08-21T11:30:00Z';
+  assert.ok(withinHourWindow('2026-08-21T11', now), 'this hour');
+  assert.ok(withinHourWindow('2026-08-18T12', now), 'the far edge of the window');
+  assert.ok(!withinHourWindow('2026-08-18T11', now), 'one hour past it');
+  assert.ok(!withinHourWindow('2026-08-21T12', now), 'a future hour is not this fold\'s to write');
+
+  const hours = foldHours({
+    prior: { '2026-08-10T04': { scheduler: 9, executor: 0, agentic: 0, failed: 0, taskExec: {} } },
+    runs: [{ startedAt: '2026-08-10T05:00:00Z', workflow: 'scheduler', conclusion: 'success', id: 1 }],
+    captureHours: {},
+    now,
+  });
+  assert.deepEqual(Object.keys(hours), [], 'nothing inside the window, so nothing written');
+});
+
+test('captureHours files each session under the hour its capture name stamps', () => {
+  const file = (stamp, sessionId, exec = {}) => ({
+    date: stamp.slice(0, 10), stamp, issue: 1, sessionId,
+    counts: { userMessages: 0, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: exec },
+  });
+  const hours = captureHours([
+    file('2026-08-21T10:03:00Z', 's1', { 'p/t': { success: 1, failed: 0, 'task-gone': 0, invalid: 0 } }),
+    file('2026-08-21T10:44:00Z', 's1'),                    // the same session's tail capture
+    file('2026-08-21T10:55:00Z', 's2'),
+    file('2026-08-21T11:02:00Z', 's3'),
+  ]);
+  assert.equal(hours['2026-08-21T10'].agentic, 2, 'distinct sessions, not capture files');
+  assert.equal(hours['2026-08-21T10'].taskExec['p/t'].success, 1);
+  assert.equal(hours['2026-08-21T11'].agentic, 1);
+});
+
+// --- the whole fold ---------------------------------------------------------------
+
+test('foldUsage carries every watermark, and the stamp it was handed', () => {
+  const first = foldUsage({
+    files: [], prior: {}, today: '2026-08-21', now: '2026-08-21T11:00:00Z', generated: '2026-08-21T11:00:00Z',
+    runs: [{ startedAt: '2026-08-21T10:03:00Z', workflow: 'scheduler', conclusion: 'success', id: 1 }],
+    runsFoldedThrough: '2026-08-21T10:03:00Z',
+    queueRecords: [closed('2026-08-20', 'usage-fold', 'done')],
+    queueFoldedThrough: '2026-08-20T22:00:00Z',
+  });
+  assert.equal(first.generated, '2026-08-21T11:00:00Z');
+  assert.equal(first.runsFoldedThrough, '2026-08-21T10:03:00Z');
+  assert.equal(first.queueFoldedThrough, '2026-08-20T22:00:00Z');
+  assert.equal(first.weeks['2026-W34'].queue['claudinite-growth/usage-fold'].done, 1,
+    'the day that closed carried its queue outcomes into its week');
+
+  // A fold that read nothing new leaves both marks and both sets of counts alone.
+  const second = foldUsage({
+    files: [], prior: first, today: '2026-08-21', now: '2026-08-21T12:00:00Z', generated: '2026-08-21T12:00:00Z',
+  });
+  assert.equal(second.runsFoldedThrough, '2026-08-21T10:03:00Z');
+  assert.equal(second.queueFoldedThrough, '2026-08-20T22:00:00Z');
+  assert.deepEqual(second.days['2026-08-20'].queue, first.days['2026-08-20'].queue);
+  assert.equal(second.weeks['2026-W34'].queue['claudinite-growth/usage-fold'].done, 1,
     'and the closed week is not folded a second time');
 });
 
-test('addDayToWeek extends a week folded BEFORE task invocations were counted', () => {
-  const old = { days: 3, captures: 6, merges: 5, sessionDays: 4, userMessages: 50, userCommands: 2, skillLoads: {} };
-  const week = addDayToWeek(old, {
-    captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0, skillLoads: {},
-    tasks: { 'p/t': { agent: 1, 'code-work': 0, skipped: 0, failed: 0, deferred: 0 } },
-  });
-  assert.equal(week.tasks['p/t'].agent, 1);
-  assert.equal(week.days, 4);
+test('foldUsage drops day rows past the day window', () => {
+  const prior = { days: { '2026-06-01': { captures: 1, tasks: {}, queue: {} } }, weeks: {}, foldedThrough: '2026-06-01' };
+  const folded = foldUsage({ files: [], prior, today: '2026-08-21', now: '2026-08-21T11:00:00Z' });
+  assert.equal(folded.days['2026-06-01'], undefined);
+});
+
+// --- the retired census -----------------------------------------------------------
+
+test('carryTaskRuns ages the slot scheduler\'s rows out and appends nothing', () => {
+  // Nothing writes these any more (#974) and the reader that did is gone. What is left
+  // is the ageing-out, which must not lose a row early or keep one forever.
+  const prior = {
+    '2026-07-28': { tasks: { 'p/fresh': { agent: 1 } } },
+    '2026-06-01': { tasks: { 'p/ancient': { agent: 9 } } },
+  };
+  const days = {};
+  carryTaskRuns(days, prior, '2026-07-28');
+  assert.deepEqual(days['2026-07-28'].tasks['p/fresh'], { agent: 1 });
+  assert.equal(days['2026-06-01'], undefined);
 });
 
 test('withinTaskWindow keeps the last 14 days and nothing older', () => {
@@ -752,7 +959,12 @@ test('the first fold after the upgrade rewrites the whole file, losing nothing',
   assert.equal(written.version, USAGE_VERSION);
   assert.equal(written.foldedThrough, v1.foldedThrough, 'the day watermark does not move');
   assert.equal(written.runsFoldedThrough, v1.runsFoldedThrough, 'nor the run watermark');
-  assert.deepEqual(back.weeks, v1.weeks, 'every frozen week row survives the conversion intact');
+  // Every frozen week row survives intact. `queue` is the one addition: a group map
+  // always decodes present-and-empty, and an empty one carries nothing a reader cannot
+  // derive — the row's own numbers are untouched.
+  assert.deepEqual(back.weeks, {
+    '2026-W30': { ...v1.weeks['2026-W30'], queue: {} },
+  });
   // The day tier behaves exactly as it does on any other run — nothing about the
   // conversion is special. The capture-derived counters recompute from the live files
   // (none here), and the scheduler's task rows are carried forward on their own window,

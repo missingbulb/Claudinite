@@ -237,34 +237,49 @@ test('growth-dedup: a local-pack change in the window fires it; a quiet repo doe
 
 // --- usage-fold (the skill-usage aggregate) ----------------------------------
 
-test('usage-fold: daily/agentless/merged-pr, on the conversationLogs signal alone', () => {
+test('usage-fold: hourly/agentless/merged-pr, on the two movement signals', () => {
   assert.equal(usageFold.id, 'usage-fold');
-  assert.equal(usageFold.frequency, 'daily');
+  // Hourly because the file it writes is the dashboard's whole past-data plane: its
+  // freshness is the page's. What keeps that from being hourly noise is the
+  // precondition below, not a slower clock.
+  assert.equal(usageFold.frequency, 'hourly');
   assert.equal(usageFold.agent_model, 'none');
   assert.equal(usageFold.expected_outcome, 'merged-pr');
-  assert.deepEqual(usageFold.precondition_signals, ['conversationLogs']);
+  assert.deepEqual(usageFold.precondition_signals, ['commits', 'conversationLogs']);
   // An agentless task's whole work is its preprocessing — with none it does nothing.
   assert.equal(usageFold.code_work, 'node worker.mjs');
   assert.ok(usageFold.code_work_timeout > 0);
 });
 
-test('usage-fold: a logs branch is the whole precondition — it runs on a quiet repo too', () => {
-  // Deliberately NOT gated on fresh captures: advancing the week watermark past days
-  // that have closed is work a quiet repo still needs done, and a run with nothing
-  // new recomputes to a byte-identical file and opens no PR.
-  const quiet = usageFold.precondition({ conversationLogs: { present: true, logCount: 4 } });
-  assert.equal(quiet.run, true);
-  assert.match(quiet.reason, /fold 4 captured log/);
+test('usage-fold: a commit or a captured session in the window is what runs it', () => {
+  const commit = usageFold.precondition({ commits: { count: 2 }, conversationLogs: { newestLogAgeDays: 5 } });
+  assert.equal(commit.run, true);
+  assert.match(commit.reason, /2 commit\(s\)/);
+
+  const captured = usageFold.precondition({ commits: { count: 0 }, conversationLogs: { newestLogAgeDays: 0.02 } });
+  assert.equal(captured.run, true);
+  assert.match(captured.reason, /a session captured/);
+
+  const both = usageFold.precondition({ commits: { count: 1 }, conversationLogs: { newestLogAgeDays: 0.01 } });
+  assert.match(both.reason, /and/, 'both movements are named, since the fold covers both');
 });
 
-test('usage-fold: no logs branch is no longer a skip — the scheduler run records are a second source', () => {
-  // A repo whose sessions are all unattended may never have captured anything, and it
-  // is exactly the repo whose task invocations are worth counting. The fold is agentless
-  // and converges to a byte-identical file (no PR) when there is nothing new either way.
-  const v = usageFold.precondition({ conversationLogs: { present: false } });
-  assert.equal(v.run, true);
-  assert.match(v.reason, /task-run records only/);
-  assert.equal(usageFold.precondition({}).run, true, 'and a missing signal does not wedge it either');
+test('usage-fold: a quiet hour declines, and loses nothing by it', () => {
+  // The whole reason an hourly fold is affordable. The run and queue reads are
+  // watermarked, so declining defers them rather than dropping them, and the dashboard
+  // tops up its freshest hours from the run listing it already fetches.
+  const quiet = usageFold.precondition({ commits: { count: 0 }, conversationLogs: { present: true, logCount: 40, newestLogAgeDays: 3 } });
+  assert.equal(quiet.run, false);
+  assert.match(quiet.reason, /nothing moved this hour/);
+});
+
+test('usage-fold: an unknown signal is not movement — and does not wedge the task', () => {
+  // `newestLogAgeDays` is null when the branch does not exist or carries no readable
+  // stamp. Unknown must not read as "a session just captured", and a missing signal
+  // must not throw: a precondition that cannot be evaluated stops the task forever.
+  assert.equal(usageFold.precondition({ conversationLogs: { present: false, newestLogAgeDays: null } }).run, false);
+  assert.equal(usageFold.precondition({}).run, false);
+  assert.doesNotThrow(() => usageFold.precondition({ commits: {}, conversationLogs: {} }));
 });
 
 // --- logs-prune (retention on the conversation-logs branch) ------------------
