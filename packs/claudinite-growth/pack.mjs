@@ -81,7 +81,12 @@ export default {
   // precondition gives when it cannot answer.
   // 60820.2: writing-tasks stops teaching the roll — a decline is a schedule-board
   // row at the anchor, and a pick-time no-go closes its item (#1115).
-  version: '60820.2',
+  // 60821.1: usage-fold becomes the dashboard's past-data plane — hourly on a
+  // movement precondition, an hour tier, the queue's own closed-item outcomes in
+  // place of the retired slot-scheduler census, and the git/rule-token/token series
+  // (#1158). The file's readers accept every earlier version, so nothing in a member
+  // has to be rewritten and there is no migration record.
+  version: '60821.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',
