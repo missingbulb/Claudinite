@@ -8,21 +8,32 @@ name: Release static site
 # repo-specific value comes from this repo's `.github/site.config` (read inside
 # those workflows), so this file is copy-verbatim in every site repo.
 #
-# Release on push: any push to main that touches the repo's declared publish set
-# cuts a release — bump the date-anchored version, tag it, deploy the site. A
-# push that touches nothing published is a clean no-op, so ordinary README and
-# tooling commits do not churn the version or redeploy an unchanged site.
+# Release on push: any push to main whose version has not been released yet cuts
+# a release — tag it, deploy the site. The version comes from the CHANGE, not
+# from here: a PR touching the published site raises it in the same PR
+# (`sw/version-bumped`), so an ordinary README or tooling commit carries the
+# version that is already out and is a clean no-op.
 #
-# The dispatch form re-runs the same pipeline by hand; `force: true` releases
-# even when nothing published changed (a rebuild after a settings fix, a first
-# deploy on a repo whose site predates the pipeline).
+# The dispatch form has two knobs, and they compose:
+#   * bump: major  — the deliberate "new generation of the site" statement, the
+#                    one version write this pipeline still performs. It pushes
+#                    the bump to main and then releases it.
+#   * force: true  — release even when the version on main is already released
+#                    (a rebuild after a settings fix, a first deploy on a repo
+#                    whose site predates the pipeline). Redeploys the existing
+#                    tag rather than cutting a second one.
 on:
   push:
     branches: [main]
   workflow_dispatch:
     inputs:
+      bump:
+        description: "Raise the version before releasing"
+        type: choice
+        options: [none, major]
+        default: none
       force:
-        description: "Release even when no published file changed"
+        description: "Release even when the version on main is already released"
         type: boolean
         default: false
 
@@ -33,9 +44,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  # Dispatch-only, and only when asked for. The push trigger never reaches it,
+  # so nothing writes a version unattended.
+  bump:
+    if: inputs.bump == 'major'
     permissions:
-      contents: write   # push the version bump, create the release
+      contents: write
+    uses: ./.github/workflows/static-site-bump-version.yml
+
+  release:
+    needs: bump
+    # `always()` so the skipped bump job (every push, and every dispatch that
+    # asked for no bump) does not skip the release with it; the explicit result
+    # test still stops a failed bump from releasing a half-written version.
+    if: always() && needs.bump.result != 'failure' && needs.bump.result != 'cancelled'
+    permissions:
+      contents: write   # create the release
       pages: write      # deploy the site
       id-token: write   # the OIDC token deploy-pages exchanges
       issues: write     # the failure reporter

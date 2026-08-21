@@ -1,6 +1,6 @@
 ---
 name: chrome-store-releases
-description: The Chrome Web Store release standard every extension repo of ours ships — the vendored release workflows and composite actions, .github/release.config, versioning and the packaged artifact, the store secrets, the README install sections, and the manual Chrome Web Store steps. Use when setting up an extension repo to publish, changing or debugging its release pipeline, or when a cer/ check fires.
+description: The Chrome Web Store release standard every extension repo of ours ships — the vendored release workflows and composite actions, .github/release.config, versioning and the packaged artifact, the store secrets, the README install sections, and the manual Chrome Web Store steps. Use when setting up an extension repo to publish, changing or debugging its release pipeline, when asked to "bump version" on an extension repo, or when a cer/ check fires.
 ---
 
 # Releasing a Chrome extension to the Web Store
@@ -10,7 +10,7 @@ Chrome Web Store API usage, same secrets, same versioning and artifact rules, sa
 sections. This skill is that contract, the setup steps for a new extension repo, and the manual
 Chrome Web Store actions the automation can't do. The workflow **logic** is authored once, in this
 pack's [`stubs/`](../../stubs/) — the [orchestrator](../../stubs/workflows/chrome-extension-release.yml), the
-four `workflow_call`-only **reusable workflows**, and the
+five `workflow_call`-only **reusable workflows**, and the
 [report-failure](../../stubs/actions/report-failure/action.yml),
 [read-release-config](../../stubs/actions/read-release-config/action.yml) and
 [bump-extension-patch](../../stubs/actions/bump-extension-patch/action.yml) composite actions — and
@@ -24,8 +24,8 @@ the copy. A repo adds only its **required** `.github/release.config` (five expli
 defaults**). A merged canon change reaches every extension repo through the nightly baselining, not
 a live `@main` reference. Everything a repo used to carry as workflow values — the version files, the
 zip location, the test gate, the shipping set, and the previously per-repo `bump`/`filter` scripts
-— is either pack logic (the bump/filter, and `npm run build`) or an explicit `release.config` key,
-so no repo ships a bump or filter script any more. Reference implementation:
+— is either pack logic (the bump, and `npm run build`) or an explicit `release.config` key, so no
+repo ships a bump or filter script any more. Reference implementation:
 `missingbulb/GoogleCalendarEventCreator`; also adopted by `TLDR` and `CrosswordChat`.
 
 Naming in the flat `.github/workflows/` namespace: Chrome-specific logic carries the
@@ -40,11 +40,20 @@ general names so other standards reuse them as-is. When in doubt, prefix.
 - The extension manifest's `version` (`X.Y.Z`) is the single source of truth. The extension's
   `package.json` `version` must equal it, enforced by a CI-run guard (a unit test or an inline
   workflow check — the repo picks the mechanism, the invariant is fixed).
-- Minor/major bumps are deliberate and human: **"bump version"** = edit the manifest and
-  `package.json` (plus any repo version-sync constant) together on a branch — default the next
-  **minor** — and land on `main` via a normal PR. Merging the bump *is* cutting the release.
-- Patch bumps belong to the daily auto-release. No workflow other than the daily bump ever
-  changes the version; "Release: Create Package" never does.
+- **The bump belongs to the change, not to the pipeline.** A change that touches a shipped file
+  (anything under the repo's `ship_paths`) raises the **patch** in the same PR, across the manifest
+  and `package.json` together. `cer/version-bumped` is what holds that line, and
+  `node .github/actions/bump-extension-patch/bump.mjs <manifest_path> <package_json_path>` is what
+  writes it. Merging that PR *is* cutting the release. A change that ships nothing — a README, a
+  test, a workflow — needs no bump and cuts no release.
+- **Minor and major are deliberate, and belong to no single change**, so they are the one bump the
+  pipeline still performs: dispatch **Release to Chrome Store** with `mode: bump` and `part:
+  minor|major`, which raises the version, pushes it to `main` and packages the result. **"bump
+  version"** means that dispatch, or the same edit by hand on a branch.
+- **No workflow writes a version on its own.** The daily run and "Release: Create Package" alike
+  ship whatever version is on `main`, and no-op when it has already been released. So a shipped
+  change that forgot its bump is never released — which is the failure `cer/version-bumped` exists
+  to catch on the PR instead.
 
 **Artifact**
 
@@ -77,7 +86,8 @@ orchestrator's `name:` — so collapsing to one entry point loses no per-operati
 |---|---|
 | `create-package` (push to `main`; dispatch `mode: package`) | `chrome-extension-create-package.yml` — version guard (a clean no-op unless the manifest version was bumped, so ordinary pushes don't cut a release) → full test gate → build the dev headline `<zip>` + the prod `<zip>-prod.zip` → GitHub Release |
 | `publish` (dispatch `mode: publish` — the default — with `tag`, `auto_publish`) | `chrome-extension-publish-store.yml` — download the prod `<zip>-prod.zip` (falls back to `<zip>` for pre-split releases) → upload via the store API (publish to users unless `auto_publish: false` → dashboard draft) → refresh the `/privacy/` page (via the `deploy-privacy-page.yml` reusable) |
-| `daily` (schedule `30 0 * * *`; dispatch `mode: daily`) | `chrome-extension-daily-release.yml` — shipped-file diff vs the latest release tag → patch bump pushed to `main` → calls the two reusable workflows above |
+| `daily` (schedule `30 0 * * *`; dispatch `mode: daily`) | `chrome-extension-daily-release.yml` — has the version on `main` been released yet? → if not, calls the two reusable workflows above on `main`'s tip |
+| `bump` (dispatch `mode: bump` with `part: minor\|major`) | `chrome-extension-bump-version.yml` — raise the minor or major across the manifest + `package.json`, push it to `main`, then `create-package` on that commit |
 
 The `create-package` job triggers on **every** push to `main` (no per-repo manifest path in the
 trigger) and relies on the version guard to no-op unless a bump landed. The privacy page has **no
@@ -111,18 +121,22 @@ called by the publish reusable — a repo never dispatches it directly.
   it, so the newest failure is always the single open bug to triage. Repos no longer carry a
   `report-failure.yml`; a repo's own non-standard unattended workflows use the vendored action
   directly (`uses: ./.github/actions/report-failure`).
-- Daily auto-release semantics: the baseline is the **latest release tag**, not a 24-hour window
-  (self-healing after a failed day); "deployable" = a change under one of the repo's explicit
-  `ship_paths` roots; the patch bump is pushed straight to `main` (`[skip ci]`)
-  because the store rejects a version that isn't strictly higher; release + publish are invoked via
-  `workflow_call` because a `GITHUB_TOKEN` push triggers no workflows. Days with no shipped-file
-  change are a clean no-op.
-- The patch bump and the shipped-file filter are **pack logic**, not per-repo scripts: the bump is
-  the `bump-extension-patch` composite action (token-replaces the version in `manifest_path` +
-  `package_json_path`), and the filter is a `ship_paths` prefix match in the daily workflow. Both,
-  and the `read-release-config` action, are dependency-free and run on a bare runner (no `npm ci`).
-  A repo whose shipping set is a curated subset (not a whole directory) lists it in `ship_paths` and
-  keeps its build's own ship-set test honest against that list.
+- Daily auto-release semantics: it asks the **release list**, not a file diff — has the version
+  currently on `main` been released? That is self-healing by construction (a failed day retries the
+  next with nothing to undo, and a day whose merges shipped nothing carries the version that is
+  already out and no-ops), and it leaves no window in which the pipeline and the repo disagree about
+  what the current version is. Release + publish are invoked via `workflow_call` because a
+  `GITHUB_TOKEN` push triggers no workflows.
+- `ship_paths` is what `cer/version-bumped` reads to decide whether a change owed a bump, so the
+  declaration that used to be the daily filter is now the check's scope — one statement of what
+  ships, read on the PR instead of a day later. A repo whose shipping set is a curated subset (not a
+  whole directory) lists it there and keeps its build's own ship-set test honest against that list.
+- The bump is **pack logic**, not a per-repo script: the `bump-extension-patch` composite action
+  (token-replaces the version in `manifest_path` + `package_json_path`; `part` selects patch, minor
+  or major, and `--print` reads the current one). It, and the `read-release-config` action, are
+  dependency-free and run on a bare runner (no `npm ci`). The directory keeps its older
+  `bump-extension-patch` name because it is vendored into every extension repo, where a rename would
+  strand the old copy.
 - Until the four store secrets exist, the publish leg fails **loudly** (a fail-early step lists
   the missing names, and the tracking issue nags) — that is the designed state for a repo that
   hasn't finished its first manual publication; releases and zips still work.
@@ -165,8 +179,8 @@ Chromium); what's fixed is that every asset is reproducible from the repo.
 
 **Layout** — release machinery lives in `dev/build/release/`: the zip builder + shipping-set
 module (with its test), and `store_artifacts/` (`PRIVACY.md`, listing screenshots, icon/asset
-generators). The patch-bumper and shipped-paths filter that used to live here are **gone** — they
-are pack logic now (vendored). No per-repo release doc: the concrete names and paths live in
+generators). No per-repo bumper or shipped-paths filter: the bump is vendored pack logic, and
+`ship_paths` in `.github/release.config` is the one statement of what ships. No per-repo release doc: the concrete names and paths live in
 `manifest.json`/`package.json` and the required `.github/release.config`, and the shared procedure
 lives once, in this guide — a repo copy would only drift from it.
 
@@ -188,9 +202,9 @@ Or load the latest development build:
 
 ## Releasing
 
-The version users see is [`<manifest path>`](<manifest path>)'s `version`. Merging a version
-bump to `main` cuts GitHub Release `vX.Y.Z` with `<zip>` attached, and the daily auto-release
-ships shipped-file changes to the Chrome Web Store on its own (patch-bumping as needed).
+The version users see is [`<manifest path>`](<manifest path>)'s `version`. A change that touches a
+shipped file raises it in the same PR; merging that PR cuts GitHub Release `vX.Y.Z` with `<zip>`
+attached, and the daily auto-release ships that version to the Chrome Web Store on its own.
 ```
 
 Until the extension's first store publication, replace the store line with:
@@ -215,8 +229,8 @@ in the repo's first-publication issue).*
    only vendored file a repo edits) and set the matching repository **variables** (see step 5).
 2. Create `dev/build/release/` — zip builder + shipping-set module (with its test) and
    `store_artifacts/` with `PRIVACY.md` and the icon/asset generators — adapting from the reference
-   repo's `dev/build/release/`. **No** per-repo patch-bumper or shipped-paths filter (those are
-   vendored pack logic now); a curated shipping set is expressed as `ship_paths` in `release.config`, kept honest
+   repo's `dev/build/release/`. **No** per-repo bumper or shipped-paths filter (the bump is
+   vendored pack logic); a curated shipping set is expressed as `ship_paths` in `release.config`, kept honest
    against the build by the repo's own ship-set test. No `releasing.md` and no `STORE-LISTING.md`:
    the release procedure lives in this guide, and the listing copy / permission justifications are
    dashboard state (above).
@@ -277,7 +291,7 @@ extension; the upstream reference is
 5. Submit for review — approval takes hours to a few days (`ITEM_PENDING_REVIEW` = success).
    While the item is **pending review the API rejects uploads** — hold the pipeline dry run
    until the first review completes. Every subsequent upload must carry a **strictly higher**
-   version, which is why the pipeline always bumps before it ships; a "version must be
+   version, which is why every shipped change raises one (`cer/version-bumped`); a "version must be
    greater" rejection on a dry run is a **pass** — it proves the credential wiring works
    end to end.
 
@@ -335,11 +349,14 @@ default because it assumes nothing about the operator's machine.
 
 ### Routine shipping
 
-- Nothing to do for accumulated work: the daily auto-release ships any day whose merges touched
-  shipped files, on its own patch bump.
-- A deliberate release now: **"bump version"** (default minor) → merge the PR (that cuts the
-  GitHub Release) → run the **Release** workflow with **mode: publish** from its dispatch page,
+- Nothing to do for accumulated work: each shipped change landed with its own patch bump, so the
+  daily auto-release ships whatever version is on `main` the moment it is not yet released.
+- A deliberate release now: merge the shipped change (which carries its bump, and cutting the
+  GitHub Release is what merging it does) → run **Release to Chrome Store** with **mode: publish**
+  from its dispatch page,
   `https://github.com/<owner>/<repo>/actions/workflows/chrome-extension-release.yml` (blank tag = latest release).
+- A new feature set or a new generation: **"bump version"** — the same workflow with **mode: bump**
+  and `part: minor|major`, which raises it, pushes it and packages the result.
 - Once the store approves, Chrome auto-pushes the update to installed users within hours — no
   reinstall.
 
@@ -355,8 +372,9 @@ default because it assumes nothing about the operator's machine.
 - **Upload rejected while `ITEM_PENDING_REVIEW`** — the API can't upload while a review is in
   flight; wait for the review to complete, then re-run.
 - **"version must be greater" than the live one** — expected whenever the zip's version isn't
-  strictly higher; on a credentials dry run this is success, otherwise let the daily bump (or
-  "bump version") raise it first.
+  strictly higher; on a credentials dry run this is success. Otherwise the version on `main` is one
+  the store already has: the change that needed shipping never raised it, so raise it in a PR (or
+  dispatch `mode: bump`) rather than re-running the publish.
 
 ### When a change touches the extension's permissions
 

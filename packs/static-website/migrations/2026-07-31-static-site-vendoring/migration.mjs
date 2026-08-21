@@ -35,10 +35,12 @@ export default {
   materialize: [
     { template: `${S}/workflows/static-site-release.yml`, dest: STUB },
     { template: `${S}/workflows/static-site-publish.yml`, dest: '.github/workflows/static-site-publish.yml' },
+    { template: `${S}/workflows/static-site-bump-version.yml`, dest: '.github/workflows/static-site-bump-version.yml' },
     { template: `${S}/workflows/static-site-deploy-pages.yml`, dest: '.github/workflows/static-site-deploy-pages.yml' },
     { template: `${S}/workflows/static-site-ci.yml`, dest: '.github/workflows/static-site-ci.yml' },
     { template: `${S}/actions/read-site-config/action.yml`, dest: '.github/actions/read-site-config/action.yml' },
     { template: `${S}/actions/read-site-config/read-config.mjs`, dest: '.github/actions/read-site-config/read-config.mjs' },
+    { template: `${S}/actions/read-site-config/export-build-vars.mjs`, dest: '.github/actions/read-site-config/export-build-vars.mjs' },
     { template: `${S}/actions/bump-site-version/action.yml`, dest: '.github/actions/bump-site-version/action.yml' },
     { template: `${S}/actions/bump-site-version/bump.mjs`, dest: '.github/actions/bump-site-version/bump.mjs' },
     { template: `${S}/actions/assemble-site/action.yml`, dest: '.github/actions/assemble-site/action.yml' },

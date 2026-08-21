@@ -37,11 +37,13 @@ export const LEGACY_CREATE_PACKAGE = 'chrome-extension-release.yml';
 // Its vendored filename (renamed to avoid colliding with the orchestrator).
 export const VENDORED_CREATE_PACKAGE = 'chrome-extension-create-package.yml';
 
-// The three reusable workflows the orchestrator calls locally.
+// The reusable workflows the orchestrator calls locally.
+export const BUMP_CALL = 'chrome-extension-bump-version.yml';
 export const ORCHESTRATOR_CALLS = [
   VENDORED_CREATE_PACKAGE,
   'chrome-extension-publish-store.yml',
   'chrome-extension-daily-release.yml',
+  BUMP_CALL,
 ];
 // Every reusable workflow that must be vendored under .github/workflows/ (the
 // three the orchestrator calls, plus the privacy-page reusable the publish one

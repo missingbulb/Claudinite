@@ -1,0 +1,64 @@
+name: "Static site: Bump version (reusable)"
+
+# The DELIBERATE version bump, vendored from the static-website pack into the
+# repo's own .github/. workflow_call ONLY — the `static-site-release.yml`
+# orchestrator owns the trigger.
+#
+# This is the pipeline's ONLY write to a version, and it is never automatic. The
+# routine bump belongs to the change that earned it: a PR touching the published
+# site raises the version in the same PR, and `sw/version-bumped` is what holds
+# that line. What is left over is the generation statement — "this is a new site"
+# — which belongs to no single change, so a human dispatches it here.
+#
+# The date-anchored scheme has no minor: `<major>.<ymmdd>.<n>` computes its last
+# two parts, so the major is the only part anyone chooses. Raising it restarts
+# the day counter at today.
+#
+# The bump is pushed to main with GITHUB_TOKEN, which fires no workflow — hence
+# the orchestrator running the release explicitly after this rather than relying
+# on the push trigger.
+#
+# The caller must grant `permissions: contents: write`.
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: The version after the bump
+        value: ${{ jobs.bump.outputs.version }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The branch tip as of now. If main moves before the push below it
+          # fails non-fast-forward — a loud red, and nothing has been released
+          # off a half-written version.
+          ref: main
+
+      - id: cfg
+        uses: ./.github/actions/read-site-config
+
+      - id: bump
+        uses: ./.github/actions/bump-site-version
+        with:
+          version_files: ${{ steps.cfg.outputs.version_files }}
+          major: "true"
+
+      - name: Push the bump to main
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Bump the site to v${{ steps.bump.outputs.version }} [skip ci]"
+          git push origin HEAD:main
+          echo "Bumped to v${{ steps.bump.outputs.version }}." >> "$GITHUB_STEP_SUMMARY"

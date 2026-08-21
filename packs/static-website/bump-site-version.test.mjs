@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  BumpError, VERSION_RE, bump, nextVersion, readVersion, rewrite, ymmdd,
+  BumpError, VERSION_RE, bump, compare, nextVersion, readVersion, rewrite, ymmdd,
 } from '../../packs/static-website/stubs/actions/bump-site-version/bump.mjs';
 
 const utc = (iso) => new Date(`${iso}T12:00:00Z`);
@@ -103,4 +103,22 @@ test('bump: writes every record together, and writes none when one is invalid', 
     write: (f, text) => { late[f] = text; },
   }), BumpError);
   assert.deepEqual(late, {}, 'a validation failure must not leave a half-bumped tree');
+});
+
+test('nextVersion: the deliberate major raise restarts the day counter at today', () => {
+  assert.equal(nextVersion('1.60821.4', utc('2026-08-21'), { major: true }), '2.60821.1');
+  // Strictly greater even when the current version is dated ahead of today, which
+  // the ordinary path refuses outright.
+  assert.equal(nextVersion('1.60822.1', utc('2026-08-21'), { major: true }), '2.60821.1');
+});
+
+test('compare: the scheme ordering runs major, then the day, then the counter', () => {
+  assert.equal(compare('1.60821.2', '1.60821.1'), 1);
+  assert.equal(compare('1.60821.1', '1.60822.1'), -1);
+  assert.equal(compare('2.60101.1', '1.91231.9'), 1);
+  assert.equal(compare('1.60821.1', '1.60821.1'), 0);
+});
+
+test('compare: an off-scheme version has no place in the ordering', () => {
+  assert.throws(() => compare('1.2.3', '1.60821.1'), BumpError);
 });

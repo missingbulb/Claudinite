@@ -31,7 +31,7 @@ const MANIFEST = JSON.stringify({
 const PRIVACY = 'We use storage to save settings locally, and connect to https://e.com/* to fetch data.\n';
 
 // The VENDORED orchestrator: named "Release to Chrome Store", scheduled at the
-// contract cron, calling the three LOCAL reusable workflows this repo carries in
+// contract cron, calling the four LOCAL reusable workflows this repo carries in
 // its own .github/. No tokens, no cross-repo @main reference.
 const ORCHESTRATOR = [
   'name: Release to Chrome Store',
@@ -44,7 +44,7 @@ const ORCHESTRATOR = [
   '    inputs:',
   '      mode:',
   '        type: choice',
-  '        options: [publish, package, daily]',
+  '        options: [publish, package, daily, bump]',
   '        default: publish',
   'permissions:',
   '  contents: write',
@@ -60,10 +60,12 @@ const ORCHESTRATOR = [
   '  daily:',
   '    uses: ./.github/workflows/chrome-extension-daily-release.yml',
   '    secrets: inherit',
+  '  bump:',
+  '    uses: ./.github/workflows/chrome-extension-bump-version.yml',
   '',
 ].join('\n');
 
-// The pre-vendoring orchestrator: same triggers, but the three jobs call
+// The pre-vendoring orchestrator: same triggers, but the release jobs call
 // Claudinite's core reusable workflows @main. This is the legacy shape the
 // chrome-release-vendoring migration tolerates while it rolls out.
 const LEGACY_ORCHESTRATOR = ORCHESTRATOR
@@ -82,9 +84,10 @@ const VENDORED = {
   '.github/workflows/chrome-extension-create-package.yml': WF('Chrome extension: Create Package (reusable)'),
   '.github/workflows/chrome-extension-publish-store.yml': WF('Chrome extension: Publish to Chrome Web Store (reusable)'),
   '.github/workflows/chrome-extension-daily-release.yml': WF('Chrome extension: Daily Auto-Release (reusable)'),
+  '.github/workflows/chrome-extension-bump-version.yml': WF('Chrome extension: Bump version (reusable)'),
   '.github/workflows/deploy-privacy-page.yml': WF('Deploy privacy policy to GitHub Pages (reusable)'),
   '.github/actions/read-release-config/action.yml': ACT('Read release config'),
-  '.github/actions/bump-extension-patch/action.yml': ACT('Bump extension patch version'),
+  '.github/actions/bump-extension-patch/action.yml': ACT('Bump extension version'),
   '.github/actions/report-failure/action.yml': ACT('Report workflow failure'),
 };
 
@@ -416,6 +419,7 @@ test('shipping gate: the scheduler signal answers what the pack rules answer', a
     ['the canon, hosting the reusables it does not publish from', {
       '.github/workflows/chrome-extension-publish-store.yml': WF('Chrome extension: Publish to Chrome Web Store (reusable)'),
       '.github/workflows/chrome-extension-daily-release.yml': WF('Chrome extension: Daily Auto-Release (reusable)'),
+  '.github/workflows/chrome-extension-bump-version.yml': WF('Chrome extension: Bump version (reusable)'),
     }, false],
     ['a repo that only codes an extension', { 'extension/manifest.json': MANIFEST }, false],
   ];
