@@ -119,6 +119,17 @@ lesson at the strongest mechanism available — a check where the rule is determ
   the head sha's check runs with the GitHub MCP tool instead. Poll it on a rolling backoff, or
   not at all when a background watcher already reports that signal.
 
+- **A vendored engine script 401ing when you run it from a session shell** — `GITHUB_TOKEN` here
+  is the literal string `proxy-injected`; the real credential is swapped in by the agent proxy,
+  which `curl` picks up from `HTTPS_PROXY` and Node's `fetch` ignores. `NODE_USE_ENV_PROXY=1`
+  routes Node through it. Clearing the 401 does not buy a working script, though: the next answer
+  is a 403 `"GitHub access is not enabled for this session"` on every `/repos/...` endpoint, read
+  or write, in-scope or not — only `/user` succeeds — and that one is the proxy refusing, not
+  fixable from the shell. So read the two apart: 401 is your process bypassing the proxy, 403 is
+  the answer. What the vendored code is still good for is the pure half — generate the exact
+  artifact with the repo's own module (`work-item.mjs`'s title and body) and post it with the MCP
+  tool (#1175).
+
 - **Writing a step a human must do by hand into an issue** — when asking for a manual action,
   make absolutely sure it is needed: a checklist whose items are mostly no-ops teaches the reader
   to skim it, exactly what the checklist exists to prevent. Make the breadcrumb trail a
