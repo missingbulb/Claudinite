@@ -10,8 +10,10 @@ lesson at the strongest mechanism available — a check where the rule is determ
   `barriers` pack, extending it generically if a capability is missing. Never write standalone
   code that checks packs-tree segregation.
 
-- **Writing a `docs/<initiative>/DESIGN.md`** — the mechanism only. Status, phase tracking and
-  remaining work live in the tracking issue; a phased plan in the sibling `MIGRATION.md`.
+- **Writing a `docs/<initiative>/DESIGN.md`** — the end state and its rationale only, with
+  alternatives and their drawbacks; never requests, prior-state narrative, or owner opinions.
+  The migration is work, not a document: its phased plan, status and remaining work live in the
+  tracking issue (`writing-migration-plans`), never in a sibling `MIGRATION.md`.
 
 - **Ending a session on unfinished work** — write the state into the tracking issue. The
   owner's opener is `continue work on #<n>`, so anything else is lost; never compose a hand-off

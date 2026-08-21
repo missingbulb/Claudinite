@@ -1,6 +1,6 @@
 ---
 name: writing-migration-plans
-description: How to order the phases of an implementation or migration plan so nothing stalls mid-run — front-load the out-of-band setup, collapse the review gates into one stacked-PR pass, leave only executable steps — and how to keep its tracking issue append-only while implementing. Use when writing or reviewing a migration plan or a phased implementation plan, and when working through one's tracking issue.
+description: Where a plan and a design live, and how to order a plan's phases so nothing stalls mid-run — the plan is a tracking issue (never a plan document in the repo), the design doc carries only the end state with rationale and alternatives; front-load the out-of-band setup, collapse the review gates into one stacked-PR pass, leave only executable steps, and keep the tracking issue append-only while implementing. Use BEFORE writing any DESIGN.md, migration plan, phased implementation plan, rollout or cutover plan — including the moment you are about to create a docs/<initiative>/ file — and when working through a plan's tracking issue.
 ---
 
 # Writing migration and implementation plans
@@ -14,6 +14,25 @@ Everything below assumes the change is already agreed: the problem, and that thi
 right way to solve it (basics' *Starting any requested change*). The end-state's **shape** —
 converging in one forced pass, accepting legacy input at the door, a standing mechanism for
 stragglers — is [RULES.md](../../RULES.md)' *Planning a migration*; this skill is the ordering.
+
+## Two deliverables, two homes — and only two
+
+An initiative produces at most one document and one issue, and neither may do the
+other's job:
+
+- **The design doc** (`docs/<initiative>/DESIGN.md`, where the project keeps one)
+  describes the **end state and its rationale** — what the mechanism is once the
+  work is done, and why that shape over the alternatives, with each alternative's
+  drawbacks stated. It never carries the previous state as narrative, the requests
+  or conversation that led here, owner attributions or opinions, progress, or a
+  phase list. The test: a reader who arrives after the migration finishes must
+  find nothing to delete. Legacy shapes appear only where the end state itself
+  keeps handling them (a decode map, an accepted input) — as mechanism, not as
+  history.
+- **The migration is work, not a document.** Its plan lives in the tracking issue
+  and nowhere else — never a plan or migration document committed to the repo. A
+  plan document goes stale the moment work starts and cannot be checked off; the
+  issue is checkable, append-only, and dies with the work.
 
 ## The three blocks, and where each belongs
 
