@@ -8,6 +8,8 @@ This table is the canon maintainer's view. The catalog **consumers** receive is
 [`directory.GENERATED.md`](directory.GENERATED.md) — rendered from the pack manifests by its drift
 test (`engine-tests/pack-directory.test.mjs`, which regenerates it locally and asserts it in CI) and
 vendored into every mount regardless of declaration, so a member session can see what it could adopt.
+A pack that is not adoptable content — one serving the corpus itself rather than any member —
+declares `hidden: true` and is withheld from that catalog; this table still carries it.
 
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
@@ -19,7 +21,7 @@ vendored into every mount regardless of declaration, so a member session can see
 | <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | 2 (policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly)) |
 | <img src="claudinite-fleet-sheepdog/badge.svg" width="18" height="18" alt=""> [claudinite-fleet-sheepdog](claudinite-fleet-sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | 0 (fleet-enforcer marker + config + the agentless `fleet-roster` daily task (coverage + freshness in one walk)) |
 | <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | 4 (what a project offers people working from the web — their personal interaction preferences, and the environment Setup script body) |
-| <img src="claudinite-canary-repo/badge.svg" width="18" height="18" alt=""> [claudinite-canary-repo](claudinite-canary-repo/README.md) | declared (opt-in; the canary repo only) | 0 | 0 (one inert workflow, seeded then converged — the live proof of the workflow-delivery lane) |
+| <img src="claudinite-canary-repo/badge.svg" width="18" height="18" alt=""> [claudinite-canary-repo](claudinite-canary-repo/README.md) | declared (opt-in; the canary repo only, and `hidden` from the consumer catalog) | 0 | 0 (one inert workflow, seeded then converged — the live proof of the workflow-delivery lane) |
 | <img src="claudinite-dashboard/badge.svg" width="18" height="18" alt=""> [claudinite-dashboard](claudinite-dashboard/README.md) | declared (opt-in) | 0 | 0 (a browser dashboard over scheduler state, published to Pages; adoption seeds the deploy workflow) |
 | <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 10 | 24 |
 | <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 5 |

@@ -47,13 +47,17 @@ export default {
   id: 'claudinite-canary-repo',
   // 4: renamed from `canary-probe` — the pack's subject is a Claudinite feature, so
   // it carries the prefix that says so.
-  version: '60820.1',
+  version: '60821.1',
   minEngineVersion: 3,
   ruleRoutingGuidance: {
     belongs: 'the inert probe workflow the canon delivers to its canary to prove workflow materialization works end to end',
     excludes: 'real CI and release workflows — git-github owns workflow practice, each release pack owns its own pipeline',
   },
   badge: 'badge.svg',
+  // Not adoptable content: the canary is the only intended holder, so the pack is
+  // withheld from the catalog every session reads to route a lesson or pick a pack
+  // to adopt. Declaring it by hand still works — that is how the canary holds it.
+  hidden: true,
   detect: null,
   marker: null,
   seededByDefault: false,
