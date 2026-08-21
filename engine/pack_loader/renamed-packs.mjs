@@ -55,6 +55,27 @@ export const RENAMED_PACKS = Object.freeze({
 // out from under its owner.
 export const canonicalPackId = (id) => RENAMED_PACKS[id] ?? id;
 
+// The id a CANON pack DIRECTORY contributes, given every raw id the same tree
+// carries. The map cannot tell its two shapes apart, but the tree can:
+//
+//   RENAME    — one directory, whose `pack.mjs` may still carry the old id until
+//               the mount is rewritten. Nothing else claims the new id, so the id
+//               maps forward and the pack stays live.
+//   ABSORPTION — the absorbed directory sits BESIDE its survivor's until a
+//               converge lands. Mapping it forward would put two live
+//               directories on one id, and the collision guard drops BOTH —
+//               failing the converged tree's self-test, which parks the very
+//               converge that would have removed the leftover (#1186).
+//
+// So an absorbed leftover keeps its own id and goes inert, which is what an id
+// nothing declares is supposed to do. A member still declaring the absorbed
+// spelling is unaffected: `canonicalPackId` resolves the DECLARATION onto the
+// survivor, which is present and live.
+export const canonicalPackIdAmong = (id, idsPresent) => {
+  const to = canonicalPackId(id);
+  return to !== id && idsPresent.has(to) ? id : to;
+};
+
 // The same map over the keys of a stamp's `packVersions`. A renamed pack whose
 // stamped version still sits under the old key reads as version-ABSENT, which is not
 // a harmless miss: absent means "never installed", so the install flow claims it,
