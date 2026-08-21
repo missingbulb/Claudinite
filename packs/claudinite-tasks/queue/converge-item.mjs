@@ -22,7 +22,7 @@ import { pathToFileURL } from 'node:url';
 import { renderTaskExec } from '../run-record.mjs';
 import { swapStatus, clearStatus } from './apply-status.mjs';
 import {
-  AGENT, NEEDS_HUMAN, TASK_DONE, STATUS_RUNNING_AGENT, isStatus, isWorkItemTitle, machineBlockOf,
+  AGENT, TASK_DONE, STATUS_RUNNING_AGENT, isStatus, isWorkItemTitle, machineBlockOf,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
   QUEUED_LABEL, IN_REVIEW_LABEL,
   parseWorkItemTitle, parseWorkItemBody,
@@ -121,10 +121,9 @@ export async function convergeItem(api, gh, repo, plan, { log = console.log } = 
     // scheduler run's own readiness job, not by this call.
     return { ok: true, closed: true };
   }
-  // Every park wears BOTH labels: `needs-human` is the state every guard and
-  // sweep reads, the sub-label is what the person is being asked for.
-  await swapStatus(api, gh, repo, item, STATUS_RUNNING_AGENT, NEEDS_HUMAN);
-  await api.addLabel(gh, repo, item.number, spec.label);
+  // ONE label: the park IS the status, and its kind is what the person is being
+  // asked for. Nothing else marks a park, so nothing can be half-applied.
+  await swapStatus(api, gh, repo, item, STATUS_RUNNING_AGENT, spec.label);
   // A REQUEST ITEM WRITES BACK TO ITS ISSUE, on the one end that is its business
   // (§16.5). Only the approval park: a failure deliberately writes nothing and
   // leaves `claude-queued` standing, because re-arming work that writes code is a

@@ -81,7 +81,7 @@ test('an item this session does not hold is refused, not converged', () => {
     body: `do it\n\n<!-- claudinite-item -->\n${LEGACY_BUILT_IN_TASK_PATH}\n\nRequest: #7\n<!-- /claudinite-item -->\n`,
   }), 7), null);
   assert.match(refusal(item({ state: 'closed' }), 7), /already closed/);
-  assert.match(refusal(item({ labels: ['task:executing'] }), 7), /task:agent/);
+  assert.match(refusal(item({ labels: ['task:executing'] }), 7), /task:status:running-agent/);
   assert.equal(refusal(item(), 7), null);
 });
 
@@ -103,9 +103,9 @@ test('a done outcome closes the item with the label swapped and the record on it
   const issue = repo.find(7);
   assert.equal(issue.state, 'closed');
   assert.equal(issue.state_reason, 'completed');
-  assert.ok(issue.labels.includes('task:done'));
+  assert.ok(issue.labels.includes('task:status:done'));
   // The failure that reached live traffic: a closed item still reading as live.
-  assert.equal(issue.labels.includes('task:agent'), false, 'a closed item must not wear task:agent');
+  assert.equal(issue.labels.includes('task:status:running-agent'), false, 'a closed item must not wear a live status');
   // …and the other one: closed with no record at all.
   assert.match(repo.state.comments[0].body, /ran the thing/);
   assert.match(repo.state.comments[0].body, /claudinite-task-exec v1 p\/a \[#7\] success/);
@@ -128,12 +128,13 @@ test('a park that is not a failure carries no record', () => {
   assert.doesNotMatch(convergeComment(item(), { summary: 's', pr: 9, record: null }), /claudinite-task-exec/);
 });
 
-test('a park leaves the item open wearing both labels', async () => {
+test('a park leaves the item open wearing the one park label', async () => {
   const repo = fakeRepo([item()]);
   await run(repo, { issue: 7, outcome: 'failure', summary: 'it broke' });
   const issue = repo.find(7);
   assert.equal(issue.state, 'open');
-  assert.deepEqual(issue.labels.sort(), ['needs-human', 'task:needs-human-failure']);
+  // ONE label since the write-side flip: the park IS the status (#1119).
+  assert.deepEqual(issue.labels.sort(), ['task:status:needs-human-failure']);
 });
 
 // --- the request write-back ----------------------------------------------------

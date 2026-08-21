@@ -12,6 +12,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
+  LEGACY_BLOCKED, LEGACY_READY, LEGACY_EXECUTING, LEGACY_AGENT,
+  LEGACY_TASK_DONE, LEGACY_TASK_OBSOLETE,
   TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_OBSOLETE, OUTCOME_DELIVERED,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
   STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
@@ -19,7 +21,7 @@ import {
   STATUS_NEEDS_HUMAN_FAILURE, STATUS_DONE, STATUS_REJECTED,
   STATUS_LABELS, ORIGIN_LABELS, ORIGIN_PLANNED, ORIGIN_AD_HOC, ORIGIN_GITHUB, ORIGIN_SCHEDULE,
   QUEUE_LABELS, statusOf, statusesOn, isStatus, isParked, parkKindOf, originOf,
-  spellingsOf, isBlockingPark, outcomeOf,
+  spellingsOf, isBlockingPark, outcomeOf, triageLabelFor, TRIAGE_LABELS, requeueHint,
 } from '../../queue/work-item.mjs';
 import { swapStatus, clearStatus } from '../../queue/apply-status.mjs';
 import { FAILURE_LABELS } from '../../queue/workflow-failure.mjs';
@@ -30,12 +32,12 @@ const item = (...labels) => ({ number: 1, title: '[claudinite-work] basics/task-
 // engine has written, the right is what a reader must see today.
 test('every legacy spelling decodes straight to its canonical status', () => {
   for (const [legacy, canonical] of [
-    [BLOCKED, STATUS_BLOCKED],
-    [READY, STATUS_READY],
-    [EXECUTING, STATUS_RUNNING_EXECUTOR],
-    [AGENT, STATUS_RUNNING_AGENT],
-    [TASK_DONE, STATUS_DONE], [OUTCOME_DONE, STATUS_DONE],
-    [TASK_OBSOLETE, STATUS_REJECTED], [OUTCOME_OBSOLETE, STATUS_REJECTED],
+    [LEGACY_BLOCKED, STATUS_BLOCKED],
+    [LEGACY_READY, STATUS_READY],
+    [LEGACY_EXECUTING, STATUS_RUNNING_EXECUTOR],
+    [LEGACY_AGENT, STATUS_RUNNING_AGENT],
+    [LEGACY_TASK_DONE, STATUS_DONE], [OUTCOME_DONE, STATUS_DONE],
+    [LEGACY_TASK_OBSOLETE, STATUS_REJECTED], [OUTCOME_OBSOLETE, STATUS_REJECTED],
   ]) {
     assert.equal(statusOf(item(legacy)), canonical, `${legacy} should read as ${canonical}`);
   }
@@ -124,8 +126,8 @@ test('outcomes decode from every spelling, canonical and legacy alike', () => {
 // swap that named one would leave the other standing — two live statuses, which is
 // the torn state the janitor exists to repair.
 test('every spelling of a status is what leaving it clears', () => {
-  assert.deepEqual(spellingsOf(STATUS_READY).sort(), [READY, STATUS_READY].sort());
-  assert.deepEqual(spellingsOf(STATUS_DONE).sort(), [TASK_DONE, OUTCOME_DONE, STATUS_DONE].sort());
+  assert.deepEqual(spellingsOf(STATUS_READY).sort(), [LEGACY_READY, STATUS_READY].sort());
+  assert.deepEqual(spellingsOf(STATUS_DONE).sort(), [LEGACY_TASK_DONE, OUTCOME_DONE, STATUS_DONE].sort());
   // Leaving a park leaves it entirely: every kind, both shapes, and the bare label.
   const park = spellingsOf(STATUS_NEEDS_HUMAN_APPROVAL);
   for (const l of [NEEDS_HUMAN, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
@@ -140,13 +142,13 @@ test('a swap removes both spellings of the status it leaves and adds the one it 
     removeLabel: async (_gh, _repo, _n, name) => removed.push(name),
     addLabel: async (_gh, _repo, _n, name) => added.push(name),
   };
-  await swapStatus(api, null, 'o/r', item(READY), STATUS_READY, EXECUTING);
-  assert.deepEqual(removed.sort(), [READY, STATUS_READY].sort());
+  await swapStatus(api, null, 'o/r', item(LEGACY_READY), STATUS_READY, EXECUTING);
+  assert.deepEqual(removed.sort(), [LEGACY_READY, STATUS_READY].sort());
   assert.deepEqual(added, [EXECUTING]);
 
   removed.length = 0;
   await clearStatus(api, null, 'o/r', item(STATUS_RUNNING_AGENT), STATUS_RUNNING_AGENT);
-  assert.deepEqual(removed.sort(), [AGENT, STATUS_RUNNING_AGENT].sort());
+  assert.deepEqual(removed.sort(), [LEGACY_AGENT, STATUS_RUNNING_AGENT].sort());
 });
 
 // GitHub 422s an attempt to apply a label that does not exist and never creates one
@@ -158,9 +160,11 @@ test('the ensure-list carries every canonical status and origin, ahead of any wr
   for (const name of [...STATUS_LABELS, ...ORIGIN_LABELS]) {
     assert.ok(ensured.has(name), `${name} must be ensured or the write that applies it 422s`);
   }
-  // And the legacy spellings stay ensured: they are what this engine still writes.
-  for (const name of [BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, TASK_DONE, TASK_OBSOLETE]) {
-    assert.ok(ensured.has(name), `${name} is still written, so it must still be ensured`);
+  // And the legacy spellings stay ensured: nothing writes them, but open items wear
+  // them and deleting a label strips it from every issue that carries it.
+  for (const name of [LEGACY_BLOCKED, LEGACY_READY, LEGACY_EXECUTING, LEGACY_AGENT,
+    NEEDS_HUMAN, LEGACY_TASK_DONE, LEGACY_TASK_OBSOLETE, OUTCOME_DELIVERED]) {
+    assert.ok(ensured.has(name), `${name} is worn by open items, so it must stay ensured`);
   }
 });
 
@@ -303,4 +307,39 @@ test('a marked issue that nobody picks up still goes stale', () => {
   };
   assert.deepEqual(staleReadyItems([marked], '2026-08-20T00:00:00Z').map((i) => i.number), [9]);
   assert.match(staleReadyComment(marked), /engine\/implement-request/);
+});
+
+// --- the write side, after the flip --------------------------------------------
+// The read side above says every spelling is understood. This says which one is
+// WRITTEN — the half a member sees on its issues, and the half that has to move
+// exactly once for the fleet to converge on one vocabulary (#1119).
+
+test('the engine writes canonical spellings, and only canonical spellings', () => {
+  for (const [name, value] of [
+    ['BLOCKED', BLOCKED], ['READY', READY], ['EXECUTING', EXECUTING], ['AGENT', AGENT],
+    ['TASK_DONE', TASK_DONE], ['TASK_OBSOLETE', TASK_OBSOLETE],
+    ['NEEDS_HUMAN_ACTION', NEEDS_HUMAN_ACTION], ['NEEDS_HUMAN_DECISION', NEEDS_HUMAN_DECISION],
+    ['NEEDS_HUMAN_APPROVAL', NEEDS_HUMAN_APPROVAL], ['NEEDS_HUMAN_FAILURE', NEEDS_HUMAN_FAILURE],
+  ]) {
+    assert.ok(STATUS_LABELS.includes(value), `${name} must be a canonical status, got ${value}`);
+  }
+  // The names survive the flip because fielded pack versions import them — a pack on
+  // the old engine writes a legacy label, which every decoder here still reads.
+  assert.notEqual(BLOCKED, LEGACY_BLOCKED);
+  assert.equal(statusOf(item(LEGACY_BLOCKED)), BLOCKED);
+});
+
+test('a park is one label, and a kind word resolves to it', () => {
+  for (const kind of ['action', 'decision', 'approval', 'failure']) {
+    assert.equal(triageLabelFor(kind), `task:status:needs-human-${kind}`);
+  }
+  // A worker that misspells its class has a bug, which is exactly what that lane means.
+  assert.equal(triageLabelFor('quantum'), STATUS_NEEDS_HUMAN_FAILURE);
+  // And nothing writes the bare legacy park any more, though everything reads it.
+  assert.equal(TRIAGE_LABELS.every((l) => l.startsWith('task:status:needs-human-')), true);
+});
+
+test('the re-queue lever is stated in one place, and it is clearing the status', () => {
+  assert.match(requeueHint, /clear its status label/);
+  assert.match(requeueHint, new RegExp(STATUS_READY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });

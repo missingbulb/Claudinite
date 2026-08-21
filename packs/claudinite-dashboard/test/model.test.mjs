@@ -8,10 +8,10 @@ import {
   buildRoster, declaredPackDirs, describeItem, isWorkItem, outcomeTally,
   parseDeclaration, taskDeclarationPaths, warningsFor, commentKind,
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STUCK_BLOCKED_MS, DUE_SLACK_MS,
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
+  BLOCKED, READY, EXECUTING, AGENT,
 } from '../model.mjs';
 import {
-  OUTCOME_DONE, OUTCOME_DELIVERED, TASK_DONE, NEEDS_HUMAN_APPROVAL,
+  OUTCOME_DONE, OUTCOME_DELIVERED, TASK_DONE, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN,
 } from '../../claudinite-tasks/shared-code/work-items.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');

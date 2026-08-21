@@ -16,7 +16,7 @@
 // a weaker prod than "open this issue".
 
 import { troubles } from './work.mjs';
-import { WORK_PREFIX, NEEDS_HUMAN } from './model.mjs';
+import { WORK_PREFIX, PARKED } from './model.mjs';
 
 const LEVELS = ['critical', 'serious', 'warning', 'info', 'ok'];
 const levelRank = (l) => {
@@ -55,7 +55,7 @@ export function itemCandidate(repo, item, row = null) {
     // The item's own park classification, and no price: what a park COSTS is the
     // attention estimate's arithmetic (`fleet.mjs`), and this module holds no rates.
     // Null for anything that is not a park, which is what that estimate leaves out.
-    park: item.state === NEEDS_HUMAN
+    park: item.state === PARKED
       ? { blocking: Boolean(item.blockingPark), triage: item.triage ?? null }
       : null,
     url: issueUrl(repo, item.number),
