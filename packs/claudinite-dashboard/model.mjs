@@ -30,7 +30,7 @@ import {
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
   NEEDS_HUMAN_FAILURE, isBlockingPark, parseLastVerdict,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
-  parseWorkItemTitle, parseWorkItemBody, hasLabel, labelNames,
+  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, hasLabel, labelNames,
 } from '../../engine/scheduler/queue/work-item.mjs';
 
 export {
@@ -252,7 +252,12 @@ export function warningsFor(item, now, { periodFor = () => null, isOpen = () => 
 
 // An open item, decorated with everything the queue lane renders.
 export function describeItem(item, now, opts = {}) {
-  const parsed = parseWorkItemTitle(item.title) ?? { pack: null, task: null, qualifier: null };
+  // A marked issue keeps the person's own title, so its task comes from the worker
+  // path its machine block names — without that the page would render every request
+  // run as an item belonging to no task at all.
+  const parsed = parseWorkItemTitle(item.title)
+    ?? (taskIdFromPath(parseWorkItemBody(item.body).taskPath) ? { ...taskIdFromPath(parseWorkItemBody(item.body).taskPath), qualifier: null } : null)
+    ?? { pack: null, task: null, qualifier: null };
   const body = parseWorkItemBody(item.body);
   const state = stateOf(item);
   return {

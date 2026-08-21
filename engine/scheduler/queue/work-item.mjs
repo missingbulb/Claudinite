@@ -381,6 +381,25 @@ export function parseWorkItemTitle(title) {
 
 export const isWorkItemTitle = (title) => parseWorkItemTitle(title) !== null;
 
+// The `<pack>/<task>` id a WORKER PATH names — the identity half a marked issue's
+// title cannot carry (DESIGN §16.1), read off the path its machine block names. Two
+// shapes, because tasks have two homes: a declared pack's, and the engine's own
+// built-in root. The `.claudinite/shared/` prefix is optional in both — a member's
+// engine is mounted there and the canon runs its own tree.
+//
+// It is a PARSE, not a lookup: anything that must know the task exists at HEAD
+// resolves the path against the discovered task set instead (the executor does).
+const PACK_TASK_PATH_RE = /^(?:\.claudinite\/shared\/)?packs\/([^/]+)\/tasks\/([^/]+)\/[^/]+$/;
+const BUILT_IN_TASK_PATH_RE = /^(?:\.claudinite\/shared\/)?engine\/scheduler\/queue\/tasks\/([^/]+)\/[^/]+$/;
+
+export function taskIdFromPath(path) {
+  const p = String(path ?? '');
+  const pack = PACK_TASK_PATH_RE.exec(p);
+  if (pack) return { pack: canonicalPackId(pack[1]), task: pack[2] };
+  const builtIn = BUILT_IN_TASK_PATH_RE.exec(p);
+  return builtIn ? { pack: 'engine', task: builtIn[1] } : null;
+}
+
 // STANDING OR AD-HOC, DERIVED (DESIGN §15.26). A task's standing item is the one
 // the generator files at an anchor: its title names the task and nothing else, and
 // the task it names is on a calendar. Everything else is ad-hoc — a `manual` task

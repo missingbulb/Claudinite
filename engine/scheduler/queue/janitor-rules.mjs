@@ -13,7 +13,7 @@ import { periodMs } from './anchors.mjs';
 import {
   READY, AGENT, NEEDS_HUMAN,
   STATUS_READY, STATUS_RUNNING_AGENT, STATUS_BLOCKED, isStatus, statusOf,
-  parseWorkItemTitle, parseWorkItemBody,
+  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
 } from './work-item.mjs';
 
 export const AGENT_LEASH_MS = 3 * 3600e3;
@@ -27,10 +27,14 @@ const idle = (item, now) => ms(now) - (ms(item.updated_at) ?? ms(item.created_at
 // out of the queue as a human's problem. The period is read from the task's
 // declared `frequency` at HEAD (no title parsing — that was the slot grammar); an
 // item whose task is unknown falls back to a day.
+//
+// WHICH TASK, on a marked issue: its title is the person's own, so the id comes
+// from the worker path its machine block names — without that fallback a request
+// nobody picks up would sit ready forever, the one item class no rule here covers.
 export function staleReadyItems(open = [], now, { periodFor = () => null, factor = STALE_READY_PERIODS } = {}) {
   return open.filter((i) => {
     if (!isStatus(i, STATUS_READY)) return false;
-    const parsed = parseWorkItemTitle(i.title);
+    const parsed = parseWorkItemTitle(i.title) ?? taskIdFromPath(parseWorkItemBody(i.body).taskPath);
     if (!parsed) return false;
     const per = periodFor(`${parsed.pack}/${parsed.task}`) ?? 86400e3;
     // `readySince` is the item's last touch: every transition into ready is a
@@ -40,7 +44,7 @@ export function staleReadyItems(open = [], now, { periodFor = () => null, factor
 }
 
 export const staleReadyComment = (item) => {
-  const p = parseWorkItemTitle(item.title);
+  const p = parseWorkItemTitle(item.title) ?? taskIdFromPath(parseWorkItemBody(item.body).taskPath);
   return `This work item for ${p ? `${p.pack}/${p.task}` : 'this task'} has sat \`${READY}\` for over ~${STALE_READY_PERIODS} of its scheduling periods `
     + `without an executor picking it up. Labeling \`${NEEDS_HUMAN}\` and taking it out of the queue for triage.`;
 };
