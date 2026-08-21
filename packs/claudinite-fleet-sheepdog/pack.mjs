@@ -79,26 +79,7 @@ import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
   id: 'claudinite-fleet-sheepdog',
-  // 11: fleet-digest LEAVES, to the claudinite-dashboard pack — the pack whose page is
-  // the only thing that reads the series it writes. What stays here is an enforcer's
-  // `digest`, `owner` and `exclude` config, which the task still reads off this entry
-  // as its legacy source, so no enforcer declaration has to change.
-  // 12: the FLEET_GITHUB_TOKEN grant is stated once, in fleet-token.mjs, and rendered
-  // into every message about it — additive, no migration, delivered so an enforcer's
-  // next token error names the whole grant instead of that sweep's subset (#1030).
-  // 13: the task contract moved into the claudinite-growth `writing-tasks` skill; the
-  // pointers in this pack's README and its three fleet task docs follow it (#975).
-  // 14: each fleet task's doc is a README.md — every one of them is agentless, and
-  // task.md is the spec an agent session reads (task-md-only-when-agentic, #1055).
-  // 17: a task comment names the terminal a declined manual lever closes with in
-  // its current spelling; no behaviour moves.
-  // 18: renamed from `sheepdog` — the pack's subject is a Claudinite feature, so it
-  // carries the prefix that says so. The config reader takes an enforcer's entry under
-  // either spelling, since a declaration converges on its own schedule.
-  // 60821.1: a member's add-packs work list is a MARKED issue targeting the member
-  // task, so the member's own scheduler run adopts it and the wake dispatch becomes a
-  // latency nudge (#1119).
-  version: '60821.1',
+  version: '60821.2',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',

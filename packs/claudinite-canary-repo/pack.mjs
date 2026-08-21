@@ -45,9 +45,7 @@
 // shape a fleet-wide workflow fix would take.
 export default {
   id: 'claudinite-canary-repo',
-  // 4: renamed from `canary-probe` — the pack's subject is a Claudinite feature, so
-  // it carries the prefix that says so.
-  version: '60821.1',
+  version: '60821.2',
   minEngineVersion: 3,
   ruleRoutingGuidance: {
     belongs: 'the inert probe workflow the canon delivers to its canary to prove workflow materialization works end to end',
