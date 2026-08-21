@@ -34,8 +34,11 @@ export default {
   // 60821.2: writing-migration-plans is built around chained continuations — all the
   // code written and approved in one pass, every execution step armed on the previous
   // step's verification rather than on anyone remembering it.
-  // 60821.3: bump-version reads for a world where the routine bump belongs to the
-  // change — what is left to ask for is the minor or the major (#1150).
+  // 60821.3: bump-version retired. It had become a two-entry routing table into
+  // chrome-extension and static-website — packs most members do not declare, so
+  // its links dangled in their mounts — while saying nothing for the release
+  // packs that carry no version scheme at all. The owner's "bump version" phrase
+  // now lives in the description of each skill that owns an answer (#1150).
   version: '60821.3',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
@@ -81,7 +84,6 @@ export default {
   skills: [
     'authoring-agent-docs',
     'bug-investigation',
-    'bump-version',
     'do-later',
     'ci-performance-evaluation',
     'file-placement',

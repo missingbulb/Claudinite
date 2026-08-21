@@ -18,6 +18,8 @@ export default {
   id: 'static-website',
   // 60821.1: the version bump moved out of the release flow and into the change
   // that earns it (sw/version-bumped); the pipeline releases what it finds on main.
+  // The standard's skill also absorbs the "bump version" trigger phrase, which
+  // basics used to route from a skill of its own (#1150).
   version: '60821.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
