@@ -4,6 +4,7 @@ import rule, { contractChanges, carriesConsumers } from './consumer-safe-change.
 
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
 const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
+const EXECUTOR_STUB = 'engine/scheduler/stubs/claudinite-executor.yml';
 const RECORD = 'engine/migrations/2026-08-01-thing/migration.mjs';
 const PACK_RECORD = 'packs/claudinite-fleet-sheepdog/migrations/2026-08-01-thing/migration.mjs';
 const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
@@ -36,8 +37,12 @@ test('the manifest vocabulary is a contract surface — this is #555\'s exact fi
   assert.match(out[0].what, /manifest vocabulary/);
 });
 
-test('the scheduler stub is a contract surface — members vendor it verbatim', () => {
+test('either workflow stub is a contract surface — members vendor both verbatim', () => {
   assert.equal(contractChanges([STUB], () => null).length, 1);
+  // The executor's too: its event trigger names label strings literally, so a
+  // vocabulary change there is exactly the kind a member has to be carried across.
+  assert.equal(contractChanges([EXECUTOR_STUB], () => null).length, 1);
+  assert.equal(contractChanges([STUB, EXECUTOR_STUB], () => null).length, 2);
 });
 
 test('a rule promoted from advisory to blocking is a contract surface', () => {

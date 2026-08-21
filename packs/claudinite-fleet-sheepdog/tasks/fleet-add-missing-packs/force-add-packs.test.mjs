@@ -4,7 +4,7 @@ import {
   unknownPacks, unansweredQuestions, entryFor, requestedBody, qualify,
   resolveTargets, convergeRequestedIssue, closeSatisfiedRequest, renderForceSummary,
 } from '../../../../packs/claudinite-fleet-sheepdog/tasks/fleet-add-missing-packs/force-add-packs.mjs';
-import { LABEL, REQUESTED_TITLE, entriesIn } from '../../../../packs/claudinite-fleet-sheepdog/tasks/fleet-add-missing-packs/protocol.mjs';
+import { LABEL, MARK, REQUESTED_TITLE, entriesIn, withTargeting } from '../../../../packs/claudinite-fleet-sheepdog/tasks/fleet-add-missing-packs/protocol.mjs';
 
 // The force half writes a DECISION into a member's work list — packs, config and
 // interview answers a human typed, which the member's agent then copies into its
@@ -142,17 +142,33 @@ function ghDouble({ open = [], closed = [] } = {}) {
   return gh;
 }
 
-test('convergeRequestedIssue: opens in the MEMBER under the protocol label and title', async () => {
+test('convergeRequestedIssue: opens in the MEMBER, marked and targeted at the member task', async () => {
   const gh = ghDouble();
   const { action } = await convergeRequestedIssue(gh, 'acme/app', { body: 'B' });
   assert.match(action, /opened #41/);
   const create = gh.writes.find((w) => w.path === '/repos/acme/app/issues');
   assert.equal(create.body.title, REQUESTED_TITLE);
-  assert.deepEqual(create.body.labels, [LABEL]);
+  // THE FOLD (#1119): the work list is a marked issue, so the member's ordinary
+  // scheduler run adopts it — nothing dispatches a wake for it.
+  assert.deepEqual(create.body.labels, [LABEL, MARK]);
+  assert.match(create.body.body, /^Task: claudinite-lifecycle\/adopt-requested-packs\n/);
+  // And the mark exists in the member before it is applied: a label GitHub does not
+  // know 422s, and a refused mark is a work list nobody ever runs.
+  assert.ok(gh.writes.some((w) => w.path === '/repos/acme/app/labels' && w.body.name === MARK));
+});
+
+test('convergeRequestedIssue: a second work list queues behind the member\'s first', async () => {
+  const gh = ghDouble({ open: [{ number: 3, title: 'Add packs: suspected from this repo’s shape', body: 'x', labels: [{ name: LABEL }] }] });
+  await convergeRequestedIssue(gh, 'acme/app', { body: 'B' });
+  const create = gh.writes.find((w) => w.path === '/repos/acme/app/issues');
+  // Two lists in one member are two items of ONE task, which nothing else
+  // serializes — two sessions on one declaration is two conflicting pull requests.
+  assert.match(create.body.body, /Blocked-by: #3/);
 });
 
 test('convergeRequestedIssue: a repeated force rewrites the body; an identical one writes nothing', async () => {
-  const existing = { number: 5, title: REQUESTED_TITLE, body: 'OLD', labels: [{ name: LABEL }] };
+  const marked = (body) => withTargeting(body);
+  const existing = { number: 5, title: REQUESTED_TITLE, body: marked('OLD'), labels: [{ name: LABEL }, { name: MARK }] };
   const changed = ghDouble({ open: [existing] });
   const r1 = await convergeRequestedIssue(changed, 'acme/app', { body: 'NEW' });
   assert.match(r1.action, /updated #5/);
@@ -162,6 +178,23 @@ test('convergeRequestedIssue: a repeated force rewrites the body; an identical o
   assert.equal(r2.action, null);
   // The label-ensure POST is idempotent housekeeping; no ISSUE write may happen.
   assert.ok(!same.writes.some((w) => w.path.includes('/issues')));
+});
+
+test('a work list the member has already adopted keeps its machine block through a re-force', async () => {
+  const adopted = {
+    number: 5,
+    title: REQUESTED_TITLE,
+    body: `${withTargeting('OLD')}\n<!-- claudinite-item -->\npacks/claudinite-lifecycle/tasks/adopt-requested-packs/task.md\n\nRequest: #5\n<!-- /claudinite-item -->\n`,
+    labels: [{ name: LABEL }, { name: MARK }, { name: 'task:status:needs-human-failure' }],
+  };
+  const gh = ghDouble({ open: [adopted] });
+  await convergeRequestedIssue(gh, 'acme/app', { body: 'NEW' });
+  const patch = gh.writes.find((w) => w.path === '/repos/acme/app/issues/5' && w.method === 'PATCH');
+  assert.match(patch.body.body, /NEW/);
+  assert.match(patch.body.body, /<!-- claudinite-item -->/, 'the item adoption wrote is not erased by a re-forced ask');
+  // A changed ask re-asks: clearing the status is the one lever, so the parked run
+  // of the OLD list must not be what silences the new one.
+  assert.ok(gh.writes.some((w) => w.method === 'DELETE' && w.path.includes('task%3Astatus%3Aneeds-human-failure')));
 });
 
 // --- closing a satisfied request -------------------------------------------------

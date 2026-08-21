@@ -70,7 +70,7 @@ test('fleet-add-missing-packs: the worker invokes each half rather than reimplem
 });
 
 test('fleet-add-missing-packs: the worker fires member schedulers and requests no agent of its own', () => {
-  // The fan-out contract, in code: fireScheduler at the member's adopt task, and the
+  // The fan-out contract, in code: the nudge dispatch, and the
   // conditional-handoff machinery gone — a request file written here would be the old
   // model growing back.
   assert.match(workerSrc, /fireScheduler/);

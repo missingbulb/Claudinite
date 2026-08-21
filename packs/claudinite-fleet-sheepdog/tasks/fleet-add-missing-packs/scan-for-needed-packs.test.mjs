@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   suspectedBody, convergeSuspectedIssue, renderFitSummary,
 } from '../../../../packs/claudinite-fleet-sheepdog/tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs';
-import { SUSPECTED_TITLE, LABEL } from '../../../../packs/claudinite-fleet-sheepdog/tasks/fleet-add-missing-packs/protocol.mjs';
+import { SUSPECTED_TITLE, LABEL, MARK, withTargeting } from '../../../../packs/claudinite-fleet-sheepdog/tasks/fleet-add-missing-packs/protocol.mjs';
 
 // The scan's network half is exercised through remote-context.test.mjs; what is
 // tested here is what the scan SAYS (the member-side issue body, the run summary)
@@ -86,21 +86,26 @@ test('convergeSuspectedIssue: opens in the MEMBER, under the protocol label and 
   assert.equal(openWork, true);
   const create = gh.writes.find((w) => w.path === '/repos/acme/app/issues');
   assert.equal(create.body.title, SUSPECTED_TITLE);
-  assert.deepEqual(create.body.labels, [LABEL]);
+  // THE FOLD (#1119): a work list is a marked issue targeted at the member task, so
+  // the member's ordinary scheduler run adopts it with no dispatch at all.
+  assert.deepEqual(create.body.labels, [LABEL, MARK]);
+  assert.match(create.body.body, /^Task: claudinite-lifecycle\/adopt-requested-packs\n/);
+  assert.ok(gh.writes.some((w) => w.path === '/repos/acme/app/labels' && w.body.name === MARK));
 });
 
 test('convergeSuspectedIssue: rewrites a changed body, leaves an unchanged one alone', async () => {
-  const existing = { number: 7, title: SUSPECTED_TITLE, body: 'OLD', labels: [{ name: LABEL }] };
+  const existing = { number: 7, title: SUSPECTED_TITLE, body: withTargeting('OLD'), labels: [{ name: LABEL }, { name: MARK }] };
   const changed = ghDouble({ open: [existing] });
   const r1 = await convergeSuspectedIssue(changed, 'acme/app', { fits: ['node'], body: 'NEW' });
   assert.match(r1.action, /updated #7/);
   assert.ok(changed.writes.some((w) => w.path === '/repos/acme/app/issues/7'));
 
-  const same = ghDouble({ open: [{ ...existing, body: 'OLD' }] });
+  const same = ghDouble({ open: [{ ...existing }] });
   const r2 = await convergeSuspectedIssue(same, 'acme/app', { fits: ['node'], body: 'OLD' });
   assert.equal(r2.action, null);
   assert.equal(r2.openWork, true);   // unchanged is still open work — the member may not have acted yet
-  assert.equal(same.writes.length, 0);
+  // The mark-ensure POST is idempotent housekeeping; no ISSUE write may happen.
+  assert.ok(!same.writes.some((w) => w.path.includes('/issues')));
 });
 
 test('convergeSuspectedIssue: closes completed once nothing is suspected any more', async () => {

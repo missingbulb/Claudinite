@@ -41,6 +41,7 @@ import { fleetWorkerFailed } from '../../fleet-api.mjs';
 import { makeGh, paged, DECLARATION, fireScheduler } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 import { missingFleetTokenError } from '../../fleet-token.mjs';
+import { MEMBER_TASK_ID } from './protocol.mjs';
 import { parseParams } from './params.mjs';
 import { parseParamBag, contextText } from '../../param-bag.mjs';
 import { loadCanonPacks } from './canon-packs.mjs';
@@ -50,10 +51,10 @@ import {
   unknownPacks, unansweredQuestions, qualify,
 } from './force-add-packs.mjs';
 
-// The member-side task every fan-out fires — claudinite-growth's, present in
-// every member because that pack is seeded by default. Named once; the member task's
-// directory name is the other half of this coupling, pinned by the protocol test.
-export const MEMBER_TASK = 'adopt-requested-packs';
+// The member-side task every work list names in its `Task:` field. Derived from the
+// protocol's own id rather than spelled a second time; the member task's directory
+// name is the other half of the coupling, pinned by the protocol test.
+export const MEMBER_TASK = MEMBER_TASK_ID.split('/')[1];
 
 const item = process.env.CLAUDINITE_ITEM || '';
 const log = (s) => console.log(`fleet-add-missing-packs${item ? ` [#${item}]` : ''}: ${s}`);
@@ -144,7 +145,10 @@ async function run({ gh, home, owner, canonRepo, packs, params }) {
   const fire = async ({ fullName, defaultBranch }) => {
     const branch = defaultBranch ?? reposByName.get(fullName.toLowerCase())?.default_branch;
     if (!branch) { fireFailures.push(`${fullName}: not in the enumeration — cannot resolve its default branch`); return null; }
-    const verdict = await fireScheduler(gh, fullName, branch, MEMBER_TASK);
+    // No `wake`: the work list is a marked issue now, and an ordinary scheduler run
+    // adopts it. Waking a standing item would be asking for a run of a task whose
+    // item this dispatch is not — the mark IS the request.
+    const verdict = await fireScheduler(gh, fullName, branch);
     if (verdict.state !== 'fired') { fireFailures.push(`${fullName}: ${verdict.state} — ${verdict.detail}`); return null; }
     return fullName;
   };
@@ -189,13 +193,13 @@ async function run({ gh, home, owner, canonRepo, packs, params }) {
     emit(renderForceSummary({ owner, addPacks: params.addPacks, targets, alreadyDeclared, actions, fired }));
   }
 
-  // Unknown is not fitted, and unfired is not dispatched. A member the scan could not
-  // read was not measured; a member whose scheduler refused the dispatch has a work
-  // list nobody will act on. Both fail the run — AFTER the reports above, which stand.
-  const problems = [
-    ...scanUnknown.map((u) => `unswept: ${u}`),
-    ...fireFailures.map((f) => `unfired: ${f}`),
-  ];
+  // Unknown is not fitted: a member the scan could not read was not measured, and
+  // that fails the run — AFTER the reports above, which stand. An UNFIRED member no
+  // longer does: since the work list is a marked issue, the dispatch only decides
+  // whether the member adopts it in a minute or on its own next hour, so a refused
+  // dispatch is reported and nothing more.
+  if (fireFailures.length) log(`${fireFailures.length} member(s) did not take the nudge dispatch — they adopt on their own next scheduler run: ${fireFailures.join('; ')}`);
+  const problems = scanUnknown.map((u) => `unswept: ${u}`);
   if (problems.length) {
     throw new Error(`${problems.length} member(s) did not come through cleanly — ${problems.join('; ')} — `
       + 'the rest are reported above, and this run fails so the cause is escalated');

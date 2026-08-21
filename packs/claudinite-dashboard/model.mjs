@@ -24,11 +24,13 @@ import {
 } from '../../engine/scheduler/queue/leases.mjs';
 import {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
-  STATE_LABELS, outcomeOf as decodeOutcome,
-  TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
+  outcomeOf as decodeOutcome,
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
+  statusesOn, isParked, parkKindOf, triageLabelFor,
+  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
   NEEDS_HUMAN_FAILURE, isBlockingPark, parseLastVerdict,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
-  parseWorkItemTitle, parseWorkItemBody, hasLabel, labelNames,
+  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, hasLabel, labelNames,
 } from '../../engine/scheduler/queue/work-item.mjs';
 
 export {
@@ -141,23 +143,37 @@ export function parseDeclaration(text) {
 
 // --- work items ----------------------------------------------------------------
 
-export const isWorkItem = (issue) => String(issue?.title ?? '').startsWith(WORK_PREFIX);
+// An item is a filed `[claudinite-work]` issue OR an adopted marked issue — the
+// one-issue request model's other shape, which keeps the person's own title
+// (tasks-dispatch DESIGN §16.1). One definition, shared with the queue's own reader.
+export { isQueueItem as isWorkItem } from '../../engine/scheduler/queue/read.mjs';
 
-// The one state label an open item wears, or null for an item wearing none — which
-// is not a display quirk but the torn-label-swap leavings the janitor repairs, so
-// it gets its own rendered state rather than being folded into "blocked".
+// The page's five state keys, one per decoded status. The keys are the engine's
+// own constants rather than the canonical spellings, because a page groups the four
+// park kinds under one "needs human" column and routes by the kind separately
+// (`triageOf`).
+const STATE_KEY = new Map([
+  [STATUS_BLOCKED, BLOCKED], [STATUS_READY, READY],
+  [STATUS_RUNNING_EXECUTOR, EXECUTING], [STATUS_RUNNING_AGENT, AGENT],
+]);
+
+// The one state an open item is in, decoded from whatever spelling filed it, or
+// `unlabelled` for an item wearing none — which is not a display quirk but the
+// torn-label-swap leavings the janitor repairs, so it gets its own rendered state
+// rather than being folded into "blocked".
 export function stateOf(item) {
   if (item?.state === 'closed') return 'closed';
-  if (hasLabel(item, NEEDS_HUMAN)) return NEEDS_HUMAN;
-  const worn = STATE_LABELS.filter((l) => hasLabel(item, l));
-  if (worn.length === 1) return worn[0];
+  if (isParked(item)) return NEEDS_HUMAN;
+  const worn = statusesOn(item).filter((s) => STATE_KEY.has(s));
+  if (worn.length === 1) return STATE_KEY.get(worn[0]);
   if (worn.length > 1) return 'torn';
   return 'unlabelled';
 }
 
-// The park's sub-label, or null for one wearing none (an older engine's, or an
-// agent that skipped it). An item can only wear one meaningfully; first wins.
-export const triageOf = (item) => TRIAGE_LABELS.find((l) => hasLabel(item, l)) ?? null;
+// What the park is asking for, or null for an item that is not parked. A park whose
+// kind cannot be decoded — an older engine's bare one, a word a newer engine
+// invented — reads as `failure`, the lane that says "someone diagnose this".
+export const triageOf = (item) => (isParked(item) ? triageLabelFor(parkKindOf(item)) : null);
 
 const TRIAGE_TEXT = {
   [NEEDS_HUMAN_APPROVAL]: 'a PR to approve',
@@ -236,7 +252,12 @@ export function warningsFor(item, now, { periodFor = () => null, isOpen = () => 
 
 // An open item, decorated with everything the queue lane renders.
 export function describeItem(item, now, opts = {}) {
-  const parsed = parseWorkItemTitle(item.title) ?? { pack: null, task: null, qualifier: null };
+  // A marked issue keeps the person's own title, so its task comes from the worker
+  // path its machine block names — without that the page would render every request
+  // run as an item belonging to no task at all.
+  const parsed = parseWorkItemTitle(item.title)
+    ?? (taskIdFromPath(parseWorkItemBody(item.body).taskPath) ? { ...taskIdFromPath(parseWorkItemBody(item.body).taskPath), qualifier: null } : null)
+    ?? { pack: null, task: null, qualifier: null };
   const body = parseWorkItemBody(item.body);
   const state = stateOf(item);
   return {

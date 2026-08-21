@@ -10,14 +10,15 @@
 // a session that stopped early) runs none of this, and the hourly pass is what
 // makes that harmless rather than a chain that never resumes.
 
-import { BLOCKED, NEEDS_HUMAN, READY, hasLabel, parseWorkItemBody } from './work-item.mjs';
+import { BLOCKED, READY, STATUS_BLOCKED, isStatus, parseWorkItemBody } from './work-item.mjs';
+import { swapStatus } from './apply-status.mjs';
 
 // Is this item's wait over? `stateOf(n)` answers the state of a `Blocked-by`
 // target that may not be a work item at all — an unknown number is never treated
 // as closed, so an unreadable blocker DELAYS rather than releases (the
 // convergence-not-prevention posture). An item in triage is nobody's to release.
 export function isReleasable(item, { stateOf = () => null, nowMs = Date.now() } = {}) {
-  if (item.state !== 'open' || !hasLabel(item, BLOCKED) || hasLabel(item, NEEDS_HUMAN)) return false;
+  if (item.state !== 'open' || !isStatus(item, STATUS_BLOCKED)) return false;
   const { notBefore, blockedBy } = parseWorkItemBody(item.body);
   const blockersDone = blockedBy.every((n) => stateOf(n) === 'closed');
   const timeReached = notBefore === null || nowMs >= new Date(notBefore).getTime();
@@ -66,7 +67,7 @@ export async function readyDependents(api, gh, repo, closedIssue, {
     nowMs: now().getTime(),
   });
   for (const item of freed) {
-    await api.swapLabel(gh, repo, item.number, BLOCKED, READY);
+    await swapStatus(api, gh, repo, item, STATUS_BLOCKED, READY);
     await api.comment(gh, repo, item.number,
       `Released: #${closedIssue} has closed, and nothing else holds this item.`);
     log(`- #${item.number}: readied — #${closedIssue} closed and nothing else holds it`);

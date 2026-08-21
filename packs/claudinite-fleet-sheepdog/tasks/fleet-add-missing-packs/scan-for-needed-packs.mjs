@@ -32,7 +32,8 @@
 import { paged, readDeclaration, isDormant, ensureLabel, labeledIssues } from '../../fleet-api.mjs';
 import { undeclaredFits } from './fingerprint-fit.mjs';
 import { fetchTree, makeRemoteEvaluator } from './remote-context.mjs';
-import { LABEL, SUSPECTED_TITLE, REQUESTED_TITLE } from './protocol.mjs';
+import { LABEL, MARK, SUSPECTED_TITLE, REQUESTED_TITLE } from './protocol.mjs';
+import { ensureMark, markedBody, remarkWorkList, otherOpenWorkList } from './mark-work-list.mjs';
 import { closeSatisfiedRequest } from './force-add-packs.mjs';
 
 // --- the issue body (pure) ----------------------------------------------------
@@ -105,10 +106,11 @@ export async function convergeSuspectedIssue(gh, fullName, { fits, body }) {
   if (existing) {
     // The suspected set can change between runs. Rewrite the body rather than
     // commenting: the issue is a work list, and a work list that has to be
-    // reassembled from a comment thread is one nobody reads to the bottom of.
-    if (existing.body === body) return { action: null, openWork: true };
-    await gh(`/repos/${fullName}/issues/${existing.number}`, { method: 'PATCH', body: { body } });
-    return { action: `updated #${existing.number} (${fullName})`, openWork: true };
+    // reassembled from a comment thread is one nobody reads to the bottom of. The
+    // member's own machine block survives the rewrite, and a body that really
+    // changed clears the status — the re-ask (mark-work-list.mjs).
+    const written = await remarkWorkList(gh, fullName, existing, markedBody(body, existing));
+    return { action: written ? `updated #${existing.number} (${fullName})` : null, openWork: true };
   }
 
   // A deliberate `not planned` close is a standing decline for this repo — reopening
@@ -121,8 +123,16 @@ export async function convergeSuspectedIssue(gh, fullName, { fits, body }) {
     color: '0E8A16',
     description: 'The fleet asks this repo to declare packs — adopted by the adopt-requested-packs task',
   });
+  await ensureMark(gh, fullName);
   const { status, json } = await gh(`/repos/${fullName}/issues`, {
-    method: 'POST', body: { title: SUSPECTED_TITLE, body, labels: [LABEL] },
+    method: 'POST',
+    body: {
+      title: SUSPECTED_TITLE,
+      // Behind the member's other open work list, where it has one: two lists are
+      // two items of one task, and nothing else serializes them.
+      body: markedBody(body, null, { blockedBy: otherOpenWorkList(open, SUSPECTED_TITLE) }),
+      labels: [LABEL, MARK],
+    },
   });
   if (status !== 201) throw new Error(`creating the suspected-packs issue in ${fullName} returned ${status}`);
   return { action: `opened #${json.number} (${fullName})`, openWork: true };

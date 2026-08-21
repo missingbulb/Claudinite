@@ -1,8 +1,10 @@
 # implement-request worker
 
 Somebody with push access marked an issue in this repository and asked for it to be
-implemented. Your work item names that issue in its **`Request:` field**; the issue
-is the requirement. GitHub access is **MCP-only** (`mcp__github__*`).
+implemented. **That issue is your work item** — the machine block in its body is
+what the machinery reads, everything outside it is the person's, and the
+`Request:` field names the issue itself. The issue is the requirement. GitHub
+access is **MCP-only** (`mcp__github__*`).
 
 You open a pull request. **Whether you may also merge it is your item's `Merge:`
 field, and nothing else** — not the request issue, not a comment on it, not how
@@ -69,15 +71,15 @@ now re-opens that question.
    with one comment naming the pull request. This is where a run ends whenever the
    change was not authorized to land or was too wide to.
 
-   Either way, write back to the **request issue**: remove `claude-queued`, add
-   `claude-in-review` unless you merged, and comment with the pull request, whether
-   it landed, and the model this run used. That relabelling is what tells the person
-   who asked whether their request is waiting on them or is done.
+   The park lands on the marked issue itself, which is what tells the person who
+   asked that their request is waiting on them: there is no second issue to
+   relabel. Say in that comment whether the change landed and which model ran it.
 
 ## If you cannot do it
 
 A request you cannot implement is a **failure park**, not a quiet success: park the
 item `needs-human` + `task:needs-human-failure` with what you found, and leave the
-request issue exactly as it is. Its standing `claude-queued` is deliberate — it is
-what stops the next scheduler run queueing a second run of the same request, and re-arming
-work that writes code is a person's decision made after reading what you said.
+issue itself open and untouched otherwise — never close somebody's issue because
+your run could not do it. The standing park status is deliberate: it is what stops
+the next scheduler run adopting the same issue again, and clearing it is a person's
+decision made after reading what you said.

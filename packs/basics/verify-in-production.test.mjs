@@ -17,9 +17,9 @@ test('the skill carries the discernment test — most changes file nothing', () 
 });
 
 test('what it files is a request the queue adopts, not a mechanism beside it', () => {
-  assert.match(skill, /`claude-task`/, 'the mark is what makes the scheduler run adopt the issue');
+  assert.match(skill, /`task:origin:ad-hoc`/, 'the mark is what makes the scheduler run adopt the issue');
   assert.match(skill, /Not-before:/, 'without the delay the run fires before the release it waits on');
-  assert.doesNotMatch(skill, /claude-automerge.*apply/i, 'a verification has nothing to merge');
+  assert.doesNotMatch(skill, /Automerge:.*apply/i, 'a verification has nothing to merge');
 });
 
 // FILED ONLY AFTER THE MERGE (#1128). A PR can be REJECTED, and the queue cannot tell
@@ -66,7 +66,7 @@ test('the verification is filed as a sub-issue of the original', () => {
 // executes its playbook, deciding nothing.
 test('a not-yet-live run re-arms by the filed Retry-every, mark and field only', () => {
   assert.match(skill, /Retry-every:/);
-  assert.match(skill, /re-apply\s+`claude-task`/i);
+  assert.match(skill, /clear the issue's\s+`task:status:\*` label/i);
   assert.match(skill, /No comment/i);
   assert.doesNotMatch(skill, /Give-up-after/, 'the give-up marker was dropped (owner, 2026-08-20)');
   assert.doesNotMatch(skill, /sensible/i, 'the run decides nothing — the filer stated the extension');

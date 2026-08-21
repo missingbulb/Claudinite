@@ -42,28 +42,36 @@ does not. If you filed an earlier `/do-later` this session but no longer have it
 number, find it by its marker line among the repo's open issues rather than
 falling back to (2).
 
-## The labels — the mark, the model, the merge
+## The mark, and the parameters in the body
 
-Apply all three (`mcp__github__issue_write`, `labels`):
+**The mark is one label**: **`task:origin:ad-hoc`** (`mcp__github__issue_write`,
+`labels`). The next scheduler run adopts the issue — writing its machine block
+into the body and giving it a status — and the issue itself becomes the work
+item, so the whole run plays out where the owner is already looking. Nothing else
+is a label any more; everything below rides the issue **body**, and is honoured
+only for an author with push access on the repository.
 
-- **`claude-task`** — the mark. The next scheduler run adopts the issue into a work item,
-  blocked on what you named, and releases it once those close.
-- **`claude-model:<family>`** — the family **this** session is running, so the
-  deferred work is done by what the owner is working with now. Read it with
-  `get_session` (claude-code-remote, `session_id` omitted) and map
-  `session_context.model` to `opus`, `sonnet` or `haiku`. A model outside those
-  three has no label — omit it and the run takes the default.
-- **`claude-automerge`** — the standing authorization to land the change without
-  the owner's approval **when the run's diff turns out to be narrow** (docs,
-  tests, comment-only edits, and code within a single directory; the run measures
-  this, not you). **Withhold it whenever the owner said they want to see this
-  one** — "let me review it", "show me before merging", or any such wording
+- **`Model: <family>`** — the family **this** session is running, so the deferred
+  work is done by what the owner is working with now. Read it with `get_session`
+  (claude-code-remote, `session_id` omitted) and map `session_context.model` to
+  `opus`, `sonnet` or `haiku`. A model outside those three is left out, and the
+  run takes the task's default.
+- **`Automerge: if-narrow`** — the standing authorization to land the change
+  without the owner's approval **when the run's diff turns out to be narrow**
+  (docs, tests, comment-only edits, and code within a single directory; the run
+  measures this, not you). **Withhold it whenever the owner said they want to see
+  this one** — "let me review it", "show me before merging", or any such wording
   outranks how small the change looks.
+- **`Task: <pack>/<task>`** — only when the deferral is a run of a *named task*
+  rather than "implement this issue". Left out, the run is the built-in request
+  implementer, which is what a `/do-later` almost always wants.
 
-If a label does not exist in the repository yet, the mark cannot be applied (the
-API refuses an unknown label, and only the scheduler run creates them). Say so in your
-reply and leave the issue filed — the labels appear on the next scheduler run, and the
-owner can mark it from the issue page.
+Keep the fields on their own lines, above the marker line, beside `Blocked-by:`.
+
+If the mark does not exist in the repository yet, it cannot be applied (the API
+refuses an unknown label, and only the scheduler run creates it). Say so in your
+reply and leave the issue filed — the label appears on the next scheduler run, and
+the owner can mark it from the issue page.
 
 ## Then say what you filed
 

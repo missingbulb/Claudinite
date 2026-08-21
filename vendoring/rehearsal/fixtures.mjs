@@ -81,6 +81,13 @@
 //                 scheduler's concurrency group, with task secrets stamped into it)
 //                 beside a current mount — and, since #877, one that still names
 //                 the retired `tick.mjs` entry point the rename left a shim at.
+//                 Its executor copy is the pre-#1119 one, triggering on the legacy
+//                 ready spelling alone: a workflow's event trigger names labels
+//                 LITERALLY, so a member on the old copy stops seeing label events
+//                 the moment the engine writes the canonical spelling, and what this
+//                 shape says is that such a member still converges — the hourly
+//                 scheduler dispatch is the guaranteed delivery, and the lost event
+//                 is latency, never work.
 //   pre-rules-index
 //                 a member in the shape EVERY member has the night #807 reaches it:
 //                 a CLAUDE.md of its own, no rules index, no import, no merge
@@ -336,6 +343,46 @@ jobs:
         with:
           node-version: 24
       - name: Drain the queue
+        env:
+          GITHUB_TOKEN: \${{ github.token }}
+          # claudinite:secrets
+        run: node .claudinite/shared/engine/scheduler/queue/executor.mjs
+`;
+
+// The executor workflow as it stood before the vocabulary migration (#1119):
+// triggering on the legacy ready spelling only, and reporting a dead chain with no
+// origin or park label on the issue it files.
+const OLD_EXECUTOR_WORKFLOW = `name: Claudinite executor
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      continuation_depth:
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  execute:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || github.event.label.name == 'task:ready'
+      || github.event.label.name == 'task:urgent'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Pick up and execute ready work
         env:
           GITHUB_TOKEN: \${{ github.token }}
           # claudinite:secrets
@@ -678,6 +725,7 @@ NSApplication.shared.run()
       'README.md': '# fixture-old-workflows\n\nA rehearsal fixture.\n',
       '.claudinite-checks.json': checks(['basics']),
       '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
+      '.github/workflows/claudinite-executor.yml': OLD_EXECUTOR_WORKFLOW,
     },
   },
   {

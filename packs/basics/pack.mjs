@@ -29,7 +29,9 @@ export default {
   // 60820.5: writing-migration-plans states the two-deliverables contract — the plan
   // is the tracking issue, never a document in the repo; the design doc carries end
   // state, rationale and alternatives only.
-  version: '60820.5',
+  // 60821.1: the janitor's queue sweep decodes an item's status rather than testing
+  // label literals, so it reads items filed in either vocabulary (#1119).
+  version: '60821.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'cross-project working discipline, issue-branch-PR lifecycle, repo hygiene, doc/reference integrity and the baseline engineering, testing and debugging skills',

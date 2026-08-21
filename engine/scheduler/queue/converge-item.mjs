@@ -18,11 +18,12 @@
 import { pathToFileURL } from 'node:url';
 import { renderTaskExec } from '../run-record.mjs';
 import { readyDependents } from './readiness.mjs';
+import { swapStatus, clearStatus } from './apply-status.mjs';
 import {
-  AGENT, NEEDS_HUMAN, TASK_DONE,
+  AGENT, NEEDS_HUMAN, TASK_DONE, STATUS_RUNNING_AGENT, isStatus, isWorkItemTitle, machineBlockOf,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
   QUEUED_LABEL, IN_REVIEW_LABEL,
-  hasLabel, parseWorkItemTitle, parseWorkItemBody,
+  parseWorkItemTitle, parseWorkItemBody,
 } from './work-item.mjs';
 
 // What a session may claim, and what each one means for the item. `record` is the
@@ -60,10 +61,15 @@ export function parseArgs(argv) {
 // notion of which item it holds came from an untrusted fire payload.
 export function refusal(item, issue) {
   if (!item) return `#${issue} could not be read`;
-  if (!parseWorkItemTitle(item.title ?? '')) return `#${issue} is not a Claudinite work item`;
+  // A marked issue IS its own item (DESIGN §16.1), so the title test cannot be the
+  // membership test any more: what says this is one is the machine block adoption
+  // wrote — never the body's first line, which on a marked issue is a person's prose.
+  if (!parseWorkItemTitle(item.title ?? '') && machineBlockOf(item.body ?? '') === null) {
+    return `#${issue} is not a Claudinite work item`;
+  }
   if (item.state !== 'open') return `#${issue} is already closed — it was converged once already`;
-  if (!hasLabel(item, AGENT)) {
-    return `#${issue} does not carry \`${AGENT}\` — this session does not hold it, so it is not this session's to converge`;
+  if (!isStatus(item, STATUS_RUNNING_AGENT)) {
+    return `#${issue} is not with an agent (\`${AGENT}\`) — this session does not hold it, so it is not this session's to converge`;
   }
   return null;
 }
@@ -101,8 +107,13 @@ export async function convergeItem(api, gh, repo, plan, { now = () => new Date()
   const rec = recordLine(item, spec.record);
   if (rec) log(rec);
   if (spec.closes) {
-    await api.removeLabel(gh, repo, item.number, AGENT);
+    await clearStatus(api, gh, repo, item, STATUS_RUNNING_AGENT);
     await api.addLabel(gh, repo, item.number, spec.label);
+    // A MARKED ISSUE IS NOT THE SESSION'S TO CLOSE (§16.1, §16.5): the terminal
+    // status stands on the open issue, and whether the issue itself is finished
+    // belongs to the person who opened it. Nothing is released, because the issue a
+    // dependent waits on has not closed.
+    if (!isWorkItemTitle(item.title ?? '')) return { ok: true, closed: false, freed: [] };
     await api.closeIssue(gh, repo, item.number, spec.stateReason);
     // §15.19: whoever closes an item releases what it was holding.
     const freed = await readyDependents(api, gh, repo, item.number, { now, log });
@@ -110,15 +121,18 @@ export async function convergeItem(api, gh, repo, plan, { now = () => new Date()
   }
   // Every park wears BOTH labels: `needs-human` is the state every guard and
   // sweep reads, the sub-label is what the person is being asked for.
-  await api.swapLabel(gh, repo, item.number, AGENT, NEEDS_HUMAN);
+  await swapStatus(api, gh, repo, item, STATUS_RUNNING_AGENT, NEEDS_HUMAN);
   await api.addLabel(gh, repo, item.number, spec.label);
   // A REQUEST ITEM WRITES BACK TO ITS ISSUE, on the one end that is its business
   // (§16.5). Only the approval park: a failure deliberately writes nothing and
   // leaves `claude-queued` standing, because re-arming work that writes code is a
   // person's decision and that standing label is what stops the next scheduler run queueing
   // a second run of the same request.
+  // Only a LEGACY shadow item writes back to a different issue: under the one-issue
+  // model the approval park stands on the marked issue itself and IS the in-review
+  // state, with nothing to mirror (§16.5).
   const { request } = parseWorkItemBody(item.body ?? '');
-  if (request && plan.outcome === 'approval') {
+  if (request && request !== item.number && plan.outcome === 'approval') {
     await api.comment(gh, repo, request,
       `A pull request for this is open and waiting on you: #${plan.pr}. Merge or close it.`);
     await api.swapLabel(gh, repo, request, QUEUED_LABEL, IN_REVIEW_LABEL);

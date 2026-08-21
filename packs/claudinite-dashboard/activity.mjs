@@ -18,7 +18,7 @@
 // day at the far end of the window is under-read rather than empty, and every series
 // carries the horizon past which it stops being a count and starts being a floor.
 
-import { NEEDS_HUMAN, outcomeOf } from '../../engine/scheduler/queue/work-item.mjs';
+import { isParked, outcomeOf } from '../../engine/scheduler/queue/work-item.mjs';
 import { isWorkItem } from './model.mjs';
 
 export const DAY_MS = 86400e3;
@@ -166,12 +166,14 @@ export function fleetBenefits(reads, { now, windowDays = 7, digests = null } = {
 
     for (const read of readable) {
       for (const i of (read.items ?? []).filter(isWorkItem)) {
-        const labels = i.labels ?? [];
+        // Decoded, never a literal label test: a member's items wear whatever
+        // spelling the engine that filed them wrote (work-item's `statusOf`).
+        const wasParked = isParked(i);
         // An item that needed a person is counted whether or not it has closed —
         // being parked IS the event, and the ones still sitting there are the whole
         // point. `updated_at` is when its label was last written, which is the
         // closest thing the queue leaves to "when it was handed over".
-        if (labels.includes(NEEDS_HUMAN) && inWindow(ms(i.updated_at), from, to)) parked += 1;
+        if (wasParked && inWindow(ms(i.updated_at), from, to)) parked += 1;
 
         if (i.state !== 'closed') continue;
         const at = ms(i.closed_at) ?? ms(i.updated_at);
@@ -186,7 +188,7 @@ export function fleetBenefits(reads, { now, windowDays = 7, digests = null } = {
           // start to finish with nobody in the loop AT THE POINT IT CLOSED — an item
           // triaged and re-queued earlier in its life counts here too, and the panel
           // says so rather than claiming more than the labels can carry.
-          if (!labels.includes(NEEDS_HUMAN)) unattended += 1;
+          if (!wasParked) unattended += 1;
         }
       }
       for (const r of read.runs ?? []) {

@@ -25,9 +25,10 @@
 
 import { pathToFileURL } from 'node:url';
 import {
-  READY, BLOCKED, URGENT, NEEDS_HUMAN, TASK_OBSOLETE, QUEUE_LABELS,
-  EPISODE_MARKER, workItemTitle, workItemBody, withNotBefore, hasLabel,
+  READY, BLOCKED, URGENT, TASK_OBSOLETE, QUEUE_LABELS,
+  EPISODE_MARKER, workItemTitle, workItemBody, withNotBefore, statusesOn,
 } from './work-item.mjs';
+import { clearStatus } from './apply-status.mjs';
 
 // The Context a hand-created item carries when the operator names none. Generic
 // on purpose — it names the mechanism, not the task — because an item's Context is
@@ -66,7 +67,10 @@ export async function wakeItem(gh, repo, number, { urgent = false } = {}) {
   // The episode boundary: every claim before this moment is dead, and arbitrating
   // over dead claims is what livelocks an item through reclaim cycles forever.
   await api.comment(gh, repo, number, `${EPISODE_MARKER}\nWoken by hand — cleared \`Not-before\` and returned this item to the queue.`);
-  for (const l of [BLOCKED, NEEDS_HUMAN]) if (hasLabel(issue, l)) await api.removeLabel(gh, repo, number, l);
+  // Every status the item wears goes, in every spelling — a wake takes the item
+  // back from whatever held it, and a park half-cleared (the state gone, its kind
+  // still standing) is the torn shape the janitor would have to repair.
+  for (const status of statusesOn(issue)) await clearStatus(api, gh, repo, issue, status);
   await api.addLabel(gh, repo, number, READY);
   if (urgent) await api.addLabel(gh, repo, number, URGENT);
   return { ok: true, number };
