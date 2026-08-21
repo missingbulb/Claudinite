@@ -175,14 +175,24 @@ if (pending.length) {
     if (distill) console.log(`    distill: ${distill}`);
   }
 }
-const handover = decl.packs.flatMap((e) => (byId.get(packEntryId(e))?.adoptionHandover ?? []).map((s) => ({ pack: packEntryId(e), ...s })));
+// Core's own hand-over, printed in every adoption beside the packs'. It is core's
+// because the scheduler and the executor are engine, not a pack — and without it
+// the block only ever printed for the few packs that declare one, so the steps a
+// human genuinely has to take left the flow as a line in a PR body (#1167).
+const CORE_HANDOVER = [{
+  pack: 'core',
+  step: 'Finish the `Claudinite executor - <repo>` routine in the routines UI (its own prompt carries the SETUP block: model, and this repo as its only source and outcome), mint its API token there, and set it as this repo Actions secret `CCR_ROUTINE_TOKEN` (Settings → Secrets and variables → Actions).',
+  breaks: 'every agentful work item converges to needs-human with a hand-off naming the unset secret; agentless tasks keep running',
+  done: 'a scheduler run dispatches an agentful item and a session starts for it',
+}];
+const handover = [...CORE_HANDOVER, ...decl.packs.flatMap((e) => (byId.get(packEntryId(e))?.adoptionHandover ?? []).map((s) => ({ pack: packEntryId(e), ...s })))];
 if (handover.length) {
-  console.log(`\nHANDOVER — ${handover.length} step(s) only a human can do; give them their own issue:`);
+  console.log(`\nHANDOVER — ${handover.length} step(s) only a human can do; file them as ONE issue, a checkbox each, never a note in the PR body:`);
   for (const h of handover) {
     console.log(`  [ ] (${h.pack}) ${h.step}`);
     if (h.breaks) console.log(`        while off: ${h.breaks}`);
     if (h.done) console.log(`        done when: ${h.done}`);
   }
 }
-console.log(`\nNEXT: ${pending.length ? 'interview → re-run → ' : ''}commit (reference the adoption issue — create it BEFORE committing), push, PR. Once it lands: capture this session — Claudinite was not loaded when it started, so no SessionEnd hook will — with \`node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --issue <adoption-issue>\`. Then the executor routine + repo binding (bootstrap.md, the scheduling part).`);
+console.log(`\nNEXT: ${pending.length ? 'interview → re-run → ' : ''}create the executor routine and write its endpoint into taskScheduler (bootstrap.md Part 6 — THIS session's work wherever the trigger tool is present, and before the commit so it lands in one PR), then commit (reference the adoption issue — create it BEFORE committing), push, PR. Once it lands: capture this session — Claudinite was not loaded when it started, so no SessionEnd hook will — with \`node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --issue <adoption-issue>\`, and file the HANDOVER issue.`);
 if (!selftest.ok) process.exit(1);

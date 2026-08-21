@@ -58,7 +58,23 @@ jobs:
           # the cores idle at that default (measured on this tree: 106s wall against
           # 187s of user+sys on 4 cores). Doubling the workers: 106s -> 70s, with 16
           # buying only another 2s.
-          node --test --test-concurrency=$(( $(nproc) * 2 )) "${tests[@]}"
+          #
+          # TAP goes to a FILE, not the log. 2,448 tests emit ~13,000 lines at 5.3
+          # lines each, and a failing run's one `not ok` sits wherever its file
+          # finished — while GitHub's job-log API serves only a TAIL and the signed
+          # blob URL that would serve the whole thing is proxy-blocked. So a red run
+          # said `# fail 1` and nothing more, and five green local re-runs could not
+          # name the test (#1170). Printing the failing blocks puts the identity in
+          # the tail, where it can actually be read.
+          status=0
+          node --test --test-concurrency=$(( $(nproc) * 2 )) "${tests[@]}" > "$RUNNER_TEMP/tests.tap" || status=$?
+          if [ "$status" -ne 0 ]; then
+            echo '::group::failing tests'
+            grep -n -A 25 '^not ok' "$RUNNER_TEMP/tests.tap" || echo 'no `not ok` line — the runner died before reporting one'
+            echo '::endgroup::'
+          fi
+          tail -n 12 "$RUNNER_TEMP/tests.tap"
+          exit "$status"
       - name: Conformance sweep (world scope)
         # The tree as it stands — the pattern bootstrap wires into consumers.
         run: node engine/checks/check_the_world.mjs
