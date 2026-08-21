@@ -43,7 +43,7 @@ import storeFileNames from './store-file-names.mjs';
 
 export default {
   id: 'claude-code-web-users-support',
-  version: '60821.1',
+  version: '60821.2',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'what a project offers people working from Claude Code on the web, where the session knows who they are',
@@ -68,8 +68,10 @@ export default {
   // than mentioning it once in a PR body nobody returns to (#1167).
   adoptionHandover: [
     {
-      step: 'Paste this pack\'s environment-setup-command.sh, whole and unedited, into the web environment\'s Setup script field and rebuild '
-        + '(`find .claudinite/shared -name environment-setup-command.sh` locates it in the mount).',
+      step: 'Paste the body of this pack\'s environment-setup-command.sh, whole and unedited, into the web '
+        + 'environment\'s Setup script field, then rebuild. Quote that body inline here in a fenced block: the '
+        + 'reader of this step is the person about to paste it, and sending them to find a file in the mount is '
+        + 'the hop this exists to remove.',
       breaks: 'a Claude Code web session on this repo has none of the toolchains the active packs need, and the session-start env check halt-gates it before any work',
       done: 'a web session on this repo starts with no missing-requirement halt-gate',
     },
