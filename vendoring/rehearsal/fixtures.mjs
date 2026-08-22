@@ -250,6 +250,23 @@ const PACK_DATED = `export default {
 };
 `;
 
+// A CONSUMER-AUTHORED manifest that declares none of what its directory already
+// says (#1246). The convention is additive — every fixture beside this one still
+// spells `id` and `prose` and must keep loading — so the widening is only real if
+// BOTH shapes converge green on a member's own pack, which is what this pairs with
+// the ones above.
+const PACK_BY_CONVENTION = `export default {
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own invariants, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
+  },
+  detect: null,
+  marker: null,
+  worldRules: [],
+  workRules: [],
+};
+`;
+
 const PACK_LEGACY_TASK = `export default {
   id: 'fixture-legacy',
   ruleRoutingGuidance: {
@@ -535,6 +552,18 @@ export const FIXTURES = [
       '.claudinite/local/packs/fixture-versioned/RULES.md': '# fixture-versioned\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-dated/pack.mjs': PACK_DATED,
       '.claudinite/local/packs/fixture-dated/RULES.md': '# fixture-dated\n\nNo standing rules.\n',
+    },
+  },
+  {
+    name: 'convention-local',
+    why: 'a local pack declaring no id, prose, badge or skills — the manifest a consumer writes once the tree answers for them (#1246); its prose must still load and its skill must still mount',
+    files: {
+      'README.md': '# fixture-convention\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'local/fixture-convention']),
+      '.claudinite/local/packs/fixture-convention/pack.mjs': PACK_BY_CONVENTION,
+      '.claudinite/local/packs/fixture-convention/RULES.md': '# fixture-convention\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-convention/skills/fixture-convention-skill/SKILL.md':
+        '---\nname: fixture-convention-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
     },
   },
   {
