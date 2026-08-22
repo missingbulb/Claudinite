@@ -365,11 +365,19 @@ board fails soft in the exact place the ledger failed hard.
 scheduler run(now):
   if dormant: return                            # before any read, as today
 
-  # ---- the one-time migration (#1115) ------------------------------------
-  # The roll model's sleeping items — open, blocked, a FUTURE Not-before, no
-  # Blocked-by, a Last-verdict section proving a roll — close with a comment,
-  # their last verdict seeded onto the board. Idempotent; items waiting on a
-  # blocker or on a first-ever/adoption Not-before are untouched.
+  # ---- the one-time migration (#1115, #1215) -----------------------------
+  # Sleeping standing items — open, blocked, unqualified, a FUTURE Not-before,
+  # no Blocked-by — close with a comment and their window seeded onto the
+  # board: a rolled one (a Last-verdict section) carries its own verdict, a
+  # born-blocked one carries the window it was waiting for. Idempotent; items
+  # waiting on a blocker are untouched.
+  #
+  # ---- the orphan reap (#1215) -------------------------------------------
+  # A blocked, unqualified standing item whose <pack>/<task> is not declared at
+  # HEAD closes: job 1's family match is title-exact on the declared id, so a
+  # retired or renamed spelling is invisible to it, and job 2 would ready the
+  # item at its Not-before onto a task path that is not on disk. Guarded on a
+  # non-empty task list, so an unreadable declaration reaps nothing.
 
   # ---- job 1: instantiate — evaluate at the anchor -----------------------
   for task in discoverTasks():
@@ -383,12 +391,12 @@ scheduler run(now):
     # occurrence guard, BOTH halves (F13): created-at-or-after A, or
     # closed-at-or-after A — an item that ran and closed today consumed today
     if any(i.created_at >= A or i.closed_at >= A for i in family): continue
-    if family.isEmpty:                          # first-ever: no ask (S25)
-      create(labels: task:status:blocked, Not-before: nextAnchor); continue
     # the WATERMARK: a declined row for this anchor means do not re-ask.
     # Scoped to declined rows only (F31): a go row is record, never a gate.
     row = board[task]
     if row.verdict == 'no' and row.lastAsked == A: continue
+    if family.isEmpty and not row:              # first sight: no ask (S25)
+      board[task] = no, "first window at nextAnchor"; continue
     verdict = evaluate(task)                    # signals + precondition
     if verdict.error:  board[task] = fail-open; create(task:status:waiting-for-executor)  # executor decides
     elif verdict.run:  board[task] = go;        create(task:status:waiting-for-executor)
@@ -1217,10 +1225,10 @@ engine at HEAD:
 3. **Config**: `taskScheduler.dispatch: "queue"`, the endpoint map (§12), the
    anchor schedule.
 4. **Nothing else** — no seed items, no ledger to initialize. The first scheduler run
-   after wiring creates every task's first item `task:status:blocked` until its next
-   real anchor (§5's first-item rule, S25), so adoption never fires weekly or
-   monthly work off-anchor on the least-proven repo. The adoption smoke test
-   is the force lever: wake one item by hand and watch it converge.
+   after wiring books every task's first window as a board row and files nothing
+   (§5's first-sight rule, S25), so adoption never fires weekly or monthly work
+   off-anchor on the least-proven repo. The adoption smoke test is the force
+   lever: create one item by hand and watch it converge.
 
 Pre-existing issues from the slot mechanism (`[claudinite-task]` titles) are
 invisible to the scheduler run — the family list is title-filtered — so bootstrap into
