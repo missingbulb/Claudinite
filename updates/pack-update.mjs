@@ -167,7 +167,10 @@ export async function pendingSchedulerWorkflow(targetRoot, fullName, read) {
     const stubRel = stubFor(config);
     const stub = read(stubRel);
     if (stub == null) return { pending: null, error: `no vendored scheduler stub at ${stubRel}` };
-    const content = schedulerWorkflowTarget(fullName, stub, await declaredSecrets(targetRoot, config));
+    // The repo's own anchor hour picks both cron hours (DESIGN §17); absent means the default.
+    const content = schedulerWorkflowTarget(
+      fullName, stub, await declaredSecrets(targetRoot, config), config?.taskScheduler?.dailyHour,
+    );
     const pending = read(SCHEDULER_WORKFLOW) === content ? null : { path: SCHEDULER_WORKFLOW, content };
     return { pending, error: null };
   } catch (e) {

@@ -5,9 +5,25 @@
 # every reader that knows this workflow by name keep holding.
 #
 # A thin shim: all logic lives in the vendored engine, so this file changes
-# rarely. The minute below is a placeholder; bootstrap and the wiring converge
-# rewrite it to this repo's stable hashed minute in :10–:50, computed by
-# `node engine/scheduler/hash-minute.mjs <owner/repo>`.
+# rarely. Every other repo's copy is written by bootstrap and the wiring converge;
+# THIS one is hand-maintained, because the canon has no converge — so it is edited
+# in the same commit as the stub beside it, and `scheduler-stub-parity` keeps the
+# two honest. The value is
+# `node engine/scheduler/hash-minute.mjs <owner/repo>` plus this repo's own
+# `taskScheduler.dailyHour`.
+#
+# TWO TICKS A DAY, NOT TWENTY-FOUR (DESIGN §17). Actions bills each job's minutes
+# rounded up, so a day's cost is the RUN COUNT — a scheduler run's median is 32
+# seconds, and an hourly cron billed 24 minutes a day per repo to do about 13
+# minutes of work. The hours are the repo's `taskScheduler.dailyHour` and twelve
+# hours after it: the first covers every occurrence the calendar can produce
+# (every daily, weekly and monthly anchor falls on that hour), the second carries
+# the work that has no anchor — adopting an issue somebody marked, releasing a
+# `Not-before`, reclaiming a dead claim. A missed tick costs latency and never an
+# occurrence: dueness is read from the anchor, never from whether the cron fired.
+#
+# This repo anchors at 5, an hour after members' default 4, so `growth-promote`
+# reads local packs their extracts have already merged (DESIGN §17.4).
 #
 # TWO JOBS, IN ORDER, THE SECOND CONDITIONAL. The scheduler run is pure label mechanics over the issue list —
 # instantiate each task's standing item at its anchor, ready what is due, reclaim
@@ -40,7 +56,7 @@ name: Claudinite scheduler
 
 on:
   schedule:
-    - cron: '44 * * * *'
+    - cron: '44 5,17 * * *'
   workflow_dispatch:
     inputs:
       wake:

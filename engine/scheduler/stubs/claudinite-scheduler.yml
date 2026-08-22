@@ -5,9 +5,20 @@
 # every reader that knows this workflow by name keep holding.
 #
 # A thin shim: all logic lives in the vendored engine, so this file changes
-# rarely. The minute below is a placeholder; bootstrap and the wiring converge
-# rewrite it to this repo's stable hashed minute in :10–:50, computed by
+# rarely. The cron line below is a placeholder; bootstrap and the wiring converge
+# rewrite it to this repo's stable hashed minute in :10–:50 and its own two
+# anchor hours, computed by
 # `node .claudinite/shared/engine/scheduler/hash-minute.mjs <owner/repo>`.
+#
+# TWO TICKS A DAY, NOT TWENTY-FOUR (DESIGN §17). Actions bills each job's minutes
+# rounded up, so a day's cost is the RUN COUNT — a scheduler run's median is 32
+# seconds, and an hourly cron billed 24 minutes a day per repo to do about 13
+# minutes of work. The hours are the repo's `taskScheduler.dailyHour` and twelve
+# hours after it: the first covers every occurrence the calendar can produce
+# (every daily, weekly and monthly anchor falls on that hour), the second carries
+# the work that has no anchor — adopting an issue somebody marked, releasing a
+# `Not-before`, reclaiming a dead claim. A missed tick costs latency and never an
+# occurrence: dueness is read from the anchor, never from whether the cron fired.
 #
 # TWO JOBS, IN ORDER, THE SECOND CONDITIONAL. The scheduler run is pure label mechanics over the issue list —
 # instantiate each task's standing item at its anchor, ready what is due, reclaim
@@ -40,7 +51,7 @@ name: Claudinite scheduler
 
 on:
   schedule:
-    - cron: '10 * * * *'
+    - cron: '10 4,16 * * *'
   workflow_dispatch:
     inputs:
       wake:

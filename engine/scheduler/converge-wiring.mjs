@@ -17,6 +17,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { hashedCron } from './hash-minute.mjs';
+import { DEFAULT_SCHEDULE } from './calendar.mjs';
 import { writeRulesIndex, RULES_INDEX_FILE, RULES_INDEX_IMPORT } from '../pack_loader/generate-rules-index.mjs';
 import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX } from '../pack_loader/pack-registry.mjs';
 
@@ -127,13 +128,18 @@ export function withDeclaredSecrets(stubText, names = []) {
 // Action's GITHUB_TOKEN, which GitHub never lets near `.github/workflows/`), so it
 // WITHHOLDS the content and hands it to a lane that can. A flow that had to write
 // the file in order to learn what it should say could not do that.
-export function schedulerWorkflowTarget(fullName, stubText, secretNames = []) {
+// `dailyHour` picks BOTH of the cron's hours (DESIGN §17): the anchor tick and the drain tick
+// twelve hours after it. Optional, and absent means the documented default — an unset key is the
+// default, never a misconfiguration — so a caller that does not read the repo's schedule still
+// writes the right cron for every repo that has not moved its anchor.
+export function schedulerWorkflowTarget(fullName, stubText, secretNames = [], dailyHour = undefined) {
   return withDeclaredSecrets(stubText, secretNames)
-    .replace(/cron:\s*'[^']*'/, `cron: '${hashedCron(fullName)}'`);
+    .replace(/cron:\s*'[^']*'/, `cron: '${hashedCron(fullName, dailyHour ?? DEFAULT_SCHEDULE.dailyHour)}'`);
 }
 
-export function convergeSchedulerWorkflow(root, fullName, stubText, secretNames = []) {
-  return writeWorkflow(root, SCHEDULER_WORKFLOW, schedulerWorkflowTarget(fullName, stubText, secretNames));
+export function convergeSchedulerWorkflow(root, fullName, stubText, secretNames = [], dailyHour = undefined) {
+  return writeWorkflow(root, SCHEDULER_WORKFLOW,
+    schedulerWorkflowTarget(fullName, stubText, secretNames, dailyHour));
 }
 
 // The queue's second workflow — the label-event executor. No cron of its own (the
@@ -418,9 +424,9 @@ export function convergeBadgeRow(root, entries) {
 // wrote one it cannot deliver would fail its whole push, not just that file.
 // `seedLocalPack` defaults off for the same reason `badges` does: both are one-time
 // seeds of files the repo then owns, and only bootstrap passes them.
-export async function convergeWiring(root, fullName, stubText, secretNames = [], { badges = false, workflows = true, seedLocalPack = false, executorStub = null } = {}) {
+export async function convergeWiring(root, fullName, stubText, secretNames = [], { badges = false, workflows = true, seedLocalPack = false, executorStub = null, dailyHour = undefined } = {}) {
   const changed = [];
-  if (workflows && convergeSchedulerWorkflow(root, fullName, stubText, secretNames)) changed.push(SCHEDULER_WORKFLOW);
+  if (workflows && convergeSchedulerWorkflow(root, fullName, stubText, secretNames, dailyHour)) changed.push(SCHEDULER_WORKFLOW);
   // In queue mode `stubText` IS the scheduler run stub (the CLI picks it by dispatch mode),
   // and the executor is its second workflow. Nothing removes the executor when a
   // repo flips back: rolling back is a config edit, and an executor workflow whose
@@ -471,7 +477,7 @@ async function main() {
   const executorStub = existsSync(join(stubs, 'claudinite-executor.yml'))
     ? readFileSync(join(stubs, 'claudinite-executor.yml'), 'utf8') : null;
   const secretNames = await declaredSecrets(root, config);
-  const { changed, error } = await convergeWiring(root, fullName, readFileSync(stubPath, 'utf8'), secretNames, { badges, seedLocalPack, executorStub });
+  const { changed, error } = await convergeWiring(root, fullName, readFileSync(stubPath, 'utf8'), secretNames, { badges, seedLocalPack, executorStub, dailyHour: config?.taskScheduler?.dailyHour });
   if (error) console.log(`! ${error}`);
   console.log(changed.length ? `converge-wiring: ${changed.join(', ')}` : 'converge-wiring: already converged');
 }

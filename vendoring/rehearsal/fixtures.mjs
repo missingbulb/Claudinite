@@ -101,6 +101,13 @@
 //                 producer is inert where its consumer is missing, and such a
 //                 member keeps its previous behaviour (an executor every hour)
 //                 rather than losing its drain to an `if` it does not have.
+//   custom-anchor-hour
+//                 a member that moved `taskScheduler.dailyHour` off the default. Both
+//                 of the cron's hours are derived from it now (DESIGN §17), so this
+//                 is the shape that says the converge reads the repo's own schedule
+//                 rather than stamping a constant. Getting it wrong is silent: the
+//                 workflow parses, the runs happen, and every task simply fires
+//                 before its anchor and lands a day late, forever.
 //   pre-rules-index
 //                 a member in the shape EVERY member has the night #807 reaches it:
 //                 a CLAUDE.md of its own, no rules index, no import, no merge
@@ -824,6 +831,17 @@ NSApplication.shared.run()
       '.claudinite-checks.json': checks(['basics']),
       '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
       '.github/workflows/claudinite-executor.yml': OLD_EXECUTOR_WORKFLOW,
+    },
+  },
+  {
+    name: 'custom-anchor-hour',
+    why: "a member that moved its `taskScheduler.dailyHour` off the default, still holding the hourly cron — both cron hours are a function of that value now (DESIGN §17), so a converge that ignored it would fire this repo's scheduler at hours no anchor lands on and run every task a day late, forever, with nothing going red",
+    files: {
+      'README.md': '# fixture-custom-anchor-hour\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics'], {
+        taskScheduler: { dailyHour: 9, weeklyDay: 'Wed', monthlyDay: 1 },
+      }),
+      '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
     },
   },
   {
