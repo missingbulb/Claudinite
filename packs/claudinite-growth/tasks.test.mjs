@@ -118,8 +118,10 @@ test('rule-revalidation: every run carries the read-only and unprobed rules as b
 // precondition has two independent arms and the Context has to say WHICH halves
 // are live — a run woken only by an aged log must not invent an activity window.
 
-test('growth-extract: daily-1h/opus/merged-pr over the window signals alone', () => {
-  assert.equal(extract.frequency, 'daily-1h');
+test('growth-extract: daily/opus/merged-pr over the window signals alone', () => {
+  assert.equal(extract.frequency, 'daily');
+  // The offset only ever implied the ordering; this is what enforces it.
+  assert.deepEqual(extract.after, ['claudinite-lifecycle/update']);
   assert.equal(extract.agent_model, 'opus');
   assert.equal(extract.expected_outcome, 'merged-pr'); // additive local-pack edits auto-merge after CI
   // The logs signal left with the retention prune (logs-prune owns it now): this
@@ -237,12 +239,12 @@ test('growth-dedup: a local-pack change in the window fires it; a quiet repo doe
 
 // --- usage-fold (the skill-usage aggregate) ----------------------------------
 
-test('usage-fold: hourly/agentless/merged-pr, on the two movement signals', () => {
+test('usage-fold: daily/agentless/merged-pr, on the two movement signals', () => {
   assert.equal(usageFold.id, 'usage-fold');
-  // Hourly because the file it writes is the dashboard's whole past-data plane: its
-  // freshness is the page's. What keeps that from being hourly noise is the
-  // precondition below, not a slower clock.
-  assert.equal(usageFold.frequency, 'hourly');
+  // Daily since the cron went to two ticks a day: a frequency finer than the cron cannot be
+  // honoured (tasks-dispatch DESIGN §17.1). The hour rows are still recomputed from source
+  // across a three-day window, so only the newest rows' freshness moves.
+  assert.equal(usageFold.frequency, 'daily');
   assert.equal(usageFold.agent_model, 'none');
   assert.equal(usageFold.expected_outcome, 'merged-pr');
   assert.deepEqual(usageFold.precondition_signals, ['commits', 'conversationLogs']);
@@ -264,13 +266,12 @@ test('usage-fold: a commit or a captured session in the window is what runs it',
   assert.match(both.reason, /and/, 'both movements are named, since the fold covers both');
 });
 
-test('usage-fold: a quiet hour declines, and loses nothing by it', () => {
-  // The whole reason an hourly fold is affordable. The run and queue reads are
-  // watermarked, so declining defers them rather than dropping them, and the dashboard
-  // tops up its freshest hours from the run listing it already fetches.
+test('usage-fold: a quiet period declines, and loses nothing by it', () => {
+  // The run and queue reads are watermarked, so declining defers them rather than dropping
+  // them, and the dashboard tops up its freshest hours from the run listing it already fetches.
   const quiet = usageFold.precondition({ commits: { count: 0 }, conversationLogs: { present: true, logCount: 40, newestLogAgeDays: 3 } });
   assert.equal(quiet.run, false);
-  assert.match(quiet.reason, /nothing moved this hour/);
+  assert.match(quiet.reason, /nothing moved this period/);
 });
 
 test('usage-fold: an unknown signal is not movement — and does not wedge the task', () => {

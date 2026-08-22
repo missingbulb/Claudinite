@@ -148,7 +148,7 @@
         "tokenSecret": "CCR_FLEET_ROUTINE_TOKEN"
       }
     },
-    "dailyHour": 4,
+    "dailyHour": 5,
     "weeklyDay": "Sun",
     "monthlyDay": 1
   }

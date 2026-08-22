@@ -43,36 +43,54 @@ const iso = (t) => new Date(t).toISOString().slice(0, 16) + 'Z';
 
 // daily-Nh / daily+Nh offset the schedule's daily hour (default 4), per the
 // engine's DAILY_OFFSETS: daily-2h → 02:00Z, daily-1h → 03:00Z, daily → 04:00Z.
+// THE DOOR (DESIGN §17.1), mirroring `engine/scheduler/calendar.mjs`: the retired spellings are
+// normalized where a declaration is LOADED, so nothing downstream — not the anchor, not the
+// period the janitor and the signal window count in — ever sees one.
+export const LEGACY_FREQUENCIES = { hourly: 'daily', 'daily-2h': 'daily', 'daily-1h': 'daily', 'daily+1h': 'daily' };
+export const normalizeFrequency = (f) => LEGACY_FREQUENCIES[f] ?? f;
+
 function anchorHour(frequency) {
-  const m = /^daily([+-]\d+)h$/.exec(frequency);
-  if (m) return 4 + Number(m[1]);
-  if (frequency === 'daily') return 4;
-  if (frequency === 'weekly') return 4;
+  if (frequency === 'daily' || frequency === 'weekly' || frequency === 'monthly') return 4;
   throw new Error(`no anchor hour for ${frequency}`);
 }
 
 export function periodMs(frequency) {
-  if (frequency === 'hourly') return HOUR;
-  if (frequency === 'weekly') return 7 * DAY;
-  return DAY; // daily, daily-Nh
+  const f = normalizeFrequency(frequency);
+  if (f === 'weekly') return 7 * DAY;
+  if (f === 'monthly') return 31 * DAY;
+  return DAY;
 }
 
-export function mostRecentAnchor(frequency, now) {
+export function mostRecentAnchor(rawFrequency, now) {
+  const frequency = normalizeFrequency(rawFrequency);
   if (frequency === 'manual') return null;
-  if (frequency === 'hourly') return Math.floor(now / HOUR) * HOUR;
   const d = new Date(now);
   let a = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), anchorHour(frequency));
   if (a > now) a -= DAY;
   if (frequency === 'weekly') {
     while (new Date(a).getUTCDay() !== 0 || a > now) a -= DAY;
   }
+  // Monthly: day 1 at the anchor hour, walking back a month when this month's has not come.
+  if (frequency === 'monthly') {
+    const d2 = new Date(a);
+    a = Date.UTC(d2.getUTCFullYear(), d2.getUTCMonth(), 1, anchorHour(frequency));
+    if (a > now) {
+      const back = new Date(a);
+      a = Date.UTC(back.getUTCFullYear(), back.getUTCMonth() - 1, 1, anchorHour(frequency));
+    }
+  }
   return a;
 }
 
 export function nextAnchor(frequency, now) {
-  let a = mostRecentAnchor(frequency, now);
-  do a += periodMs(frequency); while (a <= now);
-  return a;
+  const from = mostRecentAnchor(frequency, now);
+  // Monthly anchors are not a fixed distance apart, so step UNDER a period and re-resolve —
+  // the engine's `queue/anchors.mjs` walks for the same reason.
+  const step = normalizeFrequency(frequency) === 'monthly' ? 28 * DAY : periodMs(frequency);
+  for (let t = from + step; ; t += step) {
+    const candidate = mostRecentAnchor(frequency, t);
+    if (candidate > from && candidate > now) return candidate;
+  }
 }
 
 // ---- the simulator ----------------------------------------------------------
@@ -169,7 +187,8 @@ export function makeSim({
     }
   }
 
-  const registry = new Map(tasks.map((t) => [t.id, t]));
+  // The load point — the sim's equivalent of `normalizeTaskDeclaration`.
+  const registry = new Map(tasks.map((t) => [t.id, { ...t, frequency: normalizeFrequency(t.frequency) }]));
   const permissionOf = (login) => collaborators[login] ?? 'none';
   // Ordinary issues somebody marked. Under the one-issue model the marked
   // issue BECOMES the work item at adoption — the item record shares the

@@ -4,7 +4,7 @@
 // `validate-dispatch` validate against this one function, so the accepted shape
 // can never drift between the two surfaces.
 
-import { FREQUENCIES } from './calendar.mjs';
+import { ACCEPTED_FREQUENCIES, normalizeFrequency } from './calendar.mjs';
 import { MODEL_FAMILIES } from './model-map.mjs';
 import { EXECUTING_LEASH_MS } from './queue/leases.mjs';
 
@@ -46,6 +46,9 @@ export function normalizeTaskDeclaration(decl) {
       delete out[legacy];
     }
   }
+  // THE ONE DOOR for the retired frequency spellings (DESIGN §17.1). Here rather than in the
+  // calendar because a frequency is read by more than the calendar — see `normalizeFrequency`.
+  if (out.frequency !== undefined) out.frequency = normalizeFrequency(out.frequency);
   return out;
 }
 
@@ -97,8 +100,13 @@ export function validateTaskDeclaration(raw) {
   if (typeof decl.id !== 'string' || decl.id.trim() === '') {
     bad('the task has no string "id"', 'give the task an "id" matching its directory name');
   }
-  if (!FREQUENCIES.includes(decl.frequency)) {
-    bad(`"frequency" ${JSON.stringify(decl.frequency)} is not a legal frequency`, `set one of: ${FREQUENCIES.join(', ')}`);
+  // ACCEPTED, not FREQUENCIES: a member's own task file may still carry a retired spelling and
+  // must keep running, since nothing converges a member's task files. Stopping a NEW declaration
+  // from naming one is the author-time declaration-shape check's job, not this one's — the split
+  // is deliberate, and `FREQUENCIES` beside `ACCEPTED_FREQUENCIES` in calendar.mjs is where it is
+  // spelled out.
+  if (!ACCEPTED_FREQUENCIES.includes(decl.frequency)) {
+    bad(`"frequency" ${JSON.stringify(decl.frequency)} is not a legal frequency`, `set one of: ${ACCEPTED_FREQUENCIES.join(', ')}`);
   }
   if (!Array.isArray(decl.precondition_signals) || !decl.precondition_signals.every((s) => SIGNAL_NAMES.includes(s))) {
     bad(`"precondition_signals" must be an array of known signal names`, `use only: ${SIGNAL_NAMES.join(', ')}`);

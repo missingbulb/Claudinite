@@ -10,7 +10,10 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeSim, T, NH, READY, ORIGIN_AD_HOC, ORIGIN_PLANNED, statusOf } from './sim.mjs';
+import {
+  makeSim, T, NH, READY, ORIGIN_AD_HOC, ORIGIN_PLANNED, statusOf,
+  periodMs, normalizeFrequency, mostRecentAnchor,
+} from './sim.mjs';
 
 // `makeSim`'s default, restated once so the cadence scenarios can derive tick
 // instants instead of transcribing the delays a run happened to produce.
@@ -98,8 +101,10 @@ test("S1' quiet night: one ask per period, no items — the board carries the ve
     assert.equal(sim.standingItem(task), undefined, `${task} filed no item`);
     assert.equal(sim.board.rows.get(task).verdict, 'no', `${task}'s decline is a board row`);
   }
-  // the hourly task asks hourly — that is its declared cadence, not a defect
-  assert.equal(asks(sim, 'gcec/create-extractor').length, 23);
+  // `gcec/create-extractor` still DECLARES the retired `hourly` — it models a member whose task
+  // file has not converged — and the door reads it as daily (DESIGN §17.1), so it asks once like
+  // everything else rather than twenty-three times.
+  assert.equal(asks(sim, 'gcec/create-extractor').length, 1);
   // manual tasks never instantiate
   assert.equal(sim.family('sheepdog/fleet-baseline').length, 0);
   // the executor evaluated nothing: no item ever existed to pick
@@ -255,18 +260,22 @@ test('S21 quiet weeks: no items, five board asks, no janitor noise', () => {
 
 // ---- S22 — the hourly task: asks hourly while quiet (board rows, no issues),
 // runs within the hour once work exists. The churn is the declared cadence.
-test('S22 hourly churn on the board, then work found within the hour', () => {
+test('S22 churn on the board, then work found at the next anchor', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T14:40Z', ({ world }) => { world.pendingRequest = true; });
-  sim.run('2026-08-12T00:00Z', '2026-08-12T16:00Z');
+  // Work arrives on the second day, after a quiet first one.
+  sim.at('2026-08-13T01:40Z', ({ world }) => { world.pendingRequest = true; });
+  sim.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
 
   const fam = sim.family('gcec/create-extractor').filter((i) => !i.seeded);
-  assert.equal(fam.length, 1, 'the quiet hours filed nothing — only the working hour has an item');
+  assert.equal(fam.length, 1, 'the quiet period filed nothing — only the working one has an item');
   const it = fam[0];
-  assert.ok(it.createdAt >= T('2026-08-12T15:00Z'), 'created at the first anchor after the work arrived');
+  assert.ok(it.createdAt >= T('2026-08-13T04:00Z'), 'created at the first anchor after the work arrived');
   assert.equal(it.state, 'closed');
-  assert.ok(it.closedAt <= T('2026-08-12T15:40Z'), 'ran within the hour of the work arriving');
-  assert.ok(asks(sim, 'gcec/create-extractor').length >= 14, 'the quiet hours were each still asked');
+  assert.ok(it.closedAt <= T('2026-08-13T05:00Z'), 'ran at the anchor that found it');
+  // Each quiet period was still ASKED, and each decline is a board row rather than an item —
+  // the churn this scenario is named for, now counted in days because the door reads this
+  // task's retired `hourly` as `daily`.
+  assert.equal(asks(sim, 'gcec/create-extractor').length, 2);
 });
 
 // ---- S23 — the upstream declines (or is broken): dependents run anyway. A
@@ -669,20 +678,21 @@ test('S34 busy morning: one drain run settles all its hour\'s items; every run\'
   });
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
-  // two drains all morning — extract's 03:17 hour, then the 04:00 batch —
-  // and both are the scheduler run's own drain job; nothing else ever ran
+  // ONE drain all morning. The staggered anchor hours retired with the twice-daily cron
+  // (DESIGN §17.1), so extract no longer has an 03:00 hour of its own — the whole morning is one
+  // 04:17 batch, which is the cadence change paying for itself in a scenario that predates it.
   const runs = sim.log.filter((e) => e.kind === 'executor-run');
-  assert.equal(runs.length, 2, 'exactly two executor invocations all morning');
+  assert.equal(runs.length, 1, 'exactly one executor invocation all morning');
   for (const e of runs) assert.equal(e.trigger, 'scheduler-run-drain');
   // the 04:17 run settled BOTH of its hour's items in one invocation — the
   // batch, not a chain: no run was ever caused by a re-dispatch
   const ends = sim.log.filter((e) => e.kind === 'run-end');
-  assert.ok(ends.some((e) => e.settled === 2), 'the batch run settled two items');
+  assert.ok(ends.some((e) => e.settled === 3), 'the batch run settled all three items');
   // picks stay auditable per run — the batch run's picks both name it
   const picks = sim.log.filter((e) => e.kind === 'pick');
   const perRun = new Map();
   for (const p of picks) perRun.set(p.run, (perRun.get(p.run) ?? 0) + 1);
-  assert.ok([...perRun.values()].includes(2), 'one run picked two items');
+  assert.ok([...perRun.values()].includes(3), 'one run picked all three items');
   // work stays SERIAL inside the run — the occupancy model is unchanged, only
   // the run boundary moved — and both items converged the same hour
   const [tidy] = closedOf(sim, 'tidy/tidy-issues');
@@ -841,30 +851,31 @@ test('S26b the closed-at guard half releases at the next anchor', () => {
 // very next scheduler run with no migration and no relabeling.
 test('S28 declaration change mid-flight: the next ask follows HEAD', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  // mid-day, an update lands: tidy-issues moves to the 02:00 anchor and now
-  // yields to baselining; its precondition is replaced outright
-  sim.at('2026-08-12T12:00Z', (s) => s.updateTask('tidy/tidy-issues', {
-    frequency: 'daily-2h',
+  // Mid-day, an update lands: tidy-prs moves from the weekly anchor to the daily one, and its
+  // precondition is replaced outright. The direction matters — a change that makes occurrences
+  // RARER leaves the watermark already covering them, so it is the weekly→daily move that
+  // exposes an uncovered occurrence for the next run to find.
+  sim.at('2026-08-12T12:00Z', (s) => s.updateTask('tidy/tidy-prs', {
+    frequency: 'daily',
     precondition: (w) => ({ run: !!w.newSignal, reason: 'new precondition, no work' }),
   }));
   sim.at('2026-08-14T01:00Z', ({ world }) => { world.newSignal = true; });
-  sim.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
+  sim.run('2026-08-12T00:00Z', '2026-08-15T12:00Z');
 
-  const a = asks(sim, 'tidy/tidy-issues');
-  // The very next scheduler run reads the new frequency: today's NEW-calendar
-  // occurrence (02:00, which the 04:00 row's watermark does not cover) is
-  // asked at 12:17, judged by the NEW precondition. One extra ask on the day
-  // of the change, never a double run — the occurrence guard's closed-at half
-  // covers a same-period item that already ran.
-  assert.ok(a[1].t >= T('2026-08-12T12:00Z') && a[1].t < T('2026-08-12T13:00Z'),
+  const a = asks(sim, 'tidy/tidy-prs');
+  // The very next scheduler run reads the new frequency: today's NEW-calendar occurrence, which
+  // the weekly row's watermark does not cover, is asked at 12:17 and judged by the NEW
+  // precondition. One extra ask on the day of the change, never a double run — the occurrence
+  // guard's closed-at half covers a same-period item that already ran.
+  assert.ok(a[0].t >= T('2026-08-12T12:00Z') && a[0].t < T('2026-08-12T13:00Z'),
     'the first ask after the update is immediate, under the new calendar');
-  assert.equal(a[1].run, false, 'judged by the new precondition');
-  assert.equal(sim.board.rows.get('tidy/tidy-issues').reason, 'new precondition, no work');
-  // day 2 quiet at the new 02:17; day 3, work present: asked at 02:17 and run
-  assert.ok(a[2].t >= T('2026-08-13T02:00Z') && a[2].t < T('2026-08-13T03:00Z'));
-  assert.ok(a[3].t >= T('2026-08-14T02:00Z') && a[3].t < T('2026-08-14T03:00Z'));
-  assert.equal(a[3].run, true);
-  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1, 'and ran under the new declaration');
+  assert.equal(a[0].run, false, 'judged by the new precondition');
+  assert.equal(sim.board.rows.get('tidy/tidy-prs').reason, 'new precondition, no work');
+  // day 2 quiet at the new 04:17; day 3, work present: asked at 04:17 and run
+  assert.ok(a[1].t >= T('2026-08-13T04:00Z') && a[1].t < T('2026-08-13T05:00Z'));
+  assert.ok(a[2].t >= T('2026-08-14T04:00Z') && a[2].t < T('2026-08-14T05:00Z'));
+  assert.equal(a[2].run, true);
+  assert.ok(closedOf(sim, 'tidy/tidy-prs').length >= 1, 'and ran under the new declaration');
 });
 
 // ---- S29 — bootstrap into a repo with old-mechanism issues: the disjoint
@@ -1655,7 +1666,7 @@ test('S64 the request labels: bare mark, adopted, running, in review — one iss
 // hour that had work — each settling its whole hour in one invocation — and
 // one label event. Every quiet hour skips its drain and costs the cron's one
 // run alone.
-test('S65 a working day: 7 pieces of work cost 29 invocations, and each is accounted', () => {
+test('S65 a working day: 7 pieces of work cost 28 invocations, and each is accounted', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:01Z', ({ world }) => {
     world.mountBehind = true;                      // baselining has work (02:00 anchor)
@@ -1684,14 +1695,20 @@ test('S65 a working day: 7 pieces of work cost 29 invocations, and each is accou
   // hand-created item's one label event. Nothing else ever started a runner.
   const acct = sim.actionExecutions();
   assert.equal(acct.scheduler, 24, 'the hourly cron is the floor');
-  assert.deepEqual(acct.executorByTrigger, { 'scheduler-run-drain': 4, 'label-event': 1 });
-  assert.equal(acct.total, 29, 'the whole day, accounted');
-  // the 04:00 anchor's three items — promote, tidy, store — drained in ONE
-  // invocation, which is the point of the batch
-  assert.ok(sim.log.filter((e) => e.kind === 'run-end').some((e) => e.settled === 3),
-    'the busiest hour was still one run');
-  // and the 19 hours with nothing pickable dispatched no executor at all
-  assert.equal(sim.log.filter((e) => e.kind === 'drain-skipped').length, 20);
+  // Two drains, not four: the morning chain's three tasks all anchor at 04:00 now, so one drain
+  // takes what it can and the close that releases the next one chains a close-drain rather than
+  // waiting for a fresh hour's tick (DESIGN §17.1, §17.3).
+  assert.deepEqual(acct.executorByTrigger,
+    { 'scheduler-run-drain': 2, 'close-drain': 1, 'label-event': 1 });
+  assert.equal(acct.total, 28, 'the whole day, accounted');
+  // The 04:00 tick's drain settles FOUR — baselining, tidy, store, and extract, which baselining's
+  // own close released back into the run it was already in. That is the batch and the chain in
+  // one invocation; only promote, released by extract's close after the drain had run dry, needs
+  // the close-drain behind it.
+  assert.ok(sim.log.filter((e) => e.kind === 'run-end').some((e) => e.settled === 4),
+    'the busiest tick settled four items in one run');
+  // and the hours with nothing pickable dispatched no executor at all
+  assert.equal(sim.log.filter((e) => e.kind === 'drain-skipped').length, 22);
 });
 
 // ---- S66 — the quiet day's floor (#1212): no signals, no items — the cron's
@@ -1719,7 +1736,7 @@ test('S66 a quiet day costs the cron floor alone: 24 invocations, zero executor 
 // the runs. The `after:` chain is what makes this safe — one drain settles the
 // whole chain back to back, so collapsing three anchor hours into one tick
 // costs ordering nothing.
-test('S67 twice-daily cron: a full day of work completes on 4 billed runs, not 27', () => {
+test('S67 twice-daily cron: a full day of work completes on 4 billed runs, not 26', () => {
   const arm = (s) => s.at('2026-08-12T00:05Z', ({ world }) => {
     world.mountBehind = true;
     world.extractHasLessons = true;
@@ -1750,7 +1767,7 @@ test('S67 twice-daily cron: a full day of work completes on 4 billed runs, not 2
   // because one drain now settles what three separate ticks used to start.
   assert.equal(hourly.actionExecutions().scheduler, 24);
   assert.equal(twice.actionExecutions().scheduler, 2);
-  assert.equal(hourly.actionExecutions().total, 27);
+  assert.equal(hourly.actionExecutions().total, 26);
   assert.equal(twice.actionExecutions().total, 4);
 
   // ORDERING SURVIVES THE COLLAPSE. All three chained tasks are instantiated by
@@ -1764,11 +1781,15 @@ test('S67 twice-daily cron: a full day of work completes on 4 billed runs, not 2
     assert.equal(new Date(closedOf(twice, task)[0].createdAt).toISOString().slice(11, 16), '04:17');
   }
 
-  // What it costs: the chain no longer starts at 02:17, so the day's last close
-  // moves later — by under an hour, and still inside the same morning.
+  // WHAT IT COSTS SCHEDULED WORK: nothing. Once the anchor offsets retired (DESIGN §17.1) the
+  // hourly grid starts the same chain at the same 04:17 tick, so both cadences finish the day at
+  // the same instant — the 22 extra runs an hourly cron bills were buying latency for ad-hoc
+  // work (S68) and nothing at all for the schedule. The bound is kept rather than asserting a
+  // bare 0, so a future task whose anchor moves shows up as a slip instead of a crash.
   const lastClose = (s) => Math.max(...DAILY.map((t) => closeAt(s, t)));
   const slip = (lastClose(twice) - lastClose(hourly)) / 60_000;
-  assert.ok(slip > 0 && slip <= 60, `the day's work slips ${slip} min, within the hour`);
+  assert.equal(slip, 0, 'the collapsed vocabulary leaves scheduled work no later than hourly did');
+  assert.ok(slip <= 60, `the day's work slips ${slip} min, within the hour`);
 });
 
 // ---- S68 — the ad-hoc mark is what the second tick is FOR. A mark is adopted
@@ -1847,26 +1868,34 @@ test('S69 a mark landing mid-drain waits for the next tick — continuations cha
   assert.equal(sim.log.filter((e) => e.kind === 'executor-run' && e.trigger === 'scheduler-run-drain').length, 2);
 });
 
-// ---- S70 — `hourly` cannot survive the cadence change. Its occurrence is the
-// top of each hour, so a tick that comes twice a day instantiates two of the
-// day's twenty-four: the frequency silently becomes the cron's cadence. That is
-// the mechanical argument for retiring the token, not a preference.
-test('S70 an hourly task under a twice-daily cron asks twice, not 23 times', () => {
-  const hourly = makeSim({ tasks: cast() })
+// ---- S70 — THE DOOR. A member's task file is its own data and no vendoring pass rewrites it,
+// so a retired spelling can sit in a declaration indefinitely and must keep working. It is read
+// as `daily` where the declaration LOADS, which is why nothing downstream — the anchor, and the
+// period the janitor's stale bound and the signal window count in — ever sees the old token.
+test('S70 a retired `hourly` declaration reads as daily, at every cadence', () => {
+  const hourlyCron = makeSim({ tasks: cast() })
     .seedSteadyState('2026-08-12T00:00Z')
     .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
   const twice = makeSim({ tasks: cast(), cronHours: [4, 16] })
     .seedSteadyState('2026-08-12T00:00Z')
     .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
-  assert.equal(asks(hourly, 'gcec/create-extractor').length, 23);
-  assert.equal(asks(twice, 'gcec/create-extractor').length, 2);
+  // `gcec/create-extractor` declares `hourly`; it is asked once a day, exactly like a task that
+  // declares `daily` — and the cron's own cadence changes neither.
+  for (const s of [hourlyCron, twice]) {
+    assert.equal(asks(s, 'gcec/create-extractor').length, 1);
+    for (const task of ['tidy/tidy-issues', 'chrome/store-release']) {
+      assert.equal(asks(s, task).length, 1);
+    }
+  }
 
-  // The daily family is untouched by the same collapse — one ask per period is
-  // one ask per period at any cadence that covers the anchor.
-  for (const task of ['tidy/tidy-issues', 'chrome/store-release']) {
-    assert.equal(asks(hourly, task).length, 1);
-    assert.equal(asks(twice, task).length, 1);
+  // The period, not just the anchor — this is the half that would otherwise park a member's
+  // un-converged task needs-human on every janitor sweep.
+  assert.equal(periodMs('hourly'), periodMs('daily'));
+  assert.equal(normalizeFrequency('hourly'), 'daily');
+  for (const legacy of ['daily-2h', 'daily-1h', 'daily+1h']) {
+    assert.equal(normalizeFrequency(legacy), 'daily');
+    assert.equal(mostRecentAnchor(legacy, T('2026-08-12T10:00Z')), mostRecentAnchor('daily', T('2026-08-12T10:00Z')));
   }
 });
 

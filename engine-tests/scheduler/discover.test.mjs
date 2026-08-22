@@ -25,7 +25,9 @@ test('discoverTasks finds a declared local pack\'s tasks with the repo-relative 
     assert.deepEqual(Object.keys(byId).sort(), ['alpha', 'beta']);
     assert.equal(byId.alpha.pack, 'mypack');
     assert.equal(byId.alpha.taskPath, '.claudinite/local/packs/mypack/tasks/alpha/task.md');
-    assert.equal(byId.alpha.decl.frequency, 'daily-1h');
+    // The door: a retired spelling is normalized where the declaration is LOADED, so nothing
+    // downstream ever sees it (DESIGN §17.1).
+    assert.equal(byId.alpha.decl.frequency, 'daily');
     assert.equal(byId.beta.decl.frequency, 'weekly');
   } finally { cleanup(root); }
 });

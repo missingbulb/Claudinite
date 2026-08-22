@@ -52,7 +52,14 @@ test('it costs no session prose, and its checks guard the digest and the descrip
 test('declaring the pack brings the fleet-digest task, and it names the secret it needs', async () => {
   const task = (await import(join(PACK_DIR, 'tasks/fleet-digest/task.mjs'))).default;
   assert.equal(task.id, 'fleet-digest');
-  assert.equal(task.frequency, 'daily+1h');
+  // The `daily+1h` offset retired with the twice-daily cron; the ordering it wished for is
+  // `after:` now, which actually enforces it (tasks-dispatch DESIGN §17.1).
+  assert.equal(task.frequency, 'daily');
+  assert.deepEqual(task.after, [
+    'claudinite-fleet-sheepdog/fleet-roster',
+    'claudinite-fleet-sheepdog/fleet-usage',
+    'claudinite-fleet-sheepdog/fleet-pack-seeds',
+  ]);
   assert.deepEqual(task.required_secrets, ['FLEET_GITHUB_TOKEN']);
 });
 

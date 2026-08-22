@@ -27,7 +27,9 @@ test('basics contributes the update task structurally, not as a pack.mjs slot', 
 });
 
 test('update declaration: the 02:00 anchor, an apply stage only when needed, deterministic code_work', () => {
-  assert.equal(update.frequency, 'daily-2h'); // a repo's mount is converged before anything reads it
+  // The head of the morning chain. What used to be an earlier clock hour is now `after:` on
+  // everything that reads the mount this converges (tasks-dispatch DESIGN §17.1).
+  assert.equal(update.frequency, 'daily');
   assert.equal(update.agent_model, 'sonnet'); // the apply stage, requested only when a pack's rules moved
   assert.equal(update.expected_outcome, 'merged-pr');
   assert.deepEqual(update.precondition_signals, ['stamp', 'sharedMount']);

@@ -132,11 +132,10 @@ test's title in `scenarios.test.mjs`.
 | §17 `after:` is what orders a chain — collapsing the anchor hours costs ordering nothing | `S67` |
 | §17 ad-hoc latency IS the wait for the next tick; the second tick roughly halves it | `S68` |
 | §17 a mark landing mid-drain is not caught by that drain — adoption is the scheduler run's job | `S69` |
-| §17 `hourly` degrades to the cron's own cadence, which is why the token retires | `S70` |
+| §17 the door: a retired spelling reads as `daily` — anchor AND period — at every cadence | `S70` |
 | §17 a dropped tick costs latency, never the occurrence — and 12x more of it at two ticks | `S71` |
 | §17 a `Not-before` releasing between ticks waits for the next one, unescalated | `S72` |
 | §17 the anchor decides dueness, so a weekly task fires once even with no tick on its hour | `S73` |
-| §17 the door-normalization of the retired tokens (`hourly`/`daily±Nh` → `daily`) | **not yet modeled** — the door does not exist until the vocabulary lands; `S70` tests the pre-normalization world it replaces |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next scheduler run — nothing durable carries a schedule | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |

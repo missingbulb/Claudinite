@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MODEL_FAMILIES, MODEL_MAP, resolveModel, isAgentless } from '../../engine/scheduler/model-map.mjs';
-import { validateTaskDeclaration, OUTCOMES, SIGNAL_NAMES } from '../../engine/scheduler/task-contract.mjs';
+import {
+  validateTaskDeclaration, normalizeTaskDeclaration, OUTCOMES, SIGNAL_NAMES,
+} from '../../engine/scheduler/task-contract.mjs';
+import {
+  FREQUENCIES, ACCEPTED_FREQUENCIES, LEGACY_FREQUENCIES, normalizeFrequency,
+} from '../../engine/scheduler/calendar.mjs';
 import { validateDispatchBody, dispatchFirstLine, DISPATCH_PATH_RE } from '../../engine/scheduler/validate-dispatch.mjs';
 import { verifyOutcome } from '../../engine/scheduler/verify-outcome.mjs';
 
@@ -307,4 +312,33 @@ test('every task this repo carries declares a code_work bound under the leash', 
     assert.ok(t.decl.code_work_timeout * 1000 < EXECUTING_LEASH_MS,
       `${t.pack}/${t.id} declares code_work_timeout ${t.decl.code_work_timeout}s`);
   }
+});
+
+
+// --- the frequency door (tasks-dispatch DESIGN §17.1) -------------------------
+//
+// A task declaration is member-owned data that no vendoring pass rewrites, so a member can carry
+// a retired spelling indefinitely. It is normalized where the declaration LOADS — once, here —
+// rather than at each place a frequency is read, because more than the calendar reads one.
+
+test('the retired frequency spellings are accepted, and normalized at the door', () => {
+  for (const legacy of Object.keys(LEGACY_FREQUENCIES)) {
+    assert.equal(normalizeTaskDeclaration({ frequency: legacy }).frequency, 'daily',
+      `${legacy} reads as daily`);
+    assert.ok(ACCEPTED_FREQUENCIES.includes(legacy), `${legacy} still validates`);
+    assert.ok(!FREQUENCIES.includes(legacy), `${legacy} is not writable in a NEW declaration`);
+  }
+  // A canonical token passes through untouched, and the door is total.
+  for (const f of FREQUENCIES) assert.equal(normalizeTaskDeclaration({ frequency: f }).frequency, f);
+  assert.equal(normalizeTaskDeclaration({}).frequency, undefined);
+  assert.equal(normalizeFrequency('nonsense'), 'nonsense', 'an unknown token is left for the validator');
+});
+
+test('a declaration carrying a retired spelling still validates', () => {
+  const decl = {
+    id: 'legacy', frequency: 'hourly', agent_model: 'sonnet', agent_instructions: 'task.md',
+    expected_outcome: 'none', precondition_signals: [], agent_execution_timeout: 600,
+    precondition: () => ({ run: false }),
+  };
+  assert.deepEqual(validateTaskDeclaration(decl), [], 'a member on the old vocabulary keeps running');
 });

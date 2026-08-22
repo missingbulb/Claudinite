@@ -25,8 +25,10 @@ const kinds = (ops, kind) => ops.filter((o) => o.kind === kind);
 test('anchors are the slot schedule\'s instants with none of its identity', () => {
   assert.equal(mostRecentAnchor('daily', SCHEDULE, '2026-08-14T10:00:00Z').toISOString(), '2026-08-14T04:00:00.000Z');
   assert.equal(nextAnchor('daily', SCHEDULE, '2026-08-14T10:00:00Z').toISOString(), '2026-08-15T04:00:00.000Z');
-  assert.equal(nextAnchor('daily-2h', SCHEDULE, '2026-08-14T10:00:00Z').toISOString(), '2026-08-15T02:00:00.000Z');
-  assert.equal(nextAnchor('hourly', SCHEDULE, '2026-08-14T10:37:00Z').toISOString(), '2026-08-14T11:00:00.000Z');
+  // The retired spellings resolve as `daily` — the calendar is total over the accepted
+  // vocabulary, so a direct caller gets the same answer the door would have produced.
+  assert.equal(nextAnchor('daily-2h', SCHEDULE, '2026-08-14T10:00:00Z').toISOString(), '2026-08-15T04:00:00.000Z');
+  assert.equal(nextAnchor('hourly', SCHEDULE, '2026-08-14T10:37:00Z').toISOString(), '2026-08-15T04:00:00.000Z');
   assert.equal(nextAnchor('weekly', SCHEDULE, '2026-08-14T10:00:00Z').toISOString(), '2026-08-16T04:00:00.000Z');
   // Monthly anchors are not a fixed distance apart — the walk must not overshoot.
   assert.equal(nextAnchor('monthly', SCHEDULE, '2026-08-14T10:00:00Z').toISOString(), '2026-09-01T04:00:00.000Z');
