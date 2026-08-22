@@ -258,6 +258,12 @@ export function summariseMember(read, { now, canon = null } = {}) {
     runs: runSummary,
     ci,
     stars,
+    // What this member's own packs report, straight through from the read: the
+    // summary judges nothing about it. A contribution never feeds a reason, a level
+    // or the ranking — attention is earned by what the engine can defend, and a pack
+    // cannot rank across a fleet it does not know.
+    contributions: read.contributions ?? null,
+    live: read.live ?? null,
     lastCommit: head?.committedAt ? ms(head.committedAt) : null,
     // Null all the way through when the read did not happen, so the row draws "not
     // read" rather than an empty quarter that reads as a repo nobody touched.

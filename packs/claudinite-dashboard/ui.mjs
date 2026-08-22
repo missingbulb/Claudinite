@@ -102,21 +102,9 @@ export function segmentBar(segments, { width = 108, title = (l, n) => `${n} ${l}
 
 // --- the member row's compact marks ----------------------------------------------
 
-// A fleet grid is thirteen columns wide, and three of them were spending a whole
-// column each on something a glyph carries: a star count, a pass/fail word, and one
-// relative date. These three fold that back — the row reads at the same glance and
-// gives the width to the panels that need it.
-
-// The star count, as the mark itself over the number. It rides ahead of the name
-// rather than in the Status group because it is not a health signal: it says what
-// KIND of repo this is, which is the frame you read the rest of the row in.
-export const starMark = (stars) => el('div', {
-  className: 'stars',
-  title: stars == null ? 'stars unknown' : `${stars} stargazer${stars === 1 ? '' : 's'}`,
-}, [
-  el('div', { className: 'glyph', textContent: '★' }),
-  el('div', { className: 'n num', textContent: stars == null ? '—' : String(stars) }),
-]);
+// A fleet grid is wide, and two of these fold a whole column each back into a mark
+// the row reads at the same glance. (A third did the same for the star count, until
+// stars became `git-github`'s contribution and moved to the member's subrow.)
 
 // CI as a dot with its age under it. The dot is never the whole message — it carries
 // a `title` and an `aria-label` in words, because a colour alone is unreadable to a

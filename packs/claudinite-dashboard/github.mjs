@@ -370,6 +370,42 @@ export async function commitActivity(repo, token) {
   return out;
 }
 
+// The repo's latest release — the one platform fact a release pack wants that no file
+// in its tree carries and no task should have to mirror.
+//
+// TTL-cached rather than ETag-revalidated, and the reason is the NEGATIVE: `conditional`
+// throws on a 404 and caches nothing, so a fleet of repos that have never released
+// would spend one request each, every load, forever. A repo with no releases is an
+// ANSWER (`null`) and is cached as one, exactly as a missing declaration file is.
+//
+// DECORATION by the budget's reckoning, as the commit graphs are: it is the only
+// per-member REQUEST pack contributions add, so it withholds itself before anything
+// the queue depends on. A withheld read answers `undefined` — not read — which is
+// never the same as the `null` above.
+export const LATEST_RELEASE_TTL = 6 * 3600e3;
+
+export async function latestRelease(repo, token) {
+  const ck = `latest-release:${repo}`;
+  const hit = ageing.get(ck, LATEST_RELEASE_TTL);
+  if (hit !== undefined) { rate.served += 1; return hit; }
+
+  if (frozen() || !budgetLeft() || !policy.extras) { rate.withheld += 1; return undefined; }
+
+  const path = `/repos/${repo}/releases/latest`;
+  const res = await raw(path, { token });
+  rate.spent += 1;
+  if (res.status === 404) { ageing.set(ck, null); return null; }
+  if (!res.ok) throw await fail(res, path);
+  const r = (await res.json()) ?? {};
+  const out = {
+    text: r.tag_name ?? r.name ?? null,
+    at: r.published_at ?? r.created_at ?? null,
+    url: r.html_url ?? null,
+  };
+  ageing.set(ck, out);
+  return out;
+}
+
 export const listComments = (repo, number, token) =>
   conditional(`/repos/${repo}/issues/${number}/comments?per_page=100`, token);
 

@@ -24,6 +24,8 @@ import {
 import { readCanon, priceStampedPacks } from './canon.mjs';
 import { workRows, rowsFor, viewCounts, defaultView, attentionOf, VIEWS } from './work.mjs';
 import { readUsage, growthSeries, queueSeries, hourSeries } from './usage.mjs';
+import { readContributions, liveSourcesNeeded } from './contributions.mjs';
+import { packCard } from './contrib-view.mjs';
 import {
   $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, tiles, segmentBar,
   warnNodes, stackedColumns, chartLegend, dualAxisChart, flipRows,
@@ -398,6 +400,20 @@ function renderGrowth(growth) {
 
 const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString());
 
+// --- what the packs report ---------------------------------------------------------
+
+// LAST on the page, and the only region whose contents differ from repo to repo:
+// everything above it is the scheduler, which every member has. A repo whose declared
+// packs contribute nothing never sees the section at all — the common case, since most
+// packs carry conventions rather than state.
+function renderContributions(contributions, now) {
+  const section = $('pack-metrics');
+  const node = $('pack-cards');
+  if (!contributions.length) { section.hidden = true; node.replaceChildren(); return; }
+  section.hidden = false;
+  node.replaceChildren(...contributions.map((c) => packCard(c, now)));
+}
+
 // --- entry -----------------------------------------------------------------------
 
 export async function loadRepo({ repo, token, config = null, onError }) {
@@ -450,6 +466,17 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   const canon = await readCanon(config, token);
   if (canon) await priceStampedPacks(canon, declaration);
 
+  // What this repo's own packs report. Discovery is free — the declaration and the
+  // tree listing are both already in hand — and every read below is content at a sha,
+  // so a warm load spends nothing on it.
+  const contributions = await readContributions({ repo, sha, token, declaration, paths, gh });
+  const needed = liveSourcesNeeded(contributions);
+  const live = {
+    stars: meta.stars,
+    release: needed.has('latest-release') ? await gh.latestRelease(repo, token).catch(() => undefined) : undefined,
+  };
+  for (const c of contributions) c.live = live;
+
   const all = workRows(rows, open);
   const counts = viewCounts(all);
 
@@ -463,6 +490,7 @@ export async function loadRepo({ repo, token, config = null, onError }) {
     now,
   });
   renderWork(all, repo, now, defaultView(counts));
+  renderContributions(contributions, now);
   // Today's closes come from the issue page already fetched — the fold's own read is
   // watermarked and hourly, so the last hour or two is exactly what it has not seen.
   renderOutcomes(queueSeries(usage, {

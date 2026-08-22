@@ -659,6 +659,31 @@ module.exports = { issue, check };
     },
   },
   {
+    name: 'dashboard-contributor',
+    why: 'a member whose OWN local pack contributes to the dashboard — `descriptor-usable` is blocking, and a member holds descriptors the canon never sees, so this proves a conforming one (a declared widget, a fleet card that can be one line and names what it counts) converges green rather than going red overnight on a rule nobody there asked for',
+    files: {
+      'README.md': '# fixture-dashboard-contributor\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics', 'claudinite-dashboard']),
+      // A local pack's own descriptor, in the shape the reader accepts: every id a
+      // view selects resolves, the fleet card is a kind that fits one line, and it
+      // carries the noun that keeps it from rendering as a bare number.
+      '.claudinite/local/packs/fixture-metrics/dashboard.json': JSON.stringify({
+        widgets: [
+          { id: 'checked', kind: 'window', label: 'samples checked', noun: 'samples' },
+          { id: 'best', kind: 'stat', label: 'best score', noun: 'pts' },
+        ],
+        repo: ['checked', 'best'],
+        fleet: { member: 'checked' },
+      }, null, 2) + '\n',
+      // …and the values its own task writes, which nothing checks but which is the
+      // half a reader of this fixture will look for.
+      '.claudinite/local/dashboard/fixture-metrics.GENERATED.json': JSON.stringify({
+        generatedAt: '1999-01-02T00:00:00Z',
+        values: { checked: { value: 12, previous: 9, window: '1w' }, best: { value: 84 } },
+      }, null, 2) + '\n',
+    },
+  },
+  {
     name: 'macos-app',
     why: 'a member declaring the macos pack over a conforming Mac app — the pack\'s two exit-path rules are blocking, and this proves an app in the shape they are about (AppKit, a capture tap, terminate-time teardown) converges green rather than going red overnight on a rule nobody asked for',
     files: {
