@@ -152,6 +152,17 @@
   and the call is rejected without it. A rejection leaves no fallback armed, which is what the
   `unattended-agents` skill's re-issue rule is for.
 
+- **Waiting on a background command across two separate Bash calls** — each Bash invocation is a
+  fresh shell, so a bare `wait` in a *later* call has no earlier job to wait on and returns almost
+  instantly, looking like a satisfied wait when nothing was actually waited for. Launch with
+  `run_in_background: true` and consume that same call's result (or use `Monitor`) — never split a
+  background launch and its wait across separate calls.
+
+- **Building a poll loop's exit condition on a shell tool** (`gh`, a package binary) — confirm it
+  exists (`which <tool>`) before wiring a loop around it, and never suppress the condition's
+  stderr to keep output quiet. A missing tool makes the condition fail — or hang — silently,
+  spinning to the loop's own timeout with nothing in the transcript saying why.
+
 ## Warnings and findings
 
 - **Seeing a build, test or CI warning** — fix it rather than tolerate it, with a small, targeted
@@ -284,6 +295,12 @@ For every new task:
   field: decide it explicitly and rewrite the disclosure before the code. Expect the claim in more
   than one place — grep the whole surface for the standing absolutes it touches ("no tracking",
   "no cookies", "no external assets") and reconcile every hit.
+
+- **Changing any behavior a doc makes a checkable claim about** — not only a privacy/data claim
+  above, any "we do X only when Y" statement (when a site publishes, what triggers a deploy, what
+  a tool does by default). Grep every doc and page of copy for what the change falsifies and
+  correct it in the same commit — a claim left standing reads as still true to the next person who
+  takes it at its word.
 
 - **Driving an external runtime more than once in a session** — a headless browser, a device, a
   REPL, a deploy target — write one parameterised driver into the scratchpad, taking the target,

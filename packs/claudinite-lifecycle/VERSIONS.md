@@ -8,6 +8,7 @@ own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.6 | 2026-09-03 | `promote-to-canon` adds three prose rules: a file a vendored module references but that's absent from the mount is evidence about the vendor set, not the canon; diagnose a stuck `[claudinite-task]` `needs-human` issue by what actually landed rather than by comment volume; grep the engine for a live naming convention before inventing a fleet-wide secret/endpoint/routine id; and run `check_the_world.mjs` locally before pushing (#1204). |
 | 60903.4 | 2026-09-03 | `legacy-shape-in-use` states the window a repo has to act on its own finding rather than claiming the removal waits on nobody carrying the shape (#1652). |
 | 60903.3 | 2026-09-03 | `legacy-shape-in-use` — an advisory over this repo's own declaration and stamp for every shape the engine merely tolerates: the retired settings-file name, the `claudinite`/`maintenance` blocks, top-level `packConfig`, `taskScheduler.endpoints`, the `local_packs/` declaration prefix, a renamed or absorbed pack id, an integer version and the `updates` mechanism alias. Each finding names the edit that moves the repo forward; each tolerance is scheduled for removal on no member still carrying it (#1637). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |

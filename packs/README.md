@@ -39,7 +39,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 15 |
 | <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 18 (rules / functions / deploy discipline) + 1 skill: create-release-plan |
 | <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/) | `AndroidManifest.xml` | 0 | 0 (stub) |
-| <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/) | `ios/Runner/Info.plist` | 0 | 0 (stub) |
+| <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/) | `ios/Runner/Info.plist` | 0 | 2 |
 | <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 3 | 31 (bundle / TCC + Hardened Runtime / on-device speech / Developer ID + notarization / lifecycle) |
 | <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/) | declared (opt-in) | 0 | 0 (stub) |
 | <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/) | declared (opt-in) | 0 | 0 (stub) |
