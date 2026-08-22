@@ -24,7 +24,6 @@ const PACK_DIR = join(ROOT, 'packs/claudinite-dashboard');
 // --- the manifest ----------------------------------------------------------------
 
 test('the pack is opt-in and never fingerprinted', () => {
-  assert.equal(pack.id, 'claudinite-dashboard');
   // Nothing in a repo's shape implies wanting a dashboard. A fingerprint would suspect
   // one in every member on the fleet, since every member has a scheduler.
   assert.equal(pack.detect, null);
@@ -35,7 +34,10 @@ test('the pack is opt-in and never fingerprinted', () => {
 test('it costs no session prose, and its checks guard the digest and the descriptors', () => {
   // A page is not a practice: there is no way to write the dashboard wrongly in a
   // consuming repo, and prose here would bill every session in every declaring repo.
-  assert.equal(pack.prose, null);
+  // No RULES.md beside the manifest is what says so — the loader derives prose from
+  // that file's presence, so its absence is the declaration.
+  assert.equal(existsSync(join(PACK_DIR, 'RULES.md')), false);
+  assert.equal(pack.prose, undefined);
   // Two arrived with the fleet-digest task and guard its output and its own fixtures.
   // The third guards what OTHER packs contribute to this page — a descriptor the
   // reader rejects fails silently, in a viewer's browser, where its author never

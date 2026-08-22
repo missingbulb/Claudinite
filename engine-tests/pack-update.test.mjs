@@ -75,13 +75,16 @@ test('minEngineVersion is enforced against the TARGET\'s engine, and names both 
 test('a blocked pack stops the run before any write — never a guess, never a silent skip', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  // A repo whose engine predates every pack's minimum: engine 0 against minimum 1.
+  // A repo whose engine predates every pack's minimum: engine 0 against whatever
+  // floor the packs actually declare, read off the corpus rather than restated
+  // here — a floor rises with every engine release the packs are gated behind.
   setStamp(root, { engineVersion: 0 });
+  const floor = (await loadPacks()).find((p) => p.id === 'basics').minEngineVersion;
   const before = readFileSync(join(root, MOUNT, 'packs', 'basics', 'RULES.md'), 'utf8');
 
   const r = await packUpdate(root, { fullName: 'o/r' });
   assert.equal(r.status, NEEDS_HUMAN);
-  assert.match(r.detail, /needs engine 1/);
+  assert.ok(r.detail.includes(`needs engine ${floor}`), r.detail);
   assert.equal(readFileSync(join(root, MOUNT, 'packs', 'basics', 'RULES.md'), 'utf8'), before);
   removeTree(root);
 });

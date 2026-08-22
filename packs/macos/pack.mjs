@@ -17,17 +17,14 @@ const hasMarkerNearRoot = (ctx, marker) =>
   });
 
 export default {
-  id: 'macos',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'native macOS apps: app-bundle assembly, TCC usage strings, Hardened Runtime entitlements, Developer ID signing, notarization and DMG distribution',
     excludes: 'Mac App Store submission — app-store-release; iPhone app targets — ios; workflow YAML mechanics — git-github',
   },
-  badge: 'badge.svg',
   marker: 'Package.swift (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'Package.swift'),
-  prose: 'RULES.md',
   // Three checks, each on a rule whose static signature is false-positive-free
   // *because the rule is itself conditional*: each fires only where the tree
   // already shows the posture the rule is about — terminate-time teardown, an

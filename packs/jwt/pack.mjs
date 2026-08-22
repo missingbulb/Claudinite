@@ -16,14 +16,12 @@ const JWT_LIB = /['"](jsonwebtoken|express-jwt|jwks-rsa|node-jose|jose|python-jo
 const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx|py)$/;
 
 export default {
-  id: 'jwt',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'minting and validating JSON Web Tokens: algorithm pinning, claim validation, key strength and secrecy, expiry, JWE',
     excludes: 'the Google-issuer validator config — google-identity; OAuth client-side token acquisition — chrome-extension',
   },
-  badge: 'badge.svg',
   marker: 'a JWT library (jsonwebtoken / jose / PyJWT) referenced in JS/TS/Python source',
   detect: (ctx) =>
     ctx.tracked.some((f) => {
@@ -32,5 +30,4 @@ export default {
       return text !== null && JWT_LIB.test(text);
     }),
   worldRules: [],
-  skills: ['jwt-minting', 'jwt-validation'],
 };

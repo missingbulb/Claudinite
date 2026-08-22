@@ -21,15 +21,12 @@ import packVersionBumped from './pack-version-bumped.mjs';
 // no bespoke orchestrator step. Un-declaring it freezes canon absorption
 // without touching the members' side (claudinite-growth).
 export default {
-  id: 'canon-curation',
   ruleRoutingGuidance: {
     belongs: 'fleet-facing curation of the shared corpus — promoting member lessons into packs/, sweeping the fleet stack, policing packs/',
     excludes: 'working rules for developing Claudinite itself — that is the claudinite local pack; a member tidying itself — tidy-repo',
   },
-  badge: 'badge.svg',
   detect: null,
   marker: null,
-  prose: null,
   // Packs-tree segregation is barrier DATA, never code this pack runs:
   // pack-independence is a declared check — a forbidReferences entry in this
   // pack's declared-checks.json, run by the engine's reference-scanning (the
@@ -45,5 +42,4 @@ export default {
   workRules: [packVersionBumped],
   // writing-claudinite-skills is canon-home activity (authoring corpus skills), so
   // this pack bundles it under its own skills/ — members author no corpus skills.
-  skills: ['writing-claudinite-skills'],
 };

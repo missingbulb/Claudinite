@@ -9,3 +9,4 @@ its own row.
 |---|---|---|
 | 4 | — | Renamed from `canary-probe` — the pack's subject is a Claudinite feature, so it carries the prefix that says so. |
 | 60821.2 | 2026-08-21 | This pack's inline version-history comment moved out of `pack.mjs` into this file. |
+| 60822.1 | 2026-08-22 | `id`, `prose`, `badge` and `skills` come from the pack directory rather than the manifest (#1246); `minEngineVersion` rises to the engine release that reads them. |

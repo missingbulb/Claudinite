@@ -14,22 +14,23 @@ import versionScheme from './version-scheme.mjs';
 // versioning and CI half while its site deploys somewhere other than Pages
 // carries none of it, and every rule here is relevance-gated on it, so nothing
 // fires on that repo. The declaration is still what activates the pack.
+//
+// The standard itself — the contract the rules below judge against, and the setup a
+// new site repo needs — is skills/, not prose: it is wanted when a pipeline is being
+// set up or debugged, not carried by every session in the repo.
 export default {
-  id: 'static-website',
-  version: '60821.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'shipping and serving a static site: date-anchored versioning, release on push, the publish set, Pages deploy, client-side caching',
     excludes: 'hand-authored markup gotchas — html; generic workflow lint — git-github; store publication — the release packs',
   },
-  badge: 'badge.svg',
   marker: `.github/workflows/${STUB_FILE} (named "${STUB_NAME}")`,
   detect: shipsPipeline,
   // The site is HTML served over GitHub Actions. Only the markup pack is named
   // here: the workflow-platform rules live in git-github, which basics' own
   // `requires` already materializes into every declaration.
   requires: ['html'],
-  prose: 'RULES.md',
 
   // Adoption interview. Two questions, both genuine forks in the road that the
   // pack cannot default: WHERE the site is served (which decides whether the
@@ -54,8 +55,4 @@ export default {
   // Delivery, not state: the tree always carries a version, and only the diff
   // says whether it moved with the published files beside it.
   workRules: [versionBumped],
-  // The standard itself — the contract the three rules above judge against, and the
-  // setup a new site repo needs. A skill rather than prose: it is wanted when a
-  // pipeline is being set up or debugged, not carried by every session in the repo.
-  skills: ['static-site-releases'],
 };

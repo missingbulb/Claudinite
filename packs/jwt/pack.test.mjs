@@ -15,9 +15,9 @@ const ctx = (files) => ({
   read: (f) => files[f] ?? null,
 });
 
-test('jwt: the manifest bundles its two action skills, and they exist on disk', () => {
-  assert.equal(pack.id, 'jwt');
-  assert.deepEqual(pack.skills, ['jwt-minting', 'jwt-validation']);
+test('jwt: the pack bundles its two action skills', () => {
+  // The skills/ listing IS the manifest's skills declaration (the loader's
+  // convention), so the directory is the only place to assert it.
   assert.deepEqual(readdirSync(join(PACK_DIR, 'skills')).sort(), ['jwt-minting', 'jwt-validation']);
 });
 

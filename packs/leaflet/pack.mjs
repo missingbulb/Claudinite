@@ -16,14 +16,12 @@ const LEAFLET_API = /\bL\.(map|tileLayer|markerClusterGroup)\s*\(/;
 const SOURCE = /\.(html?|mjs|cjs|jsx?|tsx?)$/;
 
 export default {
-  id: 'leaflet',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'map rendering with the Leaflet library — map init options, tile layers, markers and divIcons, CDN plugin pinning',
     excludes: 'generic HTML markup rules — that is html; non-map dependency policy belongs to node',
   },
-  badge: 'badge.svg',
   marker: 'a Leaflet reference (CDN asset, or an L.map/L.tileLayer/L.markerClusterGroup call) in HTML/JS source',
   detect: (ctx) =>
     ctx.tracked.some((f) => {
@@ -31,6 +29,5 @@ export default {
       const text = ctx.read(f);
       return text !== null && (LEAFLET_ASSET.test(text) || LEAFLET_API.test(text));
     }),
-  prose: 'RULES.md',
   worldRules: [assetIntegrity, tileAttribution],
 };

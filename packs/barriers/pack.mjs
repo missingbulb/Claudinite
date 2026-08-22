@@ -15,17 +15,14 @@ import { contributedBarrierRules } from './contributed.mjs';
 // the barriers are FOR (the adoption skill's interview machinery) — the guided on-ramp beats both
 // running empty and guessing separations from existing state.
 export default {
-  id: 'barriers',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'directed folder-access graph rules — which directories may never reference which, plus the exceptions each rule allows',
     excludes: 'where a file should live or naming conventions — that is basics file-placement, not an access barrier',
   },
-  badge: 'badge.svg',
   detect: null,
   marker: null,
-  prose: null,
   questions: [{
     id: 'goals',
     prompt: 'What should these barriers accomplish — which folders must never reference which (imports, paths, docs included), and what architectural boundary does each separation protect?',

@@ -2,16 +2,13 @@
 // Stub — no rules captured yet; add durable, project-agnostic practices to RULES.md
 // as they are earned. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
-  id: 'ios',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'app-target conventions for iOS — Xcode project, Info.plist usage strings, entitlements, code signing',
     excludes: 'shipping builds to the App Store — that is app-store-release; Android equivalents are android',
   },
-  badge: 'badge.svg',
   marker: 'ios/Runner/Info.plist',
   detect: (ctx) => ctx.tracked.some((f) => f.endsWith('ios/Runner/Info.plist')),
-  prose: 'RULES.md',
   worldRules: [],
 };

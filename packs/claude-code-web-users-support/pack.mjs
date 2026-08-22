@@ -42,18 +42,15 @@ import storeConfigured from './store-configured.mjs';
 import storeFileNames from './store-file-names.mjs';
 
 export default {
-  id: 'claude-code-web-users-support',
-  version: '60821.2',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'what a project offers people working from Claude Code on the web, where the session knows who they are',
     excludes: 'project conventions and process — those are the packs that own each subject',
   },
-  badge: 'badge.svg',
   detect: null,
   marker: null,
   seededByDefault: true,
-  prose: 'RULES.md',
   questions: [
     {
       id: 'store',

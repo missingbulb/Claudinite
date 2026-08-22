@@ -17,18 +17,15 @@ import conformanceWorkScope from './conformance-work-scope.mjs';
 // so `claudinite-lifecycle-declared` reports a member that has lost the entry rather
 // than being what puts it there.
 export default {
-  id: 'claudinite-lifecycle',
-  version: '60822.1',
-  minEngineVersion: 1,
+  version: '60822.2',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'using Claudinite itself — the vendored mount, the pack declaration, bootstrapping, adopting packs, the self-refresh update',
     excludes: 'working discipline and the task lifecycle — basics; authoring Claudinite content, scheduled tasks included — claudinite-growth; git — git-github',
   },
-  badge: 'badge.svg',
   detect: null,
   marker: null,
   seededByDefault: true,
-  prose: 'RULES.md',
   // The consumer-isolation wall (claudinite-isolation) is a declared check — a
   // forbidReferences entry in this pack's declared-checks.json, run by the
   // engine's reference-scanning like any barrier. The barriers pack stays
@@ -49,12 +46,6 @@ export default {
     conformanceWorkScope,
   ],
   workRules: [],
-  // Bootstrapping a repo, and adding a pack to one already bootstrapped. Both
-  // were bundled in claudinite-growth, whose subject is lesson capture.
-  skills: [
-    'adopt-claudinite',
-    'adopt-pack',
-  ],
   // Both scheduled tasks live in this pack's `tasks/`, discovered by the
   // scheduler's filesystem scan (engine/scheduler/discover.mjs) rather than
   // declared here: `update`, the per-repo self-refresh every member runs, and

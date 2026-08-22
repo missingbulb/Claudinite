@@ -5,3 +5,4 @@ the version this file was introduced beside (60820.1); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60822.1 | 2026-08-22 | `id`, `prose`, `badge` and `skills` come from the pack directory rather than the manifest (#1246); `minEngineVersion` rises to the engine release that reads them. |
