@@ -21,7 +21,7 @@ const OVERDUE_DAYS = 1;
 
 export default {
   id: 'update',
-  frequency: 'daily',                    // the head of the morning chain — everything that reads a converged mount declares `after:` this
+  frequency: 'daily',                    // the head of the morning chain — everything that reads a converged mount declares `schedule_after:` this
   precondition_signals: ['stamp', 'sharedMount'],
   agent_model: 'sonnet',                 // the apply stage only — most runs are agentless
   expected_outcome: 'merged-pr',

@@ -7,7 +7,7 @@ here forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
-| 60822.2 | — | `fleet-digest`'s `daily+1h` offset becomes `after:` naming the three sheepdog sweeps — the offset expressed the wish and enforced nothing, and a sweep running long simply overran it. Naming another pack's tasks is inert where that pack is not declared. |
+| 60822.2 | — | `fleet-digest`'s `daily+1h` offset becomes `schedule_after:` naming the three sheepdog sweeps — the offset expressed the wish and enforced nothing, and a sweep running long simply overran it. Naming another pack's tasks is inert where that pack is not declared. Uses the renamed `schedule_after` field (was `after`). |
 | 7 | — | The fleet-digest task arrives from the claudinite-fleet-sheepdog pack, with its two checks. A declaring repo gains a daily task; nothing in a member is rewritten, and the task still reads an enforcer's existing `claudinite-fleet-sheepdog` config as its legacy source, so the bump carries no migration record. |
 | 8 | — | The FLEET_GITHUB_TOKEN the digest needs is stated once, in its own fleet-token.mjs, and rendered into the missing-secret message, the adoption step and a 403's hint — additive, no migration (#1030). |
 | 9 | — | Adoption hands over the sign-in decision as well as the Pages setting — prose and a handover entry, so a member gains a checkbox and nothing else changes. |

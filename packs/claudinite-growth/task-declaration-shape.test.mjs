@@ -58,6 +58,26 @@ test('task-declaration-shape: the retired frequency spellings cannot be written 
   }
 });
 
+// The ordering field's rename. ADVISORY, not blocking: the runtime normalizes `after` at the
+// door forever, so a member's own task file keeps its ordering and its CI must not go red over a
+// declaration nobody has edited. The finding is what drives the fleet to the canonical spelling.
+test('task-declaration-shape: the legacy `after` ordering field is an advisory rename', () => {
+  const legacy = goodTask.replace("  frequency: 'daily',",
+    "  frequency: 'daily',\n  after: ['claudinite-lifecycle/update'],");
+  const f = run({ [TASK]: legacy });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].severity, 'advisory', 'never blocking — the runtime still honours it');
+  assert.match(f[0].what, /legacy name "after"/);
+  assert.match(f[0].fix, /rename "after" to "schedule_after"/);
+});
+
+test('task-declaration-shape: the canonical `schedule_after` is clean', () => {
+  const canonical = goodTask.replace("  frequency: 'daily',",
+    "  frequency: 'daily',\n  schedule_after: ['claudinite-lifecycle/update'],");
+  assert.deepEqual(run({ [TASK]: canonical }), [],
+    'the canonical spelling must not match the legacy pattern on its own tail');
+});
+
 test('task-declaration-shape: flags missing required fields', () => {
   const bad = `export default {
   frequency: 'daily',

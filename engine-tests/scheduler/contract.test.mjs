@@ -260,7 +260,7 @@ test('a legacy-named agentless declaration validates clean — the rename is not
 // none of them stays valid, which is what lets the mechanism ship to a fleet whose
 // local packs nothing migrates.
 
-test('after / on_interrupt / invocation_endpoint are optional and validated when present', async () => {
+test('schedule_after / on_interrupt / invocation_endpoint are optional and validated when present', async () => {
   const { validateTaskDeclaration } = await import('../../engine/scheduler/task-contract.mjs');
   const base = {
     id: 't', frequency: 'daily', precondition_signals: [], agent_model: 'none',
@@ -268,15 +268,20 @@ test('after / on_interrupt / invocation_endpoint are optional and validated when
     code_work: 'node w.mjs', code_work_timeout: 60,
   };
   assert.deepEqual(validateTaskDeclaration(base), [], 'declaring none of them is legal');
-  assert.deepEqual(validateTaskDeclaration({ ...base, after: ['claudinite-lifecycle/update'], on_interrupt: 'needs-human', invocation_endpoint: 'fleet' }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...base, schedule_after: ['claudinite-lifecycle/update'], on_interrupt: 'needs-human', invocation_endpoint: 'fleet' }), []);
+  // The legacy spelling still validates — the door renames it at load, so a member's own task
+  // file keeps its ordering rather than silently losing it.
+  assert.deepEqual(validateTaskDeclaration({ ...base, after: ['claudinite-lifecycle/update'] }), []);
+  assert.deepEqual(normalizeTaskDeclaration({ after: ['a/b'] }), { schedule_after: ['a/b'] });
 
   const bad = (patch, re) => {
     const problems = validateTaskDeclaration({ ...base, ...patch });
     assert.equal(problems.length, 1, JSON.stringify(patch));
     assert.match(problems[0].what, re);
   };
-  bad({ after: 'claudinite-lifecycle/update' }, /"after" is not an array/);
-  bad({ after: ['update'] }, /"after" is not an array/);          // a bare id names no pack
+  bad({ schedule_after: 'claudinite-lifecycle/update' }, /"schedule_after" is not an array/);
+  bad({ schedule_after: ['update'] }, /"schedule_after" is not an array/);   // a bare id names no pack
+  bad({ after: ['update'] }, /"schedule_after" is not an array/);            // reported post-rename
   bad({ on_interrupt: 'retry' }, /"on_interrupt"/);
   bad({ invocation_endpoint: 'https://example.invalid/x' }, /kebab-case endpoint name/);
 });

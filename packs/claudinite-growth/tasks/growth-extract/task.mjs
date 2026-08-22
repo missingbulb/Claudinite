@@ -24,7 +24,7 @@ export default {
   // `claudinite-lifecycle/update` converges, so it yields while that task's item is live this
   // cycle and runs the moment it converges — or rolls. The offset only ever implied this; the
   // declaration enforces it.
-  after: ['claudinite-lifecycle/update'],
+  schedule_after: ['claudinite-lifecycle/update'],
   precondition_signals: ['commits', 'prs', 'issues'],
   agent_model: 'opus',                   // generalizing/curating lessons is the heaviest judgment, and the default delivery lands the PR with no human review
   expected_outcome: 'merged-pr',            // additive edits to the repo's own local packs; delivered to land per the repo's delivery settings

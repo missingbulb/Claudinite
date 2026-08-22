@@ -121,7 +121,7 @@ test('rule-revalidation: every run carries the read-only and unprobed rules as b
 test('growth-extract: daily/opus/merged-pr over the window signals alone', () => {
   assert.equal(extract.frequency, 'daily');
   // The offset only ever implied the ordering; this is what enforces it.
-  assert.deepEqual(extract.after, ['claudinite-lifecycle/update']);
+  assert.deepEqual(extract.schedule_after, ['claudinite-lifecycle/update']);
   assert.equal(extract.agent_model, 'opus');
   assert.equal(extract.expected_outcome, 'merged-pr'); // additive local-pack edits auto-merge after CI
   // The logs signal left with the retention prune (logs-prune owns it now): this

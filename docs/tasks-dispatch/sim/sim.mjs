@@ -9,7 +9,7 @@
 // reclaim; the one-time sleeping-item migration), the schedule board as a
 // modeled ARTIFACT (rows the engine actually writes, a write log, and the
 // absent/corrupt degradations — never the rule's intent), the executor loop
-// (pick order, same-title mutex, the `after` yield, claim, validate, the
+// (pick order, same-title mutex, the `schedule_after` yield, claim, validate, the
 // pick-time precondition re-evaluation whose no-go CLOSES the item — the roll
 // is gone — the work step/hand-off/converge as timed phases, heartbeat
 // comments during the work step so the leash measures executor death rather
@@ -611,10 +611,10 @@ export function makeSim({
         // same-title mutex: one task, one execution at a time
         if (open().some((o) => o !== i && o.title === i.title &&
               (is(o, 'task:status:running-executor') || is(o, 'task:status:running-agent')))) return false;
-        // the `after` yield: skip while the upstream's standing item is live
+        // the `schedule_after` yield: skip while the upstream's standing item is live
         // this cycle (a rolled or needs-human upstream does not block — S23)
         if (isStanding(i)) {
-          const ups = registry.get(i.taskId)?.after ?? [];
+          const ups = registry.get(i.taskId)?.schedule_after ?? [];
           if (ups.some((up) => live(up))) return false;
         }
         return true;
@@ -859,7 +859,7 @@ export function makeSim({
     });
   }
 
-  // F15: the pick filters (same-title mutex, `after` yield) are read from
+  // F15: the pick filters (same-title mutex, `schedule_after` yield) are read from
   // possibly-stale state, so two executors can pass them simultaneously and
   // claim DIFFERENT items that the filters should have serialized — a twin
   // pair, or an upstream and its dependent. The lease protects one item, not
@@ -876,7 +876,7 @@ export function makeSim({
       if (!live) return false;
       if (o.title === it.title) return true; // twin
       if (isStanding(it)) {
-        const ups = registry.get(it.taskId)?.after ?? [];
+        const ups = registry.get(it.taskId)?.schedule_after ?? [];
         if (ups.some((up) => o.title === titleOf(up) && isStanding(o))) return true;
       }
       return false;

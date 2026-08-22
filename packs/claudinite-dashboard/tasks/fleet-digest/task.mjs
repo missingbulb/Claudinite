@@ -40,13 +40,13 @@ export default {
   // Nothing here DEPENDS on the fleet sweeps, but a brief written while the census is still
   // running would report a fleet in mid-sweep, and the owner reads one story about the fleet each
   // morning, in order. That used to be an hour's anchor offset, which expressed the wish and
-  // enforced nothing — a sweep running long simply overran it. `after:` is the mechanism
+  // enforced nothing — a sweep running long simply overran it. `schedule_after:` is the mechanism
   // (tasks-dispatch DESIGN §9, §17.1): this yields while any of them is live THIS cycle and goes
   // the moment the last one settles, however long they took.
   //
   // Naming another pack's tasks is safe whether or not this repo declares it: the yield matches a
   // live ITEM, and a task nobody declares has none, so an absent sheepdog is simply no constraint.
-  after: [
+  schedule_after: [
     'claudinite-fleet-sheepdog/fleet-roster',
     'claudinite-fleet-sheepdog/fleet-usage',
     'claudinite-fleet-sheepdog/fleet-pack-seeds',

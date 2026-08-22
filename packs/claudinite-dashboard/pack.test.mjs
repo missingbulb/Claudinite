@@ -53,9 +53,9 @@ test('declaring the pack brings the fleet-digest task, and it names the secret i
   const task = (await import(join(PACK_DIR, 'tasks/fleet-digest/task.mjs'))).default;
   assert.equal(task.id, 'fleet-digest');
   // The `daily+1h` offset retired with the twice-daily cron; the ordering it wished for is
-  // `after:` now, which actually enforces it (tasks-dispatch DESIGN §17.1).
+  // `schedule_after:` now, which actually enforces it (tasks-dispatch DESIGN §17.1).
   assert.equal(task.frequency, 'daily');
-  assert.deepEqual(task.after, [
+  assert.deepEqual(task.schedule_after, [
     'claudinite-fleet-sheepdog/fleet-roster',
     'claudinite-fleet-sheepdog/fleet-usage',
     'claudinite-fleet-sheepdog/fleet-pack-seeds',

@@ -507,14 +507,14 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
      `task:status:running-agent` — one task, one execution at a time; a fan-out's distinct
      qualifiers still parallelize. The skipped item is picked once its twin
      converges.
-   - **The `after` yield** (SCENARIOS S24): skip a scheduled item whose task
-     declares `after: [T]` while T's standing item is `task:status:waiting-for-executor`,
+   - **The `schedule_after` yield** (SCENARIOS S24): skip a scheduled item whose task
+     declares `schedule_after: [T]` while T's standing item is `task:status:waiting-for-executor`,
      `task:status:running-executor`, or `task:status:running-agent` — yield *while the upstream is live
      this cycle*, nothing more. A declined upstream does not block — it has
      no item at all (#1115: a no files only a board row) — and neither does
      one sitting parked: a broken upstream must not halt its
      dependents indefinitely, the same bound the old exclusive claim drew at
-     three days. This is deliberately **not** a `Blocked-by` edge: `after`
+     three days. This is deliberately **not** a `Blocked-by` edge: `schedule_after`
      names the upstream's live states, and a `Blocked-by` on an item that
      may never exist has nothing to point at. (Under the roll model this
      trap was sharper still — a rolling item never closed, starving every
@@ -908,7 +908,7 @@ by the scheduler run (§5). Three patterns fall out, all from the sketch:
   everything landed on its own. The "will anyone check tomorrow?" gap closes
   with machinery that is just two body fields.
 - **Ordering, declared — the exclusive claim retires.** A task may declare
-  `after: ['basics/baselining']` in `task.mjs`, and it compiles to the
+  `schedule_after: ['basics/baselining']` in `task.mjs`, and it compiles to the
   **pick-time yield** (§6.1), *not* to a `Blocked-by` edge: the executor
   skips the dependent while the upstream's standing item is live
   (ready/executing/agent) this cycle, and picks it the moment the upstream
@@ -922,7 +922,7 @@ by the scheduler run (§5). Three patterns fall out, all from the sketch:
   order; on the routine night where baselining's precondition declines at
   its anchor, no baselining item exists and extract is pickable a minute
   after its own yes. Nothing is spent, no task claims a run, and the engine
-  still never knows what baselining is — `after` names a task id, and the
+  still never knows what baselining is — `schedule_after` names a task id, and the
   pick filter reads item states, generically. §12's exclusive-claim
   machinery (and its stated throughput cost) deletes. `Blocked-by` remains
   the right edge for what it is: dependencies on items that *terminate*
@@ -1189,7 +1189,7 @@ routine, the deprecated `session_scope` field, and the scope word every
 executor had to be told and check. Reach is which endpoint a task names.
 
 Survives unchanged: the task folder and contract (plus the new optional
-`after` and `on_interrupt`), preconditions as the only decision point (evaluated at admission and
+`schedule_after` and `on_interrupt`), preconditions as the only decision point (evaluated at admission and
 at pickup, §6.4), the work step (contract key `code_work`) and `required_secrets`, outcome ceilings and
 `verify-outcome`, the claim lease, one-agent-one-item, terminal convergence,
 `claudinite-task-exec` records and the usage fold (plus the terminal labels as
@@ -1243,7 +1243,7 @@ comments as record. Everything else — anchors, guards, yields, leashes,
 verdicts — is **computed fresh at every scheduler run and pick from the engine and the
 declarations at HEAD**. That one property decides every update question:
 
-- **A task declaration change** (frequency, `after`, precondition, secrets)
+- **A task declaration change** (frequency, `schedule_after`, precondition, secrets)
   applies at the very next scheduler run, with no migration and no
   relabeling: a declined task holds no item at all, and the board's row is a
   watermark, not a wake, so nothing durable carries a schedule to migrate
@@ -1400,7 +1400,7 @@ Standing entries — no decision needed now:
     anchor instead of closing it, so the item carries "asked, declined, wakes
     at T" and the scheduler run is a pure function of the clock and the issue list.
     Forcing a scheduled task becomes waking its standing item. One
-    elaboration of the owner's literal proposal, flagged in §9: `after`
+    elaboration of the owner's literal proposal, flagged in §9: `schedule_after`
     compiles to a pick-time yield, not a `Blocked-by` edge — a rolling item
     never closes, so blocked-by would starve dependents of a quiet upstream
     forever (S24). Titles carry no timestamp; the issue number is the
@@ -1675,7 +1675,7 @@ The engine ships **one** task, `engine/implement-request`, wherever the queue ru
 — `frequency: 'manual'` (the scheduler run never puts it on a calendar; an item exists only
 because an issue was marked), `expected_outcome: 'merged-pr'` (a ceiling, not an
 instruction: it opens a pull request for review, and lands one only in the single
-authorized case §16.11 defines), no `after`, and **no code-work phase at all**.
+authorized case §16.11 defines), no `schedule_after`, and **no code-work phase at all**.
 
 Shipping it as a task rather than as a special item shape is what keeps this from
 being a second mechanism: the item's first body line is a task path validated in
@@ -1853,7 +1853,7 @@ field is the worse trade. *(Owner, 2026-08-19: keep the field.)*
 ### 16.8 What this does not change
 
 Ceilings, exec records, the claim lease, heartbeats, the janitor's rules, the triage
-lanes and which of them hold a task's lane, capacity, the `after` yield, suspension
+lanes and which of them hold a task's lane, capacity, the `schedule_after` yield, suspension
 (`CLAUDINITE_TASKS_SUSPEND_ALL` freezes adoption with everything else), and dormancy
 (a dormant repo adopts nothing — marks simply wait). A request item is picked,
 arbitrated and recovered by the same code as any other item, which is the point.
@@ -2031,9 +2031,9 @@ exists to instantiate, and each task would run a day late, forever.
   sized to its own period and must move with it; left at `2/24`, the signal window closes before
   the next anchor and the precondition declines every run.
 - **`daily-2h` / `daily-1h` / `daily+1h`** existed to *stagger* anchors so dependent tasks ran in
-  order. `after:` (§9) enforces the same intent, and the offsets never could — a task whose
+  order. `schedule_after:` (§9) enforces the same intent, and the offsets never could — a task whose
   predecessor overruns its hour runs anyway. With all four collapsed onto one anchor hour, the
-  chain is instantiated by a single tick and `after:` alone still settles it in declaration
+  chain is instantiated by a single tick and `schedule_after:` alone still settles it in declaration
   order (`S67`).
 
 A member's declaration converges on its own schedule, so both retired tokens are **accepted at
@@ -2094,10 +2094,10 @@ is a mean of 6 h and a worst case of 12 h.
 
 A full day of scheduled work costs **4 billed runs against the hourly grid's 27** (`S67`), and a
 quiet day costs 2 against 24. Within a repo, scheduled work is unaffected: every task that ran
-under the hourly grid still runs, still closes, and still in declaration order, because `after:`
+under the hourly grid still runs, still closes, and still in declaration order, because `schedule_after:`
 and not the anchor hour is what orders it.
 
-**Across repos it is not, and `after:` cannot reach there.** A yield matches an upstream item in
+**Across repos it is not, and `schedule_after:` cannot reach there.** A yield matches an upstream item in
 *this* repo's queue, so a stagger between two repos' tasks has no declarable form at all. The
 growth lifecycle is built on one: members extract lessons and the canon's `growth-promote` reads
 whatever has already merged on their mains, so the members' anchor must precede the canon's or

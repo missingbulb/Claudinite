@@ -69,7 +69,7 @@ test's title in `scenarios.test.mjs`.
 | §5 catch-up: most recent occurrence only, no backfill | `S5` |
 | §6.1 pick order — urgent first, then random among the ready (seeded) | `S16` (urgent precedence); the whole suite runs under the shuffle |
 | §6.1 same-title mutex; qualifiers parallelize | `S15`, `S18` |
-| §6.1 the `after` yield (not Blocked-by) | `S4`, `S23`, `S23b`, `S24` (a quiet upstream holds nothing) |
+| §6.1 the `schedule_after` yield (not Blocked-by) | `S4`, `S23`, `S23b`, `S24` (a quiet upstream holds nothing) |
 | §6.2 the verified claim lease, N executors | `S7` |
 | §6.4 the pick-time re-evaluation; every no-go closes (#1115) | `S3'`, `S13'`, `S17`, `S59` |
 | §6.5 work-step failure → needs-human; re-entrant re-pick | `S19`, `S8` |
@@ -129,7 +129,7 @@ test's title in `scenarios.test.mjs`.
 | §15.29 one-issue requests: the mark-with-no-status guard, the one clearing lever, gated body parameters, terminals on an open issue | `S64`, `S44`, `S45`, `S47`, `S49`, `S51` |
 | §15.30 invocations are the cost unit: the batched drain, the conditional drain dispatch, the between-items hold check, the executions accounting | `S34`, `S36`, `S37` (the hold parks between items), `S65` (a working day's bill), `S66` (the quiet-day floor) |
 | §17 the cron's cadence: a day's work completes on 4 billed runs, not 27 | `S67` |
-| §17 `after:` is what orders a chain — collapsing the anchor hours costs ordering nothing | `S67` |
+| §17 `schedule_after:` is what orders a chain — collapsing the anchor hours costs ordering nothing | `S67` |
 | §17 ad-hoc latency IS the wait for the next tick; the second tick roughly halves it | `S68` |
 | §17 a mark landing mid-drain is not caught by that drain — adoption is the scheduler run's job | `S69` |
 | §17 the door: a retired spelling reads as `daily` — anchor AND period — at every cadence | `S70` |

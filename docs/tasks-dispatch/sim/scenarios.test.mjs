@@ -32,12 +32,12 @@ function cast() {
       codeWorkFails: (w) => !!w.mountBroken,
     },
     {
-      id: 'grow/growth-extract', frequency: 'daily-1h', after: ['basics/baselining'],
+      id: 'grow/growth-extract', frequency: 'daily-1h', schedule_after: ['basics/baselining'],
       outcome: 'done', codeWorkMinutes: 2, agentMinutes: 35,
       precondition: (w) => ({ run: !!w.extractHasLessons, reason: 'nothing new to extract' }),
     },
     {
-      id: 'grow/growth-promote', frequency: 'daily', after: ['grow/growth-extract'],
+      id: 'grow/growth-promote', frequency: 'daily', schedule_after: ['grow/growth-extract'],
       outcome: 'done', codeWorkMinutes: 1, agentMinutes: 2,
       precondition: (w) => ({ run: !!w.promoteHasCandidates, reason: 'nothing staged' }),
     },
@@ -305,7 +305,7 @@ test('S23b needs-human upstream does not halt the chain', () => {
   assert.equal(closedOf(sim, 'grow/growth-extract').length, 1, 'extract still ran');
 });
 
-// ---- S24 — retired with the roll (#1115). The trap it demonstrated — `after`
+// ---- S24 — retired with the roll (#1115). The trap it demonstrated — `schedule_after`
 // wired as Blocked-by starving every dependent of a quiet upstream — needed a
 // standing item that rolls and never closes; a declined occurrence now files
 // no item at all, so the object of the starvation no longer exists. The yield
@@ -1733,7 +1733,7 @@ test('S66 a quiet day costs the cron floor alone: 24 invocations, zero executor 
 // cron — the 04:xx anchor tick plus a 16:xx tick — actually trades away.
 
 // ---- S67 — a full day's scheduled work: the same completions on a twelfth of
-// the runs. The `after:` chain is what makes this safe — one drain settles the
+// the runs. The `schedule_after:` chain is what makes this safe — one drain settles the
 // whole chain back to back, so collapsing three anchor hours into one tick
 // costs ordering nothing.
 test('S67 twice-daily cron: a full day of work completes on 4 billed runs, not 26', () => {
@@ -1772,7 +1772,7 @@ test('S67 twice-daily cron: a full day of work completes on 4 billed runs, not 2
 
   // ORDERING SURVIVES THE COLLAPSE. All three chained tasks are instantiated by
   // the SAME 04:17 tick — their staggered anchor hours no longer separate them —
-  // and `after:` alone still settles them in declaration order. This is why the
+  // and `schedule_after:` alone still settles them in declaration order. This is why the
   // daily-Nh offsets can retire: they were never what enforced this.
   const closeAt = (s, task) => closedOf(s, task)[0].closedAt;
   assert.ok(closeAt(twice, 'basics/baselining') < closeAt(twice, 'grow/growth-extract'));

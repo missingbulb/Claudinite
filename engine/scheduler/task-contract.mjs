@@ -32,6 +32,7 @@ const LEGACY_FIELDS = {
   agent_preprocessing_timeout: 'code_work_timeout',
   prework: 'code_work',
   prework_timeout: 'code_work_timeout',
+  after: 'schedule_after',
 };
 
 // Return the declaration with canonical field names. Non-objects pass through
@@ -189,15 +190,16 @@ export function validateTaskDeclaration(raw) {
 
   // --- the work-item queue's three optional declarations (tasks-dispatch DESIGN) ---
 
-  // `after` — ordering, declared (DESIGN §9). A list of `<pack>/<task>` ids this
+  // `schedule_after` — ordering, declared (DESIGN §9). A list of `<pack>/<task>` ids this
   // task yields to WHILE THEY ARE LIVE THIS CYCLE. It compiles to the executor's
   // pick-time yield, never to a `Blocked-by` edge: a standing item that rolls
   // never closes, so blocked-by would starve every dependent of a quiet upstream
   // forever. The engine never learns what any named task does — it reads item
   // states, generically.
-  if (decl.after !== undefined
-      && !(Array.isArray(decl.after) && decl.after.every((s) => typeof s === 'string' && /^[^/\s]+\/[^/\s]+$/.test(s)))) {
-    bad('"after" is not an array of "<pack>/<task>" ids', 'e.g. "after": ["claudinite-lifecycle/update"] — this task yields while those are live this cycle');
+  if (decl.schedule_after !== undefined
+      && !(Array.isArray(decl.schedule_after)
+        && decl.schedule_after.every((s) => typeof s === 'string' && /^[^/\s]+\/[^/\s]+$/.test(s)))) {
+    bad('"schedule_after" is not an array of "<pack>/<task>" ids', 'e.g. "schedule_after": ["claudinite-lifecycle/update"] — this task is not scheduled onto an executor while those are live this cycle');
   }
 
   // `on_interrupt` — the ack-early/ack-late dial (DESIGN §6). Most of this fleet's

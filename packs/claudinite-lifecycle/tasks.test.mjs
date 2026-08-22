@@ -27,7 +27,7 @@ test('basics contributes the update task structurally, not as a pack.mjs slot', 
 });
 
 test('update declaration: the 02:00 anchor, an apply stage only when needed, deterministic code_work', () => {
-  // The head of the morning chain. What used to be an earlier clock hour is now `after:` on
+  // The head of the morning chain. What used to be an earlier clock hour is now `schedule_after:` on
   // everything that reads the mount this converges (tasks-dispatch DESIGN §17.1).
   assert.equal(update.frequency, 'daily');
   assert.equal(update.agent_model, 'sonnet'); // the apply stage, requested only when a pack's rules moved
