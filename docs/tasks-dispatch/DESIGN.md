@@ -692,12 +692,15 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    executor, not a silently missing label event (this is what retires the
    re-arm — §11, and the credential it costs is §12).
 
-**An executor run performs one item** — not a configured maximum but the
-executor's essence (owner, 2026-08-15): claim it, see it through to its
-settle (close, hand-off, or failure), end. The run's `timeout-minutes`
-sizes to a single work bound, a platform kill loses at most one item's
-progress, and self-re-dispatch (§10) chains the rest at ~a minute of spin-up
-per item. Each item's claim is independently leased, so executor concurrency
+**An executor run drains the queue** (§15.30, the owner reversing
+2026-08-15's one-item run: Actions bills per job with minutes rounded up, so
+the run count is the cost): claim an item, see it through to its settle
+(close, hand-off, or failure), then pick the next in the same run, ending
+only when nothing is pickable. Items still settle **one at a time** — the
+serial occupancy of §10 is unchanged — and a platform kill still loses at
+most the *current* item's progress: the already-settled items stand, and the
+failure continuation (§10) drains the remainder on a fresh runner. Each
+item's claim is independently leased, so executor concurrency
 is safe at any width. The old
 bound tying the run to its leash — `timeout-minutes` ≤ the executing leash, so
 the platform killed a hung runner before its claim was reaped — **retires with
@@ -709,8 +712,10 @@ work subprocess* is killed by the work's own declared timeout (the contract's
 existing bound), after which the executor converges the failure; and a
 *reclaimed-but-alive* runner abandons at its next transition, because the
 executor re-verifies its own lease at every state change (§11). The run's
-`timeout-minutes` is then sized to the work it may legally do — the largest
-single work bound it can pick — not to the leash.
+`timeout-minutes` is then sized to the work it may legally do — a drain's
+worth of work bounds, not one — and never to the leash; a drain the platform
+kills at that bound hands its remainder to the failure continuation like any
+other dead run.
 
 **Idempotency, honestly (owner concern, 2026-08-13: "I'm not sure we can
 guarantee all tasks to be idempotent").** Agreed — and the design does not
@@ -844,10 +849,11 @@ comes from a file under review.
   workflow's env by the wiring — settable in the UI or over the API, **no
   commit**), which every Claudinite workflow — scheduler run and executor alike —
   checks as its *first act* and, when true, exits cleanly having fired
-  nothing. The train parks at most one hop after suspension (an already
-  in-flight continuation may fire one re-dispatch; that fresh run sees the
-  variable and parks). Suspension gates workflow *starts* only: in-flight
-  runs and agent sessions finish on their own — cancel those by hand if the
+  nothing. The train parks at most one item after suspension: a fresh start
+  sees the variable and exits, and a live drain re-reads it between items
+  (an API read — the env copy lands at run start only, §15.30) and stops
+  picking. Suspension never interrupts *running* work: the current item and
+  agent sessions finish on their own — cancel those by hand if the
   hold is urgent — and items freeze exactly where they are, no labels
   touched, which is what makes the hold stateless. This is not dormancy:
   `dormant` is a *declared standing state* in tracked config, a commit,
@@ -948,7 +954,12 @@ first; the drain then starts an executor for what it created, which keeps the
 common case's latency at zero even without events). **The drain dispatches
 rather than executes**, which is how it leaves the scheduler run's concurrency group
 below: this job's success means the drain was started, never that it
-finished. Event triggers (`task:status:waiting-for-executor` labeled)
+finished. **And it dispatches only when the scheduler run's parting look at
+the queue found something pickable** (§15.30): every workflow run is a billed
+invocation whatever it finds, so an idle hour costs the cron's one run — the
+guaranteed delivery is unweakened, because anything an event failed to
+deliver is exactly what that parting look sees.
+Event triggers (`task:status:waiting-for-executor` labeled)
 give urgent and hand-created items sub-minute pickup — with one platform fact
 worth knowing: a label written by a workflow's own `GITHUB_TOKEN` emits no
 triggering event (GitHub's recursion guard), so events only ever come from
@@ -956,42 +967,47 @@ triggering event (GitHub's recursion guard), so events only ever come from
 in-run is what makes that harmless; it is the structural delivery, events the
 sugar.
 
-**The capacity model, honestly** (work-as-work review, 2026-08-15): the work
-step is the work, so throughput is run *occupancy* — one run, one item, and
-the queue drains as a chain of runs. The CCR sessions runs hand off
-parallelize for free; the executor-side work does not. So executor width is
-the primary capacity parameter, not a garnish: scale with a matrix width for
-parallel executor jobs, or with executors outside Actions entirely — the
-contract is "issue read/write plus the repo checkout at HEAD", so a runner
-anywhere with a token qualifies. The chain itself is **self-re-dispatch**:
-`workflow_dispatch` is one of the two event types a `GITHUB_TOKEN` *can*
-fire, so a run that ends with ready items left re-dispatches the executor
-workflow and a fresh run continues.
+**The capacity model, honestly** (work-as-work review, 2026-08-15; the run
+boundary re-drawn by §15.30): the work step is the work, so throughput is run
+*occupancy* — items settle **serially**, and one run **drains until nothing
+is pickable** (§15.30, reversing the one-item run of §15.22: Actions bills
+each job's minutes rounded up, so a chain of one-item runs paid a whole
+invocation — checkout, setup, rounding — per item). The CCR sessions runs
+hand off parallelize for free; the executor-side work does not. So executor
+width is the primary capacity parameter, not a garnish: scale with a matrix
+width for parallel executor jobs, or with executors outside Actions entirely
+— the contract is "issue read/write plus the repo checkout at HEAD", so a
+runner anywhere with a token qualifies. Between items the run re-reads the
+operator hold via the API (§8 — the env copy is start-only), so suspension
+parks a drain at most one item later.
 One fairness note, accepted at today's scale: the randomized pick (§6.1)
 removes any *systematic* head domination, but a heavy item still occupies its
 run for the full work bound while light tasks wait out the chain — a sentence
 here rather than machinery, until it is measured.
 
 **What starts an executor run is an enumerable list, and each cause is on the
-record** (2026-08-15, and the sim asserts it — S34): (1) **the scheduler run's own
-drain job** — the guaranteed delivery, started by the cron workflow's job
-graph (`needs: scheduler run`), no event involved; (2) **a `task:status:waiting-for-executor`/`task:urgent`
+record** (2026-08-15, one entry retired by §15.30; the sim asserts it — S34):
+(1) **the scheduler run's own drain job** — the guaranteed delivery, started by the
+cron workflow's job graph (`needs: scheduler run`) whenever the scheduler run
+left anything pickable, no event involved; (2) **a `task:status:waiting-for-executor`/`task:urgent`
 label event** — foreign tokens only, the latency sugar; (3) **the close-time
-drain** — whoever converges an item triggers a drain when anything is
-pickable after its readiness re-check (§9); (4) **self-re-dispatch** — a run
-that ends its one item with others still pickable dispatches a fresh run;
-(5) **the failure continuation** — a run that dies (crash, timeout,
-cancellation, runner loss) never reaches its re-dispatch, so the executor
+drain** — an agent session that converges an item triggers a drain when
+anything is pickable after its readiness re-check (§9); the executor needs no
+such dispatch for its own closes, because its run simply picks the next item;
+(4) **the failure continuation** — a run that dies (crash, timeout,
+cancellation, runner loss) leaves its remainder undrained, so the executor
 workflow carries a second job, `needs: execute` with `if: failure() ||
 cancelled()`, which the platform runs on a fresh runner and whose one step
 re-dispatches — a dead run stalls the train by ~a minute, not until the next
-cron fire (S36). The continuation carries **a depth, capped at three**
+cron fire (S36). (Self-re-dispatch, the old cause between these two, retired
+with the one-item run: the drain-until-empty loop lives inside the run now,
+§15.30.) The continuation carries **a depth, capped at three**
 (engine-side, 2026-08-20, not from the review): a run that dies at *startup*
 — a broken engine, a revoked token — dies identically every time, so an
 unguarded continuation dispatches itself for as long as that lasts. At the
 cap the chain stops and escalates to the repo's workflow-failure issue rather
 than going quiet, because a queue that has stopped draining is the one
-failure where every individual run looks like an ordinary death. Causes 3–5 ride `workflow_dispatch`, which the default
+failure where every individual run looks like an ordinary death. Causes 3–4 ride `workflow_dispatch`, which the default
 `GITHUB_TOKEN` *is* permitted to fire — the explicit exemption in the same
 recursion guard that suppresses its label events — so no wider credential is
 involved.
@@ -1406,7 +1422,8 @@ deployment coupling did not:
     primary capacity parameters; self-re-dispatch (`workflow_dispatch`, one
     of the two events a `GITHUB_TOKEN` can fire) is the drain-until-empty
     shape; the oldest-first fairness exposure is named and accepted at
-    today's scale.
+    today's scale. *(The drain-until-empty shape moved inside one run by
+    decision 30; the occupancy arithmetic itself is unchanged.)*
 18. **The terminal comment is the durable record** (§6.5): the
     `claudinite-task-exec` record and every artifact the work created land on
     the item at close — Actions logs expire, and for agentless runs (the
@@ -1436,7 +1453,10 @@ deployment coupling did not:
     run by run and a run's timeout sizes to a single work bound. The sim
     models runs as first-class objects with a recorded trigger on every run
     — asserted by S34. (Engine: the `maxItems` surface deletes and the
-    dispatch plumbing lands via #883.)
+    dispatch plumbing lands via #883.) ***Reversed by decision 30***
+    *(owner, 2026-08-22, #1212): per-job rounded-up billing prices each run
+    at a full invocation, so a run drains until nothing is pickable — still
+    serially, still trigger-recorded, no `maxItems` knob returning.*
 23. **A dead executor run must not stall the re-dispatch train** (§10, §11):
     the executor workflow carries a failure-continuation job — `needs:
     execute`, `if: failure() || cancelled()`, which the platform runs on a
@@ -1451,7 +1471,9 @@ deployment coupling did not:
     nothing. Items freeze untouched; resume is clearing the variable — the
     next cron scheduler run self-heals everything, or a hand-dispatched **scheduler**
     run (not the bare executor) does it immediately. (S37/S38; wiring rides
-    #883.)
+    #883.) *Amended by decision 30: a batched drain also re-reads the
+    variable between items — an API read, since the env copy lands at run
+    start only — so the hold still parks the train at most one item later.*
 25. **`task:done` / `task:obsolete`** (owner, 2026-08-19) — the `outcome:`
     namespace dissolves into `task:`: one vocabulary carries the state
     machine's live and terminal states alike (§4). `outcome:delivered` stays a
@@ -1545,6 +1567,25 @@ deployment coupling did not:
     task-domain label. Every legacy spelling is decoded forever (§4's table);
     the executor stub triggers on old and new ready/urgent spellings until no
     fielded engine writes the old ones. The migration is tracked in #1119.
+30. **Invocations are the cost unit — the batched drain** (owner, 2026-08-22,
+    #1212) — *changed the design, reversing decision 22.* Actions bills each
+    job's runtime rounded **up** to the next minute, so a day's cost is the
+    workflow-run count, and one-item runs paid a whole invocation — checkout,
+    setup, rounding — per item, with the hourly drain dispatched even into an
+    empty queue. Three changes: an executor run **drains until nothing is
+    pickable**, settling items serially in the same run (the occupancy model
+    of decision 17 is unchanged — only the run boundary moved — and
+    self-re-dispatch retires with it; the failure-continuation job, decision
+    23, keeps covering a run that dies with items still queued); the
+    scheduler's **drain job dispatches only when the scheduler run's parting
+    look at the queue found something pickable**, so an idle hour costs the
+    cron's one run; and the **operator hold is re-read between items** (an
+    API read — the env copy is delivered at run start only), so suspension
+    still parks the train at most one item later. The sim carries an
+    Action-executions accounting (`actionExecutions()`), and S65/S66 pin a
+    working day at the cron floor plus one drain per hour that had work,
+    and a quiet day at the cron floor alone. (S34, S36, S65, S66; the engine
+    and workflow wiring land via #1214.)
 
 ---
 
