@@ -20,6 +20,10 @@ reports it.
 | Deciding which pack owns a lesson | medium | complexity | prose: 59 words |
 | Judging whether Claudinite is current here | medium | correctness | prose: 51 words |
 | Answering "why did the mount not update" | medium | correctness | prose: 39 words |
+| A file missing from the vendored mount | medium | correctness | prose: 87 words |
+| A stuck needs-human task issue's bot comments | medium | correctness | prose: 99 words |
+| Naming a new fleet-wide secret or id | medium | complexity | prose: 50 words |
+| Pushing a change check_the_world.mjs scans | medium | correctness | prose: 57 words |
 
 ## Checks
 
