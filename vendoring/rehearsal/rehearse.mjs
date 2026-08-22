@@ -24,11 +24,12 @@
 // A rehearsal never touches the canon and never touches a real repo: everything
 // happens under a temp dir that is removed afterwards.
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 export const CANON = dirname(dirname(dirname(fileURLToPath(import.meta.url)))); // vendoring/rehearsal -> canon
 
@@ -116,7 +117,7 @@ export function rehearse(fixture, mode) {
     const failed = steps.filter((s) => !s.ok);
     return { fixture: fixture.name, mode: mode.name, ok: failed.length === 0, steps, failed, stamp };
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 }
 

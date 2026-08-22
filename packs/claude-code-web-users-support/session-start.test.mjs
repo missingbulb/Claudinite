@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 const STEP = join(dirname(fileURLToPath(import.meta.url)), '../../packs/claude-code-web-users-support/session-start.mjs');
 
@@ -38,7 +39,7 @@ test('the store is read locally when this tree IS the store', () => {
     const r = run(root, { config: { repo: 'owner/store' } });
     assert.equal(r.status, 0);
     assert.match(r.stdout, /MY PREFS/);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('a declared path is honoured, not just the default', () => {
@@ -47,7 +48,7 @@ test('a declared path is honoured, not just the default', () => {
     mkdirSync(join(root, 'team', 'people'), { recursive: true });
     writeFileSync(join(root, 'team', 'people', 'me@example.com.md'), 'ELSEWHERE\n');
     assert.match(run(root, { config: { repo: 'owner/store', path: 'team/people' } }).stdout, /ELSEWHERE/);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('no file for this person is a soft note, never a halt', () => {
@@ -59,7 +60,7 @@ test('no file for this person is a soft note, never a halt', () => {
     assert.match(r.stdout, /default interaction behavior/);
     assert.doesNotMatch(r.stdout, /STOP|AskUserQuestion/);              // fail-soft, no halt-gate
     assert.doesNotMatch(r.stdout, /hookSpecificOutput|additionalContext/); // plain text, no JSON envelope
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('no configured store is an ordinary state — a project may have none', () => {
@@ -74,7 +75,7 @@ test('no configured store is an ordinary state — a project may have none', () 
     const r = run(root, { CLAUDINITE_PACK_CONFIG: 'not json' });
     assert.equal(r.status, 0);
     assert.match(r.stdout, /declares no preferences store/);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('no usable identity means there is nothing to look up', () => {
@@ -89,7 +90,7 @@ test('no usable identity means there is nothing to look up', () => {
     const traversal = run(root, { email: '../../../etc/passwd', config: { repo: 'owner/store' } });
     assert.equal(traversal.status, 0);
     assert.match(traversal.stdout, /is not a usable file name/);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('the loaded preferences are weighed onto the engine facet channel', () => {
@@ -111,7 +112,7 @@ test('the loaded preferences are weighed onto the engine facet channel', () => {
     assert.equal(r.status, 0);
     assert.match(r.stdout, /^CLAUDINITE-FACET: 100 personal preference tokens$/m);
     assert.match(r.stdout, /## Preferences/);                           // the content still lands
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('prose weighs the same as bullets — the window does not care about markup', () => {
@@ -123,7 +124,7 @@ test('prose weighs the same as bullets — the window does not care about markup
     writeFileSync(join(root, 'preferences', 'me@example.com.md'), 'Just prose, no bullets.\n');
     const r = run(root, { config: { repo: 'owner/store' } });
     assert.match(r.stdout, /^CLAUDINITE-FACET: \d+ personal preference tokens$/m);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('a file with no words at all states no facet', () => {
@@ -134,5 +135,5 @@ test('a file with no words at all states no facet', () => {
     const r = run(root, { config: { repo: 'owner/store' } });
     assert.equal(r.status, 0);
     assert.doesNotMatch(r.stdout, /CLAUDINITE-FACET/);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });

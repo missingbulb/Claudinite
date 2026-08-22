@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  mkdtempSync, mkdirSync, writeFileSync, cpSync, rmSync,
-} from 'node:fs';
+  mkdtempSync, mkdirSync, writeFileSync, cpSync, } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -80,7 +80,7 @@ test('counts the active packs, their checks and their prose, and says so in one 
     const out = run(corpus, project);
     // gamma is not declared, so nothing of gamma's is counted.
     assert.match(out, /Claudinite loaded, 2 packs, 5 checks, 3,000 rule tokens, 0 available skills\./);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('counts the mounted skill set from the registry, not the mount directory', () => {
@@ -95,7 +95,7 @@ test('counts the mounted skill set from the registry, not the mount directory', 
   try {
     // "two" is bundled by both packs and mounts once — the union, not the sum.
     assert.match(run(corpus, project), /2 available skills\./);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('appends whatever the packs said on the facet channel, in the order stated', () => {
@@ -105,7 +105,7 @@ test('appends whatever the packs said on the facet channel, in the order stated'
   writeFileSync(channel, '7 shrubberies\n2 herrings\n');
   try {
     assert.match(run(corpus, project, { CLAUDINITE_SESSION_FACETS: channel }), /0 available skills, 7 shrubberies, 2 herrings\./);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('a channel that is absent or empty leaves the engine facets standing alone', () => {
@@ -116,7 +116,7 @@ test('a channel that is absent or empty leaves the engine facets standing alone'
     assert.match(missing, /3 packs, 0 checks, 0 rule tokens, 0 available skills\./);
     writeFileSync(join(project, 'facets'), '\n\n');
     assert.match(run(corpus, project, { CLAUDINITE_SESSION_FACETS: join(project, 'facets') }), /0 available skills\./);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 // The directive is read by a model that has just been handed several lines and must
@@ -136,7 +136,7 @@ test('directs the session to open its first reply with the summary line, unambig
     assert.doesNotMatch(out, /\bthat line\b/i);
     // And the line to say is what the directive ends on — last in, first out.
     assert.match(out.trimEnd(), /:\n+Claudinite loaded, 1 pack, 0 checks, 0 rule tokens, 0 available skills\.$/);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('a repo that declares no pack runs no Claudinite, and hears nothing', () => {
@@ -144,5 +144,5 @@ test('a repo that declares no pack runs no Claudinite, and hears nothing', () =>
   const project = makeProject({ packs: [] });
   try {
     assert.equal(run(corpus, project).trim(), '');
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });

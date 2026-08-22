@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 const CANON = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CHECK_THE_WORLD = join(CANON, 'engine/checks/check_the_world.mjs');
@@ -46,7 +47,7 @@ function fromDeletedCwd(args, env = {}) {
   const out = execFileSync(process.execPath, ['-e', driver], {
     encoding: 'utf8', env: { ...process.env, ...env }, cwd: box,
   });
-  rmSync(box, { recursive: true, force: true });
+  removeTree(box);
   const [statusLine, ...rest] = out.split('\n');
   return { status: statusLine.replace('STATUS ', '').trim(), stderr: rest.join('\n') };
 }
@@ -55,7 +56,7 @@ test('check_the_world runs from a deleted cwd when CLAUDE_PROJECT_DIR names the 
   const box = mkdtempSync(join(tmpdir(), 'ctw-repo-'));
   writeFileSync(join(box, '.claudinite-checks.json'), JSON.stringify({ packs: [] }, null, 2));
   const { status, stderr } = fromDeletedCwd(['--list'], { CLAUDE_PROJECT_DIR: box });
-  rmSync(box, { recursive: true, force: true });
+  removeTree(box);
   assert.doesNotMatch(stderr, /uv_cwd/, 'the cwd call must not be reached at all');
   assert.equal(status, '0', `--list should succeed; stderr was:\n${stderr}`);
 });
@@ -66,7 +67,7 @@ test('check_the_world prefers --root over CLAUDE_PROJECT_DIR', () => {
   const box = mkdtempSync(join(tmpdir(), 'ctw-repo-'));
   writeFileSync(join(box, '.claudinite-checks.json'), JSON.stringify({ packs: [] }, null, 2));
   const { status, stderr } = fromDeletedCwd(['--list', '--root', box], { CLAUDE_PROJECT_DIR: '/nonexistent-on-purpose' });
-  rmSync(box, { recursive: true, force: true });
+  removeTree(box);
   assert.doesNotMatch(stderr, /uv_cwd/);
   assert.equal(status, '0', stderr);
 });

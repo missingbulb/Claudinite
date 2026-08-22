@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  mkdtempSync, mkdirSync, writeFileSync, cpSync, rmSync, readFileSync,
+  mkdtempSync, mkdirSync, writeFileSync, cpSync, readFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -70,7 +71,7 @@ test('runs each active pack\'s step and forwards its stdout under the pack marke
     assert.match(out, /<!-- pack:alpha -->\nALPHA SAYS/);
     assert.match(out, /<!-- pack:beta -->\nBETA SAYS/);
     assert.ok(out.indexOf('alpha') < out.indexOf('beta'), 'steps run in a stable order');
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('an undeclared pack\'s step never runs, and a pack with no step is skipped silently', () => {
@@ -85,7 +86,7 @@ test('an undeclared pack\'s step never runs, and a pack with no step is skipped 
     assert.match(out, /YES/);
     assert.doesNotMatch(out, /MUST NOT RUN/);
     assert.doesNotMatch(out, /quiet/, 'a pack contributing no step contributes no marker either');
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('a step is handed its own pack entry config, and nothing else has to re-read settings', () => {
@@ -94,7 +95,7 @@ test('a step is handed its own pack entry config, and nothing else has to re-rea
   try {
     const out = run(corpus, project);
     assert.match(out, /CONFIG=\{"repo":"o\/r","n":3\}/);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('a step that declares nothing gets an empty config object, never undefined', () => {
@@ -102,7 +103,7 @@ test('a step that declares nothing gets an empty config object, never undefined'
   const project = makeProject({ packs: ['alpha'] });
   try {
     assert.match(run(corpus, project), /CONFIG=\{\}/);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('a step that fails, crashes or prints nothing never breaks the session', () => {
@@ -127,7 +128,7 @@ test('a step that fails, crashes or prints nothing never breaks the session', ()
     // is not injected as if it were the finished thing.
     assert.doesNotMatch(out, /PARTIAL/);
     assert.doesNotMatch(out, /<!-- pack:silent -->/, 'no output, no marker');
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('a step that never returns is killed, and the session proceeds', () => {
@@ -140,7 +141,7 @@ test('a step that never returns is killed, and the session proceeds', () => {
     const out = run(corpus, project, { CLAUDINITE_PACK_STEP_TIMEOUT_MS: '700' });
     assert.match(out, /AFTER/);
     assert.match(out, /hog/);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('a runaway step cannot eat the context window', () => {
@@ -152,7 +153,7 @@ test('a runaway step cannot eat the context window', () => {
     const out = run(corpus, project, { CLAUDINITE_PACK_STEP_MAX_BYTES: '1000' });
     assert.ok(out.length < 5000, `expected a capped injection, got ${out.length} bytes`);
     assert.match(out, /truncated/i);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('no declaration, or no active pack, means silence', () => {
@@ -163,9 +164,9 @@ test('no declaration, or no active pack, means silence', () => {
     assert.equal(run(corpus, bare).trim(), '');
     assert.equal(run(corpus, none).trim(), '');
   } finally {
-    rmSync(corpus, { recursive: true, force: true });
-    rmSync(bare, { recursive: true, force: true });
-    rmSync(none, { recursive: true, force: true });
+    removeTree(corpus);
+    removeTree(bare);
+    removeTree(none);
   }
 });
 
@@ -184,7 +185,7 @@ test('facet lines address the summary step, not the reader: lifted out, appended
     // ...and beta, which said ONLY a facet, contributes no marker at all.
     assert.doesNotMatch(out, /pack:beta/);
     assert.equal(readFileSync(channel, 'utf8'), '7 shrubberies\n2 herrings\n');
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });
 
 test('no channel configured drops the facet and leaves the contribution whole', () => {
@@ -194,5 +195,5 @@ test('no channel configured drops the facet and leaves the contribution whole', 
     const out = run(corpus, project);
     assert.match(out, /KEPT/);
     assert.doesNotMatch(out, /grail/);
-  } finally { rmSync(corpus, { recursive: true, force: true }); rmSync(project, { recursive: true, force: true }); }
+  } finally { removeTree(corpus); removeTree(project); }
 });

@@ -64,40 +64,59 @@ test('an unreadable liveness falls back to the issue clock rather than reclaimin
 });
 
 // --- the beat itself -----------------------------------------------------------
+//
+// NOTHING BELOW READS THE CLOCK. These tests used to start a 5ms interval and
+// wait 40ms of real time for at least two beats — 2 of a possible 8, which a
+// loaded runner coalescing timers failed, reddening CI on changes that touched
+// none of this (#1219). Mock timers make the count exact: N intervals ticked, N
+// beats, which is the property the tests actually mean. Never re-introduce a
+// real `setTimeout` wait here to "give the beat a chance"; that is the bug.
 
-test('the beat runs while the work is in flight, and stops when it ends', async () => {
+// The beat is dispatched through a promise chain (so the fail-soft catch can
+// wrap it), so a tick schedules it rather than running it. This drains what the
+// tick queued, without touching the interval.
+const flush = () => new Promise(setImmediate);
+
+test('the beat runs while the work is in flight, and stops when it ends', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
   const beats = [];
   let release;
   const work = new Promise((r) => { release = r; });
   const running = withHeartbeat(() => work, { intervalMs: 5, beat: (m) => beats.push(m) });
-  await new Promise((r) => setTimeout(r, 40));
-  assert.ok(beats.length >= 2, `beat while the work ran (got ${beats.length})`);
+
+  t.mock.timers.tick(5); await flush();
+  t.mock.timers.tick(5); await flush();
+  assert.equal(beats.length, 2, 'two intervals elapsed while the work was in flight, two beats');
+
   release('done');
   assert.equal(await running, 'done');
-  const after = beats.length;
-  await new Promise((r) => setTimeout(r, 30));
-  assert.equal(beats.length, after, 'and stopped the moment the work returned');
+  t.mock.timers.tick(5 * 10); await flush();
+  assert.equal(beats.length, 2, 'and stopped the moment the work returned');
 });
 
-test('work that throws still stops the beat', async () => {
+test('work that throws still stops the beat', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
   const beats = [];
   await assert.rejects(
     withHeartbeat(async () => { throw new Error('boom'); }, { intervalMs: 5, beat: () => beats.push(1) }),
     /boom/);
-  const after = beats.length;
-  await new Promise((r) => setTimeout(r, 30));
-  assert.equal(beats.length, after);
+  t.mock.timers.tick(5 * 10); await flush();
+  assert.equal(beats.length, 0, 'the interval was cleared on the way out, not left running');
 });
 
 // A beat that cannot post must not sink a run that is otherwise fine — but it is
 // never silent, because a run whose heartbeat failed is one the leash may reclaim
 // underneath it, and nothing else would say so.
-test('a failing beat is reported, not swallowed, and the work still returns', async () => {
+test('a failing beat is reported, not swallowed, and the work still returns', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
   const lines = [];
-  const res = await withHeartbeat(
-    async () => { await new Promise((r) => setTimeout(r, 30)); return 'ok'; },
+  let release;
+  const work = new Promise((r) => { release = r; });
+  const running = withHeartbeat(() => work,
     { intervalMs: 5, beat: () => { throw new Error('403'); }, log: (l) => lines.push(l) });
-  assert.equal(res, 'ok');
+  t.mock.timers.tick(5); await flush();
+  release('ok');
+  assert.equal(await running, 'ok');
   assert.ok(lines.some((l) => l.startsWith('!') && l.includes('403')), lines.join('\n'));
 });
 

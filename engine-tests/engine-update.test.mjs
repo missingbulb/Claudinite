@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,7 @@ import { engineUpdate, engineRecordsInGap, isEngineFile, NEEDS_HUMAN, deliveryDe
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
 import { SCHEDULER_WORKFLOW } from '../engine/scheduler/converge-wiring.mjs';
+import { removeTree } from '../engine/remove-tree.mjs';
 
 // The engine update flow, driven against REAL member trees built by the real vendor
 // writer — the thing a member actually holds. A fixture corpus would prove the
@@ -51,7 +52,7 @@ test('a repo that never adopted is a needs-human terminal, not a crash', async (
   const r = await engineUpdate(root, { fullName: 'o/r' });
   assert.equal(r.status, NEEDS_HUMAN);
   assert.match(r.detail, /never adopted/);
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('malformed settings stop the run before anything is written', async () => {
@@ -60,7 +61,7 @@ test('malformed settings stop the run before anything is written', async () => {
   const r = await engineUpdate(root, { fullName: 'o/r' });
   assert.equal(r.status, NEEDS_HUMAN);
   assert.ok(!existsSync(join(root, MOUNT)), 'a refused update writes nothing at all');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('a repo far behind is now servable end to end — the notes that blocked it are gone', () => {
@@ -96,13 +97,13 @@ test('a real member is converged onto this canon\'s engine, and stamped for it',
   assert.ok(!existsSync(join(root, MOUNT, 'engine', 'zzz-stale.mjs')), 'a file the new engine dropped must not survive');
   assert.equal(stampOf(root).engineVersion, ENGINE_VERSION);
   assert.equal(readFileSync(join(root, 'src', 'app.js'), 'utf8'), 'project code\n', 'the repo\'s own files are untouched');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('the flow never writes a workflow file — the one thing its credential cannot deliver', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  rmSync(join(root, '.github'), { recursive: true, force: true });
+  removeTree(join(root, '.github'));
 
   const r = await engineUpdate(root, { fullName: 'o/r' });
   assert.equal(r.status, 'ok', r.detail);
@@ -111,7 +112,7 @@ test('the flow never writes a workflow file — the one thing its credential can
   assert.ok(!r.wiring.includes(SCHEDULER_WORKFLOW));
   // …while the wiring it MAY converge still happened.
   assert.ok(existsSync(join(root, '.claude', 'settings.json')), 'hooks are wiring this flow owns');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('the packs half of the mount is left alone — it belongs to the pack flow', async () => {
@@ -122,7 +123,7 @@ test('the packs half of the mount is left alone — it belongs to the pack flow'
 
   assert.equal((await engineUpdate(root, { fullName: 'o/r' })).status, 'ok');
   assert.equal(readFileSync(packFile, 'utf8'), 'a pack version this flow has no business replacing\n');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('an up-to-date repo is a clean no-gap run, not a special case', async () => {
@@ -132,7 +133,7 @@ test('an up-to-date repo is a clean no-gap run, not a special case', async () =>
   assert.equal(r.status, 'ok');
   assert.deepEqual(r.records, [], 'nothing above what it has installed');
   assert.equal(stampOf(root).engineVersion, ENGINE_VERSION);
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('dry run judges everything and writes nothing', async () => {
@@ -145,7 +146,7 @@ test('dry run judges everything and writes nothing', async () => {
   assert.equal(r.dryRun, true);
   assert.ok(r.files > 0, 'it reports what it would lay down');
   assert.equal(readFileSync(join(root, MOUNT, 'engine', 'selftest.mjs'), 'utf8'), 'mangled\n', 'and changed nothing');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 // --- the self-test gate and its override (#768 Phase 1) -----------------------
@@ -181,7 +182,7 @@ test('the override is never read from the repo — a stored default is not an ov
   const r = await engineUpdate(root, { fullName: 'o/r', selfTestRun: () => { throw new Error('mount is broken'); } });
   assert.equal(r.status, NEEDS_HUMAN, 'the declaration asked to force a merge and was ignored');
   assert.equal(r.decision.action, 'needs-human');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('a converged tree that fails its self-test ends at needs-human, with the update still applied', async () => {
@@ -194,7 +195,7 @@ test('a converged tree that fails its self-test ends at needs-human, with the up
   assert.equal(r.selftest.ok, false);
   assert.match(r.selftest.output, /probes FAILED/);
   assert.equal(stampOf(root).engineVersion, ENGINE_VERSION, 'the converge happened; the gate governs the merge');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('the gate runs the MOUNT\'s self-test, not the canon\'s', async () => {
@@ -211,5 +212,5 @@ test('runSelfTest reports an absent gate as a failure, never as a pass', () => {
   const r = runSelfTest(root);
   assert.equal(r.ok, false);
   assert.equal(r.ran, false);
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });

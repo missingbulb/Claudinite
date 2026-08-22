@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, pendingExecutorWorkflow, PENDING_DIR } from '../updates/pack-update.mjs';
@@ -11,6 +11,7 @@ import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
 import { loadMigrations, applyMaterializations } from '../engine/migrations/registry.mjs';
+import { removeTree } from '../engine/remove-tree.mjs';
 
 // Driven against real member trees and the real pack set, like the engine flow's
 // suite: the question a member has is whether THIS canon's packs can be laid down
@@ -82,7 +83,7 @@ test('a blocked pack stops the run before any write — never a guess, never a s
   assert.equal(r.status, NEEDS_HUMAN);
   assert.match(r.detail, /needs engine 1/);
   assert.equal(readFileSync(join(root, MOUNT, 'packs', 'basics', 'RULES.md'), 'utf8'), before);
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('a real member\'s packs are replaced wholesale and stamped per pack', async () => {
@@ -100,7 +101,7 @@ test('a real member\'s packs are replaced wholesale and stamped per pack', async
   const latest = (await loadPacks()).find((p) => p.id === 'basics').version;
   assert.equal(stampOf(root).packVersions.basics, latest, 'the stamp is the manifest version, whatever it is now');
   assert.equal(stampOf(root).engineVersion, ENGINE_VERSION, 'the engine\'s stamp is not this flow\'s to move');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('the pack flow converges the CLAUDE.md index, because it is what changed the pack set (#807)', async () => {
@@ -122,7 +123,7 @@ test('the pack flow converges the CLAUDE.md index, because it is what changed th
   const claudeMd = readFileSync(join(root, 'CLAUDE.md'), 'utf8').split('\n');
   assert.ok(claudeMd.some((l) => !l.includes('`') && l.includes('@.claudinite/claudinite-rules.GENERATED.md')), claudeMd.join('\n'));
   assert.match(readFileSync(join(root, '.gitattributes'), 'utf8'), /claudinite-rules\.GENERATED\.md merge=ours/);
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('the engine half of the mount is left alone — it belongs to the engine flow', async () => {
@@ -134,7 +135,7 @@ test('the engine half of the mount is left alone — it belongs to the engine fl
 
   assert.equal((await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' })).status, 'ok');
   assert.equal(readFileSync(engineFile, 'utf8'), 'an engine version this flow has no business replacing\n');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 // Play the apply stage's credential half: move everything staged into place, which is
@@ -183,7 +184,7 @@ test('the scheduler workflow is staged for a lane that can push it, and clears o
   assert.equal(readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8'), content, 'and it is left exactly alone');
   assert.ok(!existsSync(join(root, PENDING_DIR, 'claudinite-scheduler.yml')),
     'the staged copy is swept, or it reads forever as work nobody did');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('a wiring answer that cannot be computed is REPORTED, never read as converged', async () => {
@@ -220,7 +221,7 @@ test('a wiring answer that cannot be computed is REPORTED, never read as converg
     assert.ok(broken.wiringError, 'the flow must carry the fault');
     assert.match(broken.detail, /but /, 'and say so where it is read');
   }
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('the staged workflow tracks this repo, not a template', async () => {
@@ -237,8 +238,8 @@ test('the staged workflow tracks this repo, not a template', async () => {
   };
   const cron = (t) => /cron:\s*'([^']*)'/.exec(t)?.[1];
   assert.notEqual(cron(await of(a, 'o/one')), cron(await of(b, 'o/two')), 'two members must not share a minute');
-  rmSync(a, { recursive: true, force: true });
-  rmSync(b, { recursive: true, force: true });
+  removeTree(a);
+  removeTree(b);
 });
 
 test('a RECORD materializing a workflow is withheld too, not written where the token is refused (#649)', async () => {
@@ -286,7 +287,7 @@ test('a RECORD materializing a workflow is withheld too, not written where the t
   assert.equal(readFileSync(join(root, probe), 'utf8'), template, 'and is left exactly alone');
   assert.ok(!existsSync(join(root, PENDING_DIR, 'claudinite-workflow-probe.yml')),
     'the staged copy is swept, or it reads forever as work nobody did');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('a workflow materialization is SKIPPED, never written, by a caller that cannot deliver it (#649)', async () => {
@@ -344,7 +345,7 @@ test('a pack version moving does NOT by itself buy a session (#798)', async () =
       assert.match(dir, /^packs\/[^/]+\/migrations\//, 'only a pack record may summon the stage');
     }
   }
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('the records decide the apply stage, and what they say reaches the session', () => {
@@ -406,7 +407,7 @@ test('a red self-test is the same needs-human terminal the engine flow has', asy
   const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => { throw new Error('broken'); } });
   assert.equal(r.status, NEEDS_HUMAN);
   assert.equal(r.decision.action, 'needs-human');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('dry run judges the whole plan and writes nothing', async () => {
@@ -422,7 +423,7 @@ test('dry run judges the whole plan and writes nothing', async () => {
   assert.ok(r.files > 0);
   assert.equal(readFileSync(rules, 'utf8'), 'mangled\n');
   assert.equal(stampOf(root).packVersions.basics, 0);
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('packRecordsInGap is that pack\'s records only', () => {
@@ -463,7 +464,7 @@ test('a member is owed the executor workflow beside its scheduler run', async ()
   const staged = run.withheld.map((w) => w.path);
   assert.ok(staged.includes(EXECUTOR_WORKFLOW), `the executor workflow is staged: ${staged.join(', ')}`);
   assert.ok(staged.includes(SCHEDULER_WORKFLOW), 'beside the scheduler workflow, in the same cycle');
-  rmSync(queue, { recursive: true, force: true });
+  removeTree(queue);
 });
 
 // The stamp is written as well as read, and both sides have to agree about a
@@ -507,5 +508,5 @@ test('a pack the canon renamed takes its old mount directory with it', async () 
 
   assert.ok(!existsSync(legacy), 'the abandoned directory is the second copy of a pack the member already has');
   assert.ok(existsSync(join(root, MOUNT, 'packs', 'claudinite-lifecycle', 'pack.mjs')), 'and the live one is laid down');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });

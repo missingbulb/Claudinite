@@ -79,7 +79,7 @@ import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
   id: 'claudinite-fleet-sheepdog',
-  version: '60821.2',
+  version: '60822.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',

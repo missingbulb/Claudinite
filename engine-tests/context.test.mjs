@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeRepo, cleanup, git, gitDated, writeFiles } from './helpers.mjs';
 import { buildContext, loadConfig, CONFIG_KEYS, isDormant } from '../engine/checks/helpers/repo-context.mjs';
+import { removeTree } from '../engine/remove-tree.mjs';
 
 test('loadConfig: clean settings validate with no errors; a missing file is empty and error-free', () => {
   const ok = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], rules: {}, maintenance: { delivery: 'auto' } }) } });
@@ -274,7 +275,7 @@ test('buildContext: a stale remote base ref is refreshed, so the base branch\'s 
   git(origin, 'commit', '-q', '-m', 'seed');
 
   const root = mkdtempSync(join(tmpdir(), 'claudinite-clone-'));
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
   git(process.cwd(), 'clone', '-q', origin, root); // origin/main pinned at seed
 
   // The base branch advances — including a merge commit — after the clone.
@@ -325,7 +326,7 @@ test('buildContext: the base-ref refresh is skipped within the freshness window,
   git(origin, 'commit', '-q', '-m', 'seed');
 
   const root = mkdtempSync(join(tmpdir(), 'claudinite-fresh-clone-'));
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
   git(process.cwd(), 'clone', '-q', origin, root);
 
   const markerPath = join(root, git(root, 'rev-parse', '--git-path', 'claudinite-base-refresh.json').trim());
@@ -470,7 +471,7 @@ test('every key in CONFIG_KEYS survives loadConfig — declarable implies readab
     assert.equal(cfg.claudinite.ref, 'deadbeef');
     assert.equal(cfg.claudinite.updated, '2026-07-26T20:10:18.694Z');
     assert.equal(cfg.maintenance.delivery, 'auto-merge');
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 // ── dormant: the project's own declaration that it is out of the recurring work ──
@@ -490,7 +491,7 @@ test('dormant loads as a boolean — declared true, and false when absent or fal
     assert.equal(loadConfig(root).dormant, false);
     writeFiles(root, { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], dormant: false }) + '\n' });
     assert.equal(loadConfig(root).dormant, false);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('a non-boolean dormant is a settings error, not a truthy value', () => {
@@ -504,7 +505,7 @@ test('a non-boolean dormant is a settings error, not a truthy value', () => {
     assert.equal(cfg.errors.length, 1);
     assert.match(cfg.errors[0].what, /"dormant" must be true or false/);
     assert.equal(cfg.dormant, false, 'an invalid declaration is not a dormancy declaration');
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('an absent claudinite/maintenance loads as null, not undefined', () => {
@@ -516,5 +517,5 @@ test('an absent claudinite/maintenance loads as null, not undefined', () => {
     const cfg = loadConfig(root);
     assert.equal(cfg.claudinite, null);
     assert.equal(cfg.maintenance, null);
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });

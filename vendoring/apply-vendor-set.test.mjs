@@ -41,6 +41,7 @@ function makeCanon() {
   // set's import-closure guard still resolves the registry's reference to it.
   writeAt(root, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'remove-tree.mjs'), join(root, 'engine', 'remove-tree.mjs'));
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
   writeAt(root, 'packs/directory.GENERATED.md', 'stub catalog\n');
@@ -169,6 +170,7 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(canon, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(canon, 'engine', 'version.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'remove-tree.mjs'), join(canon, 'engine', 'remove-tree.mjs'));
   writeAt(canon, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(canon, 'packs/directory.GENERATED.md', 'stub catalog\n');

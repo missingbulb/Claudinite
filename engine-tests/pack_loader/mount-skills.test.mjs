@@ -2,13 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   mkdtempSync, mkdirSync, writeFileSync, readFileSync, cpSync,
-  existsSync, lstatSync, readlinkSync, realpathSync, symlinkSync, rmSync,
-} from 'node:fs';
+  existsSync, lstatSync, readlinkSync, realpathSync, symlinkSync, } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { makeRepo, cleanup, git } from '../helpers.mjs';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -80,7 +80,7 @@ test('mount-skills: mounts the union of the declared packs, nothing more', () =>
     }
     // The generated mounts must never dirty the tree.
     assert.equal(git(project, 'status', '--porcelain').trim(), '');
-  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+  } finally { removeTree(corpus); cleanup(project); }
 });
 
 test('mount-skills: a pack declared as an entry object mounts like a bare id', () => {
@@ -92,7 +92,7 @@ test('mount-skills: a pack declared as an entry object mounts like a bare id', (
     mount(corpus, project);
     assert.ok(lstatSync(join(project, '.claude', 'skills', 'tech-skill')).isSymbolicLink());
     assert.ok(!existsSync(join(project, '.claude', 'skills', 'other-skill')));
-  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+  } finally { removeTree(corpus); cleanup(project); }
 });
 
 test('mount-skills: re-run syncs the mounts to a changed declaration', () => {
@@ -111,7 +111,7 @@ test('mount-skills: re-run syncs the mounts to a changed declaration', () => {
       readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8'),
       /tech-skill/
     );
-  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+  } finally { removeTree(corpus); cleanup(project); }
 });
 
 test('mount-skills: never touches entries it does not own', () => {
@@ -135,7 +135,7 @@ test('mount-skills: never touches entries it does not own', () => {
     assert.equal(readlinkSync(join(project, '.claude', 'skills', 'foreign-link')), '/nonexistent-elsewhere');
     const ignore = readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8');
     assert.doesNotMatch(ignore, /my-own|foreign-link|base-skill/);
-  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+  } finally { removeTree(corpus); cleanup(project); }
 });
 
 test('mount-skills: removes a stale owned link, is idempotent, fails soft on a broken config', () => {
@@ -153,7 +153,7 @@ test('mount-skills: removes a stale owned link, is idempotent, fails soft on a b
     // A broken config must not break the session (fail-soft contract).
     writeFileSync(join(project, '.claudinite-checks.json'), 'not json');
     mount(corpus, project);
-  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+  } finally { removeTree(corpus); cleanup(project); }
 });
 
 test('mount-skills: a symlink outside the pack trees is the project\'s own — never overwritten', () => {
@@ -214,7 +214,7 @@ test('mount-skills: mounts a local pack\'s bundled skill from the tracked pack d
     // (the mounts themselves must not dirty the tree)
     const ignore = readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8');
     assert.match(ignore, /^proj-skill$/m);
-  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+  } finally { removeTree(corpus); cleanup(project); }
 });
 
 test('mount-skills: unmounts a local pack\'s skill when the pack is undeclared', () => {
@@ -234,7 +234,7 @@ test('mount-skills: unmounts a local pack\'s skill when the pack is undeclared',
     mount(corpus, project);
     assert.ok(!existsSync(join(project, '.claude', 'skills', 'proj-skill')),
       'a local pack\'s skill unmounts once the pack is undeclared');
-  } finally { rmSync(corpus, { recursive: true, force: true }); cleanup(project); }
+  } finally { removeTree(corpus); cleanup(project); }
 });
 
 test('mount-skills: the real corpus mounts every basics skill into a consumer', () => {

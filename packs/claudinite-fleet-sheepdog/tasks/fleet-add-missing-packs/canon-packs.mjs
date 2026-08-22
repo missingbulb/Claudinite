@@ -21,10 +21,11 @@
 // enforcer's checkout.
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { removeTree } from '../../../../engine/remove-tree.mjs';
 
 // Below this, the corpus we loaded is not plausibly the canon and a "nothing
 // suspected" verdict would be an artifact of the fetch rather than a fact about the
@@ -53,7 +54,7 @@ export async function loadCanonPacks({ canonRepo, token, ref = null, origin = DE
     throw new Error(`canonRepo ${JSON.stringify(canonRepo)} is not an owner/repo — the fit sweep has no corpus to fingerprint against`);
   }
   const dir = mkdtempSync(join(tmpdir(), 'claudinite-canon-'));
-  const dispose = () => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* scratch */ } };
+  const dispose = () => { try { removeTree(dir); } catch { /* scratch */ } };
   try {
     // Shallow, single-branch, no blobs we don't need: the manifests and the modules
     // they import are all that gets read.
