@@ -346,7 +346,11 @@ export function makeSim({
   // already.
   function endEpisode(it) { it.claimEpoch = seq++; }
 
-  function close(it, outcome) {
+  // `dispatchDrain: false` is for closes whose caller already has a drain
+  // coming — the executor's own loop picks the next item in the same run, and
+  // the scheduler run's migration close is followed by that run's drain job —
+  // so only a close with no run behind it (an agent session's) dispatches one.
+  function close(it, outcome, { dispatchDrain = true } = {}) {
     it.state = 'closed';
     it.closedAt = now;
     it.outcome = outcome;
@@ -370,7 +374,7 @@ export function makeSim({
         record('ready', { task: b.taskId, issue: b.number, by: 'close' });
       }
     }
-    if (pickable().length > 0) {
+    if (dispatchDrain && pickable().length > 0) {
       schedule(now + 1 * MIN, () => executorRun('E1', 'close-drain'));
     }
   }
@@ -393,7 +397,7 @@ export function makeSim({
         writeBoardRow(it.taskId, registry.get(it.taskId)?.frequency ?? null, last.t, 'no', last.reason);
       }
       it.comments.push({ t: now, body: 'closing: declined occurrences now live on the schedule board, not as sleeping items' });
-      close(it, 'rejected');
+      close(it, 'rejected', { dispatchDrain: false });
       record('migrate-sleeping', { task: it.taskId, issue: it.number });
     }
     // job 1: instantiate — the precondition is asked WHEN THE ANCHOR COMES,
@@ -531,6 +535,13 @@ export function makeSim({
         record('reclaim', { task: it.taskId, issue: it.number });
       }
     }
+    // The drain job (#1212): dispatched only when the scheduler run's parting
+    // look at the queue found something pickable — the job output the real
+    // drain job gates on. An idle hour costs the cron's one run, not two;
+    // the guaranteed delivery is unchanged, because anything an event failed
+    // to deliver is exactly what this look sees.
+    if (pickable().length > 0) schedule(now + 40_000, () => executorRun('E1', 'scheduler-run-drain'));
+    else record('drain-skipped', {});
   }
 
   // The two write-backs onto the request issue (DESIGN §16.5). Whoever converges
@@ -731,10 +742,10 @@ export function makeSim({
           setStatus(it, 'task:status:rejected');
           it.outcome = 'rejected';
         } else {
-          close(it, 'rejected');
+          close(it, 'rejected', { dispatchDrain: false });
         }
       } else {
-        close(it, 'rejected');
+        close(it, 'rejected', { dispatchDrain: false });
       }
       record('decline-close', { task: it.taskId, issue: it.number, reason: verdict.reason ?? 'no work' });
       onSettled();
@@ -806,7 +817,7 @@ export function makeSim({
           onSettled();
           return;
         }
-        close(it, task.outcome ?? 'done'); onSettled(); return;
+        close(it, task.outcome ?? 'done', { dispatchDrain: false }); onSettled(); return;
       }
       handOff(it, task);
       onSettled(); // the hand-off ends the executor's occupancy, not the item
@@ -844,36 +855,41 @@ export function makeSim({
     return false;
   }
 
-  // One executor RUN — a workflow run in the real deployment — performs ONE
-  // item. Not a configured maximum: the essence of the executor (owner,
-  // 2026-08-15). The run claims an item, sees it through to its settle (roll,
-  // close, hand-off, failure), and ends; if the queue still has pickable
-  // items it RE-DISPATCHES a fresh run (`workflow_dispatch`, which the
-  // default GITHUB_TOKEN may fire), so the queue drains run by run and a
-  // run's timeout sizes to a single work bound. Every run records its
-  // trigger — scheduler-run-drain | label-event | close-drain | re-dispatch |
-  // failure-redispatch — so tests assert WHAT caused each run, not just that
-  // items converged.
+  // One executor RUN — a workflow run in the real deployment — drains the
+  // queue until nothing is pickable (#1212, the owner reversing §15.22's
+  // one-item runs: Actions bills each job's minutes rounded UP, so a day's
+  // cost is the RUN count, and a run that performs one item pays a whole
+  // invocation — checkout, setup, rounding — per item). The run claims an
+  // item, sees it through to its settle (close, hand-off, park), then picks
+  // the next in the SAME run, ending only when nothing is pickable. The work
+  // stays serial — the occupancy model is unchanged, only the run boundary
+  // moved — and a run that dies still hands its remainder to the
+  // failure-continuation job. Between items the run re-reads the operator
+  // hold (an API read — the env copy is delivered at start only), so
+  // suspension still parks the train at most one item later. Every run
+  // records its trigger — scheduler-run-drain | label-event | close-drain |
+  // failure-redispatch — so tests assert WHAT caused each run, and its
+  // run-end carries `settled`, the count of items it converged.
   let runSeq = 0;
   function executorRun(execId = 'E1', trigger = 'label-event') {
     if (suspendedAll) { record('suspended-skip', { workflow: 'executor', trigger }); return; }
     const runId = `R${++runSeq}`;
     record('executor-run', { run: runId, exec: execId, trigger });
-    const settle = () => {
-      record('run-end', { run: runId, exec: execId, trigger, settled: 1 });
-      if (pickable().length > 0) {
-        schedule(now + 1 * MIN, () => executorRun(execId, 're-dispatch'));
+    let settled = 0;
+    const step = () => { // claim attempts until one item is held; each settle loops back here
+      if (suspendedAll) { // the between-items hold check: current work finished, nothing new starts
+        record('suspended-skip', { workflow: 'executor', trigger, midRun: true });
+        record('run-end', { run: runId, exec: execId, trigger, settled });
+        return;
       }
-    };
-    const step = () => { // claim attempts until one item is held, or the queue is empty
       const it = pickable()[0];
-      if (!it) { record('run-end', { run: runId, exec: execId, trigger, settled: 0 }); return; }
+      if (!it) { record('run-end', { run: runId, exec: execId, trigger, settled }); return; }
       if (!claim(it, execId, new Set(it.labels))) return step(); // loser tries another item
       if (!postClaimVerify(it, execId)) return step();
       const task = registry.get(it.taskId);
-      if (!task) { close(it, 'rejected'); return settle(); } // validate: task gone (S20)
+      if (!task) { close(it, 'rejected', { dispatchDrain: false }); settled++; return step(); } // validate: task gone (S20)
       record('pick', { run: runId, exec: execId, task: it.taskId, issue: it.number });
-      executeClaimed(it, task, settle);
+      executeClaimed(it, task, () => { settled++; step(); });
     };
     step();
   }
@@ -923,6 +939,30 @@ export function makeSim({
     issues, log, world, requests,
     requestItems: () => issues.filter((i) => i.request != null),
     requestIssue: (n) => requestOf(n),
+
+    // ---- Action-executions accounting (#1212) ------------------------------
+    // Every workflow RUN is a billed Actions invocation — each of its jobs'
+    // minutes rounded UP — so a day's cost is the run count, not the work
+    // done. Counts the two workflows the queue starts: the hourly scheduler
+    // workflow and the executor workflow, the latter by trigger. A suspended
+    // START still counts — the run starts, reads the hold and exits, and the
+    // platform bills it — where the between-items hold stop (`midRun`)
+    // happens inside a run already counted. The janitor is an ordinary daily
+    // task (§11), not a workflow: its rules spend no invocation of their own.
+    actionExecutions() {
+      let scheduler = 0;
+      const executorByTrigger = {};
+      for (const e of log) {
+        if (e.kind === 'scheduler-run'
+          || (e.kind === 'suspended-skip' && e.workflow === 'scheduler-run')) scheduler++;
+        else if (e.kind === 'executor-run'
+          || (e.kind === 'suspended-skip' && e.workflow === 'executor' && !e.midRun)) {
+          executorByTrigger[e.trigger] = (executorByTrigger[e.trigger] ?? 0) + 1;
+        }
+      }
+      const executor = Object.values(executorByTrigger).reduce((a, b) => a + b, 0);
+      return { scheduler, executor, executorByTrigger, total: scheduler + executor };
+    },
 
     // A person marks an ordinary issue (DESIGN §16.1). `author` is the issue
     // author's login — the precondition judges its repo permission — and `model`
@@ -983,10 +1023,10 @@ export function makeSim({
 
     // GitHub drops scheduled fires in [from, to) — the scheduler runs simply don't run
     dropSchedulerRuns(fromIso, toIso) { droppedSchedulerRuns.push([T(fromIso), T(toIso)]); return sim; },
-    // one late/manual scheduler run outside the cron grid (with its post-scheduler run drain)
+    // one late/manual scheduler run outside the cron grid (its drain job
+    // dispatches only if the run leaves something pickable, like every other)
     schedulerRunAt(isoTime) {
       schedule(T(isoTime), schedulerRun);
-      schedule(T(isoTime) + 40_000, () => executorRun('E1', 'scheduler-run-drain'));
       return sim;
     },
 
@@ -1203,15 +1243,15 @@ export function makeSim({
       return sim;
     },
 
-    // run the clock: hourly scheduler runs at :schedulerRunMinute (each with its post-scheduler run
-    // drain), a daily janitor, then drain the event queue strictly in order
+    // run the clock: hourly scheduler runs at :schedulerRunMinute (each
+    // dispatching its drain only when it leaves something pickable), a daily
+    // janitor, then drain the event queue strictly in order
     run(fromIso, toIso) {
       const from = T(fromIso), to = T(toIso);
       for (let t = Math.ceil(from / HOUR) * HOUR + schedulerRunMinute * MIN; t < to; t += HOUR) {
         if (t < from) continue;
         if (droppedSchedulerRuns.some(([a, b]) => t >= a && t < b)) continue;
         schedule(t, schedulerRun);
-        schedule(t + 40_000, () => executorRun('E1', 'scheduler-run-drain'));
       }
       for (let t = Math.ceil(from / DAY) * DAY + 4 * HOUR + 3 * MIN; t < to; t += DAY) {
         if (t >= from) schedule(t, janitor);

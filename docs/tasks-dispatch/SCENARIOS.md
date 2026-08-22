@@ -752,36 +752,39 @@ instant, nothing bounded a run, and no test could say *which run* did *what* —
 exactly the shape F21 warned about, reproduced in the model meant to catch it
 (owner question, 2026-08-15: *"asserted that each executor run completes just
 one task from the queue? Have you simulated what causes the next executor
-run?"*). The sim now models runs as first-class objects. **A run performs one
-item** — not a bound but the executor's essence (owner, same day: *"An
-executor performs a task. It's not a current value. It's the essence of
-it."*): claim, see it to its settle (roll, close, hand-off, failure), end.
+run?"*). The sim models runs as first-class objects. A run performed **one
+item** through 2026-08-21 (owner, 2026-08-15: *"An executor performs a task.
+It's not a current value. It's the essence of it."*) — then the invocation
+bill reversed it (§15.30, #1212, section N below): a run now **drains until
+nothing is pickable**, items settled serially in the same run.
 **Every run records its cause**: `scheduler-run-drain` — the cron workflow's own drain
-job, started by the job graph, no event involved; `label-event` — a foreign
-token's `task:status:waiting-for-executor`/`task:urgent`; `close-drain` — the converge path, when
-its readiness re-check leaves something pickable; `re-dispatch` — a finished
-run chaining a fresh one via `workflow_dispatch`, which the default
-`GITHUB_TOKEN` may fire; `failure-redispatch` — the workflow's continuation
+job, started by the job graph when the scheduler run left something pickable,
+no event involved; `label-event` — a foreign
+token's `task:status:waiting-for-executor`/`task:urgent`; `close-drain` — an agent
+session's converge path, when its readiness re-check leaves something
+pickable (the executor's own closes need no dispatch — the run picks the
+next item itself); `failure-redispatch` — the workflow's continuation
 job (S36 below). And the pick order is **urgent first, then random among the
 ready** (owner, same day — the stale-ready escalation is period-scale, so
 nothing leaned on oldest-first), seeded in the sim so scenarios replay
 identically.
 
-- **S34** (two tasks with real work plus the day's rolls): every completed
-  run settled **at most one item**, the working runs exactly one; both work
-  items converged well inside the hour, so the record must show — and does —
-  `scheduler-run-drain` first, then `re-dispatch`/`close-drain` chaining the queue
-  dry with no second cron fire involved.
+- **S34** (two tasks with real work plus the day's rolls): the whole morning
+  ran in **two invocations**, both `scheduler-run-drain` — extract's hour,
+  then the 04:00 batch settling both of its items in one run, picks auditable
+  per run; both items converged well inside the hour, and every quiet hour
+  skipped its drain.
 - **S36** (the broken train — owner question: *"the 2nd executor fails, or
   dies, or times out — what will cause the third executor to start?"*): five
-  tasks with work; the run executing one of them dies two minutes in. Its
-  ordinary re-dispatch never fires — it fires at run *end* — and the answer
+  tasks with work; the one drain run dies two minutes into its fourth item.
+  The items it already settled stand, its run-end is never written (the
+  record died with the runner), and the answer
   is the **failure-continuation job**: `needs: execute`, `if: failure() ||
   cancelled()`, run by the platform on a fresh runner even after a timeout,
   cancellation, or runner loss, its one step re-dispatching the workflow. The
-  test asserts the four unaffected items drained within minutes with no cron
+  test asserts the unaffected items drained within minutes with no cron
   fire involved, the crashed item alone waited out the leash reclaim and then
-  converged, and no run ever settled more than its one item. The hourly scheduler run
+  converged, and the whole affair cost three invocations. The hourly scheduler run
   drain remains the backstop for the case where the whole run vanishes,
   continuation job included.
 
@@ -796,10 +799,11 @@ can never express is *"stop processing"*, so that one is a lever:
 workflow checks as its first act, exiting cleanly having fired nothing.
 
 - **S37 (the hold)**: five tasks mid-drain; the variable set at 04:30. No
-  pick, no evaluation happens after the hold — but an in-flight run finishes
-  its item (suspension gates *starts*, not running work), the in-flight
-  continuation's one re-dispatch parks at its first act, every later cron
-  fire exits as a recorded `suspended-skip`, and every never-picked item
+  pick, no evaluation happens after the hold — but the in-flight drain
+  finishes its *current* item (suspension never interrupts running work) and
+  parks between items, re-reading the variable at each pick (§15.30 — the
+  env copy lands at run start only, so this is an API read), every later
+  cron fire exits as a recorded `suspended-skip`, and every never-picked item
   freezes as `task:status:waiting-for-executor`, untouched — the hold is stateless.
 - **S38 (cancel + suspend, then resume)**: the user cancels a stalled run
   mid-work AND suspends before its continuation lands — intent 2 overrides
@@ -889,10 +893,11 @@ mutation check caught it).
   executor work runs outside it. The sim cannot see workflow concurrency
   (unsimulated-world row); the migration burst verifies the wiring.
 - **F21 — throughput was priced as if drains were free.** A drain's real
-  throughput is its serial work-step occupancy — one item per run — so
-  executor width and the re-dispatch chain are the capacity, with self-re-dispatch as the
-  drain-until-empty shape and the oldest-first fairness exposure named and
-  accepted. DESIGN §10 carries the model.
+  throughput is its serial work-step occupancy — at the time, one item per
+  run, with self-re-dispatch as the drain-until-empty shape — so executor
+  width is the capacity, and the oldest-first fairness exposure is named and
+  accepted. DESIGN §10 carries the model; §15.30 later moved the
+  drain-until-empty loop inside one run, occupancy arithmetic unchanged.
 - **F22 — the durable record was implicit.** Actions logs expire; for an
   agentless run — the majority, under this review's premise — the item's
   terminal comment is the only durable trace, so it must carry the
@@ -1112,6 +1117,36 @@ The bare mark (`task:origin:ad-hoc`, no status — what adoption keys on), the
 adopted shape, the running shape, and the approval park that IS the in-review
 state: exactly one status beside the lifelong mark at every step, on the one
 issue the person is already watching.
+
+## N. Invocation cost — the batched drain and the executions accounting (owner, 2026-08-22, #1212)
+
+Actions bills each job's runtime rounded **up** to the next minute, so a
+day's cost is the workflow-run count, not the minutes worked — and the
+one-item run (§15.22) paid a whole invocation of checkout, setup and rounding
+per item, with the hourly drain dispatched even into an empty queue. The
+reversal (§15.30): a run drains until nothing is pickable, the drain job
+dispatches only when the scheduler run left something pickable, and the hold
+is re-read between items. The accounting (`actionExecutions()`) counts every
+billed run — a suspended start included, since the runner still spins up to
+read the hold — by workflow and, for the executor, by recorded trigger. S34,
+S36 and S37 above replay under the new run boundary; the two scenarios here
+pin the bill itself.
+
+### S65 — a working day's bill
+
+A full day of scheduled work — the 02:00/03:00/04:00 morning chain, tidy,
+a release — plus ad-hoc work: a marked request and a hand-created item of a
+manual task. Seven pieces of work converge for exactly **29 invocations**:
+the cron's 24 scheduler runs (the floor), one drain per hour that had work
+(four — the 04:00 anchor's three items settle in the one 04:17 run), and the
+hand-created item's one label event. The 20 hours with nothing pickable
+dispatched no executor at all.
+
+### S66 — the quiet day's floor
+
+No signals, no items: **24 invocations**, the hourly cron alone — every
+scheduler run skipped its drain, and no executor runner ever started. Under
+the retired shape the same day cost 48.
 
 ## Findings ledger
 

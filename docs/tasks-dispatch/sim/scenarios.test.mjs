@@ -649,12 +649,12 @@ test('S33 fan-in readies within minutes of its last blocker closing', () => {
     'the fan-in ran minutes after its last blocker, not a scheduler run later');
 });
 
-// ---- S34 — one run, one item (the executor's essence, not a configured
-// value): a busy morning with several tasks' work drains ONE ITEM PER RUN,
-// and what causes each next run is on the record — the scheduler run's own drain job
-// first, then self-re-dispatch (workflow_dispatch, which the default
-// GITHUB_TOKEN may fire) and the close-time drain, never a wait for the cron.
-test('S34 busy morning: every run settles exactly one item; re-dispatch chains the queue', () => {
+// ---- S34 — the batched drain (#1212, the owner reversing §15.22's one-item
+// runs): Actions bills each job's minutes rounded up, so a day's cost is the
+// RUN count — a busy morning with several tasks' work drains in the scheduler
+// run's own drain run, items settled serially in the SAME run, and what
+// caused each run is still on the record.
+test('S34 busy morning: one drain run settles all its hour\'s items; every run\'s cause is recorded', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:01Z', ({ world }) => {
     world.extractHasLessons = true;                // growth-extract has work
@@ -665,37 +665,39 @@ test('S34 busy morning: every run settles exactly one item; re-dispatch chains t
   });
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
-  // every completed run settled at most one item — structural, not configured
+  // two drains all morning — extract's 03:17 hour, then the 04:00 batch —
+  // and both are the scheduler run's own drain job; nothing else ever ran
+  const runs = sim.log.filter((e) => e.kind === 'executor-run');
+  assert.equal(runs.length, 2, 'exactly two executor invocations all morning');
+  for (const e of runs) assert.equal(e.trigger, 'scheduler-run-drain');
+  // the 04:17 run settled BOTH of its hour's items in one invocation — the
+  // batch, not a chain: no run was ever caused by a re-dispatch
   const ends = sim.log.filter((e) => e.kind === 'run-end');
-  assert.ok(ends.length >= 3, 'several runs completed');
-  for (const e of ends) assert.ok(e.settled <= 1, `run ${e.run} settled ${e.settled} — more than its one item`);
-  // and the busy runs settled EXACTLY one — never a second item smuggled in
-  assert.ok(ends.filter((e) => e.settled === 1).length >= 3, 'the working runs each did one item');
-
-  // both work items converged the same hour — so something OTHER than the
-  // hourly cron chained the runs; name it
+  assert.ok(ends.some((e) => e.settled === 2), 'the batch run settled two items');
+  // picks stay auditable per run — the batch run's picks both name it
+  const picks = sim.log.filter((e) => e.kind === 'pick');
+  const perRun = new Map();
+  for (const p of picks) perRun.set(p.run, (perRun.get(p.run) ?? 0) + 1);
+  assert.ok([...perRun.values()].includes(2), 'one run picked two items');
+  // work stays SERIAL inside the run — the occupancy model is unchanged, only
+  // the run boundary moved — and both items converged the same hour
   const [tidy] = closedOf(sim, 'tidy/tidy-issues');
   const [store] = closedOf(sim, 'chrome/store-release');
   assert.ok(tidy && store, 'both converged');
   assert.ok(store.closedAt < T('2026-08-12T05:00Z'), 'well before the next scheduler run could have helped');
-  const triggers = sim.log.filter((e) => e.kind === 'executor-run').map((e) => e.trigger);
-  assert.ok(triggers.includes('scheduler-run-drain'), 'the first run is the scheduler run workflow\'s own drain job');
-  assert.ok(triggers.includes('re-dispatch'), 'a full run re-dispatched a fresh one for the remainder');
-  // each pick belongs to a named run, so occupancy is auditable per run
-  const picks = sim.log.filter((e) => e.kind === 'pick');
-  const perRun = new Map();
-  for (const p of picks) perRun.set(p.run, (perRun.get(p.run) ?? 0) + 1);
-  for (const [run, n] of perRun) assert.ok(n <= 1, `run ${run} picked ${n} items — a run performs one`);
-  // and heavy items serialize ACROSS runs: two work steps never overlap
-  // unless raced deliberately — here, sequential picks a re-dispatch apart
+  // and the quiet hours cost nothing: their scheduler runs skipped the drain
+  assert.ok(sim.log.filter((e) => e.kind === 'drain-skipped').length >= 5,
+    'an hour with nothing pickable dispatched no executor');
 });
 
-// ---- S36 — the broken train (owner question, 2026-08-15): five tasks with
-// work, and the run executing one of them DIES mid-work. The workflow's
-// failure-continuation job (needs: execute, if: failure() || cancelled(), on
-// a fresh runner) re-dispatches, so the four remaining items drain within
-// minutes; the crashed ITEM alone waits for the leash reclaim, and the scheduler run
-// remains the backstop behind all of it.
+// ---- S36 — the broken train (owner question, 2026-08-15; replayed under the
+// batched drain, #1212): five tasks with work, and the one drain run DIES
+// mid-work partway through its batch. The items it already settled stay
+// settled, its run-end is never written (the record died with the runner),
+// and the workflow's failure-continuation job (needs: execute, if: failure()
+// || cancelled(), on a fresh runner) re-dispatches — the remainder drains in
+// one fresh run within minutes; the crashed ITEM alone waits for the leash
+// reclaim, and the scheduler run remains the backstop behind all of it.
 test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the leash recovers the item', () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
     id: `x/${n}`, frequency: 'daily', outcome: 'done', codeWorkMinutes: 5,
@@ -723,13 +725,20 @@ test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the lea
   const [c3] = closedOf(sim, 'x/c3');
   assert.ok(c3, 'the crashed item converged after the reclaim');
   assert.ok(c3.closedAt > crash.t + 60 * 60e3 - 1, 'its recovery cost was the leash, nothing less');
-  // and no run ever settled more than its one item, dead-run day or not
-  for (const e of sim.log.filter((e) => e.kind === 'run-end')) assert.ok(e.settled <= 1);
+  // the dead run wrote no run-end — the record died with the runner — so
+  // completed runs outnumber run-ends by exactly the one death
+  const runs = sim.log.filter((e) => e.kind === 'executor-run');
+  const ends = sim.log.filter((e) => e.kind === 'run-end');
+  assert.equal(runs.length - ends.length, 1, 'exactly one run died recordless');
+  // and the whole dead-run day cost three executor invocations: the drain
+  // that died mid-batch, the continuation, and the reclaim hour's drain
+  assert.equal(sim.actionExecutions().executor, 3);
 });
 
 // ---- S37 — the operator hold (owner, 2026-08-16): CLAUDINITE_TASKS_SUSPEND_ALL
 // set mid-morning. Every workflow — scheduler run, executor, janitor — exits at its
-// first act; the re-dispatch train parks one hop later at most; items freeze
+// first act; a live drain finishes its current item and parks between items
+// (the hold is re-read via the API at each pick, #1212); items freeze
 // exactly where they were, no labels touched, nothing lost.
 test('S37 suspend-all: workflows exit at start, the queue freezes in place', () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
@@ -753,7 +762,7 @@ test('S37 suspend-all: workflows exit at start, the queue freezes in place', () 
   // the parked runs are visible, workflow by workflow: the re-dispatch that was
   // already in flight, then every hourly scheduler run
   const skips = sim.log.filter((e) => e.kind === 'suspended-skip');
-  assert.ok(skips.some((e) => e.workflow === 'executor'), 'the in-flight follow-up run parked');
+  assert.ok(skips.some((e) => e.workflow === 'executor'), 'the in-flight drain parked between items');
   assert.ok(skips.filter((e) => e.workflow === 'scheduler-run').length >= 3, 'every cron fire exited at start');
   // and the queue is frozen, not lost: every never-picked item still sits ready
   const openReady = sim.issues.filter((i) => !i.seeded && i.state === 'open');
@@ -1631,4 +1640,68 @@ test('S64 the request labels: bare mark, adopted, running, in review — one iss
   assert.deepEqual(seen[2], ['task:origin:ad-hoc', 'task:status:running-agent']);
   assert.deepEqual(labelsOf(req), ['task:origin:ad-hoc', 'task:status:needs-human-approval'],
     'the approval park is the in-review state, beside the mark that never comes off');
+});
+
+// ---- S65 — a working day's Action invocations (#1212): Actions bills each
+// job's minutes rounded UP, so the day's cost is the invocation count, not
+// the minutes worked — the accounting the model must keep low. A full day of
+// scheduled work (the morning chain, tidy, a release) plus ad-hoc work (a
+// marked request, a hand-created item of a manual task) converges on the
+// hourly cron's 24 scheduler runs plus FIVE executor runs: one drain per
+// hour that had work — each settling its whole hour in one invocation — and
+// one label event. Every quiet hour skips its drain and costs the cron's one
+// run alone.
+test('S65 a working day: 7 pieces of work cost 29 invocations, and each is accounted', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T00:01Z', ({ world }) => {
+    world.mountBehind = true;                      // baselining has work (02:00 anchor)
+    world.extractHasLessons = true;                // growth-extract has work (03:00)
+    world.promoteHasCandidates = true;             // growth-promote has work (04:00)
+  });
+  sim.at('2026-08-12T04:00Z', ({ world }) => {
+    world.issueTouchedAt = T('2026-08-12T04:00Z'); // tidy-issues has work
+    world.releasePending = true;                   // store-release has work
+  });
+  sim.at('2026-08-12T09:40Z', (s) => s.markIssue({ author: 'owner' }));          // ad-hoc request
+  sim.at('2026-08-12T14:03Z', (s) => s.createItem('sheepdog/fleet-baseline'));   // ad-hoc manual-task item
+  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+
+  // the whole day's work converged…
+  for (const id of ['basics/baselining', 'grow/growth-extract', 'grow/growth-promote',
+    'tidy/tidy-issues', 'chrome/store-release', 'sheepdog/fleet-baseline']) {
+    const [done] = closedOf(sim, id);
+    assert.ok(done && done.outcome === 'done', `${id} converged`);
+  }
+  const [reqItem] = sim.requestItems();
+  assert.equal(statusOf(reqItem), NH('approval'), 'the request delivered its PR and parks for review');
+
+  // …for exactly this invocation bill: the cron's 24 scheduler runs, four
+  // drains (02:17, 03:17, 04:17, 10:17 — each hour that had work), and the
+  // hand-created item's one label event. Nothing else ever started a runner.
+  const acct = sim.actionExecutions();
+  assert.equal(acct.scheduler, 24, 'the hourly cron is the floor');
+  assert.deepEqual(acct.executorByTrigger, { 'scheduler-run-drain': 4, 'label-event': 1 });
+  assert.equal(acct.total, 29, 'the whole day, accounted');
+  // the 04:00 anchor's three items — promote, tidy, store — drained in ONE
+  // invocation, which is the point of the batch
+  assert.ok(sim.log.filter((e) => e.kind === 'run-end').some((e) => e.settled === 3),
+    'the busiest hour was still one run');
+  // and the 19 hours with nothing pickable dispatched no executor at all
+  assert.equal(sim.log.filter((e) => e.kind === 'drain-skipped').length, 20);
+});
+
+// ---- S66 — the quiet day's floor (#1212): no signals, no items — the cron's
+// 24 scheduler runs are the day's entire invocation bill, because a scheduler
+// run that leaves nothing pickable dispatches no drain.
+test('S66 a quiet day costs the cron floor alone: 24 invocations, zero executor runs', () => {
+  const sim = makeSim({ tasks: cast() })
+    .seedSteadyState('2026-08-12T00:00Z')
+    .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+
+  const acct = sim.actionExecutions();
+  assert.equal(acct.scheduler, 24);
+  assert.equal(acct.executor, 0, 'no executor ever started');
+  assert.equal(acct.total, 24);
+  assert.equal(sim.log.filter((e) => e.kind === 'drain-skipped').length, 24);
+  assert.equal(sim.log.filter((e) => e.kind === 'executor-run').length, 0);
 });

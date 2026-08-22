@@ -11,10 +11,13 @@ whole argument for its existence.
 
 - [`sim.mjs`](sim.mjs) — the model: a virtual clock and an ordered event
   queue (no threads, no waits, no wall clock), an in-memory issue store, and
-  the mechanism as DESIGN.md specifies it — the scheduler run's jobs; executor
-  RUNS as first-class objects (one item each, urgent-then-random pick under a
+  the mechanism as DESIGN.md specifies it — the scheduler run's jobs, its
+  drain dispatched only when something is pickable; executor
+  RUNS as first-class objects (each drains until nothing is pickable, items
+  settled serially — §15.30 — urgent-then-random pick under a
   seeded PRNG, the verified lease, a recorded trigger: scheduler-run-drain /
-  label-event / close-drain / re-dispatch / failure-redispatch); the work
+  label-event / close-drain / failure-redispatch, and an
+  `actionExecutions()` accounting of every billed workflow run); the work
   step → hand-off → converge as timed phases with heartbeat comments;
   at-most-once invocation (fired / refused / unanswered); the readiness
   re-check on close; the janitor's rules; and the force/re-queue levers.
@@ -107,12 +110,12 @@ test's title in `scenarios.test.mjs`.
 | §15.14 the work step is the work (naming; contract key unchanged) | **prose** — vocabulary, not mechanics |
 | §15.15 heartbeat comments during the work step | `S31`, `S31b`, `S31c`, `S31d` |
 | §15.16 the scheduler run never waits on a drain | **prose** — workflow concurrency wiring (see "The unsimulated world") |
-| §15.17 the occupancy capacity model; self-re-dispatch | `S34` (re-dispatch chains the queue); runner budgets **prose** |
+| §15.17 the occupancy capacity model | `S34` (serial settles inside one run); runner budgets **prose** |
 | §15.18 the terminal comment is the durable record | **prose** — comment content, not label mechanics |
 | §15.19 F1 reopened: readiness re-checks at close | `S33`, `S4` |
 | §15.20 randomized pick order after urgent, adopted outright | modeled with a seeded PRNG (`pickSeed`); urgent precedence `S16` |
 | §15.21 "scheduler run" keeps its name for now (#877) | **prose** — vocabulary |
-| §15.22 one run performs one item — structural; every run records its trigger | `S34` (F23) |
+| §15.22 one run performs one item | **reversed by §15.30**; every run still records its trigger — `S34` (F23) |
 | §15.23 a dead run must not stall the train — the failure-continuation job | `S36` |
 | §15.24 the operator hold (`CLAUDINITE_TASKS_SUSPEND_ALL`) and the scheduler run-alone resume | `S37`, `S38` |
 | §15.25 `task:done`/`task:obsolete` — the `outcome:` namespace dissolves | **prose** — a label spelling; the sim stores outcomes as values, not labels |
@@ -123,6 +126,7 @@ test's title in `scenarios.test.mjs`.
 | §15.29 the decode-forever direction: legacy spellings drain, the first write canonicalizes, a bare or unknown park blocks | `S62`, `S62b`, `S63` |
 | §15.29 the origin label as the standing/ad-hoc authority (structural read = fallback only) | `S61` (planned at birth), `S62` (fallback on unlabeled legacy), `S64` (ad-hoc) |
 | §15.29 one-issue requests: the mark-with-no-status guard, the one clearing lever, gated body parameters, terminals on an open issue | `S64`, `S44`, `S45`, `S47`, `S49`, `S51` |
+| §15.30 invocations are the cost unit: the batched drain, the conditional drain dispatch, the between-items hold check, the executions accounting | `S34`, `S36`, `S37` (the hold parks between items), `S65` (a working day's bill), `S66` (the quiet-day floor) |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next scheduler run — nothing durable carries a schedule | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |
@@ -156,7 +160,7 @@ can still teach us.
 | **Rate limits / quotas** | API quotas, secondary rate limits | costs estimated in DESIGN §5 (hourly-task churn); not modeled; the burst (B-rows) observes real consumption |
 | **Clocks** | runner clocks skew; only server timestamps are trustworthy | no rule compares runner clocks; ordering is by server-assigned ids, durations by server timestamps; anchors tolerate minute-scale skew by construction (scheduler run-quantized) |
 | **The invocation wire** | the routine-fire API's real contract, timeouts, the nonce's payload grammar | the *semantics* (at-most-once, the refused/unanswered split, the leash settling the unknown case) are modeled (S9a/S10a/S10b); the wire format is not — burst rows B3/B7 prove it live |
-| **Actions variable delivery** | `vars.CLAUDINITE_TASKS_SUSPEND_ALL` reaches a run's env only at run start — a value changed mid-run is invisible to it | by design: suspension gates starts, never running work (S37 asserts exactly that boundary); the stamp is stub wiring, burst-verified |
+| **Actions variable delivery** | `vars.CLAUDINITE_TASKS_SUSPEND_ALL` reaches a run's env only at run start — a value changed mid-run is invisible to it | the batched drain (§15.30) re-reads the variable **via the API** between items, so only running *work* outlives a hold — never the pick loop (S37 asserts exactly that boundary); the stamp is stub wiring, burst-verified |
 | **Workflow concurrency between the scheduler run and a long drain** | the scheduler run and drain share a workflow whose `concurrency` group holds the next cron fire until the whole run ends — a drain doing hours of real work starves the hourly scheduler run | the decoupling wiring (work-as-work review, DESIGN §10): the drain must run outside the scheduler run's serializing group once work may legally outlive an hour; platform config the sim cannot see, verified in the migration burst |
 | **Secrets & permissions** | Actions secret storage, env stamping, write-gating of labels/comments | prose + conformance checks (§14 secrets path); burst row B4/B7 |
 | **Search index** | minutes-stale, eventually consistent | never used by the design (F11) — the REST issue list is the only read |
