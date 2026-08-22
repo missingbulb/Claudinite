@@ -10,8 +10,11 @@
 // not-before has passed; ADOPT the issues somebody marked for implementation;
 // and RECLAIM dead executor claims. The executor still re-evaluates at pick
 // (§6.4) — the board's verdict is a watermark, never a verdict carried
-// forward — plus a one-time migration retiring the roll model's sleeping
-// standing items onto the board.
+// forward. A task's FIRST window is a row too (#1215): first sight books it and
+// files nothing, so adopting a task costs no open issue. Beside job 1, two
+// sweeps: a one-time migration retiring the sleeping standing items both
+// earlier models left open, and the reap of a standing item whose task is no
+// longer declared at HEAD.
 //
 // `planSchedulerRun` is the decision core, kept injectable so it tests with fixtures; the
 // CLI shell below wires the GitHub reads, the signal-collection seam, and applies the ops.
@@ -32,7 +35,7 @@ import {
   workItemBody, labelNames, hasLabel, parseLastVerdict,
   ORIGIN_AD_HOC, ORIGIN_LABELS, REQUEST_LABEL, parseRequestFields, withMachineBlock,
 } from './work-item.mjs';
-import { VERDICT_NO, VERDICT_GO, VERDICT_FAIL_OPEN } from './schedule-board.mjs';
+import { VERDICT_NO, VERDICT_GO, VERDICT_FAIL_OPEN, SCHEDULE_PREFIX } from './schedule-board.mjs';
 import { REQUEST_TASK_ID } from '../built-in-tasks.mjs';
 
 // The scheduler run owns the executing-leash reclaim because it is deterministic and
@@ -42,6 +45,11 @@ export { EXECUTING_LEASH_MS };
 
 const ms = (t) => (t == null ? null : new Date(t).getTime());
 
+// What a board row says for a task whose first window has not come: the reason
+// column IS the whole record of the wait, so it names the instant being waited
+// for — the one thing the born-blocked item it replaces carried.
+const firstWindowReason = (window) => `first window at ${window} — a task is never run off-anchor on the repo that has just adopted it`;
+
 // The ops `planSchedulerRun` emits, each a label-and-body mechanic the shell applies:
 //   { kind: 'dedupe',  issue, reason }            close, task:obsolete
 //   { kind: 'create',  pack, task, labels, body } a task's standing item
@@ -49,7 +57,8 @@ const ms = (t) => (t == null ? null : new Date(t).getTime());
 //   { kind: 'reclaim', issue, reason }            task:executing -> task:ready
 //   { kind: 'adopt',   request, title, body, … }  a marked issue becomes an item
 //   { kind: 'supersede', issue, request, reason } a parked prior run of a re-ask
-//   { kind: 'retire-sleeping', issue, reason }    migration: a roll-model sleeping item closes
+//   { kind: 'retire-sleeping', issue, reason }    migration: a sleeping standing item closes
+//   { kind: 'retire-orphan', issue, reason }      a standing item whose task is gone closes
 //   { kind: 'board',   rows }                     rewrite the schedule board (rows changed)
 //
 // `items` is every `[claudinite-work]` issue the shell fetched (state=all for the
@@ -89,34 +98,68 @@ export async function planSchedulerRun({
     boardChanged = true;
   };
 
-  // ---- the one-time migration (#1115): retire the roll model's leavings ----
-  // A sleeping standing item — open, blocked, a FUTURE Not-before, no
-  // blockers, a Last-verdict section proving it was rolled — closes with its
-  // verdict seeded onto the board. Idempotent: closed items never match
-  // again, and a seeded row is written only where none exists. Untouched:
-  // items waiting on a blocker, and first-ever/adoption Not-befores (no
-  // Last-verdict section — they were never rolled). Gated on the seam being
-  // wired, so a fixture driving the calendar-only shape sees no migration.
+  // ---- the one-time migration (#1115, #1215), and the orphan reap -------
+  // A sleeping standing item — open, blocked, unqualified, a FUTURE Not-before,
+  // no blockers — closes with its window seeded onto the board, whether it was
+  // ROLLED there by the retired roll model (a `Last verdict` section says so, and
+  // its own reason is what the row carries) or BORN blocked at adoption (no such
+  // section: the row says which window it is waiting for). Either way the fact it
+  // held open — "not now, next ask at X" — is what the board is for, and holding
+  // an issue open to say it is the cost #1115 set out to remove.
+  //
+  // Idempotent: closed items never match again, and a seeded row is written only
+  // where none exists. Untouched: items waiting on a blocker, which are somebody's
+  // dependency rather than a window.
+  //
+  // Beside it, the orphan reap: a standing item whose `<pack>/<task>` is not
+  // declared at HEAD can never execute — job 1 matches its family title-exact on
+  // the declared id, so a legacy pack spelling is invisible to it, and job 2 would
+  // otherwise ready the item at its Not-before and hand an executor a task path
+  // that is not on disk. Guarded on a non-empty task list so an unreadable
+  // declaration reaps nothing, and scoped to BLOCKED so nothing in flight is
+  // touched — a ready orphan is picked within the hour and parks for a human,
+  // which is visible rather than silent.
+  //
+  // Both are gated on the evaluation seam being wired, so a fixture driving the
+  // calendar-only shape sees neither.
   if (evaluate) {
     const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
     for (const item of items) {
       if (item.state !== 'open' || !isStatus(item, STATUS_BLOCKED)) continue;
       const parsed = parseWorkItemTitle(item.title);
       if (!parsed || parsed.qualifier !== null) continue;
-      const key = parsed ? `${parsed.pack}/${parsed.task}` : null;
-      const freq = byId.get(key)?.decl?.frequency ?? null;
-      if (freq == null || freq === 'manual') continue; // not a standing item
+      const key = `${parsed.pack}/${parsed.task}`;
       const { notBefore, blockedBy } = parseWorkItemBody(item.body);
       if (blockedBy.length) continue;
+
+      if (!byId.has(key)) {
+        if (!tasks.length) continue;
+        closedByThisRun.add(item.number);
+        ops.push({
+          kind: 'retire-orphan', issue: item.number, pack: parsed.pack, task: parsed.task,
+          reason: `Closing: \`${key}\` is no longer declared on this repository, so this item names a task `
+            + 'that is not at HEAD and can never run. If the task came back under a new id, its own item is the live one.',
+        });
+        continue;
+      }
+
+      const freq = byId.get(key).decl?.frequency ?? null;
+      if (freq == null || freq === 'manual') continue; // not a standing item
       if (!notBefore || (ms(notBefore) ?? -Infinity) <= nowMs) continue;
       const verdict = parseLastVerdict(item.body);
-      if (!verdict) continue; // never rolled: a first-ever/adoption wait
-      if (!boardRows.has(key)) writeRow(key, freq, verdict.at ?? null, VERDICT_NO, verdict.reason ?? '');
+      if (!boardRows.has(key)) {
+        writeRow(key, freq,
+          verdict?.at ?? mostRecentAnchor(freq, schedule, now).toISOString(),
+          VERDICT_NO, verdict ? (verdict.reason ?? '') : firstWindowReason(notBefore));
+      }
       closedByThisRun.add(item.number);
       ops.push({
         kind: 'retire-sleeping', issue: item.number, pack: parsed.pack, task: parsed.task,
-        reason: 'Closing: a declined occurrence now lives as a row on the schedule board '
-          + `(\`[claudinite-schedule]\`), not as a sleeping work item. The next ask happens at this task's next anchor.`,
+        reason: verdict
+          ? 'Closing: a declined occurrence now lives as a row on the schedule board '
+            + `(\`${SCHEDULE_PREFIX}\`), not as a sleeping work item. The next ask happens at this task's next anchor.`
+          : "Closing: a task's first window is now a row on the schedule board "
+            + `(\`${SCHEDULE_PREFIX}\`), not an item held open until its anchor. The first ask happens at that anchor.`,
       });
     }
   }
@@ -169,16 +212,31 @@ export async function planSchedulerRun({
       || closedByThisRun.has(i.number));
     if (covered) continue;
 
-    // A brand-new task's FIRST item is born blocked until its NEXT real anchor —
-    // created without an ask, so adoption never fires weekly or monthly work
-    // off-anchor on the least-proven repo (S25).
-    const firstEver = family.length === 0;
-    if (!firstEver && evaluate) {
+    // FIRST SIGHT of a task on this repo: it must not run off-anchor on the
+    // least-proven repo (S25), and under "no work, no item" that wait is a board
+    // row rather than an item held open until the anchor (#1215). The board is
+    // half of what makes it first sight — an item this task once had is the other
+    // half, and either one alone would re-book the window forever.
+    //
+    // The cost, stated: for a task that has never yet run, a board deleted mid-
+    // window reads as first sight again and costs one skipped occurrence, where
+    // the board's own header promises one redundant evaluation. Past a task's
+    // first run its family is non-empty forever and that promise holds again.
+    const firstEver = family.length === 0 && !boardRows.has(key);
+    if (evaluate) {
       // The watermark: this anchor was already asked and DECLINED. Scoped to
       // declined rows only (F31, and see schedule-board.mjs): a go/fail-open
       // verdict's cover is the item it created, judged by the guards above.
       const row = boardRows.get(key);
       if (row && row.verdict === VERDICT_NO && (ms(row.lastAsked) ?? NaN) === anchorMs) continue;
+
+      if (firstEver) {
+        // Booked against the anchor it is declining, so the watermark above holds
+        // the rest of this window and the first real ask happens at the next one.
+        writeRow(key, task.decl.frequency, anchor.toISOString(), VERDICT_NO,
+          firstWindowReason(nextAnchor(task.decl.frequency, schedule, now).toISOString()));
+        continue;
+      }
 
       const verdict = (await evaluate(task)) ?? {};
       const lastAsked = anchor.toISOString();
@@ -194,6 +252,9 @@ export async function planSchedulerRun({
         writeRow(key, task.decl.frequency, lastAsked, VERDICT_GO, verdict.reason || '');
       }
     }
+    // Reachable with a first sight only where no seam is wired (a fixture, an
+    // older shell): there the calendar-only model's born-blocked item is still
+    // the whole of the off-anchor guard.
     const notBefore = firstEver ? nextAnchor(task.decl.frequency, schedule, now).toISOString() : null;
     ops.push({
       kind: 'create', pack: task.pack, task: task.id, title,
@@ -626,6 +687,11 @@ async function main() {
       await addLabel(gh, repo, op.issue, TASK_OBSOLETE);
       await closeIssue(gh, repo, op.issue, 'not_planned');
       console.log(`- deduped #${op.issue}`);
+    } else if (op.kind === 'retire-orphan') {
+      await comment(gh, repo, op.issue, op.reason);
+      await addLabel(gh, repo, op.issue, TASK_OBSOLETE);
+      await closeIssue(gh, repo, op.issue, 'not_planned');
+      console.log(`- reaped #${op.issue} — ${op.pack}/${op.task} is not declared at HEAD`);
     } else if (op.kind === 'retire-sleeping') {
       await comment(gh, repo, op.issue, op.reason);
       await addLabel(gh, repo, op.issue, TASK_OBSOLETE);
