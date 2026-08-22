@@ -13,6 +13,10 @@
 // forward — plus a one-time migration retiring the roll model's sleeping
 // standing items onto the board.
 //
+// The run's last act is the DRAIN GATE (§15.30): it reports whether it left
+// anything pickable, and the workflow's drain job starts an executor only then —
+// an idle hour costs this one run rather than two.
+//
 // `planSchedulerRun` is the decision core, kept injectable so it tests with fixtures; the
 // CLI shell below wires the GitHub reads, the signal-collection seam, and applies the ops.
 
@@ -688,6 +692,43 @@ async function main() {
     // log line is how it goes unnoticed by the fleet lever that pressed it.
     if (unmatched.length) process.exitCode = 1;
   }
+
+  // LAST, AFTER THE WAKE: whether this run leaves anything for an executor to do.
+  await announcePickable(gh, repo, tasks);
+}
+
+// THE DRAIN GATE (§15.30). Every workflow run is a billed invocation whatever it
+// finds — Actions rounds each job's minutes up — so the drain job dispatches an
+// executor only when this run's parting look at the queue found something
+// pickable. On a quiet repo that is the difference between 24 executor runs a day
+// and none.
+//
+// This is the run's LAST act, after the forced wake: a wake readies items, and a
+// look taken before it would send the hour's forced work to the next cron fire.
+//
+// The delivery is unweakened by the gate. A label event may be lost, and what a
+// lost event would have delivered is exactly what this look sees — the queue
+// itself, read live, by the same pick rule the executor applies. Where the
+// output cannot be written (a run outside Actions, an older member workflow that
+// maps no output) the drain job's own default decides, and the run says which
+// happened rather than going quiet about it.
+async function announcePickable(gh, repo, tasks) {
+  const { pickOrder } = await import('./executor.mjs');
+  const { listOpenWorkItems } = await import('./read.mjs');
+  const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
+  const byPath = new Map(tasks.map((t) => [t.taskPath, `${t.pack}/${t.id}`]));
+  const pickable = pickOrder(await listOpenWorkItems(gh, repo), {
+    taskAfter: (id) => byId.get(id)?.decl?.after ?? [],
+    frequencyOf: (id) => byId.get(id)?.decl?.frequency ?? null,
+    pathTo: (p) => byPath.get(p) ?? null,
+  });
+  console.log(pickable.length
+    ? `- ${pickable.length} item(s) pickable — the drain job dispatches an executor`
+    : '- nothing pickable — no executor is dispatched this run');
+  const out = process.env.GITHUB_OUTPUT;
+  if (!out) return;
+  const { appendFileSync } = await import('node:fs');
+  appendFileSync(out, `pickable=${pickable.length ? 'true' : 'false'}\n`);
 }
 
 // Run only when invoked directly (the workflow's `node scheduler-run.mjs`), never on

@@ -91,6 +91,16 @@
 //                 shape says is that such a member still converges — the hourly
 //                 scheduler dispatch is the guaranteed delivery, and the lost event
 //                 is latency, never work.
+//   ungated-drain a member holding the workflow shape the fleet is ON today, which
+//                 is a different question from `old-workflows`' museum piece: its
+//                 scheduler DISPATCHES the executor (post-§15.16) but does so
+//                 unconditionally, mapping no job output, because the drain gate
+//                 (§15.30) arrived after its copy did. The engine it converges to
+//                 writes a `pickable` output nothing there reads and drains the
+//                 queue in one run — so what this shape says is that the gate's
+//                 producer is inert where its consumer is missing, and such a
+//                 member keeps its previous behaviour (an executor every hour)
+//                 rather than losing its drain to an `if` it does not have.
 //   pre-rules-index
 //                 a member in the shape EVERY member has the night #807 reaches it:
 //                 a CLAUDE.md of its own, no rules index, no import, no merge
@@ -351,6 +361,65 @@ jobs:
           GITHUB_TOKEN: \${{ github.token }}
           # claudinite:secrets
         run: node .claudinite/shared/engine/scheduler/queue/executor.mjs
+`;
+
+// The scheduler workflow as it stands on a member that has the DISPATCHING drain
+// (§15.16) but not the gate (§15.30) — today's fleet shape. Its drain job has no
+// `if` and its scheduler job maps no `outputs`, which is exactly the combination
+// the gate's engine half must stay inert against.
+const UNGATED_SCHEDULER_WORKFLOW = `name: Claudinite scheduler
+
+on:
+  schedule:
+    - cron: '10 * * * *'
+  workflow_dispatch:
+    inputs:
+      wake:
+        description: 'Task ids to run now'
+        required: false
+        type: string
+
+concurrency:
+  group: claudinite-scheduler-run
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  scheduler-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Instantiate, ready and reclaim work items
+        env:
+          GITHUB_TOKEN: \${{ github.token }}
+          CLAUDINITE_WAKE: \${{ inputs.wake }}
+          CLAUDINITE_TASKS_SUSPEND_ALL: \${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
+        run: node .claudinite/shared/engine/scheduler/queue/scheduler-run.mjs
+
+  drain:
+    needs: scheduler-run
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'claudinite-executor.yml',
+              ref: context.payload.repository?.default_branch
+                ?? context.ref.replace('refs/heads/', ''),
+            });
 `;
 
 // The executor workflow as it stood before the vocabulary migration (#1119):
@@ -730,6 +799,15 @@ NSApplication.shared.run()
       '.claudinite-checks.json': checks(['basics']),
       '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
       '.github/workflows/claudinite-executor.yml': OLD_EXECUTOR_WORKFLOW,
+    },
+  },
+  {
+    name: 'ungated-drain',
+    why: 'the workflow shape the fleet is on TODAY: a dispatching drain with no gate and no job output — the window the drain gate (§15.30) opens, where the engine writes a verdict the member\'s own copy cannot read',
+    files: {
+      'README.md': '# fixture-ungated-drain\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics']),
+      '.github/workflows/claudinite-scheduler.yml': UNGATED_SCHEDULER_WORKFLOW,
     },
   },
   {
