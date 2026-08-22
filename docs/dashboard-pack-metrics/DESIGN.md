@@ -9,6 +9,13 @@ The whole contract in one line: **a pack contributes data, never code.**
 
 ## The contract
 
+This is the posture the `contributes` manifest key already establishes — a pack ships
+another pack's rules as data (`contributes: { barriers: [...] }`), composed by
+declaration rather than a code import. The dashboard's descriptor is the same idea for a
+reader that cannot import anything: `contributes` is read in-process by the engine, in
+the member's own checkout, where importing `pack.mjs` is ordinary; the dashboard is a
+browser reading *another repo* over the API, where it is not possible at all.
+
 A pack that wants figures on the dashboard carries one file, `packs/<id>/dashboard.json`
 — the **descriptor** — vendored with the pack like everything else it ships. It declares,
 in a closed vocabulary the dashboard owns:
@@ -108,7 +115,8 @@ page already has, naming the file that would carry it.
 
 - **Member signals** — one compact chip per pack per member (`fleet.member`, kinds
   `event` or `stat` only), in a *Packs* column group beside the existing three. At most
-  three chips render in the cell; the rest are a "+n" the hover expands.
+  three chips render in the cell and the rest are a stated `+n`; the label is capped by
+  the renderer, so one verbose pack cannot push its neighbours out of the row.
 - **Deployment cards** (`fleet.deployment`, same shape as a repo card) — rendered once,
   from the packs the deployment repo itself declares; its `generated` source may name
   `"repo": "canon"`, which resolves to the configured `canonRepo` (absent that config,
@@ -149,8 +157,44 @@ between canon, member and deployment. Readers drop unknown keys; a descriptor ca
 widget or source kind newer than the deployed page renders that widget as "this
 dashboard predates the descriptor", never a guess.
 
+## What the corpus has to say
+
+The vocabulary is four kinds because that is what the canon's packs actually have, and
+the shape of the answer matters as much as its contents: **most packs contribute
+nothing, and that is the ordinary case.** Seventeen of the thirty-two carry conventions
+rather than state — there is no number a repo's tree could answer for `node`, `leaflet`
+or `ios` — so they carry no descriptor and their repos never render the region. Two more
+abstain deliberately: `claudinite-dashboard` would be reporting on itself, and
+`claudinite-lifecycle`'s mount freshness is already a core panel on both views.
+
+Of the rest, the split that matters is whether a writer exists. Seven contribute from
+machinery already running — the release packs off `latest-release` with no new code at
+all, and `tidy-repo`, `claudinite-growth`, `product-wiki`, `jwt`, `basics` and
+`claudinite-fleet-sheepdog` from tasks they already own. The remaining six —
+`executable-requirements`, `spec-driven-product`, `research-project`, `barriers`,
+`web-scraping` and the store-release packs' in-repo half — have a figure worth showing
+and nothing writing it yet, which is a task per pack rather than anything this contract
+owes them.
+
+Two limits are worth stating where they will be asked about. Store-side state (in
+review, rollout percentage) needs credentials no page running as its viewer can hold, so
+the release packs report the repo's own releases and name the rest as out of scope. And
+`basics`' CI wall-clock is the clearest case for the whole mechanism: the dashboard shows
+which runs happened and structurally cannot know what they cost, while the pack that
+measures it already does.
+
 ## Alternatives
 
+- **The descriptor on `pack.mjs` under `contributes`** — the canon's own composition key,
+  and one authored home for everything a pack addresses to another. It cannot serve this
+  reader: the page reads other repos over the API, so the descriptor would have to be
+  text-lifted out of a JavaScript module by a browser. The dashboard already does that
+  for task declarations and reports it as a limitation — a field it cannot read renders
+  *unknown* — which is an acceptable floor for a cadence it merely displays and not for
+  the thing that decides what renders at all. Materialising the JSON from `contributes`
+  at build time would fix the parse and keep the single home, at the cost of a generated
+  file per pack and a regeneration step in a lane that has none; the JSON is small enough
+  to write.
 - **Pack render code, imported by the page** — executes member code in the viewer's
   browser with the viewer's token in scope, must be version-matched per member, and can
   fetch, making its cost invisible to the budget planner.
