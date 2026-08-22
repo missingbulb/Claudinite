@@ -6,14 +6,15 @@ import { dirname, resolve } from 'node:path';
 import {
   summariseMember, summariseRuns, mountState, rankMembers, rollUp, packSpread, taskSpread,
   ciStatus, parseEngineVersion, parsePackVersion, attentionBreakdown,
-  memberAttention, fleetAttention, estimateMinutes, MINUTES_PER_PARK,
+  memberAttention, fleetAttention, estimateMinutes, estimateNote,
+  PARK_MINUTES, APPROVAL_RATE, approvalMinutes,
 } from '../../packs/claudinite-dashboard/fleet.mjs';
 import { ENGINE_VERSION } from '../../engine/version.mjs';
 import dashboardPack from '../../packs/claudinite-dashboard/pack.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 import {
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
+  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_ACTION,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, TASK_DONE,
 } from '../../engine/scheduler/queue/work-item.mjs';
 
@@ -483,7 +484,7 @@ test('a member and the fleet reach the breakdown through the same counts', () =>
     read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON },
   );
   assert.deepEqual(memberAttention(one),
-    { broken: 0, decisions: 0, approvals: 1, tripping: 0, schedulersFailing: 0, schedulersNeverRan: 0 });
+    { broken: 0, decisions: 0, actions: 0, approvals: 1, tripping: 0, schedulersFailing: 0, schedulersNeverRan: 0 });
   assert.deepEqual(attentionBreakdown(memberAttention(one)).map((r) => r.text), ['1 item needing approval']);
 
   // The fixture member has no scheduled runs, so the fleet side legitimately carries a
@@ -505,14 +506,68 @@ test('the rollup carries the split the breakdown reads', () => {
   assert.equal(roll.parkedInbox, 0);
 });
 
+// The two halves of the inbox are one bucket to a reader and two rates to the estimate,
+// so the rollup has to carry them apart — and a park whose kind nobody can decode must
+// not drift into the cheap lane on its way through.
+test('the rollup splits an action park from a decision park', () => {
+  const roll = rollUp([
+    summariseMember(read({ items: [
+      item({ number: 1, labels: [NEEDS_HUMAN, NEEDS_HUMAN_ACTION] }),
+      item({ number: 2, labels: [NEEDS_HUMAN, NEEDS_HUMAN_DECISION] }),
+      item({ number: 3, labels: [NEEDS_HUMAN] }),
+    ] }), { now: NOW, canon: CANON }),
+  ]);
+  assert.equal(roll.parkedActions, 1);
+  assert.equal(roll.parkedDecisions, 1);
+  assert.equal(roll.parkedInbox, 2, 'the two together are still the inbox');
+  assert.equal(roll.parkedHolding, 1, 'the undecodable park stays broken, not a decision');
+  assert.equal(estimateMinutes(fleetAttention(roll)),
+    PARK_MINUTES.actions + PARK_MINUTES.decisions + PARK_MINUTES.broken);
+});
+
 // --- the estimate ------------------------------------------------------------------
 
-// A flat rate, and the point of it is that it is visible and arguable rather than
-// dressed up. What matters is that it is applied consistently and that nothing which
-// is not a queue of work for a person is counted into it.
-test('every parked item costs the same flat estimate', () => {
-  assert.equal(estimateMinutes({ broken: 1, decisions: 1, approvals: 1, tripping: 1 }), 4 * MINUTES_PER_PARK);
+// Per kind, because the four parks are disjoint by remedy: what matters is that each
+// rate is applied to the right count and that nothing which is not a queue of work for
+// a person is counted into it at all.
+test('each park kind costs its own rate', () => {
+  assert.equal(estimateMinutes({ broken: 1 }), 15);
+  assert.equal(estimateMinutes({ actions: 1 }), 10);
+  assert.equal(estimateMinutes({ decisions: 1 }), 3);
+  assert.equal(estimateMinutes({ approvals: 1 }), 1);
+  assert.equal(estimateMinutes({ broken: 2, actions: 1, decisions: 3, approvals: 4 }), 30 + 10 + 9 + 4);
   assert.equal(estimateMinutes({}), 0);
+});
+
+// An approval is priced by the PR's size, and the page cannot read a PR's size — so the
+// rate charges its floor and the total is a lower bound. The floor must never be zero:
+// an approval nobody has measured is still a merge somebody has to do.
+test('an approval is priced by size, and an unknown size costs the floor', () => {
+  assert.equal(approvalMinutes(200), APPROVAL_RATE.minutes);
+  assert.equal(approvalMinutes(201), 2, 'a part-full 200 lines is a whole minute');
+  assert.equal(approvalMinutes(1000), 5);
+  assert.equal(approvalMinutes(1), 1, 'never below the floor');
+  assert.equal(approvalMinutes(null), APPROVAL_RATE.minutes, 'unknown is the floor, never a zero');
+  assert.equal(approvalMinutes(), APPROVAL_RATE.minutes);
+});
+
+// A trip is not a park: it wears no label, it is derived from an item's age against the
+// engine's leashes, and the janitor clears it. Counting it as a person's minutes was the
+// old flat rate's doing.
+test('a recovery-rule trip is not minutes of a person\'s time', () => {
+  assert.equal(estimateMinutes({ tripping: 4 }), 0);
+  assert.equal(estimateMinutes({ broken: 1, tripping: 9 }), PARK_MINUTES.broken);
+  assert.ok(attentionBreakdown({ tripping: 4 }).length, 'but it is still reported');
+});
+
+// The published arithmetic. A figure a reader cannot check is a figure they can only
+// trust, and the one thing this one cannot know has to say so itself.
+test('the note shows the arithmetic and admits the unread PR sizes', () => {
+  assert.equal(estimateNote({}), 'nothing parked');
+  assert.equal(estimateNote({ broken: 2, decisions: 1 }), '15×2 broken + 3×1 decision');
+  assert.match(estimateNote({ approvals: 1 }), /lower bound/);
+  assert.doesNotMatch(estimateNote({ broken: 1 }), /lower bound/,
+    'nothing is unread when no approval is waiting');
 });
 
 // A broken scheduler is not a queue of tasks to work through, and folding it in would

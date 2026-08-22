@@ -20,7 +20,7 @@
 // thing true of this repo.
 
 import {
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL,
+  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION,
 } from '../../engine/scheduler/queue/work-item.mjs';
 
 export const VIEWS = Object.freeze(['stuck', 'pending', 'all']);
@@ -151,7 +151,9 @@ export function attentionOf(open) {
   return {
     broken: parked.filter((i) => i.blockingPark).length,
     approvals: parked.filter((i) => !i.blockingPark && i.triage === NEEDS_HUMAN_APPROVAL).length,
-    decisions: parked.filter((i) => !i.blockingPark && i.triage !== NEEDS_HUMAN_APPROVAL).length,
+    actions: parked.filter((i) => !i.blockingPark && i.triage === NEEDS_HUMAN_ACTION).length,
+    decisions: parked.filter((i) => !i.blockingPark
+      && ![NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION].includes(i.triage)).length,
     tripping: open.filter((i) => i.state !== NEEDS_HUMAN && i.warnings.length).length,
   };
 }

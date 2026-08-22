@@ -28,7 +28,7 @@ import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
 import { periodMs } from '../../engine/scheduler/queue/anchors.mjs';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, URGENT,
-  NEEDS_HUMAN_APPROVAL, outcomeOf, isParked,
+  NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, outcomeOf, isParked,
 } from '../../engine/scheduler/queue/work-item.mjs';
 import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../engine/version.mjs';
@@ -172,7 +172,13 @@ export function summariseMember(read, { now, canon = null } = {}) {
   // teaches the reader to ignore the ring.
   const holding = parked.filter((d) => d.blockingPark);
   const approvals = parked.filter((d) => !d.blockingPark && d.triage === NEEDS_HUMAN_APPROVAL);
-  const inbox = parked.filter((d) => !d.blockingPark && d.triage !== NEEDS_HUMAN_APPROVAL);
+  // The person's inbox, split by remedy because the two cost differently (`PARK_MINUTES`):
+  // an action is a thing to change outside the code, a decision is a call to make. A park
+  // that is neither, and is not blocking, cannot occur — `parkOf` sends every kind it
+  // cannot decode to `failure` — so `decisions` is the residue rather than a third lane.
+  const actions = parked.filter((d) => !d.blockingPark && d.triage === NEEDS_HUMAN_ACTION);
+  const decisions = parked.filter((d) => !d.blockingPark && ![NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION].includes(d.triage));
+  const inbox = [...actions, ...decisions];
   const warned = described.filter((d) => d.state !== NEEDS_HUMAN && d.warnings.length);
 
   const outcomes = { done: 0, delivered: 0, obsolete: 0, none: 0 };
@@ -250,6 +256,8 @@ export function summariseMember(read, { now, canon = null } = {}) {
     parked: parked.length,
     parkedHolding: holding.length,
     parkedApprovals: approvals.length,
+    parkedActions: actions.length,
+    parkedDecisions: decisions.length,
     parkedInbox: inbox.length,
     warned: warned.length,
     closedSeen: closed.length,
@@ -384,6 +392,8 @@ export function rollUp(summaries) {
     parkedItems: adopted.reduce((n, s) => n + s.parked, 0),
     parkedHolding: adopted.reduce((n, s) => n + (s.parkedHolding ?? 0), 0),
     parkedInbox: adopted.reduce((n, s) => n + (s.parkedInbox ?? 0), 0),
+    parkedActions: adopted.reduce((n, s) => n + (s.parkedActions ?? 0), 0),
+    parkedDecisions: adopted.reduce((n, s) => n + (s.parkedDecisions ?? 0), 0),
     parkedApprovals: adopted.reduce((n, s) => n + (s.parkedApprovals ?? 0), 0),
     warnedItems: adopted.reduce((n, s) => n + (s.warned ?? 0), 0),
     warnedMembers: adopted.filter((s) => s.warned > 0).length,
@@ -399,25 +409,50 @@ export function rollUp(summaries) {
 
 // --- what a person is actually holding -------------------------------------------
 
-// What one parked item costs a person, in minutes. A flat rate deliberately: the page
-// has no measurement of how long a park actually takes, and the honest way to publish
-// a number nothing measures is to publish the ASSUMPTION and let it be argued with,
-// rather than to dress a guess up as a per-kind estimate. Refine it here, in one
-// place, when there is something real to refine it from.
-export const MINUTES_PER_PARK = 7;
+// What one parked item costs a person, in minutes, by WHAT THE PARK ASKS FOR (owner,
+// 2026-08-22). Per kind rather than one flat rate, because the four parks are disjoint
+// by remedy and cost accordingly: diagnosing a break is not merging a PR, and averaging
+// them into one number made the figure mean four things at once.
+//
+// Keyed by the count names below, which are the triage labels one layer up:
+// `broken` is `task:needs-human-failure` PLUS any park whose kind cannot be decoded
+// (`parkOf` falls back to `failure`), so an unclassified park is priced as the thing
+// it is treated as everywhere else.
+export const PARK_MINUTES = Object.freeze({
+  broken: 15,
+  actions: 10,
+  decisions: 3,
+});
+
+// An approval is priced by SIZE, not by kind: a two-line docs merge and a nine-file
+// refactor are the same label and not the same read.
+export const APPROVAL_RATE = Object.freeze({ minutes: 1, lines: 200 });
+
+// Minutes to approve a PR of `changedLines`, or the rate's own floor when the size is
+// unknown — which is every approval today, and deliberately not hidden. The page never
+// reads a PR's size: `projectPull` keeps no line counts and the PRs arrive on the
+// issues listing, which carries none, so a size would cost one extra request per open
+// approval against `budget.mjs`'s ladder. Unknown stays unknown rather than becoming a
+// zero or a guessed average: the floor is the smallest thing the rate can honestly say,
+// which is what makes the total a LOWER BOUND rather than an estimate that might be high.
+export const approvalMinutes = (changedLines = null) =>
+  (Number.isFinite(changedLines) && changedLines > 0
+    ? Math.max(1, Math.ceil((changedLines / APPROVAL_RATE.lines) * APPROVAL_RATE.minutes))
+    : APPROVAL_RATE.minutes);
 
 // The vocabulary both the per-member row and the fleet rollup speak, so one function
 // itemises both. Each field is a count of THINGS waiting; the two callers differ only
 // in whether their things are one member's or the whole fleet's.
 const attentionCounts = ({
-  broken = 0, decisions = 0, approvals = 0, tripping = 0,
+  broken = 0, decisions = 0, actions = 0, approvals = 0, tripping = 0,
   schedulersFailing = 0, schedulersNeverRan = 0,
-} = {}) => ({ broken, decisions, approvals, tripping, schedulersFailing, schedulersNeverRan });
+} = {}) => ({ broken, decisions, actions, approvals, tripping, schedulersFailing, schedulersNeverRan });
 
 // One member's attention, in the same shape the rollup uses.
 export const memberAttention = (s) => attentionCounts({
   broken: s.parkedHolding ?? 0,
-  decisions: s.parkedInbox ?? 0,
+  decisions: s.parkedDecisions ?? 0,
+  actions: s.parkedActions ?? 0,
   approvals: s.parkedApprovals ?? 0,
   tripping: s.warned ?? 0,
 });
@@ -426,20 +461,48 @@ export const memberAttention = (s) => attentionCounts({
 // scheduler is a member-shaped thing — there is one per repo.
 export const fleetAttention = (roll) => attentionCounts({
   broken: roll.parkedHolding,
-  decisions: roll.parkedInbox,
+  decisions: roll.parkedDecisions,
+  actions: roll.parkedActions,
   approvals: roll.parkedApprovals,
   tripping: roll.warnedItems,
   schedulersFailing: roll.failingMembers,
   schedulersNeverRan: roll.neverRan,
 });
 
-// Minutes of a person's time the parked work represents. Scheduler faults are NOT in
-// it: a broken scheduler is not a queue of tasks to work through, and adding it would
-// make the figure mean two different things at once.
+// Minutes of a person's time the parked work represents. ONLY the parks: every minute
+// in here is attributable to an item wearing a `task:status:needs-human-<kind>` label,
+// which is a thing a person can see on the issue and go and do.
+//
+// Two things a reader might expect are deliberately outside it, for the same reason.
+// Scheduler faults are not a queue of work to get through. And a recovery-rule trip is
+// not waiting on a person at all: it wears no label, it is derived from an item's state
+// and age against the engine's own leashes, and what clears it is the janitor or the
+// next scheduler run. Both are still REPORTED, in `attentionBreakdown` beside the
+// figure — they are just not minutes of anyone's time.
 export function estimateMinutes(counts) {
   const c = attentionCounts(counts);
-  return (c.broken + c.decisions + c.approvals + c.tripping) * MINUTES_PER_PARK;
+  return c.broken * PARK_MINUTES.broken
+    + c.actions * PARK_MINUTES.actions
+    + c.decisions * PARK_MINUTES.decisions
+    + c.approvals * approvalMinutes();
 }
+
+// The sentence published beside the figure, so a reader can check the arithmetic
+// instead of trusting it — and so the one thing the number cannot know says so itself.
+// One definition, because both surfaces show the same total and a note that differed
+// between them would be two claims about one calculation.
+export const estimateNote = (counts) => {
+  const c = attentionCounts(counts);
+  const parts = [];
+  if (c.broken) parts.push(`${PARK_MINUTES.broken}×${c.broken} broken`);
+  if (c.actions) parts.push(`${PARK_MINUTES.actions}×${c.actions} action`);
+  if (c.decisions) parts.push(`${PARK_MINUTES.decisions}×${c.decisions} decision`);
+  if (c.approvals) parts.push(`${APPROVAL_RATE.minutes}×${c.approvals} approval`);
+  if (!parts.length) return 'nothing parked';
+  // The caveat rides with the approvals, because it is only about them: with no PR
+  // size the rate can charge nothing above its floor, so the total can only be low.
+  return parts.join(' + ') + (c.approvals ? ' · PR sizes unread, so a lower bound' : '');
+};
 
 // WHAT the human attention is, not how much of it there is. "3 members need you"
 // is the length of this morning's list; it does not say whether that is three merges
@@ -458,6 +521,7 @@ export function attentionBreakdown(counts) {
     c.broken && { level: 'critical', text: `${n(c.broken, 'task', 'tasks')} broken` },
     c.schedulersFailing && { level: 'critical', text: `${n(c.schedulersFailing, 'scheduler', 'schedulers')} failing` },
     c.decisions && { level: 'serious', text: `${n(c.decisions, 'item', 'items')} needing a decision` },
+    c.actions && { level: 'serious', text: `${n(c.actions, 'item', 'items')} needing something changed outside the code` },
     c.tripping && { level: 'serious', text: `${n(c.tripping, 'item', 'items')} tripping a recovery rule` },
     c.approvals && { level: 'warning', text: `${n(c.approvals, 'item', 'items')} needing approval` },
     c.schedulersNeverRan && { level: 'serious', text: `${n(c.schedulersNeverRan, 'scheduler', 'schedulers')} never ran` },
