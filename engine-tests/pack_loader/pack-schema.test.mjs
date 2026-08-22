@@ -70,10 +70,12 @@ test('the version fields are optional, and validated for shape when declared', (
   }
 });
 
-test('the skills declaration and the tree must agree in both directions', () => {
+test('a declared skill with no directory behind it is a manifest that lies', () => {
   assert.match(whats({ ...valid, skills: ['ghost'] }, { skillDirs: [] }), /declares a skill "ghost" with no skills\/ghost\/ directory/);
-  assert.match(whats(valid, { skillDirs: ['orphan'] }), /bundles skills\/orphan\/ but does not declare it/);
   assert.deepEqual(validateManifest({ ...valid, skills: ['s'] }, { skillDirs: ['s'] }), []);
+  // The other direction is not a fault: the convention lists every skills/<name>/,
+  // so a name missing from an explicit list is a deliberate withholding.
+  assert.deepEqual(validateManifest(valid, { skillDirs: ['orphan'] }), []);
 });
 
 test('the label prefixes every error so the loader can name the pack', () => {

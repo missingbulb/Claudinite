@@ -9,3 +9,4 @@ row.
 |---|---|---|
 | 4 | — | The firebase-release pack is absorbed here — its release standard is now the create-release-plan skill, loaded when a project plans a release rather than declared by a repo that has decided it is ready to ship. |
 | 60821.1 | 2026-08-21 | This pack's inline version-history comment moved out of `pack.mjs` into this file. |
+| 60822.1 | 2026-08-22 | `id`, `prose`, `badge` and `skills` come from the pack directory rather than the manifest (#1246); `minEngineVersion` rises to the engine release that reads them. |

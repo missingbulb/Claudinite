@@ -155,7 +155,9 @@ for work under `client/`) — never around a technology or a methodology: those 
 (their portable half is a canon seed above; the project-specific residue lands in the structural pack
 that owns the work). Each local pack is a real pack:
 
-- **`pack.mjs`** — `{ id, detect: null, marker: null, prose: 'RULES.md', rules: [...], skills: [...] }`.
+- **`pack.mjs`** — `{ version, ruleRoutingGuidance, detect: null, marker: null, rules: [...] }`. The id
+  is the directory name, the prose the `RULES.md` beside it and the skills its `skills/`
+  subdirectories, all by convention — none of them is declared.
   A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null), as its
   namespaced token `local_packs/<name>` in `.claudinite-checks.json`; its id
   must be unique and may not shadow a canon pack.

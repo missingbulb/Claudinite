@@ -75,18 +75,15 @@ import taskMdOnlyWhenAgentic from './task-md-only-when-agentic.mjs';
 // than something every adopter must weigh in on. A project that wants the prune
 // active sets retention_days itself.
 export default {
-  id: 'claudinite-growth',
   version: '60822.1',
-  minEngineVersion: 1,
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',
     excludes: 'this repo\'s Claudinite status — mount, declaration, adoption, update — claudinite-lifecycle; issue/PR housekeeping — tidy-repo; fleet sweeps — claudinite-fleet-sheepdog',
   },
-  badge: 'badge.svg',
   detect: null,
   marker: null,
   seededByDefault: true,
-  prose: 'RULES.md',
   // Growth builds on Claudinite's own surface — a lesson is routed by reading the
   // pack catalog and landed by adopting or authoring a pack — so `core` is a
   // prerequisite rather than an ambient assumption.
@@ -106,13 +103,4 @@ export default {
     taskCodeWorkEnv,
   ],
   workRules: [dedupIntegrity, growthWriteScope],
-  skills: [
-    'extract-from-activity',
-    'extract-from-conversations',
-    'generate-project-instructions',
-    'growth-dedup',
-    'prose-to-checks',
-    'unattended-agents',
-    'writing-tasks',
-  ],
 };

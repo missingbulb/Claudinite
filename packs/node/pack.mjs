@@ -11,17 +11,14 @@ const hasMarkerNearRoot = (ctx, marker) =>
   });
 
 export default {
-  id: 'node',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'conventions for a Node/npm project — module resolution, ESM vs CJS, dependency justification, jsdom test divergences',
     excludes: 'browser-runtime API behaviour — that is html or web-speech; Python packaging is python',
   },
-  badge: 'badge.svg',
   marker: 'package.json (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'package.json'),
-  prose: 'RULES.md',
   workRules: [earnEachDependency],
   // The Node runtime ships in the base image, but a repo's (often uncommitted,
   // devDependency) modules don't — so `npm test`/build would trigger a

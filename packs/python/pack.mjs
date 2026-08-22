@@ -19,17 +19,13 @@ const hasMarkerNearRoot = (ctx, marker) =>
   });
 
 export default {
-  id: 'python',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'packaging and import conventions for a Python project — pyproject extras, lazy optional heavy deps, stdlib-only core',
     excludes: 'npm and module packaging — that is node; research methodology is research-project',
   },
-  badge: 'badge.svg',
   marker: 'pyproject.toml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pyproject.toml'),
-  prose: 'RULES.md',
   worldRules: [],
-  skills: ['python-optional-deps'],
 };

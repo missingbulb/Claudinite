@@ -2,6 +2,7 @@ import { readdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { validateManifest, normalizeManifest } from './pack-schema.mjs';
+import { applyPackConventions, bundledSkillDirs } from './pack-conventions.mjs';
 import { canonicalPackId, canonicalPackIdAmong } from './renamed-packs.mjs';
 
 // This module lives at <canon>/engine/pack_loader/; the packs it scans at <canon>/packs/.
@@ -140,20 +141,25 @@ async function scanPackDir(dir, { local, subdir }, errors) {
       });
       continue;
     }
+    // The tree's own answers first — id, prose, badge and skills come from the pack
+    // directory, and the manifest overrides only what it actually declares
+    // (pack-conventions.mjs). Everything below reads one merged manifest, so no
+    // reader has to know which half a field came from.
+    mod = applyPackConventions(mod, packDir, name);
     if (!mod || typeof mod.id !== 'string') {
       errors.push({
-        what: `the pack in ${rel} has no string "id" default export`,
-        fix: 'export default { id: "<name>", ... } from its pack.mjs',
+        what: `the pack in ${rel} has no object default export`,
+        fix: 'export default { version, ruleRoutingGuidance, ... } from its pack.mjs',
         dir: packDir,
       });
       continue;
     }
-    // A local pack's id must equal its directory name. The engine activates a pack
+    // A local pack's id must equal its directory name. The convention gives it that
+    // for free, so this can only fire on a manifest that OVERRODE the id — and the
+    // override is exactly what must not be allowed here: the engine activates a pack
     // by its exported id, but the fleet planner reads a local pack's daily tasks by
     // directory name (it never imports pack.mjs), so a mismatch would silently
-    // diverge — the engine runs the pack while the fleet skips its task. Require
-    // dir == id so the two can never disagree (the canon convention, enforced here
-    // for local packs).
+    // diverge — the engine runs the pack while the fleet skips its task.
     if (local && mod.id !== name) {
       errors.push({
         what: `the local pack in ${rel} exports id "${mod.id}" but its directory is "${name}"`,
@@ -171,7 +177,7 @@ async function scanPackDir(dir, { local, subdir }, errors) {
     // fatal: a pack whose declaration is incomplete still loads and still runs
     // its checks — silently disabling a repo's own rules is a worse failure than
     // the one being reported, and the blocking config error is what gets it fixed.
-    for (const e of validateManifest(mod, { label: `the pack in ${rel}`, skillDirs: skillDirNames(packDir) })) {
+    for (const e of validateManifest(mod, { label: `the pack in ${rel}`, skillDirs: bundledSkillDirs(packDir) })) {
       errors.push({ ...e, dir: packDir });
     }
     // The pack's declared checks (declared-checks.json — data, not a module) ride
@@ -202,20 +208,6 @@ async function scanPackDir(dir, { local, subdir }, errors) {
     out.push(pack);
   }
   return out;
-}
-
-// The skill directory names a pack bundles — the tree side of the manifest's
-// `skills` declaration, which the spec holds to it in both directions. Absent or
-// unreadable skills/ reads as none: scanSkillChecks reports the unreadable case,
-// and the spec must not turn one broken directory into a wall of phantom findings.
-function skillDirNames(packDir) {
-  const skillsRoot = join(packDir, 'skills');
-  if (!existsSync(skillsRoot)) return [];
-  try {
-    return readdirSync(skillsRoot, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
-  } catch {
-    return [];
-  }
 }
 
 // A pack's skill-owned checks: any <pack>/skills/<skill>/checks.mjs (default
@@ -361,6 +353,10 @@ export const isActive = (pack, config) =>
 // taken in the caller's order and the FIRST occurrence of a name wins, so a caller
 // passing canon packs before local ones resolves a shared name to canon.
 //
+// Read off each pack's own `skills`, which the convention fills from that same
+// directory listing — so this is the tree's answer for every ordinary pack, and a
+// manifest that withholds a name is honoured here rather than quietly re-derived.
+//
 // One definition, two readers: the SessionStart mount hook (mount-skills.mjs) turns
 // it into `.claude/skills/` symlinks, and the usage fold asks it which skill names a
 // typed `/command` could possibly be. The mounts themselves are gitignored session
@@ -369,14 +365,10 @@ export const isActive = (pack, config) =>
 export function bundledSkillSources(packs) {
   const byName = new Map();
   for (const pack of packs) {
-    const bundleRoot = join(pack.dir, 'skills');
-    if (!existsSync(bundleRoot)) continue;
-    let entries;
-    try { entries = readdirSync(bundleRoot, { withFileTypes: true }); } catch { continue; }
-    for (const entry of entries) {
-      if (!entry.isDirectory() || byName.has(entry.name)) continue;
-      const dir = join(bundleRoot, entry.name);
-      if (existsSync(join(dir, 'SKILL.md'))) byName.set(entry.name, dir);
+    for (const name of pack.skills ?? []) {
+      if (byName.has(name)) continue;
+      const dir = join(pack.dir, 'skills', name);
+      if (existsSync(join(dir, 'SKILL.md'))) byName.set(name, dir);
     }
   }
   return byName;

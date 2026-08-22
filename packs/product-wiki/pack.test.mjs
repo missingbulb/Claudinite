@@ -55,10 +55,12 @@ function run(rule, files, { mode = 'all', packConfig, now, uncommitted } = {}) {
 
 // --- pack manifest -----------------------------------------------------------
 
-test('pack manifest: id, marker, the coded rule plus the seven declared checks (the isolation barrier among them)', () => {
-  assert.equal(pack.id, 'product-wiki');
+test('pack manifest: marker, prose, the coded rule plus the seven declared checks (the isolation barrier among them)', () => {
   assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
-  assert.equal(pack.prose, 'RULES.md');
+  // The prose is the RULES.md beside the manifest, by the loader's convention —
+  // so the file on disk is what carries it, and the manifest says nothing.
+  assert.ok(existsSync(join(dirname(fileURLToPath(import.meta.url)), '../../packs/product-wiki/RULES.md')));
+  assert.equal(pack.prose, undefined);
   // The manifest CODES no rule: every one of the pack's checks — the layout
   // skeleton, the page grammar, the isolation barrier — is declared in
   // declared-checks.json beside it, which the registry discovers and appends.

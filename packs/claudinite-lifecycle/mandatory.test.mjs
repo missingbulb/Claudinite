@@ -76,6 +76,6 @@ test('the canon home declares core itself — baselining never reaches it', () =
 
 test('the core-seed record declares exactly the pack this manifest ships', async () => {
   const { default: record } = await import('../../packs/claudinite-lifecycle/migrations/2026-08-14-core-seed/migration.mjs');
-  assert.deepEqual(record.declarePacks.map((p) => p.id), [corePack.id]);
+  assert.deepEqual(record.declarePacks.map((p) => p.id), ['claudinite-lifecycle']);
   assert.ok(record.version <= corePack.version, `the record declares version ${record.version}; the pack ships ${corePack.version} — a record above its pack's version re-applies every cycle forever`);
 });

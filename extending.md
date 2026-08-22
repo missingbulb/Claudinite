@@ -48,9 +48,9 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 
 | Slot | Field | Carries |
 |---|---|---|
-| **Prose** | `prose: 'RULES.md'` | always-relevant-to-a-project guidance, injected into context when the pack is active |
+| **Prose** | `<pack>/RULES.md` | always-relevant-to-a-project guidance, injected into context when the pack is active — found by convention, not declared |
 | **Checks** | `rules: [...]` | deterministic conformance rules run at every Stop and in CI |
-| **Skills** | `<pack>/skills/<name>/` | activity-scoped procedures bundled in the pack's own tree, mounted wherever the pack is declared |
+| **Skills** | `<pack>/skills/<name>/` | activity-scoped procedures bundled in the pack's own tree, mounted wherever the pack is declared — found by convention, not declared |
 | **Scheduled tasks** | `<pack>/tasks/<name>/` | a `task.mjs` declaration (frequency, precondition, model, expected outcome) plus its worker — `task.md` for an agent stage, `worker.mjs` for deterministic code-work — found structurally by the repo's scheduler, not listed on `pack.mjs` |
 | **Questions** | `questions: [...]` | mandatory adoption-interview questions; the owner's answers live verbatim on the project's pack entry ([packs/README.md](packs/README.md#adoption-interview-questions)) |
 | **Contributed config** | `contributes: { <pack>: ... }` | configuration addressed to another (required) pack — a fixed folder-barrier is the canonical case. The target pack interprets its active contributors' data via its own `contributedRules(activePacks)` seam, returning first-class rules; the runner wires the two together, so composition is declaration + data, never a cross-pack import |

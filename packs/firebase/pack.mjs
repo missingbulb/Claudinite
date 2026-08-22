@@ -13,18 +13,18 @@ const hasMarkerNearRoot = (ctx, marker) =>
     return parts[parts.length - 1] === marker && parts.length <= 2;
   });
 
+// The release standard (skills/create-release-plan) — the dev/prod project split,
+// pipeline-injected prod config and App Check gating — is a skill rather than
+// prose: it is read when a project plans its release, not on every session.
 export default {
-  id: 'firebase',
-  version: '60821.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'building on Firebase: Firestore rules, callable Cloud Function patterns, FCM, emulator testing, deploy layout, dev/prod release split',
     excludes: 'app store submission and its store-side registration — play-store-release, app-store-release',
   },
-  badge: 'badge.svg',
   marker: 'firebase.json (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'firebase.json'),
-  prose: 'RULES.md',
   // The deploy-layout guards (RULES.md §4). Both are relevance-first: inert
   // until the repo carries a firebase.json declaring a functions codebase whose
   // package.json is in this checkout — so a rules-only or hosting-only Firebase
@@ -32,8 +32,4 @@ export default {
   // firebase/functions-node-pin is a declared check, discovered structurally
   // beside this manifest.
   worldRules: [functionsPredeployBuild],
-  // The release standard (skills/create-release-plan) — the dev/prod project split,
-  // pipeline-injected prod config and App Check gating. A skill rather than prose
-  // because it is read when a project plans its release, not on every session.
-  skills: ['create-release-plan'],
 };

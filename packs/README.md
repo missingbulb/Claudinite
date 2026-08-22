@@ -93,6 +93,19 @@ What a `pack.mjs` may and must carry is declared once, in [`engine/pack_loader/p
 
 Reporting is not fatal: a pack whose declaration is incomplete still loads and still runs its checks. Silently disabling a repo's own rules is a worse failure than the one being reported. The field vocabulary is **closed** — an undeclared key is an error, so a typo (`rule:`, `skill:`) fails loudly instead of being ignored forever.
 
+### What the directory says, and the manifest therefore does not
+
+Four fields had, in every pack ever written, exactly one correct value — the one its own directory already gave. [`engine/pack_loader/pack-conventions.mjs`](../engine/pack_loader/pack-conventions.mjs) reads them off the tree before the spec judges the result, so a manifest states none of them:
+
+| Field | Taken from |
+|---|---|
+| `id` | the pack's directory name |
+| `prose` | `RULES.md` beside the manifest, where one is present |
+| `badge` | `badge.svg` beside the manifest, where one is present |
+| `skills` | the subdirectories of `<pack>/skills/` |
+
+A manifest field still **overrides** the tree where a pack genuinely differs — `prose: null` beside a `RULES.md` that is documentation rather than injected rules, a `skills` subset that withholds a directory from mounting. Only an *absent* field falls through, so an explicitly declared `null` overrides too. Declaring a field that merely restates the tree is what [`engine-tests/pack_loader/pack-conventions.test.mjs`](../engine-tests/pack_loader/pack-conventions.test.mjs) refuses across the corpus.
+
 ### `ruleRoutingGuidance` — what belongs here, and what does not
 
 ```js
@@ -116,7 +129,7 @@ A skill's own `checks.mjs` sits outside this partition (it is a skill's content,
 
 ### `skills` — the bundle, declared
 
-A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385) — and the manifest **names them**: `skills: ['merge-to-main', ...]`. The spec holds the declaration and the tree to each other in **both directions**: an undeclared directory is a skill nothing announces, and a declared name with no directory is a manifest that lies. What each skill covers stays in its own `SKILL.md` frontmatter, the description the harness triggers on — the manifest carries the membership, not a second copy of the summary.
+A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385) — and the directory listing **is** the membership: adding a skill is creating its directory, with no manifest line to keep in sync. A manifest that does name `skills` is withholding one, and the spec still refuses a name with no directory behind it: that is a manifest that lies. What each skill covers stays in its own `SKILL.md` frontmatter, the description the harness triggers on — nothing carries a second copy of the summary.
 
 The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_loader/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
 
@@ -170,11 +183,8 @@ that declares it.
 ## Pack badge (`badge`)
 
 Every pack carries a mark — the 32×32 tile beside its name in the table above — so a repo's README
-can show which Claudinite packs it runs. The manifest names only where it lives:
-
-```js
-badge: 'badge.svg',   // relative to the pack directory
-```
+can show which Claudinite packs it runs. It is `badge.svg` beside the pack's manifest, found by
+convention rather than named by it (above).
 
 **The badge file is the artwork's source of truth.** Its colour and its glyph live in the SVG, not
 in `pack.mjs`: they are visible to anyone who opens the file, editable without touching a manifest,

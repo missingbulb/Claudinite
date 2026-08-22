@@ -272,8 +272,11 @@ export const packIdForRepo = (fullName) => (fullName ?? '').split('/').pop()
 const SEED_MANIFEST = (id) => `// ${id} — this repo's own rules: the ones that are true here and portable nowhere.
 // Seeded empty at adoption; everything in it is this repo's to write. A lesson that
 // would hold in another repo belongs in a canon pack instead — propose it upstream.
+//
+// The id is this directory's name and the prose is the RULES.md beside this file —
+// both by convention (engine/pack_loader/pack-conventions.mjs), so neither is
+// declared here.
 export default {
-  id: '${id}',
   version: 1,
   ruleRoutingGuidance: {
     belongs: 'working rules and lessons specific to this repository and not portable to any other',
@@ -281,7 +284,6 @@ export default {
   },
   detect: null,
   marker: null,
-  prose: 'RULES.md',
   worldRules: [],
 };
 `;

@@ -163,9 +163,10 @@ the depth. Write the fixture test first and see it fail — each pack carries on
 [engine-tests/helpers.mjs](../../engine-tests/helpers.mjs); a violating fixture must find, a clean one must not.
 A new rule ships at its real severity, fail-fast: `blocking` when a finding is a defect to
 fix, `advisory` only when the rule's own semantics are directional (a smell to judge). A whole
-new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its `id`, fingerprint
-`detect`, `rules`, and optional `prose`) — [engine/pack_loader/pack-registry.mjs](../pack_loader/pack-registry.mjs)
-discovers it structurally, no list to edit.
+new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its fingerprint `detect` and its
+rules; the id, prose, badge and bundled skills come from the directory itself) —
+[engine/pack_loader/pack-registry.mjs](../pack_loader/pack-registry.mjs) discovers it structurally,
+no list to edit.
 
 **Prefer a declaration over code.** A rule whose whole logic is "these patterns over these
 files" — a required or forbidden regex, a pattern pair, a repo-level implication — is declared as

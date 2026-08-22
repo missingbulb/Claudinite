@@ -21,7 +21,6 @@ const S = (over = {}) => ({
 });
 
 test('tidy-repo is a declared pack (no fingerprint) with its skills; its tasks are not pack.mjs slots', () => {
-  assert.equal(pack.id, 'tidy-repo');
   assert.equal(pack.detect, null);
   // The tasks moved out of the manifest: the repo's scheduler finds
   // tasks/<name>/task.mjs structurally (#394).

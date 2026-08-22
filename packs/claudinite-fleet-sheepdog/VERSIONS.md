@@ -17,3 +17,4 @@ here forward adds its own row.
 | 60821.1 | — | A member's add-packs work list is a MARKED issue targeting the member task, so the member's own scheduler run adopts it and the wake dispatch becomes a latency nudge (#1119). |
 | 60821.2 | 2026-08-21 | This pack's inline version-history comments moved out of `pack.mjs` into this file. |
 | 60822.1 | 2026-08-22 | The canon-clone dispose goes through the shared `removeTree`, whose retry survives git's own housekeeping still writing into the tree (#1219). |
+| 60822.2 | 2026-08-22 | `id`, `prose`, `badge` and `skills` come from the pack directory rather than the manifest (#1246); `minEngineVersion` rises to the engine release that reads them. |

@@ -4,7 +4,7 @@ Things the corpus **would** do but deliberately does not yet — each with the b
 stops it, so the next reader does not re-derive the idea and then re-discover the wall.
 
 This file is **documentation, never prose**. Nothing here is injected into a session: a pack's
-`prose: 'RULES.md'` is what loads at session start, and a deferred idea has no business
+`RULES.md` is what loads at session start, and a deferred idea has no business
 spending that budget. Entries move out of here when they are built (into the code and its
 own docs) or when they are ruled out for good (deleted, with the reason in the commit).
 
