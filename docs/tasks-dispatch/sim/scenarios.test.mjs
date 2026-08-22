@@ -1705,3 +1705,143 @@ test('S66 a quiet day costs the cron floor alone: 24 invocations, zero executor 
   assert.equal(sim.log.filter((e) => e.kind === 'drain-skipped').length, 24);
   assert.equal(sim.log.filter((e) => e.kind === 'executor-run').length, 0);
 });
+
+// ---- S67-S70 — the cron's CADENCE (DESIGN §17). Actions bills each job's
+// minutes rounded up, so a day's cost is the RUN COUNT and an idle hourly tick
+// costs a full billed minute to find nothing. These four ask what a twice-daily
+// cron — the 04:xx anchor tick plus a 16:xx tick — actually trades away.
+
+// ---- S67 — a full day's scheduled work: the same completions on a twelfth of
+// the runs. The `after:` chain is what makes this safe — one drain settles the
+// whole chain back to back, so collapsing three anchor hours into one tick
+// costs ordering nothing.
+test('S67 twice-daily cron: a full day of work completes on 4 billed runs, not 27', () => {
+  const arm = (s) => s.at('2026-08-12T00:05Z', ({ world }) => {
+    world.mountBehind = true;
+    world.extractHasLessons = true;
+    world.promoteHasCandidates = true;
+    world.issueTouchedAt = T('2026-08-12T00:05Z');
+    world.releasePending = true;
+  });
+  const day = (opts) => {
+    const s = makeSim({ tasks: cast(), ...opts }).seedSteadyState('2026-08-12T00:00Z');
+    arm(s);
+    return s.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+  };
+  const DAILY = ['basics/baselining', 'grow/growth-extract', 'grow/growth-promote',
+    'tidy/tidy-issues', 'chrome/store-release'];
+
+  const hourly = day({});
+  const twice = day({ cronHours: [4, 16] });
+
+  // Every task that ran under the hourly grid still runs, and still closes done.
+  for (const task of DAILY) {
+    assert.equal(closedOf(hourly, task).length, 1, `${task} closed under hourly`);
+    assert.equal(closedOf(twice, task).length, 1, `${task} closed under twice-daily`);
+    assert.equal(closedOf(twice, task)[0].outcome, 'done', `${task} closed done`);
+  }
+
+  // The cost. 24 scheduler runs become 2 — the whole saving, and the reason
+  // this design exists. The executor count is work, not cadence: it falls only
+  // because one drain now settles what three separate ticks used to start.
+  assert.equal(hourly.actionExecutions().scheduler, 24);
+  assert.equal(twice.actionExecutions().scheduler, 2);
+  assert.equal(hourly.actionExecutions().total, 27);
+  assert.equal(twice.actionExecutions().total, 4);
+
+  // ORDERING SURVIVES THE COLLAPSE. All three chained tasks are instantiated by
+  // the SAME 04:17 tick — their staggered anchor hours no longer separate them —
+  // and `after:` alone still settles them in declaration order. This is why the
+  // daily-Nh offsets can retire: they were never what enforced this.
+  const closeAt = (s, task) => closedOf(s, task)[0].closedAt;
+  assert.ok(closeAt(twice, 'basics/baselining') < closeAt(twice, 'grow/growth-extract'));
+  assert.ok(closeAt(twice, 'grow/growth-extract') < closeAt(twice, 'grow/growth-promote'));
+  for (const task of ['basics/baselining', 'grow/growth-extract', 'grow/growth-promote']) {
+    assert.equal(new Date(closedOf(twice, task)[0].createdAt).toISOString().slice(11, 16), '04:17');
+  }
+
+  // What it costs: the chain no longer starts at 02:17, so the day's last close
+  // moves later — by under an hour, and still inside the same morning.
+  const lastClose = (s) => Math.max(...DAILY.map((t) => closeAt(s, t)));
+  const slip = (lastClose(twice) - lastClose(hourly)) / 60_000;
+  assert.ok(slip > 0 && slip <= 60, `the day's work slips ${slip} min, within the hour`);
+});
+
+// ---- S68 — the ad-hoc mark is what the second tick is FOR. A mark is adopted
+// by a scheduler run and nothing else, so its latency is exactly the wait for
+// the next tick — which is what picks the cadence.
+test('S68 ad-hoc latency is the wait for the next tick: 0.2h hourly, 7.2h twice-daily, 19.2h once', () => {
+  const marked = (opts) => {
+    const s = makeSim({ tasks: cast(), ...opts }).seedSteadyState('2026-08-12T00:00Z');
+    s.at('2026-08-12T09:03Z', (x) => x.markIssue({ author: 'owner' }));
+    s.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
+    const adopt = s.log.find((e) => e.kind === 'adopt');
+    return { s, delayH: (adopt.t - T('2026-08-12T09:03Z')) / 3_600_000 };
+  };
+
+  const hourly = marked({});
+  const twice = marked({ cronHours: [4, 16] });
+  const once = marked({ cronHours: [4] });
+
+  // Adopted exactly once in every cadence — the wait is latency, never loss.
+  for (const { s } of [hourly, twice, once]) assert.equal(adopts(s).length, 1);
+
+  assert.ok(Math.abs(hourly.delayH - 0.2) < 0.05, `hourly ${hourly.delayH}h`);
+  assert.ok(Math.abs(twice.delayH - 7.2) < 0.05, `twice-daily ${twice.delayH}h`);
+  assert.ok(Math.abs(once.delayH - 19.2) < 0.05, `once-daily ${once.delayH}h`);
+
+  // The second tick is what keeps the worst case inside a working day: it
+  // roughly halves the wait for one extra billed minute a day.
+  assert.ok(twice.delayH < once.delayH / 2);
+  assert.equal(twice.s.actionExecutions().scheduler - once.s.actionExecutions().scheduler, 1);
+});
+
+// ---- S69 — THE CONTINUATION DOES NOT CATCH A MARK. A drain re-reads the queue
+// between items and picks up the dependents its own closes release — but a
+// freshly marked issue is nobody's dependent, and adoption is the scheduler
+// run's job. So a mark landing mid-drain waits for the next TICK, not for the
+// drain it landed in. This is the whole case for an `issues: [labeled]` trigger.
+test('S69 a mark landing mid-drain waits for the next tick — continuations chain dependents, not marks', () => {
+  const slow = [{
+    id: 'tidy/tidy-issues', frequency: 'daily', outcome: 'done',
+    codeWorkMinutes: 90, agentMinutes: 60, precondition: () => ({ run: true }),
+  }];
+  const sim = makeSim({ tasks: slow, cronHours: [4, 16] }).seedSteadyState('2026-08-12T00:00Z');
+  // 04:30 — the 04:17 tick's drain is in flight on a two-and-a-half-hour item.
+  sim.at('2026-08-12T04:30Z', (s) => s.markIssue({ author: 'owner' }));
+  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+
+  const adopt = sim.log.find((e) => e.kind === 'adopt');
+  assert.ok(adopt, 'the mark is adopted eventually — this is latency, not loss');
+  // Not at 04:30+, and not by the running drain: at the NEXT scheduler tick.
+  assert.equal(new Date(adopt.t).toISOString().slice(11, 16), '16:17');
+  assert.ok((adopt.t - T('2026-08-12T04:30Z')) / 3_600_000 > 11);
+
+  // The contrast that makes this a mechanism and not an accident: the same
+  // drain DOES chain a dependent released by its own close (S67), and the run
+  // it eventually takes the mark on is an ordinary scheduler-run drain.
+  assert.equal(sim.log.filter((e) => e.kind === 'executor-run' && e.trigger === 'scheduler-run-drain').length, 2);
+});
+
+// ---- S70 — `hourly` cannot survive the cadence change. Its occurrence is the
+// top of each hour, so a tick that comes twice a day instantiates two of the
+// day's twenty-four: the frequency silently becomes the cron's cadence. That is
+// the mechanical argument for retiring the token, not a preference.
+test('S70 an hourly task under a twice-daily cron asks twice, not 23 times', () => {
+  const hourly = makeSim({ tasks: cast() })
+    .seedSteadyState('2026-08-12T00:00Z')
+    .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+  const twice = makeSim({ tasks: cast(), cronHours: [4, 16] })
+    .seedSteadyState('2026-08-12T00:00Z')
+    .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+
+  assert.equal(asks(hourly, 'gcec/create-extractor').length, 23);
+  assert.equal(asks(twice, 'gcec/create-extractor').length, 2);
+
+  // The daily family is untouched by the same collapse — one ask per period is
+  // one ask per period at any cadence that covers the anchor.
+  for (const task of ['tidy/tidy-issues', 'chrome/store-release']) {
+    assert.equal(asks(hourly, task).length, 1);
+    assert.equal(asks(twice, task).length, 1);
+  }
+});

@@ -144,6 +144,10 @@ export function gatedModel(req, permissionOf) {
 export function makeSim({
   tasks,
   schedulerRunMinute = 17,
+  // The UTC hours the cron fires on — `null` is the every-hour grid. A member's
+  // real cron names its hours explicitly (the anchor tick plus the ad-hoc drain
+  // tick), and what that costs and delays is the whole question S67-S70 ask.
+  cronHours = null,
   executingLeashMs = 1 * HOUR,
   agentLeashMs = 3 * HOUR,
   heartbeatMinutes = 15, // the executor's activity comment cadence during the work step
@@ -1243,13 +1247,15 @@ export function makeSim({
       return sim;
     },
 
-    // run the clock: hourly scheduler runs at :schedulerRunMinute (each
+    // run the clock: scheduler runs at :schedulerRunMinute on each of `cronHours`
+    // — every hour when it is null (each
     // dispatching its drain only when it leaves something pickable), a daily
     // janitor, then drain the event queue strictly in order
     run(fromIso, toIso) {
       const from = T(fromIso), to = T(toIso);
       for (let t = Math.ceil(from / HOUR) * HOUR + schedulerRunMinute * MIN; t < to; t += HOUR) {
         if (t < from) continue;
+        if (cronHours && !cronHours.includes(new Date(t).getUTCHours())) continue;
         if (droppedSchedulerRuns.some(([a, b]) => t >= a && t < b)) continue;
         schedule(t, schedulerRun);
       }

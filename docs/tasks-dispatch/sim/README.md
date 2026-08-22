@@ -38,8 +38,9 @@ whole argument for its existence.
   every §15 decision must appear in it, and every test name it cites must
   exist in `scenarios.test.mjs`.
 
-Run: `node --test docs/tasks-dispatch/sim/` (CI runs it — the folder is a
-declared test root in `ci.yml`).
+Run: `node --test docs/tasks-dispatch/sim/*.test.mjs` (CI runs it — the folder
+is a declared test root in `ci.yml`). Naming the folder alone does not work:
+`node --test <dir>` does not recurse into it.
 
 ## Working discipline
 
@@ -127,6 +128,11 @@ test's title in `scenarios.test.mjs`.
 | §15.29 the origin label as the standing/ad-hoc authority (structural read = fallback only) | `S61` (planned at birth), `S62` (fallback on unlabeled legacy), `S64` (ad-hoc) |
 | §15.29 one-issue requests: the mark-with-no-status guard, the one clearing lever, gated body parameters, terminals on an open issue | `S64`, `S44`, `S45`, `S47`, `S49`, `S51` |
 | §15.30 invocations are the cost unit: the batched drain, the conditional drain dispatch, the between-items hold check, the executions accounting | `S34`, `S36`, `S37` (the hold parks between items), `S65` (a working day's bill), `S66` (the quiet-day floor) |
+| §17 the cron's cadence: a day's work completes on 4 billed runs, not 27 | `S67` |
+| §17 `after:` is what orders a chain — collapsing the anchor hours costs ordering nothing | `S67` |
+| §17 ad-hoc latency IS the wait for the next tick; the second tick roughly halves it | `S68` |
+| §17 a mark landing mid-drain is not caught by that drain — adoption is the scheduler run's job | `S69` |
+| §17 `hourly` degrades to the cron's own cadence, which is why the token retires | `S70` |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next scheduler run — nothing durable carries a schedule | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |

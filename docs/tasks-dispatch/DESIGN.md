@@ -1995,6 +1995,108 @@ first of those folds (`add-packs`) is tracked separately — it changes a
 cross-repo contract, and its one real failure mode is a member whose mark label
 does not exist yet, where the enforcer's write is refused and nothing runs.
 
+## 17. The cron's cadence — two ticks a day
+
+Actions bills **each job's minutes rounded up to the whole minute**, so a day's cost is the
+scheduler's RUN COUNT and nothing else. Measured across 30 consecutive scheduled runs on this
+repo, a scheduler run's median wall-clock is **32 seconds** and only one run exceeded a minute:
+roughly half of every billed minute is already rounding. An hourly cron therefore bills 24
+minutes a day per member to perform about 13 minutes of work, and an idle hour — the common
+case — pays a full minute to find nothing.
+
+Optimising the job cannot reach this. The only lever is fewer runs, and the cron fires **twice a
+day** at the repo's hashed minute (`<hashed> 4,16 * * *`): the **anchor tick** at 04:xx, which
+covers every occurrence the calendar can produce, and the **drain tick** at 16:xx, which exists
+for the work that has no anchor at all.
+
+### 17.1 The frequency vocabulary
+
+`FREQUENCIES` is `daily`, `weekly`, `monthly`, `manual`. Two tokens retire:
+
+- **`hourly`** cannot mean anything under a twice-daily tick. Its occurrence is the top of each
+  hour, so a cron that comes twice a day instantiates two of the day's twenty-four and the
+  declared frequency silently becomes the cron's cadence (`S70`). A task wanting sub-daily
+  freshness is asking for a cost the cadence is designed not to pay.
+- **`daily-2h` / `daily-1h` / `daily+1h`** existed to *stagger* anchors so dependent tasks ran in
+  order. `after:` (§9) enforces the same intent, and the offsets never could — a task whose
+  predecessor overruns its hour runs anyway. With all four collapsed onto one anchor hour, the
+  chain is instantiated by a single tick and `after:` alone still settles it in declaration
+  order (`S67`).
+
+A member's declaration converges on its own schedule, so both retired tokens are **accepted at
+the door and normalized**: `daily±Nh` reads as `daily`, `hourly` reads as `daily`. Nothing fails
+on a stale declaration, and the normalization is permanent rather than a migration window — a
+declaration is member-owned data and no vendoring pass rewrites it.
+
+### 17.2 What the two ticks each carry
+
+The **anchor tick** does the calendar work: every `daily`, `weekly` and `monthly` occurrence
+falls at `dailyHour`, so one tick sees them all. Nothing is spread across hours any more, which
+is what makes one tick sufficient rather than merely cheaper.
+
+The **drain tick** carries the three jobs that are not anchor-bound — adopting issues somebody
+marked (§16.3), readying items whose `Not-before` has passed or whose `Blocked-by` has resolved,
+and reclaiming dead executor claims (§11). None of these has an occurrence; each is simply work
+that arrived since the last look. A second tick roughly halves the wait for all three, for one
+extra billed minute a day.
+
+### 17.3 What the drain already chains, and what it does not
+
+A single executor run drains until nothing is pickable (§15.30), re-reading the queue between
+items, and `readyDependents` releases a closed item's dependents into that same run. So a
+multi-stage chain settles **back to back inside one run** — the agent hop included, via the
+session's close-time drain — and a chain's length costs cadence nothing. This is why collapsing
+three anchor hours into one tick slips a full day's work by under an hour (`S67`).
+
+**A newly marked issue is not a dependent of anything.** Adoption is the scheduler run's job, so
+a mark landing while a drain is in flight is not picked up by that drain: it waits for the next
+tick (`S69`). The drain chains consequences of work it has already done; it does not discover
+work that appeared beside it.
+
+### 17.4 The latency this buys and trades
+
+An ad-hoc mark's latency IS the wait for the next tick, so the cadence sets it directly
+(`S68`, marked at 09:03):
+
+| cadence | scheduler runs/day | ad-hoc wait | cost per private member |
+| --- | --- | --- | --- |
+| hourly | 24 | 0.2 h | ~$4.32/mo |
+| **twice daily** | **2** | **7.2 h** (≤12 h worst) | **~$0.36/mo** |
+| once daily | 1 | 19.2 h | ~$0.18/mo |
+
+A full day of scheduled work costs **4 billed runs against the hourly grid's 27** (`S67`), and a
+quiet day costs 2 against 24. Scheduled work is unaffected — every task that ran under the hourly
+grid still runs, still closes, and still in order. The whole trade is ad-hoc latency, and the
+second tick is what keeps it inside a working day.
+
+### 17.5 Rejected alternatives
+
+- **Anchor-derived cron hours** — compute the cron's hours from the declared task set at converge
+  time. Strictly better on paper, and the converge already rewrites the cron line
+  (`converge-wiring.mjs`). Rejected because it makes a member's cron a function of its pack
+  declarations: adopting a pack silently re-times the cron, a declaration the converge misreads
+  produces a cron that fires at no anchor at all, and the failure is invisible until a task
+  quietly stops running. Two fixed hours are legible in the workflow file and identical fleet-wide.
+- **An `issues: [labeled]` trigger for the adopt path** — would take ad-hoc latency to seconds and
+  cost a run only when a mark happens. Not rejected on merit; it is strictly additive to this
+  cadence and can land separately once the cheaper change is proven.
+- **A central fleet dispatcher** — one public repo's cron dispatching only members with due work,
+  driving the member floor to zero. Rejected: it needs a fleet-wide index of every member's
+  schedule and a `FLEET_GITHUB_TOKEN` carrying `actions: write` on every repository, to replace a
+  job each member already does for itself with its own token (§8).
+- **A self-hosted runner** — removes Actions minutes entirely, and adds an always-on machine plus
+  a self-hosted runner on repositories whose executor runs agent code with real secrets.
+- **Keeping the hourly cron and shortening the job** — the measurement above forecloses it: the
+  job is already a third of its billed minute.
+
+### 17.6 What this does not change
+
+The queue's mechanics are untouched. The scheduler run's four jobs, the drain gate, the executor's
+claim and lease model, the janitor's rules, `workflow_dispatch` with `wake` as the never-wait
+lever (§8), and every label transition in §4 behave exactly as before — they simply happen twice a
+day instead of twenty-four times. Nothing about delivery weakens: what a lost label event would
+have delivered is still exactly what the next tick's parting look sees.
+
 ## Appendix A — the owner's sketch (2026-08-12, verbatim)
 
 > Can we think of a mechanism where the work items are available for work, and
