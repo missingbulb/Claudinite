@@ -23,7 +23,7 @@ in a closed vocabulary the dashboard owns:
 - the **widgets** it has at all — what each one is, and which **source** its value
   comes from,
 - which of them make the **repo page** card (up to six),
-- which single one becomes its **mini-card** on each fleet member's row,
+- which single one becomes its **mini-card** in each fleet member's subrow,
 - and optionally which make a deployment-scope card on the fleet page.
 
 The page executes nothing from any pack. Descriptors and values are JSON lifted as text
@@ -42,7 +42,9 @@ across pack versions; code would have to be version-matched and sandboxed.
   "widgets": [
     { "id": "last",   "kind": "event",  "label": "last release",         "source": "latest-release" },
     { "id": "landed", "kind": "window", "label": "requirements changed", "noun": "reqs" },
-    { "id": "recent", "kind": "list",   "label": "recently changed" }
+    { "id": "recent", "kind": "list",   "label": "recently changed" },
+    { "id": "stars",  "kind": "stat",   "label": "stars", "noun": "stars",
+      "glyph": "★", "source": "repo-stars" }
   ],
   "repo": ["last", "landed", "recent"],
   "fleet": { "member": "landed" }
@@ -119,9 +121,9 @@ page already has, naming the file that would carry it.
 
 **Fleet page** gets two things:
 
-- **Member mini-cards** — a *Packs* column group beside the existing three, holding one
-  small card per contributing pack. See below; this is the surface with the least room
-  and the most to prove.
+- **Member subrows** — a second row under each member, holding one small card per
+  contributing pack. See below; this is the surface with the least room and the most to
+  prove.
 - **Deployment cards** (`fleet.deployment`, an id list rendered as a repo card is) —
   rendered once, from the packs the deployment repo itself declares; a `generated` source
   may name `"repo": "canon"`, which resolves to the configured `canonRepo` (absent that
@@ -147,13 +149,25 @@ column reads in one voice. The hover names the pack; nothing depends on it.
 
 **Any kind that fits one line qualifies.** `fleet.member` may name a `stat`, an `event`
 or a `window`; only `list` is excluded, because it cannot be a line. The dashboard
-composes all three the same way, off a shared `noun`:
+composes all three the same way, off a shared `noun`, and **sets the parts in three
+registers** — which is the payoff for a pack supplying values rather than a finished
+string, since a string would arrive flat and unstyleable:
+
+| part | register | |
+|---|---|---|
+| quantity | `--ink`, semibold, tabular | reads first, and is what differs between members |
+| noun | `--ink-2` | says what of |
+| connective | `--muted` | `ago`, `in last`, `·` — present for grammar, out of the way |
 
 | kind | composed as | reads |
 |---|---|---|
-| `stat` | `{value} {noun}` | `18 stars` |
-| `event` | `{at} ago · {text}` | `5d ago · v1.33.102 live` |
-| `window` | `{value} {noun} in last {window}` | `12 reqs in last 2w` |
+| `stat` | `{glyph} {value} {noun}` | ★ **18** stars |
+| `event` | `{at} ago · {text}` | **5d** ago · v1.33.102 live |
+| `window` | `{value} {noun} in last {window}` | **12** reqs in last **2w** |
+
+A widget may also declare a `glyph`: **one** grapheme, rendered ahead of the phrase, for
+recognition only — ★ makes stars findable in a column of numbers. It never carries
+meaning of its own, because the phrase has to read without it.
 
 What the grid rejects is the *pointer*, not the point-in-time fact: `reqs 87` behind a
 `+2` was bad because it made a reader click to learn whether it mattered, and `87 reqs`
@@ -166,12 +180,20 @@ comparison, because there is nothing else to compare to. On the grid the compari
 *across members* — that is the axis the reader is already scanning — so the card spends
 its characters on the span it covers (`in last 2w`) instead.
 
-Bounded by construction rather than by a cap on how many render: the card is a fixed box
-and its phrase truncates at a renderer-owned character budget with the full text on the
-hover, and a pack may declare **one** member widget. A pack author decides whether its
-signal is fleet-worthy at all, and most will not — so a member declaring eight packs
-carries two or three cards, not eight. That authorship is the bound; nothing needs a
-display heuristic on top of it.
+**It gets a row, not a column.** A fourth column group would have squeezed the three
+that answer first to buy space for content that differs from member to member — and it
+is what forced the `+2` in the first place, since a column holds two cards and a grid
+width holds six. So each member is a `<tbody>` of two rows: its standard metrics, then a
+subrow spanning the full width, indented under the name, carrying what its packs report.
+The two highlight together and the severity edge runs the height of both, because they
+are one member and not two rows.
+
+That also settles the bound. The card is a fixed box whose phrase truncates at a
+renderer-owned budget, a pack may declare **one** member widget, and a pack author
+decides whether its signal is fleet-worthy at all — most will not. A member declaring
+eight packs carries two or three cards, and the row has room for twice that before
+anything has to wrap. Nothing needs a display heuristic on top of it, and a member with
+no contributions has no subrow at all.
 
 **Monochrome, always.** A mini-card never colours itself by severity, however urgent its
 pack believes its number to be. Colour on this grid is the engine's severity edge, and a
