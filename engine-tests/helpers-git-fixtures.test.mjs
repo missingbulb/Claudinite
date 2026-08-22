@@ -21,9 +21,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { removeTree } from '../engine/remove-tree.mjs';
 
 test('makeRepo builds its fixture even where the host insists on signing every commit', async () => {
   const home = mkdtempSync(join(tmpdir(), 'claudinite-hostile-gitconfig-'));
@@ -43,6 +44,6 @@ test('makeRepo builds its fixture even where the host insists on signing every c
   } finally {
     if (restore === undefined) delete process.env.GIT_CONFIG_GLOBAL;
     else process.env.GIT_CONFIG_GLOBAL = restore;
-    rmSync(home, { recursive: true, force: true });
+    removeTree(home);
   }
 });

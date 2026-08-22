@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
 import { runRule } from '../engine/checks/helpers/work.mjs';
+import { removeTree } from '../engine/remove-tree.mjs';
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -17,8 +18,9 @@ const GIT_ENV = {
   GIT_COMMITTER_NAME: 'test', GIT_COMMITTER_EMAIL: 'test@test',
   // No detached git process may outlive a fixture command (#235): auto-gc runs in
   // the foreground and the newer maintenance path stays off, so cleanup() never
-  // races a background repack still writing into .git/objects. The rmSync
-  // maxRetries below is the second line of defense, not the fix.
+  // races a background repack still writing into .git/objects. This is the fix;
+  // `removeTree`'s retry is the second line of defense behind it, and covers the
+  // trees deleted by code that does not set this env.
   // …and no fixture commit may reach the developer's signing setup. A throwaway
   // tmpdir commit gains nothing from a signature, and inheriting the ambient
   // `commit.gpgsign` makes every one of them a round trip to a signing service:
@@ -94,7 +96,7 @@ export function makeTranscript(entries) {
   const dir = mkdtempSync(join(tmpdir(), 'claudinite-transcript-'));
   const path = join(dir, 'session.jsonl');
   writeFileSync(path, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
-  return { path, cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 }) };
+  return { path, cleanup: () => removeTree(dir) };
 }
 
 // One declared check, by rule id, out of a pack's or skill's declared-checks.json
@@ -108,12 +110,10 @@ export function declaredCheck(dir, id) {
   return rule;
 }
 
+// Kept as the name every fixture already calls; the retry it exists for now lives
+// in one place, with the whole story of why (engine/remove-tree.mjs).
 export function cleanup(root) {
-  // maxRetries: under parallel `node --test`, git leaves transient files in the temp
-  // repo's .git/* while this recursive rmdir walks it, so the delete intermittently
-  // throws ENOTEMPTY. rmSync retries that error class with linear backoff — without it
-  // a healthy run reddens CI (seen on PR #255).
-  rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
+  removeTree(root);
 }
 
 /**

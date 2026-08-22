@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { removeTree } from '../../../engine/remove-tree.mjs';
 import {
   classifyPath, commentOnly, narrowVerdict, diffEntries,
 } from '../../../engine/scheduler/queue/tasks/implement-request/narrow-diff.mjs';
@@ -95,6 +96,6 @@ test('diffEntries reads a real branch, added and deleted files included', () => 
     assert.equal(v.narrow, true);
     assert.deepEqual(v.codeDirs, ['engine']);
   } finally {
-    rmSync(repo, { recursive: true, force: true });
+    removeTree(repo);
   }
 });

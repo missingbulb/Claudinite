@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +14,7 @@ import {
 import { runRule } from '../../engine/checks/helpers/work.mjs';
 import dedupIntegrity from '../../packs/claudinite-growth/dedup-integrity.mjs';
 import growthWriteScope from '../../packs/claudinite-growth/growth-write-scope.mjs';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 const packDir = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), 'packs/claudinite-growth');
 
@@ -133,7 +134,7 @@ test('findTranscript locates by session id even when the slug directory mismatch
 
     // A wrong session id and no slug match falls back to newest-anywhere, never throws.
     assert.equal(findTranscript({ root: '/nope', sessionId: 'not-here', projects }), transcript);
-  } finally { rmSync(projects, { recursive: true, force: true }); }
+  } finally { removeTree(projects); }
 });
 
 test('findTranscript returns null when there is nothing to find', () => {
@@ -141,7 +142,7 @@ test('findTranscript returns null when there is nothing to find', () => {
   try {
     assert.equal(findTranscript({ root: '/x', sessionId: 'whatever', projects }), null);
     assert.equal(findTranscript({ root: '/x', sessionId: 'whatever', projects: join(projects, 'absent') }), null);
-  } finally { rmSync(projects, { recursive: true, force: true }); }
+  } finally { removeTree(projects); }
 });
 
 // --- capture end-to-end against a local origin --------------------------------
@@ -218,7 +219,7 @@ test('capture pushes an orphan branch, then a disjoint delta on a second merge',
     const out = sh(work, 'node', [CAPTURE, '--issue', '9', '--transcript', transcript]);
     assert.match(out, /nothing new/i);
     assert.equal(originFiles(origin, 'conversation-logs').filter((f) => f.endsWith('.jsonl')).length, 2);
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('capture discovers the transcript by session id when no --transcript is given', () => {
@@ -239,7 +240,7 @@ test('capture discovers the transcript by session id when no --transcript is giv
     const log = files.find((f) => f.endsWith('--sess-env.jsonl'));
     assert.ok(log && log.includes('--issue-11--'), `expected an issue-11 log for sess-env, got: ${files}`);
     assert.match(sh(origin, 'git', ['show', `conversation-logs:${log}`]), /discovered by session id/);
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('capture retries an unreachable origin, not only a lost push race', async () => {
@@ -275,7 +276,7 @@ test('capture retries an unreachable origin, not only a lost push race', async (
 
     const files = originFiles(origin, 'conversation-logs');
     assert.ok(files.some((f) => f.endsWith('--sess-blip.jsonl')), `expected the capture to land, got: ${files}`);
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('capture reports the unreachable origin once its attempts are spent', async () => {
@@ -297,7 +298,7 @@ test('capture reports the unreachable origin once its attempts are spent', async
       }),
       /after 3 attempts/,
     );
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('capture fails fast on a missing or malformed --issue', () => {
@@ -310,7 +311,7 @@ test('capture fails fast on a missing or malformed --issue', () => {
     // and a non-numeric one is still rejected — `0` is the ONLY new thing accepted
     const bad = spawnSync('node', [CAPTURE, '--issue', 'none', '--transcript', transcript], { cwd: work, encoding: 'utf8' });
     assert.notEqual(bad.status, 0);
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 // --- the delta contract, pinned ----------------------------------------------
@@ -335,7 +336,7 @@ test('capture is idempotent: a repeat capture of an unchanged transcript writes 
     }
     assert.deepEqual(originFiles(origin, 'conversation-logs'), after, 'no file was added');
     assert.equal(sh(origin, 'git', ['rev-list', '--count', 'conversation-logs']).trim(), commits, 'no commit was made');
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('capture with --issue 0 files a no-issue capture holding exactly the post-merge tail', () => {
@@ -356,7 +357,7 @@ test('capture with --issue 0 files a no-issue capture holding exactly the post-m
     const body = sh(origin, 'git', ['show', `conversation-logs:${tail}`]);
     assert.match(body, /one more thought/);
     assert.doesNotMatch(body, /merge it/, 'the tail holds only what the merge capture had not seen');
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('the session-end step captures under the issue its launcher named, or 0 when it named none', () => {
@@ -380,7 +381,7 @@ test('the session-end step captures under the issue its launcher named, or 0 whe
       env: { ...process.env, CLAUDINITE_SESSION_ISSUE: 'not-a-number', CLAUDINITE_TRANSCRIPT: transcript, CLAUDE_PROJECT_DIR: work },
     });
     assert.ok(originFiles(origin, 'conversation-logs').some((f) => f.includes('--issue-0--')));
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 // --- dedup-prune-integrity ---------------------------------------------------

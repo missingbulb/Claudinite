@@ -2,11 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup, writeFiles, git, ruleTester } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { patternRule, loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
 import { runRule } from '../engine/checks/helpers/work.mjs';
+import { removeTree } from '../engine/remove-tree.mjs';
 
 // The declarative engine's own contract, proven over fixture rules — the pack
 // declarations built on it are proven by their packs' existing tests.
@@ -911,7 +912,7 @@ test('a skill\'s declared checks never scan the skill\'s own content, wherever i
     try {
       assert.deepEqual(rule.run(ctxOf(root)).map((f) => f.file), ['docs/real.md']);
     } finally { cleanup(root); }
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('loadDeclaredChecks: a directory\'s declarations, compiled once; none where the file is absent', () => {
@@ -932,7 +933,7 @@ test('loadDeclaredChecks: a directory\'s declarations, compiled once; none where
     try {
       assert.deepEqual(rules[0].run(ctxOf(root)).map((f) => f.file), ['a.txt']);
     } finally { cleanup(root); }
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('scanIgnoringMarkdownFences: fenced blocks are invisible in markdown files, untouched elsewhere, lines stay anchored', () => {

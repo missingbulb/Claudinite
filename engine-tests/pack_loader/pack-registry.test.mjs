@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, cpSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, cpSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -11,6 +11,7 @@ import {
   LOCAL_DECL_PREFIX, declTokenFor,
 } from '../../engine/pack_loader/pack-registry.mjs';
 import { canonicalPackVersions, RENAMED_PACKS } from '../../engine/pack_loader/renamed-packs.mjs';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 // The import closure the declaration is written through (bootstrap `--init` and
 // the baselining backfill): declaring a pack materializes its `requires`.
@@ -161,7 +162,7 @@ test('discoverPacks: finds a consumer local pack, stamped local with its own dir
     // canon packs are still present and marked non-local
     assert.ok(packs.some((p) => p.id === 'basics' && p.local === false));
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });
 
@@ -176,7 +177,7 @@ test('discoverPacks: a broken local pack.mjs is isolated — an error, not a thr
     assert.ok(packs.some((p) => p.id === 'basics'), 'canon packs still load');
     assert.ok(errors.some((e) => /local_packs\/broken/.test(e.fix) || /broken/.test(e.what)));
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });
 
@@ -190,7 +191,7 @@ test('discoverPacks: a non-directory at the local_packs path is a reported fault
     assert.ok(packs.some((p) => p.id === 'basics'), 'canon packs still load');
     assert.ok(errors.some((e) => /not a readable directory/.test(e.what)), 'the fault is reported');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });
 
@@ -203,7 +204,7 @@ test('discoverPacks: a local pack whose id differs from its directory name is re
     assert.ok(!packs.some((p) => p.id === 'other-id'), 'the mismatched pack is dropped');
     assert.ok(errors.some((e) => /exports id "other-id" but its directory is "myproj"/.test(e.what)));
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });
 
@@ -218,7 +219,7 @@ test('discoverPacks: a local pack may not shadow a canon id — collision report
     assert.equal(basicsPacks[0].local, false, 'the canon pack wins');
     assert.ok(errors.some((e) => /declared twice/.test(e.what)));
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });
 
@@ -235,7 +236,7 @@ test('discoverPacks: gathers a local pack\'s bundled skill-owned checks', async 
     assert.equal(local.skillChecks.length, 1);
     assert.equal(local.skillChecks[0].id, 'proj-thing');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });
 
@@ -260,7 +261,7 @@ test('discoverPacks: a pack\'s declared-checks.json rides its world rules, a ski
     assert.equal(local.rules[0].why, 'it matters');
     assert.deepEqual(local.skillChecks.map((r) => r.id), ['proj-thing-declared']);
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });
 
@@ -275,7 +276,7 @@ test('discoverPacks: a broken declared-checks.json is reported, and the pack sti
     assert.ok(packs.some((p) => p.id === 'proj'), 'the pack loads without its declarations');
     assert.ok(errors.some((e) => /declared checks in .*proj failed to load/.test(e.what)), JSON.stringify(errors));
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });
 
@@ -352,5 +353,5 @@ test('discoverPacks: a mounted pack still announcing its old id activates under 
     assert.equal(registry.isActive(packs[0], { packs: ['claudinite-lifecycle'] }), true);
     assert.equal(registry.isActive(packs[0], { packs: ['core'] }), true,
       'and a declaration not yet converged still activates it');
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });

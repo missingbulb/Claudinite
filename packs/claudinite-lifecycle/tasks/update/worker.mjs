@@ -14,11 +14,12 @@
 // inverse of baselining's guard, from the same definition, so exactly one mechanism
 // converges a mount — and a repo that has said nothing is not this one's to touch.
 import { execFileSync } from 'node:child_process';
-import { readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { servedBy, servedByUpdates } from '../../../../engine/served-by.mjs';
+import { removeTree } from '../../../../engine/remove-tree.mjs';
 import {
   resolveDelivery, pullCreateError, landDelivery, openDeliveredPull, disposeOpenPull,
 } from '../../../../engine/scheduler/land-pr.mjs';
@@ -257,7 +258,7 @@ export async function main() {
       console.log(`update: requested the apply stage — ${terminal.why}`);
     }
   } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    removeTree(tmp);
   }
 }
 

@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { baseTip, readAt, pushGenerated } from '../../engine/scheduler/deliver-generated.mjs';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 // The PR half needs GitHub; the GIT half is where the risk lives and it is fully
 // testable against a local bare origin. What is being pinned: a task can commit a
@@ -69,7 +70,7 @@ test('pushGenerated commits onto the base tip and leaves the checkout untouched'
     assert.equal(sh(work, 'status', '--porcelain'), status, 'the index and working tree are untouched');
     assert.ok(existsSync(join(work, 'dirty.txt')), 'the other task\'s uncommitted work survives');
     assert.ok(!existsSync(join(work, 'out')), 'the generated file was never written to disk at all');
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('a second run regenerates the branch from the base rather than stacking on itself', () => {
@@ -84,7 +85,7 @@ test('a second run regenerates the branch from the base rather than stacking on 
     assert.equal(sh(origin, 'show', 'gen/x:v.GENERATED.json'), '{"n":2}\n');
     assert.equal(sh(origin, 'rev-list', '--count', 'gen/x').trim(), '2',
       'still one commit on the base — a regenerate replaces, it does not accumulate');
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('readAt returns a file at the base, and null for one that is not there yet', () => {
@@ -93,7 +94,7 @@ test('readAt returns a file at the base, and null for one that is not there yet'
     const sha = baseTip(work, origin, 'main');
     assert.equal(readAt(work, sha, 'README.md'), '# repo\n');
     assert.equal(readAt(work, sha, 'out/thing.GENERATED.json'), null, 'the first run has no prior state');
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });
 
 test('the throwaway index is cleaned up even when the push fails', () => {
@@ -106,5 +107,5 @@ test('the throwaway index is cleaned up even when the push fails', () => {
       branch: 'gen/x', files: { 'a.txt': 'x\n' }, message: 'm',
     }));
     assert.deepEqual(readFileSync(join(work, '.git/index')), before, "the repo's real index was never the one written");
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { removeTree(dir); }
 });

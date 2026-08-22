@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { installPacks, planInstall, unansweredQuestions } from '../updates/install.mjs';
@@ -9,6 +9,7 @@ import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
 import { validateManifest } from '../engine/pack_loader/pack-schema.mjs';
 import { isDeclaredVersion } from '../engine/version.mjs';
+import { removeTree } from '../engine/remove-tree.mjs';
 
 const MOUNT = join('.claudinite', 'shared');
 const makeRepo = (declaration = { packs: [] }) => {
@@ -49,7 +50,7 @@ test('an install stamps the latest version and fetches NO migration records', as
   const mounted = join(root, MOUNT, 'packs', 'basics');
   assert.ok(existsSync(join(mounted, 'RULES.md')), 'the content is there');
   assert.ok(!existsSync(join(mounted, 'migrations')), 'and not one migration record with it');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('an install never runs a record even for a pack that has them', async () => {
@@ -57,7 +58,7 @@ test('an install never runs a record even for a pack that has them', async () =>
   const r = await installPacks(root, ['claudinite-fleet-sheepdog'], { dryRun: true });
   assert.equal(r.dryRun, true);
   assert.equal(r.records, 0, 'claudinite-fleet-sheepdog carries records; a fresh install fetches none of them');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('unanswered adoption questions end the run the same way a red check does', async () => {
@@ -78,7 +79,7 @@ test('unanswered adoption questions end the run the same way a red check does', 
   // The content still landed and the version is still stamped — what the terminal
   // governs is the merge, not whether the install happened.
   assert.ok(settingsOf(root).claudinite.packVersions[withQuestions.id]);
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('an install always wants the apply stage — the rules meet the repo for the first time', async () => {
@@ -86,7 +87,7 @@ test('an install always wants the apply stage — the rules meet the repo for th
   const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
   assert.equal(r.applyStage.needed, true);
   assert.ok(r.applyStage.packs.includes('basics'));
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 test('the requires closure is installed and STAMPED, not just vendored', async () => {
@@ -109,7 +110,7 @@ test('the requires closure is installed and STAMPED, not just vendored', async (
   // …and the closure is INSTALLED, not DECLARED: what a repo declares is its own
   // choice, and `requires` is the canon's inference from it.
   assert.deepEqual(settingsOf(root).packs, ['basics'], 'a pulled-in pack is not a declaration the repo made');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });
 
 // --- the uniform terminal ------------------------------------------------------
@@ -239,8 +240,8 @@ test('an install seeds a declared op, and never overwrites what the repo already
   assert.deepEqual(again.seeded, [], 'a dest that exists is never overwritten');
   assert.equal(readFileSync(join(second, 'SEEDED.md'), 'utf8'), 'this repo already had one\n');
   assert.equal(readFileSync(join(root, 'SEEDED.md'), 'utf8'), 'the repo edited this\n');
-  rmSync(root, { recursive: true, force: true });
-  rmSync(second, { recursive: true, force: true });
+  removeTree(root);
+  removeTree(second);
 });
 
 test('an UPDATE never seeds — the run-once guarantee is structural, not a flag', async () => {
@@ -261,5 +262,5 @@ test('an UPDATE never seeds — the run-once guarantee is structural, not a flag
   assert.equal(r.status, 'ok', r.detail);
   assert.equal(r.seeded, undefined, 'an update has no seeding step at all');
   assert.equal(readFileSync(join(root, 'SEEDED.md'), 'utf8'), 'seeded once, then edited by the repo\n');
-  rmSync(root, { recursive: true, force: true });
+  removeTree(root);
 });

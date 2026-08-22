@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { updateBranchName, updatePullText, main } from '../../packs/claudinite-lifecycle/tasks/update/worker.mjs';
 import { NEEDS_HUMAN } from '../../updates/engine-update.mjs';
+import { removeTree } from '../../engine/remove-tree.mjs';
 
 // The update runner's git-free surface. Its clone/push/PR half is validated by the
 // live pilot, exactly as baselining's is — what is unit-testable is the naming, the
@@ -99,7 +100,7 @@ test('the runner refuses a repo declaring the RETIRED mechanism, loudly', async 
     assert.match(said.join('\n'), /retired in Claudinite #768 Phase 5/);
     assert.match(said.join('\n'), /Set it to "versioned"/, 'the refusal has to say what to do');
     assert.ok(!existsSync(join(root, '.git')), 'no branch, no clone, no write');
-  } finally { rmSync(root, { recursive: true, force: true }); }
+  } finally { removeTree(root); }
 });
 
 test('the terminal vocabulary the runner acts on is the flows\' own', async () => {

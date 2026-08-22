@@ -1,8 +1,9 @@
-import { copyFileSync, mkdirSync, rmSync, readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from './compute-vendor-set.mjs';
+import { removeTree } from '../engine/remove-tree.mjs';
 
 // The vendor WRITER (vendoring/DESIGN.md): converge a consumer's .claudinite/shared/
 // to this canon tree's vendor set and advance the stamp — the local half of the
@@ -71,7 +72,7 @@ export async function applyVendor(targetRoot, { ref = null } = {}) {
   if (errors.length) return { errors };
 
   const sharedDir = join(targetRoot, SHARED_SUBDIR);
-  rmSync(sharedDir, { recursive: true, force: true });
+  removeTree(sharedDir);
   for (const file of files) {
     const dest = join(sharedDir, file);
     mkdirSync(dirname(dest), { recursive: true });
