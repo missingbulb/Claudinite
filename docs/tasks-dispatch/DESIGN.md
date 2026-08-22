@@ -2005,9 +2005,18 @@ minutes a day per member to perform about 13 minutes of work, and an idle hour �
 case — pays a full minute to find nothing.
 
 Optimising the job cannot reach this. The only lever is fewer runs, and the cron fires **twice a
-day** at the repo's hashed minute (`<hashed> 4,16 * * *`): the **anchor tick** at 04:xx, which
-covers every occurrence the calendar can produce, and the **drain tick** at 16:xx, which exists
-for the work that has no anchor at all.
+day** at the repo's hashed minute: the **anchor tick**, which covers every occurrence the calendar
+can produce, and the **drain tick** twelve hours later, which exists for the work that has no
+anchor at all.
+
+Both hours come from the repo's own `taskScheduler.dailyHour` — the anchor the calendar already
+resolves every occurrence against (§5) — so the cron is
+`<hashed-minute> <dailyHour>,<(dailyHour + 12) % 24> * * *`. On the default schedule
+(`dailyHour: 4`) that is `<hashed> 4,16 * * *`, and every example below reads in those terms; a
+member that sets `dailyHour` to anything else gets its two ticks moved with it. Deriving the hours
+from the anchor rather than fixing them is what keeps the cron and the calendar from disagreeing —
+a cron pinned at 4 on a member anchored at 9 would fire five hours before every occurrence it
+exists to instantiate, and each task would run a day late, forever.
 
 ### 17.1 The frequency vocabulary
 
@@ -2030,8 +2039,9 @@ declaration is member-owned data and no vendoring pass rewrites it.
 
 ### 17.2 What the two ticks each carry
 
-The **anchor tick** does the calendar work: every `daily`, `weekly` and `monthly` occurrence
-falls at `dailyHour`, so one tick sees them all. Nothing is spread across hours any more, which
+The **anchor tick** does the calendar work: every `daily`, `weekly` and `monthly` occurrence falls
+at `dailyHour` — that is what `anchorInstant` resolves them to (§5) — so one tick sees them all,
+whatever the member sets that hour to. Nothing is spread across hours any more, which
 is what makes one tick sufficient rather than merely cheaper.
 
 The **drain tick** carries the three jobs that are not anchor-bound — adopting issues somebody
@@ -2071,12 +2081,14 @@ second tick is what keeps it inside a working day.
 
 ### 17.5 Rejected alternatives
 
-- **Anchor-derived cron hours** — compute the cron's hours from the declared task set at converge
-  time. Strictly better on paper, and the converge already rewrites the cron line
+- **Task-set-derived cron hours** — compute the cron's hours from the *declared tasks* at converge
+  time rather than from the schedule anchor, firing only on hours some task actually anchors on.
+  Strictly cheaper on a member declaring few packs, and the converge already rewrites the cron line
   (`converge-wiring.mjs`). Rejected because it makes a member's cron a function of its pack
   declarations: adopting a pack silently re-times the cron, a declaration the converge misreads
-  produces a cron that fires at no anchor at all, and the failure is invisible until a task
-  quietly stops running. Two fixed hours are legible in the workflow file and identical fleet-wide.
+  produces a cron that fires at no anchor at all, and the failure is invisible until a task quietly
+  stops running. Deriving both hours from `dailyHour` alone keeps the cron a function of one
+  long-lived, range-validated value that the calendar already depends on.
 - **An `issues: [labeled]` trigger for the adopt path** — would take ad-hoc latency to seconds and
   cost a run only when a mark happens. Not rejected on merit; it is strictly additive to this
   cadence and can land separately once the cheaper change is proven.
