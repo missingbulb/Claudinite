@@ -146,10 +146,13 @@ async function scanPackDir(dir, { local, subdir }, errors) {
     // (pack-conventions.mjs). Everything below reads one merged manifest, so no
     // reader has to know which half a field came from.
     mod = applyPackConventions(mod, packDir, name);
+    // The convention supplies the id, so reaching here without a string one means
+    // the export is not an object to merge into at all, or it overrode the id with
+    // something that is not a name. Either way there is nothing to activate.
     if (!mod || typeof mod.id !== 'string') {
       errors.push({
-        what: `the pack in ${rel} has no object default export`,
-        fix: 'export default { version, ruleRoutingGuidance, ... } from its pack.mjs',
+        what: `the pack in ${rel} has no object default export carrying a usable id`,
+        fix: 'export default { version, ruleRoutingGuidance, ... } from its pack.mjs — the id is the directory name unless the manifest overrides it with a string',
         dir: packDir,
       });
       continue;

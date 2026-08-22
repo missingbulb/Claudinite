@@ -112,7 +112,7 @@ export function validateManifest(mod, { label, skillDirs = [] } = {}) {
   const err = (what, fix) => errors.push({ what: `${at}${what}`, fix });
 
   if (!isPlainObject(mod)) {
-    err('the pack has no object default export', 'export default { id, ruleRoutingGuidance, ... } from its pack.mjs');
+    err('the pack has no object default export', 'export default { version, ruleRoutingGuidance, ... } from its pack.mjs');
     return errors;
   }
 
