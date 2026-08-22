@@ -20,10 +20,11 @@ A pack that wants figures on the dashboard carries one file, `packs/<id>/dashboa
 — the **descriptor** — vendored with the pack like everything else it ships. It declares,
 in a closed vocabulary the dashboard owns:
 
-- a **card** on the repo page (up to six widgets),
-- at most one compact **signal** per member row on the fleet page,
-- optionally one deployment-scope **card** on the fleet page,
-- and, per widget, which **source** its value comes from.
+- the **widgets** it has at all — what each one is, and which **source** its value
+  comes from,
+- which of them make the **repo page** card (up to six),
+- which single one becomes its **mini-card** on each fleet member's row,
+- and optionally which make a deployment-scope card on the fleet page.
 
 The page executes nothing from any pack. Descriptors and values are JSON lifted as text
 over the API — the same way task-declaration fields already are, and for the same reason:
@@ -38,21 +39,20 @@ across pack versions; code would have to be version-matched and sandboxed.
 // packs/<id>/dashboard.json
 {
   "$schema": "../claudinite-dashboard/dashboard-descriptor.schema.json",
-  "repo": {
-    "widgets": [
-      { "id": "last", "kind": "event", "label": "last release", "source": "latest-release" },
-      { "id": "landed", "kind": "window", "label": "requirements changed" },
-      { "id": "recent", "kind": "list", "label": "recently changed" }
-    ]
-  },
-  "fleet": {
-    "member": { "id": "last", "kind": "event", "label": "release", "source": "latest-release" }
-  }
+  "widgets": [
+    { "id": "last",   "kind": "event",  "label": "last release",         "source": "latest-release" },
+    { "id": "landed", "kind": "window", "label": "requirements changed", "noun": "reqs" },
+    { "id": "recent", "kind": "list",   "label": "recently changed" }
+  ],
+  "repo": ["last", "landed", "recent"],
+  "fleet": { "member": "landed" }
 }
 ```
 
-There is no templating and no expression language: a widget's `id` is the key its value
-is looked up under, and everything else is fixed vocabulary. A schema
+A widget is declared once and the views **select** from that list by id, so the two
+surfaces cannot drift into describing the same figure differently. There is no
+templating and no expression language: a widget's `id` is the key its value is looked up
+under, and everything else is fixed vocabulary. A schema
 (`dashboard-descriptor.schema.json`, owned by the dashboard pack, pointed at by
 `$schema`) validates descriptors with ordinary tooling, and a canon check holds every
 pack's descriptor to it. The page revalidates structurally on read and treats an invalid
@@ -71,7 +71,7 @@ time:
   ```jsonc
   { "generatedAt": "2026-08-20T04:12:00Z",
     "values": {
-      "landed": { "value": 5, "previous": 8 },
+      "landed": { "value": 5, "previous": 8, "window": "2w" },
       "recent": { "items": [ { "text": "REQ-041 checkout retry", "url": "…", "at": "…" } ] } } }
   ```
 
@@ -93,7 +93,7 @@ Four kinds, all rendered by the dashboard's own `ui.mjs` renderers, all through
 |---|---|---|
 | `stat` | `{ "value", "unit"? }` | a point-in-time fact — pages in the wiki, requirements in the spec |
 | `event` | `{ "text", "at", "url"? }` | the last time something happened, and what — "v1.4.2 · 3 days ago" |
-| `window` | `{ "value", "previous" }` | a count of things that happened, this window against the previous |
+| `window` | `{ "value", "previous", "window" }` | a count of things that happened, this window against the previous — the writer states the span it counted (`"2w"`), since only it knows |
 | `list` | `{ "items": [{ "text", "url"?, "at"? }] }` | the few most recent named things — capped at 5 by the renderer, overflow shown as a count, never silently |
 
 `window` is the only sanctioned shape for a count of happenings — `stat` is for facts
@@ -113,15 +113,54 @@ page already has, naming the file that would carry it.
 
 **Fleet page** gets two things:
 
-- **Member signals** — one compact chip per pack per member (`fleet.member`, kinds
-  `event` or `stat` only), in a *Packs* column group beside the existing three. At most
-  three chips render in the cell and the rest are a stated `+n`; the label is capped by
-  the renderer, so one verbose pack cannot push its neighbours out of the row.
-- **Deployment cards** (`fleet.deployment`, same shape as a repo card) — rendered once,
-  from the packs the deployment repo itself declares; its `generated` source may name
-  `"repo": "canon"`, which resolves to the configured `canonRepo` (absent that config,
-  the card is absent and says so). This is how the canon shows recently added packs on
-  a fleet page.
+- **Member mini-cards** — a *Packs* column group beside the existing three, holding one
+  small card per contributing pack. See below; this is the surface with the least room
+  and the most to prove.
+- **Deployment cards** (`fleet.deployment`, an id list rendered as a repo card is) —
+  rendered once, from the packs the deployment repo itself declares; a `generated` source
+  may name `"repo": "canon"`, which resolves to the configured `canonRepo` (absent that
+  config, the card is absent and says so). This is how the canon shows recently added
+  packs on a fleet page.
+
+### The fleet mini-card
+
+A cell in a fleet grid has room for one short line per pack, and the temptation is to
+spend it on a label and a number — `reqs 87`, with the rest behind a `+2`. That is a
+**pointer to data rather than data**: it tells a reader something exists and makes them
+click to find out whether it matters, which is the opposite of what a fleet page is for.
+So the rule is *shown or absent*: every mini-card a member has renders in full, and there
+is no overflow marker, no "+n", no chip that merely names a pack.
+
+Four properties follow, and together they are the whole shape:
+
+**The phrase stands alone.** A mini-card carries no column header and no pack name — the
+grid cannot afford either — so what it renders must be a complete statement:
+`5d ago · v1.33.102 live`, `12 reqs in last 2w`. The pack supplies the parts (`text`,
+`value`, a short `noun`) and the dashboard composes the sentence, so every card in the
+column reads in one voice. The hover names the pack; nothing depends on it.
+
+**Only time-bearing kinds qualify.** `fleet.member` may name an `event` or a `window`
+widget and nothing else. A `stat` is a fact that is true now — `87 requirements` — and on
+a grid whose question is *where do I need to look*, it distinguishes no member from any
+other; `list` cannot be a line. This is the correction the fleet view makes to the repo
+view: the repo page shows a pack's state, the fleet page shows its **movement**.
+
+**A `window` card drops its delta.** On a repo card the previous window is the
+comparison, because there is nothing else to compare to. On the grid the comparison is
+*across members* — that is the axis the reader is already scanning — so the card spends
+its characters on the span it covers (`in last 2w`) instead.
+
+Bounded by construction rather than by a cap on how many render: the card is a fixed box
+and its phrase truncates at a renderer-owned character budget with the full text on the
+hover, and a pack may declare **one** member widget. A pack author decides whether its
+signal is fleet-worthy at all, and most will not — so a member declaring eight packs
+carries two or three cards, not eight. That authorship is the bound; nothing needs a
+display heuristic on top of it.
+
+**Monochrome, always.** A mini-card never colours itself by severity, however urgent its
+pack believes its number to be. Colour on this grid is the engine's severity edge, and a
+pack that could paint itself red would be claiming attention it did not earn — the same
+reason contributions do not feed the ranking.
 
 Pack contributions never feed the attention ranking, the member ordering, or the rollup
 tiles. Attention is earned by engine-defined truths the page can defend; a pack cannot
@@ -175,6 +214,12 @@ all, and `tidy-repo`, `claudinite-growth`, `product-wiki`, `jwt`, `basics` and
 `web-scraping` and the store-release packs' in-repo half — have a figure worth showing
 and nothing writing it yet, which is a task per pack rather than anything this contract
 owes them.
+
+The fleet rule bites here, and usefully: `spec-driven-product`'s standing honest gaps and
+`barriers`' standing waivers are both `stat`s, so both packs report on a repo page and
+nothing on the grid — they describe a state rather than a movement, and the grid asks
+only where to look. Everything else contributing has an `event` or a `window` to spend
+there.
 
 Two limits are worth stating where they will be asked about. Store-side state (in
 review, rollout percentage) needs credentials no page running as its viewer can hold, so
