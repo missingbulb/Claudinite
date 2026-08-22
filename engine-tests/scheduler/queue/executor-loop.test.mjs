@@ -294,89 +294,142 @@ test('an item pointing somewhere other than where its task lives at HEAD is refu
 });
 
 // The lease's whole point, driven through the shell: an executor that is not this
-// episode's earliest claimant touches nothing and stands down. It does NOT go
-// looking for another item — the winner is mid-run on this queue and carries the
-// chain from here (§15.22).
-test('an executor that loses the lease abandons the item untouched and ends its run', async () => {
+// episode's earliest claimant touches that item's state not at all. Under the
+// batched drain it does NOT end its run — the winner owns that ONE item, not the
+// queue — so it moves to the next pickable item and leaves the loser's behind.
+test('an executor that loses the lease leaves that item to its winner and drains the rest', async () => {
   const rival = { id: 1, body: '<!-- claudinite-claim -->\nClaimed by executor `E0` at earlier.' };
   const repo = fakeRepo([
     { ...workItem(1, 'a', ['task:ready']), comments: [rival] },
     workItem(2, 'b', ['task:ready']),
   ]);
   const done = await drive(repo, [task('a'), task('b', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
-  assert.deepEqual(done, [], 'nothing settled — the run stood down');
-  assert.equal(repo.find(1).state, 'open');
-  assert.equal(repo.find(2).state, 'open', 'the other item was left for the winner\'s chain');
+  assert.deepEqual(done, [{ issue: 2, outcome: 'task:done' }], 'the item it did win, it settled');
+  assert.equal(repo.find(1).state, 'open', 'the lost item is the winner\'s to converge');
+  assert.equal(repo.find(2).state, 'closed');
 });
 
-// --- one run, one item, and the chain (DESIGN §10, §15.22, S34) ---------------
+// --- one run drains the queue (DESIGN §10, §15.30, S34/S65) -------------------
 //
-// The structural claim, not a configured cap: however much work is pickable, a
-// run settles ONE item and hands the rest to a fresh run. A cap would be a number
-// to raise; this is the shape of an executor.
+// The reversal of §15.22, and the reason is the bill: Actions rounds each job's
+// minutes up, so a run per item bought a whole invocation — checkout, setup,
+// rounding — for each. A run now settles what is pickable, one item at a time.
 
-test('a run settles exactly one item however much work is ready', async () => {
+test('a run drains every pickable item, one at a time', async () => {
   const repo = fakeRepo([
     workItem(1, 'a', ['task:ready']),
     workItem(2, 'b', ['task:ready']),
     workItem(3, 'c', ['task:ready']),
   ]);
-  // Three DIFFERENT titles, so the same-title mutex is not what stops the run —
-  // all three are pickable at once and the run still performs one.
+  // Three DIFFERENT titles, so nothing here is serialized by the same-title
+  // mutex: all three are pickable at once and ONE run settles all three.
   const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
   const done = await drive(repo, ['a', 'b', 'c'].map(agentless));
-  assert.deepEqual(done, [{ issue: 1, outcome: 'task:done' }]);
-  assert.equal(repo.find(2).state, 'open', 'the second item was left for the next run');
-  assert.equal(repo.find(3).state, 'open');
+  assert.deepEqual(done.map((d) => d.issue).sort(), [1, 2, 3]);
+  for (const n of [1, 2, 3]) assert.equal(repo.find(n).state, 'closed', `#${n} converged in the same run`);
 });
 
-test('a run that settled its item dispatches a fresh one for the remainder', async () => {
+// Serial, not concurrent: the run boundary moved, the occupancy model did not
+// (§15.30). Each item's work step completes before the next item is claimed —
+// so a code-work that observed an overlap would be the regression.
+test('a drained run never runs two items\' work at once', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready']), workItem(2, 'b', ['task:ready'])]);
-  let dispatches = 0;
+  let inFlight = 0; let overlapped = false;
   const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
   await drive(repo, ['a', 'b'].map(agentless), {
-    redispatch: async () => { dispatches += 1; return { ok: true, status: 204 }; },
+    runTaskCodeWork: async () => {
+      inFlight += 1;
+      if (inFlight > 1) overlapped = true;
+      await new Promise((r) => setTimeout(r, 1));
+      inFlight -= 1;
+      return { ok: true, agentRequested: false };
+    },
   });
-  assert.equal(dispatches, 1, 'the chain continued');
+  assert.equal(overlapped, false);
 });
 
-test('a run that emptied the queue dispatches nothing — the chain ends', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
-  let dispatches = 0;
-  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
-    redispatch: async () => { dispatches += 1; return { ok: true, status: 204 }; },
-  });
-  assert.equal(dispatches, 0);
-});
-
-// A run that never got an item did no work, and the executor that beat it owns
-// the chain. Re-dispatching here would be this run arguing with the winner —
-// and after a REVERT it would dispatch over an item it just returned to the
-// queue, which is two executors dispatching each other for as long as they
-// overlap.
-test('a run that lost the claim race dispatches nothing', async () => {
-  const rival = { id: 50, body: '<!-- claudinite-claim -->\nClaimed by executor `E0` at earlier.' };
-  const repo = fakeRepo([{ ...workItem(1, 'a', ['task:ready']), comments: [rival] }]);
-  let dispatches = 0;
-  const done = await drive(repo, [task('a')], {
-    redispatch: async () => { dispatches += 1; return { ok: true, status: 204 }; },
-  });
-  assert.deepEqual(done, []);
-  assert.equal(dispatches, 0);
-});
-
-// The dispatch is a WRITE, and a token without `actions: write` 403s it while
-// returning a plausible body. The run says so rather than logging a chain that
-// never started — the scheduler run's drain is what recovers the remainder.
-test('a failed re-dispatch is reported, not swallowed', async () => {
+// A handed-off item leaves the executor's occupancy at the hand-off (§10) — so
+// the run goes straight on to the next item rather than waiting for a session
+// it will never hear from.
+test('a hand-off ends that item\'s occupancy and the run keeps draining', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready']), workItem(2, 'b', ['task:ready'])]);
+  const done = await drive(repo, [
+    task('a'),
+    task('b', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 }),
+  ]);
+  assert.deepEqual(done, [{ issue: 1, outcome: 'agent' }, { issue: 2, outcome: 'task:done' }]);
+});
+
+// THE REVERT'S OWN HAZARD, which only the batched run has. A post-claim revert
+// (F15) puts the item back to `task:ready` — and a run that re-reads the queue
+// to pick its next item would find exactly what it just returned, claim it,
+// revert it again, forever. The stand-down set is what makes a revert a
+// hand-off to the winner rather than a loop.
+test('an item this run reverted is never re-picked by it (F15 under the drain)', async () => {
+  const repo = fakeRepo([
+    workItem(1, 'a', ['task:ready']),
+    workItem(2, 'b', ['task:ready']),
+    { ...workItem(99, 'a', ['task:executing']),
+      comments: [{ id: 1, body: '<!-- claudinite-claim -->\nClaimed by executor `E0` at earlier.' }] },
+  ]);
+  // The stale-read race, exactly: the pick sees a clean queue, and by the time
+  // the post-claim re-verify reads again, a twin of #1 is running under an
+  // EARLIER claim. Nothing but a second read can produce this — which is why
+  // the rule-level fixture beside this cannot stand in for it.
+  // Only the post-claim re-verify's read sees the twin: the pick before it
+  // predates the twin's claim, and by the next pick the twin has settled and is
+  // gone. So nothing but the stand-down set stops this run re-claiming #1 —
+  // the pick filter, reading a queue with no twin in it, would hand it straight
+  // back. A revert is this run losing an arbitration, not a retry.
+  let lists = 0;
+  const gh = async (path, opts = {}) => {
+    const res = await repo.gh(path, opts);
+    if ((opts.method ?? 'GET') === 'GET' && /\/issues\?/.test(path) && Array.isArray(res.json)) {
+      lists += 1;
+      if (lists !== 2) return { ...res, json: res.json.filter((i) => i.number !== 99) };
+    }
+    return res;
+  };
+  const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
+  const done = await drive(repo, ['a', 'b'].map(agentless), { gh });
+  assert.ok(repo.find(1).labels.includes('task:ready'), '#1 went back to the queue');
+  assert.equal(done.filter((d) => d.issue === 1).length, 0, '#1 was not run by the reverting executor');
+  // and the run did not stop at the revert either — it went on and drained #2
+  assert.deepEqual(done, [{ issue: 2, outcome: 'task:done' }]);
+});
+
+// --- the operator hold, between items (§15.30, S37) ---------------------------
+//
+// `vars.*` reaches the env at run START only, so a drain that outlives the hold's
+// arrival can see it only by asking. It stops PICKING; the item it holds finishes.
+test('a hold arriving mid-drain stops the next pick and leaves the queue untouched', async () => {
+  const repo = fakeRepo([
+    workItem(1, 'a', ['task:ready']),
+    workItem(2, 'b', ['task:ready']),
+    workItem(3, 'c', ['task:ready']),
+  ]);
   const lines = [];
   const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
-  await drive(repo, ['a', 'b'].map(agentless), {
-    redispatch: async () => ({ ok: false, status: 403 }),
+  let asked = 0;
+  const done = await drive(repo, ['a', 'b', 'c'].map(agentless), {
+    heldNow: async () => (asked += 1) >= 2, // held from the second boundary on
     log: (l) => lines.push(l),
   });
-  assert.ok(lines.some((l) => l.startsWith('!') && l.includes('403')), lines.join('\n'));
+  assert.deepEqual(done.map((d) => d.issue), [1, 2], 'the item in hand finished; nothing new was picked');
+  assert.equal(repo.find(3).state, 'open');
+  assert.deepEqual(repo.find(3).labels, ['task:ready'], 'frozen exactly as it was — no label touched');
+  assert.ok(lines.some((l) => l.includes('CLAUDINITE_TASKS_SUSPEND_ALL')), lines.join('\n'));
+});
+
+// The read costs an API call, so a run with nothing left to do must not spend it:
+// the hold is asked between items, never after the last one.
+test('a run that drained the queue asks the hold once per settle, not once more', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
+  let asked = 0;
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    heldNow: async () => { asked += 1; return false; },
+  });
+  assert.equal(asked, 1);
 });
 
 // --- F24: letting go of an open item kills your claim --------------------------
@@ -483,14 +536,19 @@ test('an approval park writes no record at all', async () => {
   assert.doesNotMatch(repo.find(1).comments.at(-1).body, /claudinite-task-exec/);
 });
 
-test('an executor close readies the dependent it was holding', async () => {
+// The close-time readiness re-check (§15.19), now with the drain behind it: the
+// dependent is not merely readied within the hour, it is CLAIMED AND RUN by the
+// same invocation that released it — the whole chain for one invocation.
+test('an executor close readies the dependent it was holding, and the same run drains it', async () => {
   const dependent = {
     ...workItem(2, 'b', ['task:blocked']),
     body: 'packs/p/tasks/b/task.md\n\nBlocked-by: #1\n',
   };
   const repo = fakeRepo([workItem(1, 'a', ['task:ready']), dependent]);
-  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
-  assert.deepEqual(repo.find(2).labels, ['task:ready'], 'the chain link runs now, not in an hour');
+  const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
+  const done = await drive(repo, ['a', 'b'].map(agentless));
+  assert.deepEqual(done.map((d) => d.issue), [1, 2], 'released, then run, in this run');
+  assert.equal(repo.find(2).state, 'closed');
 });
 
 // The beat, driven through the shell: a work step long enough to need one gets

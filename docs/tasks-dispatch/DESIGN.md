@@ -852,7 +852,14 @@ comes from a file under review.
   nothing. The train parks at most one item after suspension: a fresh start
   sees the variable and exits, and a live drain re-reads it between items
   (an API read — the env copy lands at run start only, §15.30) and stops
-  picking. Suspension never interrupts *running* work: the current item and
+  picking. That live read is the one part of the hold whose *reach* depends on
+  a grant we have not confirmed: reading a repository variable is scoped to
+  the token's variables access, which the workflow `permissions:` block has no
+  key for. Where the token cannot make that read, the drain says so on every
+  boundary and falls back to the value its run started with — the hold then
+  parks *starts* exactly as it did before the drain batched, which is why
+  nothing here is load-bearing on the grant. Cancelling the run remains the
+  unconditional lever, and the hold is what stops its continuation resuming. Suspension never interrupts *running* work: the current item and
   agent sessions finish on their own — cancel those by hand if the
   hold is urgent — and items freeze exactly where they are, no labels
   touched, which is what makes the hold stateless. This is not dormancy:
@@ -1586,6 +1593,17 @@ deployment coupling did not:
     working day at the cron floor plus one drain per hour that had work,
     and a quiet day at the cron floor alone. (S34, S36, S65, S66; the engine
     and workflow wiring land via #1214.)
+    **The two halves reach the fleet on different schedules**, and the split
+    is deliberate: the batched drain and the between-items hold are vendored
+    engine, so they arrive with the nightly converge — the larger saving,
+    fleet-wide, needing nothing of a member. The gate is a *workflow* change,
+    and `.github/workflows/` is the one path a converge cannot push, so it
+    reaches a member only when that copy is refreshed. It is therefore written
+    to be inert without its consumer: the engine writes a `pickable` output an
+    older copy maps nowhere, and an unmapped output is the empty string, which
+    is not `'true'` — so a member on the old copy keeps dispatching hourly,
+    which is exactly today's behavior. The `ungated-drain` rehearsal fixture
+    is that claim, converged rather than asserted.
 
 ---
 

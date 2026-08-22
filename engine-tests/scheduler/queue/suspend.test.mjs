@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SUSPEND_ALL_VAR, isSuspended, suspendedNotice } from '../../../engine/scheduler/queue/suspend.mjs';
+import { SUSPEND_ALL_VAR, isSuspended, readSuspendedNow, suspendedNotice } from '../../../engine/scheduler/queue/suspend.mjs';
 import { HEARTBEAT_MS } from '../../../engine/scheduler/queue/heartbeat.mjs';
 import { EXECUTING_LEASH_MS } from '../../../engine/scheduler/queue/leases.mjs';
 
@@ -50,6 +50,45 @@ test('every workflow stamps the hold, and every entry point reads it', () => {
   for (const entry of ['engine/scheduler/queue/scheduler-run.mjs', 'engine/scheduler/queue/executor.mjs']) {
     assert.match(read(entry), /isSuspended\(\)/, entry);
   }
+});
+
+// --- the between-items read (§15.30) -----------------------------------------
+//
+// A batched drain outlives the env copy it started with, so the hold it must obey
+// is the one the API reports NOW. Each branch below is a different way of being
+// wrong about a running queue, which is why they are pinned one by one.
+
+const ghAnswering = (status, value) => async () => ({ status, json: value === undefined ? null : { value } });
+
+test('the live hold read decodes the variable exactly as the env copy does', async () => {
+  for (const on of ['true', 'TRUE', ' true ', '1', 'yes']) {
+    assert.equal(await readSuspendedNow(ghAnswering(200, on), 'o/r'), true, on);
+  }
+  for (const off of ['false', '0', 'no', '', 'maybe']) {
+    assert.equal(await readSuspendedNow(ghAnswering(200, off), 'o/r'), false, String(off));
+  }
+});
+
+// The normal state of every repo nobody has ever held: no such variable. That is
+// not a fault and must not read as one.
+test('an absent variable is not a hold and says nothing about it', async () => {
+  const lines = [];
+  assert.equal(await readSuspendedNow(ghAnswering(404), 'o/r', { log: (l) => lines.push(l) }), false);
+  assert.deepEqual(lines, []);
+});
+
+// A READ THAT DID NOT ANSWER IS NOT A VERDICT. It falls back to the value this
+// run started with — so a held run stays held and an unheld one keeps draining —
+// and it says so, because a live check that silently stopped being live is the
+// failure nothing else here would surface.
+test('a refused live read falls back to the start value and names what would fix it', async () => {
+  const lines = [];
+  const held = await readSuspendedNow(ghAnswering(403), 'o/r',
+    { env: { [SUSPEND_ALL_VAR]: 'true' }, log: (l) => lines.push(l) });
+  assert.equal(held, true, 'the run started held, so it stays held');
+  assert.equal(await readSuspendedNow(ghAnswering(403), 'o/r', { env: {} }), false);
+  assert.ok(lines.some((l) => l.startsWith('!') && l.includes(SUSPEND_ALL_VAR)), lines.join('\n'));
+  assert.ok(lines.some((l) => /variables read/.test(l)), 'the log names the access it lacked');
 });
 
 // FIRST ACT means before the config load and before the first API call: a gate
