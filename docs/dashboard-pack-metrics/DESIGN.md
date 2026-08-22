@@ -80,9 +80,15 @@ time:
   independently-adopted packs never share a write target or a format.
 
 - **`latest-release`**: the repo's latest GitHub release — tag and published time,
-  rendered as an `event`. This is the one platform fact several packs want that no file
-  in the tree carries and no pack task should have to mirror; the dashboard makes the
-  read once per repo, ETag-revalidated, and every pack that asks shares it.
+  rendered as an `event`.
+- **`repo-stars`**: the repository's stargazer count, rendered as a `stat`.
+
+  Both are platform facts no file in the tree carries and no pack task should have to
+  mirror. Each comes from a read the page **already makes** for every member — the repo
+  metadata and the releases listing — ETag-revalidated and shared by every pack that
+  asks, so a live source costs a contributing pack nothing and the page no extra request.
+  The vocabulary is the dashboard's to extend, one deliberate source at a time; it is not
+  open to a pack naming a URL of its own.
 
 ## Widgets — how a value renders
 
@@ -139,11 +145,21 @@ grid cannot afford either — so what it renders must be a complete statement:
 `value`, a short `noun`) and the dashboard composes the sentence, so every card in the
 column reads in one voice. The hover names the pack; nothing depends on it.
 
-**Only time-bearing kinds qualify.** `fleet.member` may name an `event` or a `window`
-widget and nothing else. A `stat` is a fact that is true now — `87 requirements` — and on
-a grid whose question is *where do I need to look*, it distinguishes no member from any
-other; `list` cannot be a line. This is the correction the fleet view makes to the repo
-view: the repo page shows a pack's state, the fleet page shows its **movement**.
+**Any kind that fits one line qualifies.** `fleet.member` may name a `stat`, an `event`
+or a `window`; only `list` is excluded, because it cannot be a line. The dashboard
+composes all three the same way, off a shared `noun`:
+
+| kind | composed as | reads |
+|---|---|---|
+| `stat` | `{value} {noun}` | `18 stars` |
+| `event` | `{at} ago · {text}` | `5d ago · v1.33.102 live` |
+| `window` | `{value} {noun} in last {window}` | `12 reqs in last 2w` |
+
+What the grid rejects is the *pointer*, not the point-in-time fact: `reqs 87` behind a
+`+2` was bad because it made a reader click to learn whether it mattered, and `87 reqs`
+rendered in full is simply the size of that repo's spec — a real difference between
+members. Movement is what a pack should usually reach for, since it is what tells a
+reader where to look today; it is guidance, not a gate.
 
 **A `window` card drops its delta.** On a repo card the previous window is the
 comparison, because there is nothing else to compare to. On the grid the comparison is
@@ -184,6 +200,34 @@ Pack metrics are decoration in the budget policy's terms: priced by the planner 
 skipped below `tight` — the same rung as the commit graphs — before anything core is. A
 withheld read renders as withheld, never as a pack with nothing to say.
 
+## What it does not touch
+
+The mechanism lands inside the dashboard pack, and the blast radius is worth stating
+because it is the first thing anyone will ask.
+
+**Nothing in `engine/`.** A descriptor is found by path — `packs/<id>/dashboard.json`, a
+convention — and not by registration: no manifest key, no field on `pack.mjs`, no list of
+which packs contribute. A pack that adds one is discovered by the file being there, and a
+pack that drops one disappears the same way.
+
+**Nothing in vendoring.** `computeVendorSet` walks a declared pack's directory whole and
+drops only `*.test.mjs`, so a new `.json` beside `pack.mjs` reaches every member that
+declares the pack with no change and no whitelist entry.
+
+**Nothing in the scheduler's signal collection.** No signal feeds this and no task
+collects for it. Both views already hold each member's declaration and tree listing at the
+head sha, and the descriptor and values are two more reads against that same sha.
+
+**Nothing in `.claudinite/local`'s shape.** The values file sits in the repo-owned area
+that already holds `usage.GENERATED.json`, under a directory of its own so two packs never
+share a file.
+
+**And nothing in another pack — until that pack chooses to contribute.** A pack on a live
+source (`latest-release`, `repo-stars`) ships a descriptor and no code at all. Only a pack
+wanting a `generated` value gains anything, and what it gains is a writer in a task it
+already owns — its own change, on its own schedule, and never a precondition for this
+landing.
+
 ## Faults, absences and version skew
 
 Every miss is one state, named: a missing values file, a missing key, an unreadable
@@ -200,26 +244,30 @@ dashboard predates the descriptor", never a guess.
 
 The vocabulary is four kinds because that is what the canon's packs actually have, and
 the shape of the answer matters as much as its contents: **most packs contribute
-nothing, and that is the ordinary case.** Seventeen of the thirty-two carry conventions
+nothing, and that is the ordinary case.** Sixteen of the thirty-two carry conventions
 rather than state — there is no number a repo's tree could answer for `node`, `leaflet`
 or `ios` — so they carry no descriptor and their repos never render the region. Two more
 abstain deliberately: `claudinite-dashboard` would be reporting on itself, and
 `claudinite-lifecycle`'s mount freshness is already a core panel on both views.
 
-Of the rest, the split that matters is whether a writer exists. Seven contribute from
-machinery already running — the release packs off `latest-release` with no new code at
-all, and `tidy-repo`, `claudinite-growth`, `product-wiki`, `jwt`, `basics` and
-`claudinite-fleet-sheepdog` from tasks they already own. The remaining six —
+Of the rest, the split that matters is whether a writer exists. Eight contribute from
+machinery already running — the release packs off `latest-release` and `git-github` off
+`repo-stars`, neither needing a line of code, and `tidy-repo`, `claudinite-growth`,
+`product-wiki`, `jwt`, `basics` and `claudinite-fleet-sheepdog` from tasks they already
+own. The remaining six —
 `executable-requirements`, `spec-driven-product`, `research-project`, `barriers`,
 `web-scraping` and the store-release packs' in-repo half — have a figure worth showing
 and nothing writing it yet, which is a task per pack rather than anything this contract
 owes them.
 
-The fleet rule bites here, and usefully: `spec-driven-product`'s standing honest gaps and
-`barriers`' standing waivers are both `stat`s, so both packs report on a repo page and
-nothing on the grid — they describe a state rather than a movement, and the grid asks
-only where to look. Everything else contributing has an `event` or a `window` to spend
-there.
+One pack joins the list purely by dogfooding: **`git-github` contributes the repo's
+stars**, a `stat` off `repo-stars`, and it is the case that proves the contract carries
+its own weight. Stars is drawn today by the dashboard's own code as an identity mark
+beside the member's name; as a contribution it is a descriptor and no code at all, and
+the page hardcodes one less fact about a repo. It costs what dogfooding costs and the
+cost is the point: a member that does not declare `git-github` has no stars on the grid,
+this repo among them. A fact the page happens to have in hand is not a reason to render
+it — something has to have asked for it.
 
 Two limits are worth stating where they will be asked about. Store-side state (in
 review, rollout percentage) needs credentials no page running as its viewer can hold, so
