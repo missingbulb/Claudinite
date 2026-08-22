@@ -10,3 +10,4 @@ adds its own row.
 | 6 | — | The github-actions pack is absorbed here — its skill, its nine `gha/` checks, and the routing that used to name it as the neighbour. |
 | 60820.2 | — | Merge-to-main step 7 is named as verify-in-production's only trigger (#1128). |
 | 60821.1 | 2026-08-21 | This pack's inline version-history comments moved out of `pack.mjs` into this file. |
+| 60822.1 | — | Contributes the repo's stars to the dashboard (#1194) — `dashboard.json`, a descriptor and no code, off the `repo-stars` source the page already reads. A member declaring this pack shows a star count on both dashboard pages; one that does not, no longer shows one anywhere, since the dashboard stopped drawing it itself. |

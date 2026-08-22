@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missingbulb.github.io/claudinite/dashboard-descriptor.schema.json",
+  "title": "Claudinite dashboard descriptor",
+  "description": "What one pack contributes to the Claudinite dashboard. Data, never code: the page executes nothing from a pack, so everything a contribution can do is declared here in a closed vocabulary the dashboard owns. Lives at packs/<id>/dashboard.json and is found by that path — nothing registers it.",
+  "type": "object",
+  "required": ["widgets"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "widgets": {
+      "description": "Every figure this pack has. Declared once; the views below select from this list by id, so one figure cannot be described differently on each surface.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/widget" }
+    },
+    "repo": {
+      "description": "Widget ids making this pack's card on a repo page, in order.",
+      "type": "array",
+      "maxItems": 6,
+      "items": { "type": "string" }
+    },
+    "fleet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "member": {
+          "description": "The one widget that becomes this pack's mini-card in a fleet member's subrow. Must name a stat, event or window — a list cannot be one line.",
+          "type": "string"
+        },
+        "deployment": {
+          "description": "Widget ids making a deployment-scope card on a fleet page — the fleet questions no single member answers.",
+          "type": "array",
+          "maxItems": 6,
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "widget": {
+      "type": "object",
+      "required": ["id", "kind", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "This widget's name, and the key its value is looked up under in the values file.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "kind": {
+          "description": "stat — a fact true now. event — the last time something happened. window — a count of things that happened, always against the window before it. list — the few most recent named things. There is deliberately no shape a growing cumulative total fits: a number that only rises says nothing about today.",
+          "enum": ["stat", "event", "window", "list"]
+        },
+        "label": { "type": "string", "minLength": 1, "maxLength": 34 },
+        "noun": {
+          "description": "What the quantity is of, for the composed fleet phrase — '12 reqs in last 2w'. Required in practice by stat and window, which have nothing else to name.",
+          "type": "string",
+          "maxLength": 16
+        },
+        "glyph": {
+          "description": "One grapheme rendered ahead of the phrase, for recognition only. It never carries meaning of its own — the phrase must read without it.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4
+        },
+        "source": {
+          "description": "generated — from this pack's own .claudinite/local/dashboard/<pack>.GENERATED.json in the member's tree. latest-release and repo-stars are platform facts the page already reads for every member, so a pack asking for one ships no code at all.",
+          "enum": ["generated", "latest-release", "repo-stars"],
+          "default": "generated"
+        }
+      }
+    }
+  }
+}

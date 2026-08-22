@@ -32,14 +32,17 @@ test('the pack is opt-in and never fingerprinted', () => {
   assert.equal(pack.seededByDefault, false);
 });
 
-test('it costs no session prose, and every check it runs is the digest\'s', () => {
+test('it costs no session prose, and its checks guard the digest and the descriptors', () => {
   // A page is not a practice: there is no way to write the dashboard wrongly in a
   // consuming repo, and prose here would bill every session in every declaring repo.
   assert.equal(pack.prose, null);
-  // The two checks arrived with the fleet-digest task and guard its output and its own
-  // fixtures — nothing about the page. Both are world rules: a brief that landed last
-  // week is as unreadable in the owner's inbox as one that landed in this change.
-  assert.deepEqual(pack.worldRules.map((r) => r.id), ['digest-plain-text', 'dated-fixture-collision']);
+  // Two arrived with the fleet-digest task and guard its output and its own fixtures.
+  // The third guards what OTHER packs contribute to this page — a descriptor the
+  // reader rejects fails silently, in a viewer's browser, where its author never
+  // looks. All three are world rules: each audits what has landed, whatever this
+  // session touched.
+  assert.deepEqual(pack.worldRules.map((r) => r.id),
+    ['digest-plain-text', 'dated-fixture-collision', 'descriptor-usable']);
   assert.deepEqual(pack.workRules, []);
 });
 

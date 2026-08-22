@@ -302,11 +302,79 @@
   .setup-body p, .setup-body li { color: var(--ink-2); }
   .setup-body p:last-child { margin-bottom: 4px; }
 
-  /* The member cell: the star mark ahead of the name, so `Stars` costs no column. */
+  /* The member cell. Stars used to ride here beside CI; it is `git-github`'s
+     contribution now and lands in the subrow with everything else a pack reports. */
   .member { display: flex; gap: 9px; align-items: baseline; }
-  .stars { text-align: center; flex: none; min-width: 26px; }
-  .stars .glyph { font-size: 11px; line-height: 1; color: var(--s-yellow); }
-  .stars .n { font-size: 12px; color: var(--ink-2); }
+
+
+  /* --- pack-contributed metrics ---------------------------------------------------
+     Two surfaces for one contract: a card per pack on the repo page, and one line per
+     pack in a member's subrow on the fleet page. */
+
+  .pack-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 10px; }
+  .pack-card { background: var(--surface); border: 1px solid var(--border);
+               border-radius: 10px; padding: 12px 14px 14px;
+               display: flex; flex-direction: column; gap: 10px; }
+  .pack-head { display: flex; align-items: center; gap: 8px; }
+  .pack-head .id { font-weight: 600; font-size: 13px; }
+  .pack-head .from { margin-left: 2px; }
+  /* Where the value came from and how old it is — the question a reader asks second,
+     so it sits at the far end of the head rather than in the body. */
+  .pack-head .src { margin-left: auto; font-size: 11px; color: var(--muted);
+                    border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+  .pack-badge { width: 16px; height: 16px; border-radius: 5px; flex: none; color: #fff;
+                display: grid; place-items: center; font-size: 9px; font-weight: 700; }
+
+  .pack-card .widgets { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+                        gap: 12px 14px; }
+  .pack-card .w { min-width: 0; }
+  .pack-card .w .v { font-size: 22px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .pack-card .w .v.text { font-size: 15px; font-weight: 600; }
+  .pack-card .w .k { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+  .pack-card .w .k .unit { color: var(--muted); }
+  /* A figure nothing has written reads as its own state, never at the floor: the
+     value slot says what is missing, in words, at the weight of an answer and not of
+     a number. */
+  .pack-card .w.absent .v { color: var(--muted); font-size: 15px; font-weight: 400; }
+  .pack-card .w .w-glyph { margin-right: 4px; color: var(--s-yellow); }
+  .pack-card .w.list { grid-column: 1 / -1; }
+  .pack-card .w.list ul { list-style: none; margin: 6px 0 0; padding: 0;
+                          display: flex; flex-direction: column; gap: 4px; }
+  .pack-card .w.list li { display: flex; gap: 10px; align-items: baseline; font-size: 13px; }
+  .pack-card .w.list li .t { flex: 1 1 auto; min-width: 0; overflow: hidden;
+                             text-overflow: ellipsis; white-space: nowrap; }
+  .pack-card .w.list li .at { flex: none; color: var(--muted); font-size: 12px;
+                              font-variant-numeric: tabular-nums; }
+  .pack-card .w.list .more { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .pack-card p { margin: 0; }
+
+  /* THE MINI-CARD. A fixed box, because a column of them has to scan as a column: the
+     phrase truncates rather than the box growing. */
+  .minis { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mini { border: 1px solid var(--border); border-radius: 7px;
+          background: color-mix(in srgb, var(--ink) 2.5%, transparent);
+          padding: 4px 9px; width: 168px; font-size: 12.5px; line-height: 1.35;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          font-variant-numeric: tabular-nums; color: var(--ink); }
+  .mini.none { border-style: dashed; color: var(--muted); background: none; }
+  /* THREE REGISTERS, and the reason a pack supplies parts rather than a string: the
+     quantity reads first and is what differs between members, the noun says what of,
+     the connective is present for grammar and gets out of the way. */
+  .mini .q { font-weight: 600; color: var(--ink); }
+  .mini .n { color: var(--ink-2); }
+  .mini .c { color: var(--muted); }
+  .mini .mini-glyph { color: var(--s-yellow); margin-right: 2px; }
+
+  /* --- the member group: a standard row, then what its packs report ----------------
+     One <tbody> per member, so both rows highlight together and the severity edge
+     runs the height of the member rather than stopping halfway down it. */
+  tbody.m tr.std td { border-bottom: 0; padding-bottom: 6px; }
+  tbody.m:hover tr td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  tr.contrib td { padding-top: 0; padding-bottom: 11px; }
+  /* Indented under the member's name rather than the table's edge: the cards belong
+     to the row above, and the indent is what says so. */
+  td.contrib-cell { padding-left: 51px; }
 
   /* CI as a dot with its age under it, beside the name rather than in a column. */
   .ci-mark { text-align: center; flex: none; min-width: 30px; }
@@ -423,6 +491,11 @@
         run yet. Both files are content at a path, so a warm load costs nothing to show them.
       </p>
       <div class="charts" id="fleet-digests"></div>
+    </section>
+
+    <section id="fleet-contrib" hidden>
+      <h2>What this deployment's packs report</h2>
+      <div class="pack-cards" id="fleet-contrib-cards"></div>
     </section>
 
     <section>
@@ -586,6 +659,19 @@
       repo that does not run it says so instead of showing an empty chart.
     </p>
     <div class="charts" id="growth"></div>
+  </section>
+
+  <section id="pack-metrics" hidden>
+    <h2>What the packs report <button class="info" type="button" data-info="packs" aria-expanded="false" title="Where these come from">&#9432;</button></h2>
+    <p class="info-body" id="info-packs" hidden>
+      Every other panel on this page is the <strong>scheduler</strong>, which every member has. These
+      are what this repo's own declared packs have to say about it — a release pack the last release,
+      a spec pack the requirements that moved — and they differ from repo to repo, which is why they
+      come last. A pack contributes <strong>data, never code</strong>: it ships a descriptor naming
+      what it has, and its own task writes the values into the repo's tree. Nothing here is executed,
+      and a figure that has not been written says so rather than reading as a zero.
+    </p>
+    <div class="pack-cards" id="pack-cards"></div>
   </section>
   </div>
 

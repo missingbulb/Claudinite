@@ -129,6 +129,7 @@ wanted it say so, and nothing else on the page is affected.
 | **What the queue closed** | Per-day outcomes over a fortnight — today from the live issue page, the days before it from the fold |
 | **What ran** | 48 hours of scheduler runs, executor runs and agent sessions per hour; hovering an hour names the tasks that executed in it |
 | **What Claudinite is doing here** | 30 days of rule tokens against checks executed, on two stated scales — plus tokens spent, lines committed and releases where the fold carries them |
+| **What the packs report** | One card per declared pack that contributes — see [below](#what-a-pack-contributes). Last, because it is the only region whose contents differ from repo to repo |
 
 ### One table, not two
 
@@ -181,6 +182,10 @@ second. So nothing on it is a total for its own sake.
 | **Members** | Every member ranked worst-first, in three column groups asked in the order a reader asks them: **Activity** (90 days of commits, as a weekly curve), **Waiting on a person** (an estimate in minutes, what it is made of, then issues and pull requests) and **Claudinite** (packs wearing the mount's verdict, queue, outcomes, scheduler). Stars and CI ride in the member cell — they are how you recognise a row, not findings about it |
 | **Tasks across the fleet** | One task, everywhere it runs — a shared pack's task parked in four members at once is a canon problem no single repo's page reveals |
 | **Pack adoption** | Which packs are in use and how widely — who a change to a pack would reach |
+| **What this deployment's packs report** | The fleet-scope cards, from the packs the deployment repo and the canon declare |
+
+Each member's row is followed by a **subrow** of what its own packs report — see
+[below](#what-a-pack-contributes).
 
 ### The roster is enumerated, not stored
 
@@ -271,6 +276,55 @@ comparison:
 - **A scheduler that never ran** — a member that declares tasks and has never
   produced a work item is not idle, it is unwired. Every per-repo number for it is a
   perfectly healthy zero.
+
+## What a pack contributes
+
+Every panel above is this pack's own. These are what a member's **other** packs have to
+say about it — `git-github` the repo's stars, a release pack its last release, a spec
+pack the requirements that moved. The contract in one line: **a pack contributes data,
+never code** — the page executes nothing a pack ships, because the fleet view renders
+repos the viewer merely has read access to, and importing their modules would run every
+member's code in the viewer's browser with the viewer's token in scope.
+
+A contributing pack ships one file, `packs/<id>/dashboard.json`, validated by
+[the schema beside this one](dashboard-descriptor.schema.json) and found **by that path**
+— nothing registers it, so adding a descriptor is the whole change. It declares the
+pack's widgets once, and the two views select from that list by id:
+
+```jsonc
+{
+  "widgets": [{ "id": "stars", "kind": "stat", "label": "stars", "noun": "stars",
+                "glyph": "★", "source": "repo-stars" }],
+  "repo": ["stars"],
+  "fleet": { "member": "stars" }
+}
+```
+
+Four kinds — `stat` (a fact true now), `event` (the last time something happened),
+`window` (a count, always against the window before it) and `list` (the few most recent
+named things). There is deliberately no shape a growing cumulative total fits.
+
+Values come from one of three **sources**. `generated` reads the pack's own
+`.claudinite/local/dashboard/<pack>.GENERATED.json`, written by that pack's own task;
+`latest-release` and `repo-stars` are platform facts this page already reads for every
+member, so a pack using one ships a descriptor and no code at all.
+
+**On the fleet grid a card is a phrase, not a chip.** The page composes it from the
+parts the pack supplied — `★ 18 stars`, `5d ago · v1.33.102 live`, `12 reqs in last 2w` —
+and sets the quantity, the noun and the connective in three different registers, which
+is the reason the contract takes values rather than a finished string. Every card a
+member has renders in full: there is no `+n`, and nothing whose only content is that
+some pack has something to say. A `list` is the one kind that cannot be a line.
+
+Two things a pack cannot do. It cannot **colour** its own card — colour on that grid is
+the engine's severity edge, and a pack that could paint itself red would be claiming
+attention it did not earn — and it cannot reach the **ranking**: contributions never
+feed attention, member ordering or the rollup tiles.
+
+Costs are the same shape as everything else here: discovery is free (the declaration
+and the tree listing are already in hand), the descriptor and values are content at a
+sha and therefore free on a warm load, and `latest-release` is the one live request,
+withheld before anything the queue depends on.
 
 ## The morning briefs
 
@@ -568,10 +622,15 @@ API's shape, not a decision either pack can drift on.
 
 ## Checks
 
-Both are the digest's — nothing here polices the page, which is a page and not a
-practice.
+Two are the digest's. The third holds another pack's `dashboard.json` to what this
+page's own reader accepts — not a second copy of the schema, which ordinary tooling
+already validates, but the thing a schema cannot check: that the file is usable, and
+that the ids its views select by resolve. The failure is otherwise silent, since a
+rejected descriptor renders as one apologetic line in a viewer's browser and nothing
+goes red where its author is looking.
 
 | Check | Severity | Reason | Enforcement |
 |---|---|---|---|
 | `digest-plain-text` | medium | correctness | check: blocking |
 | `dated-fixture-collision` | medium | correctness | check: blocking |
+| `descriptor-usable` | medium | correctness | check: blocking |
