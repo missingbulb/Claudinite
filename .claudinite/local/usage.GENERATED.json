@@ -1,9 +1,9 @@
 {
   "version": 3,
-  "generated": "2026-08-22T05:08:41.528Z",
+  "generated": "2026-08-22T07:20:01.328Z",
   "foldedThrough": "2026-08-21",
-  "runsFoldedThrough": "2026-08-22T05:06:34Z",
-  "queueFoldedThrough": "2026-08-22T04:20:25Z",
+  "runsFoldedThrough": "2026-08-22T07:18:42Z",
+  "queueFoldedThrough": "2026-08-22T06:03:34Z",
   "fields": {
     "day": ["captures","merges","sessions","userMessages","userCommands","ruleTokens","ruleTokenSessions","tokensIn","tokensOut","tokenSessions","commits","linesAdded","linesRemoved","releases"],
     "week": ["days","captures","merges","sessionDays","userMessages","userCommands","ruleTokens","ruleTokenSessions","tokensIn","tokensOut","tokenSessions","commits","linesAdded","linesRemoved","releases"],
@@ -59,7 +59,9 @@
     "2026-08-22T02": {"totals":[1,1,0,0]},
     "2026-08-22T03": {"totals":[1,2,1,0],"taskExec":{"claudinite-growth/growth-extract":[1,0,0,0]}},
     "2026-08-22T04": {"totals":[1,2,0,0]},
-    "2026-08-22T05": {"totals":[1,2,0,0]}
+    "2026-08-22T05": {"totals":[1,8,2,0]},
+    "2026-08-22T06": {"totals":[1,5,1,0],"taskExec":{"engine/implement-request":[0,1,0,0]}},
+    "2026-08-22T07": {"totals":[1,0,0,0]}
   },
   "days": {
     "2026-07-24": {"totals":[1,1,1,7,0,0,0,15302398,168299,1,null,null,null,0],"skillLoads":{"merge-and-ci":1},"checks":{"world":[1,0,0,0,4,0,0]},"checkFindings":{"file-placement":[0,4]}},
@@ -91,7 +93,7 @@
     "2026-08-19": {"totals":[30,30,23,81,0,269000,22,1149203565,3202905,23,null,null,null,0],"skillLoads":{"authoring-agent-docs":1,"merge-to-main":9,"repo-text-sweeps":1,"single-issue-triage":8,"writing-claudinite-skills":2,"writing-migration-plans":1,"writing-tests":1},"checks":{"work":[205,56,0,156,0,4,4],"world":[84,6,0,21,4404,4,0]},"checkFindings":{"barrier":[24,0],"comment-classification":[23,0],"consumer-safe-change":[2,0],"engine-release-record":[8,0],"file-placement":[0,1],"markdown-link-labels":[1,0],"pack-version-bumped":[106,0],"reference-integrity":[19,0],"rules-line-length":[0,64],"squash-merge-history":[2,0],"task-lifecycle":[2,0],"task-md-only-when-agentic":[6,0],"task-phase-discipline":[0,20]},"taskExec":{"canon-curation/growth-promote":[1,0,0,0],"engine/implement-request":[1,0,0,0],"grow_with_claudinite/growth-extract":[1,0,0,0],"tidy-repo/tidy-issues":[1,0,0,0]},"queue":{"basics/task-janitor":[1,0,0,0],"canon-curation/growth-promote":[0,1,0,0],"claudinite-growth/growth-extract":[1,0,0,0],"claudinite-growth/usage-fold":[1,0,0,0],"engine/implement-request":[1,0,0,0],"tidy-repo/tidy-issues":[1,0,0,0]}},
     "2026-08-20": {"totals":[22,22,17,42,3,231000,16,684137192,1968195,17,null,null,null,0],"skillLoads":{"do-later":1,"extract-from-conversations":1,"merge-to-main":3,"repo-text-sweeps":1,"verify-in-production":2,"writing-claudinite-skills":1,"writing-tasks":1},"checks":{"work":[96,22,0,41,0,0,0],"world":[60,7,0,9,2553,0,0]},"checkFindings":{"barrier":[4,0],"comment-classification":[9,0],"config":[1,0],"consumer-safe-change":[3,0],"declared-check-messages":[1,0],"engine-release-record":[3,0],"file-placement":[0,18],"pack-version-bumped":[27,0],"preferences-store-configured":[0,1],"product-wiki-isolation":[1,0],"product-wiki-layout":[2,0],"reference-integrity":[4,0],"rules-line-length":[0,23],"task-phase-discipline":[0,9]},"taskExec":{"basics/task-janitor":[1,0,0,0],"canon-curation/growth-promote":[0,1,0,0],"claudinite-growth/growth-extract":[1,0,0,0],"engine/implement-request":[1,2,0,0],"tidy-repo/tidy-issues":[1,0,0,0]},"queue":{"basics/task-janitor":[6,0,0,0],"claudinite-growth/growth-extract":[1,0,0,0],"claudinite-growth/logs-prune":[0,0,1,0],"claudinite-growth/usage-fold":[1,0,0,0],"claudinite-lifecycle/update":[0,0,1,0],"engine/implement-request":[1,0,0,0],"tidy-repo/tidy-issues":[1,0,0,0]}},
     "2026-08-21": {"totals":[20,20,18,38,4,272000,17,779972960,2781409,18,null,null,null,0],"skillLoads":{"do-later":1,"merge-to-main":5,"single-issue-triage":2,"verify-in-production":2,"writing-migration-plans":2},"checks":{"work":[77,10,0,14,0,0,0],"world":[40,2,0,4,1979,1,1]},"checkFindings":{"barrier":[3,0],"comment-classification":[11,0],"config":[1,0],"consumer-safe-change":[2,0],"file-placement":[0,49],"pack-version-bumped":[12,0],"rules-line-length":[0,54],"task-phase-discipline":[0,11]},"taskExec":{"claudinite-growth/growth-extract":[1,0,0,0],"engine/implement-request":[3,0,0,0]},"queue":{"basics/task-janitor":[1,0,0,0],"claudinite-growth/growth-extract":[1,0,0,0],"claudinite-growth/usage-fold":[6,0,0,0],"engine/implement-request":[3,0,0,0]}},
-    "2026-08-22": {"totals":[1,1,1,0,0,17000,1,74107286,179252,1,1,104069,0,0],"skillLoads":{"extract-from-activity":1,"extract-from-conversations":2},"checks":{"work":[1,0,0,0,0,0,0],"world":[2,0,0,0,142,0,0]},"checkFindings":{"comment-classification":[8,0],"consumer-safe-change":[1,0],"rules-line-length":[0,12],"task-lifecycle":[1,0],"task-phase-discipline":[0,1]},"taskExec":{"claudinite-growth/growth-extract":[1,0,0,0]},"queue":{"basics/task-janitor":[1,0,0,0],"claudinite-growth/growth-extract":[1,0,0,0],"claudinite-growth/usage-fold":[1,0,0,0]}}
+    "2026-08-22": {"totals":[4,4,4,0,0,52000,3,308712915,702081,4,1,104069,0,0],"skillLoads":{"extract-from-activity":1,"extract-from-conversations":2,"single-issue-triage":8,"unattended-agents":1,"verify-in-production":1},"checks":{"work":[1,0,0,0,0,0,0],"world":[5,0,0,0,142,0,0]},"checkFindings":{"comment-classification":[8,0],"consumer-safe-change":[1,0],"file-placement":[0,52],"rules-line-length":[0,29],"task-lifecycle":[1,0],"task-phase-discipline":[0,1]},"taskExec":{"claudinite-growth/growth-extract":[1,0,0,0],"engine/implement-request":[0,1,0,0]},"queue":{"basics/task-janitor":[1,0,0,0],"claudinite-growth/growth-extract":[1,0,0,0],"claudinite-growth/usage-fold":[3,0,0,0],"engine/implement-request":[0,0,1,0]}}
   },
   "weeks": {
     "2026-W29": {"totals":[1,5,5,5,16,3,null,null,null,null,null,null,null,null,null],"skillLoads":{"merge-to-main":5},"checks":{"work":[19,0,0,0,0,0,0]},"checkFindings":{"barrier":[3,0],"comment-classification":[7,0],"file-placement":[0,7],"pack-independence":[6,0],"squash-merge-history":[5,0],"task-lifecycle":[4,0]}},
