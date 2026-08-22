@@ -15,6 +15,16 @@ lesson at the strongest mechanism available — a check where the rule is determ
   The migration is work, not a document: its phased plan, status and remaining work live in the
   tracking issue (`writing-migration-plans`), never in a sibling `MIGRATION.md`.
 
+- **A `docs/<initiative>/DESIGN.md` whose system is now built** — its content duplicates the
+  module headers and pack `README.md`s that must independently state the same facts once the
+  pipeline exists, so a design doc that survives the build only has to be kept in sync with both.
+  Verify each section actually lives there before touching anything; move what has no other
+  home (an owner-decision record with its rationale is typically the one irreplaceable part),
+  sweep every `§`-numbered pointer into a pack-README reference (or drop it where the sentence
+  only cited itself), and delete the doc whole rather than trim it. Don't extend the sweep to a
+  design doc that still describes work in flight, or a much larger one many module headers cite
+  by section — decide those separately rather than discover the scale mid-run (#1169).
+
 - **Ending a session on unfinished work** — write the state into the tracking issue. The
   owner's opener is `continue work on #<n>`, so anything else is lost; never compose a hand-off
   prompt.
@@ -429,6 +439,14 @@ lesson at the strongest mechanism available — a check where the rule is determ
   line made "that line" read as the directive sentence itself, and a session opened two replies in
   a row reciting the instruction verbatim instead of the summary (#1126).
 
+- **A work-scope check that verifies "this PR bumped X" by diffing against `main`** — on a PR
+  stacked on another still-open one, that diff already carries the lower PR's own bump, so the
+  check reads it as *this* PR's and passes green even though this PR's own edits still need one.
+  The false green survives only until the lower PR merges and this one rebases onto the real
+  base. Re-verify (and re-bump if needed) after every earlier PR in the stack actually lands —
+  never trust a stacked PR's check result against its pre-merge base (`pack-version-bumped`,
+  #1119).
+
 ## Scheduled tasks
 
 - **Choosing a task's cadence** — take it from how often the signal actually moves. A
@@ -498,6 +516,14 @@ lesson at the strongest mechanism available — a check where the rule is determ
   production-verification; the owner pointed at the deferred-request queue's existing
   `Blocked-by`/`Not-before` lane, which already carried it end to end, and the bespoke task — a
   second queue standing beside the first — came back out (#1092).
+
+- **Building a dedup or mutex over work items** — a same-title match only catches two items that
+  are literally the same request twice; it is blind to two items that conflict by writing the
+  same *target* (one file, one member's config) under two different titles. Two work lists on one
+  member (`task:origin:ad-hoc`'s own REQUESTED/SUSPECTED split) hit exactly this: nothing
+  serialized them until the enforcer named the member's other open list in `Blocked-by:`, letting
+  the queue's own dependency field do the serializing the title mutex couldn't (#1119). Key a
+  conflict guard on the target the write lands on, never on the requester's phrasing.
 
 ## Proving a change
 
