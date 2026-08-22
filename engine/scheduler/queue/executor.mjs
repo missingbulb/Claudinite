@@ -200,7 +200,7 @@ export async function runExecutor({
   const { listOpenWorkItems } = await import('./read.mjs');
   const schedule = config.taskScheduler;
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
-  const taskAfter = (id) => byId.get(id)?.decl?.after ?? [];
+  const taskAfter = (id) => byId.get(id)?.decl?.schedule_after ?? [];
   const frequencyOf = (id) => byId.get(id)?.decl?.frequency ?? null;
   // A marked issue names its task by worker path, so the run needs the inverse of
   // the id map — built from the same task set, so a path this repo does not carry

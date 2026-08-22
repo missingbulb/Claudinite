@@ -90,6 +90,22 @@ const rule = {
           fix: `rename "${field}" → "code_work" and "${timeout}" → "code_work_timeout" (the two phases of task execution are code-work, then agentic-work — neither is named for the other)`,
         }));
       }
+      // The ordering field's rename. ADVISORY for the same reason as the code-work rename above:
+      // the runtime normalizes it at the door, so a member's own task file keeps working and its
+      // CI must not go red over a declaration nobody has edited. Worth making because the bare
+      // preposition invited reading the field as a time — it is not one; it names task ids, and
+      // what it steers is when the item is scheduled onto an executor.
+      //
+      // The regex is anchored on a NON-word character before the key so it cannot match the
+      // canonical spelling's own tail.
+      if (/(?<![\w.])after:\s*\[/.test(text)) {
+        out.push(finding(rule, {
+          file,
+          severity: 'advisory',
+          what: 'declares its ordering under the legacy name "after"',
+          fix: 'rename "after" to "schedule_after" (it names task ids, not a time — what it steers is when this item is scheduled onto an executor)',
+        }));
+      }
       // `session_scope` lost its last reader with the slot scheduler (#974): the
       // queue routes a hand-off by `invocation_endpoint`, and nothing anywhere
       // asks a task what its scope is. ADVISORY, like the code-work rename above and

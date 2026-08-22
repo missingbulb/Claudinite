@@ -32,8 +32,8 @@ A fictional but realistic repo, tasks drawn from the real fleet:
 | task | frequency (anchor) | model | ceiling | notes |
 |---|---|---|---|---|
 | `basics/baselining` | daily-2h (02:00Z) | sonnet | merged-pr | code-work converges the mount; conditional hand-off |
-| `grow/growth-extract` | daily-1h (03:00Z) | opus | merged-pr | `after: ['basics/baselining']` |
-| `grow/growth-promote` | daily (04:00Z) | opus | open-pr | canon repo; `after: ['grow/growth-extract']` |
+| `grow/growth-extract` | daily-1h (03:00Z) | opus | merged-pr | `schedule_after: ['basics/baselining']` |
+| `grow/growth-promote` | daily (04:00Z) | opus | open-pr | canon repo; `schedule_after: ['grow/growth-extract']` |
 | `tidy/tidy-issues` | daily (04:00Z) | sonnet | none | precondition: issue touched in window |
 | `gcec/create-extractor` | hourly | sonnet | open-pr | code-work-heavy, conditional hand-off |
 | `chrome/store-release` | daily (04:00Z) | none | none | agentless: code-work only |
@@ -107,9 +107,9 @@ GitHub drops the 02:17, 03:17 and 04:17 fires; the first scheduler run lands **0
 - **05:41** scheduler-run job 1, iterating in dependency order (**F9** — see below):
   - baselining: A = 02:00, no item since → precondition true (stamp stale) →
     item #910, `task:status:waiting-for-executor`.
-  - growth-extract: A = 03:00 → true; `after: [basics/baselining]` and #910 is
+  - growth-extract: A = 03:00 → true; `schedule_after: [basics/baselining]` and #910 is
     open → item #911, `task:status:blocked`, `Blocked-by: #910`.
-  - growth-promote: A = 04:00 → true; `after` extract, #911 open → #912
+  - growth-promote: A = 04:00 → true; `schedule_after` extract, #911 open → #912
     blocked by #911.
   - tidy-issues, store-release: independent → #913, #914 `task:status:waiting-for-executor`.
 - **05:42** executors drain: #910 claimed (baselining), #913, #914 run in
@@ -131,7 +131,7 @@ latency per link. Two findings anyway:
   *before* baselining in the same scheduler run, `openScheduledItemsOf(after)` finds
   nothing — baselining's item doesn't exist yet — and extract is created
   `task:status:waiting-for-executor`, running beside the mount converge. Job 1 must iterate in
-  topological order of `after` edges (cycles: fall back to declaration order
+  topological order of `schedule_after` edges (cycles: fall back to declaration order
   and warn). *Amended in DESIGN.md §5.*
 - **F1 (optimization, not defect):** dependency readiness is quantized to the
   scheduler run — each chain link waits for the next :17. Optional improvement, same
@@ -426,7 +426,7 @@ written path from `needs-human` back to execution.
 
 The owner's third-round proposal: *the scheduler run creates a daily task's item
 automatically; a failed precondition marks the item delayed until tomorrow's
-time.* Every scenario above was replayed under it (with `after` compiled to
+time.* Every scenario above was replayed under it (with `schedule_after` compiled to
 the pick-time yield — see S24 for why the literal `Blocked-by` reading cannot
 work). Unchanged: S2 (happy path), S5–S12 (scheduler run outage, double-scheduler run,
 executor races and deaths, hand-off failures — none touch generation),
@@ -507,7 +507,7 @@ once — named in DESIGN §5.
 ### S23 — the chain when the upstream declines (new)
 
 - **02:18** baselining's item rolls (mount fine). **03:17** extract's item
-  created `task:status:waiting-for-executor`; the pick-time `after` yield checks baselining's item:
+  created `task:status:waiting-for-executor`; the pick-time `schedule_after` yield checks baselining's item:
   *blocked* (rolled — declined this cycle) → **not** live → extract is
   pickable immediately and runs at 03:18. The old world needed the exclusive
   claim NOT to fire on exactly this night; here the ordering dissolves into
@@ -519,15 +519,15 @@ once — named in DESIGN §5.
 **Verdict: holds — and this is the scenario that shows why the yield must
 read item *state*, not item *existence*.**
 
-### S24 — the trap: `after` as `Blocked-by` starves the chain (new)
+### S24 — the trap: `schedule_after` as `Blocked-by` starves the chain (new)
 
-- Suppose `after` compiled to `Blocked-by: #<upstream's standing item>`, the
+- Suppose `schedule_after` compiled to `Blocked-by: #<upstream's standing item>`, the
   literal reading of the earlier draft. Baselining is quiet all week — its
   standing item rolls daily and **never closes**. Extract's item, blocked-by
   it, waits for a closure that never comes: readiness requires the blocker
   CLOSED. Extract never runs while its upstream has nothing to do — the
-  exact inversion of what `after` means.
-- Hence the fix, folded into DESIGN §6.1/§9: `after` is a **pick-time
+  exact inversion of what `schedule_after` means.
+- Hence the fix, folded into DESIGN §6.1/§9: `schedule_after` is a **pick-time
   yield** over the upstream item's live states (ready/executing/agent),
   never a `Blocked-by` edge. `Blocked-by` remains correct for items that
   terminate (follow-ups, fan-ins).
@@ -1153,13 +1153,13 @@ the retired shape the same day cost 48.
 | # | severity | what | resolution |
 |---|---|---|---|
 | **F5** | **design bug** | CCR invocation is at-least-once under timeout retry → two sessions on one item (S10) | first fixed with an agent-side claim lease; **superseded 2026-08-15 (§I)**: invocation is at-most-once — one call per item, never retried — so no second session can exist and the lease deleted (S10a/S10b are the replacement tests; the nonce survives as a replay check) |
-| **F9** | **design bug** | same-scheduler run `after` wiring depends on task iteration order (S4) | first fixed by topological iteration; **retired unbuilt** by the standing-item model — `after` moved to the pick-time yield (S23/S24), so creation order stopped mattering |
+| **F9** | **design bug** | same-scheduler run `schedule_after` wiring depends on task iteration order (S4) | first fixed by topological iteration; **retired unbuilt** by the standing-item model — `schedule_after` moved to the pick-time yield (S23/S24), so creation order stopped mattering |
 | **F6** | **design bug** | forcing can run a task concurrently with itself (S15) | **fixed in DESIGN §6/§8**: same-title pick mutex + create-time warning; the standing-item model removes the common case outright (force = wake the existing item, S14′) |
 | **F3** | policy gap | as-written hand-off failure policy turns platform blips into triage load (S9) | first fixed with bounded revert-and-retry; **superseded 2026-08-15 (§I)**: no retry exists to bound — refused converges `needs-human` at once (S9a), unanswered is settled by the agent leash (S10b) |
 | **F12** | contract gap | code-work re-runs after an executor death; re-entrancy was never stated (S8) | **fixed in DESIGN §6**: re-entrancy is an explicit code-work requirement (it was already implicitly required today) |
 | **F13** | **design bug** | the occurrence guard's created-at half alone double-executes: a rolled item that runs today was created yesterday, so after it closes the same-day scheduler run creates a second item for the same occurrence (S26) | **fixed in DESIGN §5**: the guard is created-at-or-after A *or closed*-at-or-after A. Caught by the simulator's first run — no prose replay had seen it |
 | **F14** | **design bug** | a blocked item whose dependency never resolves waits silently forever: §11 claimed the stale escalation covers it, but that rule keys on ready-age and a blocked item is never ready (S18's fan-in) | **fixed in DESIGN §11**: a third janitor rule — blocked with unresolved blockers past ~2 days gets an escalation comment, labels untouched. Caught by making S18 executable |
-| **F15** | **design bug** | the pick filters (same-title mutex, `after` yield) read stale state — two executors can claim different items the filters should serialize (S32) | **fixed in DESIGN §6.1**: post-claim re-verify; the later claim (comment order) reverts itself to ready |
+| **F15** | **design bug** | the pick filters (same-title mutex, `schedule_after` yield) read stale state — two executors can claim different items the filters should serialize (S32) | **fixed in DESIGN §6.1**: post-claim re-verify; the later claim (comment order) reverts itself to ready |
 | **F16** | implicit assumption | the occurrence guards assume the scheduler run's REST list sees creations from prior runs; GitHub documents no cross-node freshness bound (S30) | **made explicit + defended in DESIGN §5**: the scheduler run self-heals — more than one open family item closes all but the oldest |
 | **F17** | **design bug** | a work bound reaching the executing leash livelocks the occurrence: reclaimed alive every cycle, the work re-runs forever, never converges (S31b) | first fixed as leash > work-bound; **reframed 2026-08-15 (§I, F20)**: heartbeat comments during the work step — the leash measures executor death, not work duration; the wiring check shrinks to heartbeat interval < leash (S31, S31c, S31d); the transition lease re-verify stays |
 | **F18** | **design bug** | lifetime-scoped claim arbitration lets dead claims (from reverts/reclaims) outrank every future claimant — the item livelocks; masked in single-executor tests (S32) | **fixed in DESIGN §6.2**: the arbiter is episode-scoped — earliest claim since the item last became ready, by comment id |

@@ -784,7 +784,7 @@ async function announcePickable(gh, repo, tasks) {
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
   const byPath = new Map(tasks.map((t) => [t.taskPath, `${t.pack}/${t.id}`]));
   const pickable = pickOrder(await listOpenWorkItems(gh, repo), {
-    taskAfter: (id) => byId.get(id)?.decl?.after ?? [],
+    taskAfter: (id) => byId.get(id)?.decl?.schedule_after ?? [],
     frequencyOf: (id) => byId.get(id)?.decl?.frequency ?? null,
     pathTo: (p) => byPath.get(p) ?? null,
   });

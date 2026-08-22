@@ -42,15 +42,29 @@ test('scheduler-workflow-shape: is inert when the scheduler workflow is absent',
 });
 
 test('scheduler-workflow-shape: flags an off-band cron minute', () => {
-  const f = run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'5 * * * *'") });
+  const f = run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'5 4,16 * * *'") });
   assert.equal(f.length, 1);
-  assert.match(f[0].what, /cron: '5 \* \* \* \*' is not hourly on a fixed minute in :10–:50/);
+  assert.match(f[0].what, /cron: '5 4,16 \* \* \*' is not two daily ticks/);
 });
 
-test('scheduler-workflow-shape: flags a non-hourly cron', () => {
+// The two-tick form (DESIGN §17) is what the converge writes now; a single daily hour is neither
+// that nor the legacy hourly line, so it is still a drifted cron.
+test('scheduler-workflow-shape: accepts two daily ticks, and flags a single daily hour', () => {
+  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'25 4,16 * * *'") }), []);
+  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'25 0,12 * * *'") }), []);
+  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'25 23,11 * * *'") }), []);
+
   const f = run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'25 4 * * *'") });
   assert.equal(f.length, 1);
-  assert.match(f[0].what, /cron: '25 4 \* \* \*' is not hourly on a fixed minute/);
+  assert.match(f[0].what, /cron: '25 4 \* \* \*' is not two daily ticks/);
+});
+
+// `.github/workflows/` is the one path a converge cannot push, so a member holds its hourly cron
+// until the apply-stage pull request lands. Going red in that window would make the check fire on
+// every member the change has not reached yet — the opposite of what it is for.
+test('scheduler-workflow-shape: the legacy hourly cron still passes during the migration', () => {
+  assert.deepEqual(run({ [WF]: goodWorkflow }), [], "the fleet's current shape stays green");
+  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'50 * * * *'") }), []);
 });
 
 test('scheduler-workflow-shape: flags a second cron schedule', () => {

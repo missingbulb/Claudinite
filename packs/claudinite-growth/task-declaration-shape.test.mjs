@@ -6,7 +6,7 @@ import rule from '../../packs/claudinite-growth/task-declaration-shape.mjs';
 
 const goodTask = `export default {
   id: 'growth-extract',
-  frequency: 'daily-1h',
+  frequency: 'daily',
   precondition_signals: ['commits', 'prs'],
   agent_model: 'opus',
   expected_outcome: 'merged-pr',
@@ -32,13 +32,50 @@ test('task-declaration-shape: is inert when no task.mjs exists', () => {
 
 test('task-declaration-shape: flags illegal enum values', () => {
   const bad = goodTask
-    .replace("frequency: 'daily-1h'", "frequency: 'nightly'")
+    .replace("frequency: 'daily'", "frequency: 'nightly'")
     .replace("agent_model: 'opus'", "agent_model: 'gpt'")
     .replace("expected_outcome: 'merged-pr'", "expected_outcome: 'push'");
   const whats = run({ [TASK]: bad }).map((f) => f.what).join(' | ');
   assert.match(whats, /"frequency" is "nightly", not a legal value/);
   assert.match(whats, /"agent_model" is "gpt", not a legal value/);
   assert.match(whats, /"expected_outcome" is "push", not a legal value/);
+});
+
+// The strict half of the frequency door (tasks-dispatch DESIGN §17.1). The RUNTIME accepts a
+// retired spelling forever, because a member's task file is its own data and no vendoring pass
+// rewrites it — so the only thing standing between the corpus and a new declaration on the dead
+// vocabulary is this author-time check, which runs in the canon.
+test('task-declaration-shape: the retired frequency spellings cannot be written anew', () => {
+  for (const retired of ['hourly', 'daily-2h', 'daily-1h', 'daily+1h']) {
+    const bad = goodTask.replace("frequency: 'daily'", `frequency: '${retired}'`);
+    const findings = run({ [TASK]: bad });
+    const whats = findings.map((f) => f.what).join(' | ');
+    assert.match(whats, new RegExp(`"frequency" is "${retired.replace('+', '\\+')}", not a legal value`),
+      `${retired} is rejected at author time`);
+    assert.ok(findings.some((f) => f.severity === 'blocking'), `${retired} blocks, not advises`);
+    // …and the remedy names only the surviving vocabulary.
+    assert.match(findings.find((f) => f.what.includes('frequency')).fix, /use one of: daily, weekly, monthly, manual/);
+  }
+});
+
+// The ordering field's rename. ADVISORY, not blocking: the runtime normalizes `after` at the
+// door forever, so a member's own task file keeps its ordering and its CI must not go red over a
+// declaration nobody has edited. The finding is what drives the fleet to the canonical spelling.
+test('task-declaration-shape: the legacy `after` ordering field is an advisory rename', () => {
+  const legacy = goodTask.replace("  frequency: 'daily',",
+    "  frequency: 'daily',\n  after: ['claudinite-lifecycle/update'],");
+  const f = run({ [TASK]: legacy });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].severity, 'advisory', 'never blocking — the runtime still honours it');
+  assert.match(f[0].what, /legacy name "after"/);
+  assert.match(f[0].fix, /rename "after" to "schedule_after"/);
+});
+
+test('task-declaration-shape: the canonical `schedule_after` is clean', () => {
+  const canonical = goodTask.replace("  frequency: 'daily',",
+    "  frequency: 'daily',\n  schedule_after: ['claudinite-lifecycle/update'],");
+  assert.deepEqual(run({ [TASK]: canonical }), [],
+    'the canonical spelling must not match the legacy pattern on its own tail');
 });
 
 test('task-declaration-shape: flags missing required fields', () => {

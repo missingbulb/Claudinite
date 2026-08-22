@@ -15,7 +15,16 @@
 
 export default {
   id: 'growth-promote',
-  frequency: 'daily',                    // the 04:00 anchor — after the fleet's 03:00 extracts (DESIGN §2)
+  frequency: 'daily',
+  // THE CROSS-REPO HALF IS THIS REPO'S OWN `dailyHour`, not a field here. Promote reads what has
+  // already merged on MEMBERS' mains, and `schedule_after:` only ever matches an item in this repo's queue
+  // — so the members-extract-then-canon-promotes ordering has no declarable form and lives in the
+  // anchor: members sit at the default hour 4, this repo at 5 (tasks-dispatch DESIGN §17.4). The
+  // offsets that used to carry it retired with the twice-daily cron.
+  //
+  // The WITHIN-repo half is declarable, and is: the canon is a member too, so its own extract must
+  // settle before promote reads the local packs it just wrote.
+  schedule_after: ['claudinite-growth/growth-extract'],
   precondition_signals: ['fleet'],       // canon-only aggregate: which members changed their local packs
   // This task reads every member's local packs, which an ordinary session in this
   // repo does not reach (tasks-dispatch DESIGN §12). Reach is a property of WHICH

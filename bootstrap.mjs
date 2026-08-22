@@ -104,7 +104,7 @@ const executorStub = existsSync(join(stubs, 'claudinite-executor.yml')) ? readFi
 const config = loadConfig(target);
 const secretNames = await declaredSecrets(target, config);
 const wiring = await convergeWiring(target, fullName, readFileSync(stubPath, 'utf8'), secretNames,
-  { badges: true, seedLocalPack: true, executorStub });
+  { badges: true, seedLocalPack: true, executorStub, dailyHour: config?.taskScheduler?.dailyHour });
 if (wiring.error) fail(wiring.error);
 console.log(wiring.changed.length ? `bootstrap: wiring — ${wiring.changed.join(', ')}` : 'bootstrap: wiring: already converged');
 

@@ -36,10 +36,21 @@
 
 export default {
   id: 'fleet-digest',
-  // The 05:00 anchor, an hour after the fleet sweeps at 04:00. Nothing here depends on
-  // them, but a brief written while the census is still running would report a fleet
-  // in mid-sweep, and the owner reads one story about the fleet each morning, in order.
-  frequency: 'daily+1h',
+  frequency: 'daily',
+  // Nothing here DEPENDS on the fleet sweeps, but a brief written while the census is still
+  // running would report a fleet in mid-sweep, and the owner reads one story about the fleet each
+  // morning, in order. That used to be an hour's anchor offset, which expressed the wish and
+  // enforced nothing — a sweep running long simply overran it. `schedule_after:` is the mechanism
+  // (tasks-dispatch DESIGN §9, §17.1): this yields while any of them is live THIS cycle and goes
+  // the moment the last one settles, however long they took.
+  //
+  // Naming another pack's tasks is safe whether or not this repo declares it: the yield matches a
+  // live ITEM, and a task nobody declares has none, so an absent sheepdog is simply no constraint.
+  schedule_after: [
+    'claudinite-fleet-sheepdog/fleet-roster',
+    'claudinite-fleet-sheepdog/fleet-usage',
+    'claudinite-fleet-sheepdog/fleet-pack-seeds',
+  ],
   // None. Every input lives OUTSIDE this repo — other members' pull requests and
   // issues — and no per-repo collector can see any of them, so there is no signal that
   // would tell us in advance whether yesterday had anything in it. The same reasoning

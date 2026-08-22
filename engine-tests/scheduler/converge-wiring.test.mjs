@@ -68,6 +68,22 @@ test('withDeclaredSecrets: regenerating from the stub tracks the declarations ra
   assert.match(second, /A_KEY: \$\{\{ secrets\.A_KEY \}\}/);
 });
 
+// The repo's own anchor hour picks BOTH cron hours (DESIGN §17). The rehearsal's
+// `custom-anchor-hour` fixture proves such a member converges green; this proves the value that
+// lands is its own — a converge that stamped the default instead would fire every task before its
+// anchor and land it a day late, and nothing would go red.
+test('convergeSchedulerWorkflow: both cron hours come from the repo\'s own dailyHour', () => {
+  const root = mkdtempSync(join(tmpdir(), 'cw-hours-'));
+  convergeSchedulerWorkflow(root, REPO, STUB, [], 9);
+  const written = readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8');
+  assert.match(written, /cron: '\d+ 9,21 \* \* \*'/, "the member's own anchor, and twelve hours after it");
+
+  // Absent means the documented default, not a broken cron — an unset key is the default.
+  const dflt = mkdtempSync(join(tmpdir(), 'cw-hours-'));
+  convergeSchedulerWorkflow(dflt, REPO, STUB);
+  assert.match(readFileSync(join(dflt, SCHEDULER_WORKFLOW), 'utf8'), /cron: '\d+ 4,16 \* \* \*'/);
+});
+
 test('convergeSchedulerWorkflow: the declared secrets land in the written workflow, and re-converge is idempotent', () => {
   const root = mkRepo();
   const stub = `${STUB}${ENV_STUB}`;
@@ -309,14 +325,27 @@ test("the canon's own scheduler run workflow has not drifted from the stub it sh
   const stub = readFileSync(join(ENGINE_ROOT, 'engine/scheduler/stubs/claudinite-scheduler.yml'), 'utf8');
   const mine = readFileSync(join(ENGINE_ROOT, '.github/workflows/claudinite-scheduler.yml'), 'utf8');
   // The three documented differences, and no others: the canon runs its own
-  // engine at the repo root, carries its resolved cron minute, and names its own
-  // secrets where a member's converge would stamp them.
+  // engine at the repo root, carries its own resolved cron, and names its own
+  // secrets where a member's converge would stamp them. The WHOLE cron expression is
+  // repo-resolved now — the minute is hashed from the name and both hours come from the repo's
+  // `taskScheduler.dailyHour` (DESIGN §17) — so structure-compare masks all of it, and the
+  // assertion below pins the canon's own value to what the engine would compute.
   const structure = (text) => text
     .split('\n')
     .filter((l) => !l.trim().startsWith('#') && l.trim() !== '')
-    .map((l) => l.replace('.claudinite/shared/engine/', 'engine/').replace(/cron: '\d+ /, "cron: 'M "))
+    .map((l) => l.replace('.claudinite/shared/engine/', 'engine/').replace(/cron: '[^']*'/, "cron: 'RESOLVED'"))
     .filter((l) => !/_TOKEN:/.test(l));
   assert.deepEqual(structure(mine), structure(stub));
+});
+
+// …and the value the mask hides. Masking the cron is what lets the structure compare survive two
+// repos on different anchors, so without this the canon's own cron could say anything at all.
+test("the canon's own cron is what the engine computes for it", () => {
+  const mine = readFileSync(join(ENGINE_ROOT, '.github/workflows/claudinite-scheduler.yml'), 'utf8');
+  const config = JSON.parse(readFileSync(join(ENGINE_ROOT, '.claudinite-checks.json'), 'utf8'));
+  const expected = hashedCron('missingbulb/Claudinite', config.taskScheduler?.dailyHour);
+  assert.match(mine, new RegExp(`cron: '${expected.replace(/[*]/g, '\\*')}'`),
+    `the canon's workflow should carry cron '${expected}'`);
 });
 
 test("the canon's own executor workflow has not drifted from the stub it ships", () => {
