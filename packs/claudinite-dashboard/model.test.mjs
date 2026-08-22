@@ -246,7 +246,7 @@ test('a park\'s severity follows its triage lane', () => {
 
 const tasks = [
   { pack: 'basics', task: 'ci-performance', path: 'packs/basics/tasks/ci-performance/task.mjs', declaration: { frequency: 'weekly', agent_model: 'sonnet' } },
-  { pack: 'claudinite-lifecycle', task: 'update', path: 'packs/claudinite-lifecycle/tasks/update/task.mjs', declaration: { frequency: 'hourly' } },
+  { pack: 'claudinite-lifecycle', task: 'update', path: 'packs/claudinite-lifecycle/tasks/update/task.mjs', declaration: { frequency: 'daily' } },
 ];
 
 test('every declared task gets a row, including one that has never run', () => {

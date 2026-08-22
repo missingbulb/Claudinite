@@ -8,6 +8,7 @@ own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60822.3 | — | `scheduler-workflow-shape` stops accepting the legacy hourly cron — every member's workflow pull request has landed, so an hourly line is drift again rather than a member the change has not reached (#1225 phase D). |
 | 60822.2 | — | `update`'s `daily-2h` offset retires — it is the head of the morning chain, and the tasks that read the mount it converges declare `schedule_after:` rather than an earlier clock hour (§17.1). Comment updated for the `after` → `schedule_after` rename. |
 | 13 | — | Two task comments name the terminal a run closes with in its current spelling; no behaviour moves. |
 | 60821.1 | — | Adopt-requested-packs runs ON the work-list issue the fleet marked — no code-work gate, no worker, and the item is the list itself (#1119). |

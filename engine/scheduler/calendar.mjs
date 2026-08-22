@@ -31,12 +31,17 @@ export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'manual'];
 // This map is PERMANENT, not a migration window. A task declaration is member-owned data that no
 // vendoring pass rewrites, so a member can carry a retired token indefinitely and must keep
 // working; `task-declaration-shape` is what stops a NEW declaration naming one.
-export const LEGACY_FREQUENCIES = Object.freeze({
-  hourly: 'daily',
-  'daily-2h': 'daily',
-  'daily-1h': 'daily',
-  'daily+1h': 'daily',
-});
+// EMPTIED, not deleted (#1225, phase D). The map is the tolerance, so emptying it retires the
+// tolerance in one place: `ACCEPTED_FREQUENCIES` collapses to `FREQUENCIES`, so a declaration
+// still naming a retired token now fails contract validation, and `normalizeFrequency` becomes
+// the identity every caller can keep calling. The name and the shape stay because the door and
+// its callers are the mechanism, not the migration — a later retirement fills this in again.
+//
+// Emptied only once no member's task declarations named a retired token — the precondition is
+// converge-confirmable, never a date: retiring while a member still declares `hourly` does not
+// merely fail its task, it makes `periodMs` judge that task against a bound it was never sized
+// for.
+export const LEGACY_FREQUENCIES = Object.freeze({});
 
 // What a declaration may CARRY, as against what a new one may be WRITTEN with.
 export const ACCEPTED_FREQUENCIES = [...FREQUENCIES, ...Object.keys(LEGACY_FREQUENCIES)];
