@@ -133,6 +133,10 @@ test's title in `scenarios.test.mjs`.
 | §17 ad-hoc latency IS the wait for the next tick; the second tick roughly halves it | `S68` |
 | §17 a mark landing mid-drain is not caught by that drain — adoption is the scheduler run's job | `S69` |
 | §17 `hourly` degrades to the cron's own cadence, which is why the token retires | `S70` |
+| §17 a dropped tick costs latency, never the occurrence — and 12x more of it at two ticks | `S71` |
+| §17 a `Not-before` releasing between ticks waits for the next one, unescalated | `S72` |
+| §17 the anchor decides dueness, so a weekly task fires once even with no tick on its hour | `S73` |
+| §17 the door-normalization of the retired tokens (`hourly`/`daily±Nh` → `daily`) | **not yet modeled** — the door does not exist until the vocabulary lands; `S70` tests the pre-normalization world it replaces |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next scheduler run — nothing durable carries a schedule | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |
@@ -163,6 +167,7 @@ can still teach us.
 | **Claim-comment interleaving** | true API interleaving between executors | modeled as stale-snapshot races (`raceExecutorsAt` — S7, S32), which covers the protocol's decision points but not GitHub's own consistency between a comment post and a comment list; residual assumption: a comment list read after posting includes all earlier-id comments |
 | **Body-edit lost updates** | two concurrent body edits: last write wins, no merge | single-writer-per-state by construction: only the claim winner edits an item's body, and only the scheduler run (serialized by its concurrency group) rewrites the board; residual: a human editing concurrently loses one edit — accepted, the record comments survive |
 | **Event delivery** | `labeled` webhook events are droppable | modeled only as `eventLost` on creation (S16); every flow is poll-guaranteed by the scheduler run's drain — events are latency sugar everywhere by design |
+| **A whole day settling in one Actions job** | under a twice-daily cron (§17) one drain settles the day's entire chain serially, so the run's wall-clock is the SUM of every item's work — against the executor workflow's `timeout-minutes: 350` and the platform's own 6h job ceiling | the sim settles items serially and models the continuation job (S36), but its `codeWorkMinutes`/`agentMinutes` are scenario fixtures, not any real task's duration — so it cannot say whether a real member's day FITS. A drain the platform kills hands its remainder to the continuation job like any other dead run, which bounds the damage to latency; the residual assumption is that no single member's daily chain exceeds the ceiling, and the first thing to measure once the cadence is live |
 | **Rate limits / quotas** | API quotas, secondary rate limits | costs estimated in DESIGN §5 (hourly-task churn); not modeled; the burst (B-rows) observes real consumption |
 | **Clocks** | runner clocks skew; only server timestamps are trustworthy | no rule compares runner clocks; ordering is by server-assigned ids, durations by server timestamps; anchors tolerate minute-scale skew by construction (scheduler run-quantized) |
 | **The invocation wire** | the routine-fire API's real contract, timeouts, the nonce's payload grammar | the *semantics* (at-most-once, the refused/unanswered split, the leash settling the unknown case) are modeled (S9a/S10a/S10b); the wire format is not — burst rows B3/B7 prove it live |

@@ -12,6 +12,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeSim, T, NH, READY, ORIGIN_AD_HOC, ORIGIN_PLANNED, statusOf } from './sim.mjs';
 
+// `makeSim`'s default, restated once so the cadence scenarios can derive tick
+// instants instead of transcribing the delays a run happened to produce.
+const SCHEDULER_RUN_MINUTE = 17;
+
 // a park is one status label now; these read it the way the machine does
 const isParked = (it) => (statusOf(it) ?? '').startsWith(NH(''));
 
@@ -1786,6 +1790,26 @@ test('S68 ad-hoc latency is the wait for the next tick: 0.2h hourly, 7.2h twice-
   // Adopted exactly once in every cadence — the wait is latency, never loss.
   for (const { s } of [hourly, twice, once]) assert.equal(adopts(s).length, 1);
 
+  // Derived from the tick grid, not transcribed from a run: the wait is exactly
+  // "the first tick at or after the mark", so each expectation is computed from
+  // the cadence and `schedulerRunMinute` rather than pinned to a number that
+  // silently re-encodes both. The headline figures stay in the names as
+  // documentation; these are what actually hold them honest.
+  const firstTickAfter = (markIso, hours) => {
+    const mark = T(markIso);
+    for (let t = Math.floor(mark / 3_600_000) * 3_600_000; ; t += 3_600_000) {
+      const at = t + SCHEDULER_RUN_MINUTE * 60_000;
+      if (at >= mark && hours.includes(new Date(at).getUTCHours())) return at;
+    }
+  };
+  const EVERY_HOUR = [...Array(24).keys()];
+  const expect = (cadence, hours) =>
+    (firstTickAfter('2026-08-12T09:03Z', hours) - T('2026-08-12T09:03Z')) / 3_600_000;
+
+  assert.equal(hourly.delayH, expect('hourly', EVERY_HOUR));
+  assert.equal(twice.delayH, expect('twice', [4, 16]));
+  assert.equal(once.delayH, expect('once', [4]));
+  // …and the derivation agrees with the figures the design quotes.
   assert.ok(Math.abs(hourly.delayH - 0.2) < 0.05, `hourly ${hourly.delayH}h`);
   assert.ok(Math.abs(twice.delayH - 7.2) < 0.05, `twice-daily ${twice.delayH}h`);
   assert.ok(Math.abs(once.delayH - 19.2) < 0.05, `once-daily ${once.delayH}h`);
@@ -1844,4 +1868,98 @@ test('S70 an hourly task under a twice-daily cron asks twice, not 23 times', () 
     assert.equal(asks(hourly, task).length, 1);
     assert.equal(asks(twice, task).length, 1);
   }
+});
+
+// ---- S71 — a DROPPED tick. GitHub drops scheduled runs under load, and the
+// cadence sets what that costs: an hourly grid absorbs it in an hour, two ticks
+// a day absorb it in twelve, and one tick a day loses the occurrence for the
+// whole day. Nothing is stranded either way — dueness is decided from the ANCHOR
+// and never from whether the cron fired, which is the invariant this pins.
+test('S71 a dropped anchor tick is caught by the next one — the cost is latency, never the occurrence', () => {
+  const armed = (opts) => {
+    const s = makeSim({ tasks: cast(), ...opts }).seedSteadyState('2026-08-12T00:00Z');
+    s.at('2026-08-12T00:05Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T00:05Z'); });
+    // the 04:17 tick never fires
+    s.dropSchedulerRuns('2026-08-12T04:00Z', '2026-08-12T05:00Z');
+    return s.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+  };
+
+  const twice = armed({ cronHours: [4, 16] });
+  const once = armed({ cronHours: [4] });
+  const hourly = armed({});
+
+  // Two ticks: the 16:17 tick still instantiates the day's occurrence. The task
+  // is late, not lost — and the anchor it covers is still the 04:00 one.
+  const t = closedOf(twice, 'tidy/tidy-issues');
+  assert.equal(t.length, 1, 'the dropped tick did not cost the occurrence');
+  assert.equal(new Date(t[0].createdAt).toISOString().slice(11, 16), '16:17');
+
+  // One tick: nothing else comes, so the day is genuinely lost. This is the
+  // second tick's real job, and the reason it is not optional.
+  assert.equal(closedOf(once, 'tidy/tidy-issues').length, 0);
+
+  // The hourly grid absorbs the same drop in an hour — the twelvefold latency
+  // amplification the cadence trades for its cost, stated as a number.
+  assert.equal(new Date(closedOf(hourly, 'tidy/tidy-issues')[0].createdAt).toISOString().slice(11, 16), '05:17');
+});
+
+// ---- S72 — a `Not-before` releasing BETWEEN ticks. Deferred work (`/do-later`,
+// verify-in-production) is stamped with an instant, not an anchor, so it can fall
+// anywhere in the gap. It waits for the next tick — and must not be escalated for
+// waiting, since the janitor's stale bounds count in the task's own periods.
+test('S72 a Not-before falling between ticks waits for the next tick, and is not escalated for it', () => {
+  const sim = makeSim({ tasks: cast(), cronHours: [4, 16] }).seedSteadyState('2026-08-12T00:00Z');
+  let deferred;
+  // released at 09:00 — six hours after one tick, seven before the next
+  sim.at('2026-08-12T04:30Z', (s) => {
+    // the task's own precondition must pass, or the item converges `rejected` and
+    // the scenario measures a decline rather than a wait
+    s.world.issueTouchedAt = T('2026-08-12T04:30Z');
+    deferred = s.createItem('tidy/tidy-issues', { notBefore: T('2026-08-12T09:00Z'), qualifier: 'deferred' });
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+
+  // `createItem` returns the stored item, and a qualified item does not share the
+  // standing family's title — so read it back through the object, not `family()`.
+  const item = deferred;
+  assert.equal(item.state, 'closed', 'the deferred item ran');
+  assert.equal(item.outcome, 'done');
+  // Readied by the 16:17 tick, not at 09:00 and not by the drain that was already
+  // running: releasing a Not-before is the scheduler run's job, like adoption.
+  assert.ok(item.closedAt >= T('2026-08-12T16:17Z'), 'it waited for the tick, not the instant');
+  // Seven hours blocked is normal under this cadence and must read as normal —
+  // an escalation here would park every deferred item the queue holds.
+  assert.equal(item.escalated, false);
+  assert.equal(sim.log.filter((e) => e.kind === 'escalate').length, 0);
+});
+
+// ---- S73 — the weekly anchor under a coarse cron, INCLUDING one whose hours do
+// not contain the anchor hour at all. Dueness is decided from the anchor, so a
+// weekly task must fire exactly once a week whatever hours the cron names — never
+// twice for being looked at twice a day, and never never for being looked at late.
+test('S73 a weekly task fires exactly once a week, even when no tick lands on its anchor hour', () => {
+  const week = (opts) => {
+    const s = makeSim({ tasks: cast(), ...opts }).seedSteadyState('2026-08-09T00:00Z');
+    s.at('2026-08-09T00:05Z', ({ world }) => { world.stalePrs = true; });
+    // Sun 2026-08-09 through the following Sunday — two weekly anchors in range
+    return s.run('2026-08-09T00:00Z', '2026-08-16T12:00Z');
+  };
+
+  const onAnchor = week({ cronHours: [4, 16] });   // a tick lands on the 04:00 anchor
+  const offAnchor = week({ cronHours: [6, 18] });  // no tick does
+  const hourly = week({});
+
+  // One occurrence per week in all three — the cadence changes WHEN it is seen,
+  // never how many there are.
+  for (const s of [onAnchor, offAnchor, hourly]) {
+    assert.equal(asks(s, 'tidy/tidy-prs').length, 2, 'two weekly anchors in the window');
+    assert.equal(closedOf(s, 'tidy/tidy-prs').length, 2);
+  }
+
+  // …and each is picked up by the FIRST tick at or after its anchor, which is
+  // what "the anchor decides dueness" means operationally.
+  const createdHours = (s) => closedOf(s, 'tidy/tidy-prs')
+    .map((i) => new Date(i.createdAt).toISOString().slice(11, 16));
+  assert.deepEqual(createdHours(onAnchor), ['04:17', '04:17']);
+  assert.deepEqual(createdHours(offAnchor), ['06:17', '06:17']);
 });

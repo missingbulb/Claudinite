@@ -157,6 +157,18 @@ export function makeSim({
   heartbeatsDisabled = false, // S31b only: demonstrate the livelock heartbeats prevent
   collaborators = { owner: 'admin' }, // login -> repo permission, as the permission API answers (F30)
 } = {}) {
+  // An empty list is never "the default grid" — it is a cron that never fires, and
+  // a scenario that asked for one would assert against a world where nothing runs
+  // and every assertion about latency passes vacuously.
+  if (cronHours !== null) {
+    if (!Array.isArray(cronHours) || cronHours.length === 0) {
+      throw new Error('cronHours must be a non-empty array of UTC hours, or null for the every-hour grid');
+    }
+    if (!cronHours.every((h) => Number.isInteger(h) && h >= 0 && h <= 23)) {
+      throw new Error(`cronHours must be integers in 0..23, got ${JSON.stringify(cronHours)}`);
+    }
+  }
+
   const registry = new Map(tasks.map((t) => [t.id, t]));
   const permissionOf = (login) => collaborators[login] ?? 'none';
   // Ordinary issues somebody marked. Under the one-issue model the marked

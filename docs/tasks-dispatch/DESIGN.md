@@ -2024,8 +2024,12 @@ exists to instantiate, and each task would run a day late, forever.
 
 - **`hourly`** cannot mean anything under a twice-daily tick. Its occurrence is the top of each
   hour, so a cron that comes twice a day instantiates two of the day's twenty-four and the
-  declared frequency silently becomes the cron's cadence (`S70`). A task wanting sub-daily
-  freshness is asking for a cost the cadence is designed not to pay.
+  declared frequency silently becomes the cron's cadence (`S70`). The corpus has exactly one
+  genuine user — `claudinite-growth/usage-fold`, the dashboard's past-data plane — and it becomes
+  `daily`: the aggregate still recomputes its hour rows from source over a three-day window, so
+  what changes is the newest rows' freshness, not the shape of the data. Its `WINDOW_DAYS` is
+  sized to its own period and must move with it; left at `2/24`, the signal window closes before
+  the next anchor and the precondition declines every run.
 - **`daily-2h` / `daily-1h` / `daily+1h`** existed to *stagger* anchors so dependent tasks ran in
   order. `after:` (§9) enforces the same intent, and the offsets never could — a task whose
   predecessor overruns its hour runs anyway. With all four collapsed onto one anchor hour, the
@@ -2036,6 +2040,15 @@ A member's declaration converges on its own schedule, so both retired tokens are
 the door and normalized**: `daily±Nh` reads as `daily`, `hourly` reads as `daily`. Nothing fails
 on a stale declaration, and the normalization is permanent rather than a migration window — a
 declaration is member-owned data and no vendoring pass rewrites it.
+
+**One door, at declaration load.** The normalization belongs where a task's declaration is first
+read, never inside `anchorInstant`. A frequency is read by more than the calendar: `periodMs`
+feeds the janitor's stale-ready bound (`queue/janitor-rules.mjs`, `staleReadyPeriods` × period)
+and the precondition's signal window (`queue/signals.mjs`, period + an hour of slack). Normalizing
+only the anchor would leave `periodMs('hourly')` returning an hour, so a task that now runs daily
+would be judged stale after two HOURS and see a two-hour signal window — a spurious `needs-human`
+park on every member still declaring the old token, which is precisely the population the
+tolerance exists for.
 
 ### 17.2 What the two ticks each carry
 
@@ -2074,10 +2087,24 @@ An ad-hoc mark's latency IS the wait for the next tick, so the cadence sets it d
 | **twice daily** | **2** | **7.2 h** (≤12 h worst) | **~$0.36/mo** |
 | once daily | 1 | 19.2 h | ~$0.18/mo |
 
+Dollar figures are derived from the August usage report's own effective rate ($18.00 across 3,000
+private Linux minutes = $0.006/min) rather than a published list price; the run counts are the
+argument and the ratios hold at any rate. The 7.2 h figure is one 09:03 mark — the distribution
+is a mean of 6 h and a worst case of 12 h.
+
 A full day of scheduled work costs **4 billed runs against the hourly grid's 27** (`S67`), and a
-quiet day costs 2 against 24. Scheduled work is unaffected — every task that ran under the hourly
-grid still runs, still closes, and still in order. The whole trade is ad-hoc latency, and the
-second tick is what keeps it inside a working day.
+quiet day costs 2 against 24. Within a repo, scheduled work is unaffected: every task that ran
+under the hourly grid still runs, still closes, and still in declaration order, because `after:`
+and not the anchor hour is what orders it.
+
+**Across repos it is not, and `after:` cannot reach there.** A yield matches an upstream item in
+*this* repo's queue, so a stagger between two repos' tasks has no declarable form at all. The
+growth lifecycle is built on one: members extract lessons and the canon's `growth-promote` reads
+whatever has already merged on their mains, so the members' anchor must precede the canon's or
+same-night promotion degrades to T+1. That ordering survives the collapse by moving to the one
+knob that still expresses it — **`dailyHour` itself**, set an hour earlier on members than on the
+canon. A cross-repo constraint belongs at the repo's altitude rather than a task's, which is where
+the retired offsets were trying and failing to hold it.
 
 ### 17.5 Rejected alternatives
 
@@ -2106,8 +2133,15 @@ second tick is what keeps it inside a working day.
 The queue's mechanics are untouched. The scheduler run's four jobs, the drain gate, the executor's
 claim and lease model, the janitor's rules, `workflow_dispatch` with `wake` as the never-wait
 lever (§8), and every label transition in §4 behave exactly as before — they simply happen twice a
-day instead of twenty-four times. Nothing about delivery weakens: what a lost label event would
-have delivered is still exactly what the next tick's parting look sees.
+day instead of twenty-four times. No delivery is *lost*: what a lost label event would have
+delivered is still exactly what the next tick's parting look sees.
+
+What does change is how much a **missed tick** costs. GitHub drops scheduled runs under load, and
+an hourly grid absorbs that in an hour where two ticks a day absorb it in twelve — the same
+dropped fire, twelve times the latency (`S71`). Nothing is stranded, because dueness is decided
+from the anchor and not from whether the cron fired, so the next tick instantiates whatever the
+dropped one would have; the exposure is delay, and it is the reason the second tick is not
+optional.
 
 ## Appendix A — the owner's sketch (2026-08-12, verbatim)
 
