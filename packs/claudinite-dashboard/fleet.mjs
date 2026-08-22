@@ -34,6 +34,7 @@ import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mj
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../engine/version.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths } from './model.mjs';
 import { commitDays } from './activity.mjs';
+import { itemCandidate, pickCandidate } from './next-work.mjs';
 
 // Severity ladder, worst first. The order IS the sort, so it is stated once here
 // rather than implied by comparisons scattered through the render.
@@ -270,6 +271,10 @@ export function summariseMember(read, { now, canon = null } = {}) {
     // summary judges nothing about it. A contribution never feeds a reason, a level
     // or the ranking — attention is earned by what the engine can defend, and a pack
     // cannot rank across a fleet it does not know.
+    // The one item of this member's worth prodding a reader about, ranked by the same
+    // rules the repo page's work table ranks by. Computed here because this is the only
+    // place the described items exist, and nothing above re-reads them.
+    top: pickCandidate(described.map((d) => itemCandidate(repo, d))),
     contributions: read.contributions ?? null,
     live: read.live ?? null,
     lastCommit: head?.committedAt ? ms(head.committedAt) : null,

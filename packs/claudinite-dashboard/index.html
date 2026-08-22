@@ -247,6 +247,35 @@
   .chart-card.digest ul.digest-items li { margin-bottom: 6px; }
   .movement .k { font-size: 12px; color: var(--ink-2); margin: 2px 0 6px; }
 
+  /* --- the lead: the two blocks a reader who came with no question is served by ---
+     Everything below them reports; these two ask for something. They sit side by side
+     because they are one thought — what to do, and what happened — and stack on a
+     narrow screen rather than shrinking, since both are prose. */
+  .lead { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+  @media (max-width: 900px) { .lead { grid-template-columns: 1fr; } }
+  /* One block has nothing to sit beside, so it takes the row rather than half of it. */
+  .lead.one { grid-template-columns: 1fr; }
+  .lead > section { margin: 0; }
+  /* The accent is the severity, on the edge rather than in the text: the card is read
+     before it is read, and an uncoloured one means nothing is red. */
+  .lead-card { border-left-width: 3px; border-left-style: solid; border-left-color: var(--border); }
+  .lead-card.lvl-critical { border-left-color: var(--critical); }
+  .lead-card.lvl-serious  { border-left-color: var(--serious); }
+  .lead-card.lvl-warning  { border-left-color: var(--warning); }
+  .lead-card.lvl-ok       { border-left-color: var(--good); }
+  .lead-why { font-size: 17px; line-height: 1.3; }
+  .lead-where { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .lead-more { margin: 0; }
+  .lead-act { align-self: flex-start; text-decoration: none; padding: 5px 12px;
+              border-radius: 999px; border: 1px solid var(--border); color: var(--ink); }
+  .lead-act:hover { border-color: var(--muted); }
+  /* The digest's day picker. Its buttons are the card's only controls, so they sit on
+     the heading row rather than under the prose they page through. */
+  .day-nav { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+  .day-nav button { padding: 2px 9px; font-size: 12px; line-height: 1.6; }
+  .lead-head { display: flex; align-items: center; gap: 8px; }
+  .lead-head h2 { margin: 0; }
+
   /* The work table's view switcher. A segmented control rather than a dropdown: there
      are three, they are always all available, and each carries its own count so the
      reader knows what a click is offering before making it. */
@@ -463,6 +492,36 @@
   <div id="errors"></div>
 
   <div id="fleet-view" hidden>
+    <div class="lead">
+      <section>
+        <div class="lead-head">
+          <h2>Start here <button class="info" type="button" data-info="lead" aria-expanded="false" title="How this one is chosen">&#9432;</button></h2>
+        </div>
+        <p class="info-body" id="info-lead" hidden>
+          The <strong>one</strong> piece of work most worth doing, across every member — the worst
+          thing that is true of the fleet right now, named with the issue to open. It invents no
+          judgement of its own: it is the top row of the same ranking the members table below is
+          ordered by, so this block and that table can never disagree. An issue outranks a repo-level
+          fault at the same severity, because only the issue is something to open.
+        </p>
+        <div id="fleet-lead"></div>
+      </section>
+      <section id="lead-digest-section" hidden>
+        <div class="lead-head">
+          <h2>The morning brief <button class="info" type="button" data-info="digests" aria-expanded="false" title="What this is">&#9432;</button></h2>
+          <div class="day-nav" id="digest-nav"></div>
+        </div>
+        <p class="info-body" id="info-digests" hidden>
+          The fleet's own morning brief — what the fleet accomplished that day, and the project worth
+          returning to — written by the digest task into the enforcer repo, one file per day. It opens
+          on <strong>yesterday</strong>, because a day's brief is written after that day. A day with no
+          brief is a <strong>normal state</strong>: the task had nothing to report, or has not run yet.
+          Paging back reads one more file, cached by commit like the rest of the page.
+        </p>
+        <div id="fleet-digest"></div>
+      </section>
+    </div>
+
     <h2>What Claudinite did for this fleet this week <button class="info" type="button" data-info="benefits" aria-expanded="false" title="What these figures are">&#9432;</button></h2>
     <p class="info-body" id="info-benefits" hidden>
       The work the machinery did that nobody had to do — <strong>in a window</strong>, this week
@@ -481,17 +540,6 @@
     </p>
     <p id="fleet-progress"></p>
     <div class="tiles" id="fleet-tiles"></div>
-
-    <section id="fleet-digests-section" hidden>
-      <h2>The last two mornings <button class="info" type="button" data-info="digests" aria-expanded="false" title="What these are">&#9432;</button></h2>
-      <p class="info-body" id="info-digests" hidden>
-        The fleet's own morning brief — what the fleet accomplished that day, and the project worth
-        returning to — written by the digest task into the enforcer repo, one file per day. A day
-        with no brief is a <strong>normal state</strong>: the task had nothing to report, or has not
-        run yet. Both files are content at a path, so a warm load costs nothing to show them.
-      </p>
-      <div class="charts" id="fleet-digests"></div>
-    </section>
 
     <section id="fleet-contrib" hidden>
       <h2>What this deployment's packs report</h2>
@@ -579,6 +627,20 @@
   </div>
 
   <div id="repo-view" hidden>
+  <div class="lead one">
+    <section>
+      <div class="lead-head">
+        <h2>Start here <button class="info" type="button" data-info="repo-lead" aria-expanded="false" title="How this one is chosen">&#9432;</button></h2>
+      </div>
+      <p class="info-body" id="info-repo-lead" hidden>
+        The <strong>one</strong> piece of work most worth doing in this repo — the top row of the
+        same ranking the work table below is ordered by, named with the issue to open, so the block
+        and the table are one verdict rather than two.
+      </p>
+      <div id="repo-lead"></div>
+    </section>
+  </div>
+
   <h2>This repo at a glance <button class="info" type="button" data-info="repo-tiles" aria-expanded="false" title="Why these numbers">&#9432;</button></h2>
   <p class="info-body" id="info-repo-tiles" hidden>
     The first two tiles are the ones that mean work has <strong>stopped</strong> and is waiting on a

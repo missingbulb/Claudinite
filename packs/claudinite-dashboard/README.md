@@ -124,6 +124,7 @@ wanted it say so, and nothing else on the page is affected.
 
 | Panel | Answers |
 |---|---|
+| **Start here** | The one piece of work most worth doing in this repo, named with the issue to open — the top row of the same ranking the work table is ordered by |
 | **At a glance** | Minutes waiting on a person and what they are made of, items parked, open pull requests and issues, CI on the default branch, runs in flight, stars, and drift against the canon |
 | **Work** | One row per piece of work, in three views — **stuck** (what has stopped, and for how long), **pending** (what is moving, and what happens next), **all** (what each task is and what it has done). The page opens on the worst view that has anything in it |
 | **What the queue closed** | Per-day outcomes over a fortnight — today from the live issue page, the days before it from the fold |
@@ -175,8 +176,9 @@ second. So nothing on it is a total for its own sake.
 
 | Panel | Answers |
 |---|---|
+| **Start here** | The one piece of work most worth doing across every member, named with the issue to open — the worst thing true of the fleet, and a link rather than a count |
+| **The morning brief** | Yesterday's fleet digest, when the deployment names a `digestsRepo`, with a picker back through earlier days |
 | **What Claudinite did this week** | The work the machinery did that nobody had to do — this week against last, including the check findings caught inside sessions and what the corpus costs each of them |
-| **The last two mornings** | Yesterday's and the day before's fleet digest, when the deployment names a `digestsRepo` |
 | **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, **how often the checks ran and caught something**, and which members moved at all |
 | **Rollup tiles** | How many *members* need a human — not how many items exist |
 | **Members** | Every member ranked worst-first, in three column groups asked in the order a reader asks them: **Activity** (90 days of commits, as a weekly curve), **Waiting on a person** (an estimate in minutes, what it is made of, then issues and pull requests) and **Claudinite** (packs wearing the mount's verdict, queue, outcomes, scheduler). Stars and CI ride in the member cell — they are how you recognise a row, not findings about it |
@@ -186,6 +188,23 @@ second. So nothing on it is a total for its own sake.
 
 Each member's row is followed by a **subrow** of what its own packs report — see
 [below](#what-a-pack-contributes).
+
+### The lead: what to do, before what happened
+
+Both pages open on the same block, because both were otherwise pages that only
+**report** — and a reader who came without a question in hand is asked by a wall of
+accurate panels to do the ranking themselves. [`next-work.mjs`](next-work.mjs) does the
+ranking and names **one** piece of work: worst first, an issue ahead of a repo-level
+fault at the same severity because only the issue is something to open, and among equals
+the one that has been wrong longest.
+
+It invents no judgement of its own. A candidate is the worst thing another module has
+already decided is wrong — an item's `troubles` (the queue's real recovery rules) or a
+member summary's `reasons` — so the block can never disagree with the row further down
+that says the same thing, and an `info`-level fact (a mount one pack behind) is reported
+below and never prodded about. Mid-sweep the fleet's block says it is still reading:
+"nothing is waiting on you" read off four of forty members is a wrong statement rather
+than a partial one.
 
 ### The roster is enumerated, not stored
 
@@ -369,6 +388,16 @@ used — a dropped `exclude` list would otherwise widen the brief silently.
 **Quiet is measured on meaningful merges, never on pushes.** Every member's mount is
 converged nightly, so `pushed_at` is fresh on every repo in the fleet every day and
 would report the whole fleet as permanently active.
+
+### Reading them
+
+The brief leads the fleet page, opening on **yesterday** — the newest day that can have
+one, since a day's brief is written after that day — with a picker back through the
+[`MAX_DAYS_BACK`](digest.mjs) days before it. A day is one content-at-a-path read, cached
+by commit like everything else here and never re-asked once shown; the bound exists
+because a day before the series began is indistinguishable from a day the task had
+nothing to say about, and paging into pre-history one empty card at a time is not
+browsing.
 
 To catch the series up after an outage, create the item by hand with a day count:
 

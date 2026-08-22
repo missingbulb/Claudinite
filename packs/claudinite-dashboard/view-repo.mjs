@@ -23,11 +23,12 @@ import {
 } from './fleet.mjs';
 import { readCanon, priceStampedPacks } from './canon.mjs';
 import { workRows, rowsFor, viewCounts, defaultView, attentionOf, VIEWS } from './work.mjs';
+import { repoCandidates } from './next-work.mjs';
 import { readUsage, growthSeries, queueSeries, hourSeries } from './usage.mjs';
 import { readContributions, liveSourcesNeeded } from './contributions.mjs';
 import { packCard } from './contrib-view.mjs';
 import {
-  $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, tiles, segmentBar,
+  $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, leadCard, tiles, segmentBar,
   warnNodes, stackedColumns, chartLegend, dualAxisChart, flipRows,
   LEVEL_GLYPH, OUTCOME_COLOR,
 } from './ui.mjs';
@@ -479,6 +480,11 @@ export async function loadRepo({ repo, token, config = null, onError }) {
 
   const all = workRows(rows, open);
   const counts = viewCounts(all);
+
+  // The lead, from the same rows the work table is drawn from — one derivation, so the
+  // block at the top and the first row of the `stuck` view are one verdict.
+  const candidates = repoCandidates(repo, all);
+  $('repo-lead').replaceChildren(leadCard(candidates[0] ?? null, { rest: candidates.length - 1 }));
 
   renderTiles({
     open,

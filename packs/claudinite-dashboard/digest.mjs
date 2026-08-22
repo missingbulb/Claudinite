@@ -23,9 +23,21 @@ const DAY_MS = 86400e3;
 // them — the brief for a day is written after that day, so today's file does not exist
 // yet and asking for it would spend a request to learn nothing.
 export function digestDates(now, count = 2) {
-  const midnight = Math.floor(now / DAY_MS) * DAY_MS;
-  return Array.from({ length: count }, (_, i) => new Date(midnight - (i + 1) * DAY_MS).toISOString().slice(0, 10));
+  return Array.from({ length: count }, (_, i) => digestDate(now, i + 1));
 }
+
+// One day, counted back from today — `1` is yesterday, which is the newest brief that
+// can exist. The day picker pages through this and nothing else knows how a date is
+// formed.
+export function digestDate(now, back = 1) {
+  const midnight = Math.floor(now / DAY_MS) * DAY_MS;
+  return new Date(midnight - Math.max(1, back) * DAY_MS).toISOString().slice(0, 10);
+}
+
+// How far back the picker will go. The series starts whenever the digest task did, and
+// a day with no file is indistinguishable from a day before the beginning — so the walk
+// is bounded rather than paging into pre-history one empty card at a time.
+export const MAX_DAYS_BACK = 30;
 
 export const digestPath = (dir, date) => `${String(dir ?? 'digests').replace(/^\/|\/$/g, '')}/${date}.md`;
 

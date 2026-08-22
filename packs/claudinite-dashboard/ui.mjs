@@ -243,6 +243,66 @@ export const issueLink = (repo, n) =>
 export const repoLink = (repo) =>
   el('a', { href: `https://github.com/${repo}`, target: '_blank', rel: 'noopener', textContent: repo });
 
+// --- the lead block --------------------------------------------------------------
+
+// The one thing to do, as a card. Both pages render it from the same function so the
+// fleet's prod and a repo's prod are the same object said the same way.
+//
+// It NAMES the work rather than counting it: a count is something to read, and a
+// title with a link is something to open. The severity is the card's left edge rather
+// than its words, so an uncoloured card is legible as "nothing is red" at a glance.
+//
+// `candidate` is `next-work.mjs`'s pick, or null. `rest` is how many candidates sit
+// behind it, which is the only number here — one piece of work is a prod, and the
+// queue behind it is context.
+export function leadCard(candidate, { rest = 0, onRepo = null } = {}) {
+  if (!candidate) {
+    return el('div', { className: 'chart-card lead-card lvl-ok' }, [
+      el('div', { className: 'lead-why', textContent: 'Nothing is waiting on you.' }),
+      el('div', { className: 'sub', textContent: 'Nothing read here is parked, failing or behind — the panels below are the picture, not a list to work through.' }),
+    ]);
+  }
+
+  const where = [];
+  if (onRepo) {
+    where.push(el('a', {
+      href: `?repo=${encodeURIComponent(candidate.repo)}`,
+      className: 'name',
+      textContent: candidate.repo,
+      onclick: (e) => { e.preventDefault(); onRepo(candidate.repo); },
+    }));
+  } else {
+    where.push(el('span', { className: 'name', textContent: candidate.repo }));
+  }
+  if (candidate.number != null) {
+    where.push(issueLink(candidate.repo, candidate.number));
+    if (candidate.key) where.push(el('span', { className: 'sub', textContent: candidate.key }));
+  }
+
+  const kids = [
+    el('div', { className: 'lead-why', textContent: candidate.why }),
+    el('div', { className: 'lead-where' }, where),
+  ];
+  if (candidate.title) kids.push(el('div', { className: 'sub', textContent: candidate.title }));
+
+  // How long it has been wrong, when the item knows — an idle time is the queue's own
+  // measure and is absent on a repo-level fault, which is a state rather than an event.
+  const detail = [
+    candidate.idleMs != null ? `untouched for ${duration(candidate.idleMs)}` : null,
+    ...candidate.more,
+  ].filter(Boolean);
+  if (detail.length) kids.push(el('div', { className: 'sub', textContent: detail.join(' · ') }));
+
+  kids.push(el('a', {
+    className: 'lead-act', href: candidate.url, target: '_blank', rel: 'noopener',
+    textContent: candidate.number != null ? `Open #${candidate.number}` : 'Open the repo',
+  }));
+  if (rest > 0) {
+    kids.push(el('div', { className: 'sub', textContent: `${rest} more after this one.` }));
+  }
+  return el('div', { className: `chart-card lead-card lvl-${candidate.level}` }, kids);
+}
+
 // --- counting up ----------------------------------------------------------------
 
 // A fleet load repaints on EVERY member's read landing, so a headline number is

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  digestDates, digestPath, parseDigest, linkRuns, digestEntry,
+  digestDates, digestDate, digestPath, parseDigest, linkRuns, digestEntry, MAX_DAYS_BACK,
 } from '../../packs/claudinite-dashboard/digest.mjs';
 
 const NOW = Date.parse('2026-08-18T09:00:00Z');
@@ -25,6 +25,15 @@ Three weeks quiet. Worth a look.
 
 test('the two days shown are yesterday and the day before, never today', () => {
   assert.deepEqual(digestDates(NOW), ['2026-08-17', '2026-08-16']);
+});
+
+test('a day is counted back from today, and never forward past yesterday', () => {
+  assert.equal(digestDate(NOW), '2026-08-17');
+  assert.equal(digestDate(NOW, 1), '2026-08-17');
+  assert.equal(digestDate(NOW, 3), '2026-08-15');
+  // Today has no brief yet, so asking for it is asking for yesterday.
+  assert.equal(digestDate(NOW, 0), '2026-08-17');
+  assert.equal(digestDate(NOW, MAX_DAYS_BACK), '2026-07-19');
 });
 
 test('the path is the configured directory, with a sane default', () => {

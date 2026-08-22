@@ -262,6 +262,9 @@ export function describeItem(item, now, opts = {}) {
   const state = stateOf(item);
   return {
     number: item.number,
+    // The issue's own title, kept as GitHub has it: a surface that NAMES one item —
+    // rather than counting them — has nothing else to call it by.
+    title: item.title,
     key: parsed.pack && parsed.task ? `${parsed.pack}/${parsed.task}` : null,
     ...parsed,
     state,
