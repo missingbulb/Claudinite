@@ -29,6 +29,8 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Needing exact text from the web | high | correctness | prose: 56 words |
 | Hitting a denied fetch | critical | legal | prose: 152 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
+| Waiting across two separate Bash calls | high | correctness | prose: 74 words |
+| Polling a condition on a shell tool | medium | correctness | prose: 62 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
 | Waiving a finding on text | low | complexity | prose: 26 words |
@@ -50,6 +52,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Writing code that can silently do nothing | high | correctness | prose: 76 words |
 | Persisting anything on a user's machine | medium | correctness | prose: 43 words |
 | Changing what you do with user data | critical | legal | prose: 90 words |
+| Changing behavior a doc makes claims about | high | correctness | prose: 78 words |
 | Driving an external runtime repeatedly | low | complexity | prose: 51 words |
 | Automating something that needs live conversation context | medium | complexity | prose: 46 words |
 | Writing a pipeline step's exit path | medium | correctness | prose: 26 words |

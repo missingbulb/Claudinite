@@ -11,3 +11,4 @@ own row.
 | 13 | — | Two task comments name the terminal a run closes with in its current spelling; no behaviour moves. |
 | 60821.1 | — | Adopt-requested-packs runs ON the work-list issue the fleet marked — no code-work gate, no worker, and the item is the list itself (#1119). |
 | 60821.3 | 2026-08-21 | This pack's inline version-history comments moved out of `pack.mjs` into this file. |
+| 60822.1 | 2026-08-22 | Growth-promote #1202: a vendoring-omission-vs-canon-gap rule, diagnosing a stuck `[claudinite-task]` `needs-human` issue by what actually landed rather than comment volume, grepping the engine for a live naming convention before inventing one, and running `check_the_world.mjs` locally before pushing. |

@@ -3,7 +3,7 @@
 // as they are earned. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
   id: 'ios',
-  version: '60820.1',
+  version: '60822.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'app-target conventions for iOS — Xcode project, Info.plist usage strings, entitlements, code signing',

@@ -13,7 +13,7 @@
 // re-declare (#1079).
 export default {
   id: 'git-github',
-  version: '60821.1',
+  version: '60822.1',
   minEngineVersion: 1,
   ruleRoutingGuidance: {
     belongs: 'git and GitHub procedure and platform: commit layering, branch and merge mechanics, workflow YAML, triggers, secrets, scheduling',
