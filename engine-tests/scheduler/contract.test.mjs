@@ -22,7 +22,7 @@ test('resolveModel maps every family and rejects unknowns; none is agentless', (
 // --- task-contract ---
 const validTask = {
   id: 'growth-extract',
-  frequency: 'daily-1h',
+  frequency: 'daily',
   precondition_signals: ['commits', 'prs', 'issues'],
   agent_model: 'opus',
   expected_outcome: 'merged-pr',
@@ -326,24 +326,24 @@ test('every task this repo carries declares a code_work bound under the leash', 
 // a retired spelling indefinitely. It is normalized where the declaration LOADS — once, here —
 // rather than at each place a frequency is read, because more than the calendar reads one.
 
-test('the retired frequency spellings are accepted, and normalized at the door', () => {
-  for (const legacy of Object.keys(LEGACY_FREQUENCIES)) {
-    assert.equal(normalizeTaskDeclaration({ frequency: legacy }).frequency, 'daily',
-      `${legacy} reads as daily`);
-    assert.ok(ACCEPTED_FREQUENCIES.includes(legacy), `${legacy} still validates`);
-    assert.ok(!FREQUENCIES.includes(legacy), `${legacy} is not writable in a NEW declaration`);
-  }
-  // A canonical token passes through untouched, and the door is total.
+test('the tolerance is retired: nothing is normalized, and ACCEPTED is FREQUENCIES', () => {
+  assert.deepEqual(Object.keys(LEGACY_FREQUENCIES), [], 'the map is empty — the tolerance is gone');
+  assert.deepEqual([...ACCEPTED_FREQUENCIES].sort(), [...FREQUENCIES].sort());
+  // The door survives its migration and is now the identity — every caller keeps calling it.
   for (const f of FREQUENCIES) assert.equal(normalizeTaskDeclaration({ frequency: f }).frequency, f);
   assert.equal(normalizeTaskDeclaration({}).frequency, undefined);
-  assert.equal(normalizeFrequency('nonsense'), 'nonsense', 'an unknown token is left for the validator');
+  for (const retired of ['hourly', 'daily-2h', 'daily-1h', 'daily+1h']) {
+    assert.equal(normalizeFrequency(retired), retired, `${retired} is no longer rewritten`);
+  }
 });
 
-test('a declaration carrying a retired spelling still validates', () => {
+test('a declaration carrying a retired spelling no longer validates', () => {
   const decl = {
     id: 'legacy', frequency: 'hourly', agent_model: 'sonnet', agent_instructions: 'task.md',
     expected_outcome: 'none', precondition_signals: [], agent_execution_timeout: 600,
     precondition: () => ({ run: false }),
   };
-  assert.deepEqual(validateTaskDeclaration(decl), [], 'a member on the old vocabulary keeps running');
+  const problems = validateTaskDeclaration(decl);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0].what, /"frequency" "hourly" is not a legal frequency/);
 });

@@ -12,7 +12,7 @@ const WF = '.github/workflows/claudinite-scheduler.yml';
 const goodWorkflow = `name: Claudinite scheduler
 on:
   schedule:
-    - cron: '25 * * * *'
+    - cron: '25 4,16 * * *'
   workflow_dispatch:
 concurrency:
   group: claudinite-scheduler
@@ -42,7 +42,7 @@ test('scheduler-workflow-shape: is inert when the scheduler workflow is absent',
 });
 
 test('scheduler-workflow-shape: flags an off-band cron minute', () => {
-  const f = run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'5 4,16 * * *'") });
+  const f = run({ [WF]: goodWorkflow.replace("'25 4,16 * * *'", "'5 4,16 * * *'") });
   assert.equal(f.length, 1);
   assert.match(f[0].what, /cron: '5 4,16 \* \* \*' is not two daily ticks/);
 });
@@ -50,33 +50,35 @@ test('scheduler-workflow-shape: flags an off-band cron minute', () => {
 // The two-tick form (DESIGN §17) is what the converge writes now; a single daily hour is neither
 // that nor the legacy hourly line, so it is still a drifted cron.
 test('scheduler-workflow-shape: accepts two daily ticks, and flags a single daily hour', () => {
-  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'25 4,16 * * *'") }), []);
-  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'25 0,12 * * *'") }), []);
-  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'25 23,11 * * *'") }), []);
+  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 4,16 * * *'", "'25 4,16 * * *'") }), []);
+  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 4,16 * * *'", "'25 0,12 * * *'") }), []);
+  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 4,16 * * *'", "'25 23,11 * * *'") }), []);
 
-  const f = run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'25 4 * * *'") });
+  const f = run({ [WF]: goodWorkflow.replace("'25 4,16 * * *'", "'25 4 * * *'") });
   assert.equal(f.length, 1);
   assert.match(f[0].what, /cron: '25 4 \* \* \*' is not two daily ticks/);
 });
 
-// `.github/workflows/` is the one path a converge cannot push, so a member holds its hourly cron
-// until the apply-stage pull request lands. Going red in that window would make the check fire on
-// every member the change has not reached yet — the opposite of what it is for.
-test('scheduler-workflow-shape: the legacy hourly cron still passes during the migration', () => {
-  assert.deepEqual(run({ [WF]: goodWorkflow }), [], "the fleet's current shape stays green");
-  assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 * * * *'", "'50 * * * *'") }), []);
+// The migration tolerance is retired (#1225, phase D): every member's workflow pull request has
+// landed, so an hourly cron here is drift again rather than a member the change has not reached.
+test('scheduler-workflow-shape: the legacy hourly cron is drift again', () => {
+  const f = run({ [WF]: goodWorkflow.replace("'25 4,16 * * *'", "'50 * * * *'") });
+  assert.equal(f.length, 1);
+  assert.match(f[0].what, /cron: '50 \* \* \* \*' is not two daily ticks/);
 });
 
 test('scheduler-workflow-shape: flags a second cron schedule', () => {
-  const two = goodWorkflow.replace("    - cron: '25 * * * *'\n",
-    "    - cron: '25 * * * *'\n    - cron: '40 * * * *'\n");
+  // Both lines are individually well-formed, so only the count rule may fire — the two daily
+  // ticks are two hours in ONE expression, never a second schedule entry.
+  const two = goodWorkflow.replace("    - cron: '25 4,16 * * *'\n",
+    "    - cron: '25 4,16 * * *'\n    - cron: '40 5,17 * * *'\n");
   const f = run({ [WF]: two });
   assert.equal(f.length, 1);
   assert.match(f[0].what, /declares 2 cron schedules, expected exactly one/);
 });
 
 test('scheduler-workflow-shape: flags a workflow with no cron at all', () => {
-  const none = goodWorkflow.replace("  schedule:\n    - cron: '25 * * * *'\n", '');
+  const none = goodWorkflow.replace("  schedule:\n    - cron: '25 4,16 * * *'\n", '');
   const whats = run({ [WF]: none }).map((x) => x.what).join(' | ');
   assert.match(whats, /declares 0 cron schedules, expected exactly one/);
 });
@@ -94,7 +96,7 @@ test('scheduler-workflow-shape: flags missing concurrency, dispatch, and engine 
   const stripped = `name: Claudinite scheduler
 on:
   schedule:
-    - cron: '25 * * * *'
+    - cron: '25 4,16 * * *'
 jobs:
   schedule:
     steps:
