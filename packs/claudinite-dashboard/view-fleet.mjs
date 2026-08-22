@@ -4,7 +4,7 @@
 import * as gh from './github.mjs';
 import {
   summariseMember, rankMembers, rollUp, packSpread, taskSpread, attentionBreakdown,
-  memberAttention, fleetAttention, estimateMinutes, MINUTES_PER_PARK,
+  memberAttention, fleetAttention, estimateMinutes, estimateNote,
 } from './fleet.mjs';
 import { readCanon, priceStampedPacks } from './canon.mjs';
 import { activitySeries, fleetBenefits, delta, commitDays } from './activity.mjs';
@@ -628,7 +628,8 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
   // The headline tile counts MEMBERS, which is the length of the morning's list — but
   // the list is only actionable once it says what kind of attention each is waiting
   // for. Three merges to approve and three broken lanes are not the same morning.
-  const needs = attentionBreakdown(fleetAttention(roll));
+  const attention = fleetAttention(roll);
+  const needs = attentionBreakdown(attention);
 
   tiles($('fleet-tiles'), [
     [roll.needAttention, 'members need you', roll.needAttention ? 'var(--critical)' : null,
@@ -642,8 +643,7 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
       roll.neverRan ? `${roll.neverRan} never ran` : ''],
     [roll.behindMembers, 'mounts behind', roll.behindMembers ? 'var(--serious)' : null,
       canon ? (canon.engineVersion != null ? `canon engine v${canon.engineVersion}` : 'canon versions unreadable') : 'no canon configured'],
-    [estimateMinutes(fleetAttention(roll)), 'minutes of your time', null,
-      `at ${MINUTES_PER_PARK} min a parked item`],
+    [estimateMinutes(attention), 'minutes of your time', null, estimateNote(attention)],
     [roll.openItems, 'open work items', null, `${roll.inFlight} run(s) in flight`],
     [`${roll.adopted}/${roll.members}`, 'members adopted', null,
       [roll.notAdopted ? `${roll.notAdopted} not adopted` : '', roll.unreadable ? `${roll.unreadable} unreadable` : ''].filter(Boolean).join(', ')],

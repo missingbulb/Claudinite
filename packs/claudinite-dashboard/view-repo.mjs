@@ -19,7 +19,7 @@ import {
   NEEDS_HUMAN,
 } from './model.mjs';
 import {
-  ciStatus, humanWork, mountState, estimateMinutes, attentionBreakdown, MINUTES_PER_PARK,
+  ciStatus, humanWork, mountState, estimateMinutes, estimateNote, attentionBreakdown,
 } from './fleet.mjs';
 import { readCanon, priceStampedPacks } from './canon.mjs';
 import { workRows, rowsFor, viewCounts, defaultView, attentionOf, VIEWS } from './work.mjs';
@@ -83,7 +83,7 @@ function renderTiles({ open, runs, meta, work, mount, ci, now }) {
     // The one figure here that is a quantity of YOUR time rather than a count of the
     // machine's things, and the assumption behind it is published beside it.
     [minutes || '—', 'minutes waiting on you', minutes ? 'var(--critical)' : null,
-      minutes ? `at ${MINUTES_PER_PARK} min a parked item` : 'nothing parked'],
+      estimateNote(attention)],
     [parked.length, 'items parked for a person', parked.length ? 'var(--critical)' : null, needsNodes],
     [work.prs, 'pull requests open', null,
       work.prsOldest ? `oldest ${duration(now - work.prsOldest)}${work.drafts ? ` · ${work.drafts} draft` : ''}` : 'none'],

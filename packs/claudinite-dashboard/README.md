@@ -214,12 +214,17 @@ shows everyone the whole fleet.
 Three rules shape it, and they are in [`fleet.mjs`](fleet.mjs):
 
 **An estimate is published as an assumption, or not at all.** The Waiting group puts
-a number of minutes on each member, at a flat rate per parked item, and the rate is a
-single exported constant that the page states in its own note. Nothing here measures
-how long a park actually takes; a per-kind estimate would be the same guess wearing
-more decimal places, and the honest form of a number nothing measures is one you can
-argue with. A broken scheduler is deliberately outside it — that is not a queue of
-work to get through — though it is still reported beside it.
+a number of minutes on each member, priced per park kind — the four parks are disjoint
+by remedy, and diagnosing a break is not merging a PR. The rates are exported constants
+and the page states the arithmetic in its own note, so the figure can be argued with
+rather than trusted. An approval is priced by the PR's size, which the page does not
+read: it charges the rate's floor and says so, which makes the total a lower bound
+rather than a guess that might be high.
+
+Two things are deliberately outside it, and both are still reported beside it: a broken
+scheduler, which is not a queue of work to get through, and a recovery-rule trip, which
+wears no label at all — it is derived from an item's age against the engine's leashes,
+and what clears it is the janitor or the next scheduler run rather than a person.
 
 **A count of members is not a description of the morning.** Every attention figure
 counts *members*, because "47 open items" is not a list anyone works through. But a
