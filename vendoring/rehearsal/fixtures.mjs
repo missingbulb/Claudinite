@@ -91,6 +91,15 @@
 //                 shape says is that such a member still converges — the hourly
 //                 scheduler dispatch is the guaranteed delivery, and the lost event
 //                 is latency, never work.
+//   thin-workflows a member already holding the workflow shape this fleet is moving
+//                 TO: no inline program at all, every job a single-line
+//                 `run: node <module>` naming a file in the mount. It is
+//                 `old-workflows` from the other end — that shape asks whether a
+//                 member left behind still converges, this one asks whether a member
+//                 that arrived does. The hazard it covers is specific to the shape:
+//                 a workflow that names its logic by literal path is broken by a
+//                 vendor set that does not ship that path, and the break is a queue
+//                 that quietly stops draining rather than anything that goes red.
 //   ungated-drain a member holding the workflow shape the fleet is ON today, which
 //                 is a different question from `old-workflows`' museum piece: its
 //                 scheduler DISPATCHES the executor (post-§15.16) but does so
@@ -387,6 +396,137 @@ jobs:
           GITHUB_TOKEN: \${{ github.token }}
           # claudinite:secrets
         run: node .claudinite/shared/engine/scheduler/queue/executor.mjs
+`;
+
+// The thin shape: no inline program anywhere, every job a single-line
+// `run: node <module>`. Held as a literal rather than read off the stub on
+// purpose — this is a MEMBER's copy, which converges on its own schedule, so it
+// has to be able to differ from whatever the canon ships today.
+const THIN_SCHEDULER_WORKFLOW = `name: Claudinite scheduler
+
+on:
+  schedule:
+    - cron: '10 4,16 * * *'
+  workflow_dispatch:
+    inputs:
+      wake:
+        description: 'Task ids to run now'
+        required: false
+        type: string
+
+concurrency:
+  group: claudinite-scheduler-run
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  scheduler-run:
+    runs-on: ubuntu-latest
+    outputs:
+      pickable: \${{ steps.run.outputs.pickable }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - id: run
+        env:
+          GITHUB_TOKEN: \${{ github.token }}
+          CLAUDINITE_WAKE: \${{ inputs.wake }}
+          CLAUDINITE_TASKS_SUSPEND_ALL: \${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
+        run: node .claudinite/shared/engine/scheduler/queue/scheduler-run.mjs
+
+  drain:
+    needs: scheduler-run
+    if: needs.scheduler-run.outputs.pickable == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - env:
+          GITHUB_TOKEN: \${{ github.token }}
+        run: node .claudinite/shared/engine/scheduler/queue/drain-dispatch.mjs
+
+  report-failure:
+    needs: [scheduler-run, drain]
+    if: >-
+      always()
+      && (needs.scheduler-run.result == 'failure' || needs.drain.result == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - env:
+          GITHUB_TOKEN: \${{ github.token }}
+        run: node .claudinite/shared/engine/scheduler/queue/workflow-failure.mjs
+`;
+
+const THIN_EXECUTOR_WORKFLOW = `name: Claudinite executor
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      continuation_depth:
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  execute:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || github.event.label.name == 'task:status:waiting-for-executor'
+      || github.event.label.name == 'task:ready'
+      || github.event.label.name == 'task:urgent'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - env:
+          GITHUB_TOKEN: \${{ github.token }}
+          CLAUDINITE_TASKS_SUSPEND_ALL: \${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
+          # claudinite:secrets
+        run: node .claudinite/shared/engine/scheduler/queue/executor.mjs
+
+  continue-the-chain:
+    needs: execute
+    if: failure() || cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - env:
+          GITHUB_TOKEN: \${{ github.token }}
+          CLAUDINITE_CONTINUATION_DEPTH: \${{ inputs.continuation_depth }}
+        run: node .claudinite/shared/engine/scheduler/queue/executor-continuation.mjs
 `;
 
 // The scheduler workflow as it stands on a member that has the DISPATCHING drain
@@ -879,6 +1019,16 @@ NSApplication.shared.run()
         taskScheduler: { dailyHour: 9, weeklyDay: 'Wed', monthlyDay: 1 },
       }),
       '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
+    },
+  },
+  {
+    name: 'thin-workflows',
+    why: 'a member already on the thin workflow shape, whose every job names an engine module by literal path — the shape the fleet is moving to, and the one a vendor set that stopped shipping one of those modules would break silently, with a queue that just stops draining',
+    files: {
+      'README.md': '# fixture-thin-workflows\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics']),
+      '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
+      '.github/workflows/claudinite-executor.yml': THIN_EXECUTOR_WORKFLOW,
     },
   },
   {

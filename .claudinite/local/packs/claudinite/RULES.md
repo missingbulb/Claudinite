@@ -270,6 +270,15 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 ## The engine, the mount and what reaches members
 
+- **Editing `.github/workflows/claudinite-scheduler.yml` or `claudinite-executor.yml`** — don't, beyond
+  the triggers, permissions, concurrency and the `run:` line naming an engine module. A converge
+  cannot push to `.github/workflows/`, so a member's copy moves only through a human-merged PR in
+  each repo, while every engine module converges nightly: logic or prose left in these two files
+  costs a fleet-wide PR to change. Move the program into `engine/scheduler/queue/`, keep the YAML
+  to a single-line `run: node <module>`, and edit both copies — the stub and the canon's own — in
+  the same commit. `scheduler-workflows-are-thin` blocks the two shapes it can see
+  (`actions/github-script`, a block `run:`); the comment budget is judgment.
+
 - **Writing a path, regex or command against the mount** — write the two-root form: the
   `.claudinite/(shared|local)/` prefix optional in a pattern, and a probe for
   `.claudinite/shared/` falling back to the repo root. The home runs the same code from the repo

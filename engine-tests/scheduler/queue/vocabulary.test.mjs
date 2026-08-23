@@ -20,6 +20,7 @@ import {
   spellingsOf, isBlockingPark, outcomeOf,
 } from '../../../engine/scheduler/queue/work-item.mjs';
 import { swapStatus, clearStatus } from '../../../engine/scheduler/queue/apply-status.mjs';
+import { FAILURE_LABELS } from '../../../engine/scheduler/queue/workflow-failure.mjs';
 
 const item = (...labels) => ({ number: 1, title: '[claudinite-work] basics/task-janitor', state: 'open', labels });
 
@@ -177,15 +178,14 @@ test('the executor triggers on both ready spellings, in the stub and in the cano
 // A workflow reporting its own failure has an origin like anything else, and it is
 // a break to diagnose — the one park lane that holds the task's lane.
 test('a workflow-failure issue is filed with its origin and its park', () => {
-  for (const path of [
-    'engine/scheduler/stubs/claudinite-executor.yml', '.github/workflows/claudinite-executor.yml',
-    'engine/scheduler/stubs/claudinite-scheduler.yml', '.github/workflows/claudinite-scheduler.yml',
-  ]) {
-    const yml = readFileSync(path, 'utf8');
-    for (const label of [ORIGIN_GITHUB, STATUS_NEEDS_HUMAN_FAILURE]) {
-      assert.ok(yml.includes(label), `${path} must label its failure issue ${label}`);
-      assert.ok(yml.includes(`name: '${label}'`), `${path} must ensure ${label} exists before applying it`);
-    }
+  const names = FAILURE_LABELS.map((l) => l.name);
+  for (const label of [ORIGIN_GITHUB, STATUS_NEEDS_HUMAN_FAILURE]) {
+    assert.ok(names.includes(label), `a failure issue must be labelled ${label}`);
+  }
+  // Ensured, not merely applied: GitHub 422s the write that applies an unknown
+  // label, and a first-run failure may precede any other label-ensure.
+  for (const { name, color, description } of FAILURE_LABELS) {
+    assert.ok(name && color && description, `${name} must be ensured to spec, not applied bare`);
   }
 });
 

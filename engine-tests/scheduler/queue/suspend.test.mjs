@@ -125,9 +125,17 @@ test('no executor run is capped at the leash any more', () => {
 
 // The drain must not sit in the scheduler run's concurrency group (§15.16). It leaves by
 // dispatching the executor workflow rather than being one — which is also why it
-// needs no secrets and no work bound.
+// needs no secrets and no work bound. The workflow only NAMES the module; what
+// that module does is the assertion below it.
 test('the scheduler run workflow starts the drain rather than running it', () => {
   const schedulerRun = read('engine/scheduler/stubs/claudinite-scheduler.yml');
-  assert.match(schedulerRun, /createWorkflowDispatch/, 'the drain dispatches');
+  assert.match(schedulerRun, /queue\/drain-dispatch\.mjs/, 'the drain runs the dispatcher');
   assert.doesNotMatch(schedulerRun, /queue\/executor\.mjs/, 'and never runs an executor inside the scheduler run\'s group');
+});
+
+test('the drain dispatches the executor workflow rather than executing anything', () => {
+  const drain = read('engine/scheduler/queue/drain-dispatch.mjs');
+  assert.match(drain, /dispatchWorkflow\(/, 'the drain dispatches');
+  assert.match(drain, /EXECUTOR_WORKFLOW_FILE/, 'and names the executor workflow, not a hard-coded string');
+  assert.doesNotMatch(drain, /runExecutor|queue\/executor\.mjs/, 'and never runs an executor in-process');
 });
