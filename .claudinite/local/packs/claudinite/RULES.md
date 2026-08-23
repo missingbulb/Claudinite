@@ -163,6 +163,12 @@ lesson at the strongest mechanism available — a check where the rule is determ
   bookkeeping land before the owner caught it nine minutes later and all of it was discarded with
   a hard reset (#1114).
 
+- **Sending a screenshot rendered from a scratch test harness rather than the live page** — say so
+  explicitly in the caption, not just what the widget shows: a caption naming only the content lets
+  the reader assume it's the real page's current layout. A CSS-preview screenshot captioned only
+  with what the card showed cost a clarifying round-trip when the owner reasonably read the
+  harness's own ordering as the dashboard's (#1249).
+
 ## Authoring packs, prose and checks
 
 - **Writing a paragraph that explains how a mechanism works** — not into a pack's `RULES.md`,
@@ -248,6 +254,19 @@ lesson at the strongest mechanism available — a check where the rule is determ
   exploration: the tracking issue was created only after the first commit had already failed the
   issue-reference check, costing a full amend/force-push/CI cycle — create the artifact a check
   will demand *before* the action it gates, not after (#1132).
+
+- **A canon pack's own prose naming another pack by literal path** — check the name resolves
+  inside every consumer's vendored tree, not just the canon home. A canon pack vendors wholesale
+  into every declaring repo, but `.claudinite/local/packs/<pack>/` exists only in the canon home
+  itself, so a vendored pack's link or comment naming a home-only local pack (e.g.
+  `canon-curation`) dangles everywhere else it mounts. Corrected once by the owner and swept out of
+  `claudinite-growth` ("I can't understand why you insist on referring to canon-curation ... just
+  don't mention the things outside the pack", #364), it recurred unnoticed:
+  `generate-project-instructions/SKILL.md` still links
+  `.claudinite/local/packs/canon-curation/README.md` today, and
+  `growth-write-scope.mjs`/`README.md` still name `canon-curation` in prose. The `barriers` pack's
+  config gates `packs/* → docs/` but nothing gates `packs/* → .claudinite/local` — that is the
+  durable fix a future canon-writing session should land, not another one-off sweep.
 
 ## The engine, the mount and what reaches members
 
@@ -622,6 +641,12 @@ lesson at the strongest mechanism available — a check where the rule is determ
   scopes the marker to the *declined* case only — a go verdict's coverage is judged by the item it
   actually created, never by the row (#1123).
 
+- **Verifying a bulk file-move/rewrite sweep preserved content** — check a structural invariant
+  count before and after (e.g. total `test(` call count across the touched files), never trust a
+  green suite alone. A restructuring sweep's own script bug silently truncated 46 test files to
+  zero bytes; each one still "passed" trivially with zero assertions, so the suite read all-green
+  while the content was gone. Only a before/after count caught it (#1246).
+
 ## Editing, branching and merging here
 
 - **Making a throwaway probe commit on a scratch branch to see a check fail** — `git commit -am`
@@ -686,3 +711,10 @@ lesson at the strongest mechanism available — a check where the rule is determ
 - **Facing a retry across a call whose outcome you cannot observe** — check whether declining
   to retry removes the uncertainty before building dedup or arbitration machinery to manage it. A
   timeout is exactly the case where you cannot know the first call did nothing.
+
+- **Writing a regex-based import-path rewriter for a bulk file-move sweep** — anchor the match to
+  real import/export syntax (line-start, or after a specific separator), never a bare
+  `from '...'`/`import '...'` pattern searched across a file's whole text. A test fixture that
+  embeds literal import syntax as string data — verifying a loader's own parsing — matches the
+  same pattern a real import does, so a naive full-text rewrite corrupts it identically. Caught
+  only by reviewing the diff, not by any test failure (#1246).
