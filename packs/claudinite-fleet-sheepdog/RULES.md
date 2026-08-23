@@ -63,9 +63,10 @@ config schema — is [README.md](README.md). This file is what a session **here*
   commas), `--context "DRY_RUN=true"` to see the list without dispatching, or
   `--context "INCLUDE_DORMANT=true"` to reach members that stopped their own scheduler on purpose.
   Both knobs are read from the item's Context and nowhere else — an item created without them runs
-  unscoped and live. It queues one
-  run per member and does not wait; each member reports its own outcome in its own repo. A member
-  with nothing to do converges to a cheap no-op, so over-using it is wasteful rather than unsafe.
+  unscoped and live. It queues one run per member and then FOLLOWS each to canon's published engine
+  and pack versions, reporting per member whether it converged, was already current, or never got
+  there — never a count of accepted dispatches. A member with nothing to do reads `already-current`,
+  which is a success, so over-using it is wasteful rather than unsafe.
 
 - **Adding a pack across the fleet** — create a `fleet-add-missing-packs` item with
   `--context "ADD_PACKS=…"` rather than editing anything. No pack is named anywhere in this pack's

@@ -17,7 +17,7 @@ member executes:
 | [scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs) + [force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs) | [fleet-add-missing-packs](tasks/fleet-add-missing-packs/README.md) (weekly, and forceable) | which packs is a member missing — the ones its **shape** suspects, or the ones the owner named? → a work-list issue *in* each member + that member's scheduler fired; the member's own agent adopts |
 | [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/README.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
 | [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/README.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
-| [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/README.md) (`manual` — forced runs only) | make every member baseline **now** → each member's own run, reported in its own repo |
+| [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/README.md) (`manual` — forced runs only) | make every member baseline **now**, then follow each to canon's published versions → an outcome table, not a dispatch count |
 
 **The roster carries two questions** because they are asked of the same repos from the same walk
 ([#788](https://github.com/missingbulb/Claudinite/issues/788)). The freshness half exists because
@@ -103,7 +103,7 @@ freshness section names its fresh members and its out-of-scope repos with why; t
 back **fitted** as loudly as the ones with findings, and names the fingerprints it could not decide
 from outside rather than counting them as non-matches; the usage sweep's `coverage` section
 accounts for every repo under the owner and its run report flags folding members with no captured
-activity that day; fleet-baseline reports every repo it did *not* dispatch, with the reason.
+activity that day; fleet-baseline reports every repo it did *not* dispatch, with the reason, and every repo it DID dispatch that never reached canon's versions.
 
 **Undecidable is not a non-match.** Most fingerprints are answerable from a path listing, and the fit
 sweep answers those over one tree call per member; one that reads file *contents* is resolved by a
@@ -125,14 +125,28 @@ converges one open `needs-human` issue for it.
 **The two operator levers ride the work-item queue, not a workflow.** `fleet-baseline` is the first
 `manual`-frequency task: never instantiated on any cadence, it runs only from an item the owner
 creates by hand — `create-work-item claudinite-fleet-sheepdog/fleet-baseline`, with `REPOS=…`, `DRY_RUN=true`,
-`INCLUDE_DORMANT=true` as `--context` lines — which wakes every covered member's own standing
-`update` item so the fleet picks canon up now instead of over the next day. A forced
-fleet-add-missing-packs item is the second lever, same command, its own Context. Neither
-waits on what it fired: a dispatch queues a member's own run, and each member reports its own
-outcome where it always does. (The standalone fleet-baseline workflow, its fleet-wide follow
-report, and the `.github/` managed copy it required were retired 2026-08-11 —
-[#749](https://github.com/missingbulb/Claudinite/issues/749),
-[`2026-08-11-fleet-baseline-task`](migrations/2026-08-11-fleet-baseline-task/migration.mjs).)
+`INCLUDE_DORMANT=true`, `FOLLOW_MINUTES=…` as `--context` lines — which wakes every covered member's own
+standing `update` item so the fleet picks canon up now instead of over the next day. A forced
+fleet-add-missing-packs item is the second lever, same command, its own Context.
+
+**`fleet-baseline` reports outcomes, not dispatches**
+([#1293](https://github.com/missingbulb/Claudinite/issues/1293)). A dispatch POST returning 204 says a
+run was queued and nothing more, and a report built from those 204s describes the sweep's own outgoing
+calls while reading as fleet-wide delivery — a run announced `13 fired, 0 failed` where 9 of the 13 took
+nothing ([#1292](https://github.com/missingbulb/Claudinite/issues/1292)). So after firing, the sweep
+follows each member until its own declaration stamps the engine and every declared pack at the versions
+canon publishes, and reports each as `converged`, `already-current`, `did-not-converge`, `never-started`
+or `unknown`. A member already at canon's versions is a success in its own right: its update correctly
+declines, and it does no work. *Current* is a claim about **published version numbers** — canon content
+that shipped without a version bump moves no number and is invisible to it, which the report says itself.
+
+This is not the 2026-08-11 follow returning. That one was a blind fixed wait every run paid whatever the
+fleet was doing, and it forced the lever to be a standalone workflow with a `.github/` managed copy
+([#749](https://github.com/missingbulb/Claudinite/issues/749),
+[`2026-08-11-fleet-baseline-task`](migrations/2026-08-11-fleet-baseline-task/migration.mjs)).
+[follow-to-current.mjs](tasks/fleet-baseline/follow-to-current.mjs) polls a real terminal condition
+instead: each member leaves the loop the moment it reads current, so an already-current fleet finishes
+on the first pass in seconds, and the lever stays an ordinary queue task.
 
 Each sweep lives **inside its task's folder**, because nothing outside that task uses it. Only what
 they all share sits at the pack root: [fleet-api.mjs](fleet-api.mjs) (the cross-repo REST
@@ -211,7 +225,7 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 | Reading unknown in a report | high | correctness | prose: 64 words |
 | Judging whether a member is behind | high | correctness | prose: 69 words |
 | Answering why the fleet did not move | medium | complexity | prose: 52 words |
-| Pushing canon to the whole fleet now | low | complexity | prose: 119 words |
+| Pushing canon to the whole fleet now | low | complexity | prose: 137 words |
 | Adding a pack across the fleet | medium | complexity | prose: 53 words |
 | Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 52 words |
 | A sweep reporting 403 or no-permission | medium | complexity | prose: 48 words |

@@ -9,6 +9,7 @@
 //   --context "REPOS=Alpha Beta"        (optional — omit for every covered member; space-separated)
 //   --context "DRY_RUN=true"            (optional — report what would fire, fire nothing)
 //   --context "INCLUDE_DORMANT=true"    (optional — dormant members are skipped by default)
+//   --context "FOLLOW_MINUTES=30"       (optional — how long to follow members to current)
 //
 // This replaces the pack's standalone fleet-baseline WORKFLOW (retired 2026-08-11,
 // #749). The workflow existed for two reasons that are both gone: its FOLLOW half
@@ -21,10 +22,11 @@
 //
 // `agent_model: 'none'` — pure code. The whole pass is the dispatch sweep
 // (force-fleet-baseline.mjs, invoked by worker.mjs): enumerate the fleet over the
-// PAT, wake each covered member's own `update` item, report
-// the full roster. Nothing agentic happens HERE — each member's own converge may hand
-// off to that member's own agent, which is the fan-out model's point: the enforcer
-// dispatches, the member executes, and no agent anywhere needs cross-repo access.
+// PAT, wake each covered member's own `update` item, follow each one until it stamps
+// canon's published versions, and report the full roster by OUTCOME (#1293). Nothing
+// agentic happens HERE — each member's own converge may hand off to that member's own
+// agent, which is the fan-out model's point: the enforcer dispatches, the member
+// executes, and no agent anywhere needs cross-repo access.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 
@@ -35,10 +37,15 @@ export default {
   agent_model: 'none',                   // pure code: enumerate, fire, report (task-code-work DESIGN §4)
   expected_outcome: 'none',              // it queues Actions runs in MEMBERS; it writes nothing here or there
   code_work: 'node worker.mjs',
-  // One enumeration plus a declaration read and one dispatch POST per member, all
-  // serial with a secondary rate limit on top — the same order of walk as the other
-  // sweeps, minus their content reads. 900s is ~10x the expected time.
-  code_work_timeout: 900,
+  // The dispatch half is one enumeration plus a declaration read and one POST per
+  // member — under a minute. What sizes this bound is the FOLLOW (#1293): the sweep
+  // stays until every dispatched member stamps canon's versions, and a member's own
+  // update takes 5–10 minutes end to end. The follow gives up at
+  // DEFAULT_FOLLOW_MINUTES (20) and reports what it was still waiting on, so this
+  // must sit above that with room for the dispatch walk and the final probe —
+  // otherwise the platform kills the run at the bound and the report is never
+  // printed, which is the one outcome worse than a slow one.
+  code_work_timeout: 1800,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT; fleet-token.mjs states the grant
 
   // Never due on its own — `manual` means the scheduler run never instantiates this task,
