@@ -49,13 +49,25 @@ test('fleet-baseline: code_work is bounded and task-local', () => {
   assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
 });
 
-test('fleet-baseline: the worker invokes the sweep rather than reimplementing it, and never follows', () => {
+test('fleet-baseline: the worker invokes the sweep rather than reimplementing it', () => {
   assert.match(workerSrc, /from '\.\/force-fleet-baseline\.mjs'/);
   assert.ok(!workerSrc.includes('/user/repos'));   // no enumeration of its own
-  // The follow half is retired WITH the workflow: a 45-minute wait inside the
-  // serialized scheduler job would queue every other task behind a sleep. Each
-  // member reports its own baselining where it always does.
-  assert.ok(!workerSrc.toLowerCase().includes('follow'));
+});
+
+// The follow came BACK (#1293), and this is the bound that keeps it safe. What #649
+// retired was a blind fixed wait every run paid; what replaced it polls a real
+// terminal condition and lets each member leave as it reads current. The danger the
+// old rule was guarding against is real, though — code-work runs inside the executor —
+// so the follow must give up well inside the bound the platform kills the run at,
+// or the report it spent all that time earning is never printed.
+test('fleet-baseline: the follow gives up before the platform kills the run', async () => {
+  const { DEFAULT_FOLLOW_MINUTES } = await import('../../../tasks/fleet-baseline/force-fleet-baseline.mjs');
+  assert.ok(DEFAULT_FOLLOW_MINUTES * 60 < decl.code_work_timeout,
+    `a ${DEFAULT_FOLLOW_MINUTES}min follow must finish inside code_work_timeout (${decl.code_work_timeout}s)`);
+  // And with real room to spare: the dispatch walk runs before the follow starts, and
+  // the final not-started probe runs after it ends.
+  assert.ok(decl.code_work_timeout - DEFAULT_FOLLOW_MINUTES * 60 >= 300,
+    'leave at least 5 minutes for the dispatch walk and the closing probe');
 });
 
 test('fleet-baseline: the pack ships no workflow stub any more', () => {

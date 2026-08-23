@@ -13,8 +13,9 @@
 // envs.
 //
 // Failure is the escalation path: the sweep THROWS when a member could not be
-// dispatched, this worker turns that into a non-zero exit, and the executor
-// converges the item to `needs-human`.
+// dispatched, or when a dispatched member never reached canon's versions (#1293),
+// this worker turns that into a non-zero exit, and the executor converges the item
+// to `needs-human`.
 
 import { pathToFileURL } from 'node:url';
 import { fleetWorkerFailed } from '../../fleet-api.mjs';
@@ -36,10 +37,11 @@ export async function main() {
   if (params.REPOS !== undefined) process.env.FLEET_BASELINE_REPOS = params.REPOS;
   if (params.DRY_RUN !== undefined) process.env.FLEET_BASELINE_DRY_RUN = params.DRY_RUN;
   if (params.INCLUDE_DORMANT !== undefined) process.env.FLEET_BASELINE_INCLUDE_DORMANT = params.INCLUDE_DORMANT;
+  if (params.FOLLOW_MINUTES !== undefined) process.env.FLEET_BASELINE_FOLLOW_MINUTES = params.FOLLOW_MINUTES;
 
   log(`waking the update task across the fleet${params.REPOS ? ` (repos: ${params.REPOS})` : ''}${params.DRY_RUN === 'true' ? ' [dry run]' : ''}`);
   await sweep();
-  log('dispatch complete — each member baselines itself and reports in its own repo');
+  log('complete — every dispatched member was followed to canon\'s versions or reported as not there');
 }
 
 // Run only when invoked directly (code-work's `node worker.mjs`), never on import.
