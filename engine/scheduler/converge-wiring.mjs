@@ -14,12 +14,12 @@
 // repo already converged produces an empty change list.
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { hashedCron } from './hash-minute.mjs';
 import { DEFAULT_SCHEDULE } from './calendar.mjs';
 import { writeRulesIndex, RULES_INDEX_FILE, RULES_INDEX_IMPORT } from '../pack_loader/generate-rules-index.mjs';
-import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX } from '../pack_loader/pack-registry.mjs';
+import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX, SHARED_SUBDIR } from '../pack_loader/pack-registry.mjs';
 
 // The settings-hook registrations a scheduled repo carries (bootstrap Part 5).
 // Ensured present without clobbering — a set-union keyed on the command string, so
@@ -239,10 +239,28 @@ export function ensureRulesIndexImport(root) {
 export const RULES_INDEX_MERGE_ATTR = 'claudinite-rules.GENERATED.md merge=ours';
 
 export function ensureRulesIndexMergeAttribute(root) {
+  return ensureAttributeLine(root, RULES_INDEX_MERGE_ATTR);
+}
+
+// The shared mount is canon-owned content the member never authored, so the git HOST
+// is told so: Linguist keeps a member's language stats off the corpus (which outweighs
+// a small member's own source by byte count) and collapses the mount in a converge
+// diff. Presentation only — the CHECK-scope exclusion is a separate, structural rule
+// in the file-set builder (engine/checks/helpers/repo-context.mjs), which drops the
+// mount prefix before attributes are ever consulted, so that exclusion holds on a host
+// and a checkout that honor no attributes at all. git wants '/' separators in a
+// pattern; SHARED_SUBDIR is joined with the platform's.
+export const MOUNT_VENDORED_ATTR = `${SHARED_SUBDIR.split(sep).join('/')}/** linguist-vendored`;
+
+export function ensureMountVendoredAttribute(root) {
+  return ensureAttributeLine(root, MOUNT_VENDORED_ATTR);
+}
+
+function ensureAttributeLine(root, line) {
   const path = join(root, '.gitattributes');
   const text = existsSync(path) ? readFileSync(path, 'utf8') : '';
-  if (text.split('\n').some((l) => l.trim() === RULES_INDEX_MERGE_ATTR)) return false;
-  writeFileSync(path, (text && !text.endsWith('\n') ? `${text}\n` : text) + `${RULES_INDEX_MERGE_ATTR}\n`);
+  if (text.split('\n').some((l) => l.trim() === line)) return false;
+  writeFileSync(path, (text && !text.endsWith('\n') ? `${text}\n` : text) + `${line}\n`);
   return true;
 }
 
@@ -454,6 +472,7 @@ export async function convergeWiring(root, fullName, stubText, secretNames = [],
   if (await writeRulesIndex(root)) changed.push(RULES_INDEX_FILE);
   if (ensureRulesIndexImport(root)) changed.push(`${CLAUDE_MD} rules-index import`);
   if (ensureRulesIndexMergeAttribute(root)) changed.push('.gitattributes merge=ours for the rules index');
+  if (ensureMountVendoredAttribute(root)) changed.push('.gitattributes linguist-vendored for the shared mount');
   if (badges && convergeBadgeRow(root, await badgeRowEntries(root, await repoConfig(root)))) changed.push(`${README} pack row`);
   return { changed, ...(hooks.error ? { error: hooks.error } : {}) };
 }
