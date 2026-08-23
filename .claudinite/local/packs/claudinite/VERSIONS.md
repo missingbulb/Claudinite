@@ -9,3 +9,4 @@ log of runs.
 
 | Date | Task | Change |
 |---|---|---|
+| 2026-08-23 | prose-to-checks-sweep | The RULES.md line on re-verifying a `doc:` field by hand after a file move becomes `doc-pointer-resolves`, a check over every rule module's `doc:` field. |

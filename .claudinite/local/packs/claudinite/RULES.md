@@ -221,11 +221,6 @@ lesson at the strongest mechanism available — a check where the rule is determ
   it into a skill (frontmatter + description) invocable by description, not a doc chained through
   links nobody follows cold (#975).
 
-- **A check declaration's `doc:` field** — nothing ever opens it; it only renders into a finding's
-  `More:` line when the check actually fires. A stale pointer left by a file move can sit broken
-  indefinitely with nothing to catch it — grep for and re-verify every `doc:` field by hand
-  whenever you move or rename the file it points at (#975).
-
 - **A check built to catch a thing being missing or misnamed** — don't gate the check's own
   relevance on the single signal it exists to validate. Gating solely on "does the orchestrating
   file still have the expected name" makes the exact failure the check exists to catch (a rename)
