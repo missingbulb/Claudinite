@@ -1,7 +1,4 @@
-import releaseWorkflows, { shipsPipeline, STUB_FILE, STUB_NAME } from './release-workflows.mjs';
-import siteConfig from './site-config.mjs';
-import versionBumped from './version-bumped.mjs';
-import versionScheme from './version-scheme.mjs';
+import releaseWorkflows, { shipsPipeline, STUB_FILE, STUB_NAME } from './worldRules/release-workflows.mjs';
 
 // The static-website standard: a plain static site that releases on push, carries
 // a date-anchored version, and serves from GitHub Pages out of an EXPLICIT
@@ -51,8 +48,6 @@ export default {
     },
   ],
 
-  worldRules: [releaseWorkflows, siteConfig, versionScheme],
   // Delivery, not state: the tree always carries a version, and only the diff
   // says whether it moved with the published files beside it.
-  workRules: [versionBumped],
 };

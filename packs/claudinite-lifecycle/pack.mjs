@@ -1,6 +1,3 @@
-import rulesIndexCurrent from './rules-index-current.mjs';
-import conformanceWorkflow from './conformance-workflow.mjs';
-import conformanceWorkScope from './conformance-work-scope.mjs';
 
 // Claudinite's own surface in a repo that runs it: the vendored mount, the
 // declaration that activates a pack, adopting Claudinite and adopting a pack.
@@ -23,29 +20,12 @@ export default {
     belongs: 'using Claudinite itself — the vendored mount, the pack declaration, bootstrapping, adopting packs, the self-refresh update',
     excludes: 'working discipline and the task lifecycle — basics; authoring Claudinite content, scheduled tasks included — claudinite-growth; git — git-github',
   },
-  detect: null,
-  marker: null,
   seededByDefault: true,
   // The consumer-isolation wall (claudinite-isolation) is a declared check — a
   // forbidReferences entry in this pack's declared-checks.json, run by the
   // engine's reference-scanning like any barrier. The barriers pack stays
   // required for the per-repo config rule members' own edges ride.
   requires: ['barriers'],
-  worldRules: [
-    // The index the declaration produces; the declaration itself is guarded by
-    // claudinite-lifecycle-declared, a declared check in this pack's declared-checks.json.
-    rulesIndexCurrent,
-    // The member's plumbing — the CI gate its maintenance PR merges through
-    // (relevance-first: inert until the repo carries the artifact). The
-    // scheduler workflow's shape rule (scheduler-workflow-shape) is a declared
-    // check in this pack's declared-checks.json.
-    conformanceWorkflow,
-    // …and the change gated beside it: the work scope's CI step, which the tree
-    // sweep cannot stand in for (a version number is always present; only the
-    // diff says whether this change moved it).
-    conformanceWorkScope,
-  ],
-  workRules: [],
   // Both scheduled tasks live in this pack's `tasks/`, discovered by the
   // scheduler's filesystem scan (engine/scheduler/discover.mjs) rather than
   // declared here: `update`, the per-repo self-refresh every member runs, and

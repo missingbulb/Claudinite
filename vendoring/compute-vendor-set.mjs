@@ -28,10 +28,16 @@ export { SHARED_SUBDIR };
 // tests (they live in engine-tests/, mirroring its structure — #385), so the
 // engine walk is a plain copy minus *.md — engine docs are canon-maintainer
 // reference, read upstream when needed, while a pack's .md files are the
-// payload and ride its directory below. A pack's tests sit beside the files they
-// cover, inside the pack, and are dropped by the same *.test.mjs rule as the rest.
+// payload and ride its directory below. A pack's tests live in the pack's own
+// `test/` directory, and that whole directory is dropped: the name is the rule, so
+// a fixture, a helper or a golden file a test needs stops shipping with it instead
+// of being one `*.test.mjs` short of the exclusion.
 export { ENGINE_DIR_ROOTS };
 
+// A pack's tests, and everything they need, live in one directory named for what
+// it is. The engine keeps its own `test/` convention (engine-tests/ mirrors the
+// tree), so the directory name is the shared rule across both walks.
+export const TEST_DIR = 'test';
 const isTest = (name) => name.endsWith('.test.mjs');
 
 // The exception to "engine .md is maintainer-reference, not vendored": a few engine
@@ -107,7 +113,7 @@ function walk(relDir, files, errors, { engine = false, today, installed = null }
   }
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (entry.isDirectory()) {
-      if (engine && entry.name === 'test') continue;
+      if (entry.name === TEST_DIR) continue;
       const rel = `${relDir}/${entry.name}`;
       if (isRecordOfFlow(relDir, entry.name) && !migrationApplies(rel, { installed, today })) continue;
       walk(rel, files, errors, { engine, today, installed });

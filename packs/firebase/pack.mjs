@@ -5,7 +5,6 @@
 // monorepo's firebase/ project root), but never deeper, so a firebase.json in
 // a nested fixture/example tree can't trip detection. A Firebase project root
 // is the directory that holds firebase.json, not necessarily the repo root.
-import functionsPredeployBuild from './functions-predeploy-build.mjs';
 
 const hasMarkerNearRoot = (ctx, marker) =>
   ctx.tracked.some((f) => {
@@ -31,5 +30,4 @@ export default {
   // repo never hears from them.
   // firebase/functions-node-pin is a declared check, discovered structurally
   // beside this manifest.
-  worldRules: [functionsPredeployBuild],
 };

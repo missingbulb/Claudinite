@@ -13,4 +13,4 @@ own row.
 | 60821.1 | — | Adopt-requested-packs runs ON the work-list issue the fleet marked — no code-work gate, no worker, and the item is the list itself (#1119). |
 | 60821.3 | 2026-08-21 | This pack's inline version-history comments moved out of `pack.mjs` into this file. |
 | 60822.1 | 2026-08-22 | The update worker's scratch-tree delete goes through the shared `removeTree`, whose retry survives git's own housekeeping still writing into the tree (#1219). |
-| 60822.2 | 2026-08-22 | `id`, `prose`, `badge` and `skills` come from the pack directory rather than the manifest (#1246); `minEngineVersion` rises to the engine release that reads them. |
+| 60822.2 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |

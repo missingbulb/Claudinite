@@ -1,5 +1,3 @@
-import assetIntegrity from './asset-integrity.mjs';
-import tileAttribution from './tile-attribution.mjs';
 
 // Leaflet pack: portable runtime gotchas for the Leaflet web-mapping library
 // (map init, tile layers, markers/divIcons, and CDN-loaded plugins like
@@ -29,5 +27,4 @@ export default {
       const text = ctx.read(f);
       return text !== null && (LEAFLET_ASSET.test(text) || LEAFLET_API.test(text));
     }),
-  worldRules: [assetIntegrity, tileAttribution],
 };

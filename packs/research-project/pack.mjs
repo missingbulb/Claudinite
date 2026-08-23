@@ -9,7 +9,4 @@ export default {
     belongs: 'methodology for iterating an algorithm over sample inputs against annotated ground truth — scoring, phases, session continuity',
     excludes: 'shipping an end-user product against a spec — that is spec-driven-product; market research is product-wiki',
   },
-  marker: null,
-  detect: null,
-  worldRules: [],
 };

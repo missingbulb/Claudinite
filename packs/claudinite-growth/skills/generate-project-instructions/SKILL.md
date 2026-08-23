@@ -165,7 +165,7 @@ that owns the work). Each local pack is a real pack:
   setup/run/verify commands, real paths, inputs, metrics, invariants). Keep it terse; anything a check
   or skill can carry doesn't belong here, and anything inferable from the code is omitted.
 - **Checks** (`rules`) — the project-specific deterministic rules as `.mjs` modules listed on
-  `pack.mjs`, each with a red-first fixture (`pack.test.mjs`) runnable by the project's own test suite.
+  `pack.mjs`, each with a red-first fixture (`test/pack.test.mjs`) runnable by the project's own test suite.
   Local check modules stay dependency-free (they must load without the gitignored mount): return plain
   finding objects rather than importing the engine's helpers.
 - **Skills** (`skills/<name>/SKILL.md`) — the project's activity-scoped procedures, bundled in the pack;

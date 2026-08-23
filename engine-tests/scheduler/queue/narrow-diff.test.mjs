@@ -17,7 +17,7 @@ test('classifyPath names docs, tests and code', () => {
   assert.equal(classifyPath('docs/tasks-dispatch/DESIGN.md'), 'doc');
   assert.equal(classifyPath('engine-tests/scheduler/scheduler-run.test.mjs'), 'test');
   assert.equal(classifyPath('packs/basics/tests/fixture.json'), 'test');
-  assert.equal(classifyPath('packs/basics/pack.test.mjs'), 'test');
+  assert.equal(classifyPath('packs/basics/test/pack.test.mjs'), 'test');
   assert.equal(classifyPath('app/test_parser.py'), 'test');
   assert.equal(classifyPath('engine/scheduler/scheduler-run.mjs'), 'code');
   // A whole-segment match, so a directory that merely CONTAINS the word is code.

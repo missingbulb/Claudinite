@@ -1,4 +1,3 @@
-import earnEachDependency from './earn-each-dependency.mjs';
 
 // Fingerprint: a package.json at the repo root OR one directory down (a
 // monorepo's functions/ or server/ dir) — but never deeper, so a package.json
@@ -19,7 +18,6 @@ export default {
   },
   marker: 'package.json (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'package.json'),
-  workRules: [earnEachDependency],
   // The Node runtime ships in the base image, but a repo's (often uncommitted,
   // devDependency) modules don't — so `npm test`/build would trigger a
   // confusing mid-session install. Install them at environment-image build. The

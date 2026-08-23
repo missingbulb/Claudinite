@@ -10,5 +10,4 @@ export default {
   },
   marker: 'android/app/src/main/AndroidManifest.xml',
   detect: (ctx) => ctx.tracked.some((f) => f.endsWith('android/app/src/main/AndroidManifest.xml')),
-  worldRules: [],
 };

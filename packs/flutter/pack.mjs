@@ -17,7 +17,6 @@ export default {
   },
   marker: 'pubspec.yaml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pubspec.yaml'),
-  worldRules: [],
   // The Flutter SDK isn't in the Claude Code Web base image, so a cloud session
   // can't run `flutter test` / analyze / golden regen without it. This declares
   // how the environment installs it (aggregated into environment-setup-command.sh) and

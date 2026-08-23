@@ -20,10 +20,7 @@ export default {
     belongs: 'housekeeping of open issues, pull requests and branches in one repo — triage verdicts, standing trackers, assess-vs-act policy',
     excludes: 'extracting lessons into packs — that is claudinite-growth; cross-repo fleet sweeps are claudinite-fleet-sheepdog',
   },
-  detect: null,
-  marker: null,
   seededByDefault: true,
-  worldRules: [],
   // The pack's scheduled tasks live in this pack's own `tasks/<id>/`, discovered by
   // the scheduler's filesystem scan (engine/scheduler/discover.mjs), not declared here.
   //

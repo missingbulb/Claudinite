@@ -27,5 +27,4 @@ export default {
       const text = ctx.read(f);
       return text !== null && SPEECH_API.test(text);
     }),
-  worldRules: [],
 };

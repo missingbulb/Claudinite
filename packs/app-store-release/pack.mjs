@@ -9,7 +9,4 @@ export default {
     belongs: 'shipping to the Apple App Store: App Store Connect, provisioning, App Attest, TestFlight, review guidelines, release cadence',
     excludes: 'iOS coding, Info.plist and Xcode project practices — that is ios; backend environment split — firebase',
   },
-  marker: null,
-  detect: null,
-  worldRules: [],
 };

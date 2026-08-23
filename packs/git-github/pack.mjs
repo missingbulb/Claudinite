@@ -18,9 +18,6 @@ export default {
     belongs: 'git and GitHub procedure and platform: commit layering, branch and merge mechanics, workflow YAML, triggers, secrets, scheduling',
     excludes: 'the issue-branch-PR lifecycle rules themselves — basics; release pipeline content for one product — its release pack',
   },
-  detect: null,
-  marker: null,
   // The `gha/` rules are declared checks, discovered structurally beside this
   // manifest (declared-checks.json). The lifecycle checks stay in basics.
-  worldRules: [],
 };

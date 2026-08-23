@@ -29,5 +29,4 @@ export default {
       const text = ctx.read(f);
       return text !== null && JWT_LIB.test(text);
     }),
-  worldRules: [],
 };

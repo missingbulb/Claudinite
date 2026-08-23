@@ -18,6 +18,4 @@ export default {
     excludes: 'obtaining the token in a browser or extension client — chrome-extension; Firebase Auth usage — firebase',
   },
   marker: 'a backend that validates Google Sign-In ID tokens (a JWT authorizer / OIDC verifier with the Google accounts issuer)',
-  detect: null,
-  worldRules: [],
 };

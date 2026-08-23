@@ -1,5 +1,3 @@
-import signalTeardownRouting from './signal-teardown-routing.mjs';
-import minimumSystemVersionAgrees from './minimum-system-version-agrees.mjs';
 
 // Technology pack: a native macOS app — the app bundle, TCC and Hardened
 // Runtime, the Developer ID / notarization / DMG distribution lane, and the
@@ -35,5 +33,4 @@ export default {
   // Everything else in RULES.md stays prose — runtime device behaviour, a CI
   // lane's shape, or a plist/entitlement judgment call, none of which a scan can
   // separate from a healthy repo.
-  worldRules: [signalTeardownRouting, minimumSystemVersionAgrees],
 };

@@ -27,5 +27,4 @@ export default {
   },
   marker: 'pyproject.toml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pyproject.toml'),
-  worldRules: [],
 };

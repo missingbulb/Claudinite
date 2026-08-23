@@ -25,6 +25,4 @@ export default {
     excludes:
       'Actions triggers and secrets wiring — that is git-github; publishing a site you own — that is static-website',
   },
-  marker: null,
-  detect: null,
 };

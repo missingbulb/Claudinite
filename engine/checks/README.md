@@ -154,12 +154,13 @@ the change in front of the session, one about the repo as a whole:
 
 ## Adding a rule
 
-One module per rule under `../packs/<pack>/`, exporting
-`{ id, severity, description, doc, why, run(ctx) }` — list it in that pack's
-`../packs/<pack>/pack.mjs` manifest. The failure message *is* the instruction: `what` states the
+One module per rule under `../packs/<pack>/worldRules/` (audits the repo as it stands) or
+`../packs/<pack>/workRules/` (judges the change in front of you), default-exporting
+`{ id, severity, description, doc, why, run(ctx) }`. The directory is the declaration —
+there is no manifest line to add. The failure message *is* the instruction: `what` states the
 violation, `why` the one-line motivation, `fix` the exact remedy, `doc` the corpus doc that owns
 the depth. Write the fixture test first and see it fail — each pack carries one
-`<pack>/pack.test.mjs`, inside the pack, beside the rules it proves, sharing the scratch-git-repo harness
+`<pack>/test/pack.test.mjs`, inside the pack's own `test/` directory (which no vendor set ships), sharing the scratch-git-repo harness
 [engine-tests/helpers.mjs](../../engine-tests/helpers.mjs); a violating fixture must find, a clean one must not.
 A new rule ships at its real severity, fail-fast: `blocking` when a finding is a defect to
 fix, `advisory` only when the rule's own semantics are directional (a smell to judge). A whole

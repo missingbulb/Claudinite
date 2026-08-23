@@ -54,8 +54,6 @@ export default {
   // withheld from the catalog every session reads to route a lesson or pick a pack
   // to adopt. Declaring it by hand still works — that is how the canary holds it.
   hidden: true,
-  detect: null,
-  marker: null,
   seededByDefault: false,
   // Seeded, never converged (the install flow is the only reader of this field): the
   // first copy is the member's from the moment it lands. Everything after it is the
@@ -63,5 +61,4 @@ export default {
   seedOps: [
     { template: 'stubs/workflows/claudinite-workflow-probe.yml', dest: '.github/workflows/claudinite-workflow-probe.yml' },
   ],
-  worldRules: [],
 };

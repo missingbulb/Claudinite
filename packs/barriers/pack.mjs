@@ -1,4 +1,3 @@
-import barrier from './check.mjs';
 import { contributedBarrierRules } from './contributed.mjs';
 
 // The barriers pack — enforce a directed folder-access graph. A declared pack
@@ -21,14 +20,11 @@ export default {
     belongs: 'directed folder-access graph rules — which directories may never reference which, plus the exceptions each rule allows',
     excludes: 'where a file should live or naming conventions — that is basics file-placement, not an access barrier',
   },
-  detect: null,
-  marker: null,
   questions: [{
     id: 'goals',
     prompt: 'What should these barriers accomplish — which folders must never reference which (imports, paths, docs included), and what architectural boundary does each separation protect?',
     distill: 'derive the directed edge list into this entry\'s config as { "rules": [{ "from": "<dir>", "to": "<dir>" }] }; if no separation is wanted yet, record that as the answer and leave config unset',
   }],
-  worldRules: [barrier],
   // The runner's generic seam: this pack interprets the barrier contributions
   // of every ACTIVE pack (engine/checks/check_the_world.mjs hands the list over).
   contributedRules: (activePacks) => contributedBarrierRules(activePacks),

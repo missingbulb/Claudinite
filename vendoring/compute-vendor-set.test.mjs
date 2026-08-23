@@ -99,7 +99,9 @@ const vendorAt = async (root, declared, opts) =>
 const FIXTURE = {
   packs: [
     { id: 'alpha', version: 4, skills: ['s1'], extraFiles: [
-      'RULES.md', 'check.mjs', 'pack.test.mjs', 'stubs/wf.yml', 'skills/s1/helper.test.mjs',
+      'RULES.md', 'check.mjs', 'stubs/wf.yml', 'skills/s1/helper.test.mjs',
+      // the pack's own test/ directory: a test, and the non-test material a test needs
+      'test/pack.test.mjs', 'test/fixtures/sample.json',
       // a pack's own migration records: one in the window, one aged out
       { file: 'migrations/2026-01-02-alpha-seed/migration.mjs', content: 'export default {\n  id: "alpha-seed",\n  version: 5,\n};\n' },
       { file: 'migrations/2025-06-02-alpha-ancient/migration.mjs', content: 'export default {\n  id: "alpha-ancient",\n  version: 1,\n};\n' },
@@ -279,10 +281,20 @@ test('a bundled skill\'s tests stay canon-side like any other test', async () =>
   assert.ok(!files.includes('packs/alpha/skills/s1/helper.test.mjs'));
 });
 
-// The same exclusion, asked of the REAL corpus rather than a fixture. A pack's tests
-// live inside the pack, beside the files they cover, so the only thing keeping them
-// out of every member's mount is the `*.test.mjs` name rule above — and a fixture
-// spelling that rule cannot notice the day it stops selecting the real tree. Both
+// A pack's whole `test/` directory is dropped, not just the `*.test.mjs` files in it.
+// The name is the rule precisely so a fixture, a helper or a golden file a test needs
+// stops shipping with it, instead of riding into every member's mount for being one
+// filename suffix short of the exclusion.
+test('a pack\'s test/ directory is dropped whole — its non-test files included', async () => {
+  const root = makeCanon(FIXTURE);
+  const { files, errors } = await vendorAt(root, ['alpha']);
+  assert.deepEqual(errors, []);
+  assert.ok(files.includes('packs/alpha/skills/s1/SKILL.md'));
+  assert.deepEqual(files.filter((f) => f.startsWith('packs/alpha/test/')), []);
+});
+
+// The same exclusion, asked of the REAL corpus rather than a fixture. A fixture
+// spelling the rule cannot notice the day it stops selecting the real tree. Both
 // halves are load-bearing: the second asserts the scope is non-empty, so a corpus
 // with no pack tests left can never read as "the exclusion works".
 test('no canon pack ships its tests — over the real corpus, not a fixture', async () => {
@@ -291,10 +303,11 @@ test('no canon pack ships its tests — over the real corpus, not a fixture', as
   const ids = (await loadPacks()).map((p) => p.id);
   const { files } = await computeVendorSet(ids, { today: '2026-01-01' });
   assert.deepEqual(files.filter((f) => f.endsWith('.test.mjs')), []);
+  assert.deepEqual(files.filter((f) => f.split('/').includes('test')), []);
 
-  const packTests = execFileSync('git', ['ls-files', 'packs/**/*.test.mjs'], { cwd: REPO_ROOT, encoding: 'utf8' })
+  const packTests = execFileSync('git', ['ls-files', ':(glob)packs/*/test/**'], { cwd: REPO_ROOT, encoding: 'utf8' })
     .split('\n').filter(Boolean);
-  assert.ok(packTests.length > 50, `only ${packTests.length} pack tests tracked — this assertion has lost its subject`);
+  assert.ok(packTests.length > 50, `only ${packTests.length} pack test files tracked — this assertion has lost its subject`);
 });
 
 // --- the coherence guard: the set must be import-closed ----------------------

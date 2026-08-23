@@ -10,5 +10,4 @@ export default {
   },
   marker: 'ios/Runner/Info.plist',
   detect: (ctx) => ctx.tracked.some((f) => f.endsWith('ios/Runner/Info.plist')),
-  worldRules: [],
 };

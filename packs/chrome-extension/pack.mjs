@@ -1,8 +1,4 @@
 import { findExtensionManifest } from '../../engine/checks/helpers/chrome-manifest.mjs';
-import contentScriptModuleSyntax from './content-script-module-syntax.mjs';
-import declarativeContentSetIcon from './declarative-content-set-icon.mjs';
-import releaseWorkflows from './release-workflows.mjs';
-import versionBumped from './version-bumped.mjs';
 
 // Everything about a Chrome extension in one pack: the MV3 build/runtime gotchas
 // that apply while you are writing one, and the Chrome-Web-Store release standard
@@ -34,10 +30,8 @@ export default {
   },
   marker: 'a manifest.json declaring manifest_version',
   detect: (ctx) => findExtensionManifest(ctx) !== null,
-  worldRules: [contentScriptModuleSyntax, declarativeContentSetIcon, releaseWorkflows],
   // Delivery, not state: the tree always carries a version, and only the diff
   // says whether it moved with the shipped files beside it.
-  workRules: [versionBumped],
   // Pack-contributed task: `tasks/store-release/` — the scheduler's filesystem scan
   // (engine/scheduler/discover.mjs) picks it up on any repo declaring this pack, so
   // its own precondition is what keeps it off a repo that does not publish.

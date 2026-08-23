@@ -33,5 +33,4 @@ export default {
       const text = ctx.read(f);
       return text !== null && (DRIVER_MODULE.test(text) || LAUNCH_CALL.test(text));
     }),
-  worldRules: [],
 };

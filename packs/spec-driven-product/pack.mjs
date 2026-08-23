@@ -10,10 +10,7 @@ export default {
     belongs: 'playbook for shipping a small end-user product from an executable spec — leaf claims, owner-owned expecteds, green-main releases',
     excludes: 'the requirements file format and coverage gates — that is executable-requirements; research wikis are product-wiki',
   },
-  marker: null,
-  detect: null,
   // The product playbook runs its spec as tests — it leans on the framework
   // mechanics the executable-requirements pack carries.
   requires: ['executable-requirements'],
-  worldRules: [],
 };

@@ -1,8 +1,8 @@
 import { readdirSync, existsSync } from 'node:fs';
-import { join, dirname, resolve } from 'node:path';
+import { join, dirname, resolve, basename } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { validateManifest, normalizeManifest } from './pack-schema.mjs';
-import { applyPackConventions, bundledSkillDirs } from './pack-conventions.mjs';
+import { applyPackConventions, bundledSkillDirs, ruleModuleFiles, RULE_DIRS } from './pack-conventions.mjs';
 import { canonicalPackId, canonicalPackIdAmong } from './renamed-packs.mjs';
 
 // This module lives at <canon>/engine/pack_loader/; the packs it scans at <canon>/packs/.
@@ -106,6 +106,36 @@ async function declaredChecksIn(dir, label, errors) {
   }
 }
 
+// One scope's coded rules, imported in filename order. Isolated per module for
+// the reason a manifest's own import was not: a manifest that failed to import
+// took the whole pack with it, where a rule module that does is now one reported
+// fault beside its working neighbours. A module exporting no rule is the same
+// class of fault — a file sitting in the directory contributing nothing is what
+// this reports rather than silently drops.
+async function ruleModulesIn(packDir, scope, label, errors) {
+  const rules = [];
+  for (const file of ruleModuleFiles(packDir, scope)) {
+    const name = `${scope}/${basename(file)}`;
+    let rule;
+    try {
+      rule = (await import(pathToFileURL(file).href)).default;
+    } catch (e) {
+      errors.push({ what: `${label}/${name} failed to load: ${e.message}`, fix: `fix ${name}, or remove it from the pack`, dir: packDir });
+      continue;
+    }
+    if (rule === null || typeof rule !== 'object' || typeof rule.id !== 'string' || typeof rule.run !== 'function') {
+      errors.push({
+        what: `${label}/${name} sits in a rule directory but default-exports no rule`,
+        fix: `default-export { id, severity, description, doc, why, run(ctx) } from ${name}, or move the module out of ${scope}/`,
+        dir: packDir,
+      });
+      continue;
+    }
+    rules.push(rule);
+  }
+  return rules;
+}
+
 async function scanPackDir(dir, { local, subdir }, errors) {
   const out = [];
   if (!existsSync(dir)) return out;
@@ -190,6 +220,16 @@ async function scanPackDir(dir, { local, subdir }, errors) {
     // its own `scope` picks the list it joins — and normalizeManifest stamps the
     // same answer back either way.
     const declared = await declaredChecksIn(packDir, rel, errors);
+    // The pack's CODED rules, discovered the same way its declared ones already
+    // were: `<pack>/worldRules/*.mjs` and `<pack>/workRules/*.mjs`, each module
+    // default-exporting one rule. A manifest that declares the list overrides the
+    // directory, exactly like every other convention — which is why the scan runs
+    // only for a scope the manifest left unspoken.
+    const scanned = {};
+    for (const scope of RULE_DIRS) {
+      if (mod[scope] !== undefined) continue;
+      scanned[scope] = await ruleModulesIn(packDir, scope, rel, errors);
+    }
     // A CANON pack's own id is canonicalized like a declared one. A member's mount
     // is replaced per pack and per version, so a repo can hold a pack DIRECTORY
     // renamed by a migration record while the `pack.mjs` inside it still carries the
@@ -204,8 +244,8 @@ async function scanPackDir(dir, { local, subdir }, errors) {
     // exactly that case (#1186).
     const pack = { ...normalizeManifest({ ...mod,
       ...(local ? {} : { id: canonicalPackId(mod.id), rawId: mod.id }),
-      worldRules: [...(mod.worldRules ?? []), ...declared.filter((r) => r.scope !== 'work')],
-      workRules: [...(mod.workRules ?? []), ...declared.filter((r) => r.scope === 'work')],
+      worldRules: [...(mod.worldRules ?? scanned.worldRules ?? []), ...declared.filter((r) => r.scope !== 'work')],
+      workRules: [...(mod.workRules ?? scanned.workRules ?? []), ...declared.filter((r) => r.scope === 'work')],
     }), dir: packDir, local };
     pack.skillChecks = await scanSkillChecks(packDir, errors);
     out.push(pack);

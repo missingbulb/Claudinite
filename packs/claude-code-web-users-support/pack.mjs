@@ -38,8 +38,6 @@
 // `--init` declares it; the adoption question below is what turns the declaration into
 // a working store, and a project that wants none answers "n/a" and carries a pack that
 // says so rather than doing anything.
-import storeConfigured from './store-configured.mjs';
-import storeFileNames from './store-file-names.mjs';
 
 export default {
   version: '60822.1',
@@ -48,8 +46,6 @@ export default {
     belongs: 'what a project offers people working from Claude Code on the web, where the session knows who they are',
     excludes: 'project conventions and process — those are the packs that own each subject',
   },
-  detect: null,
-  marker: null,
   seededByDefault: true,
   questions: [
     {
@@ -76,5 +72,4 @@ export default {
   // Both audit the repo as it stands, whatever this session touched: a store broken by
   // an earlier commit is just as silent as one broken by this one. The second is inert
   // in every repo but the one that HOLDS the store it declares.
-  worldRules: [storeConfigured, storeFileNames],
 };
