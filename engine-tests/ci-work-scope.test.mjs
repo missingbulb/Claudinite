@@ -35,7 +35,7 @@ const repoWithChange = ({ failing = false } = {}) => makeRepo({
   changed: {
     'a.txt': 'two\n',
     ...(failing ? {
-      '.claudinite-checks.json': `${JSON.stringify({ packs: ['local/demo'] }, null, 2)}\n`,
+      '.claudinite-settings.json': `${JSON.stringify({ packs: ['local/demo'] }, null, 2)}\n`,
       '.claudinite/local/packs/demo/pack.mjs': FAILING_PACK,
     } : {}),
   },

@@ -5,8 +5,10 @@ import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { isVersion, versionAbove } from '../engine/version.mjs';
-import { canonicalPackVersions, RENAMED_PACKS } from '../engine/pack_loader/renamed-packs.mjs';
+import { RENAMED_PACKS } from '../engine/pack_loader/renamed-packs.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
+import { settingsPath } from '../engine/settings-file.mjs';
+import { installedVersions, hasInstalledMount, withInstalledVersions } from '../engine/installed-versions.mjs';
 import { loadMigrations, applyMigration } from '../engine/migrations/registry.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
 
@@ -253,20 +255,17 @@ export function applyStageFor(specs, withheld = []) {
 export async function packUpdate(targetRoot, {
   fullName, today, dryRun = false, delivery = 'auto-merge', forceMergeOnRedCi = false, selfTestRun,
 } = {}) {
-  const settingsPath = join(targetRoot, DECLARATION_FILE);
-  if (!existsSync(settingsPath)) {
+  const settingsFile = settingsPath(targetRoot);
+  if (!existsSync(settingsFile)) {
     return outcome(NEEDS_HUMAN, `${targetRoot} has no ${DECLARATION_FILE} — it has never adopted Claudinite`);
   }
   let raw;
-  try { raw = JSON.parse(readFileSync(settingsPath, 'utf8')); }
+  try { raw = JSON.parse(readFileSync(settingsFile, 'utf8')); }
   catch (e) { return outcome(NEEDS_HUMAN, `${DECLARATION_FILE} is not valid JSON: ${e.message}`); }
 
-  const stamp = raw.claudinite ?? null;
-  // `packVersions` keyed by whatever spelling this member last stamped: a pack renamed
-  // since then reads as never-installed unless the keys are canonicalized here too.
-  const installed = stamp && typeof stamp === 'object'
-    ? { ...stamp, packVersions: canonicalPackVersions(stamp.packVersions ?? {}) }
-    : null;
+  // The shape reader canonicalizes a legacy map's keys on the way out: a pack
+  // renamed since a member last stamped it reads as never-installed otherwise.
+  const installed = hasInstalledMount(raw) ? installedVersions(raw) : null;
   const declared = Array.isArray(raw.packs) ? raw.packs : [];
   const packs = await loadPacks();
 
@@ -375,16 +374,15 @@ export async function packUpdate(targetRoot, {
 
   // 3. Stamp each updated pack's version. Written per pack rather than wholesale, so
   //    a pack this run did not touch keeps the number it really has.
-  const next = JSON.parse(readFileSync(settingsPath, 'utf8'));
-  // Canonicalized on the way OUT as well as in. The read side has to tolerate a
-  // version stamped under a pack's old id; the write side must not carry that
-  // spelling forward, or the two keys sit in the stamp together forever — the newer
-  // one authoritative, the older one indistinguishable from a real pack nobody has
-  // heard of, and the rename impossible to ever call finished (#1041).
-  const packVersions = { ...canonicalPackVersions(next.claudinite?.packVersions ?? {}) };
+  const next = JSON.parse(readFileSync(settingsFile, 'utf8'));
+  // Only what this run moved: a version lands on the entry of the pack it prices,
+  // and a pack this run did not touch keeps the number it really has. The old
+  // spelling of a renamed pack cannot be carried forward here even by accident —
+  // there is no map to carry it in, only entries the declaration itself names
+  // (#1041 is what a second key in a central map cost).
+  const packVersions = {};
   for (const p of plan) if (p.to !== null) packVersions[p.id] = p.to;
-  next.claudinite = { ...(next.claudinite ?? {}), packVersions };
-  writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`);
+  writeFileSync(settingsFile, `${JSON.stringify(withInstalledVersions(next, { packVersions }), null, 2)}\n`);
 
   // 4. The same gate the engine flow uses, then the agentic tail's own question —
   //    ASKED OF THE RECORDS, NOT OF THE VERSION PLAN (#798).

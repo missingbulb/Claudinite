@@ -40,7 +40,7 @@ export function renderPackDirectory(packs) {
   return `# Claudinite packs — the full directory
 
 Every pack this repo can adopt from Claudinite, whether or not it is declared here yet. A pack
-activates only when declared in \`.claudinite-checks.json\`; adding one is the \`adopt-pack\`
+activates only when declared in \`.claudinite-settings.json\`; adding one is the \`adopt-pack\`
 skill's job (declare, interview, re-vendor, scaffold). A fingerprint marker only *suspects* a
 pack is wanted — declaring it is always the project's call.
 

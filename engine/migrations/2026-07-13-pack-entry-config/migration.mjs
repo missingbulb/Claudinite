@@ -19,7 +19,7 @@ export default {
   version: 1,
   summary: "per-pack parameters moved from the top-level packConfig key onto each pack's packs entry as config (one-time fold; key stays readable until retirement)",
   legacyPresent: async (exists, read) => {
-    const raw = await read('.claudinite-checks.json');
+    const raw = (await read('.claudinite-settings.json')) ?? await read('.claudinite-checks.json');
     if (raw == null) return false; // no declaration to read — not a member, not held
     try {
       const parsed = JSON.parse(raw);

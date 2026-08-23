@@ -110,7 +110,7 @@ export async function buildRoster(gh, repos, {
     if (entry.dormant || entry.isCanon || entry.excluded) continue;
 
     try {
-      const mount = await drift.probeMount(gh, r.full_name, entry.declaration, { canonRepo, canonBranch, canon: canonVersions });
+      const mount = await drift.probeMount(gh, r.full_name, entry.declaration, { canon: canonVersions });
       entry.freshness = drift.classifyFreshness(mount);
     } catch (e) {
       entry.freshnessError = e.message;

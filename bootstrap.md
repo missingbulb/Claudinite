@@ -64,7 +64,7 @@ day-to-day work.
 
 ## Part 2 — the pack declaration and the adoption interview
 
-The script seeds `.claudinite-checks.json` (sharing `check_the_world.mjs --init`'s seeding): the
+The script seeds `.claudinite-settings.json` (sharing `check_the_world.mjs --init`'s seeding): the
 baseline, the technology packs the repo's fingerprint suspects, the default-on maintenance packs,
 each declared pack's `requires` closure, and `"maintenance": { "delivery": "auto-merge" }`. A
 fingerprint only *suspects* a pack — from here on the declaration is authoritative and
@@ -139,7 +139,7 @@ What remains is **the executor routine and the endpoint that points at it** — 
 session's work, not the owner's. The executor starts an agent session with an **API call**, not a
 label event, so this is two halves that only work together; a repo with one half has a queue that
 fills and never hands anything off. Do both **before the adoption commit**: the endpoint is one
-line of `.claudinite-checks.json`, and splitting it out costs a second issue, a second PR and a
+line of `.claudinite-settings.json`, and splitting it out costs a second issue, a second PR and a
 push over already-squashed history for nothing.
 
 a. **Create the routine** — `create_trigger` on the Claude Code Remote MCP server, named
@@ -173,7 +173,7 @@ a. **Create the routine** — `create_trigger` on the Claude Code Remote MCP ser
    adoption this doc was corrected for (#1167).
 
 b. **Point the repo at it.** Take the routine's API trigger URL and add it to
-   `.claudinite-checks.json` under the key every task uses unless it names another:
+   `.claudinite-settings.json` under the key every task uses unless it names another:
 
    ```json
    "taskScheduler": { "endpoints": { "default": {
@@ -241,7 +241,7 @@ wherever the checkout is detached.
 The script already ran the world sweep and printed its findings. On a repo with existing code,
 **expect a backlog** — enforcement scope is whole-repo, and findings in code you never touched
 would otherwise fail every future run. Fix causes, or record a reasoned `accept` in
-`.claudinite-checks.json` for the deliberate keeps. Don't reach for `--changed` to hide the
+`.claudinite-settings.json` for the deliberate keeps. Don't reach for `--changed` to hide the
 backlog — it is a transitional aid, never the enforcement default. Commit the adoption as one
 change referencing the adoption issue, and push it through the normal PR flow.
 

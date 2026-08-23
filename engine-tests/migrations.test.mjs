@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { removeTree } from '../engine/remove-tree.mjs';
+import { isDeclaredVersion } from '../engine/version.mjs';
 import {
   loadMigrations, resolvePath, applyFileAliases,
   applyMaterializations, applyRewrites, applyPackDeclarations, migrationActive,
@@ -167,43 +168,43 @@ test('applyRewrites: applies literal from->to replacements in place, idempotentl
 
 test('applyPackDeclarations: declares an absent pack, never overrides what the repo chose, gated by appliesTo', async () => {
   const decl = (o) => `${JSON.stringify(o, null, 2)}\n`;
-  const repo = new Map([['.claudinite-checks.json', decl({ packs: ['basics'], maintenance: { delivery: 'auto-merge' } })]]);
+  const repo = new Map([['.claudinite-settings.json', decl({ packs: ['basics'], maintenance: { delivery: 'auto-merge' } })]]);
   const read = (p) => repo.get(p) ?? null;
   const write = (p, c) => repo.set(p, c);
   const m = M({ declarePacks: [{ id: 'NewPack', config: { repo: 'o/store' } }] });
 
-  assert.deepEqual(await applyPackDeclarations(m, { read, write }), ['.claudinite-checks.json: declared NewPack']);
-  const after = JSON.parse(repo.get('.claudinite-checks.json'));
+  assert.deepEqual(await applyPackDeclarations(m, { read, write }), ['.claudinite-settings.json: declared NewPack']);
+  const after = JSON.parse(repo.get('.claudinite-settings.json'));
   assert.deepEqual(after.packs, ['basics', { id: 'NewPack', config: { repo: 'o/store' } }]);
   assert.deepEqual(after.maintenance, { delivery: 'auto-merge' }, 'the rest of the declaration survives');
-  assert.equal(repo.get('.claudinite-checks.json'), decl(after), 'canonical 2-space settings with a trailing newline');
+  assert.equal(repo.get('.claudinite-settings.json'), decl(after), 'canonical 2-space settings with a trailing newline');
 
   // Idempotent, and — the contract that matters — a pack the repo already declares
   // keeps its own config, even when the record names a different one.
   assert.deepEqual(await applyPackDeclarations(m, { read, write }), []);
   const other = M({ declarePacks: [{ id: 'NewPack', config: { repo: 'o/somewhere-else' } }] });
   assert.deepEqual(await applyPackDeclarations(other, { read, write }), []);
-  assert.deepEqual(JSON.parse(repo.get('.claudinite-checks.json')).packs[1].config, { repo: 'o/store' });
+  assert.deepEqual(JSON.parse(repo.get('.claudinite-settings.json')).packs[1].config, { repo: 'o/store' });
 
   // A pack declared as a bare string, with no config, is the one entry still owed
   // something: it gets the config, in place, without losing its position.
-  const bare = new Map([['.claudinite-checks.json', decl({ packs: ['basics', 'NewPack', 'tidy-repo'] })]]);
+  const bare = new Map([['.claudinite-settings.json', decl({ packs: ['basics', 'NewPack', 'tidy-repo'] })]]);
   assert.deepEqual(
     await applyPackDeclarations(m, { read: (p) => bare.get(p) ?? null, write: (p, c) => bare.set(p, c) }),
-    ['.claudinite-checks.json: configured NewPack'],
+    ['.claudinite-settings.json: configured NewPack'],
   );
-  assert.deepEqual(JSON.parse(bare.get('.claudinite-checks.json')).packs,
+  assert.deepEqual(JSON.parse(bare.get('.claudinite-settings.json')).packs,
     ['basics', { id: 'NewPack', config: { repo: 'o/store' } }, 'tidy-repo']);
 
   // appliesTo:false skips, and a non-member / unparsable declaration is left alone
   // (the world runner owns that finding; a migration must not guess at a repair).
-  const fresh = new Map([['.claudinite-checks.json', decl({ packs: [] })]]);
+  const fresh = new Map([['.claudinite-settings.json', decl({ packs: [] })]]);
   const w2 = (p, c) => fresh.set(p, c);
   assert.deepEqual(await applyPackDeclarations(M({ appliesTo: async () => false, declarePacks: m.declarePacks }), { read: (p) => fresh.get(p) ?? null, write: w2 }), []);
   assert.deepEqual(await applyPackDeclarations(m, { read: () => null, write: w2 }), []);
   assert.deepEqual(await applyPackDeclarations(m, { read: () => '{oops', write: w2 }), []);
   assert.deepEqual(await applyPackDeclarations(m, { read: () => '[]', write: w2 }), []);
-  assert.equal(fresh.get('.claudinite-checks.json'), decl({ packs: [] }), 'nothing was written');
+  assert.equal(fresh.get('.claudinite-settings.json'), decl({ packs: [] }), 'nothing was written');
 });
 
 test('apply.mjs really performs the pack-declaration op — the wire, not just the function', () => {
@@ -212,14 +213,14 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
   // un-migrated, which is the exact failure mode a seed op is meant to prevent.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-apply-'));
   try {
-    writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({ packs: ['basics'] }, null, 2)}\n`);
+    writeFileSync(join(root, '.claudinite-settings.json'), `${JSON.stringify({ packs: ['basics'] }, null, 2)}\n`);
     const canon = dirname(dirname(fileURLToPath(import.meta.url)));
     const out = execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     });
     assert.match(out, /declared claude-code-web-users-support/);
     assert.match(out, /declared claudinite-lifecycle/);
-    const after = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
+    const after = JSON.parse(readFileSync(join(root, '.claudinite-settings.json'), 'utf8'));
     // Every seed record the corpus carries, applied in record order onto the
     // declaration the fixture started from.
     assert.deepEqual(after.packs, [
@@ -327,7 +328,7 @@ test('callerCanDeliverWorkflows: only the exact announcement counts', () => {
 test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on nothing else', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'sheepdog-fleet-baseline');
   assert.ok(m, 'discovered');
-  const read = (decl) => async (p) => (p === '.claudinite-checks.json' ? decl : null);
+  const read = (decl) => async (p) => (p === '.claudinite-settings.json' ? decl : null);
 
   // Both declaration forms, since both are legal.
   assert.equal(await m.appliesTo(read(JSON.stringify({ packs: [{ id: 'claudinite-fleet-sheepdog', config: {} }] }))), true);
@@ -501,7 +502,7 @@ test('every record declares a version, and the regex reads what the module expor
   const migs = await loadMigrations();
   assert.ok(migs.length > 0, 'the live corpus has records');
   for (const m of migs) {
-    assert.ok(Number.isInteger(m.version) && m.version > 0,
+    assert.ok(isDeclaredVersion(m.version),
       `${m.dir} declares no version — a record needs the version its change takes effect at`);
     assert.equal(recordVersion(m.dir), m.version,
       `${m.dir}: the version read from the source disagrees with the module's — keep the field a plain literal on its own line`);
@@ -542,10 +543,10 @@ test('local declarations normalize to local/<id>, from both earlier forms', asyn
     packs: ['basics', 'mine', 'local_packs/older', { id: 'configured', config: { k: 1 } }, 'local/already'],
   };
   const local = new Set(['.claudinite/local/packs/mine/pack.mjs', '.claudinite/local_packs/configured/pack.mjs']);
-  const w = io({ '.claudinite-checks.json': `${JSON.stringify(decl, null, 2)}\n` }, (p) => local.has(p));
+  const w = io({ '.claudinite-settings.json': `${JSON.stringify(decl, null, 2)}\n` }, (p) => local.has(p));
   const done = await applyLocalDeclarationNormalization(M({ normalizeLocalDeclarations: true }), w);
 
-  const after = JSON.parse(w.written['.claudinite-checks.json']);
+  const after = JSON.parse(w.written['.claudinite-settings.json']);
   assert.deepEqual(after.packs, [
     'basics',                                     // a canon id: untouched, though bare
     'local/mine',                                 // bare, and this repo has the pack
@@ -560,9 +561,9 @@ test('local declarations normalize to local/<id>, from both earlier forms', asyn
 });
 
 test('a record without the flag normalizes nothing', async () => {
-  const w = io({ '.claudinite-checks.json': '{"packs":["mine"]}\n' }, () => true);
+  const w = io({ '.claudinite-settings.json': '{"packs":["mine"]}\n' }, () => true);
   assert.deepEqual(await applyLocalDeclarationNormalization(M(), w), []);
-  assert.equal(w.written['.claudinite-checks.json'], '{"packs":["mine"]}\n');
+  assert.equal(w.written['.claudinite-settings.json'], '{"packs":["mine"]}\n');
 });
 
 test('applyMigration runs every op — the vocabulary has one runner, not one per caller', async () => {
@@ -576,11 +577,11 @@ test('applyMigration runs every op — the vocabulary has one runner, not one pe
   });
   // `exists` answers only for the repo's real local pack — a blanket true would make
   // every id look local, including one this record's own declarePacks just added.
-  const w = io({ 'f.txt': 'old\n', '.claudinite-checks.json': '{"packs":["mine"]}\n' },
+  const w = io({ 'f.txt': 'old\n', '.claudinite-settings.json': '{"packs":["mine"]}\n' },
     (p) => p === '.claudinite/local/packs/mine/pack.mjs');
   const applied = await applyMigration(m, w);
   assert.equal(w.written['f.txt'], 'new\n', 'rewrite ran');
-  const after = JSON.parse(w.written['.claudinite-checks.json']);
+  const after = JSON.parse(w.written['.claudinite-settings.json']);
   assert.deepEqual(after.packs, ['local/mine', 'added'], 'normalization and declaration both ran');
   assert.ok(applied.length >= 3, applied.join(' | '));
 });
@@ -620,7 +621,7 @@ test('applyPackRenames: converges a real member declaration, entry objects and a
   const before = readFileSync(REAL_DECLARATION, 'utf8');
   let written = null;
   const done = await applyPackRenames(rec, {
-    read: async (f) => (f === '.claudinite-checks.json' ? before : null),
+    read: async (f) => (f === '.claudinite-settings.json' ? before : null),
     write: async (_f, c) => { written = c; },
   });
   assert.equal(done.length, 3, `expected every rename this map carries, got ${JSON.stringify(done)}`);

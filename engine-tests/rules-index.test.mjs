@@ -19,7 +19,7 @@ import { loadPacks, isActive, packEntryId } from '../engine/pack_loader/pack-reg
 // that forgets to regenerate fails there with the fix named.
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const declaredIds = () => {
-  const raw = JSON.parse(readFileSync(join(ROOT, '.claudinite-checks.json'), 'utf8'));
+  const raw = JSON.parse(readFileSync(join(ROOT, '.claudinite-settings.json'), 'utf8'));
   return (Array.isArray(raw.packs) ? raw.packs : []).map(packEntryId).filter(Boolean);
 };
 

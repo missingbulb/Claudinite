@@ -161,12 +161,20 @@ test('an outcome-less closure is not counted as completed work', () => {
   assert.equal(b.current.completed, 0);
 });
 
-test('converging counts only the current window — a stamp carries one date', () => {
+// NO CONVERGED FIGURE (#1252). It counted members whose declaration carried a
+// converge datetime inside the window — a datetime that recorded the last FULL
+// re-vendor rather than the last converge, so the tile was already counting the
+// wrong thing, and nothing this sweep reads can answer the question now: a member's
+// installed versions say WHAT it holds, never when it took it. The panel names the
+// gap rather than approximating it, which is the rule the figure broke twice over
+// (#1001, #1008) — so the absence is asserted here, not left to be re-added by
+// someone who notices a missing number.
+test('no converged figure is invented from what the settings can no longer say', () => {
   const b = fleetBenefits([
-    read({ repo: 'o/fresh', declaration: { claudinite: { updated: '2026-08-18T02:00:00Z' } } }),
-    read({ repo: 'o/stopped', declaration: { claudinite: { updated: '2026-06-01T02:00:00Z' } } }),
+    read({ repo: 'o/fresh', declaration: { packs: [{ id: 'basics', version: '60820.1' }] } }),
+    read({ repo: 'o/stopped', declaration: { packs: ['basics'] } }),
   ], { now: NOW, windowDays: 7 });
-  assert.equal(b.converged, 1);
+  assert.equal(b.converged, undefined);
   assert.equal(b.members, 2);
 });
 

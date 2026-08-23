@@ -18,12 +18,13 @@
 
 import { isDormant } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { forbiddenHint } from './fleet-token.mjs';
+import { SETTINGS_FILE, SETTINGS_FILES } from '../../../../engine/settings-file.mjs';
 
 const API = 'https://api.github.com';
 
 // The tracked declaration a member carries — read for its membership and its
 // dormancy flag.
-export const DECLARATION = '.claudinite-checks.json';
+export const DECLARATION = SETTINGS_FILE;
 
 // Dormancy comes from the engine, never a private re-test: a member declares itself
 // dormant and the test has to be the same one that member's own scheduler used to
@@ -102,8 +103,15 @@ export async function readFile(gh, fullName, path) {
 // else — an unreadable response, an unparsable body — THROWS, because a sweep that
 // cannot read a member's declaration knows nothing about it, and "I could not read
 // it" must never quietly become "it says nothing".
-export async function readDeclaration(gh, fullName, path = DECLARATION) {
-  const file = await readFile(gh, fullName, path);
+export async function readDeclaration(gh, fullName, path = null) {
+  // Each settings-file name in turn: a member that has not run the #1252 rename
+  // record still carries the old one, and a read that only knew the new name would
+  // report it as uncovered — a claim about the member, not about the read.
+  let file = null;
+  for (const candidate of path ? [path] : SETTINGS_FILES) {
+    file = await readFile(gh, fullName, candidate);
+    if (file !== null) { path = candidate; break; }
+  }
   if (file === null) return null;
   try {
     return JSON.parse(file.text);

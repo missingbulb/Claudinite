@@ -34,7 +34,7 @@ else and either configure the secret or expect the parked item.
 ## Adopting it
 
 ```jsonc
-// .claudinite-checks.json
+// .claudinite-settings.json
 { "packs": ["claudinite-dashboard"] }
 ```
 

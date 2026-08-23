@@ -25,7 +25,7 @@ function runHook(root, input = {}) {
 function withLocalPack(step, { declared = ['local/probe'] } = {}) {
   const root = makeRepo({
     changed: {
-      '.claudinite-checks.json': JSON.stringify({ packs: declared }),
+      '.claudinite-settings.json': JSON.stringify({ packs: declared }),
       '.claudinite/local/packs/probe/pack.mjs': 'export default { id: "probe", detect: null, marker: null, prose: null, rules: [] };\n',
       '.claudinite/local/packs/probe/session-end.mjs': step,
     },

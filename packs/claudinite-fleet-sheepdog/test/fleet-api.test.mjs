@@ -15,7 +15,7 @@ const ghWith = (paths200) => async (path) =>
   ({ status: paths200.some((p) => path.endsWith(`/contents/${p}`)) ? 200 : 404, json: {} });
 
 test('isCovered: the tracked declaration file is the single membership probe; a bare mount marker no longer covers', async () => {
-  assert.equal(await isCovered(ghWith(['.claudinite-checks.json']), 'o/vendored-or-legacy-member'), true);
+  assert.equal(await isCovered(ghWith(['.claudinite-settings.json']), 'o/vendored-or-legacy-member'), true);
   assert.equal(await isCovered(ghWith(['.claudinite/mount/sync-claudinite.sh']), 'o/half-adopted'), false);
   assert.equal(await isCovered(ghWith([]), 'o/vanilla'), false);
 });
@@ -72,7 +72,7 @@ test('the sweeps decide dormancy with the ENGINE\'s predicate, not a private cop
   // already opted out — the member's own scheduler and the enforcer must agree on
   // the one test, so the pack re-exports it rather than re-implementing it.
   assert.equal(isDormant, engineIsDormant);
-  assert.equal(DECLARATION, '.claudinite-checks.json');
+  assert.equal(DECLARATION, '.claudinite-settings.json');
   assert.equal(isDormant(await readDeclaration(ghServing('{"dormant":true}'), 'o/asleep')), true);
   assert.equal(isDormant(await readDeclaration(ghServing('{"packs":[]}'), 'o/awake')), false);
 });

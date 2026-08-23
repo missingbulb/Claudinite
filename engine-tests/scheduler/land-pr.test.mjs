@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, deliveryFromChecks,
+  normalizeDelivery, resolveDelivery, DEFAULT_DELIVERY, deliveryFromChecks, deliveryFor, deliveryForText,
   workflowTriggers, ciDispatchPlan, pullCreateError,
   deliveryAction, classifyMergeGate, pullDisposition, mergeReason, failureSummary,
   landAttempt, LAND_TIMEOUT_MS, LAND_INFLIGHT_TIMEOUT_MS, openDeliveredPull, disposeOpenPull,
@@ -56,7 +56,36 @@ test('resolveDelivery still fails the run on an unrecognized value — never a s
 });
 
 // deliveryFromChecks is the same resolution off the raw file text — the shape a
-// caller reading .claudinite-checks.json from a git blob has in hand.
+// caller reading .claudinite-settings.json from a git blob has in hand.
+// THE OVERRIDE (#1252). One direction, and only `true` carries an intent: every
+// member wanted its update PR landed, so a preference materialized into every
+// declaration said nothing, and the repo that wants a human is the one that has to
+// say so. Absence is the normal shape and must never resolve to `review` — that
+// stalls a repo's daily update forever waiting for someone nobody told.
+test('deliveryFor: only an explicit true withholds the PR', () => {
+  assert.equal(deliveryFor({ dailyClaudiniteUpdatesRequirePrReview: true }), 'review');
+  assert.equal(deliveryFor({ dailyClaudiniteUpdatesRequirePrReview: false }), DEFAULT_DELIVERY);
+  assert.equal(deliveryFor({ packs: ['basics'] }), DEFAULT_DELIVERY, 'absent is the normal shape');
+  assert.equal(deliveryFor(null), DEFAULT_DELIVERY);
+});
+
+// The rename's window: a member carries the retired block until its own converge runs
+// the record, and reading past it would land a `review` member's PR unreviewed.
+test('deliveryFor: the retired maintenance.delivery still speaks, and loses to the current key', () => {
+  assert.equal(deliveryFor({ maintenance: { delivery: 'review' } }), 'review');
+  assert.equal(deliveryFor({ maintenance: { delivery: 'pr' } }), 'review');
+  assert.equal(deliveryFor({ maintenance: { delivery: 'auto-merge' } }), DEFAULT_DELIVERY);
+  assert.equal(deliveryFor({ maintenance: { delivery: 'nonsense' } }), DEFAULT_DELIVERY);
+  assert.equal(deliveryFor({ dailyClaudiniteUpdatesRequirePrReview: false, maintenance: { delivery: 'review' } }),
+    DEFAULT_DELIVERY, 'the current key is the answer wherever it is present');
+});
+
+test('deliveryForText: unparsable or absent settings land the PR rather than failing the run', () => {
+  assert.equal(deliveryForText('{"dailyClaudiniteUpdatesRequirePrReview":true}'), 'review');
+  assert.equal(deliveryForText('not json at all'), DEFAULT_DELIVERY);
+  assert.equal(deliveryForText(null), DEFAULT_DELIVERY);
+});
+
 test('deliveryFromChecks resolves the stated intent out of the raw checks JSON', () => {
   assert.equal(deliveryFromChecks('{"maintenance":{"delivery":"review"}}').delivery, 'review');
   assert.equal(deliveryFromChecks('{"maintenance":{"delivery":"push"}}').delivery, 'auto-merge');

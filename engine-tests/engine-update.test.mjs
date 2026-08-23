@@ -9,6 +9,7 @@ import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
 import { SCHEDULER_WORKFLOW } from '../engine/scheduler/converge-wiring.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
+import { installedVersions } from '../engine/installed-versions.mjs';
 
 // The engine update flow, driven against REAL member trees built by the real vendor
 // writer — the thing a member actually holds. A fixture corpus would prove the
@@ -19,15 +20,15 @@ const MOUNT = join('.claudinite', 'shared');
 
 function makeMember(declaration = { packs: ['basics'] }) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-member-'));
-  writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify(declaration, null, 2)}\n`);
+  writeFileSync(join(root, '.claudinite-settings.json'), `${JSON.stringify(declaration, null, 2)}\n`);
   mkdirSync(join(root, 'src'), { recursive: true });
   writeFileSync(join(root, 'src', 'app.js'), 'project code\n');
   return root;
 }
 
-const stampOf = (root) => JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8')).claudinite;
+const stampOf = (root) => installedVersions(JSON.parse(readFileSync(join(root, '.claudinite-settings.json'), 'utf8')));
 const setStamp = (root, patch) => {
-  const p = join(root, '.claudinite-checks.json');
+  const p = join(root, '.claudinite-settings.json');
   const raw = JSON.parse(readFileSync(p, 'utf8'));
   raw.claudinite = { ...(raw.claudinite ?? {}), ...patch };
   writeFileSync(p, `${JSON.stringify(raw, null, 2)}\n`);
@@ -57,7 +58,7 @@ test('a repo that never adopted is a needs-human terminal, not a crash', async (
 
 test('malformed settings stop the run before anything is written', async () => {
   const root = makeMember();
-  writeFileSync(join(root, '.claudinite-checks.json'), '{ not json\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ not json\n');
   const r = await engineUpdate(root, { fullName: 'o/r' });
   assert.equal(r.status, NEEDS_HUMAN);
   assert.ok(!existsSync(join(root, MOUNT)), 'a refused update writes nothing at all');

@@ -30,6 +30,23 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { removeTree } from '../../engine/remove-tree.mjs';
+import { settingsPath, isSettingsFile } from '../../engine/settings-file.mjs';
+import { installedVersions, withInstalledVersions } from '../../engine/installed-versions.mjs';
+
+// The fixture's declaration with this mode's installed versions written in: the
+// engine version at the top, and every declared pack pinned at the same number so
+// each pack's own records select too. `installed: null` writes nothing, which is the
+// shape a repo that has never been vendored actually has.
+function withMode(content, mode) {
+  const raw = JSON.parse(content);
+  if (!mode.installed) return content;
+  const packVersions = {};
+  for (const entry of raw.packs ?? []) {
+    const id = typeof entry === 'string' ? entry : entry?.id;
+    if (typeof id === 'string') packVersions[id] = mode.installed.packVersion;
+  }
+  return `${JSON.stringify(withInstalledVersions(raw, { engineVersion: mode.installed.engineVersion, packVersions }), null, 2)}\n`;
+}
 
 export const CANON = dirname(dirname(dirname(fileURLToPath(import.meta.url)))); // vendoring/rehearsal -> canon
 
@@ -52,10 +69,11 @@ export function buildFixture(fixture, mode) {
   for (const [rel, content] of Object.entries(fixture.files)) {
     const abs = join(root, rel);
     mkdirSync(dirname(abs), { recursive: true });
-    // The declaration carries the mode's stamp — that is what selects migration notes.
-    writeFileSync(abs, rel === '.claudinite-checks.json'
-      ? content.replace('"updated": null', `"updated": ${JSON.stringify(mode.updated)}`)
-      : content);
+    // The declaration carries the mode's INSTALLED VERSIONS — that is what selects
+    // migration records. Written structurally rather than by text substitution: the
+    // pack versions land one per entry, so there is no single literal to replace,
+    // and a fixture's declaration is generated data rather than a file anyone reads.
+    writeFileSync(abs, isSettingsFile(rel) ? withMode(content, mode) : content);
   }
   // A real repo, because the sweep scopes its file set with git and an
   // uninitialised directory makes it fall back to whatever cwd it can find.
@@ -86,13 +104,13 @@ export function rehearse(fixture, mode) {
     // against the canon and cheerfully reports on the wrong repo.
     steps.push(step('apply-vendor-set', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
     if (steps.at(-1).ok) {
-      const declarationBefore = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
+      const declarationBefore = readFileSync(settingsPath(root), 'utf8');
       steps.push(step('migrations-apply', [join(CANON, 'engine/migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root }, root));
       // The worker's conditional second pass, mirrored: a note that DECLARED a pack
       // left its content out of the set the first pass computed, and the fixture must
       // meet the same converge a member does — otherwise the rehearsal green-lights a
       // seed that would red every member for a night.
-      if (readFileSync(join(root, '.claudinite-checks.json'), 'utf8') !== declarationBefore) {
+      if (readFileSync(settingsPath(root), 'utf8') !== declarationBefore) {
         steps.push(step('re-converge', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
       }
       // AFTER the migrations, which is the order the real flow runs in
@@ -111,8 +129,8 @@ export function rehearse(fixture, mode) {
         ? step('check-the-world', [sweep], { CLAUDE_PROJECT_DIR: root }, root)
         : { name: 'check-the-world', ok: false, stdout: 'the converge vendored no check_the_world.mjs' });
     }
-    const stamp = existsSync(join(root, '.claudinite-checks.json'))
-      ? JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8')).claudinite
+    const stamp = existsSync(settingsPath(root))
+      ? installedVersions(JSON.parse(readFileSync(settingsPath(root), 'utf8')))
       : null;
     const failed = steps.filter((s) => !s.ok);
     return { fixture: fixture.name, mode: mode.name, ok: failed.length === 0, steps, failed, stamp };

@@ -30,7 +30,7 @@ import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, URGENT,
   NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, outcomeOf, isParked,
 } from '../../engine/scheduler/queue/work-item.mjs';
-import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
+import { installedVersions } from '../../engine/installed-versions.mjs';
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../engine/version.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths } from './model.mjs';
 import { commitDays } from './activity.mjs';
@@ -67,35 +67,34 @@ export function parsePackVersion(text) {
 
 // --- mount freshness ------------------------------------------------------------
 
-// Whether a member's mount is current. Judged on the stamp's `engineVersion` and
-// `packVersions` and NEVER on `ref` or `updated`: the versioned flows stamp versions
-// and nothing else, so those two hold the provenance of the last FULL re-vendor —
-// a member converging nightly carries a months-old ref and updated forever, and
-// judging either reads every healthy member as behind or stalled (#1065; the same
-// class as #786). `updated` travels through as display-only provenance.
+// Whether a member's mount is current, judged on the versions it has installed —
+// the only thing left to judge it on, and the only thing that was ever right. The
+// `ref` and `updated` that sat beside them held the provenance of the last FULL
+// re-vendor, so a member converging nightly carried a months-old pair forever and
+// anything judging either read every healthy member as behind or stalled (#1065,
+// the same class as #786); #1252 deleted both.
 //
 // `canon` is the reference to compare against: its live `engineVersion` and the
 // canon's own per-pack versions (`packVersions`, possibly partial — the loader
 // fetches only the packs members actually stamp). A pack the canon side cannot
 // price is counted `unknownPacks`, never silently judged current. With no canon
 // supplied the honest answer is `unknown`, not `current`.
-export function mountState(stamp, canon = null) {
-  if (!stamp) return { state: 'none', engineVersion: null, updated: null };
-  const engineVersion = stamp.engineVersion ?? null;
-  // The stamp is stored data: a pack renamed since it was written still keys its
-  // version under the old spelling, which must compare rather than read as unknown.
-  const packVersions = stamp.packVersions ? canonicalPackVersions(stamp.packVersions) : null;
-  const updated = stamp.updated ?? null;
+export function mountState(declaration, canon = null) {
+  if (!declaration) return { state: 'none', engineVersion: null };
+  // The shape reader canonicalizes as it goes: a version is stored data, and a pack
+  // renamed since it was written still keys under the old spelling in the retired
+  // block, which must compare rather than read as unknown.
+  const { engineVersion, packVersions } = installedVersions(declaration);
 
-  if (engineVersion == null && packVersions == null) {
+  if (engineVersion == null && Object.keys(packVersions).length === 0) {
     // A stamp with no versions predates the versioned flows entirely — this member
     // has not converged since they landed, which is its own kind of stale.
-    return { state: 'unversioned', engineVersion, updated };
+    return { state: 'unversioned', engineVersion };
   }
-  if (canon?.engineVersion == null) return { state: 'unknown', engineVersion, updated };
+  if (canon?.engineVersion == null) return { state: 'unknown', engineVersion };
 
   if (isVersion(engineVersion) && versionAbove(canon.engineVersion, engineVersion)) {
-    return { state: 'behind-engine', engineVersion, canonEngineVersion: canon.engineVersion, updated };
+    return { state: 'behind-engine', engineVersion, canonEngineVersion: canon.engineVersion };
   }
 
   const behindPacks = [];
@@ -108,9 +107,9 @@ export function mountState(stamp, canon = null) {
     if (versionAbove(canonVersion, version)) behindPacks.push({ pack, version, canonVersion });
   }
   if (behindPacks.length) {
-    return { state: 'behind', engineVersion, behindPacks, comparedPacks, unknownPacks, updated };
+    return { state: 'behind', engineVersion, behindPacks, comparedPacks, unknownPacks };
   }
-  return { state: 'current', engineVersion, comparedPacks, unknownPacks, updated };
+  return { state: 'current', engineVersion, comparedPacks, unknownPacks };
 }
 
 // --- one member -----------------------------------------------------------------
@@ -192,7 +191,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
 
   const runSummary = summariseRuns(runs ?? [], now);
   const ci = ciStatus(runs ?? [], defaultBranch);
-  const mount = mountState(declaration.claudinite, canon);
+  const mount = mountState(declaration, canon);
 
   const n = (count, word) => `${count} ${word}${count > 1 ? 's' : ''}`;
   // Every reason carries a `kind`, because the row shows some of these twice
@@ -225,7 +224,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
   } else if (mount.state === 'behind') {
     reasons.push({ kind: 'mount', level: 'info', text: `mount behind canon on ${mount.behindPacks.map((p) => p.pack).join(', ')}` });
   } else if (mount.state === 'unversioned') {
-    reasons.push({ kind: 'mount', level: 'warning', text: 'mount stamp carries no versions — it predates the versioned update flows' });
+    reasons.push({ kind: 'mount', level: 'warning', text: 'declares Claudinite but records no installed versions — the mount has never been converged' });
   } else if (mount.state === 'none') {
     reasons.push({ kind: 'mount', level: 'warning', text: 'declares Claudinite but carries no mount stamp' });
   }

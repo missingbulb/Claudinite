@@ -344,7 +344,7 @@ test('isolation: the crossing point, the product-wiki/ subtree, the index file, 
     // files directly under product-wiki/ are not barred (only child dirs are)
     'docs/map.md': 'the research index is product-wiki/README.md\n',
     // the settings file legitimately spells wiki paths
-    '.claudinite-checks.json': '{ "packs": ["product-wiki"], "accept": [ { "rule": "product-wiki-isolation", "path": "product-wiki/Market/README.md", "reason": "r" } ] }\n',
+    '.claudinite-settings.json': '{ "packs": ["product-wiki"], "accept": [ { "rule": "product-wiki-isolation", "path": "product-wiki/Market/README.md", "reason": "r" } ] }\n',
   });
   assert.deepEqual(f, []);
 });
@@ -390,7 +390,7 @@ test('isolation: agent-written wiki filenames never become repo-wide barred bare
 test('isolation: an empty product-wiki/ expansion fails closed instead of disarming', () => {
   const f = run(isolation, { 'src/a.js': 'x\n' });
   assert.equal(f.length, 1);
-  assert.equal(f[0].file, '.claudinite-checks.json');
+  assert.equal(f[0].file, '.claudinite-settings.json');
   assert.equal(f[0].severity, 'blocking');
   assert.match(f[0].what, /matched no/);
 });
@@ -405,7 +405,7 @@ test('runner integration: a reasoned accept excuses an isolation crossing', () =
   const root = makeRepo({ changed: { ...SCAFFOLD, 'dev/notes.md': 'see product-wiki/Market/README.md\n' } });
   try {
     writeFiles(root, {
-      '.claudinite-checks.json': `${JSON.stringify({
+      '.claudinite-settings.json': `${JSON.stringify({
         packs: ['product-wiki'],
         accept: [{ rule: 'product-wiki-isolation', path: 'dev/notes.md', reason: 'deliberate ledger reference' }],
       }, null, 2)}\n`,

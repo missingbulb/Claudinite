@@ -358,7 +358,7 @@ closing or running anything.
 
 ## A dormant project runs nothing
 
-A project nobody is working on declares itself dormant in `.claudinite-checks.json`:
+A project nobody is working on declares itself dormant in `.claudinite-settings.json`:
 
 ```json
 "dormant": true

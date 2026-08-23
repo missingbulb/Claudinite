@@ -2,9 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveEndpoint, agentInvoker, firePayload, DEFAULT_ENDPOINT, DEFAULT_HEADERS } from '../../../engine/scheduler/queue/invoke.mjs';
 
+// Spelled the CURRENT way (#1252) — the map says which endpoints these are.
 const CONFIG = {
   taskScheduler: {
-    endpoints: {
+    agenticTaskInvocationEndpoints: {
       default: { url: 'https://example.invalid/routines/trig_1/fire', tokenSecret: 'CCR_TOKEN' },
       fleet: { url: 'https://example.invalid/routines/trig_2/fire', tokenSecret: 'CCR_FLEET_TOKEN' },
     },
@@ -26,9 +27,17 @@ test('a task needing wider reach names a different endpoint, and nothing else ch
   assert.equal(e.tokenEnv, 'CCR_FLEET_TOKEN');
 });
 
+// The rename's window: a member writes its own settings, so the retired spelling is
+// live until that member's own converge rewrites it, and a resolver that only knew
+// the current one would fail every hand-off on every repo that has not converged.
+test('the retired "endpoints" spelling still resolves', () => {
+  const legacy = { taskScheduler: { endpoints: CONFIG.taskScheduler.agenticTaskInvocationEndpoints } };
+  assert.equal(resolveEndpoint(legacy, task('fleet')).url, 'https://example.invalid/routines/trig_2/fire');
+});
+
 test('an unconfigured endpoint is reported, never thrown or guessed at', () => {
-  assert.match(resolveEndpoint(CONFIG, task('nowhere')).error, /declares no invocation endpoint "nowhere"/);
-  assert.match(resolveEndpoint({}, task(null)).error, /declares no invocation endpoint "default"/);
+  assert.match(resolveEndpoint(CONFIG, task('nowhere')).error, /declare no invocation endpoint "nowhere"/);
+  assert.match(resolveEndpoint({}, task(null)).error, /declare no invocation endpoint "default"/);
   assert.match(resolveEndpoint({ taskScheduler: { endpoints: { default: { url: 'u' } } } }, task(null)).error, /tokenSecret/);
 });
 

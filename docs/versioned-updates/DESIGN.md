@@ -215,7 +215,10 @@ install-specific provisions:
   which model runs a session is the scheduler's answer, off the task
   declaration, and a record naming its own was a second authority over the
   same fact.
-- The date-held stamp (`claudinite.updated` gating note application).
+- The date-held stamp (`claudinite.updated` gating note application) — deleted
+  outright in #1252, along with the `claudinite` block that held it: it recorded
+  the last FULL re-vendor rather than the last converge, so nothing could judge
+  freshness by it correctly.
 - The baselining vocabulary, corpus-wide.
 
 ## 7. Known-open
@@ -240,9 +243,9 @@ A local pack's adaptation remains what it is today: a conformance finding
 resolved in the repo's own sessions, never a step of this migration.
 
 The member-side deltas the migration does produce are all written by the
-flows themselves: new stamp fields in `.claudinite-checks.json`
-(installed engine version, per-pack versions, the which-mechanism rollout
-flag), the relocated migration records inside the vendored mount, and
+flows themselves: the installed versions recorded in the member's settings
+file (the engine version, and each pack's version on that pack's own entry
+since #1252), the relocated migration records inside the vendored mount, and
 eventually the new worker.
 
 **Implementation happens in the canon repo alone** — no fleet-scoped

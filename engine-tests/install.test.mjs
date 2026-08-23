@@ -10,15 +10,16 @@ import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
 import { validateManifest } from '../engine/pack_loader/pack-schema.mjs';
 import { isDeclaredVersion } from '../engine/version.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
+import { installedVersions, withInstalledVersions } from '../engine/installed-versions.mjs';
 
 const MOUNT = join('.claudinite', 'shared');
 const makeRepo = (declaration = { packs: [] }) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-install-'));
-  writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify(declaration, null, 2)}\n`);
+  writeFileSync(join(root, '.claudinite-settings.json'), `${JSON.stringify(declaration, null, 2)}\n`);
   mkdirSync(join(root, 'src'), { recursive: true });
   return root;
 };
-const settingsOf = (root) => JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
+const settingsOf = (root) => JSON.parse(readFileSync(join(root, '.claudinite-settings.json'), 'utf8'));
 
 test('an install refuses a pack the repo already has a version for', async () => {
   const packs = await loadPacks();
@@ -42,8 +43,9 @@ test('an install stamps the latest version and fetches NO migration records', as
 
   const packs = await loadPacks();
   const latest = packs.find((p) => p.id === 'basics').version;
-  assert.equal(settingsOf(root).claudinite.packVersions.basics, latest, 'the install claims the newest version directly');
-  assert.ok(settingsOf(root).packs.includes('basics'), 'and declares the pack it installed');
+  assert.equal(installedVersions(settingsOf(root)).packVersions.basics, latest, 'the install claims the newest version directly');
+  assert.ok(settingsOf(root).packs.some((e) => (typeof e === 'string' ? e : e.id) === 'basics'),
+    'and declares the pack it installed — as an entry, which is what now carries its version');
 
   // The correctness rule, asserted as an absence: a record assumes the shapes its own
   // era produced, and an empty repo is not one of them.
@@ -78,7 +80,7 @@ test('unanswered adoption questions end the run the same way a red check does', 
   assert.match(r.decision.why, /unanswered/);
   // The content still landed and the version is still stamped — what the terminal
   // governs is the merge, not whether the install happened.
-  assert.ok(settingsOf(root).claudinite.packVersions[withQuestions.id]);
+  assert.ok(installedVersions(settingsOf(root)).packVersions[withQuestions.id]);
   removeTree(root);
 });
 
@@ -101,15 +103,24 @@ test('the requires closure is installed and STAMPED, not just vendored', async (
   // declaring it, pulled in through basics.
   const root = makeRepo();
   const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
-  const stamped = settingsOf(root).claudinite.packVersions;
+  const stamped = installedVersions(settingsOf(root)).packVersions;
   const pulled = r.install.map((i) => i.id).filter((id) => id !== 'basics');
   assert.ok(pulled.length, 'basics pulls a closure in — otherwise this test proves nothing');
   for (const id of pulled) {
     assert.ok(isDeclaredVersion(stamped[id]), `${id} was vendored but left unversioned`);
   }
-  // …and the closure is INSTALLED, not DECLARED: what a repo declares is its own
-  // choice, and `requires` is the canon's inference from it.
-  assert.deepEqual(settingsOf(root).packs, ['basics'], 'a pulled-in pack is not a declaration the repo made');
+  // …and a pulled-in pack is still not a CHOICE the repo made: it carries `via`,
+  // naming the pack that pulled it in, which is how everything downstream tells an
+  // inferred entry from a chosen one. It has an entry at all because that is where
+  // its version lives now (#1252) — and because being unversioned was the exact hole
+  // this test was written to close.
+  const packs = settingsOf(root).packs;
+  assert.deepEqual(packs.filter((e) => typeof e === 'string' || !e.via).map((e) => e.id ?? e), ['basics'],
+    'only the named pack is a declaration the repo made');
+  for (const id of pulled) {
+    const entry = packs.find((e) => e?.id === id);
+    assert.ok(entry?.via?.length, `${id} was pulled in but records no provenance`);
+  }
   removeTree(root);
 });
 
@@ -255,8 +266,8 @@ test('an UPDATE never seeds — the run-once guarantee is structural, not a flag
   assert.deepEqual((await applyVendor(root)).errors, []);
   writeFileSync(join(root, 'SEEDED.md'), 'seeded once, then edited by the repo\n');
   const settings = settingsOf(root);
-  settings.claudinite.packVersions = { basics: 0 };
-  writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify(settings, null, 2)}\n`);
+  writeFileSync(join(root, '.claudinite-settings.json'),
+    `${JSON.stringify(withInstalledVersions(settings, { packVersions: { basics: 0 } }), null, 2)}\n`);
 
   const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   assert.equal(r.status, 'ok', r.detail);

@@ -26,12 +26,9 @@ const CANON = { repo: 'o/canon', ref: 'canonsha', engineVersion: 4, packVersions
 // re-vendor — a healthy member's fixtures must look exactly like this, and every
 // test over `decl()` doubles as proof that neither field is ever judged.
 const decl = (over = {}) => ({
-  packs: ['claudinite-lifecycle', 'basics'],
+  packs: [{ id: 'claudinite-lifecycle', version: 3 }, { id: 'basics', version: 5 }],
   taskScheduler: { dailyHour: 4 },
-  claudinite: {
-    ref: 'a-january-full-revendor-sha', updated: '2026-01-05T00:00:00Z',
-    engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 },
-  },
+  engineVersion: 4,
   ...over,
 });
 
@@ -157,28 +154,42 @@ test('a member declaring no tasks is not accused of never running them', () => {
 
 // --- mount freshness -------------------------------------------------------------
 
+// A member's settings, as `mountState` reads them: the engine version at the top and
+// each pack's version on its own entry (#1252).
+const member = (engineVersion, packVersions = {}) => ({
+  engineVersion,
+  packs: Object.entries(packVersions).map(([id, version]) => ({ id, version })),
+});
+
 // The defect this whole block exists to keep out (#1065, same class as #786): the
-// versioned flows stamp `engineVersion`/`packVersions` and nothing else, so `ref`
-// and `updated` hold the provenance of the LAST FULL RE-VENDOR. A mount converging
-// nightly carries a months-old ref and updated forever — judging either reads every
-// healthy member as behind or stalled.
-test('freshness is judged on versions, never on ref or updated', () => {
+// versioned flows record versions and nothing else, so the `ref` and `updated` that
+// used to sit beside them held the provenance of the LAST FULL RE-VENDOR. A mount
+// converging nightly carried a months-old pair forever — judging either read every
+// healthy member as behind or stalled. #1252 deleted both, so a member that somehow
+// still carries them must be judged on its versions exactly as one that does not.
+test('freshness is judged on versions, and stray provenance keys change nothing', () => {
   const stamp = {
+    ...member(4, { 'claudinite-lifecycle': 3, basics: 5 }),
     ref: 'a-january-full-revendor-sha', updated: '2026-01-05T00:00:00Z',
-    engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 },
   };
   assert.equal(mountState(stamp, CANON).state, 'current');
 });
 
+// The rename's window: a member carries the retired block until its own converge runs
+// the record, and reading past it would call a current mount unversioned.
+test('a pre-rename member is judged from the retired block', () => {
+  const legacy = { claudinite: { engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 } } };
+  assert.equal(mountState(legacy, CANON).state, 'current');
+});
+
 test('an older engine version outranks pack lag', () => {
-  const stamp = { engineVersion: 3, packVersions: { basics: 4 } };
-  const s = mountState(stamp, CANON);
+  const s = mountState(member(3, { basics: 4 }), CANON);
   assert.equal(s.state, 'behind-engine');
   assert.equal(s.canonEngineVersion, 4);
 });
 
 test('a pack behind canon reads behind and names the pack', () => {
-  const s = mountState({ engineVersion: 4, packVersions: { 'claudinite-lifecycle': 2, basics: 5 } }, CANON);
+  const s = mountState(member(4, { 'claudinite-lifecycle': 2, basics: 5 }), CANON);
   assert.equal(s.state, 'behind');
   assert.deepEqual(s.behindPacks, [{ pack: 'claudinite-lifecycle', version: 2, canonVersion: 3 }]);
 });
@@ -187,7 +198,7 @@ test('a pack behind canon reads behind and names the pack', () => {
 // still keys the version under the old spelling, and must compare — not read as an
 // unknown pack.
 test('a renamed pack\'s stamped spelling still compares against canon', () => {
-  const s = mountState({ engineVersion: 4, packVersions: { core: 2, basics: 5 } }, CANON);
+  const s = mountState({ claudinite: { engineVersion: 4, packVersions: { core: 2, basics: 5 } } }, CANON);
   assert.equal(s.state, 'behind');
   assert.deepEqual(s.behindPacks, [{ pack: 'claudinite-lifecycle', version: 2, canonVersion: 3 }]);
 });
@@ -195,21 +206,21 @@ test('a renamed pack\'s stamped spelling still compares against canon', () => {
 // A pack the canon reference cannot price (the read failed, or it is a local pack)
 // is an unknown, never silently "current".
 test('a pack canon carries no version for is counted unknown, not judged', () => {
-  const s = mountState({ engineVersion: 4, packVersions: { basics: 5, 'some-new-pack': 1 } }, CANON);
+  const s = mountState(member(4, { basics: 5, 'some-new-pack': 1 }), CANON);
   assert.equal(s.state, 'current');
   assert.equal(s.unknownPacks, 1);
   assert.equal(s.comparedPacks, 1);
 });
 
 test('with no canon configured freshness is unknown, not current', () => {
-  const s = mountState({ engineVersion: 4, packVersions: { basics: 5 } }, null);
+  const s = mountState(member(4, { basics: 5 }), null);
   assert.equal(s.state, 'unknown');
 });
 
 // A stamp with no versions at all predates the versioned flows — that member has not
 // converged since they landed, which is worth a flag of its own.
 test('a stamp carrying no versions reads unversioned', () => {
-  assert.equal(mountState({ ref: 'x', updated: '2026-08-17T00:00:00Z' }, CANON).state, 'unversioned');
+  assert.equal(mountState({ packs: ['basics'] }, CANON).state, 'unversioned');
 });
 
 // The canon side of the comparison is lifted as text off the real files, so the
@@ -227,10 +238,16 @@ test('the version parsers answer null — never a guess — on text without the 
   assert.equal(parsePackVersion('export default { id: "x", agentVersion: 3 };\n'), null);
 });
 
-test('a member declaring Claudinite with no stamp is flagged', () => {
-  const s = summariseMember(read({ declaration: decl({ claudinite: undefined }) }), { now: NOW, canon: CANON });
+// The two absences, kept apart: a declaration this page could not read at all is
+// `none`, and a declaration that records no versions is `unversioned` — a repo that
+// declares Claudinite and has never been converged. Before #1252 both were "no
+// stamp", because the versions lived in a block that could itself be missing.
+test('a member declaring Claudinite with no installed versions is flagged', () => {
+  const s = summariseMember(read({ declaration: { packs: ['basics'], taskScheduler: { dailyHour: 4 } } }),
+    { now: NOW, canon: CANON });
   assert.equal(mountState(undefined).state, 'none');
-  assert.ok(s.reasons.some((r) => /no mount stamp/.test(r.text)));
+  assert.equal(mountState({ packs: ['basics'] }).state, 'unversioned');
+  assert.ok(s.reasons.some((r) => /records no installed versions/.test(r.text)), JSON.stringify(s.reasons));
 });
 
 // --- runs ------------------------------------------------------------------------
@@ -379,7 +396,7 @@ test('the open state mix is counted per state, with unknown states kept apart', 
 
 test('a behind mount is a reason that names the packs, at routine severity', () => {
   const s = summariseMember(
-    read({ items: [item()], declaration: decl({ claudinite: { engineVersion: 4, packVersions: { 'claudinite-lifecycle': 2, basics: 5 } } }) }),
+    read({ items: [item()], declaration: decl({ packs: [{ id: 'claudinite-lifecycle', version: 2 }, { id: 'basics', version: 5 }] }) }),
     { now: NOW, canon: CANON },
   );
   const reason = s.reasons.find((r) => /behind canon/.test(r.text));

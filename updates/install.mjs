@@ -5,8 +5,9 @@ import { computeVendorSet, SHARED_SUBDIR } from '../vendoring/compute-vendor-set
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { isVersion, versionAbove } from '../engine/version.mjs';
-import { canonicalPackVersions } from '../engine/pack_loader/renamed-packs.mjs';
 import { DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
+import { settingsPath } from '../engine/settings-file.mjs';
+import { installedVersions, hasInstalledMount, withInstalledVersions } from '../engine/installed-versions.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
 import { isPackFile } from './pack-update.mjs';
 
@@ -81,19 +82,18 @@ export function unansweredQuestions(packs, entries) {
 export async function installPacks(targetRoot, ids, {
   today, dryRun = false, delivery = 'auto-merge', forceMergeOnRedCi = false, selfTestRun, packs: packSet,
 } = {}) {
-  const settingsPath = join(targetRoot, DECLARATION_FILE);
-  if (!existsSync(settingsPath)) {
+  const settingsFile = settingsPath(targetRoot);
+  if (!existsSync(settingsFile)) {
     return outcome(NEEDS_HUMAN, `${targetRoot} has no ${DECLARATION_FILE} — adoption seeds the declaration first`);
   }
   let raw;
-  try { raw = JSON.parse(readFileSync(settingsPath, 'utf8')); }
+  try { raw = JSON.parse(readFileSync(settingsFile, 'utf8')); }
   catch (e) { return outcome(NEEDS_HUMAN, `${DECLARATION_FILE} is not valid JSON: ${e.message}`); }
 
-  const rawStamp = raw.claudinite && typeof raw.claudinite === 'object' ? raw.claudinite : null;
-  // Canonicalized before planInstall reads it: a renamed pack whose version sits under
-  // the old key would otherwise be "not installed", and installing re-stamps it at
-  // latest having run none of the records in its gap.
-  const installed = rawStamp && { ...rawStamp, packVersions: canonicalPackVersions(rawStamp.packVersions ?? {}) };
+  // Canonicalized by the shape reader before planInstall sees it: a renamed pack whose
+  // version sits under the old key would otherwise be "not installed", and installing
+  // re-stamps it at latest having run none of the records in its gap.
+  const installed = hasInstalledMount(raw) ? installedVersions(raw) : null;
   const engineVersion = isVersion(installed?.engineVersion) ? installed.engineVersion : ENGINE_VERSION;
   // `packs` is injectable for the same reason `selfTestRun` is: the seed-op path is
   // only reachable through a manifest that declares one, and the canon deliberately
@@ -148,14 +148,21 @@ export async function installPacks(targetRoot, ids, {
 
   // Stamp the LATEST version directly — the install's whole claim. Nothing is
   // migrated into it, so nothing may imply it was.
-  const next = JSON.parse(readFileSync(settingsPath, 'utf8'));
-  next.packs = declared;
-  // Same canonicalization as the update flow's stamp write: a legacy key carried
-  // forward here would outlive every rename that has already happened.
-  const packVersions = { ...canonicalPackVersions(next.claudinite?.packVersions ?? {}) };
+  const next = JSON.parse(readFileSync(settingsFile, 'utf8'));
+  // THE RESOLVED ENTRIES, not the bare `declared` list: every pack this run stamps
+  // needs an entry to carry its version, and a pack pulled in through another's
+  // `requires` is installed exactly as much as a named one. That is not a
+  // declaration made on the repo's behalf — `via` is what says so, written by
+  // `resolveDeclaredPacks` and read by anything that must tell a chosen pack from an
+  // inferred one. It is also what `--init` already seeds, so the two writers agree.
+  //
+  // Before #1252 the closure's versions lived in a central map that needed no entry,
+  // which is why the two could disagree at all: a pack could be installed, stamped,
+  // and named nowhere in the file it was stamped in.
+  next.packs = entries;
+  const packVersions = {};
   for (const { id, version } of install) if (version !== null) packVersions[id] = version;
-  next.claudinite = { ...(next.claudinite ?? {}), packVersions };
-  writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`);
+  writeFileSync(settingsFile, `${JSON.stringify(withInstalledVersions(next, { packVersions }), null, 2)}\n`);
 
   // Seed ops: the install-only effects the repo owns from here (DESIGN §4). Written
   // ONLY when the dest is absent — a seeded file is the member's from the moment it

@@ -58,7 +58,7 @@
 import { fleetTokenHandoverStep } from './tasks/fleet-digest/fleet-token.mjs';
 
 export default {
-  version: '60822.4',
+  version: '60823.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

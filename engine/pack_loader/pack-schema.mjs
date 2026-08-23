@@ -4,7 +4,7 @@
 // manifest against it. The loader calls it on every pack it imports (canon and a
 // consumer's own `local_packs/` alike), so a malformed or incomplete manifest
 // surfaces as a blocking `config` error at load — the same class as invalid JSON
-// in `.claudinite-checks.json`.
+// in `.claudinite-settings.json`.
 //
 // WHY A SPEC AND NOT A CHECK. A required manifest field is part of the pack
 // contract, not a conformance opinion about a repo's content: a conformance rule

@@ -20,7 +20,7 @@ session needs no architecture lesson, its rules arrive injected):
   session start when the pack is declared), checks (run at every Stop), **and its skills**
   (`<pack>/skills/<skill>/` — activity-scoped procedures the harness surfaces on demand, one
   owning pack per skill). No pack is active undeclared — the baseline included; activation is
-  the project's `.claudinite-checks.json` declaration ([packs/README.md](packs/README.md) —
+  the project's `.claudinite-settings.json` declaration ([packs/README.md](packs/README.md) —
   the one catalog; a pack's skills are listed nowhere but the pack, #385). A consumer's own
   packs sit in its `.claudinite/local_packs/<name>/`, same slots, same engine.
 - **`engine/`** — the machinery that runs pack content, and the one always-vendored root:

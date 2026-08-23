@@ -37,7 +37,7 @@ const CHECKS_JSON = JSON.stringify({
 }, null, 2) + '\n';
 
 const FULL = {
-  '.claudinite-checks.json': CHECKS_JSON,
+  '.claudinite-settings.json': CHECKS_JSON,
   'manifest.json': JSON.stringify({ manifest_version: 3, name: 'x', version: '1.4.0' }) + '\n',
   // The release orchestrator, by its contract name: store-release declines outright
   // on a repo that does not publish (#1057), so without this the manifest-ahead
@@ -120,7 +120,7 @@ test('buildSignalContext populates every ctx key the collectors read', () => {
 });
 
 test('buildSignalContext: absent manifest, no local packs, no retention → the honest negatives', () => {
-  withRepo({ '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, (root) => {
+  withRepo({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, (root) => {
     const ctx = ctxFor(root);
     assert.equal(ctx.manifestVersion, null);
     assert.equal(ctx.shipsReleasePipeline, false); // explicit false — the task's gate reads it
@@ -131,19 +131,19 @@ test('buildSignalContext: absent manifest, no local packs, no retention → the 
 
 test('buildSignalContext: the manifest is found at any of the probed paths, first version wins', () => {
   withRepo({
-    '.claudinite-checks.json': JSON.stringify({ packs: [] }) + '\n',
+    '.claudinite-settings.json': JSON.stringify({ packs: [] }) + '\n',
     'src/manifest.json': JSON.stringify({ version: '2.1.0' }) + '\n',
   }, (root) => assert.equal(ctxFor(root).manifestVersion, '2.1.0'));
   // Unparsable or versionless manifests are "nothing to judge", not a crash.
   withRepo({
-    '.claudinite-checks.json': JSON.stringify({ packs: [] }) + '\n',
+    '.claudinite-settings.json': JSON.stringify({ packs: [] }) + '\n',
     'manifest.json': '{ not json',
   }, (root) => assert.equal(ctxFor(root).manifestVersion, null));
 });
 
 test('buildSignalContext: the pre-rename local_packs root still counts as local packs', () => {
   withRepo({
-    '.claudinite-checks.json': JSON.stringify({ packs: [] }) + '\n',
+    '.claudinite-settings.json': JSON.stringify({ packs: [] }) + '\n',
     '.claudinite/local_packs/mine/pack.mjs': 'export default { id: "mine" };\n',
   }, (root) => assert.equal(ctxFor(root).hasLocalPacks, true));
 });
@@ -164,7 +164,7 @@ test('release.manifestVersion reaches store-release, so the manifest-ahead trigg
 });
 
 test('localPacks.present reaches growth-dedup, so a repo with none self-skips', async () => {
-  await withRepo({ '.claudinite-checks.json': CHECKS_JSON }, async (root) => {
+  await withRepo({ '.claudinite-settings.json': CHECKS_JSON }, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['localPacks', 'sharedMount', 'commits']);
     assert.equal(signals.localPacks.present, false);
     const v = dedup.precondition(signals);
@@ -208,7 +208,7 @@ test('conversationLogs.oldestLogAgeDays reaches logs-prune, so young logs keep i
 });
 
 test('conversationLogs: retention unset keeps the prune silent — no default is invented', async () => {
-  await withRepo({ '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, async (root) => {
+  await withRepo({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.retentionDays, null);
     assert.equal(logsPrune.precondition(signals).run, false);

@@ -14,7 +14,7 @@ test('evaluate: reports each requirement whose probe is false, nothing when all 
 });
 
 test('activeEnvs resolves the flutter (string) env when declared', async () => {
-  const root = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: ['flutter'] }) } });
+  const root = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['flutter'] }) } });
   try {
     const f = (await activeEnvs(root)).find((e) => e.id === 'flutter');
     assert.ok(f, 'flutter env active when declared');
@@ -27,7 +27,7 @@ test('activeEnvs resolves the flutter (string) env when declared', async () => {
 test("activeEnvs resolves the node env from the pack entry's config.dirs (function form)", async () => {
   const root = makeRepo({
     base: {
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: [{ id: 'node', config: { dirs: ['firebase/functions'] } }],
       }),
     },
@@ -43,7 +43,7 @@ test("activeEnvs resolves the node env from the pack entry's config.dirs (functi
 test('activeEnvs still resolves per-repo params from the legacy top-level packConfig', async () => {
   const root = makeRepo({
     base: {
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: ['node'],
         packConfig: { node: { dirs: ['firebase/functions'] } },
       }),
@@ -57,7 +57,7 @@ test('activeEnvs still resolves per-repo params from the legacy top-level packCo
 });
 
 test('node env defaults to the repo root when no config is given', async () => {
-  const root = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: ['node'] }) } });
+  const root = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['node'] }) } });
   try {
     const n = (await activeEnvs(root)).find((e) => e.id === 'node');
     assert.match(n.setup, /cd "\." && npm ci/);
@@ -65,7 +65,7 @@ test('node env defaults to the repo root when no config is given', async () => {
 });
 
 test('activeEnvs is empty when no env-declaring pack is active', async () => {
-  const root = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: [] }) } });
+  const root = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: [] }) } });
   try {
     assert.deepEqual(await activeEnvs(root), []);
   } finally { cleanup(root); }

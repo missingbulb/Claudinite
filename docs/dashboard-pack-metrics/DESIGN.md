@@ -207,7 +207,7 @@ worst-first ordering was not claimed by whoever shouted loudest.
 
 ## What it costs
 
-Discovery is free: both views already read `.claudinite-checks.json` and the tree
+Discovery is free: both views already read `.claudinite-settings.json` and the tree
 listing at the head sha, so a contribution exists exactly when
 `…/packs/<id>/dashboard.json` — and its values file — appear in a listing already in
 hand. No probe reads.

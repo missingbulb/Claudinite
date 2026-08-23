@@ -167,7 +167,7 @@ flow arms auto-merge and then never runs, so the repo's own maintenance PR waits
 
 ## Setting up a new site repo
 
-1. **Declare** `static-website` in `.claudinite-checks.json` and answer the pack's two adoption
+1. **Declare** `static-website` in `.claudinite-settings.json` and answer the pack's two adoption
    questions (where it's served; what's published). Re-vendor so the pack's tree lands under the
    shared mount.
 2. **Vendor the pipeline** into the repo's own `.github/`: everything under

@@ -138,7 +138,7 @@
     }
   ],
   "taskScheduler": {
-    "endpoints": {
+    "agenticTaskInvocationEndpoints": {
       "default": {
         "url": "https://api.anthropic.com/v1/claude_code/routines/trig_01N7pUAHt3fs391BTqfN2bwM/fire",
         "tokenSecret": "CCR_ROUTINE_TOKEN"

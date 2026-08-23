@@ -23,7 +23,7 @@ test('home-seeded-packs-declared: silent when every seeded pack is declared', ()
       'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
       'packs/tidy-repo/pack.mjs': packModule('tidy-repo', { seeded: true }),
       'packs/leaflet/pack.mjs': packModule('leaflet'),
-      '.claudinite-checks.json': settings(['basics', 'tidy-repo', 'local/claudinite']),
+      '.claudinite-settings.json': settings(['basics', 'tidy-repo', 'local/claudinite']),
     },
   });
   try {
@@ -40,7 +40,7 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
       // Newly seeded upstream; baselining is gated !isHome, so they never arrive here.
       'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth', { seeded: true }),
       'packs/tidy-repo/pack.mjs': packModule('tidy-repo', { seeded: true }),
-      '.claudinite-checks.json': settings(['basics']),
+      '.claudinite-settings.json': settings(['basics']),
     },
   });
   try {
@@ -51,7 +51,7 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
     assert.match(ids, /tidy-repo/);
     for (const finding of findings) {
       assert.equal(finding.rule, 'home-seeded-packs-declared');
-      assert.equal(finding.file, '.claudinite-checks.json');
+      assert.equal(finding.file, '.claudinite-settings.json');
       assert.equal(finding.severity, 'blocking');
     }
   } finally {
@@ -63,7 +63,7 @@ test('home-seeded-packs-declared: an entry object declares the pack just as a ba
   const root = makeRepo({
     base: {
       'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth', { seeded: true }),
-      '.claudinite-checks.json': settings([{ id: 'claudinite-growth', config: { promote: false } }]),
+      '.claudinite-settings.json': settings([{ id: 'claudinite-growth', config: { promote: false } }]),
     },
   });
   try {
@@ -82,7 +82,7 @@ test('home-seeded-packs-declared: seededByDefault written in a comment is not a 
         "// A technology pack is never seededByDefault: true — it is fingerprinted.\n" +
         "/* seededByDefault: true */\n" +
         packModule('leaflet'),
-      '.claudinite-checks.json': settings(['basics']),
+      '.claudinite-settings.json': settings(['basics']),
     },
   });
   try {
@@ -97,7 +97,7 @@ test('home-seeded-packs-declared: a local pack is never required by this rule', 
     base: {
       'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
       '.claudinite/local/packs/mine/pack.mjs': packModule('mine', { seeded: true }),
-      '.claudinite-checks.json': settings(['basics']),
+      '.claudinite-settings.json': settings(['basics']),
     },
   });
   try {
@@ -111,7 +111,7 @@ test('home-seeded-packs-declared: silent in a repo that carries no canon packs/ 
   const root = makeRepo({
     base: {
       '.claudinite/shared/packs/basics/pack.mjs': packModule('basics', { seeded: true }),
-      '.claudinite-checks.json': settings(['git-github']),
+      '.claudinite-settings.json': settings(['git-github']),
     },
   });
   try {

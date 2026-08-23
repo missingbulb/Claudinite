@@ -43,7 +43,7 @@ import { closeSatisfiedRequest } from './force-add-packs.mjs';
 // the standing reminder that a fingerprint suspects rather than proves.
 export function suspectedBody({ fits, undecided, packsById = new Map() }) {
   const lines = [
-    'This repo carries file shapes that fingerprint packs its `.claudinite-checks.json`',
+    'This repo carries file shapes that fingerprint packs its `.claudinite-settings.json`',
     'does not declare. A fingerprint only **suspects** a pack is wanted — declaring one is',
     "this project's call, which is why this is an issue and not a failing check.",
     '',

@@ -147,7 +147,7 @@ is Claudinite **core**. What a session in an enforcer repo has to get right: [RU
 
 ## Config
 
-The enforcer's `.claudinite-checks.json` carries, as its `packs` entry for this pack:
+The enforcer's `.claudinite-settings.json` carries, as its `packs` entry for this pack:
 
 ```json
 { "id": "claudinite-fleet-sheepdog", "config": { "owner": "missingbulb", "kind": "user", "exclude": ["owner/repo-a"],

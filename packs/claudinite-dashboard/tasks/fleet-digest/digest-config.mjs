@@ -84,13 +84,13 @@ export function parseNudge(raw) {
 
 import { canonicalPackId } from '../../../../engine/pack_loader/renamed-packs.mjs';
 
-// The entry a pack id names on an already-parsed `.claudinite-checks.json`. Matched
+// The entry a pack id names on an already-parsed `.claudinite-settings.json`. Matched
 // through the engine's rename map, so an enforcer whose declaration still spells a
 // pack the way it was written keeps the config it wrote.
 const entryConfig = (cfg, id) => (Array.isArray(cfg?.packs) ? cfg.packs : [])
   .find((e) => typeof e?.id === 'string' && canonicalPackId(e.id) === id)?.config ?? null;
 
-// Parse this task's whole configuration off an already-parsed `.claudinite-checks.json`.
+// Parse this task's whole configuration off an already-parsed `.claudinite-settings.json`.
 // Pure — no I/O, no environment — so the task and its tests see exactly the same
 // resolution. `home` is the repo the task runs in, which is where a `owner` nobody
 // configured comes from.

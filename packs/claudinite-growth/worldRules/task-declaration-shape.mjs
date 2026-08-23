@@ -119,7 +119,7 @@ const rule = {
           file,
           severity: 'advisory',
           what: 'declares "session_scope", which nothing reads',
-          fix: 'drop it — reach is a property of which endpoint the hand-off calls, so a task needing wider access declares "invocation_endpoint": <a key in the repo\'s taskScheduler.endpoints> instead',
+          fix: 'drop it — reach is a property of which endpoint the hand-off calls, so a task needing wider access declares "invocation_endpoint": <a key in the repo\'s taskScheduler.agenticTaskInvocationEndpoints> instead',
         }));
       }
       if (model && MODEL_FAMILIES.includes(model) && model !== 'none' && !hasNum('agent_execution_timeout')) {

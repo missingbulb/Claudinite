@@ -35,7 +35,7 @@ function adoptionBody(fullName) {
     '  design: adoption is the one thing a repo cannot do for itself, because the scheduler',
     '  that would run it is what adoption installs. Nothing will do it on your behalf.',
     `- **Keep it out** — add \`${fullName}\` to the claudinite-fleet-sheepdog pack entry's \`config.exclude\` in this`,
-    '  (claudinite-fleet-sheepdog) repo\'s `.claudinite-checks.json`, with a reason.',
+    '  (claudinite-fleet-sheepdog) repo\'s `.claudinite-settings.json`, with a reason.',
     '',
     'This issue is converged by the daily fleet-roster task: it closes itself once the',
     'repo is covered (`completed`) or opted out (`not planned`), and a close without either',

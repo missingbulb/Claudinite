@@ -3,7 +3,7 @@ import { contributedBarrierRules } from './contributed.mjs';
 // The barriers pack — enforce a directed folder-access graph. A declared pack
 // (no fingerprint: wanting structural segregation is a project's own call, and
 // another pack can pull it in via `requires`), it ships one config-driven check
-// reading the repo's graph from .claudinite-checks.json `packConfig.barriers`,
+// reading the repo's graph from .claudinite-settings.json `packConfig.barriers`,
 // and interprets the fixed barriers other active packs CONTRIBUTE as manifest
 // data (contributes: { barriers: [...] } — contributed.mjs builds each into a
 // first-class rule). Composition is declaration + configuration, never a code
@@ -14,7 +14,7 @@ import { contributedBarrierRules } from './contributed.mjs';
 // the barriers are FOR (the adoption skill's interview machinery) — the guided on-ramp beats both
 // running empty and guessing separations from existing state.
 export default {
-  version: '60822.1',
+  version: '60823.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'directed folder-access graph rules — which directories may never reference which, plus the exceptions each rule allows',

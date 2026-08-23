@@ -36,7 +36,18 @@
 // sheepdog, so the canon never self-applies.
 import { canonicalPackId } from '../../../../engine/pack_loader/renamed-packs.mjs';
 
-const DECLARATION = '.claudinite-checks.json';
+// BOTH settings-file names (#1252). This record is gated on a PACK's version, so it
+// can still be in a member's gap long after that member renamed its settings file —
+// and a read that only knew the name in use when this landed would find nothing and
+// silently never apply.
+const DECLARATIONS = ['.claudinite-settings.json', '.claudinite-checks.json'];
+const readDeclaration = async (read) => {
+  for (const name of DECLARATIONS) {
+    const raw = await read(name);
+    if (raw != null) return raw;
+  }
+  return null;
+};
 // Matched through the rename map: the pack was called `sheepdog` when this record
 // landed, and an enforcer's declaration converges onto the current id on its own
 // schedule.
@@ -58,7 +69,7 @@ export default {
   // `.github/workflows/` dest unless the running caller announced (WITHHOLD_CAPABLE_ENV)
   // that it can withhold the path from its push.
   appliesTo: async (read) => {
-    const text = await read(DECLARATION);
+    const text = await readDeclaration(read);
     if (!text) return false;
     let cfg;
     try { cfg = JSON.parse(text); } catch { return false; }

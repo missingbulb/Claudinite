@@ -30,6 +30,8 @@ function makeCorpus(packs) {
   // pack-schema validates a version against the engine's version module, which sits
   // beside pack_loader in the real tree.
   cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
+  // Where a member's settings live: the loader resolves the declaration through it.
+  cpSync(join(REPO_ROOT, 'engine', 'settings-file.mjs'), join(root, 'engine', 'settings-file.mjs'));
   for (const [id, { step, ...manifest }] of Object.entries(packs)) {
     mkdirSync(join(root, 'packs', id), { recursive: true });
     writeFileSync(
@@ -45,7 +47,7 @@ function makeCorpus(packs) {
 
 function makeProject(declaration) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
-  writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify(declaration, null, 2)}\n`);
+  writeFileSync(join(root, '.claudinite-settings.json'), `${JSON.stringify(declaration, null, 2)}\n`);
   return root;
 }
 

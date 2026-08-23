@@ -123,7 +123,7 @@ test('a repo with nothing to import gets no index at all', async () => {
 
 test('writeRulesIndex is idempotent, and never truncates on a fail-soft empty', async () => {
   const root = makeMember({ canon: ['basics'] });
-  writeFileSync(join(root, '.claudinite-checks.json'), '{ "packs": ["basics"] }\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n');
   assert.equal(await writeRulesIndex(root), true, 'first write lands the file');
   const first = readFileSync(join(root, RULES_INDEX_FILE), 'utf8');
   assert.equal(await writeRulesIndex(root), false, 'a converge over an unchanged declaration is a no-op');
@@ -132,7 +132,7 @@ test('writeRulesIndex is idempotent, and never truncates on a fail-soft empty', 
   // Nothing to import must leave an existing index alone: the packs may simply not be
   // vendored yet, and blanking the file would take the rules off the channel with
   // nothing to say so.
-  writeFileSync(join(root, '.claudinite-checks.json'), '{ "packs": [] }\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": [] }\n');
   assert.equal(await writeRulesIndex(root), false);
   assert.equal(readFileSync(join(root, RULES_INDEX_FILE), 'utf8'), first);
 });
@@ -149,7 +149,7 @@ test('the index names exactly the packs a repo declares, and every import resolv
   // resolves to nothing is the same failure in a new costume — delivered, and empty.
   const root = makeMember({ canon: ['basics'], local: ['proj'] });
   writeFileSync(join(root, '.claudinite', 'local', 'packs', 'proj', 'pack.mjs'), "export default { id: 'proj', rules: [], prose: 'RULES.md' };\n");
-  writeFileSync(join(root, '.claudinite-checks.json'), '{ "packs": ["local/proj"] }\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["local/proj"] }\n');
   await writeRulesIndex(root);
 
   const text = readFileSync(join(root, RULES_INDEX_FILE), 'utf8');

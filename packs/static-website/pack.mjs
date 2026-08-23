@@ -16,7 +16,7 @@ import releaseWorkflows, { shipsPipeline, STUB_FILE, STUB_NAME } from './worldRu
 // new site repo needs — is skills/, not prose: it is wanted when a pipeline is being
 // set up or debugged, not carried by every session in the repo.
 export default {
-  version: '60822.1',
+  version: '60823.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'shipping and serving a static site: date-anchored versioning, release on push, the publish set, Pages deploy, client-side caching',

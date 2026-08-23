@@ -343,6 +343,8 @@ test('discoverPacks: a mounted pack still announcing its old id activates under 
     // pack-schema validates a version against the engine's version module, which sits
     // beside pack_loader in the real tree.
     cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
+  // Where a member's settings live: the loader resolves the declaration through it.
+  cpSync(join(REPO_ROOT, 'engine', 'settings-file.mjs'), join(root, 'engine', 'settings-file.mjs'));
     mkdirSync(join(root, 'packs', 'claudinite-lifecycle'), { recursive: true });
     writeFileSync(join(root, 'packs', 'claudinite-lifecycle', 'pack.mjs'),
       "export default { id: 'core', detect: null, worldRules: [], ruleRoutingGuidance: { belongs: 'x', excludes: 'y' } };\n");

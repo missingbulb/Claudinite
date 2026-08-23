@@ -12,7 +12,7 @@
 # of it here. Do not bake API responses into the build; that property is the reason a
 # public Pages site is a safe host for it.
 #
-# Configure it in `.claudinite-checks.json`, on the `claudinite-dashboard` entry's
+# Configure it in `.claudinite-settings.json`, on the `claudinite-dashboard` entry's
 # `config` — not here. Every key is optional.
 
 name: Claudinite dashboard
@@ -24,6 +24,9 @@ on:
       # The mount is the page's source, so a converge that moves it republishes.
       - '.claudinite/shared/packs/claudinite-dashboard/**'
       - '.claudinite/shared/engine/**'
+      # Both settings-file names: a stub is copied into a member once and never
+      # re-copied, so this file outlives the #1252 rename in every repo holding it.
+      - '.claudinite-settings.json'
       - '.claudinite-checks.json'
       - '.github/workflows/claudinite-dashboard-pages.yml'
   # The push trigger above cannot see the one push that moves the mount most often.
@@ -65,7 +68,7 @@ jobs:
       # asked for, and a forced republish must not be answered with a cache hit.
       - name: What the page would be built from
         id: sources
-        run: echo "key=dashboard-deployed-${{ hashFiles('.claudinite/shared/packs/claudinite-dashboard/**', '.claudinite/shared/engine/**', '.claudinite-checks.json', '**/*.GENERATED.json') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=dashboard-deployed-${{ hashFiles('.claudinite/shared/packs/claudinite-dashboard/**', '.claudinite/shared/engine/**', '.claudinite-settings.json', '.claudinite-checks.json', '**/*.GENERATED.json') }}" >> "$GITHUB_OUTPUT"
 
       - name: Is that already deployed?
         id: deployed

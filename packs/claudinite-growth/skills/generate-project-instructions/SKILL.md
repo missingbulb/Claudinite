@@ -159,7 +159,7 @@ that owns the work). Each local pack is a real pack:
   is the directory name, the prose the `RULES.md` beside it and the skills its `skills/`
   subdirectories, all by convention — none of them is declared.
   A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null), as its
-  namespaced token `local_packs/<name>` in `.claudinite-checks.json`; its id
+  namespaced token `local_packs/<name>` in `.claudinite-settings.json`; its id
   must be unique and may not shadow a canon pack.
 - **`RULES.md`** — the always-loaded judgment core and the project's concrete values (real
   setup/run/verify commands, real paths, inputs, metrics, invariants). Keep it terse; anything a check
@@ -192,7 +192,7 @@ docs) — it does **not** `@import` the pack prose; the pack system injects the 
   `.claudinite/local_packs/` (tracked project content — the sync hook preserves it, the gitignore
   re-includes it). Declaring a **local** pack — as `local_packs/<name>` — is valid immediately (the
   engine discovers local packs from the repo), so the declaration lands in the same PR.
-- **Declare a new *canon* pack** in `.claudinite-checks.json` only after it has merged and the mount
+- **Declare a new *canon* pack** in `.claudinite-settings.json` only after it has merged and the mount
   re-synced — declaring a canon id the mounted registry doesn't know is an unknown-pack settings error;
   a *local* id is never that error. Note a pending canon declaration as a follow-up in the project PR.
 - **Existing projects sharing a facet keep their local packs for now.** Once the canon pack lands, the

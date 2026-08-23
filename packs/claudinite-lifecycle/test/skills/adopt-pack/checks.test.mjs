@@ -23,8 +23,8 @@ const decl = (ids) => `${JSON.stringify({ packs: ids }, null, 2)}\n`;
 // (the runner attaches these in production; a unit dispatch supplies them).
 function run({ base, head, entries, packs }) {
   const root = makeRepo({
-    base: { '.claudinite-checks.json': decl(base) },
-    changed: { '.claudinite-checks.json': decl(head) },
+    base: { '.claudinite-settings.json': decl(base) },
+    changed: { '.claudinite-settings.json': decl(head) },
   });
   try {
     const ctx = buildContext({ root, mode: 'all', baseOverride: 'main' });
@@ -42,7 +42,7 @@ test('a pack newly declared with no answers yields one finding per unanswered qu
     packs: [asking()],
   });
   assert.equal(f.length, 2);
-  assert.ok(f.every((x) => x.file === '.claudinite-checks.json' && x.severity === 'blocking'));
+  assert.ok(f.every((x) => x.file === '.claudinite-settings.json' && x.severity === 'blocking'));
   assert.deepEqual(f.map((x) => x.what.match(/asks "(\w+)"/)[1]).sort(), ['market', 'product']);
 });
 

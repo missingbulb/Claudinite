@@ -36,7 +36,7 @@ export default {
   summary: 'seed the claude-code-web-users-support pack into existing members, naming the fleet\'s preferences repo',
   declarePacks: [{ id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } }],
   legacyPresent: async (exists, read) => {
-    const raw = await read('.claudinite-checks.json');
+    const raw = (await read('.claudinite-settings.json')) ?? await read('.claudinite-checks.json');
     if (raw == null) return false;
     try {
       const { packs } = JSON.parse(raw);

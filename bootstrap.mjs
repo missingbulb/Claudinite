@@ -57,7 +57,7 @@ for (const a of answers) {
 // adoption the file is this script's own JSON.stringify output, not a
 // hand-formatted settings file (the anchored-text rule protects the latter).
 const seedResult = seedDeclaration(target, packs);
-console.log(seedResult.existed ? 'bootstrap: declaration exists — converging it' : 'bootstrap: seeded .claudinite-checks.json');
+console.log(seedResult.existed ? 'bootstrap: declaration exists — converging it' : 'bootstrap: seeded .claudinite-settings.json');
 const declPath = seedResult.path;
 const decl = JSON.parse(readFileSync(declPath, 'utf8'));
 const declared = Array.isArray(decl.packs) ? decl.packs : [];
@@ -148,7 +148,7 @@ jobs:
 // adoption commit is one `git commit` away. Only the surfaces bootstrap owns —
 // never `-A`, which would sweep up whatever else the checkout holds.
 try {
-  const paths = ['.gitignore', '.gitattributes', '.claudinite-checks.json', '.claudinite', '.claude/settings.json', '.github/workflows', 'CLAUDE.md', 'README.md']
+  const paths = ['.gitignore', '.gitattributes', '.claudinite-settings.json', '.claudinite', '.claude/settings.json', '.github/workflows', 'CLAUDE.md', 'README.md']
     .filter((p) => existsSync(join(target, p)));
   execFileSync('git', ['add', '--', ...paths], { cwd: target, stdio: ['ignore', 'pipe', 'pipe'] });
   console.log(`bootstrap: staged ${paths.join(', ')}`);

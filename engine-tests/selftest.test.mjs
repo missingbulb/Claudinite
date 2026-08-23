@@ -15,7 +15,7 @@ const io = (files, dangling = []) => ({
 
 const MEMBER = {
   [`${MOUNT}/engine/checks/check_the_world.mjs`]: '',
-  [CHECKS]: JSON.stringify({ claudinite: { updated: '2026-07-30T00:00:00.000Z', ref: 'abc' } }),
+  [CHECKS]: JSON.stringify({ packs: [{ id: 'basics', version: '60820.1' }], engineVersion: '60820.1' }),
 };
 
 // --- report ----------------------------------------------------------------

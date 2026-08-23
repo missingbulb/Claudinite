@@ -129,7 +129,7 @@ const specConfig = (specPath) =>
   JSON.stringify({ packs: [{ id: 'executable-requirements', config: { spec: specPath } }] });
 
 test('feature-requirements-first: honors a configured non-canonical spec path (passes doc-first)', () => {
-  const root = makeRepo({ base: { [CUSTOM_SPEC]: '`1.1` seed\n', '.claudinite-checks.json': specConfig(CUSTOM_SPEC) } });
+  const root = makeRepo({ base: { [CUSTOM_SPEC]: '`1.1` seed\n', '.claudinite-settings.json': specConfig(CUSTOM_SPEC) } });
   try {
     commitAt(root, '2026-01-01T10:20:00Z', { [CUSTOM_SPEC]: '`1.1` seed\n`1.2` widget\n' });
     commitAt(root, '2026-01-01T10:30:00Z', { 'src/widget.js': 'code\n' });
@@ -138,7 +138,7 @@ test('feature-requirements-first: honors a configured non-canonical spec path (p
 });
 
 test('feature-requirements-first: with a configured spec path, code before it still fires', () => {
-  const root = makeRepo({ base: { [CUSTOM_SPEC]: '`1.1` seed\n', '.claudinite-checks.json': specConfig(CUSTOM_SPEC) } });
+  const root = makeRepo({ base: { [CUSTOM_SPEC]: '`1.1` seed\n', '.claudinite-settings.json': specConfig(CUSTOM_SPEC) } });
   try {
     commitAt(root, '2026-01-01T10:30:00Z', { 'src/widget.js': 'code\n' });
     const findings = runRule(root, featureTurns);

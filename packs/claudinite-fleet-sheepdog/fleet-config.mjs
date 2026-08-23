@@ -12,7 +12,7 @@
 
 import { canonicalPackId } from '../../engine/pack_loader/renamed-packs.mjs';
 
-// The enforcer repo's .claudinite-checks.json carries, on this pack's entry:
+// The enforcer repo's .claudinite-settings.json carries, on this pack's entry:
 //   { "id": "claudinite-fleet-sheepdog", "config": { owner: "missingbulb", kind: "user", exclude: ["owner/repo", ...],
 //                                   canonRepo: "missingbulb/Claudinite",
 //                                   packSeeds: [{ id: "<a pack>", config: { ... } }] } }

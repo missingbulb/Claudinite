@@ -32,7 +32,7 @@ function fromDeletedCwd(args, env = {}) {
   // A minimal repo for the sweep to look at, OUTSIDE the directory that gets deleted.
   const repo = join(box, 'repo');
   mkdirSync(repo, { recursive: true });
-  writeFileSync(join(repo, '.claudinite-checks.json'), JSON.stringify({ packs: [] }, null, 2));
+  writeFileSync(join(repo, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
 
   const driver = [
     `process.chdir(${JSON.stringify(doomed)});`,
@@ -54,7 +54,7 @@ function fromDeletedCwd(args, env = {}) {
 
 test('check_the_world runs from a deleted cwd when CLAUDE_PROJECT_DIR names the root', () => {
   const box = mkdtempSync(join(tmpdir(), 'ctw-repo-'));
-  writeFileSync(join(box, '.claudinite-checks.json'), JSON.stringify({ packs: [] }, null, 2));
+  writeFileSync(join(box, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
   const { status, stderr } = fromDeletedCwd(['--list'], { CLAUDE_PROJECT_DIR: box });
   removeTree(box);
   assert.doesNotMatch(stderr, /uv_cwd/, 'the cwd call must not be reached at all');
@@ -65,7 +65,7 @@ test('check_the_world runs from a deleted cwd when CLAUDE_PROJECT_DIR names the 
 // a new source of truth that could point a sweep at the wrong repo.
 test('check_the_world prefers --root over CLAUDE_PROJECT_DIR', () => {
   const box = mkdtempSync(join(tmpdir(), 'ctw-repo-'));
-  writeFileSync(join(box, '.claudinite-checks.json'), JSON.stringify({ packs: [] }, null, 2));
+  writeFileSync(join(box, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
   const { status, stderr } = fromDeletedCwd(['--list', '--root', box], { CLAUDE_PROJECT_DIR: '/nonexistent-on-purpose' });
   removeTree(box);
   assert.doesNotMatch(stderr, /uv_cwd/);

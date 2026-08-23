@@ -21,6 +21,7 @@ import {
   reasonNodes, stackedColumns, chartLegend, windowFigure, ciMark, commitGraph, packMark,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
+import { settingsTextAtSha } from './settings-read.mjs';
 
 // Members are read concurrently, but not all at once: a dozen members at six calls
 // each is enough parallel load to trip secondary rate limiting, and the page is not
@@ -51,7 +52,7 @@ async function readMember(repo, token, { withTree = true } = {}) {
     // and it arrives in the call the content cache already makes for the sha.
     const head = await gh.getHead(repo, meta.default_branch, token);
     const sha = head.sha;
-    const configText = await gh.getTextAtSha(repo, sha, '.claudinite-checks.json', token);
+    const configText = await settingsTextAtSha(gh, repo, sha, token);
 
     let declaration = null;
     if (configText) {
@@ -422,10 +423,13 @@ function renderDeployment(contributions, now) {
 //   only ever grows is a decoration.
 //
 //   NOTHING INVENTED. No estimated hours saved, no multiplier, no score — only counts
-//   of things that individually happened, from reads the page already made. Two
+//   of things that individually happened, from reads the page already made. Three
 //   quantities the issue asked for are deliberately ABSENT rather than approximated:
-//   checks enforced (a member's check count is not in any read this page makes) and
-//   anything expressed in time saved (nothing measures it).
+//   checks enforced (a member's check count is not in any read this page makes),
+//   anything expressed in time saved (nothing measures it), and members converged in
+//   the window — a member's settings say WHAT it holds, never when it took it, since
+//   #1252 deleted the datetime the tile used to count (which recorded the last full
+//   re-vendor, not the last converge, and so counted the wrong thing anyway).
 function renderBenefits(b, growth) {
   const node = $('fleet-benefits');
   const runsPassed = b.current.runs - b.current.runsFailed;
@@ -446,11 +450,6 @@ function renderBenefits(b, growth) {
     windowFigure(runsPassed, 'scheduler runs passed',
       delta(runsPassed, prevPassed),
       b.current.runsFailed ? `${b.current.runsFailed} failed` : 'none failed'),
-    // No delta: a mount stamp carries ONE date, so last week's figure would count
-    // members whose last converge happens to sit in that window, not members that
-    // converged then. A comparison built on that would read as a fleet slowing down.
-    windowFigure(`${b.converged}/${b.members}`, 'members converged on their own', null,
-      `in the last ${b.windowDays} days`),
     b.digests === null ? null
       : windowFigure(b.digests, 'digests written', null, 'of the last two days'),
     // The two figures this panel used to name as ABSENT: nothing the page read could

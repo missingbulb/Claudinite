@@ -339,7 +339,7 @@ export async function loadPacks(opts) {
 }
 
 // A local pack's canonical declaration token is namespaced `local/<id>` —
-// self-documenting in .claudinite-checks.json (a reader sees at a glance the
+// self-documenting in .claudinite-settings.json (a reader sees at a glance the
 // pack lives in the repo's own tree under .claudinite/local/, and a canon id can
 // never be claimed by accident; the discoverPacks shadow guard stays as the
 // backstop). Both the pre-rename `local_packs/<id>` form and the bare id remain
@@ -386,7 +386,7 @@ export const packEntryId = (entry) => {
 };
 
 // No pack is active by default. Activation is exactly the project's declaration
-// in .claudinite-checks.json (bootstrap's --init seeds the default-on packs).
+// in .claudinite-settings.json (bootstrap's --init seeds the default-on packs).
 export const isActive = (pack, config) =>
   (config.packs ?? []).some((entry) => packEntryId(entry) === pack.id);
 
@@ -425,7 +425,7 @@ export function bundledSkillSources(packs) {
 // Declared entries keep their order; each pack's pulled-in dependencies land
 // right after it, deterministically. This runs when the declaration is
 // WRITTEN — bootstrap's `--init` and the baselining backfill — so a pack's
-// prerequisites are materialized into .claudinite-checks.json, visible and
+// prerequisites are materialized into .claudinite-settings.json, visible and
 // droppable like every other entry (the same reason a seeded pack is written
 // explicitly rather than defaulted), never resolved implicitly at run time.
 //

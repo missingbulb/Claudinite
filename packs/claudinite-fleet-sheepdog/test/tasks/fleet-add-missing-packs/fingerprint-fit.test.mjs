@@ -23,7 +23,7 @@ test('fitCandidates: only undeclared canon packs that carry a fingerprint', () =
 });
 
 test('fitCandidates: a declaration entry may be an object, not just a string', () => {
-  // .claudinite-checks.json carries both shapes; a pack declared with config must not
+  // .claudinite-settings.json carries both shapes; a pack declared with config must not
   // be recommended back to the repo that already declares it.
   const packs = [pack('configured')];
   assert.deepEqual(fitCandidates(packs, [{ id: 'configured', config: {} }]), []);

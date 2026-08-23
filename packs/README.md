@@ -1,6 +1,6 @@
 # packs/ — the corpus content, active by declaration
 
-Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-checks.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly update backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
+Each `packs/<name>/` bundles a pack's **prose** (`RULES.md`, injected at session start when the pack is active), its **checks** (run at every Stop), and its **bundled skills** (`<pack>/skills/`, mounted at session start). **No pack is active by default** — every pack, the `basics` baseline included, activates only when declared in `.claudinite-settings.json` (bootstrap's `--init` seeds `basics` plus the fingerprinted technology packs; the nightly update backfills the explicit `basics` declaration into existing consumers). Discovery is structural — any `packs/<name>/pack.mjs` is a pack, and that manifest is the pack's index: what it owns, the checks it runs in each scope, the skills it bundles. A pack's `README.md` is **optional** and carries only what the manifest cannot — provenance, design rationale, an index of its prose. A README that restates the manifest is duplication with a drift risk, and several had already drifted.
 
 ## Packs
 
@@ -56,7 +56,7 @@ same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs]
 `packs/` **and** the consumer's `local_packs/`; each pack is stamped with its own `dir` (prose and
 bundled skills resolve off it) and a `local` flag. A local pack:
 
-- is **declared by hand** in `.claudinite-checks.json` like any pack — never fingerprinted or seeded
+- is **declared by hand** in `.claudinite-settings.json` like any pack — never fingerprinted or seeded
   (`detect`/`marker` null) — by its **namespaced token `local_packs/<name>`** (the canonical form;
   the engine's [`packEntryId`](../engine/pack_loader/pack-registry.mjs) resolves it and the legacy bare id alike to the bare
   pack id, so the bare form keeps working while the fleet's update flows rewrite it), and its id must
@@ -79,17 +79,17 @@ treats `.claudinite/local_packs/` as the project's capture surface.
 
 ## Settings validity
 
-The `"packs"` list and the rest of `.claudinite-checks.json` are validated **when the file loads**, not by a conformance check: [`loadConfig`](../engine/checks/helpers/repo-context.mjs) reports malformed JSON and an unknown top-level property, and the runner adds an unknown *pack name* (it holds the registry). Each becomes a blocking `config` error — a wrong pack name is as much a settings error as invalid JSON. A pack's `detect`/`marker` only **suspects** a pack is wanted; declaring it is the project's call, so a declared pack without its marker (or a marker without its declaration) is **not** flagged.
+The `"packs"` list and the rest of `.claudinite-settings.json` are validated **when the file loads**, not by a conformance check: [`loadConfig`](../engine/checks/helpers/repo-context.mjs) reports malformed JSON and an unknown top-level property, and the runner adds an unknown *pack name* (it holds the registry). Each becomes a blocking `config` error — a wrong pack name is as much a settings error as invalid JSON. A pack's `detect`/`marker` only **suspects** a pack is wanted; declaring it is the project's call, so a declared pack without its marker (or a marker without its declaration) is **not** flagged.
 
 ## Pack dependencies (`requires`)
 
 A pack states the packs it depends on in an optional `requires` field on its `pack.mjs` — a plain array of pack ids: a project-class pack leans on the framework that implements it (`spec-driven-product` requires `executable-requirements`).
 
-This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the update backfill ([bootstrap.md](../bootstrap.md) Part 2): [`resolveDeclaredPacks`](../engine/pack_loader/pack-registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-checks.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
+This is **not a check** — a pack can't be imported without its dependencies, so the resolution happens **when the declaration is written**, at bootstrap `--init` and the update backfill ([bootstrap.md](../bootstrap.md) Part 2): [`resolveDeclaredPacks`](../engine/pack_loader/pack-registry.mjs) pulls each declared pack's transitive `requires` closure into `.claudinite-settings.json`. The prerequisite is materialized and visible in the file — droppable like every other entry, the same reason `basics` is written explicitly rather than defaulted — rather than resolved implicitly at run time. Declared ids keep their order; each pack's pulled-in dependencies land right after it.
 
 ## The manifest spec (`pack.mjs`)
 
-What a `pack.mjs` may and must carry is declared once, in [`engine/pack_loader/pack-schema.mjs`](../engine/pack_loader/pack-schema.mjs), and [`validateManifest`](../engine/pack_loader/pack-schema.mjs) is the only thing that judges a manifest against it. The **loader** runs it on every pack it imports, canon and local alike, so an incomplete or malformed declaration surfaces as a blocking `config` error at load — the same class as invalid JSON in `.claudinite-checks.json`, and for the same reason: a required manifest field is part of the pack contract, not a conformance opinion about a repo's content. A conformance *check* would have to be declared by a pack, run only when that pack is active, and re-derive the manifest by reading its source text — enforcing the shape of the system from inside one of its members.
+What a `pack.mjs` may and must carry is declared once, in [`engine/pack_loader/pack-schema.mjs`](../engine/pack_loader/pack-schema.mjs), and [`validateManifest`](../engine/pack_loader/pack-schema.mjs) is the only thing that judges a manifest against it. The **loader** runs it on every pack it imports, canon and local alike, so an incomplete or malformed declaration surfaces as a blocking `config` error at load — the same class as invalid JSON in `.claudinite-settings.json`, and for the same reason: a required manifest field is part of the pack contract, not a conformance opinion about a repo's content. A conformance *check* would have to be declared by a pack, run only when that pack is active, and re-derive the manifest by reading its source text — enforcing the shape of the system from inside one of its members.
 
 Reporting is not fatal: a pack whose declaration is incomplete still loads and still runs its checks. Silently disabling a repo's own rules is a worse failure than the one being reported. The field vocabulary is **closed** — an undeclared key is an error, so a typo (`rule:`, `skill:`) fails loudly instead of being ignored forever.
 
@@ -237,7 +237,7 @@ adopting a pack re-runs the converge with `--badges`
 which rewrites the row in place. Nothing else derives it — a repo that edits its declaration by hand
 runs `converge-wiring <owner/repo> --badges` itself, or lives with a stale row.
 
-The converge also materializes the repo's say into `.claudinite-checks.json`, so the knob sits where
+The converge also materializes the repo's say into `.claudinite-settings.json`, so the knob sits where
 anyone would look for it rather than being inferred from absence:
 
 ```json
@@ -264,12 +264,12 @@ env: {
 }
 ```
 
-`setup` and `probe` may be a **string**, or a **function of the project's per-pack params** — a project supplies parameters about its own usage as `config` on the pack's entry in `.claudinite-checks.json`, so one pack fragment fits every repo. The `node` pack uses this for where `npm ci` runs:
+`setup` and `probe` may be a **string**, or a **function of the project's per-pack params** — a project supplies parameters about its own usage as `config` on the pack's entry in `.claudinite-settings.json`, so one pack fragment fits every repo. The `node` pack uses this for where `npm ci` runs:
 
 ```js
 // packs/node/pack.mjs
 setup: (p) => (p.dirs?.length ? p.dirs : ['.']).map((d) => `( cd "${d}" && npm ci ) || true`).join('\n'),
-// a repo's .claudinite-checks.json: { "packs": [ { "id": "node", "config": { "dirs": ["firebase/functions"] } } ] }
+// a repo's .claudinite-settings.json: { "packs": [ { "id": "node", "config": { "dirs": ["firebase/functions"] } } ] }
 ```
 
 [`env-requirements.mjs`](../engine/pack_loader/env-requirements.mjs) drives everything from the repo's **active** packs (same activation as prose/checks):
@@ -292,7 +292,7 @@ the entry's `config`:
 questions: [{ id: 'goals', prompt: 'What should these barriers accomplish — …?', distill: 'derive the edge list into config.rules …' }],
 ```
 
-The answers live **verbatim** on the pack's entry in `.claudinite-checks.json` (`answers:
+The answers live **verbatim** on the pack's entry in `.claudinite-settings.json` (`answers:
 { "<question-id>": "<answer>" }` — [engine/checks/README.md](../engine/checks/README.md)): the settings file
 records the project's intent beside the `config` distilled from it — provenance for the
 configuration, versioned and diffable, and re-derivable if the pack's config shape later changes.

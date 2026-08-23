@@ -7,6 +7,8 @@ import { PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { isVersion } from '../engine/version.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../engine/checks/helpers/active-migrations.mjs';
+import { settingsPath } from '../engine/settings-file.mjs';
+import { installedVersions, hasInstalledMount, withInstalledVersions } from '../engine/installed-versions.mjs';
 import { loadMigrations, applyMigration } from '../engine/migrations/registry.mjs';
 import { convergeWiring } from '../engine/scheduler/converge-wiring.mjs';
 import { NEEDS_HUMAN_LABEL } from '../engine/scheduler/dispatch.mjs';
@@ -125,16 +127,15 @@ const outcome = (status, detail, extra = {}) => ({ status, detail, ...extra });
 export async function engineUpdate(targetRoot, {
   fullName, today, dryRun = false, delivery = 'auto-merge', forceMergeOnRedCi = false, selfTestRun,
 } = {}) {
-  const settingsPath = join(targetRoot, DECLARATION_FILE);
-  if (!existsSync(settingsPath)) {
+  const settingsFile = settingsPath(targetRoot);
+  if (!existsSync(settingsFile)) {
     return outcome(NEEDS_HUMAN, `${targetRoot} has no ${DECLARATION_FILE} — it has never adopted Claudinite`);
   }
   let raw;
-  try { raw = JSON.parse(readFileSync(settingsPath, 'utf8')); }
+  try { raw = JSON.parse(readFileSync(settingsFile, 'utf8')); }
   catch (e) { return outcome(NEEDS_HUMAN, `${DECLARATION_FILE} is not valid JSON: ${e.message}`); }
 
-  const stamp = raw.claudinite ?? null;
-  const installed = stamp && isVersion(stamp.engineVersion) ? stamp : null;
+  const installed = hasInstalledMount(raw) ? installedVersions(raw) : null;
   const from = installed?.engineVersion ?? null;
 
   // The gap, decided before anything is touched.
@@ -187,9 +188,14 @@ export async function engineUpdate(targetRoot, {
   //    workflows off there is nothing to pass and nothing to compute.
   const wiring = await convergeWiring(targetRoot, fullName, '', [], { workflows: false });
 
-  const next = JSON.parse(readFileSync(settingsPath, 'utf8'));
-  next.claudinite = { ...(next.claudinite ?? {}), engineVersion: ENGINE_VERSION };
-  writeFileSync(settingsPath, `${JSON.stringify(next, null, 2)}\n`);
+  // Re-RESOLVE and re-read, never reuse the path or the content read at entry: a
+  // record in the gap above may have rewritten this file, and #1252's record renames
+  // it outright — stamping the path resolved before that ran would write the engine
+  // version into a file that no longer exists, recreating the retired name beside
+  // the real declaration with nothing to say the two disagree.
+  const stampPath = settingsPath(targetRoot);
+  const next = withInstalledVersions(JSON.parse(readFileSync(stampPath, 'utf8')), { engineVersion: ENGINE_VERSION });
+  writeFileSync(stampPath, `${JSON.stringify(next, null, 2)}\n`);
 
   // 4. Gate on the converged tree, and say what happens to the PR. This flow does
   //    not open or merge it — that is the shell's, which carries a token; what it

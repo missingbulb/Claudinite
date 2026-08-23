@@ -9,6 +9,7 @@
 // collector cannot fetch for itself (manifest version, local-pack presence,
 // retention) are read off the checkout by signals/context.mjs — see signals/local.mjs.
 
+import { SHARED_SUBDIR } from '../../pack_loader/pack-registry.mjs';
 import { LOCAL_PACK_ROOTS } from './local.mjs';
 import { QUEUED_LABEL, ORIGIN_AD_HOC, REQUEST_LABEL } from '../queue/work-item.mjs';
 import { APPROVAL_RE } from '../built-in-tasks.mjs';
@@ -288,16 +289,26 @@ const COLLECTORS = {
     };
   },
 
-  // The vendored-mount provenance stamp and its age; the canon head sha when the
-  // Action was given one (the update task's precondition falls back to stamp age).
+  // WHAT THE MOUNT HOLDS, and whether it moved in this window: the installed engine
+  // version, the installed pack versions, and whether any `.claudinite/shared/**`
+  // file was touched by a commit in the window.
+  //
+  // `convergedInWindow` is what replaced the stamp's age (#1252). The age came off a
+  // datetime that recorded the last FULL re-vendor rather than the last converge, so
+  // it read months stale on a member converging nightly — and newness taken from the
+  // objects' OWN movement in the window is where every other precondition here gets
+  // it. `present` is the mount's existence, which the versions answer directly: an
+  // engine that stamps always stamps.
   async stamp(gh, ctx) {
-    const stamp = ctx.config?.claudinite ?? null;
-    let ageDays = null;
-    if (stamp?.updated) {
-      const ms = new Date(ctx.now).getTime() - new Date(stamp.updated).getTime();
-      if (Number.isFinite(ms)) ageDays = ms / 86400000;
-    }
-    return { updated: stamp?.updated ?? null, ref: stamp?.ref ?? null, ageDays, canonHead: ctx.canonHead ?? null };
+    const commits = ctx.commits ?? await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
+    const convergedInWindow = commits.some((c) => c.files.some((f) => f.startsWith(`${SHARED_SUBDIR}/`)));
+    return {
+      present: (ctx.config?.engineVersion ?? null) !== null || Object.keys(ctx.config?.packVersions ?? {}).length > 0,
+      engineVersion: ctx.config?.engineVersion ?? null,
+      packVersions: ctx.config?.packVersions ?? {},
+      convergedInWindow,
+      canonHead: ctx.canonHead ?? null,
+    };
   },
 
   // Fleet aggregate — canon-only, over the fleet PAT (DESIGN §3.3). A consumer
@@ -389,7 +400,7 @@ export const SIGNAL_COLLECTORS = Object.keys(COLLECTORS);
 export async function collectSignals(gh, ctx, names) {
   const out = {};
   // Commit-derived collectors share one window read.
-  if (names.some((n) => ['commits', 'localPacks', 'sharedMount'].includes(n)) && !ctx.commits) {
+  if (names.some((n) => ['commits', 'localPacks', 'sharedMount', 'stamp'].includes(n)) && !ctx.commits) {
     try { ctx = { ...ctx, commits: await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso) }; } catch { /* collectors re-read on demand */ }
   }
   for (const name of names) {

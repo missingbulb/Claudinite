@@ -51,7 +51,7 @@ export default {
   [`applyRewrites`](registry.mjs) applies in-place `{ file, replace: [{ from, to }] }` edits
   (repointing refs while preserving the rest of the file), and
   [`applyPackDeclarations`](registry.mjs) **declares a pack** the member doesn't carry yet — each
-  `{ id, config }` added to `.claudinite-checks.json`'s `packs` when absent, filling in a `config`
+  `{ id, config }` added to `.claudinite-settings.json`'s `packs` when absent, filling in a `config`
   only where the entry has none, because a pack the repo already declares (and the parameters it
   chose) are that repo's decisions. It is the shape a fleet-wide *capability* change has: a pack
   every member should run, whose parameters the canon knows and the member cannot derive
