@@ -7,6 +7,7 @@ here forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60823.2 | 2026-08-23 | The page reads the settings-file names from the engine's browser-pure half, so its import graph carries no `node:` builtin and the dashboard loads again (#1286). Page-only; no migration. |
 | 60823.1 | 2026-08-23 | Reads a member's settings under either name, judges mount freshness from the installed versions alone, and drops the converged tile the deleted converge datetime used to feed (#1252). |
 | 60822.2 | — | `fleet-digest`'s `daily+1h` offset becomes `schedule_after:` naming the three sheepdog sweeps — the offset expressed the wish and enforced nothing, and a sweep running long simply overran it. Naming another pack's tasks is inert where that pack is not declared. Uses the renamed `schedule_after` field (was `after`). |
 | 7 | — | The fleet-digest task arrives from the claudinite-fleet-sheepdog pack, with its two checks. A declaring repo gains a daily task; nothing in a member is rewritten, and the task still reads an enforcer's existing `claudinite-fleet-sheepdog` config as its legacy source, so the bump carries no migration record. |

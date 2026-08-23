@@ -43,7 +43,7 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   // Where a member's settings live and what shape the versions in them take — real
   // modules, because the import closure walks them out of active-migrations.
-  copyFileSync(join(REPO_ROOT, 'engine', 'settings-file.mjs'), join(root, 'engine', 'settings-file.mjs'));
+  for (const f of ['settings-file.mjs', 'settings-file-names.mjs']) copyFileSync(join(REPO_ROOT, 'engine', f), join(root, 'engine', f));
   copyFileSync(join(REPO_ROOT, 'engine', 'installed-versions.mjs'), join(root, 'engine', 'installed-versions.mjs'));
   // engine roots: real-shaped content plus everything that must stay out
   writeAt(root, 'engine/checks/check_the_world.mjs', 'stub\n');
@@ -137,6 +137,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/pack_loader/mount-skills.mjs',
     'engine/version.mjs',
     'engine/settings-file.mjs',
+    'engine/settings-file-names.mjs',
     'engine/installed-versions.mjs',
     'packs/alpha/RULES.md',
     'packs/alpha/check.mjs',

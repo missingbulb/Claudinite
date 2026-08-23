@@ -7,7 +7,10 @@
 // answers on the first, one that has not answers on the second, and a repo that is
 // not a member answers on neither and gets null — which is what the caller reports
 // as "does not run Claudinite".
-import { SETTINGS_FILES, SETTINGS_FILE } from '../../engine/settings-file.mjs';
+// The names come from the engine's browser-pure half: `settings-file.mjs` itself probes
+// the disk, and a `node:` import anywhere in the page's graph blocks its first module
+// load in the browser (#1286).
+import { SETTINGS_FILES, SETTINGS_FILE } from '../../engine/settings-file-names.mjs';
 
 export { SETTINGS_FILE };
 

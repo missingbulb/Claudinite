@@ -8,9 +8,10 @@
 // drift from the mechanism it renders: there is no second copy to drift.
 //
 // Those engine modules are pure ESM with no `node:` imports, which is the property
-// this file depends on and `model.test.mjs` pins. Living inside `engine/scheduler/`
-// makes the queue modules siblings, so the dashboard sits beside the mechanism it
-// renders rather than reaching across the tree at it.
+// this file depends on and `browser-graph.test.mjs` pins across the page's whole
+// import graph. Living inside `engine/scheduler/` makes the queue modules siblings,
+// so the dashboard sits beside the mechanism it renders rather than reaching across
+// the tree at it.
 //
 // `stripComments` is the one remaining cross-tree reach, and it is deliberate:
 // `file-placement` flags it advisory and its own remedy sanctions exactly this case.
