@@ -1148,6 +1148,54 @@ No signals, no items: **24 invocations**, the hourly cron alone — every
 scheduler run skipped its drain, and no executor runner ever started. Under
 the retired shape the same day cost 48.
 
+## O. The decision ballot — a parked choice, answered in place (owner, 2026-08-23, #1298)
+
+A `needs-human-decision` park (§4.1) writes the choice as checkboxes in its own
+park comment; a person ticks exactly one; the next scheduler run reads the tick
+back and resumes the item **carrying what was chosen**. Closing the item is the
+other exit, and work filed behind a park hangs off the parked item, so both
+exits release it. The cadence here is the real one — two ticks a day (§17) —
+because the wait for an answer to be read is the mechanism's main cost.
+
+### S74 — the loop, end to end
+
+A run parks with two options at 05:03; a follow-up is filed `Blocked-by` that
+item. The owner ticks one at 10:00 and **nothing moves**: a comment edit is not
+an event. The 16:17 tick reads it, the item goes back to the queue carrying the
+chosen option, the precondition is re-asked at the pick like any other item's,
+the run closes `done` — and the close releases the follow-up into the same run.
+
+### S75 — the other exit: the person closes it
+
+The same setup, settled by closing the parked item instead. No ballot is ever
+read; the follow-up is released by the scheduler run's **readiness job** at the
+next tick rather than by the close — a hand close runs no engine code, which is
+what that backstop exists for (§9).
+
+### S76 — two boxes ticked is not an answer
+
+The item stays exactly where it is and is told so **once**, not on every tick:
+ambiguity must never resolve to a guess, and a comment per tick would make the
+queue's own noise the thing a person has to read past. Unticking one resumes it.
+
+### S77 — the spent ballot
+
+The tick that resumed an item must not resume it again when a later run parks
+it, and nothing edits the checkbox back. The ballot is arbitrated against the
+item's **episode boundary** — the same artifact and rule as a claim (§6.2) — and
+every engine-written re-queue moves that boundary past it. The box stays ticked,
+the second park stands, and the item was picked twice in its life, not three
+times.
+
+### S78 — F32: the answered park occupies its task's lane
+
+A decision park does not hold its task's lane, so the anchor keeps filing
+occurrences beside it. Reading the answers **before** instantiating is what
+settles the collision: the resumed item is an ordinary live standing item when
+job 1 looks, and nothing is filed beside it. With the two jobs in the other
+order the pair is not deduped — the same-title mutex merely serializes them, and
+the task runs **twice**.
+
 ## Findings ledger
 
 | # | severity | what | resolution |
@@ -1184,6 +1232,7 @@ the retired shape the same day cost 48.
 | **F29** | design gap | model labels accumulated across asks, and multiples resolved by family-precedence order — a stale label from an earlier ask outranked the newest one | **fixed in DESIGN §16.3/§16.7** (owner, 2026-08-19): the model labels are consumed with the mark, so each ask names its model afresh (S47) |
 | **F30** | security precision | §16.4 read `author_association` as "the asker's permission on the repository": `MEMBER` is any org member and `COLLABORATOR` includes read-only collaborators — broader than the push access #1010 asked for | **fixed in DESIGN §16.4** (owner, 2026-08-19): push permission is read from the permission API; the association is at most a prefilter (S46) |
 | **F31** | **design bug** | the schedule board's go rows, read as watermark, eat an occurrence whenever the item's create fails after the row lands — fewer runs because a WRITE failed, the inversion of #1115's fail-open rule (S60) | **fixed in DESIGN §5/§15.28**: the watermark is scoped to declined rows only; a go/fail-open verdict's cover is the item it created, judged by the occurrence guard. Caught by the simulator before any engine code ran |
+| **F32** | **design bug** | reading an answered ballot after the instantiate job puts the resumed item and the anchor's fresh occurrence in the queue together — a decision park never held the lane — and the same-title mutex serializes them into running the task TWICE rather than deduping them (S78) | **fixed in DESIGN §4.1/§5**: the answer job runs before instantiation, so a resumed item is an ordinary live standing item when the lane test looks. Caught by the simulator before any engine code ran |
 
 What the exercise did **not** find: any scenario where work is lost silently,
 executed with no record, or where two mechanisms disagree about an item's

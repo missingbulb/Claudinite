@@ -105,10 +105,11 @@ Four roles, strictly separated (this refines, rather than replaces, the
 shrinks):
 
 1. **The generator** — a scheduled run (the repo's one cron, unchanged rule).
-   Three jobs: *instantiate* — when a recurring task's anchor comes, collect
+   Four jobs: *instantiate* — when a recurring task's anchor comes, collect
    its signals, ask its precondition, and file its work item only on a yes
    (§5); *ready* blocked items whose dependencies have resolved and whose
-   not-before has passed; and *reclaim* dead executor claims. It executes
+   not-before has passed; *answer* — resume the parked items whose decision
+   ballot a person has ticked (§4.1); and *reclaim* dead executor claims. It executes
    nothing, and it never turns a read failure into a skipped run — anything it
    cannot decide it files for the executor to decide.
 2. **Executors** — any number of pull workers. Each iteration: pick the next
@@ -323,7 +324,61 @@ resolved the cause re-queues the item by removing the park status and applying
 like every label operation here. The next pickup re-runs the precondition
 (§6.4), which is what makes the retry safe even when the failed run half-did
 its work. Alternatively the human closes the item (optionally superseding it
-with a forced retry, §8); nothing mechanical ever re-queues a parked item.
+with a forced retry, §8); nothing mechanical ever re-queues a parked item
+except off an answer a human gave it — §4.1.
+
+### 4.1 The decision ballot — the park states its options, and the answer is data
+
+A `needs-human-decision` park leaves a person two jobs the machine can carry:
+work out from the timeline what the choice actually was, and then translate
+their answer into a label edit. The answer itself is then lost — the resumed
+run reads nothing about what was decided, which for the one park kind that
+exists *because* the next step is a choice is the whole of what it needed.
+
+So a decision park **writes the choice down as checkboxes**, and the scheduler
+run reads the tick back (owner, 2026-08-23):
+
+- **The park writes a ballot**: one comment, carrying the `claudinite-ballot`
+  marker and one `- [ ]` per option, each option saying what the resumed run
+  would do. It replaces nothing — it *is* the one comment the park already owes
+  (terminal-state discipline, above). Stating the options is the contract for a
+  `decision` park; a worker that parks for a decision and names none gets the
+  bare re-queue ballot, which is the least a person can be asked to answer. The
+  other three kinds may carry one and mostly do not: `approval` is answered by
+  merging the PR, `action` by doing the thing outside the code, `failure` by a
+  fix — and each of those still ends with the same tick or the same close.
+- **A tick is not an event.** Editing a comment starts nothing; the answer is
+  read by the next scheduler run (§5, job 5), so its latency is the tick's, the
+  same wait an ad-hoc mark has (§17.4). The impatient lever is unchanged and
+  still there: the human re-queues by label.
+- **Exactly one box** is an answer. Zero is a park still waiting. **More than
+  one is not an answer** — the item stays exactly where it is and is told so
+  once; ambiguity must never resolve to a guess, and a comment per tick would
+  make the queue's own noise the thing a person reads past.
+- **The answer is carried, not just obeyed.** The resumed item goes back to
+  `task:status:waiting-for-executor` and the chosen option is what the run picks
+  up — a re-queue that says *what was decided*, where the label lever says only
+  "again".
+- **Closing the item is the other answer**, and needs none of this: it is the
+  abandon path, it releases everything filed behind the item (§9), and it is why
+  the ballot mints no "abandon" option of its own. One exit per surface.
+
+**The ballot's write gate is the platform's, and it grants no authority a label
+edit did not.** Only a repo write can edit a bot's comment — the same gate the
+labels carry — and the *most* a ticked box can ask for is the re-queue a person
+could already perform by hand, with the precondition re-asked at the pick either
+way. So the sweep reads no actor and needs none. The ballot lives in a
+**bot-authored comment** for exactly this reason and never in the item body: an
+ad-hoc request's body is the requester's own issue body, author-editable, which
+is why §16.7 gates the fields it carries.
+
+**A ballot is spent at the item's episode boundary** (§6.2) — the same
+arbitration a claim gets, over the same artifact. Every engine-written re-queue
+moves that boundary, so the tick that resumed an item cannot resume it again on
+a later park, and nothing has to edit the checkbox back. The sweep spends the
+ballot *before* it acts on it: a spent ballot whose re-queue was lost leaves a
+parked item and a run that failed loudly, where a re-queue whose spend was lost
+would answer the same tick again the next time the item parked.
 
 ## 5. The generator — decide at the anchor, file only work
 
@@ -378,6 +433,21 @@ scheduler run(now):
   # retired or renamed spelling is invisible to it, and job 2 would ready the
   # item at its Not-before onto a task path that is not on disk. Guarded on a
   # non-empty task list, so an unreadable declaration reaps nothing.
+
+  # ---- job 5: read the answered ballots (§4.1) ---------------------------
+  # BEFORE job 1, and that ordering is load-bearing (F32): a decision park does
+  # not hold its task's lane, so job 1 files a fresh occurrence beside it — and
+  # an answer read AFTER job 1 would put the resumed item and that occurrence in
+  # the queue together, where the same-title mutex serializes them into running
+  # the task twice rather than deduping them. Resumed first, the item is an
+  # ordinary live standing item when job 1 looks. Job 2 never needed this: a
+  # blocked item is already inside job 1's lane test.
+  for item in openItems if isParked(item):
+    ballot = lastBallotComment(item)            # after the episode boundary only
+    if not ballot or ballot.ticked == 0:        continue
+    if ballot.ticked > 1:  commentOnce("leave exactly one"); continue
+    endEpisode(item)                            # spend it BEFORE acting on it
+    swap(park -> task:status:waiting-for-executor, carrying ballot.choice)
 
   # ---- job 1: instantiate — evaluate at the anchor -----------------------
   for task in discoverTasks():
@@ -907,6 +977,14 @@ by the scheduler run (§5). Three patterns fall out, all from the sketch:
   actually settled — and the item either runs, or closes obsolete because
   everything landed on its own. The "will anyone check tomorrow?" gap closes
   with machinery that is just two body fields.
+- **Work that waits on a decision.** A run that parks for a choice (§4.1) and
+  leaves work behind it files that work `Blocked-by: #<this item>` — the parked
+  item, never the task. That one edge covers both of the person's exits and is
+  the reason the ballot needs no third one: answer it and the resumed item
+  eventually closes, releasing the follow-up in that same run (the close-time
+  re-check below); close it by hand instead and the follow-up is released by the
+  scheduler run's readiness job, one tick later — a hand close runs no engine
+  code, which is precisely what that backstop is for (S74, S75).
 - **Ordering, declared — the exclusive claim retires.** A task may declare
   `schedule_after: ['basics/baselining']` in `task.mjs`, and it compiles to the
   **pick-time yield** (§6.1), *not* to a `Blocked-by` edge: the executor
@@ -1612,6 +1690,27 @@ deployment coupling did not:
     is not `'true'` — so a member on the old copy keeps dispatching hourly,
     which is exactly today's behavior. The `ungated-drain` rehearsal fixture
     is that claim, converged rather than asserted.
+31. **A decision park states its options, and the answer is data** (owner,
+    2026-08-23, #1298) — *added §4.1; the scheduler run gains job 5.* A
+    `needs-human-decision` park writes the choice as checkboxes in its own park
+    comment; a person ticks exactly one; the next scheduler run resumes the item
+    carrying what they chose. Closing the item stays the other exit, and work
+    filed behind a park hangs off the **parked item**, so both exits release it
+    (§9). Three things fall out of modeling it (S74–S78):
+    **the ordering is load-bearing** — the answers are read *before*
+    instantiation, or a resumed item and the anchor's fresh occurrence run the
+    task twice (F32); **the ballot is arbitrated at the episode boundary**, the
+    same artifact and the same rule as a claim, which is what spends a tick
+    exactly once without editing the checkbox back; and **the gate is the
+    platform's**, since only a repo write can edit a bot's comment and the most a
+    tick can ask for is the re-queue a label edit could already perform — which
+    is also why the ballot is a comment and never the item body, author-editable
+    on every ad-hoc request (§16.7). *Alternatives: a label per option — an
+    unbounded vocabulary for a per-item question, and no room for the option's
+    text; the decision written into the item body — the one surface a
+    non-privileged author can edit; a webhook on the comment edit — events are
+    latency sugar here as everywhere (§11), and the tick's wait is the tick's,
+    the same one an ad-hoc mark has.*
 
 ---
 
@@ -2057,11 +2156,12 @@ at `dailyHour` — that is what `anchorInstant` resolves them to (§5) — so on
 whatever the member sets that hour to. Nothing is spread across hours any more, which
 is what makes one tick sufficient rather than merely cheaper.
 
-The **drain tick** carries the three jobs that are not anchor-bound — adopting issues somebody
+The **drain tick** carries the jobs that are not anchor-bound — adopting issues somebody
 marked (§16.3), readying items whose `Not-before` has passed or whose `Blocked-by` has resolved,
-and reclaiming dead executor claims (§11). None of these has an occurrence; each is simply work
-that arrived since the last look. A second tick roughly halves the wait for all three, for one
-extra billed minute a day.
+resuming the parked items whose ballot a person ticked (§4.1), and reclaiming dead executor claims
+(§11). None of these has an occurrence; each is simply work that arrived since the last look. A
+second tick roughly halves the wait for all of them, for one extra billed minute a day — so an
+answered decision waits what an ad-hoc mark waits, a mean of 6 hours and never more than 12.
 
 ### 17.3 What the drain already chains, and what it does not
 
@@ -2130,7 +2230,7 @@ the retired offsets were trying and failing to hold it.
 
 ### 17.6 What this does not change
 
-The queue's mechanics are untouched. The scheduler run's four jobs, the drain gate, the executor's
+The queue's mechanics are untouched. The scheduler run's jobs, the drain gate, the executor's
 claim and lease model, the janitor's rules, `workflow_dispatch` with `wake` as the never-wait
 lever (§8), and every label transition in §4 behave exactly as before — they simply happen twice a
 day instead of twenty-four times. No delivery is *lost*: what a lost label event would have

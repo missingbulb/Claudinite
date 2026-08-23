@@ -20,7 +20,9 @@ whole argument for its existence.
   `actionExecutions()` accounting of every billed workflow run); the work
   step → hand-off → converge as timed phases with heartbeat comments;
   at-most-once invocation (fired / refused / unanswered); the readiness
-  re-check on close; the janitor's rules; and the force/re-queue levers.
+  re-check on close; the janitor's rules; the decision ballot — a park's
+  options, a person's tick and the scheduler run's read of it, each modeled as
+  the comment artifact that writes it; and the force/re-queue levers.
   Since #1115 the scheduler run evaluates at the anchor and the schedule
   board is a modeled ARTIFACT — rows the engine writes, a write log, and the
   absent/corrupt/refused-create degradations — never the rule's intent.
@@ -136,6 +138,11 @@ test's title in `scenarios.test.mjs`.
 | §17 a dropped tick costs latency, never the occurrence — and 12x more of it at two ticks | `S71` |
 | §17 a `Not-before` releasing between ticks waits for the next one, unescalated | `S72` |
 | §17 the anchor decides dueness, so a weekly task fires once even with no tick on its hour | `S73` |
+| §15.31 the decision ballot: a park states its options, a tick is read at the next scheduler run, and the choice is what the resumed run carries | `S74`, `S76` (ambiguity is not an answer) |
+| §15.31 closing the parked item is the other exit, and a follow-up hangs off the parked item so both exits release it | `S74` (released by the close), `S75` (released by the readiness backstop) |
+| §15.31 a ballot is spent at the episode boundary — the same artifact and rule as a claim | `S77` |
+| §15.31 F32: the answers are read BEFORE instantiation, or the resumed item and the anchor's occurrence run the task twice | `S78` |
+| §15.31 the tick's write gate is the platform's, and it asks for no more than a label edit could | **prose** — comment-edit permission is GitHub's, outside what the sim models (see "The unsimulated world") |
 | §14 bootstrap: first-item rule; old-vocabulary issues untouched | `S25`, `S29` |
 | §14 updates: declaration changes apply at the next scheduler run — nothing durable carries a schedule | `S28` |
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |
@@ -161,6 +168,7 @@ can still teach us.
 | **Actions start latency** | a queued workflow may wait minutes before running; the drain is not really at scheduler run+40s | nothing depends on start latency; all deadlines (leashes, staleness) are hours against minutes of jitter |
 | **Scheduler run serialization** | two scheduler runs racing is prevented by the workflow `concurrency` group, an Actions feature the sim assumes rather than models | S6 models the *guards* under a duplicated fire; the group is platform config, verified in the migration burst (B1) |
 | **REST list freshness** | no documented bound on when a list from another node reflects a creation seconds old | **F16**: the scheduler run assumes duplicates WILL happen and self-heals (close all open family items but the oldest) — S30 |
+| **Comment-edit permission** | only a repo write can edit another author's comment, and a checkbox tick IS such an edit — GitHub's own gate, with no attributable editor in the issue payload | the ballot (§4.1) leans on exactly that gate and asks for no authority beyond it: the most a tick can request is the re-queue a label edit could already perform, and the precondition is re-asked at the pick either way — so nothing here reads an actor. The sim models the tick as a fact, never the permission behind it |
 | **Label API atomicity** | a swap is two calls; no CAS; either can fail or land alone | labels are visibility + pick filter, never the arbiter — comments arbitrate (§6.2); a torn swap's stateless item is repaired by the janitor's fourth rule; modeled atomically here, defended structurally there |
 | **Comment ordering** | `created_at` has 1-second granularity (simultaneous claims tie); comment **ids** are server-assigned, strictly increasing | the design orders by id, never timestamp (§6.2); the sim's `seq` models exactly that id order |
 | **Claim-comment interleaving** | true API interleaving between executors | modeled as stale-snapshot races (`raceExecutorsAt` — S7, S32), which covers the protocol's decision points but not GitHub's own consistency between a comment post and a comment list; residual assumption: a comment list read after posting includes all earlier-id comments |

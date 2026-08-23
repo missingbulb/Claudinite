@@ -321,7 +321,32 @@ export function makeSim({
   // statusOf, modeled there because that is what old items actually wear —
   // modeling only the intent is the blind spot that hid F24.
   const triageLabel = (kind) => NH(TRIAGE.includes(kind) ? kind : 'failure');
-  const park = (it, _from, kind) => setStatus(it, triageLabel(kind));
+  // THE BALLOT (DESIGN §4.1): a `decision` park states the choice as a comment
+  // carrying one checkbox per option. Modeled as the ARTIFACT the engine writes
+  // — a comment with a marker, an option list, and each option's checked bit —
+  // never as "the item knows what was decided": the whole mechanism is that a
+  // person edits a bot's comment and the next scheduler run reads the edit back.
+  //
+  // It carries a `seq` from the same counter the claim comments use, because it
+  // is arbitrated the same way: a ballot at or before the item's episode
+  // boundary is SPENT, exactly as a claim before it is dead. That is what stops
+  // a ticked box from resuming the item a second time when a later run parks it
+  // again — and it needs no second artifact, because every engine-written
+  // re-queue already moves the boundary (F18/F24).
+  const DEFAULT_DECISION_OPTIONS = ['Re-queue this item as it stands'];
+  const park = (it, _from, kind, options = null) => {
+    setStatus(it, triageLabel(kind));
+    if (triageLabel(kind) !== NH('decision')) return;
+    it.comments.push({
+      t: now, seq: seq++, kind: 'ballot',
+      options: (options ?? DEFAULT_DECISION_OPTIONS).map((text) => ({ text, checked: false })),
+    });
+    record('ballot', { task: it.taskId, issue: it.number });
+  };
+  // The one a tick can answer: the item's latest ballot, and only while it sits
+  // after the episode boundary.
+  const liveBallot = (it) => it.comments
+    .filter((c) => c.kind === 'ballot' && c.seq > (it.claimEpoch ?? -1)).at(-1) ?? null;
   // The road back clears the status, restoring the no-status shape; the
   // re-queue lever then applies the ready status explicitly.
   const unpark = (it) => clearStatus(it);
@@ -434,6 +459,54 @@ export function makeSim({
       it.comments.push({ t: now, body: 'closing: declined occurrences now live on the schedule board, not as sleeping items' });
       close(it, 'rejected', { dispatchDrain: false });
       record('migrate-sleeping', { task: it.taskId, issue: it.number });
+    }
+    // job 5: read the ANSWERED BALLOTS (DESIGN §4.1) — the third release job,
+    // beside job 2's clock and blockers: a parked item whose ballot a person has
+    // ticked goes back in the queue, carrying what they chose.
+    //
+    // BEFORE JOB 1, and that ordering is load-bearing (F32): a decision park
+    // does not hold its task's lane, so job 1 files a fresh occurrence beside
+    // it — and an answer read after job 1 would put the resumed item and that
+    // occurrence in the queue together, where the same-title mutex serializes
+    // them into running the task TWICE rather than deduping them. Resumed
+    // first, the item is an ordinary live standing item when job 1 looks, and
+    // the occurrence guard does what it does for every other running lane.
+    // Job 2 never needed this: a blocked item is already in job 1's lane test.
+    //
+    // Label mechanics
+    // like the rest of the run — no precondition, no judgment about whether the
+    // answer is right; the precondition is re-asked at the pick, which is what
+    // makes the resume safe over a run that half-did its work.
+    //
+    // The tick itself is write-gated by the platform, not by anything here:
+    // only a repo write can edit a bot's comment, which is the same gate the
+    // labels carry — and a ticked box asks for exactly what a label edit could
+    // already ask for. So the sweep reads no actor and needs none.
+    for (const it of open().filter(isParked)) {
+      const ballot = liveBallot(it);
+      if (!ballot) continue;
+      const chosen = ballot.options.filter((o) => o.checked);
+      if (chosen.length === 0) continue;
+      // Ambiguity is not an answer, and it is not a fault either: say so ONCE
+      // and leave the item exactly where it is. Commenting every tick would
+      // make the queue's own noise the thing a person has to read past.
+      if (chosen.length > 1) {
+        if (!ballot.ambiguous) {
+          ballot.ambiguous = true;
+          it.comments.push({ t: now, body: 'more than one option is ticked — leave exactly one' });
+          record('ballot-ambiguous', { task: it.taskId, issue: it.number });
+        }
+        continue;
+      }
+      // Spend the ballot BEFORE acting on it. The two orders fail differently:
+      // a spent ballot whose re-queue was lost leaves a parked item and a run
+      // that failed loudly, where a re-queue whose spend was lost would answer
+      // the same tick again on the item's next park.
+      endEpisode(it);
+      it.decision = chosen[0].text; // what the resumed run reads off the ballot
+      setStatus(it, READY);
+      it.comments.push({ t: now, body: `resumed on: ${chosen[0].text}` });
+      record('ballot-answered', { task: it.taskId, issue: it.number, option: chosen[0].text });
     }
     // job 1: instantiate — the precondition is asked WHEN THE ANCHOR COMES,
     // and an item is filed only on a yes (owner, 2026-08-20, #1115). A no is a
@@ -833,7 +906,10 @@ export function makeSim({
         // The worker's own triage marker routes the park where it left one; a
         // worker that said nothing about why it failed parks at `failure`.
         const kind = task.codeWorkTriage?.(world, now) ?? 'failure';
-        park(it, 'task:status:running-executor', kind);
+        // A `decision` park states the choice it is asking for; a worker that
+        // parks for a decision and names no options gets the bare re-queue
+        // ballot, which is the least a person can be asked to answer.
+        park(it, 'task:status:running-executor', kind, task.decisionOptions?.(world, now) ?? null);
         record('work-failed', { task: it.taskId, issue: it.number, triage: kind });
         onSettled();
         return;
@@ -947,8 +1023,11 @@ export function makeSim({
     for (const it of open().filter((i) => is(i, 'task:status:running-agent'))) {
       if (now - it.lastActivity >= agentLeashMs) {
         const dead = it.sessions.at(-1)?.id ?? 'unknown';
-        // what the dead session left behind decides whether this re-queues
-        park(it, 'task:status:running-agent', 'decision');
+        // what the dead session left behind decides whether this re-queues —
+        // and the janitor states that choice as a ballot like any other parker
+        park(it, 'task:status:running-agent', 'decision', [
+          `Re-queue: session ${dead} left nothing that has to be undone first`,
+        ]);
         it.comments.push({ t: now, body: `agent session ${dead} went silent past the leash` });
         record('agent-reclaim', { task: it.taskId, issue: it.number, session: dead });
       }
@@ -1262,6 +1341,24 @@ export function makeSim({
     // impatient path is a hand-dispatched scheduler run (schedulerRunAt models it).
     suspendAll() { suspendedAll = true; record('suspend', {}); return sim; },
     resumeAll() { suspendedAll = false; record('resume', {}); return sim; },
+
+    // A person ticks a box on the item's ballot (DESIGN §4.1) — the whole of
+    // the human side of the mechanism. It writes NO label and starts no run:
+    // editing a comment is not an event the queue listens for, so the answer
+    // waits for the next scheduler run exactly as an ad-hoc mark does.
+    // `option` is the option's index; `untick` clears one.
+    tickBallot(number, option, { untick = false } = {}) {
+      const it = issues.find((i) => i.number === number);
+      const ballot = it.comments.filter((c) => c.kind === 'ballot').at(-1);
+      if (!ballot) throw new Error(`#${number} carries no ballot to tick`);
+      ballot.options[option].checked = !untick;
+      record('tick', { issue: number, option: ballot.options[option].text, untick });
+      return sim;
+    },
+    ballotOf(number) {
+      const it = issues.find((i) => i.number === number);
+      return it.comments.filter((c) => c.kind === 'ballot').at(-1) ?? null;
+    },
 
     // the sanctioned human re-queue (F7, DESIGN §4): strip needs-human,
     // apply task:status:waiting-for-executor — the same lever forcing uses

@@ -1992,3 +1992,174 @@ test('S73 a weekly task fires exactly once a week, even when no tick lands on it
   assert.deepEqual(createdHours(onAnchor), ['04:17', '04:17']);
   assert.deepEqual(createdHours(offAnchor), ['06:17', '06:17']);
 });
+
+// ---- S74-S78 — THE DECISION BALLOT (DESIGN §4.1). A park whose remedy is a
+// CHOICE states that choice as checkboxes on the item, and the next scheduler
+// run reads the tick back and resumes the item carrying what was chosen. The
+// two exits a person has — answer it, or close the item — both release whatever
+// was filed behind it, which is why a follow-up hangs off the parked item and
+// not off the task.
+//
+// Kept out of `cast()` for the same reason SEEDS is: a task that always has
+// work would add executor contention to every other scenario's timing.
+const PUBLISH = {
+  id: 'site/publish', frequency: 'manual', outcome: 'done', codeWorkMinutes: 2,
+  precondition: (w) => ({ run: !!w.publishPending, reason: 'nothing to publish' }),
+  codeWorkFails: (w) => !!w.publishOverran,
+  codeWorkTriage: () => 'decision',
+  decisionOptions: () => [
+    'Keep the half-written page and finish it on the next run',
+    'Discard the half-written page and start the section over',
+  ],
+};
+
+// The scheduled twin (S78 only): the same park on a task the calendar keeps
+// filing occurrences for.
+const NIGHTLY = { ...PUBLISH, id: 'site/nightly', frequency: 'daily' };
+
+const ballotWorld = (s) => { s.world.publishPending = true; s.world.publishOverran = true; };
+
+// ---- S74 — the loop, end to end: park with options, a tick, the next tick
+// reads it, the resumed run closes, and the follow-up goes at the close.
+test('S74 a ticked ballot resumes the item at the next tick, carrying the answer', () => {
+  const sim = makeSim({ tasks: [...cast(), PUBLISH], cronHours: [4, 16] })
+    .seedSteadyState('2026-08-12T00:00Z');
+  let item, followUp;
+  sim.at('2026-08-12T05:00Z', (s) => { ballotWorld(s); item = s.createItem('site/publish'); });
+  // The follow-up is blocked on the PARKED ITEM, not on the task: whichever way
+  // the person settles this item, its close is what releases the follow-up.
+  sim.at('2026-08-12T06:00Z', (s) => {
+    s.world.issueTouchedAt = T('2026-08-12T06:00Z');
+    followUp = s.createItem('tidy/tidy-issues', { qualifier: 'after publish', blockedBy: [item.number] });
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-12T09:00Z');
+
+  // The park stated the choice, in the item's own timeline.
+  assert.equal(statusOf(item), NH('decision'));
+  const ballot = sim.ballotOf(item.number);
+  assert.equal(ballot.options.length, 2);
+  assert.equal(sim.log.filter((e) => e.kind === 'ballot').length, 1);
+  assert.equal(followUp.labels.has('task:status:blocked'), true);
+
+  // The tick writes no label and starts no run — the answer waits for a tick.
+  sim.at('2026-08-12T10:00Z', (s) => {
+    s.world.publishOverran = false; // the person also cleared what stopped the run
+    s.tickBallot(item.number, 0);
+  });
+  sim.run('2026-08-12T09:00Z', '2026-08-12T16:00Z');
+  assert.equal(statusOf(item), NH('decision'), 'a tick alone moves nothing');
+  assert.equal(sim.log.filter((e) => e.kind === 'ballot-answered').length, 0);
+
+  sim.run('2026-08-12T16:00Z', '2026-08-13T00:00Z');
+  const [answered] = sim.log.filter((e) => e.kind === 'ballot-answered');
+  assert.ok(answered && answered.t >= T('2026-08-12T16:17Z'), 'read by the 16:17 tick');
+  assert.equal(answered.option, 'Keep the half-written page and finish it on the next run');
+  // What the resumed run reads: the choice itself, not merely a re-queue.
+  assert.equal(item.decision, 'Keep the half-written page and finish it on the next run');
+  // The precondition is re-asked at the pick, as it is for every other item —
+  // which is what makes resuming a half-done run safe.
+  assert.equal(evals(sim, 'site/publish').length, 2);
+  assert.equal(item.state, 'closed');
+  assert.equal(item.outcome, 'done');
+  // …and the close releases the follow-up in that same run (§9's second site).
+  const [released] = sim.log.filter((e) => e.kind === 'ready' && e.issue === followUp.number);
+  assert.equal(released.by, 'close');
+  assert.equal(followUp.outcome, 'done');
+});
+
+// ---- S75 — the other exit: the person closes the item instead of answering.
+// A hand close runs no engine code, so the follow-up is released by the
+// scheduler run's own readiness job — the backstop, doing exactly its job.
+test('S75 closing the parked item is the other answer: the follow-up releases at the next tick', () => {
+  const sim = makeSim({ tasks: [...cast(), PUBLISH], cronHours: [4, 16] })
+    .seedSteadyState('2026-08-12T00:00Z');
+  let item, followUp;
+  sim.at('2026-08-12T05:00Z', (s) => { ballotWorld(s); item = s.createItem('site/publish'); });
+  sim.at('2026-08-12T06:00Z', (s) => {
+    s.world.issueTouchedAt = T('2026-08-12T06:00Z');
+    followUp = s.createItem('tidy/tidy-issues', { qualifier: 'after publish', blockedBy: [item.number] });
+  });
+  sim.at('2026-08-12T10:00Z', (s) => s.closeByHand(item.number, 'rejected'));
+  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+
+  assert.equal(item.state, 'closed');
+  assert.equal(sim.log.filter((e) => e.kind === 'ballot-answered').length, 0, 'nothing read a ballot');
+  const [released] = sim.log.filter((e) => e.kind === 'ready' && e.issue === followUp.number);
+  assert.equal(released.by, undefined, 'released by the scheduler run, not by the close');
+  assert.ok(released.t >= T('2026-08-12T16:17Z'), 'a hand close waits for the next tick');
+  assert.equal(followUp.outcome, 'done');
+});
+
+// ---- S76 — two boxes ticked is not an answer. The item stays exactly where it
+// is and is told so ONCE: a comment on every tick would make the queue's own
+// noise the thing a person has to read past.
+test('S76 an ambiguous ballot leaves the item parked, and says so once', () => {
+  const sim = makeSim({ tasks: [...cast(), PUBLISH], cronHours: [4, 16] })
+    .seedSteadyState('2026-08-12T00:00Z');
+  let item;
+  sim.at('2026-08-12T05:00Z', (s) => { ballotWorld(s); item = s.createItem('site/publish'); });
+  sim.at('2026-08-12T10:00Z', (s) => {
+    s.world.publishOverran = false;
+    s.tickBallot(item.number, 0);
+    s.tickBallot(item.number, 1);
+  });
+  // two ticks see the ambiguous ballot: 16:17 today and 04:17 tomorrow
+  sim.run('2026-08-12T00:00Z', '2026-08-13T10:00Z');
+  assert.equal(statusOf(item), NH('decision'), 'still the person\'s to settle');
+  assert.equal(sim.log.filter((e) => e.kind === 'ballot-ambiguous').length, 1, 'said once, not per tick');
+
+  sim.at('2026-08-13T11:00Z', (s) => s.tickBallot(item.number, 1, { untick: true }));
+  sim.run('2026-08-13T10:00Z', '2026-08-14T00:00Z');
+  assert.equal(item.outcome, 'done');
+  assert.equal(item.decision, 'Keep the half-written page and finish it on the next run');
+});
+
+// ---- S77 — THE SPENT BALLOT. The tick that resumed an item must never resume
+// it again on a LATER park, and nothing edits the checkbox back: the ballot is
+// arbitrated against the item's episode boundary, exactly as a claim is, and
+// every engine-written re-queue moves that boundary past it.
+test('S77 a ballot behind the episode boundary is spent — a later park is nobody but the human\'s', () => {
+  const sim = makeSim({ tasks: [...cast(), PUBLISH], cronHours: [4, 16] })
+    .seedSteadyState('2026-08-12T00:00Z');
+  let item;
+  sim.at('2026-08-12T05:00Z', (s) => { ballotWorld(s); item = s.createItem('site/publish'); });
+  sim.at('2026-08-12T10:00Z', (s) => {
+    s.tickBallot(item.number, 0);
+    // The resumed run breaks rather than overruns, so it parks at `failure` —
+    // a park with no ballot of its own, sitting after a ticked one.
+    s.world.publishOverran = false;
+    s.updateTask('site/publish', { codeWorkFails: () => true, codeWorkTriage: () => 'failure' });
+  });
+  sim.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
+
+  assert.equal(sim.log.filter((e) => e.kind === 'ballot-answered').length, 1, 'answered once, ever');
+  assert.equal(statusOf(item), NH('failure'), 'the second park stands');
+  assert.equal(sim.ballotOf(item.number).options[0].checked, true, 'the box is still ticked');
+  assert.equal(evals(sim, 'site/publish').length, 2, 'and the item was never picked a third time');
+});
+
+// ---- S78 — F32: the answered park re-enters a lane the calendar is still
+// filing for. A decision park does not hold its task's lane (§4), so the next
+// anchor WOULD file an occurrence beside the resumed item — and the same-title
+// mutex would serialize the pair into running the task twice rather than
+// deduping them. Reading the answers BEFORE instantiating is what settles it:
+// the resumed item is an ordinary live standing item when job 1 looks, and that
+// anchor's occurrence is the run the person just authorized.
+test('S78 F32: an answered park occupies its task\'s lane — the anchor files nothing beside it', () => {
+  const sim = makeSim({ tasks: [...cast(), NIGHTLY], cronHours: [4, 16] })
+    .seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T03:00Z', (s) => ballotWorld(s));
+  sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
+  const parked = sim.standingItem('site/nightly');
+  assert.equal(statusOf(parked), NH('decision'));
+
+  // answered overnight, so the read and tomorrow's anchor fall in the same run
+  sim.at('2026-08-12T20:00Z', (s) => { s.world.publishOverran = false; s.tickBallot(parked.number, 0); });
+  sim.run('2026-08-12T12:00Z', '2026-08-13T12:00Z');
+
+  const fam = sim.family('site/nightly').filter((i) => !i.seeded);
+  assert.equal(fam.length, 1, 'one item, not the resumed one plus an occurrence');
+  assert.equal(parked.outcome, 'done', 'and it is the answered item that ran');
+  assert.equal(evals(sim, 'site/nightly').length, 2, 'the task executed twice in all — the park and the resume');
+  assert.equal(sim.log.filter((e) => e.kind === 'dedupe').length, 0, 'nothing to dedupe: the lane was never doubled');
+});
