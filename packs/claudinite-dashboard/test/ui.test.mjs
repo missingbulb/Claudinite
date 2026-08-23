@@ -23,7 +23,7 @@ let leadCard;
 
 before(async () => {
   globalThis.document = { createElement: (tag) => new FakeEl(tag) };
-  ({ leadCard } = await import('./ui.mjs'));
+  ({ leadCard } = await import('../ui.mjs'));
 });
 
 const candidate = (over = {}) => ({
