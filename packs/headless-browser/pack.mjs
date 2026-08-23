@@ -18,16 +18,14 @@ const LAUNCH_CALL = /\b(?:chromium|firefox|webkit|puppeteer)\.launch\s*\(/;
 const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
-  id: 'headless-browser',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs:
       'driving a real browser from code — resolving and pinning the build, faking the page world, capture mechanics',
     excludes:
       'which engine a UI golden needs and its review gate — basics writing-tests; workflow wiring — git-github',
   },
-  badge: 'badge.svg',
   marker: 'a browser-automation driver (playwright / puppeteer, or a .launch( call) referenced in JS/TS source',
   detect: (ctx) =>
     ctx.tracked.some((f) => {
@@ -35,6 +33,4 @@ export default {
       const text = ctx.read(f);
       return text !== null && (DRIVER_MODULE.test(text) || LAUNCH_CALL.test(text));
     }),
-  prose: 'RULES.md',
-  worldRules: [],
 };

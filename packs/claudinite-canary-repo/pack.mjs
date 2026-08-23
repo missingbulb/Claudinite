@@ -44,27 +44,21 @@
 // also means the record's job is to UPDATE a workflow that is already there — the exact
 // shape a fleet-wide workflow fix would take.
 export default {
-  id: 'claudinite-canary-repo',
-  version: '60821.2',
-  minEngineVersion: 3,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the inert probe workflow the canon delivers to its canary to prove workflow materialization works end to end',
     excludes: 'real CI and release workflows — git-github owns workflow practice, each release pack owns its own pipeline',
   },
-  badge: 'badge.svg',
   // Not adoptable content: the canary is the only intended holder, so the pack is
   // withheld from the catalog every session reads to route a lesson or pick a pack
   // to adopt. Declaring it by hand still works — that is how the canary holds it.
   hidden: true,
-  detect: null,
-  marker: null,
   seededByDefault: false,
-  prose: null,
   // Seeded, never converged (the install flow is the only reader of this field): the
   // first copy is the member's from the moment it lands. Everything after it is the
   // record's business.
   seedOps: [
     { template: 'stubs/workflows/claudinite-workflow-probe.yml', dest: '.github/workflows/claudinite-workflow-probe.yml' },
   ],
-  worldRules: [],
 };

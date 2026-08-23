@@ -17,18 +17,12 @@
 // skill rather than sitting in always-loaded prose.
 
 export default {
-  id: 'web-scraping',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs:
       'acquiring data from a site you do not own: finding its data surface, fetching defensively, caching raw payloads',
     excludes:
       'Actions triggers and secrets wiring — that is git-github; publishing a site you own — that is static-website',
   },
-  badge: 'badge.svg',
-  marker: null,
-  detect: null,
-  prose: 'RULES.md',
-  skills: ['map-a-data-source'],
 };

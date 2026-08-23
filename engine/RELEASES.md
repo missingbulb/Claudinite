@@ -57,6 +57,7 @@ worth naming, not on every merge.
 | 5 | 2026-08-19 | [run 32267881121](https://github.com/missingbulb/Claudinite/actions/runs/32267881121) | The pack renames (#1022): `core` → `claudinite-lifecycle`, `grow_with_claudinite` → `claudinite-growth`, and the scheduled-task authoring contract moved between them. The record converges each member's declaration and moves its mount directories; the loader tolerance (`engine/pack_loader/renamed-packs.mjs`) makes that record's timing irrelevant by resolving both spellings, so no member can be caught holding a declaration and a mount that disagree — which for the pack carrying `update` would cost it the machinery that delivers its own repair. |
 | 6 | 2026-08-19 | [run 32270294377](https://github.com/missingbulb/Claudinite/actions/runs/32270294377) | The declaration half of the pack renames (#1041). Version 5 moved every member's mount directories and stamped `packVersions` keys but never rewrote the `packs` array: it did that textually, anchored on `"packs": [` so a member's own `{ "from": "core" }` barrier rule could not be caught by accident, and the anchor could not cross the nested array in an entry object like `{ "id": "barriers", "via": ["basics"] }`. Replaced by a structural op (`applyPackRenames`) driven by the engine's own rename map. A separate record because a repo already stamped 5 never runs the 5 record again — and a converged member is exactly the one whose declaration still needs moving. |
 | 60820.1 | 2026-08-20 | [run 32371130795](https://github.com/missingbulb/Claudinite/actions/runs/32371130795) | Versions become date-anchored `<day>.<n>` (#1100). The engine and every pack restart from one day; every reader takes a legacy integer too, sorting below every date-anchored version, until #1106 removes the tolerance. |
+| 60822.1 | 2026-08-23 | [run 32608725317](https://github.com/missingbulb/Claudinite/actions/runs/32608725317) | A pack manifest stops restating its own tree (#1246). `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory, an absent `detect`/`marker` means no fingerprint, and a `pack.mjs` declaration overrides only where a pack genuinely differs. Coded rules move into `worldRules/`/`workRules/` and a pack's tests into `test/`, which the vendor set drops by name. Every pack version is gated behind this release — a manifest with no `id` is dropped outright by an older loader, which fails the mount self-test and stops that member converging at all. |
 
 Version 1's rehearsal is the automatic post-merge run against `8dbb096`, the
 commit that introduced the constant — the procedure above landed after it, so
@@ -86,3 +87,10 @@ BOTH flows (`update: engine`, then `update: packs`) and the converged tree passe
 its self-test, which is what qualifies the rename specifically: the canary held a
 declaration and a mount spelled the old way when the run began, and the packs
 loaded anyway.
+
+Version 60822.1's was dispatched against `a5eaeaf` — this change's tree rebased onto
+the main it merges into, with only the row you are reading edited after it. Two
+earlier rehearsals qualified earlier bases and are superseded by this one, which
+qualifies the released tree: the canary converged both flows against a canon whose
+packs declare no `id` and carry their rules in directories, and its own mount then
+loaded them and passed its self-test.

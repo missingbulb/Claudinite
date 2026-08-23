@@ -1,0 +1,47 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { renderCoverageSummary } from '../../../tasks/fleet-roster/adoption-issues.mjs';
+
+// The coverage section of the roster report is a FULL-fleet roster: every repo the
+// walk enumerated is named under exactly one state, plus the enforcer itself. The
+// renderer is pure so that property is testable directly — a state whose members are
+// only counted is exactly the hole this guards against.
+
+const buckets = {
+  owner: 'o',
+  home: 'o/enforcer',
+  covered: ['o/alpha', 'o/beta'],
+  dormant: ['o/asleep'],
+  uncovered: ['o/naked'],
+  optedOut: ['o/left-out'],
+  skipped: ['o/attic (archived)', 'o/copy (fork)'],
+  unknown: ['o/flaky — declaration returned 500'],
+  actions: ['opened #9 (o/naked)'],
+};
+
+test('coverage summary: every repo appears by name, whatever its state', () => {
+  const out = renderCoverageSummary(buckets);
+  for (const repo of ['o/alpha', 'o/beta', 'o/asleep', 'o/naked', 'o/left-out', 'o/attic', 'o/copy', 'o/flaky']) {
+    assert.ok(out.includes(repo), `${repo} must be named in the summary`);
+  }
+  // The enforcer is not censused, but it is still accounted for — named, with why.
+  assert.match(out, /\*\*Not censused:\*\* o\/enforcer/);
+});
+
+test('coverage summary: each state is labelled, so a name is never ambiguous', () => {
+  const out = renderCoverageSummary(buckets);
+  assert.match(out, /\*\*Covered:\*\* o\/alpha, o\/beta/);
+  assert.match(out, /dormant.*o\/asleep/i);
+  assert.match(out, /\*\*Uncovered \(adoption issue open\):\*\* o\/naked/);
+  assert.match(out, /\*\*Opted out \(config\.exclude\):\*\* o\/left-out/);
+  assert.match(out, /\*\*UNKNOWN.*o\/flaky/);
+});
+
+test('coverage summary: an empty state says none rather than vanishing', () => {
+  // "Covered: none" and a missing Covered line read very differently — the first is
+  // a fact about the fleet, the second is a hole in the report.
+  const out = renderCoverageSummary({ ...buckets, covered: [], uncovered: [], actions: [] });
+  assert.match(out, /\*\*Covered:\*\* none/);
+  assert.match(out, /\*\*Uncovered:\*\* none 🎉/);
+  assert.match(out, /\*\*Issue actions:\*\* none \(converged\)/);
+});

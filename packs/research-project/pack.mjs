@@ -3,16 +3,10 @@
 // No detect — declaration is authoritative. Natural seams for future splitting
 // (session-continuity, reading-source-articles) are noted in RULES.md.
 export default {
-  id: 'research-project',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'methodology for iterating an algorithm over sample inputs against annotated ground truth — scoring, phases, session continuity',
     excludes: 'shipping an end-user product against a spec — that is spec-driven-product; market research is product-wiki',
   },
-  badge: 'badge.svg',
-  marker: null,
-  detect: null,
-  prose: 'RULES.md',
-  worldRules: [],
 };

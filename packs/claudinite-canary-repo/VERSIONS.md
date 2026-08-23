@@ -9,3 +9,4 @@ its own row.
 |---|---|---|
 | 4 | — | Renamed from `canary-probe` — the pack's subject is a Claudinite feature, so it carries the prefix that says so. |
 | 60821.2 | 2026-08-21 | This pack's inline version-history comment moved out of `pack.mjs` into this file. |
+| 60822.1 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |

@@ -9,18 +9,14 @@ const hasMarkerNearRoot = (ctx, marker) =>
   });
 
 export default {
-  id: 'flutter',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'widget-tree architecture, ports and fakes, widget-test and golden mechanics, pub and analyze toolchain habits for Flutter',
     excludes: 'native Android or iOS module concerns — android and ios; store shipping — play-store-release, app-store-release',
   },
-  badge: 'badge.svg',
   marker: 'pubspec.yaml (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'pubspec.yaml'),
-  prose: 'RULES.md',
-  worldRules: [],
   // The Flutter SDK isn't in the Claude Code Web base image, so a cloud session
   // can't run `flutter test` / analyze / golden regen without it. This declares
   // how the environment installs it (aggregated into environment-setup-command.sh) and

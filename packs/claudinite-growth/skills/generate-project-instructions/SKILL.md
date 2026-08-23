@@ -155,7 +155,9 @@ for work under `client/`) — never around a technology or a methodology: those 
 (their portable half is a canon seed above; the project-specific residue lands in the structural pack
 that owns the work). Each local pack is a real pack:
 
-- **`pack.mjs`** — `{ id, detect: null, marker: null, prose: 'RULES.md', rules: [...], skills: [...] }`.
+- **`pack.mjs`** — `{ version, ruleRoutingGuidance, detect: null, marker: null, rules: [...] }`. The id
+  is the directory name, the prose the `RULES.md` beside it and the skills its `skills/`
+  subdirectories, all by convention — none of them is declared.
   A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null), as its
   namespaced token `local_packs/<name>` in `.claudinite-checks.json`; its id
   must be unique and may not shadow a canon pack.
@@ -163,7 +165,7 @@ that owns the work). Each local pack is a real pack:
   setup/run/verify commands, real paths, inputs, metrics, invariants). Keep it terse; anything a check
   or skill can carry doesn't belong here, and anything inferable from the code is omitted.
 - **Checks** (`rules`) — the project-specific deterministic rules as `.mjs` modules listed on
-  `pack.mjs`, each with a red-first fixture (`pack.test.mjs`) runnable by the project's own test suite.
+  `pack.mjs`, each with a red-first fixture (`test/pack.test.mjs`) runnable by the project's own test suite.
   Local check modules stay dependency-free (they must load without the gitignored mount): return plain
   finding objects rather than importing the engine's helpers.
 - **Skills** (`skills/<name>/SKILL.md`) — the project's activity-scoped procedures, bundled in the pack;

@@ -93,6 +93,26 @@ What a `pack.mjs` may and must carry is declared once, in [`engine/pack_loader/p
 
 Reporting is not fatal: a pack whose declaration is incomplete still loads and still runs its checks. Silently disabling a repo's own rules is a worse failure than the one being reported. The field vocabulary is **closed** — an undeclared key is an error, so a typo (`rule:`, `skill:`) fails loudly instead of being ignored forever.
 
+### What the directory says, and what silence says — so the manifest need not
+
+Most of the manifest's fields had, in every pack ever written, exactly one correct value: either the one the pack's own tree already gave, or the one that means "this pack does not do that". [`engine/pack_loader/pack-conventions.mjs`](../engine/pack_loader/pack-conventions.mjs) resolves them before the spec judges the result, so a manifest states none of them:
+
+| Field | Resolved from |
+|---|---|
+| `id` | the pack's directory name |
+| `prose` | `RULES.md` beside the manifest, where one is present |
+| `badge` | `badge.svg` beside the manifest, where one is present |
+| `skills` | the subdirectories of `<pack>/skills/` |
+| `worldRules` | the modules in `<pack>/worldRules/`, in filename order |
+| `workRules` | the modules in `<pack>/workRules/`, in filename order |
+| `detect`, `marker` | `null` — silence *is* "this pack carries no fingerprint" |
+
+A manifest field still **overrides** the resolution where a pack genuinely differs — `prose: null` beside a `RULES.md` that is documentation rather than injected rules, a `skills` subset that withholds a directory from mounting. Only an *absent* field falls through, so an explicitly declared `null` overrides too. Declaring a field that merely restates the tree is what [`engine-tests/pack_loader/pack-conventions.test.mjs`](../engine-tests/pack_loader/pack-conventions.test.mjs) refuses across the corpus.
+
+### `<pack>/test/` — the pack's tests, and nothing a member receives
+
+A pack's tests live in one directory named for what it is, mirroring the pack's own layout inside it (`test/skills/<skill>/…`, `test/tasks/<task>/…`). [The vendor set drops that whole directory](../vendoring/compute-vendor-set.mjs) — the **name** is the rule, not the `*.test.mjs` suffix, so a fixture, a helper or a golden file a test needs stops shipping with it rather than riding into every member's mount for being one filename short of the exclusion.
+
 ### `ruleRoutingGuidance` — what belongs here, and what does not
 
 ```js
@@ -108,15 +128,17 @@ Write `excludes` to **name the pack that owns the other side** wherever one exis
 
 The catalog covers every canon pack, whether or not a repo declares it — a session weighing what to adopt needs the ones it does *not* hold. It is vendored into every mount for that reason. Local packs declare `ruleRoutingGuidance` on the same terms, and state their boundary in their own prose.
 
-### `worldRules` / `workRules` — a rule's scope is its placement
+### `worldRules/` / `workRules/` — a rule's scope is its placement
 
-A pack declares its checks in two lists, and **which list a rule sits in is what makes it world- or work-scoped**: `worldRules` audit repo state ([`check_the_world`](../engine/checks/check_the_world.mjs)), `workRules` judge the change and session in front of you ([`check_the_work`](../engine/checks/check_the_work.mjs)). The loader flattens both into the single `rules` array the runners walk, stamping each rule's scope from the list it came from — one derivation, nothing downstream re-decides it. A rule module that carries its own `scope` field is a second source for the same fact, free to contradict the manifest a reader trusts, so the spec rejects it.
+A pack's coded checks live in two directories, and **which directory a rule sits in is what makes it world- or work-scoped**: `<pack>/worldRules/*.mjs` audit repo state ([`check_the_world`](../engine/checks/check_the_world.mjs)), `<pack>/workRules/*.mjs` judge the change and session in front of you ([`check_the_work`](../engine/checks/check_the_work.mjs)). Each module default-exports one rule, and the loader imports them in filename order — discovered structurally, exactly like the `declared-checks.json` beside them, so adding a check is writing its file and nothing else. The loader flattens both scopes into the single `rules` array the runners walk, stamping each rule's scope from the directory it came from — one derivation, nothing downstream re-decides it. A rule module that carries its own `scope` field is a second source for the same fact, free to contradict its own placement, so the spec rejects it.
+
+A manifest may still declare `worldRules`/`workRules` explicitly, which overrides the directory for that scope — the same override every convention has. Nothing in the canon needs it.
 
 A skill's own `checks.mjs` sits outside this partition (it is a skill's content, not a manifest list) and still declares `scope` on the rule itself.
 
 ### `skills` — the bundle, declared
 
-A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385) — and the manifest **names them**: `skills: ['merge-to-main', ...]`. The spec holds the declaration and the tree to each other in **both directions**: an undeclared directory is a skill nothing announces, and a declared name with no directory is a manifest that lies. What each skill covers stays in its own `SKILL.md` frontmatter, the description the harness triggers on — the manifest carries the membership, not a second copy of the summary.
+A pack's skills live in its own tree — `<pack>/skills/<skill>/SKILL.md`, one owning pack per skill (#385) — and the directory listing **is** the membership: adding a skill is creating its directory, with no manifest line to keep in sync. A manifest that does name `skills` is withholding one, and the spec still refuses a name with no directory behind it: that is a manifest that lies. What each skill covers stays in its own `SKILL.md` frontmatter, the description the harness triggers on — nothing carries a second copy of the summary.
 
 The SessionStart hook [`../engine/pack_loader/mount-skills.mjs`](../engine/pack_loader/mount-skills.mjs) mounts the **union over the active packs' bundles** (same activation as prose/checks/env) as session-generated `.claude/skills/<name>` symlinks — nothing committed, and a self-ignoring `.claude/skills/.gitignore` keeps them out of git status. A skill rides its pack everywhere the pack goes: the vendor set, the mounts, the sweep (its `checks.mjs` runs when the pack is active). The baseline activities every project has (`merge-to-main`, `writing-tests`, `bug-investigation`, …) ride the `basics` pack's bundle; move a skill's directory to a narrower pack when it stops being a baseline activity.
 
@@ -170,11 +192,8 @@ that declares it.
 ## Pack badge (`badge`)
 
 Every pack carries a mark — the 32×32 tile beside its name in the table above — so a repo's README
-can show which Claudinite packs it runs. The manifest names only where it lives:
-
-```js
-badge: 'badge.svg',   // relative to the pack directory
-```
+can show which Claudinite packs it runs. It is `badge.svg` beside the pack's manifest, found by
+convention rather than named by it (above).
 
 **The badge file is the artwork's source of truth.** Its colour and its glyph live in the SVG, not
 in `pack.mjs`: they are visible to anyone who opens the file, editable without touching a manifest,

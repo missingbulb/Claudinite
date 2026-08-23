@@ -75,7 +75,7 @@ GitHub MCP tools.
    session's previous capture, whatever event produced it, so any two events chain into
    disjoint files and a zero delta pushes nothing at all. Double-writing is therefore safe by
    construction, not by coordination — the property [`session-end.mjs`](session-end.mjs) relies
-   on, so `pack.test.mjs` pins it directly.
+   on, so `test/pack.test.mjs` pins it directly.
    The branch is a **work queue, not an archive** — never merged; tips are cheap in shallow
    session clones and retention keeps them bounded.
 1. **Capture — again, when the session ends** ([session-end.mjs](session-end.mjs), invoked by the
@@ -163,8 +163,8 @@ here: its subject is Claudinite's own surface, not lesson capture.
 
 | Rule | Kind | What |
 |---|---|---|
-| `dedup-prune-integrity` | work-scope ([dedup-integrity.mjs](dedup-integrity.mjs)) | a dedup edit only removes portable text — never grows a local pack or re-imports a canon rule |
-| `growth-write-scope` | work-scope ([growth-write-scope.mjs](growth-write-scope.mjs)) | a capture run (extract, dedup) writes only the repo's own local packs |
+| `dedup-prune-integrity` | work-scope ([dedup-integrity.mjs](workRules/dedup-integrity.mjs)) | a dedup edit only removes portable text — never grows a local pack or re-imports a canon rule |
+| `growth-write-scope` | work-scope ([growth-write-scope.mjs](workRules/growth-write-scope.mjs)) | a capture run (extract, dedup) writes only the repo's own local packs |
 
 The capture runs' write surface is the local packs and nothing else — a run improves the repo's
 **packs**, never the canon it prunes against or the project's own code. `growth-write-scope` is

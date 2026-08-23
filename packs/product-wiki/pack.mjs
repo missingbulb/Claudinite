@@ -7,17 +7,14 @@
 import { SINK_README } from './lib.mjs';
 
 export default {
-  id: 'product-wiki',
-  version: '60820.1',
-  minEngineVersion: 1,
+  version: '60822.1',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink',
     excludes: 'how the product is built or specced — that is spec-driven-product; requirement proofs are executable-requirements',
   },
-  badge: 'badge.svg',
   marker: SINK_README,
   detect: (ctx) => ctx.tracked.includes(SINK_README),
-  prose: 'RULES.md',
   // The isolation wall (product-wiki-isolation) and the skeleton check
   // (product-wiki-layout) are both declared checks in this pack's
   // declared-checks.json. They are a designed pair: the barrier's glob target
@@ -46,7 +43,6 @@ export default {
       distill: 'recorded as intent; names the competitor set the initial competitor-landscape wiki is seeded from',
     },
   ],
-  worldRules: [],
   // The pack's scheduled task — wiki-growth, the weekly research pass — lives in
   // this pack's `tasks/wiki-growth/`, discovered by the scheduler's filesystem
   // scan (engine/scheduler/discover.mjs), not declared here.

@@ -74,24 +74,17 @@
 // for the same pack, so the two can drift apart silently. That is a fact about seeding,
 // not about any pack seeded — which is why it lives here and not in the pack whose
 // config happened to drift.
-import seedsAgree from './seeds-agree.mjs';
 import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
-  id: 'claudinite-fleet-sheepdog',
-  version: '60822.1',
-  minEngineVersion: 1,
+  version: '60822.2',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',
     excludes: 'anything a member does to itself — tidying is tidy-repo, lessons are claudinite-growth; the fleet brief is claudinite-dashboard',
   },
-  badge: 'badge.svg',
-  detect: null,
-  marker: null,
-  prose: 'RULES.md',
   // Audits the enforcer's config as it stands, whatever this session touched: a seed
   // that drifted in an earlier commit is just as silent as one that drifted in this one.
-  worldRules: [seedsAgree],
 
   // The token is the whole pack's one credential and only a human can mint it. The step
   // is RENDERED from fleet-token.mjs rather than written here, because the failure this

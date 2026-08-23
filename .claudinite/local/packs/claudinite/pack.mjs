@@ -1,6 +1,3 @@
-import consumerSafeChange from './consumer-safe-change.mjs';
-import engineReleaseRecord from './engine-release-record.mjs';
-import packDiscoveryEntryAwait from './pack-discovery-entry-await.mjs';
 
 // The canon home repo's OWN local pack — Claudinite-specific working rules and
 // lessons that are NOT portable to consumers (those belong in packs/, the shared
@@ -14,15 +11,10 @@ import packDiscoveryEntryAwait from './pack-discovery-entry-await.mjs';
 // canon packs/ tree — and active because .claudinite-checks.json declares it. Its
 // id must equal its directory name ("claudinite") and may not shadow a canon pack.
 export default {
-  id: 'claudinite',
   ruleRoutingGuidance: {
     belongs: 'working rules and lessons specific to developing Claudinite itself and not portable to any consumer',
     excludes: 'fleet-facing curation duties and policing of the packs/ tree — that is the canon-curation local pack',
   },
-  badge: 'badge.svg',
-  prose: 'RULES.md',
   // home-seeded-packs-declared rides beside these as a declared check
   // (declared-checks.json in this directory).
-  worldRules: [packDiscoveryEntryAwait],
-  workRules: [consumerSafeChange, engineReleaseRecord],
 };

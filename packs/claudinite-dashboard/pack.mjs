@@ -55,35 +55,25 @@
 // the engine's scheduler run. So the assembly logic keeps converging with the canon while the
 // workflow — the part that cannot converge — stays a one-time seed. Only the file that
 // has to be frozen is frozen.
-import datedFixtureCollision from './tasks/fleet-digest/dated-fixture-collision.mjs';
-import descriptorUsable from './descriptor-usable.mjs';
-import digestPlainText from './tasks/fleet-digest/digest-plain-text.mjs';
 import { fleetTokenHandoverStep } from './tasks/fleet-digest/fleet-token.mjs';
 
 export default {
-  id: 'claudinite-dashboard',
-  version: '60822.3',
-  minEngineVersion: 4,
+  version: '60822.4',
+  minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',
     excludes: 'how the scheduler behaves — core; workflow practice — git-github; product sites — static-website',
   },
-  badge: 'badge.svg',
 
   // Never fingerprinted. Nothing in a repo's shape implies wanting a dashboard, and a
   // scan that suspected one from the presence of a scheduler would suspect it in every
   // member on the fleet.
-  detect: null,
-  marker: null,
   seededByDefault: false,
 
   // A page, not a practice — see the header.
-  prose: null,
   // Audits the landed briefs and the task's own fixtures as they stand, whatever this
   // session touched: a markdown brief that landed last week is just as unreadable in the
   // owner's inbox as one that landed today.
-  worldRules: [digestPlainText, datedFixtureCollision, descriptorUsable],
-  workRules: [],
 
   // ONE question, and it is the one thing this pack cannot pick for a repo: which
   // dashboard the deployment is. Everything else has a default that is right for nearly
