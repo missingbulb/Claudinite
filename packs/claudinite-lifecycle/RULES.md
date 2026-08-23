@@ -3,10 +3,6 @@
 Claudinite's own surface in a repo that runs it: the vendored mount, the declaration, adoption and
 the self-refresh. The contract a scheduled task is written to is claudinite-growth's.
 
-- **Reading a rule, check or skill that arrived from Claudinite** — it is vendored, under
-  `.claudinite/shared/`, and the update flows replace that whole tree. Never edit anything there:
-  change it in the canon, or carry the difference in this repo's own `.claudinite/local/packs/`.
-
 - **Finding a mounted skill, or following a link from inside one you already loaded** — a canon
   skill lives at `.claudinite/shared/packs/<pack>/skills/<name>/SKILL.md`; there is no flat
   `.claudinite/shared/skills/`. When the `Skill` tool announces a per-session flat "base directory"

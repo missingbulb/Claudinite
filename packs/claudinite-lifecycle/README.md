@@ -12,7 +12,6 @@ reports it.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Reading a rule that arrived from Claudinite | high | correctness | prose: 43 words + check (`claudinite-isolation`) |
 | Finding a mounted skill's real path | medium | complexity | prose: 81 words |
 | Wanting a pack's rules to apply here | high | correctness | prose: 47 words + check (`claudinite-lifecycle-declared`) |
 | Adding a pack | medium | complexity | prose: 27 words |
@@ -32,6 +31,7 @@ not prose: the session that has lost its rules is the session least able to noti
 | `claudinite-lifecycle-declared` | critical | correctness | check: blocking |
 | `rules-index-current` | critical | correctness | check: blocking |
 | `claudinite-isolation` | high | complexity | check: blocking |
+| `shared-tree-immutable` | high | correctness | check: blocking |
 | `conformance-workflow` | high | correctness | check: advisory |
 | `conformance-work-scope` | high | correctness | check: advisory |
 | `scheduler-workflow-shape` | high | correctness | check: blocking |
@@ -41,6 +41,7 @@ What goes wrong when one fires:
 - `claudinite-lifecycle-declared` — this pack's entry is gone from `.claudinite-settings.json`, so none of the rules above run and the session cannot tell.
 - `rules-index-current` — the generated index is missing, stale or unimported: the repo's packs contribute no prose to any session.
 - `claudinite-isolation` — the repo's own code reaches into `.claudinite/`, so the next canon refactor is a breaking migration for code the canon does not own (a declared `forbidReferences` barrier edge).
+- `shared-tree-immutable` — a branch edits a file under `.claudinite/shared/` directly; the update flow overwrites that tree wholesale on its next run, so the edit is either silently lost or briefly masks a mount gone stale.
 - `conformance-workflow` — nothing in CI runs the world sweep unfiltered on a pull request, so conformance is ungated and the maintenance PR never lands.
 - `conformance-work-scope` — CI gates the tree but not the change, so every commit-scoped rule is enforced only where a session's Stop hook happens to run.
 - `scheduler-workflow-shape` — the vendored scheduler's cron, concurrency or dispatch guard has drifted: staggering, double-run safety or manual runs break.

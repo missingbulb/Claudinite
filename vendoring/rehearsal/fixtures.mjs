@@ -120,6 +120,18 @@
 //                 CLAUDE.md content so the converge is also shown NOT to clobber a
 //                 repo's instructions on its way in.
 //
+// A `scope: 'work'` RULE NEEDS NO SHAPE HERE, ever — rehearse.mjs runs only
+// `engine/selftest.mjs --strict` and `check_the_world.mjs` against each fixture's
+// fresh converge (see its own header); check_the_work.mjs, the only runner a
+// work-scope rule executes under, judges a branch DIFF, and a rehearsal converge
+// has none to give it. So a new or newly-blocking work-scope rule cannot turn any
+// fixture red no matter what it asserts, and `consumer-safe-change` is discharged
+// by this comment rather than a shape that would prove nothing: `shared-tree-immutable`
+// (claudinite-lifecycle) is the first rule to rely on this — it only ever fires on
+// a CONSUMER'S OWN future branch that hand-edits `.claudinite/shared/`, which their
+// own Stop hook or work-scope CI surfaces on that branch, same as any other new
+// work-scope finding, and is fixed by reverting the stray edit.
+//
 // A fixture's INSTALLED VERSIONS are set per MODE by the runner, never here — they
 // are what selects migration records, and what the #328 anti-rewind guard compares
 // against the canon checkout's own numbers. Both modes stay at or below canon, so

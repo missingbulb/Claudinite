@@ -8,6 +8,7 @@ own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60823.2 | 2026-08-23 | `prose-to-checks-sweep`: the RULES.md line forbidding a hand-edit under `.claudinite/shared/` becomes `shared-tree-immutable`, a work-scope check that flags any branch commit touching that tree unless it is the update flow's own. |
 | 60823.1 | 2026-08-23 | The update runner resolves its settings file by name rather than naming it, takes delivery from `dailyClaudiniteUpdatesRequirePrReview`, and no longer asks which mechanism serves the repo; the update precondition takes newness from the mount's own movement in the window (#1252). |
 | 60822.2 | — | `update`'s `daily-2h` offset retires — it is the head of the morning chain, and the tasks that read the mount it converges declare `schedule_after:` rather than an earlier clock hour (§17.1). Comment updated for the `after` → `schedule_after` rename. |
 | 13 | — | Two task comments name the terminal a run closes with in its current spelling; no behaviour moves. |
