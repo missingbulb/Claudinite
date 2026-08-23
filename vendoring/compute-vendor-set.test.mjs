@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -408,4 +408,28 @@ test('a repo with no version stamp keeps the date window — unknown is answered
   // A stamp that carries a date but no versions is the same unknown.
   const pre = await vendorAt(root, ['alpha'], { today: '2026-01-05', installed: { updated: '2026-01-05T00:00:00Z' } });
   assert.deepEqual(pre.files.filter((f) => /\/migrations\/\d{4}-/.test(f)).sort(), records);
+});
+
+
+// THE WORKFLOWS NAME THEIR LOGIC BY LITERAL PATH. Since the scheduler and executor
+// stubs became thin wrappers, every job is a `run: node <module>` pointing into the
+// mount — so a vendor set that stopped shipping one of those modules breaks a
+// converged member with no error anywhere: the workflow parses, the run starts,
+// node exits on a missing file, and the queue simply stops draining.
+//
+// Read from the real stubs rather than a list, so a job added to either one is
+// covered the day it lands.
+test('every engine module the workflow stubs name is in the vendor set', async () => {
+  const { computeVendorSet } = await import('./compute-vendor-set.mjs');
+  const { files } = await computeVendorSet(['basics']);
+  const shipped = new Set(files);
+  for (const stub of ['claudinite-scheduler', 'claudinite-executor']) {
+    const yml = readFileSync(join(REPO_ROOT, `engine/scheduler/stubs/${stub}.yml`), 'utf8');
+    const named = [...yml.matchAll(/^\s*run: node \.claudinite\/shared\/(\S+)$/gm)].map((m) => m[1]);
+    assert.ok(named.length > 0, `${stub}.yml names no engine module — the pattern has gone stale`);
+    for (const module of named) {
+      assert.ok(shipped.has(module),
+        `${stub}.yml runs ${module}, which the vendor set does not ship — a member converging to this set gets a workflow that dies on a missing file`);
+    }
+  }
 });
