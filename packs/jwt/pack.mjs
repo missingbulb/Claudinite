@@ -16,7 +16,7 @@ const JWT_LIB = /['"](jsonwebtoken|express-jwt|jwks-rsa|node-jose|jose|python-jo
 const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx|py)$/;
 
 export default {
-  version: '60822.1',
+  version: '60823.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'minting and validating JSON Web Tokens: algorithm pinning, claim validation, key strength and secrecy, expiry, JWE',

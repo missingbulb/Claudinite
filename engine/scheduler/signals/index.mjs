@@ -177,7 +177,7 @@ const COLLECTORS = {
     // `issues.touched` and wake tidy-issues on the queue's own churn (F8).
     const real = open.filter((i) => !i.pull_request
       && !/^\[claudinite-(task|work|schedule)\]/.test(i.title ?? '')
-      && !/^(claudinite tracker:|auto-improvements tracker\b|repo tidy tracker$)/i.test((i.title ?? '').trim()));
+      && !/^(claudinite tracker:|\[claudinite\] ci performance$|auto-improvements tracker\b|repo tidy tracker$)/i.test((i.title ?? '').trim()));
     return {
       open: real.map((i) => ({ number: i.number, title: i.title, updatedAt: i.updated_at, labels: (i.labels ?? []).map((l) => l.name ?? l) })),
       touched: real.filter((i) => new Date(i.updated_at) >= since).map((i) => i.number),

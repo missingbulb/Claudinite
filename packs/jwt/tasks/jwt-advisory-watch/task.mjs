@@ -5,8 +5,9 @@
 // an advisory publishes. So the watch is a MONTHLY floor, deliberately
 // ungated on repo movement: the trigger lives outside the repo, so there is
 // no signal to gate on (contrast tidy-prs, whose verdicts only change when a
-// PR moves). Worker: task.md. Assess-only: recommends bumps in its tracker,
-// never opens a PR or edits a manifest.
+// PR moves). Worker: task.md. Assess-only: a run that finds an affected version
+// files an issue naming it; a clean run writes nothing at all, and never opens a
+// PR or edits a manifest.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 
@@ -15,7 +16,7 @@ export default {
   frequency: 'monthly',                     // an advisory watch is a floor, not an alert channel
   precondition_signals: [],                 // the trigger is the outside world — nothing repo-side gates it
   agent_model: 'sonnet',                    // version-range vs advisory-range comparison is a judgment call
-  expected_outcome: 'none',                 // assess-only: writes only its tracker issue
+  expected_outcome: 'none',                 // assess-only: opens an ISSUE for a hit, never a PR
   agent_instructions: 'task.md',
   agent_execution_timeout: 900,             // a handful of manifest reads and advisory lookups
 
@@ -23,7 +24,7 @@ export default {
     return {
       run: true,
       reason: 'JWT library advisories publish on the outside world\'s clock — the monthly sweep runs unconditionally',
-      context: ['Check the repo\'s JWT/JOSE libraries against published security advisories (read-only — recommend bumps in the tracker, never change a manifest).'],
+      context: ['Check the repo\'s JWT/JOSE libraries against published security advisories (read-only — file an issue for a hit, never change a manifest).'],
     };
   },
 };

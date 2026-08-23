@@ -3,8 +3,7 @@
 The **assess-only** advisory watch of the jwt pack: a monthly pass checking the repo's JWT/JOSE
 libraries against published security advisories. GitHub access is **MCP-only** (`mcp__github__*`).
 
-**Never open a PR, edit a dependency manifest, or comment anywhere but this task's own tracker issue.**
-You recommend; a human bumps.
+**Never open a PR or edit a dependency manifest.** You recommend; a human bumps.
 
 ## 1. Enumerate the JWT surface
 
@@ -19,23 +18,26 @@ version. Names to look for (plus anything else JWT-shaped you encounter): `jsonw
 For each library@version, check the GitHub Advisory Database (via the available `mcp__github__*`
 search tools, or web lookup if this session has it) for advisories whose affected range includes
 the resolved version. Collect one line per hit: `lib@version — GHSA-xxxx (severity): fixed in X.Y.Z`.
-If this session has **no working lookup path**, write `advisory lookup unavailable this run` in the
-tracker instead of guessing — an empty result must mean "checked and clean", never "couldn't check".
+If this session has **no working lookup path**, say `advisory lookup unavailable this run` in the run's
+own outcome instead of guessing — an empty result must mean "checked and clean", never "couldn't check".
 
-## 3. Reconcile this task's tracker
+## 3. File an issue only for an actual hit
 
-One standing tracker issue per repo, titled exactly `Claudinite tracker: JWT advisory watch` — found
-by that **exact title, never a fuzzy match**; create it **already closed** if absent — creation always
-lands an issue open and ignores a `state: closed` argument, so create it and close it in a second call
-(never a fresh issue per run). Touch it two ways each run:
+There is **no standing tracker**: a monthly issue body rewritten to say "all clean" is a subscription
+to noise, and it buries the one month it says something else. A clean run writes nothing anywhere —
+its record is the run's own outcome, which already says the sweep ran.
 
-- **Rewrite the issue body** to today's **dated** snapshot: the library list with versions, the
-  advisory hits with their fixed-in versions (or "all clean" / "lookup unavailable"). The body is
-  the live picture — it replaces last month's, it doesn't accumulate.
-- **Add a dated comment** with today's status, so the body's snapshots leave a per-run trail.
+A run that found **at least one advisory affecting a resolved version** opens a real, **open** issue —
+one per run, so each carries its own advisory set and closes when those bumps land. Title it
+`JWT advisory: <lib>@<version> and N other(s)` (or just the one library when it is the only hit), and
+give the body one line per hit — `lib@version — GHSA-xxxx (severity): fixed in X.Y.Z` — plus the
+manifest each library came from, so whoever bumps it knows where to look. Nothing here touches a
+dependency.
 
-Keep both short. **Never open, close, or reopen the tracker** — its state carries no meaning. The
-tracker only *records* the recommendations; nothing here touches a dependency.
+Before opening one, search the repo's open issues for a `JWT advisory:` issue naming the same GHSA
+against the same library: if one is already open, this advisory is already filed, so comment nothing
+and open nothing. It is the **GHSA id against the library** you match on, never the title text — every
+run phrases its own title, and a title match would file a duplicate the moment the set of hits changed.
 
 `model: sonnet` — deciding whether a resolved version sits inside an advisory's affected range is a
-judgment call; the reconcile is mechanical aggregation.
+judgment call; rendering the hits that survive it is mechanical.
