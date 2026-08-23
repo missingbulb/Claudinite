@@ -30,6 +30,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 2 | 4 |
 | <img src="headless-browser/badge.svg" width="18" height="18" alt=""> [headless-browser](headless-browser/README.md) | driver reference in JS/TS source | 0 | 18 |
 | <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 13 |
+| <img src="cloudflare-workers/badge.svg" width="18" height="18" alt=""> [cloudflare-workers](cloudflare-workers/README.md) | wrangler.toml/.jsonc/.json near root | 0 | 7 |
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills + monthly advisory-watch task) |
 | <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 4 |
