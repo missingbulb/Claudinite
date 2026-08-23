@@ -9,3 +9,7 @@ log of runs.
 
 | Date | Task | Change |
 |---|---|---|
+| 2026-08-23 | `growth-extract` | Added: **Sending a screenshot from a scratch test harness** — caption it as such, or the reader assumes it's the live page (#1249). |
+| 2026-08-23 | `growth-extract` | Added: **A canon pack's prose naming another pack by literal path** — must resolve in every consumer's vendored tree, not just the canon home; a live dangling instance flagged for a future `barriers` fix (#364). |
+| 2026-08-23 | `growth-extract` | Added: **Verifying a bulk sweep preserved content** — check a structural invariant count before/after; a green suite alone missed 46 silently-truncated test files (#1246). |
+| 2026-08-23 | `growth-extract` | Added: **A regex import-path rewriter for a bulk sweep** — anchor to real import syntax, never a bare pattern over the whole file text, or it corrupts fixture strings that embed import syntax as data (#1246). |
