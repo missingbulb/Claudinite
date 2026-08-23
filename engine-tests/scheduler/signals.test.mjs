@@ -159,6 +159,9 @@ test('issues: dispatch issues and trackers are invisible; touched respects the w
       { number: 1, title: 'real feature request', updated_at: '2026-07-21T12:00:00Z', labels: [] },
       { number: 2, title: '[claudinite-task] p/t d2026-07-21', updated_at: '2026-07-21T12:00:00Z' },
       { number: 3, title: 'Claudinite tracker: Repo Tidy', updated_at: '2026-07-21T12:00:00Z' },
+      // ci-performance's tracker predates the naming convention (#904), so the
+      // prefix alone does not hide it and tidy-issues triaged it as project work.
+      { number: 8, title: '[claudinite] CI performance', updated_at: '2026-07-21T12:00:00Z' },
       // The schedule board (#1115): every rewrite bumps updated_at, so letting
       // it through would wake tidy-issues on the queue's own churn (F8).
       { number: 6, title: '[claudinite-schedule] the schedule board', updated_at: '2026-07-21T12:00:00Z' },

@@ -281,6 +281,10 @@ test('seedRepoLocalPack: creates the repo\'s own pack, declares it, and the inde
   const dir = join(root, '.claudinite', 'local', 'packs', 'hello-world-flutter-app');
   assert.ok(existsSync(join(dir, 'pack.mjs')));
   assert.ok(existsSync(join(dir, 'RULES.md')));
+  // The pack's change record, seeded empty. Every growth task writes its rows
+  // here rather than to a standing issue of its own, so the file has to exist
+  // before the first run rather than be invented by whichever task ran first.
+  assert.ok(existsSync(join(dir, 'VERSIONS.md')));
   // Declared, so it is active…
   assert.match(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'), /"local\/hello-world-flutter-app"/);
   // …and the index the same converge wrote imports it. Seeding runs BEFORE the index

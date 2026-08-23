@@ -131,3 +131,18 @@ test('a write that fails is reported, never swallowed', async () => {
   const { gh } = fakeGh();
   await assert.rejects(() => writeTracker(gh, 'o/r', 404, { body: 'x' }), /could not refresh tracker #404/);
 });
+
+test('a tracker found OPEN is closed again — the leak createTracker alone cannot repair', async () => {
+  // #904 sat open from 2026-08-16 because it was created before #951 taught
+  // creation to close, and nothing ever looked at an EXISTING tracker's state.
+  // Every task's own run is the repair, so the leak heals wherever it landed.
+  const { gh, state } = fakeGh([{ number: 904, title: '[claudinite] CI performance', state: 'open' }]);
+  assert.deepEqual(await findTracker(gh, 'o/r', '[claudinite] CI performance'), { number: 904, duplicates: 0 });
+  assert.equal(state.issues[0].state, 'closed');
+});
+
+test('a tracker already closed costs no second PATCH', async () => {
+  const { gh, state } = fakeGh([{ number: 9, title: 'Claudinite tracker: Tidy PRs', state: 'closed' }]);
+  await findTracker(gh, 'o/r', 'Claudinite tracker: Tidy PRs');
+  assert.deepEqual(state.calls.filter((c) => c.startsWith('PATCH')), []);
+});

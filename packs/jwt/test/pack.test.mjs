@@ -37,7 +37,7 @@ test('jwt-advisory-watch: a well-formed monthly, assess-only declaration', () =>
   assert.equal(advisoryWatch.id, 'jwt-advisory-watch');
   assert.equal(advisoryWatch.frequency, 'monthly');    // advisories publish on the world's clock
   assert.deepEqual(advisoryWatch.precondition_signals, []); // nothing repo-side gates it
-  assert.equal(advisoryWatch.expected_outcome, 'none'); // recommends in its tracker, never opens a PR
+  assert.equal(advisoryWatch.expected_outcome, 'none'); // files an issue for a hit, never opens a PR
 });
 
 test('jwt-advisory-watch: runs unconditionally — the trigger lives outside the repo', () => {
@@ -46,11 +46,15 @@ test('jwt-advisory-watch: runs unconditionally — the trigger lives outside the
   assert.match(v.context.join(' '), /read-only|never change/);
 });
 
-test('jwt-advisory-watch: worker doc present, reconciles its own tracker by exact title', () => {
+test('jwt-advisory-watch: worker doc files an issue only for a hit, and dedups on the GHSA', () => {
   const worker = readFileSync(join(PACK_DIR, 'tasks/jwt-advisory-watch', advisoryWatch.agent_instructions), 'utf8');
-  assert.ok(worker.includes('`Claudinite tracker: JWT advisory watch`'));
-  // The tracker's state carries no meaning, so the worker may not open or close it.
-  assert.match(worker, /Never open, close, or reopen the tracker/);
+  // No standing tracker: a monthly "all clean" body is a subscription to noise,
+  // and it buries the one month that says something else.
+  assert.doesNotMatch(worker, /Claudinite tracker/);
+  assert.match(worker, /A clean run writes nothing anywhere/);
+  // The dedup key is the advisory against the library, never the title — every
+  // run phrases its own title, so a title match refiles the moment the hits change.
+  assert.match(worker, /GHSA id against the library.*never the title/s);
   // An empty result must mean "checked and clean", never "couldn't check".
   assert.match(worker, /lookup unavailable/);
   assert.ok(existsSync(join(PACK_DIR, 'badge.svg')));

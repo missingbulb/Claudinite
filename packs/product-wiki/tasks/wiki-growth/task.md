@@ -57,11 +57,12 @@ researched, what changed where, the citations added, and the open questions left
 
 ## Tracking
 
-Standing issue found by exact title **"Claudinite tracker: Product Wiki Growth"** in the repo — found by
-title, never by number, never opened/closed as state (open it if missing). One dated comment when a pass
-**grew** (`grew (PR #N): <one line>`) or was **blocked** (`blocked: <why>` — the human-visible convergence for
-a failed unattended run). Clean no-ops stay silent — the pack's freshness advisory is the prolonged-silence
-observer.
+The wiki's own git history is the record: every pass that grew it left a PR, and what changed is in the diff.
+Keep no standing issue.
+
+A pass that was **blocked** still needs to be visible — that is the human-facing convergence of a failed
+unattended run — so say so in the run's own outcome (`blocked: <why>`), where the queue surfaces it. Clean
+no-ops stay silent; the pack's freshness advisory is the prolonged-silence observer.
 
 Reading a wiki, judging which of its open questions is worth this run, and telling a citable finding from
 a plausible one is the heaviest judgment in the task set — weigh each accordingly.
