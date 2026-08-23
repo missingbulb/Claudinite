@@ -18,10 +18,9 @@ import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs'
 // gate — with three deliberate differences, each a consequence of what a pack IS:
 //
 //   1. IT OWNS `.github/workflows/`, and DELIVERS IT BY WITHHOLDING. The scheduler
-//      workflow's content is a function of the TASK SET (`declaredSecrets` unions
-//      the required secrets of every discovered task), so pack changes are what
-//      rewrite it — and this flow is the only one that runs late enough to see the
-//      task set it just vendored.
+//      workflow's content is a function of the STUB, which a pack update is what
+//      re-vendors — and this flow is the only one that runs late enough to see the
+//      stubs it just laid down.
 //
 //      What it does NOT have is a credential. Its caller pushes with the Action's
 //      GITHUB_TOKEN, which GitHub never lets write under `.github/workflows/`, and
@@ -163,16 +162,14 @@ export const stubFor = () => `${STUB_DIR}claudinite-scheduler.yml`;
 export async function pendingSchedulerWorkflow(targetRoot, fullName, read) {
   try {
     if (!fullName) return { pending: null, error: 'no repo name — cannot resolve this repo\'s cron minute' };
-    const { schedulerWorkflowTarget, SCHEDULER_WORKFLOW, declaredSecrets } = await import('../engine/scheduler/converge-wiring.mjs');
+    const { schedulerWorkflowTarget, SCHEDULER_WORKFLOW } = await import('../engine/scheduler/converge-wiring.mjs');
     const { loadConfig } = await import('../engine/checks/helpers/repo-context.mjs');
     const config = loadConfig(targetRoot);
     const stubRel = stubFor(config);
     const stub = read(stubRel);
     if (stub == null) return { pending: null, error: `no vendored scheduler stub at ${stubRel}` };
     // The repo's own anchor hour picks both cron hours (DESIGN §17); absent means the default.
-    const content = schedulerWorkflowTarget(
-      fullName, stub, await declaredSecrets(targetRoot, config), config?.taskScheduler?.dailyHour,
-    );
+    const content = schedulerWorkflowTarget(fullName, stub, config?.taskScheduler?.dailyHour);
     const pending = read(SCHEDULER_WORKFLOW) === content ? null : { path: SCHEDULER_WORKFLOW, content };
     return { pending, error: null };
   } catch (e) {
@@ -195,13 +192,12 @@ export const EXECUTOR_STUB = `${STUB_DIR}claudinite-executor.yml`;
 
 export async function pendingExecutorWorkflow(targetRoot, read) {
   try {
-    const { EXECUTOR_WORKFLOW, declaredSecrets, withDeclaredSecrets } = await import('../engine/scheduler/converge-wiring.mjs');
-    const { loadConfig } = await import('../engine/checks/helpers/repo-context.mjs');
-    const config = loadConfig(targetRoot);
+    const { EXECUTOR_WORKFLOW } = await import('../engine/scheduler/converge-wiring.mjs');
     const stub = read(EXECUTOR_STUB);
     if (stub == null) return { pending: null, error: `no vendored executor stub at ${EXECUTOR_STUB}` };
-    const content = withDeclaredSecrets(stub, await declaredSecrets(targetRoot, config));
-    const pending = read(EXECUTOR_WORKFLOW) === content ? null : { path: EXECUTOR_WORKFLOW, content };
+    // The stub verbatim: the executor workflow stopped being a function of the task
+    // set when secrets moved to one static `toJSON(secrets)` line (#1301).
+    const pending = read(EXECUTOR_WORKFLOW) === stub ? null : { path: EXECUTOR_WORKFLOW, content: stub };
     return { pending, error: null };
   } catch (e) {
     return { pending: null, error: `could not compute the executor workflow: ${e.message}` };

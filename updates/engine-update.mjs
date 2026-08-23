@@ -186,7 +186,7 @@ export async function engineUpdate(targetRoot, {
   // 3. Wiring (never workflows), then the stamp that claims all of the above. The
   //    stub text and the secret list are the scheduler workflow's inputs, so with
   //    workflows off there is nothing to pass and nothing to compute.
-  const wiring = await convergeWiring(targetRoot, fullName, '', [], { workflows: false });
+  const wiring = await convergeWiring(targetRoot, fullName, '', { workflows: false });
 
   // Re-RESOLVE and re-read, never reuse the path or the content read at entry: a
   // record in the gap above may have rewritten this file, and #1252's record renames
