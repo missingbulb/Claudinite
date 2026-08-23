@@ -15,7 +15,7 @@ const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/c
 
 // The `stamp` / `sharedMount` signal shapes (engine/scheduler/signals/index.mjs).
 const S = (stamp = {}, changedPacks = []) => ({
-  stamp: { ref: 'abc1234', canonHead: null, ageDays: 0, ...stamp },
+  stamp: { present: true, engineVersion: '60820.1', packVersions: {}, canonHead: null, convergedInWindow: false, ...stamp },
   sharedMount: { changedPacks },
 });
 
@@ -39,40 +39,42 @@ test('update declaration: the 02:00 anchor, an apply stage only when needed, det
 });
 
 test('update: self-skips a repo with no vendored mount (a pre-adoption repo)', () => {
-  // No stamp means there is no vendored mount to update — expressed structurally
-  // rather than by naming any particular repo.
-  const v = update.precondition(S({ ref: null, ageDays: null }));
+  // No installed versions means there is no vendored mount to update — expressed
+  // structurally rather than by naming any particular repo.
+  const v = update.precondition(S({ present: false, engineVersion: null }));
   assert.equal(v.run, false);
   assert.match(v.reason, /no vendored mount/);
 });
 
-test('update: quiet when it converged today and no pack moved', () => {
-  const v = update.precondition(S({ ageDays: 0.4 }));
+// Newness from the mount's OWN movement in the window, never from a datetime in the
+// declaration: the one that used to be stamped there recorded the last full
+// re-vendor, so a member converging nightly read as permanently overdue (#1252).
+test('update: quiet when the mount converged in this window and no pack moved', () => {
+  const v = update.precondition(S({ convergedInWindow: true }));
   assert.equal(v.run, false);
   assert.match(v.reason, /nothing due/);
 });
 
 test('update: runs when a declared pack\'s vendored files moved, however recent the converge', () => {
-  const v = update.precondition(S({ ageDays: 0 }, ['basics', 'tidy-repo']));
+  const v = update.precondition(S({ convergedInWindow: true }, ['basics', 'tidy-repo']));
   assert.equal(v.run, true);
 });
 
-test('update: runs once the converge is a day old', () => {
-  assert.equal(update.precondition(S({ ageDays: 2.5 })).run, true);
-  // An unstamped age is not "recent" — it is unknown, and unknown runs.
-  assert.equal(update.precondition(S({ ageDays: null })).run, true);
+test('update: runs when the mount did not move in this window', () => {
+  assert.equal(update.precondition(S({ convergedInWindow: false })).run, true);
 });
 
 test('update: the precondition decides only whether the worker RUNS', () => {
-  // Which mechanism serves the repo is deliberately NOT decided here: the signals
-  // carry the stamp, not the declaration, and `servedBy` answers that from the file.
-  // A precondition guessing at it from a stamp would be a second, worse answer.
+  // It reads the collected signals and nothing else. In particular it never reaches
+  // for a date: the only datetime a declaration ever carried was deleted in #1252
+  // precisely because it answered a different question than the one asked of it.
   const src = update.precondition.toString();
   assert.ok(!src.includes('mechanism'), 'the precondition must not re-derive the mechanism');
+  assert.ok(!/\bageDays\b|stamp\.updated/.test(src), 'newness comes from the window, never from a stamped date');
 });
 
 test('update: a run carries the agent\'s binding scope — the apply stage only', () => {
-  const v = update.precondition(S({ ageDays: 2 }));
+  const v = update.precondition(S());
   const ctx = v.context.join(' ');
   assert.match(ctx, /deterministic flows have already run/);
   assert.match(ctx, /Do not re-run the mechanical converge/);

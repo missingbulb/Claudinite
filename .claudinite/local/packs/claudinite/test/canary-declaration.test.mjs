@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..');
 const WORKFLOW = '.github/workflows/canary-rehearsal.yml';
 
-const declaration = () => JSON.parse(readFileSync(join(ROOT, '.claudinite-checks.json'), 'utf8'));
+const declaration = () => JSON.parse(readFileSync(join(ROOT, '.claudinite-settings.json'), 'utf8'));
 const workflow = () => readFileSync(join(ROOT, WORKFLOW), 'utf8');
 
 test('the canary is declared on the local/claudinite pack entry, in owner/name form', () => {
@@ -33,7 +33,7 @@ test('the canary is declared on the local/claudinite pack entry, in owner/name f
 
 test('the workflow reads the canary from the declaration, not from a repository variable', () => {
   const text = workflow();
-  assert.match(text, /\.claudinite-checks\.json/, 'the workflow no longer reads the declaration');
+  assert.match(text, /\.claudinite-settings\.json/, 'the workflow no longer reads the declaration');
   assert.match(text, /canaryRepo/, 'the workflow no longer reads config.canaryRepo');
   assert.doesNotMatch(text, /vars\.CLAUDINITE_CANARY_REPO/,
     'the workflow reads a repository variable again — the binding belongs in the tracked declaration');

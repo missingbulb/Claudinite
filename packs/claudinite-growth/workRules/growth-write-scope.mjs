@@ -18,7 +18,7 @@ import { LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR } from '../../../engine/p
 // prefix the whole lifecycle shares, because its other runs have wider surfaces
 // by design: promote writes the canon under packs/ and skills/ (its own gate is
 // canon-curation's promote-scope.mjs), and pack discovery writes the repo-root
-// .claudinite-checks.json declaration that activates the pack it authors.
+// .claudinite-settings.json declaration that activates the pack it authors.
 // Keying on the prefix would red both. A run whose title this list doesn't
 // carry is simply not this rule's business.
 //

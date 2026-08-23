@@ -127,7 +127,7 @@ function walk(relDir, files, errors, { engine = false, today, installed = null }
   }
 }
 
-// declaredEntries: the raw `packs` array from .claudinite-checks.json (id
+// declaredEntries: the raw `packs` array from .claudinite-settings.json (id
 // strings and/or entry objects). Returns { files, errors }:
 // sorted canon-relative paths, and { what, fix } diagnostics. Ids naming no
 // canon pack (a consumer's local packs, or a typo the runner's settings

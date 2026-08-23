@@ -58,7 +58,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
   each sanctioned holdout's declaration site saying why it still carries the field. Never a
   bespoke conformance check for a deprecation. Keep the contract validating the lingering field.
 
-- **Wanting a `.claudinite-checks.json` entry's config validated** — that is a real JSON Schema
+- **Wanting a `.claudinite-settings.json` entry's config validated** — that is a real JSON Schema
   the file points at with `$schema`, checked by ordinary tooling. Never a coded per-pack
   validation vocabulary or a bespoke `configSchema` type system on the manifest — built and
   reverted in #919 ("That's why we have schemas").
@@ -379,7 +379,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 - **Diagnosing a member's maintenance PR that won't land** — `unstable` beside a green sweep
   is a parked `action_required` run, not a missing repo setting. Read the member's raw
-  `.claudinite-checks.json` and the head sha's `pull_request` runs; propose a platform-settings
+  `.claudinite-settings.json` and the head sha's `pull_request` runs; propose a platform-settings
   change only as a conclusion, never as a diagnosis.
 
 - **Judging whether a member is fresh** — read its `ref` (or `engineVersion` /

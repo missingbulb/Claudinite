@@ -77,7 +77,7 @@ copy that won't move on its own, and each needs a channel.
   **outside the repo entirely**: a web environment's pasted Setup script is snapshotted at
   environment build, where no check or update run can ever reach it.
 - **Never break the channel the migration itself travels through.** Fleet discovery finds
-  members by the tracked `.claudinite-checks.json`; a probe that recognizes only a new shape
+  members by the tracked `.claudinite-settings.json`; a probe that recognizes only a new shape
   doesn't make noise like a wrong check — it **silently and permanently orphans** every
   unmigrated repo, since discovery is what reaches them to migrate them. Same for the settings
   registration: a session already running when the canon change lands still runs the old wiring,

@@ -15,13 +15,16 @@
 
 import { isDormant } from '../../engine/checks/helpers/repo-context.mjs';
 import { forbiddenHint } from './fleet-token.mjs';
+import { SETTINGS_FILE, SETTINGS_FILES } from '../../engine/settings-file.mjs';
 
 const API = 'https://api.github.com';
 
 // The tracked declaration every member carries — the file the sweeps read a member's
-// membership, stamp and dormancy out of. Named once here because all three sweeps
-// name it.
-export const DECLARATION = '.claudinite-checks.json';
+// membership, versions and dormancy out of. Named once here because all three sweeps
+// name it, and re-exported from the engine so the rename (#1252) has one home: over
+// the API there is no disk to probe, so a read tries both names in SETTINGS_FILES
+// order and a member that has not run the record yet still answers.
+export const DECLARATION = SETTINGS_FILE;
 
 // Dormancy, re-exported from the engine rather than re-tested here. A member declares
 // itself dormant in its OWN declaration, and the test has to be the same one that
@@ -142,8 +145,14 @@ export async function readFile(gh, fullName, path) {
 // exists. `withFile` returns `{ config, text, sha }` instead — the parsed settings, the
 // exact bytes, and the write precondition, all from the ONE response, for a sweep that
 // goes on to write the file back: a second read could see a different commit.
-export async function readDeclaration(gh, fullName, path = DECLARATION, { withFile = false } = {}) {
-  const file = await readFile(gh, fullName, path);
+export async function readDeclaration(gh, fullName, path = null, { withFile = false } = {}) {
+  // No explicit path: try each settings-file name in turn, so a member the rename
+  // record has not reached is read from the name it still carries.
+  let file = null;
+  for (const candidate of path ? [path] : SETTINGS_FILES) {
+    file = await readFile(gh, fullName, candidate);
+    if (file !== null) { path = candidate; break; }
+  }
   if (file === null) return null;
   let config;
   try {
@@ -185,7 +194,10 @@ export async function isCovered(gh, fullName) {
   // declaration is a half-adoption that must classify as uncovered — the roster
   // then opens an adoption issue and it heals loudly, instead of rotting as a
   // "covered" repo no task ever runs on. (vendoring/DESIGN.md)
-  return fileExists(gh, fullName, '.claudinite-checks.json');
+  for (const name of SETTINGS_FILES) {
+    if (await fileExists(gh, fullName, name)) return true;
+  }
+  return false;
 }
 
 // --- firing a member's own scheduler -------------------------------------------

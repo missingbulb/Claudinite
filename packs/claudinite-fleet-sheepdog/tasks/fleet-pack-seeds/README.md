@@ -20,7 +20,7 @@ Every id and every config comes from `packSeeds`. The task and its sweep carry t
 
 ## What it does
 
-Daily, over the `FLEET_GITHUB_TOKEN` PAT: read this repo's `claudinite-fleet-sheepdog` entry config (`owner`, `exclude`, `packSeeds`), enumerate every repo that owner owns, and for each **covered** member read its `.claudinite-checks.json` and check whether each seeded pack's code is on its disk. Then, per seed:
+Daily, over the `FLEET_GITHUB_TOKEN` PAT: read this repo's `claudinite-fleet-sheepdog` entry config (`owner`, `exclude`, `packSeeds`), enumerate every repo that owner owns, and for each **covered** member read its `.claudinite-settings.json` and check whether each seeded pack's code is on its disk. Then, per seed:
 
 | state | what happens |
 |---|---|

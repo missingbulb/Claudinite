@@ -12,7 +12,7 @@
 # dispatch, plus automatic on merge to main — the post-merge smoke test, which
 # the owner's own framing settles as "still much much better than not knowing".
 #
-# WHERE THE CANARY IS NAMED. In `.claudinite-checks.json`, on the `local/claudinite`
+# WHERE THE CANARY IS NAMED. In `.claudinite-settings.json`, on the `local/claudinite`
 # pack entry's `config.canaryRepo` — the same tracked pack-entry config mechanism
 # the claudinite-fleet-sheepdog pack uses for its fleet scope. NOT a GitHub repository variable: the
 # binding between this canon and its canary is a fact about the project, and a
@@ -77,18 +77,18 @@ jobs:
         id: cfg
         run: |
           CANARY=$(node -e '
-            const c = require("./.claudinite-checks.json");
+            const c = require("./.claudinite-settings.json");
             const e = (c.packs || []).find((p) => p && p.id === "local/claudinite");
             process.stdout.write(e?.config?.canaryRepo ?? "");
           ')
           if [ -z "$CANARY" ]; then
             echo "::warning::No canary declared — skipping the live canary."
             echo "Add config.canaryRepo to the local/claudinite pack entry in"
-            echo ".claudinite-checks.json, naming a disposable repo that has adopted"
+            echo ".claudinite-settings.json, naming a disposable repo that has adopted"
             echo "Claudinite. Until then the fixture rehearsal is the only consumer gate."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Canary: $CANARY (from .claudinite-checks.json)"
+            echo "Canary: $CANARY (from .claudinite-settings.json)"
             echo "skip=false" >> "$GITHUB_OUTPUT"
             echo "repo=$CANARY" >> "$GITHUB_OUTPUT"
           fi

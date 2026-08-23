@@ -33,6 +33,7 @@ import {
   warnNodes, stackedColumns, chartLegend, dualAxisChart, flipRows,
   LEVEL_GLYPH, OUTCOME_COLOR,
 } from './ui.mjs';
+import { settingsTextAtSha, SETTINGS_FILE } from './settings-read.mjs';
 
 // How far each past-data panel looks back. The month is the growth panel's, because a
 // fortnight of a corpus's own numbers is noise; the fortnight is the queue's, because
@@ -426,11 +427,11 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   const headCommit = await gh.getHead(repo, meta.default_branch, token);
   const sha = headCommit.sha;
 
-  const configText = await gh.getTextAtSha(repo, sha, '.claudinite-checks.json', token);
-  if (!configText) onError?.(`${repo} has no .claudinite-checks.json — it does not run Claudinite, so there are no declared tasks.`);
+  const configText = await settingsTextAtSha(gh, repo, sha, token);
+  if (!configText) onError?.(`${repo} has no ${SETTINGS_FILE} — it does not run Claudinite, so there are no declared tasks.`);
   let declaration = null;
   try { declaration = configText ? JSON.parse(configText) : null; } catch {
-    onError?.('.claudinite-checks.json is present but is not valid JSON — the roster will be empty.');
+    onError?.(`${SETTINGS_FILE} is present but is not valid JSON — the roster will be empty.`);
   }
   const schedule = declaration?.taskScheduler ?? null;
   if (declaration && !schedule) onError?.('No taskScheduler block — next-anchor times cannot be computed.');
@@ -497,7 +498,7 @@ export async function loadRepo({ repo, token, config = null, onError }) {
     runs,
     meta,
     work: humanWork(issuePage.issues, issuePage.prs, now),
-    mount: declaration ? mountState(declaration.claudinite, canon) : null,
+    mount: declaration ? mountState(declaration, canon) : null,
     ci: ciStatus(runs, meta.default_branch),
     now,
   });

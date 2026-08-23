@@ -67,7 +67,7 @@ canon home's own curation local pack (`.claudinite/local/packs/canon-curation/` 
 duty, since the `packs/` tree it polices exists only here), with the vendor writer's coherence
 guard holding the same invariant at vendoring time on consumers' behalf.
 
-Activation is the project's declaration in `.claudinite-checks.json` — **no pack runs undeclared,
+Activation is the project's declaration in `.claudinite-settings.json` — **no pack runs undeclared,
 the baseline included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a
 fresh declaration when the technology is present; the marker only *suspects* a pack is wanted,
 never forcing or forbidding its declaration afterward. A declared-by-policy pack (the baseline and

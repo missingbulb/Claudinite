@@ -10,7 +10,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
   });
 
 export default {
-  version: '60822.1',
+  version: '60823.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'conventions for a Node/npm project — module resolution, ESM vs CJS, dependency justification, jsdom test divergences',
@@ -22,7 +22,7 @@ export default {
   // devDependency) modules don't — so `npm test`/build would trigger a
   // confusing mid-session install. Install them at environment-image build. The
   // package.json location varies per repo, so it's a per-project param: set
-  // `dirs` in the node pack entry's `config` in .claudinite-checks.json
+  // `dirs` in the node pack entry's `config` in .claudinite-settings.json
   // (default: repo root). A
   // cloud setup script starts in the checkout's PARENT, so env.mjs runs this
   // from the checkout — the `cd "$d"` is relative to it.

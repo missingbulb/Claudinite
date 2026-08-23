@@ -117,7 +117,7 @@ in the baseline, because git history exists in every repo and is disturbed by an
 skill's action; `claude-md-length`, `generated-merge-driver`, and the placement check likewise
 inspect artifacts every repo has, so they stay in the baseline despite naming a skill in `doc`.
 
-**Not every pack-machinery concern is a check.** The `.claudinite-checks.json` *settings* are
+**Not every pack-machinery concern is a check.** The `.claudinite-settings.json` *settings* are
 validated when the file loads, not by a conformance rule: malformed JSON, an unknown property,
 and an unknown pack name are equally settings errors, surfaced by the runner as blocking `config`
 findings. A pack's `marker` only *suspects* the pack is wanted — whether to declare it is the
@@ -141,7 +141,7 @@ the *delta* — new suppression markers, commits referencing an issue — diff a
 merge-base in either scope.)
 
 **Pack selection: declared for deterministic execution, fingerprinted against drift.** The
-packs a project runs are **pinned in `.claudinite-checks.json`**
+packs a project runs are **pinned in `.claudinite-settings.json`**
 (`"packs": ["baseline", "a-technology-pack", "a-release-pack"]`; no pack runs
 undeclared — the baseline too is declared explicitly, seeded by bootstrap).
 Execution is a closed, declared set: every rule in a declared pack
@@ -156,7 +156,7 @@ newly adopted technology's pack, or drop one whose technology has left, is the *
 — the checker never second-guesses it. What *is* enforced is settings **validity**: an unknown
 pack name, an unknown property, or malformed JSON is caught when the file loads
 (`loadConfig` + the runner) and surfaced as a blocking `config` error — a wrong pack name is as
-much a settings error as bad JSON. `.claudinite-checks.json` additionally holds per-rule
+much a settings error as bad JSON. `.claudinite-settings.json` additionally holds per-rule
 **overrides** and **acceptances** — at the top level for project-wide decisions, or on a pack's
 own entry for the ones that pack's declaration motivates (see engine/checks/README.md).
 
@@ -208,7 +208,7 @@ reference-distance  src/report/render.js:12
   imports ../../util/dates.js at distance 4.
   Why: the folder tree should encode the dependency graph; far reaches make it lie.
   Fix: move dates.js next to its users, lift it to a common ancestor, or accept it
-       in .claudinite-checks.json with a reason if it's a deliberate cross-cutting util.
+       in .claudinite-settings.json with a reason if it's a deliberate cross-cutting util.
   More: .claudinite/shared/packs/<pack>/skills/<name>/SKILL.md
 ```
 

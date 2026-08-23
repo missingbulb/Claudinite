@@ -19,7 +19,7 @@ function runWorkCli(root, ...args) {
 }
 
 test('exit 1 with a rendered finding on a blocking violation; exit 0 when clean', () => {
-  const basics = { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) };
+  const basics = { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) };
   const bad = makeRepo({ changed: { 'doc.md': '[gone](missing.md)\n', ...basics } });
   const good = makeRepo({ changed: { 'doc.md': '[ok](README.md)\n', ...basics } });
   try {
@@ -36,7 +36,7 @@ test('advisory findings alone do not fail the run', () => {
   const root = makeRepo({
     base: {
       'deep/far/util.mjs': 'export const x = 1;\n',
-      '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }),
+      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
     },
     changed: { 'src/mod.mjs': "import { x } from '../deep/far/util.mjs';\nexport { x };\n" },
   });
@@ -51,7 +51,7 @@ test('a new suppression marker blocks the run (fail fast)', () => {
   const root = makeRepo({
     changed: {
       'a.js': '// eslint-disable-next-line no-undef\ny();\n',
-      '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }),
+      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
     },
   });
   try {
@@ -67,7 +67,7 @@ test('interview: a stale answer is advisory (never run-failing); pending questio
   // barriers declares the `goals` question: `old-id` is stale, and `goals` itself
   // stays unanswered — which must NOT surface in the sweep (an unattended nightly
   // run can't answer it; only SessionStart may nudge).
-  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({
+  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: ['claudinite-lifecycle', { id: 'barriers', answers: { 'old-id': 'kept intent' } }],
   }) } });
   try {
@@ -81,7 +81,7 @@ test('interview: a stale answer is advisory (never run-failing); pending questio
 test('interview: a local pack with a malformed questions declaration is a blocking config finding', () => {
   const root = makeRepo({ changed: {
     '.claudinite/local_packs/badq/pack.mjs': 'export default { id: "badq", questions: "nope" };\n',
-    '.claudinite-checks.json': JSON.stringify({ packs: ['badq'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['badq'] }),
   } });
   try {
     const r = runCli(root);
@@ -91,7 +91,7 @@ test('interview: a local pack with a malformed questions declaration is a blocki
 });
 
 test('settings validity: an unknown pack name is a blocking config error', () => {
-  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['no-such-pack'] }) } });
+  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['no-such-pack'] }) } });
   try {
     const r = runCli(root);
     assert.equal(r.status, 1);
@@ -101,7 +101,7 @@ test('settings validity: an unknown pack name is a blocking config error', () =>
 });
 
 test('settings validity: an unknown top-level property is a blocking config error', () => {
-  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], nonsense: 1 }) } });
+  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], nonsense: 1 }) } });
   try {
     const r = runCli(root);
     assert.equal(r.status, 1);
@@ -110,7 +110,7 @@ test('settings validity: an unknown top-level property is a blocking config erro
 });
 
 test('settings validity: malformed JSON is a blocking config error', () => {
-  const root = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": [ ' } });
+  const root = makeRepo({ changed: { '.claudinite-settings.json': '{ "packs": [ ' } });
   try {
     const r = runCli(root);
     assert.equal(r.status, 1);
@@ -122,7 +122,7 @@ test('an acceptance with a reason silences its finding; without a reason it is i
   const accepted = makeRepo({
     changed: {
       'doc.md': '[gone](missing.md)\n',
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: ['basics'],
         accept: [{ rule: 'reference-integrity', path: 'doc.md', reason: 'target lands in the next PR' }],
       }),
@@ -131,7 +131,7 @@ test('an acceptance with a reason silences its finding; without a reason it is i
   const reasonless = makeRepo({
     changed: {
       'doc.md': '[gone](missing.md)\n',
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: ['basics'],
         accept: [{ rule: 'reference-integrity', path: 'doc.md' }],
       }),
@@ -150,7 +150,7 @@ test('an acceptance path ending in "/" covers the whole subtree', () => {
     changed: {
       'docs/a.md': '[gone](missing.md)\n',
       'docs/deep/b.md': '[gone](missing.md)\n',
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: ['basics'],
         accept: [{ rule: 'reference-integrity', path: 'docs/', reason: 'targets land in a follow-up PR' }],
       }),
@@ -168,7 +168,7 @@ test('a pack entry object declares the pack and carries its own accept/rules', (
   const accepted = makeRepo({
     changed: {
       'doc.md': '[gone](missing.md)\n',
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: [{ id: 'basics', accept: [{ rule: 'reference-integrity', path: 'doc.md', reason: 'target lands in the next PR' }] }],
       }),
     },
@@ -176,7 +176,7 @@ test('a pack entry object declares the pack and carries its own accept/rules', (
   const reasonless = makeRepo({
     changed: {
       'doc.md': '[gone](missing.md)\n',
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: [{ id: 'basics', accept: [{ rule: 'reference-integrity', path: 'doc.md' }] }],
       }),
     },
@@ -184,7 +184,7 @@ test('a pack entry object declares the pack and carries its own accept/rules', (
   const overridden = makeRepo({
     changed: {
       'doc.md': '[gone](missing.md)\n',
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: [{ id: 'basics', rules: { 'reference-integrity': 'advisory' } }],
       }),
     },
@@ -199,10 +199,10 @@ test('a pack entry object declares the pack and carries its own accept/rules', (
 });
 
 test('settings validity: an unknown pack name in an entry object, and conflicting overrides, are blocking config errors', () => {
-  const unknown = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: [{ id: 'no-such-pack' }] }) } });
+  const unknown = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: [{ id: 'no-such-pack' }] }) } });
   const conflicted = makeRepo({
     changed: {
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: [{ id: 'basics', rules: { 'reference-integrity': 'advisory' } }],
         rules: { 'reference-integrity': 'off' },
       }),
@@ -222,7 +222,7 @@ test('severity override in config demotes a blocking rule to advisory', () => {
   const root = makeRepo({
     changed: {
       'doc.md': '[gone](missing.md)\n',
-      '.claudinite-checks.json': JSON.stringify({ packs: ['basics'], rules: { 'reference-integrity': 'advisory' } }),
+      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], rules: { 'reference-integrity': 'advisory' } }),
     },
   });
   try {
@@ -249,10 +249,10 @@ test("a pack's rules run only when it is declared", () => {
   // not — and declaring it turns them on. Whether to declare is the project's call.
   const wf = { '.github/workflows/x.yml': 'name: x\non: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    if: ${{ secrets.T }}\n    steps:\n      - run: echo hi\n' };
   const undeclared = makeRepo({
-    changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) },
+    changed: { ...wf, '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) },
   });
   const declared = makeRepo({
-    changed: { ...wf, '.claudinite-checks.json': JSON.stringify({ packs: ['basics', 'git-github'] }) },
+    changed: { ...wf, '.claudinite-settings.json': JSON.stringify({ packs: ['basics', 'git-github'] }) },
   });
   try {
     const u = runCli(undeclared);
@@ -268,8 +268,8 @@ test('--init writes the pack declaration once and is idempotent', () => {
   const root = makeRepo({ changed: {} });
   try {
     assert.equal(runCli(root, '--init').status, 0);
-    assert.ok(existsSync(join(root, '.claudinite-checks.json')));
-    const first = readFileSync(join(root, '.claudinite-checks.json'), 'utf8');
+    assert.ok(existsSync(join(root, '.claudinite-settings.json')));
+    const first = readFileSync(join(root, '.claudinite-settings.json'), 'utf8');
     // No pack is active by default, so --init materializes the seeded-by-default
     // declared packs: basics and core plus claudinite-growth, tidy-repo and
     // claude-code-web-users-support (each opt-out by removal) — and the requires
@@ -278,13 +278,13 @@ test('--init writes the pack declaration once and is idempotent', () => {
     // seeded AND required, so it appears once, in the seeded order, with no `via`.
     assert.deepEqual(JSON.parse(first).packs,
       ['basics', 'claudinite-lifecycle', { id: 'barriers', via: ['claudinite-lifecycle'] }, { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'tidy-repo']);
-    // The delivery selection is materialized, never an implicit default —
-    // and it is the ONLY key beside the declaration: empty rules/accept
-    // boilerplate is noise, not settings (#385).
-    assert.equal(JSON.parse(first).maintenance.delivery, 'auto-merge');
-    assert.deepEqual(Object.keys(JSON.parse(first)).sort(), ['maintenance', 'packs']);
+    // The declaration is the ONLY key seeded. The delivery preference used to be
+    // materialized here too, but every project made the same selection, so the line
+    // said nothing — it is an override now, written only by the project that wants
+    // it (#1252). Empty rules/accept boilerplate is noise, not settings (#385).
+    assert.deepEqual(Object.keys(JSON.parse(first)), ['packs']);
     assert.equal(runCli(root, '--init').status, 0);
-    assert.equal(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'), first);
+    assert.equal(readFileSync(join(root, '.claudinite-settings.json'), 'utf8'), first);
   } finally { cleanup(root); }
 });
 
@@ -295,7 +295,7 @@ test('the contributedRules seam: a pack\'s contributed barrier runs via the runn
   const root = makeRepo({ changed: {
     'product-wiki/Users/README.md': '# Users\n',
     'dev/notes.md': 'see product-wiki/Users/README.md\n',
-    '.claudinite-checks.json': JSON.stringify({ packs: ['product-wiki', 'barriers'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['product-wiki', 'barriers'] }),
   } });
   try {
     const r = runCli(root);
@@ -310,7 +310,7 @@ test('no pack runs undeclared — basics included', () => {
   const bare = makeRepo({ changed: { 'doc.md': '[gone](missing.md)\n' } });
   const empty = makeRepo({ changed: {
     'doc.md': '[gone](missing.md)\n',
-    '.claudinite-checks.json': JSON.stringify({ packs: [] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: [] }),
   } });
   try {
     for (const root of [bare, empty]) {
@@ -326,7 +326,7 @@ test('a skill-owned check rides its owning pack\'s activation, and is listed', (
   // (packs/claudinite-growth/skills/unattended-agents/): it runs when that
   // pack is declared and stays silent when no pack is.
   const artifact = { 'dev/routines/demo/routine.md': 'Run `bash dev/routines/demo/preconditions.sh`.\n' };
-  const declared = makeRepo({ changed: { ...artifact, '.claudinite-checks.json': JSON.stringify({ packs: ['claudinite-growth'] }) } });
+  const declared = makeRepo({ changed: { ...artifact, '.claudinite-settings.json': JSON.stringify({ packs: ['claudinite-growth'] }) } });
   const undeclared = makeRepo({ changed: { ...artifact } });
   try {
     const r = runCli(declared);
@@ -364,11 +364,11 @@ const LOCAL_PACK = `export default {
 test('a declared local pack is valid and its check runs when active', () => {
   const clean = makeRepo({ changed: {
     '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
-    '.claudinite-checks.json': JSON.stringify({ packs: ['proj'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['proj'] }),
   } });
   const dirty = makeRepo({ changed: {
     '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
-    '.claudinite-checks.json': JSON.stringify({ packs: ['proj'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['proj'] }),
     'src/TODO_MARKER': 'x\n',
   } });
   try {
@@ -387,11 +387,11 @@ test('a declared local pack is valid and its check runs when active', () => {
 test('a local pack declared by its namespaced token local_packs/<name> validates and runs', () => {
   const clean = makeRepo({ changed: {
     '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
-    '.claudinite-checks.json': JSON.stringify({ packs: ['local_packs/proj'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['local_packs/proj'] }),
   } });
   const dirty = makeRepo({ changed: {
     '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
-    '.claudinite-checks.json': JSON.stringify({ packs: ['local_packs/proj'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['local_packs/proj'] }),
     'src/TODO_MARKER': 'x\n',
   } });
   try {
@@ -409,7 +409,7 @@ test('a local pack declared by its namespaced token local_packs/<name> validates
 test('an undeclared local pack does not run, but is not an unknown-pack error either', () => {
   const root = makeRepo({ changed: {
     '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
-    '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
     'src/TODO_MARKER': 'x\n',
   } });
   try {
@@ -422,7 +422,7 @@ test('an undeclared local pack does not run, but is not an unknown-pack error ei
 test('a broken local pack.mjs surfaces a blocking config diagnostic, not a silent drop', () => {
   const root = makeRepo({ changed: {
     '.claudinite/local_packs/broken/pack.mjs': 'export default { id: "broken" } this is not valid(',
-    '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
   } });
   try {
     const r = runCli(root);
@@ -435,7 +435,7 @@ test('a broken local pack.mjs surfaces a blocking config diagnostic, not a silen
 test('a local pack may not shadow a canon id — collision is a blocking config error', () => {
   const root = makeRepo({ changed: {
     '.claudinite/local_packs/basics/pack.mjs': 'export default { id: "basics", rules: [] };',
-    '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
   } });
   try {
     const r = runCli(root);

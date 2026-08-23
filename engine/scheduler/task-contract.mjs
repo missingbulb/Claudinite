@@ -219,7 +219,7 @@ export function validateTaskDeclaration(raw) {
   // of which endpoint a task names.
   if (decl.invocation_endpoint !== undefined
       && !(typeof decl.invocation_endpoint === 'string' && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(decl.invocation_endpoint))) {
-    bad('"invocation_endpoint" is not a kebab-case endpoint name', 'name a key from the repo\'s taskScheduler.endpoints map, e.g. "fleet" — never a URL');
+    bad('"invocation_endpoint" is not a kebab-case endpoint name', 'name a key from the repo\'s taskScheduler.agenticTaskInvocationEndpoints map, e.g. "fleet" — never a URL');
   }
 
   // The repo Actions secrets this task needs configured (DESIGN §9). Purely

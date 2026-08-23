@@ -8,7 +8,7 @@
 //
 // Discovered like any local pack — the canon's own runner passes
 // discoverPacks({ localRoot: <repo root> }), so this is scanned alongside the
-// canon packs/ tree — and active because .claudinite-checks.json declares it. Its
+// canon packs/ tree — and active because .claudinite-settings.json declares it. Its
 // id must equal its directory name ("claudinite") and may not shadow a canon pack.
 export default {
   ruleRoutingGuidance: {

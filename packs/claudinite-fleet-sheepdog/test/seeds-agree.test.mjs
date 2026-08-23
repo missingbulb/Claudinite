@@ -22,7 +22,7 @@ function ctx({ seed, own, declared = true }) {
   ];
   const text = JSON.stringify({ packs }, null, 2);
   return {
-    read: (p) => (p === '.claudinite-checks.json' ? text : null),
+    read: (p) => (p === '.claudinite-settings.json' ? text : null),
     config: {
       packs: packs.map((e) => e.id),
       packConfig: Object.fromEntries(packs.filter((e) => e.config !== undefined).map((e) => [e.id, e.config])),
@@ -40,7 +40,7 @@ test('a seed disagreeing with what this repo runs is found — and really is wha
   assert.match(found[0].what, /missingbulb\/Shepherd/);
   assert.ok(found[0].line > 0, 'points at a line');
   // the defect the finding claims, demonstrated against the real sweep's config reader
-  const { packSeeds } = parseSheepdogConfig(JSON.parse(c.read('.claudinite-checks.json')), 'missingbulb/Shepherd');
+  const { packSeeds } = parseSheepdogConfig(JSON.parse(c.read('.claudinite-settings.json')), 'missingbulb/Shepherd');
   assert.deepEqual(packSeeds.find((s) => s.id === PACK).config, { repo: 'missingbulb/Claudinite' });
 });
 

@@ -219,7 +219,7 @@ test('convergeWiring: lands the index, its import and its merge attribute togeth
   const root = mkRepo();
   mkdirSync(join(root, '.claudinite', 'shared', 'packs', 'basics'), { recursive: true });
   writeFileSync(join(root, '.claudinite', 'shared', 'packs', 'basics', 'RULES.md'), 'BASICS PROSE\n');
-  writeFileSync(join(root, '.claudinite-checks.json'), '{ "packs": ["basics"] }\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n');
 
   const first = await convergeWiring(root, REPO, STUB);
   assert.ok(first.changed.some((c) => c.includes('claudinite-rules.GENERATED.md')), first.changed.join(', '));
@@ -243,13 +243,13 @@ test('convergeWiring: a declaration change rewrites the index on the next conver
     mkdirSync(join(root, '.claudinite', 'shared', 'packs', id), { recursive: true });
     writeFileSync(join(root, '.claudinite', 'shared', 'packs', id, 'RULES.md'), `${id} prose\n`);
   }
-  writeFileSync(join(root, '.claudinite-checks.json'), '{ "packs": ["basics"] }\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n');
   await convergeWiring(root, REPO, STUB);
   // Held but undeclared: it earns a routing row, never an import.
   const before = readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8');
   assert.doesNotMatch(before, /@shared\/packs\/tidy-repo\/RULES\.md/);
 
-  writeFileSync(join(root, '.claudinite-checks.json'), '{ "packs": ["basics", "tidy-repo"] }\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics", "tidy-repo"] }\n');
   const r = await convergeWiring(root, REPO, STUB);
   assert.ok(r.changed.some((c) => c.includes('claudinite-rules.GENERATED.md')));
   assert.match(readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8'), /@shared\/packs\/tidy-repo\/RULES\.md/);
@@ -273,7 +273,7 @@ test('seedRepoLocalPack: creates the repo\'s own pack, declares it, and the inde
   const root = mkRepo();
   mkdirSync(join(root, '.claudinite', 'shared', 'packs', 'basics'), { recursive: true });
   writeFileSync(join(root, '.claudinite', 'shared', 'packs', 'basics', 'RULES.md'), 'BASICS\n');
-  writeFileSync(join(root, '.claudinite-checks.json'), '{\n  "packs": [\n    "basics"\n  ]\n}\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{\n  "packs": [\n    "basics"\n  ]\n}\n');
 
   const r = await convergeWiring(root, 'missingbulb/HelloWorldFlutterApp', STUB, [], { seedLocalPack: true });
   assert.ok(r.changed.some((c) => c.includes('hello-world-flutter-app')), r.changed.join(', '));
@@ -286,7 +286,7 @@ test('seedRepoLocalPack: creates the repo\'s own pack, declares it, and the inde
   // before the first run rather than be invented by whichever task ran first.
   assert.ok(existsSync(join(dir, 'VERSIONS.md')));
   // Declared, so it is active…
-  assert.match(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'), /"local\/hello-world-flutter-app"/);
+  assert.match(readFileSync(join(root, '.claudinite-settings.json'), 'utf8'), /"local\/hello-world-flutter-app"/);
   // …and the index the same converge wrote imports it. Seeding runs BEFORE the index
   // for exactly this reason: a pack declared after it would go unimported until some
   // later converge, which is a repo whose own rules silently do not load.
@@ -300,7 +300,7 @@ test('seedRepoLocalPack: never runs on the nightly, and never twice', async () =
   // every night. And a repo that already has a local pack must not get a second,
   // empty one beside the home its lessons already live in.
   const root = mkRepo();
-  writeFileSync(join(root, '.claudinite-checks.json'), '{\n  "packs": [\n    "basics"\n  ]\n}\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{\n  "packs": [\n    "basics"\n  ]\n}\n');
 
   const nightly = await convergeWiring(root, 'o/thing', STUB);
   assert.ok(!nightly.changed.some((c) => c.includes('local/packs')), nightly.changed.join(', '));
@@ -316,7 +316,7 @@ test('seedRepoLocalPack: the seeded manifest is a valid pack the registry loads'
   // A seed that does not validate is worse than none: the pack fails to load, its
   // prose never reaches the index, and the repo carries a broken home for its rules.
   const root = mkRepo();
-  writeFileSync(join(root, '.claudinite-checks.json'), '{\n  "packs": []\n}\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{\n  "packs": []\n}\n');
   assert.equal(seedRepoLocalPack(root, 'o/Seed-Repo'), 'seed-repo');
 
   const { discoverPacks } = await import('../../engine/pack_loader/pack-registry.mjs');
@@ -331,7 +331,7 @@ test('seedRepoLocalPack: the seeded manifest is a valid pack the registry loads'
 test('convergeWiring: reports every surface it changed, and is idempotent', async () => {
   const root = mkRepo();
   writeFileSync(join(root, 'CLAUDE.md'), '@.claudinite/shared/CLAUDE.md\ndocs\n');
-  writeFileSync(join(root, '.claudinite-checks.json'), '{\n  "packs": [],\n  "badges": { "readme": "auto" }\n}\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{\n  "packs": [],\n  "badges": { "readme": "auto" }\n}\n');
   const first = await convergeWiring(root, REPO, STUB);
   assert.ok(first.changed.includes(SCHEDULER_WORKFLOW));
   assert.ok(first.changed.some((c) => c.startsWith('hook:')));
@@ -372,7 +372,7 @@ test("the canon's own scheduler run workflow has not drifted from the stub it sh
 // repos on different anchors, so without this the canon's own cron could say anything at all.
 test("the canon's own cron is what the engine computes for it", () => {
   const mine = readFileSync(join(ENGINE_ROOT, '.github/workflows/claudinite-scheduler.yml'), 'utf8');
-  const config = JSON.parse(readFileSync(join(ENGINE_ROOT, '.claudinite-checks.json'), 'utf8'));
+  const config = JSON.parse(readFileSync(join(ENGINE_ROOT, '.claudinite-settings.json'), 'utf8'));
   const expected = hashedCron('missingbulb/Claudinite', config.taskScheduler?.dailyHour);
   assert.match(mine, new RegExp(`cron: '${expected.replace(/[*]/g, '\\*')}'`),
     `the canon's workflow should carry cron '${expected}'`);
@@ -395,7 +395,7 @@ test("the canon's own executor workflow has not drifted from the stub it ships",
 // matter: `--badges` writes a correct row, and a converge without it leaves the
 // README untouched.
 
-const CHECKS_PATH = '.claudinite-checks.json';
+const CHECKS_PATH = '.claudinite-settings.json';
 
 const ROW = [{ id: 'basics', path: 'packs/basics/badge.svg' }, { id: 'tidy-repo', path: 'packs/tidy-repo/badge.svg' }];
 
@@ -525,7 +525,7 @@ test('withDeclaredSecrets stamps at the marker, so the scheduler-run job never s
 
 test('convergeWiring writes the executor workflow beside the cron one, secrets stamped', async () => {
   const root = mkRepo();
-  writeFileSync(join(root, '.claudinite-checks.json'), JSON.stringify({ packs: [] }));
+  writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: [] }));
   const executorStub = "name: Claudinite executor\non:\n  issues:\n    types: [labeled]\n"
     + "jobs:\n  execute:\n    steps:\n      - env:\n          GITHUB_TOKEN: ${{ github.token }}\n          # claudinite:secrets\n        run: node executor.mjs\n";
   const { changed } = await convergeWiring(root, REPO, SCHEDULER_STUB, ['CCR_TOKEN'], { executorStub });
@@ -541,7 +541,7 @@ test('convergeWiring writes the executor workflow beside the cron one, secrets s
 test('an endpoint\'s token secret is stamped exactly like a required_secret', async () => {
   const { declaredSecrets } = await import('../../engine/scheduler/converge-wiring.mjs');
   const root = mkRepo();
-  writeFileSync(join(root, '.claudinite-checks.json'), JSON.stringify({ packs: [] }));
+  writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: [] }));
   const config = { packs: [], taskScheduler: { dispatch: 'queue', endpoints: { default: { url: 'https://x', tokenSecret: 'CCR_TOKEN' } } } };
   assert.deepEqual(await declaredSecrets(root, config), ['CCR_TOKEN']);
 });

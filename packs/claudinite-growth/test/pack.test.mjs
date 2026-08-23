@@ -579,9 +579,9 @@ test('growth-write-scope: the sibling growth runs with wider surfaces are not ga
     commitMsg: 'Claudinite growth: promote 5 lessons to canon (d2026-07-30)\n\nRefs #7',
   });
   const discover = makeRepo({
-    base: { '.claudinite-checks.json': '{"packs":["basics"]}\n' },
+    base: { '.claudinite-settings.json': '{"packs":["basics"]}\n' },
     changed: {
-      '.claudinite-checks.json': '{"packs":["basics","local/packs/gcec"]}\n',
+      '.claudinite-settings.json': '{"packs":["basics","local/packs/gcec"]}\n',
       [PROSE]: '- the new pack\n',
     },
     commitMsg: 'Claudinite growth: discover local pack gcec\n\nRefs #8',

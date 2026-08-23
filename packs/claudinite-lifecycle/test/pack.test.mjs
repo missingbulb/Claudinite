@@ -17,7 +17,7 @@ function run(rule, root, mode = 'changed') {
 const INDEX = '.claudinite/claudinite-rules.GENERATED.md';
 // A converged member: basics vendored, the index importing it, CLAUDE.md loading it.
 const converged = (over = {}) => ({
-  '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }),
+  '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
   '.claudinite/shared/packs/basics/RULES.md': 'BASICS\n',
   [INDEX]: '@shared/packs/basics/RULES.md\n',
   'CLAUDE.md': '@.claudinite/claudinite-rules.GENERATED.md\n',
@@ -35,7 +35,7 @@ test('rules-index-current: inert when the repo holds no prose for any declared p
   // Relevance first. A declaration whose packs are not vendored yet is a mount that
   // has not converged — a different problem, already reported by the engine's own
   // unknown-pack error, and one this rule would only add noise to.
-  const root = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) } });
+  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) } });
   try {
     assert.deepEqual(run(rulesIndexCurrent, root, 'all'), []);
   } finally { cleanup(root); }
@@ -56,7 +56,7 @@ test('rules-index-current: a declared, held pack the index omits is blocking', (
   // The staleness case: a pack declared since the last converge. Its RULES.md is right
   // there in the mount, and nothing loads it.
   const root = makeRepo({ changed: converged({
-    '.claudinite-checks.json': JSON.stringify({ packs: ['basics', 'tidy-repo'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['basics', 'tidy-repo'] }),
     '.claudinite/shared/packs/tidy-repo/RULES.md': 'TIDY\n',
   }) });
   try {

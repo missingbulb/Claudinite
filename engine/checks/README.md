@@ -13,7 +13,7 @@ node engine/checks/check_the_work.mjs              # work scope: rules judging t
                                                    # the two are independent runners; each accepts --changed (transitional
                                                    # adoption-backlog scoping) and --base REF
 node engine/checks/check_the_world.mjs --list      # machine-readable catalog of every rule, both scopes
-node engine/checks/check_the_world.mjs --init      # write .claudinite-checks.json — the baseline plus the fingerprinted packs
+node engine/checks/check_the_world.mjs --init      # write .claudinite-settings.json — the baseline plus the fingerprinted packs
 
 node --test $(git ls-files '*.test.mjs')   # the test suite; CI sweeps the same files from its declared roots
 ```
@@ -48,7 +48,7 @@ output — are not the project's own code, so the engine drops them from the def
 rather than accepting each finding it triggers. The one exception is `generated-merge-driver`,
 which reasons *about* generated files and so still inspects them.
 
-## Configuration — `.claudinite-checks.json` (repo root)
+## Configuration — `.claudinite-settings.json` (repo root)
 
 The declaration is **pack-oriented**: a `packs` entry is a pack id string, or an entry object
 carrying that pack's own settings — its parameters, and the overrides/exemptions that exist
@@ -216,4 +216,4 @@ must not) be declared — so the checker no longer second-guesses it.
 Pack **dependencies** are likewise *not* a check: a pack can't be imported without the packs it requires, so
 [`resolveDeclaredPacks`](../pack_loader/pack-registry.mjs) pulls each declared pack's `requires` closure into the
 declaration when it is written (bootstrap `--init` and the update backfill), materializing the
-prerequisite in `.claudinite-checks.json` rather than flagging its absence after the fact.
+prerequisite in `.claudinite-settings.json` rather than flagging its absence after the fact.

@@ -46,19 +46,19 @@ test('the requires closure materializes core into a declaration that names only 
 });
 
 test('claudinite-lifecycle-declared: silent on a member that declares core, fires on one that does not', () => {
-  const withCore = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['claudinite-lifecycle', 'basics'] }) } });
-  const without = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) } });
+  const withCore = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['claudinite-lifecycle', 'basics'] }) } });
+  const without = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) } });
   try {
     assert.equal(runRule(coreDeclared, buildContext({ root: withCore, mode: 'all' })).length, 0);
     const findings = runRule(coreDeclared, buildContext({ root: without, mode: 'all' }));
     assert.equal(findings.length, 1, JSON.stringify(findings, null, 2));
-    assert.equal(findings[0].file, '.claudinite-checks.json');
+    assert.equal(findings[0].file, '.claudinite-settings.json');
     assert.match(findings[0].what, /claudinite-lifecycle/);
   } finally { cleanup(withCore); cleanup(without); }
 });
 
 test('claudinite-lifecycle-declared: an entry-object declaration counts, and a non-member is inert', () => {
-  const objectEntry = makeRepo({ changed: { '.claudinite-checks.json': JSON.stringify({ packs: [{ id: 'claudinite-lifecycle', via: ['basics'] }] }) } });
+  const objectEntry = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: [{ id: 'claudinite-lifecycle', via: ['basics'] }] }) } });
   const notAMember = makeRepo({ changed: { 'README.md': '# hi\n' } });
   try {
     assert.equal(runRule(coreDeclared, buildContext({ root: objectEntry, mode: 'all' })).length, 0);
@@ -70,8 +70,8 @@ test('the canon home declares core itself — baselining never reaches it', () =
   // The nightly backfill that seeds a pack across the fleet is gated `!isHome`, so
   // this repo's own declaration is the one nothing delivers to. If it drifts, every
   // core rule stops running in the repo that authors them.
-  const config = JSON.parse(readFileSync(join(REPO, '.claudinite-checks.json'), 'utf8'));
-  assert.ok(config.packs.map(packEntryId).includes('claudinite-lifecycle'), 'the canon home must declare core in its own .claudinite-checks.json');
+  const config = JSON.parse(readFileSync(join(REPO, '.claudinite-settings.json'), 'utf8'));
+  assert.ok(config.packs.map(packEntryId).includes('claudinite-lifecycle'), 'the canon home must declare core in its own .claudinite-settings.json');
 });
 
 test('the core-seed record declares exactly the pack this manifest ships', async () => {

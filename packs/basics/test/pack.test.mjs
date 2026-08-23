@@ -322,12 +322,12 @@ test('shared-constants: flags a count mismatch, passes when every declared count
   const entry = { what: 'repo slug', value: 'org/Repo', counts: { 'a.txt': 2, 'b.txt': 1 } };
   const config = (e) => `${JSON.stringify({ sharedConstants: [e] })}\n`;
   const bad = makeRepo({ changed: {
-    '.claudinite-checks.json': config(entry),
+    '.claudinite-settings.json': config(entry),
     'a.txt': 'org/Repo appears just once\n', // expected 2, found 1
     'b.txt': 'org/Repo\n',
   } });
   const good = makeRepo({ changed: {
-    '.claudinite-checks.json': config(entry),
+    '.claudinite-settings.json': config(entry),
     'a.txt': 'org/Repo and again org/Repo\n', // 2
     'b.txt': 'org/Repo\n',                    // 1
   } });
@@ -342,7 +342,7 @@ test('shared-constants: flags a count mismatch, passes when every declared count
 
 test('shared-constants: flags a declared file that no longer exists', () => {
   const root = makeRepo({ changed: {
-    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [{ what: 'moved', value: 'V', counts: { 'gone.txt': 1 } }] })}\n`,
+    '.claudinite-settings.json': `${JSON.stringify({ sharedConstants: [{ what: 'moved', value: 'V', counts: { 'gone.txt': 1 } }] })}\n`,
   } });
   try {
     const findings = run(sharedConstants, root);
@@ -353,7 +353,7 @@ test('shared-constants: flags a declared file that no longer exists', () => {
 
 test('shared-constants: flags an entry missing its self-documenting "what"', () => {
   const root = makeRepo({ changed: {
-    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [{ value: 'V', counts: { 'a.txt': 1 } }] })}\n`,
+    '.claudinite-settings.json': `${JSON.stringify({ sharedConstants: [{ value: 'V', counts: { 'a.txt': 1 } }] })}\n`,
     'a.txt': 'V\n',
   } });
   try {
@@ -367,7 +367,7 @@ test('shared-constants: flags an entry whose files are all the same import-capab
   // Two JS files can share an import — a shared-constant is redundant.
   const redundant = { what: 'a slug', value: 'org/Repo', counts: { 'src/mod.js': 1, 'test/mod.test.js': 1 } };
   const bad = makeRepo({ changed: {
-    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [redundant] })}\n`,
+    '.claudinite-settings.json': `${JSON.stringify({ sharedConstants: [redundant] })}\n`,
     'src/mod.js': 'org/Repo\n',
     'test/mod.test.js': 'org/Repo\n',
   } });
@@ -375,7 +375,7 @@ test('shared-constants: flags an entry whose files are all the same import-capab
   // can't share an import — legitimate, not flagged.
   const legit = { what: 'label', value: 'ci-label', counts: { 'a.js': 1, 'w.yml': 1 } };
   const good = makeRepo({ changed: {
-    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [legit] })}\n`,
+    '.claudinite-settings.json': `${JSON.stringify({ sharedConstants: [legit] })}\n`,
     'a.js': 'ci-label\n',
     'w.yml': 'ci-label\n',
   } });
@@ -398,12 +398,12 @@ test('shared-constants: regex mode passes in sync, flags differing matched value
   const entry = { what: 'extension version', value: '"version": "\\d+\\.\\d+\\.\\d+"', regex: true, counts: { 'm.json': 1, 'p.json': 1 } };
   const config = `${JSON.stringify({ sharedConstants: [entry] })}\n`;
   const synced = makeRepo({ changed: {
-    '.claudinite-checks.json': config,
+    '.claudinite-settings.json': config,
     'm.json': '{ "version": "1.5.0" }\n',
     'p.json': '{ "version": "1.5.0" }\n',
   } });
   const drifted = makeRepo({ changed: {
-    '.claudinite-checks.json': config,
+    '.claudinite-settings.json': config,
     'm.json': '{ "version": "1.5.1" }\n', // 1 match, but differs from p.json
     'p.json': '{ "version": "1.5.0" }\n',
   } });
@@ -418,7 +418,7 @@ test('shared-constants: regex mode passes in sync, flags differing matched value
 test('shared-constants: regex mode still enforces the per-file count', () => {
   const entry = { what: 'version', value: '"version": "\\d+\\.\\d+\\.\\d+"', regex: true, counts: { 'm.json': 1, 'p.json': 1 } };
   const root = makeRepo({ changed: {
-    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [entry] })}\n`,
+    '.claudinite-settings.json': `${JSON.stringify({ sharedConstants: [entry] })}\n`,
     'm.json': '{ "name": "x" }\n', // 0 matches, expected 1
     'p.json': '{ "version": "1.5.0" }\n',
   } });
@@ -433,7 +433,7 @@ test('shared-constants: regex mode still enforces the per-file count', () => {
 test('shared-constants: flags an invalid regex pattern', () => {
   const entry = { what: 'broken', value: '(', regex: true, counts: { 'a.txt': 1 } };
   const root = makeRepo({ changed: {
-    '.claudinite-checks.json': `${JSON.stringify({ sharedConstants: [entry] })}\n`,
+    '.claudinite-settings.json': `${JSON.stringify({ sharedConstants: [entry] })}\n`,
     'a.txt': 'anything\n',
   } });
   try {

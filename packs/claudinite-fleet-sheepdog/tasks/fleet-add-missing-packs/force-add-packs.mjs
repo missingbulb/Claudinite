@@ -92,7 +92,7 @@ export function requestedBody({ addPacks, packConfig, packAnswers, packsById = n
     '',
     '## The declaration entries to write',
     '',
-    'Merge these verbatim into `.claudinite-checks.json`\'s `packs` (into an entry the repo',
+    'Merge these verbatim into `.claudinite-settings.json`\'s `packs` (into an entry the repo',
     'already carries where one exists — never replacing a config it already chose):',
     '',
     '```json',
@@ -132,7 +132,7 @@ export async function resolveTargets(gh, { repos, owner, addPacks, reposByName =
       continue;
     }
     if (decl === null) {
-      problems.push(`${fullName} is not a covered member (no tracked .claudinite-checks.json) — adoption of the whole corpus is the census's business, not this task's`);
+      problems.push(`${fullName} is not a covered member (no tracked .claudinite-settings.json) — adoption of the whole corpus is the census's business, not this task's`);
       continue;
     }
     if (isDormant(decl)) {

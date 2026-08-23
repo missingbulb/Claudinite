@@ -12,6 +12,7 @@ import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
 import { loadMigrations, applyMaterializations } from '../engine/migrations/registry.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
+import { installedVersions, withInstalledVersions } from '../engine/installed-versions.mjs';
 
 // Driven against real member trees and the real pack set, like the engine flow's
 // suite: the question a member has is whether THIS canon's packs can be laid down
@@ -20,16 +21,16 @@ const MOUNT = join('.claudinite', 'shared');
 
 function makeMember(declaration = { packs: ['basics'] }) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-pkgmember-'));
-  writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify(declaration, null, 2)}\n`);
+  writeFileSync(join(root, '.claudinite-settings.json'), `${JSON.stringify(declaration, null, 2)}\n`);
   mkdirSync(join(root, 'src'), { recursive: true });
   writeFileSync(join(root, 'src', 'app.js'), 'project code\n');
   return root;
 }
-const stampOf = (root) => JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8')).claudinite;
+const stampOf = (root) => installedVersions(JSON.parse(readFileSync(join(root, '.claudinite-settings.json'), 'utf8')));
 const setStamp = (root, patch) => {
-  const p = join(root, '.claudinite-checks.json');
+  const p = join(root, '.claudinite-settings.json');
   const raw = JSON.parse(readFileSync(p, 'utf8'));
-  raw.claudinite = { ...(raw.claudinite ?? {}), ...patch };
+  Object.assign(raw, withInstalledVersions(raw, patch));
   writeFileSync(p, `${JSON.stringify(raw, null, 2)}\n`);
 };
 
@@ -218,7 +219,7 @@ test('a wiring answer that cannot be computed is REPORTED, never read as converg
   // worker prints, what becomes the PR body, and what becomes the dispatch issue's
   // reason — chosen over a new field because a new field only reaches a member once
   // its worker catches up, a cycle later.
-  writeFileSync(join(root, '.claudinite-checks.json'), '{ not json at all\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ not json at all\n');
   const broken = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   if (broken.status !== NEEDS_HUMAN) {
     assert.ok(broken.wiringError, 'the flow must carry the fault');

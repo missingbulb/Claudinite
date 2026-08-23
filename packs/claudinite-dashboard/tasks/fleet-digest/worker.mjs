@@ -35,6 +35,7 @@ import { deliverGenerated, baseTip, pushGenerated, readAt, remoteUrl } from '../
 import { parseParamBag, contextText } from './param-bag.mjs';
 import { parseDigestConfig } from './digest-config.mjs';
 import { collectDay, previousDay } from './collect-fleet-day.mjs';
+import { settingsPath } from '../../../../engine/settings-file.mjs';
 
 // The fixed branch the shortlist lives on. FIXED, not dated: it is one night's
 // scaffolding, force-pushed each run, so a dated branch per day would leave the repo
@@ -233,7 +234,7 @@ export async function main() {
 
   // The config is read from the CHECKOUT, not over the API: this is our own repo and
   // the scheduler already has it at the commit this run is reasoning about.
-  const declaration = JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
+  const declaration = JSON.parse(readFileSync(settingsPath(root), 'utf8'));
   const digest = parseDigestConfig(declaration, repo);
   const { owner, exclude } = digest;
 

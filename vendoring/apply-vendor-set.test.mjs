@@ -43,6 +43,9 @@ function makeCanon() {
   writeAt(root, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'remove-tree.mjs'), join(root, 'engine', 'remove-tree.mjs'));
+  // Where a member's settings live, and the shape of the versions in them.
+  copyFileSync(join(REPO_ROOT, 'engine', 'settings-file.mjs'), join(root, 'engine', 'settings-file.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'installed-versions.mjs'), join(root, 'engine', 'installed-versions.mjs'));
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
   writeAt(root, 'packs/directory.GENERATED.md', 'stub catalog\n');
@@ -59,7 +62,7 @@ function makeCanon() {
 
 function makeTarget(declaration = { packs: ['alpha'] }) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-target-'));
-  writeAt(root, '.claudinite-checks.json', JSON.stringify(declaration, null, 2) + '\n');
+  writeAt(root, '.claudinite-settings.json', JSON.stringify(declaration, null, 2) + '\n');
   writeAt(root, 'src/app.js', 'project code\n');
   writeAt(root, '.claudinite/local_packs/mine/pack.mjs', 'export default { id: "mine" };\n');
   return root;
@@ -77,14 +80,13 @@ test('fresh target: the set lands under .claudinite/shared/ at canon-relative pa
   for (const f of ['engine/checks/check_the_world.mjs', 'packs/alpha/RULES.md', 'packs/alpha/skills/s1/SKILL.md']) {
     assert.ok(existsSync(join(target, '.claudinite', 'shared', f)), `missing vendored ${f}`);
   }
-  const settings = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
-  assert.match(settings.claudinite.updated, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/);
-  assert.equal(settings.claudinite.ref, 'abc123');
-  // The versions this mount is made of, recorded beside the date (DESIGN §5): what
-  // the update flows will range over once the cutover switches authority to them.
-  assert.equal(settings.claudinite.engineVersion, ENGINE_VERSION);
-  assert.deepEqual(settings.claudinite.packVersions, { alpha: 4 });
-  assert.deepEqual(settings.packs, ['alpha']); // the declaration itself is untouched
+  // The versions this mount is made of, and NOTHING about when it was taken: the
+  // datetime and the ref that used to sit beside them recorded the last full
+  // re-vendor, so both were stale on every nightly-converging member (#1252).
+  const settings = JSON.parse(readFileSync(join(target, '.claudinite-settings.json'), 'utf8'));
+  assert.equal(settings.claudinite, undefined, 'the retired stamp block must not be written back');
+  assert.equal(settings.engineVersion, ENGINE_VERSION);
+  assert.deepEqual(settings.packs, [{ id: 'alpha', version: 4 }]); // the version rides on the pack's own entry
 });
 
 test('convergence is whole-set: stale files vanish, drift reverts, everything outside shared/ is untouched', async () => {
@@ -129,25 +131,26 @@ test('#328: a --ref that mismatches the checkout HEAD is refused before any writ
   assert.ok(!existsSync(join(target, '.claudinite', 'shared')), 'nothing may be written on error');
 });
 
-test('#328: a target stamped ahead of the checkout is refused (converging would rewind)', async () => {
+// The rewind the guard exists for, named directly rather than through a ref's
+// ancestry (#1252): a member holding a pack version this checkout cannot supply.
+// Git is not involved at all, which is why the guard now also holds on a rootless
+// canon tree — the bootstrap snapshot, where there was never any history to walk.
+test('#328: a target holding a version above the checkout is refused (converging would rewind)', async () => {
   const canon = makeCanon();
-  const [c1, c2] = gitify(canon);
-  execFileSync('git', ['checkout', '-q', c1], { cwd: canon }); // a stale checkout
-  const target = makeTarget({ packs: ['alpha'], claudinite: { updated: '2026-01-01T00:00:00Z', ref: c2 } });
+  const target = makeTarget({ packs: [{ id: 'alpha', version: 9 }] }); // canon carries alpha 4
   const r = await applyAt(canon, target);
   assert.equal(r.errors.length, 1);
-  assert.match(r.errors[0].what, /not an ancestor .* would rewind/);
+  assert.match(r.errors[0].what, /behind what the target already has .* would rewind/);
   assert.ok(!existsSync(join(target, '.claudinite', 'shared')), 'nothing may be written on error');
 });
 
-test('#328: an ancestor stamp converges normally, and the stamp ref defaults to the checkout HEAD', async () => {
+test('#328: a target at or below the checkout converges normally', async () => {
   const canon = makeCanon();
-  const [c1, c2] = gitify(canon);
-  const target = makeTarget({ packs: ['alpha'], claudinite: { updated: '2026-01-01T00:00:00Z', ref: c1 } });
-  const r = await applyAt(canon, target); // no --ref: derived from HEAD
+  const target = makeTarget({ packs: [{ id: 'alpha', version: 3 }] });
+  const r = await applyAt(canon, target);
   assert.deepEqual(r.errors, []);
-  const settings = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
-  assert.equal(settings.claudinite.ref, c2);
+  const settings = JSON.parse(readFileSync(join(target, '.claudinite-settings.json'), 'utf8'));
+  assert.deepEqual(settings.packs, [{ id: 'alpha', version: 4 }], 'the entry is advanced to what this checkout gave it');
 });
 
 test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .git discovery must not speak for the canon', async () => {
@@ -173,6 +176,9 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(canon, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(canon, 'engine', 'version.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'remove-tree.mjs'), join(canon, 'engine', 'remove-tree.mjs'));
+  // Where a member's settings live, and the shape of the versions in them.
+  copyFileSync(join(REPO_ROOT, 'engine', 'settings-file.mjs'), join(canon, 'engine', 'settings-file.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'installed-versions.mjs'), join(canon, 'engine', 'installed-versions.mjs'));
   writeAt(canon, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(canon, 'packs/directory.GENERATED.md', 'stub catalog\n');
@@ -184,8 +190,8 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   const target = makeTarget({ packs: [] });
   const r = await applyAt(canon, target); // no --ref
   assert.deepEqual(r.errors, []);
-  const settings = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
-  assert.equal(settings.claudinite.ref, undefined, 'the outer repo’s HEAD must never be stamped as canon provenance');
+  const settings = JSON.parse(readFileSync(join(target, '.claudinite-settings.json'), 'utf8'));
+  assert.equal(settings.engineVersion, ENGINE_VERSION, 'a rootless canon still converges — nothing here reads git');
 });
 
 test('transactional: errors abort before any write', async () => {
@@ -193,11 +199,11 @@ test('transactional: errors abort before any write', async () => {
   const noDecl = mkdtempSync(join(tmpdir(), 'claudinite-target-'));
   const r1 = await applyAt(canon, noDecl);
   assert.equal(r1.errors.length, 1);
-  assert.match(r1.errors[0].what, /no \.claudinite-checks\.json/);
+  assert.match(r1.errors[0].what, /no \.claudinite-settings\.json/);
   assert.ok(!existsSync(join(noDecl, '.claudinite')), 'nothing may be written on error');
 
   const badJson = mkdtempSync(join(tmpdir(), 'claudinite-target-'));
-  writeAt(badJson, '.claudinite-checks.json', '{ not json\n');
+  writeAt(badJson, '.claudinite-settings.json', '{ not json\n');
   const r2 = await applyAt(canon, badJson);
   assert.equal(r2.errors.length, 1);
   assert.ok(!existsSync(join(badJson, '.claudinite', 'shared')), 'nothing may be written on error');
@@ -210,11 +216,11 @@ test('the writer fetches records over the TARGET\'s stamp, not the canon\'s idea
   const canon = makeCanon();
   const record = join('.claudinite', 'shared', 'engine', 'migrations', '2026-01-01-seed', 'migration.mjs');
 
-  const current = makeTarget({ packs: ['alpha'], claudinite: { updated: '2026-01-01T00:00:00Z', engineVersion: 2, packVersions: {} } });
+  const current = makeTarget({ packs: ['alpha'], engineVersion: 2 });
   assert.deepEqual((await applyAt(canon, current)).errors, []);
   assert.ok(!existsSync(join(current, record)), 'an up-to-date target carries no records');
 
-  const behind = makeTarget({ packs: ['alpha'], claudinite: { updated: '2026-01-01T00:00:00Z', engineVersion: 1, packVersions: {} } });
+  const behind = makeTarget({ packs: ['alpha'], engineVersion: 1 });
   assert.deepEqual((await applyAt(canon, behind)).errors, []);
   assert.ok(existsSync(join(behind, record)), 'a lagging target carries exactly its gap');
 });
@@ -242,20 +248,18 @@ test('#768: converging an ALREADY-STAMPED target advances every pack PAST record
   // the gate the update flow consults changes its answer across this call.
   const { migrationApplies } = await import(
     pathToFileURL(join(canon, 'engine', 'checks', 'helpers', 'active-migrations.mjs')).href);
-  const applies = (target) => {
-    const { claudinite } = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
-    return migrationApplies(RECORD, { installed: claudinite, today: '2026-08-14' });
-  };
+  const { installedVersions } = await import(
+    pathToFileURL(join(canon, 'engine', 'installed-versions.mjs')).href);
+  const settingsOf = (target) => JSON.parse(readFileSync(join(target, '.claudinite-settings.json'), 'utf8'));
+  const applies = (target) =>
+    migrationApplies(RECORD, { installed: installedVersions(settingsOf(target)), today: '2026-08-14' });
 
-  const target = makeTarget({
-    packs: ['alpha'],
-    claudinite: { updated: '2026-08-10T00:00:00Z', engineVersion: ENGINE_VERSION, packVersions: { alpha: 1 } },
-  });
+  const target = makeTarget({ packs: [{ id: 'alpha', version: 1 }], engineVersion: ENGINE_VERSION });
   assert.equal(applies(target), true, 'precondition: a target at alpha 1 still needs a record that takes effect at 4');
 
   assert.deepEqual((await applyAt(canon, target)).errors, []);
 
-  const { claudinite } = JSON.parse(readFileSync(join(target, '.claudinite-checks.json'), 'utf8'));
-  assert.equal(claudinite.packVersions.alpha, 4, 'the writer stamps the newest version, records or no records');
+  assert.equal(installedVersions(settingsOf(target)).packVersions.alpha, 4,
+    'the writer stamps the newest version, records or no records');
   assert.equal(applies(target), false, 'and the record it never applied is now permanently out of range');
 });

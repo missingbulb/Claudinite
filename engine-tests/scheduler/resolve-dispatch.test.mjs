@@ -38,7 +38,7 @@ const taskMjs = (id) => `export default {
 function fixtureRepo() {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-dispatch-'));
   writeFiles(root, {
-    '.claudinite-checks.json': JSON.stringify({ packs: ['demo'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['demo'] }),
     'packs/demo/tasks/demo-task/task.md': '# demo task\n',
     'packs/demo/tasks/demo-task/task.mjs': taskMjs('demo-task'),
     'packs/undeclared/tasks/rogue-task/task.md': '# rogue task\n',
@@ -513,7 +513,7 @@ test('a consumer runs the VENDORED copy and resolves against its own root', () =
     cpSync(ENGINE, join(root, '.claudinite', 'shared', 'engine'), { recursive: true });
     const taskPath = '.claudinite/local/packs/mine/tasks/demo-task/task.md';
     writeFiles(root, {
-      '.claudinite-checks.json': JSON.stringify({ packs: ['local/mine'] }), // the namespaced local form
+      '.claudinite-settings.json': JSON.stringify({ packs: ['local/mine'] }), // the namespaced local form
       [taskPath]: '# demo task\n',
       [taskPath.replace('task.md', 'task.mjs')]: taskMjs('demo-task'),
       'event.json': JSON.stringify(labeled('ready-for-agent', { body: `${taskPath}\n` })),

@@ -21,31 +21,26 @@ const CANON_SOURCE = {
 
 const repo = (name, over = {}) => ({ name, full_name: `o/${name}`, archived: false, fork: false, ...over });
 
-// A fake API over declarations, scheduler-workflow presence, canon compares and
-// canon's own version numbers. Records every path so "read once" is an assertion
-// rather than a claim.
-function fakeGh({ declarations = {}, schedulers = [], compares = {}, errors = {} } = {}) {
+// A fake API over declarations, scheduler-workflow presence and canon's own version
+// numbers. Records every path so "read once" is an assertion rather than a claim.
+//
+// It serves the CURRENT settings-file name only: every member here has run the
+// rename record, and a read of the retired name 404s exactly as it would in the
+// fleet. `legacyDeclarations` is the other side, for the members that have not.
+function fakeGh({ declarations = {}, legacyDeclarations = {}, schedulers = [], errors = {} } = {}) {
   const seen = [];
   const gh = async (path) => {
     seen.push(path);
     if (errors[path]) return { status: errors[path], json: null };
 
-    let m = /^\/repos\/(.+)\/contents\/\.claudinite-checks\.json$/.exec(path);
-    if (m) {
-      const decl = declarations[m[1]];
-      if (decl === undefined) return { status: 404, json: null };
-      const content = typeof decl === 'string' ? decl : JSON.stringify(decl);
-      return { status: 200, json: { content: Buffer.from(content).toString('base64'), sha: 'sha' } };
-    }
+    const served = (decl) => ({ status: 200, json: { content: Buffer.from(typeof decl === 'string' ? decl : JSON.stringify(decl)).toString('base64'), sha: 'sha' } });
+    let m = /^\/repos\/(.+)\/contents\/\.claudinite-settings\.json$/.exec(path);
+    if (m) return declarations[m[1]] === undefined ? { status: 404, json: null } : served(declarations[m[1]]);
+    m = /^\/repos\/(.+)\/contents\/\.claudinite-checks\.json$/.exec(path);
+    if (m) return legacyDeclarations[m[1]] === undefined ? { status: 404, json: null } : served(legacyDeclarations[m[1]]);
+
     m = /^\/repos\/(.+)\/contents\/\.github\/workflows\/claudinite-scheduler\.yml$/.exec(path);
     if (m) return { status: schedulers.includes(m[1]) ? 200 : 404, json: { content: '' } };
-
-    m = /^\/repos\/.+\/compare\/(.+)\.\.\..+\?per_page=1$/.exec(path);
-    if (m) {
-      const c = compares[m[1]];
-      if (!c) return { status: 404, json: null };
-      return { status: 200, json: { status: c.status } };
-    }
 
     // Canon's own numbers — the source every member is measured against.
     const text = CANON_SOURCE[path.replace(`/repos/${CANON}/contents/`, '')];
@@ -62,10 +57,10 @@ const walk = (gh, repos, over = {}) => buildRoster(gh, repos, {
   home: HOME, canonRepo: CANON, canonBranch: 'main', exclude: new Set(), canonVersions: canonVersions(gh, CANON), ...over,
 });
 
-// `current` stamps exactly what CANON_SOURCE says; anything lower is a gap.
-const declOf = (ref, over = {}, stamp = {}) => ({
-  packs: [{ id: 'basics' }],
-  claudinite: { ref, engineVersion: 4, packVersions: { basics: 7 }, ...stamp },
+// `current` records exactly what CANON_SOURCE says; anything lower is a gap.
+const declOf = (over = {}, { engineVersion = 4, basics = 7 } = {}) => ({
+  packs: [{ id: 'basics', version: basics }],
+  engineVersion,
   ...over,
 });
 
@@ -73,14 +68,32 @@ const declOf = (ref, over = {}, stamp = {}) => ({
 
 test('buildRoster: the declaration is read once per repo, and both questions use that one read', async () => {
   const { gh, seen } = fakeGh({
-    declarations: { 'o/alpha': declOf('abc') },
+    declarations: { 'o/alpha': declOf() },
     schedulers: ['o/alpha'],
-    compares: { abc: { status: 'identical' } },
   });
   await walk(gh, [repo('alpha')]);
-  const declReads = seen.filter((p) => p.endsWith('.claudinite-checks.json'));
+  const declReads = seen.filter((p) => p.endsWith('.claudinite-settings.json'));
   assert.equal(declReads.length, 1, 'the two questions shared one declaration read — this is the merge');
-  assert.equal(seen.length, 5, 'declaration + scheduler workflow + canon compare + canon engine + canon basics');
+  // The per-member canon compare is gone with the ref it compared (#1252): freshness
+  // is a version comparison, so a read per member for a state that can no longer
+  // happen is a read nobody needs.
+  assert.equal(seen.length, 4, 'declaration + scheduler workflow + canon engine + canon basics');
+});
+
+// THE RENAME'S WINDOW (#1252). A member is a member under either settings-file name
+// until its own converge runs the record — and this sweep is what tells the fleet
+// which repos are covered. Read only the current name and every un-converged member
+// drops out as uncovered, which reads as a fleet losing adoption overnight.
+test('buildRoster: a member still carrying the retired settings-file name is measured normally', async () => {
+  const { gh } = fakeGh({
+    legacyDeclarations: {
+      'o/old-name': { packs: [{ id: 'basics' }], claudinite: { engineVersion: 4, packVersions: { basics: 7 } } },
+    },
+    schedulers: ['o/old-name'],
+  });
+  const roster = await walk(gh, [repo('old-name')]);
+  assert.deepEqual(coverageView(roster).covered, ['o/old-name']);
+  assert.deepEqual(freshnessView(roster).fresh.map((f) => f.fullName), ['o/old-name']);
 });
 
 test('buildRoster: the enforcer, archived repos and forks are never read at all', async () => {
@@ -98,17 +111,20 @@ test('buildRoster: canon, excluded, dormant and uncovered repos are read but nev
   // the two extra reads would be spent on an answer nothing consumes.
   const { gh, seen } = fakeGh({
     declarations: {
-      'o/Claudinite': declOf('abc'),
-      'o/left-out': declOf('abc'),
-      'o/asleep': declOf('abc', { dormant: true }),
+      'o/Claudinite': declOf(),
+      'o/left-out': declOf(),
+      'o/asleep': declOf({ dormant: true }),
     },
   });
   await walk(gh, [repo('Claudinite'), repo('left-out'), repo('asleep'), repo('naked')], {
     exclude: new Set(['o/left-out']),
   });
-  assert.deepEqual(seen.filter((p) => !p.endsWith('.claudinite-checks.json')), [],
-    'no scheduler read and no compare for any repo the freshness question does not measure');
-  assert.equal(seen.length, 4);
+  // `o/naked` is a repo with no declaration at all, so it is read under BOTH
+  // settings-file names before it can be called uncovered — the rename's cost, and
+  // the alternative is calling a pre-rename member un-adopted.
+  assert.deepEqual(seen.filter((p) => !/\.claudinite-(settings|checks)\.json$/.test(p)), [],
+    'no scheduler read for any repo the freshness question does not measure');
+  assert.equal(seen.length, 5);
 });
 
 // --- the two views disagree, on purpose ---------------------------------------
@@ -117,7 +133,7 @@ test('an excluded repo that still carries a declaration is covered, and out of s
   // The divergence the two separate sweeps reached by accident (#788): the census
   // tested `exclude` only after finding a repo uncovered, the freshness sweep tested
   // it before reading anything. Both readings survive — from one roster entry.
-  const { gh } = fakeGh({ declarations: { 'o/left-out': declOf('abc') } });
+  const { gh } = fakeGh({ declarations: { 'o/left-out': declOf() } });
   const roster = await walk(gh, [repo('left-out')], { exclude: new Set(['o/left-out']) });
 
   assert.deepEqual(coverageView(roster).covered, ['o/left-out']);
@@ -135,7 +151,7 @@ test('an excluded repo with no declaration is opted out, not merely uncovered', 
 });
 
 test('canon is an ordinary covered member to coverage, and never measured by freshness', async () => {
-  const { gh } = fakeGh({ declarations: { 'o/Claudinite': declOf('abc') } });
+  const { gh } = fakeGh({ declarations: { 'o/Claudinite': declOf() } });
   const roster = await walk(gh, [repo('Claudinite')]);
   assert.deepEqual(coverageView(roster).covered, ['o/claudinite']);
   const f = freshnessView(roster);
@@ -144,7 +160,7 @@ test('canon is an ordinary covered member to coverage, and never measured by fre
 });
 
 test('a dormant member is covered, counted dormant by both, and never probed', async () => {
-  const { gh, seen } = fakeGh({ declarations: { 'o/asleep': declOf('ancient', { dormant: true }) } });
+  const { gh, seen } = fakeGh({ declarations: { 'o/asleep': declOf({ dormant: true }) } });
   const roster = await walk(gh, [repo('asleep')]);
   assert.deepEqual(coverageView(roster).dormant, ['o/asleep']);
   assert.deepEqual(coverageView(roster).covered, []);
@@ -172,18 +188,18 @@ test('an unreadable declaration is unknown to BOTH questions — it is the input
 });
 
 test('a failed mount probe is unknown to freshness ALONE — coverage keeps its verdict', async () => {
-  // The one behaviour the merge changes. Separately, a compare outage failed the
-  // freshness run and left the census, in its own run, reporting the repo fine with
-  // nothing connecting the two. Now one report says both things at once.
+  // The one behaviour the merge changes. Separately, an outage on one of the mount
+  // reads failed the freshness run and left the census, in its own run, reporting the
+  // repo fine with nothing connecting the two. Now one report says both things at once.
   const { gh } = fakeGh({
-    declarations: { 'o/alpha': declOf('abc') },
+    declarations: { 'o/alpha': declOf() },
     schedulers: ['o/alpha'],
-    errors: { '/repos/o/Claudinite/compare/abc...main?per_page=1': 500 },
+    errors: { '/repos/o/alpha/contents/.github/workflows/claudinite-scheduler.yml': 500 },
   });
   const roster = await walk(gh, [repo('alpha')]);
   assert.deepEqual(coverageView(roster).covered, ['o/alpha'], 'its declaration was read fine');
   assert.deepEqual(coverageView(roster).unknown, []);
-  assert.match(freshnessView(roster).unknown[0], /^o\/alpha — comparing abc/);
+  assert.match(freshnessView(roster).unknown[0], /^o\/alpha — /);
   assert.deepEqual(freshnessView(roster).fresh, []);
 });
 
@@ -191,14 +207,8 @@ test('a failed mount probe is unknown to freshness ALONE — coverage keeps its 
 
 test('a measured member carries its freshness verdict through to the view', async () => {
   const { gh } = fakeGh({
-    declarations: { 'o/alpha': declOf('abc'), 'o/late': declOf('old', {}, { engineVersion: 3 }) },
+    declarations: { 'o/alpha': declOf(), 'o/late': declOf({}, { engineVersion: 3 }) },
     schedulers: ['o/alpha', 'o/late'],
-    compares: {
-      abc: { status: 'identical' },
-      // The healthy member's ref is the OLDER of the two and canon has moved far past
-      // it: on a date measure that is what "behind" looked like, and it is fresh.
-      old: { status: 'ahead' },
-    },
   });
   const roster = await walk(gh, [repo('alpha'), repo('late')]);
   const f = freshnessView(roster);
@@ -212,8 +222,7 @@ test('a measured member carries its freshness verdict through to the view', asyn
 
 test('a member with no scheduler is reported by root cause, not by its downstream staleness', async () => {
   const { gh } = fakeGh({
-    declarations: { 'o/cronless': declOf('old', {}, { engineVersion: 1 }) },
-    compares: { old: { status: 'ahead' } },
+    declarations: { 'o/cronless': declOf({}, { engineVersion: 1 }) },
   });
   const roster = await walk(gh, [repo('cronless')]);
   assert.equal(freshnessView(roster).unhealthy[0].state, 'no-scheduler');

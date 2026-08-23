@@ -19,6 +19,7 @@
 // withheld read, a failure); `null` means read and absent. They render differently
 // and neither renders as a number.
 import { duration } from './ui.mjs';
+import { settingsTextAtSha } from './settings-read.mjs';
 
 // The closed vocabulary. A descriptor naming anything outside it is not guessed at:
 // the widget renders as one saying this dashboard predates its descriptor, which is
@@ -310,7 +311,7 @@ export async function readRepoContributions({ repo, token, gh }) {
   try {
     const meta = await gh.getRepo(repo, token);
     const sha = await gh.getHeadSha(repo, meta.default_branch, token);
-    const configText = await gh.getTextAtSha(repo, sha, '.claudinite-checks.json', token);
+    const configText = await settingsTextAtSha(gh, repo, sha, token);
     if (!configText) return { repo, contributions: [] };
     const declaration = JSON.parse(configText);
     const tree = await gh.listTreeAtSha(repo, sha, token);

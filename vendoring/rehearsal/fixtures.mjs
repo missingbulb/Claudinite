@@ -120,11 +120,15 @@
 //                 CLAUDE.md content so the converge is also shown NOT to clobber a
 //                 repo's instructions on its way in.
 //
-// A fixture carries NO `claudinite.ref`. That is deliberate: apply-vendor-set's
-// #328 anti-rewind guard compares the prior ref against the canon checkout's
-// HEAD, and a fixture has no honest ancestor to name. Omitting it skips the
-// guard — the same escape a first-adoption repo legitimately takes — and keeps
-// the rehearsal about the converge rather than about git ancestry.
+// A fixture's INSTALLED VERSIONS are set per MODE by the runner, never here — they
+// are what selects migration records, and what the #328 anti-rewind guard compares
+// against the canon checkout's own numbers. Both modes stay at or below canon, so
+// the guard never fires and the rehearsal stays about the converge.
+//
+// ONE FIXTURE SPELLS THE SETTINGS FILE THE OLD WAY (`legacy-settings-name`), which
+// is the shape every member is in until the #1252 rename record reaches it. The
+// tolerance for that name is not a fixture detail: it is what the whole fleet runs
+// on for the window between the engine landing and each member's own converge.
 
 // The declaration every fixture shares, plus its own packs.
 //
@@ -140,9 +144,7 @@
 const checks = (packs, extra = {}) => JSON.stringify({
   packs: packs.includes('claudinite-lifecycle') ? packs : ['claudinite-lifecycle', ...packs],
   taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
-  maintenance: { delivery: 'auto-merge' },
-  // `updated` is set per MODE by the runner (fresh vs stale), never here.
-  claudinite: { updated: null },
+  // The installed versions are written per MODE by the runner (fresh vs stale).
   ...extra,
 }, null, 2) + '\n';
 
@@ -492,7 +494,7 @@ export const FIXTURES = [
     why: 'a local pack with scoped rules and a bundled skill — the #555 shape',
     files: {
       'README.md': '# fixture-local-rules\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'local/fixture-local']),
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-local']),
       '.claudinite/local/packs/fixture-local/pack.mjs': PACK_LOCAL_RULES,
       '.claudinite/local/packs/fixture-local/demo-rule.mjs': DEMO_RULE,
       '.claudinite/local/packs/fixture-local/RULES.md': '# fixture-local\n\nNo standing rules.\n',
@@ -506,7 +508,7 @@ export const FIXTURES = [
     why: 'a local pack carrying no rules — zero rules must not look like a failed load',
     files: {
       'README.md': '# fixture-prose-only\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'local/fixture-prose']),
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-prose']),
       '.claudinite/local/packs/fixture-prose/pack.mjs': PACK_PROSE_ONLY,
       '.claudinite/local/packs/fixture-prose/RULES.md': '# fixture-prose\n\nNo standing rules.\n',
     },
@@ -516,7 +518,7 @@ export const FIXTURES = [
     why: 'a local pack whose task still declares the deprecated `session_scope` — the shape a consumer predating the retirement still has on disk',
     files: {
       'README.md': '# fixture-legacy-task\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'local/fixture-legacy']),
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-legacy']),
       '.claudinite/local/packs/fixture-legacy/pack.mjs': PACK_LEGACY_TASK,
       '.claudinite/local/packs/fixture-legacy/RULES.md': '# fixture-legacy\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.mjs': LEGACY_TASK,
@@ -529,7 +531,7 @@ export const FIXTURES = [
     why: 'a local pack whose task carries a worker — the member-owned code `task-code-work-env` reads, and the half no other shape has',
     files: {
       'README.md': '# fixture-code-work-env\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'local/fixture-code-work']),
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-code-work']),
       '.claudinite/local/packs/fixture-code-work/pack.mjs': PACK_CODE_WORK_ENV,
       '.claudinite/local/packs/fixture-code-work/RULES.md': '# fixture-code-work\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/task.mjs': CODE_WORK_TASK,
@@ -547,7 +549,7 @@ export const FIXTURES = [
     why: 'local packs declaring the manifest version fields in BOTH spellings — proves the widened vocabulary validates on a CONSUMER-authored manifest, not only on the canon\'s own',
     files: {
       'README.md': '# fixture-versioned\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'local/fixture-versioned', 'local/fixture-dated']),
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-versioned', 'local/fixture-dated']),
       '.claudinite/local/packs/fixture-versioned/pack.mjs': PACK_VERSIONED,
       '.claudinite/local/packs/fixture-versioned/RULES.md': '# fixture-versioned\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-dated/pack.mjs': PACK_DATED,
@@ -571,7 +573,7 @@ export const FIXTURES = [
     why: 'a member as it stands the night #807 arrives — its own CLAUDE.md, no rules index, no import — proving the converge lands all three and the new blocking rule finds them',
     files: {
       'README.md': '# fixture-pre-rules-index\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics']),
+      '.claudinite-settings.json': checks(['basics']),
       // A repo's own instructions, which the converge must preserve while adding
       // its one import line — a member's CLAUDE.md is the member's.
       'CLAUDE.md': '# fixture-pre-rules-index\n\nBuild with `make`. Run `make test` before committing.\n',
@@ -583,7 +585,7 @@ export const FIXTURES = [
     why: 'an extension repo that does not publish — the shape the chrome-extension collapse newly exposes to the release rules, which must stay inert on it',
     files: {
       'README.md': '# fixture-codes-an-extension\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'chrome-extension']),
+      '.claudinite-settings.json': checks(['basics', 'chrome-extension']),
       // A manifest is the pack's whole fingerprint, so the pack is active here; what
       // must not fire is everything gated on shipping.
       'manifest.json': JSON.stringify({ manifest_version: 3, name: 'fixture', version: '0.1.0' }, null, 2) + '\n',
@@ -594,7 +596,7 @@ export const FIXTURES = [
     why: 'no local pack at all — isolates canon-side breakage from local-pack breakage',
     files: {
       'README.md': '# fixture-canon-packs\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics']),
+      '.claudinite-settings.json': checks(['basics']),
     },
   },
   {
@@ -602,7 +604,7 @@ export const FIXTURES = [
     why: 'a member declaring the jwt technology pack over clean JWT source — the pack\'s blocking skill checks are opt-in, and this proves a member that opts in converges green',
     files: {
       'README.md': '# fixture-jwt-consumer\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'jwt']),
+      '.claudinite-settings.json': checks(['basics', 'jwt']),
       // Clean under all five jwt checks: algorithms pinned, audience and issuer
       // bound, secret from the environment, expiry set, no "none" anywhere.
       'server/auth.js': `const jwt = require('jsonwebtoken');
@@ -630,7 +632,7 @@ module.exports = { issue, check };
     why: 'a member declaring the product-wiki standard over its scaffold, no config object on the entry — the skeleton check is declared data and the takes-no-config guard is its own coded rule, and this proves a member that adopted the standard converges green across that split',
     files: {
       'README.md': '# fixture-product-wiki-consumer\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'product-wiki']),
+      '.claudinite-settings.json': checks(['basics', 'product-wiki']),
       // The two fixed paths product-wiki-layout requires; a sink-first scaffold
       // with no wiki pages yet is a legitimate adoption state, and it keeps the
       // page-grammar checks quiet (a wiki page is structural: a README.md at
@@ -650,7 +652,7 @@ module.exports = { issue, check };
       // that the rule works (its own see-it-fail fixture does that). It names the
       // fixture itself as the store and holds no store directory, so the store rules
       // resolve and stay quiet the way they do in any member that only reads one.
-      '.claudinite-checks.json': checks([
+      '.claudinite-settings.json': checks([
         'basics',
         {
           id: 'claudinite-fleet-sheepdog',
@@ -669,7 +671,7 @@ module.exports = { issue, check };
     why: 'a member declaring `claudinite-dashboard` for the page alone — the shape that inherits the fleet-digest task, and with it two blocking checks nobody there asked for, so this proves a conforming member (a plain-text brief, a fixture date outside the fleet\'s year range) converges green rather than going red overnight',
     files: {
       'README.md': '# fixture-dashboard-digest\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'claudinite-dashboard']),
+      '.claudinite-settings.json': checks(['basics', 'claudinite-dashboard']),
       // A landed brief in the shape the task writes: no heading, no markdown bullet,
       // no link syntax, a bare URL. This is what `digest-plain-text` is quiet on, and
       // the file the check exists for — a member holds the series, not the canon.
@@ -699,7 +701,7 @@ module.exports = { issue, check };
     why: 'a member whose OWN local pack contributes to the dashboard — `descriptor-usable` is blocking, and a member holds descriptors the canon never sees, so this proves a conforming one (a declared widget, a fleet card that can be one line and names what it counts) converges green rather than going red overnight on a rule nobody there asked for',
     files: {
       'README.md': '# fixture-dashboard-contributor\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'claudinite-dashboard']),
+      '.claudinite-settings.json': checks(['basics', 'claudinite-dashboard']),
       // A local pack's own descriptor, in the shape the reader accepts: every id a
       // view selects resolves, the fleet card is a kind that fits one line, and it
       // carries the noun that keeps it from rendering as a bare number.
@@ -724,7 +726,7 @@ module.exports = { issue, check };
     why: 'a member declaring the macos pack over a conforming Mac app — the pack\'s two exit-path rules are blocking, and this proves an app in the shape they are about (AppKit, a capture tap, terminate-time teardown) converges green rather than going red overnight on a rule nobody asked for',
     files: {
       'README.md': '# fixture-macos-app\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'macos']),
+      '.claudinite-settings.json': checks(['basics', 'macos']),
       // The fingerprint the pack detects on, near the root as the marker requires.
       'Package.swift': `// swift-tools-version:5.9
 import PackageDescription
@@ -800,7 +802,7 @@ NSApplication.shared.run()
     why: 'a local pack carrying its own declared-checks.json — in a LEGACY spelling (checkParsedFile) and with in-cap messages: proves a member\'s declarations keep loading across vocabulary merges and stay green under declared-check-messages',
     files: {
       'README.md': '# fixture-declared\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'local/fixture-declared']),
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-declared']),
       '.claudinite/local/packs/fixture-declared/pack.mjs': PACK_PROSE_ONLY.replace(/fixture-prose/g, 'fixture-declared'),
       '.claudinite/local/packs/fixture-declared/RULES.md': '# fixture-declared\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-declared/declared-checks.json': `${JSON.stringify([
@@ -824,7 +826,7 @@ NSApplication.shared.run()
     why: 'a declared-dormant member: its mount falls behind BY DESIGN, never a failure',
     files: {
       'README.md': '# fixture-dormant\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics'], { dormant: true }),
+      '.claudinite-settings.json': checks(['basics'], { dormant: true }),
     },
   },
   {
@@ -844,12 +846,18 @@ NSApplication.shared.run()
       // has no self-refresh and nothing able to deliver it one. The repair is one
       // manual edit to its `packs` array. Green here means "not broken by the
       // severity", never "fully functional".
-      '.claudinite-checks.json': JSON.stringify({
+      '.claudinite-settings.json': JSON.stringify({
         packs: ['basics'],
         taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
-        maintenance: { delivery: 'auto-merge' },
-        claudinite: { updated: null },
       }, null, 2) + '\n',
+    },
+  },
+  {
+    name: 'legacy-settings-name',
+    why: 'a member still carrying `.claudinite-checks.json` — the shape EVERY member is in between the #1252 engine landing and its own converge running the rename record. Nothing but the engine reads that name, so if any reader lost the tolerance, this member reads as un-adopted: no packs, no tasks, no delivery preference, and a green run to show for it',
+    files: {
+      'README.md': '# fixture-legacy-settings-name\n\nA rehearsal fixture.\n',
+      '.claudinite-checks.json': checks(['basics']),
     },
   },
   {
@@ -857,7 +865,7 @@ NSApplication.shared.run()
     why: 'a member still holding the previous workflow shape — the window every workflow change opens, since `.github/workflows/` is the one path a converge cannot push',
     files: {
       'README.md': '# fixture-old-workflows\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics']),
+      '.claudinite-settings.json': checks(['basics']),
       '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
       '.github/workflows/claudinite-executor.yml': OLD_EXECUTOR_WORKFLOW,
     },
@@ -867,7 +875,7 @@ NSApplication.shared.run()
     why: "a member that moved its `taskScheduler.dailyHour` off the default, still holding the hourly cron — both cron hours are a function of that value now (DESIGN §17), so a converge that ignored it would fire this repo's scheduler at hours no anchor lands on and run every task a day late, forever, with nothing going red",
     files: {
       'README.md': '# fixture-custom-anchor-hour\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics'], {
+      '.claudinite-settings.json': checks(['basics'], {
         taskScheduler: { dailyHour: 9, weeklyDay: 'Wed', monthlyDay: 1 },
       }),
       '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
@@ -878,7 +886,7 @@ NSApplication.shared.run()
     why: 'the workflow shape the fleet is on TODAY: a dispatching drain with no gate and no job output — the window the drain gate (§15.30) opens, where the engine writes a verdict the member\'s own copy cannot read',
     files: {
       'README.md': '# fixture-ungated-drain\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics']),
+      '.claudinite-settings.json': checks(['basics']),
       '.github/workflows/claudinite-scheduler.yml': UNGATED_SCHEDULER_WORKFLOW,
     },
   },
@@ -887,7 +895,7 @@ NSApplication.shared.run()
     why: 'a member enrolled in the growth lifecycle, with the local packs its capture runs write',
     files: {
       'README.md': '# fixture-growth-member\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'claudinite-growth', 'local/fixture-local']),
+      '.claudinite-settings.json': checks(['basics', 'claudinite-growth', 'local/fixture-local']),
       '.claudinite/local/packs/fixture-local/pack.mjs': PACK_LOCAL_RULES,
       '.claudinite/local/packs/fixture-local/demo-rule.mjs': DEMO_RULE,
       '.claudinite/local/packs/fixture-local/RULES.md': '# fixture-local\n\nNo standing rules.\n',
@@ -897,11 +905,23 @@ NSApplication.shared.run()
   },
 ];
 
-// The two MODES. `stale` is the half that answers "does baselining work WITH a
-// migration": migration notes are selected against the stamp's DAY, so a fixture
-// pinned in the past forces selection to actually fire. A record that is missing,
-// misdated, or not idempotent shows up here and nowhere else.
+// The two MODES, stated as what the fixture has INSTALLED. `stale` is the half that
+// answers "does the converge work WITH a migration": records are selected by version
+// range, so a fixture pinned below every record's own version forces selection to
+// actually fire. A record that is missing, misversioned, or not idempotent shows up
+// here and nowhere else.
+//
+// The stale numbers are date-anchored and dated well before the corpus rather than
+// the legacy plain integers: a legacy integer is a version the format still PARSES
+// but nothing may declare, so a fixture writing one fails the declaration's own
+// shape rule instead of exercising the records it was pinned low to reach.
+//
+// `fresh` names no versions at all rather than today's: a fixture stamped at canon's
+// current numbers would have to be re-edited on every release to keep meaning "up to
+// date", and an unstamped repo is the shape a first adoption actually has. Neither
+// mode may sit ABOVE canon — that is the rewind the #328 guard refuses, and a
+// fixture is not the place to rehearse it.
 export const MODES = [
-  { name: 'fresh', updated: new Date().toISOString(), why: 'the ordinary nightly path — no note should select' },
-  { name: 'stale', updated: '2026-01-01T00:00:00.000Z', why: 'forces migration selection: every note applies' },
+  { name: 'fresh', installed: null, why: 'the ordinary path — nothing versioned selects' },
+  { name: 'stale', installed: { engineVersion: '50101.1', packVersion: '50101.1' }, why: 'forces record selection: every versioned record applies' },
 ];

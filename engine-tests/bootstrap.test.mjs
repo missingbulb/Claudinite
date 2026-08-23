@@ -38,7 +38,7 @@ function freshRepo() {
   return root;
 }
 
-const json = (root) => JSON.parse(readFileSync(join(root, '.claudinite-checks.json'), 'utf8'));
+const json = (root) => JSON.parse(readFileSync(join(root, '.claudinite-settings.json'), 'utf8'));
 const at = (root, rel) => readFileSync(join(root, rel), 'utf8');
 
 test('bootstrap converges a fresh repo in one invocation', () => {
@@ -54,9 +54,10 @@ test('bootstrap converges a fresh repo in one invocation', () => {
   const wiki = decl.packs.find((p) => p?.id === 'product-wiki');
   assert.equal(wiki.answers.product, 'A widget catalog app');
   assert.deepEqual(decl.taskScheduler, { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 });
-  assert.equal(decl.maintenance.delivery, 'auto-merge');
-  assert.ok(decl.claudinite.engineVersion, 'stamped');
-  assert.ok(decl.claudinite.packVersions['product-wiki'], 'requested pack stamped');
+  assert.equal(decl.dailyClaudiniteUpdatesRequirePrReview, undefined,
+    'the delivery override is written only by a repo that wants review (#1252)');
+  assert.ok(decl.engineVersion, 'stamped');
+  assert.ok(wiki.version, 'the requested pack is stamped on its own entry');
 
   // The mount.
   assert.ok(existsSync(join(root, '.claudinite/shared/engine/checks/check_the_world.mjs')));
@@ -107,7 +108,7 @@ test('bootstrap re-run is idempotent and records late answers', () => {
   // Nothing but the new answer (which upgrades the string entry to an object)
   // and the refreshed stamp moves.
   before.packs = before.packs.map((p) => (p === 'product-wiki' || p?.id === 'product-wiki' ? wiki : p));
-  before.claudinite = after.claudinite;
+  before.engineVersion = after.engineVersion;
   assert.deepEqual(after, before);
   assert.ok(/wiring: already converged/.test(out), `second run reports converged:\n${out}`);
 });

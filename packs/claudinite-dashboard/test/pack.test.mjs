@@ -85,7 +85,7 @@ test('the seeded workflow is a shim over the mount, holding no build logic', asy
   assert.match(yml, /node \.claudinite\/shared\/packs\/claudinite-dashboard\/build-site\.mjs/);
   assert.doesNotMatch(yml, /\bcp -r\b|\brsync\b/, 'the workflow must not stage files itself');
   // Configuration lives in the declaration, so the frozen file has none to go stale.
-  assert.doesNotMatch(yml, /vars\.DASHBOARD_/, 'settings belong in .claudinite-checks.json, not in the frozen stub');
+  assert.doesNotMatch(yml, /vars\.DASHBOARD_/, 'settings belong in .claudinite-settings.json, not in the frozen stub');
 });
 
 // The catch-up trigger, and the one string in it this pack does not own. A push that
@@ -131,7 +131,7 @@ async function member(declaration, extraFiles = {}) {
   // a tree no member ever has.
   await cp(PACK_DIR, join(dir, '.claudinite/shared/packs/claudinite-dashboard'),
     { recursive: true, filter: (src) => !src.endsWith('.test.mjs') });
-  await writeFile(join(dir, '.claudinite-checks.json'), JSON.stringify(declaration));
+  await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify(declaration));
   for (const [name, body] of Object.entries(extraFiles)) await writeFile(join(dir, name), body);
   return dir;
 }
@@ -251,10 +251,14 @@ test('a mount without the page produces nothing and exits clean', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'cd-bare-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, '.claudinite/shared/packs/claudinite-dashboard'), { recursive: true });
+  await mkdir(join(dir, '.claudinite/shared/engine'), { recursive: true });
   for (const f of ['build-site.mjs', 'config.mjs']) {
     await cp(join(PACK_DIR, f), join(dir, `.claudinite/shared/packs/claudinite-dashboard/${f}`));
   }
-  await writeFile(join(dir, '.claudinite-checks.json'), JSON.stringify({ packs: ['claudinite-dashboard'] }));
+  // The build resolves the member's settings file by name rather than naming it, so
+  // the module that knows both names is part of the mount it needs.
+  await cp(join(PACK_DIR, '..', '..', 'engine', 'settings-file.mjs'), join(dir, '.claudinite/shared/engine/settings-file.mjs'));
+  await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: ['claudinite-dashboard'] }));
 
   const { stdout } = await build(dir);
   assert.match(stdout, /nothing to publish/i);
@@ -283,7 +287,7 @@ test('a repo with no declaration at all is refused for the same reason', async (
   // declaration" is a less deliberate silence than an empty config, not a more one.
   const dir = await member({ packs: [{ id: 'claudinite-dashboard', config: { mode: 'repo' } }] });
   t.after(() => rm(dir, { recursive: true, force: true }));
-  await rm(join(dir, '.claudinite-checks.json'));
+  await rm(join(dir, '.claudinite-settings.json'));
 
   const res = await build(dir, { GITHUB_REPOSITORY: 'o/x' }).catch((e) => e);
   assert.ok(res instanceof Error);
@@ -345,7 +349,7 @@ test('the pack hands over the sign-in decision, not just the Pages setting', () 
 test('the install flow reports the handover so adoption cannot miss it', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'cd-install-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  await writeFile(join(dir, '.claudinite-checks.json'), JSON.stringify({ packs: [] }, null, 2));
+  await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
 
   const { stdout } = await runReporting('node',
     [join(ROOT, 'updates/install.mjs'), '--target', dir, 'claudinite-dashboard'],
@@ -364,7 +368,7 @@ test('the install flow reports the handover so adoption cannot miss it', async (
 test('a pack with no handover prints none', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'cd-install2-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  await writeFile(join(dir, '.claudinite-checks.json'), JSON.stringify({ packs: [] }, null, 2));
+  await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
 
   const { stdout } = await runReporting('node',
     [join(ROOT, 'updates/install.mjs'), '--target', dir, 'html'],

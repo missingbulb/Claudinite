@@ -90,8 +90,8 @@ test('renderPending: prompts + distill notes, and the unattended self-defuse wor
 
 test('integration: declaring barriers pends its goals question until the entry answers it', async () => {
   const packs = await loadPacks();
-  const unanswered = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: ['barriers'] }) } });
-  const answered = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({
+  const unanswered = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['barriers'] }) } });
+  const answered = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({
     packs: [{ id: 'barriers', answers: { goals: 'keep core generic' } }],
   }) } });
   try {
@@ -111,7 +111,7 @@ test('integration: declaring barriers pends its goals question until the entry a
 // note reaches stdout, not merely that the exit code is 0, is deliberate — a
 // process that exits clean having printed nothing is the bug's own signature.
 test('CLI: `check` prints the pending note and exits clean (its import cycle must not deadlock)', () => {
-  const repo = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({ packs: ['barriers'] }) } });
+  const repo = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['barriers'] }) } });
   try {
     const r = spawnSync(process.execPath, [CLI, 'check'], {
       encoding: 'utf8',
@@ -125,7 +125,7 @@ test('CLI: `check` prints the pending note and exits clean (its import cycle mus
 });
 
 test('CLI: a repo with nothing pending prints nothing and exits clean', () => {
-  const repo = makeRepo({ base: { '.claudinite-checks.json': JSON.stringify({
+  const repo = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({
     packs: [{ id: 'barriers', answers: { goals: 'n/a — none wanted' } }],
   }) } });
   try {

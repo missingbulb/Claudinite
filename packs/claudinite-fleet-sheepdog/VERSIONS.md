@@ -8,6 +8,7 @@ here forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60823.1 | 2026-08-23 | Reads a member's settings under either name; freshness is a version comparison, so the per-member canon compare and the `ref-not-on-trunk` state it detected are gone (#1252). |
 | 11 | — | Fleet-digest LEAVES, to the claudinite-dashboard pack — the pack whose page is the only thing that reads the series it writes. What stays here is an enforcer's `digest`, `owner` and `exclude` config, which the task still reads off this entry as its legacy source, so no enforcer declaration has to change. |
 | 12 | — | The FLEET_GITHUB_TOKEN grant is stated once, in fleet-token.mjs, and rendered into every message about it — additive, no migration, delivered so an enforcer's next token error names the whole grant instead of that sweep's subset (#1030). |
 | 13 | — | The task contract moved into the claudinite-growth `writing-tasks` skill; the pointers in this pack's README and its three fleet task docs follow it (#975). |

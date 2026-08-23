@@ -69,38 +69,25 @@ test('the apply-stage body says the merge waits on the repair', () => {
   assert.match(body, /before anything merges/);
 });
 
-test('the runner refuses a repo declaring the RETIRED mechanism, loudly', async () => {
-  // The other half of the old skew guard, at the only place it can be wrong. Phase 5
-  // deleted the mechanism this repo names, so it is served by NOTHING — and standing
-  // down quietly would leave it unmaintained with a green run to show for it. Driven
-  // through the real main() against a real directory, because what matters is that it
-  // stops BEFORE the clone: a stubbed clone would prove nothing about it.
-  const root = mkdtempSync(join(tmpdir(), 'claudinite-updskew-'));
-  try {
-    writeFileSync(join(root, '.claudinite-checks.json'), `${JSON.stringify({
-      packs: ['basics'],
-      maintenance: { delivery: 'auto-merge', mechanism: 'baselining' },
-      claudinite: { updated: '2026-08-12T00:00:00Z', ref: 'abc123' },
-    }, null, 2)}\n`);
-
-    const said = [];
-    const err = console.error;
-    const exit = process.exit;
-    const env = { ...process.env };
-    process.env.CLAUDINITE_REPO_ROOT = root;
-    process.env.CLAUDINITE_REPO = 'o/r';
-    process.env.GITHUB_TOKEN = 'not-used-because-it-refuses-first';
-    console.error = (...a) => said.push(a.join(' '));
-    let code = null;
-    process.exit = (c) => { code = c; throw new Error('exited'); };
-    try { await main(); } catch (e) { if (e.message !== 'exited') throw e; }
-    finally { console.error = err; process.exit = exit; process.env = env; }
-
-    assert.equal(code, 1, 'a repo nothing maintains must fail its run, not pass quietly');
-    assert.match(said.join('\n'), /retired in Claudinite #768 Phase 5/);
-    assert.match(said.join('\n'), /Set it to "versioned"/, 'the refusal has to say what to do');
-    assert.ok(!existsSync(join(root, '.git')), 'no branch, no clone, no write');
-  } finally { removeTree(root); }
+// THE MECHANISM QUESTION IS GONE (#1252). The runner used to refuse a repo declaring
+// the retired `baselining` mechanism, because exactly one of two mechanisms served a
+// mount and standing down quietly would leave that repo unmaintained with a green run
+// to show for it. Phase 5 deleted the rival, so every member that could still ask had
+// one possible answer, and the block that held the question came out with it.
+//
+// What replaces the guard is structural, and this is the part that CAN still be wrong:
+// the runner is VENDORED, so the copy running on a member may predate the record that
+// renamed that member's own settings file. Resolving the path through `settingsPath`
+// is what makes it read either name; a literal here would report "nothing to update"
+// on every repo that has not converged yet — quietly, which is the failure mode the
+// old guard existed to prevent, arriving by a different door.
+test('the runner resolves its settings file by name-tolerant lookup, never a literal', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
+  assert.match(src, /settingsPath\(root\)/, 'the runner must resolve the settings file, not name it');
+  assert.ok(!src.includes("'.claudinite-checks.json'") && !src.includes("'.claudinite-settings.json'"),
+    'a literal settings-file name in the runner is a repo it will silently skip');
+  assert.match(src, /deliveryFor\(declaration\)/, "delivery comes from the member's own settings");
 });
 
 test('the terminal vocabulary the runner acts on is the flows\' own', async () => {

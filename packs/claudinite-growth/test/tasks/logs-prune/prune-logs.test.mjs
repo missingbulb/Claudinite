@@ -45,7 +45,7 @@ test('readRetentionDays takes this pack own entry config, and nothing else', asy
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
   const root = mkdtempSync(join(tmpdir(), 'claudinite-prune-test-'));
-  const write = (config) => writeFileSync(join(root, '.claudinite-checks.json'), JSON.stringify(config));
+  const write = (config) => writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify(config));
 
   write({ packs: ['basics', { id: 'claudinite-growth', config: { retention_days: 10 } }] });
   assert.equal(readRetentionDays(root), 10);
@@ -58,6 +58,6 @@ test('readRetentionDays takes this pack own entry config, and nothing else', asy
   assert.equal(readRetentionDays(root), null);
   write({ packs: [{ id: 'claudinite-growth', config: { retention_days: '10' } }] });
   assert.equal(readRetentionDays(root), null);
-  writeFileSync(join(root, '.claudinite-checks.json'), '{ not json');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ not json');
   assert.equal(readRetentionDays(root), null);
 });

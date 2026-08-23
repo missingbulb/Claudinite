@@ -14,7 +14,7 @@ test('a resolvable store is the healthy case and says nothing', () => {
 test('a declared pack with no store is reported, with the fix in the finding', () => {
   const [f] = rule.run(ctx({}));
   assert.equal(f.rule, 'preferences-store-configured');
-  assert.equal(f.file, '.claudinite-checks.json');
+  assert.equal(f.file, '.claudinite-settings.json');
   assert.match(f.what, /declared but names no store/);
   assert.match(f.fix, /"repo": "owner\/name"/);
 });

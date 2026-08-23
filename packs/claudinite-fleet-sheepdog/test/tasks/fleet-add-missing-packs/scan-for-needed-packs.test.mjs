@@ -156,9 +156,9 @@ test('renderFitSummary: a fleet with nothing suspected still reports every repo'
 test('renderFitSummary: unknown repos are shouted, not folded into a state', () => {
   // `unknown` is never `fitted` — the worker also exits non-zero on it, so this line
   // is what tells the reader WHICH repo to go and fix the token for.
-  const s = summary({ unknown: ['acme/private — .claudinite-checks.json returned 403'] });
+  const s = summary({ unknown: ['acme/private — .claudinite-settings.json returned 403'] });
   assert.match(s, /UNKNOWN/);
-  assert.match(s, /acme\/private — .claudinite-checks\.json returned 403/);
+  assert.match(s, /acme\/private — .claudinite-settings\.json returned 403/);
 });
 
 test('renderFitSummary: a scoped scan says so before any count', () => {

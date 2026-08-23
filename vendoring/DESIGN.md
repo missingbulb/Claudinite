@@ -30,7 +30,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    lives inside it: `.claudinite/local_packs/` sits *beside* `shared/`, which the submodule
    future outright requires — a submodule directory cannot carry the consumer's files.
 2. **Minimal set, derived structurally from the declaration.** The vendor set is a function of
-   `.claudinite-checks.json`, computed by [vendor.mjs](compute-vendor-set.mjs) with **no hand-maintained
+   `.claudinite-settings.json`, computed by [vendor.mjs](compute-vendor-set.mjs) with **no hand-maintained
    file list**: the one engine root (`engine/`) vendored wholesale, plus the **declared packs**
    with their `requires` closure — each pack's bundled skills riding its own directory (#385).
    The mount still carries no corpus-index `CLAUDE.md` of its own (#385) — but the consumer
@@ -84,7 +84,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    head before converging — a stale maintenance checkout must fail its unit, never silently
    downgrade the fleet (#328).
 5. **The stamp.** `"claudinite": { "updated": "<full ISO datetime>", "ref": "<sha>" }` in
-   `.claudinite-checks.json` — `updated` selects which migration notes still apply (notes are
+   `.claudinite-settings.json` — `updated` selects which migration notes still apply (notes are
    day-dated, so selection is by the stamp's **day, same-day inclusive** — a note landing later
    on the stamp's day must still apply, and note idempotency absorbs the re-application this
    admits — #330), `ref` is provenance for debugging **and** the anti-rewind guard's anchor (4). **One stamp for the whole set, never per pack**: updates are
@@ -176,7 +176,7 @@ the nightly touches everyone, and never break the channel the migration itself t
   unflipped members (done — the appendix, not dated notes, carries the transition-window
   maintenance; the flip note carries the conversion); fleet membership discovery reduces to the
   **single** probe every member carries whatever its mount shape — the tracked
-  `.claudinite-checks.json`, the only shape the planner can plan for at all; a mount marker
+  `.claudinite-settings.json`, the only shape the planner can plan for at all; a mount marker
   without a declaration classifies uncovered and heals through an adoption issue (done).
 - **Phase 2 — the flip (complete, 2026-07-21):** the dated note
   (`vendored-mount-flip`, retired with phase 3) converted a member in one commit —
@@ -193,7 +193,7 @@ the nightly touches everyone, and never break the channel the migration itself t
   'fleet'` after a clean pilot, and completed across all twelve members on 2026-07-21 (the
   bulk of the fleet converted in-session over real git — one commit per member on its
   `claudinite/maintenance` PR). Fleet discovery was untouched throughout — it keys on the
-  tracked `.claudinite-checks.json`, which both mount shapes carried (phase 1) — so no member
+  tracked `.claudinite-settings.json`, which both mount shapes carried (phase 1) — so no member
   could be orphaned by its migration state.
 - **Phase 3 — converge and retire (executed 2026-07-21):** with every member flipped, the
   transition surface retired as one deliberate change. **The retirement ledger — everything

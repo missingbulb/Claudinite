@@ -193,7 +193,7 @@ test('unconfigured barriers is a no-op', () => {
 test('malformed config surfaces a blocking config finding', () => {
   const notObj = runCheck({ rules: 'nope' }, { 'a/x.js': '1\n' });
   assert.equal(notObj.length, 1);
-  assert.equal(notObj[0].file, '.claudinite-checks.json');
+  assert.equal(notObj[0].file, '.claudinite-settings.json');
   assert.equal(notObj[0].severity, 'blocking');
 
   const missing = runCheck({ rules: [{ from: 'a' }] }, { 'a/x.js': '1\n' });
@@ -348,7 +348,7 @@ test('rejects an edge whose folder collapses to the repo root', () => {
   for (const bad of [{ from: '.', to: 'server' }, { from: 'extension', to: '/' }, { from: '/', to: '*' }]) {
     const f = runCheck({ rules: [bad] }, { 'extension/a.js': '1\n', 'server/b.js': '1\n' });
     assert.equal(f.length, 1, JSON.stringify(bad));
-    assert.equal(f[0].file, '.claudinite-checks.json');
+    assert.equal(f[0].file, '.claudinite-settings.json');
   }
 });
 
@@ -422,7 +422,7 @@ test('a repo-root "from" whose targets are not excepted is a config error', () =
     'server/s.js': '1\n',
   });
   assert.equal(f.length, 1);
-  assert.equal(f[0].file, '.claudinite-checks.json');
+  assert.equal(f[0].file, '.claudinite-settings.json');
   assert.match(f[0].what, /overlaps the repo-root guard/);
 });
 
@@ -433,7 +433,7 @@ test('the repo root must be spelled "." — "" and "/" stay rejected', () => {
       'server/s.js': '1\n',
     });
     assert.equal(f.length, 1, JSON.stringify(bad));
-    assert.equal(f[0].file, '.claudinite-checks.json');
+    assert.equal(f[0].file, '.claudinite-settings.json');
   }
 });
 
@@ -451,7 +451,7 @@ test('a "to" glob that expands to nothing is a blocking config finding (fail clo
     'core/a.js': '1\n',
   });
   assert.equal(f.length, 1);
-  assert.equal(f[0].file, '.claudinite-checks.json');
+  assert.equal(f[0].file, '.claudinite-settings.json');
   assert.match(f[0].what, /matched no directories/);
 });
 
@@ -640,7 +640,7 @@ test('malformed reviewed exceptions are config errors (no reason, unknown key, b
       { 'core/x.js': '1\n', 'content/alpha/mod.js': '1\n' });
     assert.equal(f.length, 1, JSON.stringify(entry));
     assert.match(f[0].what, re);
-    assert.equal(f[0].file, '.claudinite-checks.json');
+    assert.equal(f[0].file, '.claudinite-settings.json');
   }
 });
 

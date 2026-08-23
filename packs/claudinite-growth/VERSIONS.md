@@ -7,6 +7,7 @@ forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60823.1 | 2026-08-23 | Prose and task docs name the member settings file by its current name (#1252). |
 | 60823.1 | 2026-08-23 | The growth tasks drop their standing tracker issues: every change automatic work makes to a local pack is a row in that pack's own `VERSIONS.md`, written in the same commit. `rule-revalidation` stops slicing by longest-since-probed and takes every environment-fact claim each run, so it holds no state between runs. `growth-dedup`'s window brief moves onto the run's own work item as a comment. |
 | 60822.1 | — | `usage-fold` folds daily rather than hourly, and its signal window moves with it — a frequency finer than the cron's two ticks a day cannot be honoured, and a window still sized to an hour would never see a captured session again (§17.1). `growth-extract`'s anchor offset retires; the `schedule_after:` it already declared is what orders it. The ordering field is renamed `after` → `schedule_after`: it names task ids, not a time, and what it steers is when the item is scheduled onto an executor. `after` is normalized at the door forever and draws an advisory rename, so a member's own task file keeps working. |
 | 13 | — | The task contract's prose carries the queue's current label vocabulary and the precondition's two additions — the occurrence argument, and the verdict a precondition gives when it cannot answer. |

@@ -36,6 +36,7 @@
 
 import { labeledIssues, DECLARATION } from '../../fleet-api.mjs';
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../../../engine/version.mjs';
+import { installedVersions } from '../../../../engine/installed-versions.mjs';
 
 const LABEL = 'fleet-drift';
 const LABEL_SPEC = { color: 'D93F0B', description: 'Covered member whose Claudinite mount has fallen behind canon' };
@@ -59,39 +60,30 @@ const MARKER_RE = /<!-- fleet-freshness: ([a-z-]+) -->/;
 
 // --- classification (pure) ----------------------------------------------------
 
-// `compare` is what canon's compare endpoint said about `stampedRef → canon default
-// branch`, normalized to { status }, or null when the ref is not a commit in canon at
-// all. `installed` is the member's own stamp ({ engineVersion, packVersions }) and
-// `canon` the same two numbers read out of canon for exactly the packs that stamp
-// names. Kept free of I/O so every branch is testable directly.
+// `installed` is what the member's own settings say it holds ({ engineVersion,
+// packVersions }) and `canon` the same two numbers read out of canon for exactly the
+// packs that member names. Kept free of I/O so every branch is testable directly.
+//
+// THE REF IS GONE (#1252), and with it `ref-not-on-trunk`. That state asked whether
+// the member's stamped ref was an ancestor of canon's default branch, because the
+// anti-rewind guard used to refuse a converge over a ref it could not place — the
+// guard now compares versions and needs no ref, so the wedge it reported cannot
+// happen and the per-member compare call that detected it is a read nobody needs.
 //
 // The precedence is about ROOT CAUSE, not the order the facts arrive in: a member with
 // no scheduler is ALSO behind, and reporting "behind" would send the reader chasing a
 // symptom of the missing cron.
-export function classifyFreshness({ stampedRef, hasScheduler, compare, installed, canon }) {
-  if (!stampedRef) {
-    return { state: 'no-stamp', detail: `${DECLARATION} carries no claudinite.ref — the repo declares packs but has never been vendored` };
-  }
-  if (!hasScheduler) {
-    return { state: 'no-scheduler', detail: `no ${SCHEDULER} — the repo has no cron, so nothing there will ever baseline it` };
-  }
-  if (compare === null) {
-    return { state: 'ref-not-on-trunk', detail: `the stamped ref ${stampedRef} is not a commit in canon` };
-  }
-  // base=stampedRef, head=canon default branch. An ancestor reads `identical` or
-  // `ahead`; `behind`/`diverged` means the stamp points off trunk (a force-push, a
-  // ref vendored from a branch), which is exactly what the #328 guard refuses.
-  if (compare.status !== 'identical' && compare.status !== 'ahead') {
-    return { state: 'ref-not-on-trunk', detail: `the stamped ref ${stampedRef} is not an ancestor of canon's default branch (compare says "${compare.status}")` };
-  }
-  // A stamp carrying neither number was written before the versioned flows existed,
-  // so it cannot be current by construction — an engine that stamps always stamps.
+export function classifyFreshness({ hasScheduler, installed, canon }) {
+  // Neither number means the mount has never been written by an engine that stamps —
+  // which is every engine there has been since the versioned flows landed. A repo
+  // whose declaration names packs whose versions it cannot state has not been
+  // vendored, whatever else is true of it.
   const packIds = Object.keys(installed.packVersions);
   if (installed.engineVersion === null && packIds.length === 0) {
-    return {
-      state: 'behind',
-      detail: `stamped at ${stampedRef} with no engineVersion and no packVersions — the mount predates the versioned update flows and has not been refreshed by them`,
-    };
+    return { state: 'no-stamp', detail: `${DECLARATION} carries no engineVersion and no pack versions — the repo declares packs but has never been vendored` };
+  }
+  if (!hasScheduler) {
+    return { state: 'no-scheduler', detail: `no ${SCHEDULER} — the repo has no cron, so nothing there will ever converge it` };
   }
   // An absent canon number is not a zero: a pack retired from canon has no manifest
   // to be behind, and comparing against a missing entry would report every member
@@ -184,38 +176,23 @@ export function canonVersions(gh, canonRepo) {
 // Throws on anything indeterminate; the caller turns that into UNKNOWN for this half
 // alone. A member whose mount cannot be probed is still one whose declaration was read,
 // so the coverage half keeps its verdict.
-export async function probeMount(gh, fullName, declaration, { canonRepo, canonBranch, canon }) {
-  const stamp = declaration?.claudinite ?? {};
-  const stampedRef = stamp.ref ?? null;
-
+export async function probeMount(gh, fullName, declaration, { canon }) {
   const wf = await gh(`/repos/${fullName}/contents/${SCHEDULER}`);
   if (wf.status !== 200 && wf.status !== 404) throw new Error(`${SCHEDULER} check returned ${wf.status}`);
   const hasScheduler = wf.status === 200;
 
-  const stamped = stamp.packVersions;
-  const installed = {
-    engineVersion: isVersion(stamp.engineVersion) ? stamp.engineVersion : null,
-    packVersions: stamped && typeof stamped === 'object' && !Array.isArray(stamped) ? stamped : {},
-  };
+  // Wherever this member spells them: the current shape, with the retired block read
+  // underneath for one that has not run the #1252 record yet.
+  const installed = installedVersions(declaration);
   const canonAt = { engineVersion: null, packVersions: {} };
-
-  let compare = null;
-  if (stampedRef) {
-    // per_page=1 because neither the commit list nor the counts are read — only the
-    // status, which is all `ref-not-on-trunk` needs, and a wide-open compare over
-    // months of canon is a needlessly large payload.
-    const c = await gh(`/repos/${canonRepo}/compare/${stampedRef}...${canonBranch}?per_page=1`);
-    if (c.status === 404) compare = null; // not a canon commit — classify(), not an error
-    else if (c.status !== 200 || !c.json) throw new Error(`comparing ${stampedRef} against ${canonRepo}@${canonBranch} returned ${c.status}`);
-    else compare = { status: c.json.status };
-
+  if (installed.engineVersion !== null || Object.keys(installed.packVersions).length > 0) {
     canonAt.engineVersion = await canon.engine();
     for (const id of Object.keys(installed.packVersions)) {
       const there = await canon.pack(id);
       if (there !== null) canonAt.packVersions[id] = there;
     }
   }
-  return { stampedRef, hasScheduler, compare, installed, canon: canonAt };
+  return { hasScheduler, installed, canon: canonAt };
 }
 
 // --- issue bodies -------------------------------------------------------------
@@ -223,8 +200,8 @@ export async function probeMount(gh, fullName, declaration, { canonRepo, canonBr
 const FIXES = {
   'no-stamp': [
     'Run the adoption flow against the repo (the `adopt-claudinite` skill) — it vendors the',
-    'mount and writes the first stamp. Until then the declaration names packs whose code is',
-    'not present, so nothing Claudinite defines actually runs there.',
+    'mount and writes the first versions. Until then the declaration names packs whose code',
+    'is not present, so nothing Claudinite defines actually runs there.',
   ],
   'no-scheduler': [
     'The repo never cut over to per-project scheduling. Vendor the scheduler',
@@ -232,22 +209,15 @@ const FIXES = {
     'confirm the workflow is enabled in the Actions tab — a repo with no cron runs no task',
     'at all, so every other symptom is downstream of this one.',
   ],
-  'ref-not-on-trunk': [
-    'This is a WEDGE, not a delay: `apply-vendor-set.mjs` refuses to write when the prior',
-    'stamped ref is not an ancestor of canon HEAD (#328, the anti-rewind guard), so',
-    'baselining fails on every run and will keep failing. Check whether canon was',
-    'force-pushed or the mount was vendored from a branch, then re-stamp the repo at a',
-    'commit that IS on the default branch.',
-  ],
   behind: [
     'The scheduler workflow exists but the self-refresh is not landing. Check the repo\'s',
     'recent `Claudinite scheduler` runs: a disabled workflow (GitHub disables cron on repos',
     'with no activity for 60 days), a failing update task, or a maintenance PR that never',
     'merges all look like this.',
     '',
-    'The gap above is read from the stamped `engineVersion`/`packVersions` against canon\'s',
-    'own numbers, so it closes only when an update flow actually re-stamps the mount — the',
-    'stamped `ref` is provenance and is expected never to move.',
+    'The gap above is read from the member\'s own `engineVersion` and per-pack versions',
+    'against canon\'s own numbers, so it closes only when an update flow actually re-stamps',
+    'the mount.',
   ],
 };
 
@@ -364,12 +334,12 @@ export function renderFreshnessSummary({
   return [
     `# Fleet freshness sweep — ${owner} (measured by stamped versions against canon: ${canonRepo}@${canonBranch})`,
     '',
-    '| fresh | behind | no scheduler | no stamp | off trunk | dormant | out of scope | unknown |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| fresh | behind | no scheduler | no stamp | dormant | out of scope | unknown |',
+    '| --- | --- | --- | --- | --- | --- | --- |',
     `| ${fresh.length} | ${unhealthy.filter((u) => u.state === 'behind').length} | `
       + `${unhealthy.filter((u) => u.state === 'no-scheduler').length} | `
       + `${unhealthy.filter((u) => u.state === 'no-stamp').length} | `
-      + `${unhealthy.filter((u) => u.state === 'ref-not-on-trunk').length} | ${dormant.length} | ${outOfScope.length} | ${unknown.length} |`,
+      + `${dormant.length} | ${outOfScope.length} | ${unknown.length} |`,
     '',
     unhealthy.length
       ? `**Behind (drift issue open):**\n${unhealthy.map((u) => `- \`${u.fullName}\` — **${u.state}**: ${u.detail}`).join('\n')}`

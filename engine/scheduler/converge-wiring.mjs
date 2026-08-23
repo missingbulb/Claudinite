@@ -20,6 +20,8 @@ import { hashedCron } from './hash-minute.mjs';
 import { DEFAULT_SCHEDULE } from './calendar.mjs';
 import { writeRulesIndex, RULES_INDEX_FILE, RULES_INDEX_IMPORT } from '../pack_loader/generate-rules-index.mjs';
 import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX, SHARED_SUBDIR } from '../pack_loader/pack-registry.mjs';
+import { settingsPath } from '../settings-file.mjs';
+import { ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from '../checks/helpers/repo-context.mjs';
 
 // The settings-hook registrations a scheduled repo carries (bootstrap Part 5).
 // Ensured present without clobbering — a set-union keyed on the command string, so
@@ -84,7 +86,7 @@ export async function declaredSecrets(root, config) {
   // holding its token, and the stamp puts that name in the executor's env exactly
   // as a `required_secrets` entry. The executor reads it only at the moment of the
   // invocation call; nothing else in a task's life ever sees it.
-  const endpointTokens = Object.values(config?.taskScheduler?.endpoints ?? {})
+  const endpointTokens = Object.values(config?.taskScheduler?.[ENDPOINTS_KEY] ?? config?.taskScheduler?.[LEGACY_ENDPOINTS_KEY] ?? {})
     .map((e) => e?.tokenSecret).filter((n) => typeof n === 'string' && n);
   return [...new Set([...names, ...endpointTokens])].sort();
 }
@@ -344,9 +346,9 @@ export function seedRepoLocalPack(root, fullName) {
   const dir = join(root, LOCAL_PACKS_SUBDIR, id);
   if (existsSync(dir)) return null;
 
-  const settingsPath = join(root, '.claudinite-checks.json');
+  const settingsFile = settingsPath(root);
   let raw;
-  try { raw = JSON.parse(readFileSync(settingsPath, 'utf8')); } catch { return null; }
+  try { raw = JSON.parse(readFileSync(settingsFile, 'utf8')); } catch { return null; }
   const declared = Array.isArray(raw.packs) ? raw.packs : [];
   // Any local declaration at all means this repo already has a home of its own.
   if (declared.some((p) => String(typeof p === 'string' ? p : p?.id).startsWith('local'))) return null;
@@ -359,16 +361,16 @@ export function seedRepoLocalPack(root, fullName) {
   // Declared as text, never a JSON round-trip: re-serializing rewrites what it was not
   // asked to — `ensure_ascii` escapes every non-ASCII character in a settings file full
   // of prose, and indent and key order become the serializer's opinion.
-  const text = readFileSync(settingsPath, 'utf8');
+  const text = readFileSync(settingsFile, 'utf8');
   const entry = `"${LOCAL_DECL_PREFIX}${id}"`;
   const patched = text.replace(/("packs"\s*:\s*\[)/, (m) => `${m}\n    ${entry},`);
-  writeFileSync(settingsPath, patched === text
+  writeFileSync(settingsFile, patched === text
     ? text // no `packs` array to extend — leave the file alone rather than guess at its shape
     : patched);
   return id;
 }
 
-// Strip the retired `badges` setting from `.claudinite-checks.json`. `badges` is
+// Strip the retired `badges` setting from the settings file. `badges` is
 // not in CONFIG_KEYS, so a member still carrying it gets an unknown-setting error
 // until the key goes; doing it here — beside the retired corpus import, for the
 // same reason — means the converge that already runs on every member clears it,
@@ -380,7 +382,7 @@ export function seedRepoLocalPack(root, fullName) {
 // file is full of — so a three-line deletion arrives as a diff touching every
 // `reason` in the repo.
 export function removeRetiredBadgeSetting(root) {
-  const path = join(root, '.claudinite-checks.json');
+  const path = settingsPath(root);
   if (!existsSync(path)) return false;
   const text = readFileSync(path, 'utf8');
   let raw;

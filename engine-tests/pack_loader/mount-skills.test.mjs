@@ -27,6 +27,8 @@ function makeCorpus({ packs }, root = mkdtempSync(join(tmpdir(), 'claudinite-cor
   // pack-schema validates a version against the engine's version module, which sits
   // beside pack_loader in the real tree.
   cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
+  // Where a member's settings live: the loader resolves the declaration through it.
+  cpSync(join(REPO_ROOT, 'engine', 'settings-file.mjs'), join(root, 'engine', 'settings-file.mjs'));
   for (const [id, def] of Object.entries(packs)) {
     const { skills = [], ...manifest } = def;
     mkdirSync(join(root, 'packs', id), { recursive: true });
@@ -63,7 +65,7 @@ const CORPUS = {
 test('mount-skills: mounts the union of the declared packs, nothing more', () => {
   const corpus = makeCorpus(CORPUS);
   const project = makeRepo({
-    changed: { '.claudinite-checks.json': '{ "packs": ["basics", "tech"] }\n' },
+    changed: { '.claudinite-settings.json': '{ "packs": ["basics", "tech"] }\n' },
   });
   try {
     mount(corpus, project);
@@ -86,7 +88,7 @@ test('mount-skills: mounts the union of the declared packs, nothing more', () =>
 test('mount-skills: a pack declared as an entry object mounts like a bare id', () => {
   const corpus = makeCorpus(CORPUS);
   const project = makeRepo({
-    changed: { '.claudinite-checks.json': '{ "packs": ["basics", { "id": "tech", "config": { "x": 1 } }] }\n' },
+    changed: { '.claudinite-settings.json': '{ "packs": ["basics", { "id": "tech", "config": { "x": 1 } }] }\n' },
   });
   try {
     mount(corpus, project);
@@ -98,11 +100,11 @@ test('mount-skills: a pack declared as an entry object mounts like a bare id', (
 test('mount-skills: re-run syncs the mounts to a changed declaration', () => {
   const corpus = makeCorpus(CORPUS);
   const project = makeRepo({
-    changed: { '.claudinite-checks.json': '{ "packs": ["basics", "tech"] }\n' },
+    changed: { '.claudinite-settings.json': '{ "packs": ["basics", "tech"] }\n' },
   });
   try {
     mount(corpus, project);
-    writeFileSync(join(project, '.claudinite-checks.json'), '{ "packs": ["basics"] }\n');
+    writeFileSync(join(project, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n');
     mount(corpus, project);
     assert.ok(existsSync(join(project, '.claude', 'skills', 'base-skill')));
     assert.ok(!existsSync(join(project, '.claude', 'skills', 'tech-skill')),
@@ -116,7 +118,7 @@ test('mount-skills: re-run syncs the mounts to a changed declaration', () => {
 
 test('mount-skills: never touches entries it does not own', () => {
   const corpus = makeCorpus(CORPUS);
-  const project = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' } });
+  const project = makeRepo({ changed: { '.claudinite-settings.json': '{ "packs": ["basics"] }\n' } });
   try {
     // The project's own skill, its own foreign symlink, and its own directory
     // shadowing a corpus skill name — all must survive untouched.
@@ -140,7 +142,7 @@ test('mount-skills: never touches entries it does not own', () => {
 
 test('mount-skills: removes a stale owned link, is idempotent, fails soft on a broken config', () => {
   const corpus = makeCorpus(CORPUS);
-  const project = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' } });
+  const project = makeRepo({ changed: { '.claudinite-settings.json': '{ "packs": ["basics"] }\n' } });
   try {
     // A leftover link into the corpus for a skill that no longer exists there.
     mkdirSync(join(project, '.claude', 'skills'), { recursive: true });
@@ -151,7 +153,7 @@ test('mount-skills: removes a stale owned link, is idempotent, fails soft on a b
     mount(corpus, project);
     assert.equal(readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8'), first);
     // A broken config must not break the session (fail-soft contract).
-    writeFileSync(join(project, '.claudinite-checks.json'), 'not json');
+    writeFileSync(join(project, '.claudinite-settings.json'), 'not json');
     mount(corpus, project);
   } finally { removeTree(corpus); cleanup(project); }
 });
@@ -163,7 +165,7 @@ test('mount-skills: a symlink outside the pack trees is the project\'s own — n
   // leftover pointing into a retired tree — is the project's own entry: never
   // retargeted, never cleaned.
   const project = makeRepo({
-    changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' },
+    changed: { '.claudinite-settings.json': '{ "packs": ["basics"] }\n' },
   });
   const corpus = makeCorpus(CORPUS, join(project, '.claudinite', 'shared'));
   try {
@@ -186,7 +188,7 @@ test('mount-skills: mounts a local pack\'s bundled skill from the tracked pack d
   const corpus = makeCorpus(CORPUS);
   const project = makeRepo({
     changed: {
-      '.claudinite-checks.json': '{ "packs": ["basics", "proj"] }\n',
+      '.claudinite-settings.json': '{ "packs": ["basics", "proj"] }\n',
     },
   });
   try {
@@ -220,7 +222,7 @@ test('mount-skills: mounts a local pack\'s bundled skill from the tracked pack d
 test('mount-skills: unmounts a local pack\'s skill when the pack is undeclared', () => {
   const corpus = makeCorpus(CORPUS);
   const project = makeRepo({
-    changed: { '.claudinite-checks.json': '{ "packs": ["basics", "proj"] }\n' },
+    changed: { '.claudinite-settings.json': '{ "packs": ["basics", "proj"] }\n' },
   });
   try {
     const packDir = join(project, '.claudinite', 'local_packs', 'proj');
@@ -230,7 +232,7 @@ test('mount-skills: unmounts a local pack\'s skill when the pack is undeclared',
     mount(corpus, project);
     assert.ok(existsSync(join(project, '.claude', 'skills', 'proj-skill')));
     // drop the local pack from the declaration — its mounted skill must go
-    writeFileSync(join(project, '.claudinite-checks.json'), '{ "packs": ["basics"] }\n');
+    writeFileSync(join(project, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n');
     mount(corpus, project);
     assert.ok(!existsSync(join(project, '.claude', 'skills', 'proj-skill')),
       'a local pack\'s skill unmounts once the pack is undeclared');
@@ -238,7 +240,7 @@ test('mount-skills: unmounts a local pack\'s skill when the pack is undeclared',
 });
 
 test('mount-skills: the real corpus mounts every basics skill into a consumer', () => {
-  const project = makeRepo({ changed: { '.claudinite-checks.json': '{ "packs": ["basics"] }\n' } });
+  const project = makeRepo({ changed: { '.claudinite-settings.json': '{ "packs": ["basics"] }\n' } });
   try {
     const r = spawnSync('node', [join(REPO_ROOT, 'engine', 'pack_loader', 'mount-skills.mjs')], {
       encoding: 'utf8',

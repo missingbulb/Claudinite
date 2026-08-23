@@ -1,5 +1,6 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { parseSheepdogConfig } from '../fleet-config.mjs';
+import { SETTINGS_FILE, SETTINGS_FILES } from '../../../engine/settings-file.mjs';
 
 // The enforcer states a seeded pack's config TWICE, for two different audiences, in one
 // file:
@@ -31,7 +32,7 @@ import { parseSheepdogConfig } from '../fleet-config.mjs';
 // exactly once and then sticks, and correcting it here un-writes nothing. The blast
 // radius is every repo under the owner and the mistake is visible days later, in
 // somebody else's repo.
-const CONFIG = '.claudinite-checks.json';
+const CONFIG = SETTINGS_FILE;
 
 // Order-insensitive value equality for two parsed configs: a config is JSON, so a
 // canonical re-serialization is the whole comparison.
@@ -59,7 +60,7 @@ const rule = {
     // fleet-config's one parser — so the seeds judged here are exactly the seeds that
     // would be written (it drops the malformed ones), and so a finding can point at a
     // line. `home` only feeds the owner default and the throw message; neither is used.
-    const text = ctx.read(CONFIG);
+    const text = SETTINGS_FILES.map((f) => ctx.read(f)).find((t) => t != null);
     if (text === null) return [];
     let seeds;
     try {

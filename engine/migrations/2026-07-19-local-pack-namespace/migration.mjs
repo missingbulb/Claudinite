@@ -28,7 +28,7 @@ export default {
   summary: 'local-pack declarations normalized to local/<name> (the record rewrites bare and legacy tokens; the engine accepts every form)',
   normalizeLocalDeclarations: true,
   legacyPresent: async (exists, read) => {
-    const raw = await read('.claudinite-checks.json');
+    const raw = (await read('.claudinite-settings.json')) ?? await read('.claudinite-checks.json');
     if (raw == null) return false;
     let packs;
     try { ({ packs } = JSON.parse(raw)); } catch { return false; }

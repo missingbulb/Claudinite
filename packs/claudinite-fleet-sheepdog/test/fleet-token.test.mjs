@@ -67,7 +67,7 @@ test('adoption hands a human the complete grant, not a sweep-shaped subset', () 
 });
 
 test('a 403 is attributed to the permission that would fix it', () => {
-  assert.match(forbiddenHint('/repos/o/r/contents/.claudinite-checks.json'), /Contents: read and write/);
+  assert.match(forbiddenHint('/repos/o/r/contents/.claudinite-settings.json'), /Contents: read and write/);
   assert.match(forbiddenHint('/repos/o/r/issues?labels=x'), /Issues: read and write/);
   assert.match(forbiddenHint('/user/repos'), /Metadata: read/);
   assert.match(classifyDispatch(403).detail, /Actions: read and write/);

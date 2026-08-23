@@ -4,7 +4,7 @@ import {
 import { DEFAULT_DOC } from '../contributed.mjs';
 
 // The project-declared barrier check: a repo states its folder-access graph as
-// `config.rules` on its barriers pack entry in .claudinite-checks.json (the
+// `config.rules` on its barriers pack entry in .claudinite-settings.json (the
 // loader overlays each pack entry's `config` onto `packConfig`), and this
 // enforces it. A rule owns its exceptions — carve-out strings and reviewed
 // { path, to?, reason } crossings both live in the rule's own `except`, so a NEW

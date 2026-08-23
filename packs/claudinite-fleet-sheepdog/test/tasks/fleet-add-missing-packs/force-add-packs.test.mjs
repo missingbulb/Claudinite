@@ -19,7 +19,7 @@ const PACKS = [
 // --- refusals -----------------------------------------------------------------
 
 test('an unknown pack id is caught here, not in the member\'s declaration', () => {
-  // An unknown id in a member's .claudinite-checks.json is a BLOCKING settings error
+  // An unknown id in a member's .claudinite-settings.json is a BLOCKING settings error
   // there: the repo stops running its own checks until a human edits the file.
   assert.deepEqual(unknownPacks(['plain', 'typo'], PACKS), ['typo']);
   assert.deepEqual(unknownPacks(['plain'], PACKS), []);

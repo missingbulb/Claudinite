@@ -21,6 +21,7 @@ import { cp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveMode } from './config.mjs';
+import { settingsPath } from '../../engine/settings-file.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -68,7 +69,7 @@ if (!await exists(join(pageSource, 'index.html')) || !await exists(engineSource)
 
 async function declaration() {
   try {
-    return JSON.parse(await readFile(join(repoRoot, '.claudinite-checks.json'), 'utf8'));
+    return JSON.parse(await readFile(settingsPath(repoRoot), 'utf8'));
   } catch {
     return null;
   }

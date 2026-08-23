@@ -8,7 +8,7 @@
       {
         "eachTrackedPathMatching": "/^packs\\/(?<pack>[^/]+)\\/pack\\.mjs$/",
         "whoseTextMatches": "/(^|[^\\w.$])seededByDefault\\s*:\\s*true\\b/",
-        "indexFile": ".claudinite-checks.json",
+        "indexFile": ".claudinite-settings.json",
         "coveredByValueInArrayAtField": { "atField": "packs", "value": "{pack}", "matchingEntryObjectsByField": "id" },
         "whenIndexFileAbsent": "assertNothing",
         "anchorFindingsAt": "indexFile",

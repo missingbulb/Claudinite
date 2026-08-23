@@ -18,16 +18,13 @@ const ancestor = (status = 'identical') => ({ status });
 const stamp = (over = {}) => ({ engineVersion: 4, packVersions: { basics: 7 }, ...over });
 const canon = (over = {}) => ({ engineVersion: 4, packVersions: { basics: 7 }, ...over });
 const classify = (over) => classifyFreshness({
-  stampedRef: 'abc123', hasScheduler: true, compare: ancestor(), installed: stamp(), canon: canon(), ...over,
+  hasScheduler: true, installed: stamp(), canon: canon(), ...over,
 });
 
-test('classifyFreshness: a member at canon versions is fresh however old its stamp', () => {
+test('classifyFreshness: a member at canon versions is fresh', () => {
   const v = classify({});
   assert.equal(v.state, FRESH);
   assert.match(v.detail, /engine v4/);
-  // The stamp is frozen by design, so an ancient ref with 900 canon commits on top
-  // of it is the NORMAL state of a healthy member, not a finding.
-  assert.equal(classify({ compare: { status: 'ahead' } }).state, FRESH);
 });
 
 test('classifyFreshness: behind is a version gap, and the gap is named', () => {
@@ -54,33 +51,26 @@ test('classifyFreshness: a pack ahead of canon, or gone from canon, is not a gap
   assert.equal(classify({ installed: stamp({ packVersions: { basics: 'seven' } }) }).state, FRESH);
 });
 
-test('classifyFreshness: a stamp the versioned flows never wrote is behind by construction', () => {
+// A member that records NEITHER number has never been written by an engine that
+// records them, which is every engine since the versioned flows landed. That is the
+// whole of `no-stamp` now: #1252 deleted the ref this used to be asked of, and with
+// it `ref-not-on-trunk` — that state reported the #328 wedge, which the anti-rewind
+// guard can no longer create because it compares versions and needs no ref at all.
+test('classifyFreshness: a member recording no versions has never been vendored', () => {
   const v = classify({ installed: { engineVersion: null, packVersions: {} } });
-  assert.equal(v.state, 'behind');
-  assert.match(v.detail, /no engineVersion/);
-  // A member declaring only local packs stamps an engine version and no pack ones —
+  assert.equal(v.state, 'no-stamp');
+  assert.match(v.detail, /no engineVersion and no pack versions/);
+  // A member declaring only local packs records an engine version and no pack ones —
   // versioned, and fresh.
   assert.equal(classify({ installed: { engineVersion: 4, packVersions: {} }, canon: canon({ packVersions: {} }) }).state, FRESH);
-});
-
-test('classifyFreshness: an off-trunk stamp is a wedge, not a delay', () => {
-  // not a canon commit at all (canon's compare 404s)
-  assert.equal(classify({ compare: null }).state, 'ref-not-on-trunk');
-  // a canon commit, but not an ancestor of the default branch — what #328 refuses
-  for (const status of ['diverged', 'behind']) {
-    const v = classify({ compare: { status } });
-    assert.equal(v.state, 'ref-not-on-trunk', status);
-    assert.match(v.detail, new RegExp(status));
-  }
 });
 
 test('classifyFreshness: root cause wins over symptom', () => {
   // no scheduler AND behind → no-scheduler, because the missing cron is WHY
   assert.equal(classify({ hasScheduler: false, installed: stamp({ engineVersion: 1 }) }).state, 'no-scheduler');
-  // no stamp outranks even that: nothing was ever vendored
-  assert.equal(classify({ stampedRef: null, hasScheduler: false }).state, 'no-stamp');
-  // and an unvendored repo is never asked about trunk
-  assert.equal(classify({ stampedRef: null, compare: null }).state, 'no-stamp');
+  // never vendored outranks even that: a repo with no mount has nothing to converge,
+  // so reporting its missing cron would send the reader after the wrong thing.
+  assert.equal(classify({ hasScheduler: false, installed: { engineVersion: null, packVersions: {} } }).state, 'no-stamp');
 });
 
 // --- canon's own versions -----------------------------------------------------
@@ -131,24 +121,32 @@ test('canonVersions: a manifest whose version cannot be read throws rather than 
 // this question needs on top of it. Dormancy and coverage are decided before it is
 // ever called (check-fleet-roster.mjs), which is why nothing here tests them.
 
-const probeOpts = (gh) => ({ canonRepo: 'o/canon', canonBranch: 'main', canon: canonVersions(gh, 'o/canon') });
+const probeOpts = (gh) => ({ canon: canonVersions(gh, 'o/canon') });
 
-test('probeMount: reads the scheduler, the compare and canon\'s versions, never the declaration again', async () => {
+test('probeMount: reads the scheduler and canon\'s versions, never the declaration again', async () => {
   const { gh, seen } = textGh(CANON_FILES);
-  const decl = { claudinite: { ref: 'abc', engineVersion: 3, packVersions: { basics: 7 } } };
+  const decl = { engineVersion: 3, packs: [{ id: 'basics', version: 7 }] };
   const p = await probeMount(gh, 'o/awake', decl, probeOpts(gh));
-  assert.equal(p.stampedRef, 'abc');
   assert.equal(p.hasScheduler, false);           // the fake serves no workflow file
   assert.deepEqual(p.installed, { engineVersion: 3, packVersions: { basics: 7 } });
   assert.deepEqual(p.canon, { engineVersion: 4, packVersions: { basics: 7 } });
-  assert.equal(seen.filter((s) => s.includes('.claudinite-checks.json')).length, 0);
+  assert.equal(seen.filter((s) => s.includes('.claudinite-settings.json')).length, 0);
 });
 
-test('probeMount: a member with no stamp is never compared against canon', async () => {
+// A member the rename record has not reached yet still records its versions, in the
+// retired block — read past it and a current mount reads as never vendored.
+test('probeMount: a pre-rename member is measured identically', async () => {
+  const { gh } = textGh(CANON_FILES);
+  const decl = { claudinite: { updated: 'x', ref: 'abc', engineVersion: 3, packVersions: { basics: 7 } } };
+  const p = await probeMount(gh, 'o/awake', decl, probeOpts(gh));
+  assert.deepEqual(p.installed, { engineVersion: 3, packVersions: { basics: 7 } });
+});
+
+test('probeMount: a member with no versions is never compared against canon', async () => {
   const { gh, seen } = textGh(CANON_FILES);
   const p = await probeMount(gh, 'o/unvendored', { packs: [] }, probeOpts(gh));
-  assert.equal(p.stampedRef, null);
-  assert.equal(seen.length, 1, 'there is no stamp to measure, so nothing but the scheduler is read');
+  assert.deepEqual(p.installed, { engineVersion: null, packVersions: {} });
+  assert.equal(seen.length, 1, 'there is nothing to measure, so nothing but the scheduler is read');
 });
 
 // --- convergence --------------------------------------------------------------

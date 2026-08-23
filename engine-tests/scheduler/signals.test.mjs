@@ -256,11 +256,27 @@ test('sharedMount: only DECLARED packs whose vendored files changed are reported
   assert.deepEqual(out.sharedMount.changedPacks, ['basics']); // product-wiki not declared → ignored
 });
 
-test('stamp: age is derived from the mount stamp and now', async () => {
-  const gh = fakeGh([]);
-  const out = await collectSignals(gh, ctx({ config: { claudinite: { updated: '2026-07-20T00:00:00Z', ref: 'abc' } }, now: '2026-07-22T00:00:00Z' }), ['stamp']);
-  assert.equal(out.stamp.ref, 'abc');
-  assert.equal(out.stamp.ageDays, 2);
+// The mount's own movement, never a datetime in the declaration: the one that used
+// to be stamped there recorded the last FULL re-vendor, so a member converging
+// nightly read as months overdue forever (#1252).
+test('stamp: the installed versions, and whether the mount moved in the window', async () => {
+  const config = { engineVersion: '60820.1', packVersions: { basics: '60819.1' } };
+  const moved = await collectSignals(fakeGh([]), ctx({
+    config,
+    commits: [{ files: ['.claudinite/shared/engine/version.mjs'] }],
+  }), ['stamp']);
+  assert.equal(moved.stamp.present, true);
+  assert.equal(moved.stamp.engineVersion, '60820.1');
+  assert.deepEqual(moved.stamp.packVersions, { basics: '60819.1' });
+  assert.equal(moved.stamp.convergedInWindow, true);
+
+  const still = await collectSignals(fakeGh([]), ctx({ config, commits: [{ files: ['src/app.js'] }] }), ['stamp']);
+  assert.equal(still.stamp.convergedInWindow, false, 'project work is not a converge');
+
+  // A repo that has never been vendored records neither number, which is what
+  // "no mount" means now that no datetime says it.
+  const none = await collectSignals(fakeGh([]), ctx({ config: {}, commits: [] }), ['stamp']);
+  assert.equal(none.stamp.present, false);
 });
 
 test('a collector that throws is isolated under its key', async () => {

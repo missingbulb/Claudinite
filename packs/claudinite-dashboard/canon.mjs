@@ -16,7 +16,7 @@
 // is three times that, and a warm load pays for none of them.
 
 import * as gh from './github.mjs';
-import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mjs';
+import { installedVersions } from '../../engine/installed-versions.mjs';
 import { parseEngineVersion, parsePackVersion } from './fleet.mjs';
 
 export async function readCanon(config, token) {
@@ -55,7 +55,7 @@ export async function readCanon(config, token) {
 // memoized across members, and under today's spelling for a stamp written before a
 // pack rename.
 export async function priceStampedPacks(canon, declaration) {
-  if (!canon?.packVersion || !declaration?.claudinite?.packVersions) return;
-  const stamped = canonicalPackVersions(declaration.claudinite.packVersions);
-  await Promise.all(Object.keys(stamped ?? {}).map(canon.packVersion));
+  if (!canon?.packVersion || !declaration) return;
+  const { packVersions } = installedVersions(declaration);
+  await Promise.all(Object.keys(packVersions).map(canon.packVersion));
 }

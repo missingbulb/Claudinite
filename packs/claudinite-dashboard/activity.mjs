@@ -204,22 +204,18 @@ export function fleetBenefits(reads, { now, windowDays = 7, digests = null } = {
   const current = window(now - span, now + 1);
   const previous = window(now - 2 * span, now - span);
 
-  // Converging is read off each member's own stamp, which carries ONE date — the last
-  // converge. So this is a count for the current window only and never a comparison:
-  // a member that converged this morning cannot also be counted for last week, and
-  // pretending the previous window's figure means the same thing would make a healthy
-  // fleet look like it had stopped.
-  const converged = readable.filter((r) => {
-    const at = ms(r.declaration?.claudinite?.updated);
-    return at != null && at >= now - span;
-  }).length;
-
+  // NO `converged` FIGURE. It counted members whose declaration carried a converge
+  // datetime inside the window, and #1252 deleted that datetime — it recorded the
+  // last full re-vendor rather than the last converge, so the tile was already
+  // counting the wrong thing. Nothing this sweep reads can answer "converged in the
+  // last N days": a member's installed versions say WHAT it holds, never when it
+  // took it. The panel names the gap instead of approximating it, which is the rule
+  // this figure broke twice over (#1001, #1008).
   return {
     windowDays,
     current,
     previous,
     members: readable.length,
-    converged,
     // Whatever the digests panel actually found on disk, so this counts files that
     // exist rather than days the task was scheduled for.
     digests: digests == null ? null : digests.filter((d) => d?.text).length,
