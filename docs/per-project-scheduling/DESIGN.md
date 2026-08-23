@@ -241,7 +241,14 @@ refresh, not workflow edits). It runs
      no REST branch listing carries a date), because before that it carried
      *names only* — leaving the branch dimension with no notion of newness and
      every gate over it degenerate to "a branch exists". An unreadable tip is
-     `updatedAt: null`, never touched. `prs` additionally
+     `updatedAt: null`, never touched. Each open `prs` entry
+     carries `changedPaths`, the PR's own pending file list (one read per open
+     PR; no PR listing carries files, capped at 300 files), so a precondition can
+     rule on what is waiting for review rather than on a marker somebody has to
+     remember to apply — wiki-growth declines while a `product-wiki/` change is
+     pending, a human's as much as its own. A read that failed is `null`, never
+     `[]`: every PR changes a file, so unknown is a third state a path gate must
+     decline on rather than read as clear. `prs` additionally
      carries `merged`, the PRs **merged during the window** (the review
      discussion behind a change is the richest lesson material there is, and it
      is closed by the time a window sees it). `merged` is a separate field, not

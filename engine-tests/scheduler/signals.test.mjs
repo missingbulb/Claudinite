@@ -331,3 +331,26 @@ test('commits: an unreadable file list never reads as .claudinite/-only', async 
   assert.deepEqual(out.commits.touchedPaths, []);
   assert.equal(out.commits.substantiveChange, true);
 });
+
+// An open PR carries the paths it changes, so a precondition can rule on what is
+// pending rather than on a marker somebody has to remember to apply (wiki-growth
+// declines while a `product-wiki/` change waits for review).
+test('prs: an open PR carries its changed paths, and an unreadable file list is unknown', async () => {
+  const gh = fakeGh([
+    [/\/pulls\?state=open/, { status: 200, json: [
+      { number: 7, title: 'wiki round', updated_at: '2026-07-21T12:00:00Z' },
+      { number: 8, title: 'unreadable', updated_at: '2026-07-21T12:00:00Z' },
+    ] }],
+    [/\/pulls\?state=closed/, { status: 200, json: [] }],
+    [/\/pulls\/7\/files/, { status: 200, json: [
+      { filename: 'product-wiki/Market/README.md' },
+      { filename: 'product-wiki/sample-data/x.csv' },
+    ] }],
+  ]);
+  const out = await collectSignals(gh, ctx(), ['prs']);
+  const by = Object.fromEntries(out.prs.open.map((p) => [p.number, p.changedPaths]));
+  assert.deepEqual(by[7], ['product-wiki/Market/README.md', 'product-wiki/sample-data/x.csv']);
+  // Every PR changes at least one file, so nothing read is a read that failed —
+  // `null`, the third state, never an empty list a path gate would read as "clear".
+  assert.equal(by[8], null);
+});
