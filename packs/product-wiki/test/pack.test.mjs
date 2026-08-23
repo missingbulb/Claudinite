@@ -448,22 +448,30 @@ test('wiki-growth precondition: the weekly anchor IS the trigger; a wiki move on
 });
 
 // This precondition has exactly ONE declining arm, and it is the only decision
-// point in the task's life (per-project-scheduling DESIGN §12): an open PR still
-// carrying the `product-wiki-growth` label means the last round is unreviewed,
-// and a second round of unreviewed research is never stacked on it. That gate
-// used to be a task.md preflight — the agentic phase deciding to skip a run the
-// precondition had granted — and moved here when the prs signal grew labels.
+// point in the task's life (per-project-scheduling DESIGN §12): an open PR with a
+// pending `product-wiki/` change means wiki work is waiting for review, and a
+// second unreviewed round is never stacked on it. It reads the PR's own CONTENT,
+// so a human's wiki edit in flight gates the round exactly as the task's own PR does.
 // Everything else always runs: a wiki grows on research availability, not repo
 // activity, so the weekly anchor itself is the trigger and the worker's own stop
 // condition (no citable material → no branch, no PR) is an empty OUTCOME, not a
 // skip. Pin both directions.
-test('wiki-growth precondition: declines ONLY while a labeled growth PR sits open', () => {
+test('wiki-growth precondition: declines ONLY while an open PR carries a pending product-wiki change', () => {
   const withPr = wikiGrowth.precondition({
-    prs: { open: [{ number: 12, title: 'wiki round', labels: ['product-wiki-growth'] }] },
+    prs: { open: [{ number: 12, title: 'wiki round', changedPaths: ['product-wiki/Market/README.md'] }] },
   });
   assert.equal(withPr.run, false);
   assert.match(withPr.reason, /#12/);
-  assert.match(withPr.reason, /product-wiki-growth/);
+  assert.match(withPr.reason, /product-wiki\//);
+
+  // A PR whose paths could not be read at all is unknown, not clear — the arm that
+  // makes the gate survive an unreadable file list and an engine that predates it.
+  for (const opaque of [{ number: 13, title: 'unreadable' }, { number: 13, title: 'unreadable', changedPaths: null }]) {
+    const v = wikiGrowth.precondition({ prs: { open: [opaque] } });
+    assert.equal(v.run, false);
+    assert.match(v.reason, /#13/);
+    assert.match(v.reason, /unknown/);
+  }
 
   const shapes = [
     {},                                                   // no signals at all
@@ -472,8 +480,11 @@ test('wiki-growth precondition: declines ONLY while a labeled growth PR sits ope
     { commits: { touchedPaths: ['src/app.js'] } },        // busy, but nothing wiki-side
     { commits: { touchedPaths: ['product-wiki/Market/README.md'] } },
     { commits: null },                                    // malformed — still must not decline or throw
-    { prs: { open: [{ number: 9, title: 'other', labels: ['bug'] }] } },  // unrelated PR is not a gate
-    { prs: { open: [{ number: 9, title: 'no labels field' }] } },
+    { prs: { open: [{ number: 9, title: 'other', changedPaths: ['src/app.js'] }] } },  // unrelated PR is not a gate
+    { prs: { open: [{ number: 9, title: 'empty diff', changedPaths: [] }] } },
+    // root-anchored, exactly as the wiki-moved context is: a nested directory of
+    // the same name, or a sibling whose name merely starts the same, is not the tree
+    { prs: { open: [{ number: 9, title: 'lookalike', changedPaths: ['docs/product-wiki/README.md', 'product-wikis/x.md'] }] } },
   ];
   for (const signals of shapes) {
     const v = wikiGrowth.precondition(signals);

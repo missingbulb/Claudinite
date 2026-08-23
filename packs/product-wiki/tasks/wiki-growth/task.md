@@ -10,9 +10,8 @@ GitHub access is the session's **GitHub MCP tools** (`mcp__github__*`) — never
 `product-wiki/`, excluding the `product-wiki/product-requirements/` and `product-wiki/sample-data/` subtrees.
 
 There is no preflight: whether this run happens was decided by the task's **precondition** (it declines while
-a PR carrying the **`product-wiki-growth` label** — the marker every PR of this family applies to itself —
-sits open for review), so by the time you read this the round is granted. Your job is the research; label the
-PR you open `product-wiki-growth` so the next round's precondition can see it.
+any open PR carries a pending change under `product-wiki/`, whoever opened it), so by the time you read this
+the round is granted. Your job is the research.
 
 ## Method
 
@@ -49,9 +48,8 @@ Neither mode yields citable material → stop. No commit, no log entry, no PR.
 ## Delivery
 
 A unique branch per run, commits touching only `product-wiki/**` minus `product-requirements/`, one
-**PR — never a push to the default branch directly** — carrying the **`product-wiki-growth` label**. The
-label is load-bearing: it is how the next run's precondition sees this PR at all, so a PR opened without it
-will be stacked on by the following week's run — label it whether or not the PR then lands.
+**PR — never a push to the default branch directly**. Its `product-wiki/` paths are what the next run's
+precondition sees, so nothing further has to be applied to it.
 Then hand it to the one delivery procedure (`deliver-pr.md`) and do what it says. PR body: the question(s)
 researched, what changed where, the citations added, and the open questions left for the next run.
 
