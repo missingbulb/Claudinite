@@ -34,6 +34,7 @@ import { canonicalPackVersions } from '../../engine/pack_loader/renamed-packs.mj
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../engine/version.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths } from './model.mjs';
 import { commitDays } from './activity.mjs';
+import { itemCandidate, pickCandidate } from './next-work.mjs';
 
 // Severity ladder, worst first. The order IS the sort, so it is stated once here
 // rather than implied by comparisons scattered through the render.
@@ -270,6 +271,10 @@ export function summariseMember(read, { now, canon = null } = {}) {
     // summary judges nothing about it. A contribution never feeds a reason, a level
     // or the ranking — attention is earned by what the engine can defend, and a pack
     // cannot rank across a fleet it does not know.
+    // The one item of this member's worth prodding a reader about, ranked by the same
+    // rules the repo page's work table ranks by. Computed here because this is the only
+    // place the described items exist, and nothing above re-reads them.
+    top: pickCandidate(described.map((d) => itemCandidate(repo, d))),
     contributions: read.contributions ?? null,
     live: read.live ?? null,
     lastCommit: head?.committedAt ? ms(head.committedAt) : null,
@@ -439,6 +444,28 @@ export const approvalMinutes = (changedLines = null) =>
   (Number.isFinite(changedLines) && changedLines > 0
     ? Math.max(1, Math.ceil((changedLines / APPROVAL_RATE.lines) * APPROVAL_RATE.minutes))
     : APPROVAL_RATE.minutes);
+
+// ONE parked item's own minutes, from the rates above — so a figure shown against a
+// single item is one term of that sum rather than a second estimate. `park` is the
+// item's own classification and nothing else: whether it blocks, and its triage label.
+// Anything that is not a park has no figure at all here, by the same rule that keeps
+// scheduler faults and recovery-rule trips out of the total.
+export function parkMinutes(park) {
+  if (!park) return null;
+  // An undecodable park is priced as the thing it is treated as everywhere else.
+  if (park.blocking || !park.triage) return PARK_MINUTES.broken;
+  if (park.triage === NEEDS_HUMAN_APPROVAL) return approvalMinutes();
+  if (park.triage === NEEDS_HUMAN_ACTION) return PARK_MINUTES.actions;
+  return PARK_MINUTES.decisions;
+}
+
+// The one caveat a single item's figure carries, and only the approvals carry it: the
+// page never reads a PR's size, so an approval is charged the rate's floor and its
+// figure can only be low. The same sentence `estimateNote` appends to a total.
+export const parkMinutesNote = (park) =>
+  (parkMinutes(park) != null && !park.blocking && park.triage === NEEDS_HUMAN_APPROVAL
+    ? 'PR size unread, so a lower bound'
+    : null);
 
 // The vocabulary both the per-member row and the fleet rollup speak, so one function
 // itemises both. Each field is a count of THINGS waiting; the two callers differ only
