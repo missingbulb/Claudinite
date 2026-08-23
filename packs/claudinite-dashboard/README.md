@@ -124,7 +124,7 @@ wanted it say so, and nothing else on the page is affected.
 
 | Panel | Answers |
 |---|---|
-| **Start here** | The one piece of work most worth doing in this repo, named with the issue to open — the top row of the same ranking the work table is ordered by |
+| **Start here** | The one piece of work most worth doing in this repo, named with the issue to open and what it costs you — the top row of the same ranking the work table is ordered by |
 | **At a glance** | Minutes waiting on a person and what they are made of, items parked, open pull requests and issues, CI on the default branch, runs in flight, stars, and drift against the canon |
 | **Work** | One row per piece of work, in three views — **stuck** (what has stopped, and for how long), **pending** (what is moving, and what happens next), **all** (what each task is and what it has done). The page opens on the worst view that has anything in it |
 | **What the queue closed** | Per-day outcomes over a fortnight — today from the live issue page, the days before it from the fold |
@@ -176,7 +176,7 @@ second. So nothing on it is a total for its own sake.
 
 | Panel | Answers |
 |---|---|
-| **Start here** | The one piece of work most worth doing across every member, named with the issue to open — the worst thing true of the fleet, and a link rather than a count |
+| **Start here** | The one piece of work most worth doing across every member, named with the issue to open and what it costs you — the worst thing true of the fleet, and a link rather than a count |
 | **The morning brief** | Yesterday's fleet digest, when the deployment names a `digestsRepo`, with a picker back through earlier days |
 | **What Claudinite did this week** | The work the machinery did that nobody had to do — this week against last, including the check findings caught inside sessions and what the corpus costs each of them |
 | **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, **how often the checks ran and caught something**, and which members moved at all |
@@ -197,6 +197,15 @@ accurate panels to do the ranking themselves. [`next-work.mjs`](next-work.mjs) d
 ranking and names **one** piece of work: worst first, an issue ahead of a repo-level
 fault at the same severity because only the issue is something to open, and among equals
 the one that has been wrong longest.
+
+The card carries **what it costs you** beside the reason, because "one item is parked" is
+a fact and "fifteen minutes" is a decision about the next fifteen minutes. The figure is
+one term of the same sum the tiles total — the park's own rate, by what it asks of you
+([`PARK_MINUTES`](fleet.mjs)) — so a card and a tile can never price one item
+differently. `next-work.mjs` holds no rates at all: a candidate carries the park's own
+classification and the view prices it. An approval is charged the floor of its rate,
+since no PR's size is read here, and the card says *at least*. Work the estimate does not
+cover — a scheduler fault, a recovery-rule trip — shows **no figure**, never a zero.
 
 It invents no judgement of its own. A candidate is the worst thing another module has
 already decided is wrong — an item's `troubles` (the queue's real recovery rules) or a

@@ -263,7 +263,19 @@
   .lead-card.lvl-serious  { border-left-color: var(--serious); }
   .lead-card.lvl-warning  { border-left-color: var(--warning); }
   .lead-card.lvl-ok       { border-left-color: var(--good); }
+  /* The why and its price, on one line: the figure is the reason to act NOW and reads
+     against the sentence it prices, not as a footnote under it. */
+  .lead-top { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; }
   .lead-why { font-size: 17px; line-height: 1.3; }
+  /* The one figure on this card that is a quantity of YOUR time rather than a count of
+     the machine's things — the same weight the fleet grid gives its own estimate. */
+  .lead-est { text-align: center; white-space: nowrap; padding: 5px 12px; border-radius: 10px;
+              background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .lead-est .v { display: block; font-size: 25px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .lead-est .k { display: block; font-size: 11.5px; color: var(--muted); }
+  /* Nothing measures a broken scheduler's cost, so the slot says so rather than
+     drawing a zero — an absent estimate is information, a zero is a claim. */
+  .lead-est.none .v { color: var(--muted); }
   .lead-where { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
   .lead-more { margin: 0; }
   .lead-act { align-self: flex-start; text-decoration: none; padding: 5px 12px;
@@ -502,7 +514,12 @@
           thing that is true of the fleet right now, named with the issue to open. It invents no
           judgement of its own: it is the top row of the same ranking the members table below is
           ordered by, so this block and that table can never disagree. An issue outranks a repo-level
-          fault at the same severity, because only the issue is something to open.
+          fault at the same severity, because only the issue is something to open. The
+          <strong>minutes</strong> beside it are one term of the same sum the tiles below
+          total — the park's own rate, by what it asks of you — so the card and the tiles
+          can never price one item differently. An approval is charged the floor of its
+          rate, since no PR's size is read here, and work the estimate does not cover shows
+          no figure rather than a zero.
         </p>
         <div id="fleet-lead"></div>
       </section>
@@ -635,7 +652,10 @@
       <p class="info-body" id="info-repo-lead" hidden>
         The <strong>one</strong> piece of work most worth doing in this repo — the top row of the
         same ranking the work table below is ordered by, named with the issue to open, so the block
-        and the table are one verdict rather than two.
+        and the table are one verdict rather than two. The <strong>minutes</strong> beside it
+        are one term of the same sum the tiles above total — the park's own rate, by what it
+        asks of you. An approval is charged the floor of its rate, since no PR's size is read
+        here, and work the estimate does not cover shows no figure rather than a zero.
       </p>
       <div id="repo-lead"></div>
     </section>

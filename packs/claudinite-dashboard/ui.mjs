@@ -253,9 +253,13 @@ export const repoLink = (repo) =>
 // than its words, so an uncoloured card is legible as "nothing is red" at a glance.
 //
 // `candidate` is `next-work.mjs`'s pick, or null. `rest` is how many candidates sit
-// behind it, which is the only number here — one piece of work is a prod, and the
-// queue behind it is context.
-export function leadCard(candidate, { rest = 0, onRepo = null } = {}) {
+// behind it — one piece of work is a prod, and the queue behind it is context.
+//
+// `minutes` is priced by the CALLER, from the attention estimate's own rates: this
+// module renders a figure and never computes one, so the card cannot publish a number
+// the tiles below would total differently. `note` is whatever that pricing has to
+// disclaim about it.
+export function leadCard(candidate, { rest = 0, onRepo = null, minutes = null, note = null } = {}) {
   if (!candidate) {
     return el('div', { className: 'chart-card lead-card lvl-ok' }, [
       el('div', { className: 'lead-why', textContent: 'Nothing is waiting on you.' }),
@@ -279,8 +283,25 @@ export function leadCard(candidate, { rest = 0, onRepo = null } = {}) {
     if (candidate.key) where.push(el('span', { className: 'sub', textContent: candidate.key }));
   }
 
+  // What it costs a person, beside the reason rather than under it: "one item is
+  // parked" is a fact, "fifteen minutes" is a decision about the next fifteen minutes.
+  // Work the estimate does not cover — a broken scheduler is not a queue to get
+  // through — says so rather than showing a zero.
+  const cost = minutes != null
+    ? el('div', { className: 'lead-est', title: note ?? '' }, [
+      el('span', { className: 'v', textContent: `${minutes} min` }),
+      el('span', { className: 'k', textContent: note ? 'of your time, at least' : 'of your time' }),
+    ])
+    : el('div', { className: 'lead-est none' }, [
+      el('span', { className: 'v', textContent: '—' }),
+      el('span', { className: 'k', textContent: 'no time estimate' }),
+    ]);
+
   const kids = [
-    el('div', { className: 'lead-why', textContent: candidate.why }),
+    el('div', { className: 'lead-top' }, [
+      el('div', { className: 'lead-why', textContent: candidate.why }),
+      cost,
+    ]),
     el('div', { className: 'lead-where' }, where),
   ];
   if (candidate.title) kids.push(el('div', { className: 'sub', textContent: candidate.title }));

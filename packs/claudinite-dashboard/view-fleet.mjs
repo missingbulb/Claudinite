@@ -4,7 +4,7 @@
 import * as gh from './github.mjs';
 import {
   summariseMember, rankMembers, rollUp, packSpread, taskSpread, attentionBreakdown,
-  memberAttention, fleetAttention, estimateMinutes, estimateNote,
+  memberAttention, fleetAttention, estimateMinutes, estimateNote, parkMinutes, parkMinutesNote,
 } from './fleet.mjs';
 import { readCanon, priceStampedPacks } from './canon.mjs';
 import { activitySeries, fleetBenefits, delta, commitDays } from './activity.mjs';
@@ -686,7 +686,12 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
       el('div', { className: 'lead-why', textContent: 'Reading the fleet…' }),
       el('div', { className: 'sub', textContent: `${progress.done}/${progress.total} members read — nothing waiting on you in those.` }),
     ])
-    : leadCard(candidates[0] ?? null, { rest: candidates.length - 1, onRepo: onOpen }));
+    : leadCard(candidates[0] ?? null, {
+      rest: candidates.length - 1,
+      onRepo: onOpen,
+      minutes: parkMinutes(candidates[0]?.park),
+      note: parkMinutesNote(candidates[0]?.park),
+    }));
 
   // The headline tile counts MEMBERS, which is the length of the morning's list — but
   // the list is only actionable once it says what kind of attention each is waiting

@@ -20,6 +20,7 @@ import {
 } from './model.mjs';
 import {
   ciStatus, humanWork, mountState, estimateMinutes, estimateNote, attentionBreakdown,
+  parkMinutes, parkMinutesNote,
 } from './fleet.mjs';
 import { readCanon, priceStampedPacks } from './canon.mjs';
 import { workRows, rowsFor, viewCounts, defaultView, attentionOf, VIEWS } from './work.mjs';
@@ -484,7 +485,12 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   // The lead, from the same rows the work table is drawn from — one derivation, so the
   // block at the top and the first row of the `stuck` view are one verdict.
   const candidates = repoCandidates(repo, all);
-  $('repo-lead').replaceChildren(leadCard(candidates[0] ?? null, { rest: candidates.length - 1 }));
+  const lead = candidates[0] ?? null;
+  $('repo-lead').replaceChildren(leadCard(lead, {
+    rest: candidates.length - 1,
+    minutes: parkMinutes(lead?.park),
+    note: parkMinutesNote(lead?.park),
+  }));
 
   renderTiles({
     open,

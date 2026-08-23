@@ -16,7 +16,7 @@
 // a weaker prod than "open this issue".
 
 import { troubles } from './work.mjs';
-import { WORK_PREFIX } from './model.mjs';
+import { WORK_PREFIX, NEEDS_HUMAN } from './model.mjs';
 
 const LEVELS = ['critical', 'serious', 'warning', 'info', 'ok'];
 const levelRank = (l) => {
@@ -52,6 +52,12 @@ export function itemCandidate(repo, item, row = null) {
     title: humanTitle(item.title),
     key: item.key ?? null,
     idleMs: item.idleMs ?? null,
+    // The item's own park classification, and no price: what a park COSTS is the
+    // attention estimate's arithmetic (`fleet.mjs`), and this module holds no rates.
+    // Null for anything that is not a park, which is what that estimate leaves out.
+    park: item.state === NEEDS_HUMAN
+      ? { blocking: Boolean(item.blockingPark), triage: item.triage ?? null }
+      : null,
     url: issueUrl(repo, item.number),
   };
 }
@@ -74,6 +80,9 @@ export function reasonCandidate(repo, reasons) {
     title: null,
     key: null,
     idleMs: null,
+    // A broken scheduler is not a park and not a queue of work to get through; the
+    // fleet's own estimate leaves it out and so does this.
+    park: null,
     url: `https://github.com/${repo}`,
   };
 }

@@ -36,6 +36,7 @@ const candidate = (over = {}) => ({
   title: '[claudinite-work] basics/baselining',
   key: 'basics/baselining',
   idleMs: 3 * 86400e3,
+  park: { blocking: true, triage: null },
   url: 'https://github.com/an-owner/TicketWatch/issues/42',
   ...over,
 });
@@ -61,6 +62,23 @@ test('a repo-level fault opens the repo, since there is no issue to open', () =>
   }));
   assert.equal(card.find('lead-act')[0].textContent, 'Open the repo');
   assert.doesNotMatch(card.text, /#/);
+});
+
+test('what it costs a person is on the card, in its own slot', () => {
+  const card = leadCard(candidate(), { minutes: 15 });
+  assert.equal(card.find('lead-est')[0].text, '15 minof your time');
+});
+
+test('a figure the caller had to disclaim says so on the card', () => {
+  const card = leadCard(candidate(), { minutes: 1, note: 'PR size unread, so a lower bound' });
+  assert.match(card.find('lead-est')[0].text, /at least/);
+});
+
+test('work nothing measures shows no figure rather than a zero', () => {
+  const est = leadCard(candidate()).find('lead-est')[0];
+  assert.match(est.className, /none/);
+  assert.match(est.text, /no time estimate/);
+  assert.doesNotMatch(est.text, /\b0\b/);
 });
 
 test('what is behind the one is a count, never a second block of work', () => {
