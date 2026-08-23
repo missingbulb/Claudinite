@@ -97,6 +97,9 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    canon-owned, never the project's own code — while `.claudinite/local_packs/` stays fully in
    scope. Deliberately a structural rule in the engine, **not** a `.gitattributes` /
    `linguist-vendored` convention: the exclusion must hold on any git host and any checkout.
+   The wiring converge does *also* declare the mount `linguist-vendored`, for what only the
+   host can act on — language stats and a collapsed diff — and the engine consults no
+   attribute to reach the same exclusion.
    This is also what keeps the corpus-shape checks (catalog-completeness, skill-ownership)
    naturally inert in consumers with a pruned tree.
 7. **Pinning semantics.** Each branch runs the snapshot committed on it: a session and its Stop

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,7 @@ import {
   removeRetiredBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
   BADGE_ROW_START, BADGE_ROW_END, README,
   ensureRulesIndexImport, ensureRulesIndexMergeAttribute, RULES_INDEX_MERGE_ATTR,
+  ensureMountVendoredAttribute, MOUNT_VENDORED_ATTR,
   seedRepoLocalPack, packIdForRepo,
 } from '../../engine/scheduler/converge-wiring.mjs';
 import { RULES_INDEX_IMPORT } from '../../engine/pack_loader/generate-rules-index.mjs';
@@ -188,6 +190,29 @@ test('ensureRulesIndexMergeAttribute: declares merge=ours for the generated inde
   assert.equal(ensureRulesIndexMergeAttribute(root), false);
 });
 
+test('ensureMountVendoredAttribute: declares the shared mount vendored, idempotently', () => {
+  const root = mkRepo();
+  writeFileSync(join(root, '.gitattributes'), 'usage.GENERATED.json merge=ours');
+  assert.equal(ensureMountVendoredAttribute(root), true);
+  const text = readFileSync(join(root, '.gitattributes'), 'utf8');
+  assert.ok(text.includes('usage.GENERATED.json merge=ours'), "the repo's existing entries survive");
+  assert.ok(text.split('\n').includes(MOUNT_VENDORED_ATTR));
+  assert.equal(ensureMountVendoredAttribute(root), false);
+});
+
+test('MOUNT_VENDORED_ATTR: the pattern git is handed actually matches a mounted file', () => {
+  // The line is only worth carrying if git resolves it over a real mount path — a
+  // pattern that matches nothing reads as live and annotates nothing.
+  const root = mkRepo();
+  execFileSync('git', ['init', '-q'], { cwd: root });
+  mkdirSync(join(root, '.claudinite', 'shared', 'engine', 'checks'), { recursive: true });
+  writeFileSync(join(root, '.claudinite', 'shared', 'engine', 'checks', 'check_the_world.mjs'), '// vendored\n');
+  assert.equal(ensureMountVendoredAttribute(root), true);
+  const out = execFileSync('git', ['check-attr', 'linguist-vendored', '--',
+    '.claudinite/shared/engine/checks/check_the_world.mjs'], { cwd: root, encoding: 'utf8' });
+  assert.match(out, /linguist-vendored: set/);
+});
+
 test('convergeWiring: lands the index, its import and its merge attribute together', async () => {
   // All three or none: an index nothing imports, or an import with no index behind it,
   // are both a repo whose rules silently do not load.
@@ -203,6 +228,7 @@ test('convergeWiring: lands the index, its import and its merge attribute togeth
   assert.match(index, /@shared\/packs\/basics\/RULES\.md/);
   assert.ok(readFileSync(join(root, 'CLAUDE.md'), 'utf8').includes(RULES_INDEX_IMPORT));
   assert.ok(readFileSync(join(root, '.gitattributes'), 'utf8').includes(RULES_INDEX_MERGE_ATTR));
+  assert.ok(readFileSync(join(root, '.gitattributes'), 'utf8').includes(MOUNT_VENDORED_ATTR));
 
   const second = await convergeWiring(root, REPO, STUB);
   assert.ok(!second.changed.some((c) => c.includes('claudinite-rules.GENERATED.md') || c.includes('rules-index')), second.changed.join(', '));
