@@ -561,7 +561,7 @@ export const FIXTURES = [
     why: 'a local pack declaring no id, prose, badge or skills — the manifest a consumer writes once the tree answers for them (#1246); its prose must still load and its skill must still mount',
     files: {
       'README.md': '# fixture-convention\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics', 'local/fixture-convention']),
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-convention']),
       '.claudinite/local/packs/fixture-convention/pack.mjs': PACK_BY_CONVENTION,
       '.claudinite/local/packs/fixture-convention/RULES.md': '# fixture-convention\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-convention/skills/fixture-convention-skill/SKILL.md':
