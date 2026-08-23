@@ -11,11 +11,13 @@ The project-agnostic half of how we drive GitHub: the branch/commit-history rule
 
 To post a **status update** on an issue (the lifecycle's "update the issue's status" step), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
 
+The same full-replace trap applies to **array-valued fields** — `labels` most of all. Passing `labels` on an update call sets the issue's whole label set to exactly what you named, not an add: naming only the outcome label you want to add silently drops every queue-state label the issue already carried. Read the issue's current labels first and pass the full merged set, or use a dedicated add/remove endpoint where the API offers one.
+
 ## An auto-merge refusal is not a verdict — read the PR's state, then act
 
 `enable_pr_auto_merge` only accepts a PR whose required checks are still **pending**, so its refusals answer *timing and configuration*, never the change. Take each at face value and stop:
 
-- *"already in clean status (all checks passed)"* — the checks finished before you got there. That's the green light: `merge_pull_request` directly.
+- *"already in clean status (all checks passed)"* — the checks finished before you got there. That's the green light: `merge_pull_request` directly. This wording also covers a PR that triggered **no** checks at all, when CI is scoped by `paths:` to files the PR never touched — merge is still correct, but don't read the same "clean" status as evidence anything was verified for that PR; whatever it changed needs its own confirmation.
 - *"in unstable status (required checks are failing)"* — this same wording covers a check that is **queued** or **held at an approval gate**. Resolve it by reading the PR's check runs and looking at **`status`**, not `conclusion`; a check that hasn't `completed` has no verdict.
 - *"Protected branch rules not configured"* — auto-merge is a protected-branch feature, so a repo with no rule on its default branch can never arm it. Final; don't let an earlier refusal's wording talk you out of it.
 
@@ -182,6 +184,10 @@ A list or search API call that isn't bounded returns a full page of full-bodied 
 - **Pass a small explicit page size.** Default page sizes are tuned for a browser, not a tool result; when the answer wanted is one issue or one run, ask for 5–10, never a bare unpaged call.
 
 All of them, not one: a qualified query still returns a full page, a small page of unqualified matches is still the wrong records, and a small page of full-bodied records still overruns the cap.
+
+**Qualify `head` with the owner, not the bare branch name.** Filtering a PR list by its head branch (`head: "my-branch"`) can silently fail to filter at all and hand back an unrelated PR as if it matched, with no error naming the miss. Pass `owner:branch-name`.
+
+**Once a repo is confirmed to carry no PR template, stop probing for one.** Some GitHub tooling instructs a search for `pull_request_template.md` before every `create_pull_request` call; in a templateless repo that is a guaranteed-failing, wasted lookup repeated on every PR. After the first miss, write the PR body from the commit message directly and skip the search on every later PR in that repo.
 
 ## Merging gotchas
 

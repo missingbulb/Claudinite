@@ -31,6 +31,7 @@ without firing on ordinary HTTP code.
 | Choosing which field to read | high | correctness | prose: 57 words |
 | Filtering rows by a status | high | correctness | prose: 40 words |
 | Reading a numeric field | high | correctness | prose: 17 words |
+| Extracting text from arbitrary HTML | high | correctness | prose: 61 words |
 | Reducing a set to its cheapest | medium | correctness | prose: 45 words |
 | Converting an instant to local time | high | correctness | prose: 132 words |
 | Taking a "now" | high | correctness | prose: 38 words |

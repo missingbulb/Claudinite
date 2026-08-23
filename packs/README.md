@@ -24,6 +24,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="claudinite-canary-repo/badge.svg" width="18" height="18" alt=""> [claudinite-canary-repo](claudinite-canary-repo/README.md) | declared (opt-in; the canary repo only, and `hidden` from the consumer catalog) | 0 | 0 (one inert workflow, seeded then converged — the live proof of the workflow-delivery lane) |
 | <img src="claudinite-dashboard/badge.svg" width="18" height="18" alt=""> [claudinite-dashboard](claudinite-dashboard/README.md) | declared (opt-in) | 0 | 0 (a browser dashboard over scheduler state, published to Pages; adoption seeds the deploy workflow) |
 | <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 10 | 24 |
+| <img src="host-page-adaptation/badge.svg" width="18" height="18" alt=""> [host-page-adaptation](host-page-adaptation/README.md) | declared (opt-in) | 2 | 10 |
 | <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 5 |
 | <img src="python/badge.svg" width="18" height="18" alt=""> [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
 | <img src="web-speech/badge.svg" width="18" height="18" alt=""> [web-speech](web-speech/README.md) | speech API in JS/TS source | 0 (2 in its skill) | 15 |

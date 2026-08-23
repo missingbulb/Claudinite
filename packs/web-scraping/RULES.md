@@ -96,6 +96,12 @@ whatever they mean on your stack.
 
 - **Reading a numeric field** — numbers may arrive as strings. Parse; don't assume the JSON type.
 
+- **Extracting a human-readable text from arbitrary HTML** — strip `<script>`, `<style>` and
+  `<noscript>` from a clone before reading any element's text. `textContent` unconditionally
+  includes script/style source text, and a real browser keeps `<noscript>` as inert raw text
+  alongside it — neither throws, so a naive read silently returns markup and code as if it were
+  what a person would see.
+
 - **Reducing a set to its "cheapest" or "first"** — that value can be a special case rather than
   a value. Filter to what the field means before you reduce over it: a zero-priced accessibility
   companion band makes the cheapest ticket for every show free.

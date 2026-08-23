@@ -8,7 +8,8 @@ Active when the repo has a root `package.json`. Prose-only (the module-resolutio
 |---|---|---|---|
 | A named CJS import can yield undefined | high | correctness | prose: 130 words |
 | Node detects ES-module syntax on its own | medium | correctness | prose: 79 words |
-| node --test skips dot-directories | critical | correctness | prose: 148 words |
+| Resolution starts from the script's own directory | medium | correctness | prose: 72 words |
+| node --test skips dot-directories | critical | correctness | prose: 156 words + check (`node/test-discovery-resolves`) |
 | body.innerText is null in jsdom. | medium | correctness | prose: 52 words |
 | jsdom parses <noscript> into live DOM | medium | correctness | prose: 51 words |
 
@@ -17,3 +18,4 @@ Active when the repo has a root `package.json`. Prose-only (the module-resolutio
 | Check | Severity | Reason | Enforcement |
 |---|---|---|---|
 | `node/earn-each-dependency` | medium | complexity | check: advisory |
+| `node/test-discovery-resolves` | critical | correctness | check: blocking |

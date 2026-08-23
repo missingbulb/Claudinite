@@ -208,7 +208,11 @@ its tracking issue.
   against the copy in both directions when the duplicate mirrors matcher or predicate logic. Keep
   the guarded literal itself unbroken, since a value split across a line break is invisible to the
   guard and to a `grep`/`sed` rename alike. Have the guard's own text name the places it watches and
-  why the split is forced, and don't also comment the duplication — the guard covers it.
+  why the split is forced, and don't also comment the duplication — the guard covers it. When the
+  two copies live in different languages with different naming conventions (`SCREAMING_SNAKE` vs.
+  `lowerCamel`) and can't be matched by literal value (one value can be a numeric substring of
+  another, e.g. `"150"` inside `"1500"`), pair them by name instead: apply the known casing
+  transform to derive one side's identifier from the other, so the guard needs no per-value upkeep.
 
 - **Writing file A so it depends on file B** — say what A needs from B, or that it delegates, and
   don't re-spell how B does its job. If you're about to paraphrase B's procedure, point at B
