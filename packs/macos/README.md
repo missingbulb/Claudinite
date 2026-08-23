@@ -15,6 +15,7 @@ mechanics for the CI that runs the lane).
 | Commit an icon master, generate .icns | low | complexity | prose: 44 words |
 | A menu-bar-only app is LSUIElement: true | medium | correctness | prose: 23 words |
 | Pin LSMinimumSystemVersion to the package's platform | high | correctness | prose: 30 words + check (`minimum-system-version-agrees`) |
+| Surface app version and build number | medium | correctness | prose: 69 words |
 | Notarization requires the Hardened Runtime | critical | legal | prose: 64 words |
 | TCC-gated capabilities need no entitlement | medium | correctness | prose: 41 words |
 | No App Sandbox on Developer ID | high | correctness | prose: 40 words |

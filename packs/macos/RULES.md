@@ -22,6 +22,11 @@ target is `ios`.
   the Dock icon and the main window.
 - **Pin `LSMinimumSystemVersion` to the same OS version the package's `platforms:` declares.** They
   are two independent claims about the same floor, and only one of them is enforced at launch.
+- **Surface the running app's version *and* build number, read live from the single manifest
+  source** (`Bundle.main`/`Info.plist`), never a duplicated string constant. A release pipeline
+  keyed only on the version string can silently republish the same release under a new binary (a
+  merge that leaves `CFBundleShortVersionString` untouched still refreshes the artifact behind it)
+  — the build number is what actually lets a support conversation tell two such builds apart.
 
 ## TCC and the Hardened Runtime are two different gates — know which applies
 

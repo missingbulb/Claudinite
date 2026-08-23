@@ -45,6 +45,11 @@ Environment separation — dev/prod projects, App Check, store gating — is not
   call; clean up dead tokens on the *actual* error codes
   (`messaging/registration-token-not-registered` — verify codes against the installed
   firebase-admin, not memory or old blog posts).
+- **A geo bounds query returns candidates, never answers.** `geohashQueryBounds` (or any geohash
+  range query) returns every document whose *cell* intersects the search circle, including cells
+  that only partially overlap it — guaranteed over-fetch, not an edge case. Post-filter every
+  candidate by real (haversine) distance, plus any other eligibility check (freshness, status),
+  before treating it as a match; never let caching or widening the query bypass that post-filter.
 
 ## 3. Test logic pure, rules empirically
 
@@ -56,7 +61,10 @@ Environment separation — dev/prod projects, App Check, store gating — is not
   forbidden shape.
 - **Cross-language contracts get mirrored test vectors.** When client and server must compute the
   same derived value (a geohash, a normalization), commit identical input→output vectors in both
-  suites and diff the literals in CI — "both use the standard algorithm" is not a proof.
+  suites and diff the literals in CI — "both use the standard algorithm" is not a proof. Include
+  vectors that land exactly on a cell's **bisection midpoint**: which half it falls in depends on
+  whether the comparison uses `>` or `>=`, an implementation choice "normal" points never exercise,
+  so two ports can silently diverge only there.
 
 ## 4. Deploy layout and aliases
 

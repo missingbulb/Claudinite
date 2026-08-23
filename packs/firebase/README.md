@@ -34,9 +34,10 @@ pipeline alone, and App Check attestation so only store-installed builds reach t
 | Rate limits need a transaction. | high | correctness | prose: 39 words |
 | Chunk batched writes under the limit | high | correctness | prose: 36 words |
 | Push is best-effort by construction | medium | correctness | prose: 37 words |
+| A geo bounds query returns candidates | high | correctness | prose: 68 words |
 | Extract decision logic into pure modules | medium | complexity | prose: 26 words |
 | Test the rules themselves empirically | high | correctness | prose: 37 words |
-| Cross-language contracts get mirrored test vectors. | high | correctness | prose: 44 words |
+| Cross-language contracts get mirrored test vectors. | high | correctness | prose: 83 words |
 | Keep the Firebase project root self-contained | medium | complexity | prose: 71 words |
 | Commit .firebaserc with a safe default | critical | correctness | prose: 33 words |
 | Smoke-load the built entrypoint | high | correctness | prose: 36 words + check (`firebase/functions-predeploy-build`) |
