@@ -444,7 +444,7 @@ export function loadConfig(root) {
     else if (!['auto-merge', 'auto', 'push', ''].includes(legacy)) {
       errors.push({
         what: `the retired "maintenance.delivery" holds ${JSON.stringify(raw.maintenance.delivery)}, which is neither auto-merge nor review`,
-        fix: `remove the "maintenance" block — set "${'dailyClaudiniteUpdatesRequirePrReview'}": true if this repo's update PR must wait for a human`,
+        fix: 'remove the "maintenance" block — set "dailyClaudiniteUpdatesRequirePrReview": true if this repo\'s update PR must wait for a human',
       });
     }
   }
