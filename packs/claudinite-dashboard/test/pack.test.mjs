@@ -257,7 +257,7 @@ test('a mount without the page produces nothing and exits clean', async (t) => {
   }
   // The build resolves the member's settings file by name rather than naming it, so
   // the module that knows both names is part of the mount it needs.
-  await cp(join(PACK_DIR, '..', '..', 'engine', 'settings-file.mjs'), join(dir, '.claudinite/shared/engine/settings-file.mjs'));
+  for (const f of ['settings-file.mjs', 'settings-file-names.mjs']) await cp(join(PACK_DIR, '..', '..', 'engine', f), join(dir, `.claudinite/shared/engine/${f}`));
   await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: ['claudinite-dashboard'] }));
 
   const { stdout } = await build(dir);

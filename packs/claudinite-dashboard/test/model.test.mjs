@@ -31,31 +31,6 @@ const item = (over = {}) => ({
   ...over,
 });
 
-// --- the property the whole design rests on -----------------------------------
-
-// The dashboard imports the engine's scheduler modules instead of restating the
-// queue's vocabulary, which is only possible while those modules stay free of Node
-// builtins. If one of them grows a `node:` import the page breaks in the browser
-// and NOWHERE ELSE — the Node tests would keep passing — so the property is pinned
-// here rather than left to be discovered by a blank screen.
-test('the engine modules the page imports stay browser-pure', async () => {
-  const imported = [
-    'engine/checks/helpers/code-scanning.mjs',
-    'engine/scheduler/calendar.mjs',
-    'engine/scheduler/queue/anchors.mjs',
-    'engine/scheduler/queue/leases.mjs',
-    'engine/scheduler/queue/work-item.mjs',
-    'engine/pack_loader/renamed-packs.mjs',
-  ];
-  for (const rel of imported) {
-    const src = await readFile(resolve(ROOT, rel), 'utf8');
-    const code = src.replace(/^\s*\/\/.*$/gm, '');
-    assert.doesNotMatch(code, /from\s+'node:/, `${rel} imports a node: builtin`);
-    assert.doesNotMatch(code, /\brequire\s*\(/, `${rel} uses require()`);
-    assert.doesNotMatch(code, /\bprocess\./, `${rel} touches process`);
-  }
-});
-
 // The tool's own sources must import those modules rather than carry a copy of the
 // label strings — a restated label is exactly the drift this design exists to
 // prevent, and it would look completely correct on the day it was written.

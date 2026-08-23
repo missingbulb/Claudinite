@@ -30,7 +30,7 @@ function makeCorpus(packs) {
   // beside pack_loader in the real tree.
   cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   // Where a member's settings live: the loader resolves the declaration through it.
-  cpSync(join(REPO_ROOT, 'engine', 'settings-file.mjs'), join(root, 'engine', 'settings-file.mjs'));
+  for (const f of ['settings-file.mjs', 'settings-file-names.mjs']) cpSync(join(REPO_ROOT, 'engine', f), join(root, 'engine', f));
   for (const [id, { proseText, manifestSource, ...manifest }] of Object.entries(packs)) {
     const dir = join(root, 'packs', id);
     mkdirSync(dir, { recursive: true });

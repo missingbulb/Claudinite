@@ -44,7 +44,7 @@ function makeCanon() {
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'remove-tree.mjs'), join(root, 'engine', 'remove-tree.mjs'));
   // Where a member's settings live, and the shape of the versions in them.
-  copyFileSync(join(REPO_ROOT, 'engine', 'settings-file.mjs'), join(root, 'engine', 'settings-file.mjs'));
+  for (const f of ['settings-file.mjs', 'settings-file-names.mjs']) copyFileSync(join(REPO_ROOT, 'engine', f), join(root, 'engine', f));
   copyFileSync(join(REPO_ROOT, 'engine', 'installed-versions.mjs'), join(root, 'engine', 'installed-versions.mjs'));
   writeAt(root, 'engine/checks/check_the_world.mjs', 'engine v2\n');
   writeAt(root, 'engine/pack_loader/mount-skills.mjs', 'machinery\n');
@@ -177,7 +177,7 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(canon, 'engine', 'version.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'remove-tree.mjs'), join(canon, 'engine', 'remove-tree.mjs'));
   // Where a member's settings live, and the shape of the versions in them.
-  copyFileSync(join(REPO_ROOT, 'engine', 'settings-file.mjs'), join(canon, 'engine', 'settings-file.mjs'));
+  for (const f of ['settings-file.mjs', 'settings-file-names.mjs']) copyFileSync(join(REPO_ROOT, 'engine', f), join(canon, 'engine', f));
   copyFileSync(join(REPO_ROOT, 'engine', 'installed-versions.mjs'), join(canon, 'engine', 'installed-versions.mjs'));
   writeAt(canon, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   writeAt(canon, 'engine/checks/check_the_world.mjs', 'engine v2\n');
