@@ -466,7 +466,14 @@ export async function listWorkItems(gh, repo, { since = null } = {}) {
     const q = `state=all&sort=created&direction=desc&per_page=100&page=${page}`
       + (since ? `&since=${encodeURIComponent(since)}` : '');
     const { status, json } = await gh(`/repos/${repo}/issues?${q}`);
-    if (status !== 200 || !Array.isArray(json) || json.length === 0) break;
+    // A page that could not be read is not the end of the list. Breaking on it
+    // truncates the queue mid-pagination and the run plans against the remainder:
+    // a standing item whose page never arrived reads as absent, and the run mints a
+    // second one beside it.
+    if (status !== 200 || !Array.isArray(json)) {
+      throw new Error(`could not list work items in ${repo} at page ${page} (${status}) — a truncated queue is not a shorter one`);
+    }
+    if (json.length === 0) break;
     for (const i of json) {
       if (i.pull_request) continue;
       if (!(i.title ?? '').startsWith(WORK_PREFIX)) continue;
@@ -501,32 +508,50 @@ export async function listMarkedIssues(gh, repo, { permissionOf = null } = {}) {
     return ['admin', 'maintain', 'write'].includes(res.json?.role_name ?? res.json?.permission ?? 'none');
   });
   const cache = new Map();
-  for (let page = 1; ; page += 1) {
-    // BOTH MARKS. The label filter is OR across a comma-separated list, so the
-    // retired `claude-task` spelling keeps working for whoever has it in muscle
-    // memory or in a template — decoded forever, like every legacy spelling (§4).
-    const q = `state=open&labels=${encodeURIComponent(`${ORIGIN_AD_HOC},${REQUEST_LABEL}`)}&per_page=100&page=${page}`;
-    const { status, json } = await gh(`/repos/${repo}/issues?${q}`);
-    if (status !== 200 || !Array.isArray(json) || json.length === 0) break;
-    for (const i of json) {
-      if (i.pull_request) continue;
-      // A filed work item wearing the mark is not a request awaiting adoption: it is
-      // already an item, and re-adopting one would rewrite its body under the run
-      // holding it.
-      if ((i.title ?? '').startsWith(WORK_PREFIX)) continue;
-      // ANY status means this mark has been adopted — the exactly-once guard (§16.3).
-      // Filtering here rather than in the plan keeps the permission reads to the
-      // issues actually awaiting adoption.
-      if (statusOf(i) !== null) continue;
-      const author = i.user?.login ?? null;
-      if (author && !cache.has(author)) cache.set(author, await push(author));
-      out.push({
-        number: i.number, title: i.title, body: i.body ?? '', state: i.state,
-        labels: labelNames(i), author, authorHasPush: author ? cache.get(author) : null,
-      });
+  // ONE QUERY PER MARK, unioned here. GitHub's `labels` filter is CONJUNCTIVE — a
+  // comma-separated list selects the issues carrying EVERY name on it — so asking
+  // for both marks at once asks for issues wearing both, which nothing does. The
+  // retired `claude-task` spelling keeps working for whoever has it in muscle memory
+  // or in a template, decoded forever like every legacy spelling (§4), and that
+  // costs a second listing rather than a wider one.
+  const seen = new Map();
+  for (const label of [ORIGIN_AD_HOC, REQUEST_LABEL]) {
+    for (let page = 1; ; page += 1) {
+      const q = `state=open&labels=${encodeURIComponent(label)}&per_page=100&page=${page}`;
+      const { status, json } = await gh(`/repos/${repo}/issues?${q}`);
+      // A list that could not be READ is not a list that is EMPTY, and the two are
+      // indistinguishable downstream: adoption simply finds nothing to do and the run
+      // reports success. Every request then waits for a person to notice, which is
+      // the one thing this lane exists so nobody has to do.
+      if (status !== 200 || !Array.isArray(json)) {
+        throw new Error(`could not list open issues marked \`${label}\` in ${repo} (${status}) — an unreadable request list is not an empty one`);
+      }
+      if (json.length === 0) break;
+      for (const i of json) {
+        if (i.pull_request) continue;
+        // A filed work item wearing the mark is not a request awaiting adoption: it is
+        // already an item, and re-adopting one would rewrite its body under the run
+        // holding it.
+        if ((i.title ?? '').startsWith(WORK_PREFIX)) continue;
+        // ANY status means this mark has been adopted — the exactly-once guard (§16.3).
+        // Filtering here rather than in the plan keeps the permission reads to the
+        // issues actually awaiting adoption.
+        if (statusOf(i) !== null) continue;
+        // An issue wearing both spellings comes back from both listings; it is one
+        // request, and adopting it twice would rewrite the body of the item the first
+        // adoption just made.
+        if (seen.has(i.number)) continue;
+        const author = i.user?.login ?? null;
+        if (author && !cache.has(author)) cache.set(author, await push(author));
+        seen.set(i.number, {
+          number: i.number, title: i.title, body: i.body ?? '', state: i.state,
+          labels: labelNames(i), author, authorHasPush: author ? cache.get(author) : null,
+        });
+      }
+      if (json.length < 100) break;
     }
-    if (json.length < 100) break;
   }
+  out.push(...seen.values());
   return out;
 }
 
