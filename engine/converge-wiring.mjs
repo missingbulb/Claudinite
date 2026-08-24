@@ -1,13 +1,19 @@
-// Fresh-path wiring convergence (task-code-work DESIGN §7, the primitive
-// absorbed from #405). The deterministic half of the self-refresh that
-// has nothing to do with the vendored mount's CONTENT: the repo-specific wiring a
-// scheduled Claudinite consumer must carry, converged idempotently in code so the
-// nightly refresh never needs a model to re-enact bootstrap's prose.
+// Fresh-path wiring convergence (task-code-work DESIGN §7, the primitive absorbed from
+// #405). The deterministic half of the self-refresh that has nothing to do with the
+// vendored mount's CONTENT: the repo-specific wiring EVERY Claudinite member carries,
+// converged idempotently in code so the nightly refresh never needs a model to re-enact
+// bootstrap's prose.
 //
-// One source of truth: bootstrap Part 5 (the settings hooks) + Part 6 (the
-// scheduler workflow) describe this same set for a fresh adoption; this module is
-// what both bootstrap and the update flows CALL, so the wiring can never drift between
-// "how a repo is set up" and "how the nightly keeps it set up".
+// DISTRIBUTION WIRING ONLY. What a member needs in order to receive and load pack
+// content — the settings hooks, the rules index and the CLAUDE.md import that loads it,
+// the .gitattributes entries, the badge row, the repo's own local pack. Scheduling
+// wiring is not here: the two workflow files belong to the mechanism that runs them and
+// are scaffolded at adoption by the tasks pack (#1317), so a member without that pack
+// converges exactly this and nothing about a queue it does not have.
+//
+// One source of truth: bootstrap Part 5 describes this same set for a fresh adoption;
+// this module is what both bootstrap and the update flows CALL, so the wiring can never
+// drift between "how a repo is set up" and "how the nightly keeps it set up".
 //
 // Operates on a repo working tree at `root` with node:fs directly (like
 // apply-vendor-set.mjs), returning a summary of what it changed — idempotent: a
@@ -16,12 +22,10 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { hashedCron } from './hash-minute.mjs';
-import { DEFAULT_SCHEDULE } from './calendar.mjs';
-import { writeRulesIndex, RULES_INDEX_FILE, RULES_INDEX_IMPORT } from '../../engine/pack_loader/generate-rules-index.mjs';
-import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX, SHARED_SUBDIR } from '../../engine/pack_loader/pack-registry.mjs';
-import { settingsPath } from '../../engine/settings-file.mjs';
-import { ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from '../../engine/checks/helpers/repo-context.mjs';
+import { writeRulesIndex, RULES_INDEX_FILE, RULES_INDEX_IMPORT } from './pack_loader/generate-rules-index.mjs';
+import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX, SHARED_SUBDIR } from './pack_loader/pack-registry.mjs';
+import { settingsPath } from './settings-file.mjs';
+import { ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from './checks/helpers/repo-context.mjs';
 
 // The settings-hook registrations a scheduled repo carries (bootstrap Part 5).
 // Ensured present without clobbering — a set-union keyed on the command string, so
@@ -33,11 +37,6 @@ export const REQUIRED_HOOKS = [
   { event: 'SessionEnd', matcher: null, command: 'node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-end-command.mjs' },
 ];
 
-export const SCHEDULER_WORKFLOW = '.github/workflows/claudinite-scheduler.yml';
-// The queue's second workflow (tasks-dispatch DESIGN §14). The first one keeps the
-// path above: `claudinite-scheduler.yml` holds the scheduler run and its drain, so the repo
-// still has exactly one cron at one well-known path.
-export const EXECUTOR_WORKFLOW = '.github/workflows/claudinite-executor.yml';
 export const SETTINGS_PATH = '.claude/settings.json';
 export const CLAUDE_MD = 'CLAUDE.md';
 export const README = 'README.md';
@@ -73,7 +72,7 @@ const CORPUS_IMPORT_RE = /^.*@\.claudinite\/shared\/CLAUDE\.md.*\n?/m;
 // The project's settings, loaded through the one reader that validates them.
 // Dynamic and in one place: the scheduler reaches the checks helpers exactly here,
 // so the cross-tree import stays a single, reviewable edge.
-const repoConfig = async (root) => (await import('../../engine/checks/helpers/repo-context.mjs')).loadConfig(root);
+const repoConfig = async (root) => (await import('./checks/helpers/repo-context.mjs')).loadConfig(root);
 
 // Re-converge the scheduler workflow to the vendored stub, with the cron minute set
 // to this repo's stable hashed value (never guessed — hash-minute.mjs, a pure
@@ -93,35 +92,6 @@ const repoConfig = async (root) => (await import('../../engine/checks/helpers/re
 // Action's GITHUB_TOKEN, which GitHub never lets near `.github/workflows/`), so it
 // WITHHOLDS the content and hands it to a lane that can. A flow that had to write
 // the file in order to learn what it should say could not do that.
-// `dailyHour` picks BOTH of the cron's hours (DESIGN §17): the anchor tick and the drain tick
-// twelve hours after it. Optional, and absent means the documented default — an unset key is the
-// default, never a misconfiguration — so a caller that does not read the repo's schedule still
-// writes the right cron for every repo that has not moved its anchor.
-export function schedulerWorkflowTarget(fullName, stubText, dailyHour = undefined) {
-  return stubText
-    .replace(/cron:\s*'[^']*'/, `cron: '${hashedCron(fullName, dailyHour ?? DEFAULT_SCHEDULE.dailyHour)}'`);
-}
-
-export function convergeSchedulerWorkflow(root, fullName, stubText, dailyHour = undefined) {
-  return writeWorkflow(root, SCHEDULER_WORKFLOW,
-    schedulerWorkflowTarget(fullName, stubText, dailyHour));
-}
-
-// The queue's second workflow — the label-event executor. No cron of its own (the
-// scheduler run's drain is the poll) and nothing to stamp, so it is the stub verbatim.
-export function convergeExecutorWorkflow(root, stubText) {
-  return writeWorkflow(root, EXECUTOR_WORKFLOW, stubText);
-}
-
-function writeWorkflow(root, relPath, target) {
-  const path = join(root, relPath);
-  const current = existsSync(path) ? readFileSync(path, 'utf8') : null;
-  if (current === target) return false;
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, target);
-  return true;
-}
-
 // Ensure the required settings hooks are present (add-if-missing, never clobber).
 // Returns { added: [labels], error? }. A malformed settings file is reported, never
 // overwritten (the transactional stance — surface it, don't destroy hand config).
@@ -374,7 +344,7 @@ const parses = (text, raw) => {
 // consumer with no branch on which repo this is. A pack whose badge is missing is
 // skipped rather than reported: a repo's own local pack need not have one.
 export async function badgeRowEntries(root, config) {
-  const { loadPacks, resolveDeclaredPacks, packEntryId } = await import('../../engine/pack_loader/pack-registry.mjs');
+  const { loadPacks, resolveDeclaredPacks, packEntryId } = await import('./pack_loader/pack-registry.mjs');
   const packs = await loadPacks({ localRoot: root });
   const byId = new Map(packs.map((p) => [p.id, p]));
   const entries = [];
@@ -426,14 +396,8 @@ export function convergeBadgeRow(root, entries) {
 // wrote one it cannot deliver would fail its whole push, not just that file.
 // `seedLocalPack` defaults off for the same reason `badges` does: both are one-time
 // seeds of files the repo then owns, and only bootstrap passes them.
-export async function convergeWiring(root, fullName, stubText, { badges = false, workflows = true, seedLocalPack = false, executorStub = null, dailyHour = undefined } = {}) {
+export async function convergeWiring(root, fullName, { badges = false, seedLocalPack = false } = {}) {
   const changed = [];
-  if (workflows && convergeSchedulerWorkflow(root, fullName, stubText, dailyHour)) changed.push(SCHEDULER_WORKFLOW);
-  // In queue mode `stubText` IS the scheduler run stub (the CLI picks it by dispatch mode),
-  // and the executor is its second workflow. Nothing removes the executor when a
-  // repo flips back: rolling back is a config edit, and an executor workflow whose
-  // repo runs no queue simply never sees a `task:ready` label event.
-  if (workflows && executorStub && convergeExecutorWorkflow(root, executorStub)) changed.push(EXECUTOR_WORKFLOW);
   const hooks = ensureHooks(root);
   for (const h of hooks.added) changed.push(`hook:${h}`);
   if (removeRetiredCorpusImport(root)) changed.push(`removed retired ${CLAUDE_MD} corpus import`);
@@ -456,13 +420,14 @@ export async function convergeWiring(root, fullName, stubText, { badges = false,
 }
 
 // CLI: `node converge-wiring.mjs [owner/repo] [--badges] [--seed-local-pack]` —
-// converge THIS repo's wiring. The full name comes from argv or
-// GITHUB_REPOSITORY/CLAUDINITE_REPO; the scheduler stub from the vendored mount. This
-// is the single surface bootstrap (Part 6) and the update flows both invoke, so the
-// wiring set is defined once, here — and the two flags are the whole difference
-// between them. Both are ONE-TIME SEEDS of files the repo then owns (the README badge
-// row, the repo's own local pack), which is exactly why the nightly must not pass
-// them: it would rewrite a row the owner moved, or resurrect a pack they deleted.
+// converge THIS repo's distribution wiring. The full name comes from argv or
+// GITHUB_REPOSITORY/CLAUDINITE_REPO. This is the single surface bootstrap (Part 5) and
+// the update flows both invoke, so the wiring set is defined once, here — and the two
+// flags are the whole difference between them. Both are ONE-TIME SEEDS of files the repo
+// then owns (the README badge row, the repo's own local pack), which is exactly why the
+// nightly must not pass them: it would rewrite a row the owner moved, or resurrect a
+// pack they deleted. The two workflow files are the tasks pack's to scaffold, and its
+// own converge-workflows.mjs is the command that does it.
 async function main() {
   const argv = process.argv.slice(2);
   const badges = argv.includes('--badges');
@@ -470,16 +435,7 @@ async function main() {
   const fullName = argv.find((a) => !a.startsWith('--')) || process.env.GITHUB_REPOSITORY || process.env.CLAUDINITE_REPO;
   if (!fullName) { console.error('converge-wiring: need owner/repo (argv or GITHUB_REPOSITORY)'); process.exit(1); }
   const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
-  const config = await repoConfig(root);
-  // The repo's one cron workflow is the queue's scheduler run and its drain, at the path the
-  // slot scheduler used to hold — so the one-cron rule and every reader that knows
-  // this workflow by name keep holding across the retirement.
-  const stubs = join(root, '.claudinite/shared/packs/claudinite-tasks/stubs');
-  const stubPath = join(stubs, 'claudinite-scheduler.yml');
-  if (!existsSync(stubPath)) { console.error(`converge-wiring: vendored stub not found at ${stubPath}`); process.exit(1); }
-  const executorStub = existsSync(join(stubs, 'claudinite-executor.yml'))
-    ? readFileSync(join(stubs, 'claudinite-executor.yml'), 'utf8') : null;
-  const { changed, error } = await convergeWiring(root, fullName, readFileSync(stubPath, 'utf8'), { badges, seedLocalPack, executorStub, dailyHour: config?.taskScheduler?.dailyHour });
+  const { changed, error } = await convergeWiring(root, fullName, { badges, seedLocalPack });
   if (error) console.log(`! ${error}`);
   console.log(changed.length ? `converge-wiring: ${changed.join(', ')}` : 'converge-wiring: already converged');
 }

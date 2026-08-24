@@ -219,7 +219,7 @@ points at its own `.claudinite/shared/packs/<id>/badge.svg` with no network depe
 
 **Getting the row into a README is not a maintainer's job — keeping it current is.** Adoption writes
 it, once, through the wiring converge
-([`../packs/claudinite-tasks/converge-wiring.mjs`](../packs/claudinite-tasks/converge-wiring.mjs) run with
+([`../engine/converge-wiring.mjs`](../engine/converge-wiring.mjs) run with
 `--badges`, bootstrap Part 6): a one-line row of the declared packs' badges, under the title, between
 `<!-- claudinite:packs -->` markers — so it lands where a reader looks first, and anything the repo
 writes after the closing marker on that line is its own. The opening marker sits

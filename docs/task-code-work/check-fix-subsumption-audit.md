@@ -22,7 +22,8 @@ model repaired that the new model neither fixes nor escalates on.
      ([`apply-vendor-set.mjs`](../../vendoring/apply-vendor-set.mjs)).
    - **converge-wiring** — the scheduler workflow + hashed cron, the settings
      hooks, and the retired-import removal
-     ([`converge-wiring.mjs`](../../packs/claudinite-tasks/converge-wiring.mjs)).
+     ([`converge-wiring.mjs`](../../engine/converge-wiring.mjs), and the pack's
+     [`converge-workflows.mjs`](../../packs/claudinite-tasks/converge-workflows.mjs)).
    - **declaration-normalization** — the `local/<name>` pack token.
    - **mechanical migrations** — aliases / materialize / rewrite
      ([`engine/migrations/apply.mjs`](../../engine/migrations/apply.mjs)).

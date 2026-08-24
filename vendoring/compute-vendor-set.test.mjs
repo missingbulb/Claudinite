@@ -169,6 +169,19 @@ test('the set reports the versions it is made of — engine, and each declared p
   assert.deepEqual(packVersions, { alpha: 4, beta: 7 });
 });
 
+// A pack's `updates/` is canon-internal, like its `test/`: the update flows run from the
+// canon tree the runner just fetched, and they reach canon-only machinery (this very
+// module) that no mount carries. Vendoring one would put an unresolvable import in every
+// member's tree — and the coherence guard below would abort the converge for it.
+test("a pack's updates/ never vendors — the flows run from the canon, not the mount", async () => {
+  const { computeVendorSet } = await import('./compute-vendor-set.mjs');
+  const { files, errors } = await computeVendorSet(['claudinite-lifecycle']);
+  assert.deepEqual(errors, []);
+  assert.ok(files.some((f) => f.startsWith('packs/claudinite-lifecycle/')), 'the pack itself ships');
+  assert.deepEqual(files.filter((f) => f.includes('/updates/')), [],
+    'no member carries an update flow — it runs from the canon tree the runner fetched');
+});
+
 test('engine .md never vendors — the operational documents are the tasks pack\'s', async () => {
   const root = makeCanon(FIXTURE);
   const { files } = await vendorAt(root, ['alpha']);

@@ -25,10 +25,11 @@ const bootstrap = readFileSync(join(root, 'bootstrap.md'), 'utf8');
 const realignment = [
   'packs/claudinite-lifecycle/tasks/update/task.md',
   'packs/claudinite-lifecycle/tasks/update/worker.mjs',
-  'updates/engine-update.mjs',
-  'updates/pack-update.mjs',
-  'updates/install.mjs',
-  'packs/claudinite-tasks/converge-wiring.mjs',
+  'packs/claudinite-lifecycle/updates/engine-update.mjs',
+  'packs/claudinite-lifecycle/updates/pack-update.mjs',
+  'packs/claudinite-lifecycle/updates/install.mjs',
+  'engine/converge-wiring.mjs',
+  'packs/claudinite-tasks/converge-workflows.mjs',
 ].map((f) => readFileSync(join(root, f), 'utf8')).join('\n');
 
 // Each artifact: an id and a matcher that must hit in both docs. Matchers are the

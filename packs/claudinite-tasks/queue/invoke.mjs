@@ -114,7 +114,7 @@ export function agentInvoker({ repo, config, env = process.env, fetchImpl = fetc
       // wedged in #1296 the secret was set the whole time and the executor workflow
       // simply never passed it. The reader believed the message, went to the Secrets
       // page, found it present, and had nowhere to go next.
-      return { ok: false, answered: true, error: `\`${endpoint.tokenEnv}\`, the token for invocation endpoint "${endpoint.name}", is empty in this job. Either the repository secret is not set, or \`.github/workflows/claudinite-executor.yml\` does not pass it — check for an undelivered \`.claudinite/pending-workflows/claudinite-executor.yml\`, which is the usual cause` };
+      return { ok: false, answered: true, error: `\`${endpoint.tokenEnv}\`, the token for invocation endpoint "${endpoint.name}", is empty in this job. Either the repository secret is not set, or \`.github/workflows/claudinite-executor.yml\` does not pass it — check that this repo's executor workflow is the one the tasks pack scaffolds — a member still on a pre-#1301 copy passes its secrets by name and sets no bag, which is the usual cause` };
     }
 
     const payload = { text: firePayload({ repo, item, nonce }) };

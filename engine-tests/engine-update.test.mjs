@@ -4,10 +4,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { engineUpdate, engineRecordsInGap, isEngineFile, NEEDS_HUMAN, deliveryDecision, runSelfTest } from '../updates/engine-update.mjs';
+import { engineUpdate, engineRecordsInGap, isEngineFile, NEEDS_HUMAN, deliveryDecision, runSelfTest } from '../packs/claudinite-lifecycle/updates/engine-update.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
-import { SCHEDULER_WORKFLOW } from '../packs/claudinite-tasks/converge-wiring.mjs';
+import { SCHEDULER_WORKFLOW } from '../packs/claudinite-tasks/converge-workflows.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 import { installedVersions } from '../engine/installed-versions.mjs';
 

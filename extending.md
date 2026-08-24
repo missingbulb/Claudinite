@@ -31,7 +31,7 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Adoption interviews | `packs/claudinite-lifecycle/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
 | Baseline-migration mechanism | [`engine/migrations/`](engine/migrations/README.md) | the read-side resolver and write-side rename for a relocation; a record lives under the flow that owns it (the engine's, or `packs/<pack>/migrations/`), records are kept forever, and vendoring's 7-day recency window decides what ships to consumers |
 | Bootstrap / update | [`bootstrap.md`](bootstrap.md), [`bootstrap.mjs`](bootstrap.mjs) | adoption — the doc's fast path, mechanized by the one-shot script — and the idempotent per-repo re-run |
-| The update flows | [`updates/`](updates/README.md) | canon-internal, never vendored: one runner per flow that moves a repo from the versions it has installed to the ones this canon ships — today the engine's (docs/versioned-updates/DESIGN.md) |
+| The update flows | [`packs/claudinite-lifecycle/updates/`](packs/claudinite-lifecycle/updates/README.md) | the `update` task's own machinery, beside the pack that owns it. Canon-internal, never vendored — the `updates/` directory name is excluded from every mount, like a pack's `test/` — so a flow runs from the canon tree the runner just fetched and is always current |
 
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
 runner, pack discovery, the migration mechanism all pass; a lint for one technology, a nightly
@@ -55,7 +55,7 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 
 **Packs are independent.** A pack's code imports only its **own** files and the engine surface
 (`checks/`, `mount/`, the machinery `.mjs` at the `packs/`/`skills/` roots) — never another
-pack's code, and never a canon-internal tree (`vendoring/`, `updates/`): the vendor set ships
+pack's code, and never a canon-internal tree (`vendoring/`, any pack's `updates/`): the vendor set ships
 a pack only when declared and ships no canon-internal tree at all, so such an import crashes
 every consumer that vendors the importer without its target. A pack that wants another pack's
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both

@@ -17,28 +17,16 @@ work item names the branch and says which packs moved.
 The item's **Why the agent is here** section names the terminal and the packs
 whose versions moved. That is binding scope — do not widen it.
 
-## 2. Deliver any withheld workflow files
+## 2. Sweep the retired staging directory
 
-GitHub never lets an Action's `GITHUB_TOKEN` write under `.github/workflows/`, and the
-refusal rejects the whole push — so the update flow stages that content instead of
-committing it where it belongs. Anything staged is already on the branch, already in the
-PR's diff, and already correct.
+Nothing withholds a workflow file any more: a member's two workflow files are static after
+adoption, so no flow computes or stages one (tasks-dispatch DESIGN §18). The update flow
+already deletes anything an older cycle left under `.claudinite/pending-workflows/`.
 
-If `.claudinite/pending-workflows/` has files in it, then for each one:
-
-- Move it to `.github/workflows/` under the same name — **byte for byte**.
-- Delete the staged copy.
-
-Do not reformat it, do not reorder it, do not reconcile it against what the file used to
-say. It is a converged artifact, not a draft: the cron minute is a hash of this repo's
-full name and the `env:` block is the union of every scheduled task's `required_secrets`,
-so an "improvement" here silently changes when this repo runs or which secrets its tasks
-can see. A staged file that looks wrong is a `needs-human` end (§5), reported with what
-looked wrong — that is a canon bug, and editing it here would hide it while leaving every
-other member broken.
-
-An empty or absent `.claudinite/pending-workflows/` means there is nothing owed. Do not
-create it, and never move a file INTO it.
+So: **never move a file into `.github/workflows/`**, and never create that staging
+directory. If the branch still carries staged files after the flow ran, that is a canon
+bug — end at `needs-human` (§5) naming what is there, rather than delivering content
+whose lane no longer exists.
 
 ## 3. Apply the new rules
 

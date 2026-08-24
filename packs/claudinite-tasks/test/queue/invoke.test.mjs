@@ -163,6 +163,6 @@ test('a missing endpoint token names BOTH causes, not just the one the code cann
   const invoke = agentInvoker({ repo: 'o/r', config: CONFIG, env: {}, fetchImpl: async () => { throw new Error('must not be called'); } });
   const { error } = await invoke({ task: task(null), item, nonce: 'n-1' });
   assert.match(error, /`CCR_TOKEN`/);
-  assert.match(error, /pending-workflows/, 'the undelivered executor workflow is the usual cause and must be named');
+  assert.match(error, /executor workflow/, 'a stale executor workflow is the usual cause and must be named');
   assert.doesNotMatch(error, /is not set in this repo/, 'that asserts a cause this code cannot observe');
 });

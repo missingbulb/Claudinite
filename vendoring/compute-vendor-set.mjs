@@ -38,6 +38,13 @@ export { ENGINE_DIR_ROOTS };
 // it is. The engine keeps its own `test/` convention (engine-tests/ mirrors the
 // tree), so the directory name is the shared rule across both walks.
 export const TEST_DIR = 'test';
+
+// A pack's `updates/` is canon-internal for the same reason its `test/` is: the update
+// flows run from the canon tree the runner just fetched, never from a member's mount, and
+// they reach canon-only machinery (this very module) that no mount carries. The name is
+// the rule, so a helper the flows need stops shipping with them rather than being one
+// filename short of the exclusion.
+export const UPDATES_DIR = 'updates';
 const isTest = (name) => name.endsWith('.test.mjs');
 
 // THE TASK SURFACE IS A PACK, and a pack's own .md files are payload rather than
@@ -99,7 +106,7 @@ function walk(relDir, files, errors, { engine = false, today, installed = null, 
   }
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (entry.isDirectory()) {
-      if (entry.name === TEST_DIR) continue;
+      if (entry.name === TEST_DIR || entry.name === UPDATES_DIR) continue;
       if (!tasks && entry.name === TASKS_SUBDIR) continue;
       const rel = `${relDir}/${entry.name}`;
       if (skipDirs.includes(rel)) continue;

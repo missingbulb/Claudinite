@@ -11,7 +11,8 @@
         "to": "*",
         "scope": "imports",
         "allow": ["engine", "packs/claudinite-tasks/shared-code"],
-        "reason": "a pack imports only its own files, the engine surface, and the tasks pack's published shared-code/ — abilities otherwise cross pack boundaries through declaration and configuration, never imports"
+        "reason": "a pack imports only its own files, the engine surface, and the tasks pack's published shared-code/ — abilities otherwise cross pack boundaries through declaration and configuration, never imports; a pack's updates/ is carved out because no vendor set carries it, so an import there cannot crash a consumer (#1317)",
+    "except": ["packs/claudinite-lifecycle/updates"]
       }
     ]
   }

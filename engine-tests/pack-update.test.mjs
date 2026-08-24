@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, pendingExecutorWorkflow, PENDING_DIR } from '../updates/pack-update.mjs';
-import { terminalFor } from '../updates/terminals.mjs';
-import { SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW } from '../packs/claudinite-tasks/converge-wiring.mjs';
-import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
+import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, pendingExecutorWorkflow, PENDING_DIR } from '../packs/claudinite-lifecycle/updates/pack-update.mjs';
+import { terminalFor } from '../packs/claudinite-lifecycle/updates/terminals.mjs';
+import { SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW } from '../packs/claudinite-tasks/converge-workflows.mjs';
+import { NEEDS_HUMAN } from '../packs/claudinite-lifecycle/updates/engine-update.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
@@ -142,156 +142,48 @@ test('the engine half of the mount is left alone — it belongs to the engine fl
   removeTree(root);
 });
 
-// Play the apply stage's credential half: move everything staged into place, which is
-// all that lane ever does. Used to get a fixture into the state a delivered member is
-// in, so the tests after it are about the thing they name.
-function deliverStaged(root) {
-  const dir = join(root, PENDING_DIR);
-  if (!existsSync(dir)) return [];
-  const moved = [];
-  for (const name of readdirSync(dir)) {
-    mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
-    renameSync(join(dir, name), join(root, '.github', 'workflows', name));
-    moved.push(name);
-  }
-  return moved;
-}
+// --- no workflow lane at all (#1317) ------------------------------------------
+//
+// A member's two workflow files are static after adoption, so no flow computes,
+// writes, or stages one. The staging lane that used to carry them is retired; these
+// pin the three halves of that being true, because a lane that half-exists — an
+// export still answering, a directory still filling — is how a member ends up waiting
+// on delivery that nobody is doing.
 
-test('the scheduler workflow is staged for a lane that can push it, and clears once it is (#797)', async () => {
-  // The regression this closes: baselining converged this file, Phase 5 retired
-  // baselining, and NOTHING replaced it — so every member's wiring froze at whatever
-  // baselining last wrote, including the cron minute and the secrets its tasks can see.
+test('the flow writes no workflow file, and reports none outstanding', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
 
-  const first = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
-  const staged = first.withheld.find((w) => w.path === SCHEDULER_WORKFLOW);
-  assert.ok(staged, 'a member with no scheduler workflow is owed one');
-  assert.equal(staged.staged, `${PENDING_DIR}claudinite-scheduler.yml`);
-
-  // Withheld means WITHHELD: the destination must be untouched, because the caller's
-  // token is refused there and GitHub rejects the whole ref, not just the file.
-  assert.ok(!existsSync(join(root, SCHEDULER_WORKFLOW)), 'the flow must not write what its caller cannot push');
-  assert.ok(existsSync(join(root, staged.staged)), 'the content rides out on the branch, in the PR diff');
-  const content = readFileSync(join(root, staged.staged), 'utf8');
-  assert.match(content, /cron:/, 'the staged file is the converged workflow, not a marker');
-  assert.equal(first.applyStage.needed, true, 'an undelivered workflow is outstanding work');
-
-  // Delivered — and now the flow must go quiet, or every member sits permanently at
-  // `apply-stage` and no update ever merges again.
-  // Both files, because a member on the default dispatch is a QUEUE member and the
-  // scheduler run without its executor is a generator with no worker (#874).
-  assert.deepEqual(deliverStaged(root).sort(), ['claudinite-executor.yml', 'claudinite-scheduler.yml']);
-  const second = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
-  assert.deepEqual(second.withheld, [], 'a converged workflow is owed nothing');
-  assert.equal(second.applyStage.needed, false);
-  assert.equal(readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8'), content, 'and it is left exactly alone');
-  assert.ok(!existsSync(join(root, PENDING_DIR, 'claudinite-scheduler.yml')),
-    'the staged copy is swept, or it reads forever as work nobody did');
+  const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  assert.deepEqual(r.withheld, [], 'nothing is withheld — there is no lane to withhold into');
+  assert.equal(r.wiringError, null, 'and no wiring answer to fail to compute');
+  assert.ok(!existsSync(join(root, SCHEDULER_WORKFLOW)), 'the caller cannot push there, and nothing tries');
+  assert.ok(!existsSync(join(root, EXECUTOR_WORKFLOW)));
+  assert.ok(!existsSync(join(root, PENDING_DIR)), 'and nothing is staged for anyone to deliver');
+  assert.equal(r.applyStage.needed, false, 'so the update merges instead of waiting on a session');
   removeTree(root);
 });
 
-test('a wiring answer that cannot be computed is REPORTED, never read as converged', async () => {
-  // The bug this closes: the first version swallowed every failure to a bare `null`,
-  // which is the same answer as "already converged". A member whose settings stopped
-  // parsing would have reported a clean update forever while its wiring silently
-  // froze — the exact failure #797 exists to end.
+test('the retired staging directory is swept, whatever an earlier cycle left in it', async () => {
+  // A member that converged before the lane was retired still carries staged files.
+  // Left alone they read forever as work nobody did, and the apply stage they were
+  // waiting for no longer exists.
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  const read = (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), 'utf8') : null);
+  mkdirSync(join(root, PENDING_DIR), { recursive: true });
+  writeFileSync(join(root, PENDING_DIR, 'claudinite-scheduler.yml'), 'name: stale\n');
 
-  const healthy = await pendingSchedulerWorkflow(root, 'o/r', read);
-  assert.equal(healthy.error, null);
-  assert.ok(healthy.pending, 'a member with no scheduler workflow is owed one');
-
-  // No name to hash a cron minute from, and no stub to converge against: both are
-  // "cannot answer", and neither may look like "nothing owed".
-  for (const [why, call] of [
-    ['no repo name', () => pendingSchedulerWorkflow(root, '', read)],
-    ['no vendored stub', () => pendingSchedulerWorkflow(root, 'o/r', (p) => (p.includes('stubs/') ? null : read(p)))],
-  ]) {
-    const r = await call();
-    assert.equal(r.pending, null, why);
-    assert.ok(r.error, `${why} must be reported, not returned as "already converged"`);
-  }
-
-  // …and the report reaches the line a human actually sees. `detail` is what the
-  // worker prints, what becomes the PR body, and what becomes the dispatch issue's
-  // reason — chosen over a new field because a new field only reaches a member once
-  // its worker catches up, a cycle later.
-  writeFileSync(join(root, '.claudinite-settings.json'), '{ not json at all\n');
-  const broken = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
-  if (broken.status !== NEEDS_HUMAN) {
-    assert.ok(broken.wiringError, 'the flow must carry the fault');
-    assert.match(broken.detail, /but /, 'and say so where it is read');
-  }
+  await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  assert.ok(!existsSync(join(root, PENDING_DIR, 'claudinite-scheduler.yml')), 'swept');
   removeTree(root);
 });
 
-test('the staged workflow tracks this repo, not a template', async () => {
-  // The two things that make it repo-specific are the two things a frozen file gets
-  // wrong: the cron minute is a hash of the full name, so two members do not stampede
-  // the same minute, and the env block is the union of every task's required_secrets.
-  const a = makeMember();
-  const b = makeMember();
-  assert.deepEqual((await applyVendor(a)).errors, []);
-  assert.deepEqual((await applyVendor(b)).errors, []);
-  const of = async (root, fullName) => {
-    await packUpdate(root, { fullName, selfTestRun: () => 'ok' });
-    return readFileSync(join(root, PENDING_DIR, 'claudinite-scheduler.yml'), 'utf8');
-  };
-  const cron = (t) => /cron:\s*'([^']*)'/.exec(t)?.[1];
-  assert.notEqual(cron(await of(a, 'o/one')), cron(await of(b, 'o/two')), 'two members must not share a minute');
-  removeTree(a);
-  removeTree(b);
-});
-
-test('a RECORD materializing a workflow is withheld too, not written where the token is refused (#649)', async () => {
-  // The gap this closes. The withhold lane had ONE exercised caller — the scheduler
-  // workflow's own convergence, two tests up. A record's `materialize` reaches the same
-  // `write` from the other side, through `applyMaterializations`, which carries its own
-  // branch for a workflow `dest`: unless the caller announces
-  // `CLAUDINITE_CAN_WITHHOLD_WORKFLOWS`, the write is REPORTED AS SKIPPED rather than
-  // made. Nothing had ever driven that branch with the variable set, and the failure it
-  // guards against is not a wrong file — it is the Action's token refusing the push and
-  // GitHub rejecting the whole ref, failing the entire converge.
-  //
-  // Driven through the real claudinite-canary-repo record, not a fixture, because the thing worth
-  // pinning is that a record shipped in this corpus travels the lane — a fake record
-  // would only prove that `write` can be called.
-  const root = makeMember({ packs: ['basics', 'claudinite-canary-repo'] });
-  assert.deepEqual((await applyVendor(root)).errors, []);
-  const probe = '.github/workflows/claudinite-workflow-probe.yml';
-
-  // A member at pack version 1: seeded copy present (what `seedOps` does at install),
-  // stale content, and a real gap for the record at version 2 to close.
-  mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
-  writeFileSync(join(root, probe), 'name: Claudinite workflow probe\non:\n  workflow_dispatch:\n');
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 99, 'claudinite-canary-repo': 1 } });
-
-  const first = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
-  const staged = first.withheld.find((w) => w.path === probe);
-  assert.ok(staged, 'the record materialized a workflow, so the flow owes it through the lane');
-  assert.equal(staged.staged, `${PENDING_DIR}claudinite-workflow-probe.yml`);
-
-  // The two halves of "withheld". The destination is untouched — a write there is what
-  // takes the whole push down — and the content still rides out on the branch, where a
-  // reviewer sees it and the apply stage can find it.
-  assert.equal(readFileSync(join(root, probe), 'utf8'), 'name: Claudinite workflow probe\non:\n  workflow_dispatch:\n',
-    'the flow must not write what its caller cannot push');
-  const template = readFileSync('packs/claudinite-canary-repo/stubs/workflows/claudinite-workflow-probe.yml', 'utf8');
-  assert.equal(readFileSync(join(root, staged.staged), 'utf8'), template, 'and the staged copy is the pack template, byte for byte');
-  assert.equal(first.applyStage.needed, true, 'an undelivered workflow is outstanding work');
-
-  // Delivered — and the flow must then go quiet, or the member parks at `apply-stage`
-  // forever and no update ever merges again.
-  assert.ok(deliverStaged(root).includes('claudinite-workflow-probe.yml'));
-  const second = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
-  assert.ok(!second.withheld.some((w) => w.path === probe), 'a delivered workflow is owed nothing');
-  assert.equal(readFileSync(join(root, probe), 'utf8'), template, 'and is left exactly alone');
-  assert.ok(!existsSync(join(root, PENDING_DIR, 'claudinite-workflow-probe.yml')),
-    'the staged copy is swept, or it reads forever as work nobody did');
-  removeTree(root);
+test('the emptied pending-workflow exports still answer, for a worker too old to know', async () => {
+  // A member's update worker is copied once and stale forever, so a name it imports
+  // may not vanish under it. `pending: null` is what "nothing to deliver" has always
+  // meant to a caller, which is exactly the truth now.
+  assert.deepEqual(await pendingSchedulerWorkflow(), { pending: null, error: null });
+  assert.deepEqual(await pendingExecutorWorkflow(), { pending: null, error: null });
 });
 
 test('a workflow materialization is SKIPPED, never written, by a caller that cannot deliver it (#649)', async () => {
@@ -320,10 +212,9 @@ test('a workflow materialization is SKIPPED, never written, by a caller that can
 test('a pack version moving does NOT by itself buy a session (#798)', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  // Start from a member whose wiring is already delivered, so what is measured below
-  // is the version bump alone and not the workflow lane above.
+  // Start from a member already converged once, so what is measured below is the
+  // version bump alone.
   await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
-  deliverStaged(root);
 
   // Already current: nothing to do at all.
   const current = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
@@ -392,18 +283,6 @@ test('two records asking together are one session, and both are named', () => {
   assert.match(stage.why, /second/);
 });
 
-test('a withheld workflow needs the stage on its own, and is named by where it is staged', () => {
-  // The credential lane, not the judgement lane: no record asked for anything, and
-  // the session's whole job is a move it can perform without an opinion.
-  const stage = applyStageFor([], [{ path: '.github/workflows/claudinite-scheduler.yml', staged: '.claudinite/pending-workflows/claudinite-scheduler.yml' }]);
-  assert.equal(stage.needed, true);
-  assert.deepEqual(stage.packs, [], 'nothing asked for a rules pass — do not invent scope for one');
-  assert.deepEqual(stage.records, []);
-  assert.match(stage.why, /withheld workflow/);
-  assert.match(stage.why, /\.claudinite\/pending-workflows\//, 'the session is told where to look, not what to write');
-  assert.ok(!stage.why.includes('runs-on'), 'the CONTENT stays on the branch, in the PR diff a human can review');
-});
-
 test('a red self-test is the same needs-human terminal the engine flow has', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
@@ -434,41 +313,6 @@ test('packRecordsInGap is that pack\'s records only', () => {
   const behind = packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 0 } });
   assert.ok(behind.every((d) => d.startsWith('packs/claudinite-fleet-sheepdog/migrations/')), behind.join(', '));
   assert.deepEqual(packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 99 } }), []);
-});
-
-test('a member is owed the executor workflow beside its scheduler run', async () => {
-  // The scheduler run and the executor are ONE mechanism in two files: the scheduler run only creates
-  // and readies work items, so a member holding the scheduler run without the executor has a
-  // generator with no worker — a queue that fills every hour and is never drained,
-  // which reads from outside exactly like a repo whose tasks all declined. This lane
-  // staged only the scheduler path, so that state was reachable for every member.
-  const queue = makeMember();
-  assert.deepEqual((await applyVendor(queue)).errors, []);
-  const readerFor = (root) => (p) => (existsSync(join(root, p)) ? readFileSync(join(root, p), 'utf8') : null);
-
-  const owed = await pendingExecutorWorkflow(queue, readerFor(queue));
-  assert.equal(owed.error, null);
-  assert.ok(owed.pending, 'a member with no executor workflow is owed one');
-  assert.equal(owed.pending.path, EXECUTOR_WORKFLOW);
-
-  // Not a template: the env block is the union of every task's required_secrets and
-  // each configured endpoint's token secret, which is the whole reason this file
-  // cannot simply be vendored like the stub it is built from.
-  assert.match(owed.pending.content, /issues:\s*\n\s*types: \[labeled\]/, 'the label-event trigger survives the stamp');
-
-  // An unreadable stub is "cannot answer", never "already converged" — the same
-  // distinction the scheduler lane above had to learn.
-  const blind = await pendingExecutorWorkflow(queue, (p) => (p.includes('claudinite-executor.yml') ? null : readerFor(queue)(p)));
-  assert.equal(blind.pending, null);
-  assert.ok(blind.error, 'a missing stub must be reported, not read as converged');
-
-  // …and the whole flow stages it beside the scheduler run, in one cycle, through the same
-  // withhold lane — the property the fleet flip actually depends on.
-  const run = await packUpdate(queue, { fullName: 'o/r', selfTestRun: () => 'ok' });
-  const staged = run.withheld.map((w) => w.path);
-  assert.ok(staged.includes(EXECUTOR_WORKFLOW), `the executor workflow is staged: ${staged.join(', ')}`);
-  assert.ok(staged.includes(SCHEDULER_WORKFLOW), 'beside the scheduler workflow, in the same cycle');
-  removeTree(queue);
 });
 
 // The stamp is written as well as read, and both sides have to agree about a

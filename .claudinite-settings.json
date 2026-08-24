@@ -122,7 +122,10 @@
           {
             "siblings": "packs",
             "to": "docs",
-            "reason": "docs/ is outside the vendor set, so a pack file's reference to it resolves to nothing in every consumer (#424) — cite the doc from the issue or PR instead"
+            "reason": "docs/ is outside the vendor set, so a pack file's reference to it resolves to nothing in every consumer (#424) — cite the doc from the issue or PR instead; a pack's updates/ is carved out because no vendor set carries that either, so the premise cannot arise there (#1317)",
+            "except": [
+              "packs/claudinite-lifecycle/updates"
+            ]
           }
         ]
       }

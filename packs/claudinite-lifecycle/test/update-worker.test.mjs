@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { updateBranchName, updatePullText, main } from '../tasks/update/worker.mjs';
-import { NEEDS_HUMAN } from '../../../updates/engine-update.mjs';
+import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { removeTree } from '../../../engine/remove-tree.mjs';
 
 // The update runner's git-free surface. Its clone/push/PR half is validated by the
@@ -93,7 +93,7 @@ test('the runner resolves its settings file by name-tolerant lookup, never a lit
 test('the terminal vocabulary the runner acts on is the flows\' own', async () => {
   // A drift guard across the seam: the runner branches on `terminal.action`, and the
   // strings it branches on have to be the ones terminals.mjs can actually produce.
-  const { TERMINALS } = await import('../../../updates/terminals.mjs');
+  const { TERMINALS } = await import('../updates/terminals.mjs');
   const src = await import('node:fs').then((fs) => fs.readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8'));
   for (const action of ['merge', 'needs-human', 'apply-stage']) {
     assert.ok(TERMINALS.includes(action), `${action} is not a terminal the flows produce`);

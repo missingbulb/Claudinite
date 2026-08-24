@@ -26,7 +26,7 @@
 // endpoints a member cannot converge into place, so it happens at a moment a person
 // is present — the adopt-pack skill — never by a scan noticing something.
 export default {
-  version: '60824.1',
+  version: '60824.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'scheduled work — the work-item queue, the executor, the task contract and its signals, run records, code-work, delivery',

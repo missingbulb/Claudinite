@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hashedCron } from '../packs/claudinite-tasks/hash-minute.mjs';
-import { packIdForRepo } from '../packs/claudinite-tasks/converge-wiring.mjs';
+import { packIdForRepo } from '../engine/converge-wiring.mjs';
 
 // Integration suite for bootstrap.mjs, THE one-shot adoption orchestrator: it runs
 // the real canon (this checkout) against a fresh fixture repo, because the whole

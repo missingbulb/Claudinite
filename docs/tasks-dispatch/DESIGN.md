@@ -2224,10 +2224,13 @@ Consumers: `claudinite-dashboard` (renders the queue's state; stays its own pack
 ### Updates live in claudinite-lifecycle
 
 The versioned update flows (engine update, pack update, install) are the `update` task's own
-machinery and live in `packs/claudinite-lifecycle/`. They still execute from the freshly fetched
-canon tree, so the flow code a member runs is always current; the old `updates/*` module paths
-remain as callable shims until no fielded vendored worker names them (the rule that already
-governs `updates/*` exports).
+machinery and live in `packs/claudinite-lifecycle/updates/`. A pack's `updates/` directory is
+canon-internal — the vendor set excludes it by name, as it does `test/` — so a flow still executes
+from the freshly fetched canon tree and the code a member runs is always current, and it may
+reach the canon-only machinery (`vendoring/`) that computing a vendor set means. The old
+`updates/*` module paths remain as callable shims until no fielded vendored worker names them
+(the rule that already governs `updates/*` exports); a member's worker resolves them by literal
+path against that fetched tree, which is what makes the shims load-bearing rather than tidy.
 
 A repo that declares `claudinite-lifecycle` but not `claudinite-tasks` has no queue, so its
 update task never runs: **updates are opt-in via the tasks pack**. The recovery and manual lane
