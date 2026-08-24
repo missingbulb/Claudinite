@@ -354,7 +354,7 @@ test('the install flow reports the handover so adoption cannot miss it', async (
   await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
 
   const { stdout } = await runReporting('node',
-    [join(ROOT, 'updates/install.mjs'), '--target', dir, 'claudinite-dashboard'],
+    [join(ROOT, 'packs/claudinite-lifecycle/updates/install.mjs'), '--target', dir, 'claudinite-dashboard'],
     { cwd: ROOT });
 
   assert.match(stdout, /only a human can do/, 'the handover is printed');
@@ -373,7 +373,7 @@ test('a pack with no handover prints none', async (t) => {
   await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
 
   const { stdout } = await runReporting('node',
-    [join(ROOT, 'updates/install.mjs'), '--target', dir, 'html'],
+    [join(ROOT, 'packs/claudinite-lifecycle/updates/install.mjs'), '--target', dir, 'html'],
     { cwd: ROOT });
   assert.doesNotMatch(stdout, /only a human can do/);
 });
