@@ -6,7 +6,7 @@ import {
 import {
   WORK_PREFIX, ORIGIN_AD_HOC, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
   MACHINE_BLOCK_START, MACHINE_BLOCK_END,
-} from '../../../../../engine/scheduler/queue/work-item.mjs';
+} from '../../../queue/work-item.mjs';
 
 // A body carrying the machine block the queue writes, built from the queue's own
 // markers rather than a copied string.

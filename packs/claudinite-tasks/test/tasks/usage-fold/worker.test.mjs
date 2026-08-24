@@ -4,7 +4,7 @@ import {
   parseLogName, parseEntries, withMergeAttribute, MERGE_ATTR, USAGE_PATH,
   parseCommitLog, dayFieldsFrom, dayLadder,
 } from '../../../tasks/usage-fold/worker.mjs';
-import { parseLogFilename, logFilename } from '../../../capture-log.mjs';
+import { parseLogFilename, logFilename } from '../../../../claudinite-growth/capture-log.mjs';
 
 // The worker's I/O shell is exercised by the live run, not by a unit test (it fetches
 // a branch and opens a PR). What IS unit-testable is where it AGREES with something

@@ -92,7 +92,7 @@ participating member**. That cross-repo reach is the whole reason a second endpo
 exactly what must stay off the endpoint an ordinary hand-off calls.
 
 Reach is a property of **which endpoint is called**, and of nothing else: there is no session scope
-anywhere in the system, and no label routes a hand-off ([the writing-tasks skill](../../../../packs/claudinite-growth/skills/writing-tasks/SKILL.md)).
+anywhere in the system, and no label routes a hand-off ([the writing-tasks skill](../../../../packs/claudinite-tasks/skills/writing-tasks/SKILL.md)).
 The `session_scope: 'fleet'` these tasks used to declare lost its last reader with the slot
 scheduler and is gone from both.
 

@@ -20,6 +20,14 @@ export const ENGINE_DIR_ROOTS = ['engine'];
 export const engineSurface = (path) =>
   ENGINE_DIR_ROOTS.some((r) => path.startsWith(`${r}/`));
 
+// The full import surface a pack's code may reach outside its own tree: the
+// engine, plus the claudinite-tasks pack's published `shared-code/*` (tasks-dispatch
+// DESIGN §18) — the one sanctioned cross-pack import, and the same allow list the
+// `pack-independence` barrier enforces.
+export const SHARED_CODE_ROOT = 'packs/claudinite-tasks/shared-code';
+export const packImportSurface = (path) =>
+  engineSurface(path) || path.startsWith(`${SHARED_CODE_ROOT}/`);
+
 // Relative import specifiers in ES module source: `from '<spec>'`, side-effect
 // `import '<spec>'`, and dynamic `import('<spec>')`. Bare specifiers (node
 // builtins, dependencies) are not relative and never matched. Scanning raw

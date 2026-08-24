@@ -10,7 +10,7 @@
 // deployment can be wired.
 //
 // WHAT IT READS. Only the queue's own vocabulary and the task declarations at HEAD,
-// through the engine modules that define them (`../../engine/scheduler/queue/*`), so
+// through the engine modules that define them (`claudinite-tasks/shared-code/*`), so
 // the page cannot drift from the mechanism it renders. Those relative paths resolve
 // identically in the canon (`packs/<id>/` beside `engine/`) and in a member's mount
 // (`.claudinite/shared/packs/<id>/` beside `.claudinite/shared/engine/`), which is
@@ -58,7 +58,7 @@
 import { fleetTokenHandoverStep } from './tasks/fleet-digest/fleet-token.mjs';
 
 export default {
-  version: '60824.1',
+  version: '60824.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',

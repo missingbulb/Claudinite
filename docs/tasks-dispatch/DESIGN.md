@@ -1899,7 +1899,7 @@ arbitrated and recovered by the same code as any other item, which is the point.
 6. `queue/instructions.md` — the mode of §16.6.
 7. The built-in task itself: `task.mjs` (declaration + precondition) and `task.md`
    (how to implement a requested issue).
-8. `packs/claudinite-growth/skills/writing-tasks/SKILL.md` — the contract prose
+8. `packs/claudinite-tasks/skills/writing-tasks/SKILL.md` — the contract prose
    members read.
 
 Played through in the simulator as **S44–S51** ([sim](../../packs/claudinite-tasks/test/sim/), SCENARIOS §K); each was

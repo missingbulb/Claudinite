@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sweep } from '../tasks/task-janitor/worker.mjs';
-import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, NEEDS_HUMAN_LABEL } from '../../../engine/scheduler/dispatch.mjs';
+import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, NEEDS_HUMAN_LABEL } from '../dispatch.mjs';
 
 // A fake gh that serves one search result set and records every write.
 const janitorGh = (items) => {

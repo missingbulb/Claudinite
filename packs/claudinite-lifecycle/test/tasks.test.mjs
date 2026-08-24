@@ -13,7 +13,7 @@ const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/c
 // asserted here is the DECLARATION — the contract the scheduler reads — not the
 // worker, which update-worker.test.mjs owns.
 
-// The `stamp` / `sharedMount` signal shapes (engine/scheduler/signals/index.mjs).
+// The `stamp` / `sharedMount` signal shapes (packs/claudinite-tasks/signals/index.mjs).
 const S = (stamp = {}, changedPacks = []) => ({
   stamp: { present: true, engineVersion: '60820.1', packVersions: {}, canonHead: null, convergedInWindow: false, ...stamp },
   sharedMount: { changedPacks },

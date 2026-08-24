@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { validateTaskDeclaration } from '../../../../../engine/scheduler/task-contract.mjs';
+import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import decl from '../../../tasks/fleet-roster/task.mjs';
 
 // The claudinite-fleet-sheepdog pack's fleet-roster task (#788): the coverage and freshness questions
@@ -50,7 +50,7 @@ test('fleet-roster: the sweep is the preprocessing, bounded and task-local', () 
 
 test('fleet-roster: declares the fleet PAT, which is how the repo is asked for it', () => {
   // `required_secrets` is what stamps FLEET_GITHUB_TOKEN into the scheduler workflow's
-  // env, so no workflow needs to exist just to hold it (claudinite-growth/skills/writing-tasks).
+  // env, so no workflow needs to exist just to hold it (claudinite-tasks/skills/writing-tasks).
   assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
 });
 

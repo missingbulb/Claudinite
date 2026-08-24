@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   makeReader, workflowRuns, readRuns, lookbackFrom, WATCHED_WORKFLOWS, FIRST_FOLD_LOOKBACK_DAYS,
 } from '../../../tasks/usage-fold/read-runs.mjs';
-import { SCHEDULER_WORKFLOW_FILE, EXECUTOR_WORKFLOW_FILE } from '../../../../../engine/scheduler/signals/gh.mjs';
+import { SCHEDULER_WORKFLOW_FILE, EXECUTOR_WORKFLOW_FILE } from '../../../signals/gh.mjs';
 
 // A fake GitHub: `routes` maps a path SUBSTRING to a body, so a test states only the
 // part of the URL it cares about. Every call is recorded, because "how many requests

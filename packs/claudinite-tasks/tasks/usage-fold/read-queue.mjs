@@ -24,10 +24,10 @@
 
 // One definition of what a work item is, shared with the queue's own reader — a filed
 // `[claudinite-work]` issue OR an adopted marked issue, which keeps the person's title.
-import { isQueueItem } from '../../../../engine/scheduler/queue/read.mjs';
+import { isQueueItem } from '../../queue/read.mjs';
 import {
   parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, outcomeOf,
-} from '../../../../engine/scheduler/queue/work-item.mjs';
+} from '../../queue/work-item.mjs';
 
 const API = process.env.GITHUB_API_URL || 'https://api.github.com';
 

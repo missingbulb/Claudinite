@@ -66,7 +66,7 @@ The canon knows **mechanisms**, never repos. The fleet-enforcer repo knows
 |---|---|---|
 | capture (merge + SessionEnd + the executor's explicit call) | `claudinite-growth` pack (canon) | its own session, its own logs branch |
 | the task-run record format | `engine/scheduler/run-record.mjs` (core) | the scheduler's own outcomes — no pack, no repo |
-| `usage-fold` (hourly) | `claudinite-growth/tasks/usage-fold/` (canon) | its own logs branch, its own runs, its own items, its own aggregate file |
+| `usage-fold` (hourly) | `claudinite-tasks/tasks/usage-fold/` (canon) | its own logs branch, its own runs, its own items, its own aggregate file |
 | `fleet-usage` (daily, superseded — §6) | `sheepdog/tasks/fleet-usage/` (canon pack; runs only where sheepdog is declared) | nothing hardcoded — members enumerated at runtime from the sheepdog config (`{ owner, kind, exclude, canonRepo }`) via `fleet-api.mjs`, exactly as `fleet-census` does |
 | the fleet aggregate | the fleet-enforcer repo's default branch | — |
 
@@ -498,7 +498,7 @@ there is no shared renderer, because a row on a line is a few lines of code and
 the two files have different shapes.
 
 The format lives in the fold's own task folder
-(`claudinite-growth/tasks/usage-fold/usage-format.mjs`), beside the only code
+(`claudinite-tasks/tasks/usage-fold/usage-format.mjs`), beside the only code
 that writes the file and the only code that reads it back — its own next run.
 **The header in the file is what every other consumer reads**, which is why the
 vocabulary is declared in the data rather than in a module: §6's fleet sweep

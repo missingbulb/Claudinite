@@ -32,7 +32,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
+import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../deliver-generated.mjs';
 import {
   countEntries, foldUsage, encodeUsage, decodeUsage, mountedSkillNames, DAY_WINDOW_DAYS,
 } from './fold-usage.mjs';

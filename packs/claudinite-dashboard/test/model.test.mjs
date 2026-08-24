@@ -12,7 +12,7 @@ import {
 } from '../model.mjs';
 import {
   OUTCOME_DONE, OUTCOME_DELIVERED, TASK_DONE, NEEDS_HUMAN_APPROVAL,
-} from '../../../engine/scheduler/queue/work-item.mjs';
+} from '../../claudinite-tasks/shared-code/work-items.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const NOW = Date.parse('2026-08-16T12:00:00Z');

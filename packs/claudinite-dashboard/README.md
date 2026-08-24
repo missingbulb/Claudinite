@@ -97,7 +97,7 @@ and a `304` costs no rate-limit budget at all.
 
 **What happened before** is one file: the repo's own
 `.claudinite/local/usage.GENERATED.json`, folded hourly by the
-[usage-fold task](../claudinite-growth/tasks/usage-fold/README.md) in the
+[usage-fold task](../claudinite-tasks/tasks/usage-fold/README.md) in the
 claudinite-growth pack. It is content at a sha, so it is read once when the default
 branch moves and **not at all** while it has not. Reaching a month back over the API
 instead would be a paginated crawl per repo per load, which is exactly the shape this

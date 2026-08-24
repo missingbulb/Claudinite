@@ -6,7 +6,7 @@ import {
 } from '../usage.mjs';
 import {
   SCHEDULER_WORKFLOW_FILE, EXECUTOR_WORKFLOW_FILE,
-} from '../../../engine/scheduler/signals/gh.mjs';
+} from '../../claudinite-tasks/shared-code/gh.mjs';
 
 const NOW = Date.parse('2026-08-21T11:30:00Z');
 

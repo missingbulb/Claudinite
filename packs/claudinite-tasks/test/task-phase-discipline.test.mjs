@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup, declaredCheck } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 
-const rule = declaredCheck('packs/claudinite-growth', 'task-phase-discipline');
+const rule = declaredCheck('packs/claudinite-tasks', 'task-phase-discipline');
 
 const MD = 'packs/demo/tasks/demo-task/task.md';
 const WORKER = 'packs/demo/tasks/demo-task/worker.mjs';

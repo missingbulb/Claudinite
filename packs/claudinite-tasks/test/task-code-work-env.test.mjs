@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import rule from '../worldRules/task-code-work-env.mjs';
-import { CODE_WORK_ENV_VARS } from '../../../engine/scheduler/queue/code-work-run.mjs';
+import { CODE_WORK_ENV_VARS } from '../queue/code-work-run.mjs';
 
 const ctx = (files) => ({ files: Object.keys(files), read: (f) => files[f] ?? null });
 const WORKER = 'packs/demo/tasks/thing/worker.mjs';

@@ -26,7 +26,7 @@ const rule = {
   id: 'task-md-only-when-agentic',
   severity: 'blocking',
   description: "A tasks/<name>/ folder holds a task.md only when its declaration runs an agent (agent_model !== 'none')",
-  doc: 'packs/claudinite-growth/skills/writing-tasks/SKILL.md',
+  doc: 'packs/claudinite-tasks/skills/writing-tasks/SKILL.md',
   why: 'task.md is the spec a task\'s session follows, and the corpus reads its presence as "an agent runs here" — on an agentless task it is prose no session will ever open, judged by the routine contract and named by every work item as the file the run is about',
 
   run(ctx) {

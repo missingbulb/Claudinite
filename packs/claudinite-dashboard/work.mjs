@@ -21,7 +21,7 @@
 
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION,
-} from '../../engine/scheduler/queue/work-item.mjs';
+} from '../claudinite-tasks/shared-code/work-items.mjs';
 
 export const VIEWS = Object.freeze(['stuck', 'pending', 'all']);
 

@@ -50,7 +50,7 @@ Every repo lands in exactly one bucket per question, and the two disagree on pur
 - **The enforcer** is censused by neither — it is named in both summaries and swept by its own scheduler.
 - **Canon** is an ordinary covered member to the coverage question (it carries a declaration) and is never measured by the freshness one (it has no vendored mount to be stale).
 - **An excluded repo** that still carries a declaration is **covered** — saying otherwise would report a repo as missing something it has — and is **out of scope** for freshness, because upkeep is what the exclusion opted out of.
-- **A dormant member** (`"dormant": true`, [the scheduler's gate](../../../claudinite-growth/skills/writing-tasks/SKILL.md)) is a covered member with no freshness verdict: its stamp is never read, and any open drift issue for it closes *not planned*. Its scheduler is stopped, so its mount falls behind **by design**. The test is `isDormant`, re-exported from the engine rather than re-implemented — a sweep with a private notion of dormancy would nag exactly the repos that had already opted out.
+- **A dormant member** (`"dormant": true`, [the scheduler's gate](../../../claudinite-tasks/skills/writing-tasks/SKILL.md)) is a covered member with no freshness verdict: its stamp is never read, and any open drift issue for it closes *not planned*. Its scheduler is stopped, so its mount falls behind **by design**. The test is `isDormant`, re-exported from the engine rather than re-implemented — a sweep with a private notion of dormancy would nag exactly the repos that had already opted out.
 
 ## Why daily, and what it costs
 

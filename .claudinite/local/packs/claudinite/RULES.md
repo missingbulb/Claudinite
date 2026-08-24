@@ -394,7 +394,7 @@ from lives in `VERSIONS.md` and the issue, never here.
 
 - **Writing a task's precondition** — gate on the objects' own movement in the window (a `touched`
   list, a tip-commit date), never on standing state, which is true forever once true. (portable →
-  `claudinite-growth/skills/writing-tasks/SKILL.md`)
+  `claudinite-tasks/skills/writing-tasks/SKILL.md`)
 
 - **A precondition signal that is true most days** — let it only *widen* an already-triggered run.
 

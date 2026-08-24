@@ -7,3 +7,4 @@ the version this file was introduced beside (60821.4); earlier bumps are not bac
 |---|---|---|
 | 60823.1 | 2026-08-23 | Prose and skills name the member settings file by its current name, `.claudinite-settings.json` (#1252). |
 | 60822.1 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |
+| 60824.1 | 2026-08-24 | `task-janitor` moves to the claudinite-tasks pack with the queue it sweeps (#1317); `ci-performance` reads its GitHub client and tracker off that pack's `shared-code/`. |

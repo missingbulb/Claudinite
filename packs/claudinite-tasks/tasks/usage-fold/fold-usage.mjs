@@ -24,7 +24,7 @@
 // has exactly one home too: the scheduler that prints those records, so the counter
 // keys here cannot drift from the words the runs actually emit.
 import { loadPacks, isActive, bundledSkillSources } from '../../../../engine/pack_loader/pack-registry.mjs';
-import { TASK_EXEC_STATUSES, parseTaskExecs } from '../../../../engine/scheduler/run-record.mjs';
+import { TASK_EXEC_STATUSES, parseTaskExecs } from '../../run-record.mjs';
 // The file's on-disk shape is its SIBLING here (usage-format.mjs). Everything below
 // works in the NAMED counter shape and meets the tuples only at the two boundary
 // functions at the foot of this file.

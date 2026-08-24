@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { sweepQueue } from '../tasks/task-janitor/queue-sweep.mjs';
 import {
   NEEDS_HUMAN, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, HANDOFF_MARKER,
-} from '../../../engine/scheduler/queue/work-item.mjs';
+} from '../queue/work-item.mjs';
 
 // A fake GitHub that answers the two reads the sweep makes and records the writes.
 // `labelsAdded` is what the assertions turn on: a park is TWO writes now — the

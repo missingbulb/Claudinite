@@ -33,7 +33,7 @@
 // (recomputed while their raw sources live) and weeks (frozen once). They answer
 // different questions on different clocks; see the task's README.
 
-import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES, LEGACY_TASK_RUN_OUTCOMES } from '../../../../engine/scheduler/run-record.mjs';
+import { TASK_RUN_OUTCOMES, TASK_EXEC_STATUSES, LEGACY_TASK_RUN_OUTCOMES } from '../../run-record.mjs';
 
 export const USAGE_VERSION = 3;
 

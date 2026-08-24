@@ -12,7 +12,7 @@ import {
 } from '../../../tasks/usage-fold/usage-format.mjs';
 import {
   outcomeOf, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-} from '../../../../../engine/scheduler/queue/work-item.mjs';
+} from '../../../queue/work-item.mjs';
 
 // A day row as `foldDays` builds an empty one: the capture-derived scalars zeroed and
 // every other field absent. Spelled here so a test about the absent ones does not have

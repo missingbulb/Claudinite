@@ -50,8 +50,14 @@ const canonRoot = dirname(dirname(fileURLToPath(import.meta.url))); // <canon>/u
 
 // The engine half of a vendor set: the engine tree itself, plus the pack catalog,
 // which is not any one pack's — it ships with every mount whatever the declaration,
-// so nothing in the pack flow owns it.
-export const isEngineFile = (rel) => rel.startsWith('engine/') || rel === PACK_DIRECTORY_FILE;
+// so nothing in the pack flow owns it. While the engine tree carries the queue's
+// skew shims (#1317), the claudinite-tasks pack rides this half too: the flow
+// self-tests its converged tree BEFORE the pack flow runs, and an engine whose
+// shims import a pack that has not landed yet fails that gate every time. The
+// pack flow re-converges the same files afterwards, version-stamped and
+// idempotent. The prefix goes when the shims go (the migration's tail, #1324).
+export const isEngineFile = (rel) => rel.startsWith('engine/') || rel === PACK_DIRECTORY_FILE
+  || rel.startsWith('packs/claudinite-tasks/');
 
 // The engine records this repo still needs, oldest first. `migrationApplies` is the
 // same predicate vendoring fetches by, so "in the gap" means one thing corpus-wide.

@@ -1,8 +1,8 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { FREQUENCIES } from '../../../engine/scheduler/calendar.mjs';
-import { MODEL_FAMILIES } from '../../../engine/scheduler/model-map.mjs';
-import { OUTCOMES, SIGNAL_NAMES } from '../../../engine/scheduler/task-contract.mjs';
+import { FREQUENCIES } from '../calendar.mjs';
+import { MODEL_FAMILIES } from '../model-map.mjs';
+import { OUTCOMES, SIGNAL_NAMES } from '../task-contract.mjs';
 
 // Every scheduler task is a `tasks/<name>/task.mjs` whose default export carries
 // the full declaration contract (per-project-scheduling DESIGN §1) with legal
@@ -26,7 +26,7 @@ const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
   description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, precondition_signals, agent_model, expected_outcome, agent_instructions, precondition) with legal enum values; an agentic task bounds its run with agent_execution_timeout, and any code_work carries a timeout and stays task-local',
-  doc: 'packs/claudinite-growth/skills/writing-tasks/SKILL.md',
+  doc: 'packs/claudinite-tasks/skills/writing-tasks/SKILL.md',
   why: 'the scheduler run and executor read agent_model/expected_outcome/frequency from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
   run(ctx) {

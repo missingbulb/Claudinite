@@ -132,7 +132,7 @@ test('the member-side scheduler run resolves the very id this lever sends', asyn
   // FORCED_TASK travels as a `wake` input and is resolved by planWake against the
   // member's own declared tasks. A bare id must be owned by exactly one canon pack,
   // or planWake refuses it as ambiguous and the force silently wakes nothing.
-  const { planWake } = await import('../../../../../engine/scheduler/queue/scheduler-run.mjs');
+  const { planWake } = await import('../../../../claudinite-tasks/shared-code/scheduling.mjs');
   const tasks = [{ pack: 'claudinite-lifecycle', id: FORCED_TASK }];
   const items = [{
     number: 1, state: 'open', labels: ['task:blocked'],

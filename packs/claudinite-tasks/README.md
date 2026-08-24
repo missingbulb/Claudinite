@@ -37,3 +37,23 @@ code-work task sees exactly the names its declaration lists.
 `queue/tasks/implement-request/` is the task a marked issue's work item names
 (ids `engine/implement-request` — the pre-move spelling every open item decodes
 to). It rides this pack like any task; `model_from_request` stays fenced to it.
+
+## Checks
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `task-declaration-shape` | high | correctness | check: blocking |
+| `task-declaration-matches-folder` | high | correctness | check: blocking |
+| `task-code-work-env` | high | correctness | check: blocking |
+| `task-md-only-when-agentic` | high | correctness | check: blocking |
+| `task-phase-discipline` | medium | complexity | check: advisory |
+
+The **task contract** ([the writing-tasks skill](skills/writing-tasks/SKILL.md)): whether a task is
+*written* correctly, judged by the pack that runs it. Relevance-first — all five are inert until the
+repo carries a `tasks/<name>/task.mjs` of its own.
+
+- `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal, so the task never fires or fires wrong.
+- `task-declaration-matches-folder` — a declaration disagrees with its folder: discovery drops it into `errors` and every run keeps reporting healthy without it.
+- `task-code-work-env` — a task reads a `CLAUDINITE_*` variable code-work never sets, so a parameter (a scope filter, a dry-run switch) silently never arrives and the run goes green in its most dangerous mode.
+- `task-md-only-when-agentic` — an agentless task carries a `task.md`, which the corpus reads as "an agent runs here": prose no session will ever open, judged by the routine contract and named by every work item as the file the run is about.
+- `task-phase-discipline` — a task decides not to run after its precondition already said run, hiding the decision from the run records.

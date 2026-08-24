@@ -1,6 +1,6 @@
 import { dirname, join, normalize, sep } from 'node:path';
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { engineSurface } from '../../../engine/checks/helpers/module-imports.mjs';
+import { packImportSurface } from '../../../engine/checks/helpers/module-imports.mjs';
 import { SHARED_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
 
 const CODE_EXT = /\.(mjs|cjs|jsx?|tsx?)$/;
@@ -22,15 +22,16 @@ const EXEMPT_SOURCE = (file) =>
 // shared mount. Every pack module ever written takes it, which is what makes it
 // structural rather than a placement to fix — a project can only ever waive it.
 //
-// `engineSurface` is the same allow list `pack-independence` enforces (packs may import
-// their own files and this surface, nothing else), so "what a pack may import" and "what
+// `packImportSurface` is the same allow list `pack-independence` enforces (packs may
+// import their own files, the engine, and claudinite-tasks' published `shared-code/*`,
+// nothing else), so "what a pack may import" and "what
 // placement exempts" cannot drift apart. That leaves the rule's real work on packs
 // intact: a reach into another pack, or deep into a pack's own subtree, is judged
 // normally — as is ordinary code reaching *into* a pack, the same one-directional
 // narrowness the mandated-location exemption has.
 const PACK_MODULE = /^(?:packs|skills)\/|^\.claudinite\/(?:local\/packs|local_packs)\//;
 const SHARED_PREFIX = `${SHARED_SUBDIR.split(sep).join('/')}/`;
-const EXEMPT_REF = (file, resolved) => PACK_MODULE.test(file) && engineSurface(
+const EXEMPT_REF = (file, resolved) => PACK_MODULE.test(file) && packImportSurface(
   resolved.startsWith(SHARED_PREFIX) ? resolved.slice(SHARED_PREFIX.length) : resolved,
 );
 

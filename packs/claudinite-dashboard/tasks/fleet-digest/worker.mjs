@@ -31,7 +31,7 @@ import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { makeGh, fleetWorkerFailed } from './fleet-reads.mjs';
 import { missingFleetTokenError } from './fleet-token.mjs';
-import { deliverGenerated, baseTip, pushGenerated, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
+import { deliverGenerated, baseTip, pushGenerated, readAt, remoteUrl } from '../../../claudinite-tasks/shared-code/delivery.mjs';
 import { parseParamBag, contextText } from './param-bag.mjs';
 import { parseDigestConfig } from './digest-config.mjs';
 import { collectDay, previousDay } from './collect-fleet-day.mjs';

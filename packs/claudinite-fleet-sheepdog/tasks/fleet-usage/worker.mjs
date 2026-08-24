@@ -21,7 +21,7 @@
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { fleetWorkerFailed } from '../../fleet-api.mjs';
-import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../../engine/scheduler/deliver-generated.mjs';
+import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../claudinite-tasks/shared-code/delivery.mjs';
 import { main as sweep, inactiveToday, renderFleetFile, FLEET_USAGE_PATH } from './aggregate-fleet-usage.mjs';
 
 const PR_BRANCH_PREFIX = 'claudinite/fleet-usage';

@@ -131,6 +131,9 @@ async function member(declaration, extraFiles = {}) {
   // a tree no member ever has.
   await cp(PACK_DIR, join(dir, '.claudinite/shared/packs/claudinite-dashboard'),
     { recursive: true, filter: (src) => !src.endsWith('.test.mjs') });
+  // The queue vocabulary pack the page imports (its test/ dropped, as vendored).
+  await cp(join(ROOT, 'packs/claudinite-tasks'), join(dir, '.claudinite/shared/packs/claudinite-tasks'),
+    { recursive: true, filter: (src) => !src.includes('claudinite-tasks/test') });
   await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify(declaration));
   for (const [name, body] of Object.entries(extraFiles)) await writeFile(join(dir, name), body);
   return dir;
@@ -166,7 +169,7 @@ test('the staged tree mirrors the mount, with the root a redirect', async (t) =>
     '_site/index.html',
     '_site/packs/claudinite-dashboard/index.html',
     '_site/packs/claudinite-dashboard/model.mjs',
-    '_site/engine/scheduler/queue/work-item.mjs',
+    '_site/packs/claudinite-tasks/queue/work-item.mjs',
     '_site/engine/checks/helpers/code-scanning.mjs',
     '_site/.nojekyll',
   ]) assert.ok(existsSync(join(dir, p)), `missing from the staged site: ${p}`);

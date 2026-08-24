@@ -5,7 +5,7 @@ import {
 } from '../activity.mjs';
 import {
   READY, NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-} from '../../../engine/scheduler/queue/work-item.mjs';
+} from '../../claudinite-tasks/shared-code/work-items.mjs';
 
 const NOW = Date.parse('2026-08-18T12:00:00Z');
 const DAY = 86400e3;

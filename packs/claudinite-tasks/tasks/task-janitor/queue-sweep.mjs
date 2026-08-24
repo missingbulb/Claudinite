@@ -19,17 +19,17 @@ import {
   staleReadyItems, staleReadyComment, deadAgentItems, deadAgentComment,
   stuckBlockedItems, stuckBlockedComment, statelessItems, statelessComment,
   periodForTasks,
-} from '../../../../engine/scheduler/queue/janitor-rules.mjs';
+} from '../../queue/janitor-rules.mjs';
 import {
   NEEDS_HUMAN, QUEUE_LABELS, HANDOFF_MARKER,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION,
   STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
   isStatus, isParked,
   parseWorkItemBody,
-} from '../../../../engine/scheduler/queue/work-item.mjs';
-import { listOpenWorkItems } from '../../../../engine/scheduler/queue/read.mjs';
-import { ensureLabels, addLabel, removeLabel, comment, listComments, readIssue } from '../../../../engine/scheduler/github.mjs';
-import { clearStatus } from '../../../../engine/scheduler/queue/apply-status.mjs';
+} from '../../queue/work-item.mjs';
+import { listOpenWorkItems } from '../../queue/read.mjs';
+import { ensureLabels, addLabel, removeLabel, comment, listComments, readIssue } from '../../github.mjs';
+import { clearStatus } from '../../queue/apply-status.mjs';
 
 export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log } = {}) {
   const open = await listOpenWorkItems(gh, repo);

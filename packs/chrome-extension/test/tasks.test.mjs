@@ -8,7 +8,7 @@ import storeRelease from '../tasks/store-release/task.mjs';
 
 const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/chrome-extension/tasks/store-release');
 
-// The `release` signal's shape (engine/scheduler/signals/index.mjs). This is a
+// The `release` signal's shape (packs/claudinite-tasks/signals/index.mjs). This is a
 // UNIT seam over a pure precondition — it asserts the decision, never that the
 // scheduler can actually produce `manifestVersion`. It could not, for a while,
 // and these stayed green throughout. The reachability half lives in

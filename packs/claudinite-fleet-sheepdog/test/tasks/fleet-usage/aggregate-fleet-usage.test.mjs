@@ -5,14 +5,14 @@ import {
 } from '../../../tasks/fleet-usage/aggregate-fleet-usage.mjs';
 import { unchanged, renderUsageSummary } from '../../../tasks/fleet-usage/worker.mjs';
 import task from '../../../tasks/fleet-usage/task.mjs';
-import { USAGE_PATH } from '../../../../claudinite-growth/tasks/usage-fold/worker.mjs';
+import { USAGE_PATH } from '../../../../claudinite-tasks/tasks/usage-fold/worker.mjs';
 // The sweep itself imports no format code — it copies members' rows through. These
 // tests read a row back the way any consumer of the file does: with the header that
 // member published beside its rows. The codec is imported here only to BUILD a
 // realistic member fixture and to read one back, never by the code under test.
 import {
   USAGE_FIELDS, USAGE_VERSION, decodeRow, encodeUsageFile,
-} from '../../../../claudinite-growth/tasks/usage-fold/usage-format.mjs';
+} from '../../../../claudinite-tasks/tasks/usage-fold/usage-format.mjs';
 
 const member = (repo, weeks, days = {}, foldedThrough = '2026-07-27') => ({
   repo, usage: { version: 1, foldedThrough, days, weeks },

@@ -32,6 +32,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // already have, and the site root is a redirect.
 const HOME = 'packs/claudinite-dashboard';
 const ENGINE = 'engine';
+// The queue vocabulary the page renders lives in the claudinite-tasks pack
+// (shared-code/*), staged whole for the same no-curation reason as the engine.
+const TASKS_PACK = 'packs/claudinite-tasks';
 
 // Local-only or explanatory files. None belong on a published site — `serve.mjs` least
 // of all, being a file server's source sitting where it reads as part of the page.
@@ -56,6 +59,7 @@ const OUT = resolve(repoRoot, arg('out', '_site'));
 // no path guessing, and it stays right if the pack is ever renamed.
 const pageSource = HERE;
 const engineSource = join(mountRoot, ENGINE);
+const tasksSource = join(mountRoot, TASKS_PACK);
 
 if (!await exists(join(pageSource, 'index.html')) || !await exists(engineSource)) {
   process.stdout.write(
@@ -90,6 +94,7 @@ await cp(pageSource, join(OUT, HOME), { recursive: true });
 // the first time it did. It discloses nothing — the mount is already committed in this
 // repo, so every byte is as public as the repo is.
 await cp(engineSource, join(OUT, ENGINE), { recursive: true });
+if (await exists(tasksSource)) await cp(tasksSource, join(OUT, TASKS_PACK), { recursive: true });
 
 for (const f of NOT_PUBLISHED) await rm(join(OUT, HOME, f), { recursive: true, force: true });
 

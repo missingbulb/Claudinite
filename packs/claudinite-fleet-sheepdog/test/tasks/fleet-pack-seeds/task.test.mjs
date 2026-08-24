@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { validateTaskDeclaration } from '../../../../../engine/scheduler/task-contract.mjs';
+import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import decl from '../../../tasks/fleet-pack-seeds/task.mjs';
 import roster from '../../../tasks/fleet-roster/task.mjs';
 

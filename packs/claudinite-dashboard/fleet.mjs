@@ -25,11 +25,11 @@
 //   repo or a rate-limit stumble cannot blank the page.
 
 import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
-import { periodMs } from '../../engine/scheduler/queue/anchors.mjs';
+import { periodMs } from '../claudinite-tasks/shared-code/anchors.mjs';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, URGENT,
   NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, outcomeOf, isParked,
-} from '../../engine/scheduler/queue/work-item.mjs';
+} from '../claudinite-tasks/shared-code/work-items.mjs';
 import { installedVersions } from '../../engine/installed-versions.mjs';
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../engine/version.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths } from './model.mjs';
