@@ -10,7 +10,7 @@
         "siblings": "packs",
         "to": "*",
         "scope": "imports",
-        "allow": ["engine"],
+        "allow": ["engine", "packs/claudinite-tasks/shared-code"],
         "reason": "a pack imports only its own files and the engine surface — abilities cross pack boundaries through declaration and configuration, never imports"
       }
     ]

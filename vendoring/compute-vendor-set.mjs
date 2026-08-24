@@ -60,14 +60,12 @@ const VENDORED_ENGINE_DOCS = new Set([
   'engine/scheduler/queue/instructions.md',
 ]);
 
-// A BUILT-IN TASK'S WORKER FILE is operational by the same argument, and by PATTERN
-// rather than by name: the engine ships its own tasks (DESIGN §16.2), each a
-// directory whose `task.md` is the spec its session follows, and a mount missing one
-// hands that session nothing to run. A list would have to be extended by whoever adds
-// the next built-in task, silently, in another file.
-const BUILT_IN_TASK_DOC = /^engine\/scheduler\/queue\/tasks\/[^/]+\/task\.md$/;
-
-const vendorsEngineDoc = (rel) => VENDORED_ENGINE_DOCS.has(rel) || BUILT_IN_TASK_DOC.test(rel);
+// The three names above are the queue's OLD engine-home paths, now one-line
+// pointers at the pack (#1317): fielded routine prompts and task files still name
+// them, so a mount missing a pointer strands those callers exactly as losing the
+// real document once did. The real documents ride the claudinite-tasks pack walk
+// like any pack's .md payload; the pointers go when no fielded caller names them.
+const vendorsEngineDoc = (rel) => VENDORED_ENGINE_DOCS.has(rel);
 
 // The migration records a consumer carries in its OWN mount, so the update flows read
 // the notes locally and needs no canon checkout in session. Records live under the
@@ -158,6 +156,13 @@ export async function computeVendorSet(declaredEntries, { today, installed = nul
     const id = packEntryId(entry);
     if (id !== undefined && byId.has(id) && !ids.includes(id)) ids.push(id);
   }
+  // While the engine tree carries the queue's skew shims (#1317), those engine
+  // files import packs/claudinite-tasks — so every set the engine ships in must
+  // carry the pack too, declared or not, or the guard below rightly refuses it.
+  // The claudinite-tasks-seed record declares it member-side; this line is what
+  // keeps the set coherent for a member the record has not reached yet. It goes
+  // when the shims go (the migration's tail, #1324).
+  if (byId.has('claudinite-tasks') && !ids.includes('claudinite-tasks')) ids.push('claudinite-tasks');
   for (const id of ids) walk(`packs/${id}`, files, errors, { today, installed });
 
   // Coherence guard: the set must be import-closed — every relative import in

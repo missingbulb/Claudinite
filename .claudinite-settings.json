@@ -1,6 +1,7 @@
 {
   "packs": [
     "claudinite-lifecycle",
+    "claudinite-tasks",
     "basics",
     {
       "id": "claudinite-growth",
@@ -75,6 +76,32 @@
                 "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill (moved with that skill into the claudinite-lifecycle pack, #835)"
               },
               "engine/migrations",
+          "engine/scheduler",
+          {
+            "path": ".github/workflows/claudinite-scheduler.yml",
+            "to": ["packs/claudinite-tasks"],
+            "reason": "inherent(#1317): the workflow IS the wiring — its run: lines name the queue entry points this repo executes"
+          },
+          {
+            "path": ".github/workflows/claudinite-executor.yml",
+            "to": ["packs/claudinite-tasks"],
+            "reason": "inherent(#1317): the workflow IS the wiring — its run: lines name the queue entry points this repo executes"
+          },
+          {
+            "path": ".github/workflows/ci.yml",
+            "to": ["packs/claudinite-tasks"],
+            "reason": "inherent(#1317): CI sweeps every test root, and the queue's simulator suite lives in the pack's test/"
+          },
+          {
+            "path": "engine/checks/helpers/repo-context.mjs",
+            "to": ["packs/claudinite-tasks"],
+            "reason": "inherent(#1317): the helper mirrors the queue's WEEKDAYS literal and documents which queue modules clear the wiring it reads — a drift-guard comment must name what it watches"
+          },
+          {
+            "path": "engine/hooks/session-end-command.mjs",
+            "to": ["packs/claudinite-tasks"],
+            "reason": "inherent(#1317): the hook explains that the executor routine (packs/claudinite-tasks/executor.md) is what runs it last, and pointing at the owning procedure is the comment rule"
+          },
               {
                 "path": "engine/pack_loader/renamed-packs.mjs",
                 "to": [
@@ -116,6 +143,16 @@
     }
   ],
   "accept": [
+    {
+      "rule": "barrier",
+      "path": "packs/claudinite-tasks/test/sim/",
+      "reason": "the simulator is the tasks-dispatch design's executable spec and cites the SCENARIOS/DESIGN record it plays out; a pack's test/ directory is dropped from the vendor set by name, so the docs/ reference reaches no consumer (#1317)"
+    },
+    {
+      "rule": "task-declaration-shape",
+      "path": "engine/scheduler/queue/tasks/implement-request/task.mjs",
+      "reason": "skew shim (#1317): it re-exports the moved declaration (export { default } from the pack), which satisfies every runtime loader of the old path; the shape check reads files statically and cannot see through a re-export. Deleted with the other shims by the migration tail (#1324)"
+    },
     {
       "rule": "task-code-work-env",
       "path": "packs/claudinite-lifecycle/tasks/update/worker.mjs",

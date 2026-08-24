@@ -58,7 +58,7 @@ test('fires on github-script, in the stub and in the canon copy alike', () => {
     for (const f of findings) {
       assert.equal(f.severity, 'blocking');
       assert.match(f.what, /github-script/);
-      assert.match(f.fix, /engine\/scheduler\/queue\//);
+      assert.match(f.fix, /packs\/claudinite-tasks\/queue\//);
     }
   });
 });
@@ -101,12 +101,12 @@ test('the canon tree itself satisfies the rule', () => {
 // The rule's whole premise: these files name a module rather than carrying one.
 test('every job in both real stubs runs an engine module', () => {
   for (const stub of ['claudinite-scheduler', 'claudinite-executor']) {
-    const yml = readFileSync(join(CANON, `engine/scheduler/stubs/${stub}.yml`), 'utf8');
+    const yml = readFileSync(join(CANON, `packs/claudinite-tasks/stubs/${stub}.yml`), 'utf8');
     const runs = [...yml.matchAll(/^\s*run: (.+)$/gm)].map((m) => m[1]);
     assert.ok(runs.length > 0, `${stub} runs something`);
     for (const cmd of runs) {
-      assert.match(cmd, /^node \.claudinite\/shared\/engine\/scheduler\/queue\/[a-z-]+\.mjs$/,
-        `${stub}: "${cmd}" must be a bare invocation of a vendored engine module`);
+      assert.match(cmd, /^node \.claudinite\/shared\/packs\/claudinite-tasks\/queue\/[a-z-]+\.mjs$/,
+        `${stub}: "${cmd}" must be a bare invocation of a vendored queue module`);
     }
   }
 });

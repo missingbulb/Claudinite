@@ -6,7 +6,7 @@
 // nightly worker invokes, as subprocesses, in the same order:
 //
 //   vendoring/apply-vendor-set.mjs   the mount + stamp
-//   engine/scheduler/converge-wiring.mjs   workflow, hooks, badge row
+//   packs/claudinite-tasks/converge-wiring.mjs   workflow, hooks, badge row
 //   engine/migrations/apply.mjs      the mechanical notes
 //   vendoring/apply-vendor-set.mjs   again, when a note changed the DECLARATION (a
 //                                    seeded pack's content is not in the first pass's
@@ -118,7 +118,7 @@ export function rehearse(fixture, mode) {
       // converge the wiring). Anything the wiring converge derives from the
       // declaration — the rules index above all — is wrong if a record moved the
       // declaration after it ran, and the rehearsal is where that shows up.
-      steps.push(step('converge-wiring', [join(CANON, 'engine/scheduler/converge-wiring.mjs'), 'fixture/rehearsal'],
+      steps.push(step('converge-wiring', [join(CANON, 'packs/claudinite-tasks/converge-wiring.mjs'), 'fixture/rehearsal'],
         { CLAUDINITE_REPO_ROOT: root }, root));
       steps.push(step('selftest', [join(CANON, 'engine/selftest.mjs'), '--strict'], { CLAUDE_PROJECT_DIR: root }, root));
       const sweep = join(root, '.claudinite/shared/engine/checks/check_the_world.mjs');

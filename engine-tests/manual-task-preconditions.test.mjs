@@ -20,7 +20,12 @@ import { resolve } from 'node:path';
 // run at all — `claudinite-fleet-sheepdog/fleet-baseline`, the fleet's converge lever, among them.
 test('no manual task refuses its own forced item', async () => {
   const files = execFileSync('git', ['ls-files', 'packs/*/tasks/*/task.mjs'], { encoding: 'utf8' })
-    .split('\n').filter(Boolean);
+    .split('\n').filter(Boolean)
+    // The queue's own built-in (queue/tasks/, #1317) is not a pack-contributed
+    // manual task: its precondition is evaluated against the request signal the
+    // executor collects, not a bare forced item, so this guard's contract does
+    // not apply to it.
+    .filter((f) => !f.includes('/queue/tasks/'));
   assert.ok(files.length, 'the task glob matched nothing — a layout change would make this test vacuous');
 
   const manual = [];

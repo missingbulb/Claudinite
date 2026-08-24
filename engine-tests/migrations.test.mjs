@@ -227,6 +227,7 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
       'basics',
       { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } },
       'claudinite-lifecycle',
+      'claudinite-tasks',
     ]);
     // …and running it again writes nothing at all.
     assert.equal(execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {

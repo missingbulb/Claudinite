@@ -10,8 +10,8 @@ import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../en
 import { settingsPath } from '../engine/settings-file.mjs';
 import { installedVersions, hasInstalledMount, withInstalledVersions } from '../engine/installed-versions.mjs';
 import { loadMigrations, applyMigration } from '../engine/migrations/registry.mjs';
-import { convergeWiring } from '../engine/scheduler/converge-wiring.mjs';
-import { NEEDS_HUMAN_LABEL } from '../engine/scheduler/dispatch.mjs';
+import { convergeWiring } from '../packs/claudinite-tasks/converge-wiring.mjs';
+import { NEEDS_HUMAN_LABEL } from '../packs/claudinite-tasks/dispatch.mjs';
 
 // THE ENGINE UPDATE FLOW (docs/versioned-updates/DESIGN.md §2): move one repo from
 // the engine version it has installed to the one this canon tree ships. Fully

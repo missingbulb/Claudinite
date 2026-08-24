@@ -103,5 +103,5 @@ jobs:
   const whats = run({ [WF]: stripped }).map((x) => x.what).join(' | ');
   assert.match(whats, /no workflow_dispatch/);
   assert.match(whats, /no concurrency group/);
-  assert.match(whats, /does not run the vendored engine entry/);
+  assert.match(whats, /does not run the vendored scheduler entry/);
 });

@@ -45,13 +45,13 @@ jobs:
         #                            the fixture-consumer rehearsal included
         #   dev/tools/               maintainer-side tooling nothing at session time runs
         #   .claudinite/local/packs/ this repo's own local packs — tests live inside the tree
-        #   docs/tasks-dispatch/sim/ the dispatch design's executable scenarios — the
+        #   packs/claudinite-tasks/test/sim/ the dispatch design's executable scenarios — the
         #                            simulator lives beside the spec it models, not in
         #                            engine/ (nothing ships it; it tests prose)
         # nullglob: a root with no tests drops out instead of reaching node as a literal pattern.
         run: |
           shopt -s globstar nullglob
-          tests=(engine-tests/**/*.test.mjs packs/**/*.test.mjs vendoring/**/*.test.mjs dev/tools/**/*.test.mjs .claudinite/local/packs/**/*.test.mjs docs/tasks-dispatch/sim/**/*.test.mjs)
+          tests=(engine-tests/**/*.test.mjs packs/**/*.test.mjs vendoring/**/*.test.mjs dev/tools/**/*.test.mjs .claudinite/local/packs/**/*.test.mjs packs/claudinite-tasks/test/sim/**/*.test.mjs)
           # Deliberately oversubscribed. node --test defaults to one worker per core
           # minus one, which fits a CPU-bound suite; this one spends most of its wall
           # clock waiting — on git plumbing, spawned workers and converge fixtures — so

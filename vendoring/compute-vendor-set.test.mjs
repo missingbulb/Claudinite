@@ -424,7 +424,7 @@ test('every engine module the workflow stubs name is in the vendor set', async (
   const { files } = await computeVendorSet(['basics']);
   const shipped = new Set(files);
   for (const stub of ['claudinite-scheduler', 'claudinite-executor']) {
-    const yml = readFileSync(join(REPO_ROOT, `engine/scheduler/stubs/${stub}.yml`), 'utf8');
+    const yml = readFileSync(join(REPO_ROOT, `packs/claudinite-tasks/stubs/${stub}.yml`), 'utf8');
     const named = [...yml.matchAll(/^\s*run: node \.claudinite\/shared\/(\S+)$/gm)].map((m) => m[1]);
     assert.ok(named.length > 0, `${stub}.yml names no engine module — the pattern has gone stale`);
     for (const module of named) {

@@ -277,7 +277,7 @@ test('--init writes the pack declaration once and is idempotent', () => {
     // mechanism pack in, each materialized with its provenance (`via`). core is
     // seeded AND required, so it appears once, in the seeded order, with no `via`.
     assert.deepEqual(JSON.parse(first).packs,
-      ['basics', 'claudinite-lifecycle', { id: 'barriers', via: ['claudinite-lifecycle'] }, { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'tidy-repo']);
+      ['basics', 'claudinite-lifecycle', { id: 'barriers', via: ['claudinite-lifecycle'] }, { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'claudinite-tasks', 'tidy-repo']);
     // The declaration is the ONLY key seeded. The delivery preference used to be
     // materialized here too, but every project made the same selection, so the line
     // said nothing — it is an override now, written only by the project that wants

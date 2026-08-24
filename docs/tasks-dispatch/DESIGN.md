@@ -1,6 +1,6 @@
 # Task dispatch without slots — the work-item queue
 
-The mechanism lives in [`engine/scheduler/queue/`](../../engine/scheduler/queue/),
+The mechanism lives in [`packs/claudinite-tasks/queue/`](../../packs/claudinite-tasks/queue/),
 behind `taskScheduler.dispatch`. A continuation of the owner's sketch (2026-08-12, reproduced in Appendix A), played against twenty timed
 scenarios ([SCENARIOS.md](SCENARIOS.md)) and the field's prior art
 ([RESEARCH.md](RESEARCH.md)), with the owner's eight decisions of 2026-08-13
@@ -1902,13 +1902,13 @@ arbitrated and recovered by the same code as any other item, which is the point.
 8. `packs/claudinite-growth/skills/writing-tasks/SKILL.md` — the contract prose
    members read.
 
-Played through in the simulator as **S44–S51** ([sim](sim/), SCENARIOS §K); each was
+Played through in the simulator as **S44–S51** ([sim](../../packs/claudinite-tasks/test/sim/), SCENARIOS §K); each was
 watched failing against a deliberately broken mechanism before it was believed.
 
 Built in #1010, with one addition to the list above: the `request` signal collector
 (see §16.4's amendment), and its name in the contract's signal vocabulary. The
 engine tests mirroring S44–S51 live in
-[`engine-tests/scheduler/queue/request-mode.test.mjs`](../../engine-tests/scheduler/queue/request-mode.test.mjs)
+[`packs/claudinite-tasks/test/queue/request-mode.test.mjs`](../../packs/claudinite-tasks/test/queue/request-mode.test.mjs)
 and were each watched failing against a broken mechanism in turn.
 
 **Unverified at landing:** whether `GET /repos/{o}/{r}/collaborators/{u}/permission`
