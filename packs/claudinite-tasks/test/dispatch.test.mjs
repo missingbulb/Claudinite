@@ -380,3 +380,41 @@ test('a minted escalation label fits GitHub\'s 100-char description cap', () => 
   const longest = 'a'.repeat(50);
   assert.ok(escalationLabel(longest).description.length <= 100, 'the mint template leaves no room for a long code');
 });
+
+// The built-in task's path is DERIVED from where its module sits, so the move (#1317)
+// changed what a new dispatch carries while every live item still carries the old one.
+// Both must validate: reject the new shape and the whole ad-hoc request lane stops —
+// loudly, on every request, with `invalid` as the verdict.
+test('a built-in dispatch validates from the pack path and the legacy engine path alike', async () => {
+  const { validateDispatchBody } = await import('../validate-dispatch.mjs');
+  const { requestTaskPath } = await import('../built-in-tasks.mjs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+
+  const paths = [
+    'engine/scheduler/queue/tasks/implement-request/task.md',
+    '.claudinite/shared/engine/scheduler/queue/tasks/implement-request/task.md',
+    'packs/claudinite-tasks/queue/tasks/implement-request/task.md',
+    '.claudinite/shared/packs/claudinite-tasks/queue/tasks/implement-request/task.md',
+  ];
+  // …including the one the code actually mints, so this cannot pass on shapes I spelled
+  // correctly while the real path is a fifth thing.
+  const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../..');
+  const requestDecl = (await import('../queue/tasks/implement-request/task.mjs')).default;
+  paths.push(requestTaskPath(CANON));
+
+  for (const p of paths) {
+    const v = validateDispatchBody(`${p}\n`, {
+      exists: () => true,
+      isPackDeclared: () => true,
+      // The REAL declaration, so the test cannot pass on a hand-built stand-in that
+      // happens to satisfy the contract the live one might not.
+      // The REAL declaration, so the test cannot pass on a hand-built stand-in that
+      // happens to satisfy the contract the live one might not. `loadTask` is sync.
+      loadTask: () => requestDecl,
+    });
+    assert.equal(v.ok, true, `${p} must validate: ${v.reason ?? ''}`);
+    assert.equal(v.pack, 'engine');
+    assert.equal(v.task, 'implement-request');
+  }
+});

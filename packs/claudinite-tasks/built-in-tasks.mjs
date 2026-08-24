@@ -57,7 +57,13 @@ export function requestTaskPath(root) {
 // precondition, which judges their permission.
 export const APPROVAL_RE = /^\s*\/claude\s+go\b/im;
 
-// The one shape a built-in task path may take, mirroring `DISPATCH_PATH_RE`'s job
-// for pack tasks. The `.claudinite/shared/` prefix is optional for the same reason:
-// a member's engine is mounted there, the canon runs its own tree.
-export const BUILT_IN_PATH_RE = /^(?:\.claudinite\/shared\/)?engine\/scheduler\/queue\/tasks\/([^/]+)\/task\.md$/;
+// The shapes a built-in task path may take, mirroring `DISPATCH_PATH_RE`'s job for pack
+// tasks. The `.claudinite/shared/` prefix is optional for the same reason: a member's
+// mount is there, the canon runs its own tree.
+//
+// TWO ROOTS, and both are permanent. The path is DERIVED from where this module sits,
+// so the move to the tasks pack (#1317) changed what a new dispatch carries while every
+// item minted before it still carries `engine/scheduler/`. This regex is a VALIDATOR,
+// not a decoder: a shape it does not know is rejected outright, so dropping either one
+// stops that half of the ad-hoc request lane on every single request.
+export const BUILT_IN_PATH_RE = /^(?:\.claudinite\/shared\/)?(?:engine\/scheduler|packs\/claudinite-tasks)\/queue\/tasks\/([^/]+)\/task\.md$/;

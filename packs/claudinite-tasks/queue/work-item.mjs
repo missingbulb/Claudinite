@@ -383,14 +383,22 @@ export const isWorkItemTitle = (title) => parseWorkItemTitle(title) !== null;
 
 // The `<pack>/<task>` id a WORKER PATH names — the identity half a marked issue's
 // title cannot carry (DESIGN §16.1), read off the path its machine block names. Two
-// shapes, because tasks have two homes: a declared pack's, and the engine's own
-// built-in root. The `.claudinite/shared/` prefix is optional in both — a member's
-// engine is mounted there and the canon runs its own tree.
+// shapes, because tasks have two homes: the `tasks/` slot a declared pack contributes,
+// and the queue's own built-in root. The `.claudinite/shared/` prefix is optional in
+// both — a member's mount is there and the canon runs its own tree.
+//
+// THE BUILT-IN ROOT HAS TWO SPELLINGS, and both are permanent. The surface moved from
+// `engine/scheduler/` to the tasks pack (#1317), so a live item minted before the move
+// still names the engine path while every new one names the pack path; the wire id
+// either produces is unchanged, which is what the move promised. Stored data is
+// renamed on the DECODE side or it stops decoding, and here that failure is silent:
+// this is the fallback for a marked issue, whose title is the requester's own words,
+// so a path that yields null leaves the item unattributable rather than rejected.
 //
 // It is a PARSE, not a lookup: anything that must know the task exists at HEAD
 // resolves the path against the discovered task set instead (the executor does).
 const PACK_TASK_PATH_RE = /^(?:\.claudinite\/shared\/)?packs\/([^/]+)\/tasks\/([^/]+)\/[^/]+$/;
-const BUILT_IN_TASK_PATH_RE = /^(?:\.claudinite\/shared\/)?engine\/scheduler\/queue\/tasks\/([^/]+)\/[^/]+$/;
+const BUILT_IN_TASK_PATH_RE = /^(?:\.claudinite\/shared\/)?(?:engine\/scheduler|packs\/claudinite-tasks)\/queue\/tasks\/([^/]+)\/[^/]+$/;
 
 export function taskIdFromPath(path) {
   const p = String(path ?? '');

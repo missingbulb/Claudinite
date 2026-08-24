@@ -8,6 +8,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
   TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_OBSOLETE, OUTCOME_DELIVERED,
@@ -269,6 +271,27 @@ test('a worker path names its task, in both homes and under either root', () => 
   assert.deepEqual(taskIdFromPath('.claudinite/shared/engine/scheduler/queue/tasks/implement-request/task.md'), { pack: 'engine', task: 'implement-request' });
   assert.equal(taskIdFromPath('please do the thing'), null);
   assert.equal(taskIdFromPath(null), null);
+});
+
+// The built-in's home moved with the surface (#1317), and the path a NEW item carries
+// is derived from where the module actually sits — so the pack's own `queue/tasks/`
+// root has to decode as well as the engine's did. It is the same task under the same
+// wire id: the fallback exists for a MARKED ISSUE, whose title is the person's own
+// words and carries no id, so a path that fails to decode leaves every new request
+// unattributable to the janitor, uncounted by usage-fold, and blank on the dashboard —
+// with nothing going red anywhere.
+test('the built-in task decodes from its new home as well as its legacy one', async () => {
+  const { requestTaskPath } = await import('../../built-in-tasks.mjs');
+  for (const path of [
+    'packs/claudinite-tasks/queue/tasks/implement-request/task.md',
+    '.claudinite/shared/packs/claudinite-tasks/queue/tasks/implement-request/task.md',
+  ]) assert.deepEqual(taskIdFromPath(path), { pack: 'engine', task: 'implement-request' }, path);
+
+  // …and the path the code actually mints is one of them, rather than a third shape
+  // this test happens to spell correctly.
+  const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
+  assert.deepEqual(taskIdFromPath(requestTaskPath(CANON)), { pack: 'engine', task: 'implement-request' },
+    `the minted path ${requestTaskPath(CANON)} must decode`);
 });
 
 test('a marked issue that nobody picks up still goes stale', () => {
