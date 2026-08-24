@@ -25,14 +25,14 @@ const isParked = (it) => (statusOf(it) ?? '').startsWith(NH(''));
 function cast() {
   return [
     {
-      id: 'basics/baselining', frequency: 'daily-2h', outcome: 'done',
+      id: 'basics/baselining', frequency: 'daily', outcome: 'done',
       codeWorkMinutes: 21, agentMinutes: 30,
       precondition: (w) => ({ run: !!w.mountBehind, reason: 'mount converged, no pending notes' }),
       requestsAgent: (w) => !!w.baseliningNeedsJudgment,
       codeWorkFails: (w) => !!w.mountBroken,
     },
     {
-      id: 'grow/growth-extract', frequency: 'daily-1h', schedule_after: ['basics/baselining'],
+      id: 'grow/growth-extract', frequency: 'daily', schedule_after: ['basics/baselining'],
       outcome: 'done', codeWorkMinutes: 2, agentMinutes: 35,
       precondition: (w) => ({ run: !!w.extractHasLessons, reason: 'nothing new to extract' }),
     },
@@ -54,7 +54,7 @@ function cast() {
       precondition: (w) => ({ run: !!w.releasePending, reason: 'nothing to release' }),
     },
     {
-      id: 'gcec/create-extractor', frequency: 'hourly', outcome: 'done',
+      id: 'gcec/create-extractor', frequency: 'daily', outcome: 'done',
       codeWorkMinutes: 4, agentMinutes: 10,
       precondition: (w) => ({ run: !!w.pendingRequest, reason: 'no eligible requests' }),
     },
@@ -1868,11 +1868,13 @@ test('S69 a mark landing mid-drain waits for the next tick — continuations cha
   assert.equal(sim.log.filter((e) => e.kind === 'executor-run' && e.trigger === 'scheduler-run-drain').length, 2);
 });
 
-// ---- S70 — THE DOOR. A member's task file is its own data and no vendoring pass rewrites it,
-// so a retired spelling can sit in a declaration indefinitely and must keep working. It is read
-// as `daily` where the declaration LOADS, which is why nothing downstream — the anchor, and the
-// period the janitor's stale bound and the signal window count in — ever sees the old token.
-test('S70 a retired `hourly` declaration reads as daily, at every cadence', () => {
+// ---- S70 — THE DOOR, NOW SHUT (#1234). A member's task file is its own data that no vendoring
+// pass rewrites, so a retired spelling could sit in a declaration indefinitely and had to keep
+// working — read as `daily` where the declaration LOADS, so nothing downstream ever saw the old
+// token. That tolerance came out once the fleet's own declarations were read and none named one.
+// What the scenario proves now is the shut door: the spellings pass through unchanged and the
+// calendar refuses them, rather than an anchor being invented for a token nothing understands.
+test('S70 a retired spelling is no longer normalized, and the calendar refuses it', () => {
   const hourlyCron = makeSim({ tasks: cast() })
     .seedSteadyState('2026-08-12T00:00Z')
     .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
@@ -1880,8 +1882,8 @@ test('S70 a retired `hourly` declaration reads as daily, at every cadence', () =
     .seedSteadyState('2026-08-12T00:00Z')
     .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
-  // `gcec/create-extractor` declares `hourly`; it is asked once a day, exactly like a task that
-  // declares `daily` — and the cron's own cadence changes neither.
+  // `gcec/create-extractor` declares `daily` now; it is asked once a day whatever the cron's own
+  // cadence, which is the half of this scenario the retirement does not touch.
   for (const s of [hourlyCron, twice]) {
     assert.equal(asks(s, 'gcec/create-extractor').length, 1);
     for (const task of ['tidy/tidy-issues', 'chrome/store-release']) {
@@ -1889,14 +1891,17 @@ test('S70 a retired `hourly` declaration reads as daily, at every cadence', () =
     }
   }
 
-  // The period, not just the anchor — this is the half that would otherwise park a member's
-  // un-converged task needs-human on every janitor sweep.
-  assert.equal(periodMs('hourly'), periodMs('daily'));
-  assert.equal(normalizeFrequency('hourly'), 'daily');
-  for (const legacy of ['daily-2h', 'daily-1h', 'daily+1h']) {
-    assert.equal(normalizeFrequency(legacy), 'daily');
-    assert.equal(mostRecentAnchor(legacy, T('2026-08-12T10:00Z')), mostRecentAnchor('daily', T('2026-08-12T10:00Z')));
+  // The door passes a retired token through untouched now, and the calendar has no answer for it.
+  for (const retired of ['hourly', 'daily-2h', 'daily-1h', 'daily+1h']) {
+    assert.equal(normalizeFrequency(retired), retired, 'the map is empty, so normalizing is identity');
+    // The sim words it its own way (`no anchor hour for …`); what matters is that it refuses.
+    assert.throws(() => mostRecentAnchor(retired, T('2026-08-12T10:00Z')),
+      new RegExp(retired.replace('+', '\\+')), `${retired} has no anchor`);
   }
+  // `periodMs` still answers a day, and deliberately: its fallthrough — not the door — is what
+  // keeps an unrecognized token off an HOUR-scale bound, which is what would park a task
+  // needs-human on every janitor sweep. That safety outlives the vocabulary it was written for.
+  assert.equal(periodMs('hourly'), periodMs('daily'));
 });
 
 // ---- S71 — a DROPPED tick. GitHub drops scheduled runs under load, and the

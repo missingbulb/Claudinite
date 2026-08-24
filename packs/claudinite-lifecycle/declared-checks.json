@@ -32,9 +32,9 @@
     "matchLines": [
       {
         "match": "/\\bcron:.*/",
-        "unlessLineMatches": "/\\bcron:\\s*['\"]?(1[0-9]|[2-4][0-9]|50) (([0-9]|1[0-9]|2[0-3]),([0-9]|1[0-9]|2[0-3])|\\*) \\* \\* \\*['\"]?\\s*$/",
-        "what": "{match} is not two daily ticks (or the legacy hourly form) on a fixed minute in :10\u2013:50",
-        "fix": "use \"<minute> <dailyHour>,<dailyHour+12> * * *\", minute 10 to 50, all written by the converge; the legacy \"<minute> * * * *\" still passes until this repo's workflow pull request lands"
+        "unlessLineMatches": "/\\bcron:\\s*['\"]?(1[0-9]|[2-4][0-9]|50) (([0-9]|1[0-9]|2[0-3]),([0-9]|1[0-9]|2[0-3])) \\* \\* \\*['\"]?\\s*$/",
+        "what": "{match} is not two daily ticks on a fixed minute in :10\u2013:50",
+        "fix": "use \"<minute> <dailyHour>,<dailyHour+12> * * *\", minute 10 to 50, all written by the converge"
       }
     ],
     "checkEachFile": [

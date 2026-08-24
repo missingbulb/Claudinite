@@ -22,7 +22,7 @@ test('resolveModel maps every family and rejects unknowns; none is agentless', (
 // --- task-contract ---
 const validTask = {
   id: 'growth-extract',
-  frequency: 'daily-1h',
+  frequency: 'daily',
   precondition_signals: ['commits', 'prs', 'issues'],
   agent_model: 'opus',
   expected_outcome: 'merged-pr',
@@ -339,11 +339,18 @@ test('the retired frequency spellings are accepted, and normalized at the door',
   assert.equal(normalizeFrequency('nonsense'), 'nonsense', 'an unknown token is left for the validator');
 });
 
-test('a declaration carrying a retired spelling still validates', () => {
+// THE RUNTIME TOLERANCE IS RETIRED (#1234). It accepted a retired spelling forever because a
+// member's task file is its own data that no vendoring pass rewrites — so it could only come out
+// once the fleet's own declarations had been read and none named one. GoogleCalendarEventCreator's
+// `create-extractor` was the last, and moved to `daily`. `LEGACY_FREQUENCIES` is emptied rather
+// than deleted, so a future retirement refills it and this test inverts again.
+test('a declaration carrying a retired spelling no longer validates', () => {
   const decl = {
     id: 'legacy', frequency: 'hourly', agent_model: 'sonnet', agent_instructions: 'task.md',
     expected_outcome: 'none', precondition_signals: [], agent_execution_timeout: 600,
     precondition: () => ({ run: false }),
   };
-  assert.deepEqual(validateTaskDeclaration(decl), [], 'a member on the old vocabulary keeps running');
+  const findings = validateTaskDeclaration(decl);
+  assert.equal(findings.length, 1, 'the dead vocabulary is no longer accepted at the door');
+  assert.match(findings[0].what, /"frequency" "hourly" is not a legal frequency/);
 });

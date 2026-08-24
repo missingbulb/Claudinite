@@ -13,7 +13,7 @@ import { isWorkItemTitle } from '../../queue/work-item.mjs';
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const rows = [
   { task: 'p/daily1', frequency: 'daily', lastAsked: '2026-08-14T04:00:00.000Z', verdict: 'no', reason: 'nothing touched | nothing merged' },
-  { task: 'p/hourly1', frequency: 'hourly', lastAsked: '2026-08-14T09:00:00.000Z', verdict: 'go', reason: '' },
+  { task: 'p/daily2', frequency: 'daily', lastAsked: '2026-08-14T09:00:00.000Z', verdict: 'go', reason: '' },
 ];
 
 test('render/parse round-trips the authoritative columns', () => {
@@ -36,7 +36,7 @@ test('a mangled body degrades to absent per-row and never throws', () => {
     .replace('| p/daily1 |', '|| broken'); // one row mangled
   const back = parseScheduleBoard(half);
   assert.equal(back.has('p/daily1'), false, 'the mangled row reads as absent');
-  assert.equal(back.has('p/hourly1'), true, 'the intact row survives');
+  assert.equal(back.has('p/daily2'), true, 'the intact row survives');
 });
 
 test('the body is budgeted two-tier against the field cap — complete first, detail rationed', () => {
