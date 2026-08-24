@@ -628,6 +628,46 @@ jobs:
         run: node .claudinite/shared/engine/scheduler/queue/executor.mjs
 `;
 
+// A member whose live executor still stamps its secrets by NAME, and sets no bag.
+// Held literally for the same reason the shapes above are: `.github/workflows/` is
+// the one path a converge cannot push, so this is what every member has between the
+// engine that reads a bag converging and its own workflow landing by human-merged
+// PR (#1301). The engine must resolve `CCR_ROUTINE_TOKEN` from the plain
+// environment here, or #1296 happens again from the other direction.
+const STAMPING_EXECUTOR_WORKFLOW = `name: Claudinite executor
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  execute:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || github.event.label.name == 'task:ready'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Pick up and execute ready work
+        env:
+          GITHUB_TOKEN: \${{ github.token }}
+          CLAUDINITE_TASKS_SUSPEND_ALL: \${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
+          # claudinite:secrets
+          CCR_ROUTINE_TOKEN: \${{ secrets.CCR_ROUTINE_TOKEN }}
+        run: node .claudinite/shared/engine/scheduler/queue/executor.mjs
+`;
+
 export const FIXTURES = [
   {
     name: 'local-rules',
@@ -1019,6 +1059,18 @@ NSApplication.shared.run()
         taskScheduler: { dailyHour: 9, weeklyDay: 'Wed', monthlyDay: 1 },
       }),
       '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
+    },
+  },
+  {
+    name: 'stamping-executor',
+    why: 'a member whose live executor still passes its secrets by name and sets no `CLAUDINITE_SECRETS` bag — the window every member spends between this engine converging and its own workflow being merged (#1301), and the shape whose secrets must still resolve',
+    files: {
+      'README.md': '# fixture-stamping-executor\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics'], {
+        taskScheduler: { endpoints: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } } },
+      }),
+      '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
+      '.github/workflows/claudinite-executor.yml': STAMPING_EXECUTOR_WORKFLOW,
     },
   },
   {

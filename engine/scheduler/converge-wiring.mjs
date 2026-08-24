@@ -75,55 +75,18 @@ const CORPUS_IMPORT_RE = /^.*@\.claudinite\/shared\/CLAUDE\.md.*\n?/m;
 // so the cross-tree import stays a single, reviewable edge.
 const repoConfig = async (root) => (await import('../checks/helpers/repo-context.mjs')).loadConfig(root);
 
-// The repo Actions secrets its scheduled tasks declare via `required_secrets`,
-// deduped and sorted. Async because task discovery is; pure otherwise.
-export async function declaredSecrets(root, config) {
-  const { discoverTasks } = await import('./discover.mjs');
-  const { tasks } = await discoverTasks(root, config);
-  const names = tasks.flatMap((t) => t.decl?.required_secrets ?? []);
-  // Endpoint tokens ride the same rail (tasks-dispatch DESIGN §12, §14.6): the
-  // config maps an endpoint name to a URL and to the NAME of the Actions secret
-  // holding its token, and the stamp puts that name in the executor's env exactly
-  // as a `required_secrets` entry. The executor reads it only at the moment of the
-  // invocation call; nothing else in a task's life ever sees it.
-  const endpointTokens = Object.values(config?.taskScheduler?.[ENDPOINTS_KEY] ?? config?.taskScheduler?.[LEGACY_ENDPOINTS_KEY] ?? {})
-    .map((e) => e?.tokenSecret).filter((n) => typeof n === 'string' && n);
-  return [...new Set([...names, ...endpointTokens])].sort();
-}
-
-// Stamp the declared secrets into the scheduler workflow's engine step, beside
-// GITHUB_TOKEN. This is the whole delivery mechanism: GitHub Actions requires each
-// secret to be named statically in the workflow, and a task's `required_secrets` is
-// exactly that list — so the wiring converge writes it, and a worker then reads
-// `process.env.<NAME>` like any other environment variable. No bundle, no parsing,
-// no engine-side selection. Regenerated from the stub each converge, so the list
-// tracks the declarations rather than accumulating.
-// A stub says WHERE with the `# claudinite:secrets` marker, and the scheduler run stub needs
-// that: it has two jobs carrying GITHUB_TOKEN and only the executing one may see a
-// secret. The fallback under the GITHUB_TOKEN line covers a stub that declares no
-// marker.
-const SECRETS_MARKER = /^[ \t]*# claudinite:secrets\b.*$/m;
-export function withDeclaredSecrets(stubText, names = []) {
-  if (!names.length) return stubText;
-  const lines = names.map((n) => `          ${n}: \${{ secrets.${n} }}`).join('\n');
-  // MARKER OR NOTHING. The fallback this used to carry — stamp under the first
-  // `GITHUB_TOKEN` line — was safe only while every stub that reached here ran task
-  // code. The scheduler run stub no longer does (its drain dispatches the executor rather
-  // than running one, §15.16), and a fallback would stamp every task secret into
-  // the one job the design says must never hold one.
-  return SECRETS_MARKER.test(stubText)
-    ? stubText.replace(SECRETS_MARKER, (m) => `${m}\n${lines}`)
-    : stubText;
-}
-
 // Re-converge the scheduler workflow to the vendored stub, with the cron minute set
 // to this repo's stable hashed value (never guessed — hash-minute.mjs, a pure
 // function of the full name, so re-vendors and this convergence agree) and the
-// declared `required_secrets` stamped into the engine step's env. `stubText` is the
-// vendored stub's content (the caller reads it from the mount). Returns true when
-// the file was written (absent, or drifted from the target).
-// What this repo's scheduler workflow SHOULD contain — the stub with its secrets
-// stamped and its cron resolved, as text, touching no disk.
+// `stubText` is the vendored stub's content (the caller reads it from the mount).
+// Returns true when the file was written (absent, or drifted from the target).
+// What this repo's scheduler workflow SHOULD contain — the stub with its cron
+// resolved, as text, touching no disk.
+//
+// A workflow is now a pure function of its stub. Secrets used to be stamped in here
+// by name, which made these files a function of the TASK SET and is what wedged a
+// member in #1296 — they reach the executor as one static `toJSON(secrets)` line
+// instead (#1301, secrets-bag.mjs).
 //
 // Split out from the converge below because the pack update flow needs the answer
 // without the side effect: it cannot write this file (its caller pushes with the
@@ -134,21 +97,20 @@ export function withDeclaredSecrets(stubText, names = []) {
 // twelve hours after it. Optional, and absent means the documented default — an unset key is the
 // default, never a misconfiguration — so a caller that does not read the repo's schedule still
 // writes the right cron for every repo that has not moved its anchor.
-export function schedulerWorkflowTarget(fullName, stubText, secretNames = [], dailyHour = undefined) {
-  return withDeclaredSecrets(stubText, secretNames)
+export function schedulerWorkflowTarget(fullName, stubText, dailyHour = undefined) {
+  return stubText
     .replace(/cron:\s*'[^']*'/, `cron: '${hashedCron(fullName, dailyHour ?? DEFAULT_SCHEDULE.dailyHour)}'`);
 }
 
-export function convergeSchedulerWorkflow(root, fullName, stubText, secretNames = [], dailyHour = undefined) {
+export function convergeSchedulerWorkflow(root, fullName, stubText, dailyHour = undefined) {
   return writeWorkflow(root, SCHEDULER_WORKFLOW,
-    schedulerWorkflowTarget(fullName, stubText, secretNames, dailyHour));
+    schedulerWorkflowTarget(fullName, stubText, dailyHour));
 }
 
 // The queue's second workflow — the label-event executor. No cron of its own (the
-// scheduler run's drain is the poll), so nothing about it is hashed; it only needs its
-// secrets stamped.
-export function convergeExecutorWorkflow(root, stubText, secretNames = []) {
-  return writeWorkflow(root, EXECUTOR_WORKFLOW, withDeclaredSecrets(stubText, secretNames));
+// scheduler run's drain is the poll) and nothing to stamp, so it is the stub verbatim.
+export function convergeExecutorWorkflow(root, stubText) {
+  return writeWorkflow(root, EXECUTOR_WORKFLOW, stubText);
 }
 
 function writeWorkflow(root, relPath, target) {
@@ -464,14 +426,14 @@ export function convergeBadgeRow(root, entries) {
 // wrote one it cannot deliver would fail its whole push, not just that file.
 // `seedLocalPack` defaults off for the same reason `badges` does: both are one-time
 // seeds of files the repo then owns, and only bootstrap passes them.
-export async function convergeWiring(root, fullName, stubText, secretNames = [], { badges = false, workflows = true, seedLocalPack = false, executorStub = null, dailyHour = undefined } = {}) {
+export async function convergeWiring(root, fullName, stubText, { badges = false, workflows = true, seedLocalPack = false, executorStub = null, dailyHour = undefined } = {}) {
   const changed = [];
-  if (workflows && convergeSchedulerWorkflow(root, fullName, stubText, secretNames, dailyHour)) changed.push(SCHEDULER_WORKFLOW);
+  if (workflows && convergeSchedulerWorkflow(root, fullName, stubText, dailyHour)) changed.push(SCHEDULER_WORKFLOW);
   // In queue mode `stubText` IS the scheduler run stub (the CLI picks it by dispatch mode),
   // and the executor is its second workflow. Nothing removes the executor when a
   // repo flips back: rolling back is a config edit, and an executor workflow whose
   // repo runs no queue simply never sees a `task:ready` label event.
-  if (workflows && executorStub && convergeExecutorWorkflow(root, executorStub, secretNames)) changed.push(EXECUTOR_WORKFLOW);
+  if (workflows && executorStub && convergeExecutorWorkflow(root, executorStub)) changed.push(EXECUTOR_WORKFLOW);
   const hooks = ensureHooks(root);
   for (const h of hooks.added) changed.push(`hook:${h}`);
   if (removeRetiredCorpusImport(root)) changed.push(`removed retired ${CLAUDE_MD} corpus import`);
@@ -517,8 +479,7 @@ async function main() {
   if (!existsSync(stubPath)) { console.error(`converge-wiring: vendored stub not found at ${stubPath}`); process.exit(1); }
   const executorStub = existsSync(join(stubs, 'claudinite-executor.yml'))
     ? readFileSync(join(stubs, 'claudinite-executor.yml'), 'utf8') : null;
-  const secretNames = await declaredSecrets(root, config);
-  const { changed, error } = await convergeWiring(root, fullName, readFileSync(stubPath, 'utf8'), secretNames, { badges, seedLocalPack, executorStub, dailyHour: config?.taskScheduler?.dailyHour });
+  const { changed, error } = await convergeWiring(root, fullName, readFileSync(stubPath, 'utf8'), { badges, seedLocalPack, executorStub, dailyHour: config?.taskScheduler?.dailyHour });
   if (error) console.log(`! ${error}`);
   console.log(changed.length ? `converge-wiring: ${changed.join(', ')}` : 'converge-wiring: already converged');
 }

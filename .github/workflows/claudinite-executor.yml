@@ -43,11 +43,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
-          # Hand-maintained: this list is what the stub's `# claudinite:secrets`
-          # marker produces on a member.
-          FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
-          CCR_ROUTINE_TOKEN: ${{ secrets.CCR_ROUTINE_TOKEN }}
-          CCR_FLEET_ROUTINE_TOKEN: ${{ secrets.CCR_FLEET_ROUTINE_TOKEN }}
+          # EVERY SECRET, IN ONE STATIC LINE (#1301). Actions has no way to export
+          # the secrets context as variables, and naming them one by one made this
+          # file a function of the task set — which wedges members, because a
+          # converge cannot write .github/workflows/ and only a human-merged PR
+          # moves it (#1296). secrets-bag.mjs is the only reader; the executor hands
+          # each task just the names its own declaration lists.
+          CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}
         run: node engine/scheduler/queue/executor.mjs
 
   continue-the-chain:

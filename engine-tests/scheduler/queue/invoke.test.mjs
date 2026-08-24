@@ -142,3 +142,27 @@ test('a configuration fault is answered-and-definite: nothing was fired', async 
   const noEndpoint = agentInvoker({ repo: 'o/r', config: {}, env: {}, fetchImpl: async () => { throw new Error('must not be called'); } });
   assert.equal((await noEndpoint({ task: task(null), item, nonce: 'n' })).answered, true);
 });
+
+// #1301. The endpoint token rides the bag like every other secret, and a member
+// still running a stamping executor workflow keeps resolving it the old way.
+test('the endpoint token is read from the secrets bag', async () => {
+  let sent = null;
+  const invoke = agentInvoker({
+    repo: 'o/r', config: CONFIG,
+    env: { CLAUDINITE_SECRETS: JSON.stringify({ CCR_TOKEN: 'bagged' }) },
+    fetchImpl: async (_url, init) => { sent = init.headers.authorization; return { ok: true, status: 200, text: async () => '{}' }; },
+  });
+  assert.equal((await invoke({ task: task(null), item, nonce: 'n' })).ok, true);
+  assert.match(sent, /bagged/);
+});
+
+// #1296: the message asserted a cause the code cannot see. The secret was set the
+// whole time; the workflow never passed it, and the reader went to the Secrets page
+// and had nowhere to go next.
+test('a missing endpoint token names BOTH causes, not just the one the code cannot rule out', async () => {
+  const invoke = agentInvoker({ repo: 'o/r', config: CONFIG, env: {}, fetchImpl: async () => { throw new Error('must not be called'); } });
+  const { error } = await invoke({ task: task(null), item, nonce: 'n-1' });
+  assert.match(error, /`CCR_TOKEN`/);
+  assert.match(error, /pending-workflows/, 'the undelivered executor workflow is the usual cause and must be named');
+  assert.doesNotMatch(error, /is not set in this repo/, 'that asserts a cause this code cannot observe');
+});

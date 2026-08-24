@@ -1164,9 +1164,9 @@ what makes "reach is which endpoint you name" true in the deployment and not onl
 in the design.
 
 **The token must be usable from the GitHub Action, and the plumbing is the
-`required_secrets` plumbing, reused exactly**: the wiring converge stamps each
-endpoint's secret into the executor workflow's env by name, so the executor
-job — the *only* place invocation happens — reads it as ordinary environment.
+`required_secrets` plumbing, reused exactly**: the executor job — the *only* place
+invocation happens — reads the endpoint's named secret out of the same bag every
+task's secrets come from.
 This works because Actions secrets are reachable Action-side and nowhere else
 in a task's life, and Action-side is precisely where the executor runs; the
 agent session it invokes still carries no secrets, unchanged. Baselining asks
@@ -1279,29 +1279,41 @@ executor workflow is the only consumer. End to end:
    which is exactly why it must never hold more than a name.
 2. **Storage** — values live as repo Actions secrets, set once by the owner
    in repo settings. Nothing else in the system stores, copies, or logs them.
-3. **Wiring** — the wiring converge stamps each declared name into the
-   **executor workflow's env** (`CHROME_STORE_TOKEN:
-   ${{ secrets.CHROME_STORE_TOKEN }}`). The scheduler run and the janitor workflows
-   get no secrets — they never execute task code.
+3. **Wiring** — none. The executor workflow carries one static line,
+   `CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}`, so its content does not track the
+   task set and no declaration can ever require a workflow change. That coupling is
+   what wedged a member permanently in #1296: `.github/workflows/` is the one path a
+   converge cannot write, and the agent that would have delivered the file needed
+   the token the file was to pass (#1301). The scheduler run and the janitor
+   workflows get no secrets — they never execute task code.
 4. **Execution** — after claim and a go verdict, the executor runs the work step as
-   a subprocess (task dir cwd, timeout) whose env carries exactly the
-   declared names. **The work step is the only task code that ever sees values.**
+   a subprocess (task dir cwd, timeout) whose env carries exactly the declared
+   names, selected out of the bag by `secrets-bag.mjs`. **The work step is the only
+   task code that ever sees values.** A member still running a workflow that stamps
+   names directly resolves them from the plain environment instead, until its own
+   executor workflow lands by human-merged PR.
 5. **The agent hop carries nothing** — the hand-off writes body sections and
    calls the invocation endpoint with a prompt naming the issue and nonce;
    the session works under its own identity. A task whose agent phase needs
    a privileged effect routes it through the work step's delivered artifact or a
    wider invocation endpoint — never a secret in the session.
 6. **Endpoint tokens ride the same rail** (§12): config maps endpoint name →
-   URL + the *name* of the Actions secret; the stamp puts it in the executor
-   env; the executor reads it only at the moment of the API call. The CCR
-   session-creation token is simply the default endpoint's entry.
-7. **Missing secret** — declared but not configured: baselining asks the
+   URL + the *name* of the Actions secret; the executor reads that name out of the
+   bag at the moment of the API call and nowhere else. The CCR session-creation
+   token is simply the default endpoint's entry.
+7. **Missing secret** — absent from the bag: baselining asks the
    owner on its standing issue (the adoption-interview posture), and until
    set, execution parks the affected item `needs-human` +
    `task:status:needs-human-action` naming the missing secret — at the work step for `required_secrets`, at hand-off for an
    endpoint token. Nothing fails silently; the task just doesn't work yet.
 8. **Rotation** — rotate the value in repo settings; nothing else changes,
    because names are the interface everywhere above.
+
+The cost of passing the whole context, recorded rather than rediscovered: every
+repo secret reaches the executor **job**, though no task subprocess sees more than
+it declared; and masking is registered per exact literal, so a secret containing a
+quote, a backslash or a newline appears JSON-escaped in the bag and would not be
+masked if anything printed it.
 
 Steps 2–3 and 6–8's storage half are Actions-platform behavior the simulator
 deliberately does not model (prose rows in the coverage map); the

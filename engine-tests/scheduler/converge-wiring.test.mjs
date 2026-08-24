@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   convergeSchedulerWorkflow, ensureHooks, removeRetiredCorpusImport, convergeWiring,
-  withDeclaredSecrets, SCHEDULER_WORKFLOW, SETTINGS_PATH,
+  SCHEDULER_WORKFLOW, SETTINGS_PATH,
   removeRetiredBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
   BADGE_ROW_START, BADGE_ROW_END, README,
   ensureRulesIndexImport, ensureRulesIndexMergeAttribute, RULES_INDEX_MERGE_ATTR,
@@ -31,52 +31,13 @@ test('convergeSchedulerWorkflow: writes the stub with the repo-hashed cron, and 
   assert.equal(convergeSchedulerWorkflow(root, REPO, STUB), false);
 });
 
-// --- required_secrets delivery (task-code-work DESIGN §9) --------------
-// Actions needs every secret named statically in the workflow, so a task's
-// `required_secrets` IS that list and the wiring converge writes it. These cover
-// the whole delivery mechanism — there is no other secrets code.
-
-// A stub shaped like a real one: the marker is where secrets go, and it is the
-// ONLY place they go.
-const ENV_STUB = "jobs:\n  schedule:\n    steps:\n      - name: Evaluate\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n          # claudinite:secrets\n        run: node run.mjs\n";
-const NO_MARKER_STUB = "jobs:\n  scheduler-run:\n    steps:\n      - name: Scheduler run\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n        run: node scheduler-run.mjs\n";
-
-test('withDeclaredSecrets: stamps each declared name at the marker', () => {
-  const out = withDeclaredSecrets(ENV_STUB, ['SOME_API_KEY', 'OTHER_KEY']);
-  assert.match(out, /# claudinite:secrets\n {10}SOME_API_KEY: \$\{\{ secrets\.SOME_API_KEY \}\}\n {10}OTHER_KEY: \$\{\{ secrets\.OTHER_KEY \}\}\n/);
-  assert.match(out, /^ {8}run: node run\.mjs$/m);   // the step is otherwise untouched
-});
-
-// MARKER OR NOTHING (§15.16). A stub with no marker is a job that runs no task
-// code — the scheduler run, whose drain now dispatches the executor rather than being one —
-// and the design says that job must never hold a task secret. The fallback this
-// used to carry would have stamped every one of them into exactly that job.
-test('withDeclaredSecrets: a stub with no marker is left alone, not stamped anyway', () => {
-  assert.equal(withDeclaredSecrets(NO_MARKER_STUB, ['SOME_API_KEY']), NO_MARKER_STUB);
-});
-
-test('withDeclaredSecrets: no declarations leaves the stub byte-identical', () => {
-  assert.equal(withDeclaredSecrets(ENV_STUB, []), ENV_STUB);
-  assert.equal(withDeclaredSecrets(ENV_STUB), ENV_STUB);
-});
-
-test('withDeclaredSecrets: regenerating from the stub tracks the declarations rather than accumulating', () => {
-  // The converge always starts from the stub, so dropping a task's declaration
-  // drops its line — the workflow can never grow stale secret names.
-  const first = withDeclaredSecrets(ENV_STUB, ['A_KEY', 'B_KEY']);
-  const second = withDeclaredSecrets(ENV_STUB, ['A_KEY']);
-  assert.match(first, /B_KEY/);
-  assert.ok(!second.includes('B_KEY'));
-  assert.match(second, /A_KEY: \$\{\{ secrets\.A_KEY \}\}/);
-});
-
 // The repo's own anchor hour picks BOTH cron hours (DESIGN §17). The rehearsal's
 // `custom-anchor-hour` fixture proves such a member converges green; this proves the value that
 // lands is its own — a converge that stamped the default instead would fire every task before its
 // anchor and land it a day late, and nothing would go red.
 test('convergeSchedulerWorkflow: both cron hours come from the repo\'s own dailyHour', () => {
   const root = mkdtempSync(join(tmpdir(), 'cw-hours-'));
-  convergeSchedulerWorkflow(root, REPO, STUB, [], 9);
+  convergeSchedulerWorkflow(root, REPO, STUB, 9);
   const written = readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8');
   assert.match(written, /cron: '\d+ 9,21 \* \* \*'/, "the member's own anchor, and twelve hours after it");
 
@@ -86,19 +47,6 @@ test('convergeSchedulerWorkflow: both cron hours come from the repo\'s own daily
   assert.match(readFileSync(join(dflt, SCHEDULER_WORKFLOW), 'utf8'), /cron: '\d+ 4,16 \* \* \*'/);
 });
 
-test('convergeSchedulerWorkflow: the declared secrets land in the written workflow, and re-converge is idempotent', () => {
-  const root = mkRepo();
-  const stub = `${STUB}${ENV_STUB}`;
-  assert.equal(convergeSchedulerWorkflow(root, REPO, stub, ['SOME_API_KEY']), true);
-  const written = readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8');
-  assert.match(written, /SOME_API_KEY: \$\{\{ secrets\.SOME_API_KEY \}\}/);
-  assert.match(written, /# claudinite:secrets/);
-  assert.match(written, new RegExp(`cron: '${hashedCron(REPO).replace(/[*]/g, '\\*')}'`));
-  assert.equal(convergeSchedulerWorkflow(root, REPO, stub, ['SOME_API_KEY']), false);
-  // and a changed declaration set rewrites it
-  assert.equal(convergeSchedulerWorkflow(root, REPO, stub, []), true);
-  assert.ok(!readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8').includes('SOME_API_KEY'));
-});
 
 test('ensureHooks: adds every required hook to a fresh repo, idempotently', () => {
   const root = mkRepo();
@@ -275,7 +223,7 @@ test('seedRepoLocalPack: creates the repo\'s own pack, declares it, and the inde
   writeFileSync(join(root, '.claudinite', 'shared', 'packs', 'basics', 'RULES.md'), 'BASICS\n');
   writeFileSync(join(root, '.claudinite-settings.json'), '{\n  "packs": [\n    "basics"\n  ]\n}\n');
 
-  const r = await convergeWiring(root, 'missingbulb/HelloWorldFlutterApp', STUB, [], { seedLocalPack: true });
+  const r = await convergeWiring(root, 'missingbulb/HelloWorldFlutterApp', STUB, { seedLocalPack: true });
   assert.ok(r.changed.some((c) => c.includes('hello-world-flutter-app')), r.changed.join(', '));
 
   const dir = join(root, '.claudinite', 'local', 'packs', 'hello-world-flutter-app');
@@ -495,7 +443,7 @@ test('convergeWiring: leaves the README alone unless the caller asks for badges'
   assert.ok(!nightly.changed.some((c) => c.includes(README)));
   assert.equal(readFileSync(join(root, README), 'utf8'), '# P\n\nprose\n');
   // Bootstrap's call — the row is seeded once.
-  const { changed } = await convergeWiring(root, REPO, STUB, [], { badges: true });
+  const { changed } = await convergeWiring(root, REPO, STUB, { badges: true });
   assert.ok(changed.some((c) => c.includes(README)));
   assert.ok(readFileSync(join(root, README), 'utf8').includes(BADGE_ROW_START));
 });
@@ -510,55 +458,56 @@ test('badgeRowEntries: skips a declared pack that carries no badge file', async 
 // --- the work-item queue's wiring (tasks-dispatch DESIGN §14) -----------------
 // The repo's one cron workflow keeps its path and changes its CONTENT with the
 // dispatch mode; the executor is a second workflow beside it, and it is the only
-// place a secret is ever named.
+// place a secret ever reaches at all (#1301).
 
 const SCHEDULER_STUB = "name: Claudinite scheduler\non:\n  schedule:\n    - cron: '10 * * * *'\n  workflow_dispatch:\n"
   + "jobs:\n  scheduler-run:\n    steps:\n      - name: Scheduler run\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n        run: node scheduler-run.mjs\n"
-  + "  drain:\n    steps:\n      - name: Drain\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n          # claudinite:secrets\n        run: node executor.mjs\n";
+  + "  drain:\n    steps:\n      - name: Drain\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n        run: node executor.mjs\n";
 
-test('withDeclaredSecrets stamps at the marker, so the scheduler-run job never sees a secret', () => {
-  const out = withDeclaredSecrets(SCHEDULER_STUB, ['STORE_TOKEN']);
-  const [schedulerRunJob, drainJob] = out.split('  drain:');
-  assert.ok(!schedulerRunJob.includes('STORE_TOKEN'), 'the scheduler run executes no task code and gets no secret');
-  assert.match(drainJob, /# claudinite:secrets\n {10}STORE_TOKEN: \$\{\{ secrets\.STORE_TOKEN \}\}/);
-});
+const EXECUTOR_STUB_TEXT = "name: Claudinite executor\non:\n  issues:\n    types: [labeled]\n"
+  + "jobs:\n  execute:\n    steps:\n      - env:\n          GITHUB_TOKEN: ${{ github.token }}\n          CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}\n        run: node executor.mjs\n";
 
-test('convergeWiring writes the executor workflow beside the cron one, secrets stamped', async () => {
+// A workflow is a pure function of its stub now. That is the point of #1301: while
+// its content tracked the task set, every new secret needed a human-merged PR in
+// every member, and a member that needed one to start its agent could never get it.
+test('convergeWiring writes the executor workflow beside the cron one, verbatim from the stub', async () => {
   const root = mkRepo();
   writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: [] }));
-  const executorStub = "name: Claudinite executor\non:\n  issues:\n    types: [labeled]\n"
-    + "jobs:\n  execute:\n    steps:\n      - env:\n          GITHUB_TOKEN: ${{ github.token }}\n          # claudinite:secrets\n        run: node executor.mjs\n";
-  const { changed } = await convergeWiring(root, REPO, SCHEDULER_STUB, ['CCR_TOKEN'], { executorStub });
+  const { changed } = await convergeWiring(root, REPO, SCHEDULER_STUB, { executorStub: EXECUTOR_STUB_TEXT });
   assert.ok(changed.includes('.github/workflows/claudinite-executor.yml'));
   const written = readFileSync(join(root, '.github/workflows/claudinite-executor.yml'), 'utf8');
-  assert.match(written, /CCR_TOKEN: \$\{\{ secrets\.CCR_TOKEN \}\}/);
+  assert.equal(written, EXECUTOR_STUB_TEXT);
   assert.ok(!written.includes('cron:'), 'the executor carries no cron — the scheduler run\'s drain is the poll');
   // Idempotent, like every other surface here.
-  const again = await convergeWiring(root, REPO, SCHEDULER_STUB, ['CCR_TOKEN'], { executorStub });
+  const again = await convergeWiring(root, REPO, SCHEDULER_STUB, { executorStub: EXECUTOR_STUB_TEXT });
   assert.equal(again.changed.filter((c) => c.endsWith('claudinite-executor.yml')).length, 0);
 });
 
-test('an endpoint\'s token secret is stamped exactly like a required_secret', async () => {
-  const { declaredSecrets } = await import('../../engine/scheduler/converge-wiring.mjs');
+// The old mechanism regenerated the list from the declarations every converge, so a
+// task set that changed rewrote the file. Nothing about a declaration may move it now.
+test('a task set that changes leaves the executor workflow untouched', async () => {
   const root = mkRepo();
   writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: [] }));
-  const config = { packs: [], taskScheduler: { dispatch: 'queue', endpoints: { default: { url: 'https://x', tokenSecret: 'CCR_TOKEN' } } } };
-  assert.deepEqual(await declaredSecrets(root, config), ['CCR_TOKEN']);
+  await convergeWiring(root, REPO, SCHEDULER_STUB, { executorStub: EXECUTOR_STUB_TEXT });
+  writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({
+    packs: [], taskScheduler: { endpoints: { default: { url: 'https://x', tokenSecret: 'CCR_TOKEN' } } },
+  }));
+  const again = await convergeWiring(root, REPO, SCHEDULER_STUB, { executorStub: EXECUTOR_STUB_TEXT });
+  assert.equal(again.changed.filter((c) => c.endsWith('claudinite-executor.yml')).length, 0);
 });
 
 test('the vendored stubs are what the converge is written against', () => {
   const canon = join(dirname(fileURLToPath(import.meta.url)), '../..');
   const schedulerRun = readFileSync(join(canon, 'engine/scheduler/stubs/claudinite-scheduler.yml'), 'utf8');
   const executor = readFileSync(join(canon, 'engine/scheduler/stubs/claudinite-executor.yml'), 'utf8');
-  // The marker is the contract between stub and stamper — a stub that lost it
-  // would converge a workflow whose tasks silently have no secrets. The EXECUTOR
-  // is the only place secrets live (§14), and since the scheduler run's drain became a
-  // dispatch rather than an executor run (§15.16), the scheduler run carries none: a marker
-  // there would be a standing invitation to stamp task secrets into the one job
-  // that never runs task code.
-  assert.equal((schedulerRun.match(/^\s*# claudinite:secrets$/gm) ?? []).length, 0);
-  assert.equal((executor.match(/^\s*# claudinite:secrets$/gm) ?? []).length, 1);
+  // The EXECUTOR is the only place secrets live (§14), and it holds them as ONE
+  // static line — that line disappearing is the whole of #1301 undone, silently, so
+  // it is pinned here. Since the scheduler run's drain became a dispatch rather than
+  // an executor run (§15.16), the scheduler run runs no task code and gets nothing.
+  assert.match(executor, /CLAUDINITE_SECRETS: \$\{\{ toJSON\(secrets\) \}\}/);
+  assert.equal((executor.match(/\$\{\{ secrets\./g) ?? []).length, 0, 'no secret is named one by one any more');
   assert.equal((schedulerRun.match(/\$\{\{ secrets\./g) ?? []).length, 0, 'the scheduler run holds no secret at all');
+  assert.ok(!schedulerRun.includes('toJSON(secrets)'), 'nor the whole bag');
   // The hold reaches every workflow, or it is not a hold (§15.24).
   for (const [name, text] of [['scheduler run', schedulerRun], ['executor', executor]]) {
     assert.match(text, /CLAUDINITE_TASKS_SUSPEND_ALL: \$\{\{ vars\.CLAUDINITE_TASKS_SUSPEND_ALL \}\}/,

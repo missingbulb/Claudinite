@@ -19,6 +19,7 @@
 // code before acting (DESIGN §7).
 
 import { ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from '../../checks/helpers/repo-context.mjs';
+import { secretValue } from './secrets-bag.mjs';
 
 export const DEFAULT_ENDPOINT = 'default';
 
@@ -102,12 +103,18 @@ export function agentInvoker({ repo, config, env = process.env, fetchImpl = fetc
     const endpoint = resolveEndpoint(config, task);
     // A configuration fault, decided before any call: definite, and no session.
     if (endpoint.error) return { ok: false, answered: true, error: endpoint.error };
-    const token = env[endpoint.tokenEnv];
+    const token = secretValue(endpoint.tokenEnv, env);
     if (!token) {
       // The `required_secrets` posture, applied to the endpoint token: nothing
-      // fails silently, the task just doesn't work yet, and the item names which
-      // secret to set (DESIGN §14.7).
-      return { ok: false, answered: true, error: `the Actions secret \`${endpoint.tokenEnv}\` for invocation endpoint "${endpoint.name}" is not set in this repo` };
+      // fails silently, the task just doesn't work yet, and the item names what to
+      // fix (DESIGN §14.7).
+      //
+      // WHAT WAS OBSERVED, AND BOTH CAUSES. The first version asserted "the secret
+      // is not set in this repo", which this code cannot see: on the member that
+      // wedged in #1296 the secret was set the whole time and the executor workflow
+      // simply never passed it. The reader believed the message, went to the Secrets
+      // page, found it present, and had nowhere to go next.
+      return { ok: false, answered: true, error: `\`${endpoint.tokenEnv}\`, the token for invocation endpoint "${endpoint.name}", is empty in this job. Either the repository secret is not set, or \`.github/workflows/claudinite-executor.yml\` does not pass it — check for an undelivered \`.claudinite/pending-workflows/claudinite-executor.yml\`, which is the usual cause` };
     }
 
     const payload = { text: firePayload({ repo, item, nonce }) };

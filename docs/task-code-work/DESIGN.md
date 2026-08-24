@@ -306,18 +306,18 @@ required_secrets: ['SOME_API_KEY'],
 That is the entire mechanism at the task level. Two things read it, and nothing
 else does:
 
-1. **The wiring converge** (`converge-wiring.mjs`, which baselining runs nightly
-   and bootstrap runs at adoption) stamps each declared name into the scheduler
-   workflow's engine step as `NAME: ${{ secrets.NAME }}`. Actions requires secrets
-   to be named statically in the workflow, and this list *is* that list — so
-   delivery is ordinary environment: a worker reads `process.env.NAME`. No bundle,
-   no parsing, no engine-side selection, and the workflow is regenerated from the
-   stub each converge so the list tracks the declarations.
+1. **The executor** selects it out of the secret bag and puts it in the work step's
+   environment, where a worker reads `process.env.NAME` as before. The executor
+   workflow carries every repo secret in one static line
+   (`CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}`) and `secrets-bag.mjs` is its only
+   reader, so this list decides what one task sees rather than what the workflow
+   passes. Nothing about a declaration rewrites a workflow — that coupling is what
+   wedged a member in #1296, since `.github/workflows/` is the one path a converge
+   cannot write (#1301).
 
 2. **Baselining** asks the owner for any declared name the repo has not configured
    — one open issue per repo, matched by exact title, so an unconfigured secret
-   costs one issue rather than one per night. It skips the cycle that first stamps
-   a name, when the value cannot be in the environment yet regardless.
+   costs one issue rather than one per night.
 
 This is the **adoption interview's posture**, deliberately: a declared requirement,
 minus what the project has, drives an *ask*. It is never a gate, never a

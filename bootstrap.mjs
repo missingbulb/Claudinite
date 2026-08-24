@@ -23,7 +23,7 @@ import { discoverPacks, resolveDeclaredPacks, packEntryId } from './engine/pack_
 import { seedDeclaration } from './engine/checks/helpers/seed-declaration.mjs';
 import { loadConfig } from './engine/checks/helpers/repo-context.mjs';
 import { applyVendor } from './vendoring/apply-vendor-set.mjs';
-import { convergeWiring, declaredSecrets } from './engine/scheduler/converge-wiring.mjs';
+import { convergeWiring } from './engine/scheduler/converge-wiring.mjs';
 import { unansweredQuestions } from './updates/install.mjs';
 import { runSelfTest } from './updates/engine-update.mjs';
 
@@ -102,8 +102,7 @@ const stubPath = join(stubs, 'claudinite-scheduler.yml');
 if (!existsSync(stubPath)) fail(`vendored stub not found at ${stubPath}`);
 const executorStub = existsSync(join(stubs, 'claudinite-executor.yml')) ? readFileSync(join(stubs, 'claudinite-executor.yml'), 'utf8') : null;
 const config = loadConfig(target);
-const secretNames = await declaredSecrets(target, config);
-const wiring = await convergeWiring(target, fullName, readFileSync(stubPath, 'utf8'), secretNames,
+const wiring = await convergeWiring(target, fullName, readFileSync(stubPath, 'utf8'),
   { badges: true, seedLocalPack: true, executorStub, dailyHour: config?.taskScheduler?.dailyHour });
 if (wiring.error) fail(wiring.error);
 console.log(wiring.changed.length ? `bootstrap: wiring — ${wiring.changed.join(', ')}` : 'bootstrap: wiring: already converged');

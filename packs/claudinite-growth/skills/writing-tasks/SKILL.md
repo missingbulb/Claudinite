@@ -121,8 +121,8 @@ than by replaying a ledger.
 - **A task says which repo secrets it needs.** Code-work runs Action-side, so repo
   Actions secrets are reachable there and nowhere else in a task's life (an agent
   session carries none). A task lists what it needs in `required_secrets`; the
-  wiring converge stamps each name into the workflows that run code-work — the scheduler run's
-  drain and the executor — so a worker reads it as ordinary environment. A declared
+  executor holds every repo secret and hands each task's code-work exactly the names
+  that task declared, so a worker reads it as ordinary environment. A declared
   secret the repo has not configured is **named, not guessed at**: code-work is the
   only code that sees a secret's value, so the executor parks the item at
   `needs-human` + `task:needs-human-action` saying exactly which one is missing. Nothing else fails; the task

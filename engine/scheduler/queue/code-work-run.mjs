@@ -19,11 +19,27 @@
 //    triage naming exactly which one is missing.
 
 import { runCodeWork, codeWorkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest, readTriageMarker } from '../code-work.mjs';
+import { SECRETS_BAG_ENV, secretsBag, secretValue, secretsFor } from './secrets-bag.mjs';
 
-// The declared secrets this environment does not carry. An unset variable is
-// missing; a set-but-empty one is the repo's own choice and is passed through.
+// The declared secrets this environment does not carry. Absent is missing; a
+// set-but-empty one is the repo's own choice and is passed through. Read through
+// the bag, which also answers for a legacy workflow that still stamps by name.
 export const missingSecrets = (names = [], env = process.env) =>
-  names.filter((n) => env[n] === undefined);
+  names.filter((n) => secretValue(n, env) === undefined);
+
+// The environment a task's work step runs under: this job's, minus every secret,
+// plus the ones this task declared. Selecting rather than inheriting is the point —
+// the bag carries the whole repository's secrets, and a task's blast radius should
+// be the list it wrote down (#1301). Under a legacy stamping workflow there is no
+// bag to subtract, so the stamped names stay inherited until that member's own
+// executor workflow lands; the fallback in secrets-bag.mjs states the retirement
+// condition.
+export function taskEnv(names = [], env = process.env) {
+  const out = { ...env };
+  delete out[SECRETS_BAG_ENV];
+  for (const name of Object.keys(secretsBag(env) ?? {})) delete out[name];
+  return { ...out, ...secretsFor(names, env) };
+}
 
 // The CLAUDINITE_* variables code-work is handed, and the whole of them: a worker
 // reading any other one is reading something nobody sets, which is silent and
@@ -64,7 +80,7 @@ export function codeWorkRunner({ root, repo, defaultBranch, env = process.env })
     console.log(`::group::code_work ${task.pack}/${task.id} [#${item.number}]`);
     const result = await runCodeWork(task.decl.code_work, {
       taskDir: task.taskDir,
-      env: { ...env, ...codeWorkEnv({ root, repo, defaultBranch, task, item, context, requestPath }) },
+      env: { ...taskEnv(task.decl.required_secrets ?? [], env), ...codeWorkEnv({ root, repo, defaultBranch, task, item, context, requestPath }) },
       timeoutSeconds: task.decl.code_work_timeout,
     });
     console.log('::endgroup::');
