@@ -206,7 +206,7 @@ test('regression (fleet executor-broken): the REAL canon tree vendors the tasks 
 test('regression: the REAL canon tree vendors the WHOLE queue engine, .md included', async () => {
   const { readdirSync } = await import('node:fs');
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
-  const { files } = await computeVendorSet(['basics']);
+  const { files } = await computeVendorSet(['basics', 'claudinite-tasks']);
   // WALKED, not listed: the queue engine has subdirectories now (the engine's own
   // built-in tasks), and a top-level listing would assert the directory name and
   // never look inside it — which is how the request task's `task.md` was dropped by
@@ -431,9 +431,11 @@ test('a repo with no version stamp keeps the date window — unknown is answered
 //
 // Read from the real stubs rather than a list, so a job added to either one is
 // covered the day it lands.
-test('every engine module the workflow stubs name is in the vendor set', async () => {
+test('every module the workflow stubs name is in the vendor set', async () => {
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
-  const { files } = await computeVendorSet(['basics']);
+  // The stubs are the tasks pack's, and so are the modules they name — a set computed
+  // for a member that declares no queue carries neither, which is the point of the split.
+  const { files } = await computeVendorSet(['basics', 'claudinite-tasks']);
   const shipped = new Set(files);
   for (const stub of ['claudinite-scheduler', 'claudinite-executor']) {
     const yml = readFileSync(join(REPO_ROOT, `packs/claudinite-tasks/stubs/${stub}.yml`), 'utf8');

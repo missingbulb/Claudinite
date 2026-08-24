@@ -89,13 +89,6 @@
           ],
           "reason": "inherent(#1317): a member's executor workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the executor"
         },
-        {
-          "path": "engine/scheduler/",
-          "to": [
-            "packs/claudinite-tasks"
-          ],
-          "reason": "decouple(#1317): legacy-path shims re-exporting the task surface from the paths fielded members still name; deleted once no vendored worker or stored prompt names one"
-        },
         "engine/migrations",
               {
                 "path": "engine/pack_loader/renamed-packs.mjs",
