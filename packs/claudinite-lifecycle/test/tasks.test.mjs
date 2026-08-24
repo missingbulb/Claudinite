@@ -46,13 +46,21 @@ test('update: self-skips a repo with no vendored mount (a pre-adoption repo)', (
   assert.match(v.reason, /no vendored mount/);
 });
 
-// Newness from the mount's OWN movement in the window, never from a datetime in the
-// declaration: the one that used to be stamped there recorded the last full
-// re-vendor, so a member converging nightly read as permanently overdue (#1252).
-test('update: quiet when the mount converged in this window and no pack moved', () => {
+// THE QUESTION THIS TASK EXISTS TO ASK — "am I behind the canon?" — CANNOT BE ASKED HERE.
+// The scheduler Action deliberately does not read canon (DESIGN §3.3), so `canonHead` is
+// always null and no signal carries the canon's versions. Local movement was standing in
+// for the comparison, and it answers a different question: "did anything happen here
+// lately?", which is equally true of a member that is current and one that canon moved
+// past an hour after its converge. LaughCounter and TLDR sat four packs behind for a day
+// declining their own updates on exactly that reading, and no forced wake could override
+// it — the precondition is re-evaluated at pick (#1344).
+//
+// So the decline is gone. The asymmetry decides it: declining wrongly costs permanent,
+// silent staleness that nothing in the member can repair, while running wrongly costs one
+// converge that finds nothing and exits. The worker already owns that decision.
+test('update: runs even when the mount converged in this window and no pack moved locally', () => {
   const v = update.precondition(S({ convergedInWindow: true }));
-  assert.equal(v.run, false);
-  assert.match(v.reason, /nothing due/);
+  assert.equal(v.run, true, 'a member canon moved past after its own converge must still run');
 });
 
 test('update: runs when a declared pack\'s vendored files moved, however recent the converge', () => {
