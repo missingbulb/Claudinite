@@ -14,7 +14,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
 | <img src="claudinite-lifecycle/badge.svg" width="18" height="18" alt=""> [claudinite-lifecycle](claudinite-lifecycle/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 10 | 8 (Claudinite's own surface, plus the scheduled-task contract) |
-| <img src="claudinite-tasks/badge.svg" width="18" height="18" alt=""> [claudinite-tasks](claudinite-tasks/README.md) | declared (opt-in — a repo without it runs no scheduled work) | 2 | 0 (the work-item queue, the executor, the task contract, and the delivery lane) |
+| <img src="claudinite-tasks/badge.svg" width="18" height="18" alt=""> [claudinite-tasks](claudinite-tasks/README.md) | declared (seeded by `--init`, opt-out by removal — a repo without it runs no scheduled work) | 2 | 0 (the work-item queue, the executor, the task contract, and the delivery lane) |
 | <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 13 | 49 (working-discipline + task-lifecycle) |
 | <img src="barriers/badge.svg" width="18" height="18" alt=""> [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 9 | 0 (3 skills: git-github-advanced, github-actions-scheduling, merge-to-main) |

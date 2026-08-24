@@ -146,3 +146,21 @@ test('the report hands over the executor secret in every adoption, and the web S
   const next = out.slice(out.indexOf('\nNEXT:'));
   assert.match(next, /create the executor routine[\s\S]*before the commit/i, `NEXT orders the routine before the commit:\n${next}`);
 });
+
+// A repo that declares no tasks pack runs no scheduled work — a supported state, not a
+// degraded one (tasks-dispatch DESIGN §18) — so bootstrap scaffolds neither workflow for
+// it. The CI sweep is a separate concern and still lands, which is what makes this worth
+// its own test: it is the first file to reach `.github/workflows/`, and on a repo with no
+// scheduler beside it the directory does not exist yet.
+test('a repo without the tasks pack gets no scheduler workflows, and still gets its CI sweep', () => {
+  const root = freshRepo();
+  writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: ['basics'] }, null, 2) + '\n');
+  const out = run(root);
+
+  assert.ok(!existsSync(join(root, '.github/workflows/claudinite-scheduler.yml')), 'no cron for a repo with no queue');
+  assert.ok(!existsSync(join(root, '.github/workflows/claudinite-executor.yml')));
+  assert.match(out, /runs no scheduled work/, 'and the run says so rather than failing quietly');
+
+  assert.ok(existsSync(join(root, '.github/workflows/claudinite-ci.yml')), 'the sweep is seeded either way');
+  assert.match(at(root, '.github/workflows/claudinite-ci.yml'), /check_the_world\.mjs/);
+});

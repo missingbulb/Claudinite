@@ -22,9 +22,14 @@
 // barrier's allow list names it, and nothing else). Everything of this pack outside
 // it stays off-limits.
 //
-// NOT SEEDED, NOT FINGERPRINTED. Adoption wires two workflow files and the routine
-// endpoints a member cannot converge into place, so it happens at a moment a person
-// is present — the adopt-pack skill — never by a scan noticing something.
+// SEEDED AT `--init`, NEVER FINGERPRINTED. A new repo gets scheduled work by default —
+// the update task is what keeps its Claudinite current, so a member without a queue is
+// one nobody is maintaining — and removing the declaration is a durable opt-out, like
+// tidy-repo's. Nothing in a repo's SHAPE implies wanting a queue, so there is no
+// fingerprint: a scan that suspected one would suspect it everywhere.
+//
+// Adoption is still a moment a person is present, because it wires two workflow files
+// and the routine endpoints a member cannot converge into place.
 export default {
   version: '60824.2',
   minEngineVersion: '60822.1',
@@ -32,5 +37,5 @@ export default {
     belongs: 'scheduled work — the work-item queue, the executor, the task contract and its signals, run records, code-work, delivery',
     excludes: 'authoring a task — claudinite-growth; this repo\'s Claudinite status — claudinite-lifecycle; rendering queue state — claudinite-dashboard',
   },
-  seededByDefault: false,
+  seededByDefault: true,
 };
