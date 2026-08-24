@@ -19,7 +19,7 @@ test('classifyPath names docs, tests and code', () => {
   assert.equal(classifyPath('packs/basics/tests/fixture.json'), 'test');
   assert.equal(classifyPath('packs/basics/test/pack.test.mjs'), 'test');
   assert.equal(classifyPath('app/test_parser.py'), 'test');
-  assert.equal(classifyPath('engine/scheduler/scheduler-run.mjs'), 'code');
+  assert.equal(classifyPath('packs/claudinite-tasks/queue/scheduler-run.mjs'), 'code');
   // A whole-segment match, so a directory that merely CONTAINS the word is code.
   assert.equal(classifyPath('src/latest/index.mjs'), 'code');
 });
@@ -40,11 +40,11 @@ test('narrowVerdict: docs, tests, comments and one code directory are narrow', (
   const v = narrowVerdict([
     { file: 'README.md', before: 'a', after: 'b' },
     { file: 'engine-tests/queue/scheduler-run.test.mjs', before: 'a', after: 'b' },
-    { file: 'engine/scheduler/scheduler-run.mjs', before: 'const a = 1;\n', after: 'const a = 2;\n' },
-    { file: 'engine/scheduler/queue/read.mjs', before: 'const a = 1; // x\n', after: 'const a = 1; // y\n' },
+    { file: 'packs/claudinite-tasks/scheduler-run.mjs', before: 'const a = 1;\n', after: 'const a = 2;\n' },
+    { file: 'packs/claudinite-tasks/queue/read.mjs', before: 'const a = 1; // x\n', after: 'const a = 1; // y\n' },
   ]);
   assert.equal(v.narrow, true);
-  assert.deepEqual(v.codeDirs, ['engine/scheduler']);
+  assert.deepEqual(v.codeDirs, ['packs/claudinite-tasks']);
 });
 
 test('narrowVerdict: code in two directories is not narrow, and says which', () => {

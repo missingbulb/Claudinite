@@ -167,10 +167,19 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
   // design, so it only ever exercises the new caller. This list is the substitute.
   // An entry leaves it one full cycle after the fleet vendors a worker without the
   // call — read the members' vendored workers to know that, never this repo's own.
+  // The paths moved with the flows (#1317), and BOTH are fielded right now. The worker resolves
+  // these against a FRESH CANON CLONE at HEAD rather than its own mount, so the surface a member
+  // calls is whatever ITS vendored worker names — and every member vendored a worker naming
+  // `updates/*` on 2026-08-24. The pack paths are what the worker names from this commit on; the
+  // `updates/*` re-exports stay callable until the fleet has vendored that worker, which is read
+  // off the members and never off this repo's own tree.
   const fielded = {
     'updates/terminals.mjs': ['terminalFor'],
     'updates/engine-update.mjs': ['engineUpdate'],
     'updates/pack-update.mjs': ['packUpdate'],
+    'packs/claudinite-lifecycle/updates/terminals.mjs': ['terminalFor'],
+    'packs/claudinite-lifecycle/updates/engine-update.mjs': ['engineUpdate'],
+    'packs/claudinite-lifecycle/updates/pack-update.mjs': ['packUpdate'],
   };
   for (const [mod, names] of Object.entries(fielded)) {
     const loaded = await import(`../${mod}`);

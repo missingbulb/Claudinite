@@ -10,6 +10,7 @@ import {
   OUTCOMES, convergeItem, parseArgs, refusal, recordLine, convergeComment,
 } from '../../queue/converge-item.mjs';
 import { releasedBy, isReleasable } from '../../queue/readiness.mjs';
+import { LEGACY_BUILT_IN_TASK_PATH } from '../legacy-protocol.mjs';
 
 const item = (over = {}) => ({
   number: 7, title: '[claudinite-work] p/a', state: 'open', labels: ['task:agent'],
@@ -76,7 +77,7 @@ test('an item this session does not hold is refused, not converged', () => {
     /not a Claudinite work item/);
   assert.equal(refusal(item({
     title: 'Implement the thing',
-    body: 'do it\n\n<!-- claudinite-item -->\nengine/scheduler/queue/tasks/implement-request/task.md\n\nRequest: #7\n<!-- /claudinite-item -->\n',
+    body: `do it\n\n<!-- claudinite-item -->\n${LEGACY_BUILT_IN_TASK_PATH}\n\nRequest: #7\n<!-- /claudinite-item -->\n`,
   }), 7), null);
   assert.match(refusal(item({ state: 'closed' }), 7), /already closed/);
   assert.match(refusal(item({ labels: ['task:executing'] }), 7), /task:agent/);

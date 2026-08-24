@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 // module it names may not simply vanish.
 //
 // It vanished once (#1004). `packs/claudinite-lifecycle/task-declaration-shape.mjs` imported
-// `engine/scheduler/slots.mjs`, #974 renamed that to `calendar.mjs`, and the next
+// the engine's own `slots.mjs`, #974 renamed that to `calendar.mjs`, and the next
 // member to converge got a mount whose `core` pack would not load — which fails the
 // self-test, which makes the converge refuse to land AT ALL, so the member could not
 // even receive the pack version that would have fixed it.
@@ -62,6 +62,14 @@ function fieldedEngineImports() {
   return out;
 }
 
+// A RETIRED PATH is one whose fielded callers were READ AND FOUND GONE — not one whose
+// deletion was convenient. `engine/scheduler/*` moved to the tasks pack in #1317 and its
+// shims came out at chain link L4, after L3 observed every member's stamp carrying the
+// pack and a full queue cycle running from the new paths. Nothing goes in this list on
+// the strength of "the current tree does not import it": the whole point of the scan is
+// that the current tree is not what members are carrying.
+const RETIRED = [/^engine\/scheduler\//];
+
 test('every engine module a fielded pack version imports still resolves, with the symbols it named', async () => {
   // A SHALLOW checkout has no history to walk, so the scan would find nothing and
   // report clean — a green run that proved nothing. Say so instead: CI checks out
@@ -74,6 +82,7 @@ test('every engine module a fielded pack version imports still resolves, with th
 
   const missing = [];
   for (const [path, symbols] of imports) {
+    if (RETIRED.some((r) => r.test(path))) continue;
     let mod;
     try {
       mod = await import(join(ROOT, path));
@@ -90,10 +99,10 @@ test('every engine module a fielded pack version imports still resolves, with th
 
 test('the shims re-export rather than re-declare, so they cannot drift from the real home', async () => {
   const [slots, calendar, run, github] = await Promise.all([
-    import(join(ROOT, 'engine/scheduler/slots.mjs')),
-    import(join(ROOT, 'engine/scheduler/calendar.mjs')),
-    import(join(ROOT, 'engine/scheduler/run.mjs')),
-    import(join(ROOT, 'engine/scheduler/github.mjs')),
+    import(join(ROOT, 'packs/claudinite-tasks/slots.mjs')),
+    import(join(ROOT, 'packs/claudinite-tasks/calendar.mjs')),
+    import(join(ROOT, 'packs/claudinite-tasks/run.mjs')),
+    import(join(ROOT, 'packs/claudinite-tasks/github.mjs')),
   ]);
   assert.equal(slots.FREQUENCIES, calendar.FREQUENCIES, 'same object, not a copy');
   assert.equal(run.ensureLabels, github.ensureLabels, 'same function, not a copy');
@@ -103,7 +112,7 @@ test('the one duplicated body agrees with the pack that owns it now', async () =
   // `parseOverrides` cannot re-export: its home is claudinite-fleet-sheepdog's param-bag.mjs, and the
   // engine may not import a pack. So it is duplicated, and this is the drift guard —
   // run against the real logic in both directions, not a string compare.
-  const { parseOverrides } = await import(join(ROOT, 'engine/scheduler/run.mjs'));
+  const { parseOverrides } = await import(join(ROOT, 'packs/claudinite-tasks/run.mjs'));
   const { parseParamBag } = await import(join(ROOT, 'packs/claudinite-fleet-sheepdog/param-bag.mjs'));
   for (const raw of [
     'DIGEST_BACKFILL_DAYS=7',

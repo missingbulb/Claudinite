@@ -12,13 +12,14 @@ import { collectSignals } from '../../signals/index.mjs';
 import requestTask, { eligibility } from '../../queue/tasks/implement-request/task.mjs';
 import { REQUEST_TASK_ID } from '../../built-in-tasks.mjs';
 import { parseWorkItemBody, machineBlockOf, ORIGIN_AD_HOC } from '../../queue/work-item.mjs';
+import { LEGACY_BUILT_IN_TASK_PATH, LEGACY_BUILT_IN_TASK_DIR } from '../legacy-protocol.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const NOW = '2026-08-19T09:17:00Z';
-const TASK_PATH = 'engine/scheduler/queue/tasks/implement-request/task.md';
+const TASK_PATH = LEGACY_BUILT_IN_TASK_PATH;
 
 const REQUEST_TASK = {
-  pack: 'engine', id: 'implement-request', taskDir: 'engine/scheduler/queue/tasks/implement-request',
+  pack: 'engine', id: 'implement-request', taskDir: LEGACY_BUILT_IN_TASK_DIR,
   taskPath: TASK_PATH, decl: requestTask,
 };
 

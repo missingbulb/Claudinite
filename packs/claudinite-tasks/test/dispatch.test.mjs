@@ -7,6 +7,7 @@ import {
   READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
   readyLabelForScope, SCHEDULER_LABELS, escalationLabel, ESCALATION_LABEL_PREFIX,
 } from '../dispatch.mjs';
+import { LEGACY_BUILT_IN_TASK_PATH, LEGACY_BUILT_IN_TASK_PATH_MOUNTED } from './legacy-protocol.mjs';
 
 // --- identity: title / key / parse round-trip ---
 test('dispatch title and key follow the [claudinite-task] <pack>/<task> <slot> shape', () => {
@@ -392,8 +393,8 @@ test('a built-in dispatch validates from the pack path and the legacy engine pat
   const { fileURLToPath } = await import('node:url');
 
   const paths = [
-    'engine/scheduler/queue/tasks/implement-request/task.md',
-    '.claudinite/shared/engine/scheduler/queue/tasks/implement-request/task.md',
+    LEGACY_BUILT_IN_TASK_PATH,
+    LEGACY_BUILT_IN_TASK_PATH_MOUNTED,
     'packs/claudinite-tasks/queue/tasks/implement-request/task.md',
     '.claudinite/shared/packs/claudinite-tasks/queue/tasks/implement-request/task.md',
   ];

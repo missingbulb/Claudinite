@@ -9,7 +9,7 @@ commits with the Action's `GITHUB_TOKEN`, GitHub refuses that token under that p
 refusal rejects the **whole ref** — so a single workflow write does not fail one file, it fails
 the entire converge and everything riding it. #649 is that problem.
 
-The answer is the **withhold lane** in [`updates/pack-update.mjs`](../../updates/pack-update.mjs):
+The answer was the **withhold lane** in the pack update flow (retired in #1317):
 every write bound for `.github/workflows/` is diverted to `.claudinite/pending-workflows/`, a path
 the Action token *can* push. It rides the maintenance PR as an ordinary added file — reviewable in
 the diff, recoverable if nothing else runs — and the update ends at `apply-stage` until a session

@@ -29,7 +29,7 @@ test('file-placement: exempts a canon pack rule reaching the engine surface', ()
   assert.deepEqual(run({
     'packs/mypack/my-rule.mjs':
       imports('../../engine/checks/helpers/findings.mjs') +
-      imports('../../engine/scheduler/task-contract.mjs'),
+      imports('../../engine/settings-file.mjs'),
   }), []);
 });
 
