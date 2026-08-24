@@ -13,6 +13,7 @@ import {
 import {
   outcomeOf, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
 } from '../../../../claudinite-tasks/queue/work-item.mjs';
+import { LEGACY_EXECUTOR_DOC } from '../../legacy-protocol.mjs';
 
 // A day row as `foldDays` builds an empty one: the capture-derived scalars zeroed and
 // every other field absent. Spelled here so a test about the absent ones does not have
@@ -68,7 +69,7 @@ test('isUserMessage excludes every non-human user-role shape', () => {
     ['a tool result', toolResult()],
     ['an injected/meta turn', meta('<system-reminder>…</system-reminder>')],
     ['a subagent sidechain turn', sidechainUser('go')],
-    ['a scheduled-task firing', scheduledFiring('Execute the Claudinite executor: engine/scheduler/executor.md')],
+    ['a scheduled-task firing', scheduledFiring(`Execute the Claudinite executor: ${LEGACY_EXECUTOR_DOC}`)],
     ['a task notification', taskNotification('<task-notification>…')],
     ['a compaction summary', compactSummary()],
     ['a slash-command expansion', slash('model', 'claude-opus-5')],

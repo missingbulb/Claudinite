@@ -50,7 +50,7 @@
 // also means the record's job is to UPDATE a workflow that is already there — the exact
 // shape a fleet-wide workflow fix would take.
 export default {
-  version: '60824.1',
+  version: '60824.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the inert probe workflow the canon delivers to its canary to prove workflow materialization works end to end',

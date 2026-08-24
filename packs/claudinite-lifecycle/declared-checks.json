@@ -49,7 +49,7 @@
         "fix": "add a concurrency: group so overlapping runs serialize (double-run safety)"
       },
       {
-        "require": "/(engine\\/scheduler|packs\\/claudinite-tasks)\\/queue\\/(scheduler-run|tick)\\.mjs/",
+        "require": "/packs\\/claudinite-tasks\\/queue\\/(scheduler-run|tick)\\.mjs/",
         "what": "does not run the vendored scheduler entry",
         "fix": "run the vendored scheduler entry — node .claudinite/shared/packs/claudinite-tasks/queue/scheduler-run.mjs; the legacy engine/scheduler path beside it, and the retired `tick.mjs`, still pass until this repo's workflow pull request lands"
       },

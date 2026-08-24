@@ -51,10 +51,7 @@ const isTest = (name) => name.endsWith('.test.mjs');
 // maintainer reference, so the operational documents a consumer session reads out of
 // its own mount at runtime — the executor's instructions, the work-item session's
 // whole behavior, the delivery procedure, each built-in task's spec — ride the pack
-// walk with nothing whitelisted. What stays here is the other half of that move: the
-// legacy `engine/scheduler/` shims, which exist only for members still naming the old
-// paths, import the pack, and so ship only where the pack itself does (#1317).
-const LEGACY_TASK_SHIMS = 'engine/scheduler';
+// walk with nothing whitelisted (#1317).
 const TASKS_PACK = 'claudinite-tasks';
 
 // A pack's `tasks/` folder is inert without the queue that runs it — and its workers
@@ -93,7 +90,7 @@ const TASKS_SUBDIR = 'tasks';
 const isRecordDir = (name) => /^\d{4}-\d{2}-\d{2}-/.test(name);
 const isRecordOfFlow = (relDir, name) => relDir.endsWith(`/${MIGRATIONS_SUBDIR}`) && isRecordDir(name);
 
-function walk(relDir, files, errors, { engine = false, today, installed = null, tasks = true, skipDirs = [] } = {}) {
+function walk(relDir, files, errors, { engine = false, today, installed = null, tasks = true } = {}) {
   let entries;
   try {
     entries = readdirSync(join(canonRoot, relDir), { withFileTypes: true });
@@ -109,9 +106,8 @@ function walk(relDir, files, errors, { engine = false, today, installed = null, 
       if (entry.name === TEST_DIR || entry.name === UPDATES_DIR) continue;
       if (!tasks && entry.name === TASKS_SUBDIR) continue;
       const rel = `${relDir}/${entry.name}`;
-      if (skipDirs.includes(rel)) continue;
       if (isRecordOfFlow(relDir, entry.name) && !migrationApplies(rel, { installed, today })) continue;
-      walk(rel, files, errors, { engine, today, installed, tasks, skipDirs });
+      walk(rel, files, errors, { engine, today, installed, tasks });
     } else if (!isTest(entry.name)) {
       const rel = `${relDir}/${entry.name}`;
       // engine .md is canon-maintainer reference and is dropped; the operational
@@ -152,17 +148,12 @@ export async function computeVendorSet(declaredEntries, { today, installed = nul
     const id = packEntryId(entry);
     if (id !== undefined && byId.has(id) && !ids.includes(id)) ids.push(id);
   }
-  // MIGRATION TOLERANCE (#1317). Until the record that seeds `claudinite-tasks` into
-  // every member's declaration has converged fleet-wide, the pack ships whether or not a
-  // member declares it: a member's live workflows name its modules by literal path, and a
-  // mount that dropped them mid-migration would stop draining with nothing left able to
-  // fix it. Removed once no member's stamp lacks the pack — not on a date.
-  if (!ids.includes(TASKS_PACK) && byId.has(TASKS_PACK)) ids.push(TASKS_PACK);
+  // The declaration decides, with nothing added to it: every member's stamp carries a
+  // `claudinite-tasks` version now, so the seeding record has converged fleet-wide and the
+  // tolerance that shipped the pack undeclared is gone (#1317, chain link L3).
   const tasks = ids.includes(TASKS_PACK);
 
-  for (const root of ENGINE_DIR_ROOTS) {
-    walk(root, files, errors, { engine: true, today, installed, skipDirs: tasks ? [] : [LEGACY_TASK_SHIMS] });
-  }
+  for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true, today, installed });
 
   for (const id of ids) walk(`packs/${id}`, files, errors, { today, installed, tasks });
 

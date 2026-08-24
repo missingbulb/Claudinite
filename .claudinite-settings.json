@@ -89,13 +89,6 @@
           ],
           "reason": "inherent(#1317): a member's executor workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the executor"
         },
-        {
-          "path": "engine/scheduler/",
-          "to": [
-            "packs/claudinite-tasks"
-          ],
-          "reason": "decouple(#1317): legacy-path shims re-exporting the task surface from the paths fielded members still name; deleted once no vendored worker or stored prompt names one"
-        },
         "engine/migrations",
               {
                 "path": "engine/pack_loader/renamed-packs.mjs",
@@ -150,6 +143,11 @@
       "rule": "reference-integrity",
       "path": "docs/task-code-work/",
       "reason": "the task-code-work DESIGN is the dated record of migration #405 \u2014 it names the slot scheduler's entry point as the staging it was changing, and #974 has since deleted that module. The reference is dangling because the record is true of the moment it describes; repointing it at the queue's executor would make the document describe a design that never happened. Same standing as the per-project-scheduling entry below"
+    },
+    {
+      "rule": "reference-integrity",
+      "path": "packs/claudinite-tasks/test/legacy-protocol.mjs",
+      "reason": "the file holds the LEGACY WIRE LITERALS, which are data rather than pointers: a work item minted before the task surface moved (#1317) still carries `engine/scheduler/` in its machine block, and `BUILT_IN_PATH_RE` accepts that root permanently because it is a validator — dropping it rejects that half of the ad-hoc request lane outright. The path must not resolve to a file; a decoder must keep understanding it. Collected here so this waiver is one entry rather than five across the tests that exercise the decode"
     },
     {
       "rule": "reference-integrity",

@@ -7,6 +7,7 @@ its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60824.2 | 2026-08-24 | A README link followed the task surface out of `engine/scheduler/` (#1328). |
 | 60824.1 | 2026-08-24 | The withhold lane this pack probes is retired, so the probe exercises a delivery route that no longer exists; the manifest says so where an adopter reads it (#1317). |
 | 4 | — | Renamed from `canary-probe` — the pack's subject is a Claudinite feature, so it carries the prefix that says so. |
 | 60821.2 | 2026-08-21 | This pack's inline version-history comment moved out of `pack.mjs` into this file. |

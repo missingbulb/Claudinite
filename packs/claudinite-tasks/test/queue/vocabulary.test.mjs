@@ -263,12 +263,13 @@ test('a blocked item is releasable in either spelling, and a parked one never is
 
 import { taskIdFromPath, withMachineBlock } from '../../queue/work-item.mjs';
 import { staleReadyComment } from '../../queue/janitor-rules.mjs';
+import { LEGACY_BUILT_IN_TASK_PATH, LEGACY_BUILT_IN_TASK_PATH_MOUNTED } from '../legacy-protocol.mjs';
 
 test('a worker path names its task, in both homes and under either root', () => {
   assert.deepEqual(taskIdFromPath('packs/basics/tasks/task-janitor/task.md'), { pack: 'basics', task: 'task-janitor' });
   assert.deepEqual(taskIdFromPath('.claudinite/shared/packs/basics/tasks/task-janitor/task.md'), { pack: 'basics', task: 'task-janitor' });
-  assert.deepEqual(taskIdFromPath('engine/scheduler/queue/tasks/implement-request/task.md'), { pack: 'engine', task: 'implement-request' });
-  assert.deepEqual(taskIdFromPath('.claudinite/shared/engine/scheduler/queue/tasks/implement-request/task.md'), { pack: 'engine', task: 'implement-request' });
+  assert.deepEqual(taskIdFromPath(LEGACY_BUILT_IN_TASK_PATH), { pack: 'engine', task: 'implement-request' });
+  assert.deepEqual(taskIdFromPath(LEGACY_BUILT_IN_TASK_PATH_MOUNTED), { pack: 'engine', task: 'implement-request' });
   assert.equal(taskIdFromPath('please do the thing'), null);
   assert.equal(taskIdFromPath(null), null);
 });
@@ -298,7 +299,7 @@ test('a marked issue that nobody picks up still goes stale', () => {
   const marked = {
     number: 9, title: 'A thing to do', state: 'open', labels: [STATUS_READY, ORIGIN_AD_HOC],
     created_at: '2026-08-14T04:10:00Z', updated_at: '2026-08-14T04:10:00Z',
-    body: withMachineBlock('Do it.\n', 'engine/scheduler/queue/tasks/implement-request/task.md\n\nRequest: #9'),
+    body: withMachineBlock('Do it.\n', `${LEGACY_BUILT_IN_TASK_PATH}\n\nRequest: #9`),
   };
   assert.deepEqual(staleReadyItems([marked], '2026-08-20T00:00:00Z').map((i) => i.number), [9]);
   assert.match(staleReadyComment(marked), /engine\/implement-request/);
