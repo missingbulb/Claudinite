@@ -48,13 +48,12 @@ export default {
   // live ITEM, and a task nobody declares has none, so an absent sheepdog is simply no constraint.
   schedule_after: [
     'claudinite-fleet-sheepdog/fleet-roster',
-    'claudinite-fleet-sheepdog/fleet-usage',
     'claudinite-fleet-sheepdog/fleet-pack-seeds',
   ],
   // None. Every input lives OUTSIDE this repo — other members' pull requests and
   // issues — and no per-repo collector can see any of them, so there is no signal that
-  // would tell us in advance whether yesterday had anything in it. The same reasoning
-  // fleet-usage carries, and the same cheap no-op: an empty day writes one small file.
+  // would tell us in advance whether yesterday had anything in it. The cheap no-op is
+  // the same shape as any always-fire fleet sweep: an empty day writes one small file.
   precondition_signals: [],
   // Reading six PR bodies and judging which four were the day's real work is
   // ordinary summarization against a bounded, pre-fetched input. Sonnet is the right

@@ -15,7 +15,6 @@ member executes:
 |---|---|---|
 | [check-fleet-roster.mjs](tasks/fleet-roster/check-fleet-roster.mjs) → [adoption-issues.mjs](tasks/fleet-roster/adoption-issues.mjs) + [drift-issues.mjs](tasks/fleet-roster/drift-issues.mjs) | [fleet-roster](tasks/fleet-roster/README.md) (daily) | is this repo a **member**, and is that membership still **meaning** anything? → adoption issues + drift issues |
 | [scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs) + [force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs) | [fleet-add-missing-packs](tasks/fleet-add-missing-packs/README.md) (weekly, and forceable) | which packs is a member missing — the ones its **shape** suspects, or the ones the owner named? → a work-list issue *in* each member + that member's scheduler fired; the member's own agent adopts |
-| [aggregate-fleet-usage.mjs](tasks/fleet-usage/aggregate-fleet-usage.mjs) | [fleet-usage](tasks/fleet-usage/README.md) (daily) | what does the fleet **actually use**? → `usage-fleet.GENERATED.json` |
 | [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/README.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
 | [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/README.md) (`manual` — forced runs only) | make every member baseline **now**, then follow each to canon's published versions → an outcome table, not a dispatch count |
 
@@ -32,9 +31,7 @@ conditions — not the walk.
 **Missing-packs** exists because a pack's `detect` fingerprint is consulted **once**, at
 bootstrap's `--init`: baselining backfills the seeded packs and each declared pack's `requires`
 closure, but never re-fingerprints, so a member that grows into a pack after adoption is never told
-the pack exists and the owner has to already know what to ask for. **Usage** exists for the same
-shape of reason one rung up: a member can say whether a skill loads *there*, and only a view across
-every member can say whether it earns its place at all. **Pack-seeds** is the only one that **writes** to a
+the pack exists and the owner has to already know what to ask for. **Pack-seeds** is the only one that **writes** to a
 member: some packs need a parameter no member can derive, because the answer is a fact about the
 *fleet* — and canon cannot supply it either, since a bootstrap run does not know which fleet it is
 bootstrapping into. This repo's `packSeeds` config lists what its members should declare, and the
@@ -191,21 +188,17 @@ implementation, never in how a task is wired.
 |---|---|---|---|
 | `fleet-roster` | daily | none | none |
 | `fleet-add-missing-packs` | weekly (forceable) | none | none |
-| `fleet-usage` | daily | none | `merged-pr` |
 | `fleet-pack-seeds` | daily | none | none |
 | `fleet-baseline` | manual | none | none |
 
 The cadences follow what each question can change on. Roster is daily on its coverage question, and
-its freshness half rides along rather than gating on a weekly clock it would have to compute; usage
-is daily because the members fold daily; pack seeds is daily because a member becomes writable the
-moment its nightly converge vendors the pack, which makes daily mean "the next morning".
+its freshness half rides along rather than gating on a weekly clock it would have to compute; pack
+seeds is daily because a member becomes writable the moment its nightly converge vendors the pack,
+which makes daily mean "the next morning".
 
-Two ceilings are `merged-pr` because those tasks' output *is* a tracked file: an auto-merging PR
-keeps the write inside the outcome taxonomy, lets this repo's CI gate a malformed one, and makes the
-daily PR stream a browsable audit trail. The pack-seed sweep is `none` for a different reason — its
-write goes to **other** repos, and the ceiling describes what a task may do to its own. What only a
-repo edit can finish is the member's own adopt-requested-packs task's, ceilinged at `open-pr`
-*there*.
+Every ceiling here is `none`. The pack-seed sweep's write goes to **other** repos, and the ceiling
+describes what a task may do to its own. What only a repo edit can finish is the member's own
+adopt-requested-packs task's, ceilinged at `open-pr` *there*.
 
 There is **no coverage workflow**: preprocessing runs Action-side inside the repo's one scheduler
 workflow, where the Actions secret is already reachable, and each task's

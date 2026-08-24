@@ -8,7 +8,6 @@ import {
 import pack from '../pack.mjs';
 import { classifyDispatch } from '../fleet-api.mjs';
 import { main as roster } from '../tasks/fleet-roster/check-fleet-roster.mjs';
-import { main as usage } from '../tasks/fleet-usage/aggregate-fleet-usage.mjs';
 import { main as seeds } from '../tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs';
 import { main as baseline } from '../tasks/fleet-baseline/force-fleet-baseline.mjs';
 import { main as addPacks } from '../tasks/fleet-add-missing-packs/worker.mjs';
@@ -22,7 +21,6 @@ import { main as addPacks } from '../tasks/fleet-add-missing-packs/worker.mjs';
 
 const SWEEPS = [
   ['fleet-roster', roster],
-  ['fleet-usage', usage],
   ['fleet-pack-seeds', seeds],
   ['fleet-baseline', baseline],
   ['fleet-add-missing-packs', addPacks],
@@ -51,8 +49,8 @@ for (const [id, main] of SWEEPS) {
 }
 
 test('a sweep also names its own subset, which is never what to grant', () => {
-  const msg = missingFleetTokenError('fleet-usage', 'detail.').message;
-  assert.match(msg, /this one, fleet-usage, uses Metadata read, Contents read/);
+  const msg = missingFleetTokenError('fleet-roster', 'detail.').message;
+  assert.match(msg, /this one, fleet-roster, uses Metadata read, Contents read/);
   assert.match(msg, /detail\.$/);
   // Every sweep in the table claims at least one permission — a sweep id that matches
   // nothing would silently render "uses " and read as needing none.

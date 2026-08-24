@@ -15,7 +15,6 @@
 //   tasks/fleet-add-missing-packs/                     which packs is a member MISSING — the
 //     scan-for-needed-packs.mjs + force-add-packs.mjs  ones its SHAPE suspects, or the ones
 //                                                      the owner named on a forced run?
-//   tasks/fleet-usage/aggregate-fleet-usage.mjs        what does the fleet USE?
 //   tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs  does a member DECLARE what
 //                                                      this fleet standardizes on?
 //   tasks/fleet-baseline/force-fleet-baseline.mjs      make every member baseline NOW
@@ -47,10 +46,7 @@
 // the fan-out model (#749): the enforcer dispatches, the member executes, and no agent
 // anywhere needs cross-repo access.
 //
-// USAGE exists for the same shape of reason a rung up: a member folds its own
-// skill-usage numbers and can therefore only say whether a skill loads THERE; whether a
-// skill earns its place at all is a fleet-shaped question no member can answer about
-// itself. PACK-SEEDS is the one that WRITES to members: some packs need a parameter no
+// PACK-SEEDS is the one that WRITES to members: some packs need a parameter no
 // member can derive, because the answer is a fact about the FLEET — and only the enforcer
 // holds it, because it IS the fleet. It names no pack itself: every id comes from this
 // repo's own `packSeeds`.
@@ -77,10 +73,10 @@
 import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
-  version: '60824.1',
+  version: '60824.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
-    belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',
+    belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, standardized packs',
     excludes: 'anything a member does to itself — tidying is tidy-repo, lessons are claudinite-growth; the fleet brief is claudinite-dashboard',
   },
   // Audits the enforcer's config as it stands, whatever this session touched: a seed
