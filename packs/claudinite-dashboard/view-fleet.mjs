@@ -22,30 +22,27 @@ import {
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
 import { settingsTextAtSha } from './settings-read.mjs';
+import { sweepPhases } from './fleet-sweep.mjs';
 
-// Members are read concurrently, but not all at once: a dozen members at six calls
-// each is enough parallel load to trip secondary rate limiting, and the page is not
-// in a hurry. Small and steady beats a burst that gets throttled.
-const CONCURRENCY = 4;
+// --- the passes ------------------------------------------------------------------
+//
+// One member's reads, split into the passes `fleet-sweep.mjs` takes the whole roster
+// through in turn. The split is by WHAT THE READ BUYS, worth-most first, because that
+// is the order the viewer's rate limit is spent in:
+//
+//   identity      what this repo is and whether it runs Claudinite at all
+//   attention     the queue and the scheduler — every reason a row is ever raised
+//   depth         the tree and the member's own usage fold, behind those numbers
+//   packs         what the member's own packs report about themselves
+//   activity      the commit graph, which is decoration and says so
+//
+// Everything is wrapped: a member that 404s, times out or is rate-limited becomes a
+// row that SAYS SO, because one unreadable repo must not blank the other eleven.
 
-async function pool(items, worker, limit = CONCURRENCY) {
-  const out = new Array(items.length);
-  let next = 0;
-  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    for (;;) {
-      const i = next; next += 1;
-      if (i >= items.length) return;
-      out[i] = await worker(items[i], i);
-    }
-  });
-  await Promise.all(runners);
-  return out;
-}
-
-// One member's raw reads. Everything is wrapped: a member that 404s, times out or is
-// rate-limited becomes a row that SAYS SO, because one unreadable repo must not blank
-// the other eleven.
-async function readMember(repo, token, { withTree = true } = {}) {
+// Pass one. Three calls, and for a repo that does not run Claudinite they are the
+// only three it ever costs — which is most of the saving on a fleet where not
+// everything is adopted.
+async function readIdentity(repo, token) {
   try {
     const meta = await gh.getRepo(repo, token);
     // The head commit, kept whole: its date is when this member last landed anything,
@@ -59,68 +56,83 @@ async function readMember(repo, token, { withTree = true } = {}) {
       try { declaration = JSON.parse(configText); } catch { declaration = null; }
     }
 
-    // A member that does not run Claudinite needs no further reads — and skipping
-    // them is most of the saving on a fleet where not everything is adopted.
-    if (!declaration) return { repo, declaration: null, defaultBranch: meta.default_branch, head, stars: meta.stars };
-
-    const [tree, issuePage, runs, commits, usage] = await Promise.all([
-      withTree ? gh.listTreeAtSha(repo, sha, token).catch(() => null) : Promise.resolve(null),
-      // One page is the whole live queue plus recent history, which is all a fleet row
-      // needs. Deep history is the per-repo view's job.
-      gh.listIssues(repo, token, { pages: 1 }).catch(() => ({ issues: [] })),
-      // No per-page of its own: the repo view reads the same URL, and a different
-      // depth here would be a second cache entry for one question.
-      gh.listRuns(repo, token).catch(() => []),
-      // Decoration, and the only read here that is. It withholds itself when the
-      // budget is tight, and a failure is a row without a graph rather than a row
-      // that could not be read.
-      gh.commitActivity(repo, token).catch(() => null),
-      // The member's own past-data plane, keyed by its head sha: one read the first
-      // time a member's branch moves and none afterwards. It is what lets the fleet
-      // page report the two things it structurally could not count before — how much
-      // corpus each member's sessions carry, and how often its checks actually ran.
-      readUsage(repo, sha, token),
-    ]);
-
-    // What this member's own packs report. Discovery is a match against the tree
-    // listing already fetched above, so a member whose packs contribute nothing costs
-    // nothing to find that out; the descriptor and values reads are content at a sha
-    // and free on every load after the branch moves.
-    const contributions = await readContributions({ repo, sha, token, declaration, paths: tree?.paths ?? null, gh });
-    const needed = liveSourcesNeeded(contributions);
-    const live = {
-      stars: meta.stars,
-      // The one live read pack contributions add, and only when some declared pack
-      // actually asks for it — a fleet with no release pack never spends it.
-      release: needed.has('latest-release')
-        ? await gh.latestRelease(repo, token).catch(() => undefined)
-        : undefined,
-    };
-    for (const c of contributions) c.live = live;
-
     return {
       repo,
       declaration,
       defaultBranch: meta.default_branch,
       stars: meta.stars,
-      contributions,
-      live,
       archived: meta.archived,
       sha,
       head,
-      paths: tree?.paths ?? null,
-      items: issuePage.issues,
-      // Whether that page reached the end of this member's history. The activity
-      // series needs it to tell a quiet day from a day it simply could not see.
-      itemsComplete: issuePage.complete,
-      prs: issuePage.prs ?? [],
-      runs,
-      commits,
-      usage,
     };
   } catch (error) {
     return { repo, error };
   }
+}
+
+// Pass two, and the one the page exists for: every fault a row can report — a parked
+// item, a blown leash, a failing scheduler — is read here. Once this pass is through
+// the roster the lead card, the tiles and the ranking are true of the WHOLE fleet,
+// which is why nothing below it is allowed to start first.
+async function readAttention(read, token) {
+  const [issuePage, runs] = await Promise.all([
+    // One page is the whole live queue plus recent history, which is all a fleet row
+    // needs. Deep history is the per-repo view's job.
+    gh.listIssues(read.repo, token, { pages: 1 }).catch(() => ({ issues: [] })),
+    // No per-page of its own: the repo view reads the same URL, and a different
+    // depth here would be a second cache entry for one question.
+    gh.listRuns(read.repo, token).catch(() => []),
+  ]);
+  read.items = issuePage.issues;
+  // Whether that page reached the end of this member's history. The activity series
+  // needs it to tell a quiet day from a day it simply could not see.
+  read.itemsComplete = issuePage.complete;
+  read.prs = issuePage.prs ?? [];
+  read.runs = runs;
+}
+
+// Pass three: what stands behind the numbers rather than what they are. The tree says
+// how many tasks this member declares — the difference between "quiet" and "declares
+// five tasks and has never produced a work item" — and the usage fold is the member's
+// own past-data plane, keyed by its head sha, so it is one read the first time a
+// member's branch moves and none afterwards.
+async function readDepth(read, token) {
+  const [tree, usage] = await Promise.all([
+    gh.listTreeAtSha(read.repo, read.sha, token).catch(() => null),
+    readUsage(read.repo, read.sha, token),
+  ]);
+  read.paths = tree?.paths ?? null;
+  read.usage = usage;
+}
+
+// Pass four: what this member's own packs report. Discovery is a match against the
+// tree listing pass three fetched, so a member whose packs contribute nothing costs
+// nothing to find that out; the descriptor and values reads are content at a sha and
+// free on every load after the branch moves.
+async function readPackCards(read, token) {
+  const contributions = await readContributions({
+    repo: read.repo, sha: read.sha, token, declaration: read.declaration, paths: read.paths ?? null, gh,
+  });
+  const needed = liveSourcesNeeded(contributions);
+  const live = {
+    stars: read.stars,
+    // The one live read pack contributions add, and only when some declared pack
+    // actually asks for it — a fleet with no release pack never spends it.
+    release: needed.has('latest-release')
+      ? await gh.latestRelease(read.repo, token).catch(() => undefined)
+      : undefined,
+  };
+  for (const c of contributions) c.live = live;
+  read.contributions = contributions;
+  read.live = live;
+}
+
+// Pass five, and decoration by its own admission: it says how busy a repo has been.
+// It withholds itself when the budget is tight, and a failure is a row without a
+// graph rather than a row that could not be read. Last, because a graph missing from
+// every row costs the page nothing it was opened for.
+async function readCommitGraph(read, token) {
+  read.commits = await gh.commitActivity(read.repo, token).catch(() => null);
 }
 
 // The last two days' briefs, from wherever the fleet keeps them. Optional in every
@@ -719,9 +731,17 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
   // Every number above is a number about the members READ SO FAR, and a partial
   // rollup that does not say so is a wrong one. The count is stated rather than the
   // page waiting to be sure.
+  //
+  // Ranked is not the same as finished. Once every member has been through the
+  // attention pass the figures are true of the whole fleet, but the passes behind
+  // them — trees, folds, pack cards, graphs — are still filling columns in, and a
+  // line reading "40 repos read" over a table still growing columns claims a
+  // completeness the page does not have yet. So the pass says so while it runs.
   $('fleet-progress').textContent = progress && progress.done < progress.total
     ? `${progress.done}/${progress.total} repos read — figures below cover those`
-    : (progress ? `${progress.total} repos read` : '');
+    : (progress
+      ? `${progress.total} repos read${progress.label ? ` — ${progress.label.toLowerCase()}…` : ''}`
+      : '');
 
   // One `<tbody>` per member — see `memberRows`. The head's own tbody carries the
   // empty state and the still-reading rows, and is moved to the END once the members
@@ -787,26 +807,62 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   const reads = new Array(repos.length).fill(null);
   reads.names = repos;
   const summaries = new Array(repos.length).fill(null);
-  let done = 0;
   // The deployment's own cards, read once. Its repos are usually members too, so on a
   // fleet page this is served out of the same caches the sweep fills.
   let deployment = null;
-  const paint = () => renderFleet(summaries, reads, now, onOpen, canon, { done, total: repos.length }, digests, deployment);
+  // What the page is allowed to claim right now: how many members are RANKED (not how
+  // many have been touched), and which pass is filling the rest in.
+  let progress = { done: 0, total: repos.length, label: null };
+  const paint = () => renderFleet(summaries, reads, now, onOpen, canon, progress, digests, deployment);
   paint();
   readDeploymentContributions({ config, token, gh })
     .then((d) => { deployment = d; paint(); })
     .catch(() => { /* a deployment card that cannot be read is a section that stays hidden */ });
 
-  await pool(repos, async (repo, i) => {
-    const r = await readMember(repo, token);
-    reads[i] = r;
-    await priceStampedPacks(canon, r.declaration);
-    summaries[i] = summariseMember(r, { now, canon });
-    done += 1;
-    onProgress?.(done, repos.length, repo);
-    paint();
-    return r;
+  // One state object per member, carried through every pass and filled in as the
+  // passes reach it.
+  const members = repos.map((repo, i) => ({ repo, i, read: null }));
+  // Who each pass after the first has anything to ask about. A repo that does not run
+  // Claudinite, and one whose first read failed, are both already everything the page
+  // will ever say about them.
+  const adopted = (m) => Boolean(m.read?.declaration) && !m.read?.error;
+
+  await sweepPhases({
+    members,
+    phases: [
+      {
+        id: 'identity',
+        label: 'Identifying members',
+        run: async (m) => {
+          m.read = await readIdentity(m.repo, token);
+          reads[m.i] = m.read;
+          // The canon side of the mount comparison, priced from what this member
+          // stamps. In this pass rather than beside the summary, so every member's
+          // packs are priced before the first row claims a mount is current.
+          await priceStampedPacks(canon, m.read.declaration);
+        },
+      },
+      { id: 'attention', label: 'Reading queues', appliesTo: adopted, run: (m) => readAttention(m.read, token) },
+      { id: 'depth', label: 'Reading trees and folds', appliesTo: adopted, run: (m) => readDepth(m.read, token) },
+      { id: 'packs', label: 'Reading what the packs report', appliesTo: adopted, run: (m) => readPackCards(m.read, token) },
+      { id: 'activity', label: 'Reading commit graphs', appliesTo: adopted, run: (m) => readCommitGraph(m.read, token) },
+    ],
+    onAdvance: ({ phase, label, done, total, member }) => {
+      if (member?.read) {
+        // A member is summarised as soon as it is finished being a candidate for a
+        // later pass to change — which for an adopted member is when the attention
+        // pass lands, never before it: `summariseMember` reads an unread queue as an
+        // empty one, and a row saying "nothing parked" about a member whose issues
+        // have not been fetched is a wrong statement rather than a partial one.
+        const ranked = phase !== 'identity' || !adopted(member);
+        if (ranked) summaries[member.i] = summariseMember(member.read, { now, canon });
+      }
+      progress = { done: summaries.filter(Boolean).length, total: repos.length, label };
+      onProgress?.({ phase, label, done, total, repo: member?.repo ?? null });
+      paint();
+    },
   });
+
   const failed = summaries.filter((s) => s?.status === 'unreadable');
   // Surfaced once at the top rather than as twelve separate errors: on a fleet, some
   // members being invisible to you is the normal case, not an incident.
@@ -814,6 +870,7 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
     onError?.(`None of the ${repos.length} members could be read — check that you are signed in with an account that can see them.`);
   }
 
+  progress = { done: summaries.filter(Boolean).length, total: repos.length, label: null };
   paint();
   return { summaries: summaries.filter(Boolean), now, canon, digests };
 }
