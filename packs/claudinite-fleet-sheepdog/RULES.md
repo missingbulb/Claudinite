@@ -56,7 +56,7 @@ config schema — is [README.md](README.md). This file is what a session **here*
 - **Pushing canon to the whole fleet now** — create the work item, from a checkout of this repo:
 
   ```
-  node .claudinite/shared/engine/scheduler/queue/create-work-item.mjs claudinite-fleet-sheepdog/fleet-baseline
+  node .claudinite/shared/packs/claudinite-tasks/queue/create-work-item.mjs claudinite-fleet-sheepdog/fleet-baseline
   ```
 
   Add `--context "REPOS=owner/a owner/b"` to narrow it (space-separated: a Context line splits on

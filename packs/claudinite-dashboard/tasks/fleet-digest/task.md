@@ -123,7 +123,7 @@ Three weeks quiet. The store release landed but nothing has used it since — wo
 
 ## 4. Land it
 
-Follow the shared procedure — [deliver-pr.md](../../../../engine/scheduler/deliver-pr.md) — on a
+Follow the shared procedure — [deliver-pr.md](../../../../packs/claudinite-tasks/deliver-pr.md) — on a
 branch of your own. **One pull request for the whole run**, however many days you wrote:
 `digests/<date>.md` per day, added, nothing else touched. The task's ceiling is
 `merged-pr`; this repo's `maintenance.delivery` decides whether it lands unreviewed, and

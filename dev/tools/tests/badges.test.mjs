@@ -15,7 +15,7 @@ import { parseBadge, renderBadge, shade, restyleAll, badgeFiles, idForBadge } fr
 // rather than sitting in the set looking subtly wrong.
 //
 // The row a README shows is the wiring converge's, not this tool's — adoption
-// seeds it and nothing maintains it after (engine/scheduler/converge-wiring.mjs).
+// seeds it and nothing maintains it after (engine/converge-wiring.mjs).
 // What is checked here is that THIS repo's row says what that converge would
 // write, since no automation will notice on its own.
 
@@ -63,7 +63,7 @@ test("this repo's README row is what the wiring converge would write", async () 
   // place and proves the row a consumer gets is the row this repo shows. A repo
   // whose declaration has moved on refreshes with
   // `converge-wiring <owner/repo> --badges`.
-  const { badgeRowEntries, renderBadgeRow } = await import('../../../engine/scheduler/converge-wiring.mjs');
+  const { badgeRowEntries, renderBadgeRow } = await import('../../../engine/converge-wiring.mjs');
   const { loadConfig } = await import('../../../engine/checks/helpers/repo-context.mjs');
   const row = renderBadgeRow(await badgeRowEntries(REPO, loadConfig(REPO)));
   assert.ok(readFileSync(join(REPO, 'README.md'), 'utf8').includes(row),

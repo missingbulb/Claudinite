@@ -65,7 +65,7 @@ The canon knows **mechanisms**, never repos. The fleet-enforcer repo knows
 | piece | home | knows about |
 |---|---|---|
 | capture (merge + SessionEnd + the executor's explicit call) | `claudinite-growth` pack (canon) | its own session, its own logs branch |
-| the task-run record format | `engine/scheduler/run-record.mjs` (core) | the scheduler's own outcomes — no pack, no repo |
+| the task-run record format | `packs/claudinite-tasks/run-record.mjs` (core) | the scheduler's own outcomes — no pack, no repo |
 | `usage-fold` (hourly) | `claudinite-growth/tasks/usage-fold/` (canon) | its own logs branch, its own runs, its own items, its own aggregate file |
 | `fleet-usage` (daily, superseded — §6) | `sheepdog/tasks/fleet-usage/` (canon pack; runs only where sheepdog is declared) | nothing hardcoded — members enumerated at runtime from the sheepdog config (`{ owner, kind, exclude, canonRepo }`) via `fleet-api.mjs`, exactly as `fleet-census` does |
 | the fleet aggregate | the fleet-enforcer repo's default branch | — |
@@ -335,7 +335,7 @@ construction — not under-counted, absent.
 Each run prints one machine-readable record per evaluated task —
 `claudinite-task-run v1 <pack>/<task> [<slot>] <outcome>` — emitted **after** the
 action loop, so it states what happened rather than what was planned. Renderer
-and parser live in one module (`engine/scheduler/run-record.mjs`) with a
+and parser live in one module (`packs/claudinite-tasks/run-record.mjs`) with a
 round-trip test, because a format written in one place and re-guessed in another
 is precisely the drift this corpus bans. The human job-summary line is
 deliberately *not* the source: it is written before the actions run, so an

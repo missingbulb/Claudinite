@@ -25,7 +25,7 @@ jobs:
   schedule:
     runs-on: ubuntu-latest
     steps:
-      - run: node .claudinite/shared/engine/scheduler/queue/scheduler-run.mjs
+      - run: node .claudinite/shared/packs/claudinite-tasks/queue/scheduler-run.mjs
 `;
 
 const run = (files) => {
@@ -103,5 +103,5 @@ jobs:
   const whats = run({ [WF]: stripped }).map((x) => x.what).join(' | ');
   assert.match(whats, /no workflow_dispatch/);
   assert.match(whats, /no concurrency group/);
-  assert.match(whats, /does not run the vendored engine entry/);
+  assert.match(whats, /does not run the vendored scheduler entry/);
 });

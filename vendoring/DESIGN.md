@@ -216,7 +216,7 @@ the nightly touches everyone, and never break the channel the migration itself t
      the corpus `skills/` root — #383).
   7. The **legacy path regexes** in the fleet signal probe (`checks/`, `skills/`,
      `mount/`, root `sync-claudinite.sh` — superseded by `engine/`); they now live in
-     `engine/scheduler/signals/fleet.mjs`.
+     `packs/claudinite-tasks/signals/fleet.mjs`.
   8. [consumer-safe-changes.md](../consumer-safe-changes.md) rewritten to the new, much
      smaller channel model (tracked-vendor commit + notes; the instant `@main` and session-sync
      channels are gone).

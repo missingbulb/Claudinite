@@ -27,14 +27,14 @@ test('promote-scope: fires on a path outside packs/ and skills/', () => {
   const root = makeRepo({
     changed: {
       'packs/node/RULES.md': '- new rule\n',
-      'engine/scheduler/queue/executor.mjs': '// edited\n', // stray: engine machinery, off-limits to promote
+      'engine/pack_loader/pack-registry.mjs': '// edited\n', // stray: engine machinery, off-limits to promote
     },
     commitMsg: 'promote Refs #1',
   });
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].file, 'engine/scheduler/queue/executor.mjs');
+    assert.equal(findings[0].file, 'engine/pack_loader/pack-registry.mjs');
     assert.equal(findings[0].rule, 'promote-scope');
   } finally {
     cleanup(root);

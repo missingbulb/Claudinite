@@ -11,7 +11,7 @@
 // ("unknown is neither uncovered nor behind") or when its config/token is unusable;
 // this worker turns that into a non-zero exit, and the executor treats a non-zero
 // code-work subprocess as a failed task — it converges the item to `needs-human`
-// (engine/scheduler/queue/executor.mjs) instead of handing off to any agent.
+// (packs/claudinite-tasks/queue/executor.mjs) instead of handing off to any agent.
 
 import { pathToFileURL } from 'node:url';
 import { fleetWorkerFailed } from '../../fleet-api.mjs';

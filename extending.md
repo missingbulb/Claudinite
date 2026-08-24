@@ -30,16 +30,14 @@ only to extend the *mechanism*, never to add one project's rule or task:
 | Skill mounting | `engine/pack_loader/mount-skills.mjs` | per-session symlink of the active packs' bundled-skill union (`<pack>/skills/<name>/`) |
 | Adoption interviews | `packs/claudinite-lifecycle/skills/adopt-claudinite/interview.mjs` | the gap computation (a pack's declared questions minus the entry's stored answers) and the SessionStart nudge; owns no question itself — bundled in the adoption skill, resolved fail-soft by the engine |
 | Baseline-migration mechanism | [`engine/migrations/`](engine/migrations/README.md) | the read-side resolver and write-side rename for a relocation; a record lives under the flow that owns it (the engine's, or `packs/<pack>/migrations/`), records are kept forever, and vendoring's 7-day recency window decides what ships to consumers |
-| The task scheduler | [`engine/scheduler/`](docs/tasks-dispatch/DESIGN.md) | in each repo's own workflow: the hourly scheduler run discovers its active packs' `tasks/<name>/task.mjs` and instantiates each one's work item at its anchor; the executor picks an item, collects that task's signals, runs its precondition and hands off. Pack-agnostic, owns no task, depends on no pack |
-| The executor | [`engine/scheduler/queue/instructions.md`](engine/scheduler/queue/instructions.md) | the agent side of the queue — the whole stored prompt of a repo's executor routine points here; it validates one work item, runs its task's worker against its own repo, and delivers at the task's outcome ceiling |
 | Bootstrap / update | [`bootstrap.md`](bootstrap.md), [`bootstrap.mjs`](bootstrap.mjs) | adoption — the doc's fast path, mechanized by the one-shot script — and the idempotent per-repo re-run |
-| The update flows | [`updates/`](updates/README.md) | canon-internal, never vendored: one runner per flow that moves a repo from the versions it has installed to the ones this canon ships — today the engine's (docs/versioned-updates/DESIGN.md) |
+| The update flows | [`packs/claudinite-lifecycle/updates/`](packs/claudinite-lifecycle/updates/README.md) | the `update` task's own machinery, beside the pack that owns it. Canon-internal, never vendored — the `updates/` directory name is excluded from every mount, like a pack's `test/` — so a flow runs from the canon tree the runner just fetched and is always current |
 
 **The test for "is this core?"** — would *every* pack's content stop working without it? The
-scheduler, the runner, the migration mechanism, the executor loop all pass; a lint for one
-technology, a nightly release task, a naming rule all fail. Two responsibilities are core *by
-ownership* even though they run as pack tasks: **update** (the baseline pack's daily task) and the
-**daily-run** itself are Claudinite's job, not a pack's — the pack is only the delivery slot.
+runner, pack discovery, the migration mechanism all pass; a lint for one technology, a nightly
+release task, a naming rule all fail. So does **scheduled work**: the queue, the executor and the
+task contract are a pack of their own, and a repo that declares no tasks pack runs nothing
+scheduled — a supported state, not a degraded one. The engine is pack distribution.
 
 ## What a pack contributes
 
@@ -57,7 +55,7 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 
 **Packs are independent.** A pack's code imports only its **own** files and the engine surface
 (`checks/`, `mount/`, the machinery `.mjs` at the `packs/`/`skills/` roots) — never another
-pack's code, and never a canon-internal tree (`vendoring/`, `updates/`): the vendor set ships
+pack's code, and never a canon-internal tree (`vendoring/`, any pack's `updates/`): the vendor set ships
 a pack only when declared and ships no canon-internal tree at all, so such an import crashes
 every consumer that vendors the importer without its target. A pack that wants another pack's
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
@@ -114,14 +112,14 @@ Ask what *kind* of thing you're adding; each kind has exactly one home, and none
 3. **A new scheduled maintenance behavior** → a `tasks/<name>/` directory on the owning pack (a
    `task.mjs` declaration plus its worker). Every declaring repo's scheduler discovers it
    automatically — **no edit to the scheduler, and no cron of its own.** This is the load-bearing
-   case: "add a nightly job" must never become "add a stage to `engine/scheduler/`" or "add a
+   case: "add a nightly job" must never become "add a stage to the scheduler" or "add a
    `schedule:` workflow."
 4. **A new project-class playbook** → a project-class pack.
 5. **Extending the engine itself** — a new signal the scheduler collects, a new discovery rule, a
    new migration capability, a change to the executor loop — *is* the rare core change. Do it
    deliberately, and expect it to serve every pack, not one.
 
-If a proposed change is a new file under `engine/scheduler/`, `checks/` (beyond the runner/lib), or a
+If a proposed change is a new file in the scheduler, `checks/` (beyond the runner/lib), or a
 new branch in the scheduler *for one task's sake*, stop: it almost certainly belongs in a pack.
 
 ## Relocating into a pack: retire the old home

@@ -97,7 +97,7 @@ and a `304` costs no rate-limit budget at all.
 
 **What happened before** is one file: the repo's own
 `.claudinite/local/usage.GENERATED.json`, folded hourly by the
-[usage-fold task](../claudinite-growth/tasks/usage-fold/README.md) in the
+[usage-fold task](../claudinite-tasks/tasks/usage-fold/README.md) in the
 claudinite-growth pack. It is content at a sha, so it is read once when the default
 branch moves and **not at all** while it has not. Reaching a month back over the API
 instead would be a paginated crawl per repo per load, which is exactly the shape this
@@ -411,7 +411,7 @@ browsing.
 To catch the series up after an outage, create the item by hand with a day count:
 
 ```
-node .claudinite/shared/engine/scheduler/queue/create-work-item.mjs claudinite-dashboard/fleet-digest \
+node .claudinite/shared/packs/claudinite-tasks/queue/create-work-item.mjs claudinite-dashboard/fleet-digest \
   --context "DIGEST_BACKFILL_DAYS=7"
 ```
 
@@ -649,12 +649,12 @@ and never talks to GitHub.
 
 The page states none of the queue's vocabulary. Labels, the title grammar, the leash
 constants and the anchor arithmetic all come from the modules that define them —
-[`work-item.mjs`](../../engine/scheduler/queue/work-item.mjs),
-[`leases.mjs`](../../engine/scheduler/queue/leases.mjs),
-[`anchors.mjs`](../../engine/scheduler/queue/anchors.mjs) — so there is no second copy to drift
+[`work-item.mjs`](../../packs/claudinite-tasks/queue/work-item.mjs),
+[`leases.mjs`](../../packs/claudinite-tasks/queue/leases.mjs),
+[`anchors.mjs`](../../packs/claudinite-tasks/queue/anchors.mjs) — so there is no second copy to drift
 from the mechanism being rendered.
 
-Those paths — `../../engine/scheduler/queue/…` — resolve identically in the canon
+Those paths — `../../packs/claudinite-tasks/queue/…` — resolve identically in the canon
 (`packs/<id>/` beside `engine/`) and in a member's mount
 (`.claudinite/shared/packs/<id>/` beside `.claudinite/shared/engine/`), which is why
 the pack is readable straight out of the mount with nothing rewritten.

@@ -99,7 +99,7 @@ test('the seeded workflow follows the scheduler, by a name the engine actually s
   const named = /workflow_run:\s*\n\s*workflows:\s*\['([^']+)'\]/.exec(yml);
   assert.ok(named, 'the stub must follow the scheduler rather than declare a cron of its own');
 
-  const schedulerRun = await readFile(resolve(ROOT, 'engine/scheduler/stubs/claudinite-scheduler.yml'), 'utf8');
+  const schedulerRun = await readFile(resolve(ROOT, 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml'), 'utf8');
   assert.match(schedulerRun, new RegExp(`^name:\\s*${named[1]}\\s*$`, 'm'),
     `the stub follows "${named[1]}", which no engine stub declares`);
 });
@@ -126,6 +126,8 @@ async function member(declaration, extraFiles = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'cd-member-'));
   await mkdir(join(dir, '.claudinite/shared/packs'), { recursive: true });
   await cp(join(ROOT, 'engine'), join(dir, '.claudinite/shared/engine'), { recursive: true });
+  // The queue modules the page reads through the tasks pack's published shared-code/.
+  await cp(join(ROOT, 'packs/claudinite-tasks'), join(dir, '.claudinite/shared/packs/claudinite-tasks'), { recursive: true });
   // As the vendor set lays it down: a pack's tests sit beside the files they cover and
   // are dropped on the way into a mount, so a fixture that copied them would be staging
   // a tree no member ever has.
@@ -166,7 +168,7 @@ test('the staged tree mirrors the mount, with the root a redirect', async (t) =>
     '_site/index.html',
     '_site/packs/claudinite-dashboard/index.html',
     '_site/packs/claudinite-dashboard/model.mjs',
-    '_site/engine/scheduler/queue/work-item.mjs',
+    '_site/packs/claudinite-tasks/queue/work-item.mjs',
     '_site/engine/checks/helpers/code-scanning.mjs',
     '_site/.nojekyll',
   ]) assert.ok(existsSync(join(dir, p)), `missing from the staged site: ${p}`);
@@ -352,7 +354,7 @@ test('the install flow reports the handover so adoption cannot miss it', async (
   await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
 
   const { stdout } = await runReporting('node',
-    [join(ROOT, 'updates/install.mjs'), '--target', dir, 'claudinite-dashboard'],
+    [join(ROOT, 'packs/claudinite-lifecycle/updates/install.mjs'), '--target', dir, 'claudinite-dashboard'],
     { cwd: ROOT });
 
   assert.match(stdout, /only a human can do/, 'the handover is printed');
@@ -371,7 +373,7 @@ test('a pack with no handover prints none', async (t) => {
   await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
 
   const { stdout } = await runReporting('node',
-    [join(ROOT, 'updates/install.mjs'), '--target', dir, 'html'],
+    [join(ROOT, 'packs/claudinite-lifecycle/updates/install.mjs'), '--target', dir, 'html'],
     { cwd: ROOT });
   assert.doesNotMatch(stdout, /only a human can do/);
 });

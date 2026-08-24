@@ -12,7 +12,7 @@
 // maintaining Claudinite — so they live on the home's own capture surface, not
 // in the portable packs/ canon. Its tasks are discovered structurally from this
 // pack's own `tasks/<name>/task.mjs` by the repo's scheduler
-// (engine/scheduler/discover.mjs), so none is declared here. Declared by hand in
+// (packs/claudinite-tasks/discover.mjs), so none is declared here. Declared by hand in
 // exactly one repo (this one, as "local/canon-curation"); that
 // declaration cardinality is what makes its tasks central-once: a pack task
 // runs per DECLARING repo, so one declaring repo means one unit per night, with

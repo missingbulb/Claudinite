@@ -38,36 +38,29 @@ export { ENGINE_DIR_ROOTS };
 // it is. The engine keeps its own `test/` convention (engine-tests/ mirrors the
 // tree), so the directory name is the shared rule across both walks.
 export const TEST_DIR = 'test';
+
+// A pack's `updates/` is canon-internal for the same reason its `test/` is: the update
+// flows run from the canon tree the runner just fetched, never from a member's mount, and
+// they reach canon-only machinery (this very module) that no mount carries. The name is
+// the rule, so a helper the flows need stops shipping with them rather than being one
+// filename short of the exclusion.
+export const UPDATES_DIR = 'updates';
 const isTest = (name) => name.endsWith('.test.mjs');
 
-// The exception to "engine .md is maintainer-reference, not vendored": a few engine
-// .md files are OPERATIONAL — a consumer session reads them from its OWN mount at
-// runtime, so they MUST ship. `executor.md` is the executor routine's operating
-// instructions; the label-wired routine's thin-pointer prompt points at
-// `.claudinite/shared/engine/scheduler/executor.md`, so if it is stripped, every
-// consumer's executor session boots with no instructions and can drain nothing
-// (the fleet-wide executor-broken finding). `deliver-pr.md` is the agent-lane
-// delivery procedure the merged-pr task worker files link to — stripped, every
-// such task.md points at a hole and the subagent improvises its own landing.
-// `queue/instructions.md` is the whole behavior of a work-item session: the CCR
-// routine's stored prompt is one line pointing at it in the mount, so a member
-// missing it starts an agent hop with no instructions at all.
-// Whitelisted by canon-relative path so the blanket .md exclusion still drops
-// the maintainer docs beside them.
-const VENDORED_ENGINE_DOCS = new Set([
-  'engine/scheduler/executor.md',
-  'engine/scheduler/deliver-pr.md',
-  'engine/scheduler/queue/instructions.md',
-]);
+// THE TASK SURFACE IS A PACK, and a pack's own .md files are payload rather than
+// maintainer reference, so the operational documents a consumer session reads out of
+// its own mount at runtime — the executor's instructions, the work-item session's
+// whole behavior, the delivery procedure, each built-in task's spec — ride the pack
+// walk with nothing whitelisted. What stays here is the other half of that move: the
+// legacy `engine/scheduler/` shims, which exist only for members still naming the old
+// paths, import the pack, and so ship only where the pack itself does (#1317).
+const LEGACY_TASK_SHIMS = 'engine/scheduler';
+const TASKS_PACK = 'claudinite-tasks';
 
-// A BUILT-IN TASK'S WORKER FILE is operational by the same argument, and by PATTERN
-// rather than by name: the engine ships its own tasks (DESIGN §16.2), each a
-// directory whose `task.md` is the spec its session follows, and a mount missing one
-// hands that session nothing to run. A list would have to be extended by whoever adds
-// the next built-in task, silently, in another file.
-const BUILT_IN_TASK_DOC = /^engine\/scheduler\/queue\/tasks\/[^/]+\/task\.md$/;
-
-const vendorsEngineDoc = (rel) => VENDORED_ENGINE_DOCS.has(rel) || BUILT_IN_TASK_DOC.test(rel);
+// A pack's `tasks/` folder is inert without the queue that runs it — and its workers
+// import the queue's published surface, which a mount without that pack does not
+// carry. So the folder rides the tasks pack rather than the pack that owns the task.
+const TASKS_SUBDIR = 'tasks';
 
 // The migration records a consumer carries in its OWN mount, so the update flows read
 // the notes locally and needs no canon checkout in session. Records live under the
@@ -100,7 +93,7 @@ const vendorsEngineDoc = (rel) => VENDORED_ENGINE_DOCS.has(rel) || BUILT_IN_TASK
 const isRecordDir = (name) => /^\d{4}-\d{2}-\d{2}-/.test(name);
 const isRecordOfFlow = (relDir, name) => relDir.endsWith(`/${MIGRATIONS_SUBDIR}`) && isRecordDir(name);
 
-function walk(relDir, files, errors, { engine = false, today, installed = null } = {}) {
+function walk(relDir, files, errors, { engine = false, today, installed = null, tasks = true, skipDirs = [] } = {}) {
   let entries;
   try {
     entries = readdirSync(join(canonRoot, relDir), { withFileTypes: true });
@@ -113,15 +106,18 @@ function walk(relDir, files, errors, { engine = false, today, installed = null }
   }
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (entry.isDirectory()) {
-      if (entry.name === TEST_DIR) continue;
+      if (entry.name === TEST_DIR || entry.name === UPDATES_DIR) continue;
+      if (!tasks && entry.name === TASKS_SUBDIR) continue;
       const rel = `${relDir}/${entry.name}`;
+      if (skipDirs.includes(rel)) continue;
       if (isRecordOfFlow(relDir, entry.name) && !migrationApplies(rel, { installed, today })) continue;
-      walk(rel, files, errors, { engine, today, installed });
+      walk(rel, files, errors, { engine, today, installed, tasks, skipDirs });
     } else if (!isTest(entry.name)) {
       const rel = `${relDir}/${entry.name}`;
-      // engine .md is canon-maintainer reference and dropped — except the
-      // operational whitelist (executor.md) a consumer reads from its own mount.
-      if (engine && entry.name.endsWith('.md') && !vendorsEngineDoc(rel)) continue;
+      // engine .md is canon-maintainer reference and is dropped; the operational
+      // documents a consumer reads from its own mount are the tasks pack's, and ride
+      // the pack walk.
+      if (engine && entry.name.endsWith('.md')) continue;
       files.add(rel);
     }
   }
@@ -141,8 +137,6 @@ export async function computeVendorSet(declaredEntries, { today, installed = nul
   const files = new Set();
   const errors = [];
 
-  for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true, today, installed });
-
   // The full pack directory ships with EVERY mount, whatever the declaration:
   // the set otherwise carries only the declared packs, so without this catalog
   // a member session has no view of what else it could adopt (#726). Missing
@@ -158,7 +152,19 @@ export async function computeVendorSet(declaredEntries, { today, installed = nul
     const id = packEntryId(entry);
     if (id !== undefined && byId.has(id) && !ids.includes(id)) ids.push(id);
   }
-  for (const id of ids) walk(`packs/${id}`, files, errors, { today, installed });
+  // MIGRATION TOLERANCE (#1317). Until the record that seeds `claudinite-tasks` into
+  // every member's declaration has converged fleet-wide, the pack ships whether or not a
+  // member declares it: a member's live workflows name its modules by literal path, and a
+  // mount that dropped them mid-migration would stop draining with nothing left able to
+  // fix it. Removed once no member's stamp lacks the pack — not on a date.
+  if (!ids.includes(TASKS_PACK) && byId.has(TASKS_PACK)) ids.push(TASKS_PACK);
+  const tasks = ids.includes(TASKS_PACK);
+
+  for (const root of ENGINE_DIR_ROOTS) {
+    walk(root, files, errors, { engine: true, today, installed, skipDirs: tasks ? [] : [LEGACY_TASK_SHIMS] });
+  }
+
+  for (const id of ids) walk(`packs/${id}`, files, errors, { today, installed, tasks });
 
   // Coherence guard: the set must be import-closed — every relative import in
   // every .mjs it carries resolves to a file it also carries. Structural

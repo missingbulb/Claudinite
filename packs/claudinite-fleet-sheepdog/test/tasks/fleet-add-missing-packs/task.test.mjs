@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { validateTaskDeclaration } from '../../../../../engine/scheduler/task-contract.mjs';
+import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import decl from '../../../tasks/fleet-add-missing-packs/task.mjs';
 
 // The claudinite-fleet-sheepdog pack's fleet-add-missing-packs task on the FAN-OUT model (#749):

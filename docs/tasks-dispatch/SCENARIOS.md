@@ -17,9 +17,9 @@ change, some are owner calls added to its §15.
 > with §I, §I is the design as it stands. The superseded sections are kept
 > because their reasoning is the record.
 >
-> **The scenarios are executable.** [`sim/`](sim/) holds a discrete-event
+> **The scenarios are executable.** [`packs/claudinite-tasks/test/sim/`](../../packs/claudinite-tasks/test/sim/) holds a discrete-event
 > simulator of the mechanism (virtual clock, no threads, no waits) and
-> [`sim/scenarios.test.mjs`](sim/scenarios.test.mjs) plays the §H scenarios
+> [`packs/claudinite-tasks/test/sim/scenarios.test.mjs`](../../packs/claudinite-tasks/test/sim/scenarios.test.mjs) plays the §H scenarios
 > against it as `at time X, Y happens` tests, run by CI. A future design
 > change should change the simulator first and let the red tests name the
 > scenarios it breaks. Its first run caught F13 — a double-execution bug
@@ -422,7 +422,7 @@ written path from `needs-human` back to execution.
 > as a row on the schedule board, and a pick-time no-go closes its item. The
 > occurrence guard, the pick-time yield, forcing-as-waking/minting and the
 > first-item rule all stand; the tests behind S1′/S3′/S5/S13′/S14′/S21/S22/
-> S23/S26b/S28 are re-pinned to the new model in `sim/scenarios.test.mjs`.
+> S23/S26b/S28 are re-pinned to the new model in `test/sim/scenarios.test.mjs`.
 
 The owner's third-round proposal: *the scheduler run creates a daily task's item
 automatically; a failed precondition marks the item delayed until tomorrow's
@@ -557,7 +557,7 @@ executable, fixed in the spec, pinned by S3′'s test.**
 
 ### The executable round (owner request, 2026-08-13 — every scenario a test)
 
-All of A–G's still-live scenarios gained tests in [`sim/`](sim/): the double
+All of A–G's still-live scenarios gained tests in [`packs/claudinite-tasks/test/sim/`](../../packs/claudinite-tasks/test/sim/): the double
 scheduler run (S6), the executor race and the lease (S7), the hand-off failure modes
 (S9a/S9b), the duplicate-session agent lease (S10), agent death and the
 janitor's leash (S11), the force-while-executing mutex (S15), the lost label
@@ -669,7 +669,7 @@ the two calls leaves a **stateless** open item no rule filters for, so the
 janitor gains the stateless-item repair (fourth rule). The full inventory
 of what the simulator deliberately does not model — and what defends the
 design at each unmodeled boundary — is
-[`sim/README.md`](sim/README.md)'s "The unsimulated world".
+[`packs/claudinite-tasks/test/sim/README.md`](../../packs/claudinite-tasks/test/sim/README.md)'s "The unsimulated world".
 
 ### S25 — adoption's first scheduler run (new)
 

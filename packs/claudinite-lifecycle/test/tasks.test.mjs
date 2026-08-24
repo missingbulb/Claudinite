@@ -13,7 +13,7 @@ const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/c
 // asserted here is the DECLARATION — the contract the scheduler reads — not the
 // worker, which update-worker.test.mjs owns.
 
-// The `stamp` / `sharedMount` signal shapes (engine/scheduler/signals/index.mjs).
+// The `stamp` / `sharedMount` signal shapes (packs/claudinite-tasks/signals/index.mjs).
 const S = (stamp = {}, changedPacks = []) => ({
   stamp: { present: true, engineVersion: '60820.1', packVersions: {}, canonHead: null, convergedInWindow: false, ...stamp },
   sharedMount: { changedPacks },
@@ -82,5 +82,5 @@ test('update: a run carries the agent\'s binding scope — the apply stage only'
 
 // Forcing is deliberately absent here: it is an engine decision (run.mjs
 // FORCED_VERDICT) that skips the precondition entirely, so this task declares no
-// override signal and has no force branch to test. `engine-tests/scheduler/
+// override signal and has no force branch to test. `packs/claudinite-tasks/test/
 // run.test.mjs` owns that behaviour.

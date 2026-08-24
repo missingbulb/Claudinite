@@ -14,6 +14,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | Pack | Active when | Checks | Prose rules |
 |---|---|---|---|
 | <img src="claudinite-lifecycle/badge.svg" width="18" height="18" alt=""> [claudinite-lifecycle](claudinite-lifecycle/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 10 | 8 (Claudinite's own surface, plus the scheduled-task contract) |
+| <img src="claudinite-tasks/badge.svg" width="18" height="18" alt=""> [claudinite-tasks](claudinite-tasks/README.md) | declared (seeded by `--init`, opt-out by removal — a repo without it runs no scheduled work) | 2 | 0 (the work-item queue, the executor, the task contract, and the delivery lane) |
 | <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 13 | 49 (working-discipline + task-lifecycle) |
 | <img src="barriers/badge.svg" width="18" height="18" alt=""> [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 9 | 0 (3 skills: git-github-advanced, github-actions-scheduling, merge-to-main) |
@@ -69,7 +70,7 @@ bundled skills resolve off it) and a `local` flag. A local pack:
 
 A local pack contributes **every** slot first-class: prose, checks, skills, **and scheduled
 tasks** — `tasks/<name>/task.mjs`, found by the repo's own scheduler in the same uniform scan that
-finds a canon pack's tasks ([../engine/scheduler/discover.mjs](../engine/scheduler/discover.mjs)),
+finds a canon pack's tasks ([../packs/claudinite-tasks/discover.mjs](../packs/claudinite-tasks/discover.mjs)),
 gated by the repo's declaration exactly like a canon pack's tasks. The canon home's own curation
 tasks ride this path.
 
@@ -218,7 +219,7 @@ points at its own `.claudinite/shared/packs/<id>/badge.svg` with no network depe
 
 **Getting the row into a README is not a maintainer's job — keeping it current is.** Adoption writes
 it, once, through the wiring converge
-([`../engine/scheduler/converge-wiring.mjs`](../engine/scheduler/converge-wiring.mjs) run with
+([`../engine/converge-wiring.mjs`](../engine/converge-wiring.mjs) run with
 `--badges`, bootstrap Part 6): a one-line row of the declared packs' badges, under the title, between
 `<!-- claudinite:packs -->` markers — so it lands where a reader looks first, and anything the repo
 writes after the closing marker on that line is its own. The opening marker sits

@@ -19,7 +19,10 @@ import { resolve } from 'node:path';
 // deliberately, which silently turned every such lever into a task that cannot be
 // run at all — `claudinite-fleet-sheepdog/fleet-baseline`, the fleet's converge lever, among them.
 test('no manual task refuses its own forced item', async () => {
-  const files = execFileSync('git', ['ls-files', 'packs/*/tasks/*/task.mjs'], { encoding: 'utf8' })
+  // `:(glob)` so `*` stops at a path separator: the subject is the `tasks/` slot a pack
+  // CONTRIBUTES, not a built-in the queue ships under its own `queue/tasks/`, whose
+  // precondition answers about the request issue its item names (tasks-dispatch DESIGN §16).
+  const files = execFileSync('git', ['ls-files', ':(glob)packs/*/tasks/*/task.mjs'], { encoding: 'utf8' })
     .split('\n').filter(Boolean);
   assert.ok(files.length, 'the task glob matched nothing — a layout change would make this test vacuous');
 

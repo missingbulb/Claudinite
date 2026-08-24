@@ -5,7 +5,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pack from '../pack.mjs';
 import advisoryWatch from '../tasks/jwt-advisory-watch/task.mjs';
-import { validateTaskDeclaration } from '../../../engine/scheduler/task-contract.mjs';
+import { validateTaskDeclaration } from '../../claudinite-tasks/shared-code/task-contract.mjs';
 
 const PACK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/jwt');
 

@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { installPacks, planInstall, unansweredQuestions } from '../updates/install.mjs';
-import { terminalFor } from '../updates/terminals.mjs';
-import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
+import { installPacks, planInstall, unansweredQuestions } from '../packs/claudinite-lifecycle/updates/install.mjs';
+import { terminalFor } from '../packs/claudinite-lifecycle/updates/terminals.mjs';
+import { NEEDS_HUMAN } from '../packs/claudinite-lifecycle/updates/engine-update.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
 import { validateManifest } from '../engine/pack_loader/pack-schema.mjs';
 import { isDeclaredVersion } from '../engine/version.mjs';
@@ -204,12 +204,12 @@ test('the apply stage\'s duties live in its task file, and none were dropped wit
   const task = readFileSync('packs/claudinite-lifecycle/tasks/update/task.md', 'utf8');
   assert.match(task, /executor routine/, 'the one verification no Action can make');
   assert.match(task, /needs-human/);
-  assert.match(task, /\.claudinite\/pending-workflows\//, 'the withheld-workflow lane (#797)');
-  assert.match(task, /byte for byte/i, 'a converged workflow is transcribed, never revised');
+  assert.match(task, /never move a file into `\.github\/workflows\/`/i,
+    'the workflow lane is retired, and the task file is where a session is told so (#1317)');
   assert.match(task, /applyStage\.instructions/, 'what a record asked for is read from the record, on the branch');
 
   // And the payload must stay identifiers-only: the worker may name the condition,
-  // never carry the instructions (engine/scheduler/code-work.mjs).
+  // never carry the instructions (packs/claudinite-tasks/code-work.mjs).
   const worker = readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
   assert.ok(!worker.includes('brief:'), 'this ref\'s worker carries no rendered brief — the export survives only for fielded ones');
 });
@@ -260,7 +260,7 @@ test('an UPDATE never seeds — the run-once guarantee is structural, not a flag
   // repo-owned surface. It cannot here, because only this flow reads seedOps — so
   // the assurance is behavioural: a pack update over a seeded, then edited, file
   // leaves it exactly as the repo left it.
-  const { packUpdate } = await import('../updates/pack-update.mjs');
+  const { packUpdate } = await import('../packs/claudinite-lifecycle/updates/pack-update.mjs');
   const { applyVendor } = await import('../vendoring/apply-vendor-set.mjs');
   const root = makeRepo({ packs: ['basics'] });
   assert.deepEqual((await applyVendor(root)).errors, []);

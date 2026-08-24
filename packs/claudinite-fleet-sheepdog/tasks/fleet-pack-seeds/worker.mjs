@@ -10,7 +10,7 @@
 // a declaration could not be written (an unusable token, a protected branch, a file
 // that changed under the run); this worker turns that into a non-zero exit, and the
 // executor treats a non-zero code-work subprocess as a failed task — it converges the
-// item to `needs-human` (engine/scheduler/queue/executor.mjs) instead of handing off
+// item to `needs-human` (packs/claudinite-tasks/queue/executor.mjs) instead of handing off
 // to any agent.
 
 import { pathToFileURL } from 'node:url';

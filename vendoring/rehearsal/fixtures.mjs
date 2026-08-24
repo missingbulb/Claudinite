@@ -49,7 +49,7 @@
 //                 does NOT cover is the routing itself: the rehearsal runs the
 //                 vendor + the sweeps, never the scheduler, so that a lingering
 //                 field still routes to the fleet label is a unit test's job
-//                 (engine-tests/scheduler/session-scope.test.mjs).
+//                 (packs/claudinite-tasks/test/session-scope.test.mjs).
 //   code-work-env   a local pack whose agentless task carries a WORKER — the half no
 //                 other shape has, and the half `task-code-work-env` (blocking, core)
 //                 judges. A member's task code is member-owned and nothing converges

@@ -18,7 +18,7 @@
 // day at the far end of the window is under-read rather than empty, and every series
 // carries the horizon past which it stops being a count and starts being a floor.
 
-import { isParked, outcomeOf } from '../../engine/scheduler/queue/work-item.mjs';
+import { isParked, outcomeOf } from '../claudinite-tasks/shared-code/work-items.mjs';
 import { isWorkItem } from './model.mjs';
 
 export const DAY_MS = 86400e3;

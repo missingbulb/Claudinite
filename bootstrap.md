@@ -145,7 +145,7 @@ push over already-squashed history for nothing.
 a. **Create the routine** — `create_trigger` on the Claude Code Remote MCP server, named
    `Claudinite executor - <repo>`, `create_new_session_on_fire`, whose stored prompt starts with
    the one line
-   `Execute the Claudinite work item: .claudinite/shared/engine/scheduler/queue/instructions.md`.
+   `Execute the Claudinite work item: .claudinite/shared/packs/claudinite-tasks/queue/instructions.md`.
    Everything a task session does comes from that tracked file; a prompt carrying instructions of
    its own is behavior nobody reviews.
 

@@ -15,17 +15,17 @@
 // safe (see the adopt-claudinite skill on why a stamped repo must never re-run
 // this). Re-running DURING adoption is the designed loop: record the interview
 // answers and invoke again — everything converged stays converged.
-import { existsSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, appendFileSync, readdirSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { discoverPacks, resolveDeclaredPacks, packEntryId } from './engine/pack_loader/pack-registry.mjs';
 import { seedDeclaration } from './engine/checks/helpers/seed-declaration.mjs';
 import { loadConfig } from './engine/checks/helpers/repo-context.mjs';
 import { applyVendor } from './vendoring/apply-vendor-set.mjs';
-import { convergeWiring } from './engine/scheduler/converge-wiring.mjs';
-import { unansweredQuestions } from './updates/install.mjs';
-import { runSelfTest } from './updates/engine-update.mjs';
+import { convergeWiring } from './engine/converge-wiring.mjs';
+import { unansweredQuestions } from './packs/claudinite-lifecycle/updates/install.mjs';
+import { runSelfTest } from './packs/claudinite-lifecycle/updates/engine-update.mjs';
 
 const canonRoot = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
@@ -94,18 +94,39 @@ if (missing.length) {
   console.log(`bootstrap: .gitignore ${missing.join(', ')}`);
 }
 
-// 4. Converge the wiring — hooks, both workflows at the vendored stubs, the rules
-// index and its CLAUDE.md import, the badge row and the repo's own local pack
-// (the two one-time seeds only bootstrap passes).
-const stubs = join(target, '.claudinite/shared/engine/scheduler/stubs');
-const stubPath = join(stubs, 'claudinite-scheduler.yml');
-if (!existsSync(stubPath)) fail(`vendored stub not found at ${stubPath}`);
-const executorStub = existsSync(join(stubs, 'claudinite-executor.yml')) ? readFileSync(join(stubs, 'claudinite-executor.yml'), 'utf8') : null;
+// 4. Converge the DISTRIBUTION wiring — hooks, the rules index and its CLAUDE.md
+// import, the .gitattributes entries, the badge row and the repo's own local pack
+// (the two one-time seeds only bootstrap passes). Every member carries this set.
 const config = loadConfig(target);
-const wiring = await convergeWiring(target, fullName, readFileSync(stubPath, 'utf8'),
-  { badges: true, seedLocalPack: true, executorStub, dailyHour: config?.taskScheduler?.dailyHour });
+const wiring = await convergeWiring(target, fullName, { badges: true, seedLocalPack: true });
 if (wiring.error) fail(wiring.error);
 console.log(wiring.changed.length ? `bootstrap: wiring — ${wiring.changed.join(', ')}` : 'bootstrap: wiring: already converged');
+
+// 4b. …and the SCHEDULING wiring, only for a repo that DECLARED the tasks pack: the two
+// workflow files belong to the mechanism that runs them, and a repo running no scheduled
+// work carries neither (#1317). The gate is the declaration rather than the module's
+// presence in the mount — during the migration the mount carries it either way, so a
+// presence test would scaffold a queue onto every repo that never asked for one. The
+// module is then reached through the mount rather than imported, so bootstrap names no
+// pack it might not have vendored.
+const declaresTasks = (loadConfig(target)?.packs ?? [])
+  .some((e) => (typeof e === 'string' ? e : e?.id) === 'claudinite-tasks');
+const scaffold = join(target, '.claudinite/shared/packs/claudinite-tasks/converge-workflows.mjs');
+if (declaresTasks && existsSync(scaffold)) {
+  const { convergeWorkflows, stubsDir } = await import(pathToFileURL(scaffold).href);
+  const stubs = stubsDir(target);
+  const stubPath = join(stubs, 'claudinite-scheduler.yml');
+  if (!existsSync(stubPath)) fail(`vendored stub not found at ${stubPath}`);
+  const executorPath = join(stubs, 'claudinite-executor.yml');
+  const { changed } = convergeWorkflows(target, fullName, {
+    schedulerStub: readFileSync(stubPath, 'utf8'),
+    executorStub: existsSync(executorPath) ? readFileSync(executorPath, 'utf8') : null,
+    dailyHour: config?.taskScheduler?.dailyHour,
+  });
+  console.log(changed.length ? `bootstrap: workflows — ${changed.join(', ')}` : 'bootstrap: workflows: already scaffolded');
+} else {
+  console.log('bootstrap: claudinite-tasks is not declared — this repo runs no scheduled work, so no workflows');
+}
 
 // 5. A place both sweeps deterministically run at each change (bootstrap.md's
 // test/CI part). Seeded only when NO workflow runs the world sweep — a repo with
@@ -116,6 +137,9 @@ const workflowsDir = join(target, '.github', 'workflows');
 const sweepWired = existsSync(workflowsDir) && readdirSync(workflowsDir)
   .some((f) => /\.ya?ml$/.test(f) && readFileSync(join(workflowsDir, f), 'utf8').includes('check_the_world.mjs'));
 if (!sweepWired) {
+  // The directory may not exist at all: a repo that declares no tasks pack was
+  // scaffolded no workflow above, and this is the first file to land there.
+  mkdirSync(workflowsDir, { recursive: true });
   writeFileSync(join(target, CI_WORKFLOW), `name: CI
 on:
   pull_request:

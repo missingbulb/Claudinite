@@ -7,7 +7,7 @@
 Create the work item, from a checkout of this repo with `GITHUB_TOKEN` set:
 
 ```
-node .claudinite/shared/engine/scheduler/queue/create-work-item.mjs claudinite-fleet-sheepdog/fleet-baseline \
+node .claudinite/shared/packs/claudinite-tasks/queue/create-work-item.mjs claudinite-fleet-sheepdog/fleet-baseline \
   --context "REPOS=Alpha Beta" \
   --context "DRY_RUN=true" \
   --context "INCLUDE_DORMANT=true" \

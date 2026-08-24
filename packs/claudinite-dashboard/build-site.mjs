@@ -25,13 +25,14 @@ import { settingsPath } from '../../engine/settings-file.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-// The page imports the engine's queue modules by relative path — `../../engine/...` —
-// precisely so it cannot drift from them. The published tree therefore has to preserve
-// that shape: flattening the dashboard to the site root sends those imports above the
-// root and the page does not boot. So both directories are staged at the depth they
-// already have, and the site root is a redirect.
+// The page imports the queue's own modules by relative path — the tasks pack's published
+// `shared-code/`, and the engine surface beneath it — precisely so it cannot drift from
+// them. The published tree therefore has to preserve that shape: flattening the dashboard
+// to the site root sends those imports above the root and the page does not boot. So every
+// directory it reaches is staged at the depth it already has, and the site root is a redirect.
 const HOME = 'packs/claudinite-dashboard';
 const ENGINE = 'engine';
+const TASKS = 'packs/claudinite-tasks';
 
 // Local-only or explanatory files. None belong on a published site — `serve.mjs` least
 // of all, being a file server's source sitting where it reads as part of the page.
@@ -56,6 +57,7 @@ const OUT = resolve(repoRoot, arg('out', '_site'));
 // no path guessing, and it stays right if the pack is ever renamed.
 const pageSource = HERE;
 const engineSource = join(mountRoot, ENGINE);
+const tasksSource = join(mountRoot, TASKS);
 
 if (!await exists(join(pageSource, 'index.html')) || !await exists(engineSource)) {
   process.stdout.write(
@@ -90,6 +92,8 @@ await cp(pageSource, join(OUT, HOME), { recursive: true });
 // the first time it did. It discloses nothing — the mount is already committed in this
 // repo, so every byte is as public as the repo is.
 await cp(engineSource, join(OUT, ENGINE), { recursive: true });
+// The queue modules the page reads, at the same depth, for the same reason.
+if (await exists(tasksSource)) await cp(tasksSource, join(OUT, TASKS), { recursive: true });
 
 for (const f of NOT_PUBLISHED) await rm(join(OUT, HOME, f), { recursive: true, force: true });
 

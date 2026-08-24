@@ -3,10 +3,16 @@
 // THE THING IT PROVES. `.github/workflows/` is the one directory the nightly update
 // can never push to: it commits with the Action's `GITHUB_TOKEN`, which GitHub refuses
 // under that path, and the refusal rejects the whole ref rather than the one file. The
-// pack update flow answers that with the WITHHOLD lane — every write bound for
-// `.github/workflows/` is diverted to `.claudinite/pending-workflows/`, staged into the
-// maintenance PR as an ordinary added file, and the update ends at `apply-stage` until a
-// session with an MCP credential moves it into place (#649).
+// pack update flow used to answer that with the WITHHOLD lane — every write bound for
+// `.github/workflows/` diverted to `.claudinite/pending-workflows/`, staged into the
+// maintenance PR as an ordinary added file, with the update ending at `apply-stage` until
+// a session with an MCP credential moved it into place (#649).
+//
+// THAT LANE IS RETIRED (#1317). A member's workflow files are static after adoption, so
+// no flow computes or stages one, and the probe below therefore exercises a delivery
+// route that no longer exists. The pack is left in place rather than deleted because
+// what to do with it is a separate call: nothing depends on it, and a member declaring
+// it gets an inert workflow and a record that can no longer be delivered by machinery.
 //
 // That lane had one exercised caller: the scheduler workflow's own convergence. A
 // RECORD'S `materialize` shares the same `write`, and had never run against a live
@@ -44,7 +50,7 @@
 // also means the record's job is to UPDATE a workflow that is already there — the exact
 // shape a fleet-wide workflow fix would take.
 export default {
-  version: '60822.1',
+  version: '60824.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the inert probe workflow the canon delivers to its canary to prove workflow materialization works end to end',

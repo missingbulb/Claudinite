@@ -8,6 +8,7 @@ here forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60824.1 | 2026-08-24 | Task workers reach delivery, GitHub and work-item helpers through the `claudinite-tasks` pack's `shared-code/` (#1317). |
 | 60823.2 | 2026-08-23 | `fleet-baseline` reports OUTCOMES, not dispatches: after firing it follows each member until its declaration stamps canon's published engine and pack versions, reports converged / already-current / did-not-converge / never-started / unknown, and fails the run when a dispatched member never got there (#1293, reversing #649's give-up-the-follow for a bounded poll on a real terminal condition). |
 | 60823.1 | 2026-08-23 | Reads a member's settings under either name; freshness is a version comparison, so the per-member canon compare and the `ref-not-on-trunk` state it detected are gone (#1252). |
 | 11 | — | Fleet-digest LEAVES, to the claudinite-dashboard pack — the pack whose page is the only thing that reads the series it writes. What stays here is an enforcer's `digest`, `owner` and `exclude` config, which the task still reads off this entry as its legacy source, so no enforcer declaration has to change. |

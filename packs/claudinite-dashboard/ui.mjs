@@ -5,7 +5,7 @@
 
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
-} from '../../engine/scheduler/queue/work-item.mjs';
+} from '../claudinite-tasks/shared-code/work-items.mjs';
 
 export const $ = (id) => document.getElementById(id);
 
