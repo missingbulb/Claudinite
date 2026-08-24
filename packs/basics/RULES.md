@@ -96,9 +96,10 @@ change, independent of any one project.
 Contracts worth knowing before you spend a call rediscovering them.
 
 - **Searching for a tool with `ToolSearch`** — a search that finds nothing is evidence about your
-  query, not about the environment. Search the fully-qualified name (`select:mcp__<server>__<tool>`,
-  copied off the deferred-tools listing) and try the tool before telling the owner a step is theirs;
-  the bare short name returns "no matching tools", which reads exactly like absence.
+  query, not about the environment. A bare short name (`get_me`, `sub_issue_write`) resolves through
+  keyword search as reliably as the fully-qualified `select:mcp__<server>__<tool>` form, so try either
+  spelling before telling the owner a step is theirs; a genuine miss means rephrase the query, not
+  that the capability is absent.
 
 - **Calling `Edit`** — the file must have been read *with the read tool*; `cat`/`grep`/`sed` don't
   count. The moment shell output tells you which file you're about to change, read that exact path;
