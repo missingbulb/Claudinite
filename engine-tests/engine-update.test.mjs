@@ -215,3 +215,47 @@ test('runSelfTest reports an absent gate as a failure, never as a pass', () => {
   assert.equal(r.ran, false);
   removeTree(root);
 });
+
+// THE LANE MUST BE IMPORT-CLOSED IN ITSELF, not just inside the canon tree.
+//
+// The engine and pack lanes deliver on SEPARATE CYCLES, so a member spends a window
+// holding this lane's files beside pack versions from before them. An engine-lane file
+// whose import resolves only because the canon happens to carry the target is therefore
+// not resolvable in that window — the member's mount has the importer and not the
+// imported.
+//
+// It bit in #1317, and nothing in the suite could see it. The fielded-import scan asks
+// whether a path resolves IN THE CANON, which it did; the rehearsal fixtures are built
+// from the current canon, so none of them holds an older pack. Only the live canary
+// found it, by converging a real member that did — and it found it as a mount that
+// fails its own self-test, which is the state a converge refuses to land at all, so the
+// member could not have received the fix either.
+test('every import in the engine lane resolves inside the engine lane', async () => {
+  const { computeVendorSet } = await import('../vendoring/compute-vendor-set.mjs');
+  const { relativeImports, resolveRelative } = await import('../engine/checks/helpers/module-imports.mjs');
+  const { readFileSync, existsSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+
+  // Every declared pack, so the set is the widest the lane is ever computed from.
+  const { packs } = await import('../engine/pack_loader/pack-registry.mjs').then((m) => m.discoverPacks());
+  const { files, errors } = await computeVendorSet(packs.filter((p) => !p.local && !p.hidden).map((p) => p.id));
+  assert.deepEqual(errors, []);
+
+  const lane = files.filter(isEngineFile);
+  assert.ok(lane.length > 0, 'the engine lane is empty — the filter is broken, not the tree');
+  const inLane = new Set(lane);
+
+  const escaping = [];
+  for (const file of lane) {
+    if (!file.endsWith('.mjs')) continue;
+    for (const { spec } of relativeImports(readFileSync(join(ROOT, file), 'utf8'))) {
+      const resolved = resolveRelative(file, spec, (p) => existsSync(join(ROOT, p)));
+      if (resolved && !inLane.has(resolved)) escaping.push(`${file} imports ${spec} -> ${resolved}`);
+    }
+  }
+  assert.deepEqual(escaping, [],
+    `these engine-lane files import outside the lane, so a member holding this engine beside older packs `
+    + `cannot load them:\n  ${escaping.join('\n  ')}`);
+});
