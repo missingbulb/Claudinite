@@ -9,6 +9,12 @@ log of runs.
 
 | Date | Task | Change |
 |---|---|---|
+| 2026-08-24 | owner request | Audited the whole file with the `authoring-agent-docs` method: stripped per-rule incident archaeology (issue ids, dates, quoted exchanges) that `VERSIONS.md` and the issues already keep, keeping a measurement only where the number is the argument. 8,435 → 7,612 words, every rule's strength unchanged (#1312). |
+| 2026-08-24 | owner request | Split: **Creating the artifact a check will demand** — create it before the action it gates; was a trailing clause of the mechanize-a-procedure rule, and a reader can arrive at it without that one (#1312). |
+| 2026-08-24 | owner request | Removed: **Writing check-the-work** — `basics` already carries see-it-fail as the ladder rule, and both load in the same session (#1312). |
+| 2026-08-24 | owner request | Removed: **Judging whether a member is fresh** — contradicted `claudinite-lifecycle`'s corrected form, which rules out `ref` along with `claudinite.updated` (#1312). |
+| 2026-08-24 | owner request | Stripped: **Diagnosing a member's maintenance PR that won't land** — down to the `unstable`-is-a-parked-run diagnosis; the rest was `claudinite-lifecycle`'s mount-did-not-update rule verbatim (#1312). |
+| 2026-08-24 | owner request | Carried out: the `packs/* → .claudinite/local` barrier gap, which was sitting as a TODO inside a rule, is now #1313 (#1312). |
 | 2026-08-24 | `growth-extract` | Added: **Opening a queue work-item's own delivered PR** — never carry `Closes #<the item's own issue>`; convergence, not merge, is what closes or parks it (#1275). |
 | 2026-08-24 | `growth-extract` | Added: **Re-waiting on a signal that already failed to move on the first wait** — read the code that governs when it can change before waiting a second time on the same premise (#1293). |
 | 2026-08-24 | `growth-extract` | Extended: **Running the test suite** — `git ls-files` also silently excludes a just-created, unstaged test file, so a green run may never have executed it (#1274). |
