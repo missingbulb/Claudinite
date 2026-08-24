@@ -52,6 +52,32 @@ const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
 // The canon's own local packs — repo-only content, outside every vendor set.
 const LOCAL_PACKS = '.claudinite/local/packs';
 
+// A stub's comments are inert: a member vendors them verbatim and no engine reads
+// them, so rewriting one carries nobody anywhere and asking for a migration record
+// would be the cried-wolf firing this rule is narrowed to avoid. Both sides must be
+// readable to reach that conclusion — an unreadable stub stays a contract surface,
+// so the fail-safe answer is the one a missing file gets.
+//
+// `#` only opens a comment at line start or after whitespace, which is what keeps a
+// `#` inside a YAML scalar (a URL fragment, an `echo 'a # b'`) a real character.
+function stripYamlComments(text) {
+  return text.split('\n').map((line) => {
+    let quote = null;
+    for (let i = 0; i < line.length; i += 1) {
+      const c = line[i];
+      if (quote) { if (c === quote) quote = null; continue; }
+      if (c === '"' || c === "'") { quote = c; continue; }
+      if (c === '#' && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i);
+    }
+    return line;
+  }).map((line) => line.trimEnd()).filter(Boolean).join('\n');
+}
+
+function commentOnly(head, base) {
+  if (typeof head !== 'string' || typeof base !== 'string') return false;
+  return stripYamlComments(head) === stripYamlComments(base);
+}
+
 // The contract surfaces this change touched, and why each counts. Pure over the
 // changed-file list plus a head and a base reader, so the whole decision is
 // testable with no git.
@@ -61,7 +87,7 @@ export function contractChanges(changed, read, readBase = () => null) {
     out.push({ file: SCHEMA, what: 'the pack manifest vocabulary — every consumer local pack is validated against it' });
   }
   for (const stub of STUBS) {
-    if (changed.includes(stub)) {
+    if (changed.includes(stub) && !commentOnly(read(stub), readBase(stub))) {
       out.push({ file: stub, what: 'a workflow stub — every member vendors it verbatim' });
     }
   }

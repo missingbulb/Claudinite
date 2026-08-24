@@ -124,3 +124,29 @@ test('a rule in the canon\'s own local packs is out of scope — no consumer can
   const shipped = 'packs/basics/new-rule.mjs';
   assert.equal(contractChanges([shipped], () => BLOCKING_RULE, () => null).length, 1);
 });
+
+test('a stub change that only touches comments is not a contract surface', () => {
+  const before = '# an old reason nobody needs\njobs:\n  execute:\n    steps: []\n';
+  const after = '# a shorter line\njobs:\n  execute:\n    steps: []\n';
+  assert.equal(contractChanges([STUB], () => after, () => before).length, 0);
+  // Whitespace-only reflow of the same YAML counts as comment-only too.
+  assert.equal(contractChanges([EXECUTOR_STUB], () => `${after}\n`, () => before).length, 0);
+});
+
+test('a stub change that alters a real line is a contract surface, however many comments moved', () => {
+  const before = '# reason\njobs:\n  execute:\n    steps: []\n';
+  const after = '# reason\njobs:\n  execute:\n    steps: [checkout]\n';
+  assert.equal(contractChanges([STUB], () => after, () => before).length, 1);
+});
+
+test('a stub whose head or base cannot be read is treated as a contract surface', () => {
+  const text = 'jobs:\n  execute:\n    steps: []\n';
+  assert.equal(contractChanges([STUB], () => text, () => null).length, 1);
+  assert.equal(contractChanges([STUB], () => null, () => text).length, 1);
+});
+
+test('a `#` inside a YAML value is not a comment — changing it is a real change', () => {
+  const before = "jobs:\n  execute:\n    run: echo 'a # b'\n";
+  const after = "jobs:\n  execute:\n    run: echo 'a # c'\n";
+  assert.equal(contractChanges([STUB], () => after, () => before).length, 1);
+});
