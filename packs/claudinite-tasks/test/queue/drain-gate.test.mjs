@@ -16,6 +16,8 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { pickableCount } from '../../queue/scheduler-run.mjs';
+
 const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const read = (p) => readFileSync(join(CANON, p), 'utf8');
 const WORKFLOWS = [
@@ -24,7 +26,7 @@ const WORKFLOWS = [
 ];
 
 test('the scheduler run writes the pickable verdict, and the drain job gates on it', () => {
-  assert.match(read('packs/claudinite-tasks/queue/scheduler-run.mjs'), /pickable=\$\{pickable\.length \? 'true' : 'false'\}/,
+  assert.match(read('packs/claudinite-tasks/queue/scheduler-run.mjs'), /pickable=\$\{pickable \? 'true' : 'false'\}/,
     'the producer no longer writes the output the drain job reads');
   for (const wf of WORKFLOWS) {
     const s = read(wf);
@@ -78,5 +80,30 @@ test('the producer is inert where nothing consumes it', () => {
   const src = read('packs/claudinite-tasks/queue/scheduler-run.mjs');
   assert.match(src, /const out = process\.env\.GITHUB_OUTPUT;\s*\n\s*if \(!out\) return;/,
     'the run must not fail where GITHUB_OUTPUT is unavailable');
-  assert.match(src, /console\.log\(pickable\.length/, 'the verdict is not on the record');
+  assert.match(src, /console\.log\(pickable\s*\n/, 'the verdict is not on the record');
+});
+
+// THE GATE READS A QUEUE THAT DOES NOT YET CONTAIN WHAT THIS RUN JUST WROTE.
+// GitHub's issue list is eventually consistent: a create returning #304 is not
+// necessarily in the next list response, and the gate's look is milliseconds
+// behind its own writes (#1340 — 377ms on LaughCounter, 584ms on the canary).
+// The run then reports an empty queue, skips the drain, and the item it just
+// minted sits `task:ready` until the next cron fire — which is precisely what a
+// forced wake exists not to wait for. So the verdict is the UNION of what the
+// list returns with what this run itself left ready: the run knows what it
+// wrote, and that knowledge does not need a read to confirm it.
+test('an item this run readied counts even when the list read has not caught up', () => {
+  const open = [];
+  assert.equal(pickableCount(open, [304], {}), 1,
+    'a just-created ready item invisible to the list read must still open the drain gate');
+});
+
+test('an item both listed and readied by this run is counted once', () => {
+  const open = [{ number: 304, labels: [{ name: 'task:ready' }], title: '[claudinite-work] a/b' }];
+  assert.equal(pickableCount(open, [304], {}), 1, 'the union double-counted');
+});
+
+// The gate's whole purpose survives: a quiet run still dispatches nothing.
+test('a run that readied nothing over an empty queue stays shut', () => {
+  assert.equal(pickableCount([], [], {}), 0, 'the gate no longer saves the empty invocation');
 });
