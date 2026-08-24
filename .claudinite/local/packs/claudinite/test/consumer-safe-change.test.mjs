@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import rule, { contractChanges, carriesConsumers } from '../workRules/consumer-safe-change.mjs';
 
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
-const STUB = 'engine/scheduler/stubs/claudinite-scheduler.yml';
-const EXECUTOR_STUB = 'engine/scheduler/stubs/claudinite-executor.yml';
+const STUB = 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml';
+const EXECUTOR_STUB = 'packs/claudinite-tasks/stubs/claudinite-executor.yml';
 const RECORD = 'engine/migrations/2026-08-01-thing/migration.mjs';
 const PACK_RECORD = 'packs/claudinite-fleet-sheepdog/migrations/2026-08-01-thing/migration.mjs';
 const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
@@ -67,7 +67,7 @@ test('a changed rule that stays advisory is not — it cannot turn a member red'
 // The narrowness is the point: a rule that fires on every canon commit gets
 // turned off, and is then worth nothing on the day it matters.
 test('ordinary engine and pack edits are not contract surfaces', () => {
-  assert.deepEqual(contractChanges(['engine/scheduler/queue/executor.mjs', 'packs/node/README.md'], () => 'whatever'), []);
+  assert.deepEqual(contractChanges(['packs/claudinite-tasks/queue/executor.mjs', 'packs/node/README.md'], () => 'whatever'), []);
 });
 
 test('test files are never contract surfaces, even when they contain a blocking rule', () => {

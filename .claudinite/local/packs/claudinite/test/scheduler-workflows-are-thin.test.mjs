@@ -19,13 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: node engine/scheduler/queue/scheduler-run.mjs
+      - run: node packs/claudinite-tasks/queue/scheduler-run.mjs
 `;
 
 // All four, so a fixture never trips the blind-scope guard by accident.
 const four = (overrides = {}) => ({
-  'engine/scheduler/stubs/claudinite-scheduler.yml': THIN,
-  'engine/scheduler/stubs/claudinite-executor.yml': THIN,
+  'packs/claudinite-tasks/stubs/claudinite-scheduler.yml': THIN,
+  'packs/claudinite-tasks/stubs/claudinite-executor.yml': THIN,
   '.github/workflows/claudinite-scheduler.yml': THIN,
   '.github/workflows/claudinite-executor.yml': THIN,
   ...overrides,
@@ -41,24 +41,24 @@ test('silent when every copy is a thin wrapper', () => {
 });
 
 test('fires on github-script, in the stub and in the canon copy alike', () => {
-  const withScript = THIN.replace('      - run: node engine/scheduler/queue/scheduler-run.mjs',
+  const withScript = THIN.replace('      - run: node packs/claudinite-tasks/queue/scheduler-run.mjs',
     `      - uses: actions/github-script@v7
         with:
           script: |
             core.info('hello');`);
   withFixture(four({
-    'engine/scheduler/stubs/claudinite-executor.yml': withScript,
+    'packs/claudinite-tasks/stubs/claudinite-executor.yml': withScript,
     '.github/workflows/claudinite-executor.yml': withScript,
   }), (findings) => {
     assert.equal(findings.length, 2, 'both vendored copies are watched, not just one');
     assert.deepEqual(findings.map((f) => f.file).sort(), [
       '.github/workflows/claudinite-executor.yml',
-      'engine/scheduler/stubs/claudinite-executor.yml',
+      'packs/claudinite-tasks/stubs/claudinite-executor.yml',
     ]);
     for (const f of findings) {
       assert.equal(f.severity, 'blocking');
       assert.match(f.what, /github-script/);
-      assert.match(f.fix, /engine\/scheduler\/queue\//);
+      assert.match(f.fix, /packs\/claudinite-tasks\/queue\//);
     }
   });
 });
@@ -66,9 +66,9 @@ test('fires on github-script, in the stub and in the canon copy alike', () => {
 test('fires on a block `run:` — a shell script is a program too', () => {
   for (const scalar of ['|', '>', '|-', '|+']) {
     withFixture(four({
-      'engine/scheduler/stubs/claudinite-scheduler.yml':
-        THIN.replace('- run: node engine/scheduler/queue/scheduler-run.mjs',
-          `- run: ${scalar}\n          node engine/scheduler/queue/scheduler-run.mjs\n          echo done`),
+      'packs/claudinite-tasks/stubs/claudinite-scheduler.yml':
+        THIN.replace('- run: node packs/claudinite-tasks/queue/scheduler-run.mjs',
+          `- run: ${scalar}\n          node packs/claudinite-tasks/queue/scheduler-run.mjs\n          echo done`),
     }), (findings) => {
       assert.equal(findings.length, 1, `\`run: ${scalar}\` is a block scalar`);
       assert.match(findings[0].what, /block `run:`/);
@@ -78,16 +78,16 @@ test('fires on a block `run:` — a shell script is a program too', () => {
 
 test('a single-line `run: node …` is the sanctioned form and stays silent', () => {
   withFixture(four({
-    'engine/scheduler/stubs/claudinite-scheduler.yml':
-      THIN.replace('node engine/scheduler/queue/scheduler-run.mjs',
-        'node .claudinite/shared/engine/scheduler/queue/scheduler-run.mjs'),
+    'packs/claudinite-tasks/stubs/claudinite-scheduler.yml':
+      THIN.replace('node packs/claudinite-tasks/queue/scheduler-run.mjs',
+        'node .claudinite/shared/packs/claudinite-tasks/queue/scheduler-run.mjs'),
   }), (findings) => assert.deepEqual(findings, []));
 });
 
 // A pattern left behind by a layout change matches nothing, reads as live and
 // catches nothing. The rule says so instead of passing.
 test('a scope it can no longer see is reported, not passed', () => {
-  withFixture({ 'engine/scheduler/stubs/claudinite-scheduler.yml': THIN }, (findings) => {
+  withFixture({ 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml': THIN }, (findings) => {
     assert.equal(findings.length, 1);
     assert.match(findings[0].what, /expected the 4 that exist/);
   });
@@ -99,14 +99,14 @@ test('the canon tree itself satisfies the rule', () => {
 });
 
 // The rule's whole premise: these files name a module rather than carrying one.
-test('every job in both real stubs runs an engine module', () => {
+test('every job in both real stubs runs a module of the tasks pack', () => {
   for (const stub of ['claudinite-scheduler', 'claudinite-executor']) {
-    const yml = readFileSync(join(CANON, `engine/scheduler/stubs/${stub}.yml`), 'utf8');
+    const yml = readFileSync(join(CANON, `packs/claudinite-tasks/stubs/${stub}.yml`), 'utf8');
     const runs = [...yml.matchAll(/^\s*run: (.+)$/gm)].map((m) => m[1]);
     assert.ok(runs.length > 0, `${stub} runs something`);
     for (const cmd of runs) {
-      assert.match(cmd, /^node \.claudinite\/shared\/engine\/scheduler\/queue\/[a-z-]+\.mjs$/,
-        `${stub}: "${cmd}" must be a bare invocation of a vendored engine module`);
+      assert.match(cmd, /^node \.claudinite\/shared\/packs\/claudinite-tasks\/queue\/[a-z-]+\.mjs$/,
+        `${stub}: "${cmd}" must be a bare invocation of a vendored scheduler module`);
     }
   }
 });

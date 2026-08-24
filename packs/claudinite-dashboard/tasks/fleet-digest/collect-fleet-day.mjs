@@ -14,8 +14,8 @@
 // maintenance filter testable against fixtures rather than against the live fleet.
 
 import { paged, readDeclaration, isDormant } from './fleet-reads.mjs';
-import { isDispatchTitle } from '../../../../engine/scheduler/dispatch.mjs';
-import { isWorkItemTitle } from '../../../../engine/scheduler/queue/work-item.mjs';
+import { isDispatchTitle } from '../../../claudinite-tasks/shared-code/work-items.mjs';
+import { isWorkItemTitle } from '../../../claudinite-tasks/shared-code/work-items.mjs';
 
 // How many pages of a repo's closed pull requests the walk will read before giving
 // up. 100 per page, so three pages is 300 closed PRs — comfortably more than any
@@ -100,7 +100,7 @@ export function isMachineIssue(issue) {
   return isWorkItemTitle(title)
     || isDispatchTitle(title)
     // The schedule board (#1115). A literal rather than an import of
-    // engine/scheduler/queue/schedule-board.mjs's SCHEDULE_PREFIX: the engine
+    // packs/claudinite-tasks/queue/schedule-board.mjs's SCHEDULE_PREFIX: the engine
     // lane and the pack lane deliver on separate cycles, and a pack importing
     // a module the member's older mount does not yet hold fails the whole
     // mount's self-test (#1004).

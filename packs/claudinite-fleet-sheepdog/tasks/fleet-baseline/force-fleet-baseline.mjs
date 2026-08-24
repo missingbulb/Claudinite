@@ -52,7 +52,7 @@ import {
 } from './follow-to-current.mjs';
 
 // The exact member-side task this lever forces — the id the member's scheduler run resolves
-// against its own declared packs (`planWake` in engine/scheduler/queue/scheduler-run.mjs);
+// against its own declared packs (`planWake` in packs/claudinite-tasks/queue/scheduler-run.mjs);
 // named as a constant so the coupling is one line to find, not a string buried in a
 // request body.
 //

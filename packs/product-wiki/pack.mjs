@@ -7,7 +7,7 @@
 import { SINK_README } from './lib.mjs';
 
 export default {
-  version: '60823.3',
+  version: '60824.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink',
@@ -45,5 +45,5 @@ export default {
   ],
   // The pack's scheduled task — wiki-growth, the weekly research pass — lives in
   // this pack's `tasks/wiki-growth/`, discovered by the scheduler's filesystem
-  // scan (engine/scheduler/discover.mjs), not declared here.
+  // scan (packs/claudinite-tasks/discover.mjs), not declared here.
 };

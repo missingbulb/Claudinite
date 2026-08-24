@@ -65,7 +65,7 @@
 // follow-the-fleet report: dispatching is the enforcer's job, reporting is each
 // member's own.
 //
-// Everything else — the scheduler run, the executor, the task engine (engine/scheduler/),
+// Everything else — the scheduler run, the executor, the task engine (packs/claudinite-tasks/),
 // scheduling — is CORE and pack-agnostic; none of it runs, dispatches, or depends on
 // these sweeps.
 //
@@ -77,7 +77,7 @@
 import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
-  version: '60823.2',
+  version: '60824.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, usage, standardized packs',

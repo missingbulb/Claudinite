@@ -20,7 +20,7 @@
 import { ensureLabel } from '../../fleet-api.mjs';
 import {
   ORIGIN_AD_HOC, QUEUE_LABELS, statusOf, spellingsOf, machineBlockOf, withMachineBlock,
-} from '../../../../engine/scheduler/queue/work-item.mjs';
+} from '../../../claudinite-tasks/shared-code/work-items.mjs';
 import { MARK, withTargeting } from './protocol.mjs';
 
 // The engine's own definition of the mark — never a second copy of its colour and

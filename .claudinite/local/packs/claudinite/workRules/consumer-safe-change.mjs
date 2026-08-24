@@ -40,8 +40,8 @@ const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
 // scheduler's, and its event trigger names label strings literally — the surface a
 // vocabulary change has to carry members across (#1119).
 const STUBS = [
-  'engine/scheduler/stubs/claudinite-scheduler.yml',
-  'engine/scheduler/stubs/claudinite-executor.yml',
+  'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
+  'packs/claudinite-tasks/stubs/claudinite-executor.yml',
 ];
 // A record folder, not the machinery beside it: registry/apply edits are engine
 // work and carry no member across anything. A record lives under the flow that

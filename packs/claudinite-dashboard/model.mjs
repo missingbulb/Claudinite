@@ -9,7 +9,7 @@
 //
 // Those engine modules are pure ESM with no `node:` imports, which is the property
 // this file depends on and `browser-graph.test.mjs` pins across the page's whole
-// import graph. Living inside `engine/scheduler/` makes the queue modules siblings,
+// import graph. Living inside `packs/claudinite-tasks/` makes the queue modules siblings,
 // so the dashboard sits beside the mechanism it renders rather than reaching across
 // the tree at it.
 //
@@ -19,10 +19,10 @@
 // that drifts from the canonical one is worse than the distance.
 
 import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
-import { mostRecentAnchor, nextAnchor, periodMs } from '../../engine/scheduler/queue/anchors.mjs';
+import { mostRecentAnchor, nextAnchor, periodMs } from '../claudinite-tasks/shared-code/anchors.mjs';
 import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
-} from '../../engine/scheduler/queue/leases.mjs';
+} from '../claudinite-tasks/shared-code/work-items.mjs';
 import {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
   outcomeOf as decodeOutcome,
@@ -32,7 +32,7 @@ import {
   NEEDS_HUMAN_FAILURE, isBlockingPark, parseLastVerdict,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
   parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, hasLabel, labelNames,
-} from '../../engine/scheduler/queue/work-item.mjs';
+} from '../claudinite-tasks/shared-code/work-items.mjs';
 
 export {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
@@ -147,7 +147,7 @@ export function parseDeclaration(text) {
 // An item is a filed `[claudinite-work]` issue OR an adopted marked issue — the
 // one-issue request model's other shape, which keeps the person's own title
 // (tasks-dispatch DESIGN §16.1). One definition, shared with the queue's own reader.
-export { isQueueItem as isWorkItem } from '../../engine/scheduler/queue/read.mjs';
+export { isQueueItem as isWorkItem } from '../claudinite-tasks/shared-code/work-items.mjs';
 
 // The page's five state keys, one per decoded status. The keys are the engine's
 // own constants rather than the canonical spellings, because a page groups the four

@@ -6,7 +6,7 @@ import {
 import { estimateMinutes, parkMinutes, parkMinutesNote } from '../fleet.mjs';
 import {
   NEEDS_HUMAN, READY, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
-} from '../../../engine/scheduler/queue/work-item.mjs';
+} from '../../claudinite-tasks/shared-code/work-items.mjs';
 
 const item = (over = {}) => ({
   number: 7,

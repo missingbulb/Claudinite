@@ -113,7 +113,7 @@ export const WORKFLOW_DIR = '.github/workflows/';
 // to be recomputed by the hand that performs it.
 //
 // THE CONTENT TRAVELS THROUGH THE REPOSITORY, not through the dispatch. That is the
-// scheduler's standing rule for the code→agent boundary (engine/scheduler/code-work.mjs):
+// scheduler's standing rule for the code→agent boundary (packs/claudinite-tasks/code-work.mjs):
 // a request payload may carry identifiers and the NAME of the condition that fired,
 // "never findings and never instructions" — everything else goes through the repo.
 // Two things fall out of obeying it, and both are worth more than the shortcut. The
@@ -140,7 +140,7 @@ export function stagedFiles(targetRoot) {
 // (tasks-dispatch DESIGN §14), so this lane needs to know only one stub. The
 // argument is kept because every caller has the member's config in hand and the
 // signature is what fielded callers pass.
-const STUB_DIR = '.claudinite/shared/engine/scheduler/stubs/';
+const STUB_DIR = '.claudinite/shared/packs/claudinite-tasks/stubs/';
 export const stubFor = () => `${STUB_DIR}claudinite-scheduler.yml`;
 
 // The scheduler workflow this member should be carrying, as `{ pending, error }`.
@@ -162,7 +162,7 @@ export const stubFor = () => `${STUB_DIR}claudinite-scheduler.yml`;
 export async function pendingSchedulerWorkflow(targetRoot, fullName, read) {
   try {
     if (!fullName) return { pending: null, error: 'no repo name — cannot resolve this repo\'s cron minute' };
-    const { schedulerWorkflowTarget, SCHEDULER_WORKFLOW } = await import('../engine/scheduler/converge-wiring.mjs');
+    const { schedulerWorkflowTarget, SCHEDULER_WORKFLOW } = await import('../packs/claudinite-tasks/converge-wiring.mjs');
     const { loadConfig } = await import('../engine/checks/helpers/repo-context.mjs');
     const config = loadConfig(targetRoot);
     const stubRel = stubFor(config);
@@ -192,7 +192,7 @@ export const EXECUTOR_STUB = `${STUB_DIR}claudinite-executor.yml`;
 
 export async function pendingExecutorWorkflow(targetRoot, read) {
   try {
-    const { EXECUTOR_WORKFLOW } = await import('../engine/scheduler/converge-wiring.mjs');
+    const { EXECUTOR_WORKFLOW } = await import('../packs/claudinite-tasks/converge-wiring.mjs');
     const stub = read(EXECUTOR_STUB);
     if (stub == null) return { pending: null, error: `no vendored executor stub at ${EXECUTOR_STUB}` };
     // The stub verbatim: the executor workflow stopped being a function of the task
@@ -355,7 +355,7 @@ export async function packUpdate(targetRoot, {
   //     Written straight to the tree rather than withheld: the index is not a
   //     workflow path, so no credential refuses it.
   const { writeRulesIndex, RULES_INDEX_FILE } = await import('../engine/pack_loader/generate-rules-index.mjs');
-  const { ensureRulesIndexImport, ensureRulesIndexMergeAttribute } = await import('../engine/scheduler/converge-wiring.mjs');
+  const { ensureRulesIndexImport, ensureRulesIndexMergeAttribute } = await import('../packs/claudinite-tasks/converge-wiring.mjs');
   if (await writeRulesIndex(targetRoot)) applied.push(`converged ${RULES_INDEX_FILE}`);
   if (ensureRulesIndexImport(targetRoot)) applied.push('added the CLAUDE.md pack-index import');
   if (ensureRulesIndexMergeAttribute(targetRoot)) applied.push('declared merge=ours for the pack index');

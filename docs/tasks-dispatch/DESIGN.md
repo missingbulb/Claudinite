@@ -1,6 +1,6 @@
 # Task dispatch without slots — the work-item queue
 
-The mechanism lives in [`engine/scheduler/queue/`](../../engine/scheduler/queue/),
+The mechanism lives in [`packs/claudinite-tasks/queue/`](../../packs/claudinite-tasks/queue/),
 behind `taskScheduler.dispatch`. A continuation of the owner's sketch (2026-08-12, reproduced in Appendix A), played against twenty timed
 scenarios ([SCENARIOS.md](SCENARIOS.md)) and the field's prior art
 ([RESEARCH.md](RESEARCH.md)), with the owner's eight decisions of 2026-08-13
@@ -800,7 +800,7 @@ reclaimed — and the session stops without touching the item. One comparison, n
 protocol, and it costs nothing when it passes.
 
 The session's instructions are themselves a tracked file
-([`engine/scheduler/queue/instructions.md`](../../engine/scheduler/queue/instructions.md))
+([`packs/claudinite-tasks/queue/instructions.md`](../../packs/claudinite-tasks/queue/instructions.md))
 that the routine's stored prompt does nothing but point at, so the issue-is-data
 posture holds at this hop too: the payload names an item, and every instruction
 comes from a file under review.
@@ -1156,7 +1156,7 @@ implementation, not assumed): firing a routine runs *its* saved prompt, and the
 `text` we send arrives wrapped in a block explicitly labelled untrusted, which a
 routine acts on only because its stored prompt says to. So the payload names the
 item and the nonce and instructs nothing, and the prompt is a tracked artifact —
-— [`engine/scheduler/queue/instructions.md`](../../engine/scheduler/queue/instructions.md),
+— [`packs/claudinite-tasks/queue/instructions.md`](../../packs/claudinite-tasks/queue/instructions.md),
 which the routine's stored prompt does nothing but point at, one line long. The issue-is-data posture arrives intact at one more
 hop: behavior comes from files under review, never from what an API caller sent.
 A routine's repository scope is then the whole meaning of an endpoint, which is
@@ -1822,7 +1822,7 @@ in the `failure` lane, as for every other task.
 
 ### 16.6 What the session's instructions gain
 
-[`engine/scheduler/queue/instructions.md`](../../engine/scheduler/queue/instructions.md)
+[`packs/claudinite-tasks/queue/instructions.md`](../../packs/claudinite-tasks/queue/instructions.md)
 grows one mode, not one procedure. Its validation step gains: *if the item carries
 `Request: #N`, assert that issue is open and still marked, or stop*. Its
 run step gains: *run at the item's `Model:` where the task takes one, and treat the
@@ -1902,13 +1902,13 @@ arbitrated and recovered by the same code as any other item, which is the point.
 8. `packs/claudinite-growth/skills/writing-tasks/SKILL.md` — the contract prose
    members read.
 
-Played through in the simulator as **S44–S51** ([sim](sim/), SCENARIOS §K); each was
+Played through in the simulator as **S44–S51** ([sim](../../packs/claudinite-tasks/test/sim/), SCENARIOS §K); each was
 watched failing against a deliberately broken mechanism before it was believed.
 
 Built in #1010, with one addition to the list above: the `request` signal collector
 (see §16.4's amendment), and its name in the contract's signal vocabulary. The
 engine tests mirroring S44–S51 live in
-[`engine-tests/scheduler/queue/request-mode.test.mjs`](../../engine-tests/scheduler/queue/request-mode.test.mjs)
+[`packs/claudinite-tasks/test/queue/request-mode.test.mjs`](../../packs/claudinite-tasks/test/queue/request-mode.test.mjs)
 and were each watched failing against a broken mechanism in turn.
 
 **Unverified at landing:** whether `GET /repos/{o}/{r}/collaborators/{u}/permission`
@@ -2201,12 +2201,22 @@ the corpus another pack's code may import from a pack it `requires`. Enforced as
 configuration — everything of this pack *outside* `shared-code/` stays off-limits to other
 packs, and no other pack gains an equivalent surface by existing.
 
-What it carries is what external consumers demonstrably need: the work-item/dispatch **title
-grammar** (§3 — a work item is a GitHub issue and its title is its identity), the
-**outcome/status decode** over item labels including every legacy spelling (§4), the **anchor
-math** (`periodMs`, `mostRecentAnchor`, `nextAnchor`), the **delivery helpers**
-(`deliverGenerated`, `landPr`) and **GitHub client/REST helpers** any pack's worker uses to land
-output, and task-declaration validation, which other packs' tests exercise.
+What it carries is what external consumers demonstrably need, one module per subject:
+`work-items.mjs` — the work-item/dispatch **title grammar** (§3 — a work item is a GitHub issue and
+its title is its identity), the **outcome/status decode** over item labels including every legacy
+spelling (§4), and lease state; `anchors.mjs` — the **anchor math** (`periodMs`,
+`mostRecentAnchor`, `nextAnchor`); `delivery.mjs` — the **delivery helpers** (`deliverGenerated`,
+`landPr`); `github.mjs` — the **GitHub client/REST helpers** and the tracker any pack's worker uses
+to land output; `signals.mjs` — the signal shapes a precondition is handed; `task-contract.mjs` —
+task-declaration validation and precondition evaluation, which other packs' tests exercise;
+`usage-format.mjs` — the usage aggregate's codec, for the fleet-wide aggregator that copies members'
+rows through; and `wake.mjs` — what a scheduler run would instantiate, kept out of `work-items.mjs`
+because the dashboard loads that one unbundled in a browser, where Node built-ins do not resolve.
+
+A pack whose **non-task** code reads any of it declares `requires: ['claudinite-tasks']`. A pack's
+`tasks/` folder needs no declaration and states none: a task folder is inert without the queue that
+runs it, so a mount without this pack carries no `tasks/` at all, and the vendor set's
+import-closure guard stays true by construction on both sides of the boundary.
 
 Consumers: `claudinite-dashboard` (renders the queue's state; stays its own pack and declares
 `requires: ['claudinite-tasks']`), and any pack whose tasks deliver PRs or generated files.

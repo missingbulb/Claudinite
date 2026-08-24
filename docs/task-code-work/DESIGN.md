@@ -33,7 +33,7 @@ executor's CCR environment can be built from the project alone.
 
 ## 1. Why
 
-Two problems in the current staging (`engine/scheduler/run.mjs`):
+Two problems in the current staging (`packs/claudinite-tasks/run.mjs`):
 
 1. **Agents do mechanical code work.** Baselining's core is *"delete
    `.claudinite/shared/**`, write the new engine + declared packs, advance the
@@ -57,7 +57,7 @@ directly — the agent no longer needs canon in context.
 
 ## 2. Contract additions
 
-Four fields join the task declaration (`engine/scheduler/task-contract.mjs`),
+Four fields join the task declaration (`packs/claudinite-tasks/task-contract.mjs`),
 all optional with safe defaults so every existing task is valid unchanged:
 
 ```js

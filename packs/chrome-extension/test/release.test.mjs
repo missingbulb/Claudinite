@@ -186,7 +186,7 @@ jobs:
   schedule:
     runs-on: ubuntu-latest
     steps:
-      - run: node .claudinite/shared/engine/scheduler/queue/scheduler-run.mjs
+      - run: node .claudinite/shared/packs/claudinite-tasks/queue/scheduler-run.mjs
 `;
   // De-cron'd orchestrator: keeps push + workflow_dispatch, drops the schedule block.
   const deCronOrchestrator = ORCHESTRATOR.replace('  schedule:\n    - cron: "30 0 * * *"\n', '');
@@ -389,7 +389,7 @@ test('the permission-alignment and permission-added declarations watch the same 
 // The gate is spelled three times because three layers ask it and none of them can
 // import the others: the coded rule (release-workflows.mjs), the seven declared
 // checks (declared-checks.json, which cannot import at all), and the scheduler's
-// `release` signal (engine/scheduler/signals/local.mjs, which may not import a pack
+// `release` signal (packs/claudinite-tasks/signals/local.mjs, which may not import a pack
 // — the engine depends on no pack). One drifting copy is silent in the worst way:
 // the checks and the task would disagree about whether a repo publishes.
 test('shipping gate: the declared checks carry the same test as the coded predicate', () => {
@@ -405,7 +405,7 @@ test('shipping gate: the declared checks carry the same test as the coded predic
 });
 
 test('shipping gate: the scheduler signal answers what the pack rules answer', async () => {
-  const { localSignalContext } = await import('../../../engine/scheduler/signals/local.mjs');
+  const { localSignalContext } = await import('../../claudinite-tasks/shared-code/signals.mjs');
   // One matrix, both readers. Each row is a repo shape that has actually mattered:
   // a publisher, a publisher known only by its release config, the canon's own copies
   // of the reusable workflows, and a repo that just codes an extension.

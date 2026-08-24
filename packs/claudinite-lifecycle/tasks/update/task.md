@@ -63,7 +63,7 @@ The one check no Action can make. This repo's executor routine is fired by an AP
 call to the endpoint its config names, and it is not a GitHub artifact — only a
 session can see it. Confirm it exists and that its whole stored prompt is the one
 line pointing at the mounted queue instructions
-(`.claudinite/shared/engine/scheduler/queue/instructions.md`): everything a task
+(`.claudinite/shared/packs/claudinite-tasks/queue/instructions.md`): everything a task
 session does comes from that file, so a prompt carrying instructions of its own is
 behavior nobody reviews. Report what you found either way.
 
@@ -88,7 +88,7 @@ cycle" is up to a day away, and until then a workflow you moved into
 `.github/workflows/` on the branch is not in `.github/workflows/` on `main`. That
 standing ~24h offset between a run's output and the member's `main` is the exact defect
 `landDelivery` was written to close for the deterministic half (#649,
-`engine/scheduler/land-pr.mjs`): *the evidence that settles it does not take a day to
+`packs/claudinite-tasks/land-pr.mjs`): *the evidence that settles it does not take a day to
 arrive*. The same reasoning binds here — the only difference is that you hold the
 credential, so you are the one who acts on it.
 

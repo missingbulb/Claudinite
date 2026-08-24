@@ -209,7 +209,7 @@ test('the apply stage\'s duties live in its task file, and none were dropped wit
   assert.match(task, /applyStage\.instructions/, 'what a record asked for is read from the record, on the branch');
 
   // And the payload must stay identifiers-only: the worker may name the condition,
-  // never carry the instructions (engine/scheduler/code-work.mjs).
+  // never carry the instructions (packs/claudinite-tasks/code-work.mjs).
   const worker = readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
   assert.ok(!worker.includes('brief:'), 'this ref\'s worker carries no rendered brief — the export survives only for fielded ones');
 });

@@ -5,8 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { hashedCron } from '../engine/scheduler/hash-minute.mjs';
-import { packIdForRepo } from '../engine/scheduler/converge-wiring.mjs';
+import { hashedCron } from '../packs/claudinite-tasks/hash-minute.mjs';
+import { packIdForRepo } from '../packs/claudinite-tasks/converge-wiring.mjs';
 
 // Integration suite for bootstrap.mjs, THE one-shot adoption orchestrator: it runs
 // the real canon (this checkout) against a fresh fixture repo, because the whole

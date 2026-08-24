@@ -16,7 +16,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_ACTION,
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, TASK_DONE,
-} from '../../../engine/scheduler/queue/work-item.mjs';
+} from '../../claudinite-tasks/shared-code/work-items.mjs';
 
 const NOW = Date.parse('2026-08-17T12:00:00Z');
 const CANON = { repo: 'o/canon', ref: 'canonsha', engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 } };

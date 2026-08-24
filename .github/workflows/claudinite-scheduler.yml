@@ -2,7 +2,7 @@
 # lines below, which converge nightly — this file does not, so it must not grow
 # logic. This copy is hand-maintained — the canon has no converge — so it is
 # edited in the same commit as the stub beside it, and the drift tests in
-# engine-tests/scheduler/converge-wiring.test.mjs keep the two honest.
+# packs/claudinite-tasks/test/converge-wiring.test.mjs keep the two honest.
 name: Claudinite scheduler
 
 on:
@@ -41,7 +41,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           CLAUDINITE_WAKE: ${{ inputs.wake }}
           CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
-        run: node engine/scheduler/queue/scheduler-run.mjs
+        run: node packs/claudinite-tasks/queue/scheduler-run.mjs
 
   drain:
     needs: scheduler-run
@@ -59,7 +59,7 @@ jobs:
       - name: Start an executor for what this run readied
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node engine/scheduler/queue/drain-dispatch.mjs
+        run: node packs/claudinite-tasks/queue/drain-dispatch.mjs
 
   report-failure:
     needs: [scheduler-run, drain]
@@ -80,4 +80,4 @@ jobs:
       - name: Escalate the failed run to a human-visible issue
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node engine/scheduler/queue/workflow-failure.mjs
+        run: node packs/claudinite-tasks/queue/workflow-failure.mjs

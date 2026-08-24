@@ -1,7 +1,7 @@
 // The verify-in-production skill (#1091) rides the request lane — the queue is the
 // delayed-execution mechanism, so the skill's whole contract is prose. These pin
 // the parts the machinery depends on; the Not-before adoption carry it leans on is
-// engine behaviour, tested in engine-tests/scheduler/queue/request-mode.test.mjs.
+// engine behaviour, tested in packs/claudinite-tasks/test/queue/request-mode.test.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

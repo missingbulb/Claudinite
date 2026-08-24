@@ -53,9 +53,10 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   // set's import-closure guard still resolves the registry's reference to it.
   writeAt(root, 'engine/checks/helpers/pattern-rules.mjs', 'stub\n');
   writeAt(root, 'engine/checks/README.md', 'canon doc\n');
-  // engine/scheduler: an OPERATIONAL doc the consumer reads at runtime (vendored,
+  // engine .md is maintainer reference and never vendors — the operational documents a
+  // consumer reads at runtime are a pack's, and ride the pack walk (#1317).
+  // (kept: the old whitelist's fixture, now asserting the blanket drop)
   // despite .md) beside a maintainer doc (excluded like every other engine .md).
-  writeAt(root, 'engine/scheduler/executor.md', 'executor instructions\n');
   writeAt(root, 'engine/scheduler/DESIGN.md', 'canon doc\n');
   writeAt(root, 'engine/test/runner.test.mjs', 'stub\n');
   writeAt(root, 'engine/hooks/session-start-command.sh', 'stub\n');
@@ -127,7 +128,6 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/checks/helpers/active-migrations.mjs',
     'engine/checks/check_the_world.mjs',
     'engine/hooks/session-start-command.sh',
-    'engine/scheduler/executor.md',
     'engine/pack_loader/env-requirements.mjs',
     'engine/pack_loader/generate-rules-index.mjs',
     'engine/pack_loader/pack-registry.mjs',
@@ -169,22 +169,21 @@ test('the set reports the versions it is made of — engine, and each declared p
   assert.deepEqual(packVersions, { alpha: 4, beta: 7 });
 });
 
-test('the operational engine .md whitelist vendors — consumer sessions read them from the mount', async () => {
+test('engine .md never vendors — the operational documents are the tasks pack\'s', async () => {
   const root = makeCanon(FIXTURE);
   const { files } = await vendorAt(root, ['alpha']);
-  assert.ok(files.includes('engine/scheduler/executor.md'), 'executor.md must ship — the label-wired routine points at it in the mount');
-  assert.ok(!files.includes('engine/scheduler/DESIGN.md'), 'other engine .md (maintainer docs) stay canon-side');
+  assert.ok(!files.some((f) => f.startsWith('engine/') && f.endsWith('.md')),
+    'engine .md is maintainer reference and stays canon-side, with nothing whitelisted out of that');
 });
 
-test('regression (fleet executor-broken): the REAL canon tree vendors the operational scheduler docs', async () => {
+test('regression (fleet executor-broken): the REAL canon tree vendors the tasks pack\'s operational docs', async () => {
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
-  const { files, errors } = await computeVendorSet(['basics']);
+  const { files, errors } = await computeVendorSet(['basics', 'claudinite-tasks']);
   assert.deepEqual(errors, []);
-  assert.ok(files.includes('engine/scheduler/executor.md'), 'the live executor.md must be in the vendor set');
-  assert.ok(files.includes('engine/scheduler/deliver-pr.md'),
-    'the live deliver-pr.md must be in the vendor set — merged-pr task workers link to it from the mount');
-  assert.ok(files.includes('engine/scheduler/queue/instructions.md'),
-    'the live queue instructions.md must be in the vendor set — the routine\'s stored prompt points a queue session at it in the mount');
+  for (const doc of ['executor.md', 'deliver-pr.md', 'queue/instructions.md']) {
+    assert.ok(files.includes(`packs/claudinite-tasks/${doc}`),
+      `the live ${doc} must be in the vendor set — a member's routine reads it from its own mount`);
+  }
 });
 
 // The queue engine is runtime-only: every file under it is read by a scheduler run, an
@@ -203,12 +202,12 @@ test('regression: the REAL canon tree vendors the WHOLE queue engine, .md includ
     e.isDirectory()
       ? walk(new URL(`${e.name}/`, url), `${prefix}${e.name}/`)
       : (e.name.endsWith('.test.mjs') ? [] : [`${prefix}${e.name}`])));
-  const onDisk = walk(new URL('../engine/scheduler/queue/', import.meta.url), '');
+  const onDisk = walk(new URL('../packs/claudinite-tasks/queue/', import.meta.url), '');
   assert.ok(onDisk.length > 0, 'the queue engine directory must exist and be non-empty');
   assert.ok(onDisk.some((n) => n.includes('/')), 'the walk reaches inside the queue engine, not just its top level');
   for (const name of onDisk) {
-    assert.ok(files.includes(`engine/scheduler/queue/${name}`),
-      `engine/scheduler/queue/${name} is runtime-operational and must vendor — a mount missing it breaks the queue on every member`);
+    assert.ok(files.includes(`packs/claudinite-tasks/queue/${name}`),
+      `packs/claudinite-tasks/queue/${name} is runtime-operational and must vendor — a mount missing it breaks the queue on every member`);
   }
 });
 
@@ -424,7 +423,7 @@ test('every engine module the workflow stubs name is in the vendor set', async (
   const { files } = await computeVendorSet(['basics']);
   const shipped = new Set(files);
   for (const stub of ['claudinite-scheduler', 'claudinite-executor']) {
-    const yml = readFileSync(join(REPO_ROOT, `engine/scheduler/stubs/${stub}.yml`), 'utf8');
+    const yml = readFileSync(join(REPO_ROOT, `packs/claudinite-tasks/stubs/${stub}.yml`), 'utf8');
     const named = [...yml.matchAll(/^\s*run: node \.claudinite\/shared\/(\S+)$/gm)].map((m) => m[1]);
     assert.ok(named.length > 0, `${stub}.yml names no engine module — the pattern has gone stale`);
     for (const module of named) {

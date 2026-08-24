@@ -75,7 +75,7 @@ test('every module the page loads is browser-pure', async () => {
 test('the walk reaches the engine modules the page renders', async () => {
   const files = [...(await graph()).keys()].map((f) => relative(ROOT, f));
   assert.ok(
-    files.some((f) => f.startsWith('engine/scheduler/queue/')),
+    files.some((f) => f.startsWith('packs/claudinite-tasks/queue/')),
     'the page no longer imports the queue modules it renders',
   );
 });

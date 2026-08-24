@@ -156,7 +156,7 @@ primitives, including the one that fires a member's scheduler),
 every "token is not set" message, the adoption handover step and a `403`'s hint are rendered from its
 table, so no sweep ever states a subset of its own).
 
-The rest of the machinery — running the daily-run, the task engine (`engine/scheduler/`), scheduling —
+The rest of the machinery — running the daily-run, the task engine (`packs/claudinite-tasks/`), scheduling —
 is Claudinite **core**. What a session in an enforcer repo has to get right: [RULES.md](RULES.md).
 
 ## Config

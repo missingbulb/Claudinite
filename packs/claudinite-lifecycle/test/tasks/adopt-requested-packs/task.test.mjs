@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { validateTaskDeclaration } from '../../../../../engine/scheduler/task-contract.mjs';
+import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import decl from '../../../tasks/adopt-requested-packs/task.mjs';
 
 // The MEMBER half of the fleet fan-out (#749, folded onto the request mode in

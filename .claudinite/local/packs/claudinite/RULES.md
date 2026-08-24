@@ -223,7 +223,7 @@ from lives in `VERSIONS.md` and the issue, never here.
   permissions, concurrency and the `run:` line naming an engine module. A converge cannot push to
   `.github/workflows/`, so logic left there costs a fleet-wide PR to change.
 
-- **Moving a scheduler workflow's program out** — into `engine/scheduler/queue/`, leaving a
+- **Moving a scheduler workflow's program out** — into `packs/claudinite-tasks/queue/`, leaving a
   single-line `run: node <module>`, and edit both copies — the stub and the canon's own — in the
   same commit. `scheduler-workflows-are-thin` blocks the two shapes it can see.
 
@@ -402,7 +402,7 @@ from lives in `VERSIONS.md` and the issue, never here.
   newness gates, and the full set stays the scope.
 
 - **Writing a task whose output is a regenerated file** — land it through
-  `engine/scheduler/deliver-generated.mjs`, reading prior state from the fetched base, not local
+  `packs/claudinite-tasks/deliver-generated.mjs`, reading prior state from the fetched base, not local
   HEAD. (`basics/baselining` is the deliberate exception.)
 
 - **A worker that checks out a branch or leaves an index behind** — one executor run drains

@@ -1,6 +1,7 @@
 {
   "packs": [
     "claudinite-lifecycle",
+    "claudinite-tasks",
     "basics",
     {
       "id": "claudinite-growth",
@@ -74,7 +75,28 @@
                 ],
                 "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill (moved with that skill into the claudinite-lifecycle pack, #835)"
               },
-              "engine/migrations",
+              {
+          "path": ".github/workflows/claudinite-scheduler.yml",
+          "to": [
+            "packs/claudinite-tasks"
+          ],
+          "reason": "inherent(#1317): a member's scheduler workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the run — the pack boundary is what the workflow points across"
+        },
+        {
+          "path": ".github/workflows/claudinite-executor.yml",
+          "to": [
+            "packs/claudinite-tasks"
+          ],
+          "reason": "inherent(#1317): a member's executor workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the executor"
+        },
+        {
+          "path": "engine/scheduler/",
+          "to": [
+            "packs/claudinite-tasks"
+          ],
+          "reason": "decouple(#1317): legacy-path shims re-exporting the task surface from the paths fielded members still name; deleted once no vendored worker or stored prompt names one"
+        },
+        "engine/migrations",
               {
                 "path": "engine/pack_loader/renamed-packs.mjs",
                 "to": [

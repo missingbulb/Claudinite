@@ -28,7 +28,7 @@ const realignment = [
   'updates/engine-update.mjs',
   'updates/pack-update.mjs',
   'updates/install.mjs',
-  'engine/scheduler/converge-wiring.mjs',
+  'packs/claudinite-tasks/converge-wiring.mjs',
 ].map((f) => readFileSync(join(root, f), 'utf8')).join('\n');
 
 // Each artifact: an id and a matcher that must hit in both docs. Matchers are the

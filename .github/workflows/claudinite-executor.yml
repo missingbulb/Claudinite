@@ -50,7 +50,7 @@ jobs:
           # moves it (#1296). secrets-bag.mjs is the only reader; the executor hands
           # each task just the names its own declaration lists.
           CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}
-        run: node engine/scheduler/queue/executor.mjs
+        run: node packs/claudinite-tasks/queue/executor.mjs
 
   continue-the-chain:
     needs: execute
@@ -68,4 +68,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CLAUDINITE_CONTINUATION_DEPTH: ${{ inputs.continuation_depth }}
-        run: node engine/scheduler/queue/executor-continuation.mjs
+        run: node packs/claudinite-tasks/queue/executor-continuation.mjs

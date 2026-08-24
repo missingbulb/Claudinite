@@ -126,7 +126,7 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   deliberately no
   implicit default — `--init` seeds `auto-merge` and the nightly sweep backfills a missing key, so the
   selection is visible in this file rather than implied by absence. Read by the shared delivery
-  helper every PR-delivering task lands through (`engine/scheduler/land-pr.mjs` / `deliver-pr.md`),
+  helper every PR-delivering task lands through (the shared landing helper and its `deliver-pr` procedure),
   never by a task itself; the checks engine ignores it.
 
 ## Enforcement wiring

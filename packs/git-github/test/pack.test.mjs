@@ -359,7 +359,7 @@ jobs:
   schedule:
     runs-on: ubuntu-latest
     steps:
-      - run: node .claudinite/shared/engine/scheduler/queue/scheduler-run.mjs
+      - run: node .claudinite/shared/packs/claudinite-tasks/queue/scheduler-run.mjs
 `;
   // Cut over + a plain scheduled workflow (no canon reusable): now flagged, where
   // pre-cutover it was the consumer's own business.

@@ -23,7 +23,7 @@ import { discoverPacks, resolveDeclaredPacks, packEntryId } from './engine/pack_
 import { seedDeclaration } from './engine/checks/helpers/seed-declaration.mjs';
 import { loadConfig } from './engine/checks/helpers/repo-context.mjs';
 import { applyVendor } from './vendoring/apply-vendor-set.mjs';
-import { convergeWiring } from './engine/scheduler/converge-wiring.mjs';
+import { convergeWiring } from './packs/claudinite-tasks/converge-wiring.mjs';
 import { unansweredQuestions } from './updates/install.mjs';
 import { runSelfTest } from './updates/engine-update.mjs';
 
@@ -97,7 +97,7 @@ if (missing.length) {
 // 4. Converge the wiring — hooks, both workflows at the vendored stubs, the rules
 // index and its CLAUDE.md import, the badge row and the repo's own local pack
 // (the two one-time seeds only bootstrap passes).
-const stubs = join(target, '.claudinite/shared/engine/scheduler/stubs');
+const stubs = join(target, '.claudinite/shared/packs/claudinite-tasks/stubs');
 const stubPath = join(stubs, 'claudinite-scheduler.yml');
 if (!existsSync(stubPath)) fail(`vendored stub not found at ${stubPath}`);
 const executorStub = existsSync(join(stubs, 'claudinite-executor.yml')) ? readFileSync(join(stubs, 'claudinite-executor.yml'), 'utf8') : null;

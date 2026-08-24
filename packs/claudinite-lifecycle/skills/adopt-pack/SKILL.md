@@ -90,7 +90,7 @@ record in between.
 Then **refresh the README pack-badge row**, from the mount you just rebuilt:
 
 ```
-node .claudinite/shared/engine/scheduler/converge-wiring.mjs <owner/repo> --badges
+node .claudinite/shared/packs/claudinite-tasks/converge-wiring.mjs <owner/repo> --badges
 ```
 
 Declaring a pack is what makes that row wrong, and adoption is the only moment anything derives it —

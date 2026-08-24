@@ -9,7 +9,7 @@ import {
   MIN_RUNS_PER_WINDOW, REGRESSION_SECONDS,
 } from '../tasks/ci-performance/worker.mjs';
 import decl from '../tasks/ci-performance/task.mjs';
-import { evaluatePrecondition } from '../../../engine/scheduler/queue/executor.mjs';
+import { evaluatePrecondition } from '../../claudinite-tasks/shared-code/task-contract.mjs';
 
 const NOW = Date.parse('2026-08-15T12:00:00Z');
 const daysAgo = (d) => new Date(NOW - d * 86400 * 1000).toISOString();

@@ -79,7 +79,7 @@ test('pack-discovery-entry-await: a CLI worker outside the discovery graph may a
       'packs/basics/pack.mjs': packModule('basics'),
       // Nothing in the pack tree imports it — the scheduler spawns it as a process.
       'packs/claudinite-lifecycle/tasks/update/worker.mjs': cliModule('await check();'),
-      'engine/scheduler/queue/executor.mjs': cliModule('await check();'),
+      'packs/claudinite-tasks/queue/executor.mjs': cliModule('await check();'),
     },
   });
   try {

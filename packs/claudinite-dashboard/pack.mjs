@@ -10,10 +10,9 @@
 // deployment can be wired.
 //
 // WHAT IT READS. Only the queue's own vocabulary and the task declarations at HEAD,
-// through the engine modules that define them (`../../engine/scheduler/queue/*`), so
-// the page cannot drift from the mechanism it renders. Those relative paths resolve
-// identically in the canon (`packs/<id>/` beside `engine/`) and in a member's mount
-// (`.claudinite/shared/packs/<id>/` beside `.claudinite/shared/engine/`), which is
+// through the tasks pack's published `shared-code/`, so the page cannot drift from the
+// mechanism it renders. Those relative paths resolve identically in the canon (`packs/<id>/`
+// beside its siblings) and in a member's mount (`.claudinite/shared/packs/<id>/`), which is
 // why the pack can be read straight out of the mount with nothing rewritten.
 //
 // NO PROSE. There is no way to write the dashboard wrongly in a consuming repo — it is
@@ -58,7 +57,7 @@
 import { fleetTokenHandoverStep } from './tasks/fleet-digest/fleet-token.mjs';
 
 export default {
-  version: '60824.1',
+  version: '60824.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state, the site that publishes it, and the fleet morning brief it reads',
@@ -69,6 +68,12 @@ export default {
   // scan that suspected one from the presence of a scheduler would suspect it in every
   // member on the fleet.
   seededByDefault: false,
+
+  // The page renders the queue's state, so it reads the queue's own vocabulary and
+  // anchor math out of the tasks pack's published `shared-code/` — the one sanctioned
+  // cross-pack import in the corpus. Declaring the dependency is what puts that pack
+  // in a mount that carries this one.
+  requires: ['claudinite-tasks'],
 
   // A page, not a practice — see the header.
   // Audits the landed briefs and the task's own fixtures as they stand, whatever this

@@ -35,7 +35,7 @@ const rule = {
   severity: 'blocking',
   scope: 'world',
   description: 'The scheduler and executor workflows carry no inline program — every decision lives in an engine module they name',
-  doc: 'engine/scheduler/stubs/claudinite-scheduler.yml',
+  doc: 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
   why: 'a converge cannot push to .github/workflows/, so logic left in these two files can only be changed by a human-merged PR in every member repo, while the engine module it belongs in converges nightly',
 
   run(ctx) {
@@ -46,7 +46,7 @@ const rule = {
     // is the check having gone blind — say so rather than pass silently.
     if (files.length < 4) {
       out.push(finding(rule, {
-        file: 'engine/scheduler/stubs/claudinite-scheduler.yml',
+        file: 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
         what: `this rule found ${files.length} scheduler/executor workflow file(s), expected the 4 that exist (2 stubs, 2 canon copies)`,
         fix: 'the workflows moved or were renamed — repoint the rule at their new home, or restore them; a scope this rule cannot see is a rule that enforces nothing',
       }));
@@ -62,7 +62,7 @@ const rule = {
             file,
             line,
             what: `${file} runs github-script — a program living in a file a converge cannot update`,
-            fix: 'move the script into a module under engine/scheduler/queue/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
+            fix: 'move the script into a module under packs/claudinite-tasks/queue/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
           }));
         }
         if (BLOCK_RUN.test(text)) {
@@ -70,7 +70,7 @@ const rule = {
             file,
             line,
             what: `${file} carries a block \`run:\` — a shell script living in a file a converge cannot update`,
-            fix: 'move the script into a module under engine/scheduler/queue/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
+            fix: 'move the script into a module under packs/claudinite-tasks/queue/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
           }));
         }
       });
