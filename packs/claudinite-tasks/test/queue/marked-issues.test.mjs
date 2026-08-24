@@ -1,0 +1,72 @@
+// Reading the requests: which open issues the scheduler run sees as awaiting
+// adoption. The PLAN half of adoption is covered in scheduler-run.test.mjs, which
+// hands `requests` in directly — so nothing there can tell whether the list this
+// builds is the one GitHub would actually return, which is how the whole request
+// lane went silent for three days with every run reporting success (#1354).
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { listMarkedIssues } from '../../queue/scheduler-run.mjs';
+import { ORIGIN_AD_HOC, REQUEST_LABEL, STATUS_READY } from '../../queue/work-item.mjs';
+
+// GitHub's issues-list `labels` filter is CONJUNCTIVE: a comma-separated list
+// selects the issues carrying EVERY name on it, not any of them. That is modelled
+// here rather than assumed away — a fake that ORs would agree with a broken reader
+// and prove nothing, which is the whole failure this file exists to catch.
+function fakeGh(issues, { failOn = null } = {}) {
+  const calls = [];
+  const gh = async (path) => {
+    const wanted = decodeURIComponent(/[?&]labels=([^&]*)/.exec(path)?.[1] ?? '').split(',').filter(Boolean);
+    calls.push(wanted.join(','));
+    if (failOn && wanted.includes(failOn)) return { status: 502, json: null };
+    if (Number(/[?&]page=(\d+)/.exec(path)?.[1] ?? 1) > 1) return { status: 200, json: [] };
+    const names = (i) => (i.labels ?? []).map((l) => l.name);
+    return { status: 200, json: issues.filter((i) => wanted.every((w) => names(i).includes(w))) };
+  };
+  return { gh, calls };
+}
+
+const issue = (number, labels, extra = {}) => ({
+  number, title: `request ${number}`, body: '', state: 'open',
+  labels: labels.map((name) => ({ name })), user: { login: 'owner' }, ...extra,
+});
+
+const hasPush = async () => true;
+
+test('an issue wearing only the current mark is a request awaiting adoption', async () => {
+  const { gh } = fakeGh([issue(10, [ORIGIN_AD_HOC])]);
+  const out = await listMarkedIssues(gh, 'o/r', { permissionOf: hasPush });
+  assert.deepEqual(out.map((r) => r.number), [10],
+    'the current mark alone must be enough — nothing wears both spellings, so a filter demanding both selects nothing');
+});
+
+test('the retired spelling is still read, and an issue wearing both is returned once', async () => {
+  const { gh } = fakeGh([issue(11, [REQUEST_LABEL]), issue(12, [ORIGIN_AD_HOC, REQUEST_LABEL])]);
+  const out = await listMarkedIssues(gh, 'o/r', { permissionOf: hasPush });
+  assert.deepEqual(out.map((r) => r.number).sort((a, b) => a - b), [11, 12]);
+});
+
+test('each mark is asked for on its own, never as one comma-joined filter', async () => {
+  const { gh, calls } = fakeGh([issue(13, [ORIGIN_AD_HOC])]);
+  await listMarkedIssues(gh, 'o/r', { permissionOf: hasPush });
+  assert.ok(!calls.some((c) => c.includes(',')),
+    `a comma-joined label filter is an AND across the marks — asked for ${JSON.stringify(calls)}`);
+});
+
+test('an already-adopted mark is not a request, and neither is a filed work item', async () => {
+  const { gh } = fakeGh([
+    issue(14, [ORIGIN_AD_HOC, STATUS_READY]),
+    issue(15, [ORIGIN_AD_HOC], { title: '[claudinite-work] some/task' }),
+    issue(16, [ORIGIN_AD_HOC]),
+  ]);
+  const out = await listMarkedIssues(gh, 'o/r', { permissionOf: hasPush });
+  assert.deepEqual(out.map((r) => r.number), [16]);
+});
+
+// A list that could not be READ is not a list that is EMPTY. Swallowing the
+// difference is what let this run clean while it adopted nothing: every scheduler
+// run reported success, and the only evidence was 25 issues nobody had touched.
+test('a request list that cannot be read fails the run rather than reading as empty', async () => {
+  const { gh } = fakeGh([issue(17, [ORIGIN_AD_HOC])], { failOn: ORIGIN_AD_HOC });
+  await assert.rejects(() => listMarkedIssues(gh, 'o/r', { permissionOf: hasPush }), /502/);
+});
