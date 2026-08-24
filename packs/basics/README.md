@@ -27,6 +27,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Receiving feedback that flags a misunderstanding | medium | complexity | prose: 29 words |
 | Writing anything | low | complexity | prose: 18 words |
 | Auditing an artifact against its source | high | correctness | prose: 35 words |
+| Writing a public claim about a person | critical | legal | prose: 93 words |
 | Acting on an approval | high | correctness | prose: 69 words |
 | Searching for a tool with ToolSearch | medium | complexity | prose: 57 words |
 | Calling Edit | low | complexity | prose: 39 words |
@@ -34,6 +35,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Needing exact text from the web | high | correctness | prose: 56 words |
 | Hitting a denied fetch | critical | legal | prose: 152 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
+| Reaching for AskUserQuestion | medium | complexity | prose: 86 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
 | Waiving a finding on text | low | complexity | prose: 26 words |

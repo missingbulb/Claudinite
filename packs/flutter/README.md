@@ -19,6 +19,7 @@ committed tests inside the consuming project.
 | Inject the clock. | high | correctness | prose: 25 words |
 | Load real fonts before any golden | high | correctness | prose: 75 words |
 | Never pumpAndSettle around indeterminate progress indicators | high | correctness | prose: 59 words |
+| Real file or image I/O in testWidgets | high | correctness | prose: 50 words |
 | Anything that fetches must be injectable | medium | complexity | prose: 47 words |
 | Fix the viewport per suite | medium | correctness | prose: 31 words |
 | Async lifecycle guards need an epoch counter. | high | correctness | prose: 51 words |

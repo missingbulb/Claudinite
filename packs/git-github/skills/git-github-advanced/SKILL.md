@@ -139,6 +139,17 @@ GitHub **Actions** reports results as **check runs**, not the legacy **commit st
 
 A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped check-run query above doesn't apply to it. Confirm such a run through the GitHub API/MCP tools: `get_job_logs(run_id, failed_only: true)` — "0 failed jobs" means green — or, for a release build, `get_release_by_tag`. `get_job_logs` needs more than a bare `run_id`: it rejects with "job_id is required when failed_only is false" unless you pass `failed_only: true` or fetch a `job_id` first (`list_workflow_jobs`), and it 404s for a job still `in_progress` — wait for the job to finish. Don't `curl` the run's status instead: in a sandboxed session `api.github.com` is proxy-blocked and returns an error body that never matches a success pattern, so a `curl`/`Monitor` poll silently reports "still running" until it times out.
 
+## Waiting on a run or check needs exactly one mechanism, never two at once
+
+Resolve a wait on a GitHub Actions run or PR check through a single path — the harness's own
+`Monitor` until-loop, **or** direct polling of the MCP tools — never both together. A background
+`sleep` timer left running alongside a separate blocking poll doesn't wait faster: the sleep fires
+its own notification later, arriving stale after the poll already learned the real answer, so it
+has to be recognized and discarded as noise, and pairing a background timer with a *blocking* poll
+routinely costs several extra round-trips once the poll hits the Bash tool's own timeout waiting on
+a timer nothing is consuming. Pick one mechanism before you start waiting, and let it be the whole
+answer.
+
 ## A deleted workflow's old runs outlive it, and no session tool can clear them
 
 Removing a `.yml` from every branch does not remove its run history — the workflow stays listed in
@@ -171,6 +182,15 @@ In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a r
 ## When access is scoped to an explicit repo list, query per-repo — never an org/user-wide search
 
 A broad call (e.g. `search_repositories` with `org:X`, or any list/search tool that takes no repo argument) returns every repo the token can see, not just an allowed subset — filtering the result afterward doesn't undo the fact that disallowed repos' data was already pulled into the call. When operating under a repo allowlist, scope every call explicitly instead: pass the specific `owner`/`repo` params, or anchor the query to `repo:owner/name`, one call per repo in the allowlist rather than one broad call filtered after the fact.
+
+## `codeload.github.com` can be blocked where `git clone` isn't
+
+A sandboxed session's network egress is commonly allowlisted by host, and `curl … | tar -xz` of a
+repo tarball goes to `codeload.github.com` — a different host than `github.com` itself, and one
+that can be denied (403 through the proxy) even when ordinary git operations against the same repo
+work fine. When a tarball fetch is refused, reach for `git clone --depth 1 https://github.com/<owner>/<repo>`
+instead of retrying the download or widening the allowlist — it goes through the allowed host and
+yields the same tree.
 
 ## Cap *and* qualify every list/search call — an unbounded one blows the tool-result limit
 

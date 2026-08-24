@@ -109,6 +109,13 @@
   version from the *source* before reading the existing draft, then diff against the old draft to
   surface what was actually wrong.
 
+- **Writing a public claim about a real, named person** (a bio, a "who we are" page, a credited
+  quote) whose primary source is blocked or unreachable — do not substitute a secondary source (a
+  data-broker listing, an aggregator) and do not publish it caveated for later sanity-check. Ask the
+  person or the owner instead: the cost of a wrong claim here is not a bad paragraph, it is a public
+  statement about someone that they never made, and flagging it for review is not the same as
+  verifying it before it ships.
+
 - **Acting on an approval to merge, ship or proceed** — it applies only *backward*, to the work
   already in front of the owner when it's given, never to anything requested or done *after* it. A
   later follow-up, even a fix to the just-approved change, needs its own explicit approval — and a
@@ -151,6 +158,13 @@
   act on, on any call that isn't `stop: true`; a no-op flag and a stated `reason` do not exempt it,
   and the call is rejected without it. A rejection leaves no fallback armed, which is what the
   `unattended-agents` skill's re-issue rule is for.
+
+- **Reaching for `AskUserQuestion`** — check first whether the answer is already decided: by a
+  rule already loaded in context, by state one read away (a sibling repo's config, a file already
+  fetched), or by the option marked "(Recommended)" simply being the status quo. When several
+  genuinely open decisions remain, batch them into **one** question rather than asking serially —
+  each round-trip costs real human wait time, and a run can burn most of it on questions whose
+  answer was already sitting in front of it.
 
 ## Warnings and findings
 

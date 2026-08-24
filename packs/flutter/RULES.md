@@ -33,6 +33,10 @@
   `pump(Duration(...))`); this also makes an in-flight state (a spinner mid-send) a deterministic,
   golden-capturable frame. Corollary: after `tap()`, pump **twice** — one frame applies state, the
   fixed-duration pump advances implicit animations (ink ripples, color lerps) past the capture.
+- **Real file or image I/O inside `testWidgets` must run inside `tester.runAsync`.** The widget-test
+  body executes in Flutter's fake-async test zone, which never pumps the engine's real async
+  workers — a `File.readAsBytes`/`toImage`-style future issued directly in the test body simply
+  never completes, and the case hangs rather than failing outright.
 - **Anything that fetches must be injectable**: map tile providers, avatar images. Widget tests
   block real HTTP (a 400-returning stub client), so a `NetworkImage`/network `TileProvider` in the
   tree means error boxes, not screenshots. Provide a deterministic in-memory substitute (a
