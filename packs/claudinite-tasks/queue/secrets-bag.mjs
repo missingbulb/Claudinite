@@ -1,20 +1,26 @@
-// The executor's secret bag (tasks-dispatch DESIGN §14, #1301). Actions has no way
-// to export the secrets context as environment variables, so a workflow that passes
-// secrets by name is a function of the task set — and `.github/workflows/` is the one
-// path a converge cannot write, because Actions refuses the Action's GITHUB_TOKEN
-// there and the refusal rejects the whole ref. That combination is what wedged a
-// member permanently in #1296: the workflow that would have passed the endpoint token
-// could only be delivered by the agent the token was needed to start.
+// The executor's per-task secret selection (tasks-dispatch DESIGN §14).
 //
-// So the executor step carries ONE static line — `CLAUDINITE_SECRETS:
-// ${{ toJSON(secrets) }}` — and this module is the only reader of it. The workflow
-// stops tracking declarations, `required_secrets` goes back to being purely a
-// declaration (what a task needs, and what to name when it is missing), and nothing
-// about a new secret can wedge workflow delivery again.
-//
-// WHAT THIS BUYS BESIDES: the bag makes DESIGN §14.4's claim true. A task's code-work
+// WHAT THIS MODULE IS FOR NOW: making DESIGN §14.4's claim true. A task's code-work
 // gets exactly the names that task declared, selected here, where before every task's
 // work step inherited the executor's whole environment and saw every stamped secret.
+// That selection is independent of how the secrets arrive, and it is why this module
+// survives the reversal below.
+//
+// THE BAG IS RETIRED (#1336, reversing #1301). The executor briefly carried one static
+// line, `CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}`, so the workflow would stop being
+// a function of the task set — `.github/workflows/` is the one path a converge cannot
+// write, and a new secret therefore needs a human-merged PR in every member, which is
+// what wedged one in #1296. But serialising the whole secrets context is the shape
+// GitHub's malicious-workflow detection flags: every executor run parked with zero
+// jobs until a person clicked Approve, silently, fleet-wide. The owner took the
+// trade back — a rare human-merged PR beats a permanent human click on every run.
+//
+// So the workflow names its secrets again and NOTHING SETS THE BAG. The reader stays
+// because members carry the bag-setting workflow until their own PR lands, and reading
+// it where present is what makes that window uneventful; `secretValue`'s fallback to
+// the plain environment is what makes the reverse window uneventful too. Retiring the
+// reader is gated on no member still stamping a bag — a converge-confirmable
+// condition, never a date.
 
 export const SECRETS_BAG_ENV = 'CLAUDINITE_SECRETS';
 

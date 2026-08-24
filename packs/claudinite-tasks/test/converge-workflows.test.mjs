@@ -40,7 +40,7 @@ test('convergeSchedulerWorkflow: writes the stub with the repo-hashed cron, and 
 // anchor and land it a day late, and nothing would go red.
 test('convergeSchedulerWorkflow: both cron hours come from the repo\'s own dailyHour', () => {
   const root = mkdtempSync(join(tmpdir(), 'cw-hours-'));
-  convergeSchedulerWorkflow(root, REPO, STUB, 9);
+  convergeSchedulerWorkflow(root, REPO, STUB, [], 9);
   const written = readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8');
   assert.match(written, /cron: '\d+ 9,21 \* \* \*'/, "the member's own anchor, and twelve hours after it");
 
@@ -145,14 +145,23 @@ test('the vendored stubs are what the converge is written against', () => {
   const canon = join(dirname(fileURLToPath(import.meta.url)), '../../..');
   const schedulerRun = readFileSync(join(canon, 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml'), 'utf8');
   const executor = readFileSync(join(canon, 'packs/claudinite-tasks/stubs/claudinite-executor.yml'), 'utf8');
-  // The EXECUTOR is the only place secrets live (§14), and it holds them as ONE
-  // static line — that line disappearing is the whole of #1301 undone, silently, so
-  // it is pinned here. Since the scheduler run's drain became a dispatch rather than
-  // an executor run (§15.16), the scheduler run runs no task code and gets nothing.
-  assert.match(executor, /CLAUDINITE_SECRETS: \$\{\{ toJSON\(secrets\) \}\}/);
-  assert.equal((executor.match(/\$\{\{ secrets\./g) ?? []).length, 0, 'no secret is named one by one any more');
+  // The EXECUTOR is the only place secrets live (§14), and it names them one by one,
+  // stamped by the converge at the `# claudinite:secrets` marker. Since the scheduler
+  // run's drain became a dispatch rather than an executor run (§15.16), the scheduler
+  // run runs no task code and gets nothing.
+  assert.match(executor, /^\s*# claudinite:secrets\s*$/m, 'the marker the converge stamps at');
   assert.equal((schedulerRun.match(/\$\{\{ secrets\./g) ?? []).length, 0, 'the scheduler run holds no secret at all');
-  assert.ok(!schedulerRun.includes('toJSON(secrets)'), 'nor the whole bag');
+  assert.ok(!schedulerRun.includes('# claudinite:secrets'), 'and carries no marker to stamp one into');
+
+  // NEITHER stub may serialise the whole secrets context (#1336). It is the shape
+  // GitHub's malicious-workflow detection flags, and a flagged workflow parks every
+  // run with zero jobs until a person approves it — which an unattended queue can
+  // neither absorb nor notice. This is the guard on that never coming back by
+  // accident; a member's copy is its own, but every member's copy starts here.
+  for (const [name, text] of [['scheduler run', schedulerRun], ['executor', executor]]) {
+    assert.ok(!/toJSON\(\s*secrets\s*\)/.test(text.replace(/^\s*#.*$/gm, '')),
+      `${name}: toJSON(secrets) is the flagged pattern — name the secrets instead`);
+  }
   // The hold reaches every workflow, or it is not a hold (§15.24).
   for (const [name, text] of [['scheduler run', schedulerRun], ['executor', executor]]) {
     assert.match(text, /CLAUDINITE_TASKS_SUSPEND_ALL: \$\{\{ vars\.CLAUDINITE_TASKS_SUSPEND_ALL \}\}/,

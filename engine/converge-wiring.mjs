@@ -84,8 +84,8 @@ const repoConfig = async (root) => (await import('./checks/helpers/repo-context.
 //
 // A workflow is now a pure function of its stub. Secrets used to be stamped in here
 // by name, which made these files a function of the TASK SET and is what wedged a
-// member in #1296 — they reach the executor as one static `toJSON(secrets)` line
-// instead (#1301, secrets-bag.mjs).
+// member in #1296. They are stamped by the tasks pack's converge-workflows.mjs, at
+// the `# claudinite:secrets` marker in its executor stub (#1336).
 //
 // Split out from the converge below because the pack update flow needs the answer
 // without the side effect: it cannot write this file (its caller pushes with the

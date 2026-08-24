@@ -306,14 +306,16 @@ required_secrets: ['SOME_API_KEY'],
 That is the entire mechanism at the task level. Two things read it, and nothing
 else does:
 
-1. **The executor** selects it out of the secret bag and puts it in the work step's
-   environment, where a worker reads `process.env.NAME` as before. The executor
-   workflow carries every repo secret in one static line
-   (`CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}`) and `secrets-bag.mjs` is its only
-   reader, so this list decides what one task sees rather than what the workflow
-   passes. Nothing about a declaration rewrites a workflow — that coupling is what
-   wedged a member in #1296, since `.github/workflows/` is the one path a converge
-   cannot write (#1301).
+1. **The executor** selects it and puts it in the work step's environment, where a
+   worker reads `process.env.NAME` as before. `secrets-bag.mjs` does that selection,
+   so this list decides what one task sees rather than what the workflow passes —
+   which is the property worth keeping, and the one that survives however the secrets
+   arrive. They arrive named: the executor workflow lists each one and the wiring
+   converge regenerates that list, so a declaration DOES rewrite a workflow, and a
+   new secret needs a human-merged PR in every member (#1296 is what that costs).
+   #1301 removed the coupling with a single `toJSON(secrets)` line; #1336 put it back,
+   because that line is the shape GitHub's malicious-workflow detection flags and it
+   parked every executor run behind a human click.
 
 2. **Baselining** asks the owner for any declared name the repo has not configured
    — one open issue per repo, matched by exact title, so an unconfigured secret

@@ -1279,13 +1279,19 @@ executor workflow is the only consumer. End to end:
    which is exactly why it must never hold more than a name.
 2. **Storage** — values live as repo Actions secrets, set once by the owner
    in repo settings. Nothing else in the system stores, copies, or logs them.
-3. **Wiring** — none. The executor workflow carries one static line,
-   `CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}`, so its content does not track the
-   task set and no declaration can ever require a workflow change. That coupling is
-   what wedged a member permanently in #1296: `.github/workflows/` is the one path a
-   converge cannot write, and the agent that would have delivered the file needed
-   the token the file was to pass (#1301). The scheduler run and the janitor
-   workflows get no secrets — they never execute task code.
+3. **Wiring** — the executor workflow names each secret, and the wiring converge
+   regenerates that list at the `# claudinite:secrets` marker from every declared
+   task's `required_secrets` plus the configured endpoint tokens. So the file IS a
+   function of the task set, and a NEW secret needs a human-merged PR in every
+   member, because `.github/workflows/` is the one path a converge cannot write.
+   That coupling is what wedged a member in #1296, and #1301 removed it by carrying
+   one `toJSON(secrets)` line instead — **reversed in #1336** (owner, 2026-08-24):
+   serialising the whole secrets context is the shape GitHub's malicious-workflow
+   detection flags, and a flagged workflow parks every run with zero jobs until a
+   person clicks Approve. An unattended queue can neither absorb that nor see it.
+   The trade taken is deliberate: a rare human-merged PR beats a permanent human
+   click on every run. The scheduler run and the janitor workflows get no secrets —
+   they never execute task code.
 4. **Execution** — after claim and a go verdict, the executor runs the work step as
    a subprocess (task dir cwd, timeout) whose env carries exactly the declared
    names, selected out of the bag by `secrets-bag.mjs`. **The work step is the only
@@ -2240,7 +2246,7 @@ keeps it, like any package manager without forced auto-update.
 ### Workflows: written once, then static
 
 The two member workflow files are static after adoption: secrets travel as one fixed
-`CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}` line (§14.4), the per-repo cron minute and anchor
+named-secrets list the converge regenerates (§14.4), the per-repo cron minute and anchor
 hours are written once at adoption, and `run:` lines name **mount pack paths**
 (`.claudinite/shared/packs/claudinite-tasks/…`) behind which everything converges nightly — a
 release never edits the YAML again.
