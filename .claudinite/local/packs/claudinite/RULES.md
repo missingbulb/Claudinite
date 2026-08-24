@@ -155,6 +155,12 @@ lesson at the strongest mechanism available — a check where the rule is determ
   moving `canon-curation`) had to be repeated five times before a session treated it as a
   durable-artifact problem rather than a one-off answer (#364).
 
+- **Re-waiting on a signal that already failed to move on the first wait** — read the code that
+  governs when it *can* change before waiting a second time on the same premise. A fleet-follow
+  wait re-waited a further six blind minutes hoping stragglers would catch up; they could not
+  have, and reading the gating logic's actual convergence-window check (a minute's read) would
+  have said so up front instead of after (#1293).
+
 - **Firing `AskUserQuestion` on a vague, destructive-sounding instruction** ("remove the entire
   mechanism," "get rid of the whole thing") — scope the question to pin down the boundary of the
   vague noun itself, not just the downstream consequences of one reading of it. A question that
@@ -477,6 +483,12 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 ## Scheduled tasks
 
+- **Opening a queue work-item's own delivered PR** — never carry `Closes #<the item's own issue>`
+  in its body. Convergence — `converge-item.mjs`, or a session's MCP replication of it — is what
+  closes or parks that issue with the right label state; GitHub's native closing keyword fires on
+  merge regardless of any of that and would silently override an intended
+  `needs-human-approval` park (#1275).
+
 - **Choosing a task's cadence** — take it from how often the signal actually moves. A
   precondition reading `sharedMount` fires nearly every night and spends an opus session on it;
   where the work isn't latency-sensitive, daily buys noise, not freshness, and a weekly run still
@@ -604,7 +616,9 @@ lesson at the strongest mechanism available — a check where the rule is determ
   and bash `**` without `globstar` reached 37 of 65 files. `ci.yml`'s array is not authoritative
   either. Redirect one run to a file and grep that file for whatever slice you need next — never
   re-run the ~55s suite to re-slice the same unchanged output (five reruns cost 4.5 minutes for
-  five different greps, #930, #931).
+  five different greps, #930, #931). `git ls-files` also silently excludes a test file you just
+  created and haven't staged yet, so a run that comes back green may never have executed it —
+  `git add` a new test file before the run you mean to certify green (#1274).
 
 - **Iterating on a sweep across many files** — while iterating, run only the test files the edit
   touches plus `check_the_work`; spend the whole suite and `check_the_world` once, at the end,
