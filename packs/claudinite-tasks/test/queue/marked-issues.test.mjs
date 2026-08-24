@@ -79,3 +79,29 @@ test('a work-item page that cannot be read fails the run rather than ending the 
   const gh = async () => ({ status: 403, json: null });
   await assert.rejects(() => listWorkItems(gh, 'o/r'), /403/);
 });
+
+// The blockers a run must still read. This is the step that broke the FIRST run
+// after adoption started working: `main` named `parseBlockedBy` and never imported
+// it, so the line threw the moment a marked issue reached it — dead code for three
+// days behind an adoption list that was always empty, and the whole suite green
+// throughout. Nothing drives `main`, so the step is exercised here instead.
+test('a marked issue\'s own blockers are read, alongside a blocked item\'s', async () => {
+  const { blockersToResolve } = await import('../../queue/scheduler-run.mjs');
+  const { STATUS_BLOCKED, workItemBody } = await import('../../queue/work-item.mjs');
+
+  const items = [{
+    number: 200, state: 'open', labels: [{ name: STATUS_BLOCKED }],
+    body: workItemBody({ taskPath: 't/task.mjs', blockedBy: [900] }),
+  }];
+  const requests = [{ number: 201, body: 'Blocked-by: #901\n' }];
+
+  // 900 is already answered by the fetched items; 902 is not named at all.
+  const wanted = blockersToResolve(items, requests, new Map([[902, 'open']]));
+  assert.deepEqual([...wanted].sort((a, b) => a - b), [900, 901]);
+});
+
+test('a blocker already answered is not re-read', async () => {
+  const { blockersToResolve } = await import('../../queue/scheduler-run.mjs');
+  const wanted = blockersToResolve([], [{ number: 202, body: 'Blocked-by: #903\n' }], new Map([[903, 'closed']]));
+  assert.deepEqual([...wanted], []);
+});

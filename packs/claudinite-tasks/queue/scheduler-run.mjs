@@ -38,7 +38,7 @@ import {
   isStatus, isParked, statusOf,
   QUEUE_LABELS, EPISODE_MARKER, workItemTitle, parseWorkItemTitle, parseWorkItemBody,
   workItemBody, labelNames, hasLabel, parseLastVerdict,
-  ORIGIN_AD_HOC, ORIGIN_LABELS, REQUEST_LABEL, parseRequestFields, withMachineBlock,
+  ORIGIN_AD_HOC, ORIGIN_LABELS, REQUEST_LABEL, parseRequestFields, parseBlockedBy, withMachineBlock,
 } from './work-item.mjs';
 import { VERDICT_NO, VERDICT_GO, VERDICT_FAIL_OPEN, SCHEDULE_PREFIX } from './schedule-board.mjs';
 import { REQUEST_TASK_ID } from '../built-in-tasks.mjs';
@@ -555,6 +555,32 @@ export async function listMarkedIssues(gh, repo, { permissionOf = null } = {}) {
   return out;
 }
 
+// Which `Blocked-by` targets this run still has to read. A target need not be a
+// work item — a fan-in blocks on whatever its children are — so states come from
+// the fetched items first and a direct read otherwise, and `known` is what has
+// already been answered.
+//
+// A marked issue's blockers count the same way: adoption decides whether the item
+// it births is born blocked or ready, and an unread state is never `closed`, so a
+// missing read delays the request rather than releasing it (§16.11).
+//
+// Extracted from `main` so it can be called at all. Nothing else here drives
+// `main`, whose body is I/O against a live Action, so an identifier it names and
+// never imports resolves at run time or not at all — and the request half went
+// three days without executing once, behind an adoption list that was always
+// empty (#1354).
+export function blockersToResolve(items, requests, known) {
+  const wanted = new Set();
+  for (const i of items) {
+    if (i.state !== 'open' || !isStatus(i, STATUS_BLOCKED)) continue;
+    for (const n of parseWorkItemBody(i.body).blockedBy) if (!known.has(n)) wanted.add(n);
+  }
+  for (const r of requests) {
+    for (const n of parseBlockedBy(r.body)) if (!known.has(n)) wanted.add(n);
+  }
+  return wanted;
+}
+
 async function main() {
   // THE OPERATOR HOLD, FIRST ACT (§15.24) — before the config load, before the
   // first API call, so a held queue reads nothing and writes nothing rather than
@@ -587,22 +613,8 @@ async function main() {
   const items = await listWorkItems(gh, repo, { since });
   const requests = await listMarkedIssues(gh, repo);
 
-  // A `Blocked-by` target need not be a work item — a fan-in blocks on whatever
-  // its children are — so states come from the fetched items first and a direct
-  // read otherwise.
   const known = new Map(items.map((i) => [i.number, i.state]));
-  const wanted = new Set();
-  for (const i of items) {
-    if (i.state !== 'open' || !isStatus(i, STATUS_BLOCKED)) continue;
-    for (const n of parseWorkItemBody(i.body).blockedBy) if (!known.has(n)) wanted.add(n);
-  }
-  // A marked issue's own blockers, for the same reason: adoption decides whether the
-  // item it births is born blocked or ready, and an unread state is never `closed`,
-  // so a missing read delays the request rather than releasing it (§16.11).
-  for (const r of requests) {
-    for (const n of parseBlockedBy(r.body)) if (!known.has(n)) wanted.add(n);
-  }
-  for (const n of wanted) {
+  for (const n of blockersToResolve(items, requests, known)) {
     const { status, json } = await gh(`/repos/${repo}/issues/${n}`);
     known.set(n, status === 200 ? json?.state ?? null : null);
   }
