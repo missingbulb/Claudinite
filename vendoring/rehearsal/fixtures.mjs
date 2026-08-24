@@ -634,6 +634,39 @@ jobs:
 // engine that reads a bag converging and its own workflow landing by human-merged
 // PR (#1301). The engine must resolve `CCR_ROUTINE_TOKEN` from the plain
 // environment here, or #1296 happens again from the other direction.
+// A member whose live executor carries the ONE-LINE SECRET BAG — the #1301 shape.
+// Held literally for the same reason every workflow shape here is: `.github/workflows/`
+// is the one path a converge cannot push, so this is what a member that converged
+// between #1301 and #1336 still has, and it moves only by human-merged PR. GitHub
+// parks every run of it behind an approval, which is why it is going away — but until
+// each member's PR lands, the engine must still resolve `CCR_ROUTINE_TOKEN` out of the
+// bag rather than the environment, or the reversal wedges the fleet from the other
+// side exactly as #1296 did.
+const BAG_EXECUTOR_WORKFLOW = `name: Claudinite executor
+
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Pick up and execute ready work
+        env:
+          GITHUB_TOKEN: \${{ github.token }}
+          CLAUDINITE_SECRETS: \${{ toJSON(secrets) }}
+        run: node .claudinite/shared/packs/claudinite-tasks/queue/executor.mjs
+`;
+
 const STAMPING_EXECUTOR_WORKFLOW = `name: Claudinite executor
 
 on:
@@ -1062,8 +1095,20 @@ NSApplication.shared.run()
     },
   },
   {
+    name: 'bag-executor',
+    why: 'a member whose live executor still carries the one-line `CLAUDINITE_SECRETS` bag — the window every member sits in between #1301 landing and its own workflow being repointed by #1336, and the shape whose secrets must still resolve out of the bag',
+    files: {
+      'README.md': '# fixture-bag-executor\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics'], {
+        taskScheduler: { endpoints: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } } },
+      }),
+      '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
+      '.github/workflows/claudinite-executor.yml': BAG_EXECUTOR_WORKFLOW,
+    },
+  },
+  {
     name: 'stamping-executor',
-    why: 'a member whose live executor still passes its secrets by name and sets no `CLAUDINITE_SECRETS` bag — the window every member spends between this engine converging and its own workflow being merged (#1301), and the shape whose secrets must still resolve',
+    why: 'a member whose live executor passes its secrets by NAME — the shape the fleet is on again after #1336 reversed the one-line bag, and the one whose secrets must resolve from the plain environment',
     files: {
       'README.md': '# fixture-stamping-executor\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics'], {

@@ -12,9 +12,9 @@ import { convergeWorkflows } from '../../packs/claudinite-tasks/converge-workflo
 export * from '../converge-wiring.mjs';
 export * from '../../packs/claudinite-tasks/converge-workflows.mjs';
 
-export async function convergeWiring(root, fullName, stubText, { badges = false, workflows = true, seedLocalPack = false, executorStub = null, dailyHour = undefined } = {}) {
+export async function convergeWiring(root, fullName, stubText, { badges = false, workflows = true, seedLocalPack = false, executorStub = null, secretNames = [], dailyHour = undefined } = {}) {
   const wrote = workflows
-    ? convergeWorkflows(root, fullName, { schedulerStub: stubText, executorStub, dailyHour }).changed
+    ? convergeWorkflows(root, fullName, { schedulerStub: stubText, executorStub, secretNames, dailyHour }).changed
     : [];
   const { changed, ...rest } = await convergeDistribution(root, fullName, { badges, seedLocalPack });
   return { changed: [...wrote, ...changed], ...rest };
@@ -32,7 +32,7 @@ async function main() {
   if (!fullName) { console.error('converge-wiring: need owner/repo (argv or GITHUB_REPOSITORY)'); process.exit(1); }
   const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
   const { loadConfig } = await import('../checks/helpers/repo-context.mjs');
-  const { stubsDir } = await import('../../packs/claudinite-tasks/converge-workflows.mjs');
+  const { stubsDir, declaredSecrets } = await import('../../packs/claudinite-tasks/converge-workflows.mjs');
   const stubs = stubsDir(root);
   const stubPath = join(stubs, 'claudinite-scheduler.yml');
   const executorPath = join(stubs, 'claudinite-executor.yml');
@@ -41,6 +41,7 @@ async function main() {
     seedLocalPack,
     workflows: existsSync(stubPath),
     executorStub: existsSync(executorPath) ? readFileSync(executorPath, 'utf8') : null,
+    secretNames: await declaredSecrets(root, loadConfig(root)),
     dailyHour: loadConfig(root)?.taskScheduler?.dailyHour,
   });
   if (error) console.log(`! ${error}`);

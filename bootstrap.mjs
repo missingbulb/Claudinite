@@ -113,7 +113,7 @@ const declaresTasks = (loadConfig(target)?.packs ?? [])
   .some((e) => (typeof e === 'string' ? e : e?.id) === 'claudinite-tasks');
 const scaffold = join(target, '.claudinite/shared/packs/claudinite-tasks/converge-workflows.mjs');
 if (declaresTasks && existsSync(scaffold)) {
-  const { convergeWorkflows, stubsDir } = await import(pathToFileURL(scaffold).href);
+  const { convergeWorkflows, stubsDir, declaredSecrets } = await import(pathToFileURL(scaffold).href);
   const stubs = stubsDir(target);
   const stubPath = join(stubs, 'claudinite-scheduler.yml');
   if (!existsSync(stubPath)) fail(`vendored stub not found at ${stubPath}`);
@@ -121,6 +121,7 @@ if (declaresTasks && existsSync(scaffold)) {
   const { changed } = convergeWorkflows(target, fullName, {
     schedulerStub: readFileSync(stubPath, 'utf8'),
     executorStub: existsSync(executorPath) ? readFileSync(executorPath, 'utf8') : null,
+    secretNames: await declaredSecrets(target, config),
     dailyHour: config?.taskScheduler?.dailyHour,
   });
   console.log(changed.length ? `bootstrap: workflows — ${changed.join(', ')}` : 'bootstrap: workflows: already scaffolded');

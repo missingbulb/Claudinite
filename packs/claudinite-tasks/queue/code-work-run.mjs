@@ -30,7 +30,7 @@ export const missingSecrets = (names = [], env = process.env) =>
 // The environment a task's work step runs under: this job's, minus every secret,
 // plus the ones this task declared. Selecting rather than inheriting is the point —
 // the bag carries the whole repository's secrets, and a task's blast radius should
-// be the list it wrote down (#1301). Under a legacy stamping workflow there is no
+// be the list it wrote down (#1336). Under a workflow that names its secrets there is no
 // bag to subtract, so the stamped names stay inherited until that member's own
 // executor workflow lands; the fallback in secrets-bag.mjs states the retirement
 // condition.
