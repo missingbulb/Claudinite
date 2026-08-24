@@ -215,7 +215,13 @@ async function render() {
         config: CONFIG,
         onOpen: go,
         onError: showError,
-        onProgress: (done, total, repo) => { $('footnote').textContent = `Reading ${done}/${total} — ${repo}…`; },
+        // The fleet is read in passes across the whole roster rather than member by
+        // member (`fleet-sweep.mjs`), so the line names the pass as well as its
+        // position in it — otherwise a counter that reaches the roster's length four
+        // times over reads as the page starting again.
+        onProgress: ({ label, done, total, repo }) => {
+          $('footnote').textContent = `${label} — ${done}/${total}${repo ? ` — ${repo}` : ''}…`;
+        },
       });
       footer([`${ROSTER.length} members${roster.source === 'owner' ? ` under ${CONFIG.owner}, as you can see them` : ''}`]);
     } else {

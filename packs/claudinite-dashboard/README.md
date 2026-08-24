@@ -566,6 +566,34 @@ spend a request discovering the same thing; requests *made* are what the seconda
 limit counts). A withheld read is its own state everywhere it surfaces — a row that
 says the page declined to spend, never one that says the repo is broken.
 
+### The sweep reads the fleet sideways
+
+The ladder above decides *how much* a load may spend. What decides where that money
+goes when it runs out is the order the fleet is read in — and that order is
+**horizontal**: every member through one pass before any member starts the next
+([`fleet-sweep.mjs`](fleet-sweep.mjs)), cheapest and most load-bearing first.
+
+| Pass | What it reads | What it buys |
+|---|---|---|
+| identity | repo, head, the declaration | what this repo is, and whether it runs Claudinite at all — the only three calls a non-member ever costs |
+| attention | one issues page, one runs page | every fault a row can report: the lead card, the tiles, the ranking |
+| depth | the tree, the member's usage fold | declared tasks, and the month behind each row's figures |
+| packs | each declared pack's descriptor and values | the member's own cards, plus `latest-release` where a pack asks for it |
+| activity | a year of commit activity | the row's graph, and nothing else |
+
+Read a member end to end before starting the next and the budget is spent
+depth-first: the first members get their commit graphs before the last members have
+been looked at at all. A viewer then reads "nothing is on fire" off a fleet the page
+never finished reading, and the members it never reached are the ones it cannot tell
+from healthy. Sideways, the same shortfall costs the graphs on *every* row instead —
+a fleet missing its decoration still answers "where do I need to look".
+
+It is also why the page becomes useful where it does: the moment the attention pass
+clears the roster, every tile counts the whole fleet and every row is ranked, with
+three passes' worth of columns still filling in behind them. The progress line says
+which of the two states it is in, because "40 repos read" over a table still growing
+columns claims a completeness the page does not have yet.
+
 Measured on this repo, cold versus warm: **21 requests → 4**, and the warm load
 spends **zero** rate limit (its four requests are all 304s). The open queue is still
 never stale — only settled history ages.
