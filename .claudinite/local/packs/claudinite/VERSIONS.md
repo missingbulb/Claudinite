@@ -9,6 +9,7 @@ log of runs.
 
 | Date | Task | Change |
 |---|---|---|
+| 2026-08-24 | owner request | Second, harder pass over the whole file: every rule cut to its trigger and directive with reasoning and history removed unless the rule is unusable without it, and bundled rules split so each carries one situation. 113 → 154 rules, 7,612 → 5,359 words, mean 35 words per rule. Added the ~40-word budget to the file's own header so appends hold the shape (#1312). |
 | 2026-08-24 | owner request | Audited the whole file with the `authoring-agent-docs` method: stripped per-rule incident archaeology (issue ids, dates, quoted exchanges) that `VERSIONS.md` and the issues already keep, keeping a measurement only where the number is the argument. 8,435 → 7,612 words, every rule's strength unchanged (#1312). |
 | 2026-08-24 | owner request | Split: **Creating the artifact a check will demand** — create it before the action it gates; was a trailing clause of the mechanize-a-procedure rule, and a reader can arrive at it without that one (#1312). |
 | 2026-08-24 | owner request | Removed: **Writing check-the-work** — `basics` already carries see-it-fail as the ladder rule, and both load in the same session (#1312). |
