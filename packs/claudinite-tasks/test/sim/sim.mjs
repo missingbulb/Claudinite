@@ -46,7 +46,7 @@ const iso = (t) => new Date(t).toISOString().slice(0, 16) + 'Z';
 // THE DOOR (DESIGN §17.1), mirroring `packs/claudinite-tasks/calendar.mjs`: the retired spellings are
 // normalized where a declaration is LOADED, so nothing downstream — not the anchor, not the
 // period the janitor and the signal window count in — ever sees one.
-export const LEGACY_FREQUENCIES = { hourly: 'daily', 'daily-2h': 'daily', 'daily-1h': 'daily', 'daily+1h': 'daily' };
+export const LEGACY_FREQUENCIES = {};
 export const normalizeFrequency = (f) => LEGACY_FREQUENCIES[f] ?? f;
 
 function anchorHour(frequency) {

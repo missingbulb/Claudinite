@@ -350,7 +350,7 @@ const OLD_SCHEDULER_WORKFLOW = `name: Claudinite scheduler
 
 on:
   schedule:
-    - cron: '10 * * * *'
+    - cron: '10 4,16 * * *'
   workflow_dispatch:
     inputs:
       wake:
@@ -530,14 +530,14 @@ jobs:
 `;
 
 // The scheduler workflow as it stands on a member that has the DISPATCHING drain
-// (§15.16) but not the gate (§15.30) — today's fleet shape. Its drain job has no
+// (§15.16) but not the gate (§15.30). Its drain job has no
 // `if` and its scheduler job maps no `outputs`, which is exactly the combination
 // the gate's engine half must stay inert against.
 const UNGATED_SCHEDULER_WORKFLOW = `name: Claudinite scheduler
 
 on:
   schedule:
-    - cron: '10 * * * *'
+    - cron: '10 4,16 * * *'
   workflow_dispatch:
     inputs:
       wake:
@@ -1075,7 +1075,7 @@ NSApplication.shared.run()
   },
   {
     name: 'old-workflows',
-    why: 'a member still holding the previous workflow shape — the window every workflow change opens, since `.github/workflows/` is the one path a converge cannot push',
+    why: 'a member still holding the previous workflow shape (the retired `tick.mjs` entry) — the window every workflow change opens, since `.github/workflows/` is the one path a converge cannot push',
     files: {
       'README.md': '# fixture-old-workflows\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics']),
@@ -1085,13 +1085,15 @@ NSApplication.shared.run()
   },
   {
     name: 'custom-anchor-hour',
-    why: "a member that moved its `taskScheduler.dailyHour` off the default, still holding the hourly cron — both cron hours are a function of that value now (DESIGN §17), so a converge that ignored it would fire this repo's scheduler at hours no anchor lands on and run every task a day late, forever, with nothing going red",
+    why: "a member that moved its `taskScheduler.dailyHour` off the default — both cron hours are a function of that value now (DESIGN §17), so a converge that ignored it would fire this repo's scheduler at hours no anchor lands on and run every task a day late, forever, with nothing going red",
     files: {
       'README.md': '# fixture-custom-anchor-hour\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics'], {
         taskScheduler: { dailyHour: 9, weeklyDay: 'Wed', monthlyDay: 1 },
       }),
-      '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW,
+      // Its own anchor, not the default: dailyHour 9 means 9 and 21, and a fixture carrying
+      // 4,16 here would pass the shape check while contradicting what it exists to prove.
+      '.github/workflows/claudinite-scheduler.yml': OLD_SCHEDULER_WORKFLOW.replace("'10 4,16 * * *'", "'10 9,21 * * *'"),
     },
   },
   {
