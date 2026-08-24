@@ -466,7 +466,14 @@ export async function listWorkItems(gh, repo, { since = null } = {}) {
     const q = `state=all&sort=created&direction=desc&per_page=100&page=${page}`
       + (since ? `&since=${encodeURIComponent(since)}` : '');
     const { status, json } = await gh(`/repos/${repo}/issues?${q}`);
-    if (status !== 200 || !Array.isArray(json) || json.length === 0) break;
+    // A page that could not be read is not the end of the list. Breaking on it
+    // truncates the queue mid-pagination and the run plans against the remainder:
+    // a standing item whose page never arrived reads as absent, and the run mints a
+    // second one beside it.
+    if (status !== 200 || !Array.isArray(json)) {
+      throw new Error(`could not list work items in ${repo} at page ${page} (${status}) — a truncated queue is not a shorter one`);
+    }
+    if (json.length === 0) break;
     for (const i of json) {
       if (i.pull_request) continue;
       if (!(i.title ?? '').startsWith(WORK_PREFIX)) continue;

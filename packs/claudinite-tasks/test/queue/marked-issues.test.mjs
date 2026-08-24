@@ -70,3 +70,12 @@ test('a request list that cannot be read fails the run rather than reading as em
   const { gh } = fakeGh([issue(17, [ORIGIN_AD_HOC])], { failOn: ORIGIN_AD_HOC });
   await assert.rejects(() => listMarkedIssues(gh, 'o/r', { permissionOf: hasPush }), /502/);
 });
+
+// The sibling listing, same swallow, worse consequence: a page the API refused used
+// to end the loop, so the run planned against a truncated queue — and a standing
+// item whose page never arrived reads as absent, which mints a second one beside it.
+test('a work-item page that cannot be read fails the run rather than ending the list', async () => {
+  const { listWorkItems } = await import('../../queue/scheduler-run.mjs');
+  const gh = async () => ({ status: 403, json: null });
+  await assert.rejects(() => listWorkItems(gh, 'o/r'), /403/);
+});
