@@ -118,6 +118,10 @@ from lives in `VERSIONS.md` and the issue, never here.
   tool, on a rolling backoff. This sandbox proxy-blocks `api.github.com`, so `Monitor` and shell
   poll loops report "still running" until they time out.
 
+- **A `mcp__github__*` list/search/read call with no narrow `fields`/`per_page`** — risks a
+  >25k-token single-line dump. The saved tool-result file is one unbroken line, so `Read`'s
+  `offset`/`limit` won't shrink it; parse it with `python3 -c 'json.load(...)'` or `jq` instead.
+
 - **Re-waiting on a signal that already failed to move** — read the code that governs when it
   *can* change before waiting a second time on the same premise.
 
@@ -441,6 +445,13 @@ from lives in `VERSIONS.md` and the issue, never here.
 - **Building a dedup or mutex over work items** — key the guard on the target the write lands on,
   never the requester's phrasing. A same-title match is blind to two items writing one target under
   different titles; `Blocked-by:` is what serializes them.
+
+- **`converge-item.mjs` fails with `GITHUB_REPOSITORY is not set` or a 401/403** — this session's
+  GitHub access is MCP-only; only `packs/claudinite-tasks/` code legitimately holds a real
+  `GITHUB_TOKEN` (stated in `signals/gh.mjs`'s header, not in `queue/instructions.md`). Don't
+  hand-fabricate the transition via `issue_write` — the dependents-release chain is easy to drop,
+  and a label-only close leaves the issue open wearing its outcome label (live on #1220, #1265).
+  Report and leave it unconverged instead.
 
 ## Proving a change
 

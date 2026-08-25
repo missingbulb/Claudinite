@@ -9,6 +9,8 @@ log of runs.
 
 | Date | Task | Change |
 |---|---|---|
+| 2026-08-25 | `growth-extract` | Added: **`converge-item.mjs` failing with a GitHub 401/403 in an MCP-only session** — don't hand-fabricate the transition; a label-only close leaves the issue open wearing its outcome label, confirmed live on #1220 and #1265 (#1149). |
+| 2026-08-25 | `growth-extract` | Added: **A `mcp__github__*` call with no narrow `fields`/`per_page` risking a >25k-token single-line dump** — `Read`'s `offset`/`limit` can't shrink it; parse with `python3`/`jq` instead (#1307). |
 | 2026-08-24 | owner request | Second, harder pass over the whole file: every rule cut to its trigger and directive with reasoning and history removed unless the rule is unusable without it, and bundled rules split so each carries one situation. 113 → 154 rules, 7,612 → 5,359 words, mean 35 words per rule. Added the ~40-word budget to the file's own header so appends hold the shape (#1312). |
 | 2026-08-24 | owner request | Audited the whole file with the `authoring-agent-docs` method: stripped per-rule incident archaeology (issue ids, dates, quoted exchanges) that `VERSIONS.md` and the issues already keep, keeping a measurement only where the number is the argument. 8,435 → 7,612 words, every rule's strength unchanged (#1312). |
 | 2026-08-24 | owner request | Split: **Creating the artifact a check will demand** — create it before the action it gates; was a trailing clause of the mechanize-a-procedure rule, and a reader can arrive at it without that one (#1312). |
