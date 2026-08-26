@@ -9,6 +9,12 @@ The mechanism itself — the state machine, the generator, the executor's protoc
 forcing, recovery — is the canon's own tasks-dispatch design document, and authoring a task is the
 `writing-tasks` skill's subject. This file is the pack's own map.
 
+## Rules (`RULES.md`)
+
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Talking to GitHub's REST API directly | high | correctness | prose: 173 words |
+
 ## Layout
 
 | Path | What lives there |
@@ -64,12 +70,6 @@ Until #1317's execution chain finishes, `engine/scheduler/*` still exists as one
 this pack, for members whose vendored workers, workflow `run:` lines and stored routine prompts
 still name the old paths. They ship only into a mount that carries this pack, and they are deleted
 once no fielded member names one.
-
-## Rules (`RULES.md`)
-
-| Rule | Severity | Reason | Enforcement |
-|---|---|---|---|
-| A step talking to GitHub's REST API | high | correctness | prose: 173 words |
 
 ## Checks
 

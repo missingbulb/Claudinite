@@ -29,7 +29,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Auditing an artifact against its source | high | correctness | prose: 35 words |
 | Acting on an approval | high | correctness | prose: 69 words |
 | Searching for a tool with ToolSearch | medium | complexity | prose: 57 words |
-| Probing a capability already enumerated | medium | complexity | prose: 83 words |
+| Probing a fixed, already-enumerated tool roster | medium | complexity | prose: 83 words |
 | Calling Edit | low | complexity | prose: 39 words |
 | Calling Grep with a context flag | medium | complexity | prose: 51 words |
 | Needing exact text from the web | high | correctness | prose: 56 words |
