@@ -934,19 +934,18 @@ by the scheduler run (§5). Three patterns fall out, all from the sketch:
   a fan-out" stops being a bespoke sweep and becomes an ordinary task whose
   edges the scheduler run already evaluates.
 
-**Readiness has a second site: whoever closes an item re-checks its dependents
-in code** (F1, reopened by the owner 2026-08-15 — reversing the 2026-08-13
-decline, and amending §15.8's "dependency readiness is the scheduler run's alone" in
-siting, not in principle). On closing an item, the executor or agent doing the
-closing evaluates every open `task:status:blocked` item naming it: `Blocked-by` all
-closed and `Not-before` passed flips the dependent to `task:status:waiting-for-executor`, and a
-drain follows — so a chain link or a fan-in proceeds within minutes of its
-upstream converging instead of waiting out the scheduler run. What changed since the
-decline: under the work-as-work model the ~1h/link quantization stacks on
-drain occupancy, so a three-link chain on a busy morning trailed into the
-afternoon. The scheduler run's readiness job stays exactly as it was, as the backstop —
-a close by hand runs no engine code, and a missed re-check costs a scheduler run of
-latency, never correctness (SCENARIOS S33, and S4's tightened chain timing).
+**Readiness has one site: the scheduler run's own job 2** (F1, reopened by the
+owner 2026-08-15, then re-declined and reversed 2026-08-26 — §15.19 amended by
+§15.31 / #1373). A close writes only to the item it holds; deciding whether a
+dependent's block still holds is the scheduler run's job, because that is the
+thing that re-derives the world, and a task execution converging its own item
+has no business relabelling a sibling work item to answer it. So the close-time
+variant tried under F1 — the executor or agent doing the closing evaluating
+every open `task:status:blocked` item naming it, and flipping it the moment its
+last `Blocked-by` closed and its `Not-before` passed — is gone: it read as a
+latency optimisation on top of a mechanism already correct without it, and
+removing it costs a chain link at most one scheduler run of latency, never
+correctness (SCENARIOS S33, S18).
 
 Native GitHub issue dependencies (blocked-by/blocking — GA since Aug 2025,
 API- and webhook-supported) and sub-issues *mirror* these fields: the scheduler run
@@ -1385,7 +1384,9 @@ the design rather than confirming it, the section it changed is named.
    site evaluates `Blocked-by`/`Not-before`, and ~1h per chain link is within
    what nightly work tolerates. *(Amended by decision 19, 2026-08-15: a second
    site at close, with the scheduler run as backstop — the ~1h/link stacked on drain
-   occupancy once the work step was priced honestly.)*
+   occupancy once the work step was priced honestly. Decision 19 reversed by
+   decision 31, 2026-08-26 / #1373: this decision stands again, unamended — one
+   site, the scheduler run, and nothing else.)*
 
 Standing entries — no decision needed now:
 
@@ -1464,6 +1465,7 @@ deployment coupling did not:
 19. **F1 reopened — readiness re-checks at close** (§9), amending decision 8
     in siting, not principle: whoever closes an item readies its dependents in
     code and a drain follows; the scheduler run stays the backstop. (S33, S4.)
+    ***Reversed by decision 31***
 20. **Randomized pick order, adopted outright** (§6.1) — *amended 2026-08-15,
     same day*: first recorded as "ship with width", then adopted
     unconditionally on the owner's rebuttal of the one argument against —
@@ -1630,6 +1632,19 @@ deployment coupling did not:
     is not `'true'` — so a member on the old copy keeps dispatching hourly,
     which is exactly today's behavior. The `ungated-drain` rehearsal fixture
     is that claim, converged rather than asserted.
+31. **Convergence must not write to other work items — reversing decision 19**
+    (owner, 2026-08-26, #1373). A task execution converging its own item is
+    responsible for that item alone; releasing a dependent it may have freed
+    crosses into relabelling a sibling work item, which is not its business —
+    deciding whether a block still holds is the scheduler run's job, because
+    that is the thing that re-derives the world. The close-time re-check F1
+    reopened was a latency optimisation layered on a mechanism already correct
+    without it (the scheduler run's job 2, decision 9): removing it costs a
+    chain link at most one scheduler run of latency, never a stalled chain.
+    `readyDependents`/`releasedBy` (`readiness.mjs`) retire with no caller
+    left; `isReleasable` and the scheduler run's job 2 are untouched and stay
+    the sole releaser. (S33 rewritten to the new bound; S18 already covered a
+    HAND close on this same backstop.)
 
 ---
 
@@ -2084,10 +2099,17 @@ extra billed minute a day.
 ### 17.3 What the drain already chains, and what it does not
 
 A single executor run drains until nothing is pickable (§15.30), re-reading the queue between
-items, and `readyDependents` releases a closed item's dependents into that same run. So a
-multi-stage chain settles **back to back inside one run** — the agent hop included, via the
-session's close-time drain — and a chain's length costs cadence nothing. This is why collapsing
-three anchor hours into one tick slips a full day's work by under an hour (`S67`).
+items — and a `schedule_after` yield resolving is exactly what a re-read notices, agent hop
+included, via the session's close-time drain. So a `schedule_after` chain settles **back to back
+inside one run** and its length costs cadence nothing. This is why collapsing three anchor hours
+into one tick slips a full day's work by under an hour (`S67`) — the morning chain is
+`schedule_after`, not `Blocked-by`.
+
+A `Blocked-by` chain — a follow-up, a fan-in — is not this mechanism (§15.31 / #1373): no close
+ever releases a dependent, only the scheduler run's own job 2 does, on its next pass. Collapsing
+the cron to a twice-daily tick collapses that chain's cadence with it — a fan-in that used to
+ready within the hour it was last blocked now waits up to the gap between ticks, same as an ad-hoc
+mark (`S33`, `S68`).
 
 **A newly marked issue is not a dependent of anything.** Adoption is the scheduler run's job, so
 a mark landing while a drain is in flight is not picked up by that drain: it waits for the next

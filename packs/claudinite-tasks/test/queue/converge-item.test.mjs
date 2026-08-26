@@ -1,15 +1,16 @@
-// The terminal transition performed in code (#892) and the close-time release
-// beside it (DESIGN §15.19). What these pin is the part a session used to do from
-// prose: five ordered side effects, in order, exactly once — and the two ways it
-// went wrong on live traffic (an item closed still wearing `task:agent`, an item
-// closed with no execution record at all) failing loudly here instead.
+// The terminal transition performed in code (#892). What this pins is the part a
+// session used to do from prose: five ordered side effects, in order, exactly
+// once, on the item held and nothing else (§15.19, reversed by §15.31 / #1373)
+// — and the two ways it went wrong on live traffic (an item closed still wearing
+// `task:agent`, an item closed with no execution record at all) failing loudly
+// here instead.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   OUTCOMES, convergeItem, parseArgs, refusal, recordLine, convergeComment,
 } from '../../queue/converge-item.mjs';
-import { releasedBy, isReleasable } from '../../queue/readiness.mjs';
+import { isReleasable } from '../../queue/readiness.mjs';
 import { LEGACY_BUILT_IN_TASK_PATH } from '../legacy-protocol.mjs';
 
 const item = (over = {}) => ({
@@ -160,36 +161,25 @@ test('a failure park leaves the request armed and says nothing to it', async () 
   assert.equal(repo.state.comments.some((c) => c.issue === 42), false);
 });
 
-// --- the close-time release (DESIGN §15.19) ------------------------------------
+// --- a converge writes only to the item it holds (§15.19, reversed by §15.31 / #1373) ---
 
 const blocked = (number, blockedBy, over = {}) => ({
   number, title: `[claudinite-work] p/b${number}`, state: 'open', labels: ['task:blocked'],
   body: `packs/p/tasks/b/task.md\n\nBlocked-by: ${blockedBy.map((n) => `#${n}`).join(', ')}\n`, ...over,
 });
 
-test('closing an item readies what it was the last blocker of', async () => {
+test('closing an item it was the last blocker of leaves the dependent untouched', async () => {
   const repo = fakeRepo([item(), blocked(8, [7])]);
   const res = await run(repo, { issue: 7, outcome: 'done', summary: 'x' });
-  assert.deepEqual(res.freed, [8]);
-  assert.deepEqual(repo.find(8).labels, ['task:ready']);
+  assert.equal('freed' in res, false, 'a converge has no notion of what it freed any more');
+  assert.deepEqual(repo.find(8).labels, ['task:blocked'], 'release is the scheduler run\'s job alone');
 });
 
-test('an item still waiting on a second blocker is left alone', async () => {
-  const repo = fakeRepo([
-    item(), blocked(8, [7, 9]),
-    { number: 9, title: 'other', state: 'open', labels: [] },
-  ]);
-  const res = await run(repo, { issue: 7, outcome: 'done', summary: 'x' });
-  assert.deepEqual(res.freed, []);
-  assert.deepEqual(repo.find(8).labels, ['task:blocked']);
-});
-
-// A park releases nothing: the item is still open, so nothing waiting on it has
-// stopped waiting.
-test('a park releases nothing', async () => {
+// A park writes even less: the item stays open, so nothing waiting on it was
+// ever a candidate for release.
+test('a park also leaves a dependent untouched', async () => {
   const repo = fakeRepo([item(), blocked(8, [7])]);
-  const res = await run(repo, { issue: 7, outcome: 'failure', summary: 'x' });
-  assert.deepEqual(res.freed, []);
+  await run(repo, { issue: 7, outcome: 'failure', summary: 'x' });
   assert.deepEqual(repo.find(8).labels, ['task:blocked']);
 });
 
@@ -211,5 +201,4 @@ test('an unreadable blocker delays rather than releases', () => {
 test('an item in triage is nobody to release', () => {
   const parked = blocked(8, [7], { labels: ['task:blocked', 'needs-human'] });
   assert.equal(isReleasable(parked, { stateOf: () => 'closed' }), false);
-  assert.deepEqual(releasedBy(7, [parked], { stateOf: () => 'closed' }), []);
 });

@@ -113,7 +113,7 @@ test's title in `scenarios.test.mjs`.
 | §15.16 the scheduler run never waits on a drain | **prose** — workflow concurrency wiring (see "The unsimulated world") |
 | §15.17 the occupancy capacity model | `S34` (serial settles inside one run); runner budgets **prose** |
 | §15.18 the terminal comment is the durable record | **prose** — comment content, not label mechanics |
-| §15.19 F1 reopened: readiness re-checks at close | `S33`, `S4` |
+| §15.19 F1 reopened: readiness re-checks at close — **reversed by §15.31 / #1373** | `S33` (now the reversed bound); `S4` unaffected (`schedule_after`, a different mechanism) |
 | §15.20 randomized pick order after urgent, adopted outright | modeled with a seeded PRNG (`pickSeed`); urgent precedence `S16` |
 | §15.21 "scheduler run" keeps its name for now (#877) | **prose** — vocabulary |
 | §15.22 one run performs one item | **reversed by §15.30**; every run still records its trigger — `S34` (F23) |
@@ -128,6 +128,7 @@ test's title in `scenarios.test.mjs`.
 | §15.29 the origin label as the standing/ad-hoc authority (structural read = fallback only) | `S61` (planned at birth), `S62` (fallback on unlabeled legacy), `S64` (ad-hoc) |
 | §15.29 one-issue requests: the mark-with-no-status guard, the one clearing lever, gated body parameters, terminals on an open issue | `S64`, `S44`, `S45`, `S47`, `S49`, `S51` |
 | §15.30 invocations are the cost unit: the batched drain, the conditional drain dispatch, the between-items hold check, the executions accounting | `S34`, `S36`, `S37` (the hold parks between items), `S65` (a working day's bill), `S66` (the quiet-day floor) |
+| §15.31 convergence must not write to other work items — reversing §15.19 | `S33` |
 | §17 the cron's cadence: a day's work completes on 4 billed runs, not 27 | `S67` |
 | §17 `schedule_after:` is what orders a chain — collapsing the anchor hours costs ordering nothing | `S67` |
 | §17 ad-hoc latency IS the wait for the next tick; the second tick roughly halves it | `S68` |
@@ -141,7 +142,7 @@ test's title in `scenarios.test.mjs`.
 | §14 secrets: the missing-secret needs-human posture | `S9a` (the refused hand-off's same convergence); storage/stamping/rotation **prose** — Actions-platform behavior |
 | §5 F16 duplicate-standing-item self-heal | `S30` |
 | §11 F17 (reframed): heartbeat interval < leash; the livelock heartbeats prevent; transition lease re-verify | `S31`, `S31b`, `S31c`, `S31d` |
-| §9/§15.8 readiness re-check on close (F1, reopened 2026-08-15) | `S33`, `S4` (yielded chain picked in minutes) |
+| §9/§15.8 readiness has one site, the scheduler run (F1, reopened 2026-08-15, reversed 2026-08-26 / #1373) | `S33`; `S4` (yielded chain picked in minutes — `schedule_after`, unaffected) |
 | §10 scheduler run/executor decoupling; runner budgets | **prose** — deployment wiring and sizing, not label mechanics |
 | §6.1 F15 post-claim filter re-verify | `S32` |
 | §6.2 F18 episode-scoped claim arbitration | `S32` |

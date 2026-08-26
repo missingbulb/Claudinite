@@ -4,6 +4,7 @@ Records for `packs/claudinite-tasks/pack.mjs`'s `version` field, one row per bum
 
 | Version | Date | What changed |
 |---|---|---|
+| 60827.2 | 2026-08-27 | A converge writes only to the item it holds: releasing a dependent a close makes due is the scheduler run's own readiness job alone, never the closing side's. `readyDependents`/`releasedBy` retire from `readiness.mjs` with no caller left (#1373, reversing #892's §15.19). |
 | 60827.1 | 2026-08-27 | The request-parameter labels are gone from the code: a request's model and merge authorization are body fields, so `claude-model:*`, `claude-automerge` and the `REQUEST_LABELS` ensure-set had no reader left (#1380). |
 | 60824.9 | 2026-08-24 | The scheduler run's request half no longer throws on its first real request: `parseBlockedBy` was named in `main` and never imported, unreachable while the adoption list was always empty. The blocker resolution is an exported step, so a test can drive it (#1354). |
 | 60824.8 | 2026-08-24 | The request lane reads again: each mark is asked for on its own rather than both in one conjunctive `labels` filter, which had selected issues wearing both spellings and so nothing at all since #1138. Neither listing lets a failed read pass as an empty one (#1354). |

@@ -14,10 +14,11 @@
 // is gone — the work step/hand-off/converge as timed phases, heartbeat
 // comments during the work step so the leash measures executor death rather
 // than work duration), at-most-once invocation (one call per item, never
-// retried — the fired/refused/unanswered trichotomy of DESIGN §6.6), the
-// readiness re-check on close (F1, reopened 2026-08-15), the janitor's
-// stale-ready escalation, and the force lever (waking where an item exists,
-// minting where none does — the common case once declines file nothing).
+// retried — the fired/refused/unanswered trichotomy of DESIGN §6.6), readiness
+// as the scheduler run's alone (F1, reopened 2026-08-15, then reversed 2026-08-26
+// / #1373), the janitor's stale-ready escalation, and the force lever (waking
+// where an item exists, minting where none does — the common case once
+// declines file nothing).
 //
 // What it deliberately does NOT model is inventoried in README.md's "The
 // unsimulated world" — one row per boundary (cron delivery, list freshness,
@@ -385,6 +386,10 @@ export function makeSim({
   // coming — the executor's own loop picks the next item in the same run, and
   // the scheduler run's migration close is followed by that run's drain job —
   // so only a close with no run behind it (an agent session's) dispatches one.
+  // What still makes something newly pickable after such a close is the
+  // `schedule_after` yield resolving (§9) — never a Blocked-by dependent, which
+  // a close no longer touches at all (§15.19, reversed by §15.31 / #1373): that
+  // release is the scheduler run's readiness job alone, on its own hourly pass.
   function close(it, outcome, { dispatchDrain = true } = {}) {
     it.state = 'closed';
     it.closedAt = now;
@@ -395,20 +400,6 @@ export function makeSim({
     it.labels.delete('task:urgent');
     it.labels.add(outcome === 'done' ? 'task:status:done' : 'task:status:rejected');
     record('close', { task: it.taskId, issue: it.number, outcome });
-    // F1, reopened 2026-08-15: whoever closes an item — executor or agent —
-    // also re-checks blocked items' readiness in code (Blocked-by all closed,
-    // Not-before passed) and a drain follows, so chain links proceed in
-    // minutes instead of waiting out the scheduler run. The scheduler run's readiness job stays
-    // the backstop; a HAND close runs no engine code and is covered by it.
-    for (const b of open().filter((i) => is(i, 'task:status:blocked'))) {
-      const blockersDone = b.blockedBy.every(
-        (n) => issues.find((x) => x.number === n)?.state === 'closed'
-      );
-      if (blockersDone && (b.notBefore === null || now >= b.notBefore)) {
-        setStatus(b, 'task:status:waiting-for-executor');
-        record('ready', { task: b.taskId, issue: b.number, by: 'close' });
-      }
-    }
     if (dispatchDrain && pickable().length > 0) {
       schedule(now + 1 * MIN, () => executorRun('E1', 'close-drain'));
     }

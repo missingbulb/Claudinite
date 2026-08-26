@@ -735,14 +735,16 @@ The heartbeat replaces that arithmetic:
   by the leash, never by the work's duration. The re-pick converges (the work
   step's re-entrancy contract, F12, unchanged).
 
-### S33 — the readiness re-check at close (F1, reopened)
+### S33 — readiness has one site: the scheduler run (F1, reopened, then reversed — §15.31 / #1373)
 
-Two fan-out members converge; the close of the second readies the fan-in **in
-code, within the minute**, and the follow-on drain runs it — no scheduler run in the
-path (`ready` carries `by: close`). S4 gains the matching assertion on the
-yield side: the chain's dependent is picked within minutes of its upstream
-closing. A close by hand still runs no engine code; S18 keeps the scheduler run as
-that path's backstop, unchanged.
+Two fan-out members converge; the fan-in does **not** ready at either close — a
+converge writes only to the item it holds. It readies at the scheduler run's
+own next pass (job 2), the first tick at or after the last member closed, never
+sooner. A close by hand still runs no engine code, same as before; S18 keeps
+the scheduler run as that path's backstop too, unchanged. S4's yield-side
+assertion is untouched: `schedule_after` is a different mechanism (the pick
+filter, not a release), and a chain wired that way still settles within
+minutes of its upstream closing.
 
 ### S34/S36 — run granularity, and what causes the next run (F23)
 
@@ -761,10 +763,10 @@ nothing is pickable**, items settled serially in the same run.
 job, started by the job graph when the scheduler run left something pickable,
 no event involved; `label-event` — a foreign
 token's `task:status:waiting-for-executor`/`task:urgent`; `close-drain` — an agent
-session's converge path, when its readiness re-check leaves something
-pickable (the executor's own closes need no dispatch — the run picks the
-next item itself); `failure-redispatch` — the workflow's continuation
-job (S36 below). And the pick order is **urgent first, then random among the
+session's converge path, when its close leaves something pickable (a
+`schedule_after` dependent whose upstream just converged; the executor's own
+closes need no dispatch — the run picks the next item itself);
+`failure-redispatch` — the workflow's continuation job (S36 below). And the pick order is **urgent first, then random among the
 ready** (owner, same day — the stale-ready escalation is period-scale, so
 nothing leaned on oldest-first), seeded in the sim so scenarios replay
 identically.
@@ -1167,7 +1169,7 @@ the retired shape the same day cost 48.
 | **F7** | doc gap | no written path from `needs-human` back to execution (S12, S19) | **fixed in DESIGN §4**: strip `needs-human` + apply `task:status:waiting-for-executor` is the sanctioned re-queue |
 | **F4** | **decided** | executing-leash reclaim on the daily janitor = up to ~25h stall for a dead executor (S8) | **accepted 2026-08-13**: the reclaim rides the scheduler run (deterministic label rule, ~2h worst case); janitor keeps the judgment sweeps — DESIGN §11 |
 | **F10** | **decided** | mid-window firing costs up to 24 precondition evaluations + signal collections per unfired daily occurrence (S1/S3) | **resolved twice**: first by the go/no-go ruling (one verdict per occurrence — which required a ledger read), then properly by the standing-item model (S1′): the verdict is one-per-period at pick, the memory is the item's own `Not-before`, no ledger at all |
-| **F1** | **decided** | chain readiness quantized to the scheduler run, ~1h/link (S4) | declined 2026-08-13; **reopened and accepted 2026-08-15 (§I)**: under the work-as-work model the ~1h/link stacks on drain occupancy — whoever closes an item re-checks its dependents' readiness in code, the scheduler run stays the backstop (S33, S4) |
+| **F1** | **decided** | chain readiness quantized to the scheduler run, ~1h/link (S4) | declined 2026-08-13; reopened and accepted 2026-08-15 (§I): under the work-as-work model the ~1h/link stacks on drain occupancy — whoever closes an item re-checks its dependents' readiness in code, the scheduler run stays the backstop (S33, S4); **reversed 2026-08-26 (DESIGN §15.31 / #1373)**: a converge writes only to the item it holds, so `Blocked-by` readiness reverts to the scheduler run alone (S33); `schedule_after` (S4) is a different mechanism and is untouched |
 | **F2** | dissolved | an occurrence that fires-and-obsoletes is spent for the period (S13) | the standing-item model has no fire-then-obsolete path for scheduled work — the pick verdict is the only verdict, and a no-go rolls (S13′) |
 | — | accepted | fan-in stalls on one stuck child until a human acts (S18) | documented here; no quorum/deadline semantics at this scale |
 | **F8** | migration detail | signal collectors' self-trigger exclusions must cover `[claudinite-work]` titles and the new labels | **noted in DESIGN §14** |

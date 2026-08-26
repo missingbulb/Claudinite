@@ -633,11 +633,12 @@ test('S19 re-queue after a fix: needs-human -> ready -> normal run', () => {
   assert.equal(sim.family('basics/baselining').filter((i) => !i.seeded).length, 1);
 });
 
-// ---- S33 — the readiness re-check on close (F1, reopened 2026-08-15): when a
-// mechanism close resolves the last Blocked-by edge, the closing side readies
-// the dependent in code and a drain follows — minutes, not the next scheduler run. (A
-// HAND close runs no engine code; S18 keeps the scheduler run as that path's backstop.)
-test('S33 fan-in readies within minutes of its last blocker closing', () => {
+// ---- S33 — a converge writes only to the item it holds (§15.19, reversed by
+// §15.31 / #1373): resolving the fan-in's last Blocked-by edge is not the
+// closing side's business. The scheduler run's own readiness job (job 2) is the
+// only thing that ever readies it, at its next hourly pass — never sooner, and
+// never a HAND close's business either (S18 already covers that path).
+test('S33 fan-in waits for the scheduler run to ready it, not the closing side', () => {
   const tasks = cast().concat([{
     id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', codeWorkMinutes: 2,
   }]);
@@ -654,12 +655,13 @@ test('S33 fan-in readies within minutes of its last blocker closing', () => {
 
   const lastMemberClose = Math.max(...members.map((i) => i.closedAt));
   const readied = sim.log.find((e) => e.kind === 'ready' && e.issue === fanIn.number);
-  assert.equal(readied.by, 'close', 'readied by the closing side, not the scheduler run');
-  assert.ok(readied.t - lastMemberClose < 60e3, 'readiness followed the close immediately');
+  assert.equal(readied.by, undefined, 'no closing side readied it — the scheduler run\'s job 2 did');
+  // the next scheduler tick at or after the last blocker closed, never sooner
+  const nextTick = Math.ceil((lastMemberClose - SCHEDULER_RUN_MINUTE * 60_000) / 3_600_000) * 3_600_000
+    + SCHEDULER_RUN_MINUTE * 60_000;
+  assert.equal(readied.t, nextTick, 'readied at the scheduler run\'s own next pass, not the close');
   assert.equal(fanIn.state, 'closed');
   assert.equal(fanIn.outcome, 'done');
-  assert.ok(fanIn.closedAt - lastMemberClose <= 10 * 60e3,
-    'the fan-in ran minutes after its last blocker, not a scheduler run later');
 });
 
 // ---- S34 — the batched drain (#1212, the owner reversing §15.22's one-item

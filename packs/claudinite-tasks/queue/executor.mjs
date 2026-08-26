@@ -17,7 +17,6 @@
 
 import { pathToFileURL } from 'node:url';
 import { isSuspended, readSuspendedNow, suspendedNotice, SUSPEND_ALL_VAR } from './suspend.mjs';
-import { readyDependents } from './readiness.mjs';
 import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from './heartbeat.mjs';
 import { renderTaskExec } from '../run-record.mjs';
 import { swapStatus, clearStatus } from './apply-status.mjs';
@@ -288,9 +287,6 @@ async function executeItem({
   api, gh, repo, root, config, schedule, byId, pathTo = () => null, item, executorId, claim,
   now, heartbeatMs, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
 }) {
-  // What a close needs beyond the item itself: the clock for a dependent's
-  // `Not-before`, and somewhere to say what it released.
-  const ctx = { now, log };
   const parsed = parseWorkItemTitle(item.title);
   const { taskPath } = parseWorkItemBody(item.body);
   // A marked issue's identity is its machine block, not its title (§16.1): the id
@@ -309,7 +305,7 @@ async function executeItem({
   }
   if (!task) {
     await close(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, TASK_OBSOLETE, 'not_planned',
-      `\`${id}\` is not a task this repo carries at HEAD (the pack may be undeclared, or the task removed). Closing obsolete.`, 'task-gone', ctx);
+      `\`${id}\` is not a task this repo carries at HEAD (the pack may be undeclared, or the task removed). Closing obsolete.`, 'task-gone');
     return 'obsolete';
   }
   if (task.taskPath !== taskPath) {
@@ -359,7 +355,7 @@ async function executeItem({
       `The precondition declined: ${plan.reason}`
       + (plan.standing
         ? '\n\nThis task\'s next occurrence is decided at its next anchor; declined occurrences are recorded on the schedule board.'
-        : ''), 'success', ctx);
+        : ''), 'success');
     return 'obsolete';
   }
 
@@ -410,7 +406,7 @@ async function executeItem({
       await close(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, TASK_DONE, 'completed',
         result.delivered?.length
           ? `Code-work did this run's work and left:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`
-          : 'Code-work did this run\'s work; no agent was needed.', 'success', ctx);
+          : 'Code-work did this run\'s work; no agent was needed.', 'success');
       return TASK_DONE;
     }
     return handOff({ api, gh, repo, item, task, id, context, result, executorId, claim, invokeAgent, config, log });
@@ -569,21 +565,18 @@ async function converge(api, gh, repo, item, from, triage, claim, body, status =
   await api.addLabel(gh, repo, item.number, triage);
 }
 
-// A close is also the moment a dependent may become due (§15.19): whoever closes
-// an item releases what it was holding, in code, and this run's next pick then
-// finds it. The scheduler run stays the backstop for every close this code never
-// performs — a human's, or a session that stopped early.
-async function close(api, gh, repo, item, from, outcome, stateReason, body, status, ctx = {}) {
+// A close writes only to the item it holds (§15.19, reversed by §15.31 /
+// #1373): a dependent this close may make due is released solely by the
+// scheduler run's own readiness job, on its next hourly pass, never here.
+async function close(api, gh, repo, item, from, outcome, stateReason, body, status) {
   await api.comment(gh, repo, item.number, body + recordFor(item, status));
   await clearStatus(api, gh, repo, item, from);
   await api.addLabel(gh, repo, item.number, outcome);
   // A MARKED ISSUE IS NOT THE RUN'S TO CLOSE (§16.1, §16.5). The item's terminal
   // status stands on the still-open issue: the run's verdict is about the run, and
-  // whether the issue is finished belongs to the person who opened it. Nothing is
-  // released either — a dependent waits for that issue to close, and it has not.
+  // whether the issue is finished belongs to the person who opened it.
   if (!isWorkItemTitle(item.title)) return;
   await api.closeIssue(gh, repo, item.number, stateReason);
-  await readyDependents(api, gh, repo, item.number, ctx);
 }
 
 // --- CLI ----------------------------------------------------------------------

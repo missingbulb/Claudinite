@@ -1,10 +1,13 @@
-// THE TERMINAL TRANSITION, IN CODE (#892; tasks-dispatch DESIGN §6.5, §15.18,
-// §15.19). A work-item session ends by performing five ordered side effects —
-// comment, drop `task:agent`, add the outcome label, carry the execution record,
-// close with the right state reason — and then releasing whatever the close
-// freed. Asking a session to do that from prose is asking for it at the moment
-// its context is fullest and the remaining work looks like formality; both of the
-// first two live agentic runs got part of it wrong, silently, in different ways.
+// THE TERMINAL TRANSITION, IN CODE (#892; tasks-dispatch DESIGN §6.5, §15.18).
+// A work-item session ends by performing five ordered side effects — comment,
+// drop `task:agent`, add the outcome label, carry the execution record, close
+// with the right state reason — on the item it holds, and nothing else: a
+// converge never writes to another work item (§15.19, reversed by §15.31 /
+// #1373). Releasing a dependent a close may have freed is the scheduler run's
+// job alone. Asking a session to perform these effects from prose is asking for
+// it at the moment its context is fullest and the remaining work looks like
+// formality; both of the first two live agentic runs got part of it wrong,
+// silently, in different ways.
 //
 // The split is the same one the executor already draws: THE SESSION SUPPLIES THE
 // JUDGMENT — which outcome, and the prose of what happened — and the CODE
@@ -17,7 +20,6 @@
 
 import { pathToFileURL } from 'node:url';
 import { renderTaskExec } from '../run-record.mjs';
-import { readyDependents } from './readiness.mjs';
 import { swapStatus, clearStatus } from './apply-status.mjs';
 import {
   AGENT, NEEDS_HUMAN, TASK_DONE, STATUS_RUNNING_AGENT, isStatus, isWorkItemTitle, machineBlockOf,
@@ -91,7 +93,7 @@ export function convergeComment(item, { summary, pr, record }) {
   return `${summary.trim()}${waiting}${line}`;
 }
 
-export async function convergeItem(api, gh, repo, plan, { now = () => new Date(), log = console.log } = {}) {
+export async function convergeItem(api, gh, repo, plan, { log = console.log } = {}) {
   const item = await api.readIssue(gh, repo, plan.issue);
   const no = refusal(item, plan.issue);
   if (no) return { ok: false, error: no };
@@ -111,13 +113,13 @@ export async function convergeItem(api, gh, repo, plan, { now = () => new Date()
     await api.addLabel(gh, repo, item.number, spec.label);
     // A MARKED ISSUE IS NOT THE SESSION'S TO CLOSE (§16.1, §16.5): the terminal
     // status stands on the open issue, and whether the issue itself is finished
-    // belongs to the person who opened it. Nothing is released, because the issue a
-    // dependent waits on has not closed.
-    if (!isWorkItemTitle(item.title ?? '')) return { ok: true, closed: false, freed: [] };
+    // belongs to the person who opened it.
+    if (!isWorkItemTitle(item.title ?? '')) return { ok: true, closed: false };
     await api.closeIssue(gh, repo, item.number, spec.stateReason);
-    // §15.19: whoever closes an item releases what it was holding.
-    const freed = await readyDependents(api, gh, repo, item.number, { now, log });
-    return { ok: true, closed: true, freed };
+    // A converge writes only to the item it holds (§15.19, reversed by §15.31 /
+    // #1373): a dependent this close may have freed is released solely by the
+    // scheduler run's own readiness job, not by this call.
+    return { ok: true, closed: true };
   }
   // Every park wears BOTH labels: `needs-human` is the state every guard and
   // sweep reads, the sub-label is what the person is being asked for.
@@ -137,7 +139,7 @@ export async function convergeItem(api, gh, repo, plan, { now = () => new Date()
       `A pull request for this is open and waiting on you: #${plan.pr}. Merge or close it.`);
     await api.swapLabel(gh, repo, request, QUEUED_LABEL, IN_REVIEW_LABEL);
   }
-  return { ok: true, closed: false, freed: [], request: request ?? null };
+  return { ok: true, closed: false, request: request ?? null };
 }
 
 async function main() {
@@ -155,7 +157,6 @@ async function main() {
   if (!res.ok) { console.error(`converge-item: ${res.error}`); process.exit(1); }
   console.log(res.closed
     ? `converged #${plan.issue}: closed ${OUTCOMES[plan.outcome].label}`
-      + (res.freed.length ? `, released ${res.freed.map((n) => `#${n}`).join(', ')}` : '')
     : `converged #${plan.issue}: parked ${OUTCOMES[plan.outcome].label}, left open for a person`);
 }
 
