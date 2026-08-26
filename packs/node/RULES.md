@@ -22,3 +22,7 @@
 
 - **`body.innerText` is null in jsdom.** Code reading `el.innerText || el.textContent` therefore falls through to `textContent` under test, which *includes* the `<script>` / `<style>` text, `<select>` / `<option>` text, and CSS-hidden text a real browser's `innerText` omits. Treat body-text results as jsdom-optimistic; never add a test that only passes because of it. (1)
 - **`runScripts: "outside-only"` (the default) parses `<noscript>` into live DOM — the opposite of a real browser.** A `textContent` read looks clean under test but splices the `<noscript>` markup into the value in Chrome, which keeps `<noscript>` as raw text. Parse a script-free fragment with `runScripts: "dangerously"` to reproduce the browser. (2)
+
+## A local pass proves nothing about a pinned CI Node version
+
+An agent sandbox's own Node can be newer than the version CI actually pins (check the CI workflow's `setup-node`/version step, not what's installed locally) — so code relying on version-gated runtime behavior (e.g. `node --test`'s own file-glob expansion, which needs Node ≥22) can pass locally and still fail in CI on the older pinned version. Before trusting a local green run as proof for CI, confirm the two versions actually match.

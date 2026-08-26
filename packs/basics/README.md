@@ -29,10 +29,12 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Auditing an artifact against its source | high | correctness | prose: 35 words |
 | Acting on an approval | high | correctness | prose: 69 words |
 | Searching for a tool with ToolSearch | medium | complexity | prose: 57 words |
+| Probing a capability already enumerated | medium | complexity | prose: 83 words |
 | Calling Edit | low | complexity | prose: 39 words |
 | Calling Grep with a context flag | medium | complexity | prose: 51 words |
 | Needing exact text from the web | high | correctness | prose: 56 words |
 | Hitting a denied fetch | critical | legal | prose: 152 words |
+| Sending a tall screenshot | medium | complexity | prose: 70 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |

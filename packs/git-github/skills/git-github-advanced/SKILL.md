@@ -183,6 +183,18 @@ A list or search API call that isn't bounded returns a full page of full-bodied 
 
 All of them, not one: a qualified query still returns a full page, a small page of unqualified matches is still the wrong records, and a small page of full-bodied records still overruns the cap.
 
+## `list_pull_requests`'s `head` filter silently mismatches without an `owner:` qualifier
+
+A bare branch name in `head` (no `owner:` prefix) does not filter the way it looks like it should — it can hand back an unrelated PR as if it matched, for every branch queried, with no error to flag the miss. Qualify it as `owner:branch-name`, or skip the lookup and derive the answer from git directly (`merge-base`/`diff --stat` against the branch).
+
+## Verify a claimed diff against `git ls-files`, not the rendered PR-diff view
+
+Claude Code Web's PR-diff view has been observed to silently drop a new root-level file or directory addition from its rendering, even though the file is genuinely present in the underlying commit. Before concluding a file didn't land (or re-doing work that already landed), confirm with `git ls-files` / `git diff --stat` against the branch rather than trusting what the rendered diff shows.
+
+## Waiting on a GitHub Actions run or PR check: one wait mechanism, never two at once
+
+Resolve the wait through exactly one mechanism — a `Monitor`-style until-loop, or direct polling via the check-run/job-log tools above — never both on the same signal. A background `sleep` timer left running alongside direct polling reports back later as a stale, already-resolved notification that has to be recognized and discarded, and pairing a background timer with a blocking poll on its own output routinely costs several extra round trips once the blocking poll hits its own timeout. Pick one, and let it finish.
+
 ## Merging gotchas
 
 These conflict/merge traps are independent of any one project's file layout.

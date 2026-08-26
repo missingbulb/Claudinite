@@ -11,6 +11,11 @@
   skill's own text carries (to a sibling doc, a sibling skill) was written for its real home and
   dangles from that announced base — resolve such links against the canon path instead.
 
+- **Finding which check enforces a given rule** — read that pack's own
+  `.claudinite/shared/packs/<pack>/declared-checks.json` directly rather than grepping the engine's
+  check-runner source. A declared check is data-driven config, not keyword-searchable script text,
+  so the pack's own manifest is the fast path to its id, description and failure message.
+
 - **Wanting a pack's rules to apply here** — declare its id in `.claudinite-settings.json`. Nothing
   activates by being mounted, fingerprinted or present on disk, so a pack whose files you can see
   but whose id is undeclared contributes no prose, no checks, no skills and no tasks.

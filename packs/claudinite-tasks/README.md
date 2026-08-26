@@ -65,6 +65,12 @@ this pack, for members whose vendored workers, workflow `run:` lines and stored 
 still name the old paths. They ship only into a mount that carries this pack, and they are deleted
 once no fielded member names one.
 
+## Rules (`RULES.md`)
+
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| A step talking to GitHub's REST API | high | correctness | prose: 173 words |
+
 ## Checks
 
 | Rule | Confidence | Dimension | Enforcement |

@@ -122,6 +122,13 @@
   copied off the deferred-tools listing) and try the tool before telling the owner a step is theirs;
   the bare short name returns "no matching tools", which reads exactly like absence.
 
+- **Probing whether a capability exists at all, against an MCP server whose full tool roster is
+  already named in the deferred-tools system-reminder** — one empty `ToolSearch` result is the
+  whole answer; don't reword and retry. A small, fixed roster is already fully enumerated in that
+  listing, so a miss there means "no tool for this," not "try a different phrasing." Read the
+  roster directly, or move on, rather than spending several rephrased queries chasing a different
+  result from the same fixed list.
+
 - **Calling `Edit`** — the file must have been read *with the read tool*; `cat`/`grep`/`sed` don't
   count. The moment shell output tells you which file you're about to change, read that exact path;
   a narrow offset window satisfies it.
@@ -146,6 +153,12 @@
   denial again on each one, where a `403` is at least per-site. And never file the gap as
   "re-verify next pass": no later agent pass can close a policy-level block either, so mark it as
   needing a human or an unblocked environment instead.
+
+- **Sending a tall screenshot** (a full-page capture, a long mobile viewport) — a width/byte
+  downscale alone can still get it rejected as too large: the delivery channel caps pixel *height*
+  independently of width or file size. If a downscaled capture still bounces, split it into
+  quarters by height, not halves — a halved image can still exceed the height cap even once it
+  fits comfortably under the size cap.
 
 - **Scheduling a wake-up with the harness** — pass `prompt`, the instruction the woken turn is to
   act on, on any call that isn't `stop: true`; a no-op flag and a stated `reason` do not exempt it,

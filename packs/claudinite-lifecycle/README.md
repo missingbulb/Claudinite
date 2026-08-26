@@ -14,6 +14,7 @@ reports it.
 |---|---|---|---|
 | Reading a rule that arrived from Claudinite | high | correctness | prose: 43 words + check (`claudinite-isolation`) |
 | Finding a mounted skill's real path | medium | complexity | prose: 81 words |
+| Finding which check enforces a rule | medium | complexity | prose: 48 words |
 | Wanting a pack's rules to apply here | high | correctness | prose: 47 words + check (`claudinite-lifecycle-declared`) |
 | Adding a pack | medium | complexity | prose: 27 words |
 | Setting a project up on Claudinite | medium | complexity | prose: 15 words |
