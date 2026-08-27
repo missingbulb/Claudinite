@@ -25,7 +25,7 @@ export const DAY_MS = 86400e3;
 
 const ms = (t) => (t == null ? null : new Date(t).getTime());
 
-// A UTC day. The queue's anchors, the digests' file names and GitHub's timestamps are
+// A UTC day. The queue's anchors and GitHub's timestamps are
 // all UTC, so a local-time bucketing would put a member's midnight run on the wrong
 // day depending on who is looking.
 export const dayKey = (t) => new Date(t).toISOString().slice(0, 10);
@@ -150,7 +150,7 @@ export function activitySeries(reads, { now, days = 14 } = {}) {
 //   NOTHING INVENTED. No estimated hours, no saved-effort multiplier, no score. Each
 //   figure is a count of things that are individually true and individually clickable.
 //   A quantity nothing on this page measures does not get a tile with a guess in it.
-export function fleetBenefits(reads, { now, windowDays = 7, digests = null } = {}) {
+export function fleetBenefits(reads, { now, windowDays = 7 } = {}) {
   const span = windowDays * DAY_MS;
   const readable = (reads ?? []).filter((r) => r && !r.error && r.declaration);
 
@@ -216,9 +216,6 @@ export function fleetBenefits(reads, { now, windowDays = 7, digests = null } = {
     current,
     previous,
     members: readable.length,
-    // Whatever the digests panel actually found on disk, so this counts files that
-    // exist rather than days the task was scheduled for.
-    digests: digests == null ? null : digests.filter((d) => d?.text).length,
   };
 }
 

@@ -236,15 +236,6 @@
   .chart-axis { display: flex; justify-content: space-between; gap: 8px; }
   .movement .v { font-size: 25px; line-height: 1.15; }
 
-  /* The digest is prose, so it is set as prose — the only place on this page that is.
-     Its own headings come from the file and must not inherit the panel headings'
-     uppercase tracking, which would shout a sentence. */
-  .chart-card.digest h3 { font-size: 14px; margin: 0; letter-spacing: 0; text-transform: none; }
-  .chart-card.digest h4 { font-size: 12px; margin: 6px 0 0; color: var(--ink-2); font-weight: 600;
-                          letter-spacing: 0; text-transform: none; }
-  .chart-card.digest p { margin: 0; color: var(--ink-2); }
-  .chart-card.digest ul.digest-items { margin: 0; padding-left: 18px; color: var(--ink-2); }
-  .chart-card.digest ul.digest-items li { margin-bottom: 6px; }
   .movement .k { font-size: 12px; color: var(--ink-2); margin: 2px 0 6px; }
 
   /* --- the lead: the two blocks a reader who came with no question is served by ---
@@ -281,10 +272,6 @@
   .lead-act { align-self: flex-start; text-decoration: none; padding: 5px 12px;
               border-radius: 999px; border: 1px solid var(--border); color: var(--ink); }
   .lead-act:hover { border-color: var(--muted); }
-  /* The digest's day picker. Its buttons are the card's only controls, so they sit on
-     the heading row rather than under the prose they page through. */
-  .day-nav { display: flex; gap: 6px; align-items: center; margin-left: auto; }
-  .day-nav button { padding: 2px 9px; font-size: 12px; line-height: 1.6; }
   .lead-head { display: flex; align-items: center; gap: 8px; }
   .lead-head h2 { margin: 0; }
 
@@ -522,20 +509,6 @@
           no figure rather than a zero.
         </p>
         <div id="fleet-lead"></div>
-      </section>
-      <section id="lead-digest-section" hidden>
-        <div class="lead-head">
-          <h2>The morning brief <button class="info" type="button" data-info="digests" aria-expanded="false" title="What this is">&#9432;</button></h2>
-          <div class="day-nav" id="digest-nav"></div>
-        </div>
-        <p class="info-body" id="info-digests" hidden>
-          The fleet's own morning brief — what the fleet accomplished that day, and the project worth
-          returning to — written by the digest task into the enforcer repo, one file per day. It opens
-          on <strong>yesterday</strong>, because a day's brief is written after that day. A day with no
-          brief is a <strong>normal state</strong>: the task had nothing to report, or has not run yet.
-          Paging back reads one more file, cached by commit like the rest of the page.
-        </p>
-        <div id="fleet-digest"></div>
       </section>
     </div>
 

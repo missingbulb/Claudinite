@@ -11,10 +11,9 @@
 // column stays for the SECOND half of the same message — "this sweep uses…" — which
 // is what makes a failure legible without ever being what someone grants.
 //
-// It covers THIS pack's sweeps. The digest that needed `Pull requests: read` now lives
-// in the claudinite-dashboard pack and states its own grant beside itself, because the
-// two packs are adopted independently and neither may import the other; a repo
-// declaring both grants the union of the two tables, which each says.
+// It covers THIS pack's sweeps. Another pack needing the same secret states its own
+// grant beside itself, because packs are adopted independently and none may import
+// another; a repo declaring both grants the union of the two tables.
 
 export const FLEET_TOKEN = 'FLEET_GITHUB_TOKEN';
 

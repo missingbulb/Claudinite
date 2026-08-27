@@ -33,39 +33,22 @@ test('the pack is opt-in and never fingerprinted', () => {
   assert.equal(pack.seededByDefault, false);
 });
 
-test('it costs no session prose, and its checks guard the digest and the descriptors', () => {
+test('it costs no session prose, and its one check guards the descriptors', () => {
   // A page is not a practice: there is no way to write the dashboard wrongly in a
   // consuming repo, and prose here would bill every session in every declaring repo.
   // No RULES.md beside the manifest is what says so — the loader derives prose from
   // that file's presence, so its absence is the declaration.
   assert.equal(existsSync(join(PACK_DIR, 'RULES.md')), false);
   assert.equal(pack.prose, undefined);
-  // Two arrived with the fleet-digest task and guard its output and its own fixtures.
-  // The third guards what OTHER packs contribute to this page — a descriptor the
+  // The one check guards what OTHER packs contribute to this page — a descriptor the
   // reader rejects fails silently, in a viewer's browser, where its author never
-  // looks. All three are world rules: each audits what has landed, whatever this
-  // session touched.
-  // They are the modules in the pack's own worldRules/ — the directory is the
+  // looks. It is a world rule: it audits what has landed, whatever this session
+  // touched.
+  // It is the module in the pack's own worldRules/ — the directory is the
   // declaration, so the directory is what this asserts.
   assert.deepEqual(readdirSync(join(PACK_DIR, 'worldRules')).sort(),
-    ['dated-fixture-collision.mjs', 'descriptor-usable.mjs', 'digest-plain-text.mjs']);
+    ['descriptor-usable.mjs']);
   assert.equal(existsSync(join(PACK_DIR, 'workRules')), false);
-});
-
-// The cost of declaring this pack, stated as a test because it is the thing an adopter
-// is most likely to be surprised by: the page comes with a daily task that reads every
-// repo under the owner, and that task cannot run without the fleet PAT.
-test('declaring the pack brings the fleet-digest task, and it names the secret it needs', async () => {
-  const task = (await import(join(PACK_DIR, 'tasks/fleet-digest/task.mjs'))).default;
-  assert.equal(task.id, 'fleet-digest');
-  // The `daily+1h` offset retired with the twice-daily cron; the ordering it wished for is
-  // `schedule_after:` now, which actually enforces it (tasks-dispatch DESIGN §17.1).
-  assert.equal(task.frequency, 'daily');
-  assert.deepEqual(task.schedule_after, [
-    'claudinite-fleet-sheepdog/fleet-roster',
-    'claudinite-fleet-sheepdog/fleet-pack-seeds',
-  ]);
-  assert.deepEqual(task.required_secrets, ['FLEET_GITHUB_TOKEN']);
 });
 
 // The whole point of the remodel: adoption is what wires the deploy, because
