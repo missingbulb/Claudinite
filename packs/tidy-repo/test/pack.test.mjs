@@ -89,6 +89,29 @@ test('tidy-issues: a substantive main move alone never wakes the task', () => {
   assert.match(v.reason, /no issues touched/);
 });
 
+// The scheduler's own work items wear a `task:*` label from creation. The issues
+// signal only hides them by title prefix, so one filed under any other title
+// reaches this task — and the queue's machinery is not project work to triage.
+test('tidy-issues: an issue labelled task:* is neither a trigger nor in scope', () => {
+  const queueItem = { number: 9, labels: ['task:ready'] };
+
+  // It cannot wake the task on its own.
+  assert.equal(tidyIssues.precondition(S({ issues: { open: [queueItem], touched: [9] } })).run, false);
+
+  // Nor can it enter the scope of a run something else triggered.
+  const v = tidyIssues.precondition(S({
+    issues: { open: [{ number: 3, labels: [] }, queueItem], touched: [3] },
+    commits: { substantiveChange: true },
+  }));
+  assert.equal(v.run, true);
+  assert.match(v.context.join(' '), /Issues to triage: #3\./);
+  assert.doesNotMatch(v.context.join(' '), /#9/);
+
+  // A label that merely CONTAINS the marker is somebody else's label.
+  const other = tidyIssues.precondition(S({ issues: { open: [{ number: 4, labels: ['not-task:ready'] }], touched: [4] } }));
+  assert.equal(other.run, true);
+});
+
 test('tidy-issues: silent on a quiet repo, and on a substantive move with no open issues', () => {
   assert.equal(tidyIssues.precondition(S()).run, false);
   assert.equal(tidyIssues.precondition(S({ commits: { substantiveChange: true } })).run, false);

@@ -5,6 +5,7 @@ the version this file was introduced beside (60820.1); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60827.1 | 2026-08-27 | `tidy-issues` ignores any issue carrying a `task:*` label — the scheduler's own queue work items, which the signal's title filter misses when one is filed under another title (#1386). |
 | 60824.2 | 2026-08-24 | `tidy-branches` is dropped; the pack keeps `tidy-issues` and `tidy-prs` (#1240). |
 | 60824.1 | 2026-08-24 | Prose names the scheduler at its new home in the `claudinite-tasks` pack (#1317). |
 | 60823.1 | 2026-08-23 | Its seed record reads the declaration under either settings-file name while the #1252 rename drains. |

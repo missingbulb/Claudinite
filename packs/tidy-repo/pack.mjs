@@ -14,7 +14,7 @@
 // each has its own trigger and scope, none depends on another's result, so there
 // is no ordering barrier and a dimension with nothing to do stays silent.
 export default {
-  version: '60824.2',
+  version: '60827.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'housekeeping of open issues, pull requests and branches in one repo — triage verdicts, standing trackers, assess-vs-act policy',
