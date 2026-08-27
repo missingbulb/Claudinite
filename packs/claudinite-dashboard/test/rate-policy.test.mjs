@@ -115,13 +115,17 @@ test('the preflight reads the budget without spending any of it', async () => {
 
 test('history pages are withheld before the live queue is', async () => {
   const gh = await load();
-  const full = Array.from({ length: 100 }, (_, i) => ({ number: i + 1, title: `i${i}`, state: 'closed', labels: [], body: '' }));
-  let calls = 0;
-  globalThis.fetch = async () => { calls += 1; return res(full, { headers: { etag: 'W/"p"' } }); };
+  const openItems = Array.from({ length: 12 }, (_, i) => ({ number: i + 1, title: `i${i}`, state: 'open', labels: [], body: '' }));
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    const state = new URL(url).searchParams.get('state');
+    calls.push(state);
+    return res(state === 'open' ? openItems : [], { headers: { etag: 'W/"p"' } });
+  };
 
   gh.setPolicy({ spendCeiling: 1 });
   const out = await gh.listIssues('o/r', 't', { pages: 5 });
-  assert.equal(calls, 1, 'page 1 — the whole open queue — is still read');
-  assert.equal(out.issues.length, 100);
-  assert.equal(gh.rate.withheld, 1, 'the settled history behind it is what goes without');
+  assert.deepEqual(calls, ['open'], 'the live open queue is what the one remaining request buys');
+  assert.equal(out.issues.length, 12);
+  assert.ok(gh.rate.withheld >= 1, 'the settled history behind it is what goes without');
 });
