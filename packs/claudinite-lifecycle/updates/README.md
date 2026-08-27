@@ -45,7 +45,7 @@ pressure to route one through here is exactly what the name makes reviewable.
 
 A runner here **judges everything before it writes anything**: a refused update leaves the repo
 running exactly what it was running, which is the same transactional contract the vendor writer
-keeps. Where it cannot proceed it returns a `needs-human` outcome naming what a person has to do —
+keeps. Where it cannot proceed it returns a parked outcome naming what a person has to do —
 it never half-applies, and it never quietly skips the step it could not take.
 
 These run **from a canon checkout against a target repo**, like vendoring: updating is done *on* a

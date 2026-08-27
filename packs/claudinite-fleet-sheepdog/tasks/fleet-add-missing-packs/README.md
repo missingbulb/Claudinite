@@ -31,4 +31,4 @@ The member's agent reads the issue it is running on, its own executor confirms/a
 
 ## Failure is loud
 
-A member that could not be swept is `unknown` — never "fitted" — and that fails the run; the executor converges the item to `needs-human`. A member whose scheduler refused the nudge dispatch is only reported: since the work list is a marked issue, the dispatch decides when it is adopted, never whether.
+A member that could not be swept is `unknown` — never "fitted" — and that fails the run; the executor parks the item. A member whose scheduler refused the nudge dispatch is only reported: since the work list is a marked issue, the dispatch decides when it is adopted, never whether.

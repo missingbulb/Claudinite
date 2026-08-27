@@ -8,6 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -342,4 +343,58 @@ test('a park is one label, and a kind word resolves to it', () => {
 test('the re-queue lever is stated in one place, and it is clearing the status', () => {
   assert.match(requeueHint, /clear its status label/);
   assert.match(requeueHint, new RegExp(STATUS_READY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+});
+
+// THE WRITER-FACING PROSE. A brief is read by an agent at run time and is the only
+// thing telling it what to write, so a brief still naming the retired pair asks for
+// a torn state the janitor then repairs. Scanned from the tracked tree rather than a
+// list, so a new brief is covered the moment it is added.
+//
+// Three exclusions, each because the legacy spelling is the point there:
+//   - `executor.md`, the RETIRED slot mechanism's instructions, frozen for routines
+//     nobody has repointed — its vocabulary is that scheme's, not this one's;
+//   - every `VERSIONS.md`, a historical record of what each version did;
+//   - the sim's scenario-coverage README, whose rows name DESIGN's legacy table.
+const PROSE_EXCLUDED = /(^|\/)(VERSIONS\.md$|executor\.md$|test\/sim\/README\.md$)/;
+const trackedProse = (pattern) => execFileSync('git', ['ls-files', pattern], { encoding: 'utf8' })
+  .split('\n').filter((p) => p && !PROSE_EXCLUDED.test(p));
+
+test('no pack brief tells a writer to spell a status the way nothing writes it', () => {
+  // The bare park as a code span — `on_interrupt: 'needs-human'` is a declaration
+  // value rather than a label, and does not match.
+  const retired = [`\`${NEEDS_HUMAN}\``, ...[LEGACY_BLOCKED, LEGACY_READY, LEGACY_EXECUTING,
+    LEGACY_AGENT, LEGACY_TASK_DONE, LEGACY_TASK_OBSOLETE, ORIGIN_SCHEDULE].flatMap((l) => [`\`${l}\``, `${l} `]),
+  `\`task:needs-human-`];
+  const offences = [];
+  for (const path of trackedProse('packs/**/*.md')) {
+    const text = readFileSync(path, 'utf8');
+    for (const spelling of retired) if (text.includes(spelling)) offences.push(`${path}: ${spelling.trim()}`);
+  }
+  assert.deepEqual(offences, [], `these briefs name a spelling nothing writes:\n${offences.join('\n')}`);
+});
+
+// A check's `fix` line is the sentence the agent acts on, so it states today's
+// vocabulary for the same reason a brief does.
+test('no check catalog remedy names a status nothing writes', () => {
+  // The agent-facing fields, wherever they sit in a catalog's nesting.
+  const remedies = (node, out = []) => {
+    if (Array.isArray(node)) node.forEach((n) => remedies(n, out));
+    else if (node && typeof node === 'object') {
+      for (const [key, value] of Object.entries(node)) {
+        if (typeof value === 'string' && ['fix', 'failureMessage', 'what'].includes(key)) out.push([key, value]);
+        else remedies(value, out);
+      }
+    }
+    return out;
+  };
+  const offences = [];
+  for (const path of trackedProse('packs/*/declared-checks.json')) {
+    for (const [field, text] of remedies(JSON.parse(readFileSync(path, 'utf8')))) {
+      for (const legacy of [LEGACY_BLOCKED, LEGACY_READY, LEGACY_EXECUTING, LEGACY_AGENT,
+        LEGACY_TASK_DONE, LEGACY_TASK_OBSOLETE, ORIGIN_SCHEDULE, NEEDS_HUMAN]) {
+        if (new RegExp(`(^|[^:\\w-])${legacy}([^-\\w]|$)`).test(text)) offences.push(`${path} ${field}: ${legacy}`);
+      }
+    }
+  }
+  assert.deepEqual(offences, [], `these remedies name a spelling nothing writes:\n${offences.join('\n')}`);
 });

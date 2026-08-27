@@ -57,4 +57,4 @@ Its *implementation* reads and writes every repo under the owner, but its declar
 
 ## Failure is loud
 
-A member whose declaration cannot be read, or written (an unusable token, a protected default branch, a 409), is classified `unknown`: it is named in the summary and the sweep exits non-zero. The executor treats a non-zero code-work subprocess as a failed task and converges the item to `needs-human`, so a missing **Contents write** scope escalates rather than silently leaving members undeclared.
+A member whose declaration cannot be read, or written (an unusable token, a protected default branch, a 409), is classified `unknown`: it is named in the summary and the sweep exits non-zero. The executor treats a non-zero code-work subprocess as a failed task and parks the item, so a missing **Contents write** scope escalates rather than silently leaving members undeclared.

@@ -583,7 +583,7 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
      label at all**, invisible to every rule that filters by state. The
      janitor gains the repair (§11): an open work item wearing neither a
      status is off the state machine entirely →
-     `needs-human` + `task:status:needs-human-decision`, a human's to look at — which
+     `task:status:needs-human-decision`, a human's to look at — which
      state it should have had is a judgement about what actually ran.
 3. **Validate in code**: the body's first line is a legal task path, the file
    exists at HEAD, the pack is declared, `task.mjs` parses. Task gone → close,
@@ -956,7 +956,7 @@ which is the platform-agnosticism the sketch asks for. One vendored module owns
 parse/serialize of the two fields; nothing else touches them.
 
 Cycles: the scheduler run readies nothing in a `Blocked-by` cycle, forever, and the
-stale escalation (§11) surfaces it as `needs-human` + `task:status:needs-human-action` after ~2 periods — the
+stale escalation (§11) surfaces it as `task:status:needs-human-action` after ~2 periods — the
 same convergence-not-prevention posture as the rest of the system. The scheduler run
 does not attempt cycle detection; the janitor's health review may.
 
@@ -1055,7 +1055,7 @@ enumerates executors, which is why adding one requires telling no one.
 | executor run died with items still queued | n/a (one implicit executor; the next slot was a day away) | **the failure-continuation job** (owner, 2026-08-15): `needs: execute`, `if: failure() \|\| cancelled()` re-dispatches on a fresh runner, so the *queue* resumes in ~a minute while the dead run's own item waits for the leash; the scheduler run drain is the backstop when the whole workflow run is lost (§10, S36) |
 | agent session died mid-run | janitor: stale `agent-running` → `needs-human` after ~3h | same, on `task:status:running-agent` (a hand-off comment names the session, so the janitor can say *which* session died) — the park is a `needs-human-*` status |
 | CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: a refused call parks with the error at once; an unanswered call leaves the item with the agent and the agent leash settles it — one call per item, never retried (§6.6) |
-| item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing; the stale item converges `needs-human` + `task:status:needs-human-action` — the lane is not being drained and the fix is outside the item — and leaves the queue |
+| item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing; the stale item converges `task:status:needs-human-action` — the lane is not being drained and the fix is outside the item — and leaves the queue |
 | dependency never resolves | n/a | **the stale-ready rule cannot see it** — a blocked item is never ready (F14, caught by the simulator against S18's claim). The janitor gains a third rule: a blocked item whose blockers have not resolved for ~2 days gets an escalation *comment* — labels untouched, so the item still proceeds by itself the moment its blockers resolve; a human who decides it is dead closes it by hand |
 
 The janitor remains an ordinary daily task and shrinks twice over: re-arm and
@@ -1067,12 +1067,12 @@ janitor" split, deliberately: the split's purpose was that recovery happen
 rule that runs once per scheduler run satisfies that as fully as one that runs once per
 day. What stays with the janitor is everything needing judgment or a longer
 horizon — four rules and a review: the dead *agent* claim (`task:status:running-agent`
-silent past ~3h → `needs-human` + `task:status:needs-human-decision` (what the dead
+silent past ~3h → `task:status:needs-human-decision` (what the dead
 session left behind decides whether this re-queues), the hand-off comment naming which session
 died), the stale-ready escalation (unpicked past ~2 periods →
-`needs-human`), the stuck-dependency sweep (F14 above — comment-only), the
+a park), the stuck-dependency sweep (F14 above — comment-only), the
 stateless-item repair (an open work item wearing neither a `task:*` state
-nor `needs-human` — a torn label swap's leavings, §6.2 → `needs-human` +
+nor a park — a torn label swap's leavings, §6.2 →
 `task:status:needs-human-decision`),
 and the health review, which gains the queue (ready-item age, blocked-item
 depth, outcome mix) as its subject and can now compute all of it from
@@ -1171,7 +1171,7 @@ in a task's life, and Action-side is precisely where the executor runs; the
 agent session it invokes still carries no secrets, unchanged. Baselining asks
 the owner (the standing-issue posture) for any endpoint secret the repo
 declares but has not configured; until then the tasks naming that endpoint
-converge `needs-human` + `task:status:needs-human-action` at hand-off with the missing secret named — the same
+converge `task:status:needs-human-action` at hand-off with the missing secret named — the same
 "nothing fails, the task just doesn't work yet" posture `required_secrets`
 has.
 
@@ -1308,8 +1308,7 @@ executor workflow is the only consumer. End to end:
    token is simply the default endpoint's entry.
 7. **Missing secret** — absent from the bag: baselining asks the
    owner on its standing issue (the adoption-interview posture), and until
-   set, execution parks the affected item `needs-human` +
-   `task:status:needs-human-action` naming the missing secret — at the work step for `required_secrets`, at hand-off for an
+   set, execution parks the affected item `task:status:needs-human-action` naming the missing secret — at the work step for `required_secrets`, at hand-off for an
    endpoint token. Nothing fails silently; the task just doesn't work yet.
 8. **Rotation** — rotate the value in repo settings; nothing else changes,
    because names are the interface everywhere above.
@@ -1354,7 +1353,7 @@ the design rather than confirming it, the section it changed is named.
 3. **Timing in a precondition is advisory, not forbidden** (§6.4): permitted
    where the verdict cannot flip between creation and pickup for scheduling
    reasons alone. No check — the property is not mechanically checkable, and
-   the residual failure is a visible `task:obsolete`, not a wrong result.
+   the residual failure is a visible `task:status:rejected`, not a wrong result.
 4. **A precondition is go/no-go, never maybe-later** (§5) — *changed the
    design twice*. First cut: one verdict per occurrence at the first scheduler run
    after the anchor, which required a `lastSchedulerRun` read from the Actions ledger
@@ -1787,8 +1786,7 @@ applying the mark to another person's issue authorizes nothing by itself.
 reach an issue it cannot read, so declining on a transient API failure (a rate
 limit, a 500) would strand the adopted status on the issue forever over nothing —
 the request silently eaten. Only a definitive *gone* declines; any other read
-failure **fails the run**: the item parks `needs-human` +
-`task:status:needs-human-failure`, open and visible, and the ordinary re-queue lever
+failure **fails the run**: the item parks `task:status:needs-human-failure`, open and visible, and the ordinary re-queue lever
 (§4) retries it once the API recovers.
 
 **How the read happens, as built (2026-08-19).** A precondition is pure over
@@ -2079,7 +2077,7 @@ read, never inside `anchorInstant`. A frequency is read by more than the calenda
 feeds the janitor's stale-ready bound (`queue/janitor-rules.mjs`, `staleReadyPeriods` × period)
 and the precondition's signal window (`queue/signals.mjs`, period + an hour of slack). Normalizing
 only the anchor would leave `periodMs('hourly')` returning an hour, so a task that now runs daily
-would be judged stale after two HOURS and see a two-hour signal window — a spurious `needs-human`
+would be judged stale after two HOURS and see a two-hour signal window — a spurious
 park on every member still declaring the old token, which is precisely the population the
 tolerance exists for.
 

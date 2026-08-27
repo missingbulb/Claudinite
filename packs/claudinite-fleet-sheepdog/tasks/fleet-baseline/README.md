@@ -59,4 +59,4 @@ The standalone `fleet-baseline.yml` workflow (retired 2026-08-11, #749) lived in
 
 ## Failure is loud
 
-A member that could not be dispatched — a missing scheduler workflow, a PAT without Actions write, a workflow GitHub disabled — is named in the summary and the sweep exits non-zero. **So is a member that was dispatched and never reached canon's versions**: that is the failure this whole follow exists to surface, and the one the dispatch-count report used to show as a success. The executor converges the item to `needs-human`, so either escalates rather than silently leaving part of the fleet behind.
+A member that could not be dispatched — a missing scheduler workflow, a PAT without Actions write, a workflow GitHub disabled — is named in the summary and the sweep exits non-zero. **So is a member that was dispatched and never reached canon's versions**: that is the failure this whole follow exists to surface, and the one the dispatch-count report used to show as a success. The executor parks the item, so either escalates rather than silently leaving part of the fleet behind.
