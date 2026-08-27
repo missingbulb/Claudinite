@@ -28,20 +28,25 @@ test('tidy-repo is a declared pack (no fingerprint) with its skills; its tasks a
   assert.equal(pack.run_daily, undefined);
   assert.deepEqual(
     readdirSync(join(PACK_DIR, 'skills')).sort(),
-    ['single-issue-triage', 'single-pr-status'],
+    ['improve-comments', 'single-issue-triage', 'single-pr-status'],
     'the worker skills are bundled in this pack\'s own skills/'
   );
 });
 
-test('one task per tidy dimension — the repo-tidy pass is split two ways', () => {
-  assert.deepEqual(readdirSync(join(PACK_DIR, 'tasks')).sort(), ['tidy-issues', 'tidy-prs']);
+test('one task per tidy dimension — the repo-tidy pass is split three ways', () => {
+  assert.deepEqual(
+    readdirSync(join(PACK_DIR, 'tasks')).sort(),
+    ['improve-comments', 'tidy-issues', 'tidy-prs'],
+  );
 });
 
-test('every tidy task: id matches its dir, sonnet, outcome none, bounded, worker doc present', () => {
+test('every GitHub-object tidy task: id matches its dir, sonnet, outcome none, bounded, worker doc present', () => {
+  // improve-comments is deliberately outside this loop: it is the one dimension whose
+  // subject is the repo's source, so it alone opens a PR and alone pays for opus.
   for (const t of [tidyIssues, tidyPrs]) {
     assert.ok(existsSync(taskDir(t.id)), `${t.id} has no task directory of its own`);
     assert.equal(t.agent_model, 'sonnet');    // landed-status / implemented-in-main are judgment calls
-    assert.equal(t.expected_outcome, 'none'); // no tidy dimension ever opens or merges a PR
+    assert.equal(t.expected_outcome, 'none'); // no GitHub-object dimension ever opens or merges a PR
     assert.ok(Number.isInteger(t.agent_execution_timeout) && t.agent_execution_timeout > 0);
     assert.ok(existsSync(join(taskDir(t.id), t.agent_instructions)), `worker doc missing: ${t.id}/${t.agent_instructions}`);
   }

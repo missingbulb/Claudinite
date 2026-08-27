@@ -935,6 +935,30 @@ module.exports = { issue, check };
     },
   },
   {
+    name: 'tidy-repo-member',
+    why: 'a member declaring tidy-repo, whose improve-comments skill ships a BLOCKING gate over the repo\'s own source — the gate is silent unless a branch carries the pass\'s pinned commit subject, and this proves an ordinary member converges green rather than going red overnight on a rule nobody there asked for',
+    files: {
+      'README.md': '# fixture-tidy-repo-member\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'tidy-repo']),
+      // Ordinary source with ordinary comments: the shape the gate must stay inert
+      // on. A member converges on its default branch and never writes the pass's
+      // commit subject, so nothing here should engage the rule — which is exactly
+      // the claim a member's green run has to make. (That it FIRES is proved by its
+      // own see-it-fail fixtures in the pack's tests.)
+      'src/app.mjs': `// The one place the retry budget is stated; the poller below reads it rather
+// than carrying a second copy.
+export const MAX_ATTEMPTS = 3;
+
+export function attempt(fn) {
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    try { return fn(); } catch { /* the last failure is the one that throws */ }
+  }
+  throw new Error('exhausted');
+}
+`,
+    },
+  },
+  {
     name: 'macos-app',
     why: 'a member declaring the macos pack over a conforming Mac app — the pack\'s two exit-path rules are blocking, and this proves an app in the shape they are about (AppKit, a capture tap, terminate-time teardown) converges green rather than going red overnight on a rule nobody asked for',
     files: {
