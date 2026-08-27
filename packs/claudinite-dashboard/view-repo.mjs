@@ -16,7 +16,7 @@
 import * as gh from './github.mjs';
 import {
   buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths, periodMs,
-  NEEDS_HUMAN,
+  PARKED,
 } from './model.mjs';
 import {
   ciStatus, humanWork, mountState, estimateMinutes, estimateNote, attentionBreakdown,
@@ -63,7 +63,7 @@ function renderTiles({ open, runs, meta, work, mount, ci, now }) {
   const attention = attentionOf(open);
   const minutes = estimateMinutes(attention);
   const needs = attentionBreakdown(attention);
-  const parked = open.filter((i) => i.state === NEEDS_HUMAN);
+  const parked = open.filter((i) => i.state === PARKED);
   const inflight = runs.filter((r) => r.status === 'in_progress' || r.status === 'queued');
 
   const needsNodes = needs.length

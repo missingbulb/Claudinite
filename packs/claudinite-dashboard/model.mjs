@@ -24,7 +24,7 @@ import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
 } from '../claudinite-tasks/shared-code/work-items.mjs';
 import {
-  WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
+  WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT,
   outcomeOf as decodeOutcome,
   STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
   statusesOn, isParked, parkKindOf, triageLabelFor,
@@ -35,7 +35,7 @@ import {
 } from '../claudinite-tasks/shared-code/work-items.mjs';
 
 export {
-  WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, NEEDS_HUMAN,
+  WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT,
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STUCK_BLOCKED_MS, STALE_READY_PERIODS,
   parseWorkItemTitle, nextAnchor, mostRecentAnchor, periodMs,
 };
@@ -149,10 +149,10 @@ export function parseDeclaration(text) {
 // (tasks-dispatch DESIGN §16.1). One definition, shared with the queue's own reader.
 export { isQueueItem as isWorkItem } from '../claudinite-tasks/shared-code/work-items.mjs';
 
-// The page's five state keys, one per decoded status. The keys are the engine's
-// own constants rather than the canonical spellings, because a page groups the four
-// park kinds under one "needs human" column and routes by the kind separately
-// (`triageOf`).
+// THE PAGE'S FIVE STATE KEYS. Four are the engine's own status labels; the fifth is
+// this page's own word, because a park is four labels and the page groups them into
+// one column, routing by kind separately (`triageOf`). It is a display key and never
+// a label: nothing writes `parked` to an issue.
 const STATE_KEY = new Map([
   [STATUS_BLOCKED, BLOCKED], [STATUS_READY, READY],
   [STATUS_RUNNING_EXECUTOR, EXECUTING], [STATUS_RUNNING_AGENT, AGENT],
@@ -162,9 +162,11 @@ const STATE_KEY = new Map([
 // `unlabelled` for an item wearing none — which is not a display quirk but the
 // torn-label-swap leavings the janitor repairs, so it gets its own rendered state
 // rather than being folded into "blocked".
+export const PARKED = 'parked';
+
 export function stateOf(item) {
   if (item?.state === 'closed') return 'closed';
-  if (isParked(item)) return NEEDS_HUMAN;
+  if (isParked(item)) return PARKED;
   const worn = statusesOn(item).filter((s) => STATE_KEY.has(s));
   if (worn.length === 1) return STATE_KEY.get(worn[0]);
   if (worn.length > 1) return 'torn';
@@ -236,7 +238,7 @@ export function warningsFor(item, now, { periodFor = () => null, isOpen = () => 
       }
     }
   }
-  if (state === NEEDS_HUMAN) {
+  if (state === PARKED) {
     // What the park is asking for, and whether it is holding the task's lane —
     // an approval waiting on a reviewer is not the same alarm as a broken run
     // that has stopped its task being scheduled at all.
@@ -271,7 +273,7 @@ export function describeItem(item, now, opts = {}) {
     state,
     outcome: outcomeOf(item),
     triage: triageOf(item),
-    blockingPark: state === NEEDS_HUMAN && isBlockingPark(item),
+    blockingPark: state === PARKED && isBlockingPark(item),
     urgent: hasLabel(item, URGENT),
     labels: labelNames(item),
     notBefore: body.notBefore,
@@ -358,7 +360,7 @@ function nextAskOf(current, anchor, anchorNote) {
   if (current.state === EXECUTING || current.state === AGENT) {
     return { kind: 'running', phase: current.state === AGENT ? 'agent' : 'executor' };
   }
-  if (current.state === NEEDS_HUMAN) {
+  if (current.state === PARKED) {
     if (current.blockingPark) return { kind: 'held' };
     return anchor ? { kind: 'anchor', at: anchor } : { kind: 'note', note: anchorNote };
   }

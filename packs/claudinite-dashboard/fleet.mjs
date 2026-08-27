@@ -27,12 +27,12 @@
 import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
 import { periodMs } from '../claudinite-tasks/shared-code/anchors.mjs';
 import {
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, URGENT,
+  BLOCKED, READY, EXECUTING, AGENT, URGENT,
   NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, outcomeOf, isParked,
 } from '../claudinite-tasks/shared-code/work-items.mjs';
 import { installedVersions } from '../../engine/installed-versions.mjs';
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../engine/version.mjs';
-import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths } from './model.mjs';
+import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths, PARKED } from './model.mjs';
 import { commitDays } from './activity.mjs';
 import { itemCandidate, pickCandidate } from './next-work.mjs';
 
@@ -158,13 +158,13 @@ export function summariseMember(read, { now, canon = null } = {}) {
   const periodFor = () => null;   // the fleet row needs no per-task cadence
   const described = open.map((i) => describeItem(i, now, { periodFor }));
 
-  const byState = { [BLOCKED]: 0, [READY]: 0, [EXECUTING]: 0, [AGENT]: 0, [NEEDS_HUMAN]: 0, other: 0 };
+  const byState = { [BLOCKED]: 0, [READY]: 0, [EXECUTING]: 0, [AGENT]: 0, [PARKED]: 0, other: 0 };
   for (const d of described) {
     if (byState[d.state] === undefined) byState.other += 1;
     else byState[d.state] += 1;
   }
 
-  const parked = described.filter((d) => d.state === NEEDS_HUMAN);
+  const parked = described.filter((d) => d.state === PARKED);
   // The triage split (tasks-dispatch DESIGN §4): a failure park — or one an older
   // engine left unclassified — holds its task's lane; an action or decision park is
   // a person's inbox; an approval park is a run that SUCCEEDED and waits on a merge.
@@ -179,7 +179,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
   const actions = parked.filter((d) => !d.blockingPark && d.triage === NEEDS_HUMAN_ACTION);
   const decisions = parked.filter((d) => !d.blockingPark && ![NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION].includes(d.triage));
   const inbox = [...actions, ...decisions];
-  const warned = described.filter((d) => d.state !== NEEDS_HUMAN && d.warnings.length);
+  const warned = described.filter((d) => d.state !== PARKED && d.warnings.length);
 
   const outcomes = { done: 0, delivered: 0, obsolete: 0, none: 0 };
   for (const i of closed) outcomes[outcomeOf(i) ?? 'none'] += 1;

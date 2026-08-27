@@ -5,8 +5,9 @@ import {
 } from '../next-work.mjs';
 import { estimateMinutes, parkMinutes, parkMinutesNote } from '../fleet.mjs';
 import {
-  NEEDS_HUMAN, READY, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
+  READY, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
 } from '../../claudinite-tasks/shared-code/work-items.mjs';
+import { PARKED } from '../model.mjs';
 
 const item = (over = {}) => ({
   number: 7,
@@ -19,7 +20,7 @@ const item = (over = {}) => ({
 });
 
 const parked = (over = {}) => item({
-  state: NEEDS_HUMAN,
+  state: PARKED,
   warnings: [{ level: 'serious', text: 'parked for a person' }],
   ...over,
 });

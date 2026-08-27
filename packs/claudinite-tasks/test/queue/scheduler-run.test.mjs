@@ -43,7 +43,9 @@ test('anchors are the slot schedule\'s instants with none of its identity', () =
 test('with no evaluation seam a brand-new task\'s FIRST item is still born blocked (S25)', async () => {
   const { ops } = await planSchedulerRun({ tasks: [task('weeklyish', 'weekly')], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   const [create] = kinds(ops, 'create');
-  assert.deepEqual(create.labels, ['task:blocked']);
+  // The origin rides beside the status for the item's whole life (§3): the schedule
+  // filed this one.
+  assert.deepEqual(create.labels, ['task:origin:planned', 'task:status:blocked']);
   assert.equal(parseWorkItemBody(create.body).notBefore, '2026-08-16T04:00:00.000Z');
 });
 
@@ -55,12 +57,12 @@ test('later occurrences are born ready, and a manual task is never instantiated'
   });
   const creates = kinds(ops, 'create');
   assert.equal(creates.length, 1);
-  assert.deepEqual(creates[0].labels, ['task:ready']);
+  assert.deepEqual(creates[0].labels, ['task:origin:planned', 'task:status:waiting-for-executor']);
   assert.equal(parseWorkItemBody(creates[0].body).notBefore, null);
 });
 
 test('an open standing item suppresses instantiation however long it has stood', async () => {
-  const standing = item({ task: 'daily1', labels: ['origin:schedule', 'task:blocked'], created_at: '2026-06-01T04:10:00Z' });
+  const standing = item({ task: 'daily1', labels: ['origin:schedule', 'task:status:blocked'], created_at: '2026-06-01T04:10:00Z' });
   const { ops } = await planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [standing], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.equal(kinds(ops, 'create').length, 0);
 });
@@ -85,8 +87,8 @@ test('the occurrence guard has both halves: created-at-or-after AND closed-at-or
 // F16 — nothing documents that a REST list from another node sees a creation
 // seconds old, so the scheduler run assumes a duplicate WILL happen and self-heals first.
 test('a duplicate standing item is closed obsolete, oldest kept (F16)', async () => {
-  const a = item({ task: 'daily1', labels: ['origin:schedule', 'task:ready'], created_at: '2026-08-14T04:10:00Z' });
-  const b = item({ task: 'daily1', labels: ['origin:schedule', 'task:ready'], created_at: '2026-08-14T04:11:00Z' });
+  const a = item({ task: 'daily1', labels: ['origin:schedule', 'task:status:waiting-for-executor'], created_at: '2026-08-14T04:10:00Z' });
+  const b = item({ task: 'daily1', labels: ['origin:schedule', 'task:status:waiting-for-executor'], created_at: '2026-08-14T04:11:00Z' });
   const { ops } = await planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [a, b], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   const dedupes = kinds(ops, 'dedupe');
   assert.deepEqual(dedupes.map((o) => o.issue), [b.number]);
@@ -97,8 +99,8 @@ test('ad-hoc items neither suppress nor consume a scheduled occurrence (§3)', a
   // Ad-hoc is STRUCTURAL (§15.26), so both of its shapes are asserted: a qualified
   // item for a scheduled task, and a `manual` task's item, which has no anchor to
   // stand for. Neither is in the daily family, so today's occurrence is still filed.
-  const fanOut = item({ task: 'daily1', qualifier: 'member-x', labels: ['task:ready'], created_at: '2026-08-14T09:00:00Z' });
-  const lever = item({ task: 'lever', labels: ['task:ready'], created_at: '2026-08-14T09:00:00Z' });
+  const fanOut = item({ task: 'daily1', qualifier: 'member-x', labels: ['task:status:waiting-for-executor'], created_at: '2026-08-14T09:00:00Z' });
+  const lever = item({ task: 'lever', labels: ['task:status:waiting-for-executor'], created_at: '2026-08-14T09:00:00Z' });
   const { ops } = await planSchedulerRun({
     tasks: [task('daily1', 'daily'), task('lever', 'manual')],
     items: [fanOut, lever], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE,
@@ -112,7 +114,7 @@ test('an unqualified item for a scheduled task IS that task\'s standing item, ma
   // The origin marker is gone (§15.26) and nothing replaced it with a second one: an
   // item titled with the task and nothing else, whose task is on a calendar, is the
   // occurrence — so it suppresses instantiation, and a twin beside it is deduped.
-  const unmarked = item({ task: 'daily1', labels: ['task:ready'], created_at: '2026-08-14T04:10:00Z' });
+  const unmarked = item({ task: 'daily1', labels: ['task:status:waiting-for-executor'], created_at: '2026-08-14T04:10:00Z' });
   const { ops } = await planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [unmarked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.deepEqual(kinds(ops, 'create'), []);
 });
@@ -121,7 +123,7 @@ test('an unqualified item for a scheduled task IS that task\'s standing item, ma
 
 test('a blocked item readies when its time has passed and its blockers have closed', async () => {
   const sleeping = item({
-    task: 'daily1', labels: ['origin:schedule', 'task:blocked'], created_at: '2026-08-13T04:10:00Z',
+    task: 'daily1', labels: ['origin:schedule', 'task:status:blocked'], created_at: '2026-08-13T04:10:00Z',
     body: 'packs/p/tasks/daily1/task.md\n\nNot-before: 2026-08-14T04:00:00Z\n',
   });
   const early = await planSchedulerRun({ tasks: [], items: [sleeping], now: '2026-08-14T03:00:00Z', schedule: SCHEDULE });
@@ -132,7 +134,7 @@ test('a blocked item readies when its time has passed and its blockers have clos
 
 test('an unreadable or open blocker delays rather than releases', async () => {
   const blocked = item({
-    task: 'follow', labels: ['task:blocked'], created_at: '2026-08-13T04:10:00Z',
+    task: 'follow', labels: ['task:status:blocked'], created_at: '2026-08-13T04:10:00Z',
     body: 'packs/p/tasks/follow/task.md\n\nBlocked-by: #500, #501\n',
   });
   const bothOpen = await planSchedulerRun({ tasks: [], items: [blocked], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, stateOf: () => 'open' });
@@ -144,7 +146,7 @@ test('an unreadable or open blocker delays rather than releases', async () => {
 });
 
 test('an item in triage is never readied by the scheduler run — only a human re-queues it', async () => {
-  const triage = item({ task: 'daily1', labels: ['origin:schedule', 'task:blocked', 'needs-human'], created_at: '2026-08-13T04:10:00Z' });
+  const triage = item({ task: 'daily1', labels: ['origin:schedule', 'task:status:needs-human-decision'], created_at: '2026-08-13T04:10:00Z' });
   const { ops } = await planSchedulerRun({ tasks: [], items: [triage], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.equal(kinds(ops, 'ready').length, 0);
 });
@@ -152,22 +154,24 @@ test('an item in triage is never readied by the scheduler run — only a human r
 // --- job 3: reclaim -----------------------------------------------------------
 
 test('a claim silent past the leash is reclaimed to the queue', async () => {
-  const stuck = item({ task: 'daily1', labels: ['origin:schedule', 'task:executing'], created_at: '2026-08-14T04:10:00Z', updated_at: '2026-08-14T04:15:00Z' });
+  const stuck = item({ task: 'daily1', labels: ['origin:schedule', 'task:status:running-executor'], created_at: '2026-08-14T04:10:00Z', updated_at: '2026-08-14T04:15:00Z' });
   const early = await planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [stuck], now: '2026-08-14T04:50:00Z', schedule: SCHEDULE });
   assert.equal(kinds(early.ops, 'reclaim').length, 0);
   const late = await planSchedulerRun({ tasks: [task('daily1', 'daily')], items: [stuck], now: '2026-08-14T05:30:00Z', schedule: SCHEDULE });
-  assert.deepEqual(kinds(late.ops, 'reclaim').map((o) => o.to), ['task:ready']);
+  assert.deepEqual(kinds(late.ops, 'reclaim').map((o) => o.to), ['task:status:waiting-for-executor']);
 });
 
 // The ack-early/ack-late dial: a task that cannot promise a safe re-run is not
 // re-queued by a recovery path — at-most-once plus a human.
 test('a task declaring on_interrupt: needs-human is reclaimed to triage, not to the queue', async () => {
-  const stuck = item({ task: 'oneshot', labels: ['origin:schedule', 'task:executing'], created_at: '2026-08-14T04:10:00Z', updated_at: '2026-08-14T04:15:00Z' });
+  const stuck = item({ task: 'oneshot', labels: ['origin:schedule', 'task:status:running-executor'], created_at: '2026-08-14T04:10:00Z', updated_at: '2026-08-14T04:15:00Z' });
   const { ops } = await planSchedulerRun({
     tasks: [task('oneshot', 'daily', { on_interrupt: 'needs-human' })],
     items: [stuck], now: '2026-08-14T05:30:00Z', schedule: SCHEDULE,
   });
-  assert.deepEqual(kinds(ops, 'reclaim').map((o) => o.to), ['needs-human']);
+  // The kind says what the human is being asked for: whether the interrupted run
+  // left anything behind, and so whether this re-queues at all — a decision.
+  assert.deepEqual(kinds(ops, 'reclaim').map((o) => o.to), ['task:status:needs-human-decision']);
   assert.match(kinds(ops, 'reclaim')[0].reason, /on_interrupt/);
 });
 
@@ -181,8 +185,8 @@ test('the scheduler run evaluates nothing: a task with a precondition that throw
 // Forcing across repos: the enforcer dispatches, the member wakes its own item.
 
 const wakeItems = [
-  item({ task: 'update', labels: ['task:blocked', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
-  item({ task: 'tidy-prs', labels: ['task:executing', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
+  item({ task: 'update', labels: ['task:status:blocked', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
+  item({ task: 'tidy-prs', labels: ['task:status:running-executor', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
 ];
 const wakeTasks = [task('update', 'daily'), task('tidy-prs', 'daily')];
 
@@ -234,7 +238,7 @@ test('a minted item consumes the current occurrence, so the scheduler run does n
   // would let the next scheduler run create a second one beside it.
   const now = '2026-08-16T10:00:00Z';
   const minted = item({
-    task: 'update', labels: ['origin:schedule', 'task:ready'],
+    task: 'update', labels: ['origin:schedule', 'task:status:waiting-for-executor'],
     created_at: now, updated_at: now,
   });
   const { ops } = await planSchedulerRun({ tasks: [task('update', 'daily')], items: [minted], now, schedule: SCHEDULE });
@@ -242,7 +246,7 @@ test('a minted item consumes the current occurrence, so the scheduler run does n
 });
 
 test('an item already in flight is left alone — waking it would drop an episode boundary on a live claim', () => {
-  for (const label of ['task:ready', 'task:executing', 'task:agent']) {
+  for (const label of ['task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent']) {
     const live = [item({ task: 'update', labels: [label], created_at: '2026-08-16T00:00:00Z' })];
     const { wake, already } = planWake('update', wakeTasks, live);
     assert.deepEqual(wake, [], `${label} must not be re-woken`);
@@ -251,7 +255,7 @@ test('an item already in flight is left alone — waking it would drop an episod
 });
 
 test('a needs-human item IS wakeable — the force is the sanctioned road back from triage', () => {
-  const parked = [item({ task: 'update', labels: ['needs-human'], created_at: '2026-08-16T00:00:00Z' })];
+  const parked = [item({ task: 'update', labels: ['task:status:needs-human-failure'], created_at: '2026-08-16T00:00:00Z' })];
   const { wake } = planWake('update', wakeTasks, parked);
   assert.equal(wake.length, 1);
 });
@@ -278,9 +282,9 @@ test('an empty spec asks for nothing at all', () => {
 // nobody) and for a person's inbox is a bug: a PR nobody has reviewed must not
 // stop tomorrow's run.
 test('a non-blocking park does not suppress the next occurrence', async () => {
-  for (const triage of ['task:needs-human-approval', 'task:needs-human-action', 'task:needs-human-decision']) {
+  for (const triage of ['task:status:needs-human-approval', 'task:status:needs-human-action', 'task:status:needs-human-decision']) {
     const parked = item({
-      task: 'x', labels: ['origin:schedule', 'needs-human', triage],
+      task: 'x', labels: ['origin:schedule', triage],
       created_at: '2026-08-13T04:00:00Z',
     });
     const { ops } = await planSchedulerRun({
@@ -293,7 +297,7 @@ test('a non-blocking park does not suppress the next occurrence', async () => {
 });
 
 test('a failure park — and an unclassified one — holds the task\'s lane', async () => {
-  for (const labels of [['needs-human', 'task:needs-human-failure'], ['needs-human']]) {
+  for (const labels of [['task:status:needs-human-failure'], ['task:status:needs-human-failure']]) {
     const parked = item({
       task: 'x', labels: ['origin:schedule', ...labels], created_at: '2026-08-13T04:00:00Z',
     });
@@ -374,7 +378,7 @@ test('an evaluation error fails OPEN: the item is created exactly as before (#11
   });
   const [create] = kinds(ops, 'create');
   assert.ok(create, 'never fewer runs because a read failed');
-  assert.deepEqual(create.labels, ['task:ready']);
+  assert.deepEqual(create.labels, ['task:origin:planned', 'task:status:waiting-for-executor']);
   const row = kinds(ops, 'board')[0].rows.find((r) => r.task === 'p/daily1');
   assert.equal(row.verdict, 'fail-open');
 });
@@ -406,7 +410,7 @@ const sleepingBody = (notBefore, extra = '') => 'packs/p/tasks/daily1/task.md\n\
 
 test('the migration closes a sleeping rolled item and seeds its verdict onto the board', async () => {
   const sleeping = item({
-    task: 'daily1', labels: ['task:blocked'], created_at: '2026-08-13T04:17:00Z',
+    task: 'daily1', labels: ['task:status:blocked'], created_at: '2026-08-13T04:17:00Z',
     body: sleepingBody('2026-08-15T04:00:00.000Z'),
   });
   const { ops } = await planSchedulerRun({
@@ -428,12 +432,12 @@ test('the migration closes a sleeping rolled item and seeds its verdict onto the
 
 test('the migration spares a blocker wait and a due item', async () => {
   const withBlocker = item({
-    task: 'daily1', labels: ['task:blocked'], created_at: '2026-08-13T04:17:00Z',
+    task: 'daily1', labels: ['task:status:blocked'], created_at: '2026-08-13T04:17:00Z',
     body: sleepingBody('2026-08-15T04:00:00.000Z', 'Blocked-by: #7\n'),
   });
   // a rolled item whose wake has PASSED is due, not sleeping — job 2's to ready
   const due = item({
-    task: 'daily2', labels: ['task:blocked'], created_at: '2026-08-12T04:17:00Z',
+    task: 'daily2', labels: ['task:status:blocked'], created_at: '2026-08-12T04:17:00Z',
     body: 'packs/p/tasks/daily2/task.md\n\nNot-before: 2026-08-14T04:00:00.000Z\n'
       + '### Last verdict\n\n- 2026-08-13T04:20:00Z — the precondition declined: no work\n',
   });
@@ -487,7 +491,8 @@ test('the booked window is not re-booked for the rest of it, and is asked at its
     board: { rows: new Map(booked) },
   });
   const [create] = kinds(arrived.ops, 'create');
-  assert.deepEqual(create.labels, ['task:ready'], 'the first anchor files a ready item, never a blocked one');
+  assert.deepEqual(create.labels, ['task:origin:planned', 'task:status:waiting-for-executor'],
+    'the first anchor files a ready item, never a blocked one');
   assert.equal(parseWorkItemBody(create.body).notBefore, null);
 });
 

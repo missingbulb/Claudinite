@@ -13,7 +13,7 @@ let seq = 900;
 // `daily` for the tasks these fixtures name, `manual` for the lever.
 const frequencyOf = (id) => (id === 'p/lever' ? 'manual' : 'daily');
 
-const it = ({ task = 'a', labels = ['task:ready'], created_at = '2026-08-14T04:00:00Z', qualifier = null }) => ({
+const it = ({ task = 'a', labels = ['task:status:waiting-for-executor'], created_at = '2026-08-14T04:00:00Z', qualifier = null }) => ({
   number: seq += 1,
   title: `[claudinite-work] p/${task}${qualifier ? ` ${qualifier}` : ''}`,
   body: `packs/p/tasks/${task}/task.md\n`, state: 'open', labels, created_at, updated_at: created_at,
@@ -24,7 +24,7 @@ const it = ({ task = 'a', labels = ['task:ready'], created_at = '2026-08-14T04:0
 test('urgent first, always — whatever the draw says', () => {
   const a = it({ task: 'a', created_at: '2026-08-14T01:00:00Z' });
   const b = it({ task: 'b', created_at: '2026-08-14T02:00:00Z' });
-  const urgent = it({ task: 'c', created_at: '2026-08-14T03:00:00Z', labels: ['task:ready', 'task:urgent'] });
+  const urgent = it({ task: 'c', created_at: '2026-08-14T03:00:00Z', labels: ['task:status:waiting-for-executor', 'task:urgent'] });
   // The draw is taken in input order, so this one hands the urgent item the
   // WORST key: it still sorts first, because urgency outranks the draw.
   const seq = [0.1, 0.2, 0.9];
@@ -54,9 +54,9 @@ test('an injected draw fixes the order it would otherwise randomize', () => {
 });
 
 test('the same-title mutex serializes twins and lets fan-out qualifiers through (S15/F6)', () => {
-  const running = it({ task: 'a', labels: ['task:executing'] });
-  const twin = it({ task: 'a', labels: ['task:ready'] });
-  const sibling = it({ task: 'a', qualifier: 'member-x', labels: ['task:ready'] });
+  const running = it({ task: 'a', labels: ['task:status:running-executor'] });
+  const twin = it({ task: 'a', labels: ['task:status:waiting-for-executor'] });
+  const sibling = it({ task: 'a', qualifier: 'member-x', labels: ['task:status:waiting-for-executor'] });
   assert.deepEqual(pickOrder([running, twin, sibling]).map((i) => i.number), [sibling.number]);
 });
 
@@ -66,14 +66,14 @@ test('the `after` yield skips a dependent only while its upstream is live this c
   const taskAfter = (id) => (id === 'p/down' ? ['p/up'] : []);
   const down = it({ task: 'down' });
 
-  for (const state of ['task:ready', 'task:executing', 'task:agent']) {
+  for (const state of ['task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent']) {
     const up = it({ task: 'up', labels: [state] });
     assert.equal(pickOrder([up, down], { taskAfter, frequencyOf }).some((i) => i.number === down.number), false,
       `a live upstream (${state}) holds the dependent back`);
   }
   // A ROLLED upstream declined this cycle; a broken one is in triage. Neither may
   // halt its dependents — the bound the old exclusive claim drew at three days.
-  for (const state of ['task:blocked', 'needs-human']) {
+  for (const state of ['task:status:blocked']) {
     const up = it({ task: 'up', labels: [state] });
     assert.equal(pickOrder([up, down], { taskAfter, frequencyOf }).some((i) => i.number === down.number), true,
       `a ${state} upstream does not block`);
@@ -84,11 +84,11 @@ test('the `after` yield skips a dependent only while its upstream is live this c
 
 test('an ad-hoc item never yields — `after` is a scheduled-chain property', () => {
   const taskAfter = () => ['p/up'];
-  const up = it({ task: 'up', labels: ['task:executing'] });
+  const up = it({ task: 'up', labels: ['task:status:running-executor'] });
   // Both structural shapes of ad-hoc: a qualified item for a scheduled task, and a
   // `manual` task's item. Neither yields, and neither is yielded to.
-  const qualified = it({ task: 'down', qualifier: '#42', labels: ['task:ready'] });
-  const lever = it({ task: 'lever', labels: ['task:ready'] });
+  const qualified = it({ task: 'down', qualifier: '#42', labels: ['task:status:waiting-for-executor'] });
+  const lever = it({ task: 'lever', labels: ['task:status:waiting-for-executor'] });
   assert.deepEqual(pickOrder([up, qualified, lever], { taskAfter, frequencyOf }).map((i) => i.number).sort(),
     [qualified.number, lever.number].sort(), 'both admitted — the order between them is the draw\'s');
 });
@@ -99,13 +99,16 @@ test('a live AD-HOC upstream is not the upstream the yield waits on', () => {
   // behind it. The marker used to say this; the structure says it now.
   const taskAfter = (id) => (id === 'p/down' ? ['p/up'] : []);
   const down = it({ task: 'down' });
-  const adHocUpstream = it({ task: 'up', qualifier: 'member-x', labels: ['task:executing'] });
+  const adHocUpstream = it({ task: 'up', qualifier: 'member-x', labels: ['task:status:running-executor'] });
   assert.deepEqual(pickOrder([adHocUpstream, down], { taskAfter, frequencyOf }).map((i) => i.number), [down.number]);
 });
 
-test('an item in triage is never picked', () => {
-  const triage = it({ task: 'a', labels: ['task:ready', 'needs-human'] });
-  assert.deepEqual(pickOrder([triage]), []);
+test('an item in triage is never picked, in either vocabulary', () => {
+  // A park outranks a state label standing beside it, whichever engine wrote either.
+  const parked = it({ task: 'a', labels: ['task:status:waiting-for-executor', 'task:status:needs-human-action'] });
+  assert.deepEqual(pickOrder([parked]), []);
+  const legacy = it({ task: 'a', labels: ['task:ready', 'needs-human'] });
+  assert.deepEqual(pickOrder([legacy]), []);
 });
 
 // --- the claim lease ----------------------------------------------------------
@@ -141,20 +144,20 @@ test('a torn label swap cannot mint a second owner — comments arbitrate, label
 // --- the post-claim re-verify (F15) -------------------------------------------
 
 test('a twin holding an earlier claim forces a revert; a later one does not', () => {
-  const mine = it({ task: 'a', labels: ['task:executing'] });
-  const twinEarlier = { ...it({ task: 'a', labels: ['task:executing'] }), claimId: 5 };
-  const twinLater = { ...it({ task: 'a', labels: ['task:executing'] }), claimId: 50 };
+  const mine = it({ task: 'a', labels: ['task:status:running-executor'] });
+  const twinEarlier = { ...it({ task: 'a', labels: ['task:status:running-executor'] }), claimId: 5 };
+  const twinLater = { ...it({ task: 'a', labels: ['task:status:running-executor'] }), claimId: 50 };
   assert.equal(conflictsWithEarlierClaim(mine, 10, [twinEarlier]), true);
   assert.equal(conflictsWithEarlierClaim(mine, 10, [twinLater]), false);
 });
 
 test('an upstream that claimed earlier forces its dependent to revert (F15)', () => {
   const taskAfter = (id) => (id === 'p/down' ? ['p/up'] : []);
-  const mine = it({ task: 'down', labels: ['task:executing'] });
-  const upstream = { ...it({ task: 'up', labels: ['task:executing'] }), claimId: 4 };
+  const mine = it({ task: 'down', labels: ['task:status:running-executor'] });
+  const upstream = { ...it({ task: 'up', labels: ['task:status:running-executor'] }), claimId: 4 };
   assert.equal(conflictsWithEarlierClaim(mine, 9, [upstream], { taskAfter, frequencyOf }), true);
   // An unrelated item is not a conflict however early it claimed.
-  const other = { ...it({ task: 'elsewhere', labels: ['task:executing'] }), claimId: 1 };
+  const other = { ...it({ task: 'elsewhere', labels: ['task:status:running-executor'] }), claimId: 1 };
   assert.equal(conflictsWithEarlierClaim(mine, 9, [other], { taskAfter, frequencyOf }), false);
 });
 
@@ -162,17 +165,17 @@ test('an upstream that claimed earlier forces its dependent to revert (F15)', ()
 
 test('every no-go CLOSES; only the wording still knows standing from ad-hoc (#1115)', () => {
   const task = { decl: { frequency: 'daily' } };
-  const scheduled = it({ task: 'a', labels: ['task:executing'] });
+  const scheduled = it({ task: 'a', labels: ['task:status:running-executor'] });
   const plan = noGoPlan(scheduled, task, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'nothing to do');
   assert.equal(plan.kind, 'close');
-  assert.equal(plan.outcome, 'task:obsolete');
+  assert.equal(plan.outcome, 'task:status:rejected');
   assert.equal(plan.stateReason, 'not_planned');
   assert.equal(plan.standing, true, 'the close says the schedule goes on at the next anchor');
 
   // Ad-hoc by its qualifier, and ad-hoc by its task having no calendar.
-  const qualified = it({ task: 'a', qualifier: '#42', labels: ['task:executing'] });
+  const qualified = it({ task: 'a', qualifier: '#42', labels: ['task:status:running-executor'] });
   assert.equal(noGoPlan(qualified, task, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'settled on its own').standing, false);
-  const lever = it({ task: 'lever', labels: ['task:executing'] });
+  const lever = it({ task: 'lever', labels: ['task:status:running-executor'] });
   assert.equal(noGoPlan(lever, { decl: { frequency: 'manual' } }, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'nothing asked').standing, false);
 });
 
