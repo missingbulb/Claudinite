@@ -4,6 +4,7 @@ Records for `packs/claudinite-tasks/pack.mjs`'s `version` field, one row per bum
 
 | Version | Date | What changed |
 |---|---|---|
+| 60827.4 | 2026-08-27 | The terminal transition is planned as ops and executed by whichever transport the run has: REST in Actions, and the session's own GitHub tools where a subprocess has no route to them — which is every session `invoke.mjs` fires. The park for a convergence that could not run at all is fixed at the failure park, the only one that holds the task's lane (#1374). |
 | 60827.2 | 2026-08-27 | A converge writes only to the item it holds: releasing a dependent a close makes due is the scheduler run's own readiness job alone, never the closing side's. `readyDependents`/`releasedBy` retire from `readiness.mjs` with no caller left (#1373, reversing #892's §15.19). |
 | 60827.1 | 2026-08-27 | The request-parameter labels are gone from the code: a request's model and merge authorization are body fields, so `claude-model:*`, `claude-automerge` and the `REQUEST_LABELS` ensure-set had no reader left (#1380). |
 | 60824.9 | 2026-08-24 | The scheduler run's request half no longer throws on its first real request: `parseBlockedBy` was named in `main` and never imported, unreachable while the adoption list was always empty. The blocker resolution is an exported step, so a test can drive it (#1354). |
