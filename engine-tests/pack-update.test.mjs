@@ -358,3 +358,38 @@ test('a pack the canon renamed takes its old mount directory with it', async () 
   assert.ok(existsSync(join(root, MOUNT, 'packs', 'claudinite-lifecycle', 'pack.mjs')), 'and the live one is laid down');
   removeTree(root);
 });
+
+// #1188: an ABSORBED pack (chrome-extension-release -> chrome-extension, #1057) is a
+// different shape in the mount than a rename — the leftover directory sits BESIDE its
+// survivor's rather than alone — but `legacySpellingsOf` reads both off the same
+// `RENAMED_PACKS` map and sweeps them identically. This pins that the composed rules
+// already produce the right answer for the shape that actually froze a fleet (#1186):
+// no new migration-record delete op is needed, because a converge that lays down the
+// survivor already takes the absorbed leftover with it, the same as a rename's.
+test('an absorbed pack takes its own leftover mount directory with it, the same as a rename', async () => {
+  // The declaration a member carried before the collapse: the absorbed pack declared
+  // explicitly, and its survivor materialized alongside it as its own entry (`via`) —
+  // exactly what `resolveDeclaredPacks` writes at adoption time, and what every
+  // member still declaring the absorbed spelling actually has on disk.
+  const root = makeMember({
+    packs: [{ id: 'chrome-extension-release' }, { id: 'chrome-extension', via: ['chrome-extension-release'] }],
+  });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+
+  // The leftover: a complete, loadable copy of the retired pack, exactly what a
+  // member frozen since before the collapse landed still carries (#1186).
+  const legacy = join(root, MOUNT, 'packs', 'chrome-extension-release');
+  mkdirSync(legacy, { recursive: true });
+  writeFileSync(join(legacy, 'pack.mjs'), "export default { id: 'chrome-extension-release', version: 1 };\n");
+
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 99, 'chrome-extension': 0 } });
+  const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+
+  // The contrast case: the converged tree self-tests clean rather than failing on the
+  // duplicate-id collision #1186 describes — the leftover is gone BEFORE discovery
+  // ever sees both directories at once.
+  assert.equal(r.status, 'ok', r.detail);
+  assert.ok(!existsSync(legacy), 'the absorbed pack\'s leftover directory is swept, same as a renamed one');
+  assert.ok(existsSync(join(root, MOUNT, 'packs', 'chrome-extension', 'pack.mjs')), 'and the surviving pack is laid down');
+  removeTree(root);
+});
