@@ -251,7 +251,7 @@ export function outcomeOf(issue) {
 }
 
 // --- the request vocabulary, retired (DESIGN §4's legacy table, §16.1) --------
-// @deprecated The five labels the SHADOW-ITEM request model used. The mark is
+// @deprecated The three labels the SHADOW-ITEM request model used. The mark is
 // `task:origin:ad-hoc` now and the marked issue is the item itself, so nothing here
 // applies these — but they are read forever: `claude-task` is still accepted as a
 // mark (a person with it in muscle memory, a template that carries it), and an
@@ -261,51 +261,17 @@ export function outcomeOf(issue) {
 // appliable from the issue page on a phone, and it is write-gated by the platform —
 // applying a label needs triage or write access — which is the first half of the
 // security story (the second is the precondition's permission read at pickup,
-// §16.4). The parameters that were labels are body fields now, gated on the
-// author's push access instead (`parseRequestFields`).
+// §16.4). A request's PARAMETERS are body fields (`parseRequestFields`), gated on
+// the author's push access instead, and no label carries one: a `claude-model:` or
+// `claude-automerge` label applied by hand asks for nothing.
 export const REQUEST_LABEL = 'claude-task';
 export const QUEUED_LABEL = 'claude-queued';
 export const IN_REVIEW_LABEL = 'claude-in-review';
-export const MODEL_LABEL_PREFIX = 'claude-model:';
 
-// The merge authorization (§16.11): the asker says up front that this request's
-// change may land without their approval WHEN ITS DIFF IS NARROW — the run still
-// judges the diff, and a wide one parks for review exactly as an unauthorized
-// request does. Consumed with the mark like the model labels, so each ask
-// authorizes afresh and a label left by an earlier ask never carries into a new one.
-export const AUTOMERGE_LABEL = 'claude-automerge';
-
-// The families a request may ask for, and the one it gets when it asks for
-// nothing. `none` is not among them: a request is implemented by a session, so an
-// agentless family would name a run that cannot happen.
+// The families a request may ask for in its `Model:` field. `none` is not among
+// them: a request is implemented by a session, so an agentless family would name a
+// run that cannot happen.
 export const REQUEST_MODELS = Object.freeze(['opus', 'sonnet', 'haiku']);
-export const DEFAULT_REQUEST_MODEL = 'opus';
-
-export const MODEL_LABELS = REQUEST_MODELS.map((f) => `${MODEL_LABEL_PREFIX}${f}`);
-
-// @deprecated The set the shadow-item model ensured. Nothing ensures it now — the
-// entry point is `task:origin:ad-hoc`, which the queue's own set carries — and it
-// stays exported because a fielded pack version may still import it.
-export const REQUEST_LABELS = [
-  { name: REQUEST_LABEL, color: '1d76db', description: 'Claudinite: implement this issue — the next scheduler run queues a run for it' },
-  { name: QUEUED_LABEL, color: 'fbca04', description: 'Claudinite: a work item exists for this issue' },
-  { name: IN_REVIEW_LABEL, color: '5319e7', description: 'Claudinite: a pull request is open for this issue, waiting on a person' },
-  { name: AUTOMERGE_LABEL, color: '0e8a16', description: 'Claudinite: land this request without approval if its diff is narrow (docs, tests, comments, code in one directory)' },
-  ...REQUEST_MODELS.map((f) => ({
-    name: `${MODEL_LABEL_PREFIX}${f}`, color: 'ededed',
-    description: `Claudinite: run this request at the ${f} family`,
-  })),
-];
-
-// The model a marked issue asks for, from the labels standing on it. An
-// unrecognised family falls back to the default rather than failing the request:
-// a run nobody can start would look accepted forever. Where several are present the
-// order is REQUEST_MODELS' — the labels are consumed at adoption (§16.3), so the
-// only way to hold two is to apply two for the same ask.
-export const requestModelFromLabels = (labels = []) => {
-  const asked = labels.filter((l) => l.startsWith(MODEL_LABEL_PREFIX)).map((l) => l.slice(MODEL_LABEL_PREFIX.length));
-  return REQUEST_MODELS.find((f) => asked.includes(f)) ?? DEFAULT_REQUEST_MODEL;
-};
 
 // The four state labels an open item may wear. An open item wearing none of them
 // and no `needs-human` is off the state machine entirely — a torn label swap's
