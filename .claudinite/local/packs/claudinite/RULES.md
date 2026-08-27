@@ -145,9 +145,10 @@ from lives in `VERSIONS.md` and the issue, never here.
 
 ## Authoring packs, prose and checks
 
-- **Writing a paragraph that explains how a mechanism works** — not into a pack's `RULES.md`,
-  which every session in every declaring repo pays for. Behaviour belongs in the module header and
-  the pack `README.md`.
+- **Writing anything into a pack's `RULES.md` that describes rather than instructs** — how a
+  mechanism works, or what the pack's own tasks do — not there, where every session in every
+  declaring repo pays for it whether or not it is that session's work. Description belongs in the
+  module header and the pack `README.md`; a worker's policy belongs in the `task.md` it loads.
 
 - **Deciding whether a line earns its place in `RULES.md`** — the test is whether an agent could
   act differently for having read it.

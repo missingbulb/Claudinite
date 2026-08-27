@@ -56,13 +56,13 @@ test('rules-index-current: a declared, held pack the index omits is blocking', (
   // The staleness case: a pack declared since the last converge. Its RULES.md is right
   // there in the mount, and nothing loads it.
   const root = makeRepo({ changed: converged({
-    '.claudinite-settings.json': JSON.stringify({ packs: ['basics', 'tidy-repo'] }),
-    '.claudinite/shared/packs/tidy-repo/RULES.md': 'TIDY\n',
+    '.claudinite-settings.json': JSON.stringify({ packs: ['basics', 'claudinite-growth'] }),
+    '.claudinite/shared/packs/claudinite-growth/RULES.md': 'TIDY\n',
   }) });
   try {
     const f = run(rulesIndexCurrent, root, 'all');
     assert.equal(f.length, 1, JSON.stringify(f, null, 2));
-    assert.match(f[0].what, /tidy-repo/);
+    assert.match(f[0].what, /claudinite-growth/);
   } finally { cleanup(root); }
 });
 

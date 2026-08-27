@@ -172,7 +172,7 @@ test('convergeWiring: a declaration change rewrites the index on the next conver
   // the nightly refresh and any pack change — are exactly when it can go stale. Both
   // call convergeWiring, which is why it is converged here and not left to a session.
   const root = mkRepo();
-  for (const id of ['basics', 'tidy-repo']) {
+  for (const id of ['basics', 'claudinite-growth']) {
     mkdirSync(join(root, '.claudinite', 'shared', 'packs', id), { recursive: true });
     writeFileSync(join(root, '.claudinite', 'shared', 'packs', id, 'RULES.md'), `${id} prose\n`);
   }
@@ -180,12 +180,12 @@ test('convergeWiring: a declaration change rewrites the index on the next conver
   await convergeWiring(root, REPO);
   // Held but undeclared: it earns a routing row, never an import.
   const before = readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8');
-  assert.doesNotMatch(before, /@shared\/packs\/tidy-repo\/RULES\.md/);
+  assert.doesNotMatch(before, /@shared\/packs\/claudinite-growth\/RULES\.md/);
 
-  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics", "tidy-repo"] }\n');
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics", "claudinite-growth"] }\n');
   const r = await convergeWiring(root, REPO);
   assert.ok(r.changed.some((c) => c.includes('claudinite-rules.GENERATED.md')));
-  assert.match(readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8'), /@shared\/packs\/tidy-repo\/RULES\.md/);
+  assert.match(readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8'), /@shared\/packs\/claudinite-growth\/RULES\.md/);
 });
 
 
@@ -283,7 +283,7 @@ test('convergeWiring: reports every surface it changed, and is idempotent', asyn
 // --- the README pack-badge row ---------------------------------------------
 
 const CHECKS_PATH = '.claudinite-settings.json';
-const ROW = [{ id: 'basics', path: 'packs/basics/badge.svg' }, { id: 'tidy-repo', path: 'packs/tidy-repo/badge.svg' }];
+const ROW = [{ id: 'basics', path: 'packs/basics/badge.svg' }, { id: 'claudinite-growth', path: 'packs/claudinite-growth/badge.svg' }];
 
 test('removeRetiredBadgeSetting: cuts the retired knob out as text, leaving the rest byte-identical', () => {
   const root = mkRepo();
