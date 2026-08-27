@@ -9,6 +9,9 @@ log of runs.
 
 | Date | Task | Change |
 |---|---|---|
+| 2026-08-27 | `growth-extract` | Corrected: **`converge-item.mjs` with no REST route from this session** — was "report and leave unconverged"; PRs #1375/#1377 gave the command a `sessionScript` path, so the fix is now to re-run it with `CLAUDINITE_ITEM_REPO`/`CLAUDINITE_ITEM_JSON` and make the printed calls yourself (#1402). |
+| 2026-08-27 | `growth-extract` | Added: **A session needing issues/PRs across several repos in one pass** — `add_repo` widens GitHub scope where `git clone` can't reach, since issues aren't refs (#1119). |
+| 2026-08-27 | `growth-extract` | Added: **Merging a PR that has sat open across many `main` commits** — check current `mergeable_state`, not an old green run; `main` can shift structurally underneath it (#1119). |
 | 2026-08-25 | `growth-extract` | Added: **`converge-item.mjs` failing with a GitHub 401/403 in an MCP-only session** — don't hand-fabricate the transition; a label-only close leaves the issue open wearing its outcome label, confirmed live on #1220 and #1265 (#1149). |
 | 2026-08-25 | `growth-extract` | Added: **A `mcp__github__*` call with no narrow `fields`/`per_page` risking a >25k-token single-line dump** — `Read`'s `offset`/`limit` can't shrink it; parse with `python3`/`jq` instead (#1307). |
 | 2026-08-24 | owner request | Second, harder pass over the whole file: every rule cut to its trigger and directive with reasoning and history removed unless the rule is unusable without it, and bundled rules split so each carries one situation. 113 → 154 rules, 7,612 → 5,359 words, mean 35 words per rule. Added the ~40-word budget to the file's own header so appends hold the shape (#1312). |

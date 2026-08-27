@@ -110,6 +110,10 @@ from lives in `VERSIONS.md` and the issue, never here.
 - **Wanting to read a public sibling repo** — `git clone --depth 1` (~2s). `add_repo` attaches
   nothing the git proxy does not already serve.
 
+- **Needing a session to read issues or PRs across several repos in one pass** — `add_repo`
+  widens this session's own GitHub scope; unlike file content, issues aren't git refs, so there is
+  no `git clone` substitute for reaching them.
+
 - **Waiting for something to happen** — the guard must name the condition awaited: a run's status,
   a file's arrival, a deadline. No trailing padded `sleep`. A guard you wouldn't write as the
   *whole* test means you are sleeping and calling it polling.
@@ -447,12 +451,11 @@ from lives in `VERSIONS.md` and the issue, never here.
   never the requester's phrasing. A same-title match is blind to two items writing one target under
   different titles; `Blocked-by:` is what serializes them.
 
-- **`converge-item.mjs` fails with `GITHUB_REPOSITORY is not set` or a 401/403** — this session's
-  GitHub access is MCP-only; only `packs/claudinite-tasks/` code legitimately holds a real
-  `GITHUB_TOKEN` (stated in `signals/gh.mjs`'s header, not in `queue/instructions.md`). Don't
-  hand-fabricate the transition via `issue_write` — the dependents-release chain is easy to drop,
-  and a label-only close leaves the issue open wearing its outcome label (live on #1220, #1265).
-  Report and leave it unconverged instead.
+- **`converge-item.mjs` reports no REST route from this session** — the ordinary case for a
+  session whose GitHub access is its own tools, not a subprocess's `GITHUB_TOKEN`. Re-run it with
+  `CLAUDINITE_ITEM_REPO`/`CLAUDINITE_ITEM_JSON` set and make the calls it prints yourself, verbatim
+  — hand-fabricating the transition instead is how an item ends up closed wearing a live status
+  (live on #1220, #1265).
 
 ## Proving a change
 
@@ -560,6 +563,10 @@ from lives in `VERSIONS.md` and the issue, never here.
 
 - **Re-verifying a branch against a `main` that has moved** — `git rebase origin/main`, never
   `git merge origin/main`. A merge commit trips the blocking squash-merge-history check.
+
+- **Merging a PR that has sat open across many `main` commits** — check its current
+  `mergeable_state`, not an old green CI run. A structural change on `main` since (a directory
+  move, a renamed path) can turn a once-clean branch conflicted without a new run ever failing.
 
 - **After a PR lands by squash-merge** — `git remote prune origin` before touching that branch
   again. GitHub deletes the head ref here, so a stale tracking ref makes the next push reject and
