@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 import pack from '../pack.mjs';
 import tidyIssues from '../tasks/tidy-issues/task.mjs';
 import tidyPrs from '../tasks/tidy-prs/task.mjs';
-import tidyBranches from '../tasks/tidy-branches/task.mjs';
 
 const PACK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/tidy-repo');
 const taskDir = (id) => join(PACK_DIR, 'tasks', id);
@@ -29,17 +28,17 @@ test('tidy-repo is a declared pack (no fingerprint) with its skills; its tasks a
   assert.equal(pack.run_daily, undefined);
   assert.deepEqual(
     readdirSync(join(PACK_DIR, 'skills')).sort(),
-    ['single-branch-status', 'single-issue-triage', 'single-pr-status'],
+    ['single-issue-triage', 'single-pr-status'],
     'the worker skills are bundled in this pack\'s own skills/'
   );
 });
 
-test('one task per tidy dimension — the single repo-tidy pass is split three ways', () => {
-  assert.deepEqual(readdirSync(join(PACK_DIR, 'tasks')).sort(), ['tidy-branches', 'tidy-issues', 'tidy-prs']);
+test('one task per tidy dimension — the repo-tidy pass is split two ways', () => {
+  assert.deepEqual(readdirSync(join(PACK_DIR, 'tasks')).sort(), ['tidy-issues', 'tidy-prs']);
 });
 
 test('every tidy task: id matches its dir, sonnet, outcome none, bounded, worker doc present', () => {
-  for (const t of [tidyIssues, tidyPrs, tidyBranches]) {
+  for (const t of [tidyIssues, tidyPrs]) {
     assert.ok(existsSync(taskDir(t.id)), `${t.id} has no task directory of its own`);
     assert.equal(t.agent_model, 'sonnet');    // landed-status / implemented-in-main are judgment calls
     assert.equal(t.expected_outcome, 'none'); // no tidy dimension ever opens or merges a PR
@@ -137,61 +136,12 @@ test('tidy-prs: merged PRs on the signal never enter the sweep', () => {
   assert.doesNotMatch(v.context.join(' '), /#42/);
 });
 
-// --- tidy-branches: assess-only, weekly, full every run ---------------------
-
-test('tidy-branches: weekly (the full sweep is the declaration) over the branches signal alone', () => {
-  assert.equal(tidyBranches.id, 'tidy-branches');
-  assert.equal(tidyBranches.frequency, 'weekly');
-  assert.deepEqual(tidyBranches.precondition_signals, ['branches']);
-});
-
-test('tidy-branches: scope is every branch past the presumed default', () => {
-  const v = tidyBranches.precondition(S({ branches: { names: ['main', 'feat-x', 'fix-y'], touched: ['fix-y'] } }));
-  assert.equal(v.run, true);
-  assert.match(v.reason, /full sweep over 2 branch/);
-  assert.match(v.context.join(' '), /Branches to assess.*feat-x, fix-y/); // feat-x didn't move, and is still assessed
-  assert.doesNotMatch(v.context.join(' '), /main/);
-});
-
-// The gate the owner asked for. Branches are the dimension where it was structurally
-// impossible before: the signal carried names and nothing else, so "is any of this
-// new" had no answer and the sweep ran over the same pile every week.
-test('tidy-branches: a standing pile of branches that nothing moved is not re-swept', () => {
-  const v = tidyBranches.precondition(S({ branches: { names: ['main', 'feat-x', 'fix-y'], touched: [] } }));
-  assert.equal(v.run, false);
-  assert.match(v.reason, /no branch created or moved in the window/);
-
-  // A move on the default branch or an infra branch is not branch work either — it
-  // is `main` advancing and the log stream growing, which happens on every repo
-  // most days and would defeat the gate outright.
-  assert.equal(tidyBranches.precondition(S({
-    branches: { names: ['main', 'conversation-logs', 'feat-x'], touched: ['main', 'conversation-logs'] },
-  })).run, false);
-});
-
-test('tidy-branches: ignores the orphan conversation-logs and the maintenance delivery branch', () => {
-  // conversation-logs is a claudinite-growth log stream and
-  // claudinite/maintenance is Claudinite's own delivery branch — never project
-  // work, so neither may reach the branch review.
-  const v = tidyBranches.precondition(S({
-    branches: { names: ['main', 'conversation-logs', 'claudinite/maintenance', 'feat-x'], touched: ['feat-x'] },
-  }));
-  assert.equal(v.run, true);
-  assert.match(v.context.join(' '), /Branches to assess.*feat-x/);
-  assert.doesNotMatch(v.context.join(' '), /conversation-logs|claudinite\/maintenance/);
-
-  // A repo whose only non-default branches are those two has no branch work at all.
-  assert.equal(tidyBranches.precondition(S({ branches: { names: ['master', 'conversation-logs'], touched: ['conversation-logs'] } })).run, false);
-  assert.equal(tidyBranches.precondition(S()).run, false);
-});
-
 // --- the trackers: one per task, never a shared body ------------------------
 
-test('each worker reconciles its OWN tracker by exact title — three tasks never race on one body', () => {
+test('each worker reconciles its OWN tracker by exact title — the two tasks never race on one body', () => {
   const titles = {
     'tidy-issues': 'Claudinite tracker: Tidy Issues',
     'tidy-prs': 'Claudinite tracker: Tidy PRs',
-    'tidy-branches': 'Claudinite tracker: Tidy Branches',
   };
   for (const [id, title] of Object.entries(titles)) {
     const worker = readFileSync(join(taskDir(id), 'task.md'), 'utf8');
@@ -199,8 +149,8 @@ test('each worker reconciles its OWN tracker by exact title — three tasks neve
     // The tracker's state carries no meaning, so no worker may open or close it.
     assert.match(worker, /Never open, close, or reopen the tracker/);
     // The tracker logs changes, not scans: a run that acted on nothing (issues) or
-    // re-derived the same picture (PRs, branches) leaves it untouched, and a repo
-    // with nothing to record never gets a tracker at all.
+    // re-derived the same picture (PRs) leaves it untouched, and a repo with nothing
+    // to record never gets a tracker at all.
     assert.match(worker, /nothing to record/, `${id}/task.md does not gate its tracker write on having something to record`);
   }
 });

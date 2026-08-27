@@ -1,9 +1,9 @@
-// tidy-repo task: tidy-issues — the ACTING third of the tidy sweep
+// tidy-repo task: tidy-issues — the ACTING half of the tidy sweep
 // (per-project-scheduling DESIGN §6). Triages the issues the window touched, and
 // re-checks every open issue when the default branch moved substantively (a real
 // commit can implement an old issue without the issue itself being touched).
-// Worker: task.md. Branches and PRs are separate tasks: one dimension per task,
-// each with its own trigger, scope, and tracker — no ordering barrier between them.
+// Worker: task.md. PRs are a separate task: one dimension per task, each with its
+// own trigger, scope, and tracker — no ordering barrier between them.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 

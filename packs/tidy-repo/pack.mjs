@@ -8,13 +8,13 @@
 // declaration, and the one-time tidy-repo-seed migration seeds the existing fleet.
 // It carries no conformance checks — its work is the scheduled task, not checks.
 //
-// One task per dimension — tidy-issues (daily, acts), tidy-prs and tidy-branches
-// (weekly, assess-only) — each delegating its per-object verdict to a single-object
-// skill and reconciling its OWN standing tracker. Three narrow tasks, not one wide
-// one: each has its own trigger and scope, none depends on another's result, so
-// there is no ordering barrier and a dimension with nothing to do stays silent.
+// One task per dimension — tidy-issues (daily, acts), tidy-prs (weekly,
+// assess-only) — each delegating its per-object verdict to a single-object skill
+// and reconciling its OWN standing tracker. Two narrow tasks, not one wide one:
+// each has its own trigger and scope, none depends on another's result, so there
+// is no ordering barrier and a dimension with nothing to do stays silent.
 export default {
-  version: '60824.1',
+  version: '60824.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'housekeeping of open issues, pull requests and branches in one repo — triage verdicts, standing trackers, assess-vs-act policy',
