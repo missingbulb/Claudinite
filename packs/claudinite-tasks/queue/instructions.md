@@ -92,6 +92,27 @@ instructions.
    read what it says: it means this item is not yours to converge, and doing it
    by hand anyway is how an item ends up closed wearing a live status.
 
+   **If it says it has no REST route from this session**, that is the ordinary
+   case — a session's GitHub access belongs to the session, and a subprocess
+   cannot reach it. Nothing is broken and nothing is deferred: you finish this
+   item yourself, with the command still deciding every step. Give it the issue
+   you already read and it prints the exact calls:
+
+   ```bash
+   CLAUDINITE_ITEM_REPO=<owner/repo> CLAUDINITE_ITEM_JSON='<the issue as your GitHub
+     tools returned it: number, title, body, state, labels>' \
+   node <engine>/scheduler/queue/converge-item.mjs --issue <n> \
+     --outcome done|approval|action|decision|failure \
+     --summary '<what happened>' [--pr <n>]
+   ```
+
+   Then **make those calls with your GitHub tools, in the order given, changing
+   nothing** — the bodies verbatim, the label sets exactly as written. They are
+   computed, not suggested: the label sets already carry every label the issue
+   should still have, so writing your own is how one gets dropped. One step asks
+   you to output a line in your reply; do that too, it is the run's only census
+   record.
+
    | label | when |
    |---|---|
    | `task:status:done` | succeeded, nothing pending — close the issue |
@@ -106,6 +127,15 @@ instructions.
    | `task:status:needs-human-action` | something outside the code must change before this can run: a secret, a scope, a routine's wiring, an input this item never carried |
    | `task:status:needs-human-decision` | you stopped mid-flight and what happens next is a choice — you ran out of time, or you exceeded the declared ceiling and someone must say whether that stands |
    | `task:status:needs-human-failure` | the run broke: a bug, a contract-forbidden shape, a malformed or forged item. Use this when you are unsure |
+
+   **A convergence you could not perform at all is the failure park, and never
+   anything else.** Not `decision` (that is for a choice you stopped in front
+   of), not `action` (that is for something outside the code that must change
+   first). This is not a judgment call: the failure park is the only one that
+   HOLDS THE TASK'S LANE, and a run that could not converge must stop its task
+   recurring until a person has looked. Choosing a lane-releasing park here is
+   how one broken convergence became fourteen stranded items in a member repo,
+   one a night, each looking like a fresh incident.
 
    **A marked issue needs no write-back at all**: it is the item, so the approval
    park it wears *is* the in-review state and the failure park *is* the report (which
