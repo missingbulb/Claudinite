@@ -560,9 +560,9 @@ PR), and the agentless run costs seconds.
 > including the ones they cannot. The coverage census this file carried is
 > derived live — a rostered member with no usage file *is* the absent row — and
 > the file holds no longer history than the members do, since their week rows
-> are append-once and never pruned. The task and the file are retired in the
-> tail of #1158, after the fleet page's roster stopped reading it. The section
-> below describes what it was.
+> are append-once and never pruned. The task and the file were retired in the
+> tail of #1158 (#1166), after the fleet page's roster stopped reading it. The
+> section below describes what it was.
 
 Written by **`fleet-usage`**: an agentless daily task of the **sheepdog**
 pack, alongside `fleet-census` and `fleet-freshness` and shaped exactly like

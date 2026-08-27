@@ -29,7 +29,6 @@ export const FLEET_TOKEN_PERMISSIONS = [
     sweeps: {
       'fleet-roster': 'read',
       'fleet-add-missing-packs': 'read',
-      'fleet-usage': 'read',
       'fleet-pack-seeds': 'read',
       'fleet-baseline': 'read',
     },
@@ -42,7 +41,6 @@ export const FLEET_TOKEN_PERMISSIONS = [
     sweeps: {
       'fleet-roster': 'read',
       'fleet-add-missing-packs': 'read',
-      'fleet-usage': 'read',
       'fleet-pack-seeds': 'read and write',
       'fleet-baseline': 'read',
     },

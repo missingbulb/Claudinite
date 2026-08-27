@@ -63,7 +63,6 @@ test('declaring the pack brings the fleet-digest task, and it names the secret i
   assert.equal(task.frequency, 'daily');
   assert.deepEqual(task.schedule_after, [
     'claudinite-fleet-sheepdog/fleet-roster',
-    'claudinite-fleet-sheepdog/fleet-usage',
     'claudinite-fleet-sheepdog/fleet-pack-seeds',
   ]);
   assert.deepEqual(task.required_secrets, ['FLEET_GITHUB_TOKEN']);
