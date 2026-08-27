@@ -35,12 +35,22 @@ export default {
   // baseline commit, a bot bump) implements nothing, so it does not widen at all.
   precondition(signals) {
     const substantive = signals.commits?.substantiveChange === true;
-    const open = (signals.issues?.open ?? []).map((i) => i.number);
-    const touched = signals.issues?.touched ?? [];
 
-    // The issues signal already hides Claudinite's own issues — the queue's work
-    // items and the standing trackers — so none can ever be triaged as project
-    // work, nor count as the touch that triggers a run.
+    // A `task:*` label is the scheduler's own marker, stamped on a queue work item
+    // when it is created and carried for its whole life. The issues signal hides
+    // those items by TITLE prefix, so one the queue files under any other title
+    // reaches this task and gets triaged as project work. The label is the
+    // invariant, so it is what this filters on — and it filters BOTH ways: such an
+    // issue is neither a touch that triggers a run nor a target inside one.
+    const queueItem = (i) => (i.labels ?? []).some((l) => String(l).startsWith('task:'));
+    const open = (signals.issues?.open ?? []).filter((i) => !queueItem(i)).map((i) => i.number);
+    const inScope = new Set(open);
+    const touched = (signals.issues?.touched ?? []).filter((n) => inScope.has(n));
+
+    // Between the signal's title filter and the label filter above, none of
+    // Claudinite's own issues — the queue's work items, its schedule board, the
+    // standing trackers — can be triaged as project work or count as the touch
+    // that triggers a run.
     if (!touched.length) return { run: false, reason: 'no issues touched in the window' };
 
     const scope = substantive ? open : touched;

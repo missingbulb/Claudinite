@@ -40,7 +40,10 @@ set are the ones already in the tracker, so a re-run rewrites the body with itse
 to do it. What does **not** count as movement: a `main` that advanced (that widens an already-triggered
 issue run, but never wakes one — on an active repo it is true most days), and a PR that merged. Nor can
 `tidy-issues` be its own movement: `single-issue-triage` posts nothing when the verdict is the
-one it already posted there, so a standing verdict never re-arms tomorrow's run.
+one it already posted there, so a standing verdict never re-arms tomorrow's run. Nor is the scheduler's
+own queue: an issue wearing a `task:*` label is a work item, not project work, and `tidy-issues` drops
+it from both the trigger and the scope — the signal's own filter goes by title, which a queue item filed
+under any other title escapes.
 
 **Where the "full run" lives.** Scope is never narrowed to the movers, because a verdict is relative to
 the rest — superseded-by, already-in-`main`, implemented-by-a-commit all need the others in view. So
