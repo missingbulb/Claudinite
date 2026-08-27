@@ -536,10 +536,10 @@ test('an approval park writes no record at all', async () => {
   assert.doesNotMatch(repo.find(1).comments.at(-1).body, /claudinite-task-exec/);
 });
 
-// The close-time readiness re-check (§15.19), now with the drain behind it: the
-// dependent is not merely readied within the hour, it is CLAIMED AND RUN by the
-// same invocation that released it — the whole chain for one invocation.
-test('an executor close readies the dependent it was holding, and the same run drains it', async () => {
+// A close writes only to the item it holds (§15.19, reversed by §15.31 / #1373):
+// releasing a dependent is the scheduler run's readiness job alone, never a
+// close's.
+test('an executor close leaves the dependent it was holding still blocked', async () => {
   const dependent = {
     ...workItem(2, 'b', ['task:blocked']),
     body: 'packs/p/tasks/b/task.md\n\nBlocked-by: #1\n',
@@ -547,8 +547,10 @@ test('an executor close readies the dependent it was holding, and the same run d
   const repo = fakeRepo([workItem(1, 'a', ['task:ready']), dependent]);
   const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
   const done = await drive(repo, ['a', 'b'].map(agentless));
-  assert.deepEqual(done.map((d) => d.issue), [1, 2], 'released, then run, in this run');
-  assert.equal(repo.find(2).state, 'closed');
+  assert.deepEqual(done.map((d) => d.issue), [1], 'the dependent was never picked up in this run');
+  assert.equal(repo.find(1).state, 'closed');
+  assert.deepEqual(repo.find(2).labels, ['task:blocked']);
+  assert.equal(repo.find(2).state, 'open');
 });
 
 // The beat, driven through the shell: a work step long enough to need one gets

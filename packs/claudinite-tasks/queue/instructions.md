@@ -79,8 +79,7 @@ instructions.
 6. **Converge the issue exactly once — in code, not by hand.** One command
    performs every side effect the transition needs: the comment, the label swap,
    the outcome label, the `claudinite-task-exec` record on the item, the close
-   with the right state reason, the request write-back, and the release of
-   anything that was blocked on this item.
+   with the right state reason, and the request write-back.
 
    ```bash
    node <engine>/scheduler/queue/converge-item.mjs --issue <n> \

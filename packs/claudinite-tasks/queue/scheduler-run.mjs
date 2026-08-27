@@ -276,8 +276,9 @@ export async function planSchedulerRun({
   }
 
   // ---- job 2: ready whatever is due (any origin) --------------------------
-  // The same predicate a CLOSE asks (§15.19) — one definition, so the hourly pass
-  // and the close-time release can never disagree about what "due" means.
+  // The only site that ever releases a blocked item (§15.19, reversed by
+  // §15.31 / #1373): a converge writes only to the item it holds, so nothing
+  // else asks this question.
   for (const item of items) {
     if (closedByThisRun.has(item.number)) continue;
     if (isReleasable(item, { stateOf, nowMs })) ops.push({ kind: 'ready', issue: item.number });
