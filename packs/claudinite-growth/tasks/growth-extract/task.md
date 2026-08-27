@@ -98,14 +98,12 @@ in the loop.
 
 ## What this task must never do
 
-- **Never write outside the repo's own local packs, with one exception: a comment.** This task improves the
-  repo's **packs**, never the canon and never the project's logic. Everything else under `.claudinite/` is
-  the read-only mount, and lifting a lesson up into the canon is the central promote task's job. The
-  exception is rung 0 of the ladder — a lesson tied to one call site lands as a **comment at that site**,
-  and a comment that misled a session is **deleted or corrected** where it stands. The `growth-write-scope`
-  check keys on this run's pinned title (below) and reds any path outside the local packs whose code is not
-  identical once comments are stripped, so the exception is granted per file by reading the diff, never by
-  this run asserting it.
+- **Never write outside the repo's own local packs** — this task improves the repo's **packs**, never the
+  canon, never the project's own code, and never its comments, which belong to the tidy-repo pack's
+  `improve-comments` task. Everything else under `.claudinite/` is the read-only mount, and lifting a lesson
+  up into the canon is the central promote task's job. A lesson tied to one call site is dropped, not landed
+  as its pack's entry naming the site. The `growth-write-scope` check keys on this run's pinned title
+  (below) and reds any path outside the local packs.
 - **Never widen past the Context window** — the halves it declares live, the substantive commits and the
   touched PRs/issues named there are the scope; do not re-decide it. That includes the upgrade pass: this
   run's own additions, never the standing backlog.
@@ -117,6 +115,5 @@ in the loop.
   its PR usually lands with no human review to catch it.
 - **Never spend the prose ration to avoid the work of a higher rung.** The ladder rations prose at **at most
   two** new `RULES.md` rules per run, each one sentence. A run with something real to say says it as a
-  comment at the site, or as a check; a paragraph of prose standing in for a check nobody wrote is this
-  task's characteristic failure, and it is charged to every session in every repo that declares the pack,
-  forever.
+  check; a paragraph of prose standing in for a check nobody wrote is this task's characteristic failure,
+  and it is charged to every session in every repo that declares the pack, forever.

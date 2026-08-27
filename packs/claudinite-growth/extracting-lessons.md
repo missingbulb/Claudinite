@@ -55,10 +55,6 @@ Read `.claudinite/shared/packs/directory.GENERATED.md` (canon-side `packs/direct
 which states every canon pack's boundary including the ones this repo doesn't hold. Where the owning
 pack's stated territory is merely too narrow, propose widening it rather than routing around it.
 
-0. **A comment at the site** — when the lesson is about *one* call site, file or function, the fix is a
-   comment right there (or the deletion or correction of the comment that misled you), not a rule anywhere.
-   See "a gotcha tied to one call site" below: this rung is the one that puts the lesson where the next
-   editor of that line meets it, and it costs no session anywhere any context at all.
 1. **A declared check** — an entry in that pack's `declared-checks.json`, whose `failureMessage` *is* the
    lesson. Nothing wires it: writing the declaration adds the check. This is the first rung to try for any
    lesson whose whole logic is "these patterns over these files", and most captured conditions are. Give it
@@ -98,15 +94,11 @@ its own territory (a `client` pack for work under `client/`), so a repo's local 
 lessons in the structural pack that owns the work, and let the canon-side promote stage — Claudinite's call,
 never a member's — decide whether a technology or methodology facet earns a pack of its own.
 
-**A gotcha tied to one call site is not a pack rule at all.** A trap from misusing a specific API, class, or
-library goes as a **comment right at the usage site** — next to the call itself, where the next editor of
-that line sees it — never collected into a centralized gotchas list. That edit is rung 0, and it is a real
-edit to the file out there: a capture run is admitted outside its pack surface for exactly this, on the
-condition that the file's code is unchanged once comments are stripped. The same rung carries the opposite
-move, which is often the more valuable one — **deleting a comment that misled you**, or correcting one that
-has drifted from the code beneath it. A comment that cost a session an hour is a finding about that comment,
-not the seed of a rule about comments. Co-locate it in a file's own header
-comment when the trap spans the whole file and you'd only hit it *while editing that file*. Reserve a
+**A gotcha tied to one call site is not a pack rule at all, and it is not this pass's to land either.** A
+trap from misusing a specific API, class, or library belongs as a comment at that usage site — and a capture
+run's write surface stops at its own packs, so **drop the candidate** rather than inflate it into a pack
+rule or collect it into a centralized gotchas list. The comments in a repo's own source belong to the
+tidy-repo pack's `improve-comments` task, which has its own trigger and its own review surface. Reserve a
 central gotchas doc for what no single usage site owns: a trap you could hit *without* reading the relevant
 file (a mistake of omission), or a cross-cutting invariant.
 

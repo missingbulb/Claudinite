@@ -165,15 +165,12 @@ here: its subject is Claudinite's own surface, not lesson capture.
 | Rule | Kind | What |
 |---|---|---|
 | `dedup-prune-integrity` | work-scope ([dedup-integrity.mjs](workRules/dedup-integrity.mjs)) | a dedup edit only removes portable text — never grows a local pack or re-imports a canon rule |
-| `growth-write-scope` | work-scope ([growth-write-scope.mjs](workRules/growth-write-scope.mjs)) | a capture run (extract, dedup) writes only the repo's own local packs, plus comment-only edits elsewhere |
+| `growth-write-scope` | work-scope ([growth-write-scope.mjs](workRules/growth-write-scope.mjs)) | a capture run (extract, dedup) writes only the repo's own local packs |
 
-The capture runs' write surface is the local packs plus the comments at the call sites their lessons
-are about — a run improves the repo's **packs**, never the canon it prunes against or the project's
-own logic. The comment lane is the ladder's cheapest rung: a gotcha tied to one call site belongs at
-that call site, and a comment that misled a session is deleted or corrected where it stands.
-`growth-write-scope` is the machine guarantee behind both halves, admitting a path outside the local
-packs only when the file's code is identical once comments are stripped, and it is keyed on the
-pinned commit titles of exactly those two runs; the lifecycle's wider-surfaced runs have their own gates (promote writes the canon under `packs/` and
+The capture runs' write surface is the local packs and nothing else — a run improves the repo's
+**packs**, never the canon it prunes against or the project's own code. `growth-write-scope` is
+the machine guarantee behind that, keyed on the pinned commit titles of exactly those two runs; the
+lifecycle's wider-surfaced runs have their own gates (promote writes the canon under `packs/` and
 `skills/`, certified by canon-curation's `promote-scope`; pack discovery also writes the repo-root
 declaration that activates the pack it authors).
 

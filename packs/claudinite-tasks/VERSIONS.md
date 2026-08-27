@@ -4,7 +4,6 @@ Records for `packs/claudinite-tasks/pack.mjs`'s `version` field, one row per bum
 
 | Version | Date | What changed |
 |---|---|---|
-| 60827.1 | 2026-08-27 | `commentOnly` and its checkable-extension set move to `engine/checks/helpers/code-scanning.mjs`, beside the `stripComments` they were already built on; narrow-diff imports and re-exports them, so the queue's merge verdict and the growth pack's write-scope gate answer "comments only" the same way (#1378). |
 | 60824.9 | 2026-08-24 | The scheduler run's request half no longer throws on its first real request: `parseBlockedBy` was named in `main` and never imported, unreachable while the adoption list was always empty. The blocker resolution is an exported step, so a test can drive it (#1354). |
 | 60824.8 | 2026-08-24 | The request lane reads again: each mark is asked for on its own rather than both in one conjunctive `labels` filter, which had selected issues wearing both spellings and so nothing at all since #1138. Neither listing lets a failed read pass as an empty one (#1354). |
 | 60824.7 | 2026-08-24 | The `engine/scheduler/` legacy-path shims are gone; the tests' legacy wire literals move to one shared module, since they are protocol a decoder must keep understanding rather than pointers (#1328). |

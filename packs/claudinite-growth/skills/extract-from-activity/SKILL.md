@@ -44,41 +44,20 @@ approach was re-decided mid-flight.
 
 **An already-settled, already-enforced implementation choice is not a lesson.** If a check or a test
 already pins the shape — which roots a CI sweep walks, which contract a construction must satisfy — and
-all that is left to say is *why it looks like that*, that explanation belongs as a comment at the
-implementation site, not as prose in a pack. A rule earns its place by steering a **future** decision or
-catching a **repeatable** mistake, not by narrating a past one that is already locked in.
+all that is left to say is *why it looks like that*, it belongs at the implementation site rather than as
+prose in a pack — and this run does not write there, so the candidate is dropped. A rule earns its place by
+steering a **future** decision or catching a **repeatable** mistake, not by narrating a past one that is
+already locked in.
 
 Wall-time and dialogue friction (a clarifying round-trip, a backtrack, a wait sat through) leave no trace
 in a diff. Don't infer them from artifacts — that is the conversation sibling's territory, working from
 logs that actually carry the timestamps.
 
-## The comment pass — the window's diffs read as comments, not as code
-
-The window's diffs are also the best evidence the repo has about its own **comments**, and fixing one is
-rung 0 of the ladder: the cheapest landing there is, costing no session anywhere any context. Over the
-files the window touched, look for three shapes and fix them in place:
-
-- **A comment that no longer matches the code beneath it** — the change moved on and the comment did not.
-  Correct it to what the code now does, or delete it.
-- **A comment that narrates the edit that produced the code** ("removed the old path", "now uses X
-  instead") rather than the state in front of the reader. Keep only the part still true of the code, and
-  delete the rest.
-- **A comment saying what the code already says.** Delete it. This is the most valuable of the three and
-  the one a pass is most tempted to skip: a redundant comment costs every future reader a re-read and is
-  the one that goes stale first, since nothing depends on it being right.
-
-What earns a comment is the **why**, or a cross-file relationship the code cannot state itself. A trap you
-hit *at* one call site earns a comment right there — see the ladder's rung 0.
-
-Bound the pass to comment-only edits: this run may change the comments in a file the window touched, and
-nothing else about it. `growth-write-scope` enforces that by stripping comments and comparing, so an edit
-that also moves code reds the run rather than landing unreviewed.
-
 ## Landing it
 
-Route each keeper down the ladder in [extracting-lessons.md](../../extracting-lessons.md) — a comment at
-the site where the lesson is about one site, then a declared check, a custom code rule only where patterns
-can't say it, then pack skill, prose last — into the local pack whose territory owns it. Write more checks and less prose, and keep each addition terse and in
+Route each keeper down the ladder in [extracting-lessons.md](../../extracting-lessons.md) — a declared
+check first, a custom code rule only where patterns can't say it, then pack skill, prose last — into the
+local pack whose territory owns it. Write more checks and less prose, and keep each addition terse and in
 the repo's own voice.
 
 A new check ships with its **red-first fixture**: see it fail on a violating fixture and pass on a clean

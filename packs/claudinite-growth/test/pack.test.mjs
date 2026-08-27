@@ -505,12 +505,12 @@ test('dedup-prune-integrity: the restatement fingerprint still fires on a canon-
 
 const runScope = (root) => runRule(growthWriteScope, buildContext({ root }));
 
-test('growth-write-scope: a capture run changing code outside the local packs is flagged', () => {
+test('growth-write-scope: a capture run touching outside the local packs is flagged', () => {
   const root = makeRepo({
     base: { 'src/app.mjs': 'call();\n' },
     changed: {
       [PROSE]: '- a captured lesson\n',
-      'src/app.mjs': 'call(); call();\n',
+      'src/app.mjs': 'call(); // gotcha: never call twice\n',
     },
     commitMsg: 'Claudinite growth: extract lessons\n\nRefs #12',
   });
@@ -520,53 +520,6 @@ test('growth-write-scope: a capture run changing code outside the local packs is
     assert.equal(findings[0].file, 'src/app.mjs');
     assert.equal(findings[0].severity, 'blocking');
     assert.match(findings[0].what, /outside \.claudinite\/local\/packs\//);
-  } finally { cleanup(root); }
-});
-
-test('growth-write-scope: a comment-only edit at a call site is the run\'s one write outside the surface', () => {
-  // The ladder routes a call-site-tied gotcha to a comment AT that call site, so
-  // the gate has to admit exactly that edit and nothing wider on the same file.
-  const root = makeRepo({
-    base: { 'src/app.mjs': 'call();\n' },
-    changed: {
-      [PROSE]: '- a captured lesson\n',
-      'src/app.mjs': '// gotcha: calling twice re-enters the handler\ncall();\n',
-    },
-    commitMsg: 'Claudinite growth: extract lessons\n\nRefs #12',
-  });
-  try {
-    assert.equal(runScope(root).length, 0);
-  } finally { cleanup(root); }
-});
-
-test('growth-write-scope: a comment edit that also moves code is flagged, and so is a new file of pure comment', () => {
-  const root = makeRepo({
-    base: { 'src/app.mjs': 'call();\n' },
-    changed: {
-      [PROSE]: '- a captured lesson\n',
-      'src/app.mjs': '// gotcha: re-entrant\ncall(other);\n',
-      'src/notes.mjs': '// everything here is a comment\n',
-    },
-    commitMsg: 'Claudinite growth: extract lessons\n\nRefs #12',
-  });
-  try {
-    const findings = runScope(root);
-    assert.deepEqual(findings.map((f) => f.file), ['src/app.mjs', 'src/notes.mjs']);
-  } finally { cleanup(root); }
-});
-
-test('growth-write-scope: a language whose comments the parser cannot read is never comment-only', () => {
-  const root = makeRepo({
-    base: { 'scripts/run.py': 'run()\n' },
-    changed: {
-      [PROSE]: '- a captured lesson\n',
-      'scripts/run.py': '# gotcha: run once\nrun()\n',
-    },
-    commitMsg: 'Claudinite growth: extract lessons\n\nRefs #12',
-  });
-  try {
-    const findings = runScope(root);
-    assert.deepEqual(findings.map((f) => f.file), ['scripts/run.py']);
   } finally { cleanup(root); }
 });
 
