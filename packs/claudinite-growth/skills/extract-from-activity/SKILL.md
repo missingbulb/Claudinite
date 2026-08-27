@@ -52,15 +52,39 @@ Wall-time and dialogue friction (a clarifying round-trip, a backtrack, a wait sa
 in a diff. Don't infer them from artifacts — that is the conversation sibling's territory, working from
 logs that actually carry the timestamps.
 
+## The comment pass — the window's diffs read as comments, not as code
+
+The window's diffs are also the best evidence the repo has about its own **comments**, and fixing one is
+rung 0 of the ladder: the cheapest landing there is, costing no session anywhere any context. Over the
+files the window touched, look for three shapes and fix them in place:
+
+- **A comment that no longer matches the code beneath it** — the change moved on and the comment did not.
+  Correct it to what the code now does, or delete it.
+- **A comment that narrates the edit that produced the code** ("removed the old path", "now uses X
+  instead") rather than the state in front of the reader. Keep only the part still true of the code, and
+  delete the rest.
+- **A comment saying what the code already says.** Delete it. This is the most valuable of the three and
+  the one a pass is most tempted to skip: a redundant comment costs every future reader a re-read and is
+  the one that goes stale first, since nothing depends on it being right.
+
+What earns a comment is the **why**, or a cross-file relationship the code cannot state itself. A trap you
+hit *at* one call site earns a comment right there — see the ladder's rung 0.
+
+Bound the pass to comment-only edits: this run may change the comments in a file the window touched, and
+nothing else about it. `growth-write-scope` enforces that by stripping comments and comparing, so an edit
+that also moves code reds the run rather than landing unreviewed.
+
 ## Landing it
 
-Route each keeper down the ladder in [extracting-lessons.md](../../extracting-lessons.md) — a declared
-check first, a custom code rule only where patterns can't say it, then pack skill, prose last — into the
-local pack whose territory owns it. Write more checks and less prose, and keep each addition terse and in
+Route each keeper down the ladder in [extracting-lessons.md](../../extracting-lessons.md) — a comment at
+the site where the lesson is about one site, then a declared check, a custom code rule only where patterns
+can't say it, then pack skill, prose last — into the local pack whose territory owns it. Write more checks and less prose, and keep each addition terse and in
 the repo's own voice.
 
-A new check ships **green or not at all**: see it fail on a violating fixture and pass on a clean one. A
-rule that cannot be made confident lands as prose instead — never as a broken check.
+A new check ships with its **red-first fixture**: see it fail on a violating fixture and pass on a clean
+one. Declare `since: '<today>'` on it — a `blocking` check is enforced as advisory for its first two weeks,
+so a check whose backlog the tree still carries can land now and bite later. A rule that cannot be made
+confident lands as prose instead — never as a broken check.
 
 Finding nothing is a perfectly good and common outcome; a duplicate or invented "lesson" is worse than
 adding nothing.

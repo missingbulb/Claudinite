@@ -163,7 +163,19 @@ the depth. Write the fixture test first and see it fail — each pack carries on
 `<pack>/test/pack.test.mjs`, inside the pack's own `test/` directory (which no vendor set ships), sharing the scratch-git-repo harness
 [engine-tests/helpers.mjs](../../engine-tests/helpers.mjs); a violating fixture must find, a clean one must not.
 A new rule ships at its real severity, fail-fast: `blocking` when a finding is a defect to
-fix, `advisory` only when the rule's own semantics are directional (a smell to judge). A whole
+fix, `advisory` only when the rule's own semantics are directional (a smell to judge).
+
+**A blocking rule may declare `since` — the date it was added — and is then enforced as
+advisory for its first two weeks** (`GRACE_DAYS` in [helpers/findings.mjs](helpers/findings.mjs)),
+after which it bites. That is what lets a rule land against a tree that still violates it:
+the backlog it surfaces gets two weeks to be cleared, the rule tightened, or the rule deleted
+as a bad idea, without the authoring PR having to carry the cleanup. Findings inside the window
+print the date the rule starts blocking. A rule with no `since` has no grace — absence means
+mature, never newborn — and a `since` in the future grants nothing, since a date far enough out
+would be a suppression wearing a creation date. A project that sets the rule to `blocking` in
+its own settings overrides the grace and gets enforcement from day one. The window is measured from the
+declared date, not from the day a consumer received the rule — so a canon rule's grace is spent by the time
+a member converges onto it, and a rule going out to the fleet still has to be one the fleet can satisfy. A whole
 new pack is just a `../packs/<name>/` directory with a `pack.mjs` (its fingerprint `detect` and its
 rules; the id, prose, badge and bundled skills come from the directory itself) —
 [engine/pack_loader/pack-registry.mjs](../pack_loader/pack-registry.mjs) discovers it structurally,
@@ -177,7 +189,8 @@ structurally by the registry and compiled by [pattern-rules.mjs](helpers/pattern
 vocabulary is documented in that helper's header). Nothing wires them — no import, no manifest line;
 writing the declaration adds the check. One file to read for a pack's declared surface, and a format
 that admits no comments and no `doc` pointer, so a declaration carries its own case: `id`,
-`severity`, the `failureMessage` every finding prints, and the assertions with their `what`/`fix`.
+`severity`, the optional `since` above, the `failureMessage` every finding prints, and the
+assertions with their `what`/`fix`.
 Regexes are strings in `/pattern/flags` form. A rule needing a hand-written `run(ctx)` stays its own
 module, listed in the manifest as before. The engine runs every pattern rule in
 ONE shared pass — each file read once, its lines walked once for all subscribing rules — so a

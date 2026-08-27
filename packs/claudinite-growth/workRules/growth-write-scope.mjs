@@ -2,6 +2,7 @@ import { sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
+import { commentOnly } from '../../../engine/checks/helpers/code-scanning.mjs';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
@@ -13,6 +14,18 @@ import { LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR } from '../../../engine/p
 // runs' pinned commit subjects, every path it touches — added, modified, or
 // deleted — must sit under .claudinite/local/packs/ (the legacy
 // .claudinite/local_packs/ accepted during the rename window).
+//
+// ONE EXCEPTION, AND IT IS EARNED PER FILE: a COMMENT-ONLY edit to a source file
+// anywhere in the repo. The ladder these runs follow routes a gotcha tied to one
+// call site to a comment at that call site — the only rung that puts the lesson
+// where the next editor of that line will actually meet it — and a gate that
+// admitted no such write left the run writing a pack rule about a call site
+// instead, which is the weakest rung standing in for the strongest. The
+// permission is granted by reading the two contents, never by trusting the run:
+// a file whose code is identical once comments are stripped changed only its
+// comments, and everything else out there still reds. An ADDED or DELETED file
+// is never comment-only however few lines it holds — a whole file is a whole
+// file — so the exception cannot be used to plant one.
 //
 // The trigger is the run's whole pinned title, NOT the bare "Claudinite growth:"
 // prefix the whole lifecycle shares, because its other runs have wider surfaces
@@ -45,8 +58,8 @@ const rule = {
   severity: 'blocking',
   scope: 'work',
   doc: 'packs/claudinite-growth/README.md',
-  description: 'A growth capture run (extract, dedup) writes only the repo\'s own local packs',
-  why: 'extract auto-merges its PR with no human review and dedup runs unattended; a capture run improves the repo\'s packs, so a write outside .claudinite/local/packs/ — the canon it prunes against, or the project\'s own code — escapes the review-by-blast-radius boundary the growth lifecycle is built on',
+  description: 'A growth capture run (extract, dedup) writes only the repo\'s own local packs, plus comment-only edits at the call sites its lessons are about',
+  why: 'extract auto-merges its PR with no human review and dedup runs unattended; a capture run improves the repo\'s packs and the comments at the call sites its lessons are about, so any other write outside .claudinite/local/packs/ — the canon it prunes against, or the project\'s own logic — escapes the review-by-blast-radius boundary the growth lifecycle is built on',
 
   run(work) {
     if (work.onDefaultBranch()) return [];
@@ -54,11 +67,12 @@ const rule = {
     const touched = [...new Set([...work.changedFiles, ...work.deleted])];
     return touched
       .filter((p) => !inSurface(p))
+      .filter((p) => !commentOnly(p, work.readBase(p), work.read(p)))
       .sort()
       .map((p) => finding(rule, {
         file: p,
-        what: `a growth capture run touched ${p}, outside ${LOCAL_ROOTS[0]}`,
-        fix: 'a capture run improves the repo\'s packs, never the canon or the project\'s code — keep the whole write surface inside the local packs; a site-tied lesson lands as the owning pack\'s entry naming the site, and lifting one into the canon is the promote stage\'s job',
+        what: `a growth capture run touched ${p}, outside ${LOCAL_ROOTS[0]}, and not only its comments`,
+        fix: 'a capture run improves the repo\'s packs and may correct or delete a comment at a call site a lesson is about — nothing else out there; keep every other write inside the local packs, and leave lifting a lesson into the canon to the promote stage',
       }));
   },
 };
@@ -72,7 +86,8 @@ export default rule;
 // module directly:
 // `node .claudinite/shared/packs/claudinite-growth/workRules/growth-write-scope.mjs [root]`.
 //   exit 0 — not a capture run, or every touched path is under the local packs
-//   exit 1 — a capture run touched a path outside the local packs
+//            or changed only its comments
+//   exit 1 — a capture run changed something else outside the local packs
 export function runCli(root = process.cwd()) {
   const ctx = buildContext({ root, mode: 'changed' });
   if (!ctx.mergeBase) {
@@ -86,12 +101,12 @@ export function runCli(root = process.cwd()) {
   }
   const findings = runRule(rule, ctx);
   if (findings.length) {
-    console.error(`growth-write-scope: FAIL — a growth capture run may write only under ${LOCAL_ROOTS[0]}, but this branch also touches ${findings.length} path(s):`);
+    console.error(`growth-write-scope: FAIL — a growth capture run may write only under ${LOCAL_ROOTS[0]} plus comment-only edits elsewhere, but this branch also changes ${findings.length} path(s):`);
     for (const f of findings) console.error(`  - ${f.file}`);
-    console.error('\nA capture run improves the repo\'s packs, never the canon or the project\'s code — keep the whole write surface inside the local packs.');
+    console.error('\nA capture run improves the repo\'s packs and may correct or delete a comment at a call site — nothing else out there.');
     process.exit(1);
   }
-  console.log('growth-write-scope: OK — not a capture run, or every touched path is under the local packs.');
+  console.log('growth-write-scope: OK — not a capture run, or every touched path is under the local packs or comment-only.');
 }
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
