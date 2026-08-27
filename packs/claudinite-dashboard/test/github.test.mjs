@@ -119,16 +119,24 @@ test('an error status becomes a GitHubError carrying the status', async () => {
   });
 });
 
-// Page 1 holds every open item, so it must never come from a TTL cache; later pages
-// are settled history and must not be refetched within the TTL.
+// History page 1 is where a newly-created item lands, so it must never come from a TTL
+// cache; later pages are settled history and must not be refetched within the TTL.
 test('issue page 1 is revalidated while history pages are served from the ttl cache', async () => {
   const gh = await load();
   const seen = [];
   globalThis.fetch = async (url, init) => {
+    const q = new URL(url).searchParams;
+    if (q.get('state') === 'open') {
+      // The live open listing carries an ETag like any other response, so a repeat
+      // load revalidates it for free — which is what makes asking it every time cheap.
+      return init.headers['If-None-Match']
+        ? res(null, { status: 304, headers: RATE })
+        : res([], { headers: { ...RATE, etag: 'W/"open"' } });
+    }
     // Match on the PARSED page param: the string "page=1" is also a substring of
     // "per_page=100", which silently matched every page.
-    seen.push({ page: new URL(url).searchParams.get('page'), cond: Boolean(init.headers['If-None-Match']) });
-    const page = new URL(url).searchParams.get('page');
+    seen.push({ page: q.get('page'), cond: Boolean(init.headers['If-None-Match']) });
+    const page = q.get('page');
     if (page === '1') {
       return init.headers['If-None-Match']
         ? res(null, { status: 304, headers: RATE })
@@ -152,7 +160,9 @@ test('an expired history ttl refetches', async () => {
   const gh = await load();
   let historyFetches = 0;
   globalThis.fetch = async (url, init) => {
-    const page = new URL(url).searchParams.get('page');
+    const q = new URL(url).searchParams;
+    if (q.get('state') === 'open') return res([], { headers: RATE });
+    const page = q.get('page');
     if (page === '1') {
       return init.headers['If-None-Match']
         ? res(null, { status: 304, headers: RATE })
@@ -166,6 +176,91 @@ test('an expired history ttl refetches', async () => {
   assert.equal(historyFetches, 1);
   await gh.listIssues('o/r', 't', { pages: 2, historyTtl: 0 });   // nothing is fresh at ttl 0
   assert.equal(historyFetches, 2);
+});
+
+// The premise page 1 was trusted on — "it holds every open item" — is false under
+// `sort=created`: an item created a hundred issues ago sits in the TTL'd history,
+// wearing whatever state it had when that page was cached. This is the bug the lead
+// card showed: a closed issue offered as the one thing to do next.
+test('an item that closed since its history page was cached reads as closed', async () => {
+  const gh = await load();
+  let openState = 'open';
+  globalThis.fetch = async (url, init) => {
+    const q = new URL(url).searchParams;
+    if (q.get('state') === 'open') {
+      // A live listing GitHub answers afresh: the item leaves it the moment it closes.
+      const body = openState === 'open' ? [{ number: 219, title: 'old work', state: 'open', labels: [], body: '' }] : [];
+      return res(body, { headers: { ...RATE, etag: `W/"open-${openState}"` } });
+    }
+    const page = q.get('page');
+    if (page === '1') {
+      return init.headers['If-None-Match']
+        ? res(null, { status: 304, headers: RATE })
+        : res(fullPage(), { headers: { ...RATE, etag: 'W/"p1"' } });
+    }
+    return res([{ number: 219, title: 'old work', state: 'open', labels: [], body: '' }], { headers: RATE });
+  };
+
+  const first = await gh.listIssues('o/r', 't', { pages: 2 });
+  assert.equal(first.issues.find((i) => i.number === 219).state, 'open');
+
+  openState = 'closed';                                   // and the history page stays cached
+  const second = await gh.listIssues('o/r', 't', { pages: 2 });
+  assert.equal(second.issues.find((i) => i.number === 219).state, 'closed',
+    'an open item the live open listing no longer names has closed');
+});
+
+// The other half of the same premise: an open item older than the pages actually
+// scanned was simply absent, so nothing could report it.
+test('an open item deeper than the scanned history still appears', async () => {
+  const gh = await load();
+  globalThis.fetch = async (url) => {
+    const q = new URL(url).searchParams;
+    if (q.get('state') === 'open') {
+      return res([{ number: 7, title: 'ancient', state: 'open', labels: [], body: '' }], { headers: RATE });
+    }
+    return res(fullPage(), { headers: { ...RATE, etag: 'W/"p1"' } });
+  };
+
+  const { issues } = await gh.listIssues('o/r', 't', { pages: 1 });
+  assert.ok(issues.some((i) => i.number === 7 && i.state === 'open'));
+});
+
+// Open PRs are read off the same pages and go stale the same way: one that merged
+// yesterday must not still count as work waiting on a person.
+test('open pull requests come from the live open listing', async () => {
+  const gh = await load();
+  globalThis.fetch = async (url) => {
+    const q = new URL(url).searchParams;
+    if (q.get('state') === 'open') return res([], { headers: RATE });
+    return res([{ number: 4, title: 'merged since', state: 'open', pull_request: {}, labels: [], body: '' }],
+      { headers: { ...RATE, etag: 'W/"p1"' } });
+  };
+
+  const { prs } = await gh.listIssues('o/r', 't', { pages: 1 });
+  assert.deepEqual(prs, [], 'a PR the live listing does not name is not open');
+});
+
+// Both halves fail soft: a budget too thin for the open listing leaves the history
+// pages saying what they last saw, which is a stale answer rather than no member.
+test('a withheld open listing degrades to the history pages rather than failing the read', async () => {
+  const gh = await load();
+  globalThis.fetch = async (url) => {
+    const q = new URL(url).searchParams;
+    if (q.get('state') === 'open') return res([], { headers: { ...RATE, etag: 'W/"open"' } });
+    return res([{ number: 5, title: 'stale', state: 'open', labels: [], body: '' }], { headers: { ...RATE, etag: 'W/"p1"' } });
+  };
+
+  await gh.listIssues('o/r', 't', { pages: 1 });          // warms both caches
+  // ...and then only the history half survives — the shape a load carries when the
+  // budget is gone before the open listing has ever been read.
+  for (const k of [...globalThis.localStorage.m.keys()]) {
+    if (k.includes('state=open')) globalThis.localStorage.removeItem(k);
+  }
+  gh.resetCounters();
+  gh.setPolicy({ spendCeiling: 0 });
+  const out = await gh.listIssues('o/r', 't', { pages: 1 });
+  assert.deepEqual(out.issues.map((i) => i.number), [5]);
 });
 
 // --- commit activity --------------------------------------------------------------

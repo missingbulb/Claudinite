@@ -251,14 +251,58 @@ export async function listTreeAtSha(repo, sha, token) {
   return out;
 }
 
+// PRs come back from the issues endpoint and are filtered out, so the FILTERED
+// length says nothing about whether more pages exist — a page of pure PRs would
+// read as the end of history. Pagination is decided by the raw page length, which
+// is therefore carried alongside the projection, cached and all.
+//
+// The PRs are not thrown away either: an open pull request is work waiting on a
+// person, which is exactly what the fleet row's Work group reports, and it arrives
+// in a response the page was making anyway.
+const projectPage = (body) => {
+  const list = Array.isArray(body) ? body : [];
+  return {
+    items: list.filter((i) => !i.pull_request).map(projectIssue),
+    prs: list.filter((i) => i.pull_request && String(i.state ?? '').toLowerCase() === 'open').map(projectPull),
+    raw: list.length,
+  };
+};
+
+// What is open RIGHT NOW, asked as its own question. Conditional on every page, so a
+// fleet load where nothing moved spends nothing and a load where something did is
+// correct — which is the trade the history pages cannot make.
+//
+// `complete` is what licenses a caller to read ABSENCE as closed: a listing cut short
+// by depth or by the budget says nothing about the items it never reached.
+async function listOpen(repo, token, { pages, perPage }) {
+  const items = [];
+  const prs = [];
+  let complete = false;
+  for (let page = 1; page <= pages; page += 1) {
+    const path = `/repos/${repo}/issues?state=open&sort=created&direction=desc&per_page=${perPage}&page=${page}`;
+    const batch = await conditional(path, token, { transform: projectPage });
+    items.push(...batch.items);
+    prs.push(...(batch.prs ?? []));
+    if (batch.raw < perPage) { complete = true; break; }
+  }
+  return { items, prs, complete };
+}
+
 // Issues, newest first. The LIST api and never the search index — search is
 // eventually consistent, which is how a just-created item goes missing from a view
 // whose whole job is showing what is happening right now.
 //
-// Two-tier by design, and this is the shape the 24h TTL actually applies to:
-//   - page 1 is live (it holds every open item) → conditional, revalidated always;
-//   - pages 2..n are settled history → TTL, default 24h.
-// So the open queue is never stale, and yesterday's history is not re-fetched.
+// Two reads, because one cannot answer both questions:
+//   - the OPEN set is asked for by state and revalidated on every page, always live;
+//   - HISTORY is `state=all` newest-created-first, page 1 conditional and pages 2..n
+//     under a TTL, default 24h.
+//
+// The history pages are settled only as a record of what EXISTED. Under `sort=created`
+// an item created long ago sits on page 3 whatever it is doing today, so its cached
+// copy keeps the state, labels and dates it wore when that page was fetched — which is
+// how a closed item went on being reported as parked work. The open listing is
+// therefore the authority on state: it replaces the history copy of anything it names,
+// and a cached-open item a COMPLETE open listing does not name has closed since.
 export async function listIssues(repo, token, { pages = 5, perPage = 100, historyTtl = null } = {}) {
   const ttl = historyTtl ?? policy.historyTtl ?? DAY_MS;
   const out = [];
@@ -267,31 +311,35 @@ export async function listIssues(repo, token, { pages = 5, perPage = 100, histor
   let complete = false;
   let fromCache = 0;
 
-  // PRs come back from the issues endpoint and are filtered out, so the FILTERED
-  // length says nothing about whether more pages exist — a page of pure PRs would
-  // read as the end of history. Pagination is decided by the raw page length, which
-  // is therefore carried alongside the projection, cached and all.
-  //
-  // The PRs are not thrown away either: an open pull request is work waiting on a
-  // person, which is exactly what the fleet row's Work group reports, and it arrives
-  // in a response the page was making anyway.
-  const project = (body) => {
-    const list = Array.isArray(body) ? body : [];
-    return {
-      items: list.filter((i) => !i.pull_request).map(projectIssue),
-      prs: list.filter((i) => i.pull_request && String(i.state ?? '').toLowerCase() === 'open').map(projectPull),
-      raw: list.length,
-    };
-  };
+  const project = projectPage;
+
+  // Correctness before depth: the open listing is read FIRST and is what survives a
+  // squeeze, because history one page short costs a member's older record while a
+  // missing open set costs a wrong answer about what is happening now.
+  let live = null;
+  try {
+    live = await listOpen(repo, token, { pages, perPage });
+  } catch (e) {
+    if (!(e instanceof RateBudgetError)) throw e;
+    rate.withheld += 1;
+  }
 
   for (let page = 1; page <= pages; page += 1) {
     const path = `/repos/${repo}/issues?state=all&sort=created&direction=desc&per_page=${perPage}&page=${page}`;
     let batch;
 
     if (page === 1) {
-      // Page 1 holds every open item, so it is never served from a TTL — it is
-      // revalidated on every load, which is free when nothing changed.
-      batch = await conditional(path, token, { transform: project });
+      // Where a newly-created item lands, so it is never served from a TTL — it is
+      // revalidated on every load, which is free when nothing changed. Withheld only
+      // when the live set above got through: history alone answers nothing this page
+      // asks, so a member with neither read is a member that could not be read.
+      try {
+        batch = await conditional(path, token, { transform: project });
+      } catch (e) {
+        if (!(e instanceof RateBudgetError) || !live) throw e;
+        rate.withheld += 1;
+        break;
+      }
     } else {
       const ck = `issues:${repo}:p${page}`;
       const hit = ageing.get(ck, ttl);
@@ -300,8 +348,8 @@ export async function listIssues(repo, token, { pages = 5, perPage = 100, histor
         fromCache += 1;
         rate.served += 1;
       } else if (frozen() || !budgetLeft()) {
-        // History is the cheapest thing to go without: page 1 already holds the live
-        // queue, so a withheld page 2 costs depth, never correctness.
+        // History is the cheapest thing to go without: the open listing already holds
+        // the live queue, so a withheld page 2 costs depth, never correctness.
         rate.withheld += 1;
         break;
       } else {
@@ -320,7 +368,37 @@ export async function listIssues(repo, token, { pages = 5, perPage = 100, histor
     scanned += batch.raw;
     if (batch.raw < perPage) { complete = true; break; }
   }
-  return { issues: out, prs, scanned, complete, fromCache };
+
+  // A withheld open listing leaves the history pages saying what they last saw, which
+  // is the old behaviour and the best this read can do without spending.
+  if (!live) return { issues: out, prs, scanned, complete, fromCache };
+
+  const liveOpen = new Map(live.items.map((i) => [i.number, i]));
+  const seen = new Set();
+  const issues = out.map((i) => {
+    seen.add(i.number);
+    const fresh = liveOpen.get(i.number);
+    if (fresh) return fresh;
+    // Closed since this page was cached. WHEN it closed is not something either read
+    // can say, and a fabricated date would be read as fact — so the state moves and
+    // `closed_at` stays whatever it was, which for an item cached open is unknown.
+    if (i.state === 'open' && live.complete) return { ...i, state: 'closed' };
+    return i;
+  });
+  // An open item older than the history actually scanned exists only in the live
+  // listing. Appended rather than merged by date: it is older than everything the
+  // history pages hold, which is why it was missing.
+  issues.push(...live.items.filter((i) => !seen.has(i.number)));
+
+  return {
+    issues,
+    // The live listing is the whole open set to the depth it reached; only where it
+    // fell short does the history's own (staler) reading of open PRs still add depth.
+    prs: live.complete ? live.prs : [...live.prs, ...prs.filter((p) => !live.prs.some((l) => l.number === p.number))],
+    scanned,
+    complete,
+    fromCache,
+  };
 }
 
 // How many runs a caller asks for. ONE number for both views, because the cache is
