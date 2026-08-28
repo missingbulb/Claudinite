@@ -20,6 +20,8 @@ reports it.
 | Deciding which pack owns a lesson | medium | complexity | prose: 59 words |
 | Judging whether Claudinite is current here | medium | correctness | prose: 51 words |
 | Answering "why did the mount not update" | medium | correctness | prose: 39 words |
+| A file missing from the mount | medium | correctness | prose: 71 words |
+| Finding a canon fix, no push access | medium | correctness | prose: 72 words |
 
 ## Checks
 

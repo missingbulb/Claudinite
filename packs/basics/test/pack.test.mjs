@@ -12,6 +12,7 @@ const taskLifecycle = declaredCheck('packs/basics', 'task-lifecycle');
 const squashMergeHistory = declaredCheck('packs/basics', 'squash-merge-history');
 const claudeMdLength = declaredCheck('packs/basics', 'claude-md-length');
 const warningSuppression = declaredCheck('packs/basics', 'warning-suppression');
+const noConflictMarkers = declaredCheck('packs/basics', 'no-conflict-markers');
 const rulesLineLength = declaredCheck('packs/basics', 'rules-line-length');
 const generatedMergeDriver = declaredCheck('packs/basics', 'generated-merge-driver');
 const catalogCompleteness = declaredCheck('packs/basics', 'catalog-completeness');
@@ -237,6 +238,46 @@ test('warning-suppression: still flags a bare marker with only a rule code (no r
     const findings = run(warningSuppression, root, 'all');
     assert.equal(findings.length, 4); // one for a.py, one for b.js, two markers in c.js
     assert.ok(findings.every((f) => /no reason at the site/.test(f.what)));
+  } finally { cleanup(root); }
+});
+
+// The markers are assembled rather than written out: a marker at the start of a
+// line in this file would be a real violation of the rule this file tests.
+const OURS = `${'<'.repeat(7)} HEAD`;
+const BASE = `${'|'.repeat(7)} merged common ancestors`;
+const THEIRS = `${'>'.repeat(7)} branch`;
+
+test('no-conflict-markers: flags every conflict marker left in a scanned file', () => {
+  const root = makeRepo({ changed: {
+    'notes.md': [OURS, '- ours', '=======', '- theirs', THEIRS, ''].join('\n'),
+  } });
+  try {
+    const findings = run(noConflictMarkers, root, 'all');
+    assert.equal(findings.length, 2);
+    assert.equal(findings[0].file, 'notes.md');
+    assert.equal(findings[0].line, 1);
+    assert.equal(findings[1].line, 5);
+    assert.match(findings[0].what, /merge-conflict marker/);
+  } finally { cleanup(root); }
+});
+
+test('no-conflict-markers: fires on the diff3 base marker too, in any scanned file', () => {
+  const root = makeRepo({ changed: {
+    'src/gen.js': [OURS, 'const a = 1;', BASE, 'const a = 2;', '=======', 'const a = 3;', THEIRS, ''].join('\n'),
+  } });
+  try {
+    const findings = run(noConflictMarkers, root, 'all');
+    assert.equal(findings.length, 3);
+    assert.equal(findings[0].file, 'src/gen.js');
+  } finally { cleanup(root); }
+});
+
+test('no-conflict-markers: stays quiet on a setext heading and on prose naming a marker', () => {
+  const root = makeRepo({ changed: {
+    'notes.md': ['Rules', '=======', '', `Delete the \`${OURS}\` line before staging.`, ''].join('\n'),
+  } });
+  try {
+    assert.equal(run(noConflictMarkers, root, 'all').length, 0);
   } finally { cleanup(root); }
 });
 

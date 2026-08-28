@@ -11,6 +11,8 @@ A GitHub procedure the consuming repo's own docs set — its merge command, when
 
 To post a **status update** on an issue (the lifecycle's "update the issue's status" step), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
 
+The same tool's `labels` field carries the same trap for a different part of the issue: it **replaces the whole label set**, not just the ones you name. Adding or removing one label without also reading and re-sending every label already on the issue silently drops the rest — read the issue's current labels first, compute the full set with your one change applied, and write that back whole.
+
 ## An auto-merge refusal is not a verdict — read the PR's state, then act
 
 `enable_pr_auto_merge` only accepts a PR whose required checks are still **pending**, so its refusals answer *timing and configuration*, never the change. Take each at face value and stop:

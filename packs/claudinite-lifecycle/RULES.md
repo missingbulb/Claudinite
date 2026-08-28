@@ -33,3 +33,14 @@
 - **Answering "why did the mount not update"** — read the member's own artifacts (its declaration,
   its stamp, the head sha's runs) before theorizing about a platform setting; propose a settings
   change as a conclusion, never as a diagnosis.
+
+- **A file a canon module references but that's absent from `.claudinite/shared/`** — that is
+  evidence about this repo's *vendor set*, not about the canon. Check the canon itself (a scratch
+  clone, or a session with canon access) before concluding it was never shipped and filing an
+  issue to author it — the gap is as likely a vendoring omission, and authoring the file again
+  only duplicates one that already exists.
+
+- **Finding a canon-level fix from a session whose GitHub scope reaches only this repo** — write
+  and verify it against a scratch clone of the canon, then open an issue **in this repo** carrying
+  the full `git diff` as a patch block plus how you verified it, rather than trying to push the fix
+  or route around the access boundary. A later session with canon scope can `git apply` the patch.
