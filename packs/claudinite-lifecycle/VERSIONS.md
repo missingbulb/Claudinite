@@ -8,6 +8,7 @@ own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.6 | 2026-09-03 | Two prose rules on the canon access boundary, lifted from missingbulb/ClaudiniteWebsite's local pack: a file a canon module references but absent from the vendored mount is evidence about the vendor set, not proof the canon lacks it; a canon-level fix found from a session scoped to one repo goes on as a patch-block issue in that repo, never a routed-around push (#1409). |
 | 60903.4 | 2026-09-03 | `legacy-shape-in-use` states the window a repo has to act on its own finding rather than claiming the removal waits on nobody carrying the shape (#1652). |
 | 60903.3 | 2026-09-03 | `legacy-shape-in-use` — an advisory over this repo's own declaration and stamp for every shape the engine merely tolerates: the retired settings-file name, the `claudinite`/`maintenance` blocks, top-level `packConfig`, `taskScheduler.endpoints`, the `local_packs/` declaration prefix, a renamed or absorbed pack id, an integer version and the `updates` mechanism alias. Each finding names the edit that moves the repo forward; each tolerance is scheduled for removal on no member still carrying it (#1637). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
