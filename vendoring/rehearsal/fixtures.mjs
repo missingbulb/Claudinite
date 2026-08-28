@@ -991,6 +991,23 @@ module.exports = { issue, check };
     },
   },
   {
+    name: 'node-consumer',
+    why: 'a member declaring the node technology pack with a resolving `node --test` invocation — `node/node-test-discovery` is blocking, and this proves a member whose test command already works converges green',
+    files: {
+      'README.md': '# fixture-node-consumer\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'node']),
+      'package.json': JSON.stringify({
+        name: 'fixture-node-consumer', private: true,
+        scripts: { test: "node --test 'test/**/*.test.mjs'" },
+      }, null, 2) + '\n',
+      'test/sample.test.mjs': `import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+test('fixture', () => { assert.equal(1, 1); });
+`,
+    },
+  },
+  {
     name: 'product-wiki-consumer',
     why: 'a member declaring the product-wiki standard over its scaffold, no config object on the entry — the skeleton check is declared data and the takes-no-config guard is its own coded rule, and this proves a member that adopted the standard converges green across that split',
     files: {
