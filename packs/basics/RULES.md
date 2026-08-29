@@ -64,6 +64,12 @@ change, independent of any one project.
   [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns that ordering and the
   chain's mechanics.
 
+- **Declaring a repo the new home of a role a retiring predecessor already filled** (a shared
+  preferences/config store, or any other adopted role) — copy the predecessor's actual content in
+  the same change as the declaration, not the declaration alone. A gap your own tooling already
+  surfaced in its own output is not self-resolving — act on it now, rather than leaving it for a
+  human to notice.
+
 - **When verifying now is genuinely impossible** (an external release window, an upstream fix in
   flight, an effect that only appears once the change is deployed, converged or loaded by a later
   session) — the follow-up is a mechanism that comes to you, never a human's memory and never an
