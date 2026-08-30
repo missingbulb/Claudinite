@@ -444,8 +444,8 @@ test('the request task is the one task allowed to read its item\'s model', () =>
   assert.equal(`engine/${requestTask.id}`, REQUEST_TASK_ID);
   assert.equal(requestTask.model_from_request, true);
   // The ceiling PERMITS a merge (§16.11) — what decides whether one happens is the
-  // item's `Merge:` field, asserted below, and the diff classifier the worker runs.
-  assert.equal(requestTask.expected_outcome, 'merged-pr');
+  // item's `Merge:` field, asserted below, and the policy engine the worker runs.
+  assert.equal(requestTask.expected_outcome, 'pr');
   assert.equal(requestTask.code_work, undefined, 'and has no code-work phase to carry a payload');
 });
 
@@ -518,8 +518,41 @@ test('the body\'s `Automerge:` becomes the item\'s Merge field, and only for a g
   assert.equal(withdrawn.merge, null);
 });
 
-test('the ceiling permits the authorized merge, and an unrecognised authorization reads as absent', () => {
-  assert.equal(requestTask.expected_outcome, 'merged-pr');
-  const body = `${TASK_PATH}\n\nRequest: #500\nMerge: whenever-i-feel-like-it\n`;
-  assert.equal(parseWorkItemBody(body).merge, null, 'only the one value authorizes anything');
+test('the ceiling permits the authorized merge, and the Merge field is fenced by policy shape', () => {
+  assert.equal(requestTask.expected_outcome, 'pr');
+  assert.equal(requestTask.may_automerge, 'anything');
+  const at = (value) => parseWorkItemBody(`${TASK_PATH}\n\nRequest: #500\nMerge: ${value}\n`).merge;
+  // A value that does not read as a policy expression reads as absent.
+  assert.equal(at('what?!'), null);
+  assert.equal(at('nothing'), null, 'never-merge is the default already');
+  assert.equal(at('reject:js-code-changes'), null, 'a rejects-only list allows nothing');
+  // A policy expression rides through as itself; the legacy aliases canonicalize.
+  assert.equal(at('anything'), 'anything');
+  assert.equal(at('doc-changes;reject:js-code-changes'), 'doc-changes;reject:js-code-changes');
+  assert.equal(at('if-narrow'), 'if-narrow');
+  // A well-formed policy naming a rule nobody defines rides through too — it
+  // fails closed at the verdict, loudly, instead of being silently ignored.
+  assert.equal(at('no-such-rule'), 'no-such-rule');
+});
+
+// The drift guard for work-item's inline policy fence: that module is
+// deliberately pure and cannot import the policy engine, so this runs the value
+// matrix through both sides — everything the fence keeps must be a policy the
+// engine evaluates ('anything' or a rule list), everything it drops must be one
+// the engine refuses ('nothing' or invalid).
+test('the Merge fence and normalizePolicy agree on what is a policy expression', async () => {
+  const { normalizePolicy } = await import('../../merge-policy.mjs');
+  const at = (value) => parseWorkItemBody(`${TASK_PATH}\n\nRequest: #500\nMerge: ${value}\n`).merge;
+  const matrix = ['anything', 'nothing', 'if-narrow', 'yes', 'true', 'narrow-diff',
+    'doc-changes;readme-changes', 'anything;reject:js-code-changes', 'reject:js-code-changes',
+    'no-such-rule', 'Bad_Term', 'a;;b'];
+  for (const value of matrix) {
+    const kept = at(value);
+    const kind = normalizePolicy(kept ?? value).kind;
+    if (kept !== null) {
+      assert.ok(kind === 'anything' || kind === 'rules', `fence kept "${value}" but the engine calls it ${kind}`);
+    } else {
+      assert.ok(kind === 'nothing' || kind === 'invalid', `fence dropped "${value}" but the engine calls it ${kind}`);
+    }
+  }
 });
