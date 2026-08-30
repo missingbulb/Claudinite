@@ -5,6 +5,7 @@ the version this file was introduced beside (60820.1); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60830.3 | 2026-08-30 | `wiki-growth` authorizes `under:product-wiki/ && doc-changes` instead of the repo-wide `doc-changes`, so the round may land Markdown inside the tree it already anchors its precondition on, and a doc elsewhere or a non-doc file inside the wiki parks it for review (#1473). |
 | 60830.2 | 2026-08-30 | `wiki-growth` declares `automerge: ['doc-changes']` — the wiki is Markdown pages, and anything else in a round's diff parks it for review (#1459). |
 | 60830.1 | 2026-08-30 | Bundles the `explore-link` skill — the owner-given-source growth lane (#1421). |
 | 60824.1 | 2026-08-24 | Prose names the scheduler at its new home in the `claudinite-tasks` pack (#1317). |

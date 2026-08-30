@@ -7,6 +7,7 @@ forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60830.6 | 2026-08-30 | `writing-tasks` names the inline folder scope `under:<dir>` and the `&&` intersection as how a task states a folder boundary, and spells out that a policy list is a union (#1473). |
 | 60830.5 | 2026-08-30 | `writing-tasks` names a park's end condition beside the park it describes: `--pr` is what lets an item close by itself when its pull request resolves, `done` if it merged and `rejected` if it did not (#1468). |
 | 60830.4 | 2026-08-30 | The growth tasks state their change shape as auto-merge policy, measured by the policy engine instead of requested in prose: `growth-dedup` lands only `markdown-trims` (removals and in-line cuts, never growth), while `growth-extract`, `rule-revalidation` and `prose-to-checks-sweep` land only the local-pack prose/check classes this pack's `merge-rules.json` declares (where a run may write stays `growth-write-scope`'s). `writing-tasks` teaches the `automerge` contract, built-in classes first (#1459). |
 | 60830.3 | 2026-08-30 | A member repo no longer authors packs of its own: the weekly per-repo `growth-discover-packs` reflection is retired, leaving pack discovery to canon-curation's fleet sweep, which now carries the stack-manifest method itself. A repo's local packs stay what adoption seeded, with `growth-extract` writing rules into them (#1447). |
