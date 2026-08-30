@@ -1,0 +1,316 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import {
+  normalizePolicy, policyExpression, policyVerdict, removalsOnly, changeKindOf,
+  compileDeclaredRule, declaredMergeRules, AUTOMERGE_TRAILER_RE,
+} from '../merge-policy.mjs';
+
+// --- entry builders -----------------------------------------------------------
+
+const added = (file, after = 'x\n') => ({ file, before: null, after });
+const deleted = (file, before = 'x\n') => ({ file, before, after: null });
+const edited = (file, before, after) => ({ file, before, after });
+
+// --- normalizePolicy ----------------------------------------------------------
+
+test('normalizePolicy: the two whole-policy words, and absence as nothing', () => {
+  assert.equal(normalizePolicy('nothing').kind, 'nothing');
+  assert.equal(normalizePolicy(null).kind, 'nothing');
+  assert.equal(normalizePolicy('anything').kind, 'anything');
+});
+
+test('normalizePolicy: the queue\'s legacy spellings resolve to the narrow-diff composite', () => {
+  for (const legacy of ['if-narrow', 'yes', 'true']) {
+    const norm = normalizePolicy(legacy);
+    assert.equal(norm.kind, 'rules');
+    assert.ok(norm.allow.includes('comment-only-changes'), `${legacy} expands the composite`);
+    assert.ok(norm.allow.includes('single-folder-code-changes'));
+  }
+});
+
+test('normalizePolicy: semicolon strings and arrays parse alike, rejects split out', () => {
+  const fromString = normalizePolicy('doc-changes;reject:js-code-changes');
+  const fromArray = normalizePolicy(['doc-changes', 'reject:js-code-changes']);
+  assert.deepEqual(fromString, fromArray);
+  assert.deepEqual(fromString.allow, ['doc-changes']);
+  assert.deepEqual(fromString.reject, ['js-code-changes']);
+});
+
+test('normalizePolicy: a list with no allow term is invalid, not "anything except"', () => {
+  assert.equal(normalizePolicy(['reject:js-code-changes']).kind, 'invalid');
+  // The intended spelling works.
+  const norm = normalizePolicy(['anything', 'reject:js-code-changes']);
+  assert.equal(norm.kind, 'rules');
+  assert.deepEqual(norm.allow, ['anything']);
+});
+
+test('normalizePolicy: malformed terms, nothing-in-a-list, and reject-of-a-composite are invalid', () => {
+  assert.equal(normalizePolicy('Doc_Changes').kind, 'invalid');
+  assert.equal(normalizePolicy(['doc-changes', 'nothing']).kind, 'invalid');
+  assert.equal(normalizePolicy(['anything', 'reject:narrow-diff']).kind, 'invalid');
+});
+
+test('policyExpression round-trips the array form into the trailer/CLI string', () => {
+  assert.equal(policyExpression(['a-b', 'reject:c-d']), 'a-b;reject:c-d');
+  assert.equal(policyExpression('anything'), 'anything');
+  assert.deepEqual(normalizePolicy(policyExpression(['doc-changes'])), normalizePolicy(['doc-changes']));
+});
+
+// --- removalsOnly -------------------------------------------------------------
+
+test('removalsOnly: removals pass, additions and reorders do not, deletion is all-removals', () => {
+  assert.equal(removalsOnly('a\nb\nc\n', 'a\nc\n'), true);
+  assert.equal(removalsOnly('a\nb\n', 'a\nb\nc\n'), false);
+  assert.equal(removalsOnly('a\nb\n', 'b\na\n'), false, 'a reorder is an edit, not a removal');
+  assert.equal(removalsOnly('a\n', null), true);
+  assert.equal(removalsOnly(null, 'a\n'), false);
+});
+
+test('changeKindOf reads the null side', () => {
+  assert.equal(changeKindOf(added('f')), 'added');
+  assert.equal(changeKindOf(deleted('f')), 'deleted');
+  assert.equal(changeKindOf(edited('f', 'a', 'b')), 'modified');
+});
+
+// --- policyVerdict: whole policies -------------------------------------------
+
+test('policyVerdict: nothing never merges, anything always does', () => {
+  const entries = [added('src/a.mjs')];
+  assert.equal(policyVerdict({ policy: 'nothing', entries }).mergeable, false);
+  assert.equal(policyVerdict({ policy: 'anything', entries }).mergeable, true);
+});
+
+test('policyVerdict: an empty diff is not mergeable under a rule list', () => {
+  const v = policyVerdict({ policy: ['doc-changes'], entries: [] });
+  assert.equal(v.mergeable, false);
+  assert.match(v.why, /changes nothing/);
+});
+
+test('policyVerdict: an unknown rule name fails closed and is named', () => {
+  const v = policyVerdict({ policy: ['no-such-rule'], entries: [added('docs/a.md')] });
+  assert.equal(v.mergeable, false);
+  assert.match(v.why, /no-such-rule/);
+});
+
+test('policyVerdict: an invalid policy expression fails closed', () => {
+  const v = policyVerdict({ policy: 'Doc Changes!!', entries: [added('docs/a.md')] });
+  assert.equal(v.mergeable, false);
+  assert.match(v.why, /invalid policy/);
+});
+
+// --- policyVerdict: built-in coverage -----------------------------------------
+
+test('comment-only plus readme covers the improve-comments shape and nothing more', () => {
+  const policy = ['comment-only-changes', 'readme-changes'];
+  const ok = policyVerdict({
+    policy,
+    entries: [
+      edited('src/a.mjs', 'let x = 1; // old\n', 'let x = 1; // better\n'),
+      edited('packs/p/README.md', 'a\n', 'b\n'),
+      added('README.md'),
+    ],
+  });
+  assert.equal(ok.mergeable, true, ok.why);
+
+  const codeSlipped = policyVerdict({
+    policy,
+    entries: [edited('src/a.mjs', 'let x = 1;\n', 'let x = 2;\n')],
+  });
+  assert.equal(codeSlipped.mergeable, false);
+  assert.match(codeSlipped.why, /covered by no allow term/);
+
+  const readmeDeleted = policyVerdict({ policy, entries: [deleted('README.md')] });
+  assert.equal(readmeDeleted.mergeable, false, 'a README may be improved, never removed');
+});
+
+test('markdown-line-removals: pure removals and whole-file removals pass, growth fails', () => {
+  const policy = ['markdown-line-removals'];
+  assert.equal(policyVerdict({
+    policy, entries: [edited('local/RULES.md', '- a\n- b\n- c\n', '- a\n- c\n')],
+  }).mergeable, true);
+  assert.equal(policyVerdict({ policy, entries: [deleted('local/RULES.md')] }).mergeable, true);
+  assert.equal(policyVerdict({
+    policy, entries: [edited('local/RULES.md', '- a\n', '- a\n- b\n')],
+  }).mergeable, false);
+  assert.equal(policyVerdict({
+    policy, entries: [edited('src/a.mjs', 'a\nb\n', 'a\n')],
+  }).mergeable, false, 'the rule is about markdown, not code');
+});
+
+test('generated-file-changes covers regenerated artifacts only', () => {
+  const policy = ['generated-file-changes'];
+  assert.equal(policyVerdict({
+    policy, entries: [edited('x/usage.GENERATED.json', '{}', '{"a":1}')],
+  }).mergeable, true);
+  assert.equal(policyVerdict({
+    policy, entries: [edited('x/usage.json', '{}', '{"a":1}')],
+  }).mergeable, false);
+});
+
+test('file-additions covers new files and nothing else', () => {
+  const policy = ['file-additions'];
+  assert.equal(policyVerdict({ policy, entries: [added('src/new.mjs')] }).mergeable, true);
+  assert.equal(policyVerdict({ policy, entries: [edited('src/old.mjs', 'a', 'b')] }).mergeable, false);
+});
+
+test('the single-folder constraint counts only the code files its own term covered', () => {
+  const policy = ['doc-changes', 'comment-only-changes', 'single-folder-code-changes'];
+  const oneDir = policyVerdict({
+    policy,
+    entries: [
+      edited('src/a.mjs', 'x', 'y'),
+      edited('src/b.mjs', 'x', 'y'),
+      edited('docs/a.md', 'x', 'y'),
+      edited('other/c.mjs', 'let x = 1; // a\n', 'let x = 1; // b\n'),
+    ],
+  });
+  assert.equal(oneDir.mergeable, true, oneDir.why);
+
+  const twoDirs = policyVerdict({
+    policy,
+    entries: [edited('src/a.mjs', 'x', 'y'), edited('other/b.mjs', 'x', 'y')],
+  });
+  assert.equal(twoDirs.mergeable, false);
+  assert.match(twoDirs.why, /2 directories/);
+});
+
+test('single-file-code-changes bounds the diff to one real code file', () => {
+  const policy = ['single-file-code-changes'];
+  assert.equal(policyVerdict({ policy, entries: [edited('src/a.mjs', 'x', 'y')] }).mergeable, true);
+  assert.equal(policyVerdict({
+    policy, entries: [edited('src/a.mjs', 'x', 'y'), edited('src/b.mjs', 'x', 'y')],
+  }).mergeable, false);
+});
+
+test('narrow-diff composes the historical narrow shape', () => {
+  const v = policyVerdict({
+    policy: 'narrow-diff',
+    entries: [
+      edited('docs/DESIGN.md', 'a', 'b'),
+      added('packs/p/test/x.test.mjs'),
+      edited('src/a.mjs', 'x', 'y'),
+    ],
+  });
+  assert.equal(v.mergeable, true, v.why);
+});
+
+// --- policyVerdict: rejects and the self-widening guard -----------------------
+
+test('a reject term vetoes a file every allow term covers', () => {
+  const jsRule = compileDeclaredRule({
+    name: 'js-code-changes', pathMatching: '/\\.(mjs|cjs|js)$/',
+    changeKinds: ['added', 'modified', 'deleted'], editShape: 'any',
+  }, 'test');
+  const declaredRules = new Map([[jsRule.name, jsRule]]);
+  const v = policyVerdict({
+    policy: ['anything', 'reject:js-code-changes'],
+    entries: [edited('src/a.mjs', 'x', 'y')],
+    declaredRules,
+  });
+  assert.equal(v.mergeable, false);
+  assert.match(v.why, /reject:js-code-changes/);
+
+  const docsOnly = policyVerdict({
+    policy: ['anything', 'reject:js-code-changes'],
+    entries: [edited('docs/a.md', 'x', 'y')],
+    declaredRules,
+  });
+  assert.equal(docsOnly.mergeable, true, docsOnly.why);
+});
+
+test('a one-term allow-all list collapses to the whole anything policy', () => {
+  assert.equal(normalizePolicy(['anything']).kind, 'anything');
+});
+
+test('no granular policy covers a change to the policy sources, comment-only excepted', () => {
+  // 'anything' as an allow term beside a granular term keeps the policy granular,
+  // so this is the widest coverage the guard must still beat.
+  const widest = ['anything', 'reject:doc-changes'];
+  for (const file of ['packs/p/merge-rules.json', 'packs/p/tasks/t/task.mjs',
+    'packs/claudinite-tasks/merge-policy.mjs', 'packs/claudinite-tasks/workRules/automerge-policy-scope.mjs']) {
+    const v = policyVerdict({ policy: widest, entries: [edited(file, 'a', 'b')] });
+    assert.equal(v.mergeable, false, `${file} must not be coverable`);
+    assert.match(v.why, /defines auto-merge policy/);
+  }
+  // Adding a NEW merge-rules.json is the same widening.
+  assert.equal(policyVerdict({
+    policy: ['file-additions'], entries: [added('local/packs/x/merge-rules.json')],
+  }).mergeable, false);
+  // A comment-only edit to a task declaration cannot change what it declares.
+  assert.equal(policyVerdict({
+    policy: ['comment-only-changes'],
+    entries: [edited('packs/p/tasks/t/task.mjs', 'export default {}; // a\n', 'export default {}; // b\n')],
+  }).mergeable, true);
+  // The plain 'anything' policy — the trusted converge lane — is exempt.
+  assert.equal(policyVerdict({
+    policy: 'anything', entries: [edited('packs/p/tasks/t/task.mjs', 'a', 'b')],
+  }).mergeable, true);
+});
+
+// --- declared rules -----------------------------------------------------------
+
+test('compileDeclaredRule rejects unknown keys, missing editShape, and bad names', () => {
+  assert.throws(() => compileDeclaredRule({
+    name: 'x', pathMatching: '/a/', changeKinds: ['added'], editShape: 'any', typo: true,
+  }, 't'), /not a merge-rule key/);
+  assert.throws(() => compileDeclaredRule({
+    name: 'x', pathMatching: '/a/', changeKinds: ['added'],
+  }, 't'), /editShape/);
+  assert.throws(() => compileDeclaredRule({
+    name: 'Bad_Name', pathMatching: '/a/', changeKinds: ['added'], editShape: 'any',
+  }, 't'), /kebab-case/);
+  assert.throws(() => compileDeclaredRule({
+    name: 'x', pathMatching: 'a', changeKinds: ['added'], editShape: 'any',
+  }, 't'), /regex string/);
+});
+
+test('a declared removals-only rule composes path scope with edit shape', () => {
+  const rule = compileDeclaredRule({
+    name: 'local-pack-doc-removals',
+    pathMatching: '/^\\.claudinite\\/local\\/packs\\/.*\\.md$/',
+    changeKinds: ['modified', 'deleted'],
+    editShape: 'removals-only',
+  }, 't');
+  assert.equal(rule.appliesTo(edited('.claudinite/local/packs/p/RULES.md', 'a\nb\n', 'a\n')), true);
+  assert.equal(rule.appliesTo(edited('.claudinite/local/packs/p/RULES.md', 'a\n', 'a\nb\n')), false);
+  assert.equal(rule.appliesTo(edited('docs/RULES.md', 'a\nb\n', 'a\n')), false);
+  assert.equal(rule.appliesTo(added('.claudinite/local/packs/p/RULES.md')), false);
+});
+
+test('declaredMergeRules reads only active packs and reports collisions loudly', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'merge-rules-'));
+  try {
+    const mkPack = (id, specs) => {
+      const dir = path.join(root, id);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(path.join(dir, 'merge-rules.json'), JSON.stringify(specs));
+      return { id, dir };
+    };
+    const active = mkPack('alpha', [
+      { name: 'alpha-docs', pathMatching: '/\\.md$/', changeKinds: ['modified'], editShape: 'any' },
+      { name: 'doc-changes', pathMatching: '/x/', changeKinds: ['modified'], editShape: 'any' },
+    ]);
+    const inactive = mkPack('beta', [
+      { name: 'beta-docs', pathMatching: '/\\.md$/', changeKinds: ['modified'], editShape: 'any' },
+    ]);
+    const { rules, errors } = declaredMergeRules([active, inactive], { packs: ['alpha'] });
+    assert.ok(rules.has('alpha-docs'));
+    assert.ok(!rules.has('beta-docs'), 'an undeclared pack contributes no merge rules');
+    assert.ok(errors.some((e) => /doc-changes.*already taken/.test(e)), 'shadowing a built-in is an error');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- the trailer --------------------------------------------------------------
+
+test('the arming trailer parses out of a commit message, last line form', () => {
+  const msg = 'Claudinite tidy: improve comments\n\nRefs #1.\n\nClaudinite-Automerge-Policy: comment-only-changes;readme-changes\n';
+  const m = AUTOMERGE_TRAILER_RE.exec(msg);
+  assert.ok(m);
+  assert.equal(normalizePolicy(m[1]).kind, 'rules');
+  assert.equal(AUTOMERGE_TRAILER_RE.exec('no trailer here'), null);
+});
