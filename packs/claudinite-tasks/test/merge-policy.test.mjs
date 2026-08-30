@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { removeTree } from '../../../engine/remove-tree.mjs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -301,7 +302,7 @@ test('declaredMergeRules reads only active packs and reports collisions loudly',
     assert.ok(!rules.has('beta-docs'), 'an undeclared pack contributes no merge rules');
     assert.ok(errors.some((e) => /doc-changes.*already taken/.test(e)), 'shadowing a built-in is an error');
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeTree(root);
   }
 });
 

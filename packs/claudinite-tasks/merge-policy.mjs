@@ -307,27 +307,31 @@ const POLICY_SOURCES = /(^|\/)(merge-rules\.json|merge-policy\.mjs|workRules\/au
 // The whole verdict over a diff. `entries` are `{ file, before, after }` (null
 // side = added/deleted); `declaredRules` a Map from declaredMergeRules, with its
 // `errors` passed through so a broken declaration fails any policy that names
-// the broken pack's rule set. Returns { mergeable, why, files } where `files`
-// carries one line per changed file (its covering rule, or its violation) —
-// a run that parks has to say what it parked over.
+// the broken pack's rule set. Returns { mergeable, why, files, problems }:
+// `files` carries one line per changed file (its covering rule, or its
+// violation), `problems` each refusal as { file, what } — file null for a
+// whole-diff refusal — because a run that parks has to say what it parked over.
 export function policyVerdict({ policy, entries, declaredRules = new Map(), ruleErrors = [] }) {
+  const refuse = (problems, files = []) => ({
+    mergeable: false, why: problems.map((p) => p.what).join('; '), files, problems,
+  });
   const norm = normalizePolicy(policy);
-  if (norm.kind === 'invalid') return { mergeable: false, why: `invalid policy: ${norm.reason}`, files: [] };
+  if (norm.kind === 'invalid') return refuse([{ file: null, what: `invalid policy: ${norm.reason}` }]);
   if (norm.kind === POLICY_NOTHING) {
-    return { mergeable: false, why: 'the policy authorizes nothing to auto-merge', files: [] };
+    return refuse([{ file: null, what: 'the policy authorizes nothing to auto-merge' }]);
   }
   if (norm.kind === POLICY_ANYTHING) {
-    return { mergeable: true, why: 'the policy authorizes any diff (the repo\'s delivery settings still apply)', files: [] };
+    return { mergeable: true, why: 'the policy authorizes any diff (the repo\'s delivery settings still apply)', files: [], problems: [] };
   }
   if (!entries.length) {
-    return { mergeable: false, why: 'this branch changes nothing against the base — there is nothing to merge', files: [] };
+    return refuse([{ file: null, what: 'this branch changes nothing against the base — there is nothing to merge' }]);
   }
 
   const resolve = (name) => BUILTIN_MERGE_RULES.get(name) ?? declaredRules.get(name) ?? null;
   const unknown = [...norm.allow, ...norm.reject].filter((n) => n !== POLICY_ANYTHING && !resolve(n));
   if (unknown.length) {
     const errs = ruleErrors.length ? ` (rule declarations also failed to load: ${ruleErrors.join('; ')})` : '';
-    return { mergeable: false, why: `unresolved rule name(s): ${unknown.join(', ')} — an unknown rule authorizes nothing${errs}`, files: [] };
+    return refuse([{ file: null, what: `unresolved rule name(s): ${unknown.join(', ')} — an unknown rule authorizes nothing${errs}` }]);
   }
 
   const files = [];
@@ -337,19 +341,19 @@ export function policyVerdict({ policy, entries, declaredRules = new Map(), rule
     const { file } = entry;
     if (POLICY_SOURCES.test(file) && !isCommentOnlyChange(entry)) {
       files.push({ file, verdict: 'policy-source' });
-      problems.push(`${file} defines auto-merge policy itself — no granular policy may change it`);
+      problems.push({ file, what: `${file} defines auto-merge policy itself — no granular policy may change it` });
       continue;
     }
     const rejectedBy = norm.reject.find((n) => resolve(n).appliesTo(entry));
     if (rejectedBy) {
       files.push({ file, verdict: `rejected:${rejectedBy}` });
-      problems.push(`${file} matches reject:${rejectedBy}`);
+      problems.push({ file, what: `${file} matches reject:${rejectedBy}` });
       continue;
     }
     const coverer = norm.allow.find((n) => n === POLICY_ANYTHING || resolve(n).appliesTo(entry));
     if (coverer === undefined) {
       files.push({ file, verdict: 'uncovered' });
-      problems.push(`${file} (${changeKindOf(entry)} ${classifyPath(entry.file)}) is covered by no allow term`);
+      problems.push({ file, what: `${file} (${changeKindOf(entry)} ${classifyPath(entry.file)}) is covered by no allow term` });
       continue;
     }
     files.push({ file, verdict: `covered:${coverer}` });
@@ -358,12 +362,12 @@ export function policyVerdict({ policy, entries, declaredRules = new Map(), rule
   }
   for (const [name, covered] of coveredBy) {
     const failed = resolve(name)?.constraint?.(covered) ?? null;
-    if (failed) problems.push(`${name}: ${failed}`);
+    if (failed) problems.push({ file: null, what: `${name}: ${failed}` });
   }
 
   return problems.length
-    ? { mergeable: false, why: problems.join('; '), files }
-    : { mergeable: true, why: `every changed file is covered (${[...coveredBy.keys()].join(', ')})`, files };
+    ? refuse(problems, files)
+    : { mergeable: true, why: `every changed file is covered (${[...coveredBy.keys()].join(', ')})`, files, problems: [] };
 }
 
 // --- the diff against a base ref (shared with narrow-diff.mjs) ----------------
