@@ -27,7 +27,8 @@ export default {
   schedule_after: ['claudinite-lifecycle/update'],
   precondition_signals: ['commits', 'prs', 'issues'],
   agent_model: 'opus',                   // generalizing/curating lessons is the heaviest judgment, and the default delivery lands the PR with no human review
-  expected_outcome: 'merged-pr',            // additive edits to the repo's own local packs; delivered to land per the repo's delivery settings
+  expected_outcome: 'pr',
+  may_automerge: ['local-pack-changes'], // additive edits to the repo's own local packs (this pack's merge-rules.json); delivered per the repo's delivery settings
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,            // two source passes plus the prose-to-checks upgrade — generous bound, extreme protection
 

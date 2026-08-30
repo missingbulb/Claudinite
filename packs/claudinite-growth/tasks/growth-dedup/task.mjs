@@ -25,7 +25,8 @@ export default {
   frequency: 'weekly',             // the weekly anchor — prunes against the mounted canon that morning's 02:00 baselining converged (DESIGN §2)
   precondition_signals: ['localPacks', 'sharedMount', 'commits'],
   agent_model: 'opus',                   // proving the canon genuinely covers a local item — and telling coverage from "stated too generally" — is a judgment call
-  expected_outcome: 'merged-pr',            // one PR per run, delivered to land per the repo's delivery settings (a `review` member degrades it to open-pr)
+  expected_outcome: 'pr',
+  may_automerge: ['local-pack-doc-removals'], // a prune only removes local-pack Markdown lines (this pack's merge-rules.json); a `review` member still reviews
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,            // proving canon coverage per local item — generous bound, extreme protection
 

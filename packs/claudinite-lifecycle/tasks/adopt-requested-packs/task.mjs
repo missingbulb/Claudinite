@@ -48,7 +48,8 @@ export default {
   frequency: 'manual',                   // fired by the fleet enforcer when it places work here — never due on its own
   precondition_signals: [],              // no signal — the work list arrives by push, not by observation
   agent_model: 'sonnet',                 // applies existing packs by an existing skill; confirmation judgment is bounded and reviewed
-  expected_outcome: 'merged-pr',         // lands unattended — see the note below on what that trades away
+  expected_outcome: 'pr',
+  may_automerge: 'anything',             // lands unattended — a declaration edit plus a whole-mount re-vendor fits no diff class; see the note above on what that trades away
   agent_instructions: 'task.md',
   // Adopting packs is a declaration edit, an interview transcription, a re-vendor, a
   // scaffold and a PR. Generous, because it is a runaway bound and not a scheduling

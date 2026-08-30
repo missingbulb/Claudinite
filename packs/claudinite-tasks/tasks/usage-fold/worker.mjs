@@ -33,6 +33,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../../claudinite-tasks/deliver-generated.mjs';
+import { AUTOMERGE_TRAILER, policyExpression } from '../../../claudinite-tasks/merge-policy.mjs';
+import task from './task.mjs';
 import {
   countEntries, foldUsage, encodeUsage, decodeUsage, mountedSkillNames, DAY_WINDOW_DAYS,
 } from './fold-usage.mjs';
@@ -293,7 +295,11 @@ export async function main() {
   const pr = await deliverGenerated({
     root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX, log,
     files: { [USAGE_PATH]: text, ...(attributes !== null ? { '.gitattributes': attributes } : {}) },
-    message: 'Claudinite: fold usage metrics',
+    // The arming trailer carries the task's own may_automerge, so the
+    // automerge-policy-scope check re-measures this delivery's diff wherever the
+    // PR's CI runs check_the_work — the code lane's equivalent of the agent
+    // lane's stamp-before-merge.
+    message: `Claudinite: fold usage metrics\n\n${AUTOMERGE_TRAILER}: ${policyExpression(task.may_automerge)}`,
     title: 'Claudinite: usage fold',
     body: [
       `Regenerated \`${USAGE_PATH}\` from this repo's captured conversation logs, its`,

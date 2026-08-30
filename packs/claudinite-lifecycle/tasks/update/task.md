@@ -80,7 +80,7 @@ standing ~24h offset between a run's output and the member's `main` is the exact
 arrive*. The same reasoning binds here — the only difference is that you hold the
 credential, so you are the one who acts on it.
 
-Merging is within this task's ceiling (`expected_outcome: 'merged-pr'`), and a ceiling is
+Merging is within this task's ceiling (`may_automerge: 'anything'`), and a ceiling is
 the most a run may do, never a target — so this is permission, not licence to merge
 something red. Green first, then merge.
 

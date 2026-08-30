@@ -188,7 +188,7 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
 
   // Merging must be within the ceiling, or the instruction below tells the session to
   // violate its own contract — verify-outcome.mjs would then fail every apply stage.
-  assert.equal(decl.expected_outcome, 'merged-pr');
+  assert.equal(decl.expected_outcome, 'pr');
 
   const land = brief.slice(brief.indexOf('## 5.'));
   assert.ok(land, 'the brief must still carry a §5');

@@ -306,6 +306,23 @@ test('declaredMergeRules reads only active packs and reports collisions loudly',
   }
 });
 
+test('this pack\'s own merge-rules.json compiles, and usage-fold\'s delivery shape resolves', () => {
+  const packDir = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
+  const { rules, errors } = declaredMergeRules(
+    [{ id: 'claudinite-tasks', dir: packDir }], { packs: ['claudinite-tasks'] },
+  );
+  assert.deepEqual(errors, []);
+  const v = policyVerdict({
+    policy: ['generated-file-changes', 'gitattributes-changes'],
+    entries: [
+      edited('.claudinite/local/usage.GENERATED.json', '{}', '{"a":1}'),
+      added('.gitattributes', '*.GENERATED.json merge=union\n'),
+    ],
+    declaredRules: rules,
+  });
+  assert.equal(v.mergeable, true, v.why);
+});
+
 // --- the trailer --------------------------------------------------------------
 
 test('the arming trailer parses out of a commit message, last line form', () => {

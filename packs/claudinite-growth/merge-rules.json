@@ -1,0 +1,14 @@
+[
+  {
+    "name": "local-pack-changes",
+    "pathMatching": "/^\\.claudinite\\/local\\/packs\\//",
+    "changeKinds": ["added", "modified"],
+    "editShape": "any"
+  },
+  {
+    "name": "local-pack-doc-removals",
+    "pathMatching": "/^\\.claudinite\\/local\\/packs\\/.*\\.md$/",
+    "changeKinds": ["modified", "deleted"],
+    "editShape": "removals-only"
+  }
+]

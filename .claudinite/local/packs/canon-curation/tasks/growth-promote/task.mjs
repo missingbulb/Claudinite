@@ -33,7 +33,8 @@ export default {
   // configured the hand-off converges the item to triage naming what is missing.
   invocation_endpoint: 'fleet',
   agent_model: 'opus',                   // portability, dedup-vs-corpus, and routing are the heaviest judgment
-  expected_outcome: 'open-pr',           // the judgment gate before shared canon — owner-approved, never auto-merged
+  expected_outcome: 'pr',
+  may_automerge: 'nothing',              // the judgment gate before shared canon — owner-approved, never auto-merged
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,         // reading N members + generalizing + authoring a PR — generous bound, extreme protection
 

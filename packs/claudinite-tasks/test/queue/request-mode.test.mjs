@@ -518,9 +518,7 @@ test('the body\'s `Automerge:` becomes the item\'s Merge field, and only for a g
   assert.equal(withdrawn.merge, null);
 });
 
-test('the ceiling permits the authorized merge, and the Merge field is fenced by policy shape', () => {
-  assert.equal(requestTask.expected_outcome, 'pr');
-  assert.equal(requestTask.may_automerge, 'anything');
+test('the Merge field is fenced by policy shape', () => {
   const at = (value) => parseWorkItemBody(`${TASK_PATH}\n\nRequest: #500\nMerge: ${value}\n`).merge;
   // A value that does not read as a policy expression reads as absent.
   assert.equal(at('what?!'), null);

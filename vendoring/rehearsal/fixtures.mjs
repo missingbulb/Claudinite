@@ -1152,6 +1152,16 @@ NSApplication.shared.run()
     },
   },
   {
+    name: 'landing-member',
+    why: 'a member running scheduled work under the auto-merge policy engine: claudinite-tasks declared, so the vendored automerge-policy-scope rule (blocking, work scope) and the pack\'s merge-rules.json ride the mount and load in the two-root layout — proving the policy machinery arrives inert on a member whose branches stamp no arming trailer',
+    files: {
+      'README.md': '# fixture-landing-member\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'claudinite-tasks']),
+      '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
+      '.github/workflows/claudinite-executor.yml': CANONICAL_READY_EXECUTOR_WORKFLOW,
+    },
+  },
+  {
     name: 'growth-member',
     why: 'a member enrolled in the growth lifecycle, with the local packs its capture runs write',
     files: {

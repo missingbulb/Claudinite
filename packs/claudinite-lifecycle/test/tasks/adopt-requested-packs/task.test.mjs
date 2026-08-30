@@ -32,7 +32,7 @@ test('adopt-requested-packs: manual, sonnet, lands its PR', () => {
   // always be reviewed. The review never came — ClaudiniteCanary#133 sat parked for
   // eleven days — so the ceiling moved and this pin moves with the decision rather than
   // being loosened. The member's own checks still gate the merge.
-  assert.equal(decl.expected_outcome, 'merged-pr');
+  assert.equal(decl.expected_outcome, 'pr');
   assert.deepEqual(decl.precondition_signals, []);
   assert.equal(decl.session_scope, undefined);
 });

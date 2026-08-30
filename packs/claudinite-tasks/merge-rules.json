@@ -1,0 +1,8 @@
+[
+  {
+    "name": "gitattributes-changes",
+    "pathMatching": "/(^|\\/)\\.gitattributes$/",
+    "changeKinds": ["added", "modified"],
+    "editShape": "any"
+  }
+]
