@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   staleReadyItems, deadAgentItems, stuckBlockedItems, statelessItems, periodForTasks,
-  supersededItems, supersededComment,
+  supersededItems, supersededComment, orphanedParkItems, orphanedParkComment,
 } from '../../queue/janitor-rules.mjs';
 import { periodMs } from '../../queue/anchors.mjs';
 import { ACCEPTED_FREQUENCIES } from '../../calendar.mjs';
@@ -160,4 +160,39 @@ test('a TORN park — carrying a live label too — is still superseded', () => 
 
 test('the comment names the run that answered the park', () => {
   assert.match(supersededComment({ id: 'p/digest', number: 999, closed_at: '2026-08-13T04:00:00Z' }), /#999/);
+});
+
+// ---------------------------------------------------------------------------
+// Rule F — the orphaned park. #1446 already closes an item whose task is gone, but only
+// when the EXECUTOR picks it; a parked item is never picked again, so ClaudiniteCanary's
+// seven parked fleet-digest items could never reach that path.
+
+const known = (...ids) => new Set(ids);
+
+test('a park whose task no longer exists at HEAD is orphaned', () => {
+  const item = parked({ task: 'retired', kind: 'action' });
+  assert.deepEqual(orphanedParkItems([item], { knownTaskIds: known('p/alive') }).map((i) => i.number),
+    [item.number]);
+});
+
+test('a park whose task still exists is left alone', () => {
+  const item = parked({ task: 'alive', kind: 'action' });
+  assert.deepEqual(orphanedParkItems([item], { knownTaskIds: known('p/alive') }), []);
+});
+
+// The rule closes things, and its premise is "this id is not in the declared set". An
+// empty set means discovery told us nothing, not that every task was retired — acting on
+// it would close the entire queue.
+test('an empty task set orphans NOTHING — discovery failing is not every task retiring', () => {
+  const item = parked({ task: 'retired', kind: 'action' });
+  assert.deepEqual(orphanedParkItems([item], { knownTaskIds: known() }), []);
+});
+
+test('a live item is not orphaned — the executor owns that verdict', () => {
+  const live = it({ task: 'retired', labels: ['task:status:running-agent'] });
+  assert.deepEqual(orphanedParkItems([live], { knownTaskIds: known('p/alive') }), []);
+});
+
+test('the orphaned comment names the task that is gone', () => {
+  assert.match(orphanedParkComment('p/retired'), /p\/retired/);
 });

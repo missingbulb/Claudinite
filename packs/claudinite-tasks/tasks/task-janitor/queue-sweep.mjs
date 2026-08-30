@@ -18,7 +18,7 @@
 import {
   staleReadyItems, staleReadyComment, deadAgentItems, deadAgentComment,
   stuckBlockedItems, stuckBlockedComment, statelessItems, statelessComment,
-  supersededItems, supersededComment, periodForTasks,
+  supersededItems, supersededComment, orphanedParkItems, orphanedParkComment, periodForTasks,
 } from '../../../claudinite-tasks/queue/janitor-rules.mjs';
 import {
   QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE,
@@ -33,7 +33,7 @@ import { clearStatus } from '../../../claudinite-tasks/queue/apply-status.mjs';
 
 export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log } = {}) {
   const open = await listOpenWorkItems(gh, repo);
-  const result = { open: open.length, staleReady: [], deadAgents: [], stuck: [], stateless: [], superseded: [] };
+  const result = { open: open.length, staleReady: [], deadAgents: [], stuck: [], stateless: [], superseded: [], orphaned: [] };
 
   // A `Blocked-by` target need not be a work item, so its state is read directly.
   const known = new Map(open.map((i) => [i.number, i.state]));
@@ -53,6 +53,7 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
   // the others do not share. Read once, indexed by task, newest-done-wins.
   const doneAfter = doneRunLookup(await listDoneWorkItems(gh, repo));
   const superseded = supersededItems(open, { doneAfter });
+  const orphaned = orphanedParkItems(open, { knownTaskIds: new Set(tasks.map((t) => `${t.pack}/${t.id}`)) });
 
   if (stale.length || deadAgents.length || stateless.length) await ensureLabels(gh, repo, QUEUE_LABELS);
 
@@ -104,29 +105,42 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
     result.stateless.push(item.number);
   }
 
-  // CLOSING, not escalating — the only rule here that removes an item rather than
-  // handing it to a person. Safe because the evidence is the queue's own record: a
-  // later run of this same task converged clean.
-  for (const item of superseded) {
-    const p = parseWorkItemTitle(item.title) ?? taskIdFromPath(parseWorkItemBody(item.body).taskPath);
-    const run = doneAfter(`${p.pack}/${p.task}`, item.updated_at ?? item.created_at);
-    await comment(gh, repo, item.number, supersededComment(run));
+  // CLOSING, not escalating — the two rules here that REMOVE an item rather than hand
+  // it to a person. Both are safe for the same reason: the evidence is not a clock but
+  // a fact about the world (this task ran clean since; this task no longer exists).
+  const retire = async (item, body) => {
+    await comment(gh, repo, item.number, body);
     await clearStatus({ removeLabel }, gh, repo, item, statusOf(item));
     await addLabel(gh, repo, item.number, TASK_OBSOLETE);
     await closeIssue(gh, repo, item.number, 'not_planned');
+  };
+
+  for (const item of superseded) {
+    const p = parseWorkItemTitle(item.title) ?? taskIdFromPath(parseWorkItemBody(item.body).taskPath);
+    const run = doneAfter(`${p.pack}/${p.task}`, item.updated_at ?? item.created_at);
+    await retire(item, supersededComment(run));
     log(`superseded #${item.number} by #${run.number} → ${TASK_OBSOLETE}`);
     result.superseded.push(item.number);
   }
+  // Superseded wins where both apply: naming the run that answered it says more than
+  // naming the absence of a task file.
+  for (const item of orphaned) {
+    if (result.superseded.includes(item.number)) continue;
+    const p = parseWorkItemTitle(item.title) ?? taskIdFromPath(parseWorkItemBody(item.body).taskPath);
+    await retire(item, orphanedParkComment(`${p.pack}/${p.task}`));
+    log(`orphaned park #${item.number} (${p.pack}/${p.task} is gone) → ${TASK_OBSOLETE}`);
+    result.orphaned.push(item.number);
+  }
 
   // The health review — the queue as its subject, computable entirely from issues.
-  const converged = new Set([...result.staleReady, ...result.deadAgents, ...result.stateless, ...result.superseded]);
+  const converged = new Set([...result.staleReady, ...result.deadAgents, ...result.stateless, ...result.superseded, ...result.orphaned]);
   const count = (status) => open.filter((i) => isStatus(i, status) && !converged.has(i.number)).length;
   log(`health: ${result.open} open work item(s) — ${count(STATUS_BLOCKED)} blocked, ${count(STATUS_READY)} ready, `
     + `${count(STATUS_RUNNING_EXECUTOR)} executing, ${count(STATUS_RUNNING_AGENT)} with an agent, `
     + `${open.filter(isParked).length + converged.size} parked; `
     + `this run escalated ${result.staleReady.length} stale, reclaimed ${result.deadAgents.length} dead agent claim(s), `
     + `surfaced ${result.stuck.length} stuck dependency(ies), repaired ${result.stateless.length} stateless item(s), `
-    + `closed ${result.superseded.length} superseded park(s)`);
+    + `closed ${result.superseded.length} superseded and ${result.orphaned.length} orphaned park(s)`);
   return result;
 }
 

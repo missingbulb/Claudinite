@@ -135,6 +135,30 @@ export const supersededComment = (run) =>
   + 'was parked on is resolved. Closing it `task:status:rejected` rather than leaving a question nobody needs to answer. '
   + `If this park was about something that run did NOT cover, re-queue it (${requeueHint}).`;
 
+// Rule F — THE ORPHANED PARK (#1452). A park whose task this repo no longer carries
+// is asking a person about work that cannot run again. The executor already closes
+// such an item obsolete when it picks one (#1446) — but a PARKED item is never
+// picked, so that verdict could never reach the set that needs it most:
+// ClaudiniteCanary's seven parked `fleet-digest` items, for a task since retired.
+//
+// `knownTaskIds` is the declared task set at HEAD. EMPTY MEANS UNKNOWN, never
+// "everything retired": discovery returning nothing is a broken read, and acting on
+// it would close the whole queue.
+export function orphanedParkItems(open = [], { knownTaskIds = new Set() } = {}) {
+  if (!knownTaskIds.size) return [];
+  return open.filter((item) => {
+    if (!isParked(item)) return false;
+    const p = parseWorkItemTitle(item.title) ?? taskIdFromPath(parseWorkItemBody(item.body).taskPath);
+    if (!p) return false;
+    return !knownTaskIds.has(`${p.pack}/${p.task}`);
+  });
+}
+
+export const orphanedParkComment = (id) =>
+  `\`${id}\` is not a task this repo carries at HEAD — the pack may be undeclared, or the task retired. `
+  + 'This item is parked on work that cannot run again, so it closes `task:status:rejected` rather than '
+  + 'waiting for an answer that would change nothing.';
+
 // The period of a task, for rule A — read from the declaration at HEAD.
 export const periodForTasks = (tasks = []) => {
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));

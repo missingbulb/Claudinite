@@ -20,18 +20,19 @@ test('adopt-requested-packs: the declaration satisfies the task contract', () =>
   assert.deepEqual(validateTaskDeclaration(decl), []);
 });
 
-test('adopt-requested-packs: manual, sonnet, ceilinged at open-pr', () => {
+test('adopt-requested-packs: manual, sonnet, lands its PR', () => {
   assert.equal(decl.id, 'adopt-requested-packs');   // must match its directory name (discover.mjs)
   // `manual`: the work only exists when the fleet places it, and the fleet fires this
   // scheduler in the same breath. A cadence would re-ask a question whose answer
   // arrives by push — and run this task's code-work in every member, every slot.
   assert.equal(decl.frequency, 'manual');
   assert.equal(decl.agent_model, 'sonnet');
-  // The ceiling is the guard that matters most: declaring a pack switches on
-  // conformance checks in this repo's CI from the moment they land, so a wrong
-  // adoption must never auto-merge. verify-outcome.mjs enforces this in code.
-  assert.equal(decl.expected_outcome, 'open-pr');
-  assert.notEqual(decl.expected_outcome, 'merged-pr');
+  // Landing, not holding (#1453). This pin used to assert `open-pr`, on the reasoning
+  // that declaring a pack switches on conformance checks in this repo's CI and so must
+  // always be reviewed. The review never came — ClaudiniteCanary#133 sat parked for
+  // eleven days — so the ceiling moved and this pin moves with the decision rather than
+  // being loosened. The member's own checks still gate the merge.
+  assert.equal(decl.expected_outcome, 'merged-pr');
   assert.deepEqual(decl.precondition_signals, []);
   assert.equal(decl.session_scope, undefined);
 });
