@@ -15,6 +15,7 @@
 // The pure decisions live at the top and test with fixtures; the shell below is
 // the GitHub/code-work/invocation I/O around them.
 
+import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { isSuspended, readSuspendedNow, suspendedNotice, SUSPEND_ALL_VAR } from './suspend.mjs';
 import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from './heartbeat.mjs';
@@ -306,6 +307,18 @@ async function executeItem({
   if (!task) {
     await close(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, TASK_OBSOLETE, 'not_planned',
       `\`${id}\` is not a task this repo carries at HEAD (the pack may be undeclared, or the task removed). Closing obsolete.`, 'task-gone');
+    return 'obsolete';
+  }
+  // THE SAME FACT, LEARNED LATER. The task set was built once, at the start of the
+  // run; one run drains several items from one checkout, and an earlier item's own
+  // work rewrites that checkout — the mount update deletes a retired task's
+  // directory out from under the items behind it. So a task can resolve here and
+  // not exist on disk — the same fact the branch above closes on, and it converges
+  // the same way. Without this the run reaches code-work and spawns with a cwd that is gone
+  // (missingbulb/Shepherd#300).
+  if (!existsSync(task.taskDir)) {
+    await close(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, TASK_OBSOLETE, 'not_planned',
+      `\`${id}\` no longer exists in this checkout (\`${task.taskPath}\`) — it was removed while this run was in flight. Nothing ran. Closing obsolete.`, 'task-gone');
     return 'obsolete';
   }
   if (task.taskPath !== taskPath) {

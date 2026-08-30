@@ -60,6 +60,18 @@ test('runCodeWork: a command that cannot start is a failure, not a throw', async
   assert.equal(r.ok, false);
 });
 
+// A cwd that no longer exists is reported by Node as an ENOENT on the SHELL, which
+// names the one thing that is not missing. The task directory can vanish under a
+// run in flight (an earlier item's mount update deletes a retired task), so this
+// failure has to say which directory is gone.
+test('runCodeWork: a task directory that is gone names the directory, not the shell', async () => {
+  const gone = join(process.cwd(), 'no-such-task-dir-2fbb1c');
+  const r = await runCodeWork(`"${NODE}" -e "process.exit(0)"`, { taskDir: gone, env: process.env, timeoutSeconds: 10 });
+  assert.equal(r.ok, false);
+  assert.match(r.stderr, /no-such-task-dir-2fbb1c/);
+  assert.doesNotMatch(r.stderr, /\/bin\/sh/);
+});
+
 // The worker's own output is the scheduler's only account of what preprocessing did.
 // Before it was echoed, a failed worker read as a bare `preprocessing exited 1` and
 // diagnosing one meant reproducing it by hand.
