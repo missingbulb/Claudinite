@@ -21,7 +21,7 @@ forcing, recovery — is the canon's own tasks-dispatch design document, and aut
 | `tasks/` | this pack's own scheduled tasks: `task-janitor` (the queue's sweeps) and `usage-fold` (it folds this mechanism's run records and outcome labels) |
 | `worldRules/` | the task-declaration checks |
 | `workRules/` | the armed-auto-merge gate (`automerge-policy-scope`) |
-| `merge-policy.mjs` | the auto-merge policy engine: what a task's `may_automerge`, an item's `Merge:` field and the arming trailer mean, the built-in diff classes, and the `merge-rules.json` vocabulary a pack extends them with |
+| `merge-policy.mjs` | the auto-merge policy engine: what a task's `automerge`, an item's `Merge:` field and the arming trailer mean, the built-in diff classes, and the `merge-rules.json` vocabulary a pack extends them with |
 | `test/` | the unit suite, and `test/sim/` — the simulator and its scenario suite, the mechanism's executable spec |
 | `executor.md`, `queue/instructions.md`, `deliver-pr.md` | operational documents a member's routines and workers read out of their own mount at runtime |
 
@@ -39,7 +39,7 @@ equivalent surface by existing.
 | `github.mjs` | the GitHub client and REST helpers, and the tracker issue a worker records on | any pack whose tasks reach GitHub |
 | `signals.mjs` | the signal shapes a precondition is handed | packs asserting what their own tasks will see |
 | `task-contract.mjs` | task-declaration validation, and precondition evaluation as the executor does it | every pack with tasks, in its own tests |
-| `merge-policy.mjs` | the auto-merge policy verdict (`may_automerge`, the `Merge:` field, the arming trailer) and the `merge-rules.json` compiler | any pack declaring policies or merge rules, in its own tests |
+| `merge-policy.mjs` | the auto-merge policy verdict (`automerge`, the `Merge:` field, the arming trailer) and the `merge-rules.json` compiler | any pack declaring policies or merge rules, in its own tests |
 | `usage-format.mjs` | the usage aggregate's codec | claudinite-fleet-sheepdog's fleet-wide aggregator |
 
 A pack whose **non-task** code reads any of these declares `requires: ['claudinite-tasks']`. A

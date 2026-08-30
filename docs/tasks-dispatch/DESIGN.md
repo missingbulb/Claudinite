@@ -1975,10 +1975,10 @@ grant. What the worker reads is the gated field, never the issue's prose
 (`packs/claudinite-tasks/merge-policy.mjs`) evaluates — `anything`, a
 `a;b;reject:c` list of diff classes, or the original `if-narrow`, which
 resolves to the `narrow-diff` composite. The same engine is what a task's own
-`may_automerge` declaration compiles to, so a request's authorization and a
+`automerge` declaration compiles to, so a request's authorization and a
 scheduled task's ceiling are one vocabulary.
 
-The built-in task's ceiling therefore has to be `may_automerge: 'anything'`. A
+The built-in task's ceiling therefore has to be `automerge: 'anything'`. A
 ceiling is a maximum, not an instruction: with no `Merge:` field the worker opens
 a pull request and parks at the approval lane, so an ordinary marked issue gets
 what §16 always gave it, and the authorized case can land no more than the

@@ -27,7 +27,7 @@ verbatim in this spelling:
 Blocked-by: #<what this waits on>
 Not-before: <ISO instant this may first run>
 Model: <opus | sonnet | haiku>
-Automerge: if-narrow
+Automerge: <policy>
 Task: <pack>/<task>
 
 <!-- filed by /do-later -->
@@ -86,7 +86,7 @@ only for an author with push access on the repository.
   policy** (the run measures this with the policy engine, not you). The value is
   a policy expression: `anything`, a `;`-joined list of diff classes — built-ins
   like `comment-only-changes`, `doc-changes`, `test-changes`,
-  `markdown-line-removals`, `file-additions`, `generated-file-changes`,
+  `markdown-line-removals`, `file-additions`, `generated-file-changes`, `javascript-changes`,
   `single-file-code-changes`, `single-folder-code-changes`, plus any class the
   repo's packs declare — each optionally `reject:`-prefixed, or `narrow-diff`
   (docs, tests, comment-only edits, and code within a single directory).

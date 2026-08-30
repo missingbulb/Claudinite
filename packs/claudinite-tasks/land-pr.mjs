@@ -7,7 +7,7 @@
 // forbids.
 //
 // The contract that keeps tasks simple: a task declares only its outcome CEILING
-// (`may_automerge` — what it MAY land; merge-policy.mjs owns whether a granular
+// (`automerge` — what it MAY land; merge-policy.mjs owns whether a granular
 // policy covers the actual diff). Whether the PR actually
 // lands unreviewed is the MEMBER REPO's call — `dailyClaudiniteUpdatesRequirePrReview`
 // in its settings file, where `true` degrades every authorized landing to review

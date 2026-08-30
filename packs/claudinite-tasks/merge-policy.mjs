@@ -1,5 +1,5 @@
 // The auto-merge policy engine (tasks-dispatch DESIGN §16.11): may THIS diff land
-// without a person? A task declares `may_automerge` — `'nothing'`, `'anything'`,
+// without a person? A task declares `automerge` — `'nothing'`, `'anything'`,
 // or a list of named diff classes — and this module turns that declaration plus
 // the branch's actual diff into a verdict. The call is arithmetic over the diff,
 // never the session's opinion of its own work: a run cannot talk its way past a
@@ -36,6 +36,7 @@ import path from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { COMMENT_CHECKABLE, commentOnly } from '../../engine/checks/helpers/code-scanning.mjs';
+import { FILE_CLASSES } from '../../engine/checks/helpers/pattern-rules.mjs';
 import { isActive } from '../../engine/pack_loader/pack-registry.mjs';
 
 export { COMMENT_CHECKABLE, commentOnly };
@@ -130,6 +131,13 @@ export const BUILTIN_MERGE_RULES = new Map([
   }],
   ['generated-file-changes', {
     appliesTo: (e) => changeKindOf(e) !== 'deleted' && path.basename(e.file).includes('GENERATED'),
+  }],
+  // The language-scoped class, matching ANY change to a JavaScript-family file —
+  // built in mostly for its `reject:` use ("nothing may touch the JS"), which is
+  // why it applies to every change kind. Its file set is the checks engine's own
+  // JavaScript class, so the two surfaces cannot disagree on what counts.
+  ['javascript-changes', {
+    appliesTo: (e) => FILE_CLASSES.javascriptFiles.test(e.file),
   }],
   ['single-file-code-changes', {
     appliesTo: isRealCodeChange,
@@ -422,7 +430,7 @@ async function main() {
   const base = at('--base') ?? 'origin/main';
   const policy = at('--policy');
   if (policy === null) {
-    console.error('merge-policy: --policy is required (the task\'s may_automerge, or the item\'s Merge: value)');
+    console.error('merge-policy: --policy is required (the task\'s automerge, or the item\'s Merge: value)');
     process.exitCode = 2;
     return;
   }

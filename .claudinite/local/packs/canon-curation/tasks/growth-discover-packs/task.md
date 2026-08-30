@@ -8,7 +8,7 @@ This is the only thing that notices a technology in use across the fleet with **
 
 The run's **Context section is binding scope**: it names the exact members to sweep. Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**. Finding nothing unhomed is a perfectly good, common outcome.
 
-A new canon pack is read by every repo that declares it, so this run opens a PR and **never arms auto-merge** — the owner approves it.
+A new canon pack is read by every repo that declares it, so this run opens a PR for the owner to approve.
 
 ## Conventions used in this doc
 

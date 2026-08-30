@@ -9,8 +9,12 @@ lane — your PR's checks need no help from you to run.
 
 ## The task sets the ceiling; the repo decides the rest
 
-Your task's declared `may_automerge` is a **ceiling, not a plan** (the legacy
-`expected_outcome: 'open-pr'` reads as `nothing`, `'merged-pr'` as `anything`):
+Your task's declared `automerge` is a **ceiling, not a plan** (the legacy
+`expected_outcome: 'open-pr'` reads as `nothing`, `'merged-pr'` as `anything`).
+On a request item the authorization is the item's **`Merge:` field** instead,
+read within that ceiling: absent means `nothing`, `if-narrow` means the
+`narrow-diff` composite, and any other value is the policy expression itself.
+Whichever source it came from:
 
 - **`nothing`** — open the PR and stop. Never arm auto-merge, never merge. Nothing below
   applies to you.

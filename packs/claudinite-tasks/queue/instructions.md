@@ -73,7 +73,7 @@ instructions.
      produced nothing" is an outcome; deciding not to run is not yours to make.
 
 5. **Verify your outcome in code** against the task's declared ceiling before you
-   finish. A `none` task may not open a PR; a task whose `may_automerge` authorizes
+   finish. A `none` task may not open a PR; a task whose `automerge` authorizes
    nothing may not merge one, and a granular policy merges only on the policy
    engine's own `AUTOMERGE: yes` (deliver-pr.md).
    Exceeding the ceiling is a failure, not a success with a surprise.

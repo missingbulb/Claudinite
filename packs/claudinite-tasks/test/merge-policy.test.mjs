@@ -200,26 +200,30 @@ test('narrow-diff composes the historical narrow shape', () => {
 
 // --- policyVerdict: rejects and the self-widening guard -----------------------
 
-test('a reject term vetoes a file every allow term covers', () => {
-  const jsRule = compileDeclaredRule({
-    name: 'js-code-changes', pathMatching: '/\\.(mjs|cjs|js)$/',
-    changeKinds: ['added', 'modified', 'deleted'], editShape: 'any',
-  }, 'test');
-  const declaredRules = new Map([[jsRule.name, jsRule]]);
+test('a reject term vetoes a file every allow term covers — reject-any-JS works out of the box', () => {
   const v = policyVerdict({
-    policy: ['anything', 'reject:js-code-changes'],
+    policy: ['anything', 'reject:javascript-changes'],
     entries: [edited('src/a.mjs', 'x', 'y')],
-    declaredRules,
   });
   assert.equal(v.mergeable, false);
-  assert.match(v.why, /reject:js-code-changes/);
+  assert.match(v.why, /reject:javascript-changes/);
 
   const docsOnly = policyVerdict({
-    policy: ['anything', 'reject:js-code-changes'],
+    policy: ['anything', 'reject:javascript-changes'],
     entries: [edited('docs/a.md', 'x', 'y')],
-    declaredRules,
   });
   assert.equal(docsOnly.mergeable, true, docsOnly.why);
+
+  // The same veto works with a DECLARED rule — the extension mechanism.
+  const cssRule = compileDeclaredRule({
+    name: 'stylesheet-changes', pathMatching: '/\\.s?css$/',
+    changeKinds: ['added', 'modified', 'deleted'], editShape: 'any',
+  }, 'test');
+  assert.equal(policyVerdict({
+    policy: ['anything', 'reject:stylesheet-changes'],
+    entries: [edited('app/site.css', 'x', 'y')],
+    declaredRules: new Map([[cssRule.name, cssRule]]),
+  }).mergeable, false);
 });
 
 test('a one-term allow-all list collapses to the whole anything policy', () => {
@@ -306,21 +310,25 @@ test('declaredMergeRules reads only active packs and reports collisions loudly',
   }
 });
 
-test('this pack\'s own merge-rules.json compiles, and usage-fold\'s delivery shape resolves', () => {
-  const packDir = path.join(path.dirname(new URL(import.meta.url).pathname), '..');
-  const { rules, errors } = declaredMergeRules(
-    [{ id: 'claudinite-tasks', dir: packDir }], { packs: ['claudinite-tasks'] },
-  );
-  assert.deepEqual(errors, []);
+test('usage-fold\'s delivery shape — a GENERATED file plus its .gitattributes line — resolves on built-ins', async () => {
+  const { default: usageFold } = await import('../tasks/usage-fold/task.mjs');
   const v = policyVerdict({
-    policy: ['generated-file-changes', 'gitattributes-changes'],
+    policy: usageFold.automerge,
     entries: [
       edited('.claudinite/local/usage.GENERATED.json', '{}', '{"a":1}'),
       added('.gitattributes', '*.GENERATED.json merge=union\n'),
     ],
-    declaredRules: rules,
   });
   assert.equal(v.mergeable, true, v.why);
+  // A second stray code file spends the budget the .gitattributes line lives on.
+  assert.equal(policyVerdict({
+    policy: usageFold.automerge,
+    entries: [
+      edited('.claudinite/local/usage.GENERATED.json', '{}', '{"a":1}'),
+      added('.gitattributes', 'x\n'),
+      added('src/stray.mjs', 'x\n'),
+    ],
+  }).mergeable, false);
 });
 
 // --- the trailer --------------------------------------------------------------

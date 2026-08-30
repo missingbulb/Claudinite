@@ -105,7 +105,7 @@ test('growth-extract: daily/opus/pr+automerge over the window signals alone', ()
   // The offset only ever implied the ordering; this is what enforces it.
   assert.deepEqual(extract.schedule_after, ['claudinite-lifecycle/update']);
   assert.equal(extract.agent_model, 'opus');
-  assert.equal(extract.expected_outcome, 'pr'); // its policy is proven against the pack's merge rules in merge-rules.test.mjs
+  assert.equal(extract.expected_outcome, 'pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
   // The logs signal left with the retention prune (logs-prune owns it now): this
   // task's only reason to run is activity, so a quiet night costs no opus dispatch.
   assert.deepEqual(extract.precondition_signals, ['commits', 'prs', 'issues']);
@@ -187,7 +187,7 @@ test('growth-dedup: weekly/opus/pr+automerge — the prune PR is delivered to la
   assert.equal(dedup.agent_model, 'opus');
   // A ceiling, not a promise: a `review`-delivery member degrades this to
   // open-pr, so the human gate is member config's call rather than hardcoded.
-  assert.equal(dedup.expected_outcome, 'pr'); // its policy is proven against the pack's merge rules in merge-rules.test.mjs
+  assert.equal(dedup.expected_outcome, 'pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
   assert.deepEqual(dedup.precondition_signals, ['localPacks', 'sharedMount', 'commits']);
 });
 

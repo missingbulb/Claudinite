@@ -295,11 +295,11 @@ export async function main() {
   const pr = await deliverGenerated({
     root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX, log,
     files: { [USAGE_PATH]: text, ...(attributes !== null ? { '.gitattributes': attributes } : {}) },
-    // The arming trailer carries the task's own may_automerge, so the
+    // The arming trailer carries the task's own automerge, so the
     // automerge-policy-scope check re-measures this delivery's diff wherever the
     // PR's CI runs check_the_work — the code lane's equivalent of the agent
     // lane's stamp-before-merge.
-    message: `Claudinite: fold usage metrics\n\n${AUTOMERGE_TRAILER}: ${policyExpression(task.may_automerge)}`,
+    message: `Claudinite: fold usage metrics\n\n${AUTOMERGE_TRAILER}: ${policyExpression(task.automerge)}`,
     title: 'Claudinite: usage fold',
     body: [
       `Regenerated \`${USAGE_PATH}\` from this repo's captured conversation logs, its`,

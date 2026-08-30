@@ -10,7 +10,7 @@ const goodTask = `export default {
   precondition_signals: ['commits', 'prs'],
   agent_model: 'opus',
   expected_outcome: 'pr',
-  may_automerge: 'anything',
+  automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
   precondition(signals, config) { return { run: false }; },
@@ -78,30 +78,30 @@ test('task-declaration-shape: the legacy `after` ordering field is an advisory r
 test('task-declaration-shape: the legacy outcome ceilings are an advisory rename', () => {
   for (const [legacy, policy] of [['open-pr', 'nothing'], ['merged-pr', 'anything']]) {
     const old = goodTask
-      .replace("expected_outcome: 'pr',\n  may_automerge: 'anything',", `expected_outcome: '${legacy}',`);
+      .replace("expected_outcome: 'pr',\n  automerge: 'anything',", `expected_outcome: '${legacy}',`);
     const f = run({ [TASK]: old });
     assert.equal(f.length, 1, JSON.stringify(f));
     assert.equal(f[0].severity, 'advisory', `${legacy} never blocks`);
     assert.match(f[0].what, new RegExp(`legacy outcome ceiling "${legacy}"`));
-    assert.match(f[0].fix, new RegExp(`may_automerge: '${policy}'`));
+    assert.match(f[0].fix, new RegExp(`automerge: '${policy}'`));
   }
 });
 
-test('task-declaration-shape: a pr task without may_automerge, and a none task with one, block', () => {
-  const missing = goodTask.replace("  may_automerge: 'anything',\n", '');
-  assert.match(run({ [TASK]: missing }).map((f) => f.what).join(' | '), /declares no "may_automerge"/);
+test('task-declaration-shape: a pr task without automerge, and a none task with one, block', () => {
+  const missing = goodTask.replace("  automerge: 'anything',\n", '');
+  assert.match(run({ [TASK]: missing }).map((f) => f.what).join(' | '), /declares no "automerge"/);
 
   const noneWithPolicy = goodTask
     .replace("expected_outcome: 'pr'", "expected_outcome: 'none'")
     .replace("agent_model: 'opus'", "agent_model: 'none'")
     .replace("  agent_execution_timeout: 1800,\n", "  code_work: 'node w.mjs',\n  code_work_timeout: 60,\n");
-  assert.match(run({ [TASK]: noneWithPolicy }).map((f) => f.what).join(' | '), /a "none" task declares "may_automerge"/);
+  assert.match(run({ [TASK]: noneWithPolicy }).map((f) => f.what).join(' | '), /a "none" task declares "automerge"/);
 });
 
-test('task-declaration-shape: a comment naming may_automerge is not a declaration of it', () => {
+test('task-declaration-shape: a comment naming automerge is not a declaration of it', () => {
   const commented = goodTask
-    .replace("expected_outcome: 'pr',\n  may_automerge: 'anything',",
-      "expected_outcome: 'none', // not may_automerge: material")
+    .replace("expected_outcome: 'pr',\n  automerge: 'anything',",
+      "expected_outcome: 'none', // not automerge: material")
     .replace("agent_model: 'opus'", "agent_model: 'none'")
     .replace("  agent_execution_timeout: 1800,\n", "  code_work: 'node w.mjs',\n  code_work_timeout: 60,\n");
   assert.deepEqual(run({ [TASK]: commented }), []);

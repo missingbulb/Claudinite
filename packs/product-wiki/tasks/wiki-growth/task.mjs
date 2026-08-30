@@ -27,7 +27,7 @@ export default {
   precondition_signals: ['commits', 'prs'],
   agent_model: 'opus',                   // open-web research + curation is the heaviest judgment in the task set
   expected_outcome: 'pr',
-  may_automerge: ['doc-changes'],        // the wiki is Markdown pages — anything else in the diff parks the round for review
+  automerge: ['doc-changes'],        // the wiki is Markdown pages — anything else in the diff parks the round for review
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,            // open-web research is the least predictable of the tasks — very generous
 

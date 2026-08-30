@@ -1153,7 +1153,7 @@ NSApplication.shared.run()
   },
   {
     name: 'landing-member',
-    why: 'a member running scheduled work under the auto-merge policy engine: claudinite-tasks declared, so the vendored automerge-policy-scope rule (blocking, work scope) and the pack\'s merge-rules.json ride the mount and load in the two-root layout — proving the policy machinery arrives inert on a member whose branches stamp no arming trailer',
+    why: 'a member running scheduled work under the auto-merge policy engine: claudinite-tasks declared, so the vendored automerge-policy-scope rule (blocking, work scope) rides the mount and loads in the two-root layout — proving the policy machinery arrives inert on a member whose branches stamp no arming trailer',
     files: {
       'README.md': '# fixture-landing-member\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics', 'claudinite-tasks']),

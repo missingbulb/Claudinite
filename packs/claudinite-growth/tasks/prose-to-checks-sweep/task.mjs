@@ -17,7 +17,7 @@ export default {
   precondition_signals: [],              // the backlog is standing prose, not a windowed signal
   agent_model: 'opus',                   // judging convertibility and authoring checks + fixtures is heavy judgment
   expected_outcome: 'pr',
-  may_automerge: 'nothing',              // converts prose to checks in an owner-approved PR (a check can break CI, so it's reviewed)
+  automerge: 'nothing',              // converts prose to checks in an owner-approved PR (a check can break CI, so it's reviewed)
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,         // reading the packs + authoring a check with fixtures — generous bound
 

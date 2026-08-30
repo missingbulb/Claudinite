@@ -46,7 +46,7 @@ export default {
   // own scope gate (the skill's `improve-comments-scope` check) reds the same
   // boundary on every branch wearing its title, armed or not.
   expected_outcome: 'pr',
-  may_automerge: ['comment-only-changes', 'readme-changes'],
+  automerge: ['comment-only-changes', 'readme-changes'],
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
 

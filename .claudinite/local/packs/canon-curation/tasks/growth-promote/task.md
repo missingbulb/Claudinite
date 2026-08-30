@@ -4,7 +4,7 @@ The [growth lifecycle](../../README.md)'s central stage: read the target members
 
 The run's **Context section is binding scope**: it names the exact target members (those whose local packs changed in the window). Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**.
 
-Promotion is the **judgment gate before shared canon**. This run opens a PR and **never arms auto-merge** — the owner approves it. But don't lean on that review as the portability check: [extract](../../../../../../packs/claudinite-growth/tasks/growth-extract/task.md) stays project-specific by design, so it's no second opinion, and the owner can't re-derive every portability call. This task's judgment is the real thing between a bad rule and every project that reads the canon — keep the bar high (dedupe against the whole corpus; default to reject when unsure).
+Promotion is the **judgment gate before shared canon**. This run opens a PR for the owner to approve. But don't lean on that review as the portability check: [extract](../../../../../../packs/claudinite-growth/tasks/growth-extract/task.md) stays project-specific by design, so it's no second opinion, and the owner can't re-derive every portability call. This task's judgment is the real thing between a bad rule and every project that reads the canon — keep the bar high (dedupe against the whole corpus; default to reject when unsure).
 
 ## Conventions used in this doc
 

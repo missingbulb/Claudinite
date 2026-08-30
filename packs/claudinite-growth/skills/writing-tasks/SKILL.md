@@ -80,12 +80,15 @@ than by replaying a ledger.
   vocabulary), `agent_model` (`opus | sonnet | haiku | none`), `expected_outcome` (`none |
   pr` — the retired `open-pr`/`merged-pr` normalize to `pr` with a policy of
   `nothing`/`anything`), and a `precondition`. A `pr` task also carries
-  `may_automerge` — what it authorizes to land unreviewed: `'nothing'`,
-  `'anything'`, or a list of diff classes (built-ins plus any the repo's packs
-  declare in a `merge-rules.json`), each optionally `reject:`-prefixed. Choose the
-  **narrowest policy that covers the task's whole write surface** — the policy is
-  the contract's statement of why landing unattended is safe, and the policy
-  engine plus the `automerge-policy-scope` check hold every run to it. An agentic
+  `automerge` — what it authorizes to land unreviewed: `'nothing'`,
+  `'anything'`, or a list of diff classes, each optionally `reject:`-prefixed.
+  Choose the **narrowest policy that covers the task's whole write surface** — the
+  policy is the contract's statement of why landing unattended is safe, and the
+  policy engine plus the `automerge-policy-scope` check hold every run to it.
+  **Compose the built-in classes first** — they are meant to cover most tasks with
+  no configuration; a pack declares its own class (a `merge-rules.json` beside its
+  `pack.mjs`) only when a task genuinely knows a finer boundary than the built-ins
+  can state. An agentic
   task (`agent_model !==
   none`) also carries `agent_instructions`, the worker file the agent reads; a
   `none` task runs no agent, so the field is not applicable and is omitted. The

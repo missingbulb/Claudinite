@@ -51,7 +51,7 @@ export default {
   // the approval lane exactly as every request did before, and with one it still
   // parks whenever the policy engine says the diff is not covered.
   expected_outcome: 'pr',
-  may_automerge: 'anything',
+  automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 4 * 3600,
   // A run that died mid-flight leaves a branch, a PR, or neither, and only a person

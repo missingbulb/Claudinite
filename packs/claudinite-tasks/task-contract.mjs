@@ -52,10 +52,10 @@ export function normalizeTaskDeclaration(decl) {
   // calendar because a frequency is read by more than the calendar — see `normalizeFrequency`.
   if (out.frequency !== undefined) out.frequency = normalizeFrequency(out.frequency);
   // The retired outcome ceilings become the outcome/policy pair. An explicit
-  // `may_automerge` beside a legacy spelling wins: a half-migrated declaration
+  // `automerge` beside a legacy spelling wins: a half-migrated declaration
   // keeps the narrower intent it states.
   if (LEGACY_OUTCOMES[out.expected_outcome] !== undefined) {
-    if (out.may_automerge === undefined) out.may_automerge = LEGACY_OUTCOMES[out.expected_outcome];
+    if (out.automerge === undefined) out.automerge = LEGACY_OUTCOMES[out.expected_outcome];
     out.expected_outcome = 'pr';
   }
   return out;
@@ -63,7 +63,7 @@ export function normalizeTaskDeclaration(decl) {
 
 // The write ceiling a task declares (DESIGN §1, §4). A declared MAXIMUM, not a
 // promise: `none` may never open a PR; `pr` may open one, and what (if anything)
-// the run may then MERGE is the separate `may_automerge` policy — 'nothing',
+// the run may then MERGE is the separate `automerge` policy — 'nothing',
 // 'anything', or a list of diff classes merge-policy.mjs evaluates the actual
 // diff against. "No change" is always legal.
 export const OUTCOMES = ['none', 'pr'];
@@ -134,22 +134,22 @@ export function validateTaskDeclaration(raw) {
   if (!OUTCOMES.includes(decl.expected_outcome)) {
     bad(`"expected_outcome" ${JSON.stringify(decl.expected_outcome)} is not a legal outcome ceiling`, `set one of: ${OUTCOMES.join(', ')}`);
   }
-  // may_automerge — REQUIRED beside `pr` (the legacy ceilings arrive here already
+  // automerge — REQUIRED beside `pr` (the legacy ceilings arrive here already
   // carrying theirs), and validated as a policy SHAPE only: whether every named
   // rule resolves is the policy engine's question, answered where the diff is
   // judged, and it fails closed there — never at author time, where the rule set
   // depends on which packs are active.
   if (decl.expected_outcome === 'pr') {
-    if (decl.may_automerge === undefined) {
-      bad('a "pr" task declares no "may_automerge"', 'say what may land unreviewed: "nothing", "anything", or a list of diff classes, e.g. ["comment-only-changes", "readme-changes"]');
+    if (decl.automerge === undefined) {
+      bad('a "pr" task declares no "automerge"', 'say what may land unreviewed: "nothing", "anything", or a list of diff classes, e.g. ["comment-only-changes", "readme-changes"]');
     } else {
-      const policy = normalizePolicy(decl.may_automerge);
+      const policy = normalizePolicy(decl.automerge);
       if (policy.kind === 'invalid') {
-        bad(`"may_automerge" is not a legal policy: ${policy.reason}`, 'set "nothing", "anything", or a list of rule names, each optionally reject:-prefixed');
+        bad(`"automerge" is not a legal policy: ${policy.reason}`, 'set "nothing", "anything", or a list of rule names, each optionally reject:-prefixed');
       }
     }
-  } else if (decl.may_automerge !== undefined) {
-    bad('a "none" task declares "may_automerge"', 'drop it — a task that opens no pull request has nothing to merge; or set expected_outcome: "pr"');
+  } else if (decl.automerge !== undefined) {
+    bad('a "none" task declares "automerge"', 'drop it — a task that opens no pull request has nothing to merge; or set expected_outcome: "pr"');
   }
   // agent_instructions — REQUIRED for an agentic task (agent_model !== 'none'):
   // that's the worker file the agent reads. A `none` task runs no agent, so the

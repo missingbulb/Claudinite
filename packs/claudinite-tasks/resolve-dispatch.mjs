@@ -424,7 +424,7 @@ async function main() {
   const slot = slotForRecord;
   done(EXIT.ok, {
     dispatch: 'valid',
-    brief: `Task: ${verdict.pack}/${verdict.task}${slot ? ` (slot ${slot})` : ''} — issue #${number}, model ${verdict.resolvedModel}, outcome ceiling ${verdict.outcome}${verdict.outcome === 'pr' ? ` (may auto-merge: ${policyExpression(verdict.mayAutomerge)})` : ''}, timeout ${verdict.executionTimeout ?? 'none'}s`,
+    brief: `Task: ${verdict.pack}/${verdict.task}${slot ? ` (slot ${slot})` : ''} — issue #${number}, model ${verdict.resolvedModel}, outcome ceiling ${verdict.outcome}${verdict.outcome === 'pr' ? ` (may auto-merge: ${policyExpression(verdict.automerge)})` : ''}, timeout ${verdict.executionTimeout ?? 'none'}s`,
     issue: number,
     scope,
     label,

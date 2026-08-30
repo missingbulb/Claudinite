@@ -34,7 +34,7 @@ const strField = (text, key) => {
 const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
-  description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, precondition_signals, agent_model, expected_outcome, agent_instructions, precondition) with legal enum values; a pr task pairs its ceiling with a may_automerge policy, an agentic task bounds its run with agent_execution_timeout, and any code_work carries a timeout and stays task-local',
+  description: 'A tasks/<name>/task.mjs default-exports the full task contract (id, frequency, precondition_signals, agent_model, expected_outcome, agent_instructions, precondition) with legal enum values; a pr task pairs its ceiling with a automerge policy, an agentic task bounds its run with agent_execution_timeout, and any code_work carries a timeout and stays task-local',
   doc: 'packs/claudinite-tasks/README.md',
   why: 'the scheduler run and executor read agent_model/expected_outcome/frequency from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
@@ -63,7 +63,7 @@ const rule = {
       // the runtime normalizes them at the door forever, so a member's vendor
       // refresh must not turn its CI red over a declaration nobody edited.
       const outcome = strField(text, 'expected_outcome');
-      const hasMayAutomerge = /\bmay_automerge:\s*/.test(stripComments(text));
+      const hasMayAutomerge = /\bautomerge:\s*/.test(stripComments(text));
       if (outcome === null) {
         flag('declares no "expected_outcome"', `add "expected_outcome": one of ${OUTCOMES.join(', ')}`);
       } else if (LEGACY_OUTCOMES[outcome] !== undefined) {
@@ -71,14 +71,14 @@ const rule = {
           file,
           severity: 'advisory',
           what: `declares the legacy outcome ceiling "${outcome}"`,
-          fix: `write the pair it normalizes to: expected_outcome: 'pr', may_automerge: '${LEGACY_OUTCOMES[outcome]}' — and consider a narrower policy than '${LEGACY_OUTCOMES[outcome]}' (a list of diff classes, e.g. ['comment-only-changes'])`,
+          fix: `write the pair it normalizes to: expected_outcome: 'pr', automerge: '${LEGACY_OUTCOMES[outcome]}' — and consider a narrower policy than '${LEGACY_OUTCOMES[outcome]}' (a list of diff classes, e.g. ['comment-only-changes'])`,
         }));
       } else if (!OUTCOMES.includes(outcome)) {
         flag(`"expected_outcome" is "${outcome}", not a legal value`, `use one of: ${OUTCOMES.join(', ')}`);
       } else if (outcome === 'pr' && !hasMayAutomerge) {
-        flag('a "pr" task declares no "may_automerge"', 'say what may land unreviewed: "nothing", "anything", or a list of diff classes, e.g. ["comment-only-changes", "readme-changes"]');
+        flag('a "pr" task declares no "automerge"', 'say what may land unreviewed: "nothing", "anything", or a list of diff classes, e.g. ["comment-only-changes", "readme-changes"]');
       } else if (outcome === 'none' && hasMayAutomerge) {
-        flag('a "none" task declares "may_automerge"', 'drop it — a task that opens no pull request has nothing to merge; or set expected_outcome: "pr"');
+        flag('a "none" task declares "automerge"', 'drop it — a task that opens no pull request has nothing to merge; or set expected_outcome: "pr"');
       }
 
       if (!/\bid:\s*['"]/.test(text)) flag('declares no string "id"', 'add "id": the task name (matching its directory)');

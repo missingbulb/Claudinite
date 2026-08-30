@@ -126,7 +126,7 @@ goes through your GitHub tools.
    legal** — a run that found nothing worth changing is a success, never a reason to
    manufacture work. Determine what the run did to pull requests and check it against that
    ceiling with `verify-outcome.mjs` — a `none` task that opened a PR, or a task whose
-   `may_automerge` authorizes nothing that merged one, **fails the run**. Then:
+   `automerge` authorizes nothing that merged one, **fails the run**. Then:
    - Success within ceiling → comment the result, remove `agent-running`, and **close** the
      issue.
    - Failure → comment naming what failed, remove `agent-running`, add `needs-human`

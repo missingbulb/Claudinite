@@ -19,7 +19,7 @@ export default {
   precondition_signals: ['stamp', 'sharedMount'],
   agent_model: 'sonnet',                 // the apply stage only — most runs are agentless
   expected_outcome: 'pr',
-  may_automerge: 'anything',             // the converge replaces the vendored mount wholesale — the one lane whose trust is the repo's delivery setting, not a diff class
+  automerge: 'anything',             // the converge replaces the vendored mount wholesale — the one lane whose trust is the repo's delivery setting, not a diff class
   agent_instructions: 'task.md',
 
   code_work: 'node worker.mjs',
