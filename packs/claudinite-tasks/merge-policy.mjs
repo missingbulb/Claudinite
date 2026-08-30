@@ -82,14 +82,39 @@ export const changeKindOf = ({ before, after }) =>
 // subsequence of the before-lines. Deliberately order-preserving — a reorder is
 // an edit, not a removal — and a whole-file deletion is every line removed.
 export function removalsOnly(before, after) {
+  return shrinkOnly(before, after, (line, original) => line === original);
+}
+
+// Removals, plus in-line TRIMS: every surviving line either equals a line it
+// replaces or is a character-subsequence of one — a line cut in half, a word
+// struck from its middle, a truncation closed with a period the original
+// already held. What can never pass is growth: no new line, and no character a
+// replaced line did not already carry in order. The alignment is greedy and
+// backtrack-free, so a pathological reshuffle can read as not-a-trim — that
+// end fails safe (the diff parks for review).
+export function trimsOnly(before, after) {
+  return shrinkOnly(before, after, isCharSubsequence);
+}
+
+function shrinkOnly(before, after, lineSatisfies) {
   if (after == null) return true;
   if (before == null) return false;
   const from = before.split('\n');
   const to = after.split('\n');
   let i = 0;
   for (const line of to) {
-    while (i < from.length && from[i] !== line) i += 1;
+    while (i < from.length && !lineSatisfies(line, from[i])) i += 1;
     if (i === from.length) return false;
+    i += 1;
+  }
+  return true;
+}
+
+function isCharSubsequence(needle, hay) {
+  let i = 0;
+  for (const c of needle) {
+    i = hay.indexOf(c, i);
+    if (i === -1) return false;
     i += 1;
   }
   return true;
@@ -125,6 +150,12 @@ export const BUILTIN_MERGE_RULES = new Map([
   ['markdown-line-removals', {
     appliesTo: (e) => e.file.toLowerCase().endsWith('.md')
       && changeKindOf(e) !== 'added' && removalsOnly(e.before, e.after),
+  }],
+  // The trim superset of the rule above: whole-line removals plus in-line trims
+  // (trimsOnly) — for a prune allowed to cut a line down, never to grow one.
+  ['markdown-trims', {
+    appliesTo: (e) => e.file.toLowerCase().endsWith('.md')
+      && changeKindOf(e) !== 'added' && trimsOnly(e.before, e.after),
   }],
   ['file-additions', {
     appliesTo: (e) => changeKindOf(e) === 'added',
@@ -169,7 +200,7 @@ export const COMPOSITE_POLICIES = new Map([
 export const MERGE_RULES_FILE = 'merge-rules.json';
 
 const RULE_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const DECLARED_KEYS = ['name', 'pathMatching', 'excludePathMatching', 'changeKinds', 'editShape'];
+const DECLARED_KEYS = ['name', 'pathMatching', 'excludePathMatching', 'changeKinds', 'editShape', 'coversMountPolicySources'];
 const CHANGE_KINDS = ['added', 'modified', 'deleted'];
 const EDIT_SHAPES = ['any', 'removals-only', 'comment-only'];
 
@@ -207,8 +238,16 @@ export function compileDeclaredRule(spec, where) {
   if (!EDIT_SHAPES.includes(spec.editShape)) {
     throw new Error(`${where} (${spec.name}): "editShape" must be one of ${EDIT_SHAPES.join(', ')} — declared, never defaulted`);
   }
+  // The one key that may relax the self-widening guard, and only for files under
+  // the VENDORED MOUNT (see POLICY_SOURCES below): declaring it is an owner
+  // saying "this task may rewrite the mount, policy definitions included" — the
+  // adoption/converge grant. `true` only, so it cannot be half-declared.
+  if (spec.coversMountPolicySources !== undefined && spec.coversMountPolicySources !== true) {
+    throw new Error(`${where} (${spec.name}): "coversMountPolicySources" takes only \`true\` — omit it otherwise`);
+  }
   return {
     name: spec.name,
+    coversMountPolicySources: spec.coversMountPolicySources === true,
     appliesTo(e) {
       if (!pathMatching.test(e.file) || (exclude && exclude.test(e.file))) return false;
       if (!spec.changeKinds.includes(changeKindOf(e))) return false;
@@ -310,7 +349,15 @@ export const policyExpression = (policy) =>
 // to do. (`'anything'` — the vendored-converge lane — is deliberately exempt:
 // the mount refresh replaces these files wholesale, and that lane's trust is the
 // repo's delivery setting, not a diff class.)
+//
+// One narrow relaxation: such a file UNDER THE VENDORED MOUNT may be covered by
+// a declared rule carrying `coversMountPolicySources` — the shape an adoption
+// re-vendor has, where policy files arrive canon-authored inside the pack trees
+// it copies. The flag rides merge-rules.json, which is itself guarded and
+// owner-committed, so a run cannot grant it to itself; repo-owned policy
+// sources (everything outside the mount) stay absolute.
 const POLICY_SOURCES = /(^|\/)(merge-rules\.json|merge-policy\.mjs|workRules\/automerge-policy-scope\.mjs|tasks\/[^/]+\/task\.mjs)$/;
+const VENDORED_MOUNT = /^\.claudinite\/shared\//;
 
 // The whole verdict over a diff. `entries` are `{ file, before, after }` (null
 // side = added/deleted); `declaredRules` a Map from declaredMergeRules, with its
@@ -348,9 +395,16 @@ export function policyVerdict({ policy, entries, declaredRules = new Map(), rule
   for (const entry of entries) {
     const { file } = entry;
     if (POLICY_SOURCES.test(file) && !isCommentOnlyChange(entry)) {
-      files.push({ file, verdict: 'policy-source' });
-      problems.push({ file, what: `${file} defines auto-merge policy itself — no granular policy may change it` });
-      continue;
+      const mountCoverer = VENDORED_MOUNT.test(file)
+        && norm.allow.find((n) => resolve(n)?.coversMountPolicySources && resolve(n).appliesTo(entry));
+      if (!mountCoverer) {
+        files.push({ file, verdict: 'policy-source' });
+        problems.push({ file, what: `${file} defines auto-merge policy itself — no granular policy may change it` });
+        continue;
+      }
+      // Exempted: it falls through to the ordinary reject/coverage flow below,
+      // so a reject term still vetoes it and the flagged rule still has to
+      // cover it on its own terms.
     }
     const rejectedBy = norm.reject.find((n) => resolve(n).appliesTo(entry));
     if (rejectedBy) {

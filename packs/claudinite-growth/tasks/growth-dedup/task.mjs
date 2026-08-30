@@ -26,7 +26,7 @@ export default {
   precondition_signals: ['localPacks', 'sharedMount', 'commits'],
   agent_model: 'opus',                   // proving the canon genuinely covers a local item — and telling coverage from "stated too generally" — is a judgment call
   expected_outcome: 'pr',
-  automerge: ['markdown-line-removals'], // a prune only removes Markdown lines; a `review` member still reviews
+  automerge: ['markdown-trims'], // a prune may remove lines or cut one down, never grow one; a `review` member still reviews
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,            // proving canon coverage per local item — generous bound, extreme protection
 

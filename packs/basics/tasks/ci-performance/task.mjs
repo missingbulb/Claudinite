@@ -30,7 +30,7 @@ export default {
   precondition_signals: ['commits', 'prs'],
   agent_model: 'sonnet',
   expected_outcome: 'pr',
-  automerge: 'nothing',              // CI plumbing is reviewed — a wrong fix here breaks every future run
+  automerge: 'anything',             // CI itself is the gate: a fix that turns anything red cannot merge, and a green one is the point (owner, 2026-08-30)
   agent_instructions: 'task.md',
   code_work: 'node worker.mjs',
   // A couple of hundred run records plus one job breakdown, against this repo's own

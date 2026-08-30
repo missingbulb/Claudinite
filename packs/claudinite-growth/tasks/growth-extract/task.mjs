@@ -28,7 +28,9 @@ export default {
   precondition_signals: ['commits', 'prs', 'issues'],
   agent_model: 'opus',                   // generalizing/curating lessons is the heaviest judgment, and the default delivery lands the PR with no human review
   expected_outcome: 'pr',
-  automerge: ['doc-changes', 'file-additions'], // lessons are added prose and new files, never rewrites of standing code
+  // Lessons land in the repo's own local packs — prose, and the checks the in-run
+  // upgrade pass produces (this pack's merge-rules.json declares both classes).
+  automerge: ['claudinite-local-pack-md-changes', 'claudinite-local-pack-check-changes'],
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,            // two source passes plus the prose-to-checks upgrade — generous bound, extreme protection
 

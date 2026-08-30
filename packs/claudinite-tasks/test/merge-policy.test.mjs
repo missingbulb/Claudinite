@@ -5,7 +5,7 @@ import { removeTree } from '../../../engine/remove-tree.mjs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
-  normalizePolicy, policyExpression, policyVerdict, removalsOnly, changeKindOf,
+  normalizePolicy, policyExpression, policyVerdict, removalsOnly, trimsOnly, changeKindOf,
   compileDeclaredRule, declaredMergeRules, AUTOMERGE_TRAILER_RE,
 } from '../merge-policy.mjs';
 
@@ -310,24 +310,75 @@ test('declaredMergeRules reads only active packs and reports collisions loudly',
   }
 });
 
-test('usage-fold\'s delivery shape — a GENERATED file plus its .gitattributes line — resolves on built-ins', async () => {
+test('usage-fold\'s delivery shape — the regenerated aggregate and nothing else — resolves on built-ins', async () => {
   const { default: usageFold } = await import('../tasks/usage-fold/task.mjs');
   const v = policyVerdict({
     policy: usageFold.automerge,
-    entries: [
-      edited('.claudinite/local/usage.GENERATED.json', '{}', '{"a":1}'),
-      added('.gitattributes', '*.GENERATED.json merge=union\n'),
-    ],
+    entries: [edited('.claudinite/local/usage.GENERATED.json', '{}', '{"a":1}')],
   });
   assert.equal(v.mergeable, true, v.why);
-  // A second stray code file spends the budget the .gitattributes line lives on.
+  // Any second file — the .gitattributes line is adoption's now — parks the run.
   assert.equal(policyVerdict({
     policy: usageFold.automerge,
     entries: [
       edited('.claudinite/local/usage.GENERATED.json', '{}', '{"a":1}'),
       added('.gitattributes', 'x\n'),
-      added('src/stray.mjs', 'x\n'),
     ],
+  }).mergeable, false);
+});
+
+// --- the trims class and the mount exemption ----------------------------------
+
+test('trimsOnly: line removals, in-line cuts, and a truncation reusing its period pass; growth and substitutions do not', () => {
+  assert.equal(trimsOnly('- a long rule about x\n- b\n', '- a long rule\n- b\n'), true, 'a line cut short');
+  assert.equal(trimsOnly('- aaa, bbb.\n', '- aaa.\n'), true, 'truncated, closed with the period the line already held');
+  assert.equal(trimsOnly('- a\n- b\n- c\n', '- a\n- c\n'), true, 'whole-line removal');
+  assert.equal(trimsOnly('- aaa, bbb\n', '- aaa.\n'), false, 'a period the line never held is an edit, not a trim');
+  assert.equal(trimsOnly('- a\n', '- a (but wider)\n'), false, 'growth is never a trim');
+  assert.equal(trimsOnly('- ab\n', '- ba\n'), false, 'a reorder of characters is an edit');
+});
+
+test('markdown-trims covers a prune that cuts a line down, where markdown-line-removals parks it', () => {
+  const entries = [edited('x/RULES.md', '- keep\n- a rule, stated too widely.\n', '- keep\n- a rule.\n')];
+  assert.equal(policyVerdict({ policy: ['markdown-trims'], entries }).mergeable, true);
+  assert.equal(policyVerdict({ policy: ['markdown-line-removals'], entries }).mergeable, false);
+});
+
+test('coversMountPolicySources exempts vendored policy files only, and only for the flagged rule', () => {
+  const mountRule = compileDeclaredRule({
+    name: 'mount-refresh', pathMatching: '/^\\.claudinite\\/shared\\//',
+    changeKinds: ['added', 'modified', 'deleted'], editShape: 'any',
+    coversMountPolicySources: true,
+  }, 't');
+  const declaredRules = new Map([[mountRule.name, mountRule]]);
+  const mountTask = edited('.claudinite/shared/packs/p/tasks/t/task.mjs', 'a\n', 'b\n');
+
+  assert.equal(policyVerdict({ policy: ['mount-refresh'], entries: [mountTask], declaredRules }).mergeable, true);
+  // Without the flag the same coverage is refused…
+  const plainRule = compileDeclaredRule({
+    name: 'mount-plain', pathMatching: '/^\\.claudinite\\/shared\\//',
+    changeKinds: ['added', 'modified', 'deleted'], editShape: 'any',
+  }, 't');
+  assert.equal(policyVerdict({
+    policy: ['mount-plain'], entries: [mountTask], declaredRules: new Map([[plainRule.name, plainRule]]),
+  }).mergeable, false);
+  // …a generic built-in never gets it…
+  assert.equal(policyVerdict({
+    policy: ['file-additions'], entries: [added('.claudinite/shared/packs/p/tasks/t/task.mjs')],
+  }).mergeable, false);
+  // …and a REPO-OWNED policy source stays absolute even for the flagged rule.
+  const rootRule = compileDeclaredRule({
+    name: 'everything', pathMatching: '/./',
+    changeKinds: ['added', 'modified', 'deleted'], editShape: 'any',
+    coversMountPolicySources: true,
+  }, 't');
+  assert.equal(policyVerdict({
+    policy: ['everything'], entries: [edited('packs/p/tasks/t/task.mjs', 'a\n', 'b\n')],
+    declaredRules: new Map([[rootRule.name, rootRule]]),
+  }).mergeable, false);
+  // A reject term still vetoes an exempted file — the exemption is coverage, not immunity.
+  assert.equal(policyVerdict({
+    policy: ['mount-refresh', 'reject:javascript-changes'], entries: [mountTask], declaredRules,
   }).mergeable, false);
 });
 

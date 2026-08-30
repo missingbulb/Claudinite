@@ -1,57 +1,95 @@
 // The growth tasks' auto-merge policies, asserted through the same engine the
-// landing lane and the automerge-policy-scope gate apply — proving the built-in
-// classes each declaration composes authorize exactly the change shape the
-// task's worker doc bounds it to. WHERE a run may write is the separate
-// `growth-write-scope` check's business; the policy judges only what KIND of
-// change may land unreviewed.
+// landing lane and the automerge-policy-scope gate apply — each declaration's
+// classes (built-in, plus this pack's merge-rules.json) proven to authorize
+// exactly the change shape the task's worker doc bounds it to. WHERE a run may
+// write is the separate `growth-write-scope` check's business; the policy
+// judges only what KIND of change may land unreviewed.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { policyVerdict } from '../../claudinite-tasks/shared-code/merge-policy.mjs';
+import { fileURLToPath } from 'node:url';
+import { dirname } from 'node:path';
+import { policyVerdict, declaredMergeRules } from '../../claudinite-tasks/shared-code/merge-policy.mjs';
 import dedup from '../tasks/growth-dedup/task.mjs';
 import extract from '../tasks/growth-extract/task.mjs';
+import revalidation from '../tasks/rule-revalidation/task.mjs';
+import sweep from '../tasks/prose-to-checks-sweep/task.mjs';
 
-test('growth-extract may land added prose and new files, never a deletion or a rewrite of standing code', () => {
-  const verdict = (entries) => policyVerdict({ policy: extract.automerge, entries });
+const packDir = dirname(dirname(fileURLToPath(import.meta.url)));
+const { rules, errors } = declaredMergeRules(
+  [{ id: 'claudinite-growth', dir: packDir }],
+  { packs: ['claudinite-growth'] },
+);
+const verdict = (policy, entries) => policyVerdict({ policy, entries, declaredRules: rules });
 
-  assert.equal(verdict([
-    { file: '.claudinite/local/packs/claudinite/RULES.md', before: '- a\n', after: '- a\n- b\n' },
+const RULES_MD = '.claudinite/local/packs/claudinite/RULES.md';
+
+test('the pack\'s merge-rules.json compiles cleanly', () => {
+  assert.deepEqual(errors, []);
+  for (const name of ['claudinite-local-pack-md-changes', 'claudinite-local-pack-md-deletions', 'claudinite-local-pack-check-changes']) {
+    assert.ok(rules.has(name), name);
+  }
+});
+
+test('growth-extract may land local-pack prose and checks, nothing outside the local packs', () => {
+  assert.equal(verdict(extract.automerge, [
+    { file: RULES_MD, before: '- a\n', after: '- a\n- b\n' },
     { file: '.claudinite/local/packs/claudinite/declared-checks.json', before: null, after: '[]\n' },
   ]).mergeable, true);
 
-  // A local-pack DELETION is dedup's business, not extract's.
-  assert.equal(verdict([
-    { file: '.claudinite/local/packs/claudinite/RULES.md', before: '- a\n', after: null },
+  // A lesson landed outside the local packs is not this task's write surface…
+  assert.equal(verdict(extract.automerge, [
+    { file: 'packs/basics/RULES.md', before: '- a\n', after: '- a\n- b\n' },
   ]).mergeable, false);
-  // …and rewriting an existing code file is nobody's to land unreviewed here.
-  assert.equal(verdict([
-    { file: '.claudinite/local/packs/claudinite/workRules/x.mjs', before: 'a\n', after: 'b\n' },
+  // …and a local-pack DELETION is dedup's business, not extract's.
+  assert.equal(verdict(extract.automerge, [
+    { file: RULES_MD, before: '- a\n', after: null },
   ]).mergeable, false);
 });
 
-test('growth-dedup may land only Markdown line removals', () => {
-  const verdict = (entries) => policyVerdict({ policy: dedup.automerge, entries });
+test('rule-revalidation may land local-pack prose rewrites only', () => {
+  assert.equal(verdict(revalidation.automerge, [
+    { file: RULES_MD, before: '- the old wording\n', after: '- the revalidated wording\n' },
+  ]).mergeable, true);
+  assert.equal(verdict(revalidation.automerge, [
+    { file: 'packs/basics/RULES.md', before: '- a\n', after: '- b\n' },
+  ]).mergeable, false, 'canon prose parks for the owner');
+});
 
-  assert.equal(verdict([
-    { file: '.claudinite/local/packs/claudinite/RULES.md', before: '- a\n- b\n- c\n', after: '- a\n- c\n' },
+test('growth-dedup may land Markdown removals and in-line trims, never growth', () => {
+  assert.equal(verdict(dedup.automerge, [
+    { file: RULES_MD, before: '- a\n- b, stated too widely.\n- c\n', after: '- a\n- b.\n' },
+  ]).mergeable, true, 'a removal beside a line cut down');
+
+  // Growing an entry is outside the policy — the dedup rule "never grow an
+  // entry", measured rather than requested.
+  assert.equal(verdict(dedup.automerge, [
+    { file: RULES_MD, before: '- a\n- b\n', after: '- a\n- b (but wider)\n' },
+  ]).mergeable, false);
+});
+
+test('prose-to-checks-sweep may land a local-pack prose deletion beside the check replacing it', () => {
+  assert.equal(verdict(sweep.automerge, [
+    { file: RULES_MD, before: '- always testable rule\n- other\n', after: '- other\n' },
+    { file: '.claudinite/local/packs/claudinite/declared-checks.json', before: '[]\n', after: '[{"id":"x"}]\n' },
   ]).mergeable, true);
 
-  // A prune that also GREW an entry is outside the policy — exactly the dedup
-  // rule "never grow an entry", now measured rather than requested.
-  assert.equal(verdict([
-    { file: '.claudinite/local/packs/claudinite/RULES.md', before: '- a\n- b\n', after: '- a\n- b (but wider)\n' },
+  // A conversion that GREW the prose, or wrote outside the local packs, parks.
+  assert.equal(verdict(sweep.automerge, [
+    { file: RULES_MD, before: '- a\n', after: '- a\n- converted: see check\n' },
   ]).mergeable, false);
+  assert.equal(verdict(sweep.automerge, [
+    { file: 'packs/basics/declared-checks.json', before: '[]\n', after: '[{"id":"x"}]\n' },
+  ]).mergeable, false, 'the canon-home sweep still parks for the owner');
 });
 
-test('no growth policy can cover a change to the policy sources', () => {
-  for (const policy of [extract.automerge, dedup.automerge]) {
-    assert.equal(policyVerdict({
-      policy,
-      entries: [{ file: '.claudinite/local/packs/x/merge-rules.json', before: null, after: '[]\n' }],
-    }).mergeable, false);
-    assert.equal(policyVerdict({
-      policy,
-      entries: [{ file: '.claudinite/local/packs/x/tasks/t/task.mjs', before: 'a\n', after: 'b\n' }],
-    }).mergeable, false);
+test('no growth policy can cover the repo-owned policy sources', () => {
+  for (const policy of [extract.automerge, dedup.automerge, revalidation.automerge, sweep.automerge]) {
+    assert.equal(verdict(policy, [
+      { file: '.claudinite/local/packs/x/merge-rules.json', before: null, after: '[]\n' },
+    ]).mergeable, false);
+    assert.equal(verdict(policy, [
+      { file: '.claudinite/local/packs/x/tasks/t/task.mjs', before: 'a\n', after: 'b\n' },
+    ]).mergeable, false);
   }
 });

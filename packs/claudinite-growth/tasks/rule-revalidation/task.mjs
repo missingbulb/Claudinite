@@ -23,7 +23,7 @@ export default {
   precondition_signals: [],              // nothing in the repo signals that the world changed; the trigger is the calendar
   agent_model: 'opus',                   // designing a safe probe per claim, and reading a null result correctly, is heavy judgment
   expected_outcome: 'pr',
-  automerge: 'nothing',              // it rewrites rules sessions obey — reviewed, never auto-merged
+  automerge: ['claudinite-local-pack-md-changes'], // rewrites confined to the repo's own local-pack prose land themselves; anything wider parks
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,         // reading the corpus + running real probes — a generous bound
 

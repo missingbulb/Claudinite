@@ -191,20 +191,6 @@ export function dayLadder(nowIso, days = DAY_WINDOW_DAYS) {
   return Array.from({ length: days }, (_, i) => new Date(end - (days - 1 - i) * 86400000).toISOString().slice(0, 10));
 }
 
-// --- the GENERATED-file contract ----------------------------------------------
-
-// A GENERATED file wants a `merge=ours` .gitattributes entry, so a conflicting merge
-// resolves by re-running the generator instead of by hand (the canon's
-// GENERATED-file discipline, and the `generated-merge-driver` check that enforces
-// it). Declared alongside the file it is about, on the first fold; returns null when
-// it is already declared. Exported for the tests.
-export const MERGE_ATTR = 'usage.GENERATED.json merge=ours';
-export function withMergeAttribute(current) {
-  const text = current ?? '';
-  if (text.split('\n').some((l) => l.trim() === MERGE_ATTR)) return null;
-  return (text && !text.endsWith('\n') ? `${text}\n` : text) + `${MERGE_ATTR}\n`;
-}
-
 // --- main ---------------------------------------------------------------------
 
 export async function main() {
@@ -281,20 +267,19 @@ export async function main() {
     queueFoldedThrough: queue.watermark,
     dayFields: dayFieldsFrom({ commits, releases, ladder }),
   })));
-  const attributes = withMergeAttribute(readAt(root, baseSha, '.gitattributes'));
 
   // Compared WITHOUT the freshness stamp, which moves every run by construction: a
   // repo where nothing happened must still open nothing, and the stamp is the one line
   // that would otherwise make every hourly fold a PR.
   const landed = readAt(root, baseSha, USAGE_PATH);
-  if (landed !== null && withoutStamp(landed) === withoutStamp(text) && attributes === null) {
+  if (landed !== null && withoutStamp(landed) === withoutStamp(text)) {
     log(`${files.length} capture file(s) folded — recompute is byte-identical, nothing to deliver`);
     return;
   }
 
   const pr = await deliverGenerated({
     root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX, log,
-    files: { [USAGE_PATH]: text, ...(attributes !== null ? { '.gitattributes': attributes } : {}) },
+    files: { [USAGE_PATH]: text },
     // The arming trailer carries the task's own automerge, so the
     // automerge-policy-scope check re-measures this delivery's diff wherever the
     // PR's CI runs check_the_work — the code lane's equivalent of the agent
