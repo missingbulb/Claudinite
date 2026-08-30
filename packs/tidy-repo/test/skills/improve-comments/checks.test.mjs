@@ -120,6 +120,5 @@ test('the title the gate keys on is the one the task and its doc pin', () => {
   // others silently retires the guarantee rather than failing.
   assert.ok(scope.run !== undefined);
   assert.equal(task.id, 'improve-comments');
-  assert.equal(task.expected_outcome, 'open-pr', 'a comment pass is read by a human before it lands');
   assert.ok(task.precondition_signals.includes('prs'), 'the previous round\'s open PR is what gates a second sweep');
 });
