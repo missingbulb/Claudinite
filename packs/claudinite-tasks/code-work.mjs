@@ -141,7 +141,10 @@ export function codeWorkFailure(result) {
 //     claudinite-needs-human: action — FLEET_GITHUB_TOKEN lacks Actions: write
 //
 // The kind is one of the triage kinds (`action`, `decision`, `approval`,
-// `failure`); anything else, or no marker at all, leaves the park a `failure`.
+// `failure`). It NAMES WHAT THE PERSON MUST DO; it does not choose the park, which
+// is `failure` for every failed run (#1452) — a worker that could downgrade its own
+// non-zero exit into a non-blocking lane let the task re-file daily against a cause
+// nobody had fixed. Both halves are rendered into the item's comment.
 // The LAST marker wins, so a worker that sweeps many targets may revise its
 // verdict as it goes. Read from the worker's output rather than from a file
 // because it must survive the SIGKILL at `code_work_timeout` — output is echoed

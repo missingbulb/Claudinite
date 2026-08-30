@@ -126,17 +126,23 @@ test('code_work that delivered no open PR still closes task:status:done', async 
   assert.ok(issue.labels.includes('task:status:done'));
 });
 
-// The executor sees an exit code; only the worker knows whether that was a scope
-// it lacked or a bug in its own code. Its marker is what routes the park.
-test('a failed code_work parks at the class its worker declared', async () => {
+// A RUN THAT FAILED PARKS `failure`, whatever the worker asked for (#1452). The
+// marker used to route the park, and a worker naming `action` moved a failed run into
+// a non-blocking lane — so the standing slot freed and the task re-filed the next day
+// against a cause nobody had fixed. ClaudiniteCanary reached SEVEN copies of one
+// fleet-digest failure that way, hitbut twenty-two. A non-zero exit is a failure; the
+// worker's verdict is preserved as the human-facing instruction in the comment, which
+// is where it was always the useful half.
+test('a failed code_work parks at failure, and still carries its worker\'s verdict', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
   await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
     runTaskCodeWork: async () => ({ ok: false, why: 'code-work exited 1', triage: { kind: 'action', detail: 'PAT lacks Actions: write' } }),
   });
   const issue = repo.find(1);
-  assert.ok(issue.labels.some((l) => l.startsWith('task:status:needs-human-')));
-  assert.ok(issue.labels.includes('task:status:needs-human-action'));
-  assert.match(issue.comments.at(-1).body, /PAT lacks Actions: write/);
+  assert.ok(issue.labels.includes('task:status:needs-human-failure'), 'the run failed, so the park is failure');
+  assert.ok(!issue.labels.includes('task:status:needs-human-action'), 'the worker cannot downgrade its own failure');
+  assert.match(issue.comments.at(-1).body, /PAT lacks Actions: write/, 'the fix instruction survives');
+  assert.match(issue.comments.at(-1).body, /action/, 'and so does the kind the worker asked for');
 });
 
 // No marker is not "assume the cheap lane": an unexplained break is a break.
