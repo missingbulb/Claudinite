@@ -43,7 +43,7 @@
 // has to be frozen is frozen.
 
 export default {
-  version: '60827.2',
+  version: '60830.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state and the site that publishes it',
@@ -78,6 +78,9 @@ export default {
   //   repos       — an inline roster instead of a URL
   //   clientId    — GitHub App / OAuth App client id, for the sign-in button
   //   exchangeUrl — the code-to-token endpoint that sign-in needs
+  //   allowedOrigins — page origins allowed to call that endpoint (defaults to the
+  //                    redirectUri's origin, then to this owner's Pages host)
+  //   workerName  — what the deployed endpoint is called (defaults per the task)
   //   owner       — whose repos the fleet view enumerates (defaults to this repo's owner)
   //   exclude     — repos it keeps out (defaults to none)
   questions: [
@@ -113,8 +116,9 @@ export default {
     {
       step: 'Decide how this dashboard authenticates its viewers: leave it on the pasted-token box (nothing to do), '
         + 'or give it a Sign in button — register a GitHub App with read-only Contents, Issues and Actions, install it on '
-        + 'the account holding these repos, deploy the pack\'s oauth-exchange example, and set `clientId` and `exchangeUrl` '
-        + 'on this pack\'s declaration. See "Who has to register the app" in the pack README: one App serves every '
+        + 'the account holding these repos, put `clientId` on this pack\'s declaration, run its `deploy-oauth-exchange` '
+        + 'task to put the exchange endpoint live, and set `exchangeUrl` to the URL it reports. '
+        + 'See "Who has to register the app" in the pack README: one App serves every '
         + 'deployment you own, and none can be inherited from another owner.',
       breaks: 'nothing fails, but a viewer who has not pasted a token reads GitHub anonymously at 60 requests/hour per IP — '
         + 'which one fleet sweep exceeds, so the page serves cached data or empty rows until the hour rolls',

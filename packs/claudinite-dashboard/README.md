@@ -413,10 +413,13 @@ issue rather than leaving them here to be met after the first anonymous viewer g
 2. **Install it** on the account holding the repos the dashboard reads. Per *account*, not
    per repo: a user token reaches only what the app is installed on, so an uninstalled
    account renders every member row as *not visible to you*.
-3. **Deploy [`oauth-exchange.example.mjs`](oauth-exchange.example.mjs)** with that id and
-   secret in its environment. One deployment serves every dashboard the same owner runs.
-4. **Set `clientId` and `exchangeUrl`** in the declaration's `config`. Either alone does
-   nothing — the pair is what makes the button appear.
+3. **Set `clientId`** in the declaration's `config`, and **deploy
+   [`oauth-exchange.mjs`](oauth-exchange.mjs)** by running this pack's
+   [`deploy-oauth-exchange`](tasks/deploy-oauth-exchange/README.md) task — it uploads the
+   endpoint to Cloudflare Workers, proves the URL answers, and reports it. One deployment
+   serves every dashboard the same owner runs.
+4. **Set `exchangeUrl`** to the URL that run reported. `clientId` alone does nothing — the
+   pair is what makes the button appear.
 
 Done when a signed-in viewer's rate pill reads `…/5000 · user`.
 
@@ -432,7 +435,7 @@ Sign-in is the closest thing, and it is genuinely *your* permissions: after one
 authorization, every call runs as you. The only piece that cannot live in the page
 is the `code` → token exchange, which needs the app's client secret **and** hits an
 endpoint that sends no CORS headers. That is what `exchangeUrl` points at —
-[`oauth-exchange.example.mjs`](oauth-exchange.example.mjs) is a deployable
+[`oauth-exchange.mjs`](oauth-exchange.mjs) is a deployable
 implementation. It sees one code, returns one token, and never touches repo data.
 
 ## Caching
