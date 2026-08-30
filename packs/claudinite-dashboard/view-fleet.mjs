@@ -14,7 +14,6 @@ import {
 } from './contributions.mjs';
 import { miniCard, miniAbsent, packCard, CONTRIB_STATE_TEXT } from './contrib-view.mjs';
 import { fleetGrowth } from './fleet-growth.mjs';
-import { digestDates, digestDate, digestPath, digestEntry, MAX_DAYS_BACK } from './digest.mjs';
 import { fleetCandidates } from './next-work.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, leadCard, repoLink, tiles, segmentBar,
@@ -133,49 +132,6 @@ async function readPackCards(read, token) {
 // every row costs the page nothing it was opened for.
 async function readCommitGraph(read, token) {
   read.commits = await gh.commitActivity(read.repo, token).catch(() => null);
-}
-
-// The last two days' briefs, from wherever the fleet keeps them. Optional in every
-// direction: no `digestsRepo` configured means the panel is not part of this
-// deployment, and a day with no file is a normal state rather than an error — the task
-// had nothing to report, or has not run yet.
-//
-// Content at a path in a repo, so both reads are immutable-cacheable by sha and a warm
-// load costs nothing. The 404 for a missing day is cached the same way, so a fleet
-// whose digest task is idle does not re-ask every load.
-async function readDigests(config, token) {
-  if (!config?.digestsRepo) return null;
-  brief.config = config;
-  brief.token = token;
-  const dates = digestDates(Date.now());
-  try {
-    const meta = await gh.getRepo(config.digestsRepo, token);
-    brief.sha = await gh.getHeadSha(config.digestsRepo, meta.default_branch, token);
-    const entries = await Promise.all(dates.map((date) => readDay(date)));
-    return entries;
-  } catch (error) {
-    // The repo itself could not be read — a permissions fact about the viewer, not a
-    // statement about any day's brief. Every day reports it rather than reading as
-    // "nothing was written".
-    const entries = dates.map((date) => digestEntry(date, null, error));
-    for (const e of entries) brief.days.set(e.date, e);
-    return entries;
-  }
-}
-
-// One day's brief, read at most once per load. Content at a path in a commit, so the
-// second viewer of the same day pays nothing and a day already read is not re-asked.
-async function readDay(date) {
-  if (brief.days.has(date)) return brief.days.get(date);
-  let entry;
-  try {
-    const text = await gh.getTextAtSha(brief.config.digestsRepo, brief.sha, digestPath(brief.config.digestsPath, date), brief.token);
-    entry = digestEntry(date, text);
-  } catch (error) {
-    entry = digestEntry(date, null, error);
-  }
-  brief.days.set(date, entry);
-  return entry;
 }
 
 // --- render ---------------------------------------------------------------------
@@ -462,8 +418,6 @@ function renderBenefits(b, growth) {
     windowFigure(runsPassed, 'scheduler runs passed',
       delta(runsPassed, prevPassed),
       b.current.runsFailed ? `${b.current.runsFailed} failed` : 'none failed'),
-    b.digests === null ? null
-      : windowFigure(b.digests, 'digests written', null, 'of the last two days'),
     // The two figures this panel used to name as ABSENT: nothing the page read could
     // count a check activation or the corpus a session carried. Both are in each
     // member's own usage file now, which the sweep reads anyway.
@@ -479,93 +433,6 @@ function renderBenefits(b, growth) {
       : windowFigure(growth.tokensPerSession, 'rule tokens per session', null,
         'what the corpus costs each session before its first turn', { better: 'down' }),
   ].filter(Boolean));
-}
-
-// --- the digests panel -----------------------------------------------------------
-
-const BLOCK_TAG = { title: 'h3', section: 'h4', item: 'li', para: 'p' };
-
-// One card per day. The brief is plain text by its writer's contract, so this is
-// headings, paragraphs and links — never a Markdown renderer, which would be the wrong
-// reader for the file and a dependency for a page that has none.
-function digestCard(entry, repo, dir) {
-  const kids = [el('div', { className: 'k', textContent: entry.date })];
-
-  if (entry.state === 'missing') {
-    kids.push(el('p', { className: 'sub', textContent: 'No brief for this day — the digest task had nothing to report, or has not run.' }));
-  } else if (entry.state === 'unreadable') {
-    kids.push(el('p', { className: 'sub', textContent: `Not read — ${entry.error?.message ?? 'the digest repo could not be read'}.` }));
-  } else if (entry.state === 'empty') {
-    kids.push(el('p', { className: 'sub', textContent: 'The file for this day is empty.' }));
-  }
-
-  let list = null;
-  for (const b of entry.blocks) {
-    const nodes = b.runs.map((r) => (r.href
-      ? el('a', { href: r.href, target: '_blank', rel: 'noopener', textContent: r.text })
-      : r.text));
-    if (b.kind === 'item') {
-      if (!list) { list = el('ul', { className: 'digest-items' }); kids.push(list); }
-      list.append(el('li', {}, nodes));
-      continue;
-    }
-    list = null;
-    kids.push(el(BLOCK_TAG[b.kind] ?? 'p', {}, nodes));
-  }
-
-  if (entry.state === 'written' && repo) {
-    kids.push(el('div', { className: 'sub' }, [
-      el('a', {
-        href: `https://github.com/${repo}/blob/HEAD/${digestPath(dir, entry.date)}`,
-        target: '_blank', rel: 'noopener', textContent: 'the file',
-      }),
-    ]));
-  }
-  return el('div', { className: 'chart-card digest' }, kids);
-}
-
-// The day the picker is on, and the days already read. Module state rather than a
-// parameter because the fleet page repaints on every member's read landing, and a
-// picker whose day reset itself a dozen times during the sweep would be unusable.
-const brief = { config: null, token: null, sha: null, days: new Map(), back: 1 };
-
-function showDay(back) {
-  brief.back = Math.min(MAX_DAYS_BACK, Math.max(1, back));
-  const date = digestDate(Date.now(), brief.back);
-  renderBrief();
-  // Already-read days render from the cache above and never reach this.
-  if (!brief.days.has(date) && brief.sha) readDay(date).then(renderBrief).catch(() => renderBrief());
-}
-
-function renderBrief() {
-  const section = $('lead-digest-section');
-  if (!brief.config?.digestsRepo) { section.hidden = true; return; }
-  section.hidden = false;
-
-  const date = digestDate(Date.now(), brief.back);
-  const entry = brief.days.get(date) ?? null;
-  $('fleet-digest').replaceChildren(entry
-    ? digestCard(entry, brief.config.digestsRepo, brief.config.digestsPath)
-    : el('div', { className: 'chart-card lead-card digest' }, [
-      el('div', { className: 'k', textContent: date }),
-      el('p', { className: 'sub', textContent: 'Reading…' }),
-    ]));
-
-  // Older to the left, newer to the right, and the ends are disabled rather than
-  // hidden: a control that vanishes at a boundary reads as a page that broke.
-  $('digest-nav').replaceChildren(
-    el('button', {
-      type: 'button', textContent: '‹', title: 'the day before',
-      disabled: brief.back >= MAX_DAYS_BACK,
-      onclick: () => showDay(brief.back + 1),
-    }),
-    el('span', { className: 'sub', textContent: brief.back === 1 ? 'yesterday' : `${brief.back} days ago` }),
-    el('button', {
-      type: 'button', textContent: '›', title: 'the day after',
-      disabled: brief.back <= 1,
-      onclick: () => showDay(brief.back - 1),
-    }),
-  );
 }
 
 // --- the activity panel ----------------------------------------------------------
@@ -682,7 +549,7 @@ const pendingRow = (repo) => el('tr', { className: 'pending-row' }, [
   el('td', { colSpan: MEMBER_COLS - 1 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
 ]);
 
-function renderFleet(summaries, reads, now, onOpen, canon, progress = null, digests = null, deployment = null) {
+function renderFleet(summaries, reads, now, onOpen, canon, progress = null, deployment = null) {
   const resolved = summaries.filter(Boolean);
   const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
   const roll = rollUp(resolved);
@@ -757,10 +624,9 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, dige
   // give: a shared pack's task parked in four members at once is a canon problem,
   // and in any single repo it looks like that repo's bad luck.
   const resolvedReads = reads.filter(Boolean);
-  renderBrief();
   renderDeployment(deployment, now);
   const growth = fleetGrowth(resolvedReads, { now });
-  renderBenefits(fleetBenefits(resolvedReads, { now, digests }), growth);
+  renderBenefits(fleetBenefits(resolvedReads, { now }), growth);
   renderActivity(activitySeries(resolvedReads, { now }), growth);
 
   const spread = taskSpread(resolvedReads, now).filter((t) => t.members > 0);
@@ -800,7 +666,6 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   const canon = await readCanon(config, token);
   // Read before the sweep so the panel is there from the first paint: it is two small
   // reads, and it is the thing a viewer opening this page in the morning came for.
-  const digests = await readDigests(config, token);
 
   // Rendered on every arrival rather than once at the end: the page is useful from
   // the first member back, and the member a viewer opened it for may be the first.
@@ -813,7 +678,7 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
   // What the page is allowed to claim right now: how many members are RANKED (not how
   // many have been touched), and which pass is filling the rest in.
   let progress = { done: 0, total: repos.length, label: null };
-  const paint = () => renderFleet(summaries, reads, now, onOpen, canon, progress, digests, deployment);
+  const paint = () => renderFleet(summaries, reads, now, onOpen, canon, progress, deployment);
   paint();
   readDeploymentContributions({ config, token, gh })
     .then((d) => { deployment = d; paint(); })
@@ -872,5 +737,5 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
 
   progress = { done: summaries.filter(Boolean).length, total: repos.length, label: null };
   paint();
-  return { summaries: summaries.filter(Boolean), now, canon, digests };
+  return { summaries: summaries.filter(Boolean), now, canon };
 }

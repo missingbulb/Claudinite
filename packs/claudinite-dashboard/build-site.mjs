@@ -181,11 +181,6 @@ const config = {
   // here would be the same list for every viewer.
   owner: cfg.owner ?? null,
   exclude: Array.isArray(cfg.exclude) ? cfg.exclude : [],
-  // Where the fleet's morning briefs are written. Named rather than assumed: the
-  // digest task runs in the enforcer's repo, which is usually not the one publishing
-  // this page.
-  digestsRepo: cfg.digestsRepo ?? null,
-  digestsPath: cfg.digestsPath ?? null,
   rosterUrl,
   repos: [],
   // In fleet mode the overview is the landing view, so nothing is preselected; in repo
@@ -209,6 +204,5 @@ process.stdout.write(
   + `  mode: ${fleetMode ? 'fleet-dashboard' : 'repo-dashboard'} (declared)\n`
   + `  covers: ${covers}\n`
   + `  canon reference: ${config.canonRepo ?? 'not set — member mount freshness reads unknown'}\n`
-  + `  digests: ${config.digestsRepo ? `${config.digestsRepo}/${config.digestsPath ?? 'digests'}` : 'not set — the morning-brief panel is off'}\n`
   + `  sign-in: ${signIn}\n`,
 );

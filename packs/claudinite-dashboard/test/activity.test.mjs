@@ -178,12 +178,6 @@ test('no converged figure is invented from what the settings can no longer say',
   assert.equal(b.members, 2);
 });
 
-test('digests are counted from what was actually found, and null when none was looked for', () => {
-  const withDigests = fleetBenefits([read()], { now: NOW, digests: [{ text: 'a' }, { text: null }] });
-  assert.equal(withDigests.digests, 1);
-  assert.equal(fleetBenefits([read()], { now: NOW }).digests, null);
-});
-
 // --- commitDays ------------------------------------------------------------------
 
 // A week as `/stats/commit_activity` sends it: a UTC-Sunday epoch second, and seven

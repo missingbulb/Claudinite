@@ -24,9 +24,7 @@
 //     "scope":       "repo",                             // classic OAuth Apps only
 //     "rosterUrl":   "./fleet-roster.GENERATED.json",    // the repo selector's source
 //     "repos":       ["owner/a", "owner/b"],             // an inline roster instead
-//     "defaultRepo": "owner/a",
-//     "digestsRepo": "owner/enforcer",                  // where the fleet digests are written
-//     "digestsPath": "digests"                           // the directory inside it
+//     "defaultRepo": "owner/a"
 //   }
 
 export const DEFAULTS = {
@@ -48,11 +46,6 @@ export const DEFAULTS = {
   owner: null,
   exclude: [],
   defaultRepo: null,
-  // The fleet's morning briefs live in whichever repo runs the digest task — the fleet
-  // enforcer's, never this one by assumption — so the repo is named rather than
-  // guessed, and an unset key means this deployment has no digests panel.
-  digestsRepo: null,
-  digestsPath: 'digests',
 };
 
 export async function loadConfig(url = './dashboard.config.json') {
@@ -142,8 +135,7 @@ export const isFleetConfig = (config) => config?.mode === 'fleet';
 
 // A repo that is in the owner's account but not in the fleet. Archived and forked
 // repositories are excluded by their own state rather than by anyone maintaining a
-// list, and `exclude` covers the rest — the same key the fleet-digest task already
-// reads off this pack's declaration, so a deployment states its exceptions once.
+// list, and `exclude` covers the rest.
 export const inFleet = (repo, exclude = []) =>
   !repo.archived && !repo.fork && !exclude.includes(repo.full_name)
   && !exclude.includes(repo.full_name.split('/')[1]);

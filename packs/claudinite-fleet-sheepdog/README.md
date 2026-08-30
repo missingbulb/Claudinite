@@ -58,11 +58,6 @@ instead — a `declarePacks` op applied by each member's own update run, in the 
 commit that vendors the pack's code. The sweep is the **standing** half: a migration record is dated
 and retires, while the sweep keeps converging every member the fleet acquires after it is gone.
 
-The **fleet digest** — the dated morning brief of what the fleet actually did — used to be the
-sixth sweep here. It moved out, to sit with the page that reads the series it writes; an enforcer's
-existing `owner`, `exclude` and `digest` config on *this* entry is still what it reads, so nothing
-in a declaration had to change.
-
 The fit sweep fingerprints against a scratch clone of `canonRepo`, never against this repo's own
 mount — the mount carries only the packs the enforcer declares, and sweeping against it would report
 every member as fitted while testing almost nothing. Its report names the corpus it measured against,

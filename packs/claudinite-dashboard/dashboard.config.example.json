@@ -10,8 +10,7 @@
     "\"fleet\" for the overview. Every other key below is optional. `canonRepo` is what the fleet view compares each",
     "member's mount against; unset means member freshness reads unknown rather than",
     "being guessed. A \"fleet\" mode names where its members come from — `owner`,",
-    "`repos` or `rosterUrl`. `digestsRepo` is where the fleet's morning briefs are",
-    "written — unset simply turns that panel off."
+    "`repos` or `rosterUrl`."
   ],
 
   "mode": "fleet",
@@ -21,8 +20,6 @@
   "scope": null,
 
   "canonRepo": "missingbulb/Claudinite",
-  "digestsRepo": "missingbulb/Shepherd",
-  "digestsPath": "digests",
   "rosterUrl": "./fleet-roster.GENERATED.json",
   "repos": [],
   "defaultRepo": "missingbulb/Claudinite"

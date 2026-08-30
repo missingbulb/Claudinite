@@ -20,17 +20,6 @@ wrong site.
 **Opt-in.** Nothing fingerprints it and `--init` never seeds it: a repo carries this
 because someone declared it. Adopting it wires the GitHub Pages deploy.
 
-**It also carries the task that writes the briefs the page reads** —
-[`fleet-digest`](tasks/fleet-digest/task.md), daily. That is not gated on anything: a
-repo that declares this pack for the page alone gets the task too, and the task needs
-`FLEET_GITHUB_TOKEN`, an account-spanning PAT granted exactly what
-[`fleet-token.mjs`](tasks/fleet-digest/fleet-token.mjs)'s table names — the one place
-those permissions are written, and what the adoption handover step hands a human.
-Without that secret its work item parks
-asking for one, and nothing else about the pack is affected. Declare this pack on the
-repo that *is* your fleet's enforcer, and you get both halves; declare it somewhere
-else and either configure the secret or expect the parked item.
-
 ## Adopting it
 
 ```jsonc
@@ -55,9 +44,6 @@ Everything else is optional `config` on the declaration:
 | `repos` | — | An explicit member list instead, for a deployment that wants a fixed set |
 | `rosterFile` | — | A generated artifact in the repo listing members — the legacy shape, still read |
 | `canonRepo` | — | The repo whose live engine and pack versions member stamps are compared against; unset means freshness reads *unknown* rather than being guessed |
-| `digestsRepo` | — | The repo the fleet's morning briefs are read from; unset turns the digests panel off |
-| `digestsPath` | `digests` | The directory inside it |
-| `digest` | `pick` 4, `nudge` on | The [fleet-digest task's](#the-morning-briefs) knobs — how many items a brief names and whether it prods a quiet project. It reads `owner` and `exclude` too, so a fleet deployment states them once |
 | `clientId`, `exchangeUrl` | — | Both together turn on **Sign in with GitHub**; either alone does nothing |
 | `redirectUri` | the page's URL | Override when the callback differs |
 | `defaultRepo` | this repo | Which repo a single-repo deployment shows |
@@ -177,7 +163,6 @@ second. So nothing on it is a total for its own sake.
 | Panel | Answers |
 |---|---|
 | **Start here** | The one piece of work most worth doing across every member, named with the issue to open and what it costs you — the worst thing true of the fleet, and a link rather than a count |
-| **The morning brief** | Yesterday's fleet digest, when the deployment names a `digestsRepo`, with a picker back through earlier days |
 | **What Claudinite did this week** | The work the machinery did that nobody had to do — this week against last, including the check findings caught inside sessions and what the corpus costs each of them |
 | **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, **how often the checks ran and caught something**, and which members moved at all |
 | **Rollup tiles** | How many *members* need a human — not how many items exist |
@@ -358,82 +343,6 @@ Costs are the same shape as everything else here: discovery is free (the declara
 and the tree listing are already in hand), the descriptor and values are content at a
 sha and therefore free on a warm load, and `latest-release` is the one live request,
 withheld before anything the queue depends on.
-
-## The morning briefs
-
-### Writing them
-
-[`tasks/fleet-digest/`](tasks/fleet-digest/task.md) writes one file a morning at
-`digests/<date>.md`: the few things the fleet actually accomplished the day before,
-plus one project worth returning to. It was the `claudinite-fleet-sheepdog` pack's sixth sweep until it
-moved here — that pack enumerates the fleet, but this is the pack whose page reads the
-result, and the producer and its only reader are now one adoption.
-
-Two stages, conditionally. The agentless `code_work` stage
-([`worker.mjs`](tasks/fleet-digest/worker.mjs)) enumerates the fleet, ranks the day's
-merged PRs and closed issues **by size**, filters Claudinite's own maintenance PRs and
-work items out of every stream (the machine is the fleet's busiest actor and would
-otherwise win its own rankings), and pushes a shortlist half again longer than the
-brief needs. The agent then reads only that shortlist and picks the accomplishments —
-size is arithmetic and belongs in code, "the biggest thing I did yesterday" is a
-reading of the text. On a day the fleet merged nothing, the code-work stage writes the brief itself
-and requests no agent: a missing file in a dated series has to stay legible as a
-*fault* rather than as a slow Tuesday.
-
-Everything it needs is optional, on this pack's own declaration `config`:
-
-| key | default | what it does |
-|---|---|---|
-| `owner` | this repo's owner | whose repositories the brief covers |
-| `exclude` | none | repos deliberately kept out, a full `owner/name` each |
-| `digest.pick` | `4` | how many accomplishments the brief names (the shortlist is `ceil(pick × 1.5)`, so the agent has a real choice rather than a ranking to transcribe) |
-| `digest.nudge` | on, 7 days | the "worth returning to" prod. `false` switches it off; `{ "quietDays": 21 }` widens the window |
-
-An enforcer that declared `owner`, `exclude` or `digest` on its **`claudinite-fleet-sheepdog`** entry
-before the move needs to change nothing: [`digest-config.mjs`](tasks/fleet-digest/digest-config.mjs)
-reads this pack's entry first and falls back to that one, and every run logs which it
-used — a dropped `exclude` list would otherwise widen the brief silently.
-
-**Quiet is measured on meaningful merges, never on pushes.** Every member's mount is
-converged nightly, so `pushed_at` is fresh on every repo in the fleet every day and
-would report the whole fleet as permanently active.
-
-### Reading them
-
-The brief leads the fleet page, opening on **yesterday** — the newest day that can have
-one, since a day's brief is written after that day — with a picker back through the
-[`MAX_DAYS_BACK`](digest.mjs) days before it. A day is one content-at-a-path read, cached
-by commit like everything else here and never re-asked once shown; the bound exists
-because a day before the series began is indistinguishable from a day the task had
-nothing to say about, and paging into pre-history one empty card at a time is not
-browsing.
-
-To catch the series up after an outage, create the item by hand with a day count:
-
-```
-node .claudinite/shared/packs/claudinite-tasks/queue/create-work-item.mjs claudinite-dashboard/fleet-digest \
-  --context "DIGEST_BACKFILL_DAYS=7"
-```
-
-It covers the N most recent complete UTC days, oldest first, skips any day that already
-has a brief, and is bounded at 30 days a run — so it is safe to re-run and safe to
-overlap with the daily task.
-
-### Showing them
-
-The page shows **yesterday's and the day before's**, from the two dated files, when the
-deployment names `digestsRepo` — the repo is named rather than assumed, because the
-repo publishing this page is not necessarily the one the briefs are written in.
-
-A day with no file is a **normal state** — the task had nothing to report, or has not
-run — and reads as that, never as an error. A repo the viewer cannot read is a third
-state again, and says so.
-
-The brief is **plain text despite its `.md` name**: its writer's contract forbids
-markdown, because the file is read out verbatim through a renderer that parses none.
-So the page's reader is a few rules over lines — a title, sections, `• ` items, bare
-URLs — in [`digest.mjs`](digest.mjs), and not a Markdown library, which would be the
-wrong reader for the file as well as a dependency for a page that has none.
 
 ## Who it runs as
 
@@ -666,14 +575,6 @@ The tests pin both halves: that those engine modules stay free of `node:` import
 **browser-only** breakage the Node suite would otherwise never catch), and that this
 tool hardcodes no queue label of its own.
 
-The digest task is the one part of this pack that does **not** run in a browser, and it
-keeps its own trimmed copies of the two cross-repo helpers it needs
-([`fleet-reads.mjs`](tasks/fleet-digest/fleet-reads.mjs),
-[`param-bag.mjs`](tasks/fleet-digest/param-bag.mjs)) rather than importing the `claudinite-fleet-sheepdog`
-pack's. Two packs adopted independently must not depend on each other, and what is
-duplicated is a token-authenticated fetch, a pagination loop and a file read — the REST
-API's shape, not a decision either pack can drift on.
-
 ## Limits it reports rather than hides
 
 - **Issue history is a window** — the most recent few hundred issues, not all of
@@ -693,7 +594,7 @@ API's shape, not a decision either pack can drift on.
 
 ## Checks
 
-Two are the digest's. The third holds another pack's `dashboard.json` to what this
+One check, and it holds another pack's `dashboard.json` to what this
 page's own reader accepts — not a second copy of the schema, which ordinary tooling
 already validates, but the thing a schema cannot check: that the file is usable, and
 that the ids its views select by resolve. The failure is otherwise silent, since a
@@ -702,6 +603,4 @@ goes red where its author is looking.
 
 | Check | Severity | Reason | Enforcement |
 |---|---|---|---|
-| `digest-plain-text` | medium | correctness | check: blocking |
-| `dated-fixture-collision` | medium | correctness | check: blocking |
 | `descriptor-usable` | medium | correctness | check: blocking |

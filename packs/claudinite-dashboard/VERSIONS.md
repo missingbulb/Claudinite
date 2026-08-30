@@ -7,6 +7,7 @@ here forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60827.2 | 2026-08-27 | The `fleet-digest` task, its two checks (`digest-plain-text`, `dated-fixture-collision`) and the morning-brief panel that read its output are retired — with no writer there is no series to read, so the `digestsRepo`/`digestsPath`/`digest` config keys and the `FLEET_GITHUB_TOKEN` handover step go with them. A member's standing `claudinite-dashboard/fleet-digest` item closes itself through the queue's orphan reap, and the config reader spreads an unknown key through untouched, so the bump carries no migration record (#1392). |
 | 60827.1 | 2026-08-27 | The open work set is read live (`state=open`, conditional on every page) and the TTL'd history pages are reconciled against it, so a closed item stops being reported as open work (#1389). |
 | 60824.3 | 2026-08-24 | `fleet-digest`'s `schedule_after` drops the retired `claudinite-fleet-sheepdog/fleet-usage` — the destructive tail of #1158 (#1166). |
 | 60824.2 | 2026-08-24 | The page reads the queue's vocabulary and anchor math through the `claudinite-tasks` pack's published `shared-code/`, declared as a `requires` (#1317). |

@@ -14,10 +14,7 @@ import { main as addPacks } from '../tasks/fleet-add-missing-packs/worker.mjs';
 
 // The token is granted ONCE, for the whole pack, so what any one sweep says when it is
 // missing has to be the union — defensible per-sweep messages are how a fleet went two
-// days without `Pull requests: read` (#1030). These tests hold the union. The digest
-// that needed that permission now lives in claudinite-dashboard and states its own
-// grant; packs/claudinite-dashboard/test/tasks/fleet-digest/fleet-token.test.mjs
-// holds that one.
+// days without `Pull requests: read` (#1030). These tests hold the union.
 
 const SWEEPS = [
   ['fleet-roster', roster],
