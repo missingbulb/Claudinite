@@ -119,8 +119,9 @@ from lives in `VERSIONS.md` and the issue, never here.
   *whole* test means you are sleeping and calling it polling.
 
 - **Waiting on GitHub CI or PR check status** — read the head sha's check runs with the GitHub MCP
-  tool, on a rolling backoff. This sandbox proxy-blocks `api.github.com`, so `Monitor` and shell
-  poll loops report "still running" until they time out.
+  tool, on a rolling backoff. A direct `api.github.com` call reaches the network fine but 403s
+  ("GitHub access is not enabled for this session"), so `Monitor` and shell poll loops against it
+  report "still running" until they time out.
 
 - **A `mcp__github__*` list/search/read call with no narrow `fields`/`per_page`** — risks a
   >25k-token single-line dump. The saved tool-result file is one unbroken line, so `Read`'s
@@ -502,8 +503,10 @@ from lives in `VERSIONS.md` and the issue, never here.
   destroying uncommitted work just as thoroughly.
 
 - **Running the test suite** — `node --test $(git ls-files '*.test.mjs')`. There is no test
-  script, and every hand-written glob under-runs it silently: `node --test <dir>` doesn't recurse,
-  and bash `**` without `globstar` reached 37 of 65 files. `ci.yml`'s array is not authoritative.
+  script. `node --test <dir>` doesn't recurse into it — it treats the path as its entry module and
+  fails outright (`Cannot find module`), so that mistake is at least loud. Bash `**` without
+  `globstar` is the silent one: it under-runs with no error, once reaching only 37 of 65 files.
+  `ci.yml`'s array is not authoritative.
 
 - **Wanting a different slice of a suite run's output** — redirect one run to a file and grep that
   file. Never re-run the ~55s suite to re-slice unchanged output.

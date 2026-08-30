@@ -96,13 +96,15 @@ change, independent of any one project.
 Contracts worth knowing before you spend a call rediscovering them.
 
 - **Searching for a tool with `ToolSearch`** — a search that finds nothing is evidence about your
-  query, not about the environment. Search the fully-qualified name (`select:mcp__<server>__<tool>`,
-  copied off the deferred-tools listing) and try the tool before telling the owner a step is theirs;
-  the bare short name returns "no matching tools", which reads exactly like absence.
+  query, not about the environment: a bare keyword (`issue_read`) resolves the tool by fuzzy match
+  same as `select:mcp__<server>__<tool>` does. Try the tool before telling the owner a step is
+  theirs; only a name matching no real tool returns "no matching tools".
 
-- **Calling `Edit`** — the file must have been read *with the read tool*; `cat`/`grep`/`sed` don't
-  count. The moment shell output tells you which file you're about to change, read that exact path;
-  a narrow offset window satisfies it.
+- **Calling `Edit`** — the harness now tracks a file's content on its own once anything in this
+  session has written or inspected it, `cat`/`grep`/`sed` included, so a prior Read-tool call is no
+  longer required before editing; the result names the file "current in your context" either way.
+  Read a file anyway when you actually need to see its content — Edit's own tracking doesn't show
+  it to you.
 
 - **Calling `Grep` with a context flag** (`-n`/`-A`/`-B`/`-C`) — it's silently ignored under the
   default `output_mode: "files_with_matches"`, so the call answers only a match count or file

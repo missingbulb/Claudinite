@@ -9,6 +9,8 @@ log of runs.
 
 | Date | Task | Change |
 |---|---|---|
+| 2026-08-30 | `rule-revalidation` | Corrected: **`node --test <dir>` doesn't recurse** — Node v22.22.2 treats the path as its entry module and fails outright (`Cannot find module`) rather than silently skipping nested files; bash `**` without `globstar` is the silent under-runner (#1428). |
+| 2026-08-30 | `rule-revalidation` | Corrected: **"This sandbox proxy-blocks `api.github.com`"** — a direct call reaches the network and gets an HTTP 403 ("GitHub access is not enabled for this session"), not a proxy-level connection block (#1428). |
 | 2026-08-27 | `growth-extract` | Corrected: **`converge-item.mjs` with no REST route from this session** — was "report and leave unconverged"; PRs #1375/#1377 gave the command a `sessionScript` path, so the fix is now to re-run it with `CLAUDINITE_ITEM_REPO`/`CLAUDINITE_ITEM_JSON` and make the printed calls yourself (#1402). |
 | 2026-08-27 | `growth-extract` | Added: **A session needing issues/PRs across several repos in one pass** — `add_repo` widens GitHub scope where `git clone` can't reach, since issues aren't refs (#1119). |
 | 2026-08-27 | `growth-extract` | Added: **Merging a PR that has sat open across many `main` commits** — check current `mergeable_state`, not an old green run; `main` can shift structurally underneath it (#1119). |
