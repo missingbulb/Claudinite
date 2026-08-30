@@ -249,6 +249,11 @@ from lives in `VERSIONS.md` and the issue, never here.
   fleet. Vendoring refreshes `.claudinite/shared/` only and a migration record moves paths, not
   schemas; if nothing carries it, accept the legacy shape in `normalizeManifest`.
 
+- **Adding a key to the declared-check spec vocabulary** (`SPEC_KEYS` in `pattern-rules.mjs`) —
+  bump every emitting pack's `minEngineVersion` to the release that adds it, or an older engine's
+  unknown-key throw drops every declaration in that file and wedges the member's convergence until
+  a human deletes it by hand (#1400).
+
 - **A stale member declaration** — fail the run. Never let it degrade to *fewer checks running*.
 
 - **Renaming a pack whose config a member writes into their own repo** — a reader of that config
@@ -527,6 +532,10 @@ from lives in `VERSIONS.md` and the issue, never here.
 
 - **Renaming an entity** — sweep for references in code and comments, don't change historical
   records, and re-render generated files rather than editing them by hand.
+
+- **Sweeping a rename mid-migration across many PRs** — a file added or rewritten after the sweep
+  starts can independently reinvent the retired constant as a comparison key; a state comparison
+  against it fails silently, with no error and no failing test, only a wrong count (#1119).
 
 - **Renaming a word that is also stored data** (a counter key, a wire word, a label) — rename it
   on the **decode** side too, or the next encode writes those historical counts as `null`,
