@@ -26,7 +26,7 @@ a dimension with nothing to do stays silent:
 |---|---|---|---|---|---|
 | `tidy-issues` | daily | an issue was touched in the window | the touched issues — **all** open ones when `main` also moved substantively | **yes** — close / label / comment | `sonnet` |
 | `tidy-prs` | weekly | an open PR was opened or updated in the window | every open PR (a full sweep) | no — recommends closes | `sonnet` |
-| `improve-comments` | weekly | a substantive commit landed in the window, and this pass's previous PR has been reviewed | the files those commits touched (capped, the rest next round) | **yes** — edits comments in the source, in a PR left for review | `opus` |
+| `improve-comments` | weekly | a substantive commit landed in the window, and this pass's previous PR has been reviewed | the files those commits touched (capped, the rest next round) | **yes** — edits comments in the source, in a PR delivered to land | `opus` |
 
 The two GitHub-object tasks apply their per-object skill (`single-issue-triage` / `single-pr-status`)
 across the targets the precondition hands them, then rewrite their tracker (`Claudinite tracker: Tidy Issues` / `Tidy PRs`) from
@@ -35,7 +35,9 @@ differs from the body's. A run whose verdicts match what the tracker already say
 all.
 
 `improve-comments` has no tracker: its output is a PR, and a standing issue restating what the PR
-already shows would be a second place to read the same thing.
+already shows would be a second place to read the same thing. That PR goes to the shared delivery
+procedure like any other, so whether it lands unreviewed is the repo's `maintenance.delivery`
+setting; the `improve-comments-scope` gate, not a reader, is what bounds what it can contain.
 
 **Nothing new, no run.** Every dimension is gated on *its own* objects moving in the window: no issue
 touched, no `tidy-issues`; no open PR opened or updated, no `tidy-prs`; nothing committed, no
