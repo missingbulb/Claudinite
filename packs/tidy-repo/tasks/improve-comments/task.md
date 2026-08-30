@@ -29,9 +29,10 @@ run if what is left differs. It keys on this run's pinned commit subject, so **c
 subject `Claudinite tidy: improve comments`** — without it the gate does not recognise the run
 and the safety case does not hold.
 
-Two consequences the skill states and this run lives with: a file whose language the parser
-cannot read counts as code, so leave its comments alone; and adding or deleting a code file, or
-deleting a `README.md`, is never within this pass.
+Three consequences the skill states and this run lives with: a file whose language the parser
+cannot read counts as code, so leave its comments alone; adding or deleting a code file, or
+deleting a `README.md`, is never within this pass; and `.claudinite/` is outside it entirely —
+the precondition keeps the mount out of Context, and the gate reds a change there anyway.
 
 ## Output: one PR, delivered to land
 

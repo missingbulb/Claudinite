@@ -122,3 +122,33 @@ test('the title the gate keys on is the one the task and its doc pin', () => {
   assert.equal(task.id, 'improve-comments');
   assert.ok(task.precondition_signals.includes('prs'), 'the previous round\'s open PR is what gates a second sweep');
 });
+
+// `.claudinite/` is the mount, not the repo's own source. The vendored `shared/`
+// half is already invisible to every check, so what the gate has to carry is
+// `.claudinite/local/`, which a run can reach and edit. Both halves of the
+// exclusion are asserted — the scope a round is handed, and the gate on the write.
+test('a comment-only edit inside .claudinite/ is still outside this pass\'s surface', () => {
+  const root = makeRepo({
+    base: { '.claudinite/local/packs/x/hook.mjs': '// the old note\nrun();\n' },
+    changed: { '.claudinite/local/packs/x/hook.mjs': '// a better note\nrun();\n' },
+    commitMsg: RUN,
+  });
+  try {
+    const findings = runScope(root);
+    assert.deepEqual(files(findings), ['.claudinite/local/packs/x/hook.mjs']);
+    assert.match(findings[0].what, /\.claudinite\//);
+    assert.match(findings[0].fix, /revert \.claudinite\/local\/packs\/x\/hook\.mjs/);
+  } finally { cleanup(root); }
+});
+
+test('the precondition never hands a round a .claudinite/ path, and stays silent when that is all there is', () => {
+  const S = (touched) => ({ prs: { open: [] }, commits: { substantiveChange: true, touchedPaths: touched } });
+
+  const mixed = task.precondition(S(['.claudinite/shared/packs/basics/RULES.md', 'src/app.mjs']));
+  assert.equal(mixed.run, true);
+  assert.match(mixed.context.join(' '), /src\/app\.mjs/);
+  assert.doesNotMatch(mixed.context.join(' '), /\.claudinite/);
+
+  const mountOnly = task.precondition(S(['.claudinite/local/packs/x/RULES.md', '.claudinite/stamp.json']));
+  assert.equal(mountOnly.run, false);
+});
