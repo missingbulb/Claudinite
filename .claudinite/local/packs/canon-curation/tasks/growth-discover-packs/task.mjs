@@ -4,13 +4,10 @@
 // actually built on, subtract what packs/ already homes, and open a reviewed PR
 // authoring the missing pack.
 //
-// Distinct from the same-named per-repo task in claudinite-growth, which
-// authors a repo's OWN local packs and is explicitly barred from re-creating
-// what a canon pack homes. This one is the other side of that line: it is the
-// only thing that notices a technology in use ACROSS the fleet with no canon
-// pack, and authors one. Dispatch is pack-qualified (`<pack>/<task>` in the
-// issue title and the run ledger), so the shared id never collides on Claudinite,
-// which declares both packs.
+// The only pack-authoring stage there is. A member does not mint packs of its
+// own — its local packs are what adoption seeded, and growth-extract writes
+// rules into those — so a technology no canon pack homes is noticed and homed
+// here or nowhere.
 //
 // Central because ONE run sees every member: first-sight dedup is trivial — the
 // third member using a technology is recognised as the same gap as the first,

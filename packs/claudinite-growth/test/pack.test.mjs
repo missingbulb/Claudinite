@@ -570,26 +570,16 @@ test('growth-write-scope: a capture run deleting a file outside the surface is f
   } finally { cleanup(root); }
 });
 
-test('growth-write-scope: the sibling growth runs with wider surfaces are not gated here', () => {
-  // Promote writes the canon by design (promote-scope is its gate), and pack
-  // discovery must also write the repo-root declaration that activates the pack.
+test('growth-write-scope: the sibling promote run, with its wider surface, is not gated here', () => {
+  // Promote writes the canon by design; promote-scope is its gate.
   const promote = makeRepo({
     base: { 'packs/basics/RULES.md': '- a rule\n' },
     changed: { 'packs/basics/RULES.md': '- a rule\n- a promoted rule\n' },
     commitMsg: 'Claudinite growth: promote 5 lessons to canon (d2026-07-30)\n\nRefs #7',
   });
-  const discover = makeRepo({
-    base: { '.claudinite-settings.json': '{"packs":["basics"]}\n' },
-    changed: {
-      '.claudinite-settings.json': '{"packs":["basics","local/packs/gcec"]}\n',
-      [PROSE]: '- the new pack\n',
-    },
-    commitMsg: 'Claudinite growth: discover local pack gcec\n\nRefs #8',
-  });
   try {
     assert.equal(runScope(promote).length, 0);
-    assert.equal(runScope(discover).length, 0);
-  } finally { cleanup(promote); cleanup(discover); }
+  } finally { cleanup(promote); }
 });
 
 test('growth-write-scope: an ordinary branch is not gated, and the title only counts at the subject', () => {

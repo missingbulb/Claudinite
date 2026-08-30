@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import pack from '../pack.mjs';
-import discover from '../tasks/growth-discover-packs/task.mjs';
 import proseToChecks from '../tasks/prose-to-checks-sweep/task.mjs';
 import extract from '../tasks/growth-extract/task.mjs';
 import dedup from '../tasks/growth-dedup/task.mjs';
@@ -9,8 +8,8 @@ import logsPrune from '../tasks/logs-prune/task.mjs';
 import revalidation from '../tasks/rule-revalidation/task.mjs';
 
 // claudinite-growth per-repo task declarations + preconditions
-// (per-project-scheduling redesign: discover-packs and prose-to-checks are local,
-// per-repo operations, not fleet-scoped).
+// (per-project-scheduling redesign: prose-to-checks is a local, per-repo
+// operation, not fleet-scoped).
 //
 // These are UNIT tests over pure preconditions: they hand-build the signals
 // object, so they assert the DECISION and never that the scheduler can produce
@@ -24,22 +23,6 @@ test('the pack contributes its tasks structurally, not as a pack.mjs slot', () =
   // The descriptors moved out of the manifest: the repo's scheduler finds
   // tasks/<name>/task.mjs structurally (#394).
   assert.equal(pack.run_daily, undefined);
-});
-
-// --- growth-discover-packs (local pack discovery) ----------------------------
-
-test('growth-discover-packs: weekly/opus/open-pr, no signals (examines the checkout)', () => {
-  assert.equal(discover.frequency, 'weekly');
-  assert.equal(discover.agent_model, 'opus');
-  // A new pack may carry new .mjs conformance checks, and a check can break CI —
-  // reviewed, exactly as the sibling prose-to-checks-sweep is, and unlike extract
-  // (which only adds prose/rules to territory a local pack already owns).
-  assert.equal(discover.expected_outcome, 'open-pr');
-  assert.deepEqual(discover.precondition_signals, []);
-});
-
-test('growth-discover-packs: fires weekly (standing reflection, worker no-ops when nothing new)', () => {
-  assert.equal(discover.precondition().run, true);
 });
 
 // --- prose-to-checks-sweep (per-repo, pack_paths config) ---------------------

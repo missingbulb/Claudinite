@@ -39,11 +39,10 @@ the members' side ([claudinite-growth](../../../../packs/claudinite-growth/READM
   (so first-sight dedup is free — the third member using a technology is the same gap as the first),
   and open an owner-reviewed PR authoring the missing `packs/<tech>/`. A pack is authored because
   particular members' files demonstrated it, so each of those members also gets an issue asking it to
-  adopt the pack once the PR merges and its mount carries it. Its per-repo namesake in
-  [claudinite-growth](../../../../packs/claudinite-growth/tasks/growth-discover-packs/task.md)
-  is the other side of that line — it authors a repo's own **local** packs and may never re-create what
-  a canon pack homes, so only this task can close a canon gap. (Promote's stub-minting is narrower
-  still: one lesson's technology, minted as a seed; this task authors from the whole fleet's usage.)
+  adopt the pack once the PR merges and its mount carries it. It is the only stage that authors a pack
+  at all — a member's local packs are what adoption seeded, and growth-extract writes rules into those.
+  (Promote's stub-minting is narrower still: one lesson's technology, minted as a seed; this task
+  authors from the whole fleet's usage.)
 - **[item-routing.md](item-routing.md)** — the shared worthiness + routing method promote (and an
   owner-requested retrospective pass) defers to, so every decision about admitting and placing an
   item is made the same way.
@@ -106,5 +105,5 @@ stopped producing anything, read its most recent work item; the reason is writte
 The session-scoped sibling of this nightly lifecycle — mining a single working session for lessons
 — lives with [the growth pack's extract-from-conversations skill](../../../../packs/claudinite-growth/skills/extract-from-conversations/SKILL.md)
 (applied by the conversation half of its growth-extract daily task over captured logs), and the
-member-side method docs (extract, dedup, pack discovery, and how a project's local packs are
+member-side method docs (extract, dedup, and how a project's local packs are
 identified) live with [claudinite-growth](../../../../packs/claudinite-growth/README.md).
