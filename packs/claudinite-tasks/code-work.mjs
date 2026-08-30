@@ -39,6 +39,17 @@ export function runCodeWork(command, {
   echo = (chunk, stream) => (stream === 'stderr' ? process.stderr : process.stdout).write(chunk),
 }) {
   return new Promise((resolve) => {
+    // A cwd THAT NO LONGER EXISTS is the one spawn failure the caller cannot read.
+    // Node reports it as an ENOENT on the command — `spawn /bin/sh ENOENT` under
+    // `shell: true` — which names the one thing that is not missing, and sends
+    // whoever reads it looking for a shell on the runner. The task directory can
+    // genuinely vanish under a run in flight: one executor run drains several items
+    // from one checkout, and an earlier item's mount update deletes a retired task's
+    // directory out from under the items behind it.
+    if (!existsSync(taskDir)) {
+      resolve({ ok: false, timedOut: false, code: null, signal: null, stdout: '', stderr: `task directory ${taskDir} does not exist — nothing was run` });
+      return;
+    }
     // `detached` puts the shell and everything it spawns in their OWN process
     // group, which is what makes the kill below reach the worker: `shell: true`
     // means the direct child is `sh -c`, and signalling it alone leaves the

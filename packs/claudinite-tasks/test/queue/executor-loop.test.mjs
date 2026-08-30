@@ -66,8 +66,10 @@ const workItem = (number, task, labels, body = null) => ({
   created_at: '2026-08-14T04:00:00Z', updated_at: '2026-08-14T04:00:00Z',
 });
 
+// `taskDir` is a REAL directory: the executor probes it before it runs anything,
+// because a task can be deleted out from under an item this run already queued.
 const task = (id, decl = {}) => ({
-  pack: 'p', id, taskDir: `packs/p/tasks/${id}`, taskPath: `packs/p/tasks/${id}/task.md`,
+  pack: 'p', id, taskDir: process.cwd(), taskPath: `packs/p/tasks/${id}/task.md`,
   decl: { id, frequency: 'daily', agent_model: 'sonnet', precondition: () => ({ run: true }), ...decl },
 });
 
@@ -278,6 +280,22 @@ test('an item whose task the repo no longer carries closes obsolete, like exit-1
   const done = await drive(repo, [task('a')]);
   assert.deepEqual(done, [{ issue: 1, outcome: 'obsolete' }]);
   assert.equal(repo.find(1).state, 'closed');
+});
+
+// …and the same fact learned LATER. One run drains several items from one checkout,
+// and an earlier item's own work rewrites it — the mount update deletes a retired
+// task's directory out from under the items behind it. The task still resolves (the
+// set was built at run start) but its directory is gone, and running it would spawn
+// with a cwd that does not exist, which Node reports as a missing `/bin/sh`.
+test('a task deleted from the checkout mid-run closes obsolete rather than failing to a human', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  const vanished = { ...task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 }), taskDir: '/no/such/task/dir' };
+  let ran = false;
+  const done = await drive(repo, [vanished], { runTaskCodeWork: async () => { ran = true; return { ok: true }; } });
+  assert.equal(ran, false);
+  assert.deepEqual(done, [{ issue: 1, outcome: 'obsolete' }]);
+  assert.equal(repo.find(1).state, 'closed');
+  assert.ok(repo.find(1).comments.some((c) => c.body.includes('packs/p/tasks/a')));
 });
 
 test('a malformed item goes to a human — a forged body is never executed', async () => {

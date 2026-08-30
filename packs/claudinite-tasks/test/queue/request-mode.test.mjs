@@ -12,14 +12,19 @@ import { collectSignals } from '../../signals/index.mjs';
 import requestTask, { eligibility } from '../../queue/tasks/implement-request/task.mjs';
 import { REQUEST_TASK_ID } from '../../built-in-tasks.mjs';
 import { parseWorkItemBody, machineBlockOf, ORIGIN_AD_HOC } from '../../queue/work-item.mjs';
-import { LEGACY_BUILT_IN_TASK_PATH, LEGACY_BUILT_IN_TASK_DIR } from '../legacy-protocol.mjs';
+import { join } from 'node:path';
+import { LEGACY_BUILT_IN_TASK_PATH } from '../legacy-protocol.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const NOW = '2026-08-19T09:17:00Z';
 const TASK_PATH = LEGACY_BUILT_IN_TASK_PATH;
 
+// The LEGACY path is what the item's machine block carries and what the executor
+// matches against; `taskDir` is where the task lives NOW, and it is a real directory
+// because the executor probes it before running anything (a task can be deleted out
+// from under an item this run already queued).
 const REQUEST_TASK = {
-  pack: 'engine', id: 'implement-request', taskDir: LEGACY_BUILT_IN_TASK_DIR,
+  pack: 'engine', id: 'implement-request', taskDir: join(process.cwd(), 'packs/claudinite-tasks/queue/tasks/implement-request'),
   taskPath: TASK_PATH, decl: requestTask,
 };
 

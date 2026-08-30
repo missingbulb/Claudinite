@@ -4,6 +4,7 @@ Records for `packs/claudinite-tasks/pack.mjs`'s `version` field, one row per bum
 
 | Version | Date | What changed |
 |---|---|---|
+| 60830.1 | 2026-08-30 | A task deleted from the checkout while a run is in flight converges its item as obsolete instead of failing it to a human: the executor probes the task directory before it runs anything, and `runCodeWork` names the missing directory rather than letting Node report a missing `/bin/sh` (#1444). |
 | 60827.5 | 2026-08-27 | `commentOnly` and its checkable-extension set move to `engine/checks/helpers/code-scanning.mjs`, beside the `stripComments` they were already built on; narrow-diff imports and re-exports them, so the queue's merge verdict and tidy-repo's improve-comments gate answer "comments only" the same way (#1383). |
 | 60827.4 | 2026-08-27 | The terminal transition is planned as ops and executed by whichever transport the run has: REST in Actions, and the session's own GitHub tools where a subprocess has no route to them — which is every session `invoke.mjs` fires. The park for a convergence that could not run at all is fixed at the failure park, the only one that holds the task's lane (#1374). |
 | 60827.2 | 2026-08-27 | A converge writes only to the item it holds: releasing a dependent a close makes due is the scheduler run's own readiness job alone, never the closing side's. `readyDependents`/`releasedBy` retire from `readiness.mjs` with no caller left (#1373, reversing #892's §15.19). |
