@@ -34,6 +34,8 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Needing exact text from the web | high | correctness | prose: 56 words |
 | Hitting a denied fetch | critical | legal | prose: 152 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
+| Reaching for AskUserQuestion | low | complexity | prose: 117 words |
+| Waiting idle between subagent notifications | low | complexity | prose: 68 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
 | Waiving a finding on text | low | complexity | prose: 26 words |

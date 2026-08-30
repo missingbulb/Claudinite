@@ -33,3 +33,25 @@
 - **Answering "why did the mount not update"** — read the member's own artifacts (its declaration,
   its stamp, the head sha's runs) before theorizing about a platform setting; propose a settings
   change as a conclusion, never as a diagnosis.
+
+- **Finding a fix that belongs in the canon while working in a member repo** — a member's own
+  GitHub scope reaches only itself, so a scratch clone of the canon is read-only in practice: a
+  fetch succeeds but a push 403s. That is an organisation egress policy, not a bug to route
+  around — don't retry with another remote or token, and don't edit the vendored
+  `.claudinite/shared/` mount in place to compensate (the next re-vendor overwrites the edit).
+  Finish and test the fix against the scratch clone, then open an issue **in the member repo**
+  carrying the full diff as a patch block plus the verification you ran, so a session that does
+  have canon scope can apply it.
+
+- **A file a vendored module references but that is absent from `.claudinite/shared/`** — that is
+  evidence about the *vendor set*, not about the canon. Check the canon itself (a shallow clone, or
+  a canon-scoped session) before filing an issue claiming the canon never shipped the file — an
+  omission in the vendoring rule reads identically to a genuine gap, and authoring the missing
+  content in that case just creates a duplicate of something that already exists upstream. Where
+  the canon can't be checked either, report only that the mount lacks the file.
+
+- **Before pushing a change that touches `.github/workflows/`, `.claudinite-checks.json`, or any
+  pack config** — run the engine's own conformance runner
+  (`node .claudinite/shared/engine/checks/check_the_world.mjs`) locally first. It is the same
+  script CI's conformance job runs, so a `[BLOCKING]` finding caught locally in seconds skips a
+  full push → PR → CI → diagnose → fix → re-push round trip.

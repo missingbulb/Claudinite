@@ -139,6 +139,10 @@ GitHub **Actions** reports results as **check runs**, not the legacy **commit st
 
 A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped check-run query above doesn't apply to it. Confirm such a run through the GitHub API/MCP tools: `get_job_logs(run_id, failed_only: true)` — "0 failed jobs" means green — or, for a release build, `get_release_by_tag`. `get_job_logs` needs more than a bare `run_id`: it rejects with "job_id is required when failed_only is false" unless you pass `failed_only: true` or fetch a `job_id` first (`list_workflow_jobs`), and it 404s for a job still `in_progress` — wait for the job to finish. Don't `curl` the run's status instead: in a sandboxed session `api.github.com` is proxy-blocked and returns an error body that never matches a success pattern, so a `curl`/`Monitor` poll silently reports "still running" until it times out.
 
+## Leaving several PRs open after one sweep, subscribe to every one of them
+
+A multi-target sweep that leaves more than one PR open for review should call the activity-subscription tool on **all** of them, not a sample. An unsubscribed PR gets polled on a self-armed wake-up interval (or forgotten between check-ins) while a subscribed one's merge or comment arrives instantly as an activity event the moment it happens — subscribing the rest costs one extra call each and buys the same responsiveness as the ones you did subscribe.
+
 ## A deleted workflow's old runs outlive it, and no session tool can clear them
 
 Removing a `.yml` from every branch does not remove its run history — the workflow stays listed in
@@ -171,6 +175,12 @@ In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a r
 ## When access is scoped to an explicit repo list, query per-repo — never an org/user-wide search
 
 A broad call (e.g. `search_repositories` with `org:X`, or any list/search tool that takes no repo argument) returns every repo the token can see, not just an allowed subset — filtering the result afterward doesn't undo the fact that disallowed repos' data was already pulled into the call. When operating under a repo allowlist, scope every call explicitly instead: pass the specific `owner`/`repo` params, or anchor the query to `repo:owner/name`, one call per repo in the allowlist rather than one broad call filtered after the fact.
+
+The asymmetry cuts the other way too: a tool that takes an explicit `owner`/`repo` argument naming a repo *outside* your scope is refused outright — denied, not silently filtered — which is the safe, expected behaviour. Don't read that denial as proof a scopeless tool (`search_code`, `search_issues`) is equally safe against the same repo: it isn't scoped the same way, and can still return results from repos you were never granted.
+
+## `search_code`'s index can lag and silently undercount
+
+When the question is a *complete* enumeration across many repos or files — which repos reference a pattern, how many callers a rename touches — don't trust `search_code` alone: its index can be stale enough to miss real matches with no error or partial-result flag to catch it. Before scoping work off a search result, cross-check against a direct read of the full known candidate set (fetching each candidate's own relevant file or config), and treat a search-only enumeration as a lower bound, not an answer.
 
 ## Cap *and* qualify every list/search call — an unbounded one blows the tool-result limit
 

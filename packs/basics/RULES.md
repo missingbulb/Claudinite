@@ -152,6 +152,20 @@
   and the call is rejected without it. A rejection leaves no fallback armed, which is what the
   `unattended-agents` skill's re-issue rule is for.
 
+- **Reaching for `AskUserQuestion`** — it costs real wall-clock waiting on a human, so spend it
+  only on a fork you cannot take back. First check whether the answer is already decided: by an
+  instruction already in context, by state one read away (existing config, a sibling's
+  declaration, a pending interview), or by the option already marked as the recommended one simply
+  being the status quo. Batch every open decision a turn will need into **one** call rather than
+  asking serially — several small questions cost as much human round-trip time as one large one.
+  Anything answerable from the instruction, the tree, or a reversible default: answer it, act, and
+  say what you assumed, rather than asking.
+
+- **Waiting on a background subagent or task with nothing left to do between notifications** —
+  say so in plain text, with **no** tool call. A manufactured no-op (`sleep 1; echo waiting`,
+  `true`) can come back with no visible text at all, which the harness then has to interrupt to
+  ask for a real response — pure waste next to a status line with no call behind it.
+
 ## Warnings and findings
 
 - **Seeing a build, test or CI warning** — fix it rather than tolerate it, with a small, targeted
