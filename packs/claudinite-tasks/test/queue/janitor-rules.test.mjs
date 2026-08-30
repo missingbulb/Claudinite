@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   staleReadyItems, deadAgentItems, stuckBlockedItems, statelessItems, periodForTasks,
+  supersededItems, supersededComment,
 } from '../../queue/janitor-rules.mjs';
 import { periodMs } from '../../queue/anchors.mjs';
 import { ACCEPTED_FREQUENCIES } from '../../calendar.mjs';
@@ -87,4 +88,76 @@ test('every accepted frequency has a sane period, retired spellings included', (
   assert.equal(periodMs('hourly'), periodMs('daily'));
   assert.equal(periodMs('daily-2h'), periodMs('daily'));
   assert.equal(periodMs('weekly'), 7 * DAY);
+});
+
+// ---------------------------------------------------------------------------
+// Rule E — the superseded park (#1452).
+
+const parked = ({ task = 'a', kind = 'failure', updated_at = '2026-08-12T04:00:00Z' }) =>
+  it({ task, labels: ['needs-human', `task:status:needs-human-${kind}`], updated_at });
+
+const doneRuns = (rows) => (id, after) => {
+  const at = new Date(after).getTime();
+  const hit = rows.filter((r) => r.id === id && new Date(r.closed_at).getTime() > at)
+    .sort((a, b) => new Date(a.closed_at) - new Date(b.closed_at)).at(-1);
+  return hit ?? null;
+};
+
+test('a failure park whose task later ran clean is superseded', () => {
+  const item = parked({ task: 'digest', kind: 'failure' });
+  const doneAfter = doneRuns([{ id: 'p/digest', number: 999, closed_at: '2026-08-13T04:00:00Z' }]);
+  assert.deepEqual(supersededItems([item], { doneAfter }).map((i) => i.number), [item.number]);
+});
+
+test('an action park is superseded too — it named a broken thing, and it is fixed', () => {
+  const item = parked({ task: 'digest', kind: 'action' });
+  const doneAfter = doneRuns([{ id: 'p/digest', number: 999, closed_at: '2026-08-13T04:00:00Z' }]);
+  assert.deepEqual(supersededItems([item], { doneAfter }).map((i) => i.number), [item.number]);
+});
+
+// An approval park usually holds an open PR (ClaudiniteCanary#133 holds PR #134), and a
+// decision park holds a question nobody has answered. A later clean run does not answer
+// either, so closing them would abandon real work.
+test('approval and decision parks are NEVER superseded', () => {
+  const doneAfter = doneRuns([{ id: 'p/digest', number: 999, closed_at: '2026-08-13T04:00:00Z' }]);
+  for (const kind of ['approval', 'decision']) {
+    assert.deepEqual(supersededItems([parked({ task: 'digest', kind })], { doneAfter }), [],
+      `a ${kind} park must survive a later success`);
+  }
+});
+
+test('a success at or before the park says nothing about it', () => {
+  const item = parked({ task: 'digest', updated_at: '2026-08-12T04:00:00Z' });
+  const earlier = doneRuns([{ id: 'p/digest', number: 999, closed_at: '2026-08-11T04:00:00Z' }]);
+  assert.deepEqual(supersededItems([item], { doneAfter: earlier }), [], 'earlier success');
+  const same = doneRuns([{ id: 'p/digest', number: 999, closed_at: '2026-08-12T04:00:00Z' }]);
+  assert.deepEqual(supersededItems([item], { doneAfter: same }), [], 'simultaneous success');
+});
+
+test('a clean run of a DIFFERENT task supersedes nothing', () => {
+  const item = parked({ task: 'digest' });
+  const doneAfter = doneRuns([{ id: 'p/other', number: 999, closed_at: '2026-08-13T04:00:00Z' }]);
+  assert.deepEqual(supersededItems([item], { doneAfter }), []);
+});
+
+test('a live item is the machinery working, not a superseded park', () => {
+  const live = it({ task: 'digest', labels: ['task:status:running-agent'], updated_at: '2026-08-12T04:00:00Z' });
+  const doneAfter = doneRuns([{ id: 'p/digest', number: 999, closed_at: '2026-08-13T04:00:00Z' }]);
+  assert.deepEqual(supersededItems([live], { doneAfter }), []);
+});
+
+// #1086's shape: an agent parked it `action` but never cleared `task:agent`. `statusOf`
+// reads the park over the live label, so the rule sees it — which is the point, since a
+// torn item is invisible to every other rule here.
+test('a TORN park — carrying a live label too — is still superseded', () => {
+  const torn = it({
+    task: 'digest', updated_at: '2026-08-12T04:00:00Z',
+    labels: ['task:status:running-agent', 'needs-human', 'task:status:needs-human-action'],
+  });
+  const doneAfter = doneRuns([{ id: 'p/digest', number: 999, closed_at: '2026-08-13T04:00:00Z' }]);
+  assert.deepEqual(supersededItems([torn], { doneAfter }).map((i) => i.number), [torn.number]);
+});
+
+test('the comment names the run that answered the park', () => {
+  assert.match(supersededComment({ id: 'p/digest', number: 999, closed_at: '2026-08-13T04:00:00Z' }), /#999/);
 });
