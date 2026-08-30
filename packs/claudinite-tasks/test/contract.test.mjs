@@ -135,8 +135,43 @@ test('validateTaskDeclaration rejects a non-object export', () => {
 });
 
 test('the contract enums are exactly the DESIGN vocabulary', () => {
-  assert.deepEqual(OUTCOMES, ['none', 'open-pr', 'merged-pr']);
+  assert.deepEqual(OUTCOMES, ['none', 'pr']);
   assert.ok(SIGNAL_NAMES.includes('fleet') && SIGNAL_NAMES.includes('sharedMount'));
+});
+
+// --- expected_outcome × may_automerge -----------------------------------------
+
+test('normalizeTaskDeclaration maps the legacy outcome ceilings onto the outcome/policy pair', () => {
+  const open = normalizeTaskDeclaration({ ...validTask, expected_outcome: 'open-pr' });
+  assert.equal(open.expected_outcome, 'pr');
+  assert.equal(open.may_automerge, 'nothing');
+  const merged = normalizeTaskDeclaration({ ...validTask, expected_outcome: 'merged-pr' });
+  assert.equal(merged.expected_outcome, 'pr');
+  assert.equal(merged.may_automerge, 'anything');
+  // An explicit policy beside a legacy spelling wins — a half-migrated declaration
+  // keeps the narrower intent it states.
+  const explicit = normalizeTaskDeclaration({
+    ...validTask, expected_outcome: 'merged-pr', may_automerge: ['doc-changes'],
+  });
+  assert.deepEqual(explicit.may_automerge, ['doc-changes']);
+});
+
+test('validateTaskDeclaration: a pr task must say what may auto-merge', () => {
+  const { what } = validateTaskDeclaration({ ...validTask, expected_outcome: 'pr' })[0];
+  assert.match(what, /may_automerge/);
+  for (const policy of ['nothing', 'anything', ['comment-only-changes', 'readme-changes'], ['anything', 'reject:js-code-changes']]) {
+    assert.deepEqual(validateTaskDeclaration({ ...validTask, expected_outcome: 'pr', may_automerge: policy }), [], JSON.stringify(policy));
+  }
+});
+
+test('validateTaskDeclaration: malformed policies and a policy on a none task are flagged', () => {
+  const pr = (policy) => validateTaskDeclaration({ ...validTask, expected_outcome: 'pr', may_automerge: policy });
+  assert.match(pr([])[0].what, /may_automerge/);
+  assert.match(pr(['reject:js-code-changes'])[0].what, /may_automerge/);
+  assert.match(pr('Not A Policy')[0].what, /may_automerge/);
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', code_work: 'node w.mjs', code_work_timeout: 60, may_automerge: 'anything' };
+  delete none.agent_execution_timeout;
+  assert.match(validateTaskDeclaration(none)[0].what, /"none" task/);
 });
 
 // --- validate-dispatch ---
@@ -173,7 +208,8 @@ test('validateDispatchBody accepts a well-formed dispatch and resolves model + o
   assert.equal(v.task, 'create-extractor');
   assert.equal(v.model, 'opus');
   assert.equal(v.resolvedModel, 'opus');
-  assert.equal(v.outcome, 'merged-pr');
+  assert.equal(v.outcome, 'pr');                 // the legacy 'merged-pr' normalized at the door
+  assert.equal(v.mayAutomerge, 'anything');
   assert.equal(v.executionTimeout, 1800); // surfaced for the executor's best-effort bound (§6)
 });
 
@@ -217,11 +253,20 @@ test('verifyOutcome enforces each ceiling and always allows no-change', () => {
   assert.equal(verifyOutcome({ outcome: 'none', openedPr: true }).ok, false);
   assert.equal(verifyOutcome({ outcome: 'none', mergedPr: true }).ok, false);
 
-  // open-pr may open but not merge
+  // a pr task with nothing authorized (explicitly, or by omission) may open but not merge
+  assert.equal(verifyOutcome({ outcome: 'pr', openedPr: true }).ok, true);
+  assert.equal(verifyOutcome({ outcome: 'pr', mayAutomerge: 'nothing', mergedPr: true }).ok, false);
+  assert.equal(verifyOutcome({ outcome: 'pr', mergedPr: true }).ok, false);
+
+  // an authorization — full or granular — permits the merge at this seam (the
+  // diff-level verdict is the policy engine's, which sees the tree)
+  assert.equal(verifyOutcome({ outcome: 'pr', mayAutomerge: 'anything', mergedPr: true }).ok, true);
+  assert.equal(verifyOutcome({ outcome: 'pr', mayAutomerge: ['comment-only-changes'], mergedPr: true }).ok, true);
+
+  // the legacy spellings keep their meaning — a fielded caller passing a raw
+  // declaration's value is judged, never rejected as unknown
   assert.equal(verifyOutcome({ outcome: 'open-pr', openedPr: true }).ok, true);
   assert.equal(verifyOutcome({ outcome: 'open-pr', mergedPr: true }).ok, false);
-
-  // merged-pr may do anything within the taxonomy
   assert.equal(verifyOutcome({ outcome: 'merged-pr', mergedPr: true }).ok, true);
 
   // unknown ceiling fails closed
