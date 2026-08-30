@@ -21,7 +21,7 @@ import { cp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveMode } from './config.mjs';
-import { settingsPath } from '../../engine/settings-file.mjs';
+import { declaredConfig } from './declared-config.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -36,7 +36,7 @@ const TASKS = 'packs/claudinite-tasks';
 
 // Local-only or explanatory files. None belong on a published site — `serve.mjs` least
 // of all, being a file server's source sitting where it reads as part of the page.
-const NOT_PUBLISHED = ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'oauth-exchange.example.mjs',
+const NOT_PUBLISHED = ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'oauth-exchange.mjs',
   'dashboard.config.example.json', 'README.md', 'badge.svg', 'stubs'];
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
@@ -69,17 +69,7 @@ if (!await exists(join(pageSource, 'index.html')) || !await exists(engineSource)
 
 // --- settings, from the member's own declaration ---------------------------------
 
-async function declaration() {
-  try {
-    return JSON.parse(await readFile(settingsPath(repoRoot), 'utf8'));
-  } catch {
-    return null;
-  }
-}
-
-const decl = await declaration();
-const entry = (decl?.packs ?? []).find((p) => (typeof p === 'string' ? p : p?.id) === 'claudinite-dashboard');
-const cfg = (typeof entry === 'object' && entry?.config) || {};
+const cfg = await declaredConfig(repoRoot);
 
 // --- stage ------------------------------------------------------------------------
 

@@ -180,7 +180,7 @@ test('local-only and explanatory files are not published', async (t) => {
   t.after(() => rm(dir, { recursive: true, force: true }));
   await build(dir);
 
-  for (const f of ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'README.md', 'stubs', 'oauth-exchange.example.mjs']) {
+  for (const f of ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'README.md', 'stubs', 'oauth-exchange.mjs']) {
     assert.ok(!existsSync(join(dir, '_site/packs/claudinite-dashboard', f)), `${f} must not be published`);
   }
 });
@@ -236,7 +236,7 @@ test('a mount without the page produces nothing and exits clean', async (t) => {
   t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, '.claudinite/shared/packs/claudinite-dashboard'), { recursive: true });
   await mkdir(join(dir, '.claudinite/shared/engine'), { recursive: true });
-  for (const f of ['build-site.mjs', 'config.mjs']) {
+  for (const f of ['build-site.mjs', 'config.mjs', 'declared-config.mjs']) {
     await cp(join(PACK_DIR, f), join(dir, `.claudinite/shared/packs/claudinite-dashboard/${f}`));
   }
   // The build resolves the member's settings file by name rather than naming it, so

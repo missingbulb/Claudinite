@@ -1,7 +1,7 @@
-// The one piece of the dashboard that cannot run in the browser, as a deployable
-// example. REFERENCE MATERIAL — nothing imports this, and the dashboard does not
-// ship it anywhere; it is what you paste into a serverless function and point
-// `dashboard.config.json`'s `exchangeUrl` at.
+// The one piece of the dashboard that cannot run in the browser. Nothing on the
+// page imports it and it is kept off the published site: it is the source the
+// `deploy-oauth-exchange` task uploads to a serverless function, whose URL
+// `dashboard.config.json`'s `exchangeUrl` then names.
 //
 // WHY IT HAS TO EXIST. Turning an OAuth `code` into a token is a POST to
 // `github.com/login/oauth/access_token` carrying the app's CLIENT SECRET. Two
