@@ -3,9 +3,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 
-import { makeRepo, cleanup, deletePath } from '../../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, deletePath, git } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
 import rule from '../workRules/automerge-policy-scope.mjs';
@@ -97,7 +96,9 @@ test('the LAST trailer on the branch wins over an earlier one', () => {
   });
   try {
     // A later commit restates the intent with the policy that actually covers.
-    execFileSync('git', ['-C', root, 'commit', '--allow-empty', '-q', '-m', armed('doc-changes')]);
+    // The helpers' own git(), never a raw spawn: it carries the fixture identity
+    // a CI runner does not have (#1464's one red job).
+    git(root, 'commit', '--allow-empty', '-q', '-m', armed('doc-changes'));
     assert.deepEqual(gate(root), []);
   } finally { cleanup(root); }
 });
