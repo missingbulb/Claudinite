@@ -701,6 +701,14 @@ jobs:
         run: node .claudinite/shared/packs/claudinite-tasks/queue/executor.mjs
 `;
 
+// A member whose live executor triggers on the CANONICAL ready spelling alone — the
+// file a converge writes from today's stub, once the legacy trigger came out (#1119).
+// `THIN_EXECUTOR_WORKFLOW` above is the same file with `task:ready` still beside it:
+// between the two sits every member, because `.github/workflows/` moves only by
+// human-merged PR. Both shapes must converge green, and this is the far side.
+const CANONICAL_READY_EXECUTOR_WORKFLOW = THIN_EXECUTOR_WORKFLOW
+  .replace("      || github.event.label.name == 'task:ready'\n", '');
+
 export const FIXTURES = [
   {
     name: 'local-rules',
@@ -1112,6 +1120,16 @@ NSApplication.shared.run()
       }),
       '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
       '.github/workflows/claudinite-executor.yml': STAMPING_EXECUTOR_WORKFLOW,
+    },
+  },
+  {
+    name: 'canonical-ready-executor',
+    why: "a member whose live executor triggers on `task:status:waiting-for-executor` alone — the far side of the #1119 window, once its own PR landed the workflow with the legacy `task:ready` trigger removed; the queue must still reach it, and nothing in the engine may still require the legacy string to be in a member's file",
+    files: {
+      'README.md': '# fixture-canonical-ready-executor\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics']),
+      '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
+      '.github/workflows/claudinite-executor.yml': CANONICAL_READY_EXECUTOR_WORKFLOW,
     },
   },
   {

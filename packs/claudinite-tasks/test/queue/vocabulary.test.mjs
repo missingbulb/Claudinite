@@ -169,16 +169,19 @@ test('the ensure-list carries every canonical status and origin, ahead of any wr
   }
 });
 
-// A workflow's event trigger names label strings LITERALLY — nothing there decodes
-// — so this is the one surface where both vocabularies must appear at once. Read
-// from the real files, both copies: the stub every member is given, and the canon's
-// own hand-maintained copy, which no converge writes.
-test('the executor triggers on both ready spellings, in the stub and in the canon\'s own copy', () => {
+// A workflow's event trigger names label strings LITERALLY — nothing there decodes.
+// It carried both vocabularies while some fielded engine still wrote the legacy one;
+// every member now stamps a claudinite-tasks past the write-side flip, so the legacy
+// trigger is gone and its absence is what this pins. Read from the real files, both
+// copies: the stub every member is given, and the canon's own hand-maintained copy,
+// which no converge writes.
+test('the executor triggers on the ready spelling the engine writes, and on no other', () => {
   for (const path of ['packs/claudinite-tasks/stubs/claudinite-executor.yml', '.github/workflows/claudinite-executor.yml']) {
     const yml = readFileSync(path, 'utf8');
-    for (const spelling of [STATUS_READY, READY, 'task:urgent']) {
+    for (const spelling of [STATUS_READY, 'task:urgent']) {
       assert.ok(yml.includes(`github.event.label.name == '${spelling}'`), `${path} must trigger on ${spelling}`);
     }
+    assert.ok(!yml.includes(`'${LEGACY_READY}'`), `${path} must not still trigger on ${LEGACY_READY}, which nothing writes`);
   }
 });
 
