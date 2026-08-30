@@ -26,7 +26,7 @@ const RULES_MD = '.claudinite/local/packs/claudinite/RULES.md';
 
 test('the pack\'s merge-rules.json compiles cleanly', () => {
   assert.deepEqual(errors, []);
-  for (const name of ['claudinite-local-pack-md-changes', 'claudinite-local-pack-md-deletions', 'claudinite-local-pack-check-changes']) {
+  for (const name of ['claudinite-local-pack-md-changes', 'claudinite-local-pack-check-changes']) {
     assert.ok(rules.has(name), name);
   }
 });
@@ -66,6 +66,14 @@ test('growth-dedup may land Markdown removals and in-line trims, never growth', 
   assert.equal(verdict(dedup.automerge, [
     { file: RULES_MD, before: '- a\n- b\n', after: '- a\n- b (but wider)\n' },
   ]).mergeable, false);
+
+  // …and a trim is only this task's to land inside the local packs: the same
+  // edit to the repo's own prose is somebody else's document.
+  for (const file of ['README.md', 'CLAUDE.md', 'packs/basics/RULES.md']) {
+    assert.equal(verdict(dedup.automerge, [
+      { file, before: '- a\n- b\n', after: '- a\n' },
+    ]).mergeable, false, file);
+  }
 });
 
 test('prose-to-checks-sweep may land a local-pack prose deletion beside the check replacing it', () => {
