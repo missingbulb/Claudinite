@@ -71,3 +71,27 @@ test('a not-yet-live run re-arms by the filed Retry-every, mark and field only',
   assert.doesNotMatch(skill, /Give-up-after/, 'the give-up marker was dropped (owner, 2026-08-20)');
   assert.doesNotMatch(skill, /sensible/i, 'the run decides nothing — the filer stated the extension');
 });
+
+// A RETRY RE-ARMS FROM NOW (#1456). The scheduler releases a sleeping item on the
+// first hourly pass past its `Not-before`, and a busy queue adds more delay — so the
+// old value is already in the past when the run reads it. Pushing THAT forward by
+// `Retry-every: 1 day` can land in the past again, which re-adopts the item on the
+// very next pass and spends a session an hour instead of a day. #1160 sat on a
+// `Not-before` five days stale.
+test('the re-arm is computed from now, not from the stale Not-before', () => {
+  assert.match(skill, /now \+ `Retry-every:`/,
+    'the playbook never says what the new instant is measured from');
+  assert.match(skill, /never the old value/i,
+    'nothing rules out old-value + Retry-every, the reading that re-fires every pass');
+});
+
+// THE PARAMETERS LEAD THE BODY (#1456). Every field the scheduler run and the
+// executor read is one block on the first lines, so a person can see what the run
+// will do without hunting, and a retry rewriting `Not-before` has one place to write.
+test('the execution parameters are one block on the body first lines', () => {
+  assert.match(skill, /first lines/i,
+    'nothing places the parameter block, so filers scatter the fields through the prose');
+  const template = /```\n(Original-issue:[\s\S]*?)```/.exec(skill)?.[1] ?? '';
+  assert.match(template, /^Model:/m,
+    'Model: is prescribed away from the other parameters — the scattering #1160 shows');
+});
