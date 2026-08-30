@@ -6,7 +6,7 @@ lesson at the strongest mechanism available — a check where the rule is determ
 
 Keep each rule near 40 words: the trigger, the directive, and a consequence clause only where the
 rule cannot be applied without it. Split a rule that carries two situations; the evidence it came
-from lives in `VERSIONS.md` and the issue, never here.
+from lives in the commit that added it and the issue, never here.
 
 ## Standing owner decisions — settled, do not re-litigate
 

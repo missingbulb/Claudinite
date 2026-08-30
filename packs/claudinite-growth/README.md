@@ -157,7 +157,7 @@ here: its subject is Claudinite's own surface, not lesson capture.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Changing a local pack automatically | high | complexity | prose: 65 words |
+| Recording a local pack change | high | complexity | prose: 66 words |
 | Wanting a job to run in Actions | high | complexity | prose: 55 words + check (`scheduler-workflow-shape`) |
 
 ## Coded rules
@@ -235,29 +235,19 @@ and reads the same subtree over the GitHub API (get-file-contents under `.claudi
 Extract writes into it, promote reads from it, dedup prunes within it — all against the identical,
 `.claudinite/local_packs/`-rooted set.
 
-## The change record: each local pack's own `VERSIONS.md`
+## The change record: the commit, and nothing else
 
-A canon pack's `VERSIONS.md` carries one row per version bump. A local pack is neither versioned nor
-distributed, so its `VERSIONS.md` carries the same thing at the only granularity it has: **one row
-per change automatic work made to it** — a prose rule added or removed, a check created, a rule
-corrected against a probe or deleted as irrelevant.
+A local pack keeps no changelog file. It is neither versioned nor distributed — no member reconciles
+its version against another repo's — so `git log` over the pack directory already carries what a
+changelog would, per change, with the diff attached. A file that aggregates unrelated changes into
+one append-at-the-top table is a merge hazard instead: several growth runs a day write local packs,
+and any two in flight collide on the same line. A **canon** pack's `VERSIONS.md` earns that cost,
+because the row is what tells a member what a version bump shipped.
 
-| Date | Task | Change |
-|---|---|---|
-| 2026-08-23 | `growth-extract` | Added: **Restoring source after a see-it-fail mutation** — `git checkout --`, never a `.bak`. |
-| 2026-08-23 | `prose-to-checks-sweep` | Converted to a check: the entry-point await rule → `pack-discovery-entry-await`. |
-
-Every growth task writes its own rows, in the same PR as the change they describe, so the record
-diffs beside what it records and travels with the pack it is about. A reader looking at a rule and
-wondering where it came from is already in the directory.
-
-This is the growth lifecycle's **whole** record: no growth task keeps a standing tracker issue. An
-issue body is rewritten in place with no history, sits outside the PR that made the change, and is
-one sweep away from being closed as stale — none of which is true of a tracked file. A run that
-changed nothing writes no row at all: the file logs what happened to the pack, never that a run
-happened.
-
-`seedRepoLocalPack` creates the file empty at adoption, so no task has to invent it.
+So every growth task's record is the PR it opens: the rule added, pruned or corrected, and the
+evidence behind it, written in the body beside the diff it explains. No growth task keeps a standing
+tracker issue either — an issue body is rewritten in place with no history, sits outside the PR that
+made the change, and is one sweep away from being closed as stale.
 
 ## Checks
 

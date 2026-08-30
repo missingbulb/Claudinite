@@ -47,12 +47,10 @@ Land the new pack (and its declaration) through a single PR on a per-run-unique 
 
 ## Record
 
-A pack this run authors is seeded with its own `VERSIONS.md` — the empty table `seedRepoLocalPack` writes,
-described in [the pack README](../../README.md) — and the run's first row goes in it: date,
-`growth-discover-packs`, the repo segment the pack covers and the rungs its rules landed on. Everything else
-this run has to say — a candidate you found nothing groundable for, a "should declare canon pack X instead"
-note — belongs in the PR body, where the reviewer deciding on the pack is already reading. There is no
-standing issue.
+Everything this run has to say goes in the PR body, where the reviewer deciding on the pack is already
+reading: the repo segment the pack covers and the rungs its rules landed on, a candidate you found nothing
+groundable for, a "should declare canon pack X instead" note. A local pack carries no changelog file, and
+there is no standing issue.
 
 A run that authored no pack writes nothing anywhere.
 
