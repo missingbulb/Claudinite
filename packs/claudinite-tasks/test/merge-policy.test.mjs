@@ -325,6 +325,13 @@ test('usage-fold\'s delivery shape — the regenerated aggregate and nothing els
       added('.gitattributes', 'x\n'),
     ],
   }).mergeable, false);
+  // A regenerated file elsewhere in the repo is some other task's delivery.
+  for (const file of ['packs/directory.GENERATED.md', '.claudinite/claudinite-rules.GENERATED.md']) {
+    assert.equal(policyVerdict({
+      policy: usageFold.automerge,
+      entries: [edited(file, 'a\n', 'b\n')],
+    }).mergeable, false, file);
+  }
 });
 
 // --- the trims class and the mount exemption ----------------------------------
