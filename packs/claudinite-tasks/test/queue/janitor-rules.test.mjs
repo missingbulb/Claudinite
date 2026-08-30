@@ -168,34 +168,65 @@ test('the comment names the run that answered the park', () => {
 // when the EXECUTOR picks it; a parked item is never picked again, so ClaudiniteCanary's
 // seven parked fleet-digest items could never reach that path.
 
-const known = (...ids) => new Set(ids);
+// The declared task set at HEAD, as the sweep supplies it: an id and where its worker
+// lives. `it` files every item's body at `p/t.md`, so that is the path a live task has.
+const heads = (...ids) => ids.map((id) => {
+  const [pack, task] = id.split('/');
+  return { pack, id: task, taskPath: 'p/t.md' };
+});
 
 test('a park whose task no longer exists at HEAD is orphaned', () => {
   const item = parked({ task: 'retired', kind: 'action' });
-  assert.deepEqual(orphanedParkItems([item], { knownTaskIds: known('p/alive') }).map((i) => i.number),
+  assert.deepEqual(orphanedParkItems([item], { tasks: heads('p/alive') }).map((i) => i.number),
     [item.number]);
 });
 
-test('a park whose task still exists is left alone', () => {
+test('a park whose task still exists, at the path the item names, is left alone', () => {
   const item = parked({ task: 'alive', kind: 'action' });
-  assert.deepEqual(orphanedParkItems([item], { knownTaskIds: known('p/alive') }), []);
+  assert.deepEqual(orphanedParkItems([item], { tasks: heads('p/alive') }), []);
 });
 
-// The rule closes things, and its premise is "this id is not in the declared set". An
+// The rule closes things, and its premise is "this repo cannot run this item". An
 // empty set means discovery told us nothing, not that every task was retired — acting on
 // it would close the entire queue.
 test('an empty task set orphans NOTHING — discovery failing is not every task retiring', () => {
   const item = parked({ task: 'retired', kind: 'action' });
-  assert.deepEqual(orphanedParkItems([item], { knownTaskIds: known() }), []);
+  assert.deepEqual(orphanedParkItems([item], { tasks: [] }), []);
 });
 
 test('a live item is not orphaned — the executor owns that verdict', () => {
   const live = it({ task: 'retired', labels: ['task:status:running-agent'] });
-  assert.deepEqual(orphanedParkItems([live], { knownTaskIds: known('p/alive') }), []);
+  assert.deepEqual(orphanedParkItems([live], { tasks: heads('p/alive') }), []);
 });
 
 test('the orphaned comment names the task that is gone', () => {
   assert.match(orphanedParkComment('p/retired'), /p\/retired/);
+});
+
+// The gap ClaudiniteCanary#115 sat in for eleven days (#1461). Its task is carried, so an
+// id lookup alone reads it as live; what is dead is the PATH its body names, left behind
+// by the `grow_with_claudinite` → `claudinite-growth` rename. Nothing rewrites an item
+// body, so the executor's path guard refuses it on every pick, forever — and because a
+// `failure` park holds the task's lane, the task stops being scheduled at all.
+test('a park naming a live task at a path it no longer lives at is orphaned', () => {
+  const moved = parked({ task: 'alive', kind: 'failure' });
+  moved.body = 'packs/gone/tasks/alive/task.md\n';
+  assert.deepEqual(orphanedParkItems([moved], { tasks: heads('p/alive') }).map((i) => i.number),
+    [moved.number]);
+});
+
+// Conservative where the rule cannot know: a body naming no path at all is the malformed
+// shape `statelessItems` and the executor own, not a verdict about HEAD.
+test('a park naming no path at all is left alone — that is not this rule\'s verdict', () => {
+  const pathless = parked({ task: 'alive', kind: 'failure' });
+  pathless.body = '';
+  assert.deepEqual(orphanedParkItems([pathless], { tasks: heads('p/alive') }), []);
+});
+
+test('the comment for a moved task names where it lives now, not just what is missing', () => {
+  const body = orphanedParkComment('p/alive', 'packs/p/tasks/alive/task.md');
+  assert.match(body, /packs\/p\/tasks\/alive\/task\.md/);
+  assert.match(body, /renamed/);
 });
 
 // The two shapes a fleet-aged park arrives in, and why each is the rule's own premise
@@ -204,25 +235,44 @@ test('the orphaned comment names the task that is gone', () => {
 
 test('a park wearing only the two-label era sub-label is seen — the rule reads the decode', () => {
   const legacy = it({ task: 'retired', labels: ['origin:schedule', 'task:needs-human-failure'] });
-  assert.deepEqual(orphanedParkItems([legacy], { knownTaskIds: known('p/alive') }).map((i) => i.number),
+  assert.deepEqual(orphanedParkItems([legacy], { tasks: heads('p/alive') }).map((i) => i.number),
     [legacy.number]);
 });
 
 // A title is stored data that outlives a pack rename, so the id it names is canonicalized
 // before it is looked up. Read literally, EVERY park filed before a rename reads as a task
-// the repo no longer carries, and this rule closes the live ones fleet-wide. The `isParked`
-// assertion is what stops the verdict passing for the wrong reason: an item the decode
-// cannot see is not orphaned either.
-test('a pre-rename pack id in the title is not orphaned — it resolves to today\'s spelling', () => {
+// the repo no longer carries — and would close on the WRONG comment, naming a retirement
+// that never happened. The `isParked` assertion is what stops the verdict passing for the
+// wrong reason: an item the decode cannot see is not orphaned either.
+test('a pre-rename pack id in the title resolves to today\'s spelling before the lookup', () => {
   const preRename = {
     number: 115,
     title: '[claudinite-work] grow_with_claudinite/logs-prune',
     labels: ['needs-human', 'origin:schedule', 'task:needs-human-failure'],
     state: 'open',
-    body: '',
+    body: '.claudinite/shared/packs/claudinite-growth/tasks/logs-prune/task.md\n',
     created_at: '2026-08-10T04:00:00Z',
     updated_at: '2026-08-10T04:00:00Z',
   };
   assert.ok(isParked(preRename));
-  assert.deepEqual(orphanedParkItems([preRename], { knownTaskIds: known('claudinite-growth/logs-prune') }), []);
+  assert.deepEqual(orphanedParkItems([preRename], {
+    tasks: [{ pack: 'claudinite-growth', id: 'logs-prune', taskPath: '.claudinite/shared/packs/claudinite-growth/tasks/logs-prune/task.md' }],
+  }), []);
+});
+
+// ClaudiniteCanary#115 itself, whole: the title canonicalizes to a task Canary carries,
+// and the body still names the pre-rename directory. Rule F must close this one.
+test('ClaudiniteCanary#115 — a live task named at its pre-rename path — is orphaned', () => {
+  const canary115 = {
+    number: 115,
+    title: '[claudinite-work] grow_with_claudinite/logs-prune',
+    labels: ['needs-human', 'origin:schedule', 'task:needs-human-failure'],
+    state: 'open',
+    body: '.claudinite/shared/packs/grow_with_claudinite/tasks/logs-prune/task.md\n\nNot-before: 2026-08-20T04:00:00.000Z\n',
+    created_at: '2026-08-19T03:55:44Z',
+    updated_at: '2026-08-20T04:49:39Z',
+  };
+  assert.deepEqual(orphanedParkItems([canary115], {
+    tasks: [{ pack: 'claudinite-growth', id: 'logs-prune', taskPath: '.claudinite/shared/packs/claudinite-growth/tasks/logs-prune/task.md' }],
+  }).map((i) => i.number), [115]);
 });

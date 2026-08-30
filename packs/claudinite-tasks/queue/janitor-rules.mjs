@@ -135,29 +135,52 @@ export const supersededComment = (run) =>
   + 'was parked on is resolved. Closing it `task:status:rejected` rather than leaving a question nobody needs to answer. '
   + `If this park was about something that run did NOT cover, re-queue it (${requeueHint}).`;
 
-// Rule F — THE ORPHANED PARK (#1452). A park whose task this repo no longer carries
-// is asking a person about work that cannot run again. The executor already closes
-// such an item obsolete when it picks one (#1446) — but a PARKED item is never
+// Rule F — THE ORPHANED PARK (#1452, widened #1461). A park this repo CANNOT RUN at
+// HEAD is asking a person about work that can never happen. The executor already
+// closes such an item obsolete when it picks one (#1446) — but a PARKED item is never
 // picked, so that verdict could never reach the set that needs it most:
 // ClaudiniteCanary's seven parked `fleet-digest` items, for a task since retired.
 //
-// `knownTaskIds` is the declared task set at HEAD. EMPTY MEANS UNKNOWN, never
-// "everything retired": discovery returning nothing is a broken read, and acting on
-// it would close the whole queue.
-export function orphanedParkItems(open = [], { knownTaskIds = new Set() } = {}) {
-  if (!knownTaskIds.size) return [];
+// TWO WAYS AN ITEM IS UNRUNNABLE, and the second is why this rule is not just an id
+// lookup. An item carries its task twice — the id in its title and the worker PATH in
+// its body — and only the id is canonicalized across a pack rename
+// (`parseWorkItemTitle`). So an item open across one keeps naming the pre-rename
+// directory, the executor's path guard refuses it (executor.mjs), and it parks
+// `failure` — where the id lookup alone still reads it as a live task and leaves it
+// there. Nothing rewrites an item body and HEAD's path moves only on another rename,
+// so that mismatch is permanent: no answer a human could give makes the item runnable
+// (ClaudiniteCanary#115, which froze `logs-prune` there for eleven days, because a
+// `failure` park holds the task's lane).
+//
+// `tasks` is the declared task set at HEAD. EMPTY MEANS UNKNOWN, never "everything
+// retired": discovery returning nothing is a broken read, and acting on it would close
+// the whole queue. An item naming NO path is left alone for the same reason — that is
+// the malformed shape `statelessItems` and the executor own, not a verdict about HEAD.
+export const taskPathIndex = (tasks = []) => new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t.taskPath]));
+
+export function orphanedParkItems(open = [], { tasks = [] } = {}) {
+  if (!tasks.length) return [];
+  const headPath = taskPathIndex(tasks);
   return open.filter((item) => {
     if (!isParked(item)) return false;
-    const p = parseWorkItemTitle(item.title) ?? taskIdFromPath(parseWorkItemBody(item.body).taskPath);
+    const { taskPath } = parseWorkItemBody(item.body);
+    const p = parseWorkItemTitle(item.title) ?? taskIdFromPath(taskPath);
     if (!p) return false;
-    return !knownTaskIds.has(`${p.pack}/${p.task}`);
+    const at = headPath.get(`${p.pack}/${p.task}`);
+    if (at === undefined) return true;
+    return !!taskPath && at !== taskPath;
   });
 }
 
-export const orphanedParkComment = (id) =>
-  `\`${id}\` is not a task this repo carries at HEAD — the pack may be undeclared, or the task retired. `
-  + 'This item is parked on work that cannot run again, so it closes `task:status:rejected` rather than '
-  + 'waiting for an answer that would change nothing.';
+// Two causes, two sentences, because the reader's next move differs: a retired task is
+// nothing to chase, a relocated one already has a live occurrence somewhere.
+export const orphanedParkComment = (id, headPath = null) => (headPath
+  ? `This item names \`${id}\` at a path it no longer lives at — the pack was renamed since the item was filed, `
+    + `and the task is at \`${headPath}\` now. An item's stored path is never rewritten, so this one can never run. `
+    + 'Closing it obsolete; the scheduler files a fresh occurrence at the current path.'
+  : `\`${id}\` is not a task this repo carries at HEAD — the pack may be undeclared, or the task retired. `
+    + 'This item is parked on work that cannot run again, so it closes `task:status:rejected` rather than '
+    + 'waiting for an answer that would change nothing.');
 
 // The period of a task, for rule A — read from the declaration at HEAD.
 export const periodForTasks = (tasks = []) => {

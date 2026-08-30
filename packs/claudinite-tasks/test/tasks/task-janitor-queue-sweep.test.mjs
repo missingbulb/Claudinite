@@ -113,3 +113,26 @@ test('an item still stateless on the second read is repaired', async () => {
   assert.deepEqual(out.stateless, [43]);
   assert.deepEqual(labelsOn(added, 43), [NEEDS_HUMAN_DECISION]);
 });
+
+// The wiring the pure rules cannot cover: rule F now picks its comment from WHERE the
+// task lives, so the sweep has to carry that through. A park naming a live task at a
+// path it has moved off closes obsolete, and the comment says where it is now (#1461).
+test('a park naming its task at a path it has moved off closes obsolete, naming the new path', async () => {
+  const moved = {
+    ...workItem(31, ['task:status:needs-human-failure']),
+    body: 'packs/grow_with_claudinite/tasks/a/task.md\n',
+    title: '[claudinite-work] grow_with_claudinite/a',
+  };
+  const { gh, added } = janitorGh([moved]);
+  const posted = [];
+  const spy = async (path, opts = {}) => {
+    if (opts.method === 'POST' && /\/issues\/\d+\/comments$/.test(path)) posted.push(opts.body.body);
+    return gh(path, opts);
+  };
+  const out = await quiet(() => sweepQueue(spy, 'o/r', at('2026-07-10T00:00:00Z'), {
+    tasks: [{ pack: 'claudinite-growth', id: 'a', taskPath: 'packs/claudinite-growth/tasks/a/task.md' }],
+  }));
+  assert.deepEqual(out.orphaned, [31]);
+  assert.ok(posted.some((b) => b.includes('packs/claudinite-growth/tasks/a/task.md')), posted.join('|'));
+  assert.deepEqual(labelsOn(added, 31), ['task:status:rejected']);
+});

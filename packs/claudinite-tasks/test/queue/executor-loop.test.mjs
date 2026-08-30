@@ -304,6 +304,34 @@ test('a task deleted from the checkout mid-run closes obsolete rather than faili
   assert.ok(repo.find(1).comments.some((c) => c.body.includes('packs/p/tasks/a')));
 });
 
+// A PACK RENAME LANDS HERE, and it used to park a person forever (#1461). Only the
+// title's id is canonicalized, so an item open across the rename keeps naming the
+// pre-rename directory — and nothing ever rewrites an item body, so the mismatch is
+// permanent. Parking it stranded the item AND held the task's lane, which is what
+// stopped `logs-prune` being scheduled on ClaudiniteCanary for eleven days.
+test('an item naming its own task at its pre-rename path closes obsolete, not to a human', async () => {
+  const renamed = {
+    ...workItem(1, 'logs-prune', ['task:status:waiting-for-executor'],
+      'packs/grow_with_claudinite/tasks/logs-prune/task.md\n\nExecute the Claudinite task above.\n'),
+    title: '[claudinite-work] grow_with_claudinite/logs-prune',
+  };
+  const repo = fakeRepo([renamed]);
+  const moved = { ...task('logs-prune'), pack: 'claudinite-growth', taskPath: 'packs/claudinite-growth/tasks/logs-prune/task.md' };
+  const done = await drive(repo, [moved]);
+  assert.deepEqual(done, [{ issue: 1, outcome: 'obsolete' }]);
+  assert.equal(repo.find(1).state, 'closed');
+  assert.ok(repo.find(1).comments.some((c) => c.body.includes('packs/claudinite-growth/tasks/logs-prune/task.md')));
+});
+
+// …and the shape the guard actually exists for still parks. A path naming a DIFFERENT
+// task than the title is a tampered or forged item, and no rename explains it.
+test('an item whose path names a different task than its title still goes to a human', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'], 'packs/p/tasks/b/task.md\n')]);
+  const done = await drive(repo, [task('a'), task('b')]);
+  assert.deepEqual(done, [{ issue: 1, outcome: 'needs-human' }]);
+  assert.equal(repo.find(1).state, 'open');
+});
+
 test('a malformed item goes to a human — a forged body is never executed', async () => {
   const repo = fakeRepo([{ ...workItem(1, 'a', ['task:status:waiting-for-executor']), body: '' }]);
   const done = await drive(repo, [task('a')]);
