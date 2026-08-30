@@ -79,6 +79,15 @@ page after 45 days without a growth-log entry — the in-repo observer for "the
 unattended growth channel silently stopped firing". Silence it with
 `rules: {"product-wiki-freshness": "off"}`.
 
+## Skill
+
+| Skill | Trigger |
+|---|---|
+| [`explore-link`](skills/explore-link/SKILL.md) | the owner hands over a URL (`/explore-link <url>`) — mine it for product, market, usage and pricing insights and fold them into an existing wiki page |
+
+The two growth lanes differ only in who chooses the source: the weekly task picks
+its own from the pages' open questions, the skill is given one.
+
 ## Scaffold template
 
 ```

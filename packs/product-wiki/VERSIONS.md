@@ -5,6 +5,7 @@ the version this file was introduced beside (60820.1); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60830.1 | 2026-08-30 | Bundles the `explore-link` skill — the owner-given-source growth lane (#1421). |
 | 60824.1 | 2026-08-24 | Prose names the scheduler at its new home in the `claudinite-tasks` pack (#1317). |
 | 60823.3 | 2026-08-23 | `wiki-growth` gates on an open PR's pending `product-wiki/` paths instead of a `product-wiki-growth` label. |
 | 60823.2 | 2026-08-23 | Its isolation rule excepts both settings-file names while the #1252 rename drains. |
