@@ -18,7 +18,7 @@
 import {
   staleReadyItems, staleReadyComment, deadAgentItems, deadAgentComment,
   stuckBlockedItems, stuckBlockedComment, statelessItems, statelessComment,
-  supersededItems, supersededComment, orphanedParkItems, orphanedParkComment, periodForTasks,
+  supersededItems, supersededComment, orphanedParkItems, orphanedParkComment, taskPathIndex, periodForTasks,
 } from '../../../claudinite-tasks/queue/janitor-rules.mjs';
 import {
   QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE,
@@ -53,7 +53,7 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
   // the others do not share. Read once, indexed by task, newest-done-wins.
   const doneAfter = doneRunLookup(await listDoneWorkItems(gh, repo));
   const superseded = supersededItems(open, { doneAfter });
-  const orphaned = orphanedParkItems(open, { knownTaskIds: new Set(tasks.map((t) => `${t.pack}/${t.id}`)) });
+  const orphaned = orphanedParkItems(open, { tasks });
 
   if (stale.length || deadAgents.length || stateless.length) await ensureLabels(gh, repo, QUEUE_LABELS);
 
@@ -124,11 +124,14 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
   }
   // Superseded wins where both apply: naming the run that answered it says more than
   // naming the absence of a task file.
+  const headPath = taskPathIndex(tasks);
   for (const item of orphaned) {
     if (result.superseded.includes(item.number)) continue;
     const p = parseWorkItemTitle(item.title) ?? taskIdFromPath(parseWorkItemBody(item.body).taskPath);
-    await retire(item, orphanedParkComment(`${p.pack}/${p.task}`));
-    log(`orphaned park #${item.number} (${p.pack}/${p.task} is gone) → ${TASK_OBSOLETE}`);
+    const id = `${p.pack}/${p.task}`;
+    const at = headPath.get(id) ?? null;
+    await retire(item, orphanedParkComment(id, at));
+    log(`orphaned park #${item.number} (${id} ${at ? `moved to ${at}` : 'is gone'}) → ${TASK_OBSOLETE}`);
     result.orphaned.push(item.number);
   }
 
