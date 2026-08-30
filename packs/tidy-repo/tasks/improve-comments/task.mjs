@@ -21,6 +21,14 @@
 // declaration test beside this pack's other tests.
 const RUN_TITLE = 'Claudinite tidy: improve comments';
 
+// The mount, excluded from every round's scope. `.claudinite/shared/` is vendored
+// and the next converge replaces it whole, so a comment improved there is gone by
+// morning; `.claudinite/local/` is written by the growth tasks. Neither is the
+// repo's own source, and the converge touches them most nights, so left in they
+// crowd the round's cap. Kept in step with the same prefix in the
+// improve-comments-scope gate by the test beside that check.
+const MOUNT_PREFIX = '.claudinite/';
+
 // How many of the window's changed files one round reads. A busy week can touch
 // hundreds, and a session handed all of them skims; the rest are next round's, and
 // the run says so rather than presenting a truncated list as the whole window.
@@ -61,9 +69,13 @@ export default {
     if (!commits?.substantiveChange) {
       return { run: false, reason: 'no substantive commit in the window — nothing moved for a comment to have drifted from' };
     }
-    const touched = commits.touchedPaths ?? [];
-    if (!touched.length) {
+    const allTouched = commits.touchedPaths ?? [];
+    if (!allTouched.length) {
       return { run: false, reason: 'the window\'s commits name no changed path — nothing to read' };
+    }
+    const touched = allTouched.filter((p) => !p.startsWith(MOUNT_PREFIX));
+    if (!touched.length) {
+      return { run: false, reason: `the window's changed paths are all under ${MOUNT_PREFIX} — the mount is not this repo's source to comment` };
     }
 
     // A window can carry more files than one session should read as comments. Name
