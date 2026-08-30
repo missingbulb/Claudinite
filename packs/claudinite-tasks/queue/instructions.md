@@ -78,13 +78,18 @@ instructions.
    engine's own `AUTOMERGE: yes` (deliver-pr.md).
    Exceeding the ceiling is a failure, not a success with a surprise.
 
-6. **Converge the issue exactly once — in code, not by hand.** One command
+6. **Converge the issue exactly once — in code, not by hand.** `<here>` in the
+   commands below is **the directory this file sits in** —
+   `packs/claudinite-tasks/queue/` in the canon, the same path under
+   `.claudinite/shared/` in a member's mount — and `<engine>` is
+   `<here>/../../../engine`. Derive both from where you found this file rather
+   than from any root you were told. One command
    performs every side effect the transition needs: the comment, the label swap,
    the outcome label, the `claudinite-task-exec` record on the item, the close
    with the right state reason, and the request write-back.
 
    ```bash
-   node <engine>/scheduler/queue/converge-item.mjs --issue <n> \
+   node <here>/converge-item.mjs --issue <n> \
      --outcome done|approval|action|decision|failure \
      --summary '<what happened>' [--pr <n>]
    ```
@@ -103,7 +108,7 @@ instructions.
    ```bash
    CLAUDINITE_ITEM_REPO=<owner/repo> CLAUDINITE_ITEM_JSON='<the issue as your GitHub
      tools returned it: number, title, body, state, labels>' \
-   node <engine>/scheduler/queue/converge-item.mjs --issue <n> \
+   node <here>/converge-item.mjs --issue <n> \
      --outcome done|approval|action|decision|failure \
      --summary '<what happened>' [--pr <n>]
    ```
