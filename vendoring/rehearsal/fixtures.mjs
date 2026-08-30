@@ -60,6 +60,13 @@
 //                 README rather than a `task.md` for the same reason from the other
 //                 side: that is the shape `task-md-only-when-agentic` mandates, and
 //                 the fixture is what proves the rule stays silent on it.
+//   doc-commands  a member whose local pack RULES.md tells a reader what to run. A
+//                 runnable command in prose is member-authored and nothing converges
+//                 it, so `runnable-doc-commands` (blocking, basics) can turn a member
+//                 red through no act of its own; this shape carries the four command
+//                 shapes a member writes — a mount path, a repo-relative script, a
+//                 bare filename, and a placeholder-rooted path naming a file it has —
+//                 and says the rule stays silent on all of them.
 //   codes-an-extension
 //                 a member declaring chrome-extension with a manifest and NO release
 //                 pipeline. The pack absorbed chrome-extension-release (#1057), so its
@@ -344,6 +351,34 @@ const CODE_WORK_WORKER = `const item = process.env.CLAUDINITE_ITEM || '';
 const root = process.env.CLAUDINITE_REPO_ROOT;
 const params = process.env.CLAUDINITE_CONTEXT ?? '';
 console.log(\`fixture [#\${item}] \${root} \${params.length}\`);
+`;
+
+const PACK_DOC_COMMANDS = `export default {
+  id: 'fixture-doc-commands',
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own runbooks, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+  worldRules: [],
+  workRules: [],
+};
+`;
+
+// A member's own runbook, carrying every command shape a member writes.
+// `runnable-doc-commands` is blocking, so each of these must read as fine: the
+// mount path resolves under the vendored tree, the repo-relative script and the
+// bare filename are the member's own business, and the placeholder-rooted command
+// names a file this member really has.
+const DOC_COMMANDS_RUNBOOK = `# fixture-doc-commands
+
+Sweep the repo: \`node .claudinite/shared/engine/checks/check_the_world.mjs\`.
+
+Build it: \`node tools/build.mjs\`, and from inside a task directory, \`node worker.mjs\`.
+
+From anywhere in the checkout, \`node <root>/tools/build.mjs\` does the same.
 `;
 
 const OLD_SCHEDULER_WORKFLOW = `name: Claudinite scheduler
@@ -763,6 +798,17 @@ export const FIXTURES = [
       // the fixture is what says the rule does not fire on it.
       '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/README.md':
         '# code-work-only\n\nA rehearsal fixture task. Its worker never runs.\n',
+    },
+  },
+  {
+    name: 'doc-commands',
+    why: 'a local pack whose runbook names commands to run — the member-authored prose `runnable-doc-commands` reads, in every shape a member writes it',
+    files: {
+      'README.md': '# fixture-doc-commands\n\nA rehearsal fixture.\n',
+      'tools/build.mjs': 'console.log(\'fixture build\');\n',
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-doc-commands']),
+      '.claudinite/local/packs/fixture-doc-commands/pack.mjs': PACK_DOC_COMMANDS,
+      '.claudinite/local/packs/fixture-doc-commands/RULES.md': DOC_COMMANDS_RUNBOOK,
     },
   },
   {
