@@ -7,7 +7,7 @@
 import { SINK_README } from './lib.mjs';
 
 export default {
-  version: '60830.1',
+  version: '60830.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink',

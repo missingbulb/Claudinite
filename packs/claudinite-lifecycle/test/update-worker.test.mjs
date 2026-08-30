@@ -188,14 +188,17 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
 
   // Merging must be within the ceiling, or the instruction below tells the session to
   // violate its own contract — verify-outcome.mjs would then fail every apply stage.
-  assert.equal(decl.expected_outcome, 'merged-pr');
+  assert.equal(decl.expected_outcome, 'pr');
 
   const land = brief.slice(brief.indexOf('## 5.'));
   assert.ok(land, 'the brief must still carry a §5');
-  assert.match(land, /land the delivery yourself/i, 'the session must be told to act, not to wait');
-  assert.match(land, /maintenance\.delivery/, 'and to read the repo\'s own setting rather than assume one');
-  assert.match(land, /auto-merge/, 'the setting that means "you merge it"');
-  assert.match(land, /review/, 'and the setting that means "leave it for a human"');
+  // The action moved into the shared procedure (a task.md describes the changes
+  // to perform, never what happens to them — owner, 2026-08-30), so the property
+  // pinned here is that the brief sends the session THERE, now, in this run.
+  assert.match(land, /hand the PR to the shared\ndelivery procedure/i, 'the session must be told to act, not to wait');
+  assert.match(land, /deliver-pr\.md/, 'and where the acting is spelled out');
+  assert.match(land, /until you deliver it/i, 'nothing else lands an apply-stage PR — the delivery is this run\'s');
+  assert.ok(!/maintenance\.delivery/.test(land), 'the settings mechanics stay in deliver-pr.md, not re-spelled here');
 
   // The passive phrasing is the bug itself, not a stylistic preference: "let the PR land"
   // describes something no component does on an apply-stage terminal.

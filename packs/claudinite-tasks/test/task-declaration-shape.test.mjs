@@ -9,7 +9,8 @@ const goodTask = `export default {
   frequency: 'daily',
   precondition_signals: ['commits', 'prs'],
   agent_model: 'opus',
-  expected_outcome: 'merged-pr',
+  expected_outcome: 'pr',
+  automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
   precondition(signals, config) { return { run: false }; },
@@ -34,7 +35,7 @@ test('task-declaration-shape: flags illegal enum values', () => {
   const bad = goodTask
     .replace("frequency: 'daily'", "frequency: 'nightly'")
     .replace("agent_model: 'opus'", "agent_model: 'gpt'")
-    .replace("expected_outcome: 'merged-pr'", "expected_outcome: 'push'");
+    .replace("expected_outcome: 'pr'", "expected_outcome: 'push'");
   const whats = run({ [TASK]: bad }).map((f) => f.what).join(' | ');
   assert.match(whats, /"frequency" is "nightly", not a legal value/);
   assert.match(whats, /"agent_model" is "gpt", not a legal value/);
@@ -69,6 +70,41 @@ test('task-declaration-shape: the legacy `after` ordering field is an advisory r
   assert.equal(f[0].severity, 'advisory', 'never blocking — the runtime still honours it');
   assert.match(f[0].what, /legacy name "after"/);
   assert.match(f[0].fix, /rename "after" to "schedule_after"/);
+});
+
+// The outcome-ceiling rename boundary: a member's file still declaring the
+// one-word ceilings keeps validating (the runtime normalizes them), and earns
+// exactly one advisory naming the ceiling/policy pair to write instead.
+test('task-declaration-shape: the legacy outcome ceilings are an advisory rename', () => {
+  for (const [legacy, policy] of [['open-pr', 'nothing'], ['merged-pr', 'anything']]) {
+    const old = goodTask
+      .replace("expected_outcome: 'pr',\n  automerge: 'anything',", `expected_outcome: '${legacy}',`);
+    const f = run({ [TASK]: old });
+    assert.equal(f.length, 1, JSON.stringify(f));
+    assert.equal(f[0].severity, 'advisory', `${legacy} never blocks`);
+    assert.match(f[0].what, new RegExp(`legacy outcome ceiling "${legacy}"`));
+    assert.match(f[0].fix, new RegExp(`automerge: '${policy}'`));
+  }
+});
+
+test('task-declaration-shape: a pr task without automerge, and a none task with one, block', () => {
+  const missing = goodTask.replace("  automerge: 'anything',\n", '');
+  assert.match(run({ [TASK]: missing }).map((f) => f.what).join(' | '), /declares no "automerge"/);
+
+  const noneWithPolicy = goodTask
+    .replace("expected_outcome: 'pr'", "expected_outcome: 'none'")
+    .replace("agent_model: 'opus'", "agent_model: 'none'")
+    .replace("  agent_execution_timeout: 1800,\n", "  code_work: 'node w.mjs',\n  code_work_timeout: 60,\n");
+  assert.match(run({ [TASK]: noneWithPolicy }).map((f) => f.what).join(' | '), /a "none" task declares "automerge"/);
+});
+
+test('task-declaration-shape: a comment naming automerge is not a declaration of it', () => {
+  const commented = goodTask
+    .replace("expected_outcome: 'pr',\n  automerge: 'anything',",
+      "expected_outcome: 'none', // not automerge: material")
+    .replace("agent_model: 'opus'", "agent_model: 'none'")
+    .replace("  agent_execution_timeout: 1800,\n", "  code_work: 'node w.mjs',\n  code_work_timeout: 60,\n");
+  assert.deepEqual(run({ [TASK]: commented }), []);
 });
 
 test('task-declaration-shape: the canonical `schedule_after` is clean', () => {

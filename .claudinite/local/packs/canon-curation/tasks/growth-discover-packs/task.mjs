@@ -27,7 +27,8 @@ export default {
   // converges the item to triage naming what is missing.
   invocation_endpoint: 'fleet',
   agent_model: 'opus',                   // judging what is genuinely canon-worthy and authoring a pack is heavy judgment
-  expected_outcome: 'open-pr',           // a new canon pack every repo will read — owner-approved, never auto-merged
+  expected_outcome: 'pr',
+  automerge: 'nothing',              // a new canon pack every repo will read — owner-approved, never auto-merged
   agent_instructions: 'task.md',
   agent_execution_timeout: 3600,         // manifest N members' stacks + author a pack — a generous weekly bound, extreme protection
 

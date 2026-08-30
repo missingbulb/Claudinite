@@ -21,10 +21,10 @@ const member = (over = {}) => ({
 
 // --- growth-promote ----------------------------------------------------------
 
-test('growth-promote: declaration is daily/opus/open-pr over the fleet signal', () => {
+test('growth-promote: declaration is daily/opus/pr+nothing over the fleet signal', () => {
   assert.equal(promote.frequency, 'daily');
   assert.equal(promote.agent_model, 'opus');
-  assert.equal(promote.expected_outcome, 'open-pr'); // owner-gated, never auto-merged
+  assert.equal(promote.expected_outcome, 'pr'); // owner-gated: its policy authorizes nothing to auto-merge
   assert.deepEqual(promote.precondition_signals, ['fleet']);
   // Same as discover: reach is the endpoint the hand-off calls, and this task reads
   // every member's local packs.
@@ -66,11 +66,11 @@ test('growth-promote: skips when there is no fleet signal or the enumeration err
 // Not to be confused with its per-repo namesake in claudinite-growth, which
 // authors a repo's own LOCAL packs. This one is the central canon-gap sweep.
 
-test('growth-discover-packs: declaration is weekly/opus/open-pr, fleet-reaching over the fleet signal', () => {
+test('growth-discover-packs: declaration is weekly/opus/pr+nothing, fleet-reaching over the fleet signal', () => {
   assert.equal(discover.id, 'growth-discover-packs');
   assert.equal(discover.frequency, 'weekly');
   assert.equal(discover.agent_model, 'opus');
-  assert.equal(discover.expected_outcome, 'open-pr'); // a new canon pack is owner-reviewed, never auto-merged
+  assert.equal(discover.expected_outcome, 'pr'); // a new canon pack is owner-reviewed: its policy authorizes nothing to auto-merge
   // Reach is which endpoint the hand-off calls, and nothing else — this task reads
   // every member's tree, which an ordinary session in this repo does not.
   assert.equal(discover.invocation_endpoint, 'fleet');

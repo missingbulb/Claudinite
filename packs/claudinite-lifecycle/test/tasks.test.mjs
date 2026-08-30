@@ -31,7 +31,7 @@ test('update declaration: the 02:00 anchor, an apply stage only when needed, det
   // everything that reads the mount this converges (tasks-dispatch DESIGN §17.1).
   assert.equal(update.frequency, 'daily');
   assert.equal(update.agent_model, 'sonnet'); // the apply stage, requested only when a pack's rules moved
-  assert.equal(update.expected_outcome, 'merged-pr');
+  assert.equal(update.expected_outcome, 'pr');
   assert.deepEqual(update.precondition_signals, ['stamp', 'sharedMount']);
   assert.equal(update.code_work, 'node worker.mjs');
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the deterministic update worker must exist');

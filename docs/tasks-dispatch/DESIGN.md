@@ -1964,33 +1964,45 @@ that has happened. An unreadable blocker is never read as closed, so a failed re
 delays the request instead of releasing it, the convergence-not-prevention posture
 this design takes everywhere.
 
-**Landing is the body's `Automerge:` → `Merge: if-narrow`.** The authorization
+**Landing is the body's `Automerge:` → `Merge: <policy>`.** The authorization
 rides the machine block like `Model:` does, re-read and re-gated at every
 adoption so it describes the pending ask only and can never linger into a
 later one — and it is honored only when the issue **author** holds push
 access, the same gate and for the same reason as §16.7: landing without
 approval is exactly the parameter a drive-by body edit must not be able to
 grant. What the worker reads is the gated field, never the issue's prose
-(§16.6).
+(§16.6). The field's value is a **policy expression** the policy engine
+(`packs/claudinite-tasks/merge-policy.mjs`) evaluates — `anything`, a
+`a;b;reject:c` list of diff classes, or the original `if-narrow`, which
+resolves to the `narrow-diff` composite. The same engine is what a task's own
+`automerge` declaration compiles to, so a request's authorization and a
+scheduled task's ceiling are one vocabulary.
 
-The built-in task's ceiling therefore has to be `merged-pr`. A ceiling is a
-maximum, not an instruction: with no `Merge:` field the worker opens a pull request
-and parks at the approval lane, so an ordinary marked issue gets what §16 always
-gave it, and the authorized case is the only one that can land at all. The
-alternative — a second built-in task differing only in its ceiling — was rejected
-for the reason §16.7 rejected one task per model family: a copy of a task to avoid
-one guarded field is the worse trade.
+The built-in task's ceiling therefore has to be `automerge: 'anything'`. A
+ceiling is a maximum, not an instruction: with no `Merge:` field the worker opens
+a pull request and parks at the approval lane, so an ordinary marked issue gets
+what §16 always gave it, and the authorized case can land no more than the
+asker's own policy covers. The alternative — a second built-in task differing
+only in its ceiling — was rejected for the reason §16.7 rejected one task per
+model family: a copy of a task to avoid one guarded field is the worse trade.
 
-**The verdict is measured, not judged.** `tasks/implement-request/narrow-diff.mjs`
-classifies the run's own diff: documentation, test files and comment-only edits
-never count, and what remains must be code within a single directory. Anything
-wider parks and names the directories that made it wide. Deciding this in code
-rather than in the worker's prose is the point — a session judging whether its own
-change is small enough to merge is precisely the judgment that should not be the
-session's. Two consequences of that posture: comment stripping is C-family (it
-reuses the checks helper), so a file whose language the parser does not model
-counts as code, and the worker doc forbids re-shaping a change to fit the
-classifier — a wide change waiting for its asker is a correct outcome.
+**The verdict is measured, not judged.** The policy engine classifies the run's
+own diff against the named classes (documentation, tests, comment-only edits,
+Markdown line removals, additions, GENERATED files, code locality — plus any
+class a pack declares as `merge-rules.json` data), rejects winning over allows,
+unknown names authorizing nothing, and no granular policy able to cover a change
+to the policy sources themselves. Anything outside the policy parks and names
+the files that put it there. Deciding this in code rather than in the worker's
+prose is the point — a session judging whether its own change is small enough to
+merge is precisely the judgment that should not be the session's. Two
+consequences of that posture: comment stripping is C-family (it reuses the
+checks helper), so a file whose language the parser does not model counts as
+code, and the worker doc forbids re-shaping a change to fit the classifier — a
+change waiting for its asker is a correct outcome. A run that lands stamps its
+final commit with the `Claudinite-Automerge-Policy:` trailer, and the
+`automerge-policy-scope` work check re-measures the same verdict at the Stop
+hook and on the PR's CI, so an arm the measurement would refuse goes red before
+GitHub's queued auto-merge can fire.
 
 **The session side is a skill**, `basics/do-later`: which blocker to name, the
 model family read off the running session, and the one case that withholds the

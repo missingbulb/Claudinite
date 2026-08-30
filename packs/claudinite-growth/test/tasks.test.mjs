@@ -30,10 +30,10 @@ test('the pack contributes its tasks structurally, not as a pack.mjs slot', () =
 // WEEKLY, not daily: growth-extract now runs the prose-to-checks skill over its own
 // additions on every capture run, so fresh prose never waits for this task. What is
 // left is the standing backlog, which moves on a weekly clock.
-test('prose-to-checks-sweep: weekly/opus/open-pr, no signals', () => {
+test('prose-to-checks-sweep: weekly/opus/pr+nothing, no signals', () => {
   assert.equal(proseToChecks.frequency, 'weekly');
   assert.equal(proseToChecks.agent_model, 'opus');
-  assert.equal(proseToChecks.expected_outcome, 'open-pr'); // a check can break CI → reviewed, not auto-merged
+  assert.equal(proseToChecks.expected_outcome, 'pr'); // a check can break CI → its policy is review-only
   assert.deepEqual(proseToChecks.precondition_signals, []);
 });
 
@@ -54,13 +54,13 @@ test('prose-to-checks-sweep: an empty/invalid pack_paths falls back to the defau
 
 // --- rule-revalidation (re-probing environment claims, pack_paths config) ----
 
-test('rule-revalidation: weekly/opus/open-pr, no signals (the calendar is the whole trigger)', () => {
+test('rule-revalidation: weekly/opus/pr+nothing, no signals (the calendar is the whole trigger)', () => {
   assert.equal(revalidation.id, 'rule-revalidation');
   assert.equal(revalidation.frequency, 'weekly');
   assert.equal(revalidation.agent_model, 'opus');
   // It rewrites the rules sessions obey, on evidence a reviewer cannot re-derive
   // from the diff — reviewed, like its two weekly siblings.
-  assert.equal(revalidation.expected_outcome, 'open-pr');
+  assert.equal(revalidation.expected_outcome, 'pr');
   // Deliberately signal-less: the repo does NOT move when its claims expire, so a
   // signal arm would gate this task on exactly the wrong evidence.
   assert.deepEqual(revalidation.precondition_signals, []);
@@ -100,12 +100,12 @@ test('rule-revalidation: every run carries the read-only and unprobed rules as b
 // precondition has two independent arms and the Context has to say WHICH halves
 // are live — a run woken only by an aged log must not invent an activity window.
 
-test('growth-extract: daily/opus/merged-pr over the window signals alone', () => {
+test('growth-extract: daily/opus/pr+automerge over the window signals alone', () => {
   assert.equal(extract.frequency, 'daily');
   // The offset only ever implied the ordering; this is what enforces it.
   assert.deepEqual(extract.schedule_after, ['claudinite-lifecycle/update']);
   assert.equal(extract.agent_model, 'opus');
-  assert.equal(extract.expected_outcome, 'merged-pr'); // additive local-pack edits auto-merge after CI
+  assert.equal(extract.expected_outcome, 'pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
   // The logs signal left with the retention prune (logs-prune owns it now): this
   // task's only reason to run is activity, so a quiet night costs no opus dispatch.
   assert.deepEqual(extract.precondition_signals, ['commits', 'prs', 'issues']);
@@ -178,7 +178,7 @@ test('growth-extract: a quiet repo never fires it, however old its logs are', ()
 
 // --- growth-dedup (the pruning stage) ----------------------------------------
 
-test('growth-dedup: weekly/opus/merged-pr — the prune PR is delivered to land', () => {
+test('growth-dedup: weekly/opus/pr+automerge — the prune PR is delivered to land', () => {
   // Weekly, not daily: a member's mount moves most nights, so a daily anchor started
   // this opus dispatch (and its PR) nearly every night for prunes nobody is
   // waiting on. Both signals are window-scoped, so the week's movement is
@@ -187,7 +187,7 @@ test('growth-dedup: weekly/opus/merged-pr — the prune PR is delivered to land'
   assert.equal(dedup.agent_model, 'opus');
   // A ceiling, not a promise: a `review`-delivery member degrades this to
   // open-pr, so the human gate is member config's call rather than hardcoded.
-  assert.equal(dedup.expected_outcome, 'merged-pr');
+  assert.equal(dedup.expected_outcome, 'pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
   assert.deepEqual(dedup.precondition_signals, ['localPacks', 'sharedMount', 'commits']);
 });
 

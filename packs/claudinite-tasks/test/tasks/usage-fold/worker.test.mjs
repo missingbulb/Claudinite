@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseLogName, parseEntries, withMergeAttribute, MERGE_ATTR, USAGE_PATH,
+  parseLogName, parseEntries, USAGE_PATH,
   parseCommitLog, dayFieldsFrom, dayLadder,
 } from '../../../tasks/usage-fold/worker.mjs';
 import { parseLogFilename, logFilename } from '../../../../claudinite-growth/capture-log.mjs';
@@ -38,12 +38,6 @@ test('parseLogName takes the collision suffix and the issue-0 form, and rejects 
 test('parseEntries skips a partial trailing write instead of dropping the file', () => {
   const entries = parseEntries('{"type":"user"}\nnot json\n\n{"type":"assistant"}\n');
   assert.deepEqual(entries.map((e) => e.type), ['user', 'assistant']);
-});
-
-test('withMergeAttribute declares the GENERATED merge driver once, and only once', () => {
-  assert.equal(withMergeAttribute(null), `${MERGE_ATTR}\n`);
-  assert.equal(withMergeAttribute('*.png binary'), `*.png binary\n${MERGE_ATTR}\n`);
-  assert.equal(withMergeAttribute(`*.png binary\n${MERGE_ATTR}\n`), null, 'already declared — nothing to write');
 });
 
 test('the aggregate lives under the repo-owned local root, never inside the mount', () => {

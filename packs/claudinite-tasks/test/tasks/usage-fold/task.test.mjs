@@ -15,7 +15,7 @@ test('usage-fold: daily/agentless/merged-pr, on the two movement signals', () =>
   // across a three-day window, so only the newest rows' freshness moves.
   assert.equal(usageFold.frequency, 'daily');
   assert.equal(usageFold.agent_model, 'none');
-  assert.equal(usageFold.expected_outcome, 'merged-pr');
+  assert.equal(usageFold.expected_outcome, 'pr'); // its policy is proven against this pack's merge rules in merge-policy.test.mjs
   assert.deepEqual(usageFold.precondition_signals, ['commits', 'conversationLogs']);
   // An agentless task's whole work is its preprocessing — with none it does nothing.
   assert.equal(usageFold.code_work, 'node worker.mjs');
