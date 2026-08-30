@@ -344,7 +344,9 @@ closing or running anything.
   precondition is re-evaluated at that pickup — which is what makes the retry safe
   even when the failed run half-did its work. The four:
   - `task:status:needs-human-approval` — succeeded, and deliberately left an unmerged PR
-    for a person to merge or close. The only park that is not a fault.
+    for a person to merge or close. The only park that is not a fault. `--pr` names that
+    PR, and any park may name what would end it: the item then closes by itself when
+    the target resolves, `done` if it merged and `rejected` if it did not.
   - `task:status:needs-human-action` — something outside the code must change before this
     can run: a secret set, a scope granted, a routine rewired, an input supplied.
   - `task:status:needs-human-decision` — the run stopped mid-flight and the next step is a

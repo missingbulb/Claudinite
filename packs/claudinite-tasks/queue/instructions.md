@@ -139,6 +139,12 @@ instructions.
    how one broken convergence became fourteen stranded items in a member repo,
    one a night, each looking like a fresh incident.
 
+   **Pass `--pr` on any park a pull request or an issue would end**, not only on an
+   approval, where it is required. It stamps `Ends-when: #<n> closed` on the item, and
+   that is what makes the park end by itself: the janitor closes the item `done` when
+   the target merges and `rejected` when it is closed unmerged. Without it the park
+   stands until a person happens to read it.
+
    **A marked issue needs no write-back at all**: it is the item, so the approval
    park it wears *is* the in-review state and the failure park *is* the report (which
    is why `--pr` is still required on an approval — a park nobody can act on is not

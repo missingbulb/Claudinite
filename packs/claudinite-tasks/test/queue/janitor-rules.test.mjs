@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   staleReadyItems, deadAgentItems, stuckBlockedItems, statelessItems, periodForTasks,
   supersededItems, supersededComment, orphanedParkItems, orphanedParkComment,
+  endedParkItems, endedParkComment,
 } from '../../queue/janitor-rules.mjs';
 import { periodMs } from '../../queue/anchors.mjs';
 import { isParked } from '../../queue/work-item.mjs';
@@ -275,4 +276,43 @@ test('ClaudiniteCanary#115 — a live task named at its pre-rename path — is o
   assert.deepEqual(orphanedParkItems([canary115], {
     tasks: [{ pack: 'claudinite-growth', id: 'logs-prune', taskPath: '.claudinite/shared/packs/claudinite-growth/tasks/logs-prune/task.md' }],
   }).map((i) => i.number), [115]);
+});
+
+// --- rule G, the ended park (#1468) -------------------------------------------
+
+const parkedOn = (pr, kind = 'approval') => it({
+  labels: [`task:status:needs-human-${kind}`],
+  body: `p/t.md\n\nEnds-when: #${pr} closed\n\nExecute the Claudinite task above.\n`,
+});
+
+test('an ended park is claimed only once its target actually resolves', () => {
+  const open = parkedOn(133);
+  assert.deepEqual(endedParkItems([open], { resolutionOf: () => null }), [],
+    'an open pull request is the park doing its job');
+  assert.deepEqual(endedParkItems([open], { resolutionOf: () => 'merged' }).map((i) => i.number), [open.number]);
+  assert.deepEqual(endedParkItems([open], { resolutionOf: () => 'closed' }).map((i) => i.number), [open.number]);
+});
+
+test('every park kind may carry an end condition, and a live item may not', () => {
+  for (const kind of ['approval', 'action', 'decision', 'failure']) {
+    assert.equal(endedParkItems([parkedOn(1, kind)], { resolutionOf: () => 'merged' }).length, 1, kind);
+  }
+  const running = it({ labels: ['task:status:running-agent'], body: 'p/t.md\n\nEnds-when: #1 closed\n' });
+  assert.deepEqual(endedParkItems([running], { resolutionOf: () => 'merged' }), [],
+    'an item still with an agent has not ended anything');
+});
+
+// A condition the janitor cannot evaluate must read as "no end condition" — never as
+// one that is met, which would close a park on a sentence nobody's code understood.
+test('an unrecognised end condition reads as absent', () => {
+  const odd = it({ labels: ['task:status:needs-human-approval'], body: 'p/t.md\n\nEnds-when: #133 merged\n' });
+  const noField = it({ labels: ['task:status:needs-human-approval'] });
+  assert.deepEqual(endedParkItems([odd, noField], { resolutionOf: () => 'merged' }), []);
+});
+
+test('the ended-park comment distinguishes what landed from what was abandoned', () => {
+  assert.match(endedParkComment(133, 'merged'), /#133 merged/);
+  assert.match(endedParkComment(133, 'merged'), /task:status:done/);
+  assert.match(endedParkComment(133, 'closed'), /closed without merging/);
+  assert.match(endedParkComment(133, 'closed'), /task:status:rejected/);
 });

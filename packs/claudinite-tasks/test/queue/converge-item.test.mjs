@@ -8,8 +8,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  OUTCOMES, convergeItem, parseArgs, refusal, recordLine, convergeComment,
+  OUTCOMES, convergeItem, parseArgs, refusal, recordLine, convergeComment, sessionScript,
 } from '../../queue/converge-item.mjs';
+import { parseWorkItemBody, humanTextOf } from '../../queue/work-item.mjs';
 import { isReleasable } from '../../queue/readiness.mjs';
 import { LEGACY_BUILT_IN_TASK_PATH } from '../legacy-protocol.mjs';
 
@@ -135,6 +136,52 @@ test('a park leaves the item open wearing the one park label', async () => {
   assert.equal(issue.state, 'open');
   // ONE label since the write-side flip: the park IS the status (#1119).
   assert.deepEqual(issue.labels.sort(), ['task:status:needs-human-failure']);
+});
+
+// --- the park's end condition (#1468) ------------------------------------------
+
+// The converge comment already tells a person to merge or close the pull request.
+// This is the same sentence where the janitor can read it, so the park ends when
+// that happens instead of waiting for someone to notice it already did.
+test('a park that names a pull request stamps its end condition on the item', async () => {
+  const repo = fakeRepo([item()]);
+  await run(repo, { issue: 7, outcome: 'approval', summary: 'opened it', pr: 9 });
+  assert.equal(parseWorkItemBody(repo.find(7).body).endsWhen, 9);
+  assert.equal(repo.find(7).body.split('\n')[0], 'packs/p/tasks/a/task.md');
+});
+
+// Generic, not approval-only: an action park waiting on a setup issue ends the
+// same way, and one rule reads the field whatever kind wrote it.
+test('any park may name what would end it, and one that names nothing stamps nothing', async () => {
+  const repo = fakeRepo([item()]);
+  await run(repo, { issue: 7, outcome: 'action', summary: 'need the token', pr: 55 });
+  assert.equal(parseWorkItemBody(repo.find(7).body).endsWhen, 55);
+
+  const bare = fakeRepo([item()]);
+  await run(bare, { issue: 7, outcome: 'failure', summary: 'it broke' });
+  assert.equal(parseWorkItemBody(bare.find(7).body).endsWhen, null);
+});
+
+// A marked issue's prose is the person's; the field belongs in the machine block.
+test('the end condition lands in a marked issue\'s machine block, not its prose', async () => {
+  const marked = item({
+    title: 'Please do the thing',
+    body: 'please do the thing\n\n<!-- claudinite-item -->\npacks/p/tasks/a/task.md\n<!-- /claudinite-item -->\n',
+  });
+  const repo = fakeRepo([marked]);
+  await run(repo, { issue: 7, outcome: 'approval', summary: 'opened it', pr: 9 });
+  const body = repo.find(7).body;
+  assert.equal(parseWorkItemBody(body).endsWhen, 9);
+  assert.equal(humanTextOf(body), 'please do the thing', 'the person\'s prose is untouched');
+});
+
+// The session executor has no granular write: its body edit must ride the one
+// `issue_write` the park's labels already need, not a second call it never makes.
+test('the session script carries the end condition in its own label write', () => {
+  const script = sessionScript(item(), { issue: 7, outcome: 'approval', summary: 'opened it', pr: 9 }, 'o/r');
+  assert.equal((script.match(/`issue_write`/g) ?? []).length, 1);
+  assert.match(script, /Ends-when: #9 closed/);
+  assert.match(script, /labels `\["task:status:needs-human-approval"\]`/);
 });
 
 // --- the request write-back ----------------------------------------------------

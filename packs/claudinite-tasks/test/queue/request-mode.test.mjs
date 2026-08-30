@@ -67,7 +67,7 @@ test('S44 — the marked issue BECOMES the item, and any status holds the mark',
   assert.match(adopt.body, /^Do it\.\n/);
   assert.ok(machineBlockOf(adopt.body), 'the machine block is appended, never the whole body');
   assert.deepEqual(parseWorkItemBody(adopt.body), {
-    taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: null, merge: null,
+    taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: null, merge: null, endsWhen: null,
   });
 
   // The item is structurally ad-hoc — a `manual` task, and a title that names no
@@ -434,7 +434,7 @@ test('the precondition is handed THIS occurrence\'s own facts, not just the sign
   };
   await drive(repo, req({ authorPermission: 'admin' }), { tasks: [spy] });
 
-  assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet', merge: null }]);
+  assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet', merge: null, endsWhen: null }]);
 });
 
 test('the request task is the one task allowed to read its item\'s model', () => {
