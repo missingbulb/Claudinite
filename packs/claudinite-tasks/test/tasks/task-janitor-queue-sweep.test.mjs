@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sweepQueue } from '../../tasks/task-janitor/queue-sweep.mjs';
 import {
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, HANDOFF_MARKER,
+  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, HANDOFF_MARKER, TASK_DONE, TASK_OBSOLETE,
 } from '../../queue/work-item.mjs';
 
 // A fake GitHub that answers the two reads the sweep makes and records the writes.
@@ -12,7 +12,11 @@ import {
 // so a test can say "this item looks different by the time the sweep writes".
 function janitorGh(issues, comments = {}, now = {}) {
   const added = [];
+  const patched = [];
   const gh = async (path, { method = 'GET', body } = {}) => {
+    if (method === 'PATCH' && /\/issues\/\d+$/.test(path)) {
+      patched.push({ issue: Number(path.match(/issues\/(\d+)/)[1]), ...body });
+    }
     if (method === 'GET' && path.startsWith(`/repos/o/r/issues?state=open`)) {
       return { status: 200, json: path.includes('page=1') ? issues : [] };
     }
@@ -28,7 +32,7 @@ function janitorGh(issues, comments = {}, now = {}) {
     }
     return { status: method === 'POST' ? 201 : 200, json: {} };
   };
-  return { gh, added };
+  return { gh, added, patched };
 }
 
 const at = (iso) => iso;
@@ -135,4 +139,52 @@ test('a park naming its task at a path it has moved off closes obsolete, naming 
   assert.deepEqual(out.orphaned, [31]);
   assert.ok(posted.some((b) => b.includes('packs/claudinite-growth/tasks/a/task.md')), posted.join('|'));
   assert.deepEqual(labelsOn(added, 31), ['task:status:rejected']);
+});
+
+// --- rule G, the ended park (#1468) -------------------------------------------
+
+const parked = (number, target, kind = 'approval') => workItem(number, [`task:status:needs-human-${kind}`],
+  { body: `packs/p/tasks/a/task.md\n\nEnds-when: #${target} closed\n` });
+
+const pr = (number, { merged = false, state = 'closed' } = {}) => ({
+  number, state, pull_request: merged ? { merged_at: '2026-07-05T00:00:00Z' } : {},
+});
+
+test('a park whose pull request MERGED closes done — the work landed', async () => {
+  const { gh, added, patched } = janitorGh([parked(31, 133)], {}, { 133: pr(133, { merged: true }) });
+  const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
+  assert.deepEqual(out.ended, [31]);
+  assert.deepEqual(labelsOn(added, 31), [TASK_DONE]);
+  assert.deepEqual(patched.filter((p) => p.issue === 31), [{ issue: 31, state: 'closed', state_reason: 'completed' }]);
+});
+
+test('a park whose pull request was closed unmerged closes rejected — nothing landed', async () => {
+  const { gh, added, patched } = janitorGh([parked(32, 134)], {}, { 134: pr(134) });
+  const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
+  assert.deepEqual(out.ended, [32]);
+  assert.deepEqual(labelsOn(added, 32), [TASK_OBSOLETE]);
+  assert.deepEqual(patched.filter((p) => p.issue === 32), [{ issue: 32, state: 'closed', state_reason: 'not_planned' }]);
+});
+
+test('a park whose pull request is still open is the machinery working', async () => {
+  const { gh, added, patched } = janitorGh([parked(33, 135)], {}, { 135: pr(135, { state: 'open' }) });
+  const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
+  assert.deepEqual(out.ended, []);
+  assert.deepEqual(labelsOn(added, 33), []);
+  assert.deepEqual(patched, []);
+});
+
+// A MARKED ISSUE IS NOT THE MACHINERY'S TO CLOSE (DESIGN §16.5): the terminal status
+// stands on the open issue, and whether the person's own issue is finished is theirs.
+test('an ended park on a marked issue takes the status and leaves the issue open', async () => {
+  const marked = {
+    ...workItem(34, ['task:origin:ad-hoc', 'task:status:needs-human-approval']),
+    title: 'Please do the thing',
+    body: 'please do the thing\n\n<!-- claudinite-item -->\npacks/p/tasks/a/task.md\n\nEnds-when: #136 closed\n<!-- /claudinite-item -->\n',
+  };
+  const { gh, added, patched } = janitorGh([marked], {}, { 136: pr(136, { merged: true }) });
+  const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
+  assert.deepEqual(out.ended, [34]);
+  assert.deepEqual(labelsOn(added, 34), [TASK_DONE]);
+  assert.deepEqual(patched, [], 'the person\'s own issue is not closed by the janitor');
 });

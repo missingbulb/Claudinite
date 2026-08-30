@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   WORK_PREFIX, workItemTitle, parseWorkItemTitle, isWorkItemTitle,
-  workItemBody, parseWorkItemBody, withNotBefore, withSection,
+  workItemBody, parseWorkItemBody, withNotBefore, withEndsWhen, withSection,
   QUEUE_LABELS, STATE_LABELS, labelNames, hasLabel,
   DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
   TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
@@ -43,6 +43,7 @@ test('the body carries the task path first and the two scheduling fields', () =>
     request: null,
     model: null,
     merge: null,
+    endsWhen: null,
   });
   assert.match(body, /### Context\n- only the mount\n- nothing else/);
 });
@@ -51,6 +52,7 @@ test('absence is meaningful: no fields parse to null and an empty list', () => {
   const body = workItemBody({ taskPath: 'packs/x/tasks/y/task.md' });
   assert.deepEqual(parseWorkItemBody(body), {
     taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [], request: null, model: null, merge: null,
+    endsWhen: null,
   });
 });
 
@@ -67,6 +69,32 @@ test('withNotBefore stamps in place, inserts under the task path, and clears', (
   assert.equal((restamped.match(/^Not-before:/gm) ?? []).length, 1);
 
   assert.equal(parseWorkItemBody(withNotBefore(restamped, null)).notBefore, null);
+});
+
+// A park's end condition is stamped onto an item that already ran, so everything
+// its run wrote must survive the stamp (#1468).
+test('withEndsWhen stamps a park\'s end condition once, under the task path', () => {
+  const ran = withSection(workItemBody({ taskPath: 'p/t/task.md', context: ['scope'] }),
+    DELIVERED_HEADING, ['PR: #133 (open)']);
+  const stamped = withEndsWhen(ran, 133);
+  assert.equal(parseWorkItemBody(stamped).endsWhen, 133);
+  assert.match(stamped, /### Context\n- scope/);
+  assert.match(stamped, /PR: #133 \(open\)/);
+  assert.equal(stamped.split('\n')[0], 'p/t/task.md', 'the task path stays the first line');
+
+  // A converge that runs twice must leave one end, not two.
+  const again = withEndsWhen(stamped, 140);
+  assert.equal(parseWorkItemBody(again).endsWhen, 140);
+  assert.equal((again.match(/^Ends-when:/gm) ?? []).length, 1);
+});
+
+// The fencing every behaviour-defining field here gets: what the machinery cannot
+// evaluate reads as absent, never as satisfied.
+test('parseWorkItemBody fences the end condition to the one grammar it knows', () => {
+  assert.equal(parseWorkItemBody('p/t.md\n\nEnds-when: #133 closed\n').endsWhen, 133);
+  assert.equal(parseWorkItemBody('p/t.md\n\nEnds-when: #133 merged\n').endsWhen, null);
+  assert.equal(parseWorkItemBody('p/t.md\n\nEnds-when: whenever Bob says so\n').endsWhen, null);
+  assert.equal(parseWorkItemBody('p/t.md\n').endsWhen, null);
 });
 
 test('withSection appends code_work\'s delivered artifacts without disturbing the body', () => {

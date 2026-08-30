@@ -153,6 +153,7 @@ first line is the task path, validated in code before anything trusts it):
 
 Not-before: 2026-08-14T04:00Z            # optional — see §9
 Blocked-by: #812, #813                   # optional — see §9
+Ends-when: #133 closed                   # optional — a park's end condition, §11
 
 Execute the Claudinite task above.
 The Context section below is binding scope — do not re-decide it.
@@ -1056,6 +1057,7 @@ enumerates executors, which is why adding one requires telling no one.
 | agent session died mid-run | janitor: stale `agent-running` → `needs-human` after ~3h | same, on `task:status:running-agent` (a hand-off comment names the session, so the janitor can say *which* session died) — the park is a `needs-human-*` status |
 | CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: a refused call parks with the error at once; an unanswered call leaves the item with the agent and the agent leash settles it — one call per item, never retried (§6.6) |
 | item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing; the stale item converges `task:status:needs-human-action` — the lane is not being drained and the fix is outside the item — and leaves the queue |
+| a park's question is answered outside the queue | n/a (an approval park held an open PR forever, and rule E excludes `approval` because a later clean run does not answer it) | **`Ends-when: #<n> closed`**, stamped by the converge on any park given a `--pr`. The janitor reads the target's resolution: merged → the work landed, so the item closes `task:status:done`; closed unmerged → `task:status:rejected`. A condition it cannot evaluate reads as absent, never as met |
 | dependency never resolves | n/a | **the stale-ready rule cannot see it** — a blocked item is never ready (F14, caught by the simulator against S18's claim). The janitor gains a third rule: a blocked item whose blockers have not resolved for ~2 days gets an escalation *comment* — labels untouched, so the item still proceeds by itself the moment its blockers resolve; a human who decides it is dead closes it by hand |
 
 The janitor remains an ordinary daily task and shrinks twice over: re-arm and
