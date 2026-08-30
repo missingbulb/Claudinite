@@ -12,6 +12,10 @@
 // that carries its own argument, and an unknown name FAILS CLOSED: a policy this
 // code cannot fully resolve authorizes nothing.
 //
+// A LIST IS A UNION, `&&` IS THE INTERSECTION. Listing two terms widens — each
+// changed file need only be covered by one of them — so the way to say "docs,
+// but only under this folder" is one `&&` term, never two list entries.
+//
 // POLICY SEMANTICS, in evaluation order:
 //   - `'nothing'`  — never mergeable. `'anything'` — mergeable (the repo's own
 //     delivery settings still apply downstream, land-pr.mjs).
@@ -225,6 +229,21 @@ export function underRule(term) {
   return { name: term, appliesTo: (e) => e.file.startsWith(prefix) };
 }
 
+// --- the `&&` intersection ----------------------------------------------------
+
+// A policy list is a UNION: adding a term widens what may land. `&&` is the one
+// narrowing operator — `under:product-wiki&&doc-changes` covers a file only when
+// every part covers it, so it reads as "docs, and only under that folder".
+//
+// Whitespace around it is accepted wherever a human writes one (an issue's
+// `Automerge:` line, a task declaration) and canonicalized away by
+// `policyExpression`, so what rides the commit trailer stays one whitespace-free
+// token. `&` is not a legal character in a rule name or an `under:` path, so the
+// operator can never be read as part of a term.
+export const CONJUNCTION = '&&';
+
+const conjunctionParts = (term) => term.split(CONJUNCTION).map((p) => p.trim());
+
 // --- pack-declared rules (merge-rules.json) -----------------------------------
 
 export const MERGE_RULES_FILE = 'merge-rules.json';
@@ -325,7 +344,7 @@ export function declaredMergeRules(packs, config) {
 
 // --- policy parsing -----------------------------------------------------------
 
-const TERM_RE = /^(reject:)?(under:\S+|[a-z0-9]+(-[a-z0-9]+)*)$/;
+const TERM_NAME_RE = /^(under:\S+|[a-z0-9]+(-[a-z0-9]+)*)$/;
 
 // A policy, normalized from any surface it rides — the declaration's string or
 // array, the item's `Merge:` field, the commit trailer's `a;b;reject:c` — into
@@ -347,21 +366,34 @@ export function normalizePolicy(raw) {
   const allow = [];
   const reject = [];
   for (const term of terms) {
-    if (!TERM_RE.test(term)) return { kind: 'invalid', reason: `"${term}" is not a policy term (a kebab-case rule name or under:<dir>, optionally reject:-prefixed)` };
-    const bare = term.startsWith('reject:') ? term.slice('reject:'.length) : term;
-    if (bare.startsWith(UNDER_PREFIX) && !underRule(bare)) {
-      return { kind: 'invalid', reason: `"${term}" names no usable repo-relative directory — spell it under:packs/some-pack` };
+    const isReject = term.startsWith('reject:');
+    const parts = conjunctionParts(isReject ? term.slice('reject:'.length) : term);
+    for (const part of parts) {
+      if (!TERM_NAME_RE.test(part)) {
+        return { kind: 'invalid', reason: `"${term}" is not a policy term (rule names or under:<dir>, joined with && and optionally reject:-prefixed)` };
+      }
+      if (part.startsWith(UNDER_PREFIX) && !underRule(part)) {
+        return { kind: 'invalid', reason: `"${part}" names no usable repo-relative directory — spell it under:packs/some-pack` };
+      }
     }
-    if (term.startsWith('reject:')) {
-      const name = term.slice('reject:'.length);
+    // A composite is itself a union, so intersecting one is ambiguous, and the
+    // whole-policy words mean nothing narrowed: both are authoring errors.
+    if (parts.length > 1) {
+      const notIntersectable = parts.find((p) => COMPOSITE_POLICIES.has(p) || p === POLICY_ANYTHING || p === POLICY_NOTHING);
+      if (notIntersectable) {
+        return { kind: 'invalid', reason: `"${notIntersectable}" cannot sit in an && term — intersect specific rules` };
+      }
+    }
+    const name = parts.join(CONJUNCTION);
+    if (isReject) {
       if (COMPOSITE_POLICIES.has(name)) return { kind: 'invalid', reason: `"${term}" rejects a composite — name the specific rules to reject` };
       reject.push(name);
-    } else if (term === POLICY_ANYTHING) {
-      allow.push(term);
-    } else if (term === POLICY_NOTHING) {
+    } else if (name === POLICY_ANYTHING) {
+      allow.push(name);
+    } else if (name === POLICY_NOTHING) {
       return { kind: 'invalid', reason: `"nothing" cannot sit in a rule list — it is a whole policy of its own` };
     } else {
-      allow.push(...(COMPOSITE_POLICIES.get(term) ?? [term]));
+      allow.push(...(COMPOSITE_POLICIES.get(name) ?? [name]));
     }
   }
   if (!allow.length) {
@@ -371,9 +403,13 @@ export function normalizePolicy(raw) {
 }
 
 // The string form of a declared policy — what rides the commit trailer and the
-// worker's CLI invocation. Inverse of normalizePolicy for every legal value.
+// worker's CLI invocation. Inverse of normalizePolicy for every legal value, and
+// the one place whitespace around `&&` is collapsed, which is what keeps the
+// stamped trailer a single whitespace-free token.
 export const policyExpression = (policy) =>
-  (Array.isArray(policy) ? policy.map((t) => String(t).trim()).join(';') : String(policy ?? POLICY_NOTHING).trim());
+  (Array.isArray(policy) ? policy : String(policy ?? POLICY_NOTHING).split(';'))
+    .map((t) => conjunctionParts(String(t).trim()).join(CONJUNCTION))
+    .join(';');
 
 // --- the verdict --------------------------------------------------------------
 
@@ -416,9 +452,23 @@ export function policyVerdict({ policy, entries, declaredRules = new Map(), rule
     return refuse([{ file: null, what: 'this branch changes nothing against the base — there is nothing to merge' }]);
   }
 
-  const resolve = (name) => (name.startsWith(UNDER_PREFIX)
+  const resolveOne = (name) => (name.startsWith(UNDER_PREFIX)
     ? underRule(name)
     : BUILTIN_MERGE_RULES.get(name) ?? declaredRules.get(name) ?? null);
+  // An `&&` term is one rule that every part must agree on — for coverage and
+  // for the whole-diff constraints alike. It deliberately carries no
+  // `coversMountPolicySources`: that grant belongs to the declared rule that was
+  // committed with it, never to an expression composed around it.
+  const resolve = (name) => {
+    if (!name.includes(CONJUNCTION)) return resolveOne(name);
+    const parts = name.split(CONJUNCTION).map(resolveOne);
+    if (parts.some((r) => !r)) return null;
+    return {
+      name,
+      appliesTo: (e) => parts.every((r) => r.appliesTo(e)),
+      constraint: (covered) => parts.map((r) => r.constraint?.(covered) ?? null).find(Boolean) ?? null,
+    };
+  };
   const unknown = [...norm.allow, ...norm.reject].filter((n) => n !== POLICY_ANYTHING && !resolve(n));
   if (unknown.length) {
     const errs = ruleErrors.length ? ` (rule declarations also failed to load: ${ruleErrors.join('; ')})` : '';

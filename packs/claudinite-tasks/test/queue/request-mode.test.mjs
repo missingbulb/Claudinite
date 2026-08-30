@@ -533,6 +533,12 @@ test('the Merge field is fenced by policy shape', () => {
   assert.equal(at('no-such-rule'), 'no-such-rule');
 });
 
+test('the Merge fence canonicalizes an && term, so the body it writes is whitespace-free', () => {
+  const at = (value) => parseWorkItemBody(`${TASK_PATH}\n\nRequest: #500\nMerge: ${value}\n`).merge;
+  assert.equal(at('under:product-wiki&&doc-changes'), 'under:product-wiki&&doc-changes');
+  assert.equal(at('reject:under:docs/private'), null, 'a rejects-only list still allows nothing');
+});
+
 // The drift guard for work-item's inline policy fence: that module is
 // deliberately pure and cannot import the policy engine, so this runs the value
 // matrix through both sides — everything the fence keeps must be a policy the
@@ -543,7 +549,10 @@ test('the Merge fence and normalizePolicy agree on what is a policy expression',
   const at = (value) => parseWorkItemBody(`${TASK_PATH}\n\nRequest: #500\nMerge: ${value}\n`).merge;
   const matrix = ['anything', 'nothing', 'if-narrow', 'yes', 'true', 'narrow-diff',
     'doc-changes;readme-changes', 'anything;reject:js-code-changes', 'reject:js-code-changes',
-    'no-such-rule', 'Bad_Term', 'a;;b'];
+    'no-such-rule', 'Bad_Term', 'a;;b',
+    'under:product-wiki', 'under:.claudinite/local/packs && doc-changes',
+    'under:product-wiki&&doc-changes;reject:javascript-changes',
+    'under:', 'under:../elsewhere', 'narrow-diff && doc-changes', 'doc-changes &&'];
   for (const value of matrix) {
     const kept = at(value);
     const kind = normalizePolicy(kept ?? value).kind;

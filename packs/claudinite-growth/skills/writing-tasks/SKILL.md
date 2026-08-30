@@ -88,7 +88,10 @@ than by replaying a ledger.
   **Compose the built-in classes first** — they are meant to cover most tasks with
   no configuration. Where the boundary is a *folder*, name it inline as
   `under:<dir>`: it covers any change of any kind inside that directory and
-  nothing outside it, so a run that strays parks. A pack declares its own class
+  nothing outside it, so a run that strays parks. **A list is a union — adding a
+  term widens.** To narrow, intersect within one term with `&&`
+  (`under:product-wiki && doc-changes` is "docs, and only under that folder").
+  A pack declares its own class
   (a `merge-rules.json` beside its `pack.mjs`) only when a task knows a finer
   boundary than a class or a folder can state. An agentic
   task (`agent_model !==

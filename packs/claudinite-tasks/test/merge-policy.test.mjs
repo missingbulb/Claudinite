@@ -458,3 +458,64 @@ test('an under: term survives the round trip through a policy expression', () =>
   assert.match(`${AUTOMERGE_TRAILER_RE.source}`, /\\S/, 'the trailer carries a whitespace-free expression');
   assert.equal(AUTOMERGE_TRAILER_RE.exec(`Claudinite-Automerge-Policy: ${expression}\n`)?.[1], expression);
 });
+
+// --- the `&&` intersection ----------------------------------------------------
+
+test('&& intersects: a list widens, one && term narrows', () => {
+  const entries = [edited('product-wiki/page.md', 'a\n', 'b\n'), edited('README.md', 'a\n', 'b\n')];
+  const union = policyVerdict({ policy: ['under:product-wiki', 'doc-changes'], entries });
+  assert.equal(union.mergeable, true, 'listing both terms covers the root README too');
+
+  const intersection = policyVerdict({ policy: ['under:product-wiki && doc-changes'], entries });
+  assert.equal(intersection.mergeable, false);
+  assert.match(intersection.why, /README\.md/);
+});
+
+test('&& requires every part: a non-doc inside the folder, and a doc outside it, both fail', () => {
+  const at = (file) => policyVerdict({
+    policy: ['under:product-wiki && doc-changes'],
+    entries: [edited(file, 'a\n', 'b\n')],
+  }).mergeable;
+  assert.equal(at('product-wiki/page.md'), true);
+  assert.equal(at('product-wiki/tool.mjs'), false, 'inside the folder but not a doc');
+  assert.equal(at('docs/page.md'), false, 'a doc, but outside the folder');
+});
+
+test('&& carries every part\'s whole-diff constraint', () => {
+  const at = (files) => policyVerdict({
+    policy: ['under:packs && single-folder-code-changes'],
+    entries: files.map((f) => edited(f, 'a\n', 'b\n')),
+  });
+  assert.equal(at(['packs/one/a.mjs', 'packs/one/b.mjs']).mergeable, true);
+  const spread = at(['packs/one/a.mjs', 'packs/two/b.mjs']);
+  assert.equal(spread.mergeable, false);
+  assert.match(spread.why, /code changed in 2 directories/);
+});
+
+test('&& works under a reject term, and an unresolvable part poisons the whole term', () => {
+  const rejected = policyVerdict({
+    policy: ['doc-changes', 'reject:under:docs/private && markdown-trims'],
+    entries: [edited('docs/private/notes.md', 'a\nb\n', 'a\n')],
+  });
+  assert.equal(rejected.mergeable, false);
+
+  const unresolvable = policyVerdict({
+    policy: ['under:product-wiki && no-such-rule'],
+    entries: [edited('product-wiki/page.md', 'a\n', 'b\n')],
+  });
+  assert.equal(unresolvable.mergeable, false);
+  assert.match(unresolvable.why, /unresolved rule name/);
+});
+
+test('a composite or a whole-policy word inside an && term is an authoring error', () => {
+  for (const bad of ['narrow-diff && doc-changes', 'anything && doc-changes', 'doc-changes && nothing', 'doc-changes &&']) {
+    assert.equal(normalizePolicy([bad]).kind, 'invalid', bad);
+  }
+});
+
+test('whitespace around && is canonicalized away, so the trailer stays one token', () => {
+  const expression = policyExpression(['under:product-wiki && doc-changes', 'reject:javascript-changes']);
+  assert.equal(expression, 'under:product-wiki&&doc-changes;reject:javascript-changes');
+  assert.equal(AUTOMERGE_TRAILER_RE.exec(`Claudinite-Automerge-Policy: ${expression}\n`)?.[1], expression);
+  assert.deepEqual(normalizePolicy('under:product-wiki  &&  doc-changes'), normalizePolicy(['under:product-wiki&&doc-changes']));
+});

@@ -28,11 +28,12 @@ export default {
   precondition_signals: ['commits', 'prs'],
   agent_model: 'opus',                   // open-web research + curation is the heaviest judgment in the task set
   expected_outcome: 'pr',
-  // Scoped to the tree the round is allowed to grow: a change anywhere else in
-  // the repo is covered by no allow term, so the whole round parks for review.
-  // On a member whose mount predates the `under:` scope the policy reads as
-  // invalid, which is the same park — never a wider merge.
-  automerge: [`under:${WIKI_ROOT}`],
+  // Markdown, and only inside the tree the round is allowed to grow: `&&` is the
+  // intersection, so a doc elsewhere in the repo and a non-doc file inside the
+  // wiki both park the round for review. On a member whose mount predates this
+  // vocabulary the policy reads as invalid, which is the same park — never a
+  // wider merge.
+  automerge: [`under:${WIKI_ROOT} && doc-changes`],
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,            // open-web research is the least predictable of the tasks — very generous
 
