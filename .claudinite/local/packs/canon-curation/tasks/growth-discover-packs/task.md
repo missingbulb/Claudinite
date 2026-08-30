@@ -2,7 +2,7 @@
 
 One weekly pass over **every member**: read what the fleet is actually built on, subtract what the shared canon already homes, and open a PR **for the owner to approve** authoring the pack that is missing. Declared only by Claudinite, so it runs **once, centrally**, never per project.
 
-This is the only thing that notices a technology in use across the fleet with **no canon pack**. Its per-repo namesake in [claudinite-growth](../../../../../../packs/claudinite-growth/tasks/growth-discover-packs/task.md) is the other side of the same line: that one authors a repo's **own local** packs and is barred from re-creating what a canon pack homes. It cannot close a canon gap; you can, and only you.
+This is the only thing that notices a technology in use across the fleet with **no canon pack** — and the only stage anywhere that authors one. A member never mints a pack of its own: its local packs are what adoption seeded, and [growth-extract](../../../../../../packs/claudinite-growth/tasks/growth-extract/task.md) writes rules into those. So a gap the canon does not home is closed here or nowhere.
 
 **Why central.** One run sees every member, so **first-sight dedup is free**: the third member using a technology is recognised as the same gap as the first, in the same pass, with no cross-run state and no chance of three repos each proposing the same pack.
 
@@ -20,9 +20,17 @@ A new canon pack is read by every repo that declares it, so this run opens a PR 
 
 ### 1. Manifest each member's stack
 
-For each member named in Context, catalogue what it is built on, exactly as the per-repo task's [manifest step](../../../../../../packs/claudinite-growth/tasks/growth-discover-packs/task.md) specifies — the same three axes, the same per-item fields, the same **never infer from "projects like this usually…"** rule, the same comprehensive-over-concise bias. That step owns the method; do not re-derive or re-state it here. The only adaptation: you read the member over the API rather than a working checkout, and you keep one manifest **per member**, tagged with the repo it came from.
+For each member named in Context, catalogue what it is built on and how it ships — grounded in that repo's files (dependency/build manifests, lockfiles, toolchain/config, CI and release workflows, packaging/signing scripts, source structure, docs), citing the concrete evidence. Keep one manifest **per member**, tagged with the repo it came from. Do **not** yet consult the canon shelf or decide anything about packs — this step only observes.
 
-Do not consult the canon shelf yet, and decide nothing about packs — this step only observes.
+**Never infer from "projects like this usually…"; if the member's own files don't show it, it is not in that member's manifest.** If something is present but appears vestigial or aspirational (declared but unused), include it and say so. Be **comprehensive over concise**: a later step filters and decides, so a true item you omit is lost, while an over-included one is cheaply dropped. When unsure whether something rises to an entry, include it with the `?` flag.
+
+Catalogue across **three axes**. Put each item under the single axis that fits best; when it genuinely spans two, place it under the primary and cross-note the other.
+
+- **Technologies** — languages and their versions, runtimes, frameworks, build systems, and the major libraries that shape how you write and build there (the load-bearing ones, not every transitive dependency).
+- **External services / APIs** the member integrates with.
+- **Deployment / distribution mechanisms** — how it ships and to where.
+
+For **each** item report: **name**; **axis**; **evidence** (the file(s), and what they show); **what it is in that member** (one line); **prominence** — one of `core` (the project is built on it), `supporting` (used but peripheral), `vestigial` (present but apparently unused); and a **`?` flag** if you are uncertain the item is real or correctly characterised. Prominence is a factual read of how central the item is *in that member* — **not** a judgment about whether it deserves any downstream treatment. Output each member's manifest as Markdown grouped under the three axis headings, one bullet per item with the fields labelled.
 
 ### 2. Fold the members into one fleet view
 
@@ -34,16 +42,16 @@ Drop anything no member uses at `core` or `supporting` prominence — a technolo
 
 Hold the fleet view against the **canon shelf**. A candidate is a technology (or a domain the fleet shares) that:
 
-- **no canon pack homes** — and, per the per-repo task's rule, **a stub pack counts as homed**: if `packs/` already has any pack owning it, the gap is closed. The action for a member using a homed technology without declaring its pack is to note that ("member X should declare pack Y"), never to author a second pack; **and**
+- **no canon pack homes** — and **a stub pack counts as homed**: if `packs/` already has any pack owning it, the gap is closed. The action for a member using a homed technology without declaring its pack is to note that ("member X should declare pack Y"), never to author a second pack; **and**
 - carries **real, portable working knowledge** the members actually demonstrate — a build/config gotcha, a toolchain rule, a procedure that recurs across them. Judge worthiness by the bar [item-routing.md](../../item-routing.md) owns; don't restate its gates.
 
-Prefer a candidate **more than one member** uses — that is the evidence a pack is portable rather than one repo's local business. A single-member technology can still qualify when the knowledge is plainly general, but it is the weaker case, and the per-repo task already covers the local-pack answer.
+Prefer a candidate **more than one member** uses — that is the evidence a pack is portable rather than one repo's local business. A single-member technology can still qualify when the knowledge is plainly general, but it is the weaker case: one repo's own business is not canon material, and belongs in that repo's local packs instead.
 
 ### 4. Author the pack — from the members' real usage
 
 Author `packs/<name>/` using the pack-writing mechanics [the generate-project-instructions skill](../../../../../../packs/claudinite-growth/skills/generate-project-instructions/SKILL.md) owns — descend the promotion ladder, add the `marker`/`detect` fingerprint when the technology carries a reliable one (`detect: null` otherwise), write `RULES.md`/`pack.mjs`/`README.md`, and add its `packs/README.md` index row. Apply that method; do not re-derive it.
 
-Two rules from the per-repo task carry over unchanged, and are the ones this task most easily breaks because it is writing from *other* repos' evidence:
+Two rules this task most easily breaks, because it is writing from *other* repos' evidence:
 
 - **Ground every rule in a member's real files, and cite which member.** Never author from imagination.
 - **Never pad** with speculative best-practice rules the evidence doesn't demonstrate, and **never open an empty stub to fill later**. A small honest pack beats a padded one; a rule you can't ground, you don't write.
@@ -86,6 +94,6 @@ The standing log is the issue titled exactly **`Claudinite tracker: Discover Can
 - **Never widen past the Context member list**, and **never write to a member's tree** — the only thing this task writes in a member is the step 6 adopt issue, in a member that evidenced the pack it just authored.
 - **Never author a pack for a technology the canon already homes** — a stub counts as homed; note the "declare the existing pack" action instead.
 - **Never author from imagination or pad, and never open an empty stub** — every rule traces to a named member's real files.
-- **Never write a member's product names, paths, or concepts into a canon pack** — that is the local-pack answer, and it belongs to the per-repo task.
+- **Never write a member's product names, paths, or concepts into a canon pack** — a canon pack reads as if no particular repo existed; repo-specific knowledge stays in that repo's own local packs, which growth-extract writes.
 - **Never write outside `packs/`** — no engine, no docs, no change to any member's files.
 - **Every step is a judgment call** (is this technology genuinely unhomed, has the fleet earned a shared pack for it, what does the evidence actually support), and you are authoring from *other* repos' evidence with no owner able to re-derive each call.
