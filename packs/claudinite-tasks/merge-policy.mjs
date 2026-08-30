@@ -8,8 +8,9 @@
 // THE VOCABULARY IS EXTENSIBLE AS DATA. Built-in diff classes live here; a pack
 // adds its own by shipping a `merge-rules.json` beside its `pack.mjs` — named
 // path/kind/edit-shape matchers, validated at load, colliding loudly. A policy
-// then names any rule, built-in or declared, and an unknown name FAILS CLOSED:
-// a policy this code cannot fully resolve authorizes nothing.
+// then names any rule, built-in or declared, plus the inline `under:<dir>` scope
+// that carries its own argument, and an unknown name FAILS CLOSED: a policy this
+// code cannot fully resolve authorizes nothing.
 //
 // POLICY SEMANTICS, in evaluation order:
 //   - `'nothing'`  — never mergeable. `'anything'` — mergeable (the repo's own
@@ -195,6 +196,35 @@ export const COMPOSITE_POLICIES = new Map([
   ['narrow-diff', ['doc-changes', 'test-changes', 'comment-only-changes', 'single-folder-code-changes']],
 ]);
 
+// --- the inline path scope (`under:<dir>`) ------------------------------------
+
+// A rule name that carries its own argument: `under:packs/claudinite-tasks`
+// covers every change inside that directory. It exists because a scope is
+// usually per-request — the one folder an ad-hoc ask or a task is confined to —
+// where a named merge-rules.json rule is per-pack and costs a commit to add.
+//
+// It covers any change KIND inside the directory (added, modified, deleted):
+// "any change under this folder" reads as literally any. And it scopes rather
+// than widens — a changed file outside the folder is covered by no allow term,
+// so a diff that strays parks — with POLICY_SOURCES below still absolute, so a
+// folder scope cannot reach the files that define policies even when they sit
+// inside it.
+export const UNDER_PREFIX = 'under:';
+
+const PATH_SEGMENT_RE = /^[A-Za-z0-9._-]+$/;
+
+// The rule an `under:<dir>` term denotes, or null when `<dir>` is not a usable
+// repo-relative directory (absolute, empty, or carrying a `.`/`..` segment).
+// Null is a verdict: an unresolvable scope makes the whole policy invalid, which
+// authorizes nothing — the same fail-closed answer an unknown rule name gets.
+export function underRule(term) {
+  const dir = term.slice(UNDER_PREFIX.length).replace(/\/+$/, '');
+  const segments = dir.split('/');
+  if (!dir || segments.some((seg) => !PATH_SEGMENT_RE.test(seg) || seg === '.' || seg === '..')) return null;
+  const prefix = `${dir}/`;
+  return { name: term, appliesTo: (e) => e.file.startsWith(prefix) };
+}
+
 // --- pack-declared rules (merge-rules.json) -----------------------------------
 
 export const MERGE_RULES_FILE = 'merge-rules.json';
@@ -295,7 +325,7 @@ export function declaredMergeRules(packs, config) {
 
 // --- policy parsing -----------------------------------------------------------
 
-const TERM_RE = /^(reject:)?[a-z0-9]+(-[a-z0-9]+)*$/;
+const TERM_RE = /^(reject:)?(under:\S+|[a-z0-9]+(-[a-z0-9]+)*)$/;
 
 // A policy, normalized from any surface it rides — the declaration's string or
 // array, the item's `Merge:` field, the commit trailer's `a;b;reject:c` — into
@@ -317,7 +347,11 @@ export function normalizePolicy(raw) {
   const allow = [];
   const reject = [];
   for (const term of terms) {
-    if (!TERM_RE.test(term)) return { kind: 'invalid', reason: `"${term}" is not a policy term (a kebab-case rule name, optionally reject:-prefixed)` };
+    if (!TERM_RE.test(term)) return { kind: 'invalid', reason: `"${term}" is not a policy term (a kebab-case rule name or under:<dir>, optionally reject:-prefixed)` };
+    const bare = term.startsWith('reject:') ? term.slice('reject:'.length) : term;
+    if (bare.startsWith(UNDER_PREFIX) && !underRule(bare)) {
+      return { kind: 'invalid', reason: `"${term}" names no usable repo-relative directory — spell it under:packs/some-pack` };
+    }
     if (term.startsWith('reject:')) {
       const name = term.slice('reject:'.length);
       if (COMPOSITE_POLICIES.has(name)) return { kind: 'invalid', reason: `"${term}" rejects a composite — name the specific rules to reject` };
@@ -382,7 +416,9 @@ export function policyVerdict({ policy, entries, declaredRules = new Map(), rule
     return refuse([{ file: null, what: 'this branch changes nothing against the base — there is nothing to merge' }]);
   }
 
-  const resolve = (name) => BUILTIN_MERGE_RULES.get(name) ?? declaredRules.get(name) ?? null;
+  const resolve = (name) => (name.startsWith(UNDER_PREFIX)
+    ? underRule(name)
+    : BUILTIN_MERGE_RULES.get(name) ?? declaredRules.get(name) ?? null);
   const unknown = [...norm.allow, ...norm.reject].filter((n) => n !== POLICY_ANYTHING && !resolve(n));
   if (unknown.length) {
     const errs = ruleErrors.length ? ` (rule declarations also failed to load: ${ruleErrors.join('; ')})` : '';

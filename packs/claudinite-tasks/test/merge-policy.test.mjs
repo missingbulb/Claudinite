@@ -391,3 +391,70 @@ test('the arming trailer parses out of a commit message, last line form', () => 
   assert.equal(normalizePolicy(m[1]).kind, 'rules');
   assert.equal(AUTOMERGE_TRAILER_RE.exec('no trailer here'), null);
 });
+
+// --- the inline `under:<dir>` scope -------------------------------------------
+
+test('under:<dir> covers every change kind inside the directory, and nothing outside it', () => {
+  const policy = ['under:packs/claudinite-tasks'];
+  const inside = policyVerdict({
+    policy,
+    entries: [
+      edited('packs/claudinite-tasks/land-pr.mjs', 'a\n', 'b\n'),
+      added('packs/claudinite-tasks/queue/new-thing.mjs'),
+      deleted('packs/claudinite-tasks/queue/old-thing.mjs'),
+    ],
+  });
+  assert.equal(inside.mergeable, true, inside.why);
+
+  const strays = policyVerdict({
+    policy,
+    entries: [edited('packs/claudinite-tasks/land-pr.mjs', 'a\n', 'b\n'), edited('engine/remove-tree.mjs', 'a\n', 'b\n')],
+  });
+  assert.equal(strays.mergeable, false);
+  assert.match(strays.why, /engine\/remove-tree\.mjs/);
+});
+
+test('under:<dir> matches on whole path segments, never on a name prefix', () => {
+  const at = (file) => policyVerdict({ policy: ['under:packs/product-wiki'], entries: [edited(file, 'a\n', 'b\n')] });
+  assert.equal(at('packs/product-wiki/lib.mjs').mergeable, true);
+  assert.equal(at('packs/product-wiki-extras/lib.mjs').mergeable, false, 'a sibling sharing the name prefix is outside the scope');
+});
+
+test('under:<dir> works as a reject term over an otherwise-allowed diff', () => {
+  const at = (file) => policyVerdict({
+    policy: ['doc-changes', 'reject:under:docs/private'],
+    entries: [edited(file, 'a\n', 'b\n')],
+  });
+  assert.equal(at('docs/public/notes.md').mergeable, true, 'the allow term still covers the rest of the tree');
+  const vetoed = at('docs/private/notes.md');
+  assert.equal(vetoed.mergeable, false);
+  assert.deepEqual(vetoed.files, [{ file: 'docs/private/notes.md', verdict: 'rejected:under:docs/private' }]);
+});
+
+test('under:<dir> cannot reach the files that define policies, even inside its own scope', () => {
+  const verdict = policyVerdict({
+    policy: ['under:packs/claudinite-tasks'],
+    entries: [edited('packs/claudinite-tasks/merge-policy.mjs', 'a\n', 'b\n')],
+  });
+  assert.equal(verdict.mergeable, false);
+  assert.match(verdict.why, /defines auto-merge policy itself/);
+});
+
+test('an unusable under: path makes the whole policy invalid, authorizing nothing', () => {
+  for (const bad of ['under:', 'under:/etc', 'under:../elsewhere', 'under:packs/../engine']) {
+    const norm = normalizePolicy([bad]);
+    assert.equal(norm.kind, 'invalid', `${bad} is not a usable scope`);
+    const verdict = policyVerdict({ policy: [bad], entries: [added('packs/x/a.md')] });
+    assert.equal(verdict.mergeable, false);
+  }
+});
+
+test('an under: term survives the round trip through a policy expression', () => {
+  const expression = policyExpression(['under:product-wiki', 'reject:under:product-wiki/drafts']);
+  assert.equal(expression, 'under:product-wiki;reject:under:product-wiki/drafts');
+  const norm = normalizePolicy(expression);
+  assert.equal(norm.kind, 'rules');
+  assert.deepEqual(norm, normalizePolicy(['under:product-wiki', 'reject:under:product-wiki/drafts']));
+  assert.match(`${AUTOMERGE_TRAILER_RE.source}`, /\\S/, 'the trailer carries a whitespace-free expression');
+  assert.equal(AUTOMERGE_TRAILER_RE.exec(`Claudinite-Automerge-Policy: ${expression}\n`)?.[1], expression);
+});

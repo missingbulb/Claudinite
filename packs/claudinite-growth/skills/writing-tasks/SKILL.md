@@ -86,9 +86,11 @@ than by replaying a ledger.
   policy is the contract's statement of why landing unattended is safe, and the
   policy engine plus the `automerge-policy-scope` check hold every run to it.
   **Compose the built-in classes first** — they are meant to cover most tasks with
-  no configuration; a pack declares its own class (a `merge-rules.json` beside its
-  `pack.mjs`) only when a task genuinely knows a finer boundary than the built-ins
-  can state. An agentic
+  no configuration. Where the boundary is a *folder*, name it inline as
+  `under:<dir>`: it covers any change of any kind inside that directory and
+  nothing outside it, so a run that strays parks. A pack declares its own class
+  (a `merge-rules.json` beside its `pack.mjs`) only when a task knows a finer
+  boundary than a class or a folder can state. An agentic
   task (`agent_model !==
   none`) also carries `agent_instructions`, the worker file the agent reads; a
   `none` task runs no agent, so the field is not applicable and is omitted. The

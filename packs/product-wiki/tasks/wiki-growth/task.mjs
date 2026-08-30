@@ -18,7 +18,8 @@
 // Self-contained (imports nothing): the whole contract is this default export.
 
 // The wiki tree, root-anchored: the prefix this precondition both declines on
-// (a pending change to it) and adds context for (a landed change to it).
+// (a pending change to it) and adds context for (a landed change to it), and the
+// scope of what the round's own PR may land unreviewed.
 const WIKI_ROOT = 'product-wiki/';
 
 export default {
@@ -27,7 +28,11 @@ export default {
   precondition_signals: ['commits', 'prs'],
   agent_model: 'opus',                   // open-web research + curation is the heaviest judgment in the task set
   expected_outcome: 'pr',
-  automerge: ['doc-changes'],        // the wiki is Markdown pages — anything else in the diff parks the round for review
+  // Scoped to the tree the round is allowed to grow: a change anywhere else in
+  // the repo is covered by no allow term, so the whole round parks for review.
+  // On a member whose mount predates the `under:` scope the policy reads as
+  // invalid, which is the same park — never a wider merge.
+  automerge: [`under:${WIKI_ROOT}`],
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,            // open-web research is the least predictable of the tasks — very generous
 
