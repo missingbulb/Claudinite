@@ -5,6 +5,7 @@ import {
   supersededItems, supersededComment, orphanedParkItems, orphanedParkComment,
 } from '../../queue/janitor-rules.mjs';
 import { periodMs } from '../../queue/anchors.mjs';
+import { isParked } from '../../queue/work-item.mjs';
 import { ACCEPTED_FREQUENCIES } from '../../calendar.mjs';
 
 let seq = 900;
@@ -195,4 +196,33 @@ test('a live item is not orphaned — the executor owns that verdict', () => {
 
 test('the orphaned comment names the task that is gone', () => {
   assert.match(orphanedParkComment('p/retired'), /p\/retired/);
+});
+
+// The two shapes a fleet-aged park arrives in, and why each is the rule's own premise
+// rather than a decode detail (#1461). Both were live on ClaudiniteCanary when rule F
+// first swept, and reading either literally gets the verdict exactly backwards.
+
+test('a park wearing only the two-label era sub-label is seen — the rule reads the decode', () => {
+  const legacy = it({ task: 'retired', labels: ['origin:schedule', 'task:needs-human-failure'] });
+  assert.deepEqual(orphanedParkItems([legacy], { knownTaskIds: known('p/alive') }).map((i) => i.number),
+    [legacy.number]);
+});
+
+// A title is stored data that outlives a pack rename, so the id it names is canonicalized
+// before it is looked up. Read literally, EVERY park filed before a rename reads as a task
+// the repo no longer carries, and this rule closes the live ones fleet-wide. The `isParked`
+// assertion is what stops the verdict passing for the wrong reason: an item the decode
+// cannot see is not orphaned either.
+test('a pre-rename pack id in the title is not orphaned — it resolves to today\'s spelling', () => {
+  const preRename = {
+    number: 115,
+    title: '[claudinite-work] grow_with_claudinite/logs-prune',
+    labels: ['needs-human', 'origin:schedule', 'task:needs-human-failure'],
+    state: 'open',
+    body: '',
+    created_at: '2026-08-10T04:00:00Z',
+    updated_at: '2026-08-10T04:00:00Z',
+  };
+  assert.ok(isParked(preRename));
+  assert.deepEqual(orphanedParkItems([preRename], { knownTaskIds: known('claudinite-growth/logs-prune') }), []);
 });
