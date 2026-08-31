@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { runCodeWork, codeWorkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest, readTriageMarker } from '../code-work.mjs';
+import { runCodeWork, codeWorkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest, readTriageMarker, readRequeueMarker } from '../code-work.mjs';
 
 const NODE = process.execPath; // the running node, so the tests don't assume PATH
 
@@ -191,4 +191,35 @@ test('a worker\'s triage marker is read off its output, last one winning', () =>
   assert.equal(readTriageMarker('just a normal failure\n'), null);
   assert.equal(readTriageMarker(''), null);
   assert.deepEqual(readTriageMarker('claudinite-needs-human: decision'), { kind: 'decision', detail: null });
+});
+
+// --- the worker's requeue ask --------------------------------------------------
+
+// A worker that finds its subject NOT YET THERE (a production verification whose
+// release has not landed) has done its run and must come back later — an outcome
+// no exit code can say: 0 closes the item done and non-zero parks it. The marker
+// is the third answer, read off the output like the triage marker and honoured
+// only on a clean exit.
+test('a worker\'s requeue marker is read off its output, last one winning', () => {
+  assert.deepEqual(
+    readRequeueMarker('probing\nclaudinite-requeue: 2026-09-01T12:00:00Z — not yet live: mode unstamped\ndone'),
+    { until: '2026-09-01T12:00:00.000Z', reason: 'not yet live: mode unstamped' },
+  );
+  // The last marker wins, so a worker may revise its wake as it works.
+  assert.deepEqual(
+    readRequeueMarker('claudinite-requeue: 2026-09-01T00:00:00Z\nclaudinite-requeue: 2026-09-02T00:00:00Z — later'),
+    { until: '2026-09-02T00:00:00.000Z', reason: 'later' },
+  );
+  // The instant is normalized to UTC ISO, whatever offset the worker printed.
+  assert.equal(readRequeueMarker('claudinite-requeue: 2026-09-01T14:00:00+02:00 — tz').until,
+    '2026-09-01T12:00:00.000Z');
+  // Absence is the compatibility story: every worker written before this says
+  // nothing, and an ordinary run must never read as a requeue.
+  assert.equal(readRequeueMarker('all done\n'), null);
+  assert.equal(readRequeueMarker(''), null);
+  // A marker whose instant does not parse is an ASK THAT CANNOT BE HONOURED —
+  // returned with `until: null` so the executor can park it loudly, never
+  // silently dropped (the item would close done while the worker meant "wait").
+  assert.deepEqual(readRequeueMarker('claudinite-requeue: tomorrow-ish — huh'),
+    { until: null, reason: 'huh' });
 });

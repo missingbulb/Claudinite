@@ -184,6 +184,76 @@ test('a failed code_work that said nothing parks at failure', async () => {
   assert.ok(repo.find(1).labels.includes('task:status:needs-human-failure'));
 });
 
+// A WORKER MAY ASK TO COME BACK LATER (#1530). A production verification whose
+// release has not landed yet is neither done nor broken: the run happened, found
+// its subject absent, and prescribes its own wake. The executor stamps the item's
+// `Not-before` and returns it to blocked — open, unparked, and released by the
+// scheduler's ordinary readiness pass once the instant comes.
+test('an ok code_work with a requeue ask re-arms Not-before and returns the item to blocked', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  const done = await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({
+      ok: true, agentRequested: false,
+      requeue: { until: '2026-08-15T04:20:00.000Z', reason: 'not yet live: mode unstamped' },
+    }),
+  });
+  assert.deepEqual(done, [{ issue: 1, outcome: 'requeued' }]);
+  const issue = repo.find(1);
+  assert.equal(issue.state, 'open');
+  assert.ok(issue.labels.includes('task:status:blocked'));
+  assert.ok(!issue.labels.includes('task:status:running-executor'));
+  assert.ok(!issue.labels.some((l) => l.startsWith('task:status:needs-human-')), 'a requeue is nobody\'s inbox');
+  assert.equal(parseWorkItemBody(issue.body).notBefore, '2026-08-15T04:20:00.000Z');
+});
+
+// On a MARKED ISSUE the stamp must land in the machine block — `parseWorkItemBody`
+// reads only that half, so a Not-before written into the person's prose would
+// release the item on the very next pass.
+test('a requeue on a marked issue stamps Not-before inside the machine block', async () => {
+  const repo = fakeRepo([markedItem(3, 'a', ['task:status:waiting-for-executor'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({
+      ok: true, agentRequested: false, requeue: { until: '2026-08-15T04:20:00.000Z', reason: 'not yet live' },
+    }),
+  });
+  const issue = repo.find(3);
+  assert.equal(issue.state, 'open');
+  assert.ok(issue.labels.includes('task:status:blocked'));
+  assert.equal(parseWorkItemBody(issue.body).notBefore, '2026-08-15T04:20:00.000Z');
+  assert.match(issue.body, /<!-- claudinite-item -->[\s\S]*Not-before: 2026-08-15T04:20:00\.000Z[\s\S]*<!-- \/claudinite-item -->/,
+    'the stamp is in the machine half, not the person\'s prose');
+  assert.ok(issue.body.startsWith('Please do the thing.'), 'the person\'s own text is untouched');
+});
+
+// A requeue releases the claim the same way every let-go of an open item does:
+// struck, so the next executor's claim wins on its first try.
+test('a requeue strikes the executor\'s own claim', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({
+      ok: true, agentRequested: false, requeue: { until: '2026-08-15T04:20:00.000Z', reason: 'not yet live' },
+    }),
+  });
+  const claim = repo.find(1).comments.find((c) => c.body.includes('<!-- claudinite-claim -->'));
+  assert.match(claim.body, /<!-- claudinite-episode -->/, 'the spent claim carries the episode boundary');
+});
+
+// An ask the executor cannot honour — a marker whose instant did not parse — parks
+// loudly instead of closing done: the worker said "wait" and silence would record
+// a pass nobody measured.
+test('a requeue ask with an unreadable instant parks at failure', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async () => ({
+      ok: true, agentRequested: false, requeue: { until: null, reason: 'huh' },
+    }),
+  });
+  const issue = repo.find(1);
+  assert.equal(issue.state, 'open');
+  assert.ok(issue.labels.includes('task:status:needs-human-failure'));
+  assert.match(issue.comments.at(-1).body, /requeue/i);
+});
+
 // A declared secret nobody configured is the definitive `action`: no code changes,
 // somebody sets a value.
 test('an unconfigured declared secret parks at action', async () => {
