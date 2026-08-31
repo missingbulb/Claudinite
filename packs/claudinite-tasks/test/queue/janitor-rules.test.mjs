@@ -136,6 +136,19 @@ test('a success at or before the park says nothing about it', () => {
   assert.deepEqual(supersededItems([item], { doneAfter: same }), [], 'simultaneous success');
 });
 
+// #1498 — every ad-hoc item runs the SAME task, so without this the newest
+// verification to converge closes every parked one beside it. Two were closed on a
+// third issue's evidence, their own `Verify:` never executed.
+test('an AD-HOC park is never superseded — its work is its own, not an occurrence', () => {
+  const own = parked({ task: 'implement-request' });
+  own.title = 'Verify in production: the janitor stops closing verifications';
+  own.labels = [...own.labels, 'task:origin:ad-hoc'];
+  own.body = 'packs/claudinite-tasks/queue/tasks/implement-request/task.md\n';
+  const doneAfter = doneRuns([{ id: 'engine/implement-request', number: 999, closed_at: '2026-08-13T04:00:00Z' }]);
+  assert.deepEqual(supersededItems([own], { doneAfter }), [],
+    "another ad-hoc run's success is evidence about that run, never about this issue's own assertion");
+});
+
 test('a clean run of a DIFFERENT task supersedes nothing', () => {
   const item = parked({ task: 'digest' });
   const doneAfter = doneRuns([{ id: 'p/other', number: 999, closed_at: '2026-08-13T04:00:00Z' }]);

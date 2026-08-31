@@ -456,11 +456,10 @@ from lives in the commit that added it and the issue, never here.
   never the requester's phrasing. A same-title match is blind to two items writing one target under
   different titles; `Blocked-by:` is what serializes them.
 
-- **`converge-item.mjs` reports no REST route from this session** — the ordinary case for a
-  session whose GitHub access is its own tools, not a subprocess's `GITHUB_TOKEN`. Re-run it with
-  `CLAUDINITE_ITEM_REPO`/`CLAUDINITE_ITEM_JSON` set and make the calls it prints yourself, verbatim
-  — hand-fabricating the transition instead is how an item ends up closed wearing a live status
-  (live on #1220, #1265).
+- **Converging a work item from a session** — `converge-item.mjs` prints the calls; making them
+  verbatim with your own GitHub tools is the whole path, on every session, with or without a REST
+  route. Hand-fabricating the transition is how an item ends up closed wearing a live status, or
+  labelled `done` and left open (#1220, #1265).
 
 ## Proving a change
 
