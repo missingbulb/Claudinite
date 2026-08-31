@@ -90,8 +90,9 @@ silent failure here would be **costly**, and you would be willing to interrupt t
 person today to have them look. If you would not, the change goes unverified and you say
 so. When it does clear that bar, file an ordinary issue — never a queue item: title it
 the same `Verify in production: …`, carry `Original-issue:` and attach it as that
-issue's sub-issue, and write the body as a checkbox per step — the exact URL to open,
-what to look for, what counts as a pass, and what to do if it fails. **No mark, no
+issue's sub-issue, and write the body per
+[writing-handover-issues](../writing-handover-issues/SKILL.md) — somebody else runs it,
+so the checklist is the artifact. **No mark, no
 `Not-before:`, no `Retry-every:`, no `Model:`**: nothing in it is the queue's, and a mark
 would buy only a session that parks. Assign it to whoever owns the release, and say in
 your reply that you are spending their attention and why it was worth it.
