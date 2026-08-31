@@ -86,7 +86,8 @@ test('only the two real credentials are declared secrets — the account id is a
 
 test('a missing clientId, an unresolvable origin and a missing secret are each a NeedsAction naming what to set', async () => {
   const noId = member({});
-  await assert.rejects(deploy({ repoRoot: noId, env: ENV }), (e) => e instanceof NeedsAction && /clientId/.test(e.message));
+  await assert.rejects(deploy({ repoRoot: noId, env: ENV }),
+    (e) => e instanceof NeedsAction && /CLAUDINITE_DASHBOARD_CLIENT_ID/.test(e.message));
 
   const noOrigin = member({ clientId: 'Iv1.abc' });
   await assert.rejects(deploy({ repoRoot: noOrigin, env: { ...ENV, CLAUDINITE_REPO: '' } }),
@@ -104,6 +105,20 @@ test('a missing clientId, an unresolvable origin and a missing secret are each a
   for (const r of [noId, noOrigin, ok, noAccount]) removeTree(r);
 });
 
+// One reader for the deploy and the site build, so the endpoint cannot be minted for a
+// different App than the button authorizes against.
+test('the deploy takes its client id from the same repository variable the page does', async () => {
+  const root = member({});
+  const out = await deploy({
+    repoRoot: root,
+    env: { ...ENV, CLAUDINITE_DASHBOARD_CLIENT_ID: 'Iv1.fromVar' },
+    dryRun: true,
+    log: () => {},
+  });
+  assert.equal(out.clientId, 'Iv1.fromVar');
+  removeTree(root);
+});
+
 test('a dry run resolves everything and uploads nothing', async () => {
   const root = member({ clientId: 'Iv1.abc' });
   const out = await deploy({ repoRoot: root, env: ENV, dryRun: true, log: () => {} });
@@ -111,8 +126,9 @@ test('a dry run resolves everything and uploads nothing', async () => {
   removeTree(root);
 });
 
-test('the wiring note names the value to set, and says so is already set when it is', () => {
-  assert.match(wiringNote({ url: 'https://w.example', exchangeUrl: null }), /NOT YET WIRED.*https:\/\/w\.example/s);
-  assert.match(wiringNote({ url: 'https://w.example', exchangeUrl: 'https://old.example' }), /currently names https:\/\/old\.example/);
+test('the wiring note names the variable to set, and says so is already set when it is', () => {
+  const unset = wiringNote({ url: 'https://w.example', exchangeUrl: null });
+  assert.match(unset, /NOT YET WIRED.*CLAUDINITE_DASHBOARD_EXCHANGE_URL.*https:\/\/w\.example/s);
+  assert.match(wiringNote({ url: 'https://w.example', exchangeUrl: 'https://old.example' }), /currently resolves to https:\/\/old\.example/);
   assert.match(wiringNote({ url: 'https://w.example', exchangeUrl: 'https://w.example' }), /already names/);
 });

@@ -27,7 +27,7 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { declaredConfig } from '../../declared-config.mjs';
+import { deploymentConfig, SIGN_IN_VARS } from '../../deployment-config.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -160,7 +160,7 @@ export async function probe(url, allowedOrigin, { fetchImpl = fetch, attempts = 
 }
 
 export async function deploy({ repoRoot, env = process.env, dryRun = false, log = console.log, fetchImpl = fetch } = {}) {
-  const cfg = await declaredConfig(repoRoot);
+  const { cfg } = await deploymentConfig(repoRoot, env);
   const repoSlug = env.CLAUDINITE_REPO || env.GITHUB_REPOSITORY || '';
 
   // A repository variable, not a secret — see the header.
@@ -172,8 +172,8 @@ export async function deploy({ repoRoot, env = process.env, dryRun = false, log 
   // The three things this cannot invent, each named on its own: a combined "not
   // configured" tells the operator to go and look rather than what to set.
   if (!clientId) {
-    throw new NeedsAction('the declaration\'s claudinite-dashboard config has no `clientId` — '
-      + 'register the GitHub App first and put its client id there; the endpoint is minted for one app');
+    throw new NeedsAction(`no client id — register the GitHub App first and set the repository `
+      + `variable ${SIGN_IN_VARS.clientId} to its client id; the endpoint is minted for one app`);
   }
   const origins = resolveOrigins(cfg, repoSlug);
   if (!origins.length) {
@@ -246,9 +246,10 @@ export async function deploy({ repoRoot, env = process.env, dryRun = false, log 
 // is live from the moment it deploys, but the button appears only once the
 // declaration names it, and that edit is the member's own file.
 export function wiringNote({ url, exchangeUrl }) {
-  if (exchangeUrl === url) return `\`exchangeUrl\` already names ${url} — sign-in is fully wired.`;
-  return `NOT YET WIRED: set \`exchangeUrl\` to ${url} in this repo's `
-    + `\`.claudinite-settings.json\`, on the claudinite-dashboard entry's \`config\`${exchangeUrl ? ` (it currently names ${exchangeUrl})` : ''}. `
+  const name = SIGN_IN_VARS.exchangeUrl;
+  if (exchangeUrl === url) return `${name} already names ${url} — sign-in is fully wired.`;
+  return `NOT YET WIRED: set the repository variable ${name} to ${url}`
+    + `${exchangeUrl ? ` (it currently resolves to ${exchangeUrl})` : ''}. `
     + 'Until it does, the page renders the token box and no Sign in button.';
 }
 

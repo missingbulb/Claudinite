@@ -13,7 +13,12 @@
 # public Pages site is a safe host for it.
 #
 # Configure it in `.claudinite-settings.json`, on the `claudinite-dashboard` entry's
-# `config` — not here. Every key is optional.
+# `config` — not here. Every key is optional. The two SIGN-IN values are the exception
+# and are repository variables, passed below: they are what an owner sets while standing
+# in the GitHub App's settings, and the exchange URL is minted by a deploy rather than
+# authored, so requiring a commit to record it would put a merge between the endpoint
+# going live and the button appearing. Neither is a secret — the client id is in every
+# authorize URL and the exchange URL is fetched by the browser.
 
 name: Claudinite dashboard
 
@@ -68,7 +73,20 @@ jobs:
       # asked for, and a forced republish must not be answered with a cache hit.
       - name: What the page would be built from
         id: sources
-        run: echo "key=dashboard-deployed-${{ hashFiles('.claudinite/shared/packs/claudinite-dashboard/**', '.claudinite/shared/engine/**', '.claudinite-settings.json', '.claudinite-checks.json', '**/*.GENERATED.json') }}" >> "$GITHUB_OUTPUT"
+        env:
+          # Through `env:` rather than inline in `run:`: a repository variable is text
+          # an owner typed into a settings box, and interpolating it straight into a
+          # shell line makes that box a command.
+          CLAUDINITE_DASHBOARD_CLIENT_ID: ${{ vars.CLAUDINITE_DASHBOARD_CLIENT_ID }}
+          CLAUDINITE_DASHBOARD_EXCHANGE_URL: ${{ vars.CLAUDINITE_DASHBOARD_EXCHANGE_URL }}
+        run: |
+          # The sign-in pair are repository variables, so no file hash covers them.
+          # Without this a change to either would hit the cache, skip the build, and
+          # leave the site serving the previous client id indefinitely — the silent
+          # half of "is that already deployed?". Hashed rather than embedded so a
+          # value's own characters cannot break the key.
+          signin=$(printf '%s|%s' "$CLAUDINITE_DASHBOARD_CLIENT_ID" "$CLAUDINITE_DASHBOARD_EXCHANGE_URL" | sha256sum | cut -c1-16)
+          echo "key=dashboard-deployed-${{ hashFiles('.claudinite/shared/packs/claudinite-dashboard/**', '.claudinite/shared/engine/**', '.claudinite-settings.json', '.claudinite-checks.json', '**/*.GENERATED.json') }}-$signin" >> "$GITHUB_OUTPUT"
 
       - name: Is that already deployed?
         id: deployed
@@ -86,6 +104,13 @@ jobs:
 
       - name: Assemble the site
         if: steps.deployed.outputs.cache-hit != 'true'
+        # The sign-in pair, which the build bakes into the page's own config. Named
+        # lines rather than one `toJSON(vars)` bag: this workflow is not a function of
+        # anything a member declares, so there is no list to keep in step, and the two
+        # names spare the dashboard from parsing a bag it cannot import across packs.
+        env:
+          CLAUDINITE_DASHBOARD_CLIENT_ID: ${{ vars.CLAUDINITE_DASHBOARD_CLIENT_ID }}
+          CLAUDINITE_DASHBOARD_EXCHANGE_URL: ${{ vars.CLAUDINITE_DASHBOARD_EXCHANGE_URL }}
         run: node .claudinite/shared/packs/claudinite-dashboard/build-site.mjs
 
       # The build exits clean with no `_site` when the mount does not yet carry the

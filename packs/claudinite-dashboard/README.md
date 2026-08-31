@@ -44,7 +44,7 @@ Everything else is optional `config` on the declaration:
 | `repos` | — | An explicit member list instead, for a deployment that wants a fixed set |
 | `rosterFile` | — | A generated artifact in the repo listing members — the legacy shape, still read |
 | `canonRepo` | — | The repo whose live engine and pack versions member stamps are compared against; unset means freshness reads *unknown* rather than being guessed |
-| `clientId`, `exchangeUrl` | — | Both together turn on **Sign in with GitHub**; either alone does nothing |
+| `clientId`, `exchangeUrl` | — | **Legacy.** Both together turn on **Sign in with GitHub**, but they live as the repository variables `CLAUDINITE_DASHBOARD_CLIENT_ID` and `CLAUDINITE_DASHBOARD_EXCHANGE_URL` now; a declaration still carrying them is read as the fallback and the build says so |
 | `redirectUri` | the page's URL | Override when the callback differs |
 | `defaultRepo` | this repo | Which repo a single-repo deployment shows |
 
@@ -413,13 +413,18 @@ issue rather than leaving them here to be met after the first anonymous viewer g
 2. **Install it** on the account holding the repos the dashboard reads. Per *account*, not
    per repo: a user token reaches only what the app is installed on, so an uninstalled
    account renders every member row as *not visible to you*.
-3. **Set `clientId`** in the declaration's `config`, and **deploy
+3. **Set the repository variable `CLAUDINITE_DASHBOARD_CLIENT_ID`**, and **deploy
    [`oauth-exchange.mjs`](oauth-exchange.mjs)** by running this pack's
    [`deploy-oauth-exchange`](tasks/deploy-oauth-exchange/README.md) task — it uploads the
    endpoint to Cloudflare Workers, proves the URL answers, and reports it. One deployment
    serves every dashboard the same owner runs.
-4. **Set `exchangeUrl`** to the URL that run reported. `clientId` alone does nothing — the
-   pair is what makes the button appear.
+4. **Set `CLAUDINITE_DASHBOARD_EXCHANGE_URL`** to the URL that run reported. The client id
+   alone does nothing — the pair is what makes the button appear.
+
+Both are repository variables (Settings → Secrets and variables → Actions → **Variables**),
+not config and not secrets: they are what you set while standing in the App's settings, the
+second is minted by a deploy rather than authored, and neither is confidential — the client
+id is in every authorize URL and the exchange URL is fetched by the browser.
 
 Done when a signed-in viewer's rate pill reads `…/5000 · user`.
 

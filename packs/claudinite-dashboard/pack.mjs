@@ -76,11 +76,16 @@ export default {
   //   canonRepo   — the reference member mounts are compared against (fleet view)
   //   rosterUrl   — a roster artifact; more than one member makes the fleet the landing view
   //   repos       — an inline roster instead of a URL
-  //   clientId    — GitHub App / OAuth App client id, for the sign-in button
-  //   exchangeUrl — the code-to-token endpoint that sign-in needs
-  //   allowedOrigins — page origins allowed to call that endpoint (defaults to the
-  //                    redirectUri's origin, then to this owner's Pages host)
+  //   allowedOrigins — page origins allowed to call the exchange endpoint (defaults to
+  //                    the redirectUri's origin, then to this owner's Pages host)
   //   workerName  — what the deployed endpoint is called (defaults per the task)
+  //
+  // The sign-in pair are REPOSITORY VARIABLES rather than config, since they are what an
+  // owner sets while standing in the GitHub App's settings and the second is minted by a
+  // deploy rather than authored — `CLAUDINITE_DASHBOARD_CLIENT_ID` and
+  // `CLAUDINITE_DASHBOARD_EXCHANGE_URL`, both read by `deployment-config.mjs`. A
+  // `clientId`/`exchangeUrl` still on a declaration is read as the fallback, so a
+  // deployment configured before they existed keeps its button; the build says so once.
   //   owner       — whose repos the fleet view enumerates (defaults to this repo's owner)
   //   exclude     — repos it keeps out (defaults to none)
   questions: [
@@ -116,8 +121,9 @@ export default {
     {
       step: 'Decide how this dashboard authenticates its viewers: leave it on the pasted-token box (nothing to do), '
         + 'or give it a Sign in button — register a GitHub App with read-only Contents, Issues and Actions, install it on '
-        + 'the account holding these repos, put `clientId` on this pack\'s declaration, run its `deploy-oauth-exchange` '
-        + 'task to put the exchange endpoint live, and set `exchangeUrl` to the URL it reports. '
+        + 'the account holding these repos, set the repository variable `CLAUDINITE_DASHBOARD_CLIENT_ID`, run this '
+        + 'pack\'s `deploy-oauth-exchange` task to put the exchange endpoint live, and set '
+        + '`CLAUDINITE_DASHBOARD_EXCHANGE_URL` to the URL it reports. '
         + 'See "Who has to register the app" in the pack README: one App serves every '
         + 'deployment you own, and none can be inherited from another owner.',
       breaks: 'nothing fails, but a viewer who has not pasted a token reads GitHub anonymously at 60 requests/hour per IP — '
