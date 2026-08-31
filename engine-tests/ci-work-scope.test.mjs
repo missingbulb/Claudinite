@@ -16,8 +16,8 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup, git } from './helpers.mjs';
-import { decide, isAutomationBranch } from '../engine/checks/ci-work-scope.mjs';
+import { makeRepo, cleanup, git, writeFiles } from './helpers.mjs';
+import { decide, isAutomationBranch, pushedFrom } from '../engine/checks/ci-work-scope.mjs';
 
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 const ENTRY = 'engine/checks/ci-work-scope.mjs';
@@ -99,14 +99,78 @@ test('an empty diff against a resolved base is an ERROR too', () => {
   } finally { cleanup(root); }
 });
 
+// `eventPath: null` explicitly, never the ambient default: this suite itself runs
+// in Actions, where GITHUB_EVENT_PATH is always set, so a test about the
+// no-push-event case must say so rather than inherit whatever the runner has.
 test('sitting ON the base branch is a clean skip — there is no change to judge', () => {
   const root = makeRepo({ changed: { 'a.txt': 'one\n' } });
   try {
     git(root, 'checkout', '-q', 'main');
-    const verdict = decide(root, { branch: 'main', fetch: false });
+    const verdict = decide(root, { branch: 'main', fetch: false, eventPath: null });
     assert.equal(verdict.run, false);
     assert.equal(verdict.code, 0);
     assert.match(verdict.say, /HEAD is main/);
+  } finally { cleanup(root); }
+});
+
+// --- the push onto the base branch -------------------------------------------
+
+// A merge landing on main. The fixture writes the payload GitHub Actions would,
+// since that file is the only thing that distinguishes this case from a
+// developer's clone sitting on main.
+const pushedRepo = ({ before = 'HEAD~1' } = {}) => {
+  const root = makeRepo({ base: { 'a.txt': 'one\n' } });
+  git(root, 'checkout', '-q', 'main');
+  writeFiles(root, { 'a.txt': 'two\n' });
+  git(root, 'add', '-A');
+  git(root, 'commit', '-q', '-m', 'landed Refs #1');
+  const sha = before === null ? '0'.repeat(40) : git(root, 'rev-parse', before).trim();
+  writeFiles(root, { 'event.json': `${JSON.stringify({ before: sha })}\n` });
+  return { root, eventPath: `${root}/event.json` };
+};
+
+test('a push onto the base branch is judged, against what the branch held before it', () => {
+  const { root, eventPath } = pushedRepo();
+  try {
+    const verdict = decide(root, { branch: 'main', fetch: false, eventPath });
+    assert.equal(verdict.run, true);
+    assert.deepEqual(verdict.changed, ['a.txt']);
+  } finally { cleanup(root); }
+});
+
+test('the push\'s OWN base is judged, not merely the previous commit', () => {
+  const { root, eventPath } = pushedRepo({ before: 'HEAD' });
+  try {
+    // `before` naming this very commit means the push moved nothing: an empty
+    // scope, which the runner refuses rather than passes.
+    const verdict = decide(root, { branch: 'main', fetch: false, eventPath });
+    assert.equal(verdict.run, false);
+    assert.equal(verdict.code, 1);
+    assert.match(verdict.say, /no diff against/);
+  } finally { cleanup(root); }
+});
+
+test('an all-zero `before` — a branch\'s first push — falls back to the previous commit', () => {
+  const { root, eventPath } = pushedRepo({ before: null });
+  try {
+    assert.equal(pushedFrom(root, { eventPath }), 'HEAD^');
+    assert.equal(decide(root, { branch: 'main', fetch: false, eventPath }).run, true);
+  } finally { cleanup(root); }
+});
+
+test('a root commit has nothing before it, so the skip stands', () => {
+  const root = makeRepo({});
+  try {
+    git(root, 'checkout', '-q', 'main');
+    writeFiles(root, { 'event.json': '{}\n' });
+    assert.equal(pushedFrom(root, { eventPath: `${root}/event.json` }), null);
+  } finally { cleanup(root); }
+});
+
+test('no event payload — a developer on main — is still the clean skip', () => {
+  const { root } = pushedRepo();
+  try {
+    assert.equal(pushedFrom(root, { eventPath: undefined }), null);
   } finally { cleanup(root); }
 });
 
@@ -134,4 +198,9 @@ test('a blocking finding reaches the exit code — the gate fails the build', ()
 
 test('the canon\'s CI runs this entry point rather than its own copy of the recipe', () => {
   assert.ok(CI.includes(ENTRY), `ci.yml no longer runs ${ENTRY} — the work scope is enforced nowhere but a session's Stop hook`);
+});
+
+test('the canon\'s CI runs on pushes to main, which is where a landed merge is judged', () => {
+  assert.match(CI, /push:\s*\n\s*branches: \[main\]/,
+    'ci.yml no longer runs on push to main — a collision only two landed branches can show would be judged nowhere');
 });
