@@ -170,7 +170,9 @@ test('a root commit has nothing before it, so the skip stands', () => {
 test('no event payload — a developer on main — is still the clean skip', () => {
   const { root } = pushedRepo();
   try {
-    assert.equal(pushedFrom(root, { eventPath: undefined }), null);
+    // `null`, not `undefined`: a destructuring default fires on `undefined`, so
+    // under Actions that spelling reads the runner's own payload (see above).
+    assert.equal(pushedFrom(root, { eventPath: null }), null);
   } finally { cleanup(root); }
 });
 
