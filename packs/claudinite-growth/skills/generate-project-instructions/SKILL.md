@@ -182,11 +182,11 @@ docs) — it does **not** `@import` the pack prose; the pack system injects the 
 
 ## 6. Deliver through the owner's approval gates
 
-- **Every canon pack seed or refinement → a PR against Claudinite.** Minting or changing a *canon* pack
+- **Every canon pack seed or refinement → a PR against the canon.** Minting or changing a *canon* pack
   is the owner's call, and the PR is that gate — no corpus change lands unattended
-  ([the canon-curation README](../../../../.claudinite/local/packs/canon-curation/README.md)). From a consuming repo, never edit the read-only
-  `.claudinite/` mount: open the Claudinite PR when the session can reach that repo; otherwise stage the
-  seed as a **local pack** clearly marked as a proposed-canon facet and open a Claudinite issue pointing
+  ([the curation pack's README](../../../claudinite-canon-curation/README.md)). From a consuming repo, never edit the read-only
+  `.claudinite/` mount: open the canon PR when the session can reach that repo; otherwise stage the
+  seed as a **local pack** clearly marked as a proposed-canon facet and open a canon issue pointing
   at it, so the promote stage lifts it centrally.
 - **The project's local pack(s) → the project's normal branch/PR**, committed under
   `.claudinite/local_packs/` (tracked project content — the sync hook preserves it, the gitignore

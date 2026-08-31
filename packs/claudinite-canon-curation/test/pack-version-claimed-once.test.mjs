@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import rule from '../worldRules/pack-version-claimed-once.mjs';
 
-const REPO = join(dirname(fileURLToPath(import.meta.url)), '../../../../..');
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 // The world context a world rule receives — only the two members this rule reads.
 const ctx = (files) => ({ files: Object.keys(files), read: (f) => files[f] ?? null });

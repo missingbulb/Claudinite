@@ -61,9 +61,9 @@ every consumer that vendors the importer without its target. A pack that wants a
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
 sides need moves into `engine/checks/helpers`. Enforced canon-side as **barriers configuration, never
 bespoke checking code**: the `pack-independence` barrier is contributed as manifest data by the
-canon home's own curation local pack (`.claudinite/local/packs/canon-curation/` — a home-repo
-duty, since the `packs/` tree it polices exists only here), with the vendor writer's coherence
-guard holding the same invariant at vendoring time on consumers' behalf.
+curation pack a canon home declares (a canon-side duty, since the `packs/` tree it polices exists
+only on a canon), with the vendor writer's coherence guard holding the same invariant at vendoring
+time on consumers' behalf.
 
 Activation is the project's declaration in `.claudinite-settings.json` — **no pack runs undeclared,
 the baseline included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a

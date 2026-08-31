@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
-import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
-import { loadDeclaredChecks } from '../../../../../engine/checks/helpers/pattern-rules.mjs';
+import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
+import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
+import { loadDeclaredChecks } from '../../../engine/checks/helpers/pattern-rules.mjs';
 import noEnforcementNarration from '../worldRules/no-enforcement-narration.mjs';
 
 const run = (root) => noEnforcementNarration.run(buildContext({ root, mode: 'all' }));

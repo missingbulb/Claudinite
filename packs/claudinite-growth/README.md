@@ -169,8 +169,8 @@ here: its subject is Claudinite's own surface, not lesson capture.
 The capture runs' write surface is the local packs and nothing else — a run improves the repo's
 **packs**, never the canon it prunes against or the project's own code. `growth-write-scope` is
 the machine guarantee behind that, keyed on the pinned commit titles of exactly those two runs; the
-lifecycle's wider-surfaced promote run has its own gate (it writes the canon under `packs/` and
-`skills/`, certified by canon-curation's `promote-scope`).
+lifecycle's wider-surfaced promote run has its own gate (it writes the canon's own corpus roots,
+certified by [claudinite-canon-curation](../claudinite-canon-curation/README.md)'s `promote-scope`).
 
 ## Rules expire when the environment moves — revalidation
 

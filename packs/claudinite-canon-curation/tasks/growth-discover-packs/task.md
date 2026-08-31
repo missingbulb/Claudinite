@@ -1,8 +1,8 @@
 # Growth — discover canon packs (the fleet sweep)
 
-One weekly pass over **every member**: read what the fleet is actually built on, subtract what the shared canon already homes, and open a PR **for the owner to approve** authoring the pack that is missing. Declared only by Claudinite, so it runs **once, centrally**, never per project.
+One weekly pass over **every member**: read what the fleet is actually built on, subtract what the shared canon already homes, and open a PR **for the owner to approve** authoring the pack that is missing. Declared only by the canon's home repo, so it runs **once, centrally**, never per project.
 
-This is the only thing that notices a technology in use across the fleet with **no canon pack** — and the only stage anywhere that authors one. A member never mints a pack of its own: its local packs are what adoption seeded, and [growth-extract](../../../../../../packs/claudinite-growth/tasks/growth-extract/task.md) writes rules into those. So a gap the canon does not home is closed here or nowhere.
+This is the only thing that notices a technology in use across the fleet with **no canon pack** — and the only stage anywhere that authors one. A member never mints a pack of its own: its local packs are what adoption seeded, and [growth-extract](../../../claudinite-growth/tasks/growth-extract/task.md) writes rules into those. So a gap the canon does not home is closed here or nowhere.
 
 **Why central.** One run sees every member, so **first-sight dedup is free**: the third member using a technology is recognised as the same gap as the first, in the same pass, with no cross-run state and no chance of three repos each proposing the same pack.
 
@@ -12,9 +12,9 @@ A new canon pack is read by every repo that declares it, so this run opens a PR 
 
 ## Conventions used in this doc
 
-- **GitHub access is MCP-only** (`mcp__github__*`). You are outside each member repo — read its files over the API (get-file-contents, never a cross-repo checkout; the sandbox has no cross-repo git). The Claudinite PR is opened over MCP too.
-- **`main`** stands for Claudinite's default branch.
-- **The canon shelf** is Claudinite's own `packs/` tree — the packs every member can declare.
+- **GitHub access is MCP-only** (`mcp__github__*`). You are outside each member repo — read its files over the API (get-file-contents, never a cross-repo checkout; the sandbox has no cross-repo git). The canon PR is opened over MCP too.
+- **`main`** stands for the canon's default branch.
+- **The canon shelf** is this repo's own `packs/` tree — the packs every member can declare.
 
 ## What each run does
 
@@ -49,7 +49,7 @@ Prefer a candidate **more than one member** uses — that is the evidence a pack
 
 ### 4. Author the pack — from the members' real usage
 
-Author `packs/<name>/` using the pack-writing mechanics [the generate-project-instructions skill](../../../../../../packs/claudinite-growth/skills/generate-project-instructions/SKILL.md) owns — descend the promotion ladder, add the `marker`/`detect` fingerprint when the technology carries a reliable one (`detect: null` otherwise), write `RULES.md`/`pack.mjs`/`README.md`, and add its `packs/README.md` index row. Apply that method; do not re-derive it.
+Author `packs/<name>/` using the pack-writing mechanics [the generate-project-instructions skill](../../../claudinite-growth/skills/generate-project-instructions/SKILL.md) owns — descend the promotion ladder, add the `marker`/`detect` fingerprint when the technology carries a reliable one (`detect: null` otherwise), write `RULES.md`/`pack.mjs`/`README.md`, and add its `packs/README.md` index row. Apply that method; do not re-derive it.
 
 Two rules this task most easily breaks, because it is writing from *other* repos' evidence:
 

@@ -1,18 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../../../../../engine-tests/helpers.mjs';
-import { buildContext } from '../../../../../../../engine/checks/helpers/repo-context.mjs';
+import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
+import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
 import noEnforcementNarration from '../../../skills/writing-claudinite-skills/no-enforcement-narration.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
 const run = (root) => noEnforcementNarration.run(buildContext({ root, mode: 'all' }));
 
-// The canon-home gate: corpus skills exist only where the registry is tracked.
-const CORPUS = { 'engine/pack_loader/pack-registry.mjs': '// registry\n' };
-
-// Every fixture spells the REAL layout — a skill lives inside its owning pack
-// (#385), `<pack>/skills/<name>/`. These fixtures previously spelled the
-// pre-#385 root-level `skills/<name>/`, which no tree has carried since; they
+// Every fixture spells the REAL layout — a skill lives inside its owning pack,
+// `<pack>/skills/<name>/`. These fixtures previously spelled a root-level
+// `skills/<name>/`, which no tree has carried since; they
 // stayed green against a scan that had stopped matching anything at all, so a
 // skill narrating its own enforcement went unflagged. A fixture that encodes a
 // layout the repo abandoned proves nothing about the repo.
@@ -22,7 +19,6 @@ const ruleModule = (id) => `const rule = { id: '${id}', run() { return []; } };\
 
 test('skill-no-enforcement-narration: a silent SKILL.md beside its check module passes', () => {
   const root = makeRepo({ changed: {
-    ...CORPUS,
     [SKILL]: '---\nname: demo\n---\n\nDo the activity well.\n',
     [RULE]: ruleModule('demo-rule'),
   } });
@@ -33,7 +29,6 @@ test('skill-no-enforcement-narration: a silent SKILL.md beside its check module 
 
 test('skill-no-enforcement-narration: flags a SKILL.md telling the reader to run the runner', () => {
   const root = makeRepo({ changed: {
-    ...CORPUS,
     [SKILL]: '---\nname: demo\n---\n\nWhen done, run `node .claudinite/checks/run.mjs` and fix what fires.\n',
   } });
   try {
@@ -47,7 +42,6 @@ test('skill-no-enforcement-narration: flags a SKILL.md telling the reader to run
 
 test('skill-no-enforcement-narration: flags a SKILL.md naming a rule its sibling module defines', () => {
   const root = makeRepo({ changed: {
-    ...CORPUS,
     [SKILL]: '---\nname: demo\n---\n\nThe `demo-rule` check enforces the wiring.\n',
     [RULE]: ruleModule('demo-rule'),
   } });
@@ -60,7 +54,6 @@ test('skill-no-enforcement-narration: flags a SKILL.md naming a rule its sibling
 
 test('skill-no-enforcement-narration: another skill\'s rule id is not "its own"', () => {
   const root = makeRepo({ changed: {
-    ...CORPUS,
     [SKILL]: '---\nname: demo\n---\n\nSee also the `other-rule` behavior.\n',
     'packs/demo/skills/other/rule.mjs': ruleModule('other-rule'),
   } });
@@ -71,7 +64,6 @@ test('skill-no-enforcement-narration: another skill\'s rule id is not "its own"'
 
 test('skill-no-enforcement-narration: reaches a skill bundled in a local pack', () => {
   const root = makeRepo({ changed: {
-    ...CORPUS,
     '.claudinite/local/packs/demo/skills/demo/SKILL.md': '---\nname: demo\n---\n\nWhen done, run `node .claudinite/checks/run.mjs`.\n',
   } });
   try {
@@ -85,7 +77,6 @@ test('skill-no-enforcement-narration: reaches a skill bundled in a local pack', 
 // pack tree, so the scan must not reach them even when one is somehow tracked.
 test('skill-no-enforcement-narration: a mounted .claude/skills/ copy is not a corpus skill', () => {
   const root = makeRepo({ changed: {
-    ...CORPUS,
     '.claude/skills/demo/SKILL.md': '---\nname: demo\n---\n\nRun `node .claudinite/checks/run.mjs`.\n',
   } });
   try {
@@ -93,9 +84,14 @@ test('skill-no-enforcement-narration: a mounted .claude/skills/ copy is not a co
   } finally { cleanup(root); }
 });
 
-test('skill-no-enforcement-narration: inert outside the canon home repo', () => {
+// The scan is anchored at a pack tree, which is the whole relevance gate: a repo
+// with no `packs/` shelf and no local packs holds no corpus skill to police,
+// however many SKILL.md files it keeps elsewhere. The violating text is the same
+// one the fixtures above are flagged for, so this asserts the anchor and not the
+// matcher.
+test('skill-no-enforcement-narration: a SKILL.md outside any pack tree is not a corpus skill', () => {
   const root = makeRepo({ changed: {
-    [SKILL]: '---\nname: demo\n---\n\nRun `node engine/checks/check_the_world.mjs`.\n',
+    'docs/skills/demo/SKILL.md': '---\nname: demo\n---\n\nWhen done, run `node .claudinite/checks/run.mjs`.\n',
   } });
   try {
     assert.equal(run(root).length, 0);

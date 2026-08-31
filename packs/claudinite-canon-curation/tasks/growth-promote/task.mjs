@@ -1,36 +1,35 @@
-// canon-curation task: growth-promote — the growth lifecycle's CENTRAL stage
-// (per-project-scheduling DESIGN §6, table 2). Reads the participating members'
-// local packs, generalizes the portable lessons, and opens an owner-gated PR
-// against the canon. A fleet-scoped task: it runs only on the canon repo's own
-// scheduler (only the canon declares canon-curation), and its precondition reads
-// the `fleet` signal — the members aggregate over the fleet PAT.
+// growth-promote — the growth lifecycle's CENTRAL stage. Reads the participating
+// members' local packs, generalizes the portable lessons, and opens an owner-gated
+// PR against the canon. A fleet-reaching task: it runs on the canon home repo's own
+// scheduler, and its precondition reads the `fleet` signal — the members aggregate
+// over the fleet PAT.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 //
-// "Central, once" is enforced by declaration cardinality, not orchestrator
-// wiring: only the canon home repo declares canon-curation, so this task exists
-// nowhere else. No barrier — promote reads whatever is already MERGED on members'
-// mains, so a lesson extracted tonight (03:00, extract) is promoted this same
-// 04:00 run when its auto-merge landed in time, else the next night (DESIGN §2).
+// "Central, once" is enforced by declaration cardinality, not orchestrator wiring:
+// a canon is declared by its one home repo, so this task exists nowhere else. No
+// barrier — promote reads whatever is already MERGED on members' default branches,
+// so a lesson extracted tonight is promoted on the same run when its auto-merge
+// landed in time, else the next one.
 
 export default {
   id: 'growth-promote',
   frequency: 'daily',
-  // THE CROSS-REPO HALF IS THIS REPO'S OWN `dailyHour`, not a field here. Promote reads what has
-  // already merged on MEMBERS' mains, and `schedule_after:` only ever matches an item in this repo's queue
-  // — so the members-extract-then-canon-promotes ordering has no declarable form and lives in the
-  // anchor: members sit at the default hour 4, this repo at 5 (tasks-dispatch DESIGN §17.4). The
-  // offsets that used to carry it retired with the twice-daily cron.
+  // THE CROSS-REPO HALF IS THIS REPO'S OWN scheduler anchor, not a field here. Promote reads what
+  // has already merged on MEMBERS' default branches, and `schedule_after:` only ever matches an item
+  // in this repo's own queue — so the members-extract-then-canon-promotes ordering has no declarable
+  // form and lives in the anchor: a canon home sets its daily hour after its members'.
   //
-  // The WITHIN-repo half is declarable, and is: the canon is a member too, so its own extract must
-  // settle before promote reads the local packs it just wrote.
+  // The WITHIN-repo half is declarable, and is: a canon home is a member too, so its own extract must
+  // settle before promote reads the local packs it just wrote. A canon that does not declare
+  // claudinite-growth queues no such item, and the ordering is then vacuous rather than blocking.
   schedule_after: ['claudinite-growth/growth-extract'],
   precondition_signals: ['fleet'],       // canon-only aggregate: which members changed their local packs
   // This task reads every member's local packs, which an ordinary session in this
-  // repo does not reach (tasks-dispatch DESIGN §12). Reach is a property of WHICH
-  // endpoint the hand-off calls, so a task needing more than an ordinary session
-  // names one; the key resolves in this repo's own config, and until it is
-  // configured the hand-off converges the item to triage naming what is missing.
+  // repo does not reach. Reach is a property of WHICH endpoint the hand-off calls,
+  // so a task needing more than an ordinary session names one; the key resolves in
+  // this repo's own config, and until it is configured the hand-off converges the
+  // item to triage naming what is missing.
   invocation_endpoint: 'fleet',
   agent_model: 'opus',                   // portability, dedup-vs-corpus, and routing are the heaviest judgment
   expected_outcome: 'pr',
@@ -47,7 +46,7 @@ export default {
   // changed set, and the executor's Context binds the worker to those members.
   precondition(signals) {
     const fleet = signals.fleet;
-    if (!fleet) return { run: false, reason: 'no fleet signal (FLEET_GITHUB_TOKEN unset, or not the canon repo)' };
+    if (!fleet) return { run: false, reason: 'no fleet signal (FLEET_GITHUB_TOKEN unset, or this repo is not a canon home)' };
     if (fleet.error) return { run: false, reason: `fleet enumeration failed — ${fleet.error} (retiring/promoting nothing on unproven fleet state)` };
     const participants = (fleet.members ?? [])
       .filter((m) => m.activePacks.includes('claudinite-growth') && m.hasLocalPacks)

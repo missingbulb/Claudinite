@@ -16,8 +16,8 @@ import { LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR } from '../../../engine/p
 //
 // The trigger is the run's whole pinned title, NOT the bare "Claudinite growth:"
 // prefix the whole lifecycle shares, because its promote run has a wider surface
-// by design: it writes the canon under packs/ and skills/ (its own gate is
-// canon-curation's promote-scope.mjs), so keying on the prefix would red it. A
+// by design: it writes the canon's own corpus roots (its own gate is the curation
+// pack's promote-scope.mjs), so keying on the prefix would red it. A
 // run whose title this list doesn't carry is simply not this rule's business.
 //
 // Sibling of that promote-scope gate. Promote can't self-gate — nothing in a
@@ -64,10 +64,9 @@ const rule = {
 export default rule;
 
 // CLI body — a CI gate runs this on every PR (self-gating, ~nothing on a
-// branch that is not a capture run). In the canon repo the entrypoint is
-// canon-curation's growth-scope-gate.mjs (core CI must not name a specific
-// pack — the barriers rule); a consumer wiring its own CI would invoke this
-// module directly:
+// branch that is not a capture run). In the canon home the entrypoint is a shim in
+// its own local pack (core CI must not name a specific pack — the barriers rule);
+// a consumer wiring its own CI would invoke this module directly:
 // `node .claudinite/shared/packs/claudinite-growth/workRules/growth-write-scope.mjs [root]`.
 //   exit 0 — not a capture run, or every touched path is under the local packs
 //   exit 1 — a capture run touched a path outside the local packs

@@ -1,19 +1,21 @@
-import { finding } from '../../../../../engine/checks/helpers/findings.mjs';
-import { VERSION_SOURCE, versionFromLiteral, compareVersions, versionsEqual, nextVersion } from '../../../../../engine/version.mjs';
+import { finding } from '../../../engine/checks/helpers/findings.mjs';
+import { LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
+import { VERSION_SOURCE, versionFromLiteral, compareVersions, versionsEqual, nextVersion } from '../../../engine/version.mjs';
 
 // A PACK'S CONTENT IS DELIVERED ON ITS VERSION NUMBER, and on nothing else. The
 // engine tree vendors wholesale on every converge; a pack's directory ships only
-// where `planPackUpdates` sees `installed.packVersions[id] < pack.version`
-// (updates/pack-update.mjs). So a canon commit that edits `packs/<id>/` without
-// touching that number lands here, goes green here, and reaches no member — the
-// fleet keeps the old bytes while canon believes the change shipped.
+// where `planPackUpdates` sees `installed.packVersions[id] < pack.version`. So a
+// canon commit that edits `packs/<id>/` without touching that number lands on the
+// canon, goes green on the canon, and reaches no member — the fleet keeps the old
+// bytes while the canon believes the change shipped.
 //
-// #939 is what that costs. A check vocabulary rename updated the engine and the
-// canon's own packs in one commit: the engine, delivered unconditionally, reached
-// every member and rejected the old spelling; the pack carrying the new spelling
-// stayed at `version: 1` and reached nobody. The mixed tree failed each member's
-// self-test, the update PR parked, and the fix could not arrive by the route that
-// delivers fixes. Seven repos sat frozen for five days.
+// What that costs, from the canon this rule was written in: a check-vocabulary
+// rename updated the engine and the canon's own packs in one commit. The engine,
+// delivered unconditionally, reached every member and rejected the old spelling;
+// the pack carrying the new spelling stayed at its old version and reached nobody.
+// The mixed tree failed each member's self-test, the update PR parked, and the fix
+// could not arrive by the route that delivers fixes. Seven repos sat frozen for
+// five days.
 //
 // So the invariant this rule holds is one line: A CHANGE UNDER `packs/<id>/` IS A
 // CHANGE TO THAT PACK'S VERSION. Every SHIPPING byte counts, because every one of
@@ -22,12 +24,13 @@ import { VERSION_SOURCE, versionFromLiteral, compareVersions, versionsEqual, nex
 // that directory no vendor set carries (compute-vendor-set drops `*.test.mjs`), so
 // nobody is waiting on them and a bump for one would re-deliver every pack in the
 // tree to say nothing.
-// It is the pack-side twin of `engine-release-record` (the claudinite local pack),
-// which holds the same line for `ENGINE_VERSION`.
 //
 // WORK SCOPE: the question is what THIS change did. The tree always contains a
 // version number; only the diff says whether it moved with the content beside it.
-const LOCAL_PACKS = '.claudinite/local/packs';
+
+// A repo's OWN packs, under either spelling of the local root — neither versioned
+// nor vendored, so nothing about them is a delivery question.
+const LOCAL_ROOTS = [LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR].map((r) => `${r}/`);
 
 // Each pack's version-bump log, next to its manifest — see `versionRecorded`
 // below for what it must carry once a bump lands.
@@ -44,7 +47,7 @@ export const VERSIONS_FILENAME = 'VERSIONS.md';
 export function packsTouched(changed) {
   const ids = [];
   for (const file of changed ?? []) {
-    if (file.startsWith(`${LOCAL_PACKS}/`) || file.endsWith('.test.mjs') || file.endsWith(`/${VERSIONS_FILENAME}`)) continue;
+    if (LOCAL_ROOTS.some((root) => file.startsWith(root)) || file.endsWith('.test.mjs') || file.endsWith(`/${VERSIONS_FILENAME}`)) continue;
     const m = /^packs\/([^/]+)\//.exec(file);
     if (m && !ids.includes(m[1])) ids.push(m[1]);
   }
@@ -89,7 +92,7 @@ const rule = {
   severity: 'blocking',
   scope: 'work',
   description: 'A change under packs/<id>/ bumps that pack\'s version, and a bump lands with its VERSIONS.md row',
-  doc: 'docs/versioned-updates/DESIGN.md',
+  doc: 'packs/claudinite-canon-curation/README.md',
   why: 'a member receives a pack directory only when the canon\'s version exceeds the one it has installed, so content edited without a bump reaches nobody while canon CI reports it shipped (#939 froze seven repos for five days that way); an unrecorded bump is the same evidence gap on a smaller scale — "what did version N change?" becomes unanswerable once the commit scrolls out of history',
 
   run(work) {

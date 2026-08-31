@@ -1,14 +1,14 @@
 import { join, dirname } from 'node:path';
-import { finding } from '../../../../../engine/checks/helpers/findings.mjs';
-import { matchingLines, ruleIdsIn } from '../../../../../engine/checks/helpers/line-scanning.mjs';
+import { finding } from '../../../engine/checks/helpers/findings.mjs';
+import { matchingLines, ruleIdsIn } from '../../../engine/checks/helpers/line-scanning.mjs';
 
 // A pack's injected prose must not narrate its own enforcement: checks run on
 // their own at every Stop and in CI, and each failure message carries its
 // rule. Scans exactly the file each pack.mjs declares as `prose`, never the
 // pack README — the catalog convention *requires* the README to list the
-// pack's rules and how each is enforced. Home-only by declaration:
-// canon-curation is declared solely in the canon home repo, which gates this
-// rule for free.
+// pack's rules and how each is enforced. Canon-only by construction: it scans
+// `packs/<id>/pack.mjs`, the canon shelf, so a repo that keeps no shelf
+// contributes no documents and the rule is silent there.
 const RUNNER = /checks\/run\.mjs/;
 const asWord = (id) => new RegExp(`(^|[^\\w-])${id}([^\\w-]|$)`); // never inside a longer kebab name
 

@@ -1,5 +1,5 @@
-import { finding } from '../../../../../engine/checks/helpers/findings.mjs';
-import { parseVersion, formatVersion } from '../../../../../engine/version.mjs';
+import { finding } from '../../../engine/checks/helpers/findings.mjs';
+import { parseVersion, formatVersion } from '../../../engine/version.mjs';
 import { VERSIONS_FILENAME, rowVersions } from '../workRules/pack-version-bumped.mjs';
 
 // A PACK VERSION IS AN IDENTITY, NOT A COUNTER. `planPackUpdates` re-fetches a
@@ -38,7 +38,7 @@ const rule = {
   id: 'pack-version-claimed-once',
   severity: 'blocking',
   description: "No two rows of a pack's VERSIONS.md claim the same version",
-  doc: 'docs/versioned-updates/DESIGN.md',
+  doc: 'packs/claudinite-canon-curation/README.md',
   why: 'a member re-fetches a pack only when canon\'s version exceeds its installed one, so two changes sharing a number leave whichever members converged between the two merges holding the first tree stamped with the second\'s number — permanently, with nothing red to say so (#1482)',
 
   run(ctx) {

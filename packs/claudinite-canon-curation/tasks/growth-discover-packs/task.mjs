@@ -1,7 +1,6 @@
-// canon-curation task: growth-discover-packs — the FLEET sweep for technologies
-// the shared canon does not yet home (per-project-scheduling DESIGN §6 table 2,
-// §8 clause 2). One weekly pass over every member: read what the fleet is
-// actually built on, subtract what packs/ already homes, and open a reviewed PR
+// growth-discover-packs — the FLEET sweep for technologies the canon does not yet
+// home. One weekly pass over every member: read what the fleet is actually built
+// on, subtract what the canon's packs/ shelf already homes, and open a reviewed PR
 // authoring the missing pack.
 //
 // The only pack-authoring stage there is. A member does not mint packs of its
@@ -21,10 +20,10 @@ export default {
   frequency: 'weekly',                   // the fleet's stacks are slow-moving — a weekly sweep, not a daily one
   precondition_signals: ['fleet'],       // canon-only aggregate: who the members are and what they declare
   // This task reads every member's tree, which an ordinary session in this repo does
-  // not reach (tasks-dispatch DESIGN §12). Reach is a property of WHICH endpoint the
-  // hand-off calls, so a task needing more than an ordinary session names one; the
-  // key resolves in this repo's own config, and until it is configured the hand-off
-  // converges the item to triage naming what is missing.
+  // not reach. Reach is a property of WHICH endpoint the hand-off calls, so a task
+  // needing more than an ordinary session names one; the key resolves in this repo's
+  // own config, and until it is configured the hand-off converges the item to triage
+  // naming what is missing.
   invocation_endpoint: 'fleet',
   agent_model: 'opus',                   // judging what is genuinely canon-worthy and authoring a pack is heavy judgment
   expected_outcome: 'pr',
@@ -35,12 +34,12 @@ export default {
   // Fire on the covered members, every week. There is no windowed trigger: the
   // opportunity is standing (a technology the fleet uses that no canon pack
   // homes), not a recent change, so the sweep runs weekly and no-ops cheaply
-  // when nothing is unhomed. A member with a parsable declaration but no
-  // declared packs is not running Claudinite in any usable sense — the same test
-  // the fleet reader uses before it probes a member — so it is not swept.
+  // when nothing is unhomed. A member with a parsable declaration but no declared
+  // packs is not running Claudinite in any usable sense — the same test the fleet
+  // reader uses before it probes a member — so it is not swept.
   precondition(signals) {
     const fleet = signals.fleet;
-    if (!fleet) return { run: false, reason: 'no fleet signal (FLEET_GITHUB_TOKEN unset, or not the Claudinite repo)' };
+    if (!fleet) return { run: false, reason: 'no fleet signal (FLEET_GITHUB_TOKEN unset, or this repo is not a canon home)' };
     if (fleet.error) return { run: false, reason: `fleet enumeration failed — ${fleet.error} (sweeping nothing on unproven fleet state)` };
     const members = (fleet.members ?? []).filter((m) => m.activePacks.length);
     if (!members.length) return { run: false, reason: 'no covered member to sweep' };

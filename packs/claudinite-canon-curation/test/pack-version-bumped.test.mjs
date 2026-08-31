@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
-import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
-import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
+import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
+import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 import rule, { packsTouched, declaredPackVersion, versionRecorded } from '../workRules/pack-version-bumped.mjs';
 
 const manifest = (version) => `export default {\n  id: 'demo',\n  version: ${version},\n  minEngineVersion: 3,\n};\n`;
