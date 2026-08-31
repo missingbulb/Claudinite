@@ -60,19 +60,28 @@ export function declaredPackVersion(text) {
   return m ? versionFromLiteral(m[1]) : null;
 }
 
-// Does the pack's VERSIONS.md carry a row for this version? A row is a table row
+// A row of the pack's VERSIONS.md is a table row
 // whose first cell is the bare version — the same shape `engine/RELEASES.md`
 // rows use, so the log reads as a table a human maintains, not a format this
 // check invented. No run link is required here (unlike an engine release): a
 // pack bump has no canary rehearsal to cite, so the row's own prose is the
 // record.
 const ROW_VERSION_RE = new RegExp(String.raw`^\|\s*(${VERSION_SOURCE})\s*\|`);
-export function versionRecorded(text, version) {
-  for (const line of (text ?? '').split('\n')) {
+
+// Every version a log's rows claim, each with the 1-based line it sits on. The
+// world-scope `pack-version-claimed-once` reads the same rows to ask whether any
+// number is claimed twice, so the shape of a row is defined here once.
+export function rowVersions(text) {
+  const claims = [];
+  (text ?? '').split('\n').forEach((line, i) => {
     const m = ROW_VERSION_RE.exec(line.trim());
-    if (m && versionsEqual(versionFromLiteral(m[1]), version)) return true;
-  }
-  return false;
+    if (m) claims.push({ version: versionFromLiteral(m[1]), line: i + 1 });
+  });
+  return claims;
+}
+
+export function versionRecorded(text, version) {
+  return rowVersions(text).some((claim) => versionsEqual(claim.version, version));
 }
 
 const rule = {
