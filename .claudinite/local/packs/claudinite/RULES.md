@@ -566,6 +566,15 @@ from lives in the commit that added it and the issue, never here.
   count before and after (total `test(` calls across the touched files). One sweep truncated 46
   test files to zero bytes and every one still "passed".
 
+- **Executing a parked verification whose `In-production-when:` names a committed artifact** —
+  check whether a later migration renamed it before answering "not yet live": read the successor
+  artifact now carrying the same fact and record the rename in the evidence (#1260).
+
+- **An owed cross-repo `Verify:` the queue's sessions cannot make** — an interactive session
+  discharges it: `add_repo` the repositories it names (`access: "push"` where runs, job logs or
+  issues are read), execute its lines literally, record the verdict on the issue. Re-filing
+  queue-side parks again.
+
 ## Editing, branching and merging here
 
 - **Making a throwaway probe commit on a scratch branch** — `git commit -am` stages every modified
