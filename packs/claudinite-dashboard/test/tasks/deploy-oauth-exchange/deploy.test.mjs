@@ -9,6 +9,7 @@ import {
   SOURCE, DEFAULT_WORKER_NAME, COMPATIBILITY_DATE, NeedsAction,
   resolveOrigins, uploadForm, probe, deploy, wiringNote,
 } from '../../../tasks/deploy-oauth-exchange/deploy.mjs';
+import declaration from '../../../tasks/deploy-oauth-exchange/task.mjs';
 
 const member = (config) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-deploy-'));
@@ -75,6 +76,14 @@ test('the probe accepts only the two answers this endpoint gives, and retries wh
   assert.match(bad.why, /origin_not_allowed/);
 });
 
+// The account id is in every Cloudflare dashboard URL its owner opens, so declaring it
+// a secret would both misstate it and put it in a store it does not need. Since #1494
+// the executor hands every repository variable to code-work with nothing declared, so
+// the only thing that must be true is that this task does not ask for it as a secret.
+test('only the two real credentials are declared secrets — the account id is a repository variable', () => {
+  assert.deepEqual(declaration.required_secrets, ['CLOUDFLARE_API_TOKEN', 'GITHUB_OAUTH_CLIENT_SECRET']);
+});
+
 test('a missing clientId, an unresolvable origin and a missing secret are each a NeedsAction naming what to set', async () => {
   const noId = member({});
   await assert.rejects(deploy({ repoRoot: noId, env: ENV }), (e) => e instanceof NeedsAction && /clientId/.test(e.message));
@@ -85,8 +94,14 @@ test('a missing clientId, an unresolvable origin and a missing secret are each a
 
   const ok = member({ clientId: 'Iv1.abc' });
   await assert.rejects(deploy({ repoRoot: ok, env: { ...ENV, CLOUDFLARE_API_TOKEN: '' } }),
-    (e) => e instanceof NeedsAction && /CLOUDFLARE_API_TOKEN/.test(e.message));
-  for (const r of [noId, noOrigin, ok]) removeTree(r);
+    (e) => e instanceof NeedsAction && /repo Actions secret.*CLOUDFLARE_API_TOKEN/s.test(e.message));
+
+  // Nothing declares the account id, so the queue cannot park on it — naming it, and
+  // naming it as a VARIABLE rather than a secret, is this code's own job.
+  const noAccount = member({ clientId: 'Iv1.abc' });
+  await assert.rejects(deploy({ repoRoot: noAccount, env: { ...ENV, CLOUDFLARE_ACCOUNT_ID: '' } }),
+    (e) => e instanceof NeedsAction && /repository variable CLOUDFLARE_ACCOUNT_ID/.test(e.message));
+  for (const r of [noId, noOrigin, ok, noAccount]) removeTree(r);
 });
 
 test('a dry run resolves everything and uploads nothing', async () => {

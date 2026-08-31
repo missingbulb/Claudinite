@@ -12,7 +12,7 @@ also the hand-runnable script (`node deploy.mjs --root <member> [--dry-run]`).
 | Where | Name | What it is |
 |---|---|---|
 | Repo Actions secret | `CLOUDFLARE_API_TOKEN` | a token with **Account · Workers Scripts · Edit** on the hosting account, and nothing else |
-| Repo Actions secret | `CLOUDFLARE_ACCOUNT_ID` | the Cloudflare account the endpoint is hosted on |
+| Repo **variable** | `CLOUDFLARE_ACCOUNT_ID` | the Cloudflare account the endpoint is hosted on. Not a secret — it is in every dashboard URL its owner opens — and since #1494 the executor hands every repository variable to code-work with nothing declared |
 | Repo Actions secret | `GITHUB_OAUTH_CLIENT_SECRET` | the GitHub App's client secret |
 | Declaration `config` | `clientId` | the App's client id — public, and the same value the page's own config carries |
 | Declaration `config` | `allowedOrigins` | *optional*; the exact page origins allowed to call the endpoint. Falls back to `redirectUri`'s origin, then to `https://<owner>.github.io` |

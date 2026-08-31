@@ -27,11 +27,13 @@ export default {
   // Three API calls and a probe that waits out route propagation (six attempts,
   // five seconds apart). The bound is that probe's worst case with room around it.
   code_work_timeout: 300,
-  // The three things a public declaration must not carry. CLOUDFLARE_API_TOKEN
-  // needs exactly one grant — Account · Workers Scripts · Edit — on the account
-  // that hosts the endpoint; GITHUB_OAUTH_CLIENT_SECRET is the App's client secret,
-  // and its client id is public and lives in the declaration instead.
-  required_secrets: ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'GITHUB_OAUTH_CLIENT_SECRET'],
+  // The two real credentials, and only those. CLOUDFLARE_API_TOKEN needs exactly one
+  // grant — Account · Workers Scripts · Edit — on the account hosting the endpoint;
+  // GITHUB_OAUTH_CLIENT_SECRET is the App's client secret. The client id is public and
+  // lives in the declaration; the Cloudflare account id is a repository VARIABLE, which
+  // every task's code-work is handed with nothing declared, so listing it here would
+  // both misstate it as sensitive and put it in a store it does not need.
+  required_secrets: ['CLOUDFLARE_API_TOKEN', 'GITHUB_OAUTH_CLIENT_SECRET'],
 
   // Never due on its own: an item exists only because somebody created one, and
   // that IS the request. A `false` here would close the operator's own item without

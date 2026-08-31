@@ -9,12 +9,15 @@
 // Runnable by hand as well as by the task, from anywhere:
 //   node deploy.mjs --root /path/to/member [--dry-run]
 //
-// WHAT IT READS. The endpoint's public half — the app's client id and which page
-// origins may call it — comes from the member's own `claudinite-dashboard`
-// declaration, the same file the site build reads, so the button and the endpoint
-// it calls cannot be configured against different apps. Only the two credentials
-// and the account id arrive as environment, because only a secret store should
-// carry them.
+// WHAT IT READS, and each value sits where its own sensitivity puts it. The
+// endpoint's public half — the app's client id and which page origins may call it —
+// comes from the member's own `claudinite-dashboard` declaration, the same file the
+// site build reads, so the button and the endpoint it calls cannot be configured
+// against different apps. The two real credentials are repo Actions secrets, the
+// only store code-work ever sees a secret value from. The Cloudflare account id is
+// neither: it is in every dashboard URL its owner opens, so it is a repository
+// VARIABLE, which the executor hands to every task's code-work with nothing
+// declared.
 //
 // IDEMPOTENT. The upload is a PUT of the whole script and its bindings, so a
 // re-run redeploys the same worker to the same URL; nothing accumulates and there
@@ -160,6 +163,7 @@ export async function deploy({ repoRoot, env = process.env, dryRun = false, log 
   const cfg = await declaredConfig(repoRoot);
   const repoSlug = env.CLAUDINITE_REPO || env.GITHUB_REPOSITORY || '';
 
+  // A repository variable, not a secret — see the header.
   const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim();
   const apiToken = env.CLOUDFLARE_API_TOKEN?.trim();
   const clientSecret = env.GITHUB_OAUTH_CLIENT_SECRET?.trim();
@@ -187,14 +191,15 @@ export async function deploy({ repoRoot, env = process.env, dryRun = false, log 
     log('dry run — nothing was uploaded');
     return { dryRun: true, name, origins, clientId };
   }
-  if (!accountId || !apiToken || !clientSecret) {
-    const missing = [
-      !apiToken && 'CLOUDFLARE_API_TOKEN',
-      !accountId && 'CLOUDFLARE_ACCOUNT_ID',
-      !clientSecret && 'GITHUB_OAUTH_CLIENT_SECRET',
-    ].filter(Boolean);
-    throw new NeedsAction(`set the repo Actions secret(s): ${missing.join(', ')}`);
+  // The queue names a declared secret it does not carry, so the two credentials park
+  // themselves. The account id is a variable and nothing declares it, which is what
+  // makes naming it here this code's job rather than the executor's.
+  if (!accountId) {
+    throw new NeedsAction('set the repository variable CLOUDFLARE_ACCOUNT_ID '
+      + '(Settings → Secrets and variables → Actions → Variables) to the account hosting the endpoint');
   }
+  const missing = [!apiToken && 'CLOUDFLARE_API_TOKEN', !clientSecret && 'GITHUB_OAUTH_CLIENT_SECRET'].filter(Boolean);
+  if (missing.length) throw new NeedsAction(`set the repo Actions secret(s): ${missing.join(', ')}`);
 
   const call = (path, opts) => cf(apiToken, path, opts);
 
