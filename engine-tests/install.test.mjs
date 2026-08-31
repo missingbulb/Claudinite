@@ -213,8 +213,14 @@ test('the apply stage\'s duties live in its task file, and none were dropped wit
   const task = readFileSync('packs/claudinite-lifecycle/tasks/update/task.md', 'utf8');
   assert.match(task, /executor routine/, 'the one verification no Action can make');
   assert.match(task, /needs-human/);
-  assert.match(task, /never move a file into `\.github\/workflows\/`/i,
-    'the workflow lane is retired, and the task file is where a session is told so (#1317)');
+  // The withhold lane's duty, which is the session's alone: it holds the credential the
+  // Action token lacks. This assertion pinned the OPPOSITE sentence until #1539 — #1317
+  // retired the lane in the brief and here, #1511 reopened it in code and touched
+  // neither, so the suite went on requiring the contradiction that split the fleet 8/5.
+  assert.match(task, /move `\.claudinite\/pending-workflows\/<name>` to\n`\.github\/workflows\/<name>`/,
+    'the session delivers a withheld workflow, and the task file is where it is told so (#1509)');
+  assert.doesNotMatch(task, /never move a file into `\.github\/workflows\/`/i,
+    'the retired-lane instruction must not come back — it is what parked five members');
   assert.match(task, /applyStage\.instructions/, 'what a record asked for is read from the record, on the branch');
 
   // And the payload must stay identifiers-only: the worker may name the condition,

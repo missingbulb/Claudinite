@@ -191,12 +191,11 @@ install-specific provisions:
   flow cannot write, it either hands to the flow that can (workflows → pack
   lane / custom update) or surfaces as `need-human`.
 
-  **Superseded by tasks-dispatch DESIGN §18 (#1317).** No flow writes or
-  computes a `.github/workflows/` path at all now: a member's two workflow
-  files are static after adoption, so there is nothing left to withhold, and
-  the staging lane described in the rest of this bullet is retired. What the
-  principle still forbids is unchanged — a flow may not silently drop a path
-  it cannot write. The lane as it stood:
+  **The lane is live (#1509).** It was retired in #1317, on the premise that a
+  member's two workflow files are static after adoption; #1494's executor line
+  is the counterexample, and the lane reopened to carry it. What the principle
+  forbids has never changed — a flow may not silently drop a path it cannot
+  write. The lane:
 
   the pack flow **staged** `.github/workflows/`
   content at `.claudinite/pending-workflows/` — a path its Action token

@@ -7,6 +7,7 @@ its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60831.1 | 2026-08-31 | The manifest and README say the withhold lane this pack probes is LIVE again, where they said it was retired and the probe exercised a route that no longer existed. Reopened in #1509; this pack is once more the thing that makes the record's `materialize` runnable against a real member (#1539). |
 | 60824.2 | 2026-08-24 | A README link followed the task surface out of `engine/scheduler/` (#1328). |
 | 60824.1 | 2026-08-24 | The withhold lane this pack probes is retired, so the probe exercises a delivery route that no longer exists; the manifest says so where an adopter reads it (#1317). |
 | 4 | — | Renamed from `canary-probe` — the pack's subject is a Claudinite feature, so it carries the prefix that says so. |

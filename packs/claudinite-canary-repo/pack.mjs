@@ -8,11 +8,10 @@
 // maintenance PR as an ordinary added file, with the update ending at `apply-stage` until
 // a session with an MCP credential moved it into place (#649).
 //
-// THAT LANE IS RETIRED (#1317). A member's workflow files are static after adoption, so
-// no flow computes or stages one, and the probe below therefore exercises a delivery
-// route that no longer exists. The pack is left in place rather than deleted because
-// what to do with it is a separate call: nothing depends on it, and a member declaring
-// it gets an inert workflow and a record that can no longer be delivered by machinery.
+// THAT LANE IS LIVE (#1509). It was retired in #1317 on the premise that a member's
+// workflow files are static after adoption, and reopened when #1494's executor line
+// proved otherwise. So the probe below exercises a delivery route that exists, which is
+// what this pack is for.
 //
 // That lane had one exercised caller: the scheduler workflow's own convergence. A
 // RECORD'S `materialize` shares the same `write`, and had never run against a live
@@ -50,7 +49,7 @@
 // also means the record's job is to UPDATE a workflow that is already there — the exact
 // shape a fleet-wide workflow fix would take.
 export default {
-  version: '60824.2',
+  version: '60831.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the inert probe workflow the canon delivers to its canary to prove workflow materialization works end to end',

@@ -2284,17 +2284,26 @@ update task never runs: **updates are opt-in via the tasks pack**. The recovery 
 is a human session running the update or adopt-pack skills — a member with a state it likes
 keeps it, like any package manager without forced auto-update.
 
-### Workflows: written once, then static
+### Workflows: written once, changed rarely, and only through the withhold lane
 
-The two member workflow files are static after adoption: secrets travel as one fixed
+The two member workflow files are near-static after adoption: secrets travel as one fixed
 named-secrets list the converge regenerates (§14.4), the per-repo cron minute and anchor
 hours are written once at adoption, and `run:` lines name **mount pack paths**
-(`.claudinite/shared/packs/claudinite-tasks/…`) behind which everything converges nightly — a
-release never edits the YAML again.
+(`.claudinite/shared/packs/claudinite-tasks/…`) behind which everything converges nightly — so an
+ordinary release edits no YAML.
 
-Consequently **no update flow touches `.github/workflows/`**, and the `pending-workflows/`
-withhold lane does not exist: a structural change to the YAML itself (permissions, an actions
-version bump) is an explicit, human-merged fleet PR event, not a lane the machinery must carry.
+**Near-static, not static**, and the difference is what §1317 got wrong: a change to the
+env block itself does happen (`CLAUDINITE_VARS`, #1494), and when it does there must be a
+route. What follows is that route.
+
+Consequently the update flow's own **push** never touches `.github/workflows/`: the Action
+token may not write there and GitHub rejects the whole ref for trying, so a workflow file in
+the pushed tree fails the entire update rather than delivering anything. A change that must
+reach those files therefore travels the **withhold lane** — the flow stages it under
+`.claudinite/pending-workflows/`, reports it in `withheld`, and raises the apply stage, whose
+session holds a credential that may write there and moves it into place (#1509). The lane was
+retired in #1317 on the premise that a member's workflows are static after adoption; #1494's
+executor line is the counterexample that re-opened it.
 Adoption of `claudinite-tasks` (the adopt-pack skill, or bootstrap when the pack is declared at
 init) scaffolds the two files and the CCR routine endpoints; the routines' stored prompts point
 at the pack's operational documents in the mount.
