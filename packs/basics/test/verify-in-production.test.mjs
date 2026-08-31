@@ -41,9 +41,16 @@ test('the brief is filed only after the merge, and carries no PR blocker', () =>
 
 // The verification is AUTOMATIC end to end: the filed check must be one an
 // unattended run can read, and a person enters only where no such read exists.
+//
+// Which reads those are is the half that was missing (#1500): "an unattended run can
+// make" is a property a filer will assume of anything it can read ITSELF, and five of
+// one batch's seven claimed items parked on a dashboard or a cross-repo read nobody
+// had checked the runner could reach.
 test('the check is automatic by construction, and a human is the last resort', () => {
-  assert.match(skill, /unattended[\s*]+run can make/i,
-    'nothing requires Verify: to be automatically checkable');
+  assert.match(skill, /which tool call makes it/i,
+    'nothing makes the filer test Verify: against a read the runner can actually make');
+  assert.match(skill, /human-step form/i,
+    'an artifact no runner can read has no form of its own to be filed as');
   assert.match(skill, /no automatic check/i,
     'the skill never bounds when a person may be asked at all');
 });
