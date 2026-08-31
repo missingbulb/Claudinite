@@ -57,6 +57,7 @@ why.
 | `pack-no-enforcement-narration` | medium | complexity | check: blocking |
 | `pack-version-bumped` | high | correctness | check: blocking |
 | `pack-version-claimed-once` | high | correctness | check: blocking |
+| `pack-version-log-ordered` | high | correctness | check: blocking |
 | `skill-no-enforcement-narration` | medium | complexity | check: blocking |
 | `pack-independence` | high | correctness | declared check: blocking |
 
