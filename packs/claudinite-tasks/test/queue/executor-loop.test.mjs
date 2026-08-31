@@ -126,6 +126,36 @@ test('code_work that delivered no open PR still closes task:status:done', async 
   assert.ok(issue.labels.includes('task:status:done'));
 });
 
+// A MARKED ISSUE is the person's own issue wearing the item's state, so its title is
+// theirs and its fields ride a machine block. A DONE TERMINAL CLOSES IT ALL THE SAME
+// (#1489): the run left nothing on it for anybody to act on.
+const markedItem = (number, task, labels) => ({
+  number, title: 'A thing to do', labels: ['task:origin:ad-hoc', ...labels],
+  body: `Please do the thing.\n\n<!-- claudinite-item -->\npacks/p/tasks/${task}/task.md\n\nRequest: #${number}\n<!-- /claudinite-item -->\n`,
+  created_at: '2026-08-14T04:00:00Z', updated_at: '2026-08-14T04:00:00Z',
+});
+
+test('a marked issue whose code_work is done is closed, like any other done item', async () => {
+  const repo = fakeRepo([markedItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  const done = await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
+  assert.deepEqual(done, [{ issue: 1, outcome: 'task:status:done' }]);
+  const issue = repo.find(1);
+  assert.equal(issue.state, 'closed');
+  assert.ok(issue.labels.includes('task:status:done'));
+  assert.ok(issue.labels.includes('task:origin:ad-hoc'), 'the mark never comes off — origins are for life');
+});
+
+// The contrast, unchanged: a REJECTED terminal is the run's verdict, not the issue's
+// validity, so it stands on the marked issue and leaves it open (§16.5).
+test('a marked issue the precondition declined wears the refusal and stays open', async () => {
+  const repo = fakeRepo([markedItem(2, 'a', ['task:status:waiting-for-executor'])]);
+  const done = await drive(repo, [task('a', { precondition: () => ({ run: false, reason: 'nothing to do' }) })]);
+  assert.deepEqual(done, [{ issue: 2, outcome: 'obsolete' }]);
+  const issue = repo.find(2);
+  assert.equal(issue.state, 'open');
+  assert.ok(issue.labels.includes('task:status:rejected'));
+});
+
 // A RUN THAT FAILED PARKS `failure`, whatever the worker asked for (#1452). The
 // marker used to route the park, and a worker naming `action` moved a failed run into
 // a non-blocking lane — so the standing slot freed and the task re-filed the next day

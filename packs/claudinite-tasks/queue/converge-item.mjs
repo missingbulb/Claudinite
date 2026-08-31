@@ -21,9 +21,9 @@
 import { pathToFileURL } from 'node:url';
 import { renderTaskExec } from '../run-record.mjs';
 import {
-  AGENT, TASK_DONE, STATUS_RUNNING_AGENT, isStatus, isWorkItemTitle, machineBlockOf,
+  AGENT, TASK_DONE, STATUS_RUNNING_AGENT, isStatus, machineBlockOf,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
-  QUEUED_LABEL, IN_REVIEW_LABEL,
+  QUEUED_LABEL, IN_REVIEW_LABEL, ORIGIN_LABELS, hasLabel,
   parseWorkItemTitle, parseWorkItemBody, spellingsOf, labelNames,
   editItemBody, withEndsWhen,
 } from './work-item.mjs';
@@ -66,7 +66,15 @@ export function refusal(item, issue) {
   // A marked issue IS its own item (DESIGN §16.1), so the title test cannot be the
   // membership test any more: what says this is one is the machine block adoption
   // wrote — never the body's first line, which on a marked issue is a person's prose.
-  if (!parseWorkItemTitle(item.title ?? '') && machineBlockOf(item.body ?? '') === null) {
+  //
+  // THREE SIGNALS, ANY ONE SUFFICIENT. A membership test gated on the single artifact
+  // it exists to validate refuses exactly the items that artifact is missing from: an
+  // issue adopted before the block delimiters existed carries its fields bare, and was
+  // refused here into a by-hand convergence that dropped half the transition
+  // (missingbulb/Shepherd#360). The origin label is the independent one — carried for
+  // life, and platform-write-gated like the block was.
+  const marked = ORIGIN_LABELS.some((name) => hasLabel(item, name));
+  if (!parseWorkItemTitle(item.title ?? '') && machineBlockOf(item.body ?? '') === null && !marked) {
     return `#${issue} is not a Claudinite work item`;
   }
   if (item.state !== 'open') return `#${issue} is already closed — it was converged once already`;
@@ -133,10 +141,12 @@ export function convergeOps(item, plan) {
   }
 
   if (spec.closes) {
-    // A MARKED ISSUE IS NOT THE SESSION'S TO CLOSE (§16.1, §16.5): the terminal
-    // status stands on the open issue, and whether the issue itself is finished
-    // belongs to the person who opened it.
-    if (isWorkItemTitle(item.title ?? '')) ops.push({ kind: 'close', issue: item.number, stateReason: spec.stateReason });
+    // A DONE TERMINAL CLOSES THE ISSUE IT STANDS ON, marked or filed (#1489,
+    // reversing §16.1/§16.5's "never a marked issue"). `done` is the one outcome
+    // that means nothing is left for anyone to act on, so an issue left open under
+    // it asks its author to come and agree with what the run already settled. Every
+    // other outcome parks, and a park leaves the issue open to be waited on.
+    ops.push({ kind: 'close', issue: item.number, stateReason: spec.stateReason });
     return ops;
   }
 
