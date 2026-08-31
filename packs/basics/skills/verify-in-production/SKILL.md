@@ -52,6 +52,10 @@ Most changes **file nothing.** Run the test in this order and stop at the first 
 
 The bar is *could not be watched now*, not *would be nice to double-check*. A verification
 filed for a change already covered by a test is a wasted run re-proving what the suite proved.
+And the test above only files point assertions: when the merge completes a **larger element** —
+one that earned a design doc or a phased tracking issue — the ~week-later review of how the
+whole design fared is [production-retrospective](../production-retrospective/SKILL.md)'s
+separate call, made beside this one.
 
 ## Second: can the RUN read it?
 
