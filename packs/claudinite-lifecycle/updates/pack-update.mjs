@@ -9,7 +9,7 @@ import { RENAMED_PACKS } from '../../../engine/pack_loader/renamed-packs.mjs';
 import { migrationDirs, migrationApplies, flowOf, DECLARATION_FILE } from '../../../engine/checks/helpers/active-migrations.mjs';
 import { settingsPath } from '../../../engine/settings-file.mjs';
 import { installedVersions, hasInstalledMount, withInstalledVersions } from '../../../engine/installed-versions.mjs';
-import { loadMigrations, applyMigration } from '../../../engine/migrations/registry.mjs';
+import { loadMigrations, applyMigration, WITHHOLD_CAPABLE_ENV } from '../../../engine/migrations/registry.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
 
 // THE PACK UPDATE FLOW (docs/versioned-updates/DESIGN.md §3): move one repo's
@@ -99,24 +99,23 @@ export function planPackUpdates(packs, declared, installed, { today, engineVersi
 
 const outcome = (status, detail, extra = {}) => ({ status, detail, ...extra });
 
-// Everything under here is a path this flow's caller cannot push. Kept as the one
-// definition of that fact: nothing routes around it any more, and a record that
-// materializes such a path is reported skipped rather than staged.
+// Everything under here is a path this flow's caller cannot push, and the one
+// definition of that fact. A record naming such a path is withheld from the pushed tree
+// and staged for the apply stage, which delivers it on a credential that can.
 export const WORKFLOW_DIR = '.github/workflows/';
 
-// The staging directory the withhold lane used. EMPTIED, NOT REMOVED, like every
-// `updates/*` export: a member's vendored update worker is a stale caller of an
-// instantly-current flow module, so a name it still imports may not vanish under it.
-// Nothing writes here now; `sweepStaged` below clears what an earlier cycle left.
+// Where a withheld workflow file waits between this run staging it and the apply stage
+// delivering it. Inside `.claudinite/`, so it rides the ordinary push the Action token
+// CAN make; only the real `.github/workflows/` path is refused.
 export const PENDING_DIR = '.claudinite/pending-workflows/';
 
-// Where a withheld workflow path used to be staged. EMPTIED, NOT REMOVED, for the
-// reason every `updates/*` export is: nothing stages anything now, so it answers with
-// the path a sweep would find rather than one anything writes.
+// Where a withheld workflow path is staged. One level deep and named for the workflow
+// file itself, so the apply stage recovers the destination from the staged name alone.
 export const stagedAt = (workflowPath) => `${PENDING_DIR}${workflowPath.slice(WORKFLOW_DIR.length)}`;
 
-// Every file still staged from before the lane was retired, repo-relative. One level
-// deep, which is all `.github/workflows/` itself has.
+// Every staged file, repo-relative. One level deep, which is all `.github/workflows/`
+// itself has. The sweep in `packUpdate` reads this to clear what an EARLIER cycle left
+// without touching what the current one just staged.
 export function stagedFiles(targetRoot) {
   const dir = join(targetRoot, PENDING_DIR);
   if (!existsSync(dir)) return [];
@@ -144,8 +143,8 @@ export async function pendingExecutorWorkflow() { return { pending: null, error:
 export function applyStageFor(specs, withheld = []) {
   const asked = specs.filter((m) => m.applyStage);
   if (!asked.length && !withheld.length) return { needed: false };
-  // `withheld` is always empty now that no flow stages a workflow file (#1317); the
-  // parameter and the field stay because a fielded worker still passes and reads them.
+  // A withheld workflow file needs the stage on its own, with no record asking: the file
+  // is staged and undelivered, and only the stage's credential can finish it.
   // The reason names the CONDITION and the ARTIFACTS BY IDENTITY, and stops there —
   // it becomes `reason.detail` on the work item, and the payload it rides in
   // carries identifiers, never instructions (updates/terminals.mjs). So a record that
@@ -172,6 +171,7 @@ export function applyStageFor(specs, withheld = []) {
 // writes nothing.
 export async function packUpdate(targetRoot, {
   fullName, today, dryRun = false, delivery = 'auto-merge', forceMergeOnRedCi = false, selfTestRun,
+  extraRecords = [],
 } = {}) {
   const settingsFile = settingsPath(targetRoot);
   if (!existsSync(settingsFile)) {
@@ -230,18 +230,31 @@ export async function packUpdate(targetRoot, {
 
   const put = (p, c) => { mkdirSync(dirname(join(targetRoot, p)), { recursive: true }); writeFileSync(join(targetRoot, p), c); };
 
-  // A path under `.github/workflows/` is REFUSED, not diverted. The flow's caller
-  // pushes with the Action's GITHUB_TOKEN, which GitHub never lets write there, and the
-  // refusal rejects the whole ref — so writing one would fail the entire update rather
-  // than deliver a file. Nothing needs to: a member's workflows are static after
-  // adoption (#1317). A record that materializes one is reported skipped, which is what
-  // the absent `CLAUDINITE_CAN_WITHHOLD_WORKFLOWS` handshake tells its `appliesTo`.
-  const write = (p, c) => { if (!p.startsWith(WORKFLOW_DIR)) put(p, c); };
+  // A path under `.github/workflows/` is WITHHELD from the pushed tree and staged for the
+  // apply stage (#649, re-opened in #1509). The flow's caller pushes with the Action's
+  // GITHUB_TOKEN, which GitHub never lets write there, and the refusal rejects the whole
+  // ref — so the file must not be in the tree this run commits. The apply stage is a
+  // different credential: it raises a work item for an agent session, and the Claude
+  // GitHub App carries `workflows: write`, which is what actually delivers the file.
+  //
+  // #1317 dropped these writes instead, on the ground that "a member's workflows are
+  // static after adoption". #1494 is the counterexample — the executor's CLAUDINITE_VARS
+  // line is a workflow change every member needs — so the lane is open again.
+  const withheld = [];
+  const write = (p, c) => {
+    if (!p.startsWith(WORKFLOW_DIR)) return put(p, c);
+    put(stagedAt(p), c);
+    if (!withheld.includes(p)) withheld.push(p);
+  };
   const move = (from, to) => { mkdirSync(dirname(join(targetRoot, to)), { recursive: true }); renameSync(join(targetRoot, from), join(targetRoot, to)); };
   const readTemplate = (p) => (existsSync(join(canonRoot, p)) ? readFileSync(join(canonRoot, p), 'utf8') : null);
-  const io = { exists, move, read, write, readTemplate, env: {} };
+  // The announcement is what un-skips a record naming a workflow path. It is an env
+  // handshake rather than a probe of the disk because what matters is what THIS process
+  // can do, and the vendor step earlier in this same cycle already replaced the on-disk
+  // worker while the old code is still running (registry.mjs states the same).
+  const io = { exists, move, read, write, readTemplate, env: { [WITHHOLD_CAPABLE_ENV]: '1' } };
   const applied = [];
-  for (const m of specs) applied.push(...(await applyMigration(m, io)));
+  for (const m of [...specs, ...extraRecords]) applied.push(...(await applyMigration(m, io)));
 
   // 2c. THE CLAUDE.md PACK INDEX (#807), for the same reason as 2b and at the same
   //     point: its content is a function of the pack set, and the vendor above is
@@ -259,11 +272,15 @@ export async function packUpdate(targetRoot, {
   if (ensureRulesIndexImport(targetRoot)) applied.push('added the CLAUDE.md pack-index import');
   if (ensureRulesIndexMergeAttribute(targetRoot)) applied.push('declared merge=ours for the pack index');
 
-  // …and sweep the retired staging directory. A member that converged before #1317 may
-  // still carry files the withhold lane staged; nothing is owed now, so every one of
-  // them goes. The sweep is also how a member confirms the lane is gone — the directory
-  // is empty exactly when nothing is outstanding, and it stays that way.
-  for (const stale of stagedFiles(targetRoot)) rmSync(join(targetRoot, stale), { force: true });
+  // …and sweep the staging directory of anything this run did NOT put there: a file
+  // staged by an earlier cycle was either delivered or abandoned, and either way the
+  // record that staged it would stage it again. Scoping the sweep is load-bearing — an
+  // unscoped one deletes the delivery this very run just staged, silently and green.
+  const stagedNow = new Set(withheld.map(stagedAt));
+  for (const stale of stagedFiles(targetRoot)) {
+    if (stagedNow.has(stale)) continue; // this run's own delivery, not a leftover
+    rmSync(join(targetRoot, stale), { force: true });
+  }
 
   // 3. Stamp each updated pack's version. Written per pack rather than wholesale, so
   //    a pack this run did not touch keeps the number it really has.
@@ -308,7 +325,6 @@ export async function packUpdate(targetRoot, {
   // and a key that vanished would read as a worker too old to report one.
   const wiringError = null;
   const detail = decision.why;
-  const withheld = [];
 
   return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok', detail, {
     plan, files: packFiles.length, applied, selftest, decision, withheld,
