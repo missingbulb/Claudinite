@@ -17,14 +17,14 @@ import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs'
 // The same shape as the engine flow beside it — vendor, migrate, converge, stamp,
 // gate — with three deliberate differences, each a consequence of what a pack IS:
 //
-//   1. IT TOUCHES NO WORKFLOW FILE, and neither does any other flow. A member's two
-//      workflow files are static after adoption (tasks-dispatch DESIGN §18): the cron
-//      minute and anchor hours are written once, secrets travel as one fixed line, and
-//      every `run:` names a mount path behind which the code converges nightly. So
-//      there is nothing for an update to deliver there, and the staging lane that used
-//      to carry it — content withheld from a tree the Action's GITHUB_TOKEN may not
-//      push, handed to a credentialed apply stage — is gone with its reason (#1317). A
-//      structural change to the YAML itself is a human-merged fleet PR event.
+//   1. IT PUSHES NO WORKFLOW FILE, because it cannot: GitHub refuses the Action's
+//      GITHUB_TOKEN under `.github/workflows/` and rejects the WHOLE ref for trying, so
+//      one such path in the pushed tree fails the entire update. What it does instead is
+//      the WITHHOLD lane — the write is staged to `.claudinite/pending-workflows/` and
+//      reported in `withheld`, which raises the apply stage, whose session holds a
+//      credential that may write there (#1509). The lane was retired in #1317 on the
+//      premise that a member's workflows are static after adoption; #1494's executor
+//      line is the counterexample that re-opened it.
 //   2. IT ENFORCES `minEngineVersion`. A pack version declares the lowest engine it
 //      runs on; applying it past that is a guess, and a guess about whether a
 //      member's engine can load a pack is how a fleet goes quiet. Violation is a
