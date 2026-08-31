@@ -571,7 +571,7 @@ test('growth-write-scope: a capture run deleting a file outside the surface is f
 });
 
 test('growth-write-scope: the sibling promote run, with its wider surface, is not gated here', () => {
-  // Promote writes the canon by design; promote-scope is its gate.
+  // Promote writes the canon by design, and is gated elsewhere — not by this rule.
   const promote = makeRepo({
     base: { 'packs/basics/RULES.md': '- a rule\n' },
     changed: { 'packs/basics/RULES.md': '- a rule\n- a promoted rule\n' },

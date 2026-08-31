@@ -47,13 +47,6 @@ export const RENAMED_PACKS = Object.freeze({
   // that says so.
   'canary-probe': 'claudinite-canary-repo',
   sheepdog: 'claudinite-fleet-sheepdog',
-  // Promoted (#1537): the canon home's curation duties became a canon pack any
-  // canon can declare. The old spelling was a LOCAL pack id, which this map
-  // ordinarily leaves alone — but it is also the pack segment every in-flight work
-  // item's title and machine block carries, and those resolve through here, so
-  // without the entry a queued curation item decodes to a task that no longer
-  // exists. It comes out once no such item is still open.
-  'canon-curation': 'claudinite-canon-curation',
 });
 
 // The canon id a spelling resolves to. Canon packs only — a LOCAL pack lives in the

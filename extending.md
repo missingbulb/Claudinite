@@ -60,10 +60,8 @@ a pack only when declared and ships no canon-internal tree at all, so such an im
 every consumer that vendors the importer without its target. A pack that wants another pack's
 *abilities* declares the dependency (`requires`) and passes **configuration**; a helper both
 sides need moves into `engine/checks/helpers`. Enforced canon-side as **barriers configuration, never
-bespoke checking code**: the `pack-independence` barrier is contributed as manifest data by the
-curation pack a canon home declares (a canon-side duty, since the `packs/` tree it polices exists
-only on a canon), with the vendor writer's coherence guard holding the same invariant at vendoring
-time on consumers' behalf.
+bespoke checking code**: the `pack-independence` barrier is contributed as manifest data, with the
+vendor writer's coherence guard holding the same invariant at vendoring time on consumers' behalf.
 
 Activation is the project's declaration in `.claudinite-settings.json` — **no pack runs undeclared,
 the baseline included.** A technology pack carries a `detect` fingerprint so `--init` seeds it into a
