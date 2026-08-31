@@ -349,8 +349,14 @@ test('the pack declares its human-only step in the shape the rule requires', () 
 test('the pack hands over the sign-in decision, not just the Pages setting', () => {
   const signin = pack.adoptionHandover.find((h) => /sign in|authenticat/i.test(h.step));
   assert.ok(signin, 'no handover entry covers how viewers authenticate');
-  assert.match(signin.step, /CLAUDINITE_DASHBOARD_CLIENT_ID/, 'it names the pair that actually turns the button on');
-  assert.match(signin.step, /CLAUDINITE_DASHBOARD_EXCHANGE_URL/, 'both halves — either alone does nothing');
+  // A `step` is rendered as ONE checkbox in somebody's handover issue, so it states the
+  // decision and points at the checklist rather than spelling six actions and a
+  // rationale inside the box (basics' `writing-handover-issues`). The word bound is the
+  // guard that matters: naming the variables was the old assertion, and it passed just
+  // as happily on the 90-word paragraph it was written against.
+  assert.match(signin.step, /README/i, 'it points at the checklist that does name the pair');
+  assert.ok(signin.step.split(/\s+/).length <= 30,
+    `a handover step is one checkbox, not a procedure — this one is ${signin.step.split(/\s+/).length} words`);
   assert.match(signin.step, /README/i, 'and points at where the mechanics are');
   // The trap this guards: an entry that reads as mandatory when the deployment may
   // legitimately have nothing to do.

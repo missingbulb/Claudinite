@@ -402,31 +402,34 @@ their own fleet, with their own app.
 
 #### Turning sign-in on
 
-The four steps, in the order they unblock each other. Adoption files them as a tracking
-issue rather than leaving them here to be met after the first anonymous viewer gives up.
+Copy this into the deployment's own issue, substituting its owner and repo — it is the
+checklist the adoption handover points at. Notes are below it, deliberately: a reader
+working through these has the settings page open in the next tab.
 
-1. **Register a GitHub App** with read-only **Contents**, **Issues** and **Actions**, and
-   *Request user authorization (OAuth) during installation* enabled. The callback URL is
-   the deployed page — or the `https://<user>.github.io/` root with **wildcard matching**,
-   which covers every project Pages site on that host. Note the client id, generate a
-   client secret.
-2. **Install it** on the account holding the repos the dashboard reads. Per *account*, not
-   per repo: a user token reaches only what the app is installed on, so an uninstalled
-   account renders every member row as *not visible to you*.
-3. **Set the repository variable `CLAUDINITE_DASHBOARD_CLIENT_ID`**, and **deploy
-   [`oauth-exchange.mjs`](oauth-exchange.mjs)** by running this pack's
-   [`deploy-oauth-exchange`](tasks/deploy-oauth-exchange/README.md) task — it uploads the
-   endpoint to Cloudflare Workers, proves the URL answers, and reports it. One deployment
-   serves every dashboard the same owner runs.
-4. **Set `CLAUDINITE_DASHBOARD_EXCHANGE_URL`** to the URL that run reported. The client id
-   alone does nothing — the pair is what makes the button appear.
+- [ ] Register a GitHub App — `https://github.com/settings/apps/new`
+- [ ] Set its Callback URL to `https://<owner>.github.io/` and tick **Enable wildcard matching**
+- [ ] Tick *Request user authorization (OAuth) during installation*
+- [ ] Under **Permissions → Repository**, set Contents, Issues, Metadata and Actions to **Read-only**, then press **Create GitHub App**
+- [ ] Copy the **Client ID** — the App's General page, under the app name; begins `Iv23`
+- [ ] Press **Generate a new client secret**, and copy the value under **Client secrets** — shown once
+- [ ] Install the App on the account holding the repos — the **Install App** tab of that page
+- [ ] Add the client secret as the Actions secret `GITHUB_OAUTH_CLIENT_SECRET` — `<repo>/settings/secrets/actions/new`
+- [ ] Add the Client ID as the variable `CLAUDINITE_DASHBOARD_CLIENT_ID` — `<repo>/settings/variables/actions/new`
+- [ ] Add `CLOUDFLARE_ACCOUNT_ID` and the secret `CLOUDFLARE_API_TOKEN` — see the [deploy task](tasks/deploy-oauth-exchange/README.md)
+- [ ] Run `create-work-item claudinite-dashboard/deploy-oauth-exchange`, and copy the `workers.dev` URL it reports
+- [ ] Add that URL as the variable `CLAUDINITE_DASHBOARD_EXCHANGE_URL`
 
-Both are repository variables (Settings → Secrets and variables → Actions → **Variables**),
-not config and not secrets: they are what you set while standing in the App's settings, the
-second is minted by a deploy rather than authored, and neither is confidential — the client
-id is in every authorize URL and the exchange URL is fetched by the browser.
+**Done when** a signed-in viewer's rate pill reads `…/5000 · user`.
 
-Done when a signed-in viewer's rate pill reads `…/5000 · user`.
+Notes. The App is installed per *account*, not per repo — a user token reaches only what
+it is installed on, so an uninstalled account renders every member row as *not visible to
+you*. Wildcard matching on the `github.io` root covers every project Pages site on that
+host, so one App serves every dashboard you own. The sign-in pair are repository
+variables rather than config or secrets: they are what you set while standing in the
+App's settings, the exchange URL is minted by the deploy rather than authored, and
+neither is confidential — the client id is in every authorize URL and the exchange URL is
+fetched by the browser. The client id alone does nothing; the pair is what makes the
+button appear.
 
 ### Why "just use my existing GitHub login" is not on that list
 

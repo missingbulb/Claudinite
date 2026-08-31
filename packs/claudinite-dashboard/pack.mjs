@@ -107,7 +107,7 @@ export default {
   // arrives at the moment someone is present and the pack is new.
   adoptionHandover: [
     {
-      step: 'Enable GitHub Pages on this repo with source "GitHub Actions" (Settings → Pages).',
+      step: 'Enable GitHub Pages with source "GitHub Actions" — this repo\'s /settings/pages',
       breaks: 'the deploy job fails on every run; the build still succeeds, so nothing else is affected',
       done: 'the Pages URL serves the dashboard, and the Claudinite dashboard workflow is green',
     },
@@ -117,15 +117,12 @@ export default {
     // DECISION, since until someone makes it their page reads GitHub anonymously; four
     // unconditional checkboxes that are mostly no-ops teach the reader to skim exactly
     // the list that exists to stop them skimming. The mechanics live in the README,
-    // where they are read at the moment the answer is yes.
+    // where they are read at the moment the answer is yes — and a `step` becomes one
+    // checkbox in somebody's handover issue, so spelling them here would put six
+    // actions and a rationale inside one box (basics' `writing-handover-issues`).
     {
-      step: 'Decide how this dashboard authenticates its viewers: leave it on the pasted-token box (nothing to do), '
-        + 'or give it a Sign in button — register a GitHub App with read-only Contents, Issues and Actions, install it on '
-        + 'the account holding these repos, set the repository variable `CLAUDINITE_DASHBOARD_CLIENT_ID`, run this '
-        + 'pack\'s `deploy-oauth-exchange` task to put the exchange endpoint live, and set '
-        + '`CLAUDINITE_DASHBOARD_EXCHANGE_URL` to the URL it reports. '
-        + 'See "Who has to register the app" in the pack README: one App serves every '
-        + 'deployment you own, and none can be inherited from another owner.',
+      step: 'Decide how this dashboard authenticates its viewers: leave it on the pasted-token box, or turn on '
+        + 'Sign in with GitHub — the pack README\'s "Turning sign-in on" is that checklist.',
       breaks: 'nothing fails, but a viewer who has not pasted a token reads GitHub anonymously at 60 requests/hour per IP — '
         + 'which one fleet sweep exceeds, so the page serves cached data or empty rows until the hour rolls',
       done: 'a signed-in viewer sees the rate pill read “…/5000 · user”, or this repo has recorded that the token box is '
