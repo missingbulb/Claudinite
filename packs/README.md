@@ -23,7 +23,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="claudinite-fleet-sheepdog/badge.svg" width="18" height="18" alt=""> [claudinite-fleet-sheepdog](claudinite-fleet-sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | 0 (fleet-enforcer marker + config + the agentless `fleet-roster` daily task (coverage + freshness in one walk)) |
 | <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | 4 (what a project offers people working from the web — their personal interaction preferences, and the environment Setup script body) |
 | <img src="claudinite-canary-repo/badge.svg" width="18" height="18" alt=""> [claudinite-canary-repo](claudinite-canary-repo/README.md) | declared (opt-in; the canary repo only, and `hidden` from the consumer catalog) | 0 | 0 (one inert workflow, seeded then converged — the live proof of the workflow-delivery lane) |
-| <img src="claudinite-canon-curation/badge.svg" width="18" height="18" alt=""> [claudinite-canon-curation](claudinite-canon-curation/README.md) | declared (opt-in; a canon home repo only, and `hidden` from the consumer catalog) | 3 | 0 (curating a canon — the central promote stage, the weekly fleet pack-discovery sweep, and the shelf's own policing; 1 skill: writing-claudinite-skills) |
+| <img src="claudinite-canon-curation/badge.svg" width="18" height="18" alt=""> [claudinite-canon-curation](claudinite-canon-curation/README.md) | declared (opt-in; a canon home repo only, and `hidden` from the consumer catalog) | 3 | 0 (curating a canon — the central promote stage, the weekly fleet pack-discovery sweep, and the shelf's own policing; 2 skills: generate-project-instructions, writing-claudinite-skills) |
 | <img src="claudinite-dashboard/badge.svg" width="18" height="18" alt=""> [claudinite-dashboard](claudinite-dashboard/README.md) | declared (opt-in) | 0 | 0 (a browser dashboard over scheduler state, published to Pages; adoption seeds the deploy workflow) |
 | <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 10 | 24 |
 | <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 5 |
@@ -76,8 +76,8 @@ gated by the repo's declaration exactly like a canon pack's tasks. The canon hom
 tasks ride this path.
 
 The canon-vs-local line is the portable-vs-project-specific split ([../extending.md](../extending.md));
-a project adopts the structure via the `generate-project-instructions` skill, and the growth lifecycle
-treats `.claudinite/local_packs/` as the project's capture surface.
+adoption seeds a project's own local pack, and the growth lifecycle treats `.claudinite/local_packs/`
+as the project's capture surface.
 
 ## Settings validity
 

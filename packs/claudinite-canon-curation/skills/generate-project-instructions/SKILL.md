@@ -1,12 +1,13 @@
 ---
 name: generate-project-instructions
-description: Decompose a project into its pack facets (working-style class, technology, aspect, domain) and extract its working instructions into reusable canon packs plus the project's own local packs (.claudinite/local_packs/). Use when a project has no established working style yet, or it exhibits a facet no pack covers — during bootstrap of a fresh/empty repo, or on an uplevel request.
+description: Decompose a project into its pack facets (working-style class, technology, aspect, domain) and author the canon packs those facets earn. Use from a canon when a project's evidence shows a facet its shelf does not yet home — the curation stages' pack-writing method, and an owner's when asking what a project has taught the shelf.
 ---
 
 # Generate project instructions — extract packs, not a project doc
 
-This skill grows the corpus's pack library using the project in front of you as the evidence, and
-lands the project's own working rules where every project's do now: its **local packs**. The owner's
+This skill grows a canon's pack library using a project as the evidence. Whether a project's insight
+becomes a pack every repo can declare is the canon's call, made here — never the project's own, which
+is why this method lives with the curation stages that run it and not in what a member reads. The owner's
 projects recur — not as wholes, but **along axes**: the same working style returns with a different
 product, the same technology returns with a different working style, the same audience returns on a
 different stack. The first project to exhibit a facet pays the cost of working out how that facet is
@@ -145,10 +146,12 @@ The acid test before proposing any pack: **a reader must not be able to tell whi
 extracted from.** Any surviving repo path, command line, or product noun marks a rule that belonged in
 the overlay.
 
-## 5. Write the project's own local pack(s)
+## 5. What stays in the project
 
-The project-specific residue lands in a **local pack** under `.claudinite/local_packs/<pack>/` in the
-project's tree — the same pack machinery, run from the project instead of the canon. Most projects
+The project-specific residue is not the canon's to take, and not the canon's to write: it lands in a
+**local pack** under `.claudinite/local_packs/<pack>/` in the project's own tree, seeded by that
+repo's adoption and filled by its own capture runs. What follows is the shape of that residue, because
+the sort in step 3 cannot say "this stays local" without knowing what local looks like. Most projects
 need **one** general pack (name it for the project); segregate a **second** only along the repo's own
 **project structure** — a segment of the repo's tree whose work is its own territory (a `client` pack
 for work under `client/`) — never around a technology or a methodology: those axes belong to the canon
@@ -182,20 +185,15 @@ docs) — it does **not** `@import` the pack prose; the pack system injects the 
 
 ## 6. Deliver through the owner's approval gates
 
-- **Every canon pack seed or refinement → a PR against the canon.** Minting or changing a *canon* pack
-  is the owner's call, and the PR is that gate — no corpus change lands unattended. From a consuming
-  repo, never edit the read-only `.claudinite/` mount: open the canon PR when the session can reach
-  that repo; otherwise stage the seed as a **local pack** clearly marked as a proposed-canon facet and
-  open a canon issue pointing at it, so the promote stage lifts it centrally.
-- **The project's local pack(s) → the project's normal branch/PR**, committed under
-  `.claudinite/local_packs/` (tracked project content — the sync hook preserves it, the gitignore
-  re-includes it). Declaring a **local** pack — as `local_packs/<name>` — is valid immediately (the
-  engine discovers local packs from the repo), so the declaration lands in the same PR.
-- **Declare a new *canon* pack** in `.claudinite-settings.json` only after it has merged and the mount
-  re-synced — declaring a canon id the mounted registry doesn't know is an unknown-pack settings error;
-  a *local* id is never that error. Note a pending canon declaration as a follow-up in the project PR.
-- **Existing projects sharing a facet keep their local packs for now.** Once the canon pack lands, the
-  growth dedup stage prunes what the canon newly owns; don't pre-trim against an unmerged pack.
+- **Every canon pack seed or refinement → a PR against the canon.** Minting or changing a pack every
+  repo can declare is the owner's call, and the PR is that gate — no corpus change lands unattended.
+- **Write nothing in the project.** Its residue is its own to keep and its own runs to write; this
+  method reads a project and delivers to the canon.
+- **A project declares a new canon pack** only once it has merged and that repo's mount re-synced —
+  declaring a canon id the mounted registry doesn't know is an unknown-pack settings error. Tell the
+  project, don't do it for it.
+- **Existing projects sharing a facet keep their local packs for now.** Once the canon pack lands,
+  each one's dedup stage prunes what the canon newly owns; don't pre-trim against an unmerged pack.
 
 Close with a short report: each facet and its one-line definition, with its shelf verdict (declared /
 refined / minted-to-canon / kept-local / left alone); the sort tally (rules sent to each canon pack /

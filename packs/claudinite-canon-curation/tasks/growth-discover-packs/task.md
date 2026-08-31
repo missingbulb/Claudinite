@@ -49,7 +49,7 @@ Prefer a candidate **more than one member** uses — that is the evidence a pack
 
 ### 4. Author the pack — from the members' real usage
 
-Author `packs/<name>/` using the pack-writing mechanics [the generate-project-instructions skill](../../../claudinite-growth/skills/generate-project-instructions/SKILL.md) owns — descend the promotion ladder, add the `marker`/`detect` fingerprint when the technology carries a reliable one (`detect: null` otherwise), write `RULES.md`/`pack.mjs`/`README.md`, and add its `packs/README.md` index row. Apply that method; do not re-derive it.
+Author `packs/<name>/` using the pack-writing mechanics [the generate-project-instructions skill](../../skills/generate-project-instructions/SKILL.md) owns — descend the promotion ladder, add the `marker`/`detect` fingerprint when the technology carries a reliable one (`detect: null` otherwise), write `RULES.md`/`pack.mjs`/`README.md`, and add its `packs/README.md` index row. Apply that method; do not re-derive it.
 
 Two rules this task most easily breaks, because it is writing from *other* repos' evidence:
 

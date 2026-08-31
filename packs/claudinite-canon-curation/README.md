@@ -85,6 +85,11 @@ why.
   write only under the corpus roots above. The canon's own CI invokes its `runCli`, keyed on the
   promote branch prefix; nothing in a tree marks a diff as a promote run, so the gate cannot
   self-gate.
+- **[skills/generate-project-instructions/](skills/generate-project-instructions/SKILL.md)** — the
+  pack-writing method both tasks above apply: decompose a project into its facets, sort its rules to
+  the one owner each, author the packs those facets earn. Whether a project's insight becomes a pack
+  every repo can declare is the canon's call, so the method sits with the stages that make it rather
+  than in what a member reads.
 - **[skills/writing-claudinite-skills/](skills/writing-claudinite-skills/SKILL.md)** — authoring a
   skill in the corpus. Canon-side activity: a member authors no corpus skills.
 
