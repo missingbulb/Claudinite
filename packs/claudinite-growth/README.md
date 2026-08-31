@@ -133,6 +133,17 @@ count cannot tell healthy-rare from broken, so the question is loads *against th
 skill's own declared trigger plausibly applied*. Zeros are implicit (a skill with no loads has no
 key), which is what makes "never loads" visible: diff the file against the repo's mounted skills.
 
+This is the empirical feedback the promotion ladder's skill-vs-prose call otherwise has none of, in
+both directions: a skill that never loads across the fleet has a mis-described trigger, or shouldn't be
+gated behind one at all (a rule wearing a skill's clothes); one that loads in nearly every session
+is not activity-scoped either. The check counts read a sharper version of the same question, because
+a check failure is an observed correction rather than an inferred one: a rule with steady failures is
+earning its place and an argument for `prose-to-checks`; one that never fires anywhere is unreachable
+or describes something that does not happen; one firing on nearly every run is a default the corpus
+should change rather than a violation worth blocking on. A canon curation session weighing a
+skill-vs-prose or a promotion call reads this file, per repo or fleet-wide via the dashboard, for
+exactly that judgment.
+
 Fleet-wide aggregation is deliberately **not** here — the canon knows mechanisms, never repos, so
 it belongs to the fleet-enforcer repo, the only place that knows who the members are.
 

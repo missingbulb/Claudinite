@@ -1,5 +1,5 @@
-// The machine-readable records a task's execution leaves in an Actions log
-// (skill-usage-metrics DESIGN §4.2), and the parsers that read them back.
+// The machine-readable records a task's execution leaves in an Actions log,
+// and the parsers that read them back.
 //
 // TWO FAMILIES, ONE OF THEM HISTORICAL. `claudinite-task-run` was the SLOT
 // scheduler's own line, one per due task per run; the slot scheduler is retired

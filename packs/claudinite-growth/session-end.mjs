@@ -1,7 +1,7 @@
-// This pack's SessionEnd step — the second capture EVENT (skill-usage-metrics
-// DESIGN §3.3). The engine's SessionEnd runner (engine/hooks/session-end-command.mjs)
-// invokes every active pack's `session-end.mjs`; this one runs the same capture the
-// merge-to-main step runs, with the issue the runner named (0 when it named none).
+// This pack's SessionEnd step — the second capture EVENT. The engine's SessionEnd
+// runner (engine/hooks/session-end-command.mjs) invokes every active pack's
+// `session-end.mjs`; this one runs the same capture the merge-to-main step runs,
+// with the issue the runner named (0 when it named none).
 //
 // WHY it earns its place: capture at merge time sees only MERGING sessions, and only
 // up to the merge. This event captures the sessions that never merge — a review, an

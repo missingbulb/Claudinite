@@ -334,7 +334,7 @@ refresh, not workflow edits). It runs
    the renderer and its parser). Printed *after* the action loop, so it states
    what happened rather than what was planned. Nothing in the scheduler reads it
    back — it exists so the usage aggregation can count task invocations without
-   the scheduler acquiring state of its own (skill-usage-metrics DESIGN §4.2).
+   the scheduler acquiring state of its own.
 
 `fullSweep`, `full_sweep_supported`, and the hash-stagger retire: "weekly" is now
 a declaration, not a gate trick. And the scheduler is **the only cron in the
@@ -684,8 +684,7 @@ These override the earlier sections where they conflict.
    `run-record.mjs`). The captured executor transcripts carry them to the
    conversation-logs branch, and the fully automatic `usage-fold` task counts
    them (`taskExec` rows) beside the scheduler-side census — invocations,
-   precondition passes, code-work runs, failures, deferrals (§ skill-usage-metrics
-   DESIGN §4.2/§4.3).
+   precondition passes, code-work runs, failures, deferrals.
 6. **Invocation stays label-event-wired.** Migrating executor invocation to a
    URL-invoked routine was considered and declined: the label is both the
    trigger and the write-gated authorization surface, the re-arm recovery is

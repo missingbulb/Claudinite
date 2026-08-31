@@ -1,7 +1,7 @@
-// claudinite-growth task: usage-fold — the per-repo usage aggregate
-// (skill-usage-metrics DESIGN §5). `agent_model: 'none'` with
-// `code_work: 'node worker.mjs'`: the whole pass is deterministic code the
-// executor runs as code-work — no agent phase, seconds of runtime.
+// claudinite-growth task: usage-fold — the per-repo usage aggregate.
+// `agent_model: 'none'` with `code_work: 'node worker.mjs'`: the whole pass is
+// deterministic code the executor runs as code-work — no agent phase, seconds of
+// runtime.
 //
 // WHY: a skill is MOUNTED per repo, but mounting only puts a name and a one-line
 // description into the session prompt — actually LOADING it is model discretion, and
