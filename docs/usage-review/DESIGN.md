@@ -20,9 +20,9 @@ change, as a pull request that **merges only when the owner merges it** (§6); t
 provenance records that change, and only if it lands (§7). Nothing in the loop merges on its own,
 so a rule in §3 that turns out to be wrong costs a declined pull request and leaves no trace.
 
-Companion: [skill-usage-metrics](../skill-usage-metrics/DESIGN.md) specifies the fold whose
-counters this loop reads; its §7 names canon curation as a consumer of the fold "in both
-directions", and this review is what gives that consumer something to read.
+Companion: [`usage-fold`](../../packs/claudinite-tasks/tasks/usage-fold/README.md) is the fold
+whose counters this loop reads, and canon curation consumes that fold in both directions; this
+review is what gives that consumer something to read.
 
 ## 1. The one idea
 
@@ -419,8 +419,8 @@ the review acts on it. The proposal for what does:
    provenance at this moment: an issue is a finding, and a finding is not a decision (§7).
 
 3. **Canon evidence, upward.** A finding about a canon skill or check in this repository is
-   the canon's business, not the member's. The fleet half is Shepherd's, per the
-   skill-usage-metrics decision on record: it sums members' review files by (rule, subject),
+   the canon's business, not the member's. The fleet half is Shepherd's: it sums members'
+   review files by (rule, subject),
    with a member count, into a fleet file the canon's own dashboard renders. This repository is
    a member of itself, so its own review file is the first evidence canon curation reads —
    when the owner asks it to, not on a schedule.
