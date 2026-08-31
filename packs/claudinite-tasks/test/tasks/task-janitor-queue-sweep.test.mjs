@@ -200,3 +200,30 @@ test('an ended park on a marked issue whose PR was closed unmerged stays open', 
   assert.deepEqual(labelsOn(added, 35), [TASK_OBSOLETE]);
   assert.deepEqual(patched, [], 'nothing landed, so the issue is the author\'s to close');
 });
+
+// Rule H at the shell (#1526): the close, and nothing else — no label is written,
+// because the terminal standing on the item was already the right one.
+test('an unclosed terminal is closed at its own outcome, with no relabelling', async () => {
+  const { gh, added, patched } = janitorGh([
+    workItem(81, [TASK_DONE], { created: '2026-07-01T00:00:00Z' }),
+    workItem(82, [TASK_OBSOLETE], { created: '2026-07-01T00:00:00Z' }),
+  ]);
+  const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
+  assert.deepEqual(out.unclosed, [81, 82]);
+  assert.deepEqual(labelsOn(added, 81), [], 'the status was already right — only the close was missing');
+  assert.deepEqual(
+    patched.filter((p) => [81, 82].includes(p.issue)).map((p) => [p.issue, p.state_reason]),
+    [[81, 'completed'], [82, 'not_planned']],
+    'a done terminal completed, a rejected one not_planned',
+  );
+});
+
+// The same second read the stateless repair makes, for the same reason: the
+// converge may have reached its own close in the seconds since the snapshot.
+test('a terminal that closed itself between the read and the write is left alone', async () => {
+  const item = workItem(83, [TASK_DONE], { created: '2026-07-01T00:00:00Z' });
+  const { gh, patched } = janitorGh([item], {}, { 83: { ...item, state: 'closed' } });
+  const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
+  assert.deepEqual(out.unclosed, []);
+  assert.deepEqual(patched.filter((p) => p.issue === 83), []);
+});
