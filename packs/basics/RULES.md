@@ -201,7 +201,9 @@ For every new task:
   granting a permission, adding a secret) — first confirm you genuinely can't do it yourself, then
   give it **its own issue**, never a note in the PR body, with a checkbox per step, what breaks
   while each is off, and its closing condition. The exception is a step whose home is an artifact
-  the human is already editing.
+  the human is already editing. How that issue is *written* — the checklist as the whole artifact,
+  every explanation below it — is
+  [writing-handover-issues](skills/writing-handover-issues/SKILL.md).
 
 # Engineering practices
 
