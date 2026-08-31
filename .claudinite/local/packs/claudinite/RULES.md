@@ -147,6 +147,16 @@ from lives in the commit that added it and the issue, never here.
 - **Sending a screenshot rendered from a scratch test harness** — say so in the caption, not just
   what the widget shows.
 
+- **Running a Bash command with a `cd` outside the project root** — the *next* Bash call silently
+  resets cwd back to the root ("Shell cwd was reset to …"), whether the first command succeeded or
+  failed. Prefix every command touching that directory with its own `cd`; a prior one never carries
+  forward.
+
+- **Asserting why a system behaved a certain way** (a park correctly closed, a routing mechanism's
+  logic) — read the primary evidence, the issue's own body/comments or the enforcing source line,
+  first. A verdict inferred from structure or memory alone has shipped as a wrongly-merged fix for a
+  bug that wasn't there.
+
 ## Authoring packs, prose and checks
 
 - **Writing anything into a pack's `RULES.md` that describes rather than instructs** — how a
