@@ -23,7 +23,7 @@ import {
 } from '../../../claudinite-tasks/queue/janitor-rules.mjs';
 import {
   QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE, TASK_DONE, IN_REVIEW_LABEL, isWorkItemTitle,
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION,
+  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
   STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
   isStatus, isParked, statusOf,
   parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
@@ -92,9 +92,14 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
     log(`escalated stale-ready #${item.number} → ${NEEDS_HUMAN_ACTION}`);
     result.staleReady.push(item.number);
   }
+  // FAILURE, not decision: a dead session is something the machine noticed, never a
+  // choice a person made. The kind carries two consequences that both want that
+  // reading — it is the only park a later clean run can supersede (rule E), and the
+  // only one that holds the task's lane, so the generator stops filing a fresh
+  // occurrence each anchor behind a run nobody has looked at.
   for (const item of deadAgents) {
-    await escalate(item, deadAgentComment(item, await sessionNote(gh, repo, item)), STATUS_RUNNING_AGENT, NEEDS_HUMAN_DECISION);
-    log(`reclaimed a dead agent claim on #${item.number} → ${NEEDS_HUMAN_DECISION}`);
+    await escalate(item, deadAgentComment(item, await sessionNote(gh, repo, item)), STATUS_RUNNING_AGENT, NEEDS_HUMAN_FAILURE);
+    log(`reclaimed a dead agent claim on #${item.number} → ${NEEDS_HUMAN_FAILURE}`);
     result.deadAgents.push(item.number);
   }
   for (const item of stuck) {
