@@ -23,7 +23,7 @@ import {
 } from '../../../claudinite-tasks/queue/janitor-rules.mjs';
 import {
   QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE, TASK_DONE, IN_REVIEW_LABEL, isWorkItemTitle,
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
+  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_FAILURE,
   STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
   isStatus, isParked, statusOf,
   parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
@@ -124,8 +124,10 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
       log(`- #${item.number} settled between this sweep's read and its write — left alone`);
       continue;
     }
-    await escalate(item, statelessComment(), null, NEEDS_HUMAN_DECISION);
-    log(`repaired stateless #${item.number} → ${NEEDS_HUMAN_DECISION}`);
+    // FAILURE for rule B's reason: a swap that tore mid-flight is breakage the
+    // machine noticed, so a later clean run of the task may clear it.
+    await escalate(item, statelessComment(), null, NEEDS_HUMAN_FAILURE);
+    log(`repaired stateless #${item.number} → ${NEEDS_HUMAN_FAILURE}`);
     result.stateless.push(item.number);
   }
 

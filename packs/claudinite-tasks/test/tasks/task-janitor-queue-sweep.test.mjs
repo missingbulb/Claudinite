@@ -80,11 +80,13 @@ test('the kind rule B parks at is one rule E can supersede', () => {
   assert.ok(SUPERSEDABLE_PARKS.includes(parkKindOf({ labels: [{ name: NEEDS_HUMAN_FAILURE }] })));
 });
 
-test('a stateless item parks at decision — which state it should have had is a judgement', async () => {
+// Same reading as rule B: an item off the state machine is a label swap that TORE,
+// which the machine noticed. Nobody decided it, so a later clean run may clear it.
+test('a stateless item parks at failure — a torn swap is breakage, not a judgement', async () => {
   const { gh, added } = janitorGh([workItem(31, [])]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.stateless, [31]);
-  assert.deepEqual(labelsOn(added, 31), [NEEDS_HUMAN_DECISION]);
+  assert.deepEqual(labelsOn(added, 31), [NEEDS_HUMAN_FAILURE]);
 });
 
 // The stuck-dependency rule is COMMENT ONLY on purpose — the item still proceeds
@@ -128,7 +130,7 @@ test('an item still stateless on the second read is repaired', async () => {
   const { gh, added } = janitorGh([workItem(43, [])]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.stateless, [43]);
-  assert.deepEqual(labelsOn(added, 43), [NEEDS_HUMAN_DECISION]);
+  assert.deepEqual(labelsOn(added, 43), [NEEDS_HUMAN_FAILURE]);
 });
 
 // The wiring the pure rules cannot cover: rule F now picks its comment from WHERE the
