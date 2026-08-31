@@ -58,6 +58,28 @@ test('the check is automatic by construction, and a human is the last resort', (
     'the skill never bounds when a person may be asked at all');
 });
 
+// THE CODED FORM (#1530). An agent session has no egress, so a URL-readable
+// artifact — a Pages site, a deployed config — used to read as "file nothing"
+// (#1184 and #1288 were filed anyway and parked). The answer is not a session at
+// all: declarative probes a code worker fetches and judges Action-side.
+test('a URL-readable artifact files the coded form, never a session and never nothing', () => {
+  assert.match(skill, /Live-probe:/, 'the liveness gate — without it "not deployed" reads as "broken"');
+  assert.match(skill, /Verify-probe:/, 'the assertion the probes exist for');
+  assert.match(skill, /claudinite-tasks\/verify-production/,
+    'nothing routes the issue to the coded runner');
+  assert.match(skill, /probes\.mjs/, 'the assertion grammar is documented at its one home, and the skill must point there');
+});
+
+// The loop the coded form closes: it is cheap enough to run BEFORE the release,
+// so a fresh verification is watched failing — reporting not yet live — which
+// proves the probes execute and do not pass vacuously.
+test('a fresh coded verification is watched failing before the release lands', () => {
+  assert.match(skill, /watch the first run report \*\*not yet live\*\*/i,
+    'nothing tells the filer to force a run now and watch it report not-yet-live');
+  assert.match(skill, /workflow_dispatch|dispatch the scheduler/i,
+    'the forcing lever is never named, so the first run waits for the next hourly pass');
+});
+
 // A failed verification routes back to the ORIGINAL issue — reopened, with the
 // status commented — so the filer's brief must carry that issue's number.
 test('a failing run reopens the original issue the filed brief names', () => {
@@ -101,7 +123,14 @@ test('the re-arm is computed from now, not from the stale Not-before', () => {
 test('the execution parameters are one block on the body first lines', () => {
   assert.match(skill, /first lines/i,
     'nothing places the parameter block, so filers scatter the fields through the prose');
-  const template = /```\n(Original-issue:[\s\S]*?)```/.exec(skill)?.[1] ?? '';
-  assert.match(template, /^Model:/m,
+  const templates = [...skill.matchAll(/```\n(Original-issue:[\s\S]*?)```/g)].map((m) => m[1]);
+  assert.equal(templates.length, 2, 'one coded template, one agentic — a third would be a form nobody defined');
+  const [coded, agentic] = templates;
+  assert.match(coded, /^Task: claudinite-tasks\/verify-production$/m, 'the coded template routes to the runner');
+  assert.match(coded, /^Live-probe:/m);
+  assert.match(coded, /^Verify-probe:/m);
+  assert.match(coded, /^Retry-every:/m);
+  assert.doesNotMatch(coded, /^Model:/m, 'no session ever runs a coded verification, so no family is chosen');
+  assert.match(agentic, /^Model:/m,
     'Model: is prescribed away from the other parameters — the scattering #1160 shows');
 });
