@@ -777,3 +777,67 @@ test('applyRewrites: a workflow file is SKIPPED and SAID, never falsely reported
   assert.equal(files.get('.github/workflows/claudinite-executor.yml'), 'a NEW b');
 });
 
+
+// The record that carries #1494's line to members that adopted before it (#1518). What
+// matters is not that it inserts a line but WHAT IT LEAVES ALONE: a member's executor
+// carries its own stamped `required_secrets`, and a materialize would have taken them.
+test('executor-vars-bag: inserts the bag, preserves each member\'s stamped secrets, and re-runs as a no-op', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'executor-vars-bag');
+  assert.ok(m, 'discovered');
+
+  // A real member's shape: the hold, the marker, and secrets only that member has.
+  const before = [
+    'name: Claudinite executor',
+    'jobs:',
+    '  execute:',
+    '    steps:',
+    '      - name: Pick up and execute ready work',
+    '        env:',
+    '          GITHUB_TOKEN: ${{ github.token }}',
+    '          CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}',
+    '          # claudinite:secrets',
+    '          MEMBER_ONLY_TOKEN: ${{ secrets.MEMBER_ONLY_TOKEN }}',
+    '        run: node .claudinite/shared/packs/claudinite-tasks/queue/executor.mjs',
+    '',
+  ].join('\n');
+  const EXECUTOR = '.github/workflows/claudinite-executor.yml';
+  const files = new Map([[EXECUTOR, before]]);
+  const io = { read: async (p) => files.get(p) ?? null, write: async (p, c) => { files.set(p, c); },
+    env: { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' } };
+
+  assert.equal(await m.appliesTo(io.read), true, 'a member with the hold and no bag');
+  assert.deepEqual(await applyRewrites(m, io), [EXECUTOR]);
+
+  const after = files.get(EXECUTOR);
+  assert.match(after, /^ {10}CLAUDINITE_VARS: \$\{\{ toJSON\(vars\) \}\}$/m);
+  // The member's own secret survives, and so does the marker the wiring converge stamps at.
+  assert.match(after, /MEMBER_ONLY_TOKEN: \$\{\{ secrets\.MEMBER_ONLY_TOKEN \}\}/);
+  assert.match(after, /^ {10}# claudinite:secrets$/m);
+  // The bag sits ABOVE the marker, outside the region the wiring converge regenerates.
+  assert.ok(after.indexOf('CLAUDINITE_VARS:') < after.indexOf('# claudinite:secrets'),
+    'inside the stamped region the next converge would overwrite it');
+
+  // Re-running must not double the block: appliesTo is the guard, since split/join would
+  // happily match the anchor a second time.
+  assert.equal(await m.appliesTo(io.read), false);
+  assert.equal((after.match(/CLAUDINITE_VARS:/g) ?? []).length, 1);
+
+  // A repo that does not run the queue is untouched.
+  assert.equal(await m.appliesTo(async () => null), false);
+});
+
+// The record's whole purpose is the line the stub already carries, so the two must not
+// drift: an inserted block that differs from the stub leaves adopters and upgraders on
+// different executors, and nothing else compares them.
+test('executor-vars-bag inserts exactly what the executor stub carries', async () => {
+  const { readFileSync } = await import('node:fs');
+  const canon = dirname(dirname(fileURLToPath(import.meta.url)));
+  const stub = readFileSync(join(canon, 'packs/claudinite-tasks/stubs/claudinite-executor.yml'), 'utf8');
+  const src = readFileSync(join(canon, 'packs/claudinite-tasks/migrations/2026-08-31-executor-vars-bag/migration.mjs'), 'utf8');
+  // Every line of the record's inserted block appears verbatim in the stub.
+  const bag = src.slice(src.indexOf('const BAG = `') + 'const BAG = `'.length, src.indexOf('`;\n\nexport default'));
+  for (const line of bag.split('\n').filter((l) => l.trim())) {
+    const literal = line.replace(/\\\$/g, '$').replace(/\\`/g, '`');
+    assert.ok(stub.includes(literal), `stub is missing the record's line: ${literal.trim()}`);
+  }
+});
