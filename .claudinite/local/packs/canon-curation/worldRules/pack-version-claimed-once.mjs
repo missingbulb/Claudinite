@@ -23,9 +23,10 @@ import { VERSIONS_FILENAME, rowVersions } from '../workRules/pack-version-bumped
 // ships — so two releases sharing a number strand no content and there is nothing
 // here to widen onto `engine/RELEASES.md`.
 //
-// THE DELIVERY half of that is `pack-delivery-on-main.mjs`, which re-asks
-// `pack-version-bumped` against what main held before the push and so catches
-// the collision as it lands. This is the RECORD half, and it is not the same
+// THE DELIVERY half of that is `ci-work-scope.mjs` judging a push onto main
+// against what the branch held before it, which re-asks `pack-version-bumped`
+// where both branches are visible and so catches the collision as it lands.
+// This is the RECORD half, and it is not the same
 // question: a collision that landed before that gate existed left no red run
 // behind, only two rows, and "what did version N change?" has two answers for
 // as long as they both stand.
