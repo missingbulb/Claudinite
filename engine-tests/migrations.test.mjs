@@ -382,7 +382,11 @@ test('chrome-release-vendoring migration: gate, telemetry, and the vendoring rou
   assert.equal(repo.size, 6, 'orchestrator + the 5 non-workflow files');
 
   await applyMaterializations(m, { readTemplate, read, write, env: capable });
-  await applyRewrites(m, { read, write });
+  // The rewrite needs the announcement for the same reason the materializations do: its
+  // target IS a workflow file. Passing it only to the materializations is the blind spot
+  // #1509 closed — an unguarded rewrite reported this orchestrator rewritten in every
+  // real (incapable) update run, while the caller's `write` dropped it.
+  await applyRewrites(m, { read, write, env: capable });
   assert.equal(repo.size, 11, 'orchestrator + 10 vendored files');
   assert.match(repo.get('.github/workflows/chrome-extension-release.yml'), /\.\/\.github\/workflows\/chrome-extension-create-package\.yml/);
   assert.ok(!repo.get('.github/workflows/chrome-extension-release.yml').includes('missingbulb/Claudinite'));
@@ -732,3 +736,44 @@ test('mergeDeclarationEntries: the survivor wins a conflict, arrays union', asyn
   assert.deepEqual(mergeDeclarationEntries({ id: 'p', config: { a: 1 } }, 'q'), { id: 'p', config: { a: 1 } },
     'a plain-string entry carries an id and nothing else, so there is nothing to take from it');
 });
+
+// THE FALSE GREEN (#1509). `applyMaterializations` has guarded workflow dests since
+// #649; `applyRewrites` never did, and the two are the same surface — a record naming a
+// path under `.github/workflows/`. Because the update flow's `write` silently drops such
+// a path, an unguarded rewrite reported the file in `done` while writing nothing: a run
+// that delivered no workflow said it had. Nothing hit it while no record rewrote a
+// workflow, and #1509 makes that the shape the executor's own line arrives in.
+test('applyRewrites: a workflow file is SKIPPED and SAID, never falsely reported written', async () => {
+  const m = {
+    id: 'r',
+    rewrite: [
+      { file: '.github/workflows/claudinite-executor.yml', replace: [{ from: 'OLD', to: 'NEW' }] },
+      { file: '.claudinite/shared/thing.mjs', replace: [{ from: 'OLD', to: 'NEW' }] },
+    ],
+  };
+  const files = new Map([
+    ['.github/workflows/claudinite-executor.yml', 'a OLD b'],
+    ['.claudinite/shared/thing.mjs', 'a OLD b'],
+  ]);
+  const io = (env) => ({
+    read: async (p) => files.get(p) ?? null,
+    write: async (p, c) => { files.set(p, c); },
+    env,
+  });
+
+  const skipped = await applyRewrites(m, io({}));
+  assert.deepEqual(skipped, [
+    'SKIPPED .github/workflows/claudinite-executor.yml (workflow file; this caller cannot deliver one)',
+    '.claudinite/shared/thing.mjs',
+  ]);
+  assert.equal(files.get('.github/workflows/claudinite-executor.yml'), 'a OLD b',
+    'the workflow is untouched, not half-rewritten');
+  assert.equal(files.get('.claudinite/shared/thing.mjs'), 'a NEW b');
+
+  // The capable caller rewrites it; the withhold path downstream keeps it out of the push.
+  files.set('.claudinite/shared/thing.mjs', 'a OLD b');
+  const applied = await applyRewrites(m, io({ CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' }));
+  assert.deepEqual(applied, ['.github/workflows/claudinite-executor.yml', '.claudinite/shared/thing.mjs']);
+  assert.equal(files.get('.github/workflows/claudinite-executor.yml'), 'a NEW b');
+});
+

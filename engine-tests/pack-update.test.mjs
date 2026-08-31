@@ -393,3 +393,69 @@ test('an absorbed pack takes its own leftover mount directory with it, the same 
   assert.ok(existsSync(join(root, MOUNT, 'packs', 'chrome-extension', 'pack.mjs')), 'and the surviving pack is laid down');
   removeTree(root);
 });
+
+// RE-OPENING THE WITHHOLD LANE (#1509). #1317 closed it on the premise that "a member's
+// workflows are static after adoption"; #1494 falsified that — the executor's
+// `CLAUDINITE_VARS` line is a workflow change every member needs. The flow must stage
+// such a path rather than drop it, and must ANNOUNCE that it can, or every record
+// targeting a workflow file skips itself.
+test('the update flow announces it can withhold, and stages a workflow write instead of dropping it', async () => {
+  const root = makeMember();
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  const executor = join(root, EXECUTOR_WORKFLOW);
+  mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
+  writeFileSync(executor, 'name: Claudinite executor\n# MARKER\n');
+
+  const staged = join(root, PENDING_DIR, 'claudinite-executor.yml');
+  const r = await packUpdate(root, {
+    fullName: 'o/r',
+    selfTestRun: () => 'ok',
+    // The record shape this lane exists for, injected so the assertion is about the
+    // FLOW rather than about whichever live record happens to carry a rewrite.
+    extraRecords: [{
+      id: 'test-workflow-rewrite',
+      dir: 'claudinite-tasks/migrations/test-workflow-rewrite',
+      rewrite: [{ file: EXECUTOR_WORKFLOW, replace: [{ from: '# MARKER', to: '# REWRITTEN' }] }],
+      applyStage: { why: 'a workflow file was withheld and needs delivering' },
+    }],
+  });
+
+  // The tree the caller is about to push is UNTOUCHED — GitHub rejects the whole ref
+  // for a GITHUB_TOKEN push under .github/workflows/, so a write here fails everything.
+  assert.equal(readFileSync(executor, 'utf8'), 'name: Claudinite executor\n# MARKER\n',
+    'the pushed tree must not carry the workflow edit');
+  // …and the content is staged where the apply stage collects it.
+  assert.ok(existsSync(staged), `expected the withheld file at ${PENDING_DIR}`);
+  assert.match(readFileSync(staged, 'utf8'), /# REWRITTEN/);
+  assert.deepEqual(r.withheld, [EXECUTOR_WORKFLOW]);
+  assert.equal(r.applyStage.needed, true);
+  assert.match(r.applyStage.why, /withheld workflow file/);
+});
+
+// THE SWEEP HAZARD. #1317's sweep clears PENDING_DIR unconditionally, on the reasoning
+// that nothing stages any more and so everything there is a leftover. Once this run
+// stages again, an unscoped sweep deletes what it just wrote — the whole delivery, with
+// no error and a green run to show for it.
+test('the staging sweep clears stale files without deleting what this run staged', async () => {
+  const root = makeMember();
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
+  writeFileSync(join(root, EXECUTOR_WORKFLOW), 'name: Claudinite executor\n# MARKER\n');
+  // A leftover from before the lane was retired, naming no workflow this run touches.
+  mkdirSync(join(root, PENDING_DIR), { recursive: true });
+  writeFileSync(join(root, PENDING_DIR, 'obsolete.yml'), 'left over from an older cycle\n');
+
+  await packUpdate(root, {
+    fullName: 'o/r',
+    selfTestRun: () => 'ok',
+    extraRecords: [{
+      id: 'test-workflow-rewrite',
+      dir: 'claudinite-tasks/migrations/test-workflow-rewrite',
+      rewrite: [{ file: EXECUTOR_WORKFLOW, replace: [{ from: '# MARKER', to: '# REWRITTEN' }] }],
+      applyStage: { why: 'a workflow file was withheld and needs delivering' },
+    }],
+  });
+
+  assert.equal(existsSync(join(root, PENDING_DIR, 'obsolete.yml')), false, 'the stale one goes');
+  assert.ok(existsSync(join(root, PENDING_DIR, 'claudinite-executor.yml')), 'this run\'s staging stays');
+});
