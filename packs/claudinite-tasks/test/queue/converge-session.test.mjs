@@ -8,7 +8,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { convergeOps, sessionScript, canReachRepo } from '../../queue/converge-item.mjs';
+import { spawn } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { convergeOps, sessionScript } from '../../queue/converge-item.mjs';
 
 const item = (over = {}) => ({
   number: 7, title: '[claudinite-work] p/a', state: 'open', labels: ['task:status:running-agent'],
@@ -93,10 +97,66 @@ test('the script names the repo it was given, on every call', () => {
   }
 });
 
-test('canReachRepo reads the status, so a 403 with a plausible body is not a repo', async () => {
-  const ok = async () => ({ status: 200, json: { full_name: 'o/r' } });
-  // The exact body this session's proxy returns for a repo-scoped path.
-  const proxied = async () => ({ status: 403, json: { message: 'GitHub access is not enabled for this session.' } });
-  assert.equal(await canReachRepo(ok, 'o/r'), true);
-  assert.equal(await canReachRepo(proxied, 'o/r'), false);
+
+// THE CLI IS THE SESSION'S WHOLE INTERFACE (#1491). The planner tests above cover
+// what a convergence IS; these cover the one way a session ever reaches it. A
+// session has no REST route, so the run that prints the calls is the SUCCESSFUL
+// run — it must say so on stdout and exit 0, or the session reads its own normal
+// path as a failure and stops, which is what left five sampled items parked.
+const CLI = new URL('../../queue/converge-item.mjs', import.meta.url).pathname;
+
+const runCli = (args, env = {}) => new Promise((resolve) => {
+  const p = spawn(process.execPath, [CLI, ...args], { env: { ...process.env, ...env } });
+  let out = ''; let err = '';
+  p.stdout.on('data', (d) => { out += d; });
+  p.stderr.on('data', (d) => { err += d; });
+  p.on('close', (code) => resolve({ code, out, err }));
+});
+
+const itemFile = (item) => {
+  const f = join(mkdtempSync(join(tmpdir(), 'converge-')), 'item.json');
+  writeFileSync(f, JSON.stringify(item));
+  return f;
+};
+
+const cliItem = {
+  number: 7,
+  title: '[claudinite-work] basics/task-janitor',
+  body: 'packs/basics/tasks/task-janitor/task.md\n',
+  state: 'open',
+  labels: [{ name: 'task:status:running-agent' }],
+};
+
+test('--item-file prints the session script and exits 0 — printing the calls IS the success', async () => {
+  const { code, out, err } = await runCli([
+    '--issue', '7', '--outcome', 'done', '--summary', 'swept the queue',
+    '--repo', 'o/r', '--item-file', itemFile(cliItem),
+  ]);
+  assert.equal(code, 0, `expected success, got ${code}. stderr: ${err}`);
+  assert.match(out, /add_issue_comment/);
+  assert.match(out, /issue_write/);
+  assert.match(out, /swept the queue/);
+});
+
+test('the CLI never speaks of REST — a session has none, so naming it reads as breakage', async () => {
+  const { out, err } = await runCli([
+    '--issue', '7', '--outcome', 'done', '--summary', 'swept',
+    '--repo', 'o/r', '--item-file', itemFile(cliItem),
+  ]);
+  assert.doesNotMatch(`${out}${err}`, /REST/i);
+});
+
+test('a refusal is still a refusal: an item not with an agent exits non-zero', async () => {
+  const { code, err } = await runCli([
+    '--issue', '7', '--outcome', 'done', '--summary', 'swept',
+    '--repo', 'o/r', '--item-file', itemFile({ ...cliItem, labels: [{ name: 'task:status:ready' }] }),
+  ]);
+  assert.notEqual(code, 0);
+  assert.match(err, /does not hold it|not with an agent/);
+});
+
+test('the module exports no REST executor — every line here is the session\'s', async () => {
+  const mod = await import('../../queue/converge-item.mjs');
+  assert.equal(mod.convergeItem, undefined);
+  assert.equal(mod.canReachRepo, undefined);
 });

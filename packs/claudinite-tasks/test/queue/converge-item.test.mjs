@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  OUTCOMES, convergeItem, parseArgs, refusal, recordLine, convergeComment, sessionScript,
+  OUTCOMES, convergeOps, parseArgs, refusal, recordLine, convergeComment, sessionScript,
 } from '../../queue/converge-item.mjs';
 import { parseWorkItemBody, humanTextOf } from '../../queue/work-item.mjs';
 import { isReleasable } from '../../queue/readiness.mjs';
@@ -53,8 +53,30 @@ function fakeRepo(issues) {
   return { state, gh, find };
 }
 
-const api = await import('../../github.mjs');
-const run = (repo, plan, over = {}) => convergeItem(api, repo.gh, 'o/r', plan, { log: () => {}, ...over });
+// APPLYING THE PLAN, THE WAY THE SESSION DOES. `convergeOps` is the only account of
+// what a convergence is (the REST executor that used to live beside it went with
+// #1491, since nothing but a session ever runs this file). These tests still assert
+// the five side effects and their order, so the applier walks the same ops against
+// the same fake repo — what changed is that the transition is now DECIDED here and
+// PERFORMED by whoever holds the credentials, never by this module.
+function run(repo, plan, over = {}) {
+  const log = over.log ?? (() => {});
+  const item = repo.find(plan.issue);
+  const no = refusal(item, plan.issue);
+  if (no) return { ok: false, error: no };
+  let closed = false;
+  for (const op of convergeOps(item, plan)) {
+    const target = op.issue === undefined ? null : repo.find(op.issue);
+    if (op.kind === 'comment') repo.state.comments.push({ issue: op.issue, body: op.body });
+    else if (op.kind === 'record') log(op.line);
+    else if (op.kind === 'removeLabel') target.labels = target.labels.filter((l) => l !== op.name);
+    else if (op.kind === 'addLabel') target.labels.push(op.name);
+    else if (op.kind === 'setBody') target.body = op.body;
+    else if (op.kind === 'close') { target.state = 'closed'; target.state_reason = op.stateReason; closed = true; }
+  }
+  const { request } = parseWorkItemBody(item.body ?? '');
+  return { ok: true, closed, request: request ?? null };
+}
 
 // --- the argument surface ------------------------------------------------------
 
@@ -66,7 +88,7 @@ test('the command refuses a plan it cannot perform rather than guessing', () => 
   // An approval park nobody can act on is not a park.
   assert.match(parseArgs(['--issue', '7', '--outcome', 'approval', '--summary', 'x']).error, /--pr/);
   assert.deepEqual(parseArgs(['--issue', '7', '--outcome', 'done', '--summary', 'did it']),
-    { issue: 7, outcome: 'done', summary: 'did it', pr: null });
+    { issue: 7, outcome: 'done', summary: 'did it', pr: null, repo: null, itemFile: null });
 });
 
 // --- who may converge ----------------------------------------------------------
@@ -102,7 +124,7 @@ test('a marked issue whose body predates the machine block is converged, by its 
 
 test('a refusal writes nothing at all', async () => {
   const repo = fakeRepo([item({ labels: ['task:executing'] })]);
-  const res = await run(repo, { issue: 7, outcome: 'done', summary: 'did it' });
+  const res = run(repo, { issue: 7, outcome: 'done', summary: 'did it' });
   assert.equal(res.ok, false);
   assert.deepEqual(repo.state.comments, []);
   assert.deepEqual(repo.find(7).labels, ['task:executing']);
@@ -113,7 +135,7 @@ test('a refusal writes nothing at all', async () => {
 
 test('a done outcome closes the item with the label swapped and the record on it', async () => {
   const repo = fakeRepo([item()]);
-  const res = await run(repo, { issue: 7, outcome: 'done', summary: 'ran the thing' });
+  const res = run(repo, { issue: 7, outcome: 'done', summary: 'ran the thing' });
   assert.equal(res.ok, true);
   const issue = repo.find(7);
   assert.equal(issue.state, 'closed');
@@ -129,7 +151,7 @@ test('a done outcome closes the item with the label swapped and the record on it
 test('the record is printed as well as commented — the census reads the transcript', async () => {
   const repo = fakeRepo([item()]);
   const printed = [];
-  await run(repo, { issue: 7, outcome: 'done', summary: 'x' }, { log: (l) => printed.push(l) });
+  run(repo, { issue: 7, outcome: 'done', summary: 'x' }, { log: (l) => printed.push(l) });
   assert.deepEqual(printed.filter((l) => l.startsWith('claudinite-task-exec')),
     ['claudinite-task-exec v1 p/a [#7] success']);
 });
@@ -145,7 +167,7 @@ test('a park that is not a failure carries no record', () => {
 
 test('a park leaves the item open wearing the one park label', async () => {
   const repo = fakeRepo([item()]);
-  await run(repo, { issue: 7, outcome: 'failure', summary: 'it broke' });
+  run(repo, { issue: 7, outcome: 'failure', summary: 'it broke' });
   const issue = repo.find(7);
   assert.equal(issue.state, 'open');
   // ONE label since the write-side flip: the park IS the status (#1119).
@@ -159,7 +181,7 @@ test('a park leaves the item open wearing the one park label', async () => {
 // that happens instead of waiting for someone to notice it already did.
 test('a park that names a pull request stamps its end condition on the item', async () => {
   const repo = fakeRepo([item()]);
-  await run(repo, { issue: 7, outcome: 'approval', summary: 'opened it', pr: 9 });
+  run(repo, { issue: 7, outcome: 'approval', summary: 'opened it', pr: 9 });
   assert.equal(parseWorkItemBody(repo.find(7).body).endsWhen, 9);
   assert.equal(repo.find(7).body.split('\n')[0], 'packs/p/tasks/a/task.md');
 });
@@ -168,11 +190,11 @@ test('a park that names a pull request stamps its end condition on the item', as
 // same way, and one rule reads the field whatever kind wrote it.
 test('any park may name what would end it, and one that names nothing stamps nothing', async () => {
   const repo = fakeRepo([item()]);
-  await run(repo, { issue: 7, outcome: 'action', summary: 'need the token', pr: 55 });
+  run(repo, { issue: 7, outcome: 'action', summary: 'need the token', pr: 55 });
   assert.equal(parseWorkItemBody(repo.find(7).body).endsWhen, 55);
 
   const bare = fakeRepo([item()]);
-  await run(bare, { issue: 7, outcome: 'failure', summary: 'it broke' });
+  run(bare, { issue: 7, outcome: 'failure', summary: 'it broke' });
   assert.equal(parseWorkItemBody(bare.find(7).body).endsWhen, null);
 });
 
@@ -183,7 +205,7 @@ test('the end condition lands in a marked issue\'s machine block, not its prose'
     body: 'please do the thing\n\n<!-- claudinite-item -->\npacks/p/tasks/a/task.md\n<!-- /claudinite-item -->\n',
   });
   const repo = fakeRepo([marked]);
-  await run(repo, { issue: 7, outcome: 'approval', summary: 'opened it', pr: 9 });
+  run(repo, { issue: 7, outcome: 'approval', summary: 'opened it', pr: 9 });
   const body = repo.find(7).body;
   assert.equal(parseWorkItemBody(body).endsWhen, 9);
   assert.equal(humanTextOf(body), 'please do the thing', 'the person\'s prose is untouched');
@@ -205,7 +227,7 @@ test('an approval park hands its request issue to the reviewer', async () => {
     item({ body: 'packs/p/tasks/a/task.md\n\nRequest: #42\n' }),
     { number: 42, title: 'do a thing', state: 'open', labels: ['claude-queued'] },
   ]);
-  await run(repo, { issue: 7, outcome: 'approval', summary: 'opened it', pr: 9 });
+  run(repo, { issue: 7, outcome: 'approval', summary: 'opened it', pr: 9 });
   assert.deepEqual(repo.find(42).labels, ['claude-in-review']);
   assert.match(repo.state.comments.find((c) => c.issue === 42).body, /#9/);
 });
@@ -218,7 +240,7 @@ test('a failure park leaves the request armed and says nothing to it', async () 
     item({ body: 'packs/p/tasks/a/task.md\n\nRequest: #42\n' }),
     { number: 42, title: 'do a thing', state: 'open', labels: ['claude-queued'] },
   ]);
-  await run(repo, { issue: 7, outcome: 'failure', summary: 'it broke' });
+  run(repo, { issue: 7, outcome: 'failure', summary: 'it broke' });
   assert.deepEqual(repo.find(42).labels, ['claude-queued']);
   assert.equal(repo.state.comments.some((c) => c.issue === 42), false);
 });
@@ -232,7 +254,7 @@ const blocked = (number, blockedBy, over = {}) => ({
 
 test('closing an item it was the last blocker of leaves the dependent untouched', async () => {
   const repo = fakeRepo([item(), blocked(8, [7])]);
-  const res = await run(repo, { issue: 7, outcome: 'done', summary: 'x' });
+  const res = run(repo, { issue: 7, outcome: 'done', summary: 'x' });
   assert.equal('freed' in res, false, 'a converge has no notion of what it freed any more');
   assert.deepEqual(repo.find(8).labels, ['task:blocked'], 'release is the scheduler run\'s job alone');
 });
@@ -241,7 +263,7 @@ test('closing an item it was the last blocker of leaves the dependent untouched'
 // ever a candidate for release.
 test('a park also leaves a dependent untouched', async () => {
   const repo = fakeRepo([item(), blocked(8, [7])]);
-  await run(repo, { issue: 7, outcome: 'failure', summary: 'x' });
+  run(repo, { issue: 7, outcome: 'failure', summary: 'x' });
   assert.deepEqual(repo.find(8).labels, ['task:blocked']);
 });
 
