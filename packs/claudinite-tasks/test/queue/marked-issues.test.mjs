@@ -80,6 +80,22 @@ test('a work-item page that cannot be read fails the run rather than ending the 
   await assert.rejects(() => listWorkItems(gh, 'o/r'), /403/);
 });
 
+// THE OTHER HALF OF THE ONE-ISSUE MODEL (#1497). An adopted marked issue is an item
+// that never gains the title prefix, and the scheduler run's own list was the only
+// reader still testing for it — so job 2, the ONLY site that releases a blocked
+// item, never saw one. Four ad-hoc items slept days past their `Not-before:`.
+test('an ADOPTED marked issue is in the work-item list, and an unadopted mark is not', async () => {
+  const { listWorkItems } = await import('../../queue/scheduler-run.mjs');
+  const { gh } = fakeGh([
+    issue(20, [ORIGIN_AD_HOC, STATUS_READY], { title: 'Verify in production: something' }),
+    issue(21, [ORIGIN_AD_HOC], { title: 'please do this' }),
+    issue(22, [], { title: '[claudinite-work] p/digest' }),
+  ]);
+  const out = await listWorkItems(gh, 'o/r');
+  assert.deepEqual(out.map((i) => i.number).sort((a, b) => a - b), [20, 22],
+    'an adopted mark is an item; a mark with no status is a request the adoption list owns');
+});
+
 // The blockers a run must still read. This is the step that broke the FIRST run
 // after adoption started working: `main` named `parseBlockedBy` and never imported
 // it, so the line threw the moment a marked issue reached it — dead code for three

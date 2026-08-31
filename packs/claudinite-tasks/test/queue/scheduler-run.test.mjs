@@ -151,6 +151,29 @@ test('an item in triage is never readied by the scheduler run — only a human r
   assert.equal(kinds(ops, 'ready').length, 0);
 });
 
+// An adopted marked issue keeps the person's own title for life, so every
+// title-shaped test misses it — and job 2 is the only site that ever releases a
+// blocked item (#1497). The item here is exactly what adoption writes: the person's
+// title, the machine block naming the built-in worker, `task:origin:ad-hoc`.
+const adhoc = (labels, body) => ({
+  number: (seq += 1),
+  title: 'Verify in production: the retry re-arm',
+  body, state: 'open', labels,
+  created_at: '2026-08-13T04:10:00Z', closed_at: null, updated_at: '2026-08-13T04:10:00Z',
+});
+
+test('an AD-HOC item sleeping on a passed Not-before is readied like any other', async () => {
+  const sleeping = adhoc(
+    ['task:origin:ad-hoc', 'task:status:blocked'],
+    'packs/claudinite-tasks/queue/tasks/implement-request/task.md\n\nNot-before: 2026-08-14T04:00:00Z\n',
+  );
+  const early = await planSchedulerRun({ tasks: [], items: [sleeping], now: '2026-08-14T03:00:00Z', schedule: SCHEDULE });
+  assert.equal(kinds(early.ops, 'ready').length, 0);
+  const due = await planSchedulerRun({ tasks: [], items: [sleeping], now: '2026-08-14T04:10:00Z', schedule: SCHEDULE });
+  assert.deepEqual(kinds(due.ops, 'ready').map((o) => o.issue), [sleeping.number],
+    'the queue re-adopts nothing here — the item exists, and its hold expired');
+});
+
 // --- job 3: reclaim -----------------------------------------------------------
 
 test('a claim silent past the leash is reclaimed to the queue', async () => {
@@ -173,6 +196,22 @@ test('a task declaring on_interrupt: needs-human is reclaimed to triage, not to 
   // left anything behind, and so whether this re-queues at all — a decision.
   assert.deepEqual(kinds(ops, 'reclaim').map((o) => o.to), ['task:status:needs-human-decision']);
   assert.match(kinds(ops, 'reclaim')[0].reason, /on_interrupt/);
+});
+
+// The task every ad-hoc item runs is `engine/implement-request`, and it is the one
+// task in the fleet declaring `needs-human` — so reading the id off the title alone
+// would re-queue a code-writing run whose predecessor may have left a branch behind.
+test('a dead claim on an ad-hoc item honours the request task\'s on_interrupt', async () => {
+  const stuck = adhoc(
+    ['task:origin:ad-hoc', 'task:status:running-executor'],
+    'packs/claudinite-tasks/queue/tasks/implement-request/task.md\n',
+  );
+  stuck.updated_at = '2026-08-14T04:15:00Z';
+  const { ops } = await planSchedulerRun({
+    tasks: [{ pack: 'engine', id: 'implement-request', taskPath: 'packs/claudinite-tasks/queue/tasks/implement-request/task.md', decl: { id: 'implement-request', frequency: 'manual', on_interrupt: 'needs-human' } }],
+    items: [stuck], now: '2026-08-14T09:30:00Z', schedule: SCHEDULE,
+  });
+  assert.deepEqual(kinds(ops, 'reclaim').map((o) => o.to), ['task:status:needs-human-decision']);
 });
 
 test('the scheduler run evaluates nothing: a task with a precondition that throws is still instantiated', async () => {
