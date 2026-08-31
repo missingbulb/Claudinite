@@ -162,6 +162,16 @@ test('the vendored stubs are what the converge is written against', () => {
     assert.ok(!/toJSON\(\s*secrets\s*\)/.test(text.replace(/^\s*#.*$/gm, '')),
       `${name}: toJSON(secrets) is the flagged pattern — name the secrets instead`);
   }
+  // REPOSITORY VARIABLES TRAVEL AS ONE BAG (#1492), and only in the executor, which
+  // is the only one of the two that runs task code. `vars` is the context GitHub's own
+  // docs define as non-sensitive and render unmasked in logs, so serialising it is not
+  // the exfiltration shape the guard above exists for — and the static-website pack has
+  // fielded the same line since before that safeguard shipped.
+  assert.match(executor, /CLAUDINITE_VARS: \$\{\{ toJSON\(vars\) \}\}/,
+    'the executor carries the whole vars context as one static line');
+  assert.doesNotMatch(schedulerRun, /toJSON\(vars\)/,
+    'the scheduler run runs no task code, so it gets no bag');
+
   // The hold reaches every workflow, or it is not a hold (§15.24).
   for (const [name, text] of [['scheduler run', schedulerRun], ['executor', executor]]) {
     assert.match(text, /CLAUDINITE_TASKS_SUSPEND_ALL: \$\{\{ vars\.CLAUDINITE_TASKS_SUSPEND_ALL \}\}/,

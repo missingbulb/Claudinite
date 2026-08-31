@@ -736,6 +736,15 @@ jobs:
         run: node .claudinite/shared/packs/claudinite-tasks/queue/executor.mjs
 `;
 
+// A member whose live executor already carries the repository-variable bag (#1492) —
+// the far side of that PR, where `stamping-executor` above is the near side every
+// member sits on until its own lands. The line is STATIC: no converge writes it and no
+// declaration moves it, so what this proves is that a member carrying it converges green
+// and that nothing in the engine requires its absence.
+const VARS_BAG_EXECUTOR_WORKFLOW = STAMPING_EXECUTOR_WORKFLOW
+  .replace('          # claudinite:secrets\n',
+    '          CLAUDINITE_VARS: \${{ toJSON(vars) }}\n          # claudinite:secrets\n');
+
 // A member whose live executor triggers on the CANONICAL ready spelling alone — the
 // file a converge writes from today's stub, once the legacy trigger came out (#1119).
 // `THIN_EXECUTOR_WORKFLOW` above is the same file with `task:ready` still beside it:
@@ -1166,6 +1175,18 @@ NSApplication.shared.run()
       }),
       '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
       '.github/workflows/claudinite-executor.yml': STAMPING_EXECUTOR_WORKFLOW,
+    },
+  },
+  {
+    name: 'vars-bag-executor',
+    why: 'a member whose live executor carries the one-line `CLAUDINITE_VARS` bag — the far side of #1492, where `stamping-executor` is the near side; its repo variables must reach task code out of the bag, and the converge must leave the static line alone',
+    files: {
+      'README.md': '# fixture-vars-bag-executor\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics'], {
+        taskScheduler: { endpoints: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } } },
+      }),
+      '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
+      '.github/workflows/claudinite-executor.yml': VARS_BAG_EXECUTOR_WORKFLOW,
     },
   },
   {

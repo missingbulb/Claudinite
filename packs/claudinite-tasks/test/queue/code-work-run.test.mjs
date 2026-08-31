@@ -8,7 +8,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { deliveredLines, missingSecrets } from '../../queue/code-work-run.mjs';
+import { deliveredLines, missingSecrets, taskEnv } from '../../queue/code-work-run.mjs';
+import { SECRETS_BAG_ENV } from '../../queue/secrets-bag.mjs';
+import { VARS_BAG_ENV } from '../../queue/vars-bag.mjs';
 
 test('an artifact code_work created is named by identity', () => {
   assert.deepEqual(deliveredLines({ pr: 7, branch: 'claudinite/x' }), [
@@ -76,4 +78,24 @@ test('the bag is what decides a declared secret is missing, not the plain enviro
   const { SECRETS_BAG_ENV } = await import('../../queue/secrets-bag.mjs');
   const env = { [SECRETS_BAG_ENV]: JSON.stringify({ A: '', B: 'v' }) };
   assert.deepEqual(missingSecrets(['A', 'B', 'C'], env), ['C']);
+});
+
+
+// WHAT THE TWO BAGS DO DIFFERENTLY, at the one place both are unpacked (#1492). A
+// secret is selected down to what the task declared; a variable is not, because
+// `vars` is non-sensitive by construction and there is no blast radius to narrow.
+test('taskEnv selects the declared secrets and delivers every repo variable', () => {
+  const env = {
+    PATH: '/usr/bin',
+    [SECRETS_BAG_ENV]: JSON.stringify({ WANTED: 'yes', OTHER: 'no' }),
+    [VARS_BAG_ENV]: JSON.stringify({ SITE: 'x', PATH: '/nope' }),
+  };
+  const out = taskEnv(['WANTED'], env);
+  assert.equal(out.WANTED, 'yes');
+  assert.equal(out.OTHER, undefined, 'an undeclared secret is not this task\'s business');
+  assert.equal(out.SITE, 'x', 'a repo variable needs no declaration');
+  assert.equal(out.PATH, '/usr/bin', 'and cannot replace the runner\'s own environment');
+  // Neither raw blob is itself handed on.
+  assert.equal(out[SECRETS_BAG_ENV], undefined);
+  assert.equal(out[VARS_BAG_ENV], undefined);
 });
