@@ -86,6 +86,20 @@ test('an item this session does not hold is refused, not converged', () => {
   assert.equal(refusal(item(), 7), null);
 });
 
+// AN ITEM ADOPTED BEFORE THE MACHINE BLOCK EXISTED has neither signal the structural
+// test looks for: adoption gained the delimiters while items were already in flight,
+// so its fields sit bare in a body whose title is the person's own. The origin label
+// is the independent second signal — platform-write-gated exactly like the block, and
+// carried for life — and either one is sufficient (missingbulb/Shepherd#360, where the
+// refusal sent a session to converge by hand and the close was the step it dropped).
+test('a marked issue whose body predates the machine block is converged, by its mark', () => {
+  assert.equal(refusal(item({
+    title: 'Report the run\'s environment variables on this issue',
+    body: `${LEGACY_BUILT_IN_TASK_PATH}\n\nRequest: #7\n`,
+    labels: ['task:origin:ad-hoc', 'task:agent'],
+  }), 7), null);
+});
+
 test('a refusal writes nothing at all', async () => {
   const repo = fakeRepo([item({ labels: ['task:executing'] })]);
   const res = await run(repo, { issue: 7, outcome: 'done', summary: 'did it' });
