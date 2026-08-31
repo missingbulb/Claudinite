@@ -13,7 +13,7 @@
 export default {
   ruleRoutingGuidance: {
     belongs: 'working rules and lessons specific to developing Claudinite itself and not portable to any consumer',
-    excludes: 'fleet-facing curation duties and policing of the packs/ tree — that is the canon-curation local pack',
+    excludes: 'fleet-facing curation duties and policing of the packs/ tree — that is the claudinite-canon-curation pack',
   },
   // home-seeded-packs-declared rides beside these as a declared check
   // (declared-checks.json in this directory).

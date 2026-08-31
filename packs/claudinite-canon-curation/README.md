@@ -1,0 +1,134 @@
+# claudinite-canon-curation
+
+Curation duties for a **canon** — a repo whose own `packs/` tree is a shelf of Claudinite packs
+that other repos vendor. Declaring this pack is what makes a repo that canon's home: it takes on
+promoting its members' lessons onto the shelf, sweeping the fleet's stacks for technologies the
+shelf does not yet home, and policing the shelf's own content.
+
+Nothing in the pack names a particular canon. The shelf is `packs/` because that is where the
+engine reads a canon's packs from, so every rule and task here is anchored there and is inert in a
+repo that keeps no shelf. `hidden`, never seeded, no fingerprint: a canon home is a role somebody
+assigns, so the pack is declared by hand.
+
+A canon that runs Claudinite as an ordinary member reads its own packs from the mount, so its shelf
+is content it *publishes* rather than content it runs — and the rules here are what police it. The
+Claudinite home repo is the one exception, running the engine from its own root, and that changes
+nothing about this pack.
+
+**Declaration cardinality is the mechanism.** A pack's tasks run once per *declaring* repo, so a
+canon declared by its one home repo yields exactly one work item per task per occurrence — "central,
+once" with no bespoke orchestrator step. Un-declaring the pack freezes canon absorption without
+touching the members' side ([claudinite-growth](../claudinite-growth/README.md)).
+
+## Configuration
+
+The pack entry takes one optional key, read by [canon-config.mjs](canon-config.mjs):
+
+```json
+{ "id": "claudinite-canon-curation", "config": { "write_paths": ["packs", "skills"] } }
+```
+
+`write_paths` names any corpus root **beside** the `packs/` shelf that a promoted lesson may land
+in — a canon that organizes some shared content outside its shelf says so here. The shelf is always
+a corpus root and is never removable. Unset is the ordinary case, not a misconfiguration.
+
+Both tasks reach every member, so both declare `invocation_endpoint: 'fleet'` — a key into the
+declaring repo's own `taskScheduler.endpoints`, mapping to a routine whose sources are that repo
+**and every participating member**. That cross-repo reach is the whole reason a second endpoint
+exists, and is exactly what must stay off the endpoint an ordinary hand-off calls. Reach is a
+property of **which endpoint is called**, and of nothing else: there is no session scope anywhere in
+the system, and no label routes a hand-off ([the writing-tasks
+skill](../claudinite-growth/skills/writing-tasks/SKILL.md)). An endpoint the repo has not configured
+— or one whose token secret is unset — converges the item to human triage naming what is missing,
+on the item itself; if a task has quietly stopped producing anything, its most recent work item says
+why.
+
+## What it carries
+
+| Task | Runs when | Where it lands |
+|---|---|---|
+| `growth-promote` | a participating member changed its local packs in the window | a PR against the canon's default branch |
+| `growth-discover-packs` | weekly, over every covered member | a PR against the canon's default branch, plus an adopt issue in each member that evidenced the pack |
+
+### Checks
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `pack-no-enforcement-narration` | medium | complexity | check: blocking |
+| `pack-version-bumped` | high | correctness | check: blocking |
+| `pack-version-claimed-once` | high | correctness | check: blocking |
+| `skill-no-enforcement-narration` | medium | complexity | check: blocking |
+| `pack-independence` | high | correctness | declared check: blocking |
+
+`pack-independence` is barrier **data**, not code: a `forbidReferences` entry in
+[declared-checks.json](declared-checks.json), compiled by the engine's reference scanning. The
+[barriers pack](../barriers/README.md) documents the edge vocabulary.
+
+- **[tasks/growth-promote/](tasks/growth-promote/task.md)** — the growth lifecycle's central stage:
+  read the changed members' local packs, **generalize** the portable lessons, route each to the
+  right home on the shelf, and open a PR for the owner to approve. When a portable lesson's
+  technology has no pack home, it mints a fingerprinted **stub pack** (in its own dedicated PR).
+  This is the sole judgment gate before shared canon.
+- **[tasks/growth-discover-packs/](tasks/growth-discover-packs/task.md)** — the weekly **fleet
+  sweep** for technologies the shelf does not yet home: read every member's stack, fold the members
+  into one view (so first-sight dedup is free — the third member using a technology is the same gap
+  as the first), and open an owner-reviewed PR authoring the missing `packs/<tech>/`. A pack is
+  authored because particular members' files demonstrated it, so each of those members also gets an
+  issue asking it to adopt the pack once the PR merges and its mount carries it. It is the only
+  stage that authors a pack at all — a member's local packs are what adoption seeded, and
+  growth-extract writes rules into those. (Promote's stub-minting is narrower still: one lesson's
+  technology, minted as a seed; this task authors from the whole fleet's usage.)
+- **[item-routing.md](item-routing.md)** — the shared worthiness + routing method promote (and an
+  owner-requested retrospective pass) defers to, so every decision about admitting and placing an
+  item is made the same way.
+- **[promote-scope.mjs](promote-scope.mjs)** — the write-surface gate on promote's PRs: promote may
+  write only under the corpus roots above. The canon's own CI invokes its `runCli`, keyed on the
+  promote branch prefix; nothing in a tree marks a diff as a promote run, so the gate cannot
+  self-gate.
+- **[skills/generate-project-instructions/](skills/generate-project-instructions/SKILL.md)** — the
+  pack-writing method both tasks above apply: decompose a project into its facets, sort its rules to
+  the one owner each, author the packs those facets earn. Whether a project's insight becomes a pack
+  every repo can declare is the canon's call, so the method sits with the stages that make it rather
+  than in what a member reads.
+- **[skills/writing-claudinite-skills/](skills/writing-claudinite-skills/SKILL.md)** — authoring a
+  skill in the corpus. Canon-side activity: a member authors no corpus skills.
+
+## The growth lifecycle — three independent stages, no barriers
+
+How a lesson is learned in a consuming project, lifted onto the shelf when it's portable, and pruned
+back out of the project once the canon owns it. Two packs split it by who declares them:
+**[claudinite-growth](../claudinite-growth/README.md)** (member-side: extract + dedup, seeded,
+opt-out by removal) and **claudinite-canon-curation** (this pack, the central stage).
+
+```
+EXTRACT   per member    → auto-merging PR against the member's default branch  (claudinite-growth)
+PROMOTE   central, once → PR against the canon's default branch                (this pack)
+DEDUP     per member    → PR against the member's default branch               (claudinite-growth)
+```
+
+All three are ordinary, **independent** planner units — there is no barrier and no phase ordering.
+Each stage reads only what is already **merged**: promote processes whatever sits on members'
+default branches when it runs, so a lesson extracted tonight is promoted **tomorrow** night (the
+extract PR's merge shows up in the next night's local-pack signal), and reaches other members' dedup
+once the promote PR is approved and merged. That approval was always the dominant latency, so
+barrier machinery would buy little; if the cadence ever matters, promote can run more often without
+any design change.
+
+**Review gates by blast radius, not uniformly.** Promote opens a PR — it's the sole judgment gate
+before the shared canon every member reads, so it always needs a human eye. Dedup opens a PR too — a
+wrongful prune deletes a real local lesson. Extract lands through an **auto-merging PR** against the
+member's default branch — it writes only that project's own local packs, so it earns a CI gate and a
+PR trail but not a human reviewer; auto-merge keeps the fleet's daily lesson-capture from flooding
+review requests.
+
+**Central execution, no plumbing.** Promote runs from the canon home repo with a fleet-wide token,
+so it reads every participating member and opens its canon PR directly there — no consumer-side
+Action, no cross-repo PAT, no labelled-issue up-path. The planner hands its gate the `fleetMembers`
+aggregate (which members changed, and what they declare), and the gate hands the worker the changed
+participants as `targets`.
+
+The session-scoped sibling of this nightly lifecycle — mining a single working session for lessons —
+lives with [the growth pack's extract-from-conversations
+skill](../claudinite-growth/skills/extract-from-conversations/SKILL.md), and the member-side method
+docs (extract, dedup, and how a project's local packs are identified) live with
+[claudinite-growth](../claudinite-growth/README.md).

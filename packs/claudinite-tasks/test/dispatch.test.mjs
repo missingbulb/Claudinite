@@ -130,7 +130,7 @@ test('the self/fleet split: readyLabelForScope maps scope → label, and planDis
   assert.equal(readyLabelForScope('self'), READY_LABEL);
   assert.equal(readyLabelForScope('fleet'), READY_FLEET_LABEL);
   // a fleet task's dispatch carries the fleet label so the fleet executor runs it
-  const v = planDispatch({ existing: [], pack: 'canon-curation', task: 'growth-promote', slotId: 'd2026-07-24', readyLabel: READY_FLEET_LABEL });
+  const v = planDispatch({ existing: [], pack: 'claudinite-canon-curation', task: 'growth-promote', slotId: 'd2026-07-24', readyLabel: READY_FLEET_LABEL });
   assert.equal(v.action, 'create');
   assert.equal(v.label, READY_FLEET_LABEL);
   // both ready labels are in the ensure-set the scheduler creates

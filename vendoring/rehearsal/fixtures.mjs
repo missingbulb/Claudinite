@@ -19,6 +19,13 @@
 //                 mistaken for a pack that failed to load.
 //   canon-packs   no local pack. Isolates canon-side breakage from local-pack
 //                 breakage, so a red rehearsal says which.
+//   canon-home    a SECOND canon: a member declaring `claudinite-canon-curation`
+//                 over a `packs/` shelf of its own. That pack's rules are blocking
+//                 and they police a shelf, so the shape they can turn red is a repo
+//                 that keeps one — which the canon home itself always satisfies and
+//                 therefore proves nothing about. This is the only fixture whose
+//                 tree carries a shelf, and it is what says the curation pack is a
+//                 pack any canon can declare rather than one repo's local content.
 //   dormant       a member that declares itself dormant. Its mount falls behind
 //                 BY DESIGN, and the rehearsal must not read that as failure.
 //   versioned-local
@@ -190,6 +197,22 @@ const DEMO_RULE = `const rule = {
   run() { return []; },
 };
 export default rule;
+`;
+
+// The one pack a fixture publishes rather than runs — content on a second canon's
+// shelf. It carries the two things the curation rules read of shelf content: a
+// `version` (the whole delivery signal) and prose that narrates no enforcement.
+const PACK_SHELF = `export default {
+  version: '60831.1',
+  minEngineVersion: '60822.1',
+  ruleRoutingGuidance: {
+    belongs: 'the fixture canon\\'s own published practice, for rehearsal purposes only',
+    excludes: 'anything about running a canon — that is the curation pack',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+};
 `;
 
 const PACK_PROSE_ONLY = `export default {
@@ -915,6 +938,25 @@ module.exports = { issue, check };
       // depth >= 2 outside the sink).
       'product-wiki/README.md': '# product\n\nThe product research root.\n',
       'product-wiki/product-requirements/README.md': '# Product requirements\n\nThe reviewed sink.\n',
+    },
+  },
+  {
+    name: 'canon-home',
+    why: 'a second canon: a member declaring `claudinite-canon-curation` over a `packs/` shelf of its own, proving the curation pack\'s blocking rules are silent on a conforming shelf that is not this repo',
+    files: {
+      'README.md': '# fixture-canon-home\n\nA rehearsal fixture.\n',
+      // `barriers` is the curation pack's `requires`; declaring it explicitly is what
+      // a real canon's file looks like after adoption resolves the closure.
+      '.claudinite-settings.json': checks(['basics', 'barriers', 'claudinite-canon-curation']),
+      // The shelf. A member's own `packs/` is NOT discovered as canon content (the
+      // engine reads a canon's packs from the mount root), so this pack never
+      // activates here — it is published content, and what the curation rules
+      // police. Conforming on every count: a version with its VERSIONS.md row,
+      // prose that names none of its own rules, imports that stay inside the pack.
+      'packs/fixture-shelf/pack.mjs': PACK_SHELF,
+      'packs/fixture-shelf/RULES.md': '# fixture-shelf\n\n- **Publishing a shelf pack** — say what it is for in one line.\n',
+      'packs/fixture-shelf/VERSIONS.md': '# Version history\n\n| Version | Date | What changed |\n|---|---|---|\n| 60831.1 | 2026-08-31 | First version. |\n',
+      'packs/fixture-shelf/README.md': '# fixture-shelf\n\nA rehearsal fixture pack on a fixture canon\'s shelf.\n',
     },
   },
   {

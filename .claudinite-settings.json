@@ -19,7 +19,7 @@
         "canaryRepo": "missingbulb/ClaudiniteCanary"
       }
     },
-    "local/canon-curation",
+    "claudinite-canon-curation",
     {
       "id": "barriers",
       "answers": {

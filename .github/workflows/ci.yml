@@ -95,11 +95,11 @@ jobs:
         # local packs. Unlike promote below, a capture run marks ITSELF — the pinned
         # commit subject its task doc gives it — so the gate self-gates and this step
         # runs on every PR, exiting 0 in ~no time on any other branch.
-        run: node .claudinite/local/packs/canon-curation/growth-scope-gate.mjs
+        run: node .claudinite/local/packs/claudinite/growth-scope-gate.mjs
       - name: Promote write-surface gate
-        # The growth promote stage (.claudinite/local/packs/canon-curation/tasks/growth-promote/task.md)
-        # is the one change bounded to packs/ + skills/ — an ordinary engine PR legitimately edits
-        # checks/ and engine/, so this cannot run on every PR. It keys on the promote branch prefix
-        # (the task doc pins it) and fails the promote PR if a changed path strays.
+        # The growth promote stage is the one change bounded to this canon's corpus roots — an
+        # ordinary engine PR legitimately edits checks/ and engine/, so this cannot run on every
+        # PR. It keys on the promote branch prefix (the task doc pins it) and fails the promote PR
+        # if a changed path strays.
         if: contains(github.head_ref, 'growth-promote')
-        run: node .claudinite/local/packs/canon-curation/promote-scope.mjs
+        run: node .claudinite/local/packs/claudinite/promote-scope-gate.mjs
