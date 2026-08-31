@@ -180,7 +180,7 @@ test('local-only and explanatory files are not published', async (t) => {
   t.after(() => rm(dir, { recursive: true, force: true }));
   await build(dir);
 
-  for (const f of ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'README.md', 'stubs', 'oauth-exchange.example.mjs']) {
+  for (const f of ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'README.md', 'stubs', 'oauth-exchange.mjs']) {
     assert.ok(!existsSync(join(dir, '_site/packs/claudinite-dashboard', f)), `${f} must not be published`);
   }
 });
@@ -221,12 +221,42 @@ test('an unreadable roster file warns instead of silently covering one repo', as
 });
 
 test('sign-in needs both halves, and the build says which is missing', async (t) => {
-  const dir = await member({ packs: [{ id: 'claudinite-dashboard', config: { mode: 'repo', clientId: 'Iv1.x' } }] });
+  const dir = await member({ packs: [{ id: 'claudinite-dashboard', config: { mode: 'repo' } }] });
+  t.after(() => rm(dir, { recursive: true, force: true }));
+
+  const { stdout } = await build(dir, { CLAUDINITE_DASHBOARD_CLIENT_ID: 'Iv1.x' });
+  assert.match(stdout, /sign-in: NOT configured/);
+  assert.match(stdout, /exchangeUrl missing/);
+});
+
+// The pair travel as repository variables, so the build has to read them from its
+// environment — the workflow passes them, and nothing in the settings file carries them.
+test('the sign-in pair reach the published config from repository variables', async (t) => {
+  const dir = await member({ packs: [{ id: 'claudinite-dashboard', config: { mode: 'repo' } }] });
+  t.after(() => rm(dir, { recursive: true, force: true }));
+
+  const { stdout } = await build(dir, {
+    CLAUDINITE_DASHBOARD_CLIENT_ID: 'Iv1.fromVar',
+    CLAUDINITE_DASHBOARD_EXCHANGE_URL: 'https://w.example',
+  });
+  assert.match(stdout, /sign-in: configured/);
+  const cfg = await readJson(join(dir, CONFIG_AT));
+  assert.equal(cfg.clientId, 'Iv1.fromVar');
+  assert.equal(cfg.exchangeUrl, 'https://w.example');
+  assert.doesNotMatch(stdout, /NOTE: sign-in read from the declaration/);
+});
+
+// A deployment that configured the pair before the variables existed keeps its button —
+// nothing converges a member's settings file — and is told once where they live now.
+test('a declared pair still builds a signed-in site, and says it is on the old footing', async (t) => {
+  const dir = await member({ packs: [{ id: 'claudinite-dashboard', config: { mode: 'repo', clientId: 'Iv1.old', exchangeUrl: 'https://old.example' } }] });
   t.after(() => rm(dir, { recursive: true, force: true }));
 
   const { stdout } = await build(dir);
-  assert.match(stdout, /sign-in: NOT configured/);
-  assert.match(stdout, /exchangeUrl missing/);
+  assert.match(stdout, /sign-in: configured/);
+  assert.match(stdout, /NOTE: sign-in read from the declaration for .*clientId.*exchangeUrl/);
+  const cfg = await readJson(join(dir, CONFIG_AT));
+  assert.equal(cfg.clientId, 'Iv1.old');
 });
 
 // An adopted-but-not-yet-converged member is the ordinary state on a fleet, not a
@@ -236,7 +266,7 @@ test('a mount without the page produces nothing and exits clean', async (t) => {
   t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, '.claudinite/shared/packs/claudinite-dashboard'), { recursive: true });
   await mkdir(join(dir, '.claudinite/shared/engine'), { recursive: true });
-  for (const f of ['build-site.mjs', 'config.mjs']) {
+  for (const f of ['build-site.mjs', 'config.mjs', 'deployment-config.mjs']) {
     await cp(join(PACK_DIR, f), join(dir, `.claudinite/shared/packs/claudinite-dashboard/${f}`));
   }
   // The build resolves the member's settings file by name rather than naming it, so
@@ -319,7 +349,14 @@ test('the pack declares its human-only step in the shape the rule requires', () 
 test('the pack hands over the sign-in decision, not just the Pages setting', () => {
   const signin = pack.adoptionHandover.find((h) => /sign in|authenticat/i.test(h.step));
   assert.ok(signin, 'no handover entry covers how viewers authenticate');
-  assert.match(signin.step, /clientId/, 'it names the pair that actually turns the button on');
+  // A `step` is rendered as ONE checkbox in somebody's handover issue, so it states the
+  // decision and points at the checklist rather than spelling six actions and a
+  // rationale inside the box (basics' `writing-handover-issues`). The word bound is the
+  // guard that matters: naming the variables was the old assertion, and it passed just
+  // as happily on the 90-word paragraph it was written against.
+  assert.match(signin.step, /README/i, 'it points at the checklist that does name the pair');
+  assert.ok(signin.step.split(/\s+/).length <= 30,
+    `a handover step is one checkbox, not a procedure — this one is ${signin.step.split(/\s+/).length} words`);
   assert.match(signin.step, /README/i, 'and points at where the mechanics are');
   // The trap this guards: an entry that reads as mandatory when the deployment may
   // legitimately have nothing to do.
