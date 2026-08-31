@@ -2,8 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sweepQueue } from '../../tasks/task-janitor/queue-sweep.mjs';
 import {
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, HANDOFF_MARKER, TASK_DONE, TASK_OBSOLETE,
+  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE, HANDOFF_MARKER, TASK_DONE, TASK_OBSOLETE,
+  parkKindOf,
 } from '../../queue/work-item.mjs';
+import { SUPERSEDABLE_PARKS } from '../../queue/janitor-rules.mjs';
 
 // A fake GitHub that answers the two reads the sweep makes and records the writes.
 // `labelsAdded` is what the assertions turn on: a park is TWO writes now — the
@@ -57,21 +59,34 @@ test('a stale-ready item parks at action — the lane is not being drained, and 
   assert.deepEqual(labelsOn(added, 11), [NEEDS_HUMAN_ACTION]);
 });
 
-test('a dead agent claim parks at decision — what the dead session left behind decides whether it re-queues', async () => {
+// A dead session is the machine noticing a corpse, not a person deciding anything.
+// The kind matters twice over: `failure` is the only park a later clean run can
+// supersede (rule E), and the only one that holds the task's lane so the generator
+// stops filing a fresh occurrence every anchor behind a run nobody has looked at.
+test('a dead agent claim parks at failure — nothing here is a human\'s choice', async () => {
   const { gh, added } = janitorGh(
     [workItem(21, ['task:status:running-agent'], { created: '2026-07-01T00:00:00Z' })],
     { 21: [{ id: 1, body: `${HANDOFF_MARKER}\nHanded off by executor \`E1\`.`, created_at: '2026-07-01T00:00:00Z' }] },
   );
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.deadAgents, [21]);
-  assert.deepEqual(labelsOn(added, 21), [NEEDS_HUMAN_DECISION]);
+  assert.deepEqual(labelsOn(added, 21), [NEEDS_HUMAN_FAILURE]);
 });
 
-test('a stateless item parks at decision — which state it should have had is a judgement', async () => {
+// The reason the kind was wrong: rule E is what drains these once the thing that
+// broke is fixed, and it only ever looks at SUPERSEDABLE_PARKS. A rule B park
+// outside that set accumulates forever however many clean runs follow it.
+test('the kind rule B parks at is one rule E can supersede', () => {
+  assert.ok(SUPERSEDABLE_PARKS.includes(parkKindOf({ labels: [{ name: NEEDS_HUMAN_FAILURE }] })));
+});
+
+// Same reading as rule B: an item off the state machine is a label swap that TORE,
+// which the machine noticed. Nobody decided it, so a later clean run may clear it.
+test('a stateless item parks at failure — a torn swap is breakage, not a judgement', async () => {
   const { gh, added } = janitorGh([workItem(31, [])]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.stateless, [31]);
-  assert.deepEqual(labelsOn(added, 31), [NEEDS_HUMAN_DECISION]);
+  assert.deepEqual(labelsOn(added, 31), [NEEDS_HUMAN_FAILURE]);
 });
 
 // The stuck-dependency rule is COMMENT ONLY on purpose — the item still proceeds
@@ -115,7 +130,7 @@ test('an item still stateless on the second read is repaired', async () => {
   const { gh, added } = janitorGh([workItem(43, [])]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.stateless, [43]);
-  assert.deepEqual(labelsOn(added, 43), [NEEDS_HUMAN_DECISION]);
+  assert.deepEqual(labelsOn(added, 43), [NEEDS_HUMAN_FAILURE]);
 });
 
 // The wiring the pure rules cannot cover: rule F now picks its comment from WHERE the
