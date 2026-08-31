@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   staleReadyItems, deadAgentItems, stuckBlockedItems, statelessItems, periodForTasks,
   supersededItems, supersededComment, orphanedParkItems, orphanedParkComment,
-  endedParkItems, endedParkComment,
+  endedParkItems, endedParkComment, unclosedTerminalItems, unclosedTerminalComment,
 } from '../../queue/janitor-rules.mjs';
 import { periodMs } from '../../queue/anchors.mjs';
 import { isParked } from '../../queue/work-item.mjs';
@@ -328,4 +328,38 @@ test('the ended-park comment distinguishes what landed from what was abandoned',
   assert.match(endedParkComment(133, 'merged'), /task:status:done/);
   assert.match(endedParkComment(133, 'closed'), /closed without merging/);
   assert.match(endedParkComment(133, 'closed'), /task:status:rejected/);
+});
+
+// ---------------------------------------------------------------------------
+// Rule H — the unclosed terminal (#1526).
+
+test('an open item wearing a terminal status is closed, whichever terminal it is', () => {
+  const done = it({ labels: ['task:status:done'], updated_at: '2026-08-13T04:00:00Z' });
+  const rejected = it({ labels: ['task:status:rejected'], updated_at: '2026-08-13T04:00:00Z' });
+  assert.deepEqual(unclosedTerminalItems([done, rejected], NOW).map((i) => i.number), [done.number, rejected.number]);
+  // The outcome is the status's own — nothing here relabels anything.
+  assert.match(unclosedTerminalComment('task:status:done'), /nothing is left for anyone to act on/);
+  assert.match(unclosedTerminalComment('task:status:rejected'), /re-queue/);
+});
+
+// A live status is the machinery working, and a park is a person's to answer.
+test('a live or parked item is not an unclosed terminal', () => {
+  const live = it({ labels: ['task:status:running-agent'], updated_at: '2026-08-13T04:00:00Z' });
+  const park = parked({ kind: 'approval', updated_at: '2026-08-13T04:00:00Z' });
+  assert.deepEqual(unclosedTerminalItems([live, park], NOW), []);
+});
+
+// The clock guard, and the reason for it: a converge writes the label and the close
+// seconds apart, so a fresh terminal is a transition in flight, not a torn one
+// (#1104's escalation of an item that settled 8 seconds later).
+test('a terminal written moments ago is a converge in flight, not a torn one', () => {
+  const settling = it({ labels: ['task:status:done'], updated_at: '2026-08-14T03:59:00Z' });
+  assert.deepEqual(unclosedTerminalItems([settling], NOW), []);
+});
+
+// A legacy spelling decodes to the same terminal — the whole point of deciding by
+// `statusOf` rather than by label text.
+test('an item wearing an older engine\'s spelling of done is closed too', () => {
+  const legacy = it({ labels: ['task:done'], updated_at: '2026-08-13T04:00:00Z' });
+  assert.deepEqual(unclosedTerminalItems([legacy], NOW).map((i) => i.number), [legacy.number]);
 });
