@@ -16,6 +16,11 @@ const item = (over = {}) => ({
 });
 const done = { issue: 7, outcome: 'done', summary: 'the run succeeded', pr: null };
 const kinds = (ops) => ops.map((o) => o.kind);
+const markedItem = (over = {}) => item({
+  title: 'Please add a dark mode',
+  body: 'Please add a dark mode.\n\n<!-- claudinite-item -->\npacks/p/tasks/a/task.md\n<!-- /claudinite-item -->\n',
+  ...over,
+});
 
 test('the planner ends a successful run: comment, record, claim gone, outcome, closed', () => {
   const ops = convergeOps(item(), done);
@@ -35,10 +40,25 @@ test('a park is ONE label and closes nothing', () => {
     ['task:status:needs-human-failure']);
 });
 
-test('a marked issue is never closed by its own run', () => {
-  const marked = item({ title: 'Please add a dark mode', body: '<!-- claudinite-machine -->\npacks/p/tasks/a/task.md\n' });
-  assert.ok(!kinds(convergeOps(marked, done)).includes('close'),
-    'the terminal status stands on the open issue; closing it is the author\'s call');
+// A DONE TERMINAL CLOSES THE ISSUE IT STANDS ON, marked or filed (#1489). `done`
+// means nothing is left for anyone to act on, and an issue left open under it asks
+// its author to come and agree — which is the one thing the run already settled.
+test('a done terminal closes a marked issue too', () => {
+  assert.deepEqual(convergeOps(markedItem(), done).at(-1), { kind: 'close', issue: 7, stateReason: 'completed' });
+});
+
+// The contrast, and the half of the old rule that survives: a park is waiting on a
+// person, so it leaves the person's own issue open to wait on.
+test('a park on a marked issue leaves it open', () => {
+  const ops = convergeOps(markedItem(), { issue: 7, outcome: 'approval', summary: 'left a PR', pr: 9 });
+  assert.ok(!kinds(ops).includes('close'), 'a park is not an ending');
+});
+
+// A marked issue has no `[claudinite-work]` title to render a record from, so the
+// close is the transition's last step and the labels it writes are the computed set.
+test('the session script closes a marked issue with the labels the transition leaves', () => {
+  const script = sessionScript(markedItem({ labels: ['task:status:running-agent', 'task:origin:ad-hoc'] }), done, 'o/r');
+  assert.match(script, /labels `\["task:origin:ad-hoc","task:status:done"\]`, state `closed`, state_reason `completed`/);
 });
 
 test('the session script preserves labels the transition never mentions', () => {

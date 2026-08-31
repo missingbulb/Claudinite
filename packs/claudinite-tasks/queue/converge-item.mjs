@@ -21,7 +21,7 @@
 import { pathToFileURL } from 'node:url';
 import { renderTaskExec } from '../run-record.mjs';
 import {
-  AGENT, TASK_DONE, STATUS_RUNNING_AGENT, isStatus, isWorkItemTitle, machineBlockOf,
+  AGENT, TASK_DONE, STATUS_RUNNING_AGENT, isStatus, machineBlockOf,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
   QUEUED_LABEL, IN_REVIEW_LABEL,
   parseWorkItemTitle, parseWorkItemBody, spellingsOf, labelNames,
@@ -133,10 +133,12 @@ export function convergeOps(item, plan) {
   }
 
   if (spec.closes) {
-    // A MARKED ISSUE IS NOT THE SESSION'S TO CLOSE (§16.1, §16.5): the terminal
-    // status stands on the open issue, and whether the issue itself is finished
-    // belongs to the person who opened it.
-    if (isWorkItemTitle(item.title ?? '')) ops.push({ kind: 'close', issue: item.number, stateReason: spec.stateReason });
+    // A DONE TERMINAL CLOSES THE ISSUE IT STANDS ON, marked or filed (#1489,
+    // reversing §16.1/§16.5's "never a marked issue"). `done` is the one outcome
+    // that means nothing is left for anyone to act on, so an issue left open under
+    // it asks its author to come and agree with what the run already settled. Every
+    // other outcome parks, and a park leaves the issue open to be waited on.
+    ops.push({ kind: 'close', issue: item.number, stateReason: spec.stateReason });
     return ops;
   }
 

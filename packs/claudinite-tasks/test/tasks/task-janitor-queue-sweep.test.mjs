@@ -174,17 +174,29 @@ test('a park whose pull request is still open is the machinery working', async (
   assert.deepEqual(patched, []);
 });
 
-// A MARKED ISSUE IS NOT THE MACHINERY'S TO CLOSE (DESIGN §16.5): the terminal status
-// stands on the open issue, and whether the person's own issue is finished is theirs.
-test('an ended park on a marked issue takes the status and leaves the issue open', async () => {
-  const marked = {
-    ...workItem(34, ['task:origin:ad-hoc', 'task:status:needs-human-approval']),
-    title: 'Please do the thing',
-    body: 'please do the thing\n\n<!-- claudinite-item -->\npacks/p/tasks/a/task.md\n\nEnds-when: #136 closed\n<!-- /claudinite-item -->\n',
-  };
-  const { gh, added, patched } = janitorGh([marked], {}, { 136: pr(136, { merged: true }) });
+// A DONE TERMINAL CLOSES THE ISSUE IT STANDS ON, marked or filed (#1489): a merged
+// target means the work landed, and there is nothing left on the issue for the
+// person who opened it to do.
+const markedPark = (number, endsWhen, status = 'task:status:needs-human-approval') => ({
+  ...workItem(number, ['task:origin:ad-hoc', status]),
+  title: 'Please do the thing',
+  body: `please do the thing\n\n<!-- claudinite-item -->\npacks/p/tasks/a/task.md\n\nEnds-when: #${endsWhen} closed\n<!-- /claudinite-item -->\n`,
+});
+
+test('an ended park on a marked issue whose PR merged closes it done', async () => {
+  const { gh, added, patched } = janitorGh([markedPark(34, 136)], {}, { 136: pr(136, { merged: true }) });
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
   assert.deepEqual(out.ended, [34]);
   assert.deepEqual(labelsOn(added, 34), [TASK_DONE]);
-  assert.deepEqual(patched, [], 'the person\'s own issue is not closed by the janitor');
+  assert.deepEqual(patched, [{ issue: 34, state: 'closed', state_reason: 'completed' }]);
+});
+
+// The contrast: nothing landed, so the person's own issue keeps standing — the
+// rejected terminal on a marked issue is still theirs to close.
+test('an ended park on a marked issue whose PR was closed unmerged stays open', async () => {
+  const { gh, added, patched } = janitorGh([markedPark(35, 137)], {}, { 137: pr(137) });
+  const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
+  assert.deepEqual(out.ended, [35]);
+  assert.deepEqual(labelsOn(added, 35), [TASK_OBSOLETE]);
+  assert.deepEqual(patched, [], 'nothing landed, so the issue is the author\'s to close');
 });

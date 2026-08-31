@@ -1685,14 +1685,20 @@ person is already looking. The request state IS the queue state:
 | + `task:status:running-executor` / `running-agent` | the run owns it |
 | + `task:status:needs-human-approval` | a pull request is open, waiting on a person — the in-review state, with no separate label to mirror it |
 | + `task:status:rejected` | refused and **disarmed** — standing on the still-open issue, because the run's verdict is not the issue's validity (§16.5) |
+| + `task:status:done` | the work is finished and the issue is **closed** with it — the one terminal with nothing left to act on (§16.5) |
 
 The mark is a label rather than a body syntax or a command comment for one
 reason: it must be appliable from the issue page on a phone, and anything
 richer is a form nobody fills in twice. It is also **write-gated by the
 platform** — applying a label needs triage or write access — which is the
 first half of the security story and the reason the rest can stay this small.
-For an ad-hoc item the terminal statuses may stand on an **open** issue: the
-issue's open/closed belongs to its author, the status to the run.
+For an ad-hoc item a **park** stands on an **open** issue, and so does the
+rejected terminal: the run's verdict is about the run, not the issue's validity,
+so clearing it is the asker's lever. `task:status:done` is the exception, and
+closes the issue it stands on like any other item's — *amended 2026-08-31
+(#1489), reversing "a marked issue is never closed by its own run": `done` means
+nothing is left for anyone to act on, and an issue left open under it asks its
+author to come and agree with what the run already settled.*
 
 *Alternative — the shadow-item model this replaces (the marked issue holds the
 conversation, a separate work item holds the state): two issues then tell one
@@ -1826,6 +1832,7 @@ Whoever converges the item owns the write-back for the end it converged:
 | the precondition declined | `task:status:rejected` standing on the **open** issue — the disarm; it closes only if the issue was already closed or gone | the executor | one comment saying why |
 | a pull request is open | `task:status:needs-human-approval`, open — the in-review state itself | the session | nothing to mirror |
 | the run broke | `task:status:needs-human-failure`, open | either | **nothing** |
+| the run finished, with nothing left to act on | `task:status:done`, **closed** `completed` — marked or filed, the same ending | whoever converged it | one comment saying what it did |
 
 The approval park is not a special case invented here — it is what the triage split
 already says a run that deliberately left an unmerged PR does (§4), and a request
