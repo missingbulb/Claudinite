@@ -30,6 +30,11 @@ from lives in the commit that added it and the issue, never here.
 - **Ending a session on unfinished work** — write the state into the tracking issue; the owner's
   opener is `continue work on #<n>`. Never compose a hand-off prompt.
 
+- **Wanting to verify or read something across members** — the executor's agent sessions are
+  scoped to this repo alone, so a cross-repo `Verify:` parks on a scope denial minutes after
+  being picked (#1349, #1351, #1396). The fleet half is a Shepherd fleet task, never an ad-hoc
+  item here.
+
 - **Designing anything that spans repos** — split it: a self-contained per-repo half in the canon,
   the aggregation half as a Shepherd fleet task. No repo list lives in canon code.
 

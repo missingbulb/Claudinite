@@ -39,19 +39,22 @@ test('the brief is filed only after the merge, and carries no PR blocker', () =>
     'the template still tells the filer to block on the PR — the field that invited the premature file');
 });
 
-// The verification is AUTOMATIC end to end: the filed check must be one an
-// unattended run can read, and a person enters only where no such read exists.
+// The verification is AUTOMATIC end to end: the filed check must be one the run can
+// read from HERE, and a person is a rare exception rather than the fallback.
 //
 // Which reads those are is the half that was missing (#1500): "an unattended run can
 // make" is a property a filer will assume of anything it can read ITSELF, and five of
 // one batch's seven claimed items parked on a dashboard or a cross-repo read nobody
-// had checked the runner could reach.
+// had checked the runner could reach. The half after that (#1520): an unreadable
+// artifact must READ AS A REASON NOT TO FILE, not as a routing decision — three items
+// naming a member repo were filed against a queue whose sessions are scoped to this
+// one, and parked minutes after being picked.
 test('the check is automatic by construction, and a human is the last resort', () => {
-  assert.match(skill, /which tool call makes it/i,
+  assert.match(skill, /which tool call the run makes/i,
     'nothing makes the filer test Verify: against a read the runner can actually make');
-  assert.match(skill, /human-step form/i,
-    'an artifact no runner can read has no form of its own to be filed as');
-  assert.match(skill, /no automatic check/i,
+  assert.match(skill, /file\s+nothing\*\*/i,
+    'an unreadable artifact still reads as a form to file rather than a reason to stop');
+  assert.match(skill, /rare exception/i,
     'the skill never bounds when a person may be asked at all');
 });
 
