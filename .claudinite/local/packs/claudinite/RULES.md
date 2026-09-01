@@ -1,13 +1,4 @@
-# Claudinite — the canon's own non-portable working rules
-
-Lessons specific to working on the canon itself. Anything true for repos beyond this one belongs in
-the shared canon under `packs/`/`skills/` instead. The `growth-extract` task appends here, each
-lesson at the strongest mechanism available — a check where the rule is deterministic, else prose.
-
-Rules are written to the `writing-pack-prose` skill: near 40 words each — the trigger, the
-directive, and a consequence clause only where the rule cannot be applied without it — with a
-rule's reaffirmable rationale in [references.md](references.md) behind an end-of-line `(n)`
-marker, and the full evidence trail in the commit that added it and the issue.
+Below are rules on how to work on this repo.
 
 ## Standing owner decisions — settled, do not re-litigate
 

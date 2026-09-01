@@ -21,9 +21,11 @@ const PACK_DIR = /(^|.*\/)(?:local_)?packs\/[^/]+\//;
 
 // A citation marker: a line ENDING with `(3)` or `(3, 7)` — an inline issue id
 // `(#1119)` or a worded parenthetical never matches, and a trailing period puts
-// the marker after it by convention.
+// the marker after it by convention. A marker resolves within its own file's
+// namespace: `(3)` in RULES.md cites the `RULES-3` entry, in a skill the
+// `<skill-name>-3` entry.
 const MARKER = /\((\d+(?:\s*,\s*\d+)*)\)\s*$/;
-const ENTRY = /^\s*-\s+\*\*\((\d+)\)\*\*/;
+const ENTRY = /^\s*-\s+\*\*\(([A-Za-z][\w-]*-\d+)\)\*\*/;
 const CHECK_ENTRY = /^\s*-\s+\*\*\(check:([\w-]+)\)\*\*/;
 
 // A check id as pack files spell it: declared-checks.json's `"id": "x"` or a
@@ -57,22 +59,28 @@ const rule = {
       const text = ctx.read(file);
       if (text === null) continue;
       const packDir = PACK_DIR.exec(file)[0];
+      // The file's entry namespace: RULES for RULES.md, the skill's own name
+      // for a skills/<name>/SKILL.md.
+      const stem = file.endsWith('/RULES.md') || file === 'RULES.md'
+        ? 'RULES'
+        : file.split('/').at(-2);
       for (const line of text.split('\n')) {
         const m = MARKER.exec(line);
         if (!m) continue;
         const known = entries(packDir);
         for (const n of m[1].split(',').map((s) => s.trim())) {
+          const key = `${stem}-${n}`;
           if (known === null) {
             out.push(finding(rule, {
               file,
               what: `cites rationale entry (${n}) but the pack has no references.md`,
-              fix: `add ${packDir}references.md with a "- **(${n})** <reason>" entry, or drop the marker — the writing-pack-prose skill owns the convention`,
+              fix: `add ${packDir}references.md with a "- **(${key})** <reason>" entry, or drop the marker — the writing-pack-prose skill owns the convention`,
             }));
-          } else if (!known.has(n)) {
+          } else if (!known.has(key)) {
             out.push(finding(rule, {
               file,
-              what: `cites rationale entry (${n}), which ${packDir}references.md does not carry`,
-              fix: `add the "- **(${n})** <reason>" entry, or drop the marker; entry numbers are stable identifiers, so a removed entry's number is never reused`,
+              what: `cites rationale entry (${n}), which ${packDir}references.md does not carry as ${key}`,
+              fix: `add the "- **(${key})** <reason>" entry, or drop the marker; entry numbers are stable identifiers, so a removed entry's number is never reused`,
             }));
           }
         }

@@ -100,17 +100,19 @@ work: no rule sends its reader there, and no session loads it.
   filesystem walk. (3)` — and nothing else: don't name the references file, don't link it,
   don't ask the reader to follow anything. Not every rule needs one; a rule whose reason is
   self-evident from its consequence clause carries no marker.
-- **Writing the entry** — one bullet per entry, `- **(3)** <reason>`, written so a future
-  review can **reaffirm the rule from it**: what would have to be true for the rule to be
-  retired.
+- **Writing the entry** — one bullet per entry, keyed by the citing file's own namespace:
+  `- **(RULES-3)** <reason>` for a rule in `RULES.md`, `- **(<skill-name>-3)** <reason>` for a
+  line in that skill's `SKILL.md`; the marker in the prose file stays the bare `(3)` and
+  resolves within its own file's namespace. Write the reason so a future review can **reaffirm
+  the rule from it**: what would have to be true for the rule to be retired.
   - A **workaround** explains the issue with not using it, with the evidence (the failing run,
     the error, the measured cost).
   - A **technology guideline** cites the original documentation it derives from.
   - An **owner decision** carries the language of the request that set it.
-- **Numbering** — numbers are stable identifiers, not positions: the next entry takes the next
-  unused number, a removed entry leaves a gap, and nothing ever renumbers (a renumber breaks
-  every marker at once). One entry may serve several rules; a rule may cite several entries
-  (`(3, 7)`).
+- **Numbering** — numbers are stable identifiers, not positions: the next entry takes its
+  file's next unused number, a removed entry leaves a gap, and nothing ever renumbers (a
+  renumber breaks every marker at once). One entry may serve several rules in its file; a rule
+  may cite several entries (`(3, 7)`).
 - **A check's rationale** — the entry points at the check, since a declaration admits no
   comment and no new key: `- **(check:growth-write-scope)** <reason>`, same reaffirmation
   standard. There is no marker on the check side.

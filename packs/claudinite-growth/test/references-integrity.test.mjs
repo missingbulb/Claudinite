@@ -21,17 +21,17 @@ test('references-integrity: is inert when no pack carries markers or a reference
 test('references-integrity: a marker resolving to its entry is clean', () => {
   assert.deepEqual(run({
     [`${PACK}RULES.md`]: '- **Doing a thing** — do it the settled way. (3)\n',
-    [`${PACK}references.md`]: '- **(3)** Doing it the other way failed twice (#12).\n',
+    [`${PACK}references.md`]: '- **(RULES-3)** Doing it the other way failed twice (#12).\n',
   }), []);
 });
 
 test('references-integrity: a multi-citation marker resolves each number', () => {
   const files = {
     [`${PACK}RULES.md`]: '- **Doing a thing** — do it the settled way. (3, 7)\n',
-    [`${PACK}references.md`]: '- **(3)** First reason.\n- **(7)** Second reason.\n',
+    [`${PACK}references.md`]: '- **(RULES-3)** First reason.\n- **(RULES-7)** Second reason.\n',
   };
   assert.deepEqual(run(files), []);
-  files[`${PACK}references.md`] = '- **(3)** First reason.\n';
+  files[`${PACK}references.md`] = '- **(RULES-3)** First reason.\n';
   const findings = run(files);
   assert.equal(findings.length, 1);
   assert.match(findings[0].what, /\(7\)/);
@@ -49,7 +49,7 @@ test('references-integrity: flags a marker with no references doc beside the pac
 test('references-integrity: flags a marker whose number has no entry', () => {
   const findings = run({
     [`${PACK}RULES.md`]: '- **Doing a thing** — do it the settled way. (4)\n',
-    [`${PACK}references.md`]: '- **(3)** A reason for a different rule.\n',
+    [`${PACK}references.md`]: '- **(RULES-3)** A reason for a different rule.\n',
   });
   assert.equal(findings.length, 1);
   assert.match(findings[0].what, /\(4\)/);
@@ -58,10 +58,21 @@ test('references-integrity: flags a marker whose number has no entry', () => {
 test('references-integrity: reads SKILL.md markers too', () => {
   const findings = run({
     [`${PACK}skills/do-a-thing/SKILL.md`]: 'Step one, because it is settled. (9)\n',
-    [`${PACK}references.md`]: '- **(3)** Unrelated.\n',
+    [`${PACK}references.md`]: '- **(do-a-thing-3)** Unrelated.\n',
   });
   assert.equal(findings.length, 1);
   assert.match(findings[0].file, /SKILL\.md$/);
+});
+
+test('references-integrity: namespaces are per file — a RULES.md marker never resolves through a skill\'s entry', () => {
+  const findings = run({
+    [`${PACK}RULES.md`]: '- **Doing a thing** — the settled way. (3)\n',
+    [`${PACK}skills/do-a-thing/SKILL.md`]: 'Step one, because it is settled. (3)\n',
+    [`${PACK}references.md`]: '- **(do-a-thing-3)** The skill\'s reason.\n',
+  });
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].file, /RULES\.md$/);
+  assert.match(findings[0].what, /RULES-3/);
 });
 
 test('references-integrity: an inline issue id or an ordinary parenthetical is not a marker', () => {

@@ -439,8 +439,8 @@ const REFERENCES_RULES = `# fixture-references
 
 const REFERENCES_DOC = `# References
 
-- **(1)** The other way failed twice; retire when the platform accepts it.
-- **(4)** A second incident, kept under its original stable number.
+- **(RULES-1)** The other way failed twice; retire when the platform accepts it.
+- **(RULES-4)** A second incident, kept under its original stable number.
 - **(check:fixture-declared-check)** Why the pack's own check exists.
 `;
 
