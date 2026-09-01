@@ -17,7 +17,9 @@
 export default {
   id: 'deploy-oauth-exchange',
   frequency: 'manual',
-  precondition_signals: [],
+  // Never due on its own: an item exists only because somebody created one, and
+  // that IS the request.
+  preconditions: ['none'],
   agent_model: 'none',
   // It writes nothing in this repo. The one edit the deployment implies — naming
   // the minted URL as `exchangeUrl` — is the member's own declaration, and the run
@@ -34,11 +36,4 @@ export default {
   // every task's code-work is handed with nothing declared, so listing it here would
   // both misstate it as sensitive and put it in a store it does not need.
   required_secrets: ['CLOUDFLARE_API_TOKEN', 'GITHUB_OAUTH_CLIENT_SECRET'],
-
-  // Never due on its own: an item exists only because somebody created one, and
-  // that IS the request. A `false` here would close the operator's own item without
-  // running it, with no anchor to roll to.
-  precondition() {
-    return { run: true, reason: 'a work item for this manual lever exists, which is the request to deploy' };
-  },
 };

@@ -4,12 +4,14 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { makeRepo, cleanup, deletePath } from '../../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
 import rules from '../../../skills/improve-comments/checks.mjs';
 import task from '../../../tasks/improve-comments/task.mjs';
+import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
 
 const [scope] = rules;
 const RUN = 'Claudinite tidy: improve comments\n\nRefs #12';
@@ -117,10 +119,13 @@ test('an ordinary branch is not this rule\'s business, and neither is the defaul
 
 test('the title the gate keys on is the one the task and its doc pin', () => {
   // The gate's whole relevance is this subject; a rename in one place and not the
-  // others silently retires the guarantee rather than failing.
+  // others silently retires the guarantee rather than failing. The declaration's
+  // own copy of it is the pending-round condition, which recognises the previous
+  // round by exactly the title this run commits under.
   assert.ok(scope.run !== undefined);
   assert.equal(task.id, 'improve-comments');
-  assert.ok(task.precondition_signals.includes('prs'), 'the previous round\'s open PR is what gates a second sweep');
+  assert.ok(task.preconditions.includes(`no-open-pr-titled:${RUN.split('\n')[0]}`),
+    'the previous round\'s open PR is what gates a second sweep, recognised by this exact title');
 });
 
 // `.claudinite/` is the mount, not the repo's own source. The vendored `shared/`
@@ -143,12 +148,25 @@ test('a comment-only edit inside .claudinite/ is still outside this pass\'s surf
 
 test('the precondition never hands a round a .claudinite/ path, and stays silent when that is all there is', () => {
   const S = (touched) => ({ prs: { open: [] }, commits: { substantiveChange: true, touchedPaths: touched } });
+  const verdict = (touched) => evaluatePrecondition({ decl: task }, S(touched));
 
-  const mixed = task.precondition(S(['.claudinite/shared/packs/basics/RULES.md', 'src/app.mjs']));
+  const mixed = verdict(['.claudinite/shared/packs/basics/RULES.md', 'src/app.mjs']);
   assert.equal(mixed.run, true);
-  assert.match(mixed.context.join(' '), /src\/app\.mjs/);
-  assert.doesNotMatch(mixed.context.join(' '), /\.claudinite/);
+  const scope = mixed.context.filter((line) => line.startsWith('Paths outside')).join(' ');
+  assert.match(scope, /src\/app\.mjs/);
+  assert.doesNotMatch(scope, /\.claudinite\/shared/);
 
-  const mountOnly = task.precondition(S(['.claudinite/local/packs/x/RULES.md', '.claudinite/stamp.json']));
+  const mountOnly = verdict(['.claudinite/local/packs/x/RULES.md', '.claudinite/stamp.json']);
   assert.equal(mountOnly.run, false);
+});
+
+// THE DRIFT GUARD, both halves in one place: the prefix the declaration hands a
+// round its scope by, and the prefix this check refuses a WRITE under, are the same
+// string. A scope this task hands out but the gate then reds is a whole round spent
+// producing a diff nobody can land.
+test('the mount prefix the scope excludes is the one the gate refuses writes under', () => {
+  const scopeTerm = task.preconditions.find((c) => c.startsWith('commits-outside:'));
+  assert.equal(scopeTerm, 'commits-outside:.claudinite/');
+  assert.match(readFileSync(new URL('../../../skills/improve-comments/checks.mjs', import.meta.url), 'utf8'),
+    /const MOUNT_PREFIX = '\.claudinite\/';/);
 });

@@ -44,7 +44,9 @@
 export default {
   id: 'fleet-roster',
   frequency: 'daily',                    // the coverage question's cadence — a repo created, adopted or archived under the owner should not wait a week
-  precondition_signals: [],              // no signal — the sweep reads the fleet itself, over the PAT
+  // A daily sweep with nothing repo-side to gate on: coverage and freshness are
+  // facts about OTHER repos, and the walk no-ops cheaply on a converged fleet.
+  preconditions: ['none'],
   agent_model: 'none',                   // pure code — no agent (task-code-work DESIGN §4)
   expected_outcome: 'none',              // the honest ceiling: it opens ADOPTION and DRIFT issues, never a PR — it reports, it does not repair
   code_work: 'node worker.mjs',
@@ -56,14 +58,4 @@ export default {
   // killed long before the next run could collide with it.
   code_work_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT; fleet-token.mjs states the grant
-
-  // Fire daily unconditionally. Every input lives OUTSIDE this repo — another repo's
-  // declaration, another member's workflow, canon's head — and no per-repo collector
-  // can see any of them, so there is no signal that would tell us in advance whether
-  // either answer changed. Cheap to no-op: a converged fleet opens and closes nothing,
-  // and an unhealthy member that is unhealthy for the same reason is not even
-  // commented on.
-  precondition() {
-    return { run: true, reason: 'daily fleet roster sweep — coverage and freshness in one walk (converges adoption and drift issues; no-ops cheaply on a converged fleet)' };
-  },
 };

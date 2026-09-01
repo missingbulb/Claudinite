@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import decl from '../../../tasks/fleet-add-missing-packs/task.mjs';
+import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
 
 // The claudinite-fleet-sheepdog pack's fleet-add-missing-packs task on the FAN-OUT model (#749):
 // the enforcer dispatches, the member executes. Everything asserted here is a
@@ -31,7 +32,9 @@ test('fleet-add-missing-packs: weekly, agentless, outcome none — the agent is 
   assert.equal(decl.agent_model, 'none');
   assert.equal(decl.expected_outcome, 'none');
   assert.equal(decl.agent_instructions, undefined);
-  assert.deepEqual(decl.precondition_signals, []);
+  // `['none']`, not an empty signal list: nothing repo-side predicts this task's
+  // answer, and the declaration says so in the one word for it.
+  assert.deepEqual(decl.preconditions, ['none']);
 });
 
 test('fleet-add-missing-packs: declares no session scope — nothing agentic runs here at all', async () => {
@@ -55,7 +58,7 @@ test('fleet-add-missing-packs: code_work is bounded, task-local, and SENDS both 
 test('fleet-add-missing-packs: the precondition fires unconditionally and says why', () => {
   // Every input lives outside this repo, so no collector signal can predict the
   // answer; the honest declaration is "always run, and no-op cheaply".
-  const v = decl.precondition();
+  const v = evaluatePrecondition({ decl }, {});
   assert.equal(v.run, true);
   assert.match(v.reason, /\S/);
 });

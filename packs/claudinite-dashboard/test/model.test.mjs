@@ -87,6 +87,27 @@ test('parseDeclaration lifts the scalar fields', () => {
   assert.equal(d.has_precondition, true);
 });
 
+// The declarative form (task-preconditions): the roster reads the conditions
+// themselves, and a task carrying only `['none']` has no gate — which is what
+// `none` means, so it must not read as one.
+test('parseDeclaration lifts the declarative preconditions, and `none` is no gate', () => {
+  const gated = parseDeclaration(`
+    export default {
+      id: 'improve-comments',
+      frequency: 'weekly',
+      preconditions: ['substantive-change', 'commits-outside:.claudinite/'],
+      agent_model: 'sonnet',
+    };
+  `);
+  assert.deepEqual(gated.preconditions, ['substantive-change', 'commits-outside:.claudinite/']);
+  assert.equal(gated.precondition_signals, null, 'the field is absent, not empty — it is derived now');
+  assert.equal(gated.has_precondition, true);
+
+  const ungated = parseDeclaration("export default { id: 'update', frequency: 'daily', preconditions: ['none'] };");
+  assert.deepEqual(ungated.preconditions, ['none']);
+  assert.equal(ungated.has_precondition, false);
+});
+
 test('parseDeclaration ignores a field named in a comment', () => {
   const d = parseDeclaration(`
     // WHY weekly: frequency: 'daily' would measure the same runs twice.

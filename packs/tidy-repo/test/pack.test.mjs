@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import pack from '../pack.mjs';
 import tidyIssues from '../tasks/tidy-issues/task.mjs';
 import tidyPrs from '../tasks/tidy-prs/task.mjs';
+import { evaluatePrecondition, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 
 const PACK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/tidy-repo');
 const taskDir = (id) => join(PACK_DIR, 'tasks', id);
@@ -52,33 +53,37 @@ test('every GitHub-object tidy task: id matches its dir, sonnet, outcome none, b
   }
 });
 
+const issuesVerdict = (signals) => evaluatePrecondition({ decl: tidyIssues }, signals);
+const prsVerdict = (signals) => evaluatePrecondition({ decl: tidyPrs }, signals);
+
 // --- tidy-issues: the acting dimension, daily, narrow ------------------------
 
 test('tidy-issues: daily, and its signals are exactly the two triggers that change an issue verdict', () => {
   assert.equal(tidyIssues.id, 'tidy-issues');
   assert.equal(tidyIssues.frequency, 'daily'); // the one dimension that ACTS, so latency matters
-  assert.deepEqual(tidyIssues.precondition_signals, ['issues', 'commits']);
+  assert.deepEqual(tidyIssues.preconditions, ['issues-touched']);
+  assert.deepEqual(preconditionSignals(tidyIssues.preconditions, new Map()), ['issues']);
 });
 
-test('tidy-issues: scope is the touched issues only — a PR or branch moving is not its business', () => {
-  const v = tidyIssues.precondition(S({ issues: { open: [{ number: 3 }, { number: 5 }], touched: [5] } }));
+test('tidy-issues: an issue moving is the trigger — a PR or branch moving is not its business', () => {
+  const v = issuesVerdict(S({ issues: { open: [{ number: 3 }, { number: 5 }], touched: [5] } }));
   assert.equal(v.run, true);
-  assert.match(v.context.join(' '), /Issues to triage: #5\./);
-  assert.doesNotMatch(v.context.join(' '), /#3/); // untouched, and main didn't move
+  assert.match(v.context.join(' '), /#5/);
+  assert.doesNotMatch(v.context.join(' '), /#3/); // untouched — the trigger names what moved
 
   // Activity in the other dimensions never wakes this task.
-  assert.equal(tidyIssues.precondition(S({ prs: { open: [{ number: 7 }], touched: [7] } })).run, false);
-  assert.equal(tidyIssues.precondition(S({ branches: { names: ['main', 'feat-x'], touched: ['feat-x'] } })).run, false);
+  assert.equal(issuesVerdict(S({ prs: { open: [{ number: 7 }], touched: [7] } })).run, false);
+  assert.equal(issuesVerdict(S({ branches: { names: ['main', 'feat-x'], touched: ['feat-x'] } })).run, false);
 });
 
-test('tidy-issues: a substantive main move widens an already-triggered run to every open issue', () => {
-  const v = tidyIssues.precondition(S({
-    issues: { open: [{ number: 3 }, { number: 5 }], touched: [5] },
-    commits: { substantiveChange: true },
-  }));
-  assert.equal(v.run, true);
-  assert.match(v.reason, /substantively/);
-  assert.match(v.context.join(' '), /Issues to triage: #3, #5\./); // #3 is untouched, and still in scope
+// WIDENING IS SCOPE, AND SCOPE IS THE WORKER'S (task-preconditions DESIGN): a
+// substantive `main` move can have implemented or invalidated an issue nobody
+// touched, and deciding that is a decision about what a granted run works on, never
+// about whether it runs.
+test('tidy-issues: whether a substantive main move widens the run is task.md\'s call', () => {
+  const worker = readFileSync(join(taskDir('tidy-issues'), tidyIssues.agent_instructions), 'utf8');
+  assert.match(worker, /did the default branch move substantively in the window/i);
+  assert.match(worker, /every\s+\*\*open issue\*\*|\*\*every\s+open issue\*\*/);
 });
 
 // The gate the owner asked for: nothing new in the window → don't go over the
@@ -86,12 +91,12 @@ test('tidy-issues: a substantive main move widens an already-triggered run to ev
 // moves substantively most days — so widening on it ALONE re-triaged every open
 // issue daily, which is the failure this asserts against.
 test('tidy-issues: a substantive main move alone never wakes the task', () => {
-  const v = tidyIssues.precondition(S({
+  const v = issuesVerdict(S({
     issues: { open: [{ number: 3 }, { number: 5 }], touched: [] },
     commits: { substantiveChange: true },
   }));
   assert.equal(v.run, false);
-  assert.match(v.reason, /no issues touched/);
+  assert.match(v.reason, /no issue of this repo's own moved/);
 });
 
 // The scheduler's own work items wear a `task:*` label from creation. The issues
@@ -101,25 +106,24 @@ test('tidy-issues: an issue labelled task:* is neither a trigger nor in scope', 
   const queueItem = { number: 9, labels: ['task:ready'] };
 
   // It cannot wake the task on its own.
-  assert.equal(tidyIssues.precondition(S({ issues: { open: [queueItem], touched: [9] } })).run, false);
+  assert.equal(issuesVerdict(S({ issues: { open: [queueItem], touched: [9] } })).run, false);
 
   // Nor can it enter the scope of a run something else triggered.
-  const v = tidyIssues.precondition(S({
-    issues: { open: [{ number: 3, labels: [] }, queueItem], touched: [3] },
-    commits: { substantiveChange: true },
-  }));
+  const v = issuesVerdict(S({ issues: { open: [{ number: 3, labels: [] }, queueItem], touched: [3, 9] } }));
   assert.equal(v.run, true);
-  assert.match(v.context.join(' '), /Issues to triage: #3\./);
+  assert.match(v.context.join(' '), /#3/);
   assert.doesNotMatch(v.context.join(' '), /#9/);
+  // …and the widening the worker may do carries the same exclusion.
+  assert.match(readFileSync(join(taskDir('tidy-issues'), tidyIssues.agent_instructions), 'utf8'), /`task:`-prefixed label/);
 
   // A label that merely CONTAINS the marker is somebody else's label.
-  const other = tidyIssues.precondition(S({ issues: { open: [{ number: 4, labels: ['not-task:ready'] }], touched: [4] } }));
+  const other = issuesVerdict(S({ issues: { open: [{ number: 4, labels: ['not-task:ready'] }], touched: [4] } }));
   assert.equal(other.run, true);
 });
 
 test('tidy-issues: silent on a quiet repo, and on a substantive move with no open issues', () => {
-  assert.equal(tidyIssues.precondition(S()).run, false);
-  assert.equal(tidyIssues.precondition(S({ commits: { substantiveChange: true } })).run, false);
+  assert.equal(issuesVerdict(S()).run, false);
+  assert.equal(issuesVerdict(S({ commits: { substantiveChange: true } })).run, false);
 });
 
 // --- tidy-prs: assess-only, weekly, full every run --------------------------
@@ -127,27 +131,30 @@ test('tidy-issues: silent on a quiet repo, and on a substantive move with no ope
 test('tidy-prs: weekly (the full sweep is the declaration) over the prs signal alone', () => {
   assert.equal(tidyPrs.id, 'tidy-prs');
   assert.equal(tidyPrs.frequency, 'weekly');
-  assert.deepEqual(tidyPrs.precondition_signals, ['prs']);
+  assert.deepEqual(tidyPrs.preconditions, ['prs-touched']);
+  assert.deepEqual(preconditionSignals(tidyPrs.preconditions, new Map()), ['prs']);
 });
 
 test('tidy-prs: touched-ness gates the sweep but never narrows it — scope stays every open PR', () => {
-  const v = tidyPrs.precondition(S({ prs: { open: [{ number: 7 }, { number: 9 }], touched: [9] } }));
+  const v = prsVerdict(S({ prs: { open: [{ number: 7 }, { number: 9 }], touched: [9] } }));
   assert.equal(v.run, true);
-  assert.match(v.reason, /full sweep over 2 open PR/);
-  assert.match(v.context.join(' '), /PRs to assess.*#7, #9/); // #7 is untouched, and still assessed
-  assert.match(v.context.join(' '), /read-only/);
+  assert.match(v.context.join(' '), /#9/); // the trigger names what moved
+  // …and the SCOPE — every open PR, and the read-only posture — is task.md's.
+  const worker = readFileSync(join(taskDir('tidy-prs'), tidyPrs.agent_instructions), 'utf8');
+  assert.match(worker, /scope is every OPEN PR/);
+  assert.match(worker, /read-only/);
 });
 
 // The gate the owner asked for: an unchanged set of open PRs is last run's picture,
 // and re-deriving it rewrites the tracker with itself.
 test('tidy-prs: open PRs that nothing touched in the window are not re-swept', () => {
-  const v = tidyPrs.precondition(S({ prs: { open: [{ number: 7 }, { number: 9 }], touched: [] } }));
+  const v = prsVerdict(S({ prs: { open: [{ number: 7 }, { number: 9 }], touched: [] } }));
   assert.equal(v.run, false);
-  assert.match(v.reason, /no PR opened or updated in the window/);
+  assert.match(v.reason, /no open PR was opened or updated in the window/);
 });
 
-test('tidy-prs: no open PRs, no run', () => {
-  assert.equal(tidyPrs.precondition(S()).run, false);
+test('tidy-prs: nothing moved, no run', () => {
+  assert.equal(prsVerdict(S()).run, false);
 });
 
 // The `prs` signal also carries recently-MERGED PRs (for growth-extract). A merged
@@ -156,12 +163,12 @@ test('tidy-prs: no open PRs, no run', () => {
 // being folded into `open`.
 test('tidy-prs: merged PRs on the signal never enter the sweep', () => {
   const merged = { merged: [{ number: 42, title: 'landed last night' }] };
-  assert.equal(tidyPrs.precondition(S({ prs: { open: [], touched: [], ...merged } })).run, false);
+  assert.equal(prsVerdict(S({ prs: { open: [], touched: [], ...merged } })).run, false);
   // A merged PR is not a touch either: it cannot trigger the sweep on its own.
-  assert.equal(tidyPrs.precondition(S({ prs: { open: [{ number: 7 }], touched: [], ...merged } })).run, false);
-  const v = tidyPrs.precondition(S({ prs: { open: [{ number: 7 }], touched: [7], ...merged } }));
-  assert.match(v.reason, /over 1 open PR/);
+  assert.equal(prsVerdict(S({ prs: { open: [{ number: 7 }], touched: [], ...merged } })).run, false);
+  const v = prsVerdict(S({ prs: { open: [{ number: 7 }], touched: [7], ...merged } }));
   assert.doesNotMatch(v.context.join(' '), /#42/);
+  assert.match(readFileSync(join(taskDir('tidy-prs'), tidyPrs.agent_instructions), 'utf8'), /merged\*\* PR is not in scope/);
 });
 
 // --- the trackers: one per task, never a shared body ------------------------

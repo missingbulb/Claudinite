@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MODEL_FAMILIES, MODEL_MAP, resolveModel, isAgentless } from '../model-map.mjs';
 import {
-  validateTaskDeclaration, normalizeTaskDeclaration, OUTCOMES, SIGNAL_NAMES,
+  validateTaskDeclaration, normalizeTaskDeclaration, taskSignalNames, OUTCOMES, SIGNAL_NAMES,
 } from '../task-contract.mjs';
 import {
   FREQUENCIES, ACCEPTED_FREQUENCIES, LEGACY_FREQUENCIES, normalizeFrequency,
@@ -131,7 +131,51 @@ test('validateTaskDeclaration flags every malformed field', () => {
   assert.match(whats, /not a legal model family/);
   assert.match(whats, /not a legal outcome ceiling/);
   assert.match(whats, /no string "agent_instructions"/);
-  assert.match(whats, /"precondition" is not a function/);
+  assert.match(whats, /declares neither "preconditions" nor a "precondition" function/);
+});
+
+// The either-or, and the derivation that comes with it (task-preconditions DESIGN).
+test('validateTaskDeclaration accepts exactly one precondition form, and derives the signals of the new one', () => {
+  const base = { ...validTask };
+  delete base.precondition;
+  delete base.precondition_signals;
+
+  assert.deepEqual(validateTaskDeclaration({ ...base, preconditions: ['substantive-change'] }), []);
+  assert.deepEqual(taskSignalNames({ ...base, preconditions: ['substantive-change'] }), ['commits']);
+  // The legacy function still declares its own union — nothing converges a member's
+  // task files, so both forms answer the collector.
+  assert.deepEqual(taskSignalNames(validTask), validTask.precondition_signals);
+
+  const both = validateTaskDeclaration({ ...validTask, preconditions: ['none'] });
+  assert.match(both.map((p) => p.what).join(' | '), /declares both "preconditions" and a "precondition" function/);
+
+  const beside = validateTaskDeclaration({ ...base, preconditions: ['none'], precondition_signals: ['commits'] });
+  assert.match(beside.map((p) => p.what).join(' | '), /beside "precondition_signals"/);
+});
+
+test('validateTaskDeclaration reads the expression statically: unknown terms and bad arguments', () => {
+  const base = { ...validTask };
+  delete base.precondition;
+  delete base.precondition_signals;
+  const whatOf = (preconditions, terms) => validateTaskDeclaration({ ...base, preconditions }, terms).map((p) => p.what).join(' | ');
+
+  assert.match(whatOf(['no-such-thing']), /unknown condition "no-such-thing"/);
+  assert.match(whatOf(['commits-under']), /takes an inline argument and was given none/);
+  assert.match(whatOf(['substantive-change:oops']), /takes no argument/);
+  // `none` is the EMPTY precondition, so any real condition beside it would be the
+  // actual one — it is legal only as the sole entry.
+  assert.match(whatOf(['none', 'substantive-change']), /legal only as the sole entry/);
+  assert.match(whatOf(['substantive-change || none']), /legal only as the sole entry/);
+  assert.match(whatOf([]), /not a non-empty array/);
+
+  // A task-local term resolves after the built-ins, in one flat namespace…
+  const own = new Map([['my-gate', { signals: ['stamp'], holds: () => ({ holds: true }) }]]);
+  assert.deepEqual(validateTaskDeclaration({ ...base, preconditions: ['my-gate'] }, own), []);
+  assert.deepEqual(taskSignalNames({ ...base, preconditions: ['my-gate'] }, own), ['stamp']);
+  // …where shadowing a built-in is loud rather than quietly winning.
+  const clash = new Map([['substantive-change', { signals: [], holds: () => ({ holds: true }) }]]);
+  assert.match(validateTaskDeclaration({ ...base, preconditions: ['none'] }, clash).map((p) => p.what).join(' | '),
+    /redefines the built-in term "substantive-change"/);
 });
 
 test('validateTaskDeclaration rejects a non-object export', () => {

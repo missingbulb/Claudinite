@@ -13,6 +13,11 @@ import logsPrune from '../../claudinite-growth/tasks/logs-prune/task.mjs';
 import proseToChecks from '../../claudinite-growth/tasks/prose-to-checks-sweep/task.mjs';
 import revalidation from '../../claudinite-growth/tasks/rule-revalidation/task.mjs';
 import { removeTree } from '../../../engine/remove-tree.mjs';
+import { evaluatePrecondition, loadTaskTerms } from '../shared-code/preconditions.mjs';
+
+const PACKS = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const verdictFor = async (decl, dir, signals) =>
+  evaluatePrecondition({ decl, terms: await loadTaskTerms(join(PACKS, dir)) }, signals);
 
 // The collectors take an injected `ctx` — which makes them unit-testable with no
 // repo, and also makes it possible for a key NOTHING EVER SETS to look healthy
@@ -152,17 +157,18 @@ test('release.manifestVersion reaches store-release, so the manifest-ahead trigg
     // No release yet and NO substantive commit in the window: the only thing that
     // can fire this is the manifest version, which is precisely what was dead.
     assert.equal(signals.commits.substantiveChange, false);
-    const v = storeRelease.precondition(signals);
+    const v = await verdictFor(storeRelease, 'chrome-extension/tasks/store-release', signals);
     assert.equal(v.run, true);
-    assert.match(v.reason, /manifest 1\.4\.0, no release yet/);
+    assert.match(v.reason, /manifest 1\.4\.0, and nothing released yet/);
   });
 });
 
-// A commit under EITHER local root is local-pack movement — the canonical root and
-// the pre-rename one, both live until the rename's cleanup. Whether the repo has
-// local packs is not asked at all: adoption seeds them and the nightly never
-// removes them.
-test('localPacks.changedInWindow reaches growth-dedup, under either local root', async () => {
+// A commit under EITHER local root is local-pack movement — the canonical
+// `.claudinite/local/packs/` and the pre-rename `.claudinite/local_packs/`, both
+// live until the rename's cleanup, and both under the one `.claudinite/local`
+// prefix the declaration names. Whether the repo HAS local packs is not asked at
+// all: adoption seeds them and the nightly never removes them.
+test('a local-pack commit reaches growth-dedup, under either local root', async () => {
   for (const path of ['.claudinite/local/packs/mine/RULES.md', '.claudinite/local_packs/mine/RULES.md']) {
     await withRepo(FULL, async (root) => {
       const gh = fakeGh([
@@ -170,16 +176,16 @@ test('localPacks.changedInWindow reaches growth-dedup, under either local root',
         [/\/commits\?sha=/, { status: 200, json: [{ sha: 'c1' }] }],
         ...QUIET,
       ]);
-      const signals = await collectSignals(gh, ctxFor(root), ['localPacks', 'sharedMount', 'commits']);
-      assert.equal(signals.localPacks.changedInWindow, true, path);
-      assert.equal(dedup.precondition(signals).run, true, path);
+      const signals = await collectSignals(gh, ctxFor(root), ['sharedMount', 'commits']);
+      assert.ok(signals.commits.touchedPaths.includes(path), path);
+      assert.equal((await verdictFor(dedup, 'claudinite-growth/tasks/growth-dedup', signals)).run, true, path);
     });
   }
   // …and a window that moved nothing local, with no canon movement either, declines.
   await withRepo(FULL, async (root) => {
-    const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['localPacks', 'sharedMount', 'commits']);
-    assert.equal(signals.localPacks.changedInWindow, false);
-    assert.equal(dedup.precondition(signals).run, false);
+    const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['sharedMount', 'commits']);
+    assert.deepEqual(signals.commits.touchedPaths, []);
+    assert.equal((await verdictFor(dedup, 'claudinite-growth/tasks/growth-dedup', signals)).run, false);
   });
 });
 
@@ -190,7 +196,7 @@ test('conversationLogs.retentionDays reaches logs-prune, so the age-based prune 
     assert.equal(signals.conversationLogs.retentionDays, 10);
     assert.equal(signals.conversationLogs.oldestLogAgeDays, 21); // 2026-07-01 → 2026-07-22
     assert.equal(signals.commits.substantiveChange, false); // quiet repo — the regressed case
-    const v = logsPrune.precondition(signals);
+    const v = await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals);
     assert.equal(v.run, true);
     assert.match(v.reason, /retention 10d/);
   });
@@ -207,7 +213,7 @@ test('conversationLogs.oldestLogAgeDays reaches logs-prune, so young logs keep i
     ];
     const signals = await collectSignals(fakeGh(routes), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.oldestLogAgeDays, 1);
-    assert.equal(logsPrune.precondition(signals).run, false);
+    assert.equal((await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals)).run, false);
   });
 });
 
@@ -215,7 +221,7 @@ test('conversationLogs: retention unset keeps the prune silent — no default is
   await withRepo({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.retentionDays, null);
-    assert.equal(logsPrune.precondition(signals).run, false);
+    assert.equal((await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals)).run, false);
   });
 });
 

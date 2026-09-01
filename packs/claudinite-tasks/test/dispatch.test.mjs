@@ -402,17 +402,19 @@ test('a built-in dispatch validates from the pack path and the legacy engine pat
   // correctly while the real path is a fifth thing.
   const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../..');
   const requestDecl = (await import('../queue/tasks/implement-request/task.mjs')).default;
+  const { loadTaskTerms } = await import('../task-terms.mjs');
+  const requestTerms = await loadTaskTerms(join(CANON, 'packs/claudinite-tasks/queue/tasks/implement-request'));
   paths.push(requestTaskPath(CANON));
 
   for (const p of paths) {
     const v = validateDispatchBody(`${p}\n`, {
       exists: () => true,
       isPackDeclared: () => true,
-      // The REAL declaration, so the test cannot pass on a hand-built stand-in that
-      // happens to satisfy the contract the live one might not.
-      // The REAL declaration, so the test cannot pass on a hand-built stand-in that
-      // happens to satisfy the contract the live one might not. `loadTask` is sync.
+      // The REAL declaration and the REAL terms beside it, so the test cannot pass
+      // on a hand-built stand-in that happens to satisfy the contract the live one
+      // might not. Both capabilities are sync — the shell prefetches.
       loadTask: () => requestDecl,
+      loadTerms: () => requestTerms,
     });
     assert.equal(v.ok, true, `${p} must validate: ${v.reason ?? ''}`);
     assert.equal(v.pack, 'engine');

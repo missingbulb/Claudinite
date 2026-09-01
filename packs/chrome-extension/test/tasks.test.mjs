@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pack from '../pack.mjs';
 import storeRelease from '../tasks/store-release/task.mjs';
+import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 
 const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/chrome-extension/tasks/store-release');
 
@@ -21,6 +22,9 @@ const S = (release = {}, commits = {}) => ({
   commits: { substantiveChange: false, ...commits },
 });
 
+const terms = await loadTaskTerms(TASK_DIR);
+const verdict = (signals) => evaluatePrecondition({ decl: storeRelease, terms }, signals);
+
 test('chrome-extension contributes store-release as a structural task, not a pack.mjs slot', () => {
   // The task moved out of the manifest: the repo's scheduler finds
   // tasks/<name>/task.mjs structurally (#394).
@@ -32,53 +36,51 @@ test('store-release: agentless (model none) — the preprocessing worker IS the 
   assert.equal(storeRelease.agent_model, 'none'); // the whole decision is code; no agent phase
   assert.equal(storeRelease.frequency, 'daily');
   assert.equal(storeRelease.expected_outcome, 'none'); // it only triggers the gated publish workflow
-  assert.deepEqual(storeRelease.precondition_signals, ['release', 'commits']);
+  assert.deepEqual(storeRelease.preconditions, ['manifest-ahead || substantive-change']);
+  // Derived from those two conditions, never declared beside them.
+  assert.deepEqual(preconditionSignals(storeRelease.preconditions, terms), ['release', 'commits']);
   assert.equal(storeRelease.code_work, 'node worker.mjs');
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the preprocessing worker must exist');
 });
 
 test('store-release: runs when the manifest version is ahead of the latest release', () => {
-  const v = storeRelease.precondition(S({ manifestVersion: '1.4.0', latestTag: 'v1.3.0' }));
+  const v = verdict(S({ manifestVersion: '1.4.0', latestTag: 'v1.3.0' }));
   assert.equal(v.run, true);
   assert.match(v.reason, /1\.4\.0 is ahead of released 1\.3\.0/);
 });
 
 test('store-release: silent when the shipped version equals the latest release and nothing shipped', () => {
   // The legacy leading-v tolerance survives the conversion: v2.0.0 === 2.0.0.
-  assert.equal(storeRelease.precondition(S({ manifestVersion: '2.0.0', latestTag: 'v2.0.0' })).run, false);
+  assert.equal(verdict(S({ manifestVersion: '2.0.0', latestTag: 'v2.0.0' })).run, false);
 });
 
 test('store-release: runs when there is no release yet but a manifest version exists', () => {
-  const v = storeRelease.precondition(S({ manifestVersion: '0.1.0', latestTag: null }));
+  const v = verdict(S({ manifestVersion: '0.1.0', latestTag: null }));
   assert.equal(v.run, true);
-  assert.match(v.reason, /manifest 0\.1\.0, no release yet/);
+  assert.match(v.reason, /manifest 0\.1\.0, and nothing released yet/);
 });
 
 test('store-release: silent when no manifest version can be found and nothing shipped', () => {
-  assert.equal(storeRelease.precondition(S()).run, false);
+  assert.equal(verdict(S()).run, false);
 });
 
 test('store-release: a substantive default-branch move fires it even at the released version', () => {
   // New in the conversion — the dispatched workflow does the authoritative
   // shipped-file diff, so the precondition is only the cheap pre-filter.
-  const v = storeRelease.precondition(S({ manifestVersion: '2.0.0', latestTag: 'v2.0.0' }, { substantiveChange: true }));
+  const v = verdict(S({ manifestVersion: '2.0.0', latestTag: 'v2.0.0' }, { substantiveChange: true }));
   assert.equal(v.run, true);
   assert.match(v.reason, /substantive/);
 });
 
 // --- the shipping gate (#1057) ----------------------------------------------
 // The pack is fingerprinted on the manifest, so this task is discovered on every
-// extension repo — including the ones that only CODE an extension. The daily leg it
-// fires is a workflow such a repo does not have, so the precondition is what keeps
-// it off them.
-test('store-release: declines on a repo that codes an extension but does not publish', () => {
-  const v = storeRelease.precondition(S({ shipsPipeline: false, manifestVersion: '1.4.0', latestTag: 'v1.3.0' }));
-  assert.equal(v.run, false);
-  assert.match(v.reason, /does not ship the Chrome Web Store pipeline/);
-});
-
-test('store-release: declines when the collector could not read the checkout', () => {
-  // null is "unknown", and an unknown is never a reason to fire a release.
-  assert.equal(storeRelease.precondition(S({ shipsPipeline: null, manifestVersion: '1.4.0' })).run, false);
-  assert.equal(storeRelease.precondition(S({ shipsPipeline: undefined, manifestVersion: '1.4.0' })).run, false);
+// extension repo — including the ones that only CODE an extension. The daily leg
+// it fires is a workflow such a repo does not have. That is a fact adoption
+// settled, not a question worth re-asking nightly, so it stopped being a
+// precondition: such a repo names the task in `taskScheduler.disabledTasks` and
+// the scheduler never instantiates it.
+test('store-release: whether the repo publishes at all is settings, not a condition', () => {
+  assert.ok(!storeRelease.preconditions.join(' ').includes('ships'));
+  const readMe = readFileSync(join(TASK_DIR, 'task.mjs'), 'utf8');
+  assert.match(readMe, /taskScheduler\.disabledTasks/, 'the declaration says where that answer lives now');
 });

@@ -13,6 +13,7 @@ import {
 import { runVerification } from '../../tasks/verify-production/worker.mjs';
 import declaration from '../../tasks/verify-production/task.mjs';
 import { validateTaskDeclaration } from '../../task-contract.mjs';
+import { evaluatePrecondition } from '../../shared-code/preconditions.mjs';
 
 // --- the declaration -----------------------------------------------------------
 
@@ -25,7 +26,8 @@ test('the declaration is a valid manual agentless code-work task', () => {
 });
 
 test('the precondition always runs — a filed verification is its own mandate', () => {
-  assert.equal(declaration.precondition({}, {}, { number: 1 }).run, true);
+  assert.deepEqual(declaration.preconditions, ['none']);
+  assert.equal(evaluatePrecondition({ decl: declaration }, {}, {}, { number: 1 }).run, true);
 });
 
 // --- the spec grammar ----------------------------------------------------------

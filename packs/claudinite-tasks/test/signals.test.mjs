@@ -354,3 +354,87 @@ test('prs: an open PR carries its changed paths, and an unreadable file list is 
   // `null`, the third state, never an empty list a path gate would read as "clear".
   assert.equal(by[8], null);
 });
+
+// --- the silence gate's structural classification ----------------------------
+// A scheduled task's own output is the machinery running, not the project moving,
+// and a fleet of tasks must not keep each other awake. The classification is the
+// `Claudinite-Task:` trailer the delivery lanes stamp (task-trailer.mjs) — never
+// what a task happened to TITLE its PR, because every new task's title is then a
+// new leak, discovered only as a task re-armed by its own output.
+
+// NOTE on the commits half: the pre-trailer housekeeping regex happens to match the
+// trailer's own name too, so a commit carrying it is excluded twice over. What these
+// pin is the part that does NOT depend on that coincidence — the recorded `task`,
+// which is what a consumer reads to say WHICH task wrote a commit, and which is
+// trailer-only. The PR half below has no such overlap: it is the trailer or nothing.
+test('commits: a task-authored commit is not substantive, and records which task wrote it', async () => {
+  const gh = fakeGh([
+    [/\/commits\?sha=/, { status: 200, json: [
+      { sha: 'p', commit: { message: 'Improve the parser\n\nRefs #12' }, author: { login: 'dev' } },
+      { sha: 't', commit: { message: 'Improve the parser\n\nClaudinite-Task: tidy-repo/improve-comments' }, author: { login: 'dev' } },
+    ] }],
+    [/\/commits\/[pt]$/, { status: 200, json: { files: [{ filename: 'src/app.mjs' }] } }],
+  ]);
+  const out = await collectSignals(gh, ctx(), ['commits']);
+  // Two commits with the SAME subject and the same author, one of them machinery.
+  assert.deepEqual(out.commits.list.map((c) => c.substantive), [true, false]);
+  assert.deepEqual(out.commits.list.map((c) => c.task), [null, 'tidy-repo/improve-comments']);
+});
+
+test('commits: a task-authored commit alone leaves the window non-substantive', async () => {
+  const gh = fakeGh([
+    [/\/commits\?sha=/, { status: 200, json: [
+      { sha: 't', commit: { message: 'Regenerate the usage aggregate\n\nClaudinite-Task: claudinite-tasks/usage-fold' }, author: { login: 'dev' } },
+    ] }],
+    [/\/commits\/t$/, { status: 200, json: { files: [{ filename: 'docs/usage.md' }] } }],
+  ]);
+  const out = await collectSignals(gh, ctx(), ['commits']);
+  assert.equal(out.commits.count, 1, 'the fold still counts as a commit — usage-fold measures the machinery');
+  assert.equal(out.commits.substantiveChange, false);
+});
+
+const trailerPrs = (routes) => fakeGh([
+  [/\/pulls\?state=open/, { status: 200, json: [
+    { number: 7, title: 'a person\'s PR', updated_at: '2026-07-21T12:00:00Z', head: { sha: 'human' } },
+    { number: 8, title: 'a task\'s PR', updated_at: '2026-07-21T12:00:00Z', head: { sha: 'robot' } },
+  ] }],
+  [/\/pulls\?state=closed/, { status: 200, json: [] }],
+  ...routes,
+]);
+
+test('prs: a task-authored PR moving is not a touch, and its head read is what says so', async () => {
+  const out = await collectSignals(trailerPrs([
+    [/\/commits\/human$/, { status: 200, json: { commit: { message: 'Improve the parser' } } }],
+    [/\/commits\/robot$/, { status: 200, json: { commit: { message: 'Sweep\n\nClaudinite-Task: tidy-repo/improve-comments' } } }],
+    [/\/pulls\/\d+\/files/, { status: 200, json: [{ filename: 'src/app.mjs' }] }],
+  ]), ctx(), ['prs']);
+  assert.deepEqual(out.prs.touched, [7]);
+  // …and `open` is untouched by the classification: it is other tasks' TARGET set
+  // (the tidy sweep acts on it, the pending-round conditions read its paths), and
+  // only MOVEMENT is what the trailer reclassifies.
+  assert.deepEqual(out.prs.open.map((p) => p.number), [7, 8]);
+});
+
+test('prs: a head commit that could not be read is UNKNOWN, never machinery', async () => {
+  // A PR a person opened must not be classified as a task's output over a failed
+  // read — that would silence the very activity the gate exists to notice.
+  const out = await collectSignals(trailerPrs([
+    [/\/commits\/(human|robot)$/, { status: 500, json: null }],
+    [/\/pulls\/\d+\/files/, { status: 200, json: [{ filename: 'src/app.mjs' }] }],
+  ]), ctx(), ['prs']);
+  assert.deepEqual(out.prs.touched, [7, 8]);
+});
+
+test('prs: a task-authored merged PR stays out of `merged` too', async () => {
+  const gh = fakeGh([
+    [/\/pulls\?state=open/, { status: 200, json: [] }],
+    [/\/pulls\?state=closed/, { status: 200, json: [
+      { number: 31, title: 'a title no regex knows', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dev' }, head: { sha: 'robot' } },
+      { number: 32, title: 'a title no regex knows', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dev' }, head: { sha: 'human' } },
+    ] }],
+    [/\/commits\/robot$/, { status: 200, json: { commit: { message: 'x\n\nClaudinite-Task: product-wiki/wiki-growth' } } }],
+    [/\/commits\/human$/, { status: 200, json: { commit: { message: 'x' } } }],
+  ]);
+  const out = await collectSignals(gh, ctx(), ['prs']);
+  assert.deepEqual(out.prs.merged.map((p) => p.number), [32]);
+});

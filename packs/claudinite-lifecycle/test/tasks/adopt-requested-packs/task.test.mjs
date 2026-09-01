@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import decl from '../../../tasks/adopt-requested-packs/task.mjs';
+import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
 
 // The MEMBER half of the fleet fan-out (#749, folded onto the request mode in
 // #1119): the enforcer places an `add-packs` work-list issue here and MARKS it, so
@@ -33,7 +34,9 @@ test('adopt-requested-packs: manual, sonnet, lands its PR', () => {
   // eleven days — so the ceiling moved and this pin moves with the decision rather than
   // being loosened. The member's own checks still gate the merge.
   assert.equal(decl.expected_outcome, 'pr');
-  assert.deepEqual(decl.precondition_signals, []);
+  // `['none']`, not an empty signal list: nothing repo-side predicts this task's
+  // answer, and the declaration says so in the one word for it.
+  assert.deepEqual(decl.preconditions, ['none']);
   assert.equal(decl.session_scope, undefined);
 });
 
@@ -49,7 +52,7 @@ test('adopt-requested-packs: its precondition admits its own forced item', () =>
   // precondition and the verdict was consulted by nothing. The queue evaluates it
   // at pick, and a manual task has no anchor to roll to — so a no-go would close
   // the enforcer's own item `outcome:obsolete` without running it.
-  const v = decl.precondition();
+  const v = evaluatePrecondition({ decl }, {});
   assert.equal(v.run, true);
   assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS|CLAUDINITE_OVERRIDES/, 'the slot-era force lever is deleted');
 });

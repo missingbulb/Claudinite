@@ -35,7 +35,9 @@
 export default {
   id: 'fleet-pack-seeds',
   frequency: 'daily',                    // a member becomes writable the moment its nightly converge vendors the pack — daily is what turns that into "the next morning"
-  precondition_signals: [],              // no signal — the sweep reads the fleet itself, over the PAT
+  // A daily sweep with nothing repo-side to gate on: what it converges is other
+  // repos' declarations, and it no-ops on a fleet already converged.
+  preconditions: ['none'],
   agent_model: 'none',                   // pure code — no agent (task-code-work DESIGN §4)
   expected_outcome: 'none',              // it writes to MEMBERS, never to this repo: no PR here, ever
   code_work: 'node worker.mjs',
@@ -46,13 +48,4 @@ export default {
   // cadence.
   code_work_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT; fleet-token.mjs states the grant
-
-  // Fire daily unconditionally. Every input lives OUTSIDE this repo — another member's
-  // declaration, another member's mount — and no per-repo collector can see either, so
-  // there is no signal that would say in advance whether the answer changed. The sweep
-  // is cheap to no-op: a fleet whose members already declare its seeds reads each one
-  // and writes nothing, and a fleet that seeds nothing stops before the walk.
-  precondition() {
-    return { run: true, reason: 'daily fleet pack-seed sweep (declares this fleet\'s seeded packs in members that lack them; no-ops on a fleet already converged)' };
-  },
 };

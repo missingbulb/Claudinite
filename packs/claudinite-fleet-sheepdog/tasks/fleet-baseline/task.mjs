@@ -33,7 +33,10 @@
 export default {
   id: 'fleet-baseline',
   frequency: 'manual',                   // an operator lever — never due on any cadence, runs only when forced
-  precondition_signals: [],              // no signal — nothing recurring to predict
+  // Never due on its own — `manual` means the scheduler run never instantiates
+  // this task, so an item exists ONLY because a human created one, and that IS the
+  // request.
+  preconditions: ['none'],
   agent_model: 'none',                   // pure code: enumerate, fire, report (task-code-work DESIGN §4)
   expected_outcome: 'none',              // it queues Actions runs in MEMBERS; it writes nothing here or there
   code_work: 'node worker.mjs',
@@ -47,15 +50,4 @@ export default {
   // printed, which is the one outcome worse than a slow one.
   code_work_timeout: 1800,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT; fleet-token.mjs states the grant
-
-  // Never due on its own — `manual` means the scheduler run never instantiates this task,
-  // so an item exists ONLY because a human created one, and that IS the request.
-  // Hence run: true. The queue evaluates this verdict at pick (tasks-dispatch
-  // DESIGN §6.4), unlike the slot mechanism where a forced run bypassed it; a
-  // no-go here has no anchor to roll to, so it would close the operator's own
-  // item `task:obsolete` without running. Answering `false` is how this lever
-  // stopped working at the flip.
-  precondition() {
-    return { run: true, reason: 'a work item for this manual lever exists, which is the request to run it' };
-  },
 };

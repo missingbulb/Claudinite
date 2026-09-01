@@ -18,7 +18,11 @@
 export default {
   id: 'upstream-watch',
   frequency: 'monthly',                  // a technology's practice moves on its own clock — a floor, not an alert channel
-  precondition_signals: [],              // the trigger is the outside world; the shelf's opt-ins are read by the run itself
+  // No shelf-side gate. Which packs declare an upstream source is standing state,
+  // not movement, so gating on it would only ask "is the shelf still the shelf?" —
+  // and the run must read the sections anyway to know what to fetch. The month is
+  // the trigger, and a run whose sources all moved nothing says so.
+  preconditions: ['none'],
   agent_model: 'opus',                   // judging whether what moved upstream dates a pack's guidance, and rewriting it, is heavy judgment
   expected_outcome: 'pr',
   // Canon content every member reads, and the reconciliation anchors that decide
@@ -27,19 +31,4 @@ export default {
   automerge: 'nothing',
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,         // read N packs' sources + reconcile + author a PR — generous bound, extreme protection
-
-  // No shelf-side gate. Which packs declare an upstream source is standing state,
-  // not movement, so gating on it would only ask "is the shelf still the shelf?"
-  // — and the run must read the sections anyway to know what to fetch. So the
-  // month is the trigger, and a run whose sources all moved nothing says so.
-  precondition() {
-    return {
-      run: true,
-      reason: 'a technology\'s practice publishes on the outside world\'s clock — the monthly reconciliation runs unconditionally',
-      context: [
-        'Work ONLY the packs whose README.md carries an `## Upstream` section — a pack without one is opted out, and is not to be given one by this run.',
-        'Write only under the corpus roots this repo curates. Never edit a member repository, and never read one.',
-      ],
-    };
-  },
 };
