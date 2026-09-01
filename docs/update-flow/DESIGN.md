@@ -121,7 +121,10 @@ The **executor stub** hosts the queue's label-event work, is the one place stamp
 names appear, and carries the secrets-emptiness probe: a step in the work job (which
 legitimately holds the secrets) observes which stamped names arrived empty and opens/updates
 the needs-attention item with the observation ("the workflow passed `FOO` and it was empty"),
-never an inferred cause.
+never an inferred cause. Its whole stamped surface is derived from the member's declared task
+set — the statically-named secrets and the `permissions:` grants the tasks' work requires
+alike — so a task needing a new scope re-renders the stub instead of passing a fixed-shape
+check and discovering a 403 at runtime.
 
 The shell is deliberately too small to be wrong; everything changeable lives canon-side. The
 one unavoidable skew is the stub's own one-merged-PR lag, so `run.mjs` accepts every stub
@@ -177,7 +180,9 @@ Each scheduled or dispatched run of `run.mjs`, on the member's own Actions:
    next run re-derives it in full.
 7. **Open-or-update the PR** (`GITHUB_TOKEN` API): body carries `computed-from: S`, the diff
    summary by class, override traces, unknown-state notices, per-unit skips. One standing PR;
-   every delivery is a reviewable diff in the member's own repo.
+   every delivery is a reviewable diff in the member's own repo. A PR-creation refusal is a
+   needs-human observation whose enumerated causes include the repository setting that gates
+   Actions-created pull requests.
 8. **Merge per the member's recorded preference.** Auto-merge: fast-forward push of the branch
    head to `main` — built on `main` this run, so FF holds unless `main` moved; then rebuild and
    retry once or twice in-run, else defer to the next run. GitHub marks a PR merged once its
@@ -240,9 +245,11 @@ declared pack's) — the README badge row, a minimal CI workflow only where the 
 the starter local pack — the converge has no seed code path, so "never re-applied" is
 structural; **credential
 provisioning** — generate a keypair, create the write deploy key and the `CLAUDINITE_PUSH_KEY`
-secret via API under the present human's authority, anything the session cannot do becoming a
-handover checkbox, and re-minting is delete-then-recreate (remove any existing delivery key and
-secret, then create both) so an orphaned half-provisioned pair can never block it; the routine,
+secret via API under the present human's authority, and enable the repository setting that
+lets Actions open pull requests (the converge's PR step depends on it), anything the session
+cannot do becoming a handover checkbox, and re-minting is delete-then-recreate (remove any
+existing delivery key and secret, then create both) so an orphaned half-provisioned pair can
+never block it; the routine,
 with endpoint config naming the secret's *name* only; **the handover issue** — one, a checkbox
 per human-only step, each with what breaks while undone and what closes it: mint
 `CCR_ROUTINE_TOKEN` into the repo secret, finish the routine's console binding, paste the
