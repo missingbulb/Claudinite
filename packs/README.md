@@ -23,7 +23,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="claudinite-fleet-sheepdog/badge.svg" width="18" height="18" alt=""> [claudinite-fleet-sheepdog](claudinite-fleet-sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | 0 (fleet-enforcer marker + config + the agentless `fleet-roster` daily task (coverage + freshness in one walk)) |
 | <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | 4 (what a project offers people working from the web — their personal interaction preferences, and the environment Setup script body) |
 | <img src="claudinite-canary-repo/badge.svg" width="18" height="18" alt=""> [claudinite-canary-repo](claudinite-canary-repo/README.md) | declared (opt-in; the canary repo only, and `hidden` from the consumer catalog) | 0 | 0 (one inert workflow, seeded then converged — the live proof of the workflow-delivery lane) |
-| <img src="claudinite-canon-curation/badge.svg" width="18" height="18" alt=""> [claudinite-canon-curation](claudinite-canon-curation/README.md) | declared (opt-in; a canon home repo only, and `hidden` from the consumer catalog) | 3 | 0 (curating a canon — the central promote stage, the weekly fleet pack-discovery sweep, and the shelf's own policing; 2 skills: generate-project-instructions, writing-claudinite-skills) |
+| <img src="claudinite-canon-curation/badge.svg" width="18" height="18" alt=""> [claudinite-canon-curation](claudinite-canon-curation/README.md) | declared (opt-in; a canon home repo only, and `hidden` from the consumer catalog) | 3 | 0 (curating a canon — the central promote stage, the weekly fleet pack-discovery sweep, the monthly upstream reconciliation, and the shelf's own policing; 2 skills: generate-project-instructions, writing-claudinite-skills) |
 | <img src="claudinite-dashboard/badge.svg" width="18" height="18" alt=""> [claudinite-dashboard](claudinite-dashboard/README.md) | declared (opt-in) | 0 | 0 (a browser dashboard over scheduler state, published to Pages; adoption seeds the deploy workflow) |
 | <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 10 | 24 |
 | <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 5 |
@@ -33,7 +33,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="headless-browser/badge.svg" width="18" height="18" alt=""> [headless-browser](headless-browser/README.md) | driver reference in JS/TS source | 0 | 18 |
 | <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 13 |
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
-| <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills + monthly advisory-watch task) |
+| <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills; the technology's own movement is watched from the canon, not from here) |
 | <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 4 |
 | <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 8 (+ RELEASE contract) |
 | <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 15 |
@@ -110,6 +110,19 @@ Most of the manifest's fields had, in every pack ever written, exactly one corre
 | `detect`, `marker` | `null` — silence *is* "this pack carries no fingerprint" |
 
 A manifest field still **overrides** the resolution where a pack genuinely differs — `prose: null` beside a `RULES.md` that is documentation rather than injected rules, a `skills` subset that withholds a directory from mounting. Only an *absent* field falls through, so an explicitly declared `null` overrides too. Declaring a field that merely restates the tree is what [`engine-tests/pack_loader/pack-conventions.test.mjs`](../engine-tests/pack_loader/pack-conventions.test.mjs) refuses across the corpus.
+
+### `## Upstream` — where a pack's technology publishes
+
+A pack's `README.md` may carry an **`## Upstream`** section: one line per source naming what to
+watch, where it publishes, and the state the pack's content was last reconciled against. It is read
+by one thing, [claudinite-canon-curation](claudinite-canon-curation/README.md)'s `upstream-watch`,
+which reconciles the pack against those sources monthly and advances the anchors. Presence of the
+section is the whole opt-in, and its absence is a legitimate answer: most packs teach something that
+does not move on anyone else's clock.
+
+**A pack never schedules its own watcher.** A pack's `tasks/` are work every *member* repo runs, so
+a pack watching its own technology from there charges the fleet for a duty that is the canon's, and
+makes it unrepeatable — one bespoke watcher per pack.
 
 ### `<pack>/test/` — the pack's tests, and nothing a member receives
 
