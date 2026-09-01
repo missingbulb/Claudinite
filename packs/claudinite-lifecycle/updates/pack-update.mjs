@@ -241,10 +241,21 @@ export async function packUpdate(targetRoot, {
   // static after adoption". #1494 is the counterexample — the executor's CLAUDINITE_VARS
   // line is a workflow change every member needs — so the lane is open again.
   const withheld = [];
+  // Which packs finished this run still OWING a file. A withheld path is delivered by
+  // the apply stage on another credential, not here, so the pack it belongs to has not
+  // actually reached the version this run would stamp — see the stamp step below.
+  //
+  // Attributed as the write happens rather than by counting `withheld` afterwards: two
+  // records from DIFFERENT packs may name the same workflow path, and the second one's
+  // write grows nothing, so a count would stamp the pack whose content is the one
+  // actually staged.
+  const owesDelivery = new Set();
+  let owedBy = null;
   const write = (p, c) => {
     if (!p.startsWith(WORKFLOW_DIR)) return put(p, c);
     put(stagedAt(p), c);
     if (!withheld.includes(p)) withheld.push(p);
+    if (owedBy) owesDelivery.add(owedBy);
   };
   const move = (from, to) => { mkdirSync(dirname(join(targetRoot, to)), { recursive: true }); renameSync(join(targetRoot, from), join(targetRoot, to)); };
   const readTemplate = (p) => (existsSync(join(canonRoot, p)) ? readFileSync(join(canonRoot, p), 'utf8') : null);
@@ -254,16 +265,11 @@ export async function packUpdate(targetRoot, {
   // worker while the old code is still running (registry.mjs states the same).
   const io = { exists, move, read, write, readTemplate, env: { [WITHHOLD_CAPABLE_ENV]: '1' } };
   const applied = [];
-  // Which packs finished this run still OWING a file. A withheld path is delivered by
-  // the apply stage on another credential, not here, so the pack it belongs to has not
-  // actually reached the version this run would stamp — see the stamp step below.
-  const owesDelivery = new Set();
   for (const m of [...specs, ...extraRecords]) {
-    const before = withheld.length;
+    owedBy = flowOf(m.dir).pack ?? null;
     applied.push(...(await applyMigration(m, io)));
-    const { pack } = flowOf(m.dir);
-    if (pack && withheld.length > before) owesDelivery.add(pack);
   }
+  owedBy = null;
 
   // 2c. THE CLAUDE.md PACK INDEX (#807), for the same reason as 2b and at the same
   //     point: its content is a function of the pack set, and the vendor above is

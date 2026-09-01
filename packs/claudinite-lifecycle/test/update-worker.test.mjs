@@ -222,3 +222,21 @@ test('the needs-human terminal exits NON-ZERO, so the work item does not close o
   assert.match(body, /process\.exit(Code)?\s*=?\s*\(?1/,
     'the needs-human branch must exit non-zero — exiting 0 reports a converge that did not happen as success');
 });
+
+// #1545's second half. Holding an owing pack's stamp means a re-staging cycle can leave
+// the tree CLEAN — the staged bytes already on the branch, no version line to rewrite —
+// and the worker's "nothing changed" guard returns before the PR is opened. The
+// apply-stage request is written after that PR, so the guard firing on an apply-stage
+// terminal means nobody is ever asked to deliver the file: the same silent loss, one
+// step further along. Only `merge` and `keep` may take the early exit.
+test('the "nothing changed" guard never swallows an apply-stage terminal', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
+  const guard = src.slice(src.indexOf("const changed = git("));
+  const body = guard.slice(0, guard.indexOf('}') + 1);
+  assert.match(body, /terminal\.action !== 'apply-stage'/,
+    'an apply-stage terminal owes a delivery, so it must reach the PR that requests it');
+  // And the request really does sit after the PR, which is what makes the guard fatal.
+  assert.ok(src.indexOf("'agent-requested'") > src.indexOf('/repos/${repo}/pulls'),
+    'if the request ever moves above PR creation, this guard stops being load-bearing');
+});

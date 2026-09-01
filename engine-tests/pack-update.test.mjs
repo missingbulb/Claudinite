@@ -498,3 +498,41 @@ test('a pack whose record withheld a file is NOT stamped, so the record still ap
   assert.ok(existsSync(join(root, PENDING_DIR, 'claudinite-executor.yml')), 'and the staged file survives the sweep');
   removeTree(root);
 });
+
+// TWO PACKS, ONE WORKFLOW PATH (#1545). `withheld` is de-duplicated by path, so a second
+// record naming a path the first already staged grows it by nothing — while its content
+// is what actually sits in the staging directory. Attributing the hold by counting
+// `withheld` would therefore stamp the pack whose delivery is the one still owed, which
+// is the original bug with an extra step. The attribution is made as each write happens.
+test('two packs staging the same workflow path are BOTH held back', async () => {
+  const root = makeMember({ packs: ['basics', 'claudinite-tasks', 'claudinite-lifecycle'] });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  setStamp(root, { packVersions: { 'claudinite-tasks': '60831.5', 'claudinite-lifecycle': '60831.1' } });
+  mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
+  writeFileSync(join(root, EXECUTOR_WORKFLOW), 'name: Claudinite executor\n# MARKER\n');
+
+  const record = (pack, from, to) => ({
+    id: `test-${pack}`,
+    dir: `packs/${pack}/migrations/test-shared-workflow`,
+    rewrite: [{ file: EXECUTOR_WORKFLOW, replace: [{ from, to }] }],
+    applyStage: { why: 'a workflow file was withheld and needs delivering' },
+  });
+  const r = await packUpdate(root, {
+    fullName: 'o/r',
+    selfTestRun: () => 'ok',
+    extraRecords: [
+      // Both read the LIVE file — the first one's write went to staging, not to the
+      // destination — so both match the same anchor and the second's content wins.
+      record('claudinite-tasks', '# MARKER', '# FIRST'),
+      record('claudinite-lifecycle', '# MARKER', '# SECOND'),
+    ],
+  });
+
+  // One path, so `withheld` holds a single entry — the exact shape a count misreads.
+  assert.deepEqual(r.withheld, [EXECUTOR_WORKFLOW]);
+  const stamped = stampOf(root).packVersions;
+  assert.equal(stamped['claudinite-tasks'], '60831.5', 'the first record owes its delivery');
+  assert.equal(stamped['claudinite-lifecycle'], '60831.1',
+    'and so does the second, whose content is the one actually staged');
+  removeTree(root);
+});
