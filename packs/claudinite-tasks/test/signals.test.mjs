@@ -232,7 +232,7 @@ test('conversationLogs: the collector parses exactly what the pack\'s capture st
 
 // NOTE — every test in this file hand-builds `ctx`, which proves the COLLECTOR
 // and says nothing about whether the real run populates the key it reads. That
-// gap is how `manifestVersion`, `hasLocalPacks` and `retentionDays` stayed dead
+// gap is how `manifestVersion` and `retentionDays` stayed dead
 // while green here. Reachability is asserted in signal-context.test.mjs, which
 // drives a checkout on disk through the real buildSignalContext; keep any new
 // `ctx({ ... })` key covered there too.

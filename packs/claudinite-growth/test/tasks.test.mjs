@@ -202,9 +202,11 @@ test('growth-dedup: code_work detects the canon window diff before the agentic p
   assert.equal(dedup.agent_model, 'opus');
 });
 
-test('growth-dedup: no local packs → never runs, whatever else moved', () => {
-  const none = { localPacks: { present: false, changedInWindow: true }, sharedMount: { changedPacks: ['basics'] } };
-  assert.equal(dedup.precondition(none).run, false);
+// Presence is not asked: adoption seeds the repo's own local pack and the nightly
+// never removes it, so movement is the whole gate.
+test('growth-dedup: local-pack movement alone fires it, with no presence question', () => {
+  assert.equal(dedup.precondition({ localPacks: { changedInWindow: true }, sharedMount: { changedPacks: [] } }).run, true);
+  assert.equal(dedup.precondition({ localPacks: { changedInWindow: false }, sharedMount: { changedPacks: [] } }).run, false);
 });
 
 test('growth-dedup: with local packs, a declared pack moving in the mount fires it (and names the packs)', () => {

@@ -258,7 +258,7 @@ refresh, not workflow edits). It runs
      `[claudinite-task]` issues and `ready-for-agent` label events are invisible
      to signals.
    - `release` — latest GitHub release + manifest version.
-   - `localPacks` — present / changed-in-window.
+   - `localPacks` — changed-in-window.
    - `sharedMount` — which *declared* packs' vendored files changed in the
      window. Replaces the cross-repo `relevantCanonChanged`: the member's own
      merged vendor-refresh commit is the local echo of "canon changed".

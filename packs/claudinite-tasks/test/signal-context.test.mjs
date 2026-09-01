@@ -10,6 +10,8 @@ import { loadConfig } from '../../../engine/checks/helpers/repo-context.mjs';
 import storeRelease from '../../chrome-extension/tasks/store-release/task.mjs';
 import dedup from '../../claudinite-growth/tasks/growth-dedup/task.mjs';
 import logsPrune from '../../claudinite-growth/tasks/logs-prune/task.mjs';
+import proseToChecks from '../../claudinite-growth/tasks/prose-to-checks-sweep/task.mjs';
+import revalidation from '../../claudinite-growth/tasks/rule-revalidation/task.mjs';
 import { removeTree } from '../../../engine/remove-tree.mjs';
 
 // The collectors take an injected `ctx` — which makes them unit-testable with no
@@ -111,7 +113,6 @@ test('buildSignalContext populates every ctx key the collectors read', () => {
     // The three that were read but never set — a collector cannot invent them.
     assert.equal(ctx.manifestVersion, '1.4.0');
     assert.equal(ctx.shipsReleasePipeline, true);
-    assert.equal(ctx.hasLocalPacks, true);
     assert.equal(ctx.retentionDays, 10);
     // ...alongside the ones that always worked, so this is a whole-shape guard.
     assert.equal(ctx.repo, 'o/r');
@@ -119,12 +120,11 @@ test('buildSignalContext populates every ctx key the collectors read', () => {
   });
 });
 
-test('buildSignalContext: absent manifest, no local packs, no retention → the honest negatives', () => {
+test('buildSignalContext: absent manifest, no retention → the honest negatives', () => {
   withRepo({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, (root) => {
     const ctx = ctxFor(root);
     assert.equal(ctx.manifestVersion, null);
     assert.equal(ctx.shipsReleasePipeline, false); // explicit false — the task's gate reads it
-    assert.equal(ctx.hasLocalPacks, false); // explicit false, not null — the self-skip depends on it
     assert.equal(ctx.retentionDays, null);
   });
 });
@@ -141,12 +141,7 @@ test('buildSignalContext: the manifest is found at any of the probed paths, firs
   }, (root) => assert.equal(ctxFor(root).manifestVersion, null));
 });
 
-test('buildSignalContext: the pre-rename local_packs root still counts as local packs', () => {
-  withRepo({
-    '.claudinite-settings.json': JSON.stringify({ packs: [] }) + '\n',
-    '.claudinite/local_packs/mine/pack.mjs': 'export default { id: "mine" };\n',
-  }, (root) => assert.equal(ctxFor(root).hasLocalPacks, true));
-});
+
 
 // --- the wire end to end: checkout → ctx → collectors → precondition ---------
 
@@ -163,19 +158,28 @@ test('release.manifestVersion reaches store-release, so the manifest-ahead trigg
   });
 });
 
-test('localPacks.present reaches growth-dedup, so a repo with none self-skips', async () => {
-  await withRepo({ '.claudinite-settings.json': CHECKS_JSON }, async (root) => {
-    const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['localPacks', 'sharedMount', 'commits']);
-    assert.equal(signals.localPacks.present, false);
-    const v = dedup.precondition(signals);
-    assert.equal(v.run, false);
-    assert.match(v.reason, /no local packs/); // not the generic "no relevant movement" arm
-  });
-  // And a repo that HAS them stays eligible — the gate opens, it does not close.
+// A commit under EITHER local root is local-pack movement — the canonical root and
+// the pre-rename one, both live until the rename's cleanup. Whether the repo has
+// local packs is not asked at all: adoption seeds them and the nightly never
+// removes them.
+test('localPacks.changedInWindow reaches growth-dedup, under either local root', async () => {
+  for (const path of ['.claudinite/local/packs/mine/RULES.md', '.claudinite/local_packs/mine/RULES.md']) {
+    await withRepo(FULL, async (root) => {
+      const gh = fakeGh([
+        [/\/commits\/c1$/, { status: 200, json: { files: [{ filename: path }] } }],
+        [/\/commits\?sha=/, { status: 200, json: [{ sha: 'c1' }] }],
+        ...QUIET,
+      ]);
+      const signals = await collectSignals(gh, ctxFor(root), ['localPacks', 'sharedMount', 'commits']);
+      assert.equal(signals.localPacks.changedInWindow, true, path);
+      assert.equal(dedup.precondition(signals).run, true, path);
+    });
+  }
+  // …and a window that moved nothing local, with no canon movement either, declines.
   await withRepo(FULL, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['localPacks', 'sharedMount', 'commits']);
-    assert.equal(signals.localPacks.present, true);
-    assert.doesNotMatch(dedup.precondition(signals).reason, /no local packs/);
+    assert.equal(signals.localPacks.changedInWindow, false);
+    assert.equal(dedup.precondition(signals).run, false);
   });
 });
 
