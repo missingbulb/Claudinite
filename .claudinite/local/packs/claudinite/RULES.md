@@ -14,7 +14,7 @@ Below are rules on how to work on this repo.
 
 - **A `docs/<initiative>/DESIGN.md` whose system is now built** — delete it whole rather than trim
   it. Verify each section already lives in a module header or pack `README.md` first, and move an
-  owner-decision record with its rationale. Leave a doc describing work in flight alone.
+  owner-decision record with its rationale. Leave a doc describing work in flight alone. (4)
 
 - **Sweeping a deleted design doc's `§`-numbered pointers** — re-point each at a pack README, or
   drop it where the sentence only cited itself.
@@ -27,7 +27,7 @@ Below are rules on how to work on this repo.
   being picked. The fleet half is a Shepherd fleet task, never an ad-hoc item here. (1)
 
 - **Designing anything that spans repos** — split it: a self-contained per-repo half in the canon,
-  the aggregation half as a Shepherd fleet task. No repo list lives in canon code.
+  the aggregation half as a Shepherd fleet task. No repo list lives in canon code. (5)
 
 - **Landing a derived fleet artifact** — a daily auto-merged PR of a `GENERATED` file in Shepherd,
   never a commit to its `main`.
@@ -45,7 +45,7 @@ Below are rules on how to work on this repo.
 
 - **Landing a change to what members receive** — force delivery only where *"will it work on every
   repo?"* is live: engine flow, a contract member files must satisfy, a stub, a migration record, a
-  new config key. Otherwise the nightly converge is the delivery.
+  new config key. Otherwise the nightly converge is the delivery. (6)
 
 - **Forcing fleet delivery** — drive Shepherd's `fleet-baseline` with `follow`, report per member
   unasked, and attach the repos verification needs. A dispatch is not a result; 204 means queued.
@@ -56,20 +56,20 @@ Below are rules on how to work on this repo.
 
 - **Wanting a `.claudinite-settings.json` entry's config validated** — a real JSON Schema the file
   points at with `$schema`. Never a coded per-pack validation vocabulary or a `configSchema` type
-  system on the manifest.
+  system on the manifest. (7)
 
 - **Wanting to share logic between two sibling packs** — never `engine/`, which breaks the
   package-manager model, and never a pack-to-pack dependency, which breaks independence. Prefer
-  self-describing data; else duplicate, possibly with a drift guard.
+  self-describing data; else duplicate, possibly with a drift guard. (8)
 
 - **Surfacing a number a human reads as a report card** — report a window against the previous
-  window. Never a monotonic cumulative total, never a figure nothing measures.
+  window. Never a monotonic cumulative total, never a figure nothing measures. (9)
 
 - **Lacking a field a report-card number needs** — name it absent in the surface's own note. A
-  stated gap is information, a guess is not.
+  stated gap is information, a guess is not. (10)
 
 - **Windowing a count** — only where it is built from things that happened inside the window. A
-  figure derived from a point-in-time stamp reads a steady population as declining.
+  figure derived from a point-in-time stamp reads a steady population as declining. (11)
 
 - **Classifying an open object by deriving it from other live state** — reconsider once the
   derivation's own inputs can mutate while the object stays open, silently reinterpreting its
@@ -77,7 +77,7 @@ Below are rules on how to work on this repo.
 
 - **Scheduling the removal of a temporary compatibility tolerance** — gate it on a
   converge-cycle-confirmable precondition ("no member still stamps the legacy format"), never a
-  calendar date alone.
+  calendar date alone. (12)
 
 ## Working with the owner and the session's tools
 
@@ -116,7 +116,7 @@ Below are rules on how to work on this repo.
 
 - **Waiting on GitHub CI or PR check status** — read the head sha's check runs with the GitHub MCP
   tool, on a rolling backoff. This sandbox proxy-blocks `api.github.com`, so `Monitor` and shell
-  poll loops report "still running" until they time out.
+  poll loops report "still running" until they time out. (13)
 
 - **A `mcp__github__*` list/search/read call with no narrow `fields`/`per_page`** — risks a
   >25k-token single-line dump. The saved tool-result file is one unbroken line, so `Read`'s
@@ -127,18 +127,18 @@ Below are rules on how to work on this repo.
 
 - **Writing a step a human must do by hand into an issue** — make sure it is needed; a checklist
   of no-ops teaches the reader to skim it. Link the deepest existing settings URL rather than
-  writing out a breadcrumb trail.
+  writing out a breadcrumb trail. (14)
 
 - **Replying to an owner comment that raises more than one claim** — answer every claim in that
-  first reply, including the one you intend to push back on.
+  first reply, including the one you intend to push back on. (15)
 
 - **Repeating a design doc's stated architectural rationale** — verify each claimed ground against
   the current code first. "A task structurally cannot hold this permission" is false: code-work
-  runs inside the executor's own Action job.
+  runs inside the executor's own Action job. (16)
 
 - **An owner reversing a standing decision** — purge every place in the repo that still states the
   old decision (docs, comments, code defaults) and record the new one where a future session reads
-  it. Answering the prompting question alone is not the fix.
+  it. Answering the prompting question alone is not the fix. (17)
 
 - **Sending a screenshot rendered from a scratch test harness** — say so in the caption, not just
   what the widget shows.
@@ -172,22 +172,23 @@ Below are rules on how to work on this repo.
 
 - **Naming a pack whose subject is a Claudinite feature itself** — the `claudinite-` prefix
   (`claudinite-lifecycle`, `claudinite-dashboard`). `claudinite-growth` is grandfathered.
-  (convertible → prose-to-checks)
+  (convertible → prose-to-checks) (18)
 
 - **Starting a new Claudinite-facing capability** — decide which distribution model it is before
   writing the first file: a member-local tool, always-on engine code, or an opt-in pack with its
-  own adoption. Nothing prompts this choice, and getting it wrong costs a move-and-rewrite cycle.
+  own adoption. Nothing prompts this choice, and getting it wrong costs a move-and-rewrite
+  cycle. (19)
 
 - **Looking for a skill and not finding it in `.claude/skills/`** — read
   `packs/<pack>/skills/<name>/SKILL.md` out of the tracked tree. Mounting filters on the literal
-  declaration, so an unmounted skill says nothing about whether its procedure applies.
+  declaration, so an unmounted skill says nothing about whether its procedure applies. (20)
 
 - **Adding or changing a check** — update the pack's catalog row, and re-run the suite against
   current `main` before merging: a whole-tree aggregate is judged post-merge, so a branch's own
   green never covers it. (portable → `merge-to-main`)
 
 - **Wanting to state how many checks or rules the corpus has** — don't. `packs/README.md` states
-  how to count them instead of quoting a number.
+  how to count them instead of quoting a number. (21)
 
 - **Writing a check's `fix` text** — name only remedies matching the enforced severity; sessions
   follow the words, not the `severity` field. An advisory's remedies are act on it or leave it,
@@ -203,10 +204,10 @@ Below are rules on how to work on this repo.
 - **Writing a check that reads the session transcript** — screen the harness's plain-text
   pseudo-turns, not only tag-wrapped ones. `humanText` in
   `engine/checks/helpers/session-transcript.mjs` drops an entry starting with `<`, so a marker
-  like `[Request interrupted by user for tool use]` reads as the owner's latest comment.
+  like `[Request interrupted by user for tool use]` reads as the owner's latest comment. (22)
 
 - **Fixturing a check that fires at the Stop hook** — carry an interruption marker beside a real
-  owner turn. A false positive there spends a whole cycle on something no edit can clear.
+  owner turn. A false positive there spends a whole cycle on something no edit can clear. (23)
 
 - **A doc reached only by following a link out of `RULES.md` or a check's `doc:` line** — if it is
   a how-to wanted at authoring time, convert it into a skill invocable by description.
@@ -217,11 +218,11 @@ Below are rules on how to work on this repo.
 
 - **A check built to catch a thing being missing or misnamed** — don't gate its relevance on the
   single signal it exists to validate, or the failure it catches also silences it. Use two
-  independent signals, either sufficient.
+  independent signals, either sufficient. (24)
 
 - **Deciding whether an enforced check still earns its keep** — measure its blocking-firing rate
   against what it buys. A check whose firings are dominated by cases where the agent already did
-  the right thing is a demotion candidate (check → prose-only).
+  the right thing is a demotion candidate (check → prose-only). (25)
 
 - **A documented multi-step procedure the agent re-derives every run** — mechanize it into a
   script the agent runs once. That pattern, not the doc's polish, is the signal.
@@ -244,7 +245,7 @@ Below are rules on how to work on this repo.
 
 - **Writing a path, regex or command against the mount** — the two-root form: the
   `.claudinite/(shared|local)/` prefix optional in a pattern, and a probe for `.claudinite/shared/`
-  falling back to the repo root. The home runs the same code from the repo root.
+  falling back to the repo root. The home runs the same code from the repo root. (26)
 
 - **Adding a module under `packs/`** — keep it import-light, and start work after evaluation
   completes (`check(…).catch(…)`), never in a top-level `await`. Discovery imports every
@@ -263,19 +264,20 @@ Below are rules on how to work on this repo.
 
 - **Renaming a pack whose config a member writes into their own repo** — a reader of that config
   resolves the new key and every legacy spelling, permanently. The rename map fixes code-side ids
-  only; rewriting the write side reaches just the data the engine owns.
+  only; rewriting the write side reaches just the data the engine owns. (27)
 
 - **Checking whether an actor may trigger a privileged action off an issue/PR payload** — read
   `GET /repos/{o}/{r}/collaborators/{u}/permission`, never `author_association`: `MEMBER` covers
-  any org member and `COLLABORATOR` includes read-only ones, both broader than push access.
+  any org member and `COLLABORATOR` includes read-only ones, both broader than push access. (28)
 
 - **Extending what a copied stub reads** — make the new config key optional, fail the run when it
   is declared-but-unset, and let declaring it trigger a staleness check. Stubs are copied once and
-  never re-copied, so a new key is dead in every repo holding the old copy.
+  never re-copied, so a new key is dead in every repo holding the old copy. (29)
 
 - **Writing a migration record that needs engine behaviour newer than itself** — have `appliesTo`
   probe the member's own mount for that capability by content, and stay inert until it reads back;
-  an unreadable mount reads as "not capable". The executing worker is the member's vendored one.
+  an unreadable mount reads as "not capable". The executing worker is the member's vendored
+  one. (30)
 
 - **Changing an export in `updates/*`** — empty it, never remove it, and say at its definition
   why. Fielded workers are stale callers of instantly-current flow modules, so a removal wedges
@@ -287,7 +289,7 @@ Below are rules on how to work on this repo.
 
 - **Renaming or deleting an `engine/` module a `packs/` file imports** — leave a shim at the old
   path re-exporting what it named. The two lanes deliver on separate cycles, so every member spends
-  a window holding the NEW engine beside an OLD pack.
+  a window holding the NEW engine beside an OLD pack. (31)
 
 - **A pack module consuming a brand-new engine helper export** — import the engine module as a
   namespace and guard the call with a `typeof` capability check, never a named import: the pack and
@@ -298,7 +300,7 @@ Below are rules on how to work on this repo.
   all, and the member cannot receive the pack version that would have fixed it.
 
 - **Asking which imported symbols are still fielded** — walk the TRUNK's pack history, never
-  `--all`. An import that only ever existed on an unmerged branch is not fielded.
+  `--all`. An import that only ever existed on an unmerged branch is not fielded. (32)
 
 - **Changing a vendored stub** — edit the canon's own `.github/workflows/` copy in the same commit
   and diff the two whole files. The canon has no converge, so its copy drifts invisibly until it is
@@ -306,14 +308,14 @@ Below are rules on how to work on this repo.
 
 - **Excluding files from the vendor set by pattern** — whitelist any operational file that matches
   by path, and pin it with a test against the real canon tree. The nightly refresh re-runs from
-  canon HEAD, so a bug there is the one canon regression that is not self-healing.
+  canon HEAD, so a bug there is the one canon regression that is not self-healing. (33)
 
 - **Testing that an operational file still vendors** — assert the whole containing directory, not
-  the one file that broke; otherwise the next file added there needs a fresh edit.
+  the one file that broke; otherwise the next file added there needs a fresh edit. (34)
 
 - **Retiring or reshaping a protocol the engine exposes** — sweep for callers outside this repo,
   not just what greps locally. Two stub copies at the same path declaring different input names is
-  the same failure from the other side: the two spellings *are* the protocol.
+  the same failure from the other side: the two spellings *are* the protocol. (35)
 
 - **Branching on the result of an API write in fleet machinery** — read its status, not just the
   body. A body-only destructure turns a 403 into a plausible object and the run still logs `ok`.
@@ -323,22 +325,22 @@ Below are rules on how to work on this repo.
 
 - **A single timeout bound covering two different waits** ("has this started" vs "is something
   already running about to finish") — split it, sized from each phase's own declared budget rather
-  than a round number.
+  than a round number. (36)
 
 - **Writing a give-up message for a hit timeout** — say it is a statement about the clock, not a
   verdict on the work. "No successful run yet" sends a reader chasing a settings diagnosis for CI
-  that was simply still running.
+  that was simply still running. (37)
 
 - **Writing generated content into a size-capped GitHub API field** — budget it in two tiers: an
   always-complete compact summary, plus best-effort detail rationed to a byte budget with an
-  explicit omitted-count. An unbounded write 422s at the ~64KB cap.
+  explicit omitted-count. An unbounded write 422s at the ~64KB cap. (38)
 
 - **Writing a generated title whose content scales with a list** — collapse the list to a count
   and keep per-item detail in the body. A title is a summary surface, not a second body.
 
 - **Preflighting a required grant or permission** — a probe run where the failure's condition
   isn't met reports a false-positive pass. Prefer attributing a real observed 403 to the
-  permission that would fix it.
+  permission that would fix it. (39)
 
 - **Introducing a finer-grained classification of a catch-all state** — default whatever an older
   or unaware writer produces to the most conservative member of the new set, so it fails safe
@@ -346,7 +348,7 @@ Below are rules on how to work on this repo.
 
 - **Adding a fleet task** — fail loudly on a Context target it cannot reach rather than proceeding
   on a partial list, and treat a member as un-adopted until the routine's repo scope names it.
-  Otherwise the drift completes, filing a report that reads as a full sweep.
+  Otherwise the drift completes, filing a report that reads as a full sweep. (40)
 
 - **Spawning a child process from a worker** — pass an explicit `cwd`, resolved to a root that
   cannot vanish (`--root`, then `CLAUDE_PROJECT_DIR`, then `cwd`). The converge deletes the tree
@@ -367,43 +369,43 @@ Below are rules on how to work on this repo.
 
 - **Retiring or migrating a dispatch/config parameter channel** — a parameter that stops being
   read must fail loudly, never silently default. A dropped safety knob (`DRY_RUN`) defaults to the
-  operation's most dangerous mode.
+  operation's most dangerous mode. (41)
 
 - **Relying on a push to trigger further Actions workflows** — a push authored with the default
   `GITHUB_TOKEN`, which every converge and auto-merge here uses, fires no `on: push` workflow. Only
-  a real user or app credential cascades.
+  a real user or app credential cascades. (42)
 
 - **A workflow file referencing a renamed entry point by literal path** — hold a shim open, as for
   an `engine/` module a `packs/` file imports. `.github/workflows/` lands only through a PR a human
-  merges.
+  merges. (43)
 
 - **A script written for one execution context** — audit every script's environment assumptions (a
   real `GITHUB_TOKEN`, `gh`/`curl` reachability) whenever its caller's context changes. Every
   script built against the old assumption fails identically, not just the one that broke first.
 
 - **Finding a check that watches only one of two structurally-identical surfaces** — widen it to
-  the sibling in the same change rather than filing it separately.
+  the sibling in the same change rather than filing it separately. (44)
 
 - **Picking a compact date-encoded identifier** — check the encoding's rollover boundary years
   ahead, not just today's decode. Anchoring a year on its last digit wraps to 0 in 2030; use
-  `year - 2020`, not `year % 10`.
+  `year - 2020`, not `year % 10`. (45)
 
 - **Carrying a dotted version identifier** — keep it string-typed everywhere. `'60820.10'` and
-  `'60820.1'` are different versions and the same float.
+  `'60820.1'` are different versions and the same float. (46)
 
 - **Designing text that instructs a model to echo an exact string** — state the instruction first,
   have it disclaim itself as instruction-not-payload, and put the literal string once, last. Never
-  reference the payload anaphorically ("that line"); recency is what resolves it.
+  reference the payload anaphorically ("that line"); recency is what resolves it. (47)
 
 - **A work-scope check that verifies "this PR bumped X" by diffing against `main`** — on a stacked
   PR that diff carries the lower PR's bump and passes green wrongly. Re-verify and re-bump after
-  every earlier PR in the stack lands (`pack-version-bumped`).
+  every earlier PR in the stack lands (`pack-version-bumped`). (48)
 
 ## Scheduled tasks
 
 - **Opening a queue work-item's own delivered PR** — never `Closes #<the item's own issue>` in
   the body. `converge-item.mjs` closes or parks that issue with the right label state; the native
-  keyword fires on merge regardless and overrides an intended `needs-human-approval` park.
+  keyword fires on merge regardless and overrides an intended `needs-human-approval` park. (49)
 
 - **Choosing a task's cadence** — take it from how often the signal actually moves. A weekly run
   still sees all 7 days, because a task's signal window is its own period plus an hour of slack.
@@ -414,7 +416,7 @@ Below are rules on how to work on this repo.
 
 - **After any scheduler-mechanism flip** — re-audit every task whose precondition assumed the old
   mechanism; grep for `frequency: 'manual'` plus its precondition text, not just the flipped
-  mechanism's callers. A stale `run: false` becomes a live self-closing landmine.
+  mechanism's callers. A stale `run: false` becomes a live self-closing landmine. (50)
 
 - **Writing a task's precondition** — gate on the objects' own movement in the window (a `touched`
   list, a tip-commit date), never on standing state, which is true forever once true. (portable →
@@ -438,7 +440,7 @@ Below are rules on how to work on this repo.
 
 - **Converging an unattended run** — do the label/comment/close sequence as the run's very next
   action once the outcome is known, never deferred to a checklist recalled at the end of a long
-  session.
+  session. (51)
 
 - **Closing a run `outcome:done`** — it means nothing is left for anyone to act on. Never while a
   PR, branch, or open question from this run is still live.
@@ -448,11 +450,11 @@ Below are rules on how to work on this repo.
   mid-pipeline then self-heals on the next pick.
 
 - **Setting `on_interrupt: 'needs-human'`** — narrow it to the one stage whose side effect is
-  genuinely non-idempotent.
+  genuinely non-idempotent. (52)
 
 - **Passing a diagnostic verdict out of a subprocess that may be killed at its timeout ceiling** —
   write it to stdout/stderr, never a file written at exit. Already-printed output survives a
-  `SIGKILL`.
+  `SIGKILL`. (53)
 
 - **Writing a repair rule over a live, mutating collection** — a rule gated on *current state*
   needs a fresh, targeted read of the item immediately before acting, never the snapshot that
@@ -464,7 +466,7 @@ Below are rules on how to work on this repo.
 
 - **Building a dedup or mutex over work items** — key the guard on the target the write lands on,
   never the requester's phrasing. A same-title match is blind to two items writing one target under
-  different titles; `Blocked-by:` is what serializes them.
+  different titles; `Blocked-by:` is what serializes them. (54)
 
 - **Converging a work item from a session** — `converge-item.mjs` prints the calls; making them
   verbatim with your own GitHub tools is the whole path, on every session, with or without a REST
@@ -494,7 +496,7 @@ Below are rules on how to work on this repo.
 
 - **Testing a mechanism that arbitrates by identity** (a claim, a lock) — the second call must
   come from a *different actor*. One actor retrying its own stale claim can't expose an
-  identity-masked race.
+  identity-masked race. (55)
 
 - **Building a simulator for a stateful engine mechanism** — model what the engine's code actually
   *writes*, never the rule's stated *intent*. A sim advancing state wherever the rule's description
@@ -510,39 +512,40 @@ Below are rules on how to work on this repo.
 
 - **A test that derives its answer by walking git history** — guard explicitly against a shallow
   clone and fail loudly. It otherwise passes vacuously exactly when the real answer needs history
-  it doesn't have.
+  it doesn't have. (56)
 
 - **Restoring source after a deliberate see-it-fail mutation** — `git checkout -- <file>` at the
   moment of mutating, never a `.bak` taken earlier, which predates whatever else you edited in
-  between.
+  between. (57)
 
 - **Mutating a file to see a check fail** — commit or stage the real edit first, and only mutate a
   file whose current state you are ready to throw away. `git checkout --` restores from the index,
-  destroying uncommitted work just as thoroughly.
+  destroying uncommitted work just as thoroughly. (58)
 
 - **Running the test suite** — `node --test $(git ls-files '*.test.mjs')`. There is no test
   script, and every hand-written glob under-runs it silently: `node --test <dir>` doesn't recurse,
   and bash `**` without `globstar` reached 37 of 65 files. `ci.yml`'s array is not authoritative.
 
 - **Wanting a different slice of a suite run's output** — redirect one run to a file and grep that
-  file. Never re-run the ~55s suite to re-slice unchanged output.
+  file. Never re-run the ~55s suite to re-slice unchanged output. (59)
 
 - **Certifying a run green that covers a new test file** — `git add` it first. `git ls-files`
-  silently excludes an unstaged file, so the run may never have executed it.
+  silently excludes an unstaged file, so the run may never have executed it. (60)
 
 - **Iterating on a sweep across many files** — run only the test files the edit touches, plus
   `check_the_work`. Spend the whole suite and `check_the_world` once, at the end: both are
   whole-tree aggregates whose verdict cannot turn on one file, and per-edit reruns took 25 of one
-  session's 26 minutes of tool wall-clock.
+  session's 26 minutes of tool wall-clock. (61)
 
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a miss is
   not. Survey by reading each file.
 
 - **Documenting or relying on a named knob** — grep for the code that reads it and the code that
-  writes it first. The corpus naming it is not evidence it exists; all three misses are real here.
+  writes it first. The corpus naming it is not evidence it exists; all three misses are real
+  here. (62)
 
 - **Deleting a writer** — it is the same change as marking its series historical. Its rows keep
-  counting plausibly until the retention window ages out, then count nothing.
+  counting plausibly until the retention window ages out, then count nothing. (63)
 
 - **Renaming an entity** — sweep for references in code and comments, don't change historical
   records, and re-render generated files rather than editing them by hand.
@@ -556,7 +559,7 @@ Below are rules on how to work on this repo.
   silently and only for the old rows.
 
 - **A second rename of one name** — map every legacy spelling straight to today's, never chaining
-  one normalization onto the last, so the oldest vocabulary still normalizes in a single pass.
+  one normalization onto the last, so the oldest vocabulary still normalizes in a single pass. (64)
 
 - **Writing a "this period is covered" marker in an idempotent pipeline** — write it strictly
   after the durable effect it guards, and scope it to the *declined* case only. A go verdict's
@@ -578,14 +581,14 @@ Below are rules on how to work on this repo.
 
 - **A JSON target nested inside an array within an entry object** — parse and rewrite
   structurally, preserving key order and `via`/`config`/answers by hand. An anchored regex cannot
-  cross the nested closing bracket, and a fixture without that nesting proves nothing.
+  cross the nested closing bracket, and a fixture without that nesting proves nothing. (65)
 
 - **Returning to a branch that waited** — after `git fetch`, re-verify the *premise* unasked: say
   whether the problem is still there and what survives. This repo auto-merges its own PRs on top of
   migrations that retire whole directories.
 
 - **Re-verifying a branch against a `main` that has moved** — `git rebase origin/main`, never
-  `git merge origin/main`. A merge commit trips the blocking squash-merge-history check.
+  `git merge origin/main`. A merge commit trips the blocking squash-merge-history check. (66)
 
 - **Merging a PR that has sat open across many `main` commits** — check its current
   `mergeable_state`, not an old green CI run. A structural change on `main` since (a directory
@@ -593,7 +596,7 @@ Below are rules on how to work on this repo.
 
 - **After a PR lands by squash-merge** — `git remote prune origin` before touching that branch
   again. GitHub deletes the head ref here, so a stale tracking ref makes the next push reject and
-  the stop hook report phantom local work.
+  the stop hook report phantom local work. (67)
 
 - **Re-applying your edit onto a moved `main`** — re-read the fetched file, apply the same
   anchored edit, and confirm the stat shows insertions only. A pack's `RULES.md` is append-only
