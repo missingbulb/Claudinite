@@ -459,3 +459,42 @@ test('the staging sweep clears stale files without deleting what this run staged
   assert.equal(existsSync(join(root, PENDING_DIR, 'obsolete.yml')), false, 'the stale one goes');
   assert.ok(existsSync(join(root, PENDING_DIR, 'claudinite-executor.yml')), 'this run\'s staging stays');
 });
+
+// THE STAMP HAZARD (#1545). A withheld file is delivered by the apply stage, not by
+// this run — so when the run stamps the pack anyway, the stamp claims a delivery that
+// has not happened. If the PR then merges without the apply stage running,
+// `migrationApplies` (`want > have`) puts the record permanently out of range: the
+// member is above the version, the record stops vendoring, and the only other copy of
+// the content — the staged file — is swept as a leftover by the next cycle. Nothing
+// is red at any point. Five members lost the executor's CLAUDINITE_VARS line that way.
+test('a pack whose record withheld a file is NOT stamped, so the record still applies next cycle', async () => {
+  const root = makeMember({ packs: ['basics', 'claudinite-tasks'] });
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  // Below canon, so stamping is a real move this run either makes or withholds.
+  setStamp(root, { packVersions: { 'claudinite-tasks': '60831.5' } });
+  mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
+  writeFileSync(join(root, EXECUTOR_WORKFLOW), 'name: Claudinite executor\n# MARKER\n');
+
+  const record = {
+    id: 'test-workflow-rewrite',
+    dir: 'packs/claudinite-tasks/migrations/test-workflow-rewrite',
+    rewrite: [{ file: EXECUTOR_WORKFLOW, replace: [{ from: '# MARKER', to: '# REWRITTEN' }] }],
+    applyStage: { why: 'a workflow file was withheld and needs delivering' },
+  };
+  const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok', extraRecords: [record] });
+
+  assert.deepEqual(r.withheld, [EXECUTOR_WORKFLOW], 'the file was withheld, so the delivery is still owed');
+  assert.equal(stampOf(root).packVersions['claudinite-tasks'], '60831.5',
+    'stamping claims a delivery the apply stage has not made, and puts the record out of range forever');
+  // The other packs this run really did converge are stamped as normal — the hold is
+  // scoped to the one pack that owes a file, not to the whole run.
+  assert.equal(stampOf(root).packVersions.basics, (await loadPacks()).find((p) => p.id === 'basics').version,
+    'a pack with nothing withheld is unaffected');
+
+  // And because the stamp stayed put, a second cycle still stages the delivery rather
+  // than sweeping the first one away with no way left to recreate it.
+  const again = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok', extraRecords: [record] });
+  assert.deepEqual(again.withheld, [EXECUTOR_WORKFLOW], 'the delivery is re-staged, not lost');
+  assert.ok(existsSync(join(root, PENDING_DIR, 'claudinite-executor.yml')), 'and the staged file survives the sweep');
+  removeTree(root);
+});
