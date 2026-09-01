@@ -97,6 +97,18 @@ test('references-integrity: a check entry naming a declared check is clean, an u
   assert.match(findings[0].what, /retired-check/);
 });
 
+test('references-integrity: a slashed check id resolves and a dangling slashed one flags', () => {
+  const files = {
+    [`${PACK}worldRules/handler-path.mjs`]: "const rule = { id: 'mypack/handler-path', severity: 'blocking' };\nexport default rule;\n",
+    [`${PACK}references.md`]: '- **(check:mypack/handler-path)** The reason.\n',
+  };
+  assert.deepEqual(run(files), []);
+  files[`${PACK}references.md`] = '- **(check:mypack/gone-check)** A reason for a check that is gone.\n';
+  const findings = run(files);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].what, /mypack\/gone-check/);
+});
+
 test('references-integrity: a check entry naming a coded rule module is clean', () => {
   assert.deepEqual(run({
     [`${PACK}worldRules/my-rule.mjs`]: "const rule = { id: 'my-coded-rule', severity: 'blocking' };\nexport default rule;\n",
