@@ -4,9 +4,11 @@ Canon changes reach the fleet through **the converge**: a nightly, per-member re
 the member's tree against a desired state computed from one qualified canon snapshot, delivered
 as a single commit on a single PR whose content includes its own record of delivery. A per-repo
 deploy key minted at install lets the cheap Actions lane push everything, workflow files
-included. Judgment work is a rare, author-declared, asynchronous follow-up whose done-ness is
-probed at the destination. There are no one-shot migration records, no staging areas, no
-per-pack versions: the unit of delivery is the whole snapshot.
+included. The flow is entirely deterministic — no model runs anywhere in it; judgment reaches
+members through three lanes outside it (standing check findings, enforcer-placed repo tasks,
+and a Shepherd-guided supervised process for fleet-wide breaking changes). There are no
+one-shot migration records, no staging areas, no per-pack versions: the unit of delivery is the
+whole snapshot.
 
 ## One qualified snapshot: `fleet-current`
 
@@ -14,7 +16,7 @@ per-pack versions: the unit of delivery is the whole snapshot.
 qualification. It names the one canon commit the fleet converges to; its history keeps every
 fielded snapshot fetchable (the deletion rule needs that); its FF-only protection holds
 "members only move to descendant snapshots" in one place instead of one guard per member.
-Everything a member runs — engine, packs, rules index, attention notes, and the delivery
+Everything a member runs — engine, packs, rules index, and the delivery
 program itself (`delivery/run.mjs` and helpers; the entry-point path is a stable contract,
 shimmed if it ever moves) — is content of that snapshot. Members run no resident copy of the
 delivery program: every run fetches it fresh, by anonymous clone of the public canon, at the
@@ -29,8 +31,8 @@ member's full canon-derived state.
 
 **Computed** (canon-authored; the member's copy must byte-equal it):
 
-1. The mount `.claudinite/shared/`: engine, declared packs, all attention notes, delivery code,
-   rules index. Wholesale — files the canon no longer carries leave the mount.
+1. The mount `.claudinite/shared/`: engine, declared packs, delivery code, rules index.
+   Wholesale — files the canon no longer carries leave the mount.
 2. The two scheduling stubs, rendered per member. The **scheduler** stub carries the hashed
    cron minute (repo full name + `dailyHour` anchor) and no task secrets; the **executor** stub
    is stamped with the statically-named secrets its declared tasks and endpoint config require
@@ -41,7 +43,7 @@ member's full canon-derived state.
 3. Pack-owned files in member `.github/` beyond the stubs — release-pipeline workflows and
    composite actions for declared packs (GitHub resolves them only from a repo's own
    `.github/`), kept byte-current forever.
-4. The stamp's `canon`/`at`/`seeded` fields — included only when something else differs or `S`
+4. The stamp's `canon`/`at` fields — included only when something else differs or `S`
    moved, so a current member yields a byte-empty diff, not a nightly timestamp commit.
 
 **Deletions** derive from two pure computations, never recorded bookkeeping: candidates are
@@ -58,10 +60,11 @@ root is wholesale canon-owned.)
 5. `.claudinite-settings.json`: apply the permanent rename map (every legacy spelling straight
    to the current one — one map, no chaining), reshape legacy structures, seed absent required
    *config keys* with defaults — seed-never-override: an existing value, interview answers and
-   reviewed accepts above all, is never rewritten. **Pack entries differ**: a pack whose
-   manifest carries `fleetSeed: true` is declared into the member only when its id is absent
-   from the stamp's `seeded` set, the id joining `seeded` in the same delivery commit — an
-   owner's later removal is durable, never relitigated. A declared pack id the rename map
+   reviewed accepts above all, is never rewritten. **Pack entries are never written here**: the
+   declaration's pack list is the member's decision, written only where a decision happens —
+   install, an in-session `adopt-pack`, or the enforcer-placed adopt task (below) — so the
+   converge neither adds nor removes a pack entry and an owner's removal is durable, never
+   relitigated. A declared pack id the rename map
    cannot resolve is skipped and reported, never dropped, never fatal. Edits are anchored-text,
    never a re-serialize. A missing or unparsable declaration on a stamped member is a
    needs-human state and no convergence — least of all a destructive one — runs against it:
@@ -71,7 +74,7 @@ root is wholesale canon-owned.)
    detector for an unparsable file (skip the unit, report it). `.gitignore` lines,
    `.gitattributes` entries, the one `CLAUDE.md` import line: add-if-missing.
 
-**Per-unit isolation**: one throwing normalizer rule, malformed note module, or unreadable
+**Per-unit isolation**: one throwing normalizer rule or unreadable
 member-owned file skips exactly that unit, reports it by identity, and delivers the rest; a
 unit skipped beyond a cycle is a stuckness signal keyed to the unit, not the member.
 **Retirement is read off the fleet**: a normalizer rule or rename-map entry may carry a
@@ -89,18 +92,13 @@ the surfaces that build it are not writable by the converge at all.
 ```json
 {
   "format": 1,
-  "canon": "<sha>",          // snapshot this tree was computed from — written by the delivery commit itself
-  "at": "<iso8601>",         // when that computation ran
-  "installedAt": "<sha>",    // install baseline; notes at-or-before it never apply here
-  "seeded": ["<pack-id>"],   // fleetSeed packs already offered here — one-shot memory, never revisited
-  "notes": { "<note-id>": { "at": "<iso>", "pr": 123 } }   // judgment ledger (backoff bookkeeping)
+  "canon": "<sha>",   // snapshot this tree was computed from — written by the delivery commit itself
+  "at": "<iso8601>"   // when that computation ran
 }
 ```
 
 `canon`/`at` are written only inside the delivery commit they describe: claim and content are
-one atomic ref update. `seeded` grows only inside the commit that acted on it; `notes.<id>` is
-written only by a judgment session's own PR, in the same commit as the fix it claims;
-`installedAt` once, by install. The stamp is the cheap query surface and nothing more — no
+one atomic ref update. The stamp is the cheap query surface and nothing more — no
 delivery decision trusts it over content — and is read-side tolerant forever: unknown keys
 preserved and reported, legacy formats mapped, a missing or unparsable stamp meaning "unknown —
 converge by content, write a fresh one", never "version zero".
@@ -112,8 +110,8 @@ The **scheduler stub** (`.github/workflows/claudinite-scheduler.yml`): one hashe
 `canon-ref` (operator aiming; default `fleet-current`). Its delivery job: checkout self →
 resolve `S` via `git ls-remote` → shallow-clone the canon at `S` →
 `node <canon>/delivery/run.mjs` with the repo full name, the inputs,
-`CLAUDINITE_STUB_CONTRACT: 1`, and exactly four values: `GITHUB_TOKEN`, `CLAUDINITE_PUSH_KEY`,
-`CCR_ROUTINE_TOKEN`, `CLAUDINITE_VARS`. Task secrets never enter this job — it executes code
+`CLAUDINITE_STUB_CONTRACT: 1`, and exactly three values: `GITHUB_TOKEN`, `CLAUDINITE_PUSH_KEY`,
+`CLAUDINITE_VARS`. Task secrets and the routine token never enter this job — it executes code
 fetched from the canon at run time, and handing it task secrets would widen a canon compromise
 to every member secret nightly. A failure job escalates any red run into the member's
 needs-attention issue. The converge runs here before, and independent of, the task-queue drain
@@ -167,8 +165,7 @@ Each scheduled or dispatched run of `run.mjs`, on the member's own Actions:
 5. **Diff** against the working tree. Byte-empty → `current`, a *verified* statement ("tree
    matches the computation at S") — the only kind of success this system reports. GC: a
    delivery branch whose content is already on `main` is provably leftover — delete it, close
-   its PR saying why; a judgment PR whose note is no longer owed closes as superseded. Nothing
-   is GC'd by age.
+   its PR saying why. Nothing is GC'd by age.
 6. **Push** the delivery commit on the standing branch `claudinite/delivery` (recomputed from
    `main` and force-pushed every run — derived state, never accumulated), with the deploy key.
    If the key secret is empty or the push rejected: a diff touching nothing under
@@ -195,13 +192,11 @@ Each scheduled or dispatched run of `run.mjs`, on the member's own Actions:
    push fires nothing (GitHub suppresses cascades from Actions-token pushes), so on the
    degraded lane push-triggered member workflows stay silent on delivery merges — and the
    degraded lane's needs-attention text says exactly that.
-9. **Post-merge follow-ups**, each re-derived from the world every run, never carried as
-   parameters: dispatch the routine for any owed attention note; end `delivered`.
+9. **End** `delivered`.
 
-A crash between any two writes leaves: nothing, a branch, a branch+PR, or delivered content
-with follow-ups unfired — every prefix inert or rebuilt from scratch next run; no claim is ever
-advanced early, because the only claim lives inside the merge itself. And
-`converge(converge(member))` writes nothing.
+A crash between any two writes leaves: nothing, a branch, or a branch+PR — every prefix inert
+or rebuilt from scratch next run; no claim is ever advanced early, because the only claim lives
+inside the merge itself. And `converge(converge(member))` writes nothing.
 
 ## Qualification: the canary and the advance
 
@@ -230,7 +225,7 @@ is down: per-member `canon-ref: main` dispatch (aimed, traced), or an operator F
 
 **Coverage caveat**: the canary qualifies what it declares. Packs it does not declare — release
 pipelines above all — are qualified by fixture renders and write-validation only, so a semantic
-breakage there ships canary-blind to exactly the members it affects (open decision 7).
+breakage there ships canary-blind to exactly the members it affects (open decision 3).
 
 ## Install and pack addition
 
@@ -243,8 +238,7 @@ workflows freely, and the member gets the newest shape directly, nothing replaye
 nothing exists to replay; the **seeds**, here and only here (and at `adopt-pack` for a newly
 declared pack's) — the README badge row, a minimal CI workflow only where the repo has none,
 the starter local pack — the converge has no seed code path, so "never re-applied" is
-structural, and `seeded` is initialized with every `fleetSeed` pack id current at install,
-declined ones included (a decline is a decision; recording it makes it durable); **credential
+structural; **credential
 provisioning** — generate a keypair, create the write deploy key and the `CLAUDINITE_PUSH_KEY`
 secret via API under the present human's authority, anything the session cannot do becoming a
 handover checkbox, and re-minting is delete-then-recreate (remove any existing delivery key and
@@ -253,56 +247,56 @@ with endpoint config naming the secret's *name* only; **the handover issue** —
 per human-only step, each with what breaks while undone and what closes it: mint
 `CCR_ROUTINE_TOKEN` into the repo secret, finish the routine's console binding, paste the
 web-environment setup script, plus any provisioning step the session could not perform.
-Finally the stamp: `canon` = `installedAt` = the install snapshot.
+Finally the stamp: `canon` = the install snapshot.
 
 Pack addition (`adopt-pack`, in-session) is the declaration entry, that pack's interview and
 seeds, then the same converge. A declared pack that adds a required question in a later
 snapshot: the converge never guesses and never asks — it lists the unanswered questions in the
 needs-attention issue; pack content still delivers; the member's next human session answers.
-A `fleetSeed` pack declared by the converge follows the same rule.
+Fleet-driven addition — the fleet manager deciding a pack belongs in members that already
+run — arrives as an enforcer-placed adopt task per member (next section), never as a
+converge-side write.
 
-## Judgment: attention notes
+## Adaptation: judgment never rides the update flow
 
-`attention/<id>/` in the canon holds one directory per declared judgment need: `note.md` (the
-brief a session reads — short, pointer-shaped, vendored into every mount so the instructions
-are reviewed repo content in the member's own tree) and `note.mjs` exporting
-`{ scope: 'canary'|'fleet', model, relevant(memberCtx), verify(memberCtx)? }`. A note is
-authored by whoever authors the canon change needing one — only the author knows whether a
-change needs judgment, so nothing infers it from content movement — and engine-caused needs use
-the same object as pack-caused ones. The lane serves judgment (changed rules meeting
-member-authored content the canon has never seen) and proactive member-content adaptation
-(whose preferred route stays a loud standing check finding resolved in the member's own next
-working session). Credential work is not judgment: the deploy-key lane owns it, and no session
-is ever summoned for it (#1296: "the reason it is agentic is the credential, not the
-decision").
+The update flow summons no session, ever. When changed rules meet member-authored content the
+canon has never seen — a rename whose other spellings live in member prose, a local pack built
+against a retired contract, tests a new rule turns red — the repair reaches the member through
+three lanes, none of them part of a converge:
 
-**Owed-ness is probed at the destination wherever the author can express it**: a note declaring
-`verify(memberCtx)` — "the old word no longer appears in member prose" — is owed exactly while
-`verify` fails; the ledger paces re-dispatches, and a ledger entry beside a failing `verify` (a
-session stamped its claim but the fix is absent, or a hand-resolved conflict kept the stamp
-line and lost the fix) re-derives as owed and is re-dispatched. Where a note declares no
-`verify`, the ledger decides — an accepted, documented residue, and the reason a missing
-`verify` is a review point on the note's own canon PR.
+- **A standing check finding, shipped with the change** (the default). The author of a rule
+  change that meets member-authored content ships, in the same pack version, the check that
+  flags the residue; the converge delivers both, and the member's own next working session
+  resolves the finding. A finding is durable and self-re-deriving — it survives dormancy,
+  parked sessions, and any staleness, where a dispatch is a moment that can be missed once and
+  is gone. Red member tests after a rule delivery are the same shape: the nightly lands the
+  rule (build-safe by construction), the finding or the red test is the signal, and the
+  member's sessions repair.
+- **An enforcer-placed repo task** (proactive drive). When the fleet manager decides work
+  should happen in members now — a new pack fleet-wide, a guidelines sweep worth driving — it
+  converges one work-list issue per member, and the member's own scheduler and executor run it
+  with the member's own agent; no agent anywhere needs cross-repo access. The adopt task lives
+  in `claudinite-lifecycle`; the enforcer's issue is the place to say no, before work is
+  placed. Automerge for such a task is **surface-scoped in the task's declaration** — a PR
+  touching only the surfaces the task is for lands unattended; a PR beyond that scope parks
+  for review.
+- **A Shepherd-guided supervised process** (fleet-wide breaking changes). A change that must
+  touch every member's member-owned surfaces at once is run by an actor with fleet-wide access
+  executing a code-plus-agent script over the fleet under manual guidance, pilot first — never
+  by the unattended nightly.
 
-A note ships `scope: 'canary'` first; the author reads the canary session's result, then flips
-it to `'fleet'` in a canon commit, itself qualified — one member first, no member list in the
-canon. The converge, post-merge, fires the member's routine for any owed note; the payload is
-one fixed phrase, because the session re-derives what is owed from its own tree and stamp. The
-session works on a branch; its PR carries the fix and the `notes.<id>` entry in one commit; it
-merges per the member's preference. Sessions park, die, drift, never start — the normal case:
-the note stays owed, the next converge re-dispatches with backoff, and past an age bound the
-needs-attention issue states the note, its age, and the enumerated causes (routine deleted,
-token empty, binding broken, sessions parking). No invariant depends on a session having run;
-mechanical delivery landed independently, and a member's tests may sit red until this lane
-catches up — the accepted trade for keeping the nightly mechanical.
+Credential work is not judgment and belongs to none of these lanes: the deploy-key lane owns
+it, and no session is ever summoned for it (#1296: "the reason it is agentic is the
+credential, not the decision").
 
 **Out-of-GitHub state** stays content-thin: the routine's stored prompt is one pointer line at
 a vendored file, so console state almost never changes and content changes ride the pointed-at
-file. Verification uses the only contexts that can see each half: a standing in-session check —
-any session in the member — verifies the routine exists and is still just the pointer; the
-executor's probe observes `CCR_ROUTINE_TOKEN` emptiness; the owed-note age bound catches the
-rest. A canon change that genuinely requires console action becomes a per-member
-needs-attention item, never a silent degradation.
+file. No update path depends on the routine — it serves the task queue only — so its breakage
+delays placed tasks, never delivery. Verification uses the only contexts that can see each
+half: a standing in-session check — any session in the member — verifies the routine exists
+and is still just the pointer; the executor's probe observes `CCR_ROUTINE_TOKEN` emptiness. A
+canon change that genuinely requires console action becomes a per-member needs-attention item,
+never a silent degradation.
 
 ## Observability: terminals, the needs-attention issue, the enforcer
 
@@ -347,7 +341,7 @@ state — and its contract is:
 | Mount tree, rules index, stamp | converged every pass (wholesale) |
 | Two stubs, pack-owned `.github/` files | converged every pass (rendered; deletions proven against the old snapshot's render) |
 | Declaration, hook wiring, ignore/attr lines, `CLAUDE.md` import | converged every pass (surgical, per-unit isolated) |
-| Badge row, seeded CI, starter local pack, `fleetSeed` declarations | seeded once (install/adopt, or converge gated on `seeded`); member-owned after; drift and removal are by design |
+| Badge row, seeded CI, starter local pack, pack declarations | written once where a decision happens (install, in-session adopt, or the enforcer-placed adopt task); member-owned after; drift and removal are by design |
 | Member local packs, member source/tests/build config | never touched |
 | Routine, its token secret, setup script, deploy key + secret | checked-and-reported (in-session check, executor probe, handover issues) |
 | The canon's own two workflow copies | checked-and-reported: canon CI byte-compares them against the stub rendered for the canon itself |
@@ -366,8 +360,8 @@ otherwise a sequence of interruptible writes; shrinking the atomicity-needing pa
 update buys the transaction git can give.
 
 **Decisions read the artifact, not the bookkeeping.** What to deliver is a tree diff; what to
-delete is proven by byte-match against the canon's own historical render; whether judgment work
-is done is probed at the destination. A wrong recorded claim cannot mask a gap anywhere — the
+delete is proven by byte-match against the canon's own historical render. A wrong recorded
+claim cannot mask a gap anywhere — the
 recovery that once had to be hand-built (#1546: content re-issued above a wrong claim, gated on
 the destination's own content) is this system's ordinary nightly behavior.
 
@@ -399,7 +393,7 @@ delivers (a member whose executor lacked its own token line could never start th
 would have delivered it, #1296). Degradation is designed and its cascade difference named:
 without the key, workflow-free diffs still flow via `GITHUB_TOKEN`.
 
-**One snapshot kills the compatibility matrix.** Engine, packs, notes, and the delivery program
+**One snapshot kills the compatibility matrix.** Engine, packs, and the delivery program
 arrive as one tree, so no member holds a new engine against old pack content or the reverse —
 the skew that froze the fleet for five days (#939), and the unknown-key wedge where an old
 engine dropped every declaration in a file and failed the gate that would have delivered the
@@ -407,23 +401,26 @@ engine that knew the key (#1400), both become unrepresentable. What remains is t
 stub lag, held additive, and forward-tolerant readers everywhere: unknown input is reported and
 skipped per unit, never fatal, never silently dropped.
 
-**Migrations dissolve; seeds keep the one marker they need.** Every coded transformation of
+**Migrations dissolve; decisions stay where decisions happen.** Every coded transformation of
 member state falls to: wholesale mount recomputation, the key lane's standing convergence of
 member-hosted `.github/` content, or the declaration normalizer — whose accretion is bounded by
 enforcer-read retirement conditions, and whose rename map is permanent anyway, since readers
 must map every legacy spelling regardless. What must *not* dissolve into standing convergence
-is the pack-entry seed: re-derived nightly it would relitigate an owner's removal forever, so
-it gets the one one-shot memory — `seeded`, a marker written once, in the same commit as the
-act it records. With ordering gone (no delta sequence exists, only current→desired), the
-ordering-tie class — a same-day equality once skipped a change forever, #330 — has nothing to
-tie on.
+is the pack-entry write: re-derived nightly it would relitigate an owner's removal forever, so
+pack entries are written only by the acts that carry a decision — install, an in-session
+adopt, an enforcer-placed adopt task — and the converge never touches them. With ordering gone
+(no delta sequence exists, only current→desired), the ordering-tie class — a same-day equality
+once skipped a change forever, #330 — has nothing to tie on.
 
-**Judgment is declared, asynchronous, destination-probed.** Sessions are the expensive,
+**Updates are deterministic; judgment lives outside them.** Sessions are the expensive,
 unreliable actor: for a period every mechanical change bought a model session on every member
-(#798), and one night the same instructions made eight members deliver and five park. So
-nothing mechanical waits on a session, nothing infers judgment from content movement, dispatch
-is re-derived nightly from the destination, and a session's false claim costs nothing where the
-author wrote the ten-line `verify`.
+(#798), and one night the same instructions made eight members deliver and five park. Keeping
+every session out of the delivery path removes that whole failure family from updates — and
+removes the done-ness ledger a dispatch lane would need, the one bookkeeping that could again
+outrun its artifact. What replaces same-cycle dispatch is a better signal: a check finding
+re-derives itself from the member's content forever, so a repair need is never lost, only
+pending — and when pending is not good enough, the enforcer places the work as a task the
+member runs itself, reviewed at the member.
 
 **Observability is artifacts, not run conclusions.** Run conclusions are proven liars in both
 directions — "done" recorded while delivery sat parked, a green fleet sweep over missing
@@ -437,8 +434,9 @@ fleet numbers honest.
    into a mechanical half and a deferred half: a hand-merge between them orphans the staged
    content, the claim outruns the delivery, and cleanup cannot tell leftover from outstanding —
    the #1545 interleaving class. Also prices credential work as model work and inserts session
-   failure modes into the mechanical path. Kept only as the last-resort degradation if both the
-   deploy key and the PAT fallback fail verification.
+   failure modes into the mechanical path. If both the deploy key and the PAT fail
+   verification, the choice reopens between this shape as a narrow errand and workflow diffs
+   parking `needs-human` for a person.
 2. **Independently versioned units with one-shot migration records.** Costs the mixed-arrival
    compatibility matrix and its min-engine bookkeeping (#939, #1400), record ordering with
    tie-skipping hazards (#330), the record/registry/replay apparatus, and fetch-gates that
@@ -466,37 +464,27 @@ fleet numbers honest.
 8. **Blanket-permanent normalizer rules.** An unbounded legacy vocabulary every reader
    consults forever; per-rule retirement conditions read off the enforcer's report bound it
    with a converge-cycle-confirmable precondition.
-9. **A pilot-member pointer in the canon for aiming notes.** Puts a repo name in canon content,
-   which the no-repo-list rule forbids; `scope: canary → fleet` plus the `canon-ref` dispatch
-   input carry aiming with no member list anywhere in the canon.
+9. **An agentic stage inside the update flow** — author-declared attention notes (or an apply
+   stage) dispatched by the converge, with a completion ledger and canary-scoped pilots. Buys
+   same-cycle repair, at the cost of a second dispatch mechanism whose actor parks, dies and
+   drifts, pilot/scope machinery to bound its fan-out, and a done-ness ledger that
+   reintroduces the claim-outruns-artifact gap unless every author also writes a destination
+   probe — all for latency the finding and task lanes cover with no standing machinery.
+10. **Converge-side pack seeding** — a fleet-seed flag plus a one-shot `seeded` memory in the
+   stamp. Puts a member decision in the nightly's hands and adds the one stamp field a
+   delivery decision would read; the enforcer already owns fleet intent, and its placed adopt
+   task delivers the same outcome as reviewed member-side work.
 
 ## Open decisions
 
-1. **Fleet onboarding of new packs.** The `seeded` one-shot set (automatic, removals durable,
-   dormant members catch up on any gap) vs check-finding-only onboarding (a loud advisory per
-   member, resolved in each member's next human session — zero seed machinery, per-member
-   latency and human involvement). Recommendation: the `seeded` set — fleet seeds ship several
-   times a quarter, and per-repo manual work reliably does not happen.
-2. **Verification sequencing.** Run the deploy-key experiment before building; if it fails,
-   choose the PAT fallback's expiry maintenance or the session-errand degradation explicitly.
-   Recommendation: run it first — one scratch-repo hour, the keystone of the single-PR shape.
-3. **Unreviewed judgment output on auto-merge members.** Note-carrying session PRs land without
-   human review on most of the fleet; recall of landed harm is a per-member revert.
-   Recommendation: accept — bounded by canary pilots, model tiers, note retirement, `verify` —
-   and revisit if a note ever lands harm; the alternative is forcing hold-for-review for note
-   PRs specifically.
-4. **Deploy-key rotation posture.** Blast radius is one repo; revocation is manual
+1. **Verification sequencing.** Run the deploy-key experiment before building; if it fails,
+   choose explicitly between the fine-grained-PAT fallback's expiry maintenance and workflow
+   diffs parking for a person (or a narrow staged errand). Recommendation: run it first — one
+   scratch-repo hour, the keystone of the single-PR shape.
+2. **Deploy-key rotation posture.** Blast radius is one repo; revocation is manual
    (delete-then-recreate re-mint). Recommendation: accept manual revoke; a rotation cadence
    re-creates recurring per-member human work.
-5. **Member repo visibility.** Private members meter Actions minutes (the converge plus the
-   synchronize-runs the key lane fires), and the 60-day auto-disable wording may differ.
-   Confirm visibility; if private, the minutes budget.
-6. **Epoch-scale flips.** A change that must touch every member's member-owned surfaces at
-   once: a fleet-scoped note with hold-for-review forced (supervision by review), or a
-   human-supervised per-member event outside the unattended lane. Recommendation: the note
-   route with hold-for-review forced, falling back to per-member supervision only where review
-   proves insufficient.
-7. **Canary coverage.** Packs the canary does not declare are qualified by fixtures and
+3. **Canary coverage.** Packs the canary does not declare are qualified by fixtures and
    write-validation only. Recommendation: have the canary declare the widest safe superset; add
    a second canary in an affected family only if a fixture-blind breakage actually ships.
 
@@ -517,8 +505,7 @@ fleet numbers honest.
    merge commit of the head instead — same lane, same guarantees.
 4. **`GITHUB_TOKEN` API-merge of a workflow-touching PR.** Not load-bearing (merges are FF
    pushes); settling it would collapse the merge step to one code path.
-5. **Scheduled-workflow auto-disable on private repos; dispatch against a disabled or
-   unparseable workflow.** Enable-then-dispatch and the failed-wake escalation are correct
-   under every answer; verification tunes the enforcer's error handling.
-6. **Owner confirmations**: member repo visibility (decision 5) and an agent-session context
-   budget number before any note author writes a sized brief.
+5. **Private-repo behavior** — some or all members are private: verify the scheduled-workflow
+   auto-disable policy there, dispatch against a disabled or unparseable workflow
+   (enable-then-dispatch and the failed-wake escalation are correct under every answer), and
+   budget the Actions minutes the converge and the key lane's synchronize runs spend.
