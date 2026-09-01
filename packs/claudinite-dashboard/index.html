@@ -324,6 +324,13 @@
   .chip.advise { border-color: var(--serious); color: var(--serious); }
   .dim { color: var(--muted); }
   #fleet-corpus h3 { font-size: 14px; margin: 18px 0 8px; }
+  /* Collapsed by default: the section is depth, and the members grid is what the page
+     is opened for — it has to land above the fold. The summary still carries the range
+     line, so a closed section says what it holds and who is counted. */
+  details.fold > summary { cursor: pointer; list-style: none; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary h2::before { content: "▸ "; color: var(--muted); font-size: 12px; }
+  details.fold[open] > summary h2::before { content: "▾ "; }
   #fleet-corpus-range { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
   #fleet-corpus-members { min-width: 860px; }
 
@@ -581,7 +588,11 @@
 
 
     <section id="fleet-corpus" hidden>
-      <h2>What the corpus is doing across the fleet <button class="info" type="button" data-info="corpus" aria-expanded="false" title="What these figures are">&#9432;</button></h2>
+      <details class="fold">
+      <summary>
+        <h2>What the corpus is doing across the fleet <button class="info" type="button" data-info="corpus" aria-expanded="false" title="What these figures are">&#9432;</button></h2>
+        <p id="fleet-corpus-range"></p>
+      </summary>
       <p class="info-body" id="info-corpus" hidden>
         The detail behind the block at the top, from each member's own
         <strong>usage fold</strong> — the file the sweep already read, so none of this costs a
@@ -600,7 +611,6 @@
         repo's subject; one that never loads anywhere is mis-described or should not be gated at
         all. A member with no usage file is <strong>named</strong> and counted in nothing.
       </p>
-      <p id="fleet-corpus-range"></p>
       <div class="tiles" id="fleet-workload"></div>
       <div class="charts" id="fleet-scopes"></div>
       <h3>Which rules actually fire</h3>
@@ -610,6 +620,7 @@
       <div class="charts" id="fleet-skills"></div>
       <h3>Per member</h3>
       <div class="panel scroll"><table id="fleet-corpus-members"></table></div>
+      </details>
     </section>
 
     <section>

@@ -286,7 +286,7 @@ async function boot() {
   // Each heading can say why its numbers are worth reading. The text lives in the
   // markup beside the heading it explains, so there is no second copy in the code.
   for (const b of document.querySelectorAll('button.info')) {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', (e) => {
       // A heading may explain itself in more than one paragraph (`info-x`, `info-x-2`,
       // …); they open and close together, since they are one explanation. Counted up
       // until one is missing rather than checked against a fixed pair — a third
@@ -298,6 +298,9 @@ async function boot() {
         bodies.push(body);
       }
       if (!bodies.length) return;
+      // A button inside a collapsed section's summary must explain without also
+      // toggling the section open or shut.
+      e.preventDefault();
       const show = bodies[0].hidden;
       for (const body of bodies) body.hidden = !show;
       b.setAttribute('aria-expanded', String(show));
