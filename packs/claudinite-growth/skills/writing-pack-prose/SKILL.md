@@ -11,6 +11,12 @@ in the shared canon alike. What *qualifies* as a rule and which mechanism carrie
 [extracting-lessons.md](../../extracting-lessons.md)'s territory; instruction files outside a
 pack (a consumer repo's CLAUDE.md, a convention doc) are the `authoring-agent-docs` skill's.
 
+**Start from the foundation:** read the "Write each rule" section of
+[authoring-agent-docs](../../../basics/skills/authoring-agent-docs/SKILL.md) first — its
+principles (concrete enough to verify, motivation stated, what to do rather than what not to,
+the right altitude, emphasis reserved) bind pack prose too. This skill is the pack-specific
+layer on top of them, and doesn't restate them.
+
 ## The ration
 
 Every rule in a `RULES.md` is paid for by every session in every repo that declares the pack,
