@@ -1,0 +1,25 @@
+# Scratch callee for the shim-inversion probe (#1547): called cross-repo from
+# ClaudiniteCanary's shim-probe workflow, at this branch's ref. Removed (reverted
+# on this branch) once the probe has reported its verdict.
+name: shim-probe-callee
+on:
+  workflow_call:
+    inputs:
+      args:
+        required: false
+        type: string
+        default: '{}'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: report caller context
+        env:
+          ARGS: ${{ inputs.args }}
+          VARS_BAG: ${{ toJSON(vars) }}
+        run: |
+          echo "CALLEE_MARKER=v1"
+          echo "caller_repo=$GITHUB_REPOSITORY"
+          echo "caller_ref=$GITHUB_REF"
+          echo "args=$ARGS"
+          echo "vars_bag_first_200=$(printf '%s' "$VARS_BAG" | tr -d '\n' | head -c 200)"
