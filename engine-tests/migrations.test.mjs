@@ -837,8 +837,14 @@ test('executor-vars-redelivery re-issues the same rewrite above where the strand
   assert.ok(versionAbove(reissue.version, original.version),
     'a re-issue at or below the original cannot reach a member that stamped past it');
 
-  // Same delivery, not a second opinion about what to write.
-  assert.deepEqual(reissue.rewrite, original.rewrite);
+  // THE DRIFT GUARD. The re-issue COPIES the original's anchor and block rather than
+  // importing them, because the vendor set carries only records that still apply — and
+  // the members this exists for are exactly the ones the original no longer applies to,
+  // so an import would resolve to a file their mount does not carry, fail
+  // pack-independence, and stop the converge landing at all. Copied text drifts, so the
+  // two are compared here instead.
+  assert.deepEqual(reissue.rewrite, original.rewrite,
+    'the two records must write the same block; the copy is what pack-independence forces');
 
   const EXECUTOR = '.github/workflows/claudinite-executor.yml';
   const hold = '          CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}\n';
@@ -855,6 +861,25 @@ test('executor-vars-redelivery re-issues the same rewrite above where the strand
   // fleet-wide instead of naming the five it is for.
   assert.equal(await reissue.appliesTo(io.read), false, 'the line is there now');
   assert.equal((files.get(EXECUTOR).match(/CLAUDINITE_VARS:/g) ?? []).length, 1);
+});
+
+// A record is read on a member whose mount carries only the records that still APPLY to
+// it, never the canon's whole set — so a record importing a sibling record is a dangling
+// import on exactly the repo that needs it, and `pack-independence` then stops the whole
+// converge landing (#1545). Caught only by running a real converge; every unit test
+// passes, because in the canon tree both files exist.
+test('no migration record imports another record', async () => {
+  const canon = dirname(dirname(fileURLToPath(import.meta.url)));
+  const dirs = migrationDirs();
+  assert.ok(dirs.length > 0, 'the live corpus has records');
+  for (const d of dirs) {
+    const src = readFileSync(join(canon, d, 'migration.mjs'), 'utf8');
+    const imports = [...src.matchAll(/^\s*import\s[^;]*?from\s*['"]([^'"]+)['"]/gm)].map((m) => m[1]);
+    for (const spec of imports) {
+      assert.ok(!/migrations\//.test(spec) && !/^\.\.\/\d{4}-\d{2}-\d{2}-/.test(spec),
+        `${d} imports another record (${spec}) — its mount may not carry it`);
+    }
+  }
 });
 
 // The record's whole purpose is the line the stub already carries, so the two must not
