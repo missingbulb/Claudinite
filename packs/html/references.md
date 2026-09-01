@@ -5,18 +5,23 @@ carries the reason a rule or check exists, written so a periodic review can reaf
 retire — it. Entry keys are file-scoped stable identifiers (gaps allowed, never renumbered): an
 end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 `<skill-name>-n`, and `check:` entries cover checks. No session loads this file for daily work.
-- **(RULES-1)** Verified in this session against jsdom 30.0.1 on Node v22.22.2. Parsing `<div
-  class=foo><p>before<div>injected</div></p></div>` yields `.foo` innerHTML
-  `<p>before</p><div>injected</div><p></p>`: the `<p>` is auto-closed before the block, the
-  block lands as its `nextElementSibling`, and with no text before it the `<p>` is left with
-  `textContent === ""` — the silent empty read the rule names, with no error raised. **One
-  qualification the same run turned up**: setting `p.innerHTML = '<div>injected</div>'` on an
-  already-parsed `<p>` did NOT auto-close it (the `<div>` stayed nested, `nextElementSibling`
-  null), which is spec-correct, since fragment parsing does not put the context element in
-  button scope. The rule's core claim holds for the document-parse path; its
-  `innerHTML`/`dangerouslySetInnerHTML` example is the part to re-examine. Recovered from the
+- **(RULES-1)** Verified in this session against jsdom 30.0.1 on Node v22.22.2, across all four
+  injection paths. The `<p>` is auto-closed and the block lands as its `nextElementSibling`
+  wherever the two are parsed together: document parsing and `DOMParser` both yield
+  `<p>before</p><div>injected</div><p></p>`, as does `innerHTML` on an **ancestor**; with no
+  text before the block the `<p>` is left with `textContent === ""`, silently and with no error
+  — the read the rule warns about. Writing *into* an already-parsed `<p>` does NOT auto-close:
+  both `p.innerHTML = '<div>…</div>'` and `p.insertAdjacentHTML('beforeend', …)` left the
+  `<div>` nested with `nextElementSibling` null. That is spec-correct — in the fragment parsing
+  algorithm the context element is not on the stack of open elements, so the `<div>` start tag
+  never sees a `p` in button scope — so it holds in real browsers, not just jsdom. The rule as
+  recovered named `innerHTML` and `dangerouslySetInnerHTML` as its trigger, which is the one
+  path that does not produce the behaviour; it was corrected in the same change on the owner's
+  call, to key on whether the `<p>` and the block are parsed together. Recovered from the
   rule's own pre-#467 text (cut by 2f3e4e9a as “consequence prose arguing for a rule rather
-  than enabling it”, before this pack had a references.md to hold it).
+  than enabling it”, before this pack had a references.md to hold it). Reaffirm against the
+  HTML fragment parsing algorithm; retire only if the content model stops disallowing block
+  content in `<p>`.
 - **(RULES-2)** When both parts are ≤ 12 the day-first/month-first order is genuinely
   undecidable from the value alone — the rule is not a preference between conventions but an
   admission that the digits carry no answer, which is why it resolves once per document rather
