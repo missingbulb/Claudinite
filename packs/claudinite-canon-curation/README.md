@@ -3,7 +3,8 @@
 Curation duties for a **canon** — a repo whose own `packs/` tree is a shelf of Claudinite packs
 that other repos vendor. Declaring this pack is what makes a repo that canon's home: it takes on
 promoting its members' lessons onto the shelf, sweeping the fleet's stacks for technologies the
-shelf does not yet home, and policing the shelf's own content.
+shelf does not yet home, keeping what the shelf already teaches current with those technologies,
+and policing the shelf's own content.
 
 Nothing in the pack names a particular canon. The shelf is `packs/` because that is where the
 engine reads a canon's packs from, so every rule and task here is anchored there and is inert in a
@@ -32,8 +33,8 @@ The pack entry takes one optional key, read by [canon-config.mjs](canon-config.m
 in — a canon that organizes some shared content outside its shelf says so here. The shelf is always
 a corpus root and is never removable. Unset is the ordinary case, not a misconfiguration.
 
-Both tasks reach every member, so both declare `invocation_endpoint: 'fleet'` — a key into the
-declaring repo's own `taskScheduler.endpoints`, mapping to a routine whose sources are that repo
+The two fleet tasks reach every member, so both declare `invocation_endpoint: 'fleet'` — a key into
+the declaring repo's own `taskScheduler.endpoints`, mapping to a routine whose sources are that repo
 **and every participating member**. That cross-repo reach is the whole reason a second endpoint
 exists, and is exactly what must stay off the endpoint an ordinary hand-off calls. Reach is a
 property of **which endpoint is called**, and of nothing else: there is no session scope anywhere in
@@ -49,6 +50,7 @@ why.
 |---|---|---|
 | `growth-promote` | a participating member changed its local packs in the window | a PR against the canon's default branch |
 | `growth-discover-packs` | weekly, over every covered member | a PR against the canon's default branch, plus an adopt issue in each member that evidenced the pack |
+| `upstream-watch` | monthly, over the packs that declared an upstream source | a PR against the canon's default branch |
 
 ### Checks
 
@@ -78,6 +80,28 @@ why.
   stage that authors a pack at all — a member's local packs are what adoption seeded, and
   growth-extract writes rules into those. (Promote's stub-minting is narrower still: one lesson's
   technology, minted as a seed; this task authors from the whole fleet's usage.)
+- **[tasks/upstream-watch/](tasks/upstream-watch/task.md)** — the monthly reconciliation of the
+  shelf against the technologies it teaches: read what each declared source has published since its
+  anchor, correct the packs that were dated by it, and advance the anchors. **Keeping a pack current
+  is the canon's duty, not the pack's** — a pack's tasks are work a member repo runs, so a pack
+  watching its own technology would put the duty on every consumer and make it unrepeatable. It
+  reads no member and no member's dependency versions; the shelf is the whole subject.
+
+  A pack opts in with an `## Upstream` section in its `README.md`, one line per source:
+
+  ```md
+  ## Upstream
+
+  - **RFC 8725 — JWT Best Current Practices** — https://www.rfc-editor.org/rfc/rfc8725
+    — reconciled through RFC 8725 (BCP 225), February 2020
+  ```
+
+  What to watch, where it publishes, and the state the pack's content was last reconciled
+  against — the anchor the next run windows on, advanced only for a source that run actually
+  read. Silence is opt-out: a pack with no section is one nobody has claimed a moving upstream
+  for, and this task does not give it one. The reason a source is worth watching, and what a
+  reconciliation concluded, belong in the pack's `references.md`.
+
 - **[item-routing.md](item-routing.md)** — the shared worthiness + routing method promote (and an
   owner-requested retrospective pass) defers to, so every decision about admitting and placing an
   item is made the same way.

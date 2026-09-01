@@ -9,14 +9,15 @@
 //
 // Fingerprinted by a JWT library reference in JS/TS/Python source. The marker
 // only *suspects* the pack; declaring it is the project's call, like every pack.
-// A monthly jwt-advisory-watch task (tasks/) watches the repo's JWT libraries
-// for published vulnerabilities — the one JWT concern that moves with the
-// outside world rather than with this repo's own commits.
+// JWT practice moves with the outside world — an advisory or a revised best
+// current practice can date this pack's guidance while nothing here is edited —
+// so the README declares the sources that carry it, and the canon's own
+// upstream-watch reconciles the content against them.
 const JWT_LIB = /['"](jsonwebtoken|express-jwt|jwks-rsa|node-jose|jose|python-jose)['"]|^\s*(import\s+jwt\b|from\s+jwt(\.[\w.]*)?\s+import\b)/m;
 const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx|py)$/;
 
 export default {
-  version: '60823.1',
+  version: '60901.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'minting and validating JSON Web Tokens: algorithm pinning, claim validation, key strength and secrecy, expiry, JWE',

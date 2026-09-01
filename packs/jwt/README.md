@@ -7,15 +7,10 @@ mounts two action skills, [`jwt-minting`](skills/jwt-minting/SKILL.md) and
 and in CI — each failure message is the rule. What a static sweep cannot judge (key-type/API
 discipline, nested-JWT validation, JWE vs JWS guarantees) lives in the skills, read at usage time.
 
-One scheduled task, [`jwt-advisory-watch`](tasks/jwt-advisory-watch/task.md) (monthly, assess-only):
-JWT libraries have a history of critical vulnerabilities, and an advisory can publish while the
-repo's own history stands still — so the watch runs on the calendar, not on repo movement, and
-records its picture in a standing tracker issue.
-
 Scope: generic JWT practice — not the Google-issuer validator's own config, and not OAuth
 token acquisition in a browser client.
 
-_Provenance: distilled from **The JWT Handbook** (Sebastián E. Peyrott, Auth0, v0.14.2) — chapters
+_Provenance: distilled from **The JWT Handbook** (Sebastián E. Peyrott, Auth0) — chapters
 2–6 (applications, JWS/JWE/JWK structure) and Annex A (pitfalls, attacks, best current practices)._
 
 ## Checks
@@ -27,3 +22,17 @@ _Provenance: distilled from **The JWT Handbook** (Sebastián E. Peyrott, Auth0, 
 | `jwt-verify-binds-audience` | high | correctness | check: advisory |
 | `jwt-hardcoded-secret` | critical | correctness | check: blocking |
 | `jwt-sign-sets-expiry` | high | correctness | check: advisory |
+
+## Upstream
+
+Where JWT practice publishes the changes that can date this pack's guidance, and the state the
+content has been reconciled against. The canon's `upstream-watch` reads this section; a member
+repo reads nothing here.
+
+- **RFC 8725 — JWT Best Current Practices** — https://www.rfc-editor.org/rfc/rfc8725
+  — reconciled through RFC 8725 (BCP 225), February 2020
+- **GitHub Advisory Database, JWT libraries** — https://github.com/advisories?query=type%3Areviewed+jwt
+  — reconciled through 2026-09-01, for the *classes* of flaw the skills teach against (algorithm
+  confusion, unverified signatures, key confusion), never a member's own resolved versions
+- **The JWT Handbook**, this pack's provenance above — https://auth0.com/resources/ebooks/jwt-handbook
+  — reconciled through v0.14.2 (chapters 2–6 and Annex A)

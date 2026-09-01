@@ -4,8 +4,6 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pack from '../pack.mjs';
-import advisoryWatch from '../tasks/jwt-advisory-watch/task.mjs';
-import { validateTaskDeclaration } from '../../claudinite-tasks/shared-code/task-contract.mjs';
 
 const PACK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/jwt');
 
@@ -32,30 +30,21 @@ test('jwt: fingerprint fires on a JWT library reference in source, and only ther
   assert.equal(pack.detect(ctx({ 'src/app.py': 'important = True\n' })), false);
 });
 
-test('jwt-advisory-watch: a well-formed monthly, assess-only declaration', () => {
-  assert.deepEqual(validateTaskDeclaration(advisoryWatch), []);
-  assert.equal(advisoryWatch.id, 'jwt-advisory-watch');
-  assert.equal(advisoryWatch.frequency, 'monthly');    // advisories publish on the world's clock
-  assert.deepEqual(advisoryWatch.precondition_signals, []); // nothing repo-side gates it
-  assert.equal(advisoryWatch.expected_outcome, 'none'); // files an issue for a hit, never opens a PR
-});
-
-test('jwt-advisory-watch: runs unconditionally — the trigger lives outside the repo', () => {
-  const v = advisoryWatch.precondition();
-  assert.equal(v.run, true);
-  assert.match(v.context.join(' '), /read-only|never change/);
-});
-
-test('jwt-advisory-watch: worker doc files an issue only for a hit, and dedups on the GHSA', () => {
-  const worker = readFileSync(join(PACK_DIR, 'tasks/jwt-advisory-watch', advisoryWatch.agent_instructions), 'utf8');
-  // No standing tracker: a monthly "all clean" body is a subscription to noise,
-  // and it buries the one month that says something else.
-  assert.doesNotMatch(worker, /Claudinite tracker/);
-  assert.match(worker, /A clean run writes nothing anywhere/);
-  // The dedup key is the advisory against the library, never the title — every
-  // run phrases its own title, so a title match refiles the moment the hits change.
-  assert.match(worker, /GHSA id against the library.*never the title/s);
-  // An empty result must mean "checked and clean", never "couldn't check".
-  assert.match(worker, /lookup unavailable/);
+// The pack keeps no task of its own: watching a technology for what dates this
+// pack's guidance is the canon's curation duty (claudinite-canon-curation's
+// upstream-watch), and what it reads is the README's `## Upstream` section.
+test('jwt: the pack declares its upstream sources, and schedules no task to watch them itself', () => {
+  assert.equal(existsSync(join(PACK_DIR, 'tasks')), false);
+  const readme = readFileSync(join(PACK_DIR, 'README.md'), 'utf8');
+  const upstream = readme.split(/^## Upstream$/m)[1];
+  assert.ok(upstream, 'the README carries an ## Upstream section — the whole opt-in');
+  // Each source is one line carrying a URL and the state the content was
+  // reconciled against; the watch advances those anchors.
+  const sources = upstream.split('\n- ').slice(1);
+  assert.ok(sources.length >= 2);
+  for (const source of sources) {
+    assert.match(source, /https?:\/\//);
+    assert.match(source, /reconciled through/);
+  }
   assert.ok(existsSync(join(PACK_DIR, 'badge.svg')));
 });

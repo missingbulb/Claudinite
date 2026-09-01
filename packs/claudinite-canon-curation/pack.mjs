@@ -3,7 +3,8 @@
 // Claudinite packs that other repos vendor. Declaring this pack is what makes a
 // repo that canon's home: it takes on promoting its members' lessons into the
 // shelf, sweeping the fleet's stacks for technologies the shelf does not yet
-// home, and policing the shelf's own content.
+// home, keeping what the shelf already teaches current with those technologies,
+// and policing the shelf's own content.
 //
 // NOTHING HERE NAMES A PARTICULAR CANON. The shelf is `packs/` because that is
 // where the engine reads a canon's packs from (engine/pack_loader/pack-registry.mjs),
@@ -19,7 +20,7 @@
 // (claudinite-growth). The tasks are discovered structurally from this pack's own
 // `tasks/<name>/task.mjs` (packs/claudinite-tasks/discover.mjs), so none is declared here.
 export default {
-  version: '60901.1',
+  version: '60901.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'curating a canon — promoting member lessons onto its packs/ shelf, sweeping the fleet for unhomed technologies, policing the shelf',
