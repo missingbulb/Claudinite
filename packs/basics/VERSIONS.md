@@ -26,3 +26,4 @@ the version this file was introduced beside (60821.4); earlier bumps are not bac
 | 60827.1 | 2026-08-27 | The task-janitor's queue sweep parks with ONE label — `task:status:needs-human-<kind>` — rather than the `needs-human` pair a half-applied swap could tear (#1119). |
 | 60830.1 | 2026-08-30 | The `ci-performance` brief names the park the engine writes — one `task:status:needs-human-<kind>` (#1395). |
 | 60830.2 | 2026-08-30 | The ad-hoc request skills place every field a run reads as one block on the issue body's first lines, and `verify-in-production`'s retry re-arms `Not-before:` to now + `Retry-every:` rather than to the stale value plus it (#1456). |
+| 60901.5 | 2026-09-01 | `references.md` gains the two checks #552 converted out of the `repo-text-sweeps` skill — `reference-integrity` and `markdown-link-labels` — with the sweep failure each was built to catch (#1576). |

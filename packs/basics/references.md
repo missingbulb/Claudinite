@@ -40,3 +40,17 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   instead of throwing, because refusing it wedges a member holding an older engine (#1400); this
   check is where the typo half of that trade is caught. Retire it only if the load can refuse
   unknown keys again without wedging any fleet lane.
+- **(check:reference-integrity)** Converted from `repo-text-sweeps`' prose in #552. The
+  evidence for a blocking check is that nothing else catches it: a removed doc, module, or
+  renamed path leaves dangling links, imports and index entries behind that **no test
+  necessarily fails on** — a README docs-index link to a deleted file stays green. The prose
+  also fixed the timing the check cannot enforce: grep the tree for the old path in the same
+  change as the removal, not later. Reaffirm while dangling references stay invisible to the
+  suite; retire only if the test suite starts failing on them.
+- **(check:markdown-link-labels)** Converted from `repo-text-sweeps`' prose in #552. The
+  mechanism a review needs is the sweep that produces it: a Markdown link carries its path
+  **twice** — ``[`old/path.md`](old/path.md)`` holds it in both the visible label and the
+  target — so a `sed` anchored on the `](href)` form rewrites the target and leaves the label
+  reading the old path, and the doc then points right while *reading* wrong. Both the plain
+  `[old/path.md]` and backticked label forms need the same rewrite. Reaffirm while Markdown
+  duplicates the path across label and target; retire only if that stops being true.
