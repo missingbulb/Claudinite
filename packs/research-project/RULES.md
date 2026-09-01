@@ -333,7 +333,7 @@ first-class experiments:
   penetrates the structure unevenly. Keep the roles of a signal distinct, too: a
   feature that is excellent for *visualising or validating* a structure can be
   wrong for *defining* it — gating the output directly on such a signal can erode
-  the very structure you are measuring.
+  the very structure you are measuring. (1)
 - **Document the outcome fully**, including the routes that hit a wall and *why*
   (name the specific trade-off or signal that defeated them). If the idea needs
   capabilities the environment won't allow (§10), record the concrete route to

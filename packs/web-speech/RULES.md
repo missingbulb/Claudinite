@@ -26,11 +26,11 @@ the repo.
 - **Read the whole n-best list, not just alternative `[0]`.** Set
   `maxAlternatives` > 1 and iterate `result[0..length]` for `{ transcript,
   confidence }`; the ranked alternatives are exactly where homophone / near-miss
-  recovery lives.
+  recovery lives. (1)
 - **`onresult`, `onend`, and `onerror` all fire — settle the cycle exactly once.**
   Guard a `settled` flag: interim results arrive before the final one, a cycle can
   end with no result at all (treat `onend`-without-result as `no-speech`), and an
-  error and an end can both arrive.
+  error and an end can both arrive. (2)
 - **With `interimResults` off, engines omit `isFinal` — treat a result as final
   unless `isFinal === false`.** Don't test `if (result.isFinal)` (it's `undefined`
   on those engines and you'll drop every result); test `result.isFinal !== false`.

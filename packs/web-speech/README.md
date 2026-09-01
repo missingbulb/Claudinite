@@ -11,8 +11,8 @@ Some of these APIs are extension-only, and where a rule touches MV3 service-work
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | The recognizer owns its microphone capture | high | correctness | prose: 99 words + skill check (`web-speech-capture-released-on-pagehide`) |
-| Read the whole n-best list | medium | correctness | prose: 33 words |
-| Settle the listen cycle exactly once | high | correctness | prose: 46 words |
+| Read the whole n-best list | medium | correctness | prose: 34 words |
+| Settle the listen cycle exactly once | high | correctness | prose: 47 words |
 | A missing isFinal means final | high | correctness | prose: 35 words |
 | Classic recognition streams to the cloud | critical | legal | prose: 74 words |
 | Biasing works only on-device | medium | correctness | prose: 71 words |

@@ -12,7 +12,7 @@ Environment separation — dev/prod projects, App Check, store gating — is not
   surface the **post-merge** document in `request.resource.data` — a key-presence check that is
   right for `create` silently breaks on `update`. For updates, validate
   `request.resource.data.diff(resource.data).affectedKeys()` (what the client actually touched);
-  for creates, validate `keys()`.
+  for creates, validate `keys()`. (1)
 - **Guard every field dereference for absence.** Distinct writers legitimately upsert disjoint
   field subsets of one doc; an unguarded `d.field` on a missing key throws and denies. Pattern:
   `!('field' in d) || <validation>`.
@@ -21,7 +21,7 @@ Environment separation — dev/prod projects, App Check, store gating — is not
   stamps, server-computed aggregates).
 - **Pin client timestamps to `request.time`** (`FieldValue.serverTimestamp()` satisfies it) on any
   write whose freshness matters — but scope the pin to
-  writes that touch those fields, or unrelated single-field merges get rejected.
+  writes that touch those fields, or unrelated single-field merges get rejected. (5)
 - **Bound every client-writable string/blob** (length caps in rules); an unbounded field is a
   free storage channel.
 - **Admin-SDK code bypasses rules** — a rules review must enumerate what *functions* write too;
@@ -30,7 +30,7 @@ Environment separation — dev/prod projects, App Check, store gating — is not
 ## 2. Functions own identity, validation, and limits
 
 - **Identity comes from the verified token, never the request body** (`request.auth`,
-  `token.name`/`picture` claims).
+  `token.name`/`picture` claims). (2)
 - **Validate inputs at the boundary like an adversary wrote them**: type-check, range-check
   (`NaN`/`Infinity` slip through naive numeric checks), length-cap, and enum-check before any
   read or write; reject with typed `HttpsError`s (`invalid-argument`, `unauthenticated`,
@@ -53,7 +53,7 @@ Environment separation — dev/prod projects, App Check, store gating — is not
 - **When rules themselves are under test, test them empirically** with
   `@firebase/rules-unit-testing` against the real emulator — simulate each *exact client write
   shape* the app performs (create vs merge-update vs single-field token write) plus each
-  forbidden shape.
+  forbidden shape. (3)
 - **Cross-language contracts get mirrored test vectors.** When client and server must compute the
   same derived value (a geohash, a normalization), commit identical input→output vectors in both
   suites and diff the literals in CI — "both use the standard algorithm" is not a proof.
@@ -68,7 +68,7 @@ Environment separation — dev/prod projects, App Check, store gating — is not
   `.firebase/` gitignored.
 - **Commit `.firebaserc` with named aliases and make the default the safe target** (see
   the create-release-plan skill for the full environment discipline). Deploy commands in docs always name
-  what they deploy (`--only functions,firestore`).
+  what they deploy (`--only functions,firestore`). (4)
 - **Smoke-load the built entrypoint in the test lane** (`node -e "require('./lib/index.js')"`).
   A Node-major skew between build and runtime, or a bad build, surfaces as a module crash the
-  first time the deployed function is invoked.
+  first time the deployed function is invoked. (6)
