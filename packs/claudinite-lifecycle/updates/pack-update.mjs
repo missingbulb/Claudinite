@@ -241,10 +241,21 @@ export async function packUpdate(targetRoot, {
   // static after adoption". #1494 is the counterexample — the executor's CLAUDINITE_VARS
   // line is a workflow change every member needs — so the lane is open again.
   const withheld = [];
+  // Which packs finished this run still OWING a file. A withheld path is delivered by
+  // the apply stage on another credential, not here, so the pack it belongs to has not
+  // actually reached the version this run would stamp — see the stamp step below.
+  //
+  // Attributed as the write happens rather than by counting `withheld` afterwards: two
+  // records from DIFFERENT packs may name the same workflow path, and the second one's
+  // write grows nothing, so a count would stamp the pack whose content is the one
+  // actually staged.
+  const owesDelivery = new Set();
+  let owedBy = null;
   const write = (p, c) => {
     if (!p.startsWith(WORKFLOW_DIR)) return put(p, c);
     put(stagedAt(p), c);
     if (!withheld.includes(p)) withheld.push(p);
+    if (owedBy) owesDelivery.add(owedBy);
   };
   const move = (from, to) => { mkdirSync(dirname(join(targetRoot, to)), { recursive: true }); renameSync(join(targetRoot, from), join(targetRoot, to)); };
   const readTemplate = (p) => (existsSync(join(canonRoot, p)) ? readFileSync(join(canonRoot, p), 'utf8') : null);
@@ -254,7 +265,11 @@ export async function packUpdate(targetRoot, {
   // worker while the old code is still running (registry.mjs states the same).
   const io = { exists, move, read, write, readTemplate, env: { [WITHHOLD_CAPABLE_ENV]: '1' } };
   const applied = [];
-  for (const m of [...specs, ...extraRecords]) applied.push(...(await applyMigration(m, io)));
+  for (const m of [...specs, ...extraRecords]) {
+    owedBy = flowOf(m.dir).pack ?? null;
+    applied.push(...(await applyMigration(m, io)));
+  }
+  owedBy = null;
 
   // 2c. THE CLAUDE.md PACK INDEX (#807), for the same reason as 2b and at the same
   //     point: its content is a function of the pack set, and the vendor above is
@@ -290,8 +305,18 @@ export async function packUpdate(targetRoot, {
   // spelling of a renamed pack cannot be carried forward here even by accident —
   // there is no map to carry it in, only entries the declaration itself names
   // (#1041 is what a second key in a central map cost).
+  //
+  //    A PACK THAT STILL OWES A WITHHELD FILE IS NOT STAMPED (#1545). The stamp is
+  //    this member's claim to have received the version, and a version whose record
+  //    staged a workflow file has been received only once the apply stage delivers it.
+  //    Stamping first is unrecoverable rather than merely early: `migrationApplies` is
+  //    `want > have`, so the moment the stamp lands the record stops applying, stops
+  //    vendoring, and the staged copy — the one remaining source of the content — is
+  //    swept by the next cycle as a leftover. Holding the number back keeps the record
+  //    in range, so an undelivered file is simply staged again next cycle, which is
+  //    what makes a merged-but-undelivered PR self-healing instead of a silent loss.
   const packVersions = {};
-  for (const p of plan) if (p.to !== null) packVersions[p.id] = p.to;
+  for (const p of plan) if (p.to !== null && !owesDelivery.has(p.id)) packVersions[p.id] = p.to;
   writeFileSync(settingsFile, `${JSON.stringify(withInstalledVersions(next, { packVersions }), null, 2)}\n`);
 
   // 4. The same gate the engine flow uses, then the agentic tail's own question —
