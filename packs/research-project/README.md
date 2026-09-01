@@ -53,7 +53,7 @@ A project-class pack (prose-only, declared — no fingerprint) for the recurring
 | Route around missing system binaries with libraries | low | complexity | prose: 29 words |
 | Take an exhausted direction seriously | medium | complexity | prose: 40 words |
 | Evaluate it like any other change | medium | correctness | prose: 29 words |
-| Beat the naive baseline, or drop it. | high | correctness | prose: 83 words |
+| Beat the naive baseline, or drop it. | high | correctness | prose: 84 words |
 | Document the outcome fully | medium | complexity | prose: 50 words |
 | Complementary routes are not competitors. | low | complexity | prose: 25 words |
 | Commit and push | medium | complexity | prose: 16 words |

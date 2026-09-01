@@ -6,8 +6,8 @@ Active when the repo has a SAM `template.yaml`/`.yml`.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| esbuild is a regular dependency | high | correctness | prose: 50 words + check (`aws-sam/esbuild-dependency`) |
-| CloudFront won't forward Authorization | critical | correctness | prose: 81 words + check (`aws-sam/cloudfront-authorization`) |
+| esbuild is a regular dependency | high | correctness | prose: 51 words + check (`aws-sam/esbuild-dependency`) |
+| CloudFront won't forward Authorization | critical | correctness | prose: 82 words + check (`aws-sam/cloudfront-authorization`) |
 | The deploy role drives transform and CloudFront | high | correctness | prose: 79 words |
 | A new account waits for CloudFront verification | medium | correctness | prose: 58 words |
 | Clean up a failed first CREATE | high | correctness | prose: 54 words |

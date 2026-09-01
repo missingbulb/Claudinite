@@ -2,7 +2,7 @@
 // Three of the pack's gotchas now have structural checks (via the minimal YAML
 // parser); the jsdom-style runtime ones stay prose in RULES.md.
 export default {
-  version: '60901.1',
+  version: '60901.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'serverless AWS stacks: SAM template shape, Lambda handler paths, esbuild bundling, API Gateway and CloudFront gotchas',

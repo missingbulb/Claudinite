@@ -16,7 +16,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
 // pipeline-injected prod config and App Check gating — is a skill rather than
 // prose: it is read when a project plans its release, not on every session.
 export default {
-  version: '60822.1',
+  version: '60901.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'building on Firebase: Firestore rules, callable Cloud Function patterns, FCM, emulator testing, deploy layout, dev/prod release split',

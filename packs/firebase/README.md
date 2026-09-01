@@ -23,23 +23,23 @@ pipeline alone, and App Check attestation so only store-installed builds reach t
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | End every ruleset with catch-all deny | critical | correctness | prose: 24 words |
-| Write rules against merge semantics | critical | correctness | prose: 45 words |
+| Write rules against merge semantics | critical | correctness | prose: 46 words |
 | Guard every field dereference for absence. | high | correctness | prose: 33 words |
 | Server-owned fields stay off the client list | critical | correctness | prose: 27 words |
-| Pin client timestamps to request.time | high | correctness | prose: 32 words |
+| Pin client timestamps to request.time | high | correctness | prose: 33 words |
 | Bound every client-writable string/blob | high | correctness | prose: 17 words |
 | Admin-SDK code bypasses rules | critical | correctness | prose: 26 words |
-| Identity comes from the verified token | critical | correctness | prose: 14 words |
+| Identity comes from the verified token | critical | correctness | prose: 15 words |
 | Validate inputs at the boundary | critical | correctness | prose: 39 words |
 | Rate limits need a transaction. | high | correctness | prose: 39 words |
 | Chunk batched writes under the limit | high | correctness | prose: 36 words |
 | Push is best-effort by construction | medium | correctness | prose: 37 words |
 | Extract decision logic into pure modules | medium | complexity | prose: 26 words |
-| Test the rules themselves empirically | high | correctness | prose: 37 words |
+| Test the rules themselves empirically | high | correctness | prose: 38 words |
 | Cross-language contracts get mirrored test vectors. | high | correctness | prose: 44 words |
 | Keep the Firebase project root self-contained | medium | complexity | prose: 71 words |
-| Commit .firebaserc with a safe default | critical | correctness | prose: 33 words |
-| Smoke-load the built entrypoint | high | correctness | prose: 36 words + check (`firebase/functions-predeploy-build`) |
+| Commit .firebaserc with a safe default | critical | correctness | prose: 34 words |
+| Smoke-load the built entrypoint | high | correctness | prose: 37 words + check (`firebase/functions-predeploy-build`) |
 
 ## Checks
 
