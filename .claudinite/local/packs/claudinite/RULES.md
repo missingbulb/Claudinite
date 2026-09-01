@@ -4,9 +4,10 @@ Lessons specific to working on the canon itself. Anything true for repos beyond 
 the shared canon under `packs/`/`skills/` instead. The `growth-extract` task appends here, each
 lesson at the strongest mechanism available — a check where the rule is deterministic, else prose.
 
-Keep each rule near 40 words: the trigger, the directive, and a consequence clause only where the
-rule cannot be applied without it. Split a rule that carries two situations; the evidence it came
-from lives in the commit that added it and the issue, never here.
+Rules are written to the `writing-pack-prose` skill: near 40 words each — the trigger, the
+directive, and a consequence clause only where the rule cannot be applied without it — with a
+rule's reaffirmable rationale in [references.md](references.md) behind an end-of-line `(n)`
+marker, and the full evidence trail in the commit that added it and the issue.
 
 ## Standing owner decisions — settled, do not re-litigate
 
@@ -32,8 +33,7 @@ from lives in the commit that added it and the issue, never here.
 
 - **Wanting to verify or read something across members** — the executor's agent sessions are
   scoped to this repo alone, so a cross-repo `Verify:` parks on a scope denial minutes after
-  being picked (#1349, #1351, #1396). The fleet half is a Shepherd fleet task, never an ad-hoc
-  item here.
+  being picked. The fleet half is a Shepherd fleet task, never an ad-hoc item here. (1)
 
 - **Designing anything that spans repos** — split it: a self-contained per-repo half in the canon,
   the aggregation half as a Shepherd fleet task. No repo list lives in canon code.
@@ -478,7 +478,7 @@ from lives in the commit that added it and the issue, never here.
 - **Converging a work item from a session** — `converge-item.mjs` prints the calls; making them
   verbatim with your own GitHub tools is the whole path, on every session, with or without a REST
   route. Hand-fabricating the transition is how an item ends up closed wearing a live status, or
-  labelled `done` and left open (#1220, #1265).
+  labelled `done` and left open. (2)
 
 ## Proving a change
 
@@ -558,7 +558,7 @@ from lives in the commit that added it and the issue, never here.
 
 - **Sweeping a rename mid-migration across many PRs** — a file added or rewritten after the sweep
   starts can independently reinvent the retired constant as a comparison key; a state comparison
-  against it fails silently, with no error and no failing test, only a wrong count (#1119).
+  against it fails silently, with no error and no failing test, only a wrong count. (3)
 
 - **Renaming a word that is also stored data** (a counter key, a wire word, a label) — rename it
   on the **decode** side too, or the next encode writes those historical counts as `null`,

@@ -74,6 +74,12 @@
 //                 shapes a member writes — a mount path, a repo-relative script, a
 //                 bare filename, and a placeholder-rooted path naming a file it has —
 //                 and says the rule stays silent on all of them.
+//   references     a member on the writing-pack-prose references convention:
+//                 marked rules resolving to a references.md, a `check:` entry,
+//                 and unmarked legacy rules beside them. `references-integrity`
+//                 (blocking, growth) reads member-authored prose, so this shape
+//                 is what says a migrated member and an unmigrated one both stay
+//                 green.
 //   codes-an-extension
 //                 a member declaring chrome-extension with a manifest and NO release
 //                 pipeline. The pack absorbed chrome-extension-release (#1057), so its
@@ -402,6 +408,47 @@ Sweep the repo: \`node .claudinite/shared/engine/checks/check_the_world.mjs\`.
 Build it: \`node tools/build.mjs\`, and from inside a task directory, \`node worker.mjs\`.
 
 From anywhere in the checkout, \`node <root>/tools/build.mjs\` does the same.
+`;
+
+const PACK_REFERENCES = `export default {
+  id: 'fixture-references',
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own conventions, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+  worldRules: [],
+  workRules: [],
+};
+`;
+
+// A member's rules in the three states the writing-pack-prose references
+// convention leaves them: marked and resolving, multi-cited, and unmarked
+// (legacy — the convention is opt-in per rule, so this is most of the fleet).
+// \`references-integrity\` is blocking, so each must read as fine.
+const REFERENCES_RULES = `# fixture-references
+
+- **Doing the settled thing** — do it the settled way. (1)
+
+- **Doing the doubly-argued thing** — the way both incidents point. (1, 4)
+
+- **Doing the obvious thing** — its consequence clause is the whole reason, so no marker.
+`;
+
+const REFERENCES_DOC = `# References
+
+- **(1)** The other way failed twice; retire when the platform accepts it.
+- **(4)** A second incident, kept under its original stable number.
+- **(check:fixture-declared-check)** Why the pack's own check exists.
+`;
+
+const REFERENCES_DECLARED_CHECK = `[
+  { "id": "fixture-declared-check", "severity": "advisory",
+    "failureMessage": "a rehearsal fixture check that never fires",
+    "scanFiles": "/(^|\\\\/)no-such-file-ever$/", "maxLines": 100000 }
+]
 `;
 
 const OLD_SCHEDULER_WORKFLOW = `name: Claudinite scheduler
@@ -841,6 +888,18 @@ export const FIXTURES = [
       '.claudinite-settings.json': checks(['basics', 'local/fixture-doc-commands']),
       '.claudinite/local/packs/fixture-doc-commands/pack.mjs': PACK_DOC_COMMANDS,
       '.claudinite/local/packs/fixture-doc-commands/RULES.md': DOC_COMMANDS_RUNBOOK,
+    },
+  },
+  {
+    name: 'references',
+    why: 'a local pack on the writing-pack-prose references convention — markers resolving to references.md entries, a check: entry, and unmarked legacy rules; the member-authored prose `references-integrity` (blocking, growth) reads',
+    files: {
+      'README.md': '# fixture-references\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['claudinite-growth', 'local/fixture-references']),
+      '.claudinite/local/packs/fixture-references/pack.mjs': PACK_REFERENCES,
+      '.claudinite/local/packs/fixture-references/RULES.md': REFERENCES_RULES,
+      '.claudinite/local/packs/fixture-references/references.md': REFERENCES_DOC,
+      '.claudinite/local/packs/fixture-references/declared-checks.json': REFERENCES_DECLARED_CHECK,
     },
   },
   {
