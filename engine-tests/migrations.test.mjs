@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { removeTree } from '../engine/remove-tree.mjs';
-import { isDeclaredVersion } from '../engine/version.mjs';
+import { isDeclaredVersion, versionAbove } from '../engine/version.mjs';
 import {
   loadMigrations, resolvePath, applyFileAliases,
   applyMaterializations, applyRewrites, applyPackDeclarations, migrationActive,
@@ -824,6 +824,37 @@ test('executor-vars-bag: inserts the bag, preserves each member\'s stamped secre
 
   // A repo that does not run the queue is untouched.
   assert.equal(await m.appliesTo(async () => null), false);
+});
+
+test('executor-vars-redelivery re-issues the same rewrite above where the stranded members landed', async () => {
+  const migs = await loadMigrations();
+  const reissue = migs.find((x) => x.id === 'executor-vars-redelivery');
+  const original = migs.find((x) => x.id === 'executor-vars-bag');
+  assert.ok(reissue && original, 'both discovered');
+
+  // The whole point is reach: the members it exists for are stamped ABOVE the original's
+  // version, where `migrationApplies` (`want > have`) stops fetching it (#1545).
+  assert.ok(versionAbove(reissue.version, original.version),
+    'a re-issue at or below the original cannot reach a member that stamped past it');
+
+  // Same delivery, not a second opinion about what to write.
+  assert.deepEqual(reissue.rewrite, original.rewrite);
+
+  const EXECUTOR = '.github/workflows/claudinite-executor.yml';
+  const hold = '          CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}\n';
+  const stranded = `name: Claudinite executor\n        env:\n${hold}          # claudinite:secrets\n`;
+  const files = new Map([[EXECUTOR, stranded]]);
+  const io = { read: async (p) => files.get(p) ?? null, write: async (p, c) => { files.set(p, c); },
+    env: { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' } };
+
+  assert.equal(await reissue.appliesTo(io.read), true, 'a member left without the line');
+  assert.deepEqual(await applyRewrites(reissue, io), [EXECUTOR]);
+  assert.match(files.get(EXECUTOR), /^ {10}CLAUDINITE_VARS: \$\{\{ toJSON\(vars\) \}\}$/m);
+
+  // Inert on the members that received it normally — which is what lets one record run
+  // fleet-wide instead of naming the five it is for.
+  assert.equal(await reissue.appliesTo(io.read), false, 'the line is there now');
+  assert.equal((files.get(EXECUTOR).match(/CLAUDINITE_VARS:/g) ?? []).length, 1);
 });
 
 // The record's whole purpose is the line the stub already carries, so the two must not
