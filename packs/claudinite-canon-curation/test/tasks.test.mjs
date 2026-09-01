@@ -22,7 +22,7 @@ const PACK_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 const member = (over = {}) => ({
   repo: 'acme/app', defaultBranch: 'main',
   activePacks: ['claudinite-growth'], packConfigs: {},
-  hasLocalPacks: true, localPacksChanged: true, stamp: null, schedulesItself: false,
+  localPacksChanged: true, stamp: null, schedulesItself: false,
   ...over,
 });
 
@@ -58,8 +58,9 @@ test('growth-promote: skips a member that opted out of promotion', () => {
   assert.equal(v.run, false);
 });
 
-test('growth-promote: skips a member without local packs, or not declaring the growth pack', () => {
-  assert.equal(promote.precondition({ fleet: { members: [member({ hasLocalPacks: false })] } }).run, false);
+// Membership is the whole participation test now: every member carries local packs
+// (seeded at adoption), so a repo not declaring the growth pack is the only skip.
+test('growth-promote: skips a member not declaring the growth pack', () => {
   assert.equal(promote.precondition({ fleet: { members: [member({ activePacks: ['basics'] })] } }).run, false);
 });
 
@@ -88,7 +89,7 @@ test('growth-discover-packs: declaration is weekly/opus/pr+nothing, fleet-reachi
 test('growth-discover-packs: sweeps every covered member, binding them as Context', () => {
   const v = discover.precondition({ fleet: { members: [
     member({ repo: 'acme/a', localPacksChanged: false }),          // no window trigger — the opportunity is standing
-    member({ repo: 'acme/b', activePacks: ['basics'], hasLocalPacks: false }), // not a growth participant — still swept
+    member({ repo: 'acme/b', activePacks: ['basics'] }),                       // not a growth participant — still swept
   ] } });
   assert.equal(v.run, true);
   assert.match(v.context.join(' '), /acme\/a/);

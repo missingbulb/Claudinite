@@ -38,8 +38,8 @@ export default {
   agent_execution_timeout: 2700,         // reading N members + generalizing + authoring a PR — generous bound, extreme protection
 
   // Fire when a participating member changed its local packs in the window. A
-  // participant declares claudinite-growth and carries local packs (the only
-  // source promote reads); the growth entry's `{ config: { promote: false } }`
+  // participant declares claudinite-growth — every member carries local packs,
+  // seeded at adoption; the growth entry's `{ config: { promote: false } }`
   // opts a member out of promotion while it keeps extracting/deduping locally
   // (absent or true = participate). A member whose local packs didn't move in the
   // window has nothing new to lift up — so the daily trigger targets exactly the
@@ -49,7 +49,7 @@ export default {
     if (!fleet) return { run: false, reason: 'no fleet signal (FLEET_GITHUB_TOKEN unset, or this repo is not a canon home)' };
     if (fleet.error) return { run: false, reason: `fleet enumeration failed — ${fleet.error} (retiring/promoting nothing on unproven fleet state)` };
     const participants = (fleet.members ?? [])
-      .filter((m) => m.activePacks.includes('claudinite-growth') && m.hasLocalPacks)
+      .filter((m) => m.activePacks.includes('claudinite-growth'))
       .filter((m) => m.packConfigs?.['claudinite-growth']?.promote !== false);
     const changed = participants.filter((m) => m.localPacksChanged);
     if (!changed.length) return { run: false, reason: 'no participating member changed its local packs in the window' };
