@@ -264,10 +264,9 @@ from lives in the commit that added it and the issue, never here.
   fleet. Vendoring refreshes `.claudinite/shared/` only and a migration record moves paths, not
   schemas; if nothing carries it, accept the legacy shape in `normalizeManifest`.
 
-- **Adding a key to the declared-check spec vocabulary** (`SPEC_KEYS` in `pattern-rules.mjs`) —
-  bump every emitting pack's `minEngineVersion` to the release that adds it, or an older engine's
-  unknown-key throw drops every declaration in that file and wedges the member's convergence until
-  a human deletes it by hand (#1400).
+- **Adding a key to the declared-check spec vocabulary** (`SPEC_KEYS` in `pattern-rules.mjs`) — an
+  older engine drops that key and runs the rest of the declaration, so the new key buys nothing
+  until its engine arrives. Write the declaration to be correct without it (#1400).
 
 - **A stale member declaration** — fail the run. Never let it degrade to *fewer checks running*.
 
