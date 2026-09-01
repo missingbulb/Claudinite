@@ -133,6 +133,9 @@
       }
     }
   ],
+  "rules": {
+    "declared-check-spec-keys": "blocking"
+  },
   "accept": [
     {
       "rule": "task-code-work-env",

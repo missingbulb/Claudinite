@@ -5,7 +5,7 @@ import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { patternRule, loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
+import { patternRule, loadDeclaredChecks, unplacedSpecKeys } from '../engine/checks/helpers/pattern-rules.mjs';
 import { runRule } from '../engine/checks/helpers/work.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 
@@ -821,17 +821,40 @@ test('forbidReferences: a malformed edge is an authoring error at load', () => {
   );
 });
 
-test('an unknown spec key is an authoring error naming the key and its container', () => {
+test('a key the vocabulary cannot place is dropped, named by unplacedSpecKeys, and its neighbours still run', () => {
+  // The forward-compatibility lane (#1400): the key may be a typo or may belong
+  // to a newer engine, so the load drops it and the world rule reports it. The
+  // future assertion nests a pattern key whose value this engine would refuse to
+  // compile — dropping the key has to take its whole subtree with it.
+  const rule = patternRule({
+    ...meta('fx-unplaced'),
+    scanFiles: /\.txt$/,
+    matchLines: [{ match: /TOK/, unlesLineMatches: /y/, what: 'saw it', fix: 'f' }],
+    matchBlocks: [{ pattern: 'not-a-regex-form', what: 'w', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: { 'a.txt': 'TOK\n' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => f.what), ['saw it']);
+  } finally { cleanup(root); }
+  assert.deepEqual(
+    unplacedSpecKeys({
+      ...meta('fx-unplaced'),
+      scanFiles: '/\\.txt$/',
+      matchLines: [{ match: '/x/', unlesLineMatches: '/y/', what: 'w', fix: 'f' }],
+      matchBlocks: [],
+    }).map(({ key, container }) => [key, container]),
+    [['unlesLineMatches', 'matchLines'], ['matchBlocks', 'spec']],
+  );
+});
+
+test('a key the engine DOES place still fails loudly on a broken value', () => {
   assert.throws(
-    () => patternRule({ ...meta('fx-unknown-top'), scanFiles: /\.txt$/, matchLine: [] }),
-    /"matchLine" is not a spec key.*matchLines/s,
+    () => patternRule({ ...meta('fx-bad-regex'), scanFiles: /\.txt$/, matchLines: [{ match: '/[/', what: 'w', fix: 'f' }] }),
+    /"match" is not a valid regex/,
   );
   assert.throws(
-    () => patternRule({
-      ...meta('fx-unknown-nested'), scanFiles: /\.txt$/,
-      matchLines: [{ match: /x/, unlesLineMatches: /y/, what: 'w', fix: 'f' }],
-    }),
-    /"unlesLineMatches" is not a key of "matchLines"/,
+    () => patternRule({ ...meta('fx-bad-since'), since: '27th', scanFiles: /\.txt$/ }),
+    /"since" is the date this check was added/,
   );
   assert.throws(
     () => patternRule({ id: 'fx-bad-severity', severity: 'fatal', failureMessage: 'm', scanFiles: /\.txt$/ }),
