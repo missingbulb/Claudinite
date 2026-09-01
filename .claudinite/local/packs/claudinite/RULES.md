@@ -298,6 +298,11 @@ from lives in the commit that added it and the issue, never here.
   path re-exporting what it named. The two lanes deliver on separate cycles, so every member spends
   a window holding the NEW engine beside an OLD pack.
 
+- **A pack module consuming a brand-new engine helper export** — import the engine module as a
+  namespace and guard the call with a `typeof` capability check, never a named import: the pack and
+  engine lanes deliver on separate cadences, so a named import of an export the member's engine
+  hasn't reached yet is a link-time `SyntaxError` that faults the whole pack.
+
 - **A pack that fails to load** — it fails the mount's self-test, the converge refuses to land at
   all, and the member cannot receive the pack version that would have fixed it.
 
@@ -506,6 +511,11 @@ from lives in the commit that added it and the issue, never here.
 
 - **Asserting a mid-run invariant** — capture it at the exact moment the state holds. By the end
   of the run, normal convergence has cleared the evidence.
+
+- **Writing a regression test that pins a policy or convention decision** — assert the
+  behavior/invariant the decision requires, never a literal sentence quoted from a doc: a
+  sentence-matching test stays green even while a sibling doc states the opposite, certifying the
+  contradiction instead of catching it.
 
 - **A test that derives its answer by walking git history** — guard explicitly against a shallow
   clone and fail loudly. It otherwise passes vacuously exactly when the real answer needs history
