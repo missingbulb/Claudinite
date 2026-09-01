@@ -17,8 +17,11 @@ jobs:
         env:
           ARGS: ${{ inputs.args }}
           VARS_BAG: ${{ toJSON(vars) }}
+          CCR_TOKEN_NONEMPTY: ${{ secrets.CCR_ROUTINE_TOKEN != '' }}
+          FLEET_TOKEN_NONEMPTY: ${{ secrets.FLEET_GITHUB_TOKEN != '' }}
         run: |
-          echo "CALLEE_MARKER=v1"
+          echo "CALLEE_MARKER=v2"
+          echo "ccr_token_nonempty=$CCR_TOKEN_NONEMPTY fleet_token_nonempty=$FLEET_TOKEN_NONEMPTY"
           echo "caller_repo=$GITHUB_REPOSITORY"
           echo "caller_ref=$GITHUB_REF"
           echo "args=$ARGS"
