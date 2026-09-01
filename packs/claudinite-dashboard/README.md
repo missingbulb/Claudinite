@@ -164,6 +164,7 @@ second. So nothing on it is a total for its own sake.
 |---|---|
 | **Start here** | The one piece of work most worth doing across every member, named with the issue to open and what it costs you — the worst thing true of the fleet, and a link rather than a count |
 | **What Claudinite did this week** | The work the machinery did that nobody had to do — this week against last, including the check findings caught inside sessions and what the corpus costs each of them |
+| **What the corpus is doing across the fleet** | The detail behind the block above, from each member's usage fold: workload this week against last, the two check scopes side by side, which rules actually fire, which skills load and which are mounted everywhere and never do, and one row per member. A member that does not fold is named and counted in nothing |
 | **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, **how often the checks ran and caught something**, and which members moved at all |
 | **Rollup tiles** | How many *members* need a human — not how many items exist |
 | **Members** | Every member ranked worst-first, in three column groups asked in the order a reader asks them: **Activity** (90 days of commits, as a weekly curve), **Waiting on a person** (an estimate in minutes, what it is made of, then issues and pull requests) and **Claudinite** (packs wearing the mount's verdict, queue, outcomes, scheduler). Stars and CI ride in the member cell — they are how you recognise a row, not findings about it |
@@ -218,6 +219,15 @@ Two figures used to be named as *absent* here, because nothing the page read cou
 them: how often each member's checks actually ran, and how much corpus each session is
 paying for. Both are in each member's usage file, which the sweep now reads at the head
 sha it already has — so both are panels rather than apologies.
+
+The same file carries the detail the benefits block only headlines, and the fleet is the
+one place it can be laid side by side: the `work` scope (the Stop hook, per turn) against
+the `world` scope (the full sweep wired into tests), each with its runs, catches, blocking
+and advisory volume and runner errors; the findings per rule, ranked; and the skill loads
+per skill against where each is mounted — the tree listing the sweep already holds says
+which `SKILL.md`s a member's declared packs mount, so a skill mounted in ten members and
+loaded in none is a fact no single repo's page can state. [`fleet-growth.mjs`](fleet-growth.mjs)
+derives all of it; no read is added.
 
 A member with **no** usage file is named, never averaged in as a repo where nothing
 happens. That census is the same fact a fleet-wide aggregate would carry as

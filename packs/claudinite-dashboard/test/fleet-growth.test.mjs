@@ -85,3 +85,119 @@ test('a fleet where nothing folds reports that, rather than a fleet doing nothin
   assert.equal(g.current.checkRuns, null);
   assert.ok(g.days.every((d) => d.source === 'none'));
 });
+
+// --- the corpus panel ---------------------------------------------------------------
+
+import { fleetCorpus, mountedSkills } from '../fleet-growth.mjs';
+
+const CORPUS_FIELDS = {
+  day: ['captures', 'merges', 'sessions', 'userMessages', 'userCommands', 'ruleTokens', 'ruleTokenSessions'],
+  checks: ['runs', 'failures', 'errors', 'blocking', 'advisory', 'ciRuns', 'ciFailures'],
+  checkFindings: ['blocking', 'advisory'],
+};
+
+// A member whose every day in range looks the same: `work` and `world` scopes, two
+// rules firing, one skill loading, and a tree mounting two skills from one declared pack.
+const corpusMember = (repo, { days = 10, work = [4, 1, 0, 2, 0, 0, 0], world = [1, 0, 0, 0, 9, 0, 0], loads = { 'merge-to-main': 2 }, packs = ['basics'], paths = ['.claudinite/shared/packs/basics/skills/merge-to-main/SKILL.md', '.claudinite/shared/packs/basics/skills/bug-investigation/SKILL.md'] } = {}) => {
+  const rows = {};
+  for (let d = 0; d < days; d += 1) {
+    rows[dayKey(d * 86400e3)] = {
+      totals: [3, 2, 2, 5, 1, 30000, 2],
+      checks: Object.fromEntries(Object.entries({ work, world }).filter(([, v]) => v)),
+      checkFindings: { 'reference-integrity': [2, 0], 'file-placement': [0, 9] },
+      skillLoads: loads,
+    };
+  }
+  return {
+    repo,
+    declaration: { packs },
+    paths,
+    usage: decodeUsage({ version: 3, generated: '2026-08-21T10:00:00Z', foldedThrough: '2026-08-20', fields: CORPUS_FIELDS, days: rows, weeks: {}, hours: {} }),
+  };
+};
+
+test('the two scopes are summed separately across members, with a catch rate each', () => {
+  const c = fleetCorpus([corpusMember('o/a'), corpusMember('o/b')], { now: NOW, days: 10 });
+  assert.equal(c.scopes.work.runs, 80, 'two members, ten days, four runs');
+  assert.equal(c.scopes.work.failures, 20);
+  assert.equal(c.scopes.work.catchRate, 0.25);
+  assert.equal(c.scopes.world.advisory, 180);
+  assert.equal(c.scopes.world.catchRate, 0, 'ran, caught nothing blocking — a rate of zero, not an unknown');
+  assert.equal(c.scopes.work.seen, true);
+});
+
+test('a scope no member recorded is unseen, and its rate is null rather than zero', () => {
+  const c = fleetCorpus([corpusMember('o/a', { world: null })], { now: NOW, days: 3 });
+  assert.equal(c.scopes.world.seen, false);
+  assert.equal(c.scopes.world.catchRate, null);
+});
+
+test('rules are ranked by what they caught, with how many members each fired in', () => {
+  const c = fleetCorpus([corpusMember('o/a'), corpusMember('o/b', { days: 2 })], { now: NOW, days: 10 });
+  assert.deepEqual(c.rules.map((r) => r.rule), ['file-placement', 'reference-integrity']);
+  assert.equal(c.rules[0].advisory, 108, 'ten days plus two, nine each');
+  assert.equal(c.rules[1].blocking, 24);
+  assert.equal(c.rules[1].members, 2);
+  assert.deepEqual(c.findings, { blocking: 24, advisory: 108 });
+});
+
+test('skills: loads per skill against where it is mounted, and the mounted-never-loaded list', () => {
+  const c = fleetCorpus([corpusMember('o/a'), corpusMember('o/b', { loads: {} })], { now: NOW, days: 3 });
+  assert.deepEqual(c.skills.loaded, [{ skill: 'merge-to-main', loads: 6, members: 1, mountedIn: 2 }]);
+  assert.deepEqual(c.skills.neverLoaded, [{ skill: 'bug-investigation', mountedIn: 2 }]);
+  assert.equal(c.skills.mountedDistinct, 2);
+  assert.equal(c.skills.treesRead, 2);
+});
+
+test('a skill from a pack the member has on disk but does not declare is not mounted', () => {
+  const paths = [
+    'packs/basics/skills/one/SKILL.md',
+    'packs/undeclared/skills/two/SKILL.md',
+    '.claudinite/local/packs/mine/skills/three/SKILL.md',
+    '.claudinite/shared/packs/mine/skills/four/SKILL.md',
+  ];
+  const got = mountedSkills(paths, { packs: ['basics', { id: 'local/mine' }] });
+  assert.deepEqual([...got].sort(), ['one', 'three'], 'the canon root and the local root each count; the undeclared pack and the wrong root do not');
+});
+
+test('the workload tiles are this week against last, and a member that does not fold is named', () => {
+  const c = fleetCorpus([
+    corpusMember('o/a', { days: 20 }),
+    { repo: 'o/quiet', declaration: { packs: [] }, usage: null },
+  ], { now: NOW, days: 20, windowDays: 7 });
+  assert.equal(c.workload.current.sessions, 14);
+  assert.equal(c.workload.previous.sessions, 14);
+  assert.equal(c.workload.current.userMessages, 35);
+  assert.deepEqual(c.absent, ['o/quiet']);
+  assert.equal(c.folding, 1);
+  assert.equal(c.readable, 2);
+});
+
+test('the member rows carry each member\'s own figures, and an absent member is a row that says so', () => {
+  const c = fleetCorpus([corpusMember('o/a'), { repo: 'o/quiet', declaration: { packs: [] }, usage: null }], { now: NOW, days: 3 });
+  const a = c.members.find((m) => m.repo === 'o/a');
+  assert.equal(a.sessions, 6);
+  assert.equal(a.turns, 15);
+  assert.equal(a.skillLoads, 6);
+  assert.equal(a.work.runs, 12);
+  assert.equal(a.world.runs, 3);
+  assert.equal(a.blocking, 6);
+  assert.equal(a.advisory, 27);
+  assert.equal(a.tokensPerSession, 15000);
+  assert.equal(a.foldedThrough, '2026-08-20');
+  const q = c.members.find((m) => m.repo === 'o/quiet');
+  assert.equal(q.folding, false);
+  assert.equal(q.sessions, undefined, 'nothing is invented for a member that does not fold');
+});
+
+test('a day carrying no session count leaves the sum null, never zero', () => {
+  const noSessions = {
+    repo: 'o/b',
+    declaration: { packs: [] },
+    usage: decodeUsage({ version: 3, fields: CORPUS_FIELDS, days: { [dayKey(0)]: { totals: [1, 0] } }, weeks: {}, hours: {} }),
+  };
+  const c = fleetCorpus([noSessions], { now: NOW, days: 3 });
+  assert.equal(c.workload.current.sessions, null);
+  assert.equal(c.workload.current.captures, 1);
+  assert.equal(c.members[0].tokensPerSession, null);
+});
