@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { loadDeclaredChecks } from '../../../engine/checks/helpers/pattern-rules.mjs';
-import specKeys from '../worldRules/declared-check-spec-keys.mjs';
+import specKeys, { unplacedKeysWith } from '../worldRules/declared-check-spec-keys.mjs';
+import * as patternRules from '../../../engine/checks/helpers/pattern-rules.mjs';
 
 const run = (root) => specKeys.run(buildContext({ root, mode: 'all' }));
 
@@ -70,4 +71,18 @@ test('a declaration carrying a key this engine cannot place still loads every ru
     assert.equal(findings.length, 1);
     assert.match(findings[0].what, /"fx-future-key" carries "sinceRelease", which is not a spec key/);
   } finally { cleanup(root); }
+});
+
+// The pack lane delivers this file nightly and the engine lane only on a release,
+// so it must survive an engine that predates `unplacedSpecKeys` — a named import
+// of an absent export is a link-time SyntaxError the loader records as a fault,
+// and a fault parks the converge. Asserted as the positive effect on both sides,
+// since a fail-soft path returning [] cannot be proven by "it did not throw".
+test('the engine dependency is fail-soft: an engine without the export makes the rule inert, the real one makes it report', () => {
+  const spec = {
+    id: 'fx-guard', severity: 'blocking', failureMessage: 'm',
+    scanFiles: '/\\.txt$/', scanFile: '/\\.md$/',
+  };
+  assert.deepEqual(unplacedKeysWith({ somethingElse: 1 }, spec), []);
+  assert.deepEqual(unplacedKeysWith(patternRules, spec).map((u) => u.key), ['scanFile']);
 });
