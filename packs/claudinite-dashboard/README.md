@@ -418,7 +418,8 @@ working through these has the settings page open in the next tab.
 - [ ] Install the App on the account holding the repos — `https://github.com/settings/apps/<app-slug>/installations`
 - [ ] Copy your Cloudflare **Account ID** — `https://dash.cloudflare.com/?to=/:account/workers`, the right-hand sidebar under *Account details*; 32 hex characters
 - [ ] Add it as the variable `CLOUDFLARE_ACCOUNT_ID` — `<repo>/settings/variables/actions/new`
-- [ ] Create a Cloudflare API token from the **Edit Cloudflare Workers** template — `https://dash.cloudflare.com/profile/api-tokens`; the value is shown once, on the confirmation screen
+- [ ] Create a Cloudflare API token — `https://dash.cloudflare.com/profile/api-tokens` — template **Edit Cloudflare Workers**, name `claudinite-dashboard-deploy`, **Account Resources** *Include* the hosting account, **Zone Resources** *Include · All zones*
+- [ ] Copy the token — shown once, on the confirmation screen
 - [ ] Add it as the Actions secret `CLOUDFLARE_API_TOKEN` — `<repo>/settings/secrets/actions/new`
 - [ ] Run `create-work-item claudinite-dashboard/deploy-oauth-exchange`, and copy the `workers.dev` URL it reports
 - [ ] Add it as the variable `CLAUDINITE_DASHBOARD_EXCHANGE_URL` — `<repo>/settings/variables/actions/new`
@@ -427,7 +428,10 @@ working through these has the settings page open in the next tab.
 
 Notes. **Webhook → Active** arrives ticked and the form then refuses to submit without a
 Webhook URL; this App is a sign-in credential and receives nothing, so unticking it is
-what lets the registration through. Installing the App lands you on the redirect URI,
+what lets the registration through. The token's **Zone Resources** are asked for because
+the template carries a zone-scoped permission, and *All zones* is the answer that always
+works: this deploy never exercises them, calling only `/accounts/<id>/workers/…`.
+Installing the App lands you on the redirect URI,
 and `https://<owner>.github.io/` is a **404** unless that owner happens to keep a
 user-site repo — expected, and not a failed step: the root is registered so that wildcard
 matching permits the project pages beneath it, and sign-in returns to the dashboard's own
