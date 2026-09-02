@@ -61,6 +61,32 @@ test('prose-to-checks-sweep: sleeps on a silent repo and resumes on the first ac
   assert.equal(active.run, true);
 });
 
+// THE PINNED SUBJECTS each round delivers under. Held here rather than read out of
+// either declaration so the tests below can disagree with the code.
+const PROSE_SUBJECT = 'Claudinite growth: prose to checks';
+const REVALIDATION_SUBJECT = 'Claudinite growth: rule revalidation';
+
+// Both tasks work a STANDING backlog, so neither can be gated on movement — the
+// sweep would halt with the backlog half-worked the moment prose stopped changing.
+// Nor on the previous round: a round whose predecessor is still in review RUNS and
+// appends to that PR, so one review covers several weeks of work instead of one.
+for (const [task, subject] of [[proseToChecks, PROSE_SUBJECT], [revalidation, REVALIDATION_SUBJECT]]) {
+  test(`${task.id}: a pending round never stands this one down`, async () => {
+    const active = { commits: { substantiveChange: true }, issues: { open: [], touched: [] }, conversationLogs: {} };
+    const pending = await verdictFor(task, { ...active, prs: { touched: [], open: [{ number: 42, title: `${subject} (2026-09-01)` }] } });
+    assert.equal(pending.run, true, 'the round runs and joins the open PR');
+    assert.ok(!task.preconditions.some((c) => c.startsWith('no-open-pr-titled:')));
+  });
+
+  // The subject is how a round FINDS the PR to append to, so the doc that tells it
+  // to deliver under that title is the one place it has to be right.
+  test(`${task.id}: the worker doc pins the subject a round delivers under`, () => {
+    assert.ok(workerOf(task).includes(subject), `${task.id}/task.md does not pin its delivery subject`);
+    assert.match(workerOf(task), /If one exists, push this\s+round onto its branch|push this round onto its branch/,
+      `${task.id}/task.md must tell the round to append to the standing PR`);
+  });
+}
+
 test('prose-to-checks-sweep: which pack paths it sweeps is config, read by the worker', () => {
   // Config-shaped scope is not a precondition (task-preconditions DESIGN): the
   // conditions decide run or no-run, and nothing else.
