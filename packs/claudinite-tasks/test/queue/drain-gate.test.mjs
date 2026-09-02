@@ -20,10 +20,7 @@ import { pickableCount } from '../../queue/scheduler-run.mjs';
 
 const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const read = (p) => readFileSync(join(CANON, p), 'utf8');
-const WORKFLOWS = [
-  '.github/workflows/claudinite-scheduler.yml',
-  'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
-];
+import { SCHEDULER_BODIES as WORKFLOWS } from '../workflow-bodies.mjs';
 
 test('the scheduler run writes the pickable verdict, and the drain job gates on it', () => {
   assert.match(read('packs/claudinite-tasks/queue/scheduler-run.mjs'), /pickable=\$\{pickable \? 'true' : 'false'\}/,

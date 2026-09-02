@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SCHEDULER_BODIES, EXECUTOR_BODIES } from '../workflow-bodies.mjs';
 import { SUSPEND_ALL_VAR, isSuspended, readSuspendedNow, suspendedNotice } from '../../queue/suspend.mjs';
 import { HEARTBEAT_MS } from '../../queue/heartbeat.mjs';
 import { EXECUTING_LEASH_MS } from '../../queue/leases.mjs';
@@ -39,12 +40,7 @@ test('a held run says why it did nothing, and how to resume', () => {
 // and does nothing. Both halves are asserted here because the failure mode is
 // silence on either side (#974).
 test('every workflow stamps the hold, and every entry point reads it', () => {
-  for (const wf of [
-    '.github/workflows/claudinite-scheduler.yml',
-    '.github/workflows/claudinite-executor.yml',
-    'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
-    'packs/claudinite-tasks/stubs/claudinite-executor.yml',
-  ]) {
+  for (const wf of [...SCHEDULER_BODIES, ...EXECUTOR_BODIES]) {
     assert.match(read(wf), new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`), wf);
   }
   for (const entry of ['packs/claudinite-tasks/queue/scheduler-run.mjs', 'packs/claudinite-tasks/queue/executor.mjs']) {

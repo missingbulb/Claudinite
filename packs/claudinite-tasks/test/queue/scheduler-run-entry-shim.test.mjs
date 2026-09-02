@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SCHEDULER_BODIES } from '../workflow-bodies.mjs';
 
 const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const read = (p) => readFileSync(join(CANON, p), 'utf8');
@@ -43,7 +44,7 @@ test('the workflow-shape check accepts either entry point', () => {
 // …and the canon's own two copies name the CURRENT one, so the shim is a
 // compatibility path rather than the live wiring.
 test('canon runs the current entry point in both its workflow and the stub it ships', () => {
-  for (const wf of ['.github/workflows/claudinite-scheduler.yml', 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml']) {
+  for (const wf of SCHEDULER_BODIES) {
     assert.match(read(wf), /queue\/scheduler-run\.mjs/, wf);
     assert.doesNotMatch(read(wf), /queue\/tick\.mjs/, wf);
   }

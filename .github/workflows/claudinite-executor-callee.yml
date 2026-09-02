@@ -1,0 +1,75 @@
+# The executor's actual body, hosted here in the canon and called by every
+# member's one-job shim — the companion to claudinite-scheduler-callee.yml, and
+# the same reasoning: the shim is near-immutable, this file is a canon commit.
+# The label trigger's own filter lives here rather than in the shim, so a new
+# ready spelling never costs a fleet-wide human-merged PR.
+name: Claudinite executor (callee)
+
+on:
+  workflow_call:
+    inputs:
+      continuation_depth:
+        description: 'How many dead runs this chain has continued through — set by the continuation job below, never by hand'
+        required: false
+        type: string
+      stub_contract:
+        description: 'Which shim generation called — the one seam the callee interface must stay additive across'
+        required: false
+        type: string
+
+jobs:
+  execute:
+    # A workflow's event trigger names label strings LITERALLY — nothing here
+    # decodes. The legacy `task:ready` stood beside this one while a fielded engine
+    # could still write it; no member stamps such a version any more (#1119).
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || github.event.label.name == 'task:status:waiting-for-executor'
+      || github.event.label.name == 'task:urgent'
+    runs-on: ubuntu-latest
+    # A backstop against a wedged runner, well clear of any declared
+    # `code_work_timeout`; the heartbeat's leash is what bounds real work.
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Pick up and execute ready work
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
+          # Every repository VARIABLE, as one static line (#1492). Unlike the secrets
+          # below this never changes: `vars` is the context GitHub's own docs define as
+          # non-sensitive and render unmasked in logs, so serialising it is not the
+          # exfiltration shape that gets a workflow held for approval (#1336). The
+          # context resolves to the CALLER's variables, so one static line still
+          # delivers each member its own. vars-bag.mjs is the reader.
+          CLAUDINITE_VARS: ${{ toJSON(vars) }}
+          # Every declared task's `required_secrets`, plus the configured endpoint
+          # tokens. Actions requires each secret to be named statically, so this list is
+          # the whole delivery mechanism; a worker then reads process.env.<NAME>. The
+          # shim's `secrets: inherit` hands the caller's own values in, so the list is
+          # the fleet's union and a newly required secret is an ordinary canon commit.
+          FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
+          CCR_ROUTINE_TOKEN: ${{ secrets.CCR_ROUTINE_TOKEN }}
+          CCR_FLEET_ROUTINE_TOKEN: ${{ secrets.CCR_FLEET_ROUTINE_TOKEN }}
+        run: node packs/claudinite-tasks/queue/executor.mjs
+
+  continue-the-chain:
+    needs: execute
+    if: failure() || cancelled()
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Continue the drain, or escalate a chain that keeps dying
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLAUDINITE_CONTINUATION_DEPTH: ${{ inputs.continuation_depth }}
+        run: node packs/claudinite-tasks/queue/executor-continuation.mjs

@@ -37,6 +37,32 @@ test('scheduler-workflow-shape: a conforming workflow yields no findings', () =>
   assert.deepEqual(run({ [WF]: goodWorkflow }), []);
 });
 
+
+// A MEMBER'S SCHEDULER IS A SHIM UNDER #1559's design: the jobs live in a canon-hosted
+// reusable workflow and this file only names it, so there is no `run:` here to find the
+// vendored entry in. Everything else the rule asks for is read from nowhere else and stays.
+const shimWorkflow = `name: Claudinite scheduler
+on:
+  schedule:
+    - cron: '25 4,16 * * *'
+  workflow_dispatch:
+concurrency:
+  group: claudinite-scheduler
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+jobs:
+  scheduler:
+    uses: missingbulb/Claudinite/.github/workflows/claudinite-scheduler-callee.yml@fleet-current
+    secrets: inherit
+`;
+
+test('scheduler-workflow-shape: a shim calling the canon-hosted body yields no findings', () => {
+  assert.deepEqual(run({ [WF]: shimWorkflow }), []);
+});
+
 test('scheduler-workflow-shape: is inert when the scheduler workflow is absent', () => {
   assert.deepEqual(run({ '.github/workflows/ci.yml': 'name: CI\non: push\n' }), []);
 });
@@ -106,5 +132,5 @@ jobs:
   const whats = run({ [WF]: stripped }).map((x) => x.what).join(' | ');
   assert.match(whats, /no workflow_dispatch/);
   assert.match(whats, /no concurrency group/);
-  assert.match(whats, /does not run the vendored scheduler entry/);
+  assert.match(whats, /neither runs the vendored scheduler entry nor calls the canon-hosted scheduler body/);
 });

@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EXECUTOR_BODIES } from '../workflow-bodies.mjs';
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
   LEGACY_BLOCKED, LEGACY_READY, LEGACY_EXECUTING, LEGACY_AGENT,
@@ -176,7 +177,7 @@ test('the ensure-list carries every canonical status and origin, ahead of any wr
 // copies: the stub every member is given, and the canon's own hand-maintained copy,
 // which no converge writes.
 test('the executor triggers on the ready spelling the engine writes, and on no other', () => {
-  for (const path of ['packs/claudinite-tasks/stubs/claudinite-executor.yml', '.github/workflows/claudinite-executor.yml']) {
+  for (const path of EXECUTOR_BODIES) {
     const yml = readFileSync(path, 'utf8');
     for (const spelling of [STATUS_READY, 'task:urgent']) {
       assert.ok(yml.includes(`github.event.label.name == '${spelling}'`), `${path} must trigger on ${spelling}`);

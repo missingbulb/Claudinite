@@ -77,18 +77,18 @@
                 "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill (moved with that skill into the claudinite-lifecycle pack, #835)"
               },
               {
-          "path": ".github/workflows/claudinite-scheduler.yml",
+          "path": ".github/workflows/claudinite-scheduler-callee.yml",
           "to": [
             "packs/claudinite-tasks"
           ],
-          "reason": "inherent(#1317): a member's scheduler workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the run — the pack boundary is what the workflow points across"
+          "reason": "inherent(#1317, #1599): the scheduler's body is hosted in the core .github/ tree because that is the only place GitHub reads a reusable workflow from, so its `run:` line names the mount path of the pack that owns the run — the pack boundary is what the workflow points across"
         },
         {
-          "path": ".github/workflows/claudinite-executor.yml",
+          "path": ".github/workflows/claudinite-executor-callee.yml",
           "to": [
             "packs/claudinite-tasks"
           ],
-          "reason": "inherent(#1317): a member's executor workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the executor"
+          "reason": "inherent(#1317, #1599): the executor's body is hosted in the core .github/ tree because that is the only place GitHub reads a reusable workflow from, so its `run:` line names the mount path of the pack that owns the executor"
         },
         "engine/migrations",
               {

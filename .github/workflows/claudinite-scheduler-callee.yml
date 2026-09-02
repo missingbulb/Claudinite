@@ -1,0 +1,78 @@
+# The scheduler's actual body, hosted here in the canon and called by every
+# member's one-job shim. `.github/workflows/` is the one path a converge cannot
+# push into, so a member's copy moves only through a human-merged PR — but the
+# shim it holds names this file, and this file is an ordinary canon commit. Every
+# decision below still lives in the engine modules the `run:` lines name.
+#
+# `github.repository`, `github.ref` and the `vars`/`secrets` contexts here are the
+# CALLER's, so a checkout gets the member's tree, not this one.
+name: Claudinite scheduler (callee)
+
+on:
+  workflow_call:
+    inputs:
+      wake:
+        description: 'Task ids to run now (`pack/task` or a bare task name, space-separated) — wakes each one’s standing item regardless of its anchor'
+        required: false
+        type: string
+      stub_contract:
+        description: 'Which shim generation called — the one seam the callee interface must stay additive across'
+        required: false
+        type: string
+
+jobs:
+  scheduler-run:
+    runs-on: ubuntu-latest
+    outputs:
+      pickable: ${{ steps.run.outputs.pickable }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Instantiate, ready and reclaim work items
+        id: run
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLAUDINITE_WAKE: ${{ inputs.wake }}
+          CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
+        run: node packs/claudinite-tasks/queue/scheduler-run.mjs
+
+  drain:
+    needs: scheduler-run
+    # An older member workflow maps no such output, and an empty string is not
+    # 'true' — so a stale copy keeps dispatching, the previous behavior and safe.
+    if: needs.scheduler-run.outputs.pickable == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Start an executor for what this run readied
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node packs/claudinite-tasks/queue/drain-dispatch.mjs
+
+  report-failure:
+    needs: [scheduler-run, drain]
+    # Explicit results rather than `failure()`: `drain` is skipped on a quiet
+    # tick, and a bare status function makes this job's fate turn on how the
+    # platform propagates a skipped dependency.
+    if: >-
+      always()
+      && (needs.scheduler-run.result == 'failure' || needs.drain.result == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Escalate the failed run to a human-visible issue
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node packs/claudinite-tasks/queue/workflow-failure.mjs

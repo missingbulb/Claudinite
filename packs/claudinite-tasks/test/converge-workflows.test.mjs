@@ -9,10 +9,31 @@ import {
   SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW,
 } from '../converge-workflows.mjs';
 import { hashedCron } from '../hash-minute.mjs';
+import { SCHEDULER_BODIES, EXECUTOR_BODIES } from './workflow-bodies.mjs';
 
 const mkRepo = () => mkdtempSync(join(tmpdir(), 'claudinite-workflows-'));
 const CANON_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const REPO = 'missingbulb/GoogleCalendarEventCreator';
+// The canon's own copy of each workflow is TWO files since #1599 — the shim in
+// `.github/workflows/` and the body it calls — where a member still holds one. So
+// reassemble the canon's equivalent single workflow before comparing: the shim's
+// header (the triggers, ceiling and concurrency GitHub reads from nowhere else)
+// followed by the callee's jobs.
+const canonWorkflow = (half) => {
+  const shim = readFileSync(join(CANON_ROOT, `.github/workflows/claudinite-${half}.yml`), 'utf8');
+  const callee = readFileSync(join(CANON_ROOT, half === 'scheduler' ? SCHEDULER_BODIES[0] : EXECUTOR_BODIES[0]), 'utf8');
+  return shim.slice(0, shim.indexOf('\njobs:') + 1) + callee.slice(callee.indexOf('\njobs:') + 1);
+};
+
+// Compare the STRUCTURE, whole — a test that compares only the lines someone came
+// for walks straight past the drift it exists to catch (#535: `actions: read` here
+// against `write` in the stub, ten days of a stranded PR).
+const structure = (text) => text
+  .split('\n')
+  .filter((l) => !l.trim().startsWith('#') && l.trim() !== '')
+  .map((l) => l.replace('.claudinite/shared/packs/', 'packs/').replace(/cron: '[^']*'/, "cron: 'RESOLVED'"))
+  .filter((l) => !/_TOKEN:/.test(l));
+
 const STUB = "name: Claudinite scheduler\non:\n  schedule:\n    - cron: '10 * * * *'\n  workflow_dispatch:\n";
 
 const SCHEDULER_STUB = "name: Claudinite scheduler\non:\n  schedule:\n    - cron: '10 * * * *'\n  workflow_dispatch:\n"
@@ -61,19 +82,13 @@ test('convergeSchedulerWorkflow: both cron hours come from the repo\'s own daily
 // so compare the STRUCTURE, whole.
 test("the canon's own scheduler run workflow has not drifted from the stub it ships", () => {
   const stub = readFileSync(join(CANON_ROOT, 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml'), 'utf8');
-  const mine = readFileSync(join(CANON_ROOT, '.github/workflows/claudinite-scheduler.yml'), 'utf8');
   // The three documented differences, and no others: the canon runs its own
   // task modules at the repo root, carries its own resolved cron, and names its own
   // secrets where a member's converge would stamp them. The WHOLE cron expression is
   // repo-resolved now — the minute is hashed from the name and both hours come from the repo's
   // `taskScheduler.dailyHour` (DESIGN §17) — so structure-compare masks all of it, and the
   // assertion below pins the canon's own value to what the engine would compute.
-  const structure = (text) => text
-    .split('\n')
-    .filter((l) => !l.trim().startsWith('#') && l.trim() !== '')
-    .map((l) => l.replace('.claudinite/shared/packs/', 'packs/').replace(/cron: '[^']*'/, "cron: 'RESOLVED'"))
-    .filter((l) => !/_TOKEN:/.test(l));
-  assert.deepEqual(structure(mine), structure(stub));
+  assert.deepEqual(structure(canonWorkflow('scheduler')), structure(stub));
 });
 
 
@@ -90,14 +105,28 @@ test("the canon's own cron is what the engine computes for it", () => {
 
 test("the canon's own executor workflow has not drifted from the stub it ships", () => {
   const stub = readFileSync(join(CANON_ROOT, 'packs/claudinite-tasks/stubs/claudinite-executor.yml'), 'utf8');
-  const mine = readFileSync(join(CANON_ROOT, '.github/workflows/claudinite-executor.yml'), 'utf8');
-  const structure = (text) => text
-    .split('\n')
-    .filter((l) => !l.trim().startsWith('#') && l.trim() !== '')
-    .map((l) => l.replace('.claudinite/shared/packs/', 'packs/'))
-    .filter((l) => !/_TOKEN:/.test(l));
-  assert.deepEqual(structure(mine), structure(stub));
+  assert.deepEqual(structure(canonWorkflow('executor')), structure(stub));
 });
+
+
+// THE SHIM IS THE WHOLE POINT (#1599). Reassembling the canon's two halves above
+// proves they still say what a member's single file says — but it would say the
+// same of a canon that had quietly gone back to one fat workflow, since a stub
+// pasted into `.github/workflows/` reassembles to itself. So pin the split: the
+// file a converge cannot write holds no `run:` at all, and its one job is a call
+// to the canon-hosted body with the caller's secrets forwarded.
+test("the canon's own workflows are shims over canon-hosted bodies", () => {
+  for (const [half, callee] of [['scheduler', SCHEDULER_BODIES[0]], ['executor', EXECUTOR_BODIES[0]]]) {
+    const shim = readFileSync(join(CANON_ROOT, `.github/workflows/claudinite-${half}.yml`), 'utf8');
+    assert.doesNotMatch(shim, /^\s*-?\s*run:/m, `the ${half} shim carries a step of its own`);
+    assert.match(shim, new RegExp(`uses: missingbulb/Claudinite/${callee.replace(/[./]/g, '\\$&')}@`),
+      `the ${half} shim does not call its canon-hosted body`);
+    assert.match(shim, /^\s*secrets: inherit$/m, `the ${half} shim does not forward the caller's secrets`);
+    assert.match(readFileSync(join(CANON_ROOT, callee), 'utf8'), /^\s*workflow_call:$/m,
+      `${callee} is not callable`);
+  }
+});
+
 
 // --- the README pack-badge row ---------------------------------------------
 // Adoption seeds the row into a repo's README and nothing maintains it after, so
