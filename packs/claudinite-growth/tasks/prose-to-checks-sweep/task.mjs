@@ -24,9 +24,11 @@ export default {
   // no new prose is written where nothing happens, and the first active window
   // resumes the sweep. Which pack paths it sweeps is task.md's.
   //
-  // Never narrow `repo-active` to a movement gate: the backlog is standing, so the
-  // sweep would halt half-converted the week prose stops changing.
-  preconditions: ['repo-active', 'no-open-pr-titled:Claudinite growth: prose to checks'],
+  // Never narrow this to a movement gate: the backlog is standing, so the sweep
+  // would halt half-converted the week prose stops changing. And never gate on the
+  // previous round still being open — the round runs and appends to that PR, which
+  // is what makes one review cover several weeks of conversions.
+  preconditions: ['repo-active'],
   agent_model: 'opus',                   // judging convertibility and authoring checks + fixtures is heavy judgment
   expected_outcome: 'pr',
   // A conversion removes the prose line and writes the check that replaces it —

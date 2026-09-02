@@ -20,9 +20,11 @@ export default {
   // on them: the sweep sleeps while it is silent and resumes on the first active
   // window. Which pack paths it revalidates is task.md's.
   //
-  // Never narrow `repo-active` to a movement gate: the repo does not move when its
-  // claims expire, so movement is exactly the wrong evidence.
-  preconditions: ['repo-active', 'no-open-pr-titled:Claudinite growth: rule revalidation'],
+  // Never narrow this to a movement gate: the repo does not move when its claims
+  // expire, so movement is exactly the wrong evidence. And never gate on the
+  // previous round still being open — the round runs and appends to that PR, which
+  // is what makes one review cover several weeks of corrections.
+  preconditions: ['repo-active'],
   agent_model: 'opus',                   // designing a safe probe per claim, and reading a null result correctly, is heavy judgment
   expected_outcome: 'pr',
   automerge: ['claudinite-local-pack-md-changes'], // rewrites confined to the repo's own local-pack prose land themselves; anything wider parks

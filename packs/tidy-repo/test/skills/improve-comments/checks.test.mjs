@@ -117,15 +117,20 @@ test('an ordinary branch is not this rule\'s business, and neither is the defaul
   } finally { cleanup(onMain); }
 });
 
-test('the title the gate keys on is the one the task and its doc pin', () => {
-  // The gate's whole relevance is this subject; a rename in one place and not the
-  // others silently retires the guarantee rather than failing. The declaration's
-  // own copy of it is the pending-round condition, which recognises the previous
-  // round by exactly the title this run commits under.
+test('the title the scope gate keys on is the one the worker doc pins', () => {
+  // The gate's whole relevance is this subject, and a rename in one place and not
+  // the other silently retires the guarantee rather than failing. The doc is the
+  // other place now: a round finds the standing PR by this title and appends to it,
+  // so the title is what makes several weeks of comment work one review.
   assert.ok(scope.run !== undefined);
   assert.equal(task.id, 'improve-comments');
-  assert.ok(task.preconditions.includes(`no-open-pr-titled:${RUN.split('\n')[0]}`),
-    'the previous round\'s open PR is what gates a second sweep, recognised by this exact title');
+  const subject = RUN.split('\n')[0];
+  assert.ok(readFileSync(new URL(`../../../tasks/improve-comments/${task.agent_instructions}`, import.meta.url), 'utf8').includes(subject),
+    'the worker doc must pin the same subject the scope gate keys on');
+  // …and never as a precondition: the round runs and joins the open PR rather than
+  // standing down while it waits for review.
+  assert.ok(!task.preconditions.some((c) => c.startsWith('no-open-pr-titled:')),
+    'a pending round must not gate this task');
 });
 
 // `.claudinite/` is the mount, not the repo's own source. The vendored `shared/`

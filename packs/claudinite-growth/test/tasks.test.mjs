@@ -42,7 +42,7 @@ test('prose-to-checks-sweep: weekly/opus/pr+nothing, no signals', () => {
   assert.equal(proseToChecks.frequency, 'weekly');
   assert.equal(proseToChecks.agent_model, 'opus');
   assert.equal(proseToChecks.expected_outcome, 'pr'); // a check can break CI → its policy is review-only
-  assert.deepEqual(proseToChecks.preconditions, ['repo-active', `no-open-pr-titled:${PROSE_SUBJECT}`]);
+  assert.deepEqual(proseToChecks.preconditions, ['repo-active']);
 });
 
 test('prose-to-checks-sweep: sleeps on a silent repo and resumes on the first active window', async () => {
@@ -61,44 +61,29 @@ test('prose-to-checks-sweep: sleeps on a silent repo and resumes on the first ac
   assert.equal(active.run, true);
 });
 
-// THE PINNED SUBJECTS the two stacking guards key on. Held here rather than read
-// out of either declaration so the tests below can disagree with the code: a
-// subject the gate names but the worker never writes is the failure the pairing
-// test exists to catch.
+// THE PINNED SUBJECTS each round delivers under. Held here rather than read out of
+// either declaration so the tests below can disagree with the code.
 const PROSE_SUBJECT = 'Claudinite growth: prose to checks';
 const REVALIDATION_SUBJECT = 'Claudinite growth: rule revalidation';
 
 // Both tasks work a STANDING backlog, so neither can be gated on movement — the
 // sweep would halt with the backlog half-worked the moment prose stopped changing.
-// What they can be gated on is their own previous round: an opus session that
-// re-derives a backlog whose conversions are already sitting in an unreviewed PR
-// is the one weekly run that buys nothing.
+// Nor on the previous round: a round whose predecessor is still in review RUNS and
+// appends to that PR, so one review covers several weeks of work instead of one.
 for (const [task, subject] of [[proseToChecks, PROSE_SUBJECT], [revalidation, REVALIDATION_SUBJECT]]) {
-  test(`${task.id}: the previous round still open declines this one`, async () => {
+  test(`${task.id}: a pending round never stands this one down`, async () => {
     const active = { commits: { substantiveChange: true }, issues: { open: [], touched: [] }, conversationLogs: {} };
-
     const pending = await verdictFor(task, { ...active, prs: { touched: [], open: [{ number: 42, title: `${subject} (2026-09-01)` }] } });
-    assert.equal(pending.run, false);
-    assert.match(pending.reason, /previous round, still open/);
-
-    // It resumes the moment that PR lands — never starving the backlog.
-    const landed = await verdictFor(task, { ...active, prs: { touched: [], open: [] } });
-    assert.equal(landed.run, true);
-
-    // Someone else's open PR is not this pass's round.
-    const unrelated = await verdictFor(task, { ...active, prs: { touched: [], open: [{ number: 43, title: 'Fix the parser' }] } });
-    assert.equal(unrelated.run, true);
+    assert.equal(pending.run, true, 'the round runs and joins the open PR');
+    assert.ok(!task.preconditions.some((c) => c.startsWith('no-open-pr-titled:')));
   });
 
-  // The gate keys on the subject the worker is told to write. A declaration that
-  // names one subject while task.md pins another is a guard that never fires and
-  // nothing else would go red.
-  test(`${task.id}: the gate's subject is the one task.md pins`, () => {
-    assert.ok(
-      task.preconditions.includes(`no-open-pr-titled:${subject}`),
-      `${task.id}'s declaration does not gate on the pinned subject`,
-    );
-    assert.ok(workerOf(task).includes(subject), `${task.id}/task.md does not pin the subject its gate keys on`);
+  // The subject is how a round FINDS the PR to append to, so the doc that tells it
+  // to deliver under that title is the one place it has to be right.
+  test(`${task.id}: the worker doc pins the subject a round delivers under`, () => {
+    assert.ok(workerOf(task).includes(subject), `${task.id}/task.md does not pin its delivery subject`);
+    assert.match(workerOf(task), /If one exists, push this\s+round onto its branch|push this round onto its branch/,
+      `${task.id}/task.md must tell the round to append to the standing PR`);
   });
 }
 
@@ -122,7 +107,7 @@ test('rule-revalidation: weekly/opus/pr+nothing, no signals (the calendar is the
   assert.equal(revalidation.expected_outcome, 'pr');
   // Deliberately signal-less: the repo does NOT move when its claims expire, so a
   // signal arm would gate this task on exactly the wrong evidence.
-  assert.deepEqual(revalidation.preconditions, ['repo-active', `no-open-pr-titled:${REVALIDATION_SUBJECT}`]);
+  assert.deepEqual(revalidation.preconditions, ['repo-active']);
 });
 
 test('rule-revalidation: shares prose-to-checks-sweep pack_paths, and the worker is what reads it', () => {
