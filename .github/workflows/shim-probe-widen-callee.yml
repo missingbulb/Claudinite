@@ -1,0 +1,23 @@
+# Temporary probe (design verification for docs/update-flow/DESIGN.md): a job in
+# a cross-repo reusable workflow requesting scopes the caller's ceiling does not
+# hold. Removed once the run is recorded.
+name: shim-probe-widen-callee
+
+on:
+  workflow_call:
+    inputs:
+      args:
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  widen:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - run: |
+          echo "CALLEE_MARKER=permissions-probe-v1"
+          echo "job=widen repo=$GITHUB_REPOSITORY ref=$GITHUB_REF"
