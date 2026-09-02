@@ -447,3 +447,32 @@ test('every module the workflow stubs name is in the vendor set', async () => {
     }
   }
 });
+
+// A pack's `references.md` is the rationale behind its rules — what a canon
+// revalidation pass reaffirms them against, and what nothing in a member's
+// session reads. Asserted over the REAL corpus as well as a fixture: the second
+// half pins the scope, so a corpus that stopped writing references docs can
+// never read as "the exclusion works".
+test('a pack\'s references.md stays canon-side — over the real corpus, not a fixture', async () => {
+  const { computeVendorSet } = await import(pathToFileURL(join(MOUNT_DIR, 'compute-vendor-set.mjs')));
+  const { loadPacks } = await import(pathToFileURL(join(REPO_ROOT, 'engine/pack_loader/pack-registry.mjs')));
+  const ids = (await loadPacks()).map((p) => p.id);
+  const { files, errors } = await computeVendorSet(ids, { today: '2026-01-01' });
+  assert.deepEqual(errors, []);
+  assert.deepEqual(files.filter((f) => f.endsWith('/references.md')), []);
+
+  const docs = execFileSync('git', ['ls-files', ':(glob)packs/*/references.md'], { cwd: REPO_ROOT, encoding: 'utf8' })
+    .split('\n').filter(Boolean);
+  assert.ok(docs.length > 5, `only ${docs.length} pack references docs tracked — this assertion has lost its subject`);
+});
+
+// The exclusion is the convention's location, not the name anywhere: a skill is
+// free to ship a payload doc of that name, and it rides the pack walk like every
+// other skill file.
+test('references.md below the pack root is payload and still vendors', async () => {
+  const root = makeCanon({ packs: [{ id: 'alpha', version: 4, skills: ['s1'], extraFiles: ['references.md', 'skills/s1/references.md'] }] });
+  const { files, errors } = await vendorAt(root, ['alpha']);
+  assert.deepEqual(errors, []);
+  assert.ok(!files.includes('packs/alpha/references.md'));
+  assert.ok(files.includes('packs/alpha/skills/s1/references.md'));
+});

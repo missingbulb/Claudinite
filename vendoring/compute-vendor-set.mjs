@@ -47,6 +47,16 @@ export const TEST_DIR = 'test';
 export const UPDATES_DIR = 'updates';
 const isTest = (name) => name.endsWith('.test.mjs');
 
+// A pack's rationale doc (the writing-pack-prose convention) records WHY each rule
+// and check exists and what would retire it — the evidence a canon revalidation pass
+// reaffirms them against, read in the repo that OWNS the pack. A member that merely
+// mounts the pack never reads it: `references-integrity` scans the repo's own packs
+// and never the vendored mount, and `rule-revalidation` scopes to the repo's own
+// packs too. So it is maintainer reference like an engine doc, and stays canon-side.
+// The convention puts one beside the pack's RULES.md, and that pack-root position is
+// the rule — a skill below it is free to ship a payload doc of the same name.
+export const REFERENCES_DOC = 'references.md';
+
 // THE TASK SURFACE IS A PACK, and a pack's own .md files are payload rather than
 // maintainer reference, so the operational documents a consumer session reads out of
 // its own mount at runtime — the executor's instructions, the work-item session's
@@ -90,7 +100,7 @@ const TASKS_SUBDIR = 'tasks';
 const isRecordDir = (name) => /^\d{4}-\d{2}-\d{2}-/.test(name);
 const isRecordOfFlow = (relDir, name) => relDir.endsWith(`/${MIGRATIONS_SUBDIR}`) && isRecordDir(name);
 
-function walk(relDir, files, errors, { engine = false, today, installed = null, tasks = true } = {}) {
+function walk(relDir, files, errors, { engine = false, today, installed = null, tasks = true, packRoot = null } = {}) {
   let entries;
   try {
     entries = readdirSync(join(canonRoot, relDir), { withFileTypes: true });
@@ -107,13 +117,14 @@ function walk(relDir, files, errors, { engine = false, today, installed = null, 
       if (!tasks && entry.name === TASKS_SUBDIR) continue;
       const rel = `${relDir}/${entry.name}`;
       if (isRecordOfFlow(relDir, entry.name) && !migrationApplies(rel, { installed, today })) continue;
-      walk(rel, files, errors, { engine, today, installed, tasks });
+      walk(rel, files, errors, { engine, today, installed, tasks, packRoot });
     } else if (!isTest(entry.name)) {
       const rel = `${relDir}/${entry.name}`;
       // engine .md is canon-maintainer reference and is dropped; the operational
       // documents a consumer reads from its own mount are the tasks pack's, and ride
       // the pack walk.
       if (engine && entry.name.endsWith('.md')) continue;
+      if (relDir === packRoot && entry.name === REFERENCES_DOC) continue;
       files.add(rel);
     }
   }
@@ -155,7 +166,7 @@ export async function computeVendorSet(declaredEntries, { today, installed = nul
 
   for (const root of ENGINE_DIR_ROOTS) walk(root, files, errors, { engine: true, today, installed });
 
-  for (const id of ids) walk(`packs/${id}`, files, errors, { today, installed, tasks });
+  for (const id of ids) walk(`packs/${id}`, files, errors, { today, installed, tasks, packRoot: `packs/${id}` });
 
   // Coherence guard: the set must be import-closed — every relative import in
   // every .mjs it carries resolves to a file it also carries. Structural
