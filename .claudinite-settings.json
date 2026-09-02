@@ -3,6 +3,7 @@
     "claudinite-lifecycle",
     "claudinite-tasks",
     "basics",
+    "git-github",
     {
       "id": "claudinite-growth",
       "config": {

@@ -51,3 +51,16 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   text, cut when `verify-in-production` was split out of this skill (`8da4c916`). Reaffirm
   while `capture-log.mjs` reads the session transcript and `growth-extract` owns the
   conversation half; retire if capture stops needing a live session.
+- **(gha-stub-scope-1)** The `gha/*` checks scan `packs/<pack>/stubs/workflows/` as well as
+  `.github/workflows/`, because a stub becomes a real workflow in every repo that adopts its
+  pack — a defect there ships fleet-wide and was, until #1596, visible in no repo until after
+  seeding. That is not a hypothetical: `claudinite-dashboard`'s Pages stub carried a piped
+  `run:` with no bash default through several versions, and only surfaced when a member
+  re-seeded it (#1595). Two checks deliberately stay `.github/workflows/`-only, and the
+  distinction is whose fact the rule asserts: `gha/no-scheduled-fleet-executor` asks who owns
+  the one cron a repo is permitted, and `gha/scheduled-failure-escalation` asks whether anyone
+  watches a scheduled run — both properties of an adopting repo, unanswerable about a fragment,
+  and both fire falsely on `chrome-extension`'s release orchestrator, whose daily cron is its
+  design and whose escalation lives in the reusable workflows it calls. Reaffirm whenever a
+  `gha/*` check is added: widen it to stubs unless its premise is about the repo rather than
+  the file. Retire the split if stubs stop being copied verbatim into members.
