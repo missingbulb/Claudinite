@@ -58,6 +58,13 @@ concurrency:
   group: claudinite-dashboard-pages
   cancel-in-progress: true
 
+# GitHub's implicit run shell is `bash -e` WITHOUT pipefail, so a failing command
+# feeding a pipe leaves the step green. The cache key below pipes, and a key computed
+# from a half-failed pipeline is a key that silently matches the wrong build.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     runs-on: ubuntu-latest
