@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseLogName, parseEntries, USAGE_PATH,
-  parseCommitLog, dayFieldsFrom, dayLadder,
+  parseCommitLog, dayFieldsFrom, dayLadder, deepenHistory,
 } from '../../../tasks/usage-fold/worker.mjs';
 import { parseLogFilename, logFilename } from '../../../../claudinite-growth/capture-log.mjs';
 
@@ -90,4 +90,31 @@ test('dayFieldsFrom writes nothing at all when neither source could be read', ()
 test('dayLadder is a UTC ladder ending today', () => {
   const ladder = dayLadder('2026-08-21T11:00:00Z', 3);
   assert.deepEqual(ladder, ['2026-08-19', '2026-08-20', '2026-08-21']);
+});
+
+// --- the deepen that makes the line series answerable at all ----------------------
+
+test('deepenHistory fetches the window on a shallow checkout — the normal Actions case', () => {
+  const calls = [];
+  const git = (root, args) => { calls.push(args); return args[0] === 'rev-parse' ? 'true\n' : ''; };
+  assert.equal(deepenHistory(git, '/r', 'https://x/y', 'main', '2026-07-22T00:00:00Z'), 'deepened');
+  assert.deepEqual(calls[1], ['fetch', '--quiet', '--shallow-since=2026-07-22T00:00:00Z', 'https://x/y', 'main']);
+});
+
+test('deepenHistory leaves a COMPLETE clone alone — the same flag would truncate it', () => {
+  const calls = [];
+  const git = (root, args) => { calls.push(args); return 'false\n'; };
+  assert.equal(deepenHistory(git, '/r', 'https://x/y', 'main', '2026-07-22T00:00:00Z'), 'complete');
+  assert.equal(calls.length, 1, 'it asks, and then does nothing at all');
+});
+
+test('a deepen that could not run says so, rather than passing for one that did', () => {
+  // The series still reads whatever history is there and `coveredFrom` still states
+  // where it starts — but a run where the deepen never engaged must not read in the
+  // log like one where it did.
+  const git = (root, args) => {
+    if (args[0] === 'rev-parse') return 'true\n';
+    throw new Error('the server will not deepen');
+  };
+  assert.equal(deepenHistory(git, '/r', 'https://x/y', 'main', '2026-07-22T00:00:00Z'), 'unchanged');
 });

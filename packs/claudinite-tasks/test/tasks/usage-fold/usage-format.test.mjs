@@ -47,12 +47,15 @@ test('a row decodes against the FILE\'s declared vocabulary, not this code\'s', 
 });
 
 test('a whole file round-trips, and version 1 decodes as itself', () => {
-  const groups = { checks: {}, checkFindings: {}, tasks: {}, taskExec: {}, queue: {} };
+  // Every sub-map, empty — derived from the vocabulary so a newly appended counter
+  // group is covered by this round-trip the day it exists.
+  const groups = { ruleTokensByPack: {}, ...Object.fromEntries(COUNTER_GROUPS.map((g) => [g, {}])) };
   const named = {
     generated: '2026-07-27T04:00:00Z',
     foldedThrough: '2026-07-26',
     runsFoldedThrough: '2026-07-26T03:00:00Z',
     queueFoldedThrough: '2026-07-26T02:00:00Z',
+    prsFoldedThrough: '2026-07-26T01:00:00Z',
     hours: { '2026-07-26T03': { scheduler: 2, executor: 1, agentic: 1, failed: 0, taskExec: {} } },
     days: { '2026-07-26': { captures: 2, merges: 2, sessions: 1, userMessages: 9, userCommands: 0, skillLoads: { s: 1 }, ...groups } },
     weeks: { '2026-W30': { days: 1, captures: 2, merges: 2, sessionDays: 1, userMessages: 9, userCommands: 0, skillLoads: { s: 1 }, ...groups } },
