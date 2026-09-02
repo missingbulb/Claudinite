@@ -353,7 +353,7 @@ async function executeItem({
   // it: a request item's verdict is about the issue it names, which no signal bundle
   // can single out on its own (DESIGN §16.4).
   const signals = await collectSignalsFor(task, at, item);
-  const verdict = evaluatePrecondition(task, signals, config.packConfig?.[task.pack] ?? {}, fields);
+  const verdict = evaluatePrecondition(task, signals, config.packConfig?.[task.pack] ?? {}, fields, at);
 
   // A PRECONDITION THAT COULD NOT ANSWER IS A RUN FAILURE, NOT A VERDICT (F27). A
   // decline is a decision about the world; one taken on an API that would not answer
@@ -497,7 +497,7 @@ async function executeItem({
 // task's bad verdict is that item's problem, never the executor's. The expression
 // path has no such fallback and needs none — it fails LOUD by construction, and
 // an `{ error }` from it is a run failure the caller parks.
-export function evaluatePrecondition(task, signals, packConfig = {}, item = null) {
+export function evaluatePrecondition(task, signals, packConfig = {}, item = null, at = null) {
   if (task.decl.preconditions !== undefined) {
     return evaluatePreconditions({
       preconditions: task.decl.preconditions,
@@ -506,6 +506,10 @@ export function evaluatePrecondition(task, signals, packConfig = {}, item = null
       item,
       terms: task.terms,
       windowDays: windowDays(task),
+      // The instant this verdict is for — the same one the signals were collected
+      // for, so a clock-reading term and a windowed one cannot disagree about when
+      // "now" is.
+      now: at,
     });
   }
   try {
