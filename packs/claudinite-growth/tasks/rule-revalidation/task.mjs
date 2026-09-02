@@ -20,11 +20,8 @@ export default {
   // on them: the sweep sleeps while it is silent and resumes on the first active
   // window. Which pack paths it revalidates is task.md's.
   //
-  // Nothing narrower than that floor exists: the repo does not move when its claims
-  // expire, so any movement gate would read exactly the wrong evidence. The second
-  // condition is not about movement — it stops an opus round re-probing claims whose
-  // corrections are already in a PR awaiting review. The subject is the one task.md
-  // pins, which is also why the previous round is recognisable from its PR alone.
+  // Never narrow `repo-active` to a movement gate: the repo does not move when its
+  // claims expire, so movement is exactly the wrong evidence.
   preconditions: ['repo-active', 'no-open-pr-titled:Claudinite growth: rule revalidation'],
   agent_model: 'opus',                   // designing a safe probe per claim, and reading a null result correctly, is heavy judgment
   expected_outcome: 'pr',
