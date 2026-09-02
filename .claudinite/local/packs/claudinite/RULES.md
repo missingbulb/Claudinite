@@ -2,6 +2,12 @@ Below are rules on how to work on this repo.
 
 ## Standing owner decisions — settled, do not re-litigate
 
+- **Wanting a member to run workflow logic hosted in the canon** — never. A member runs what has
+  been vendored into it and nothing else, so no member file may `uses:` a reusable workflow or an
+  action resolved from this repo at a ref. `.github/workflows/` being unpushable by an Actions
+  `GITHUB_TOKEN` is not a reason to reach for it; the immutable-member-file problem gets an answer
+  that keeps the canon out of the member's runtime path. (68)
+
 - **Wanting a rule about what the `packs/` tree may reference** — declare and configure the
   `barriers` pack, extending it generically if a capability is missing. Never standalone
   segregation-checking code.

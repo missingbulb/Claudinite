@@ -217,3 +217,8 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   full rebase, a discarded CI run and a fresh wait — paid twice in one evening.
 - **(RULES-67)** #922: a stale tracking ref makes git count the pre-squash commits as unpushed,
   so the next push is rejected and the stop hook reports local work that does not exist.
+- **(RULES-68)** #1600: the workflow-shim inversion designed in #1559 was tried on the canon's
+  own scheduler and executor and ruled out by the owner — a member shim naming a canon-hosted
+  reusable workflow puts this repo's code in every member's runtime path on every tick, which
+  is not what a package manager does. Retire the rule only if members stop running vendored
+  copies at all.
