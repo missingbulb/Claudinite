@@ -9,8 +9,9 @@ the nightly runs on `GITHUB_TOKEN` alone, and no per-member credential exists an
 flow is entirely deterministic — no model runs anywhere in it; judgment reaches members through
 three lanes outside it (standing check findings, enforcer-placed repo tasks, and a
 Shepherd-guided supervised process for fleet-wide breaking changes). There are no one-shot
-migration records, no staging areas, no per-pack versions: the unit of delivery is the whole
-snapshot.
+migration records, no staging areas, no version numbers anywhere in delivery: the unit of
+delivery is the whole snapshot, and a snapshot sha — or a tag naming one — is the only identity
+anything reads, a member's pin included.
 
 ## One qualified snapshot: `fleet-current`
 
@@ -41,8 +42,10 @@ member's full canon-derived state.
 2. The **workflow shims** under `.github/workflows/`: the scheduler shim, the executor shim,
    and one shim per declared pack's member-triggered workflow (release pipelines). Each is a
    near-permanent file — its triggers (the scheduler's hashed cron minute is the one
-   member-varying byte), a fixed `permissions:` ceiling, one `uses:` line naming a canon-hosted
-   reusable workflow at `fleet-current`, `secrets: inherit`, and an opaque `args` passthrough
+   member-varying byte), a fixed `permissions:` ceiling (per shim: the union of scopes any job
+   of its callee holds — the scheduler's and executor's four, a Pages-deploying release shim's
+   `pages` and `id-token`), one `uses:` line naming a canon-hosted reusable workflow at
+   `fleet-current`, `secrets: inherit`, and an opaque `args` passthrough
    for dispatch inputs so the dispatch schema never changes again. Everything that varies —
    job bodies, statically-named secrets (the fleet union, named in the canon-side callee; an
    unset name arrives empty and is probed, below), `${{ toJSON(vars) }}` reads, step logic —
@@ -79,7 +82,10 @@ that root is wholesale canon-owned.)
    install, an in-session `adopt-pack`, or the enforcer-placed adopt task (below) — so the
    converge neither adds nor removes a pack entry and an owner's removal is durable, never
    relitigated. A declared pack id the rename map cannot resolve is skipped and reported, never
-   dropped, never fatal. Edits are anchored-text, never a re-serialize. A missing or unparsable
+   dropped, never fatal. A pack owns the rules for its own config subtree — exported from its
+   manifest, composed into the engine's — so a pack that changes its own contract ships the
+   rule with the change, retired by the same condition. Edits are anchored-text, never a
+   re-serialize. A missing or unparsable
    declaration on a stamped member is a needs-human state and no convergence — least of all a
    destructive one — runs against it: that shape is evidence of damage, not a pack-less member.
 5. `.claude/settings.json` hook wiring: set-union — add missing required hooks, never remove or
@@ -99,13 +105,29 @@ build config, local packs, README content, the one-time install seeds, console s
 the build-safety guarantee's strong form — a nightly cannot break a member's own build because
 the surfaces that build it are not writable by the converge at all.
 
+**Pins are an input to `desired`, never a flow of their own.** A declaration may hold the whole
+member at a sha or tag on `fleet-current`'s line (`canonRef`, the canary's field aimed
+backward — its shims then render at the pin too, and declaring it is the session act that
+rewrites them), or hold one pack there (`packs: [{ "id", "pin" }]`): that pack's mount subtree,
+and the shims of any workflow it brings, render from the pinned snapshot, everything else from
+`S`. A pin points backward only — an ancestor of `S`; a pin ahead of `S` is reported and
+ignored — so the engine at `S` meets packs no newer than itself, and the canon's one
+compatibility promise is one-directional: the engine reads every pack shape it ever shipped,
+the forward-tolerant-reader posture already required for member-owned files. That promise
+replaces `minEngineVersion`, which only ever guarded the other direction; wanting an older
+engine is not a pin but a whole-snapshot hold. The canary qualifies no pinned pair, so the load
+gate is a pin's safety: a delivery that breaks a pinned pack reads *worse*, blocks, and names
+the pin. The stamp records the effective pins, so the old tree's render — the deletion rule's
+input — stays reproducible after a pin is lifted.
+
 ## The stamp: `.claudinite/state.json`
 
 ```json
 {
   "format": 1,
   "canon": "<sha>",   // snapshot this tree was computed from — written by the delivery commit itself
-  "at": "<iso8601>"   // when that computation ran
+  "at": "<iso8601>",  // when that computation ran
+  "pins": {}          // effective pins at that computation — pack id → sha; absent when none
 }
 ```
 
@@ -117,8 +139,8 @@ content, write a fresh one", never "version zero".
 
 ## The resident shell: thin shims
 
-The shim inversion is field-verified (2026-09-01, ClaudiniteCanary `shim-probe` runs 1–3,
-recorded on #1547): a member shim called a canon-hosted reusable workflow cross-repo at a
+The shim inversion is field-verified (2026-09-01/02, ClaudiniteCanary `shim-probe` runs 1–4
+and `shim-probe-widen` run 1, recorded on #1547): a member shim called a canon-hosted reusable workflow cross-repo at a
 branch ref; the callee ran in the member's own context (its repo, its ref, its dispatch inputs
 forwarded); editing only the canon side changed the member's behavior with the shim
 byte-unchanged; and `secrets: inherit` delivered the member's own secrets into the canon-hosted
@@ -130,9 +152,11 @@ The **scheduler shim** (`.github/workflows/claudinite-scheduler.yml`): the hashe
 full name + `dailyHour` anchor), `workflow_dispatch` with `force`, `override-gate` (free-text
 reason; empty = none), `canon-ref` (operator aiming; default `fleet-current`), and an opaque
 `args` string for anything added later; a fixed `permissions:` ceiling (contents, issues,
-pull-requests, actions: write — GitHub only ever narrows through a call, never widens, so the
-ceiling is set once and canon-side jobs declare the narrower grants they need); one `uses:`
-line at `fleet-current`; `secrets: inherit`; and `CLAUDINITE_STUB_CONTRACT` passed as a `with:`
+pull-requests, actions: write — exactly today's stub grant, so nothing narrows at the
+cutover; a callee job with no `permissions:` block inherits the ceiling verbatim, one with a
+block holds the intersection, and one naming a scope outside it fails the run at planning with
+no job created — field-verified 2026-09-02 — so a new scope is a shim-shape change, never a
+canon commit); one `uses:` line at `fleet-current`; `secrets: inherit`; and `CLAUDINITE_STUB_CONTRACT` passed as a `with:`
 value naming the shim generation. The canon-side scheduler callee does everything the shim
 does not: checkout, resolve `S`, shallow-clone the canon at `S`, run `delivery/run.mjs`, the
 failure job that escalates any red run into the member's needs-attention issue. Task secrets
@@ -281,7 +305,7 @@ against a retired contract, tests a new rule turns red — the repair reaches th
 three lanes, none of them part of a converge:
 
 - **A standing check finding, shipped with the change** (the default). The author of a rule
-  change that meets member-authored content ships, in the same pack version, the check that
+  change that meets member-authored content ships, in the same snapshot, the check that
   flags the residue; the converge delivers both, and the member's own next working session
   resolves the finding. A finding is durable and self-re-deriving — it survives dormancy,
   parked sessions, and any staleness, where a dispatch is a moment that can be missed once and
@@ -400,7 +424,8 @@ triggers, a permissions ceiling, the `uses:` line, `secrets: inherit` — and ev
 ever changes lives in the canon, delivered by the qualified advance of `fleet-current`. The
 mechanism is field-verified (2026-09-01, ClaudiniteCanary shim-probe runs, #1547): cross-repo
 call at a branch ref, caller-context execution, canon-side edits changing member behavior with
-the shim byte-unchanged, and same-owner `secrets: inherit` all confirmed live. What silent
+the shim byte-unchanged, same-owner `secrets: inherit`, and the ceiling's narrow-only rule all
+confirmed live. What silent
 dropping once cost (a fleet-needed line stranded on 13 members, #1509) has no surface left to
 recur on: nothing is ever owed to a workflow file on the nightly path, and the rare shim-shape
 change is a supervised, piloted fleet event. Secrets stay statically named in reviewed YAML —
@@ -423,8 +448,11 @@ delivered-broken-render class has no writer); the canary's `@main` pinning exerc
 callee change before the fleet's shims can resolve it; and the enforcer's failed-wake
 escalation is the outside noticing what the inside cannot.
 
-**Migrations dissolve; decisions stay where decisions happen.** Every coded transformation of
-member state falls to: wholesale mount recomputation, canon-side callee edits behind permanent
+**Migrations dissolve — the engine's and the packs' alike; decisions stay where decisions
+happen.** The record format, its registry, the `appliesTo`/`legacyPresent` predicates, the
+applied-list in the stamp and the landed-date window all go, and a check that once asked
+whether a migration was still active asks the normalizer whether its rule is still live. Every
+coded transformation of member state falls to: wholesale mount recomputation, canon-side callee edits behind permanent
 shims, or the declaration normalizer — whose accretion is bounded by enforcer-read retirement
 conditions, and whose rename map is permanent anyway, since readers must map every legacy
 spelling regardless. What must *not* dissolve into standing convergence is the pack-entry
@@ -471,7 +499,9 @@ fleet numbers honest.
    compatibility matrix and its min-engine bookkeeping (#939, #1400), record ordering with
    tie-skipping hazards (#330), the record/registry/replay apparatus, and fetch-gates that
    wedge on exactly the content that would fix them; replay against a fresh repo is a hazard of
-   its own, since records assume the shapes their era produced.
+   its own, since records assume the shapes their era produced. What is rejected is version
+   numbers as delivery bookkeeping, not holding a pack at an older snapshot: that is a pin, and
+   costs one one-directional promise instead of a matrix.
 5. **Push straight to `main`, no PR.** Delivery stops being reviewable in the member's own
    repo, and the per-member hold-for-review choice stops existing.
 6. **Judge delivery by member CI, or qualify by fixtures alone.** Actions-token pushes fire no
