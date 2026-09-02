@@ -191,6 +191,29 @@ test('loadConfig: a valid schedule anchor is a known setting and passes through 
   } finally { cleanup(full); cleanup(partial); cleanup(none); }
 });
 
+// REPO SHAPE IS NOT A PRECONDITION (task-preconditions DESIGN): a repo that carries
+// a pack but not one task's subject names that task here, and the scheduler reads it
+// before instantiating anything. Whether the named task EXISTS is deliberately not
+// checked — a member may disable a task in a pack it has not adopted yet, and the
+// question is answered where tasks are discovered.
+test('loadConfig: taskScheduler.disabledTasks is a known setting, validated as a shape', () => {
+  const settings = (taskScheduler) => makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], taskScheduler }) } });
+  const ok = settings({ dailyHour: 4, disabledTasks: ['claudinite-lifecycle/update'] });
+  const empty = settings({ disabledTasks: [] });
+  const notList = settings({ disabledTasks: 'claudinite-lifecycle/update' });
+  const notIds = settings({ disabledTasks: ['update'] });
+  try {
+    assert.deepEqual(loadConfig(ok).errors, []);
+    assert.deepEqual(loadConfig(ok).taskScheduler.disabledTasks, ['claudinite-lifecycle/update']);
+    assert.deepEqual(loadConfig(empty).errors, []); // disabling nothing is legal, and means nothing is disabled
+    for (const bad of [notList, notIds]) {
+      const cfg = loadConfig(bad);
+      assert.equal(cfg.errors.length, 1);
+      assert.match(cfg.errors[0].what, /"taskScheduler\.disabledTasks" must be an array of "<pack>\/<task>" ids/);
+    }
+  } finally { for (const r of [ok, empty, notList, notIds]) cleanup(r); }
+});
+
 test('loadConfig: out-of-range and misshaped schedule values are settings errors', () => {
   const ranges = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: ['basics'], taskScheduler: { dailyHour: 24, weeklyDay: 'Sunday', monthlyDay: 0, nonsense: 1 },
