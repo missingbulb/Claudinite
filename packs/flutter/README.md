@@ -22,6 +22,7 @@ committed tests inside the consuming project.
 | Anything that fetches must be injectable | medium | complexity | prose: 47 words |
 | Fix the viewport per suite | medium | correctness | prose: 31 words |
 | Async lifecycle guards need an epoch counter. | high | correctness | prose: 51 words |
+| Real file or image I/O in testWidgets | high | correctness | prose: 73 words |
 | Verify plugin APIs against installed source | high | correctness | prose: 41 words |
 | A lone pubspec.lock move is version skew | medium | correctness | prose: 69 words |
 | flutter analyze at zero issues | medium | complexity | prose: 39 words |

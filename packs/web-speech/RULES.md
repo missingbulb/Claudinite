@@ -53,6 +53,15 @@
   themselves). Set the threshold **well above a natural mid-command thinking
   pause** — a tight window (~1.2 s) cuts real commands; a wider one (~1.8 s) keeps
   only the genuine missed-endpoint case.
+- **When your TTS path renders audio outside the browser's own pipeline (an OS text-to-speech
+  API rather than `speechSynthesis`), the browser's echo cancellation cannot suppress it —
+  build an application-level echo guard.** Automatic echo cancellation attenuates only audio the
+  browser itself rendered (a loopback of its own playout); it has no visibility into audio an OS
+  API played through the speakers, so a live microphone picks up the assistant's own spoken
+  output as if the user said it. There is no capture-side fix (the recognizer owns its capture
+  and exposes no constraint for this). Catch it at the application level instead — e.g. compare
+  each newly heard transcript against what was just spoken (a string match/similarity check) and
+  discard a match as self-echo rather than a new utterance.
 - **Mic permission is per-origin, and the grant belongs to whatever page the
   recognizer runs in.** In a content script the prompt reads as the *host site*
   asking and the grant persists for that origin. Surface it in a controlled moment:

@@ -180,8 +180,55 @@ A list or search API call that isn't bounded returns a full page of full-bodied 
 - **When you already know the exact title, don't search at all — list and match it yourself.** Field anchoring is a *GitHub search API* feature, and an MCP layer in front of it may match **semantically** instead, ranking by resemblance and honouring no qualifier: the title you named can then rank below unrelated issues or be absent from the page entirely, and `in:title` changes nothing. Enumerate with `list_issues` (a narrow field list, a large page size, no state filter — a log issue is often deliberately closed) and compare the string in-session. Reserve search for what it is good at: finding items you can only *describe*.
 - **Trim the fields, not just the page size.** The per-object field set is what governs the payload, so capping the page can leave the response byte-identical — measured, the same call at two page sizes returned output identical to the character. Ask for the fields you need (`["number","title","state"]` covers most lookups); dropping the body alone is usually the whole difference. Where a tool offers no field selection, narrow the query instead, or take the overflow as the answer and read the spilled result file directly rather than retrying it smaller.
 - **Pass a small explicit page size.** Default page sizes are tuned for a browser, not a tool result; when the answer wanted is one issue or one run, ask for 5–10, never a bare unpaged call.
+- **`actions_list`'s `list_workflow_runs` can ignore `per_page` entirely.** On a repo with enough run history, shrinking the page size — even to 1–3 — has returned a byte-identical response every time, confirmed independently on two separate repos; the page-size knob simply doesn't apply to this call. Don't retry it smaller. Scope the query to what you actually want (a specific run id, or the runs for one head SHA) instead of listing at all, or, if you're already holding the oversized result, read the spilled overflow file directly rather than re-fetching.
 
 All of them, not one: a qualified query still returns a full page, a small page of unqualified matches is still the wrong records, and a small page of full-bodied records still overruns the cap.
+
+## `issue_read`'s `get_*` methods reject a PR number — use `pull_request_read` instead
+
+`mcp__github__issue_read` (`get_labels`, `get_comments`, and its other `get_*` methods) resolves only true issues, and errors "Could not resolve to an Issue with the number of N" when N is actually a pull request. Issue and PR numbers share one counter per repo, so a PR number always looks like a legal argument and only fails once the call actually runs. For a PR's labels, comments, or other metadata, call the matching `pull_request_read` method instead.
+
+## `list_pull_requests` doesn't reliably report whether a PR is merged
+
+Its `merged` field can decode `false` (or be simply absent) and `merged_at` stay unset for a PR
+that has genuinely landed — passing `fields` doesn't fix it, the underlying data is stale. For a
+landed-ness judgment, grep the target branch's own commit subjects for the squash-merge's `(#N)`,
+or call `pull_request_read` with `method: get` on the one PR you actually care about; don't trust
+`list_pull_requests`'s `merged` flag for anything more than a first filter.
+
+## `search_code` can silently undercount — don't rely on it alone for an exhaustive enumeration
+
+GitHub's code-search index can lag behind what's actually on a branch, so a search meant to find
+*every* repo (or file) containing a pattern can come back with a real but incomplete result — no
+error, just fewer hits than actually exist. When the task needs a complete list (which repos
+reference X, not just "some do"), cross-check search's result against a ground-truth source —
+fetch each candidate's file directly, or walk a known roster — rather than trusting the count.
+
+## Leaving several PRs open after a batch or sweep — subscribe to every one, not a sample
+
+A subscribed PR's merge or CI status change reaches the session as an activity event almost
+immediately; an unsubscribed one only gets noticed on the next manual re-poll. Subscribing a
+sample and polling the rest wastes calls re-checking PRs that would have reported themselves, and
+under-serves the ones left unsubscribed. When a run's output is more than one open PR the owner
+still has to act on, subscribe every one before ending the session.
+
+## A missing issue reference in your first commit is one `git commit --amend`, not a history rewrite
+
+When a task-lifecycle check blocks a branch for missing its issue reference in the first commit,
+the fix is a plain `git commit --amend` on that commit (or the latest one, if it's still the only
+commit) to add the reference, then `git push --force-with-lease` — never `git filter-branch` or an
+equivalent rewrite across every commit on the branch to backdate the reference into each one. The
+check only needs the reference to exist somewhere reachable; a full-branch rewrite is needless risk
+(a bad regex, a bad force-push) for no benefit over the one-line fix.
+
+## Once a repo is confirmed to have no PR template, stop re-probing for one
+
+Creating a PR carries a standing instruction to search for a template first
+(`pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE/`); a repo that genuinely has none
+pays that search's full cost on every single PR if the search is repeated each time. Once you've
+confirmed a repo carries no template, skip the search on later PRs in that same repo and write the
+body straight from the commit/issue; if it's a repo you work in repeatedly, note the absence in
+that repo's own docs so a future session doesn't re-probe either.
 
 ## Merging gotchas
 

@@ -44,6 +44,11 @@
   first fix) can re-arm streams/timers after `stop()`/dispose ran mid-await; bump an epoch in
   `stop()` and bail after every await if it changed. The symptom (leaked GPS subscription after
   sign-out) is invisible in tests that don't await realistically.
+- **Real file or image I/O inside `testWidgets` needs `tester.runAsync`, not a bare `await`.**
+  The widget-test binding runs inside a fake-async zone that only advances *virtual* time; a real
+  OS-level future (a file read, an `Image` decode hitting actual bytes) never completes inside it,
+  and the test just hangs rather than failing. Wrap the I/O in `await tester.runAsync(() => ...)`,
+  which briefly steps outside the fake zone to let the real future settle.
 
 ## Toolchain habits
 

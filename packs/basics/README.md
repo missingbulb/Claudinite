@@ -34,6 +34,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Needing exact text from the web | high | correctness | prose: 56 words |
 | Hitting a denied fetch | critical | legal | prose: 152 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
+| Handing the owner a terminal command | medium | correctness | prose: 69 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
 | Waiving a finding on text | low | complexity | prose: 26 words |
@@ -48,6 +49,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Writing a file that depends on another | medium | complexity | prose: 97 words |
 | Committing | medium | complexity | prose: 43 words |
 | Working with a generated file | high | correctness | prose: 64 words + check (`generated-merge-driver`) |
+| Editing a repo's JSON config | high | correctness | prose: 66 words |
 | Depending on platform or runtime behaviour | high | correctness | prose: 31 words |
 | Optimising | high | correctness | prose: 53 words |
 | Needing a library for a narrow job | medium | complexity | prose: 27 words |
@@ -55,6 +57,8 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Documenting a procedure | medium | complexity | prose: 40 words |
 | Writing code that can silently do nothing | high | correctness | prose: 76 words |
 | Persisting anything on a user's machine | medium | correctness | prose: 43 words |
+| Shipping a build a user can run | medium | correctness | prose: 89 words |
+| Dropping a folded/aggregate generated file | high | correctness | prose: 77 words |
 | Changing what you do with user data | critical | legal | prose: 90 words |
 | Driving an external runtime repeatedly | low | complexity | prose: 51 words |
 | Automating something that needs live conversation context | medium | complexity | prose: 46 words |

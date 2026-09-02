@@ -152,6 +152,12 @@
   and the call is rejected without it. A rejection leaves no fallback armed, which is what the
   `unattended-agents` skill's re-issue rule is for.
 
+- **Handing the owner a command block to paste directly into their terminal** — carry no
+  trailing `# comment` on any line. Interactive zsh, the common default shell, only treats `#`
+  as a comment start under `setopt interactive_comments`, off by default — unlike a script file,
+  a pasted line ending in a comment there fails or behaves unexpectedly. Put the explanation in
+  prose around the block instead of inline.
+
 ## Warnings and findings
 
 - **Seeing a build, test or CI warning** — fix it rather than tolerate it, with a small, targeted
@@ -248,6 +254,12 @@ For every new task:
   automating the clear with a `merge=ours` `.gitattributes` entry, and `git rerere` for a conflict
   that recurs.
 
+- **Editing a repo's hand-maintained JSON config from a script** — patch it as anchored text,
+  never round-trip it through a parse/re-serialize (`JSON.parse` → `JSON.stringify`, or the
+  equivalent load/dump). A round-trip rewrites the *whole* file — reordering keys, rewrapping
+  lines, normalizing escapes — turning a one-field addition into an oversized diff, with nothing
+  failing and no test catching it. Make a narrow, targeted text edit instead.
+
 - **Writing code that depends on how a platform or runtime behaves** — verify that behaviour
   against authoritative docs or a real run, not a comment or a prior commit's claim.
 
@@ -277,6 +289,19 @@ For every new task:
 - **Persisting anything on a user's machine** — put it under the one user-deletable location, and
   extend that location rather than earn a second one. If the platform forces something outside it, a
   registration the OS owns, name that explicitly as the exception.
+
+- **Shipping a build a user can run** — surface its exact identity (version *and* build number)
+  somewhere the user or a bug report can read it, derived from the platform's real build metadata
+  rather than a hand-maintained constant that can silently disagree with what actually shipped. A
+  version bump can be skipped between two otherwise-different builds, so the version string alone
+  doesn't distinguish them — the build number (or a commit hash) is what lets a live bug report be
+  pinned to the exact binary that produced it.
+
+- **Dropping a folded/aggregate generated file on the theory that "the next run recomputes it"** —
+  check first whether the recompute's own *inputs* retain the same history the file being dropped
+  already holds. A stateless recompute over inputs each source only keeps for a bounded window
+  starts the resulting series shorter than a carried-over file that already spans further back;
+  "the generator will refill it" is not evidence on its own that it refills the same span.
 
 - **Changing what the software does with a user's data** — the permission string, privacy policy
   and store listing are part of the contract, so change them in the same commit. Retaining something
