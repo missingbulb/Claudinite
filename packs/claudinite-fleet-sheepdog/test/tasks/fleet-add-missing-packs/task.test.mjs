@@ -27,7 +27,7 @@ test('fleet-add-missing-packs: weekly, agentless, outcome none — the agent is 
   // The properties the fan-out model hangs on: no agent HERE (the first design's
   // enforcer-side agent stage failed in production — its executor is scoped to the
   // enforcer repo alone), and no PR here either. What only a repo edit can finish is
-  // the member's adopt-requested-packs task, ceilinged at open-pr THERE.
+  // the member's adopt-requested-packs task, which opens the PR and lands it unattended THERE (#1453).
   assert.equal(decl.agent_model, 'none');
   assert.equal(decl.expected_outcome, 'none');
   assert.equal(decl.agent_instructions, undefined);

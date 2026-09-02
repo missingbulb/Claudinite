@@ -37,7 +37,7 @@ const taskRow = (task, over = {}) => ({
   key: `claudinite-growth/${task}`,
   pack: 'claudinite-growth',
   task,
-  declaration: { frequency: 'daily', agent_model: 'none', expected_outcome: 'merged-pr' },
+  declaration: { frequency: 'daily', agent_model: 'none', expected_outcome: 'pr', automerge: 'anything' },
   frequency: 'daily',
   nextAsk: { kind: 'anchor', at: new Date('2026-08-22T04:00:00Z') },
   anchorNote: null,

@@ -409,7 +409,7 @@ and sit beside the §4.2 census; the two populations stay distinct keys.
 
 Written by **`usage-fold`**: an agentless task of `claudinite-growth`
 (deterministic preprocessing, no agent, cheapest possible run), outcome
-`merged-pr` — the worker opens a PR with the regenerated file and arms
+`pr` with `automerge` authorized — the worker opens a PR with the regenerated file and arms
 auto-merge; a recompute that differs only in its freshness stamp opens nothing.
 It lives under `.claudinite/local/` because that is the repo-owned area the
 vendoring refresh never touches — the mount root itself is read-only canon.
@@ -608,7 +608,7 @@ nothing to optimize.
   as a census. The note carries the checks' second, narrower boundary too: the
   counts are what a *session* saw, so a world sweep that ran in CI is not in
   them, and every check number is a floor on activations.
-- Outcome `merged-pr` (owner decision): the sweep opens a PR on a run-stamped
+- Outcome `pr`, `automerge` authorized (owner decision): the sweep opens a PR on a run-stamped
   branch in the enforcer repo and arms auto-merge. This keeps the write inside
   the outcome taxonomy `verify-outcome.mjs` enforces, lets the enforcer's CI
   gate a malformed file, and makes the daily PR stream a browsable audit trail.

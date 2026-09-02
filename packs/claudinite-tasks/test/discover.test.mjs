@@ -13,7 +13,7 @@ const taskMjs = (id, over = {}) => {
 test('discoverTasks finds a declared local pack\'s tasks with the repo-relative task path', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
-    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha', { frequency: 'daily', agent_model: 'opus', expected_outcome: 'merged-pr' }),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha', { frequency: 'daily', agent_model: 'opus', expected_outcome: 'pr', automerge: 'anything' }),
     '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# alpha worker\n',
     '.claudinite/local/packs/mypack/tasks/beta/task.mjs': taskMjs('beta', { frequency: 'weekly' }),
     '.claudinite/local/packs/mypack/tasks/beta/task.md': '# beta worker\n',

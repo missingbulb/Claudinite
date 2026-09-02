@@ -67,9 +67,9 @@ so a shrunken denominator is visible rather than silent.
 stays in the agentless `code_work`, and the agent is reached only for the part that is genuinely a
 judgment. Here it is a judgment plus a repo edit — confirming the
 suspicion and running the [adopt-pack](../claudinite-lifecycle/skills/adopt-pack/SKILL.md) skill against the member —
-while enumerate, fingerprint and converge-the-issues stay in code. That one is ceilinged at `open-pr`
-and never auto-merges: declaring a pack switches on conformance checks that run in that member's CI
-from the moment they land.
+while enumerate, fingerprint and converge-the-issues stay in code. That one opens the PR and lands it
+unattended there (#1453): declaring a pack switches on conformance checks that run in that member's
+CI from the moment they land, and gate the merge.
 
 **No agent anywhere here reaches another repo**, and that is the trust model rather than an
 implementation detail ([#749](https://github.com/missingbulb/Claudinite/issues/749)). The first
@@ -192,7 +192,7 @@ which makes daily mean "the next morning".
 
 Every ceiling here is `none`. The pack-seed sweep's write goes to **other** repos, and the ceiling
 describes what a task may do to its own. What only a repo edit can finish is the member's own
-adopt-requested-packs task's, ceilinged at `open-pr` *there*.
+adopt-requested-packs task's, which opens the PR and lands it unattended *there* (#1453).
 
 There is **no coverage workflow**: preprocessing runs Action-side inside the repo's one scheduler
 workflow, where the Actions secret is already reachable, and each task's

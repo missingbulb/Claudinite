@@ -16,8 +16,7 @@
 //
 // WHY sonnet: the finding arrives already localized to a workflow and a delta, and
 // the skill states the method step by step; what remains is profiling and a bounded
-// fix. Ceilinged at `open-pr`, so a change to how this repo builds or tests always
-// lands in front of a reviewer.
+// fix. Ceilinged at `pr`; what it may land unattended is the `automerge` policy below.
 //
 // Self-contained (imports nothing): the whole contract is this default export.
 

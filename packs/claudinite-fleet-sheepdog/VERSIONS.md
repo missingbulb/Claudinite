@@ -8,6 +8,7 @@ here forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60902.1 | 2026-09-02 | The README's two mentions of the member's `adopt-requested-packs` task being "ceilinged at `open-pr`" are corrected: that ceiling changed to landing unattended in #1453, and both mentions now say so instead of naming the retired outcome spelling (#1470). |
 | 60827.1 | 2026-08-27 | Drops the pointers to the fleet digest that moved to `claudinite-dashboard`, now that the digest is retired outright (#1392). Comments and README only; nothing a member runs changes. |
 | 60824.2 | 2026-08-24 | `fleet-usage` and `usage-fleet.GENERATED.json` retired — the dashboard's fleet page now reads each member's own usage file directly, as the viewer, and derives coverage live; the destructive tail of #1158 (#1166). |
 | 60824.1 | 2026-08-24 | Task workers reach delivery, GitHub and work-item helpers through the `claudinite-tasks` pack's `shared-code/` (#1317). |

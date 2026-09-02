@@ -186,7 +186,7 @@ test('growth-dedup: weekly/opus/pr+automerge — the prune PR is delivered to la
   assert.equal(dedup.frequency, 'weekly');
   assert.equal(dedup.agent_model, 'opus');
   // A ceiling, not a promise: a `review`-delivery member degrades this to
-  // open-pr, so the human gate is member config's call rather than hardcoded.
+  // automerge: 'nothing', so the human gate is member config's call rather than hardcoded.
   assert.equal(dedup.expected_outcome, 'pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
   assert.deepEqual(dedup.precondition_signals, ['localPacks', 'sharedMount', 'commits']);
 });

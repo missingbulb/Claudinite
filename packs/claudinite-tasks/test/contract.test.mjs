@@ -25,7 +25,8 @@ const validTask = {
   frequency: 'daily',
   precondition_signals: ['commits', 'prs', 'issues'],
   agent_model: 'opus',
-  expected_outcome: 'merged-pr',
+  expected_outcome: 'pr',
+  automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
   precondition() { return { run: true, reason: 'x' }; },
@@ -53,6 +54,7 @@ test('validateTaskDeclaration requires agent_execution_timeout on an agentic tas
 test('validateTaskDeclaration: an agentless (none) task needs preprocessing but no execution bound', () => {
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
   delete none.agent_execution_timeout;
+  delete none.automerge;
   // a bare none task with no preprocessing does nothing → flagged
   assert.match(validateTaskDeclaration(none)[0].what, /declares no "code_work"/);
   // with preprocessing + its timeout it is clean, and needs no execution bound
@@ -68,6 +70,7 @@ test('validateTaskDeclaration: agent_instructions is required for an agentic tas
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 120 };
   delete none.agent_execution_timeout;
   delete none.agent_instructions;
+  delete none.automerge;
   assert.deepEqual(validateTaskDeclaration(none), []);
 
   // an agentic task (agent_model !== 'none') with no agent_instructions still fails.
@@ -78,6 +81,7 @@ test('validateTaskDeclaration: agent_instructions is required for an agentic tas
 test('validateTaskDeclaration validates code_work + its required timeout and containment', () => {
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
   delete none.agent_execution_timeout;
+  delete none.automerge;
   // preprocessing without a timeout is rejected
   assert.match(
     validateTaskDeclaration({ ...none, code_work: 'node prepare.mjs' })[0].what,
@@ -142,25 +146,27 @@ test('the contract enums are exactly the DESIGN vocabulary', () => {
 // --- expected_outcome × automerge -----------------------------------------
 
 test('normalizeTaskDeclaration maps the legacy outcome ceilings onto the outcome/policy pair', () => {
-  const open = normalizeTaskDeclaration({ ...validTask, expected_outcome: 'open-pr' });
+  const { automerge, ...baseTask } = validTask;
+  const open = normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'open-pr' });
   assert.equal(open.expected_outcome, 'pr');
   assert.equal(open.automerge, 'nothing');
-  const merged = normalizeTaskDeclaration({ ...validTask, expected_outcome: 'merged-pr' });
+  const merged = normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'merged-pr' });
   assert.equal(merged.expected_outcome, 'pr');
   assert.equal(merged.automerge, 'anything');
   // An explicit policy beside a legacy spelling wins — a half-migrated declaration
   // keeps the narrower intent it states.
   const explicit = normalizeTaskDeclaration({
-    ...validTask, expected_outcome: 'merged-pr', automerge: ['doc-changes'],
+    ...baseTask, expected_outcome: 'merged-pr', automerge: ['doc-changes'],
   });
   assert.deepEqual(explicit.automerge, ['doc-changes']);
 });
 
 test('validateTaskDeclaration: a pr task must say what may auto-merge', () => {
-  const { what } = validateTaskDeclaration({ ...validTask, expected_outcome: 'pr' })[0];
+  const { automerge, ...noAutomerge } = validTask;
+  const { what } = validateTaskDeclaration(noAutomerge)[0];
   assert.match(what, /automerge/);
   for (const policy of ['nothing', 'anything', ['comment-only-changes', 'readme-changes'], ['anything', 'reject:js-code-changes']]) {
-    assert.deepEqual(validateTaskDeclaration({ ...validTask, expected_outcome: 'pr', automerge: policy }), [], JSON.stringify(policy));
+    assert.deepEqual(validateTaskDeclaration({ ...validTask, automerge: policy }), [], JSON.stringify(policy));
   }
 });
 
@@ -208,7 +214,7 @@ test('validateDispatchBody accepts a well-formed dispatch and resolves model + o
   assert.equal(v.task, 'create-extractor');
   assert.equal(v.model, 'opus');
   assert.equal(v.resolvedModel, 'opus');
-  assert.equal(v.outcome, 'pr');                 // the legacy 'merged-pr' normalized at the door
+  assert.equal(v.outcome, 'pr');
   assert.equal(v.automerge, 'anything');
   assert.equal(v.executionTimeout, 1800); // surfaced for the executor's best-effort bound (§6)
 });

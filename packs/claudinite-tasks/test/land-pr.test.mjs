@@ -9,7 +9,7 @@ import {
 
 // The PURE decision helpers of the shared landing procedure. They grew inside the
 // baselining worker (#455/#565/#649/#677/#690) and moved here when the other
-// merged-pr tasks needed the same nuances; the REST/GraphQL I/O around them
+// PR-landing tasks needed the same nuances; the REST/GraphQL I/O around them
 // (dispatchCiRuns, landNow, landDelivery) is validated by the live fleet, these
 // are the git-free unit surface.
 
