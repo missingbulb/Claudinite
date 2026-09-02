@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Claudinite</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap">
 <style>
   /* Light is the base palette; the dark steps are their own selected values under
      both the OS setting and an explicit toggle, never an automatic inversion. */
@@ -60,6 +63,160 @@
     --s-aqua:   #199e70;
     --s-yellow: #c98500;
     --s-violet: #9085e9;
+  }
+
+
+  /* --- the ledger sheet (docs/visual-identity.md) --------------------------------
+     The redesigned block's own palette, SCOPED TO THE SHEET rather than to :root.
+     The identity is the whole page's eventually, but it arrives one block at a time
+     and the panels below still read the tokens above — so the sheet carries its own
+     complete light set, redefined twice for dark exactly as the identity's theme
+     pattern asks, and no colour here has its only definition inside a media block. */
+  .page {
+    --paper: #eef1ef; --sheet: #fbfcfb; --ink: #16211f; --ink-2: #4b5956; --muted: #7c8a86;
+    --rule: #d5ddda; --ledger: #c3d5dc; --wash: rgba(43,98,161,0.06);
+    --machine: #2b62a1; --machine-wash: rgba(43,98,161,0.13); --dim: #b9cad8;
+    --you: #c98a12; --you-text: #8a5f05; --you-paper: #fdf3e2;
+    --good: #1f8a4c; --good-text: #17703c;
+    --serious: #d0602a; --serious-text: #a3451a;
+    --critical: #bf3b2e; --critical-text: #a02f24;
+    --sans: "Archivo", "Archivo Narrow", "Helvetica Neue", Arial, sans-serif;
+    --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--sheet); color: var(--ink);
+    border: 1px solid var(--rule); border-radius: 2px;
+    font: 400 12.5px/1.4 var(--sans); font-stretch: 100%;
+    margin: 0 0 20px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .page {
+      --paper: #131917; --sheet: #1b2321; --ink: #e6ebe7; --ink-2: #b2bdb8; --muted: #7d8a86;
+      --rule: #2c3634; --ledger: #2f4149; --wash: rgba(127,178,232,0.08);
+      --machine: #7fb2e8; --machine-wash: rgba(127,178,232,0.16); --dim: #3b5570;
+      --you: #e3b458; --you-text: #e3b458; --you-paper: #2e2717;
+      --good: #4dbb7a; --good-text: #4dbb7a;
+      --serious: #ee8a58; --serious-text: #ee8a58;
+      --critical: #ee6d60; --critical-text: #ee6d60;
+    }
+  }
+  :root[data-theme="dark"] .page {
+    --paper: #131917; --sheet: #1b2321; --ink: #e6ebe7; --ink-2: #b2bdb8; --muted: #7d8a86;
+    --rule: #2c3634; --ledger: #2f4149; --wash: rgba(127,178,232,0.08);
+    --machine: #7fb2e8; --machine-wash: rgba(127,178,232,0.16); --dim: #3b5570;
+    --you: #e3b458; --you-text: #e3b458; --you-paper: #2e2717;
+    --good: #4dbb7a; --good-text: #4dbb7a;
+    --serious: #ee8a58; --serious-text: #ee8a58;
+    --critical: #ee6d60; --critical-text: #ee6d60;
+  }
+
+  .page a { color: var(--machine); text-decoration: none; }
+  .page a:hover { text-decoration: underline; }
+  .page .mono { font-family: var(--mono); }
+  .page .cap { font-family: var(--sans); font-stretch: 78%; font-weight: 700; font-size: 10.5px;
+               letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); }
+  .page .gap { color: var(--muted); font-style: italic; }
+  .page .ask { color: var(--you-text); }
+
+  .band { display: grid; grid-template-columns: 112px 1fr; border-top: 1px solid var(--rule); }
+  .band:first-child { border-top: 0; }
+  .band .stub { padding: 10px 12px 10px 14px; border-right: 1px solid var(--ledger); }
+  .band .stub .cap { display: block; line-height: 1.25; }
+  .band .stub .q { display: block; font-size: 11px; color: var(--muted); font-style: italic;
+                   margin-top: 3px; line-height: 1.3; }
+  .band .body { padding: 8px 16px 10px; min-width: 0; }
+
+  /* start here: the one object that sits ON the sheet */
+  .slip { background: var(--you-paper); border-radius: 2px; padding: 8px 14px 9px;
+          display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; row-gap: 4px; }
+  .slip .hl { font-size: 17px; font-weight: 700; font-stretch: 92%; letter-spacing: -0.005em;
+              line-height: 1.2; text-wrap: balance; }
+  .slip .where { font-family: var(--mono); font-size: 12px; }
+  .slip .chip { font-family: var(--mono); font-size: 12px; color: var(--you-text);
+                border: 0; padding: 0; background: none; }
+  .slip .more { color: var(--ink-2); font-size: 12px; margin-left: auto; text-align: right; }
+
+  /* the machine */
+  .machine { display: grid; grid-template-columns: 1.7fr 1fr 0.9fr 0.9fr 1.6fr; gap: 0; }
+  .machine .cell { padding: 2px 14px 0; border-left: 1px solid var(--ledger); min-width: 0; }
+  .machine .cell:first-child { padding-left: 0; border-left: 0; }
+  .machine .cell .k { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .page .sq { width: 7px; height: 7px; display: inline-block; flex: none; border-radius: 0; }
+  .page .sq.good { background: var(--good); } .page .sq.you { background: var(--you); }
+  .page .sq.serious { background: var(--serious); } .page .sq.critical { background: var(--critical); }
+  .page .sq.machine { background: var(--machine); } .page .sq.none { border: 1px solid var(--muted); }
+  .machine .cell .v { font-family: var(--mono); font-size: 21px; font-weight: 500; line-height: 1.15;
+                      margin-top: 4px; display: flex; align-items: baseline; gap: 7px; }
+  .machine .cell .v .u { font-family: var(--sans); font-size: 11.5px; font-weight: 400; color: var(--ink-2); }
+  .machine .cell .n { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .beat { display: flex; gap: 2px; margin-top: 6px; flex-wrap: wrap; }
+  .beat i { width: 10px; height: 10px; display: block; background: var(--good); }
+  .beat i.you { background: var(--you); } .beat i.serious { background: var(--serious); }
+  .beat i.critical { background: var(--critical); }
+  .beat i.none { background: none; border: 1px solid var(--rule); }
+  .wake { margin-top: 5px; }
+  .wake svg { display: block; width: 100%; height: 30px; }
+  .wake text { font-family: var(--mono); font-size: 8.5px; fill: var(--muted); }
+
+  /* the ledger */
+  .ledger { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+  .ledger .col { padding: 0 16px; border-left: 1px solid var(--ledger); min-width: 0; }
+  .ledger .col:first-child { padding-left: 0; border-left: 0; }
+  .ledger .col:last-child { padding-right: 0; }
+  .ledger h3 { margin: 0; padding: 2px 0 6px; display: flex; gap: 8px; align-items: baseline; font-size: inherit; }
+  .ledger h3 .q { font-weight: 400; font-style: italic; font-size: 11.5px; color: var(--muted);
+                  text-transform: none; letter-spacing: 0; }
+  .fig { display: grid; grid-template-columns: 70px minmax(0,1fr) 56px 46px; column-gap: 6px;
+         align-items: center; min-height: 42px; border-top: 1px solid var(--ledger); }
+  .fig:first-of-type { border-top: 0; }
+  .fig .v { font-family: var(--mono); font-size: 18px; font-weight: 500; letter-spacing: -0.01em;
+            line-height: 1; white-space: nowrap; }
+  .fig .t { line-height: 1.3; min-width: 0; }
+  /* The unit WRAPS rather than clipping: it is the line that says what the figure is,
+     and nothing the reader must read is ever cut. The row stayed one line tall the
+     moment the gap sentence moved out of it. */
+  .fig .t .u { display: block; font-size: 12.5px; }
+  .fig .t .s { display: block; font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .fig .t .s.gap { font-style: italic; }
+  .fig .d { font-family: var(--mono); font-size: 12px; text-align: right; line-height: 1.3;
+            color: var(--ink-2); white-space: nowrap; }
+  .fig .d .vs { display: block; font-size: 10.5px; color: var(--muted); }
+  .fig .d.bad { color: var(--serious-text); font-weight: 500; }
+  .fig .sp { justify-self: end; }
+  .fig .sp svg { width: 46px; height: 20px; display: block; }
+  .totals { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 3px double var(--ledger);
+            margin-top: 8px; padding-top: 6px; }
+  .totals > div { padding: 0 16px; border-left: 1px solid var(--ledger); display: flex; gap: 8px;
+                  align-items: baseline; font-size: 11.5px; color: var(--ink-2); min-width: 0; }
+  .totals > div:first-child { padding-left: 0; border-left: 0; }
+  .totals > div:last-child { padding-right: 0; }
+  .totals b { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--ink); }
+  .totals .sub { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis;
+                 white-space: nowrap; min-width: 0; }
+  .totals .expand { margin-left: auto; flex: none; }
+  .page .expand { font: inherit; font-size: 11.5px; color: var(--machine); background: none;
+                  border: 0; padding: 0; cursor: pointer; }
+  .page .expand:hover { text-decoration: underline; }
+  .page .detail { margin-top: 8px; font-size: 12px; border-top: 1px solid var(--ledger); overflow-x: auto; }
+  .page .detail table { border-collapse: collapse; width: 100%; }
+  .page .detail th { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--ledger); }
+  .page .detail td { padding: 4px 8px; border-bottom: 1px solid var(--ledger); }
+  .page .detail tr:last-child td { border-bottom: 0; }
+  .page .detail td.num, .page .detail th.num { text-align: right; font-family: var(--mono); }
+
+  .counted-link { padding-top: 6px; }
+  .page .detail.counted ul { margin: 6px 0; padding-left: 18px; }
+  .page .detail.counted li { margin: 3px 0; color: var(--ink-2); line-height: 1.45; }
+
+  /* pulse */
+  .pulse { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .pulse svg { width: 100%; height: 28px; display: block; }
+  .pulse .n { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+  .band.next .body { color: var(--muted); font-size: 12px; padding-top: 10px; padding-bottom: 10px; }
+  @media (max-width: 900px) {
+    .band { grid-template-columns: 1fr; }
+    .band .stub { border-right: 0; padding-bottom: 0; }
+    .ledger, .totals, .machine { grid-template-columns: 1fr; }
+    .ledger .col, .totals > div, .machine .cell { border-left: 0; padding-left: 0; }
   }
 
   * { box-sizing: border-box; }
@@ -528,45 +685,13 @@
   <div id="errors"></div>
 
   <div id="fleet-view" hidden>
-    <div class="lead">
-      <section>
-        <div class="lead-head">
-          <h2>Start here <button class="info" type="button" data-info="lead" aria-expanded="false" title="How this one is chosen">&#9432;</button></h2>
-        </div>
-        <p class="info-body" id="info-lead" hidden>
-          The <strong>one</strong> piece of work most worth doing, across every member — the worst
-          thing that is true of the fleet right now, named with the issue to open. It invents no
-          judgement of its own: it is the top row of the same ranking the members table below is
-          ordered by, so this block and that table can never disagree. An issue outranks a repo-level
-          fault at the same severity, because only the issue is something to open. The
-          <strong>minutes</strong> beside it are one term of the same sum the tiles below
-          total — the park's own rate, by what it asks of you — so the card and the tiles
-          can never price one item differently. An approval is charged the floor of its
-          rate, since no PR's size is read here, and work the estimate does not cover shows
-          no figure rather than a zero.
-        </p>
-        <div id="fleet-lead"></div>
-      </section>
-    </div>
-
-    <h2>What Claudinite did for this fleet this week <button class="info" type="button" data-info="benefits" aria-expanded="false" title="What these figures are">&#9432;</button></h2>
-    <p class="info-body" id="info-benefits" hidden>
-      The work the machinery did that nobody had to do — <strong>in a window</strong>, this week
-      against last, because a total that only ever grows tells you nothing about today. Every
-      figure is a count of things that individually happened, from reads this page already makes.
-      There is no estimate of hours saved and no score: nothing here measures those, so nothing
-      here claims them.
-    </p>
-    <div class="tiles benefits" id="fleet-benefits"></div>
-
-    <h2>Fleet at a glance <button class="info" type="button" data-info="tiles" aria-expanded="false" title="Why these numbers">&#9432;</button></h2>
-    <p class="info-body" id="info-tiles" hidden>
-      Each tile counts <strong>members</strong>, never things. "47 open items" is not a number
-      anyone acts on; "3 members need you" is — it is the length of this morning's list. A tile
-      is coloured only when it is reporting something, so a coloured tile always means look here.
-    </p>
+    <!-- The ledger sheet (docs/fleet-page.md): Start here, The machine, the
+         Got/Cost/Speed ledger with its totals, and the pulse — one ruled surface with
+         a stub column, rendered whole by view-fleet.mjs. It replaced the benefits
+         tiles, the glance tiles and two of the four activity charts; what each of
+         those facts became is the spec's "deliberately absent" list. -->
+    <div class="page" id="fleet-sheet"></div>
     <p id="fleet-progress"></p>
-    <div class="tiles" id="fleet-tiles"></div>
 
     <section id="fleet-contrib" hidden>
       <h2>What this deployment's packs report</h2>

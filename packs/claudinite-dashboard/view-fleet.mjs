@@ -7,19 +7,22 @@ import {
   memberAttention, fleetAttention, estimateMinutes, estimateNote, parkMinutes, parkMinutesNote,
 } from './fleet.mjs';
 import { readCanon, priceStampedPacks } from './canon.mjs';
-import { activitySeries, fleetBenefits, delta, commitDays } from './activity.mjs';
+import { activitySeries, delta, commitDays } from './activity.mjs';
 import { readUsage } from './usage.mjs';
 import {
   readContributions, liveSourcesNeeded, readDeploymentContributions, valueOf, fleetPhrase, phraseText,
 } from './contributions.mjs';
 import { miniCard, miniAbsent, packCard, CONTRIB_STATE_TEXT } from './contrib-view.mjs';
-import { fleetGrowth, fleetCorpus } from './fleet-growth.mjs';
+import { fleetCorpus } from './fleet-growth.mjs';
 import { fleetCandidates } from './next-work.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, leadCard, repoLink, tiles, segmentBar,
   reasonNodes, stackedColumns, chartLegend, windowFigure, ciMark, commitGraph, packMark,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
+import { band, slip, machineCell, beats, wakeTicks, figureRow, pulseChart, detailTable, expander } from './sheet.mjs';
+import { fleetLedger, machinePanel, fmtTokens, fmtHours, fmtAge, STUCK_DAYS } from './fleet-ledger.mjs';
+import { wakeStrip } from './model.mjs';
 import { settingsTextAtSha } from './settings-read.mjs';
 import { sweepPhases } from './fleet-sweep.mjs';
 
@@ -398,44 +401,6 @@ function renderDeployment(contributions, now) {
 //   the window — a member's settings say WHAT it holds, never when it took it, since
 //   #1252 deleted the datetime the tile used to count (which recorded the last full
 //   re-vendor, not the last converge, and so counted the wrong thing anyway).
-function renderBenefits(b, growth) {
-  const node = $('fleet-benefits');
-  const runsPassed = b.current.runs - b.current.runsFailed;
-  const prevPassed = b.previous.runs - b.previous.runsFailed;
-
-  // `replaceChildren` renders a null child as the text "null", so the optional tile is
-  // filtered out rather than passed through.
-  node.replaceChildren(...[
-    windowFigure(b.current.completed, 'work items completed',
-      delta(b.current.completed, b.previous.completed),
-      `in ${b.current.members} member(s)`),
-    windowFigure(b.current.unattended, 'of those, closed with nobody in the loop',
-      delta(b.current.unattended, b.previous.unattended),
-      'not parked for a human when it closed'),
-    windowFigure(b.current.parked, 'items that did need a person',
-      delta(b.current.parked, b.previous.parked),
-      'the honest other half of the figure above', { better: 'down' }),
-    windowFigure(runsPassed, 'scheduler runs passed',
-      delta(runsPassed, prevPassed),
-      b.current.runsFailed ? `${b.current.runsFailed} failed` : 'none failed'),
-    // The two figures this panel used to name as ABSENT: nothing the page read could
-    // count a check activation or the corpus a session carried. Both are in each
-    // member's own usage file now, which the sweep reads anyway.
-    //
-    // Failures rather than runs, and `better: 'up'` on purpose: a check that fires is a
-    // correction that happened inside the session, before the work left the branch. It
-    // is the closest thing this pipeline has to a measure of what the corpus is worth.
-    growth.folding === 0 ? null
-      : windowFigure(growth.current.checkFailures ?? '—', 'check findings caught',
-        growth.previous.checkFailures === null ? null : delta(growth.current.checkFailures ?? 0, growth.previous.checkFailures),
-        `over ${growth.current.checkRuns ?? 0} runs in ${growth.folding} folding member(s)`),
-    growth.tokensPerSession === null ? null
-      : windowFigure(growth.tokensPerSession, 'rule tokens per session', null,
-        'what the corpus costs each session before its first turn', { better: 'down' }),
-  ].filter(Boolean));
-}
-
-
 // --- what the corpus is doing, in detail -------------------------------------------
 
 // The section the benefits block only headlines. Everything here is derived from the
@@ -667,49 +632,16 @@ const CORPUS_SERIES = [
 // What the corpus did across the fleet, from the members' own folds. Runs and findings
 // share a scale here — unlike the repo page's rule-tokens-against-checks pair — because
 // the second is a SUBSET of the first and reading it as a share is the whole point.
-function corpusCard(growth) {
-  if (!growth.folding) {
-    return el('div', { className: 'chart-card' }, [
-      el('div', { className: 'k', textContent: 'no member folds a usage file yet' }),
-      el('p', {
-        className: 'sub',
-        textContent: 'Check activations and the corpus each session carries come from each member\'s own '
-          + '.claudinite/local/usage.GENERATED.json, written by the claudinite-growth pack\'s usage-fold task.',
-      }),
-    ]);
-  }
-  return el('div', { className: 'chart-card' }, [
-    el('div', {
-      className: 'k',
-      textContent: `${growth.current.checkRuns ?? 0} check run(s) this week across ${growth.folding}/${growth.members} member(s)`,
-    }),
-    chartLegend(CORPUS_SERIES),
-    stackedColumns(growth.days, CORPUS_SERIES),
-    // The census the retired fleet aggregate carried as `coverage.absent`, derived live:
-    // a denominator with an invisible hole in it is worse than no denominator at all.
-    growth.absent.length
-      ? el('div', {
-        className: 'sub',
-        textContent: `not folding, so counted in none of this: ${growth.absent.map((r) => r.split('/')[1] ?? r).join(', ')}`,
-      })
-      : el('div', { className: 'sub', textContent: 'every readable member folds one' }),
-  ]);
-}
-
-function renderActivity(series, growth) {
+// The two charts that stayed. The other two went to the sheet above, where each
+// answers its question in the place it is acted on: the corpus card's thirty days of
+// bars are the corpus section's job below the grid, and the ledger keeps the one
+// figure with a spark; *members moved* is the pulse's hover and the grid's own
+// activity column.
+function renderActivity(series) {
   const charts = $('fleet-activity');
   const pass = series.totals.runs
     ? Math.round(((series.totals.runs - series.totals.runsFailed) / series.totals.runs) * 100)
     : null;
-
-  // Which members moved AT ALL. A fleet where two of twelve did anything is a fact
-  // about the fleet, and it is invisible in any per-member row.
-  const movement = el('div', { className: 'movement' }, [
-    el('div', { className: 'v num', textContent: `${series.moved.length}/${series.members}` }),
-    el('div', { className: 'k', textContent: 'members moved in the window' }),
-    el('div', { className: 'sub', textContent: series.quiet.length ? `quiet: ${series.quiet.map((r) => r.split('/')[1] ?? r).join(', ')}` : 'every readable member did something' }),
-    series.unread ? el('div', { className: 'sub', textContent: `${series.unread} member(s) unread — not counted either way` }) : null,
-  ]);
 
   charts.replaceChildren(
     el('div', { className: 'chart-card' }, [
@@ -730,8 +662,6 @@ function renderActivity(series, growth) {
         ? el('div', { className: 'sub', textContent: `before ${series.horizon.runs} this is a floor — the last 30 runs per member do not reach further back` })
         : null,
     ]),
-    corpusCard(growth),
-    el('div', { className: 'chart-card' }, [movement]),
   );
 }
 
@@ -749,6 +679,210 @@ const pendingRow = (repo) => el('tr', { className: 'pending-row' }, [
   el('td', { colSpan: MEMBER_COLS - 1 }, [el('span', { className: 'sub', textContent: 'reading…' })]),
 ]);
 
+
+// --- the ledger sheet ---------------------------------------------------------------
+
+// The whole block above the members grid, in the identity's own form: one ruled sheet
+// with a stub column, four bands, and a fifth naming where the grid begins.
+//
+// It replaced the benefits tiles, the glance tiles and two of the four activity charts.
+// Nothing those said is lost — each fact moved to where it is acted on, which is the
+// spec's "deliberately absent" list: *members need you* is the slip's `N more`,
+// *schedulers failing* and *mounts behind* are the machine, *items parked* and
+// *minutes of your time* are the stuck row and the slip.
+//
+// EVERY VERDICT ARRIVES MADE. This function chooses no level, tints no delta and
+// invents no sentence: `fleetLedger` and `machinePanel` decided all of it, and a
+// figure with no number carries the sentence saying why.
+// Exported so the sheet can be driven against a fixture — the layout and the gap
+// sentences are the parts a unit test cannot see.
+export function renderSheet({ ledger, machine, candidates, sweeping, progress, strip }) {
+  const page = $('fleet-sheet');
+  const top = candidates[0] ?? null;
+  const rest = Math.max(0, candidates.length - 1);
+
+  // START HERE — the slip, the one warm object on a cool sheet.
+  const startBody = sweeping && !top
+    ? el('div', { className: 'slip' }, [
+      el('span', { className: 'hl', textContent: 'Reading the fleet…' }),
+      el('span', { className: 'more', textContent: `${progress.done}/${progress.total} members read — nothing waiting on you in those` }),
+    ])
+    : (top
+      ? slip({
+        headline: top.why,
+        where: `${top.repo}${top.number != null ? ` · #${top.number}` : ''}`,
+        href: top.url,
+        chip: parkChip(top),
+        more: [
+          rest ? `${rest} more after this one` : null,
+          ...candidates.slice(1, 3).map((c) => `${c.repo.split('/')[1] ?? c.repo} ${c.why.toLowerCase()}`),
+        ].filter(Boolean).join(' · '),
+      })
+      : el('div', { className: 'slip' }, [
+        el('span', { className: 'hl', textContent: 'Nothing is waiting on you' }),
+        el('span', { className: 'more', textContent: 'nothing read here is parked, failing or behind' }),
+      ]));
+
+  // THE MACHINE — five cells in one row.
+  const m = machine;
+  const machineBody = el('div', { className: 'machine' }, [
+    machineCell({
+      level: m.heartbeat.level, label: 'Scheduler',
+      value: m.heartbeat.total ? m.heartbeat.onTime : null,
+      unit: m.heartbeat.total ? `of ${m.heartbeat.total} ran on time` : 'no member read',
+      note: m.heartbeat.note,
+      extra: m.heartbeat.beats.length ? beats(m.heartbeat.beats) : null,
+    }),
+    machineCell({
+      level: m.executor.level, label: 'Executor',
+      value: m.executor.failed,
+      unit: `of ${m.executor.runs} failed, 24h`,
+      note: m.executor.inFlight ? `${m.executor.inFlight} in flight · ${m.executor.note}` : m.executor.note,
+    }),
+    machineCell({
+      level: m.foldAge.level, label: 'Fold age',
+      value: m.foldAge.age === null ? null : fmtAge(m.foldAge.age),
+      unit: 'oldest', note: m.foldAge.note,
+    }),
+    machineCell({
+      level: m.drift.level, label: 'Drift',
+      value: m.drift.behind, unit: 'behind', note: m.drift.note,
+    }),
+    machineCell({
+      level: m.wake.level, label: 'Next wake',
+      value: m.wake.at ? `${m.wake.at.slice(11)}:00` : null,
+      unit: m.wake.at
+        ? `${m.wake.members || m.wake.tasks} ${m.wake.members ? 'members' : 'tasks'}`
+        : (m.wake.read ? 'nothing in 24 h' : 'not read'),
+      note: m.wake.note,
+      extra: strip ? wakeTicks(strip) : null,
+    }),
+  ]);
+
+  // THIS WEEK — the three columns, their totals under a double rule, and the per-member
+  // expand the totals row discloses.
+  const column = (name, question, figs, formats) => el('div', { className: 'col' }, [
+    el('h3', {}, [
+      el('span', { className: 'cap', textContent: name }),
+      el('span', { className: 'q', textContent: question }),
+    ]),
+    ...figs.map((f, i) => figureRow(f, { format: formats[i] })),
+  ]);
+
+  const t = ledger.totals;
+  const detail = el('div', { className: 'detail', hidden: true }, [
+    detailTable(
+      [{ label: 'Member' }, { label: 'Sessions', num: true }, { label: 'Turns', num: true },
+        { label: 'Tokens in', num: true }, { label: 'Caught', num: true }, { label: 'Rule tok/session', num: true }],
+      perMemberRows(ledger),
+    ),
+  ]);
+
+  const totals = el('div', { className: 'totals' }, [
+    el('div', {}, [
+      el('b', { textContent: t.costPerMerged === null ? '—' : `≈$${t.costPerMerged}` }),
+      'per merged PR',
+      el('span', { className: 'sub', textContent: t.tokensPerMerged === null ? 'not recorded' : `${fmtTokens(Math.round(t.tokensPerMerged))} tok each` }),
+    ]),
+    el('div', {}, [
+      el('b', { textContent: t.autonomy === null ? '—' : `${Math.round(t.autonomy * 100)}%` }),
+      'autonomy',
+      el('span', { className: 'sub', textContent: t.humanToAgent === null ? 'yours : agent minutes not recorded' : `yours : agent minutes 1 : ${t.humanToAgent}` }),
+    ]),
+    el('div', {}, [
+      el('b', { textContent: t.caught === null ? '—' : String(t.caught) }),
+      'would have shipped broken',
+      el('span', { className: 'sub', textContent: `${ledger.window.folding} of ${ledger.window.members} fold` }),
+      expander('per member', detail),
+    ]),
+  ]);
+
+  // The assumptions, in the one place the identity gives them: a disclosed block under
+  // the ledger, so a sub-line stays a second ACTIONABLE figure rather than a footnote.
+  const counted = el('div', { className: 'detail counted', hidden: true }, [
+    el('ul', {}, [
+      el('li', { textContent: 'The window is seven days against the seven before it, and every figure is summed over the members whose fold answered — never over the fleet. A figure no member could answer says so; it is never a zero.' }),
+      el('li', { textContent: 'Tokens in counts cache reads and cache writes as input, because that is what the turn was billed for. Dollars price each model against your own rate table, per counter; a model with no rate is an unpriced remainder and is never folded into the sum.' }),
+      el('li', { textContent: 'Your minutes bills each human turn the gap since the previous entry, capped at ten minutes — a session left open overnight is not a night of your attention, so the figure is a floor. Subagent turns are excluded: their time is already inside the turn around them.' }),
+      el('li', { textContent: 'Lead times are medians over the PRs merged in the window, from the durations the fold carries plus the merged PRs this page already read. A percentile does not fold, so it is computed over the window shown rather than averaged from stored ones.' }),
+      el('li', { textContent: 'A delta is set in ink unless the figure\'s own bad-when rule fires. A slower week is a figure, not a verdict, and nothing good is coloured — nothing good needs a person.' }),
+    ]),
+  ]);
+
+  const weekBody = [
+    el('div', { className: 'ledger' }, [
+      column('Got', 'what the fleet produced', ledger.ledger.got, [String, String, String, fmtCount]),
+      column('Cost', 'what it took', ledger.ledger.cost, [fmtTokens, (n) => `≈$${n}`, fmtSeconds, fmtTokens]),
+      column('Speed', 'how fast it moves, where it sticks', ledger.ledger.speed, [fmtHours, fmtHours, String, String]),
+    ]),
+    totals,
+    detail,
+    el('div', { className: 'counted-link' }, [expander('how these are counted', counted)]),
+    counted,
+  ];
+
+  // PULSE — the block's one chart at readable size.
+  const pulseNote = [
+    ledger.pulse.peak === null ? 'nothing folded' : `peak ${ledger.pulse.peak}`,
+    ledger.pulse.quiet.length ? `${ledger.pulse.quiet.length} quiet days` : null,
+    'today not folded yet',
+  ].filter(Boolean).join(' · ');
+
+  page.replaceChildren(
+    band('Start here', 'worst thing needing a person', startBody, { aria: 'Start here' }),
+    band('The machine', 'is it running, right now, on every member', machineBody, { aria: 'The machine' }),
+    band('This week', `against last · ${ledger.window.from} – ${ledger.window.to} vs ${ledger.window.prevFrom} – ${ledger.window.prevTo} · ${ledger.window.folding} folding members`,
+      weekBody, { aria: 'This week against last' }),
+    band('Pulse', 'sessions / day, 14 days',
+      el('div', { className: 'pulse' }, [pulseChart(ledger.pulse), el('span', { className: 'n', textContent: pulseNote })]),
+      { aria: 'Pulse' }),
+    band('Members', null, '▼ worst first · the grid begins here', { className: 'next' }),
+  );
+}
+
+// The park kind is the category the reader scans for, and the minutes are in the
+// sentence beside it. Work the estimate does not cover shows no figure rather than a
+// zero — a broken scheduler is not a queue to get through.
+function parkChip(candidate) {
+  const minutes = parkMinutes(candidate.park);
+  const kind = candidate.park ? String(candidate.park).split('-').pop() : null;
+  if (minutes == null) return kind ? `${kind} · no time estimate` : 'no time estimate';
+  return `${parkMinutesNote(candidate.park) ? '≥ ' : ''}${minutes} min${kind ? ` · ${kind}` : ''}`;
+}
+
+// A count a reader compares at a glance: grouped under a thousand thousand, and
+// abbreviated past it, since a seven-digit line count is a shape rather than a number.
+const fmtCount = (n) => (Math.abs(n) >= 1e6 ? fmtTokens(n) : Number(n).toLocaleString('en-US'));
+
+const fmtSeconds = (s) => {
+  if (s === null || !Number.isFinite(s)) return '—';
+  const h = Math.floor(s / 3600);
+  const m = Math.round((s % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+};
+
+// The expand's rows: the grid's members with the ledger's columns. Members that do not
+// fold are listed under it as counted in nothing above, rather than as zeros.
+function perMemberRows(ledger) {
+  const rows = [];
+  for (const m of ledger.perMember ?? []) {
+    rows.push([
+      m.repo.split('/')[1] ?? m.repo,
+      m.sessions ?? '—', m.turns ?? '—',
+      m.tokensIn === null ? '—' : fmtTokens(m.tokensIn),
+      m.caught ?? '—',
+      m.tokensPerSession === null ? '—' : fmtTokens(m.tokensPerSession),
+    ]);
+  }
+  if (ledger.window.absent.length) {
+    rows.push([
+      { text: ledger.window.absent.map((r) => r.split('/')[1] ?? r).join(', '), gap: true },
+      { text: 'no fold · counted in nothing above', gap: true, colSpan: 5 },
+    ]);
+  }
+  return rows;
+}
+
 function renderFleet(summaries, reads, now, onOpen, canon, progress = null, deployment = null) {
   const resolved = summaries.filter(Boolean);
   const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
@@ -758,42 +892,27 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
   // claiming a clean fleet: "nothing is waiting on you" read off four of forty members
   // is a wrong statement, not a partial one.
   const candidates = fleetCandidates(resolved);
-  const sweeping = progress && progress.done < progress.total;
-  $('fleet-lead').replaceChildren(!candidates.length && sweeping
-    ? el('div', { className: 'chart-card lead-card' }, [
-      el('div', { className: 'lead-why', textContent: 'Reading the fleet…' }),
-      el('div', { className: 'sub', textContent: `${progress.done}/${progress.total} members read — nothing waiting on you in those.` }),
-    ])
-    : leadCard(candidates[0] ?? null, {
-      rest: candidates.length - 1,
-      onRepo: onOpen,
-      minutes: parkMinutes(candidates[0]?.park),
-      note: parkMinutesNote(candidates[0]?.park),
-    }));
+  const sweeping = Boolean(progress && progress.done < progress.total);
 
-  // The headline tile counts MEMBERS, which is the length of the morning's list — but
-  // the list is only actionable once it says what kind of attention each is waiting
-  // for. Three merges to approve and three broken lanes are not the same morning.
-  const attention = fleetAttention(roll);
-  const needs = attentionBreakdown(attention);
-
-  tiles($('fleet-tiles'), [
-    [roll.needAttention, 'members need you', roll.needAttention ? 'var(--critical)' : null,
-      needs.length
-        ? el('div', { className: 'needs' }, needs.map((r) =>
-          el('div', { className: `warn ${r.level}`, textContent: `${LEVEL_GLYPH[r.level]} ${r.text}` })))
-        : 'nothing is on fire'],
-    [roll.parkedItems, 'items parked', roll.parkedItems ? 'var(--critical)' : null,
-      roll.parkedMembers ? `across ${roll.parkedMembers} member(s)` : ''],
-    [roll.failingMembers, 'schedulers failing', roll.failingMembers ? 'var(--critical)' : null,
-      roll.neverRan ? `${roll.neverRan} never ran` : ''],
-    [roll.behindMembers, 'mounts behind', roll.behindMembers ? 'var(--serious)' : null,
-      canon ? (canon.engineVersion != null ? `canon engine v${canon.engineVersion}` : 'canon versions unreadable') : 'no canon configured'],
-    [estimateMinutes(attention), 'minutes of your time', null, estimateNote(attention)],
-    [roll.openItems, 'open work items', null, `${roll.inFlight} run(s) in flight`],
-    [`${roll.adopted}/${roll.members}`, 'members adopted', null,
-      [roll.notAdopted ? `${roll.notAdopted} not adopted` : '', roll.unreadable ? `${roll.unreadable} unreadable` : ''].filter(Boolean).join(', ')],
-  ]);
+  // Every figure the sheet draws, decided in one place. `rates` is the deployment's
+  // own table and unset is a supported state — the dollar figure then reads unpriced
+  // and names the key rather than showing a price nobody set.
+  const resolvedReads = reads.filter(Boolean);
+  const ledger = fleetLedger(resolvedReads, { now, rates: deployment?.rates ?? gh.config?.rates ?? null });
+  // The wake strip needs each task's own declared anchor, and a member read carries
+  // its task paths rather than their contents. So the strip is built from whatever
+  // rosters reached this page — none, today — and `machinePanel` states the absence
+  // rather than drawing an empty 24 hours, which would read as "nothing wakes".
+  const rosterRows = resolved.flatMap((s) => (s.roster ?? []).map((row) => ({ ...row, repo: s.repo })));
+  const strip = rosterRows.length ? wakeStrip(rosterRows, now) : null;
+  renderSheet({
+    ledger,
+    machine: machinePanel(resolved, resolvedReads, { now, canon, strip }),
+    candidates,
+    sweeping,
+    progress,
+    strip,
+  });
 
   // Every number above is a number about the members READ SO FAR, and a partial
   // rollup that does not say so is a wrong one. The count is stated rather than the
@@ -823,11 +942,8 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
   // Tasks across the fleet. This is the view a per-repo page structurally cannot
   // give: a shared pack's task parked in four members at once is a canon problem,
   // and in any single repo it looks like that repo's bad luck.
-  const resolvedReads = reads.filter(Boolean);
   renderDeployment(deployment, now);
-  const growth = fleetGrowth(resolvedReads, { now });
-  renderBenefits(fleetBenefits(resolvedReads, { now }), growth);
-  renderActivity(activitySeries(resolvedReads, { now }), growth);
+  renderActivity(activitySeries(resolvedReads, { now }));
   renderCorpus(fleetCorpus(resolvedReads, { now }), onOpen);
 
   const spread = taskSpread(resolvedReads, now).filter((t) => t.members > 0);
