@@ -60,12 +60,14 @@
 // new repo, the one-time grow-with-claudinite-seed migration seeds the existing fleet,
 // and baselining never re-adds it — so removing it is a durable opt-out.
 //
-// No adoption question over config.retention_days — the value stays unset (hidden)
-// by default, which is fail-safe (capture-only, the prune deletes nothing) rather
-// than something every adopter must weigh in on. A project that wants the prune
-// active sets retention_days itself.
+// No adoption question over config.retention_days — the task carries the default
+// (DEFAULT_RETENTION_DAYS, in tasks/logs-prune/prune-logs.mjs) rather than something
+// every adopter must weigh in on, and a project overrides it by declaring the value.
+// The default is what "unset = capture-only" turned out to need: absence read as
+// fail-safe and behaved as an unbounded leak, since no adoption flow asked for the
+// value and nothing seeded it (#1620). Capture-only is now declared, not inferred.
 export default {
-  version: '60903.4',
+  version: '60903.5',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',

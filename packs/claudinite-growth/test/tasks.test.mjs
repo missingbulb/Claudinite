@@ -280,10 +280,13 @@ test('logs-prune: fires on age alone, which is what makes it independent of acti
   assert.match(v.reason, /retention 10d/);
 });
 
-test('logs-prune: no branch, unset retention, or nothing aged yet — all silent', async () => {
+test('logs-prune: no branch, a declared opt-out, or nothing aged yet — all silent', async () => {
   assert.match((await verdictFor(logsPrune, { conversationLogs: { present: false } })).reason, /nothing captured/);
   assert.match((await verdictFor(logsPrune, {})).reason, /nothing captured/);
-  assert.match((await verdictFor(logsPrune, { conversationLogs: { present: true } })).reason, /retention_days is unset/);
+  // Capture-only is declared now, never inferred from a missing key (#1620): an
+  // undeclared retention takes the default, and only a non-positive one is silent.
+  assert.match((await verdictFor(logsPrune, { conversationLogs: { present: true, retentionDays: 0 } })).reason, /capture-only/);
+  assert.match((await verdictFor(logsPrune, { conversationLogs: { present: true, oldestLogAgeDays: 30 } })).reason, /retention 10d/);
   for (const signals of [
     { conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 3 } },
     // The boundary: at exactly retention the log has not yet aged OUT.
