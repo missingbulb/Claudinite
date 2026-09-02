@@ -3,7 +3,7 @@
 // Stub — no rules captured yet; add durable, project-agnostic practices to RULES.md
 // as they are earned. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
-  version: '60822.1',
+  version: '60902.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'shipping an Android app to Google Play — Play Console, signing, integrity, staged rollout',

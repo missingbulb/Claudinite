@@ -18,7 +18,7 @@ const LAUNCH_CALL = /\b(?:chromium|firefox|webkit|puppeteer)\.launch\s*\(/;
 const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx)$/;
 
 export default {
-  version: '60822.1',
+  version: '60902.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs:

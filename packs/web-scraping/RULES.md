@@ -1,13 +1,5 @@
 # web-scraping — taking data from a site you don't own
 
-The facet: a project whose input is another organisation's website, reached without a
-contract. There is no support channel, no changelog and no SLA, so every rule below is about
-**reducing what you have to re-learn** — from the site, from the network, and from your own
-pipeline — when it changes underneath you.
-
-A default to adapt, not a contract. Language-agnostic: "fetch", "parse" and "normalize" mean
-whatever they mean on your stack.
-
 ## Finding the data surface
 
 - **Adding a source, or deciding what to parse** — scraping rendered markup is the **last**

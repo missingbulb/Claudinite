@@ -1,7 +1,5 @@
 # HTML
 
-Portable, project-agnostic practices for hand-authored HTML — semantic markup, accessibility, forms, and the document structure pitfalls that recur regardless of framework — true for any HTML read cold.
-
 - **Injected block markup inside a `<p>` silently empties it — read the sibling, not the tag.**
   A block element (a `<div>`, etc.) inside a `<p>` is disallowed by the HTML content model, so
   wherever the two are parsed **together** — document parsing, `DOMParser`, or `innerHTML` on an

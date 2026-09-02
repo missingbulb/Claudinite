@@ -1,32 +1,8 @@
-# Research Project Working Procedures — a portable playbook
-
-This document defines **how the owner wants a research project run**, as a
-**bootstrap to drop into a new research project** from day one. It is written to
-be project-agnostic: it carries the durable working procedures and none of the
-subject matter, methods, or results of any particular study.
-
-It is aimed at the recurring class of research it is meant for: **run an
-algorithm over a set of similarly-formatted inputs, score it against
-user-provided ground truth, and improve the algorithm in repeatable, reviewable
-iterations.** Image analysis / computer vision is the archetypal case and the
-examples lean that way, but the workflow, ground-truth discipline,
-anti-overfitting stance, and session hygiene apply to research work broadly —
-read "algorithm", "input", and "render" as whatever they mean for your project.
-
-Treat it as a **default to adapt, not a contract**. When a new project needs a
-rule this one doesn't have, add it; when a rule here doesn't fit, say why and
-drop it. As you work a real project, replace the generic phrasing with that
-project's concrete specifics (its inputs, metrics, invariants) in *that
-project's own* docs — keep this bootstrap generic so it stays reusable. The one
-non-negotiable is the spirit: **show the work visually, prove each change against
-ground truth, never overfit the learning set, and leave the project resumable.**
-
----
+# research-project — running an algorithm against ground truth
 
 ## 1. The core loop — iterate on the algorithm, and *show* every step
 
-This is the cadence the owner wants, and it is the **deliverable style**, not
-optional polish. Follow it for every substantive algorithmic change.
+For every substantive algorithmic change, in this order:
 
 1. **Reproduce & diagnose — visually, first.** Start from the actual inputs.
    Render the current behaviour and *look* at it before theorising. If a
@@ -79,10 +55,11 @@ optional polish. Follow it for every substantive algorithmic change.
   artifact and the code that regenerates it** get committed.
 
 ### Interaction cadence
-Keep the owner in the loop with **pictures**, proactively. Ask a question only
-when a decision is genuinely theirs or the request is ambiguous — not to confirm
-work you can verify yourself. When you finish a unit of work, leave it committed
-and pushed so it can be reviewed or resumed from a fresh session.
+- **Keep the owner in the loop with pictures**, proactively, and ask a question only when a
+  decision is genuinely theirs or the request is ambiguous — never to confirm work you can
+  verify yourself.
+- **Finishing a unit of work** — leave it committed and pushed, so it can be reviewed or
+  resumed from a fresh session.
 
 ---
 

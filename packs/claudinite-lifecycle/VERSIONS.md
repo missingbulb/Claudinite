@@ -8,6 +8,7 @@ own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60902.3 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60902.2 | 2026-09-02 | `rules-index-current` stops probing the retired `.claudinite/local_packs/` root for a declared pack's `RULES.md` (#1627). |
 | 60902.1 | 2026-09-02 | `update` converts to `preconditions: ['none']` — the input is the CANON, which moves when this repo does not, so no repo-side condition may gate it; a repo with no vendored mount names the task in its `taskScheduler.disabledTasks` rather than the task re-asking nightly. Its worker stamps `Claudinite-Task: claudinite-lifecycle/update` on the commits and merges it makes, so the converge reads as machinery to every movement-gated task (#1578). |
 | 60901.2 | 2026-09-01 | The pack adopts the references convention: `references.md` carries `adopt-claudinite`'s executor-routine hand-over record (#1167) and the incident evidence behind the `conformance-work-scope` (#939) and `rules-index-current` (#807) checks, cited by bare `(n)` markers (#1564). |

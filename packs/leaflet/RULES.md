@@ -1,7 +1,5 @@
 # Leaflet
 
-Portable, project-agnostic gotchas for the [Leaflet](https://leafletjs.com/) web-mapping library — loading it from a CDN, embedding a map in a page, and the marker/`divIcon` and plugin behaviours that bite regardless of which app renders the map. True for any Leaflet map read cold.
-
 - **Feature-detect an optional Leaflet plugin before using it, and fall back to core when its CDN script didn't load.** A plugin's separate `<script>` (markercluster, heat, draw, …) can silently fail to load while the base Leaflet bundle succeeds, leaving `L.markerClusterGroup` (etc.) undefined. Guard the call with `typeof L.markerClusterGroup === "function"` and add markers straight to the map when it's absent — the base map must still render.
 
 - **Default an embedded, mid-page map to `scrollWheelZoom: false` so it doesn't hijack the page scroll.** Construct it with `L.map(el, { scrollWheelZoom: false })`, or gate wheel-zoom behind a click/focus. (1)

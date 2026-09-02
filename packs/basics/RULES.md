@@ -1,8 +1,5 @@
 # Working discipline
 
-The working discipline that isn't itself a GitHub operation — general habits for how to approach a
-change, independent of any one project.
-
 - **Starting any requested change** — begin from the *problem*, not the solution, in any
   repository and not just this one. Reach an explicit shared understanding with the owner of the
   problem the change is meant to solve **and** agreement that the requested change is the best way
@@ -115,8 +112,6 @@ change, independent of any one project.
 
 ## Harness-tool contracts
 
-Contracts worth knowing before you spend a call rediscovering them.
-
 - **Searching for a tool with `ToolSearch`** — a search that finds nothing is evidence about your
   query, not about the environment. Search the fully-qualified name (`select:mcp__<server>__<tool>`,
   copied off the deferred-tools listing) and try the tool before telling the owner a step is theirs;
@@ -179,9 +174,6 @@ Contracts worth knowing before you spend a call rediscovering them.
 
 # The task lifecycle
 
-The issue → branch → PR lifecycle every new task follows, independent of any one project. The
-rest of the git/GitHub procedures live in the `git-github-advanced` skill.
-
 For every new task:
 
 1. Create a GitHub issue describing the task before starting work.
@@ -222,15 +214,6 @@ For every new task:
   [writing-handover-issues](skills/writing-handover-issues/SKILL.md).
 
 # Engineering practices
-
-General software-engineering practices, independent of any one project; project-specific rules
-(architecture, test mechanics) live in the consuming repo's own docs. Five neighbouring skills own
-their own procedures: [git-github-advanced](../git-github/skills/git-github-advanced/SKILL.md) for
-branch, commit and merge operations, [repo-text-sweeps](skills/repo-text-sweeps/SKILL.md) for
-sweeps and renames across files, [writing-tests](skills/writing-tests/SKILL.md) for tests you can
-trust, [bug-investigation](skills/bug-investigation/SKILL.md) for pinning down a root cause, and
-[writing-migration-plans](skills/writing-migration-plans/SKILL.md) for a phased plan's ordering and
-its tracking issue.
 
 - **Naming a file, module, or symbol** — name it for its scope or responsibility, not the
   technology or mechanism behind it.

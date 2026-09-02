@@ -1,12 +1,5 @@
 # Web Speech APIs
 
-Portable, project-agnostic practices for browser voice I/O — speech-to-text
-(`webkitSpeechRecognition` / the Web Speech `SpeechRecognition` API) and
-text-to-speech (`chrome.tts` / `speechSynthesis`) — true for any app that reads
-or listens through the browser, read cold. These are runtime browser-behaviour
-gotchas, knowledge you carry into the code rather than state a tool can read off
-the repo.
-
 > Some of these APIs (`chrome.tts`) are extension-only; where a rule touches
 > MV3 service-worker / content-script mechanics, only the speech-API facet is
 > here — the general extension gotcha underneath is not.

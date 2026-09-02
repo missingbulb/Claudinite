@@ -1,13 +1,5 @@
 # product-wiki — the self-growing product research wiki
 
-This project keeps its market/user/competitor research as a self-growing wiki
-under `product-wiki/` (Karpathy's LLM-wiki pattern: compile findings once, refine in
-place). Layout, required page sections, the Key insights header's shape,
-growth-log dating, source links, staleness, and the isolation wall are
-**check-enforced** — the finding is the instruction, so this prose never restates
-them. The full growth procedure is the pack's task doc
-(`packs/product-wiki/tasks/wiki-growth/task.md`).
-
 - **Every page opens with what it found.** `## Key insights` leads the page: a
   few bullets carrying the research's actual conclusions — the numbers, the
   competitor that already does this, the thing that turned out not to be true —

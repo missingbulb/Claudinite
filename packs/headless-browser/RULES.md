@@ -1,14 +1,5 @@
 # Headless browser
 
-Driving a real browser from your own process — a page loaded, faked, driven and captured by code
-rather than by a user. True whether the output is a golden image, a build artifact, or an
-assertion about behaviour, and whether the driver is Playwright or Puppeteer.
-
-This pack is the browser itself, and deliberately restates none of the ground either side of it:
-**which** engine a UI golden should be rendered with, what tolerance it may carry, and the approval
-gate before re-baselining one are testing decisions, and wiring the run into a workflow is a
-workflow one.
-
 ## Getting a browser
 
 - **Resolve the binary out of the environment; never let the driver download one.** A container

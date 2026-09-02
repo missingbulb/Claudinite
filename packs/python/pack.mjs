@@ -19,7 +19,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
   });
 
 export default {
-  version: '60823.1',
+  version: '60902.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'packaging and import conventions for a Python project — pyproject extras, lazy optional heavy deps, stdlib-only core',
