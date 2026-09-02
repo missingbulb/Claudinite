@@ -116,7 +116,10 @@
   .page .gap { color: var(--muted); font-style: italic; }
   .page .ask { color: var(--you-text); }
 
-  .band { display: grid; grid-template-columns: 112px 1fr; border-top: 1px solid var(--rule); }
+  /* A band is a `<section>`, and the page's own section rule gives those a bottom
+     margin — four of them put 104 px of air inside a block budgeted at 450. The sheet
+     has no gaps between bands by construction: a rule separates them. */
+  .band { display: grid; grid-template-columns: 112px 1fr; border-top: 1px solid var(--rule); margin: 0; }
   .band:first-child { border-top: 0; }
   .band .stub { padding: 10px 12px 10px 14px; border-right: 1px solid var(--ledger); }
   .band .stub .cap { display: block; line-height: 1.25; }
@@ -136,6 +139,11 @@
 
   /* the machine */
   .machine { display: grid; grid-template-columns: 1.7fr 1fr 0.9fr 0.9fr 1.6fr; gap: 0; }
+  /* Six cells one level down, where the fleet's five ask about every member: the repo
+     adds CI on main, and its heartbeat is one square per HOUR rather than per member. */
+  .machine.repo { grid-template-columns: 1.5fr 0.85fr 0.85fr 0.85fr 0.8fr 1.4fr; }
+  .machine.repo .cell { padding-left: 10px; padding-right: 10px; }
+  .machine.repo .cell .v { font-size: 18px; }
   .machine .cell { padding: 2px 14px 0; border-left: 1px solid var(--ledger); min-width: 0; }
   .machine .cell:first-child { padding-left: 0; border-left: 0; }
   .machine .cell .k { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -206,12 +214,76 @@
   .page .detail.counted ul { margin: 6px 0; padding-left: 18px; }
   .page .detail.counted li { margin: 3px 0; color: var(--ink-2); line-height: 1.45; }
 
+  /* --- the Work board --------------------------------------------------------------
+     One SVG that scales to its container; the marks and their colours are the sheet's
+     own tokens, so the board and the ledger above it are one surface. */
+  .board-sheet { padding: 8px 14px 12px; }
+  svg.board { width: 100%; height: auto; display: block; }
+  svg.board text { font-family: var(--sans); font-size: 11px; fill: var(--ink); }
+  svg.board .gutter { font-family: var(--mono); font-size: 10.5px; fill: var(--ink-2); }
+  svg.board .group { font-family: var(--sans); font-stretch: 78%; font-weight: 700; font-size: 10px;
+                     letter-spacing: 0.09em; fill: var(--ink-2); }
+  svg.board .group-note { font-size: 11px; fill: var(--ink-2); }
+  svg.board .axis-day { font-family: var(--mono); font-size: 8.5px; fill: var(--muted); }
+  svg.board .axis-now { font-family: var(--mono); font-size: 9px; fill: var(--ink); }
+  svg.board .finding { font-size: 10.5px; fill: var(--serious-text); }
+  svg.board .more, svg.board .edge { font-size: 10.5px; fill: var(--muted); }
+  svg.board .break { font-size: 13px; fill: var(--critical); }
+  svg.board .glyph { font-family: var(--mono); font-size: 10px; }
+  svg.board .cell-count { font-family: var(--mono); font-size: 9.5px; }
+  svg.board .mark { cursor: pointer; }
+  svg.board .mark:hover { opacity: 0.82; }
+
+  .quiet { border-top: 1px solid var(--ledger); margin-top: 8px; padding-top: 6px; }
+  .quiet-head { display: flex; gap: 14px; align-items: baseline; font-size: 11.5px; color: var(--ink-2); flex-wrap: wrap; }
+  .quiet-head .n { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .page .quiet-list ul { margin: 6px 0; padding-left: 18px; }
+  .page .quiet-list li { margin: 2px 0; font-size: 11.5px; color: var(--ink-2); }
+
+  /* the explore panel — on the same sheet, under a double rule, never a second card */
+  .explore { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 3px double var(--ledger); margin-top: 10px; }
+  .explore.one { grid-template-columns: 1fr; }
+  .panel-x { padding: 8px 16px 10px; border-left: 1px solid var(--ledger); min-width: 0; }
+  .panel-x:first-child { padding-left: 0; border-left: 0; }
+  .panel-x h4 { margin: 0 0 6px; font-size: 12.5px; font-weight: 700; display: flex; gap: 8px; align-items: baseline; }
+  .panel-x h4 .close { margin-left: auto; }
+  .panel-x dl { margin: 0; display: grid; grid-template-columns: 108px minmax(0, 1fr); row-gap: 3px; column-gap: 10px; }
+  .panel-x dt { font-family: var(--sans); font-stretch: 78%; font-weight: 700; font-size: 10px;
+                letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); padding-top: 2px; }
+  .panel-x dd { margin: 0; font-size: 11.5px; color: var(--ink); white-space: pre-wrap; min-width: 0; overflow-wrap: anywhere; }
+  .panel-x dd.gap { color: var(--muted); font-style: italic; }
+  .panel-x .do { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--ledger); font-size: 11.5px; }
+  .panel-x .do b { font-family: var(--sans); font-stretch: 78%; font-size: 10px; letter-spacing: 0.09em;
+                   text-transform: uppercase; color: var(--ink-2); margin-right: 8px; }
+  .panel-x .do pre { font-family: var(--mono); font-size: 10.5px; background: var(--wash); padding: 6px 8px;
+                     border-radius: 2px; overflow-x: auto; margin: 6px 0 0; }
+
+  /* the repo machine's 24 hour squares */
+  .beat.hours i { width: 6px; }
+  .beat i.idle { background: none; border: 1px solid var(--rule); }
+  .beat i.unread { background: none; border: 1px dashed var(--muted); }
+
   /* pulse */
   .pulse { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
   .pulse svg { width: 100%; height: 28px; display: block; }
   .pulse .n { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
 
   .band.next .body { color: var(--muted); font-size: 12px; padding-top: 10px; padding-bottom: 10px; }
+
+  /* The repo sheet is budgeted at 450 px so the Work board — the page's core — begins
+     above the fold. It buys that with tighter tracks rather than fewer facts: the
+     figure and delta columns give their slack to the text column, which is what stops
+     a two-word unit wrapping onto a second line and doubling a row. */
+  .page.compact .band .stub { padding-top: 7px; padding-bottom: 7px; }
+  .page.compact .band .body { padding-top: 5px; padding-bottom: 6px; }
+  .page.compact .fig { grid-template-columns: 58px minmax(0,1fr) 50px 40px; min-height: 30px; }
+  .page.compact .fig .v { font-size: 16px; }
+  .page.compact .fig .sp svg { width: 40px; height: 17px; }
+  .page.compact .ledger .col { padding: 0 12px; }
+  .page.compact .totals { margin-top: 5px; padding-top: 4px; }
+  .page.compact .tailrow { padding-top: 3px; }
+  .page.compact .pulse svg { height: 20px; }
+  .page.compact .machine .cell .v { margin-top: 2px; }
   @media (max-width: 900px) {
     .band { grid-template-columns: 1fr; }
     .band .stub { border-right: 0; padding-bottom: 0; }
@@ -816,57 +888,33 @@
   </div>
 
   <div id="repo-view" hidden>
-  <div class="lead one">
-    <section>
-      <div class="lead-head">
-        <h2>Start here <button class="info" type="button" data-info="repo-lead" aria-expanded="false" title="How this one is chosen">&#9432;</button></h2>
-      </div>
-      <p class="info-body" id="info-repo-lead" hidden>
-        The <strong>one</strong> piece of work most worth doing in this repo — the top row of the
-        same ranking the work table below is ordered by, named with the issue to open, so the block
-        and the table are one verdict rather than two. The <strong>minutes</strong> beside it
-        are one term of the same sum the tiles above total — the park's own rate, by what it
-        asks of you. An approval is charged the floor of its rate, since no PR's size is read
-        here, and work the estimate does not cover shows no figure rather than a zero.
-      </p>
-      <div id="repo-lead"></div>
-    </section>
-  </div>
-
-  <h2>This repo at a glance <button class="info" type="button" data-info="repo-tiles" aria-expanded="false" title="Why these numbers">&#9432;</button></h2>
-  <p class="info-body" id="info-repo-tiles" hidden>
-    The first two tiles are the ones that mean work has <strong>stopped</strong> and is waiting on a
-    person; the rest are context for reading them. A tile is coloured only when it is reporting
-    something, so a coloured tile always means look here.
-  </p>
-  <p class="info-body" id="info-repo-tiles-2" hidden>
-    <strong>Minutes</strong> is deliberately crude: every item parked for a person, at a flat
-    <strong>7 minutes</strong> each. Nothing here measures how long a park actually takes, and the
-    honest way to publish a number nothing measures is to publish the assumption where you can argue
-    with it. <strong>Drift</strong> compares this repo's stamped engine and pack versions against the
-    canon's live ones — and reads <em>unknown</em> when no canon is configured, never <em>current</em>.
-    <strong>Issues</strong> and <strong>pull requests</strong> are counted within the issue window,
-    so one older than it is not counted rather than counted wrongly.
-  </p>
-  <div class="tiles" id="tiles"></div>
+  <!-- The ledger sheet, scoped to one member (docs/repo-page.md): Start here, The
+       machine's six cells, the Got/Cost/Speed ledger with its per-task expand, and the
+       pulse. It replaced the lead card and the glance tiles; each tile's fact moved
+       into a cell that acts on it, and the height that bought is what lands the Work
+       board above the fold. -->
+  <div class="page compact" id="repo-sheet"></div>
 
   <section>
-    <h2>Work <button class="info" type="button" data-info="work" aria-expanded="false" title="What these three views are">&#9432;</button></h2>
+    <h2>Work <button class="info" type="button" data-info="work" aria-expanded="false" title="What the board and the three views are">&#9432;</button></h2>
     <p class="info-body" id="info-work" hidden>
-      One row per piece of work — every <strong>declared</strong> task, including one that has never
-      run, plus any open item whose task this repo no longer declares. The three views are three
-      questions, and each shows the columns its own question needs: <strong>stuck</strong> is what has
-      stopped and how long it has been, <strong>pending</strong> is what is moving and what happens
-      next, <strong>all</strong> is what each task is and what it has done.
+      The <strong>board</strong> is the same rows drawn on a time axis, one lane per flow — a
+      connected component of the <code>Blocked-by</code> / <code>Ends-when</code> / <code>Closes</code>
+      graph, never one task and never one kind, because the edge is the finding. Every mark is read
+      off a label, a body line, a timestamp or a task declaration; a field the listing does not carry
+      is drawn as <em>not read</em>, never as 0.
     </p>
     <p class="info-body" id="info-work-2" hidden>
-      Everything flagged mirrors a rule the engine will actually act on — a blown leash the next run
-      reclaims, a dependency past the janitor's threshold, a park holding its task's lane — never a
-      display heuristic. The page opens on the worst non-empty view, and the rows keep their identity
-      across a switch: they move rather than being redrawn, so the row you were reading stays findable.
+      The three tables remain behind it. <strong>stuck</strong> is what has stopped and how long it
+      has been, <strong>pending</strong> is what is moving, <strong>all</strong> is what each task is
+      and what it has done. The page opens on the board whenever anything is stuck or waiting on a
+      person; a repo with nothing live opens on <em>all</em>, since an empty board teaches its reader
+      the page is broken.
     </p>
     <div class="views" id="work-views"></div>
-    <div class="panel scroll"><table id="work"></table></div>
+    <div class="page board-sheet" id="work-board" hidden></div>
+    <div id="work-explore"></div>
+    <div class="panel scroll" id="work-table-wrap"><table id="work"></table></div>
   </section>
 
   <section>

@@ -4,7 +4,10 @@ The fleet page answers *where do I need to look*; this page answers *what is thi
 doing*. Same reader, one click deeper, so the top block speaks the fleet block's language —
 Start here → The machine → Got / Cost / Speed → Pulse — scoped to **one member**, and then
 hands the page to the Work board ([work-board.md](work-board.md)), which is the page's core and
-must begin above the fold: **the top block is ≤ 450 px at 1280 × 900**. The committed drawing
+must begin above the fold: **the top block is ≤ 450 px at 1280 × 900**. A gap costs height —
+a *not recorded* sentence is a wrapped line where a figure is one — so a repo whose fold
+predates a field runs a little over the budget until it carries one, which is the right way
+round: the budget bends before the gap goes unstated. The committed drawing
 is [mocks/repo.html](mocks/repo.html); the sources of every figure are in
 [data-sources.md](data-sources.md).
 

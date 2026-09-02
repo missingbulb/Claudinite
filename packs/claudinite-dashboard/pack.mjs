@@ -43,7 +43,7 @@
 // has to be frozen is frozen.
 
 export default {
-  version: '60902.11',
+  version: '60902.12',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state and the site that publishes it',

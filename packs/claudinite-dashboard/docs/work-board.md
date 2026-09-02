@@ -30,8 +30,11 @@ the task × day grid a week of record beside its predictions.
 an approval park is nothing without the PR it holds. A lane per kind (all PRs, all items, all
 issues) puts the two ends of one `Blocked-by` edge in different rows, and the edge is the
 whole point. So a row is one connected component of the edge graph — `Blocked-by`,
-`Ends-when`, `Closes #n`, `Refs #n` from a task PR to its item — and a lone item is a
-component of one.
+`Ends-when`, `Closes #n` from a task PR to its item — and a lone item is a component of one.
+
+`Refs #n` is **not read**: the page's PR projection parses the closing issue out of a body
+and then drops the body, so a `Refs` edge would cost a request per PR. It is absent rather
+than approximated, like every other field this board cannot see.
 
 The gutter names a row by **one fact**: its head item and, for a chain, its length
 (`#1583 → 2`; `growth-promote · 9 PRs`). The other ids of the chain are printed once, in the
@@ -72,7 +75,7 @@ rows are placed. Scheduled's header names the anchor.
 | Thing | Mark and place | Read from |
 |---|---|---|
 | open PR | a bar from `created_at` to *now* in the machine's blue; its length is its age; `◂` past the left edge | PR listing |
-| PR waiting for a person | `▲` in amber above the bar's *now* end | no `Automerge:` / `Merge:` line on the item, or the task's `automerge` is `nothing`, or the run's converge comment says `AUTOMERGE: no` |
+| PR waiting for a person | `▲` in amber above the bar's *now* end | no `Merge:` line on the item, or the task's `automerge` is `nothing`, or no work item names the PR at all; the run's own converge verdict lives in a comment the board does not fetch, so a PR whose item *does* authorize a merge reads as still open rather than as waiting |
 | ad-hoc item, blocked on a date | hollow circle at its `Not-before` | body line, absolute form only |
 | ad-hoc item, blocked on an issue | hollow circle **after** the blocker's predicted time; a PR blocker puts it at *now* + "when you merge"; a plain-issue blocker nothing is scheduled to close gives it **no time — the lane is drawn broken** | `Blocked-by: #n` and the blocker's own placement |
 | ad-hoc item, ready | hollow circle at the next scheduler tick — the daily anchor, or the drain tick (its hour not read here) | `task:status:waiting-for-executor` |
@@ -186,7 +189,7 @@ time axis under them.
 | kind and state | labels: `task:origin:*`, `task:status:*` (`statusOf`, `parkKindOf`, `originOf`), `quick-win`, `needs-decision`, `blocked`, the retired queued mark |
 | edges | body lines `Blocked-by: #n`, `Ends-when: #n closed`; PR body `Closes #n` / `Refs #n` |
 | time | `Not-before:` (absolute only), `created_at`, `updated_at`, PR `created_at` |
-| landing | `Automerge:` / `Merge:` on the item; `automerge` in the task declaration; the converge comment's `AUTOMERGE:` verdict |
+| landing | `Merge:` on the item — the one spelling `parseWorkItemBody` reads, and therefore the one the panel names; `automerge` in the task declaration; the converge comment's `AUTOMERGE:` verdict |
 | schedule | the schedule board's `last asked / verdict / next window`; `nextAnchor` from the queue's `anchors.mjs` with the repo's `dailyHour` / `weeklyDay` |
 | past outcomes | closed items since the window opened, narrow fields, `outcomeOf` |
 | run record | the item's claim / hand-off / converge comments (`CLAIM_MARKER`, `HANDOFF_MARKER`), the janitor's rule comments |
