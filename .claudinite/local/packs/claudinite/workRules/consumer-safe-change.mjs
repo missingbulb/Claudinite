@@ -1,4 +1,5 @@
 import { finding } from '../../../../../engine/checks/helpers/findings.mjs';
+import { stripComments } from '../../../../../engine/checks/helpers/code-scanning.mjs';
 
 // Phase 4 of #593: the rule that stops the class recurring by omission.
 //
@@ -52,11 +53,12 @@ const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
 // The canon's own local packs — repo-only content, outside every vendor set.
 const LOCAL_PACKS = '.claudinite/local/packs';
 
-// A stub's comments are inert: a member vendors them verbatim and no engine reads
-// them, so rewriting one carries nobody anywhere and asking for a migration record
-// would be the cried-wolf firing this rule is narrowed to avoid. Both sides must be
-// readable to reach that conclusion — an unreadable stub stays a contract surface,
-// so the fail-safe answer is the one a missing file gets.
+// A comment is inert on every surface this rule watches: a member vendors the bytes
+// verbatim and nothing reads the prose in them, so rewriting one carries nobody
+// anywhere and asking for a migration record would be the cried-wolf firing this
+// rule is narrowed to avoid. Both sides must be readable to reach that conclusion —
+// an unreadable file stays a contract surface, so the fail-safe answer is the one a
+// missing file gets.
 //
 // `#` only opens a comment at line start or after whitespace, which is what keeps a
 // `#` inside a YAML scalar (a URL fragment, an `echo 'a # b'`) a real character.
@@ -70,12 +72,16 @@ function stripYamlComments(text) {
       if (c === '#' && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i);
     }
     return line;
-  }).map((line) => line.trimEnd()).filter(Boolean).join('\n');
+  }).join('\n');
 }
 
-function commentOnly(head, base) {
+const normalize = (text) => text.split('\n').map((l) => l.trimEnd()).filter(Boolean).join('\n');
+
+// `strip` is the language's own comment remover — YAML's above for a stub, the
+// engine's string-aware JS one for the schema module.
+function commentOnly(head, base, strip) {
   if (typeof head !== 'string' || typeof base !== 'string') return false;
-  return stripYamlComments(head) === stripYamlComments(base);
+  return normalize(strip(head)) === normalize(strip(base));
 }
 
 // The contract surfaces this change touched, and why each counts. Pure over the
@@ -83,11 +89,11 @@ function commentOnly(head, base) {
 // testable with no git.
 export function contractChanges(changed, read, readBase = () => null) {
   const out = [];
-  if (changed.includes(SCHEMA)) {
+  if (changed.includes(SCHEMA) && !commentOnly(read(SCHEMA), readBase(SCHEMA), stripComments)) {
     out.push({ file: SCHEMA, what: 'the pack manifest vocabulary — every consumer local pack is validated against it' });
   }
   for (const stub of STUBS) {
-    if (changed.includes(stub) && !commentOnly(read(stub), readBase(stub))) {
+    if (changed.includes(stub) && !commentOnly(read(stub), readBase(stub), stripYamlComments)) {
       out.push({ file: stub, what: 'a workflow stub — every member vendors it verbatim' });
     }
   }
