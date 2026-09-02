@@ -23,7 +23,15 @@ export default {
   // The subject is the world's, but the value is zero on a repo nobody works in:
   // no new prose is written where nothing happens, and the first active window
   // resumes the sweep. Which pack paths it sweeps is task.md's.
-  preconditions: ['repo-active'],
+  //
+  // A LIVENESS FLOOR IS ALL `repo-active` CAN BE HERE. The backlog this works is
+  // standing, so movement is the wrong evidence: gate on prose changing and the
+  // sweep halts half-converted the week prose stops. The second condition gates on
+  // the one thing that does make a round worthless — the previous round's
+  // conversions already sitting in a PR nobody has reviewed, which this run would
+  // re-derive at opus. The subject is the one task.md pins, which is also why the
+  // previous round is recognisable from its PR alone.
+  preconditions: ['repo-active', 'no-open-pr-titled:Claudinite growth: prose to checks'],
   agent_model: 'opus',                   // judging convertibility and authoring checks + fixtures is heavy judgment
   expected_outcome: 'pr',
   // A conversion removes the prose line and writes the check that replaces it —
