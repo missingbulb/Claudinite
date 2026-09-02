@@ -9,7 +9,10 @@ import {
   SOURCE, DEFAULT_WORKER_NAME, COMPATIBILITY_DATE, NeedsAction,
   resolveOrigins, uploadForm, probe, deploy, wiringNote,
 } from '../../../tasks/deploy-oauth-exchange/deploy.mjs';
-import declaration from '../../../tasks/deploy-oauth-exchange/task.mjs';
+import declarationJson from '../../../tasks/deploy-oauth-exchange/task.json' with { type: 'json' };
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const declaration = normalizeTaskDeclaration(declarationJson);
 
 const member = (config) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-deploy-'));

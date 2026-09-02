@@ -5,9 +5,13 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
-import decl from '../../../tasks/fleet-pack-seeds/task.mjs';
-import roster from '../../../tasks/fleet-roster/task.mjs';
+import declJson from '../../../tasks/fleet-pack-seeds/task.json' with { type: 'json' };
+import rosterJson from '../../../tasks/fleet-roster/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const decl = normalizeTaskDeclaration(declJson);
+const roster = normalizeTaskDeclaration(rosterJson);
 
 // The claudinite-fleet-sheepdog pack's fleet-pack-seeds task: the enforcer converging the pack
 // declarations this fleet standardizes on. Same agentless shape as the other
@@ -101,7 +105,7 @@ test('fleet-pack-seeds: names no pack — every id comes from the fleet\'s own c
   // The constraint that keeps the enforcer from becoming a second place packs are
   // known. The sweep carries the mechanism; the fleet that declares this pack supplies
   // which packs, in its own `packSeeds`.
-  const packSrc = [sweepSrc, workerSrc, readFileSync(join(taskDir, 'task.mjs'), 'utf8'),
+  const packSrc = [sweepSrc, workerSrc, readFileSync(join(taskDir, 'task.json'), 'utf8'),
     readFileSync(join(packRoot, 'fleet-config.mjs'), 'utf8')].join('\n');
   for (const known of ['claude-code-web-users-support', 'UserPreferencesStore', 'preferences']) {
     assert.ok(!packSrc.includes(known), `the claudinite-fleet-sheepdog pack must not name "${known}"`);

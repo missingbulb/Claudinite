@@ -9,13 +9,16 @@ import assert from 'node:assert/strict';
 import { planSchedulerRun } from '../../queue/scheduler-run.mjs';
 import { runExecutor } from '../../queue/executor.mjs';
 import { collectSignals } from '../../signals/index.mjs';
-import requestTask from '../../queue/tasks/implement-request/task.mjs';
+import requestTaskJson from '../../queue/tasks/implement-request/task.json' with { type: 'json' };
 import { eligibility } from '../../queue/tasks/implement-request/preconditions.mjs';
 import { evaluatePrecondition, loadTaskTerms } from '../../shared-code/preconditions.mjs';
 import { REQUEST_TASK_ID } from '../../built-in-tasks.mjs';
 import { parseWorkItemBody, machineBlockOf, ORIGIN_AD_HOC } from '../../queue/work-item.mjs';
 import { join } from 'node:path';
 import { LEGACY_BUILT_IN_TASK_PATH } from '../legacy-protocol.mjs';
+import { normalizeTaskDeclaration } from '../../task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const requestTask = normalizeTaskDeclaration(requestTaskJson);
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const NOW = '2026-08-19T09:17:00Z';

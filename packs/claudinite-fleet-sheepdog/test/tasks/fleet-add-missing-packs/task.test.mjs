@@ -4,8 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
-import decl from '../../../tasks/fleet-add-missing-packs/task.mjs';
+import declJson from '../../../tasks/fleet-add-missing-packs/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const decl = normalizeTaskDeclaration(declJson);
 
 // The claudinite-fleet-sheepdog pack's fleet-add-missing-packs task on the FAN-OUT model (#749):
 // the enforcer dispatches, the member executes. Everything asserted here is a

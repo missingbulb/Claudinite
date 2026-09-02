@@ -6,7 +6,10 @@ import { dirname, join } from 'node:path';
 import * as enforcerSide from '../../../tasks/fleet-add-missing-packs/protocol.mjs';
 import * as memberSide from '../../../../claudinite-lifecycle/tasks/adopt-requested-packs/protocol.mjs';
 import { MEMBER_TASK } from '../../../tasks/fleet-add-missing-packs/worker.mjs';
-import memberDecl from '../../../../claudinite-lifecycle/tasks/adopt-requested-packs/task.mjs';
+import memberDeclJson from '../../../../claudinite-lifecycle/tasks/adopt-requested-packs/task.json' with { type: 'json' };
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const memberDecl = normalizeTaskDeclaration(memberDeclJson);
 
 // The add-packs protocol is a contract between two packs that may not import each
 // other (pack-independence), so each carries its own copy and THIS test is the one

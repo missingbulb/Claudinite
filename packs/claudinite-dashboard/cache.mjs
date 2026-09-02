@@ -9,7 +9,7 @@
 //   IMMUTABLE  — repo content at a commit sha. A path at a sha cannot change, so
 //                this is cached under the sha and never revalidated. The task
 //                declarations are the whole win here: unchanged `main` means zero
-//                calls to re-read every task.mjs.
+//                calls to re-read every task.json.
 //   VALIDATED  — anything live (open items, runs). Cached WITH its ETag and
 //                re-requested with `If-None-Match`. GitHub answers 304 when
 //                nothing changed, and a 304 does not count against the rate limit,

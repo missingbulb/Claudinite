@@ -18,9 +18,9 @@
 // work item per task per occurrence, with no orchestrator step. Un-declaring the
 // pack freezes canon absorption without touching the members' side
 // (claudinite-growth). The tasks are discovered structurally from this pack's own
-// `tasks/<name>/task.mjs` (packs/claudinite-tasks/discover.mjs), so none is declared here.
+// `tasks/<name>/task.json` (packs/claudinite-tasks/discover.mjs), so none is declared here.
 export default {
-  version: '60903.1',
+  version: '60903.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'curating a canon — promoting member lessons onto its packs/ shelf, sweeping the fleet for unhomed technologies, policing the shelf',

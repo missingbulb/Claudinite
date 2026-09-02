@@ -4,8 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
-import decl from '../../../tasks/fleet-baseline/task.mjs';
+import declJson from '../../../tasks/fleet-baseline/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const decl = normalizeTaskDeclaration(declJson);
 
 // fleet-baseline as a MANUAL task (#749) — the first task on the non-cadence
 // frequency, replacing the pack's standalone workflow (and the `.github/` managed

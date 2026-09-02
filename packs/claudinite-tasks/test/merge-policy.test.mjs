@@ -311,7 +311,7 @@ test('declaredMergeRules reads only active packs and reports collisions loudly',
 });
 
 test('usage-fold\'s delivery shape — the regenerated aggregate and nothing else — resolves on built-ins', async () => {
-  const { default: usageFold } = await import('../tasks/usage-fold/task.mjs');
+  const { default: usageFold } = await import('../tasks/usage-fold/task.json', { with: { type: 'json' } });
   const v = policyVerdict({
     policy: usageFold.automerge,
     entries: [edited('.claudinite/local/usage.GENERATED.json', '{}', '{"a":1}')],

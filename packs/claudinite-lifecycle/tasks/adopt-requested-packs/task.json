@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../claudinite-tasks/task.schema.json",
+  "id": "adopt-requested-packs",
+  "frequency": "manual",
+  "preconditions": [
+    "none"
+  ],
+  "expected_outcome": "pr",
+  "automerge": [
+    "claudinite-shared-packs",
+    "claudinite-settings-updates",
+    "generated-file-changes"
+  ],
+  "agent_execution_timeout": 3600
+}

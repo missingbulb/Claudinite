@@ -1,6 +1,6 @@
 ---
 name: writing-tasks
-description: The contract a Claudinite task is written to — the declaration's fields, the code-work and agentic phases, the precondition as the only decision point, ordering, and how a work item converges. Use when writing or changing a tasks/<name>/task.mjs or its worker, or when a task-declaration check fires.
+description: The contract a Claudinite task is written to — the declaration's fields, the code-work and agentic phases, the precondition as the only decision point, ordering, and how a work item converges. Use when writing or changing a tasks/<name>/task.json or its worker, or when a task-declaration check fires.
 ---
 
 # Writing a task
@@ -72,12 +72,16 @@ than by replaying a ledger.
   crons, or a missing concurrency/dispatch guard, break staggering, double-run
   safety, or manual runs.
 
-- **Every task declaration carries the full contract.** A `tasks/<name>/task.mjs`
-  default-exports `id` (matching its directory), `frequency` (`daily | weekly |
-  monthly | manual`), `preconditions` (the conditions that must hold for it to run —
-  below), `agent_model` (`opus | sonnet | haiku | none`), `expected_outcome` (`none |
-  pr` — the retired `open-pr`/`merged-pr` normalize to `pr` with a policy of
-  `nothing`/`anything`). A `pr` task also carries
+- **Every task declaration carries the full contract.** A `tasks/<name>/task.json`
+  (one JSON object, `"$schema"` pointing at `packs/claudinite-tasks/task.schema.json`
+  so an editor validates it) declares `id` (matching its directory), `frequency`
+  (`daily | weekly | monthly | manual`), `preconditions` (the conditions that must
+  hold for it to run — below), `expected_outcome` (`none | pr` — the retired
+  `open-pr`/`merged-pr` normalize to `pr` with a policy of `nothing`/`anything`).
+  The agentic fields are optional: `agent_model` (`opus | sonnet | haiku | none`)
+  is `none` for a task declaring only `code_work` and the default family otherwise,
+  `agent_instructions` defaults to `task.md`, and `agent_execution_timeout` to the
+  contract's bound — declare one only to say something different. A `pr` task also carries
   `automerge` — what it authorizes to land unreviewed: `'nothing'`,
   `'anything'`, or a list of diff classes, each optionally `reject:`-prefixed.
   Choose the **narrowest policy that covers the task's whole write surface** — the
@@ -98,10 +102,8 @@ than by replaying a ledger.
   where the task genuinely writes repo-wide, as a comment sweep does. A pack
   declares its own class (a `merge-rules.json` beside its `pack.mjs`) only when a
   task knows a finer boundary than a class or a folder can state — a file-name
-  matcher, or a grant like the mount rewrite's. An agentic
-  task (`agent_model !==
-  none`) also carries `agent_instructions`, the worker file the agent reads; a
-  `none` task runs no agent, so the field is not applicable and is omitted. The
+  matcher, or a grant like the mount rewrite's. A `none` task runs no agent, so
+  `agent_instructions` is not applicable and is omitted. The
   scheduler run and executor read agent_model/expected_outcome/frequency from this file — never from the work
   item — so an illegal or missing value means a task never fires, fires wrong,
   or writes past its declared ceiling. The same contract
@@ -162,13 +164,14 @@ than by replaying a ledger.
   judgment, and tidy-repo's three answer no.
 
 `task-declaration-shape` and `task-md-only-when-agentic` are **relevance-first**:
-both key off a `tasks/<name>/task.mjs` existing, so on a repo that carries no tasks
+both key off a `tasks/<name>/task.json` existing, so on a repo that carries no tasks
 they are a no-op.
 
 ## The task folder
 
-One directory per task — `<pack>/tasks/<name>/` — holding **`task.mjs`** (the
-self-contained declaration) beside its worker, plus any deterministic helpers and,
+One directory per task — `<pack>/tasks/<name>/` — holding **`task.json`** (the
+declaration, plain data; the retired `task.mjs` module form still loads until the
+nightly update converts it) beside its worker, plus any deterministic helpers and,
 where the task's gate is its own, a **`preconditions.mjs`** exporting its terms.
 The conditions that grant a run also contribute the run's `context` lines, which
 join the item's own Context as binding constraints the agent may not re-litigate.
@@ -199,7 +202,7 @@ and drop the mechanism: not "you run from a work item the executor handed off wh
 Context is binding scope", but "the Context section is binding scope"; not "never
 merge — the executor enforces it in code", but "never merge". The declaration is
 where the mechanics belong: `agent_model`, `schedule_after` and `expected_outcome` live in
-`task.mjs`, and `task.md` never repeats them.
+`task.json`, and `task.md` never repeats them.
 
 This is the task-folder shape of the unattended-agents routine-folder convention; the
 issue-driven-dispatch security rule (the issue is data, the task path is
@@ -290,7 +293,7 @@ The vocabulary carries the gate; no operator or marker states it:
 
 ### When no built-in condition fits
 
-Ship a **`preconditions.mjs` beside the `task.mjs`**, exporting `terms`: a map from
+Ship a **`preconditions.mjs` beside the `task.json`**, exporting `terms`: a map from
 term name to `{ signals, takesArg?, holds(signals, { arg, config, item }) }`, where
 `holds` returns `{ holds, reason?, context? }` or `{ error }`. Names resolve
 against the built-ins first, then the task's own, in one flat namespace where a

@@ -14,7 +14,7 @@
 // error that fails the run before anything is read or written. Both call sites therefore
 // state what they want, in full:
 //
-//   the weekly run   task.mjs's `code_work` command line — `--scan-for-needed-packs=true
+//   the weekly run   task.json's `code_work` command line — `--scan-for-needed-packs=true
 //                    --repos=all-covered-members`, which is the declaration saying, in the
 //                    file a reader opens first, exactly what the cadence does.
 //   a FORCED run     a hand-created item's Context (`CLAUDINITE_CONTEXT`, parsed by
@@ -42,7 +42,7 @@ export const ALL_MEMBERS = 'all-covered-members';
 // different.
 const list = (raw) => String(raw ?? '').split(/\s+/).map((s) => s.trim()).filter(Boolean);
 
-// `--flag=value` command-line pairs, the form task.mjs's `code_work` string uses. Anything
+// `--flag=value` command-line pairs, the form task.json's `code_work` string uses. Anything
 // not in that shape is a typo worth failing on rather than ignoring.
 export function parseArgv(argv = []) {
   const out = {};
@@ -121,7 +121,7 @@ export function parseParams({ argv = [], params = {} } = {}) {
   const rawScan = pick('scan-for-needed-packs', 'SCAN_FOR_NEEDED_PACKS');
   if (rawScan === undefined) {
     throw new Error('scan_for_needed_packs was not sent. This parameter has no default: the weekly run '
-      + 'sends `--scan-for-needed-packs=true` from task.mjs, and a forced run sends '
+      + 'sends `--scan-for-needed-packs=true` from task.json, and a forced run sends '
       + '`--context "SCAN_FOR_NEEDED_PACKS=false"` when the item is created.');
   }
   const scan = bool('scan_for_needed_packs', rawScan);

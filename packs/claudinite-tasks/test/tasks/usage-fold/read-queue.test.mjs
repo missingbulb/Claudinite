@@ -65,7 +65,7 @@ test('an ADOPTED marked issue keeps the person\'s title and is found by its mach
   // would be counted as belonging to no task and silently dropped.
   const adopted = item({
     title: 'the growth extract is picking up merge commits',
-    body: renderItemBody('packs/claudinite-growth/tasks/growth-extract/task.mjs'),
+    body: renderItemBody('packs/claudinite-growth/tasks/growth-extract/task.json'),
     labels: [{ name: ORIGIN_AD_HOC }, ...labelled(OUTCOME_DONE)],
   });
   assert.deepEqual(taskOf(adopted), { pack: 'claudinite-growth', task: 'growth-extract' });

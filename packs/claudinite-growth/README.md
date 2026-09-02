@@ -148,7 +148,7 @@ reaffirmable rationale behind an end-of-line `(n)` marker (checks join via `chec
 `references-integrity` below is its machine half, and `rule-revalidation` its consumer. The pack
 also bundles
 [unattended-agents](skills/unattended-agents/SKILL.md) and
-[**writing-tasks**](skills/writing-tasks/SKILL.md) — the contract a `tasks/<name>/task.mjs` and
+[**writing-tasks**](skills/writing-tasks/SKILL.md) — the contract a `tasks/<name>/task.json` and
 its worker are written to: the declaration's fields, the code-work and agentic phases, the
 precondition as the only place a task may decide not to run, and how a work item converges. That
 contract is what the four task checks below judge against, and it is a skill rather than a rule
@@ -255,7 +255,7 @@ made the change, and is one sweep away from being closed as stale.
 The last five are the **task contract** ([the writing-tasks skill](skills/writing-tasks/SKILL.md)), which
 lives here because it judges whether a task is *written* correctly — authoring, the subject of this
 pack — and not whether Claudinite is *working* in the repo. Relevance-first: all five are inert until
-the repo carries a `tasks/<name>/task.mjs` of its own.
+the repo carries a `tasks/<name>/task.json` of its own.
 
 - `task-declaration-matches-folder` — a declaration disagrees with its folder: discovery drops it into `errors` and every run keeps reporting healthy without it.
 - `task-md-only-when-agentic` — an agentless task carries a `task.md`, which the corpus reads as "an agent runs here": prose no session will ever open, judged by the routine contract and named by every work item as the file the run is about.

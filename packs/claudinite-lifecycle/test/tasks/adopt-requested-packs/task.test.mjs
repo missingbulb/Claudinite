@@ -4,8 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
-import decl from '../../../tasks/adopt-requested-packs/task.mjs';
+import declJson from '../../../tasks/adopt-requested-packs/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const decl = normalizeTaskDeclaration(declJson);
 
 // The MEMBER half of the fleet fan-out (#749, folded onto the request mode in
 // #1119): the enforcer places an `add-packs` work-list issue here and MARKS it, so

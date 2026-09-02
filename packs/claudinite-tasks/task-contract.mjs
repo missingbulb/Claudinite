@@ -1,5 +1,5 @@
 // The task declaration contract (per-project-scheduling DESIGN §1) — the single
-// source of truth for what a `tasks/<name>/task.mjs` default export must carry.
+// source of truth for what a `tasks/<name>/task.json` must carry.
 // Both the author-time `task-declaration-shape` check and the executor-side
 // `validate-dispatch` validate against this one function, so the accepted shape
 // can never drift between the two surfaces.
@@ -9,6 +9,7 @@ import { MODEL_FAMILIES } from './model-map.mjs';
 import { EXECUTING_LEASH_MS } from './queue/leases.mjs';
 import { normalizePolicy } from './merge-policy.mjs';
 import { validatePreconditions, preconditionSignals } from './precondition-policy.mjs';
+import { applyAgentDefaults } from './task-defaults.mjs';
 
 // A declared timeout is always a whole number of seconds, > 0.
 const isPositiveInt = (n) => Number.isInteger(n) && n > 0;
@@ -37,12 +38,19 @@ const LEGACY_FIELDS = {
   after: 'schedule_after',
 };
 
-// Return the declaration with canonical field names. Non-objects pass through
-// untouched so validateTaskDeclaration still reports them. Loaders (discover,
-// resolve-dispatch) normalize once; everything downstream sees only `code_work`.
+// The agentic fields' defaults live in task-defaults.mjs — a module with no
+// imports, so the dashboard's browser bundle can fill them the way the loader does.
+export { DEFAULT_AGENT_MODEL, DEFAULT_AGENT_INSTRUCTIONS, DEFAULT_AGENT_EXECUTION_TIMEOUT, defaultAgentModel } from './task-defaults.mjs';
+
+// Return the declaration with canonical field names and the defaults filled in.
+// Non-objects pass through untouched so validateTaskDeclaration still reports
+// them. Loaders (discover, resolve-dispatch) normalize once; everything
+// downstream sees only `code_work` and never an absent agentic field.
 export function normalizeTaskDeclaration(decl) {
   if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) return decl;
   const out = { ...decl };
+  // The editor's schema pointer, when a caller hands over a parsed task.json whole.
+  delete out.$schema;
   for (const [legacy, canonical] of Object.entries(LEGACY_FIELDS)) {
     if (out[legacy] !== undefined) {
       if (out[canonical] === undefined) out[canonical] = out[legacy];
@@ -59,7 +67,7 @@ export function normalizeTaskDeclaration(decl) {
     if (out.automerge === undefined) out.automerge = LEGACY_OUTCOMES[out.expected_outcome];
     out.expected_outcome = 'pr';
   }
-  return out;
+  return applyAgentDefaults(out);
 }
 
 // The write ceiling a task declares (DESIGN §1, §4). A declared MAXIMUM, not a
@@ -110,7 +118,7 @@ export const SIGNAL_NAMES = [
 export function validateTaskDeclaration(raw, terms = new Map()) {
   const decl = normalizeTaskDeclaration(raw);
   if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) {
-    return [{ what: 'task.mjs does not default-export a declaration object', fix: 'export default { id, frequency, preconditions, agent_model, expected_outcome, agent_instructions }' }];
+    return [{ what: 'task.json is not a declaration object', fix: 'write one JSON object: { "id", "frequency", "preconditions", "expected_outcome", … }' }];
   }
   const problems = [];
   const bad = (what, fix) => problems.push({ what, fix });
@@ -157,11 +165,12 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   } else if (decl.automerge !== undefined) {
     bad('a "none" task declares "automerge"', 'drop it — a task that opens no pull request has nothing to merge; or set expected_outcome: "pr"');
   }
-  // agent_instructions — REQUIRED for an agentic task (agent_model !== 'none'):
-  // that's the worker file the agent reads. A `none` task runs no agent, so the
-  // field is not applicable and is neither required nor validated when present.
+  // agent_instructions — the worker file an agentic task's session reads,
+  // defaulted to `task.md` at the door, so what is judged here is a declared value
+  // that is not a usable one. A `none` task runs no agent, so the field is not
+  // applicable and is neither required nor validated when present.
   if (decl.agent_model !== 'none' && (typeof decl.agent_instructions !== 'string' || decl.agent_instructions.trim() === '')) {
-    bad('an agentic task (agent_model !== "none") declares no string "agent_instructions"', 'point "agent_instructions" at the worker file beside task.mjs (e.g. "task.md")');
+    bad('an agentic task (agent_model !== "none") declares an "agent_instructions" that is not a file name', 'point "agent_instructions" at the worker file beside task.json (e.g. "task.md"), or drop it for that default');
   }
   // ONE MECHANISM (#1617). `preconditions` — a list of named conditions, all of
   // which must hold — is the only gate a task declares. The `precondition`
@@ -215,7 +224,7 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   // code_work_timeout — the hard kill that bounds the subprocess.
   if (decl.code_work !== undefined) {
     if (typeof decl.code_work !== 'string' || decl.code_work.trim() === '') {
-      bad('"code_work" is present but not a non-empty string', 'set it to a command whose executable is a script beside task.mjs, e.g. "node prepare.mjs"');
+      bad('"code_work" is present but not a non-empty string', 'set it to a command whose executable is a script beside task.json, e.g. "node prepare.mjs"');
     } else if (escapesTaskDir(decl.code_work)) {
       bad('"code_work" reaches outside the task directory (absolute path or "..")', 'reference a sibling script only, e.g. "node prepare.mjs"');
     }
@@ -297,12 +306,13 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
     }
   }
 
-  // Execution bound (task-code-work DESIGN §2, §6) — an agentic task MUST
-  // declare a positive-integer agent_execution_timeout. There is always a bound
-  // on an agentic run; enforcement is best-effort (the executor surfaces the
-  // value to the subagent). A `none` task runs no agent, so it needs none.
+  // Execution bound (task-code-work DESIGN §2, §6) — an agentic run always has a
+  // positive-integer agent_execution_timeout, the default filled at the door, so
+  // what fails here is a declared bound that is not one. Enforcement is
+  // best-effort (the executor surfaces the value to the subagent). A `none` task
+  // runs no agent, so it needs none.
   if (MODEL_FAMILIES.includes(decl.agent_model) && decl.agent_model !== 'none' && !isPositiveInt(decl.agent_execution_timeout)) {
-    bad('an agentic task (agent_model !== "none") declares no positive-integer "agent_execution_timeout"', 'add "agent_execution_timeout": the seconds bounding the agentic run — generous; extreme protection, not a scheduling knob');
+    bad('an agentic task (agent_model !== "none") declares an "agent_execution_timeout" that is not a positive integer', 'set "agent_execution_timeout": the seconds bounding the agentic run — generous; extreme protection, not a scheduling knob — or drop it for the default');
   }
 
   // An agentless task (agent_model: none) runs no agent, so its ONLY work is

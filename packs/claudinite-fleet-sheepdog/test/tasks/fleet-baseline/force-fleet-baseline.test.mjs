@@ -28,7 +28,7 @@ test('the forced member-side task is one a member actually runs', () => {
   // must actually catch — no pack owns this id at all — is the one below.
   const owners = readdirSync(join(ROOT, 'packs'), { withFileTypes: true })
     .filter((d) => d.isDirectory())
-    .filter((d) => existsSync(join(ROOT, 'packs', d.name, 'tasks', FORCED_TASK, 'task.mjs')))
+    .filter((d) => existsSync(join(ROOT, 'packs', d.name, 'tasks', FORCED_TASK, 'task.json')))
     .map((d) => d.name);
   assert.equal(owners.length, 1,
     `expected exactly one pack to own a "${FORCED_TASK}" task, found ${owners.length} (${owners.join(', ') || 'none'}) — `

@@ -65,7 +65,7 @@
 // than something every adopter must weigh in on. A project that wants the prune
 // active sets retention_days itself.
 export default {
-  version: '60903.1',
+  version: '60903.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'authoring Claudinite content here — lesson extraction, dedup, revalidation, conversation logs, skill-usage folding, the task contract',
@@ -77,7 +77,7 @@ export default {
   // prerequisite rather than an ambient assumption.
   requires: ['claudinite-lifecycle'],
   // The task contract (the writing-tasks skill). Relevance-first — inert until
-  // the repo carries a tasks/<name>/task.mjs of its own — and here rather than in
+  // the repo carries a tasks/<name>/task.json of its own — and here rather than in
   // claudinite-lifecycle because these judge whether a task is WRITTEN correctly,
   // which is authoring, not whether Claudinite is working in this repo. The
   // contract's third rule (task-phase-discipline) is a declared check in this pack's

@@ -1,0 +1,18 @@
+{
+  "$schema": "../../../claudinite-tasks/task.schema.json",
+  "id": "growth-extract",
+  "frequency": "daily",
+  "schedule_after": [
+    "claudinite-lifecycle/update"
+  ],
+  "preconditions": [
+    "substantive-change"
+  ],
+  "agent_model": "opus",
+  "expected_outcome": "pr",
+  "automerge": [
+    "claudinite-local-pack-md-changes",
+    "claudinite-local-pack-check-changes"
+  ],
+  "agent_execution_timeout": 2700
+}

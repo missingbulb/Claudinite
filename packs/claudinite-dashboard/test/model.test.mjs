@@ -54,11 +54,11 @@ test('declaredPackDirs maps shared and local packs to both roots', () => {
 
 test('taskDeclarationPaths takes only declared packs, from either root', () => {
   const paths = [
-    'packs/basics/tasks/ci-performance/task.mjs',
+    'packs/basics/tasks/ci-performance/task.json',
     'packs/basics/tasks/ci-performance/worker.mjs',       // not a declaration
-    'packs/claudinite-fleet-sheepdog/tasks/fleet-roster/task.mjs',          // pack not declared
-    '.claudinite/shared/packs/claudinite-lifecycle/tasks/update/task.mjs',
-    '.claudinite/local/packs/claudinite/tasks/growth/task.mjs',
+    'packs/claudinite-fleet-sheepdog/tasks/fleet-roster/task.json',          // pack not declared
+    '.claudinite/shared/packs/claudinite-lifecycle/tasks/update/task.json',
+    '.claudinite/local/packs/claudinite/tasks/growth/task.json',
     'packs/basics/tasks/ci-performance/task.test.mjs',     // the test beside it, not the declaration
   ];
   const found = taskDeclarationPaths(paths, { packs: ['basics', 'claudinite-lifecycle', 'local/claudinite'] });
@@ -120,6 +120,24 @@ test('parseDeclaration reports an unreadable field as null, never a default', ()
   const d = parseDeclaration('export default { id: computeId(), frequency: FREQ, };');
   assert.equal(d.frequency, null);
   assert.equal(d.agent_model, null);
+});
+
+// The JSON form parses whole, and an omitted agentic field takes the contract's
+// default — the loader's door, not a guess of this page's.
+test('parseDeclaration reads a task.json, defaults filled', () => {
+  const d = parseDeclaration('{ "$schema": "x", "id": "tidy-prs", "frequency": "weekly", "preconditions": ["substantive-change"], "expected_outcome": "none" }', 'packs/tidy-repo/tasks/tidy-prs/task.json');
+  assert.equal(d.id, 'tidy-prs');
+  assert.equal(d.frequency, 'weekly');
+  assert.equal(d.agent_model, 'sonnet');
+  assert.equal(d.agent_execution_timeout, 1800);
+  assert.equal(d.has_precondition, true);
+  const broken = parseDeclaration('{ "id": ', 'packs/tidy-repo/tasks/tidy-prs/task.json');
+  assert.equal(broken.frequency, null);
+});
+
+test('taskDeclarationPaths selects a task.json and a task.mjs alike', () => {
+  const paths = ['packs/basics/tasks/a/task.json', 'packs/basics/tasks/b/task.mjs', 'packs/basics/tasks/c/task.md'];
+  assert.deepEqual(taskDeclarationPaths(paths, { packs: ['basics'] }).map((t) => t.task), ['a', 'b']);
 });
 
 test('parseDeclaration survives a missing file', () => {
@@ -239,8 +257,8 @@ test('a park\'s severity follows its triage lane', () => {
 // --- the roster ----------------------------------------------------------------
 
 const tasks = [
-  { pack: 'basics', task: 'ci-performance', path: 'packs/basics/tasks/ci-performance/task.mjs', declaration: { frequency: 'weekly', agent_model: 'sonnet' } },
-  { pack: 'claudinite-lifecycle', task: 'update', path: 'packs/claudinite-lifecycle/tasks/update/task.mjs', declaration: { frequency: 'daily' } },
+  { pack: 'basics', task: 'ci-performance', path: 'packs/basics/tasks/ci-performance/task.json', declaration: { frequency: 'weekly', agent_model: 'sonnet' } },
+  { pack: 'claudinite-lifecycle', task: 'update', path: 'packs/claudinite-lifecycle/tasks/update/task.json', declaration: { frequency: 'daily' } },
 ];
 
 test('every declared task gets a row, including one that has never run', () => {

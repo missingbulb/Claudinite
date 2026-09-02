@@ -242,18 +242,18 @@ const PACK_PROSE_ONLY = `export default {
 // canon-owned and structurally out of ctx.files, so it proves nothing about a
 // consumer's OWN task). `id` deliberately equals its directory name and
 // `agent_model: 'none'` keeps the fixture minimal (no agent_instructions to wire).
-const FIXTURE_TASK = `export default {
-  id: 'fixture-task',
-  frequency: 'weekly',
-  precondition_signals: [],
-  agent_model: 'none',
-  expected_outcome: 'none',
-  agent_preprocessing: 'node prepare.mjs',
-  agent_preprocessing_timeout: 60,
-  precondition() {
-    return { run: false, reason: 'a rehearsal fixture never actually dispatches' };
-  },
-};
+// The DATA form (task.json), which is what a member converges to; the two legacy
+// fixtures below keep the module form a member may still carry.
+const FIXTURE_TASK = `{
+  "$schema": "../../../../../shared/packs/claudinite-tasks/task.schema.json",
+  "id": "fixture-task",
+  "frequency": "weekly",
+  "precondition_signals": [],
+  "agent_model": "none",
+  "expected_outcome": "none",
+  "agent_preprocessing": "node prepare.mjs",
+  "agent_preprocessing_timeout": 60
+}
 `;
 
 const PACK_VERSIONED = `export default {
@@ -835,7 +835,7 @@ export const FIXTURES = [
       '.claudinite/local/packs/fixture-local/RULES.md': '# fixture-local\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-local/skills/fixture-skill/SKILL.md':
         '---\nname: fixture-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
-      '.claudinite/local/packs/fixture-local/tasks/fixture-task/task.mjs': FIXTURE_TASK,
+      '.claudinite/local/packs/fixture-local/tasks/fixture-task/task.json': FIXTURE_TASK,
     },
   },
   {

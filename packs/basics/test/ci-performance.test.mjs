@@ -8,8 +8,11 @@ import {
   summarize, median, runSeconds, slowestSteps, reportBody,
   MIN_RUNS_PER_WINDOW, REGRESSION_SECONDS,
 } from '../tasks/ci-performance/worker.mjs';
-import decl from '../tasks/ci-performance/task.mjs';
+import declJson from '../tasks/ci-performance/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../claudinite-tasks/shared-code/task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const decl = normalizeTaskDeclaration(declJson);
 
 const NOW = Date.parse('2026-08-15T12:00:00Z');
 const daysAgo = (d) => new Date(NOW - d * 86400 * 1000).toISOString();

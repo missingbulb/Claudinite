@@ -4,8 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pack from '../../basics/pack.mjs';
-import update from '../tasks/update/task.mjs';
+import updateJson from '../tasks/update/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const update = normalizeTaskDeclaration(updateJson);
 
 const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/claudinite-lifecycle/tasks/update');
 
@@ -21,7 +24,7 @@ const S = (stamp = {}, changedPacks = []) => ({
 });
 
 test('basics contributes the update task structurally, not as a pack.mjs slot', () => {
-  // The task is found by the repo's scheduler at tasks/<name>/task.mjs (#394), so
+  // The task is found by the repo's scheduler at tasks/<name>/task.json (#394), so
   // the manifest names no task at all.
   assert.equal(pack.run_daily, undefined);
   assert.equal(update.id, 'update');
@@ -44,8 +47,8 @@ test('update: a repo with no vendored mount is settings, not a nightly question'
   // night for an answer that cannot change on its own. Repo shape is not a
   // precondition (task-preconditions DESIGN): such a repo names the task in its
   // `taskScheduler.disabledTasks` and the scheduler never instantiates it.
-  const declaration = readFileSync(join(TASK_DIR, 'task.mjs'), 'utf8');
-  assert.match(declaration, /taskScheduler\.disabledTasks/);
+  const notes = readFileSync(join(TASK_DIR, 'README.md'), 'utf8');
+  assert.match(notes, /taskScheduler\.disabledTasks/);
   assert.equal(evaluatePrecondition({ decl: update }, S({ present: false, engineVersion: null })).run, true);
 });
 

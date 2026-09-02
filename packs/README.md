@@ -70,7 +70,7 @@ bundled skills resolve off it) and a `local` flag. A local pack:
   `.claudinite/local/packs/` across its dir swap and the `.gitignore` re-includes it.
 
 A local pack contributes **every** slot first-class: prose, checks, skills, **and scheduled
-tasks** — `tasks/<name>/task.mjs`, found by the repo's own scheduler in the same uniform scan that
+tasks** — `tasks/<name>/task.json`, found by the repo's own scheduler in the same uniform scan that
 finds a canon pack's tasks ([../packs/claudinite-tasks/discover.mjs](../packs/claudinite-tasks/discover.mjs)),
 gated by the repo's declaration exactly like a canon pack's tasks. The canon home's own curation
 tasks ride this path.

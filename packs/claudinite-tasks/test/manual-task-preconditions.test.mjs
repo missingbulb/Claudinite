@@ -4,6 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { evaluatePrecondition, loadTaskTerms } from '../shared-code/preconditions.mjs';
+import { loadTaskDeclaration } from '../task-declaration.mjs';
+import { normalizeTaskDeclaration } from '../task-contract.mjs';
 
 // It lives in this pack's own test/ because the semantics it pins are this pack's:
 // `manual` means the scheduler run never instantiates the task, the executor
@@ -30,14 +32,13 @@ test('no manual task refuses its own forced item', async () => {
   // `:(glob)` so `*` stops at a path separator: the subject is the `tasks/` slot a pack
   // CONTRIBUTES, not a built-in the queue ships under its own `queue/tasks/`, whose
   // precondition answers about the request issue its item names (tasks-dispatch DESIGN §16).
-  const files = execFileSync('git', ['ls-files', ':(glob)packs/*/tasks/*/task.mjs'], { encoding: 'utf8' })
+  const files = execFileSync('git', ['ls-files', ':(glob)packs/*/tasks/*/task.json'], { encoding: 'utf8' })
     .split('\n').filter(Boolean);
   assert.ok(files.length, 'the task glob matched nothing — a layout change would make this test vacuous');
 
   const manual = [];
   for (const f of files) {
-    const mod = await import(pathToFileURL(resolve(f)).href);
-    const decl = mod.default ?? mod.task ?? mod;
+    const decl = normalizeTaskDeclaration(await loadTaskDeclaration(resolve(f)));
     if (decl?.frequency === 'manual') manual.push({ f, decl });
   }
   assert.ok(manual.length, 'no manual tasks found — this guard has lost its subject');

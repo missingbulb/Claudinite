@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../claudinite-tasks/task.schema.json",
+  "id": "prose-to-checks-sweep",
+  "frequency": "weekly",
+  "preconditions": [
+    "repo-active"
+  ],
+  "agent_model": "opus",
+  "expected_outcome": "pr",
+  "automerge": [
+    "under:.claudinite/local/packs && markdown-line-removals",
+    "claudinite-local-pack-check-changes"
+  ],
+  "agent_execution_timeout": 2700
+}

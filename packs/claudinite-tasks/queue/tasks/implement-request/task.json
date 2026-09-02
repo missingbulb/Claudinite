@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../task.schema.json",
+  "id": "implement-request",
+  "frequency": "manual",
+  "preconditions": [
+    "request-eligible"
+  ],
+  "agent_model": "opus",
+  "model_from_request": true,
+  "expected_outcome": "pr",
+  "automerge": "anything",
+  "agent_execution_timeout": 14400,
+  "on_interrupt": "needs-human"
+}

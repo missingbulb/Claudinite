@@ -2,8 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import usageFold from '../../../tasks/usage-fold/task.mjs';
+import usageFoldJson from '../../../tasks/usage-fold/task.json' with { type: 'json' };
 import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../../shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../../task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const usageFold = normalizeTaskDeclaration(usageFoldJson);
 
 // The usage-fold declaration and its precondition expression. The verdicts go
 // through `evaluatePrecondition` — the same seam the executor calls at pick — so
