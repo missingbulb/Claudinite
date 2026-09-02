@@ -412,19 +412,28 @@ working through these has the settings page open in the next tab.
 - [ ] Untick **Webhook → Active**
 - [ ] Under **Permissions → Repository**, set Contents, Issues, Metadata and Actions to **Read-only**, then press **Create GitHub App**
 - [ ] Copy the **Client ID** — the App's General page, under the app name; begins `Iv23`
+- [ ] Add it as the variable `CLAUDINITE_DASHBOARD_CLIENT_ID` — `<repo>/settings/variables/actions/new`
 - [ ] Press **Generate a new client secret**, and copy the value under **Client secrets** — shown once
-- [ ] Install the App on the account holding the repos — the **Install App** tab of that page
-- [ ] Add the client secret as the Actions secret `DASHBOARD_OAUTH_CLIENT_SECRET` — `<repo>/settings/secrets/actions/new`
-- [ ] Add the Client ID as the variable `CLAUDINITE_DASHBOARD_CLIENT_ID` — `<repo>/settings/variables/actions/new`
-- [ ] Add `CLOUDFLARE_ACCOUNT_ID` and the secret `CLOUDFLARE_API_TOKEN` — see the [deploy task](tasks/deploy-oauth-exchange/README.md)
+- [ ] Add it as the Actions secret `DASHBOARD_OAUTH_CLIENT_SECRET` — `<repo>/settings/secrets/actions/new`
+- [ ] Install the App on the account holding the repos — `https://github.com/settings/apps/<app-slug>/installations`
+- [ ] Copy your Cloudflare **Account ID** — `https://dash.cloudflare.com/?to=/:account/workers`, the right-hand sidebar under *Account details*; 32 hex characters
+- [ ] Add it as the variable `CLOUDFLARE_ACCOUNT_ID` — `<repo>/settings/variables/actions/new`
+- [ ] Create a Cloudflare API token from the **Edit Cloudflare Workers** template — `https://dash.cloudflare.com/profile/api-tokens`; the value is shown once, on the confirmation screen
+- [ ] Add it as the Actions secret `CLOUDFLARE_API_TOKEN` — `<repo>/settings/secrets/actions/new`
 - [ ] Run `create-work-item claudinite-dashboard/deploy-oauth-exchange`, and copy the `workers.dev` URL it reports
-- [ ] Add that URL as the variable `CLAUDINITE_DASHBOARD_EXCHANGE_URL`
+- [ ] Add it as the variable `CLAUDINITE_DASHBOARD_EXCHANGE_URL` — `<repo>/settings/variables/actions/new`
 
 **Done when** a signed-in viewer's rate pill reads `…/5000 · user`.
 
 Notes. **Webhook → Active** arrives ticked and the form then refuses to submit without a
 Webhook URL; this App is a sign-in credential and receives nothing, so unticking it is
-what lets the registration through. The App is installed per *account*, not per repo — a user token reaches only what
+what lets the registration through. Installing the App lands you on the redirect URI,
+and `https://<owner>.github.io/` is a **404** unless that owner happens to keep a
+user-site repo — expected, and not a failed step: the root is registered so that wildcard
+matching permits the project pages beneath it, and sign-in returns to the dashboard's own
+URL rather than to the root. The two Cloudflare credentials are the
+[deploy task](tasks/deploy-oauth-exchange/README.md)'s, which says why the API token is
+that narrow. The App is installed per *account*, not per repo — a user token reaches only what
 it is installed on, so an uninstalled account renders every member row as *not visible to
 you*. Wildcard matching on the `github.io` root covers every project Pages site on that
 host, so one App serves every dashboard you own. The sign-in pair are repository
