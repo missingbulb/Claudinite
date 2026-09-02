@@ -6,9 +6,11 @@ import {
   foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage, carryTaskRuns, withinTaskWindow,
   countTaskExecs, emptyTaskExec, encodeUsage, decodeUsage,
   ruleTokensIn, tokensIn, foldDayFields, foldQueueOutcomes, foldHours, withinHourWindow, captureHours,
+  tokensByModelIn, turnSeconds, ruleTokensByPackIn, taskCostKey, foldPrs,
+  TOKENS_BY_MODEL_UNKNOWN, TASK_COST_NONE, TASK_COST_UNRESOLVED,
 } from '../../../tasks/usage-fold/fold-usage.mjs';
 import {
-  USAGE_FIELDS, USAGE_VERSION, QUEUE_OUTCOMES, renderUsageFile,
+  USAGE_FIELDS, USAGE_VERSION, QUEUE_OUTCOMES, COUNTER_GROUPS, renderUsageFile,
 } from '../../../tasks/usage-fold/usage-format.mjs';
 import {
   outcomeOf, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
@@ -20,7 +22,14 @@ import { LEGACY_EXECUTOR_DOC } from '../../legacy-protocol.mjs';
 // to build a row by hand and accidentally assert its own construction.
 const blankDay = () => ({
   captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0, ruleTokens: 0, ruleTokenSessions: 0,
-  skillLoads: {}, checks: {}, checkFindings: {}, tasks: {}, taskExec: {}, queue: {},
+  skillLoads: {}, ...emptyGroups(),
+});
+
+// Every sub-map a row carries, all empty — the shape a row has before any source
+// speaks for it. Derived from the vocabulary rather than listed, so appending a
+// counter group does not silently leave a test asserting the shape it replaced.
+const emptyGroups = () => ({
+  ruleTokensByPack: {}, ...Object.fromEntries(COUNTER_GROUPS.map((g) => [g, {}])),
 });
 
 // --- entry fixtures -----------------------------------------------------------
@@ -393,9 +402,12 @@ test('foldDays: captures, merges and DISTINCT sessions per day', () => {
     // real zero rather than an absent key — the fixtures are transcripts, not stubs.
     ruleTokens: 0,
     ruleTokenSessions: 0,
-    checks: {},
-    checkFindings: {},
-    tasks: {}, taskExec: {}, queue: {},
+    ...emptyGroups(),
+    // The per-task cost split counts SESSIONS, not captures: s1 captured twice and is
+    // one session. Both sessions name an issue and attest no execution record, so both
+    // are `(unresolved)` — s1's issue-0 tail capture does not demote it to `(none)`,
+    // which is the person-started lane the human share is read from.
+    taskCost: { '(unresolved)': { sessions: 2, userMessages: 11 } },
   });
   assert.equal(days['2026-07-27'].merges, 0);
 });
@@ -453,9 +465,9 @@ test('addDayToWeek sums the counters and declares how many days it absorbed', ()
   const week = addDayToWeek(addDayToWeek(undefined, day), day);
   assert.deepEqual(week, {
     days: 2, captures: 4, merges: 2, sessionDays: 4, userMessages: 20, userCommands: 2, skillLoads: { a: 2 },
+    ...emptyGroups(),
     checks: { work: { runs: 6, failures: 2, errors: 0, blocking: 2, advisory: 0 } },
     checkFindings: { 'task-lifecycle': { blocking: 2, advisory: 0 } },
-    tasks: {}, taskExec: {}, queue: {},
   });
 });
 
@@ -624,6 +636,199 @@ test('a day whose transcripts carried no usage records has NO token keys at all'
   assert.ok(!('tokensIn' in day), 'unknown is a state, not a zero');
   assert.ok(!('tokenSessions' in day));
   assert.equal(day.ruleTokens, 0, 'but a captured session that printed no summary line genuinely loaded no counted rules');
+});
+
+// --- the redesign's new capture-derived fields ------------------------------------
+
+test('tokensByModelIn splits the same spend by the model that was billed for it', () => {
+  const assistant = (model, usage) => ({ type: 'assistant', message: { model, content: [], usage } });
+  const entries = [
+    assistant('claude-opus-5', { input_tokens: 10, output_tokens: 3, cache_read_input_tokens: 100 }),
+    assistant('claude-opus-5', { input_tokens: 5, output_tokens: 2, cache_creation_input_tokens: 40 }),
+    assistant('claude-haiku-4-5', { input_tokens: 1, output_tokens: 1 }),
+  ];
+  assert.deepEqual(tokensByModelIn(entries), {
+    'claude-opus-5': { input: 15, cacheRead: 100, cacheCreate: 40, output: 5 },
+    'claude-haiku-4-5': { input: 1, cacheRead: 0, cacheCreate: 0, output: 1 },
+  });
+  // The four counters are kept APART here where `tokensIn` sums the first three — the
+  // split has to be priceable per counter, and the total has to keep meaning what it
+  // meant to every reader already using it.
+  const total = tokensIn(entries);
+  assert.deepEqual(total, { input: 15 + 100 + 40 + 1, output: 6 });
+});
+
+test('tokensByModelIn keys an unattributed spend as its own state, and answers null for none', () => {
+  const spend = { input_tokens: 4, output_tokens: 1 };
+  assert.deepEqual(tokensByModelIn([{ type: 'assistant', message: { content: [], usage: spend } }]), {
+    [TOKENS_BY_MODEL_UNKNOWN]: { input: 4, cacheRead: 0, cacheCreate: 0, output: 1 },
+  });
+  assert.equal(tokensByModelIn([{ type: 'assistant', message: { content: [] } }]), null);
+  assert.equal(tokensByModelIn([]), null);
+});
+
+test('turnSeconds bills each turn the gap that produced it, and caps the human side', () => {
+  const at = (s) => new Date(Date.UTC(2026, 7, 20, 9, 0, s)).toISOString();
+  const stamped = (entry, seconds) => ({ ...entry, timestamp: at(seconds) });
+  const out = turnSeconds([
+    stamped(human('do the thing'), 0),
+    stamped(assistantText('on it'), 30),      // 30s of agent
+    stamped(human('and this too'), 90),       // 60s of person
+    stamped(assistantText('done'), 100),      // 10s of agent
+  ]);
+  assert.deepEqual(out, { human: 60, agent: 40 });
+});
+
+test('turnSeconds caps an overnight gap so the human figure stays a floor', () => {
+  const at = (m) => new Date(Date.UTC(2026, 7, 20, 9, m)).toISOString();
+  const out = turnSeconds([
+    { ...assistantText('done'), timestamp: at(0) },
+    { ...human('back'), timestamp: at(600) },   // ten hours later — not ten hours of attention
+  ]);
+  assert.equal(out.human, 600, 'the cap, in seconds — the gap above it is a break, not work');
+});
+
+test('turnSeconds excludes a subagent sidechain, whose span the turn around it already carries', () => {
+  const at = (s) => new Date(Date.UTC(2026, 7, 20, 9, 0, s)).toISOString();
+  const withChain = turnSeconds([
+    { ...human('go'), timestamp: at(0) },
+    { ...assistantText('spawning'), timestamp: at(10) },
+    { ...assistantText('subagent working'), isSidechain: true, timestamp: at(20) },
+    { ...assistantText('done'), timestamp: at(40) },
+  ]);
+  // 10s to the first assistant entry, then 30s to the last — the sidechain entry
+  // between them neither adds a span of its own nor splits the one around it.
+  assert.deepEqual(withChain, { human: 0, agent: 40 });
+});
+
+test('turnSeconds answers null — never zero — for a transcript that carries no timestamps', () => {
+  assert.equal(turnSeconds([human('hi'), assistantText('hello')]), null);
+  assert.equal(turnSeconds([]), null);
+});
+
+test('ruleTokensByPackIn reads the split off the same line the total comes from', () => {
+  const line = 'Claudinite loaded, 10 packs, 50 checks, 15,000 rule tokens, 28 available skills, '
+    + 'rule tokens by pack: claudinite 8100 \u00b7 basics 5100 \u00b7 claudinite-growth 200.';
+  assert.deepEqual(ruleTokensByPackIn(line), { claudinite: 8100, basics: 5100, 'claudinite-growth': 200 });
+  assert.equal(ruleTokensIn(line), 15000, 'and the total still reads off the same line');
+});
+
+test('ruleTokensByPackIn answers null for a mount whose engine predates the facet', () => {
+  assert.equal(ruleTokensByPackIn('Claudinite loaded, 8 packs, 35 checks, 16,500 rule tokens.'), null);
+  assert.equal(ruleTokensByPackIn(''), null);
+  assert.equal(ruleTokensByPackIn(null), null);
+});
+
+test('taskCostKey names the task, and keeps the two unknown lanes apart', () => {
+  assert.equal(taskCostKey({ taskExec: { 'tidy-repo/tidy-issues': {} } }, 42), 'tidy-repo/tidy-issues');
+  // A session filed under no issue is a PERSON at the keyboard — the human-driven
+  // share, which is a fact worth seeing rather than a gap.
+  assert.equal(taskCostKey({ taskExec: {} }, 0), TASK_COST_NONE);
+  // One filed under an issue that attests no execution record is a hole in the record,
+  // and must never be quietly counted as a person.
+  assert.equal(taskCostKey({ taskExec: {} }, 42), TASK_COST_UNRESOLVED);
+});
+
+test('foldDays splits cost per task, per session, and never demotes a named task', () => {
+  const file = (issue, extra) => ({
+    date: '2026-08-20', stamp: '2026-08-20T09:30:00Z', issue, sessionId: extra.sessionId ?? 'sess-1',
+    counts: {
+      userMessages: 0, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: {},
+      ...extra,
+    },
+  });
+  const days = foldDays([
+    // One session that ran a task, captured twice: the merge capture attests the exec
+    // record, the session-end tail is filed under issue 0 and attests nothing.
+    file(12, { taskExec: { 'tidy-repo/tidy-issues': { success: 1 } }, userMessages: 2, tokens: { input: 100, output: 10 } }),
+    file(0, { userMessages: 1, tokens: { input: 260, output: 30 } }),
+    // …and a session a person started.
+    file(0, { sessionId: 'sess-2', userMessages: 7, tokens: { input: 50, output: 5 } }),
+  ]);
+  assert.deepEqual(days['2026-08-20'].taskCost, {
+    // The tail capture does not demote the session to `(none)`: the most-informed
+    // capture of a session names its task, and the session has one dispatch.
+    'tidy-repo/tidy-issues': { sessions: 1, userMessages: 3, tokensIn: 260, tokensOut: 30 },
+    [TASK_COST_NONE]: { sessions: 1, userMessages: 7, tokensIn: 50, tokensOut: 5 },
+  });
+  // The token columns are the same per-session dedupe the day scalars use, so the
+  // split adds up to the day's own total rather than double-counting the tail.
+  assert.equal(days['2026-08-20'].tokensIn, 310);
+});
+
+test('a task whose sessions attested no spend carries NO token columns', () => {
+  const days = foldDays([{
+    date: '2026-08-20', stamp: '2026-08-20T09:30:00Z', issue: 0, sessionId: 's1',
+    counts: {
+      userMessages: 4, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: {},
+      ruleTokens: null, tokens: null,
+    },
+  }]);
+  assert.deepEqual(days['2026-08-20'].taskCost, { [TASK_COST_NONE]: { sessions: 1, userMessages: 4 } });
+});
+
+test('foldDays sums the wall clock and the per-model split from the winning capture', () => {
+  const file = (extra) => ({
+    date: '2026-08-20', stamp: '2026-08-20T09:30:00Z', issue: 0, sessionId: 's1',
+    counts: { userMessages: 0, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: {}, ...extra },
+  });
+  const days = foldDays([
+    file({ tokens: { input: 100, output: 10 }, tokensByModel: { m1: { input: 100, cacheRead: 0, cacheCreate: 0, output: 10 } }, seconds: { human: 30, agent: 60 } }),
+    file({ tokens: { input: 260, output: 30 }, tokensByModel: { m1: { input: 260, cacheRead: 0, cacheCreate: 0, output: 30 } }, seconds: { human: 90, agent: 200 } }),
+  ]);
+  const day = days['2026-08-20'];
+  assert.deepEqual(day.tokensByModel, { m1: { input: 260, cacheRead: 0, cacheCreate: 0, output: 30 } });
+  assert.deepEqual([day.humanSeconds, day.agentSeconds], [90, 200]);
+});
+
+test('a day whose sessions carried no timestamps has NO wall-clock keys', () => {
+  const days = foldDays([{
+    date: '2026-08-20', stamp: '2026-08-20T09:30:00Z', issue: 0, sessionId: 's1',
+    counts: { userMessages: 1, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: {}, seconds: null },
+  }]);
+  assert.ok(!('humanSeconds' in days['2026-08-20']), 'an unknown span is not a zero one');
+  assert.ok(!('agentSeconds' in days['2026-08-20']));
+  assert.ok(!('tokensByModel' in encodeUsage({ days, weeks: {}, hours: {} }).days['2026-08-20']),
+    'and an empty group map is never written at all');
+});
+
+test('foldPrs files each merged PR under its merge day, keeping unknown ends absent', () => {
+  const days = {};
+  foldPrs(days, {}, [
+    { date: '2026-08-20', number: 1583, leadHours: 14.2, issueLeadHours: 38.5, sessionToMergeHours: 0.7 },
+    { date: '2026-08-20', number: 1584, leadHours: 2.5, issueLeadHours: null, sessionToMergeHours: null },
+  ], '2026-08-21');
+  assert.deepEqual(days['2026-08-20'].prs, {
+    1583: { leadHours: 14.2, issueLeadHours: 38.5, sessionToMergeHours: 0.7 },
+    // A PR that closes no issue has no issue lead time — absent, so a reader's p50 is
+    // over the PRs that HAD one rather than over a floor of zeros.
+    1584: { leadHours: 2.5 },
+  });
+});
+
+test('foldPrs carries prior rows forward and ages them out with the day window', () => {
+  const prior = {
+    '2026-08-19': { prs: { 1580: { leadHours: 3 } } },
+    '2026-06-01': { prs: { 1400: { leadHours: 9 } } },
+  };
+  const days = {};
+  foldPrs(days, prior, [], '2026-08-21');
+  assert.deepEqual(days['2026-08-19'].prs, { 1580: { leadHours: 3 } }, 'append-once: nothing re-reads it');
+  assert.ok(!days['2026-06-01'], 'past the day window, the week row is what keeps it');
+});
+
+test('foldQueueOutcomes counts each park kind once per item, and unknown parks stay unknown', () => {
+  const days = {};
+  foldQueueOutcomes(days, {}, [
+    { date: '2026-08-20', pack: 'p', task: 't', outcome: 'done', parks: ['approval', 'approval', 'failure'] },
+    { date: '2026-08-20', pack: 'p', task: 't', outcome: 'done', parks: ['approval'] },
+    // The events listing for this one could not be read: its outcome still counts and
+    // its parks are simply not counted, rather than counted as none.
+    { date: '2026-08-20', pack: 'p', task: 'u', outcome: 'done', parks: null },
+  ], '2026-08-21');
+  assert.deepEqual(days['2026-08-20'].parks['p/t'], { failure: 1, action: 0, decision: 0, approval: 2 });
+  assert.ok(!('p/u' in days['2026-08-20'].parks), 'an unreadable listing leaves no key');
+  assert.equal(days['2026-08-20'].queue['p/u'].done, 1, 'and costs the item nothing else');
 });
 
 // --- the sources outside the capture files ---------------------------------------
@@ -960,11 +1165,11 @@ test('the first fold after the upgrade rewrites the whole file, losing nothing',
   assert.equal(written.version, USAGE_VERSION);
   assert.equal(written.foldedThrough, v1.foldedThrough, 'the day watermark does not move');
   assert.equal(written.runsFoldedThrough, v1.runsFoldedThrough, 'nor the run watermark');
-  // Every frozen week row survives intact. `queue` is the one addition: a group map
-  // always decodes present-and-empty, and an empty one carries nothing a reader cannot
-  // derive — the row's own numbers are untouched.
+  // Every frozen week row survives intact. The sub-maps the file predates are the only
+  // addition: a group map always decodes present-and-empty, and an empty one carries
+  // nothing a reader cannot derive — the row's own numbers are untouched.
   assert.deepEqual(back.weeks, {
-    '2026-W30': { ...v1.weeks['2026-W30'], queue: {} },
+    '2026-W30': { ...emptyGroups(), ...v1.weeks['2026-W30'] },
   });
   // The day tier behaves exactly as it does on any other run — nothing about the
   // conversion is special. The capture-derived counters recompute from the live files

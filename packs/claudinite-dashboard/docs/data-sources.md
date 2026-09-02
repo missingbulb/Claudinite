@@ -144,8 +144,9 @@ from *unpriced* (a rate missing) and from 0.
 ### `parks`
 
 - **Home.** Day and week rows; a counter group keyed by `pack/task`, vocabulary
-  `fields.parks = ["approval", "action", "decision", "failure"]` — the four
-  `task:status:needs-human-<kind>` kinds, in the order the label vocabulary spells them.
+  `fields.parks = PARK_KINDS` — the four `task:status:needs-human-<kind>` kinds,
+  imported from the label vocabulary rather than re-spelled, so a counter key cannot
+  drift from the label a park actually wears.
 - **Extraction.** In the queue read, for each item that closed past `queueFoldedThrough`,
   one `GET /issues/{n}/events` listing; count each `labeled` event whose label is a
   `needs-human-<kind>` **once per item per kind**, filed under the item's `closed_at` day
@@ -163,8 +164,10 @@ from *unpriced* (a rate missing) and from 0.
 - **Extraction.** The session-start summary line
   ([`session-summary.mjs`](../../../engine/pack_loader/session-summary.mjs)) prints one rule-token
   total and **no per-pack split**; the split is a new facet on that line —
-  `rule tokens by pack: basics 4,200 · claudinite 5,200 · …` — printed beside the total, and
-  `ruleTokensIn`'s sibling parses it. Counted once per session, on the first match, as the
+  `rule tokens by pack: basics 4200 · claudinite 5200 · …` — printed beside the total, and
+  `ruleTokensIn`'s sibling parses it. No thousands separators, unlike the total beside
+  it: the facets are joined into one comma-separated line, so a comma has to stay the
+  segment's own terminator for the parse to know where the split ends. Counted once per session, on the first match, as the
   total is.
 - **Absence.** A session whose line lacks the facet contributes nothing to the map; a day
   with no such session has no key. The total `ruleTokens` is unaffected.
@@ -191,9 +194,13 @@ from *unpriced* (a rate missing) and from 0.
 
 [`cache.mjs`](../cache.mjs) projects PRs from the issues listing and today keeps only open
 ones, with the body dropped. The projection keeps a **closed PR with `merged_at` inside the
-page's window** (14 days) and adds two fields: `merged_at`, and `closesIssue` — the number
-named by the first `Closes|Fixes|Resolves #n` line, parsed from the body **before** it is
-dropped. The body still stores nothing. Merged PRs outside the window are dropped as they
+page's window** (14 days) and adds two fields: `merged_at` — which the issues endpoint
+carries inside each PR's own stub, so the merged set costs no request of its own — and
+`closesIssue`, the number named by the first `Closes|Fixes|Resolves #n` line, parsed from
+the body **before** it is dropped, by the fold's own rule rather than a second one: that
+parse is published as `shared-code/pull-requests.mjs` precisely so the two halves of one
+lead-time series cannot disagree about which issue a PR is for. The body still stores
+nothing. Merged PRs outside the window are dropped as they
 are now, which is what keeps a fleet's history inside the storage quota.
 
 ### Heartbeat from the fold

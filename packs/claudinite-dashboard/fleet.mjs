@@ -121,6 +121,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
   const {
     repo, error = null, declaration = null, items = null, runs = null, paths = null,
     prs = null, head = null, stars = null, defaultBranch = null, commits = undefined,
+    usage = null,
   } = read ?? {};
 
   if (error) {
@@ -189,7 +190,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
     .filter(Boolean)
     .sort((a, b) => b - a)[0] ?? null;
 
-  const runSummary = summariseRuns(runs ?? [], now);
+  const runSummary = summariseRuns(runs ?? [], now, usage);
   const ci = ciStatus(runs ?? [], defaultBranch);
   const mount = mountState(declaration, canon);
 
@@ -338,7 +339,19 @@ export function humanWork(items, prs, now) {
 // The scheduler's own health. Only the workflow that drives the queue matters here —
 // a failing unrelated CI run is the repo's business, not the fleet scheduler's — so
 // runs are filtered to scheduled ones before anything is counted.
-export function summariseRuns(runs, now) {
+//
+// THE HEARTBEAT NEEDS A SECOND SOURCE. The runs listing is one page across every
+// workflow the repo has — the scheduler, the executor and the member's own CI — so on
+// a busy member that page covers a few hours, and a member whose last scheduler run is
+// older than it is indistinguishable from one that has never run. "Never ran" is
+// exactly the critical verdict, so the difference is not one to guess at.
+//
+// The fold's hour tier is that second source: three days of per-hour scheduler counts,
+// appended past its own watermark from a listing it pages properly. It is coarser —
+// an hour, not a timestamp — so it is used as a FLOOR: it can only push `lastAt`
+// further back than the live page reached, and can only turn "never ran" into "ran".
+// A member with no fold reads its heartbeat from the live page alone and says so.
+export function summariseRuns(runs, now, usage = null) {
   const scheduled = runs.filter((r) => r.event === 'schedule');
   const completed = scheduled.filter((r) => r.status === 'completed');
   const inFlight = runs.filter((r) => r.status === 'in_progress' || r.status === 'queued').length;
@@ -352,17 +365,41 @@ export function summariseRuns(runs, now) {
     consecutiveFailures += 1;
   }
 
-  const lastAt = scheduled.map((r) => ms(r.created_at)).filter(Boolean).sort((a, b) => b - a)[0] ?? null;
+  const liveLastAt = scheduled.map((r) => ms(r.created_at)).filter(Boolean).sort((a, b) => b - a)[0] ?? null;
+  const foldedLastAt = lastFoldedScheduler(usage);
+  const lastAt = liveLastAt !== null && (foldedLastAt === null || liveLastAt >= foldedLastAt)
+    ? liveLastAt : foldedLastAt;
 
   return {
     scheduled: scheduled.length,
     inFlight,
     consecutiveFailures,
     lastAt,
-    // No scheduled run at all is not "healthy" — it is "we have never seen this
-    // member's scheduler", which the row must be able to say.
-    everRan: scheduled.length > 0,
+    // Where that timestamp came from, and therefore how precise it is: a live run is
+    // exact, a folded hour is the hour it started in. `null` when neither answered.
+    lastAtSource: lastAt === null ? null : (lastAt === liveLastAt ? 'live' : 'folded'),
+    // Whether the fold was read at all, so a member with none can say its heartbeat
+    // rests on one page of runs rather than implying the two agreed.
+    foldRead: Boolean(usage?.hours),
+    // No scheduled run in EITHER source is not "healthy" — it is "we have never seen
+    // this member's scheduler", which the row must be able to say. A member with no
+    // fold can still only be reporting the page's own depth, which `foldRead` states.
+    everRan: scheduled.length > 0 || foldedLastAt !== null,
   };
+}
+
+// The newest hour the fold recorded a scheduler run in, as that hour's start. A floor,
+// never a claim about the minute: the tier counts runs per hour and says nothing about
+// where inside one they landed.
+export function lastFoldedScheduler(usage) {
+  const hours = usage?.hours;
+  if (!hours) return null;
+  const newest = Object.entries(hours)
+    .filter(([, row]) => typeof row?.scheduler === 'number' && row.scheduler > 0)
+    .map(([hour]) => hour)
+    .sort()
+    .pop();
+  return newest ? ms(`${newest}:00:00Z`) : null;
 }
 
 // --- the fleet ------------------------------------------------------------------

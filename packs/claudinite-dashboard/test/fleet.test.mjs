@@ -7,7 +7,7 @@ import {
   summariseMember, summariseRuns, mountState, rankMembers, rollUp, packSpread, taskSpread,
   ciStatus, parseEngineVersion, parsePackVersion, attentionBreakdown,
   memberAttention, fleetAttention, estimateMinutes, estimateNote,
-  PARK_MINUTES, APPROVAL_RATE, approvalMinutes,
+  PARK_MINUTES, APPROVAL_RATE, approvalMinutes, lastFoldedScheduler,
 } from '../fleet.mjs';
 import { ENGINE_VERSION } from '../../../engine/version.mjs';
 import dashboardPack from '../pack.mjs';
@@ -261,6 +261,39 @@ test('only scheduled runs count toward scheduler health', () => {
   assert.equal(s.consecutiveFailures, 0, 'a failing CI push is not a failing scheduler');
   assert.equal(s.scheduled, 1);
   assert.equal(s.everRan, true);
+});
+
+// The runs listing is ONE page across every workflow a repo has, so on a busy member
+// it covers a few hours — and a scheduler whose last run is older than that page reads
+// exactly like one that has never run. "Never ran" is the critical verdict, so the
+// difference cannot be left to the page's depth.
+test('the heartbeat is topped up from the fold when the runs page does not reach it', () => {
+  const usage = { hours: { '2026-08-17T02': { scheduler: 1 }, '2026-08-16T23': { scheduler: 2 } } };
+  // A page of runs with no scheduler run on it at all — every slot spent on CI.
+  const runs = [{ event: 'push', status: 'completed', conclusion: 'success', created_at: '2026-08-17T11:00:00Z' }];
+
+  const blind = summariseRuns(runs, NOW);
+  assert.equal(blind.everRan, false, 'without the fold, the page can only say it has never seen one');
+  assert.equal(blind.foldRead, false, 'and says so, rather than implying two sources agreed');
+
+  const seen = summariseRuns(runs, NOW, usage);
+  assert.equal(seen.everRan, true);
+  assert.equal(seen.lastAt, Date.parse('2026-08-17T02:00:00Z'), 'the newest folded hour, as its start');
+  assert.equal(seen.lastAtSource, 'folded', 'coarse, and the row can say so');
+});
+
+test('the fold is a FLOOR — a live run newer than it still wins', () => {
+  const usage = { hours: { '2026-08-17T02': { scheduler: 1 } } };
+  const runs = [{ event: 'schedule', status: 'completed', conclusion: 'success', created_at: '2026-08-17T11:30:00Z' }];
+  const s = summariseRuns(runs, NOW, usage);
+  assert.equal(s.lastAt, Date.parse('2026-08-17T11:30:00Z'));
+  assert.equal(s.lastAtSource, 'live', 'an exact timestamp beats an hour bucket');
+});
+
+test('an hour the fold recorded no scheduler run in is not a heartbeat', () => {
+  assert.equal(lastFoldedScheduler({ hours: { '2026-08-17T02': { scheduler: 0, executor: 3 } } }), null);
+  assert.equal(lastFoldedScheduler({ hours: {} }), null);
+  assert.equal(lastFoldedScheduler(null), null, 'a member with no fold reads its heartbeat live, and says so');
 });
 
 test('a cancelled run neither breaks nor clears a failure streak', () => {

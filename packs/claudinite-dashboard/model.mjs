@@ -379,6 +379,53 @@ function nextAskOf(current, anchor, anchorNote) {
   return { kind: 'off-machine' };
 }
 
+// --- what is about to happen ------------------------------------------------------
+
+// The next 24 hours as UTC hour buckets, each carrying the task rows whose next ask
+// lands in it. The strip this draws answers a question no single row can: whether the
+// day's scheduled work is spread out or piled into one hour.
+//
+// FLEET OR REPO, the same reduction: the caller hands in whatever roster rows it has,
+// one member's or every member's, and a row carries the repo it came from where that
+// matters.
+//
+// A `held` next ask is placed at NOW and marked critical rather than left out. A task
+// whose blocking park stops it being scheduled at all has no future anchor, and
+// dropping it would draw the emptiest strip on the worst-off repo — the one case where
+// an empty hour must not read as a quiet one.
+export const WAKE_STRIP_HOURS = 24;
+
+export function wakeStrip(rows, now, { hours = WAKE_STRIP_HOURS } = {}) {
+  const start = new Date(now);
+  start.setUTCMinutes(0, 0, 0);
+  const key = (t) => new Date(t).toISOString().slice(0, 13);
+  const buckets = Array.from({ length: hours }, (_, i) => ({
+    hour: key(start.getTime() + i * 3600e3),
+    tasks: [],
+    held: 0,
+  }));
+  const byHour = new Map(buckets.map((b) => [b.hour, b]));
+
+  for (const row of rows ?? []) {
+    const ask = row?.nextAsk;
+    if (!ask) continue;
+    const held = ask.kind === 'held';
+    // Only the two kinds that name a MOMENT land on a strip of hours: an anchor (the
+    // calendar's next fire) and a wake (a stamped Not-before, which IS the schedule).
+    // `ready`, `running` and `deps` are happening or waiting on something other than
+    // the clock, and belong to the row rather than to a future hour.
+    const at = held ? start.getTime() : (ask.kind === 'anchor' || ask.kind === 'wake' ? ms(ask.at) : null);
+    if (at === null) continue;
+    const bucket = byHour.get(key(at));
+    if (!bucket) continue;                      // past the strip's far end — not this day's business
+    bucket.tasks.push({ key: row.key, repo: row.repo ?? null, held });
+    if (held) bucket.held += 1;
+  }
+
+  const peak = buckets.reduce((n, b) => Math.max(n, b.tasks.length), 0);
+  return { from: buckets[0]?.hour ?? null, hours: buckets, peak };
+}
+
 // Outcome tallies over the closed items the scan actually saw. `scanned` travels
 // with them: every count here is over a window, and a window is not "all of it".
 export function outcomeTally(rows) {

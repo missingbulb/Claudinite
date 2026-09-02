@@ -241,6 +241,37 @@ test('open pull requests come from the live open listing', async () => {
   assert.deepEqual(prs, [], 'a PR the live listing does not name is not open');
 });
 
+// The merged half of the same read: the lead-time series the page draws for the days
+// the fold has not reached comes from PRs the page already fetched, and from nowhere
+// else — the open listing is asked by state and cannot answer them at all.
+test('merged pull requests inside the window survive a COMPLETE open listing', async () => {
+  const gh = await load();
+  let requests = 0;
+  const merged = (number, mergedAt) => ({
+    number, title: `pr${number}`, state: 'closed', labels: [],
+    body: `does the thing\n\nCloses #${number - 1}\n`,
+    pull_request: { merged_at: mergedAt },
+  });
+  globalThis.fetch = async (url) => {
+    requests += 1;
+    const q = new URL(url).searchParams;
+    if (q.get('state') === 'open') return res([], { headers: RATE });
+    return res([
+      merged(11, new Date(Date.now() - 2 * 86400e3).toISOString()),
+      merged(12, new Date(Date.now() - 60 * 86400e3).toISOString()),   // past the window
+      { number: 13, title: 'closed unmerged', state: 'closed', labels: [], body: '', pull_request: { merged_at: null } },
+    ], { headers: { ...RATE, etag: 'W/"p1"' } });
+  };
+
+  const { prs } = await gh.listIssues('o/r', 't', { pages: 1 });
+  assert.deepEqual(prs.map((p) => p.number), [11], 'a complete open set must not drop the merged ones');
+  assert.equal(prs[0].closesIssue, 10, 'the closing issue is parsed on the way in, so no body is stored');
+  assert.equal(prs[0].body, undefined);
+  // THE WHOLE POINT: this costs the viewer nothing. Both listings were being fetched
+  // already, and a merged PR arrives inside the response the page was making anyway.
+  assert.equal(requests, 2, 'one open listing and one history page, exactly as before');
+});
+
 // Both halves fail soft: a budget too thin for the open listing leaves the history
 // pages saying what they last saw, which is a stale answer rather than no member.
 test('a withheld open listing degrades to the history pages rather than failing the read', async () => {

@@ -258,6 +258,21 @@ export function fleetCorpus(reads, { now, days = 30, windowDays = 7 } = {}) {
   // against: a member whose tree was not read mounts nothing the page can see.
   const treesRead = folding.filter((r) => Array.isArray(r.paths)).length;
 
+  // WHAT A TYPICAL MEMBER'S SESSION CARRIES, which is the figure a single repo's page
+  // compares itself against — "our sessions load 15k of rules; the fleet's load 9k" is
+  // a sentence a number on its own cannot make.
+  //
+  // The mean of the per-member figures, not the pooled quotient: the comparison is
+  // against a typical MEMBER, so a member running ten times the sessions must not be
+  // ten times the answer. `members` says what it averaged over, since a mean of two is
+  // a different claim from a mean of twenty. Null where no member in range attested a
+  // corpus at all — a repo-mode deployment has no fleet to average, and reads *fleet:
+  // not read*.
+  const attested = members.filter((m) => typeof m.tokensPerSession === 'number');
+  const fleetTokensPerSession = attested.length
+    ? { mean: Math.round(attested.reduce((n, m) => n + m.tokensPerSession, 0) / attested.length), members: attested.length }
+    : { mean: null, members: 0 };
+
   members.sort((a, b) => Number(b.folding) - Number(a.folding) || (b.sessions ?? -1) - (a.sessions ?? -1) || a.repo.localeCompare(b.repo));
 
   return {
@@ -268,6 +283,7 @@ export function fleetCorpus(reads, { now, days = 30, windowDays = 7 } = {}) {
     findings: { blocking: ruleRows.reduce((n, e) => n + e.blocking, 0), advisory: ruleRows.reduce((n, e) => n + e.advisory, 0) },
     skills: { loaded, neverLoaded, mountedDistinct: Object.keys(mounted).length, treesRead },
     members,
+    fleetTokensPerSession,
     folding: folding.length,
     readable: readable.length,
     absent,

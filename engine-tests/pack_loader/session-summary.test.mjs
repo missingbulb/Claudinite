@@ -81,7 +81,26 @@ test('counts the active packs, their checks and their prose, and says so in one 
   try {
     const out = run(corpus, project);
     // gamma is not declared, so nothing of gamma's is counted.
-    assert.match(out, /Claudinite loaded, 2 packs, 5 checks, 3,000 rule tokens, 0 available skills\./);
+    assert.match(out, /Claudinite loaded, 2 packs, 5 checks, 3,000 rule tokens, 0 available skills, /);
+  } finally { removeTree(corpus); removeTree(project); }
+});
+
+test('says WHERE the prose weight comes from, heaviest pack first', () => {
+  // The total on its own is a number nobody can act on. The split is what turns "the
+  // corpus grew" into "this pack grew", and it is finer-grained than the total because
+  // a pack's own share rounded to the total's step would read as zero for most of them.
+  const corpus = makeCorpus({
+    alpha: { prose: 'RULES.md', proseText: words(750) },
+    beta: { prose: 'RULES.md', proseText: words(1500) },
+    quiet: { prose: 'RULES.md', proseText: '' },
+  });
+  const project = makeProject({ packs: ['alpha', 'beta', 'quiet'] });
+  try {
+    const out = run(corpus, project);
+    // NO thousands separators: the facets are comma-joined, so a comma has to stay this
+    // segment's own terminator for anything reading the line back.
+    assert.match(out, /rule tokens by pack: beta 2000 · alpha 1000\./);
+    assert.doesNotMatch(out, /quiet \d/, 'a pack contributing nothing is not listed at all');
   } finally { removeTree(corpus); removeTree(project); }
 });
 

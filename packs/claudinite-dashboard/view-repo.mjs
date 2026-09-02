@@ -19,20 +19,26 @@ import {
   PARKED,
 } from './model.mjs';
 import {
-  ciStatus, humanWork, mountState, estimateMinutes, estimateNote, attentionBreakdown,
-  parkMinutes, parkMinutesNote,
+  ciStatus, mountState, parkMinutes, summariseRuns,
 } from './fleet.mjs';
 import { readCanon, priceStampedPacks } from './canon.mjs';
-import { workRows, rowsFor, viewCounts, defaultView, attentionOf, VIEWS } from './work.mjs';
+import { workRows, rowsFor, viewCounts, defaultView, VIEWS } from './work.mjs';
 import { repoCandidates } from './next-work.mjs';
 import { readUsage, growthSeries, queueSeries, hourSeries } from './usage.mjs';
 import { readContributions, liveSourcesNeeded } from './contributions.mjs';
 import { packCard } from './contrib-view.mjs';
 import {
-  $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, leadCard, tiles, segmentBar,
+  $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, segmentBar,
   warnNodes, stackedColumns, chartLegend, dualAxisChart, flipRows,
   LEVEL_GLYPH, OUTCOME_COLOR,
 } from './ui.mjs';
+import { band, slip, machineCell, beats, wakeTicks, figureRow, pulseChart, detailTable, expander } from './sheet.mjs';
+import { repoLedger, repoMachine } from './repo-ledger.mjs';
+import { fmtTokens, fmtHours, fmtAge } from './fleet-ledger.mjs';
+import { buildBoard } from './board.mjs';
+import { renderBoard, quietLine } from './board-view.mjs';
+import { buildPanel } from './explore.mjs';
+import { wakeStrip } from './model.mjs';
 import { settingsTextAtSha, SETTINGS_FILE } from './settings-read.mjs';
 
 // How far each past-data panel looks back. The month is the growth panel's, because a
@@ -59,74 +65,6 @@ const CI_UI = {
 // means look here — and a tile whose answer is unknown says so rather than showing a
 // zero. The mount tile especially: with no canon configured there is nothing to compare
 // against, and "current" would be a claim nothing checked.
-function renderTiles({ open, runs, meta, work, mount, ci, now }) {
-  const attention = attentionOf(open);
-  const minutes = estimateMinutes(attention);
-  const needs = attentionBreakdown(attention);
-  const parked = open.filter((i) => i.state === PARKED);
-  const inflight = runs.filter((r) => r.status === 'in_progress' || r.status === 'queued');
-
-  const needsNodes = needs.length
-    ? el('div', { className: 'needs' }, needs.map((r) =>
-      el('div', { className: `warn ${r.level}`, textContent: `${LEVEL_GLYPH[r.level]} ${r.text}` })))
-    : 'nothing waiting';
-
-  // One word, because it is a tile value and the detail line beneath it carries the
-  // rest. `unknown` is not `current`: with no canon configured there is nothing to
-  // compare against, and a scheduler run would be claiming a check that never happened.
-  const mountLabel = {
-    current: 'current', behind: 'behind', 'behind-engine': 'engine behind',
-    unversioned: 'unversioned', none: 'no stamp', unknown: 'unknown',
-  }[mount?.state] ?? 'unknown';
-
-  // The labels are fixed rather than pluralised to their own value: a tile's label is
-  // its identity across paints (`countUp` keys on it), so a label that changed with the
-  // count would make the counter re-appear instead of counting to its new value.
-  tiles($('tiles'), [
-    // The one figure here that is a quantity of YOUR time rather than a count of the
-    // machine's things, and the assumption behind it is published beside it.
-    [minutes || '—', 'minutes waiting on you', minutes ? 'var(--critical)' : null,
-      estimateNote(attention)],
-    [parked.length, 'items parked for a person', parked.length ? 'var(--critical)' : null, needsNodes],
-    [work.prs, 'pull requests open', null,
-      work.prsOldest ? `oldest ${duration(now - work.prsOldest)}${work.drafts ? ` · ${work.drafts} draft` : ''}` : 'none'],
-    [work.issues, 'issues open', null,
-      work.issuesOldest ? `oldest ${duration(now - work.issuesOldest)}` : 'none open in the window'],
-    [CI_UI[ci?.state]?.label ?? 'no run', `CI on ${meta.default_branch}`,
-      ci?.state === 'failing' ? 'var(--critical)' : null,
-      ci?.at ? `${ago(ci.at, now)}${ci.name ? ` · ${ci.name}` : ''}` : 'nothing completed in the window'],
-    [inflight.length, 'runs in flight', inflight.length ? 'var(--s-yellow)' : null,
-      inflight.length ? inflight.map((r) => r.name).filter(Boolean).slice(0, 2).join(', ') : ''],
-    [meta.stars ?? '—', 'stars', null, meta.private ? 'private' : ''],
-    [mountLabel, 'drift from the canon',
-      mount?.state === 'behind-engine' ? 'var(--serious)' : null,
-      mountDetail(mount)],
-  ]);
-}
-
-const mountDetail = (mount) => {
-  if (!mount) return 'no canon configured to compare against';
-  if (mount.state === 'behind') return (mount.behindPacks ?? []).map((p) => p.pack).join(', ');
-  if (mount.state === 'behind-engine') return `engine v${mount.engineVersion} < canon v${mount.canonEngineVersion}`;
-  if (mount.state === 'unknown') return 'no canon configured to compare against';
-  return mount.engineVersion != null ? `engine v${mount.engineVersion}` : '';
-};
-
-// --- the work table ------------------------------------------------------------------
-
-// One row per piece of work; the view decides which rows and which columns. Which rows
-// is `work.mjs`' business; this is only the drawing.
-//
-// The three column sets are genuinely different questions, which is the reason the
-// views exist at all rather than one table with a filter: STUCK wants to know what is
-// wrong and how long it has been, PENDING wants where it is and what happens next, ALL
-// wants what this task IS and what it has done.
-const COLUMNS = {
-  stuck: ['Task', 'What is wrong', 'Item', 'Stuck for', 'Waiting on'],
-  pending: ['Task', 'State', 'Item', 'Next ask', 'Idle'],
-  all: ['Task', 'Cadence', 'Now', 'Next ask', 'Last outcome', 'Outcomes seen'],
-};
-
 const taskCell = (r) => el('td', {}, [
   el('div', { className: 'name', textContent: r.task ?? '(unparsed title)' }),
   el('div', { className: 'sub', textContent: r.pack ?? '' }),
@@ -240,9 +178,230 @@ const EMPTY = {
 // only the filter and the columns change — so they are animated from where they were to
 // where they are now rather than replaced outright, which is what keeps the row a
 // reader was looking at findable after a click.
-function renderWork(all, repo, now, view) {
+
+// --- the ledger sheet, scoped to one member ------------------------------------------
+
+// The same block the fleet page draws, one member deep: same bands, same tracks, same
+// three unknown states. Where the fleet's ledger has four figures per column this has
+// THREE and no tile row — every tile's fact moved into a cell that acts on it, and the
+// height that bought is what lands the Work board above the fold.
+// Exported so the sheet can be driven against a fixture — the layout and the gap
+// sentences are the parts a unit test cannot see.
+export function renderRepoSheet({ ledger, machine, candidates, strip, repo }) {
+  const top = candidates[0] ?? null;
+  const rest = Math.max(0, candidates.length - 1);
+
+  const startBody = top
+    ? slip({
+      headline: top.why,
+      where: `#${top.number ?? ''}`.replace('#', '') ? `#${top.number}` : repo,
+      href: top.url,
+      chip: parkChipFor(top),
+      more: [rest ? `${rest} more after this one` : null, top.title].filter(Boolean).join(' · '),
+    })
+    : el('div', { className: 'slip' }, [
+      el('span', { className: 'hl', textContent: 'Nothing is waiting on you' }),
+      el('span', { className: 'more', textContent: 'nothing here is parked, failing or off the state machine' }),
+    ]);
+
+  const m = machine;
+  const machineBody = el('div', { className: 'machine repo' }, [
+    machineCell({
+      level: m.scheduler.level, label: 'Scheduler',
+      value: m.scheduler.lastAt === null ? null : fmtAge(Date.now() - m.scheduler.lastAt),
+      unit: m.scheduler.lastAt === null ? 'never seen' : 'since the last run',
+      note: m.scheduler.note,
+      // One square per HOUR, not per member: the question one level down is whether it
+      // ran when it should have, hour by hour.
+      extra: el('div', { className: 'beat hours' }, m.scheduler.squares.map((sq) =>
+        el('i', { className: sq.state === 'ran' ? '' : sq.state, title: sq.title }))),
+    }),
+    machineCell({
+      level: m.executor.level, label: 'Executor',
+      value: m.executor.failed, unit: `of ${m.executor.runs} failed, 24h`, note: m.executor.note,
+    }),
+    machineCell({
+      level: m.ci?.level ?? 'none', label: 'CI on main',
+      value: m.ci?.word ?? null, unit: m.ci?.when ?? '', note: m.ci?.note ?? 'no run on the default branch',
+    }),
+    machineCell({
+      level: m.foldAge.level, label: 'Fold age',
+      value: m.foldAge.age === null ? null : fmtAge(m.foldAge.age), unit: 'old', note: m.foldAge.note,
+    }),
+    machineCell({
+      level: m.drift.level, label: 'Drift',
+      value: m.drift.state === 'current' ? 'current' : (m.drift.state === null ? null : 'behind'),
+      unit: '', note: m.drift.note,
+    }),
+    machineCell({
+      level: m.wake.level, label: 'Next wake',
+      value: m.wake.at ? `${m.wake.at.slice(11)}:00` : null,
+      unit: m.wake.at ? `${m.wake.tasks} task${m.wake.tasks === 1 ? '' : 's'}` : 'nothing in 24 h',
+      note: m.wake.note,
+      extra: strip ? wakeTicks(strip) : null,
+    }),
+  ]);
+
+  const column = (name, question, figs, formats, tail) => el('div', { className: 'col' }, [
+    el('h3', {}, [
+      el('span', { className: 'cap', textContent: name }),
+      el('span', { className: 'q', textContent: question }),
+    ]),
+    ...figs.map((f, i) => figureRow(f, { format: formats[i] })),
+    // The tail line: one fact that is nowhere else on the block, in the muted step
+    // under its column rather than spending a whole row on it.
+    el('div', { className: 'tailrow', textContent: tail }),
+  ]);
+
+  const t = ledger.totals;
+  const detail = el('div', { className: 'detail', hidden: true }, [perTaskTable(ledger)]);
+  const totals = el('div', { className: 'totals' }, [
+    el('div', {}, [
+      el('b', { textContent: t.costPerMerged === null ? '—' : `≈$${t.costPerMerged}` }),
+      'per merged PR',
+      el('span', { className: 'sub', textContent: t.tokensPerMerged === null ? 'not recorded' : `${fmtTokens(Math.round(t.tokensPerMerged))} tok each` }),
+    ]),
+    el('div', {}, [
+      el('b', { textContent: t.autonomy === null ? '—' : `${Math.round(t.autonomy * 100)}%` }),
+      'autonomy',
+      el('span', { className: 'sub', textContent: t.humanToAgent === null ? 'yours : agent minutes not recorded' : `yours : agent 1 : ${t.humanToAgent}` }),
+    ]),
+    el('div', {}, [
+      el('b', { textContent: t.caught === null ? '—' : String(t.caught) }),
+      'would have shipped broken',
+      expander('per task', detail),
+    ]),
+  ]);
+
+  const pulseNote = [
+    ledger.pulse.peak === null ? 'nothing folded' : `peak ${ledger.pulse.peak}`,
+    'today not folded yet',
+  ].join(' · ');
+
+  $('repo-sheet').replaceChildren(
+    band('Start here', 'worst thing needing a person', startBody, { aria: 'Start here' }),
+    band('The machine', 'is this scheduler running, on cadence', machineBody, { aria: 'The machine' }),
+    band('This week', `against last · ${ledger.window.from} – ${ledger.window.to}`, [
+      el('div', { className: 'ledger' }, [
+        column('Got', 'what this repo produced', ledger.ledger.got, [String, String, String], ledger.tails.got),
+        column('Cost', 'what it took here', ledger.ledger.cost, [fmtTokens, (n) => `≈$${n}`, fmtTokens], ledger.tails.cost),
+        column('Speed', 'how fast it moves, where it sticks', ledger.ledger.speed, [fmtHours, String, String], ledger.tails.speed),
+      ]),
+      totals,
+      detail,
+    ], { aria: 'This week against last' }),
+    band('Pulse', 'sessions / day, 14 days',
+      el('div', { className: 'pulse' }, [pulseChart(ledger.pulse), el('span', { className: 'n', textContent: pulseNote })]),
+      { aria: 'Pulse' }),
+  );
+}
+
+const parkChipFor = (candidate) => {
+  const minutes = parkMinutes(candidate.park);
+  const kind = candidate.park?.triage ? String(candidate.park.triage).split('-').pop() : null;
+  if (minutes == null) return kind ? `${kind} · no time estimate` : 'no time estimate';
+  return `${minutes} min${kind ? ` · ${kind}` : ''}`;
+};
+
+// The expand only a repo page can offer: what each task closed, what it cost, and what
+// it kept parking on. Three rows here are STATES rather than tasks — `(none)` is the
+// share a person started, `(unresolved)` a hole in the record — and they are kept
+// visible rather than folded into the tasks around them.
+function perTaskTable(ledger) {
+  const rows = ledger.perTask.slice(0, 20).map((t) => ([
+    t.key,
+    `${t.closed.done + t.closed.delivered} / ${t.closed.obsolete} / ${t.closed.none}`,
+    t.sessions ?? '—',
+    t.tokensIn === null ? '—' : fmtTokens(t.tokensIn),
+    t.tokensPerClose === null ? '—' : fmtTokens(t.tokensPerClose),
+    t.execFailed || '—',
+    t.parks || '—',
+    t.model ?? '—',
+  ]));
+  if (!rows.length) rows.push([{ text: 'no task closed anything or spent anything in this window', gap: true, colSpan: 8 }]);
+  return detailTable([
+    { label: 'Task' }, { label: 'done / obsolete / none', num: true }, { label: 'Sessions', num: true },
+    { label: 'Tokens in', num: true }, { label: 'Tok / close', num: true }, { label: 'Exec failed', num: true },
+    { label: 'Parked', num: true }, { label: 'Model' },
+  ], rows);
+}
+
+// --- the Work board ---------------------------------------------------------------------
+
+// The board and the three tables are one switcher: `board` is `workRows`'s own
+// classification drawn in time, so the views cannot disagree about what is stuck.
+function renderWorkBoard(board, { repo, items, prs, rows, now, comments = new Map() }) {
+  const node = $('work-board');
+  const explore = $('work-explore');
+
+  const open = (row) => {
+    const number = Number(String(row.gutter).match(/#(\d+)/)?.[1] ?? NaN);
+    const item = items.find((i) => i.number === number) ?? null;
+    const parsed = item ? rows.find((r) => r.current?.number === number) : null;
+    const siblings = parsed ? items.filter((i) => (i.title ?? '').includes(parsed.key)) : [];
+    const panel = buildPanel(row, {
+      item, repo, items, prs, rows,
+      declaration: parsed?.declaration ?? row.row?.declaration ?? null,
+      siblings,
+      comments: comments.get(number) ?? null,
+      cost: ledgerCostFor(row),
+      now,
+    });
+    explore.replaceChildren(el('div', { className: 'explore one' }, [panelNode(panel)]));
+  };
+
+  node.replaceChildren(renderBoard(board, { onSelect: open }), quietLine(board.quiet));
+  // One panel is open at rest — the board's own worst finding written out, because a
+  // board whose finding is one click away is a board nobody clicks.
+  const worst = board.groups.flatMap((g) => (g.grid ? [] : g.shown)).find((r) => r.broken || r.parkKind === 'failure')
+    ?? board.groups[0]?.shown?.[0] ?? null;
+  if (worst) open(worst);
+  else explore.replaceChildren();
+}
+
+const ledgerCostFor = () => null;
+
+// The CI cell, from `ciStatus`'s own verdict. Failing is CRITICAL here and nowhere
+// else on the block: nothing the queue lands on a red main is safe, and that is a
+// different claim from a task being slow.
+const CI_LEVEL = { passing: 'good', failing: 'critical', running: 'machine', unknown: 'none' };
+export function ciCell(ci, now) {
+  return {
+    level: CI_LEVEL[ci.state] ?? 'none',
+    word: ci.state === 'unknown' ? null : ci.state,
+    when: ci.at ? ago(ci.at, now) : '',
+    note: ci.name ? `${ci.name}${ci.state === 'failing' ? ' — nothing the queue lands is safe' : ''}` : 'no run on the default branch',
+  };
+}
+
+function panelNode(panel) {
+  return el('div', { className: 'panel-x' }, [
+    el('h4', {}, [panel.title]),
+    el('dl', {}, panel.fields.flatMap((f) => [
+      el('dt', { textContent: f.label }),
+      el('dd', { className: f.value === null ? 'gap' : '', textContent: f.value ?? f.note }),
+    ])),
+    el('div', { className: 'do' }, [
+      el('b', { textContent: 'do' }),
+      ...(panel.do.includes('\n')
+        ? [panel.do.split('\n')[0], el('pre', { textContent: panel.do.split('\n').slice(1).join('\n') })]
+        : [panel.do]),
+    ]),
+  ]);
+}
+
+export function renderWork(all, repo, now, view, board = null, context = null) {
   const counts = viewCounts(all);
   const table = $('work');
+  const boardView = view === 'board';
+  $('work-board').hidden = !boardView;
+  $('work-explore').hidden = !boardView;
+  $('work-table-wrap').hidden = boardView;
+  if (boardView) {
+    if (board) renderWorkBoard(board, context);
+    paintTabs();
+    return;
+  }
 
   const paint = () => {
     const body = head(table, COLUMNS[view]);
@@ -261,12 +420,21 @@ function renderWork(all, repo, now, view) {
   if (body) flipRows(body, () => paint());
   else paint();
 
-  $('work-views').replaceChildren(...VIEWS.map((v) => el('button', {
-    className: `view-tab${v === view ? ' on' : ''}`,
-    textContent: `${v} · ${counts[v]}`,
-    'aria-pressed': String(v === view),
-    onclick: () => renderWork(all, repo, now, v),
-  })));
+  paintTabs();
+
+  // The board is a tab beside the three tables rather than above them: the same rows,
+  // drawn in time. Its count is what the board actually holds — lanes plus grid rows —
+  // so the switcher says what it is offering instead of making the reader click.
+  function paintTabs() {
+    const boardCount = board ? board.groups.reduce((n, g) => n + g.count, 0) : 0;
+    const tabs = board ? ['board', ...VIEWS] : [...VIEWS];
+    $('work-views').replaceChildren(...tabs.map((v) => el('button', {
+      className: `view-tab${v === view ? ' on' : ''}`,
+      textContent: `${v} · ${v === 'board' ? boardCount : counts[v]}`,
+      'aria-pressed': String(v === view),
+      onclick: () => renderWork(all, repo, now, v, board, context),
+    })));
+  }
 }
 
 // --- what the queue closed -----------------------------------------------------------
@@ -486,23 +654,34 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   // The lead, from the same rows the work table is drawn from — one derivation, so the
   // block at the top and the first row of the `stuck` view are one verdict.
   const candidates = repoCandidates(repo, all);
-  const lead = candidates[0] ?? null;
-  $('repo-lead').replaceChildren(leadCard(lead, {
-    rest: candidates.length - 1,
-    minutes: parkMinutes(lead?.park),
-    note: parkMinutesNote(lead?.park),
-  }));
 
-  renderTiles({
-    open,
-    runs,
-    meta,
-    work: humanWork(issuePage.issues, issuePage.prs, now),
+  // The ledger sheet. The rate table is the deployment's own; unset is supported and
+  // reads *unpriced*, naming the key. The fleet mean is only available where the page
+  // holds other members' folds, so on a repo-mode deployment it reads *fleet: not read*.
+  const hours = hourSeries(usage, { now, hours: RUN_HOURS, runs });
+  const strip = wakeStrip(rows, now);
+  const ledger = repoLedger({ repo, declaration, usage, items: issuePage.issues, prs: issuePage.prs }, {
+    now, rates: config?.rates ?? null, fleetMean: config?.fleetTokensPerSession ?? null,
+  });
+  const machine = repoMachine({
+    hourRows: hours,
+    runSummary: summariseRuns(runs, now, usage),
+    ci: ciCell(ciStatus(runs, meta.default_branch), now),
+    usage,
     mount: declaration ? mountState(declaration, canon) : null,
-    ci: ciStatus(runs, meta.default_branch),
+    canon,
+    strip,
+    declaredTasks: tasks.length,
     now,
   });
-  renderWork(all, repo, now, defaultView(counts));
+  renderRepoSheet({ ledger, machine, candidates, strip, repo });
+
+  // The board is `workRows`'s own classification drawn in time, from the same issues
+  // and PRs the tables read — one derivation, so a mark and a row cannot disagree.
+  const board = buildBoard({ rows, items: issuePage.issues, prs: issuePage.prs, now, schedule });
+  const boardContext = { repo, items: issuePage.issues, prs: issuePage.prs, rows: all, now };
+  const anythingLive = counts.stuck || counts.pending;
+  renderWork(all, repo, now, anythingLive ? 'board' : defaultView(counts), board, boardContext);
   renderContributions(contributions, now);
   // Today's closes come from the issue page already fetched — the fold's own read is
   // watermarked and hourly, so the last hour or two is exactly what it has not seen.

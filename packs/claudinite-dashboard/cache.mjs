@@ -21,10 +21,14 @@
 // a fleet's raw issue JSON is tens of megabytes and the quota is ~5, so what goes
 // in is only the fields the model reads back out.
 
+// The queue's published surface, the one place a cross-pack import is sanctioned: the
+// projection below has to find a PR's closing issue by the same rule the fold does.
+import { closesIssueIn } from '../claudinite-tasks/shared-code/pull-requests.mjs';
+
 const NS = 'claudinite-dashboard';
 // Bump when a stored shape changes: entries from an older writer are dropped rather
 // than misread, which is cheaper and safer than migrating a cache.
-const VERSION = 3;
+const VERSION = 4;
 export const DAY_MS = 24 * 3600e3;
 
 const key = (k) => `${NS}:v${VERSION}:${k}`;
@@ -185,8 +189,22 @@ export const projectIssue = (i) => ({
   body: String(i.state ?? '').toLowerCase() === 'open' ? String(i.body ?? '').slice(0, BODY_KEEP) : '',
 });
 
-// An open pull request, kept only for what a "waiting on a person" count needs. The
-// body is dropped outright: nothing reads a PR's text here.
+// How far back a MERGED pull request is worth keeping. The open ones are kept because
+// they are work waiting on a person; the merged ones because they are the lead-time
+// series for the days the fold has not reached yet, and that series is drawn over two
+// weeks. Past this they are dropped as they always were, which is what keeps a fleet's
+// history inside the storage quota.
+export const MERGED_PR_WINDOW_DAYS = 14;
+
+export const withinMergedWindow = (mergedAt, nowMs, days = MERGED_PR_WINDOW_DAYS) => {
+  const t = mergedAt ? Date.parse(mergedAt) : NaN;
+  return Number.isFinite(t) && nowMs - t < days * DAY_MS;
+};
+
+// A pull request, kept for one of two reasons — open, or merged inside the window
+// above. The BODY is still dropped outright: the one thing anything here reads out of
+// it is the issue it closes, and that is parsed on the way in, so what is stored is a
+// number rather than a paragraph.
 export const projectPull = (p) => ({
   number: p.number,
   title: p.title,
@@ -194,6 +212,13 @@ export const projectPull = (p) => ({
   updated_at: p.updated_at,
   draft: Boolean(p.draft),
   user: p.user?.login ?? null,
+  // The issues endpoint carries a PR's merge date inside its `pull_request` stub, so
+  // the merged set costs no request of its own.
+  merged_at: p.pull_request?.merged_at ?? p.merged_at ?? null,
+  // Parsed with the fold's own rule, published for exactly this: a page computing a
+  // lead time for the days the fold has not reached must agree with the fold about
+  // which issue a PR is for.
+  closesIssue: closesIssueIn(p.body),
 });
 
 export const projectRun = (r) => ({

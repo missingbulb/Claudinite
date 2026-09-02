@@ -183,6 +183,11 @@ const config = {
   // In fleet mode the overview is the landing view, so nothing is preselected; in repo
   // mode there is exactly one repo to show and it is this one.
   defaultRepo: fleetMode ? null : (cfg.defaultRepo ?? repoSlug),
+  // The rate table travels through as it stands, like every other declared key. It is
+  // ordinary config rather than a secret — a published price list — and UNSET is a
+  // valid deployment: the page then reads every dollar figure as unpriced and names
+  // the key, which is a stated gap rather than a wrong number.
+  rates: (cfg.rates && typeof cfg.rates === 'object') ? cfg.rates : null,
 };
 await writeFile(join(OUT, HOME, 'dashboard.config.json'), `${JSON.stringify(config, null, 2)}\n`);
 
