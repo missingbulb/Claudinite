@@ -381,7 +381,7 @@ product, not a bigger limit.
 
 Sign-in belongs to **whoever owns the deployment**, and it is not inheritable. A
 fleet's second, fifth and tenth dashboard reuse one registration: a GitHub App holds
-up to ten callback URLs, and with wildcard matching a single `https://<user>.github.io/`
+up to ten redirect URIs, and with wildcard matching a single `https://<user>.github.io/`
 covers every project Pages site on that host, so a new deployment only copies the two
 config keys.
 
@@ -392,7 +392,7 @@ A **different** owner cannot reuse it, and the reason is not policy but mechanis
 - making it public lets anyone authorize it, but a user access token "can only access
   resources that both the user and app can access", so until they install that App on
   their own account every member row still reads *not visible to you*;
-- and if they did install it, their callback URL would have to live in someone else's
+- and if they did install it, their redirect URI would have to live in someone else's
   App and their tokens would be minted by someone else's endpoint. That is a trust
   relationship, not a configuration.
 
@@ -407,21 +407,37 @@ checklist the adoption handover points at. Notes are below it, deliberately: a r
 working through these has the settings page open in the next tab.
 
 - [ ] Register a GitHub App — `https://github.com/settings/apps/new`
-- [ ] Set its Callback URL to `https://<owner>.github.io/` and tick **Enable wildcard matching**
+- [ ] Set its **Homepage URL** and **Redirect URI** to `https://<owner>.github.io/`, and tick **Enable wildcard matching** beneath the redirect URI
 - [ ] Tick *Request user authorization (OAuth) during installation*
+- [ ] Untick **Webhook → Active**
 - [ ] Under **Permissions → Repository**, set Contents, Issues, Metadata and Actions to **Read-only**, then press **Create GitHub App**
 - [ ] Copy the **Client ID** — the App's General page, under the app name; begins `Iv23`
+- [ ] Add it as the variable `CLAUDINITE_DASHBOARD_CLIENT_ID` — `<repo>/settings/variables/actions/new`
 - [ ] Press **Generate a new client secret**, and copy the value under **Client secrets** — shown once
-- [ ] Install the App on the account holding the repos — the **Install App** tab of that page
-- [ ] Add the client secret as the Actions secret `GITHUB_OAUTH_CLIENT_SECRET` — `<repo>/settings/secrets/actions/new`
-- [ ] Add the Client ID as the variable `CLAUDINITE_DASHBOARD_CLIENT_ID` — `<repo>/settings/variables/actions/new`
-- [ ] Add `CLOUDFLARE_ACCOUNT_ID` and the secret `CLOUDFLARE_API_TOKEN` — see the [deploy task](tasks/deploy-oauth-exchange/README.md)
+- [ ] Add it as the Actions secret `DASHBOARD_OAUTH_CLIENT_SECRET` — `<repo>/settings/secrets/actions/new`
+- [ ] Install the App on the account holding the repos — `https://github.com/settings/apps/<app-slug>/installations`
+- [ ] Copy your Cloudflare **Account ID** — `https://dash.cloudflare.com/?to=/:account/workers`, the right-hand sidebar under *Account details*; 32 hex characters
+- [ ] Add it as the variable `CLOUDFLARE_ACCOUNT_ID` — `<repo>/settings/variables/actions/new`
+- [ ] Create a Cloudflare API token — `https://dash.cloudflare.com/profile/api-tokens` — template **Edit Cloudflare Workers**, name `claudinite-dashboard-deploy`, **Account Resources** *Include* the hosting account, **Zone Resources** *Include · All zones*
+- [ ] Copy the token — shown once, on the confirmation screen
+- [ ] Add it as the Actions secret `CLOUDFLARE_API_TOKEN` — `<repo>/settings/secrets/actions/new`
 - [ ] Run `create-work-item claudinite-dashboard/deploy-oauth-exchange`, and copy the `workers.dev` URL it reports
-- [ ] Add that URL as the variable `CLAUDINITE_DASHBOARD_EXCHANGE_URL`
+- [ ] Add it as the variable `CLAUDINITE_DASHBOARD_EXCHANGE_URL` — `<repo>/settings/variables/actions/new`
 
 **Done when** a signed-in viewer's rate pill reads `…/5000 · user`.
 
-Notes. The App is installed per *account*, not per repo — a user token reaches only what
+Notes. **Webhook → Active** arrives ticked and the form then refuses to submit without a
+Webhook URL; this App is a sign-in credential and receives nothing, so unticking it is
+what lets the registration through. The token's **Zone Resources** are asked for because
+the template carries a zone-scoped permission, and *All zones* is the answer that always
+works: this deploy never exercises them, calling only `/accounts/<id>/workers/…`.
+Installing the App lands you on the redirect URI,
+and `https://<owner>.github.io/` is a **404** unless that owner happens to keep a
+user-site repo — expected, and not a failed step: the root is registered so that wildcard
+matching permits the project pages beneath it, and sign-in returns to the dashboard's own
+URL rather than to the root. The two Cloudflare credentials are the
+[deploy task](tasks/deploy-oauth-exchange/README.md)'s, which says why the API token is
+that narrow. The App is installed per *account*, not per repo — a user token reaches only what
 it is installed on, so an uninstalled account renders every member row as *not visible to
 you*. Wildcard matching on the `github.io` root covers every project Pages site on that
 host, so one App serves every dashboard you own. The sign-in pair are repository

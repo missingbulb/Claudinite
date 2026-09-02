@@ -21,7 +21,7 @@ const member = (config) => {
 const ENV = {
   CLOUDFLARE_API_TOKEN: 'cf-token',
   CLOUDFLARE_ACCOUNT_ID: 'acct',
-  GITHUB_OAUTH_CLIENT_SECRET: 'shh',
+  DASHBOARD_OAUTH_CLIENT_SECRET: 'shh',
   CLAUDINITE_REPO: 'missingbulb/Shepherd',
 };
 
@@ -81,7 +81,7 @@ test('the probe accepts only the two answers this endpoint gives, and retries wh
 // the executor hands every repository variable to code-work with nothing declared, so
 // the only thing that must be true is that this task does not ask for it as a secret.
 test('only the two real credentials are declared secrets — the account id is a repository variable', () => {
-  assert.deepEqual(declaration.required_secrets, ['CLOUDFLARE_API_TOKEN', 'GITHUB_OAUTH_CLIENT_SECRET']);
+  assert.deepEqual(declaration.required_secrets, ['CLOUDFLARE_API_TOKEN', 'DASHBOARD_OAUTH_CLIENT_SECRET']);
 });
 
 test('a missing clientId, an unresolvable origin and a missing secret are each a NeedsAction naming what to set', async () => {

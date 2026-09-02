@@ -285,6 +285,26 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
     bad('"required_secrets" is not an array of secret names', 'list the repo Actions secret names this task needs, e.g. ["SOME_API_KEY"]');
   }
 
+  // The one exception to "whether the repo has them is not our business": GitHub
+  // reserves the `GITHUB_` prefix, answering "Secret names must not start with
+  // GITHUB_" on the secret form. Such a name cannot be configured by anyone, so the
+  // task parks forever on a secret its owner is refused — and only the declaration
+  // can catch it, since the park reads as ordinary missing configuration.
+  for (const name of (Array.isArray(decl.required_secrets) ? decl.required_secrets : [])) {
+    if (typeof name === 'string' && name.toUpperCase().startsWith('GITHUB_')) {
+      bad(`required secret "${name}" cannot be created — GitHub reserves the GITHUB_ prefix`,
+        'rename it without that prefix, e.g. one carrying the pack\'s own name');
+    }
+    // The other namespace a secret cannot borrow. `CLAUDINITE_*` in a task file is the
+    // code-work contract, and `task-code-work-env` reads every name outside that
+    // contract as a variable nobody sets — which a delivered secret is not, so the
+    // finding would be unfixable without renaming the secret anyway.
+    if (typeof name === 'string' && name.toUpperCase().startsWith('CLAUDINITE_')) {
+      bad(`required secret "${name}" sits in the code-work namespace, which its task's own code may not read`,
+        'rename it outside CLAUDINITE_* — that prefix belongs to the variables code_work is handed');
+    }
+  }
+
   // Execution bound (task-code-work DESIGN §2, §6) — an agentic task MUST
   // declare a positive-integer agent_execution_timeout. There is always a bound
   // on an agentic run; enforcement is best-effort (the executor surfaces the

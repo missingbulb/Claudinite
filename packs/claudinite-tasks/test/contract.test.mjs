@@ -114,6 +114,30 @@ test('validateTaskDeclaration accepts required_secrets as a plain list of names 
   assert.match(validateTaskDeclaration({ ...validTask, required_secrets: [''] })[0].what, /not an array of secret names/);
 });
 
+test('validateTaskDeclaration rejects a required_secrets name GitHub refuses to create', () => {
+  // GitHub reserves the `GITHUB_` prefix: the secret form answers "Secret names must
+  // not start with GITHUB_", so such a name can never be configured and the task parks
+  // for a secret nobody can add. The one name-shape rule that is not a fact about the
+  // repo — it is a fact about the platform, knowable at author time.
+  assert.match(
+    validateTaskDeclaration({ ...validTask, required_secrets: ['GITHUB_OAUTH_CLIENT_SECRET'] })[0].what,
+    /cannot be created/,
+  );
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['MY_GITHUB_TOKEN'] }), []);
+});
+
+test('validateTaskDeclaration rejects a required_secrets name inside the code-work namespace', () => {
+  // `CLAUDINITE_*` in a task file means the code-work contract, and `task-code-work-env`
+  // reads every one it does not recognise as a variable nobody sets. A secret named into
+  // that namespace is delivered perfectly well and still trips the rule, so the two
+  // cannot coexist — and the collision is knowable here, where the name is chosen.
+  assert.match(
+    validateTaskDeclaration({ ...validTask, required_secrets: ['CLAUDINITE_DASHBOARD_CLIENT_SECRET'] })[0].what,
+    /code-work namespace/,
+  );
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['DASHBOARD_OAUTH_CLIENT_SECRET'] }), []);
+});
+
 test('validateTaskDeclaration flags every malformed field', () => {
   const problems = validateTaskDeclaration({
     id: '',
