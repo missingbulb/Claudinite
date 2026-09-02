@@ -23,13 +23,12 @@ test('resolveModel maps every family and rejects unknowns; none is agentless', (
 const validTask = {
   id: 'growth-extract',
   frequency: 'daily',
-  precondition_signals: ['commits', 'prs', 'issues'],
   agent_model: 'opus',
   expected_outcome: 'pr',
   automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
-  precondition() { return { run: true, reason: 'x' }; },
+  preconditions: ['none'],
 };
 
 test('validateTaskDeclaration accepts a well-formed declaration', () => {
@@ -142,45 +141,40 @@ test('validateTaskDeclaration flags every malformed field', () => {
   const problems = validateTaskDeclaration({
     id: '',
     frequency: 'fortnightly',
-    precondition_signals: ['commits', 'bogus'],
     agent_model: 'gpt',
     expected_outcome: 'push',
     agent_instructions: 42,
-    precondition: 'nope',
+    precondition_signals: ['commits'],
   });
   const whats = problems.map((p) => p.what).join(' | ');
   assert.match(whats, /no string "id"/);
   assert.match(whats, /not a legal frequency/);
-  assert.match(whats, /known signal names/);
   assert.match(whats, /not a legal model family/);
   assert.match(whats, /not a legal outcome ceiling/);
   assert.match(whats, /no string "agent_instructions"/);
-  assert.match(whats, /declares neither "preconditions" nor a "precondition" function/);
+  assert.match(whats, /"precondition_signals" is retired/);
+  assert.match(whats, /declares no "preconditions"/);
 });
 
-// The either-or, and the derivation that comes with it (task-preconditions DESIGN).
-test('validateTaskDeclaration accepts exactly one precondition form, and derives the signals of the new one', () => {
+// ONE FORM, and the derivation that comes with it (task-preconditions DESIGN,
+// #1617). The signal union has a single source — the terms the expression names —
+// so the collector cannot disagree with what the gate consults.
+test('validateTaskDeclaration accepts the one precondition form, and derives its signals', () => {
   const base = { ...validTask };
-  delete base.precondition;
-  delete base.precondition_signals;
 
   assert.deepEqual(validateTaskDeclaration({ ...base, preconditions: ['substantive-change'] }), []);
   assert.deepEqual(taskSignalNames({ ...base, preconditions: ['substantive-change'] }), ['commits']);
-  // The legacy function still declares its own union — nothing converges a member's
-  // task files, so both forms answer the collector.
-  assert.deepEqual(taskSignalNames(validTask), validTask.precondition_signals);
 
-  const both = validateTaskDeclaration({ ...validTask, preconditions: ['none'] });
-  assert.match(both.map((p) => p.what).join(' | '), /declares both "preconditions" and a "precondition" function/);
+  // Both retired spellings are rejected by name rather than ignored.
+  const withFunction = validateTaskDeclaration({ ...base, precondition: () => ({ run: true }) });
+  assert.match(withFunction.map((p) => p.what).join(' | '), /"precondition" function, which is retired/);
 
-  const beside = validateTaskDeclaration({ ...base, preconditions: ['none'], precondition_signals: ['commits'] });
-  assert.match(beside.map((p) => p.what).join(' | '), /beside "precondition_signals"/);
+  const withSignals = validateTaskDeclaration({ ...base, precondition_signals: ['commits'] });
+  assert.match(withSignals.map((p) => p.what).join(' | '), /"precondition_signals" is retired/);
 });
 
 test('validateTaskDeclaration reads the expression statically: unknown terms and bad arguments', () => {
   const base = { ...validTask };
-  delete base.precondition;
-  delete base.precondition_signals;
   const whatOf = (preconditions, terms) => validateTaskDeclaration({ ...base, preconditions }, terms).map((p) => p.what).join(' | ');
 
   assert.match(whatOf(['no-such-thing']), /unknown condition "no-such-thing"/);
@@ -367,8 +361,8 @@ test('normalizeTaskDeclaration maps legacy agent_preprocessing names to code_wor
 test('a legacy-named agentless declaration validates clean — the rename is not a breaking change', async () => {
   const { validateTaskDeclaration } = await import('../task-contract.mjs');
   const problems = validateTaskDeclaration({
-    id: 't', frequency: 'daily', precondition_signals: [], agent_model: 'none',
-    expected_outcome: 'none', precondition: () => ({ run: true }),
+    id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
+    expected_outcome: 'none',
     agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120,
   });
   assert.deepEqual(problems, []);
@@ -382,8 +376,8 @@ test('a legacy-named agentless declaration validates clean — the rename is not
 test('schedule_after / on_interrupt / invocation_endpoint are optional and validated when present', async () => {
   const { validateTaskDeclaration } = await import('../task-contract.mjs');
   const base = {
-    id: 't', frequency: 'daily', precondition_signals: [], agent_model: 'none',
-    expected_outcome: 'none', precondition: () => ({ run: true }),
+    id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
+    expected_outcome: 'none',
     code_work: 'node w.mjs', code_work_timeout: 60,
   };
   assert.deepEqual(validateTaskDeclaration(base), [], 'declaring none of them is legal');
@@ -412,8 +406,8 @@ test('a code_work_timeout reaching the executing leash is rejected at author tim
   const { validateTaskDeclaration } = await import('../task-contract.mjs');
   const { EXECUTING_LEASH_MS } = await import('../queue/leases.mjs');
   const base = {
-    id: 't', frequency: 'daily', precondition_signals: [], agent_model: 'none',
-    expected_outcome: 'none', precondition: () => ({ run: true }), code_work: 'node w.mjs',
+    id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
+    expected_outcome: 'none', code_work: 'node w.mjs',
   };
   const seconds = EXECUTING_LEASH_MS / 1000;
   assert.deepEqual(validateTaskDeclaration({ ...base, code_work_timeout: seconds - 1 }), []);
@@ -466,8 +460,7 @@ test('the retired frequency spellings are accepted, and normalized at the door',
 test('a declaration carrying a retired spelling no longer validates', () => {
   const decl = {
     id: 'legacy', frequency: 'hourly', agent_model: 'sonnet', agent_instructions: 'task.md',
-    expected_outcome: 'none', precondition_signals: [], agent_execution_timeout: 600,
-    precondition: () => ({ run: false }),
+    expected_outcome: 'none', preconditions: ['none'], agent_execution_timeout: 600,
   };
   const findings = validateTaskDeclaration(decl);
   assert.equal(findings.length, 1, 'the dead vocabulary is no longer accepted at the door');

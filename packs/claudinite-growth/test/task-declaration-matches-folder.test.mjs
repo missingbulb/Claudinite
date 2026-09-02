@@ -7,12 +7,11 @@ import rule from '../worldRules/task-declaration-matches-folder.mjs';
 const decl = (id, extra = "  agent_instructions: 'task.md',\n") => `export default {
   id: '${id}',
   frequency: 'daily',
-  precondition_signals: ['commits'],
+  preconditions: ['none'],
   agent_model: 'opus',
   expected_outcome: 'pr',
   automerge: 'nothing',
 ${extra}  agent_execution_timeout: 1800,
-  precondition(signals, config) { return { run: false }; },
 };
 `;
 

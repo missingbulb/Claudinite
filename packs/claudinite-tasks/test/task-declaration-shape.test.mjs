@@ -7,13 +7,12 @@ import rule from '../worldRules/task-declaration-shape.mjs';
 const goodTask = `export default {
   id: 'growth-extract',
   frequency: 'daily',
-  precondition_signals: ['commits', 'prs'],
   agent_model: 'opus',
   expected_outcome: 'pr',
   automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
-  precondition(signals, config) { return { run: false }; },
+  preconditions: ['substantive-change'],
 };
 `;
 const TASK = '.claudinite/local/packs/mypack/tasks/growth-extract/task.mjs';
@@ -124,7 +123,7 @@ test('task-declaration-shape: flags missing required fields', () => {
   const whats = run({ [TASK]: bad }).map((f) => f.what).join(' | ');
   assert.match(whats, /declares no string "id"/);
   assert.match(whats, /declares no string "agent_instructions"/);
-  assert.match(whats, /declares neither "preconditions" nor a "precondition" function/);
+  assert.match(whats, /declares no "preconditions"/);
 });
 
 // --- the declarative expression, read statically ------------------------------
@@ -132,8 +131,7 @@ test('task-declaration-shape: flags missing required fields', () => {
 // reason the check can rule on unknown terms and bad arguments at author time.
 
 const declarativeTask = goodTask
-  .replace("  precondition_signals: ['commits', 'prs'],\n", '')
-  .replace('  precondition(signals, config) { return { run: false }; },\n', '')
+  .replace("  preconditions: ['substantive-change'],\n", '')
   .replace("  frequency: 'daily',", "  frequency: 'daily',\n  preconditions: ['substantive-change', 'no-open-pr-titled:My sweep'],");
 
 test('task-declaration-shape: a declarative task.mjs yields no findings', () => {
@@ -167,21 +165,28 @@ test('task-declaration-shape: a task-local term resolves from the preconditions.
   }), []);
 });
 
-test('task-declaration-shape: the two forms are exclusive, and only the old one declares its signals', () => {
-  const both = declarativeTask.replace("  agent_model: 'opus',",
+// BOTH RETIRED SPELLINGS ARE FLAGGED BY NAME (#1617). A declaration carrying one
+// is told what replaced it, rather than reading as a task that simply forgot its
+// gate — which is what a bare "unknown field" would have said.
+test('task-declaration-shape: the retired precondition spellings are named, not merely unrecognised', () => {
+  const withFunction = declarativeTask.replace("  agent_model: 'opus',",
     "  precondition(signals) { return { run: true }; },\n  agent_model: 'opus',");
-  assert.match(run({ [TASK]: both }).map((f) => f.what).join(' | '),
-    /declares both "preconditions" and a "precondition" function/);
+  assert.match(run({ [TASK]: withFunction }).map((f) => f.what).join(' | '),
+    /declares a "precondition" function, which is retired/);
 
-  const beside = declarativeTask.replace("  agent_model: 'opus',",
+  const withSignals = declarativeTask.replace("  agent_model: 'opus',",
     "  precondition_signals: ['commits'],\n  agent_model: 'opus',");
-  assert.match(run({ [TASK]: beside }).map((f) => f.what).join(' | '),
-    /declares "precondition_signals" beside "preconditions"/);
+  assert.match(run({ [TASK]: withSignals }).map((f) => f.what).join(' | '),
+    /declares "precondition_signals", which is retired/);
 
-  // …and the legacy function still has to declare its own union.
-  const noSignals = goodTask.replace("  precondition_signals: ['commits', 'prs'],\n", '');
-  assert.match(run({ [TASK]: noSignals }).map((f) => f.what).join(' | '),
-    /declares a "precondition" function but no "precondition_signals" array/);
+  // A task with the retired function and nothing else is missing its gate too —
+  // both findings, so the fix is unambiguous.
+  const onlyFunction = declarativeTask
+    .replace(/  preconditions: \[[^\]]*\],\n/, '')
+    .replace("  agent_model: 'opus',", "  precondition(signals) { return { run: true }; },\n  agent_model: 'opus',");
+  const whats = run({ [TASK]: onlyFunction }).map((f) => f.what).join(' | ');
+  assert.match(whats, /which is retired/);
+  assert.match(whats, /declares no "preconditions"/);
 });
 
 test('task-declaration-shape: flags a non-object export', () => {
@@ -200,11 +205,10 @@ test('task-declaration-shape: a none task needs no execution bound but flags pre
   const noneTask = `export default {
   id: 'store-release',
   frequency: 'daily',
-  precondition_signals: ['release'],
+  preconditions: ['none'],
   agent_model: 'none',
   expected_outcome: 'none',
   code_work: 'node worker.mjs',
-  precondition() { return { run: false }; },
 };
 `;
   const whats = run({ [TASK]: noneTask }).map((f) => f.what).join(' | ');
@@ -216,10 +220,9 @@ test('task-declaration-shape: flags an agentless (none) task that declares no pr
   const bareNone = `export default {
   id: 'x',
   frequency: 'daily',
-  precondition_signals: ['release'],
+  preconditions: ['none'],
   agent_model: 'none',
   expected_outcome: 'none',
-  precondition() { return { run: false }; },
 };
 `;
   const whats = run({ [TASK]: bareNone }).map((f) => f.what).join(' | ');
@@ -230,12 +233,11 @@ test('task-declaration-shape: a none task with no agent_instructions is clean �
   const noneTask = `export default {
   id: 'store-release',
   frequency: 'daily',
-  precondition_signals: ['release'],
+  preconditions: ['none'],
   agent_model: 'none',
   expected_outcome: 'none',
   code_work: 'node worker.mjs',
   code_work_timeout: 120,
-  precondition() { return { run: false }; },
 };
 `;
   assert.deepEqual(run({ [TASK]: noneTask }), []);
