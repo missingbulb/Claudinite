@@ -697,6 +697,10 @@ async function main() {
         config: packConfig,
         terms: task.terms,
         windowDays: windowDays(task),
+        // The anchor this ask is for, so a clock-reading term answers about the
+        // occurrence being planned rather than about the moment the run happens to
+        // reach it.
+        now,
       });
     }
     // NOT the executor's evaluatePrecondition: that seam turns a throw into a
