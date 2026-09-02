@@ -297,6 +297,43 @@
      third of the row is a smear. */
   .chart-card.wide { grid-column: 1 / -1; }
 
+
+  /* --- the corpus section: two scopes, the rules that fire, the skills that load --- */
+  .chart-card.scope dl { display: grid; grid-template-columns: 1fr auto; gap: 0; margin: 0; }
+  .chart-card.scope dt { padding: 4px 0; color: var(--ink-2); font-size: 12.5px; border-bottom: 1px solid var(--rule); margin: 0; }
+  .chart-card.scope dd { padding: 4px 0; text-align: right; border-bottom: 1px solid var(--rule); margin: 0; }
+  .chart-card.scope dl > :nth-last-child(-n+2) { border-bottom: 0; }
+  .rate { display: flex; align-items: baseline; gap: 8px; }
+  .rate .big { font-size: 20px; color: var(--critical); }
+  .meter { height: 6px; background: var(--rule); border-radius: 999px; overflow: hidden; }
+  .meter > i { display: block; height: 100%; background: var(--critical); border-radius: 999px; }
+  /* A relative-volume bar is a length, not a segment mix: `.vol`, not `.bar`. */
+  .vol { display: block; height: 8px; min-width: 40px; }
+  .vol > i { display: block; height: 100%; border-radius: 2px; min-width: 2px; }
+  .vol > i.block { background: var(--critical); }
+  .vol > i.advise { background: var(--serious); }
+  .vol > i.skill { background: var(--good); }
+  td.volcell { width: 38%; min-width: 120px; }
+  table.plain td { padding: 4px 6px; font-size: 12.5px; }
+  table.plain tbody tr:hover { background: none; }
+  ul.zero { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+  ul.zero li { display: flex; justify-content: space-between; gap: 12px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px dotted var(--rule); }
+  ul.zero li:last-child { border-bottom: 0; }
+  .chip.block, .chip.advise { padding: 1px 6px; font-size: 11px; font-weight: 600; border-radius: 3px; }
+  .chip.block { border-color: var(--critical); color: var(--critical); }
+  .chip.advise { border-color: var(--serious); color: var(--serious); }
+  .dim { color: var(--muted); }
+  #fleet-corpus h3 { font-size: 14px; margin: 18px 0 8px; }
+  /* Collapsed by default: the section is depth, and the members grid is what the page
+     is opened for — it has to land above the fold. The summary still carries the range
+     line, so a closed section says what it holds and who is counted. */
+  details.fold > summary { cursor: pointer; list-style: none; }
+  details.fold > summary::-webkit-details-marker { display: none; }
+  details.fold > summary h2::before { content: "▸ "; color: var(--muted); font-size: 12px; }
+  details.fold[open] > summary h2::before { content: "▾ "; }
+  #fleet-corpus-range { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+  #fleet-corpus-members { min-width: 860px; }
+
   tr.pending-row td { color: var(--muted); }
   #fleet-progress { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
   .pill { font-size: 12px; border: 1px solid var(--border); border-radius: 999px;
@@ -549,6 +586,43 @@
       <div class="charts" id="fleet-activity"></div>
     </section>
 
+
+    <section id="fleet-corpus" hidden>
+      <details class="fold">
+      <summary>
+        <h2>What the corpus is doing across the fleet <button class="info" type="button" data-info="corpus" aria-expanded="false" title="What these figures are">&#9432;</button></h2>
+        <p id="fleet-corpus-range"></p>
+      </summary>
+      <p class="info-body" id="info-corpus" hidden>
+        The detail behind the block at the top, from each member's own
+        <strong>usage fold</strong> — the file the sweep already read, so none of this costs a
+        request. A <strong>check failure is a win</strong>: the finding went back into the session
+        and the agent fixed it before the work left the branch, which is the closest thing this
+        pipeline has to a measure of what the corpus is worth. <em>Runner errors</em> is the one
+        number whose right value is zero. Every count is a floor: only captured sessions are
+        read, and a session whose container was reclaimed is invisible.
+      </p>
+      <p class="info-body" id="info-corpus-2" hidden>
+        Two ranges, on purpose. The <strong>workload tiles</strong> are this week against last,
+        like the block at the top. The <strong>scopes, rules, skills and member rows</strong> cover the
+        whole folded range the files hold, with no comparison: a rule that fired twice this week and
+        once last is not a trend, and "mounted, never loaded" is only a claim worth making over
+        as long a range as there is. A skill that never loads in one repo may just not be that
+        repo's subject; one that never loads anywhere is mis-described or should not be gated at
+        all. A member with no usage file is <strong>named</strong> and counted in nothing.
+      </p>
+      <div class="tiles" id="fleet-workload"></div>
+      <div class="charts" id="fleet-scopes"></div>
+      <h3>Which rules actually fire</h3>
+      <p class="legend" id="fleet-rules-note"></p>
+      <div class="panel scroll"><table id="fleet-rules"></table></div>
+      <h3>Skills: what loads, what never does</h3>
+      <div class="charts" id="fleet-skills"></div>
+      <h3>Per member</h3>
+      <div class="panel scroll"><table id="fleet-corpus-members"></table></div>
+      </details>
+    </section>
+
     <section>
       <h2>Members — worst first <button class="info" type="button" data-info="members" aria-expanded="false" title="Why this ordering">&#9432;</button></h2>
       <p class="info-body" id="info-members" hidden>
@@ -563,9 +637,9 @@
         — what is on your plate here and roughly how long it is; <strong>Claudinite</strong> — what the
         machinery is doing. Stars and CI sit beside the name rather than in columns, because they are
         how you recognise the row rather than findings about it. Every column but the commit curve comes
-        from a read this page already makes, which is also why four things are missing: rule tokens,
-        test counts and time saved would each need a member's own files read, and conversation-log
-        sessions a branch listing. Issues and pull requests are counted <em>within the issue window</em>
+        from a read this page already makes. Rule tokens, sessions and check counts are not
+        columns here: they live in <strong>What the corpus is doing across the fleet</strong>
+        below, read off each member's own usage fold. Issues and pull requests are counted <em>within the issue window</em>
         — the most recent hundred — so an older one is not counted rather than counted wrongly.
       </p>
       <p class="info-body" id="info-members-3" hidden>

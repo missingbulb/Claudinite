@@ -1,0 +1,369 @@
+<title>Claudinite Fleet Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #eef1ef; --sheet: #fbfcfb; --ink: #16211f; --ink-2: #4b5956; --muted: #7c8a86;
+    --rule: #d5ddda; --ledger: #c3d5dc; --wash: rgba(43,98,161,0.06);
+    --machine: #2b62a1; --machine-wash: rgba(43,98,161,0.13); --dim: #b9cad8;
+    --you: #c98a12; --you-text: #8a5f05; --you-paper: #fdf3e2;
+    --good: #1f8a4c; --good-text: #17703c;
+    --serious: #d0602a; --serious-text: #a3451a;
+    --critical: #bf3b2e; --critical-text: #a02f24;
+    --sans: "Archivo", "Archivo Narrow", "Helvetica Neue", Arial, sans-serif;
+    --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #131917; --sheet: #1b2321; --ink: #e6ebe7; --ink-2: #b2bdb8; --muted: #7d8a86;
+      --rule: #2c3634; --ledger: #2f4149; --wash: rgba(127,178,232,0.08);
+      --machine: #7fb2e8; --machine-wash: rgba(127,178,232,0.16); --dim: #3b5570;
+      --you: #e3b458; --you-text: #e3b458; --you-paper: #2e2717;
+      --good: #4dbb7a; --good-text: #4dbb7a;
+      --serious: #ee8a58; --serious-text: #ee8a58;
+      --critical: #ee6d60; --critical-text: #ee6d60;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #131917; --sheet: #1b2321; --ink: #e6ebe7; --ink-2: #b2bdb8; --muted: #7d8a86;
+    --rule: #2c3634; --ledger: #2f4149; --wash: rgba(127,178,232,0.08);
+    --machine: #7fb2e8; --machine-wash: rgba(127,178,232,0.16); --dim: #3b5570;
+    --you: #e3b458; --you-text: #e3b458; --you-paper: #2e2717;
+    --good: #4dbb7a; --good-text: #4dbb7a;
+    --serious: #ee8a58; --serious-text: #ee8a58;
+    --critical: #ee6d60; --critical-text: #ee6d60;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font: 400 12.5px/1.4 var(--sans); font-stretch: 100%; -webkit-font-smoothing: antialiased; }
+  a { color: var(--machine); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { font: inherit; color: var(--ink-2); background: none; border: 1px solid var(--rule); border-radius: 3px; padding: 3px 9px; cursor: pointer; }
+  button:hover { color: var(--ink); border-color: var(--muted); }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--machine); outline-offset: 2px; }
+  .mono { font-family: var(--mono); }
+  .cap { font-family: var(--sans); font-stretch: 78%; font-weight: 700; font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); }
+  .gap { color: var(--muted); font-style: italic; }
+  .ask { color: var(--you-text); }
+  .id { font-family: var(--mono); }
+
+  /* top bar */
+  header.top { display: flex; align-items: center; gap: 16px; max-width: 1200px; margin: 0 auto; padding: 10px 24px 8px; }
+  header.top .mark { font-family: var(--sans); font-stretch: 72%; font-weight: 800; font-size: 19px; letter-spacing: 0.02em; text-transform: uppercase; }
+  header.top .crumb { font-stretch: 85%; font-weight: 600; font-size: 13px; color: var(--ink-2); padding-left: 14px; border-left: 1px solid var(--rule); }
+  header.top .census { font-family: var(--mono); font-size: 12px; color: var(--ink-2); display: inline-flex; gap: 14px; }
+  header.top .grow { flex: 1; }
+  header.top .quota { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  header.top button.theme { padding: 3px 6px; line-height: 0; }
+  header.top button.theme svg { width: 13px; height: 13px; display: block; }
+
+  /* the sheet */
+  main.sheet { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  .page { background: var(--sheet); border: 1px solid var(--rule); border-radius: 2px; }
+  .band { display: grid; grid-template-columns: 112px 1fr; border-top: 1px solid var(--rule); }
+  .band:first-child { border-top: 0; }
+  .band .stub { padding: 10px 12px 10px 14px; border-right: 1px solid var(--ledger); }
+  .band .stub .cap { display: block; line-height: 1.25; }
+  .band .stub .q { display: block; font-size: 11px; color: var(--muted); font-style: italic; margin-top: 3px; line-height: 1.3; }
+  .band .body { padding: 8px 16px 10px; min-width: 0; }
+
+  /* start here: the slip */
+  .slip { background: var(--you-paper); border-radius: 2px; padding: 8px 14px 9px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; row-gap: 4px; }
+  .slip .hl { font-size: 17px; font-weight: 700; font-stretch: 92%; letter-spacing: -0.005em; line-height: 1.2; text-wrap: balance; }
+  .slip .where { font-family: var(--mono); font-size: 12px; }
+  .slip .chip { font-family: var(--mono); font-size: 12px; color: var(--you-text); }
+  .slip .chip b { font-size: 14px; font-weight: 500; }
+  .slip .more { color: var(--ink-2); font-size: 12px; margin-left: auto; text-align: right; }
+
+  /* the machine */
+  .machine { display: grid; gap: 0; }
+  .cell { padding: 2px 14px 0; border-left: 1px solid var(--ledger); min-width: 0; }
+  .cell:first-child { padding-left: 0; border-left: 0; }
+  .cell .k { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .sq { width: 7px; height: 7px; display: inline-block; flex: none; }
+  .sq.good { background: var(--good); } .sq.you { background: var(--you); } .sq.serious { background: var(--serious); } .sq.critical { background: var(--critical); } .sq.machine { background: var(--machine); } .sq.none { border: 1px solid var(--muted); }
+  .cell .v { font-family: var(--mono); font-size: 21px; font-weight: 500; line-height: 1.15; margin-top: 4px; display: flex; align-items: baseline; gap: 7px; }
+  .cell .v .u { font-family: var(--sans); font-size: 11.5px; font-weight: 400; color: var(--ink-2); }
+  .cell .n { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .beat { display: flex; gap: 2px; margin-top: 6px; }
+  .beat i { width: 10px; height: 10px; display: block; background: var(--good); }
+  .beat i.you { background: var(--you); } .beat i.critical { background: var(--critical); } .beat i.none { background: none; border: 1px solid var(--rule); }
+  .beat.hours i { width: 6px; }
+  .wake { margin-top: 5px; }
+  .wake svg { display: block; width: 100%; height: 30px; }
+  .wake text { font-family: var(--mono); font-size: 8.5px; fill: var(--muted); }
+
+  /* the ledger */
+  .ledger { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+  .ledger .col { padding: 0 16px; border-left: 1px solid var(--ledger); min-width: 0; }
+  .ledger .col:first-child { padding-left: 0; border-left: 0; }
+  .ledger .col:last-child { padding-right: 0; }
+  .ledger h3 { margin: 0; padding: 2px 0 6px; display: flex; gap: 8px; align-items: baseline; }
+  .ledger h3 .q { font-weight: 400; font-style: italic; font-size: 11.5px; color: var(--muted); }
+  .fig { display: grid; grid-template-columns: 70px minmax(0,1fr) 56px 46px; column-gap: 6px; align-items: center; min-height: 42px; border-top: 1px solid var(--ledger); }
+  .fig:first-of-type { border-top: 0; }
+  .fig .v { font-family: var(--mono); font-size: 18px; font-weight: 500; letter-spacing: -0.01em; line-height: 1; white-space: nowrap; }
+    .fig .t { line-height: 1.3; min-width: 0; }
+  .fig .t .u { display: block; font-size: 12.5px; white-space: nowrap; }
+  .fig .t .s { display: block; font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .fig .d { font-family: var(--mono); font-size: 12px; text-align: right; line-height: 1.3; color: var(--ink-2); white-space: nowrap; }
+  .fig .d .vs { display: block; font-size: 10.5px; color: var(--muted); }
+  .fig .d.bad { color: var(--serious-text); font-weight: 500; }
+  .fig .d.good { color: var(--good-text); font-weight: 500; }
+  .fig .sp svg { width: 46px; height: 20px; display: block; }
+  .fig .sp { justify-self: end; }
+  .tailrow { border-top: 1px solid var(--ledger); font-size: 11px; color: var(--muted); padding: 5px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .totals { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 3px double var(--ledger); margin-top: 8px; padding-top: 6px; }
+  .totals > div { padding: 0 16px; border-left: 1px solid var(--ledger); display: flex; gap: 8px; align-items: baseline; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
+  .totals > div:first-child { padding-left: 0; border-left: 0; }
+  .totals > div:last-child { padding-right: 0; }
+  .totals b { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--ink); }
+  .totals .sub { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .totals .expand { margin-left: auto; flex: none; }
+  .expand { font: inherit; font-size: 11.5px; color: var(--machine); background: none; border: 0; padding: 0; cursor: pointer; }
+  .expand:hover { text-decoration: underline; }
+  .detail { margin-top: 8px; font-size: 12px; border-top: 1px solid var(--ledger); }
+  .detail table { border-collapse: collapse; width: 100%; }
+  .detail th { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--ledger); }
+  .detail td { padding: 4px 8px; border-bottom: 1px solid var(--ledger); }
+  .detail tr:last-child td { border-bottom: 0; }
+  .detail td.num, .detail th.num { text-align: right; font-family: var(--mono); }
+
+  /* pulse */
+  .pulse { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .pulse svg { width: 100%; height: 28px; display: block; }
+  .pulse .n { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+  .next .body { color: var(--muted); font-size: 12px; padding-top: 10px; padding-bottom: 10px; }
+  footer.note { max-width: 1200px; margin: 14px auto 32px; padding: 0 24px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  footer.note code { font-family: var(--mono); font-size: 10.5px; }
+  @media (max-width: 900px) { .band { grid-template-columns: 1fr; } .band .stub { border-right: 0; padding-bottom: 0; } .ledger, .totals, .machine { grid-template-columns: 1fr; } .ledger .col, .totals > div, .cell { border-left: 0; padding-left: 0; } }
+  @media (prefers-reduced-motion: no-preference) { button, .expand { transition: color .12s, border-color .12s; } }
+</style>
+
+<header class="top">
+  <span class="mark">Claudinite</span><span class="crumb">Fleet</span>
+  <span class="census"><span>12 members</span><span>9 fold</span></span>
+  <span class="grow"></span>
+  <span class="quota">4000/5000 · user · −33 this load</span>
+  <button type="button">Reload</button><button type="button">Clear cache</button><button type="button" class="theme" aria-label="Theme"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 1.5 A5.5 5.5 0 0 1 7 12.5 Z" fill="currentColor"/></svg></button>
+</header>
+
+<main class="sheet">
+<div class="page">
+
+  <section class="band" aria-label="Start here">
+    <div class="stub"><span class="cap">Start here</span><span class="q">worst thing needing a person</span></div>
+    <div class="body">
+      <div class="slip">
+        <span class="hl">Sheepdog: PR #212 waits for your approval, 3 days</span>
+        <a class="where" href="#">missingbulb/Sheepdog · #212</a>
+        <span class="chip"><b>≥ 1</b> min · size unread</span>
+        <span class="more">2 more after this one · Claudinite 17 tasks never ran · EdFringeNow parked on a decision</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-label="The machine">
+    <div class="stub"><span class="cap">The machine</span><span class="q">is it running, right now, on every member</span></div>
+    <div class="body machine" style="grid-template-columns: 1.7fr 1fr 0.9fr 0.9fr 1.6fr">
+      <div class="cell">
+        <div class="k"><i class="sq you"></i><span class="cap">Scheduler</span></div>
+        <div class="v">10<span class="u">of 12 ran on time</span></div>
+        <div class="beat" title="one square per member, colour = age of last scheduler run against its hourly cadence">
+          <i title="Claudinite 12m"></i><i title="Sheepdog 8m"></i><i title="EdFringeNow 41m"></i><i title="Shepherd 4m"></i><i title="grow 22m"></i><i title="site 15m"></i>
+          <i title="notes 51m"></i><i title="wiki 3m"></i><i class="you" title="ledger 2h 40m — 2× cadence"></i><i title="dotfiles 29m"></i><i class="critical" title="lab — never ran"></i><i title="blog 33m"></i>
+        </div>
+        <div class="n">ledger 2h 40m late · lab never</div>
+      </div>
+      <div class="cell">
+        <div class="k"><i class="sq you"></i><span class="cap">Executor</span></div>
+        <div class="v">2<span class="u">of 31 failed, 24h</span></div>
+        <div class="n">both Shepherd</div>
+      </div>
+      <div class="cell">
+        <div class="k"><i class="sq good"></i><span class="cap">Fold age</span></div>
+        <div class="v">41m<span class="u">oldest</span></div>
+        <div class="n">9 of 12 fold</div>
+      </div>
+      <div class="cell">
+        <div class="k"><i class="sq machine"></i><span class="cap">Drift</span></div>
+        <div class="v">3<span class="u">behind</span></div>
+        <div class="n">lab worst</div>
+      </div>
+      <div class="cell">
+        <div class="k"><i class="sq good"></i><span class="cap">Next wake</span></div>
+        <div class="v">14:00<span class="u">3 members</span></div>
+        <div class="wake">
+          <svg viewBox="0 0 240 30" preserveAspectRatio="none" role="img" aria-label="Scheduled task wakes over the next 24 hours">
+            <line x1="0" y1="19" x2="240" y2="19" stroke="var(--ledger)" stroke-width="1"/>
+            <g fill="var(--machine)">
+              <rect x="34" y="9" width="2.5" height="10"/><rect x="38" y="5" width="2.5" height="14"/><rect x="42" y="9" width="2.5" height="10"/>
+              <rect x="70" y="11" width="2.5" height="8"/>
+              <rect x="118" y="1" width="2.5" height="18"/><rect x="122" y="1" width="2.5" height="18"/><rect x="126" y="5" width="2.5" height="14"/><rect x="130" y="9" width="2.5" height="10"/>
+              <rect x="166" y="11" width="2.5" height="8"/><rect x="206" y="11" width="2.5" height="8"/><rect x="210" y="11" width="2.5" height="8"/>
+            </g>
+            <text x="0" y="29">now 10:28</text><text x="112" y="29">22:00</text><text x="240" y="29" text-anchor="end">+24h</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-label="This week against last">
+    <div class="stub"><span class="cap">This week</span><span class="q">against last · Aug 25 – 31 vs Aug 18 – 24 · 9 folding members · every figure clickable</span></div>
+    <div class="body">
+      <div class="ledger">
+        <div class="col">
+          <h3><span class="cap">Got</span><span class="q">what the fleet produced</span></h3>
+          <div class="fig">
+            <div class="v">47</div>
+            <div class="t"><span class="u">merged PRs</span><span class="s">38 with nobody in the loop</span></div>
+            <div class="d">−14<span class="vs">vs 61</span></div>
+            <div class="sp"><svg viewBox="0 0 74 28"><g fill="var(--dim)"><rect x="0" y="12" width="4" height="16"/><rect x="5" y="16" width="4" height="12"/><rect x="10" y="10" width="4" height="18"/><rect x="15" y="20" width="4" height="8"/><rect x="20" y="8" width="4" height="20"/><rect x="25" y="4" width="4" height="24"/><rect x="30" y="18" width="4" height="10"/></g><g fill="var(--machine)"><rect x="37" y="24" width="4" height="4"/><rect x="42" y="14" width="4" height="14"/><rect x="47" y="24" width="4" height="4"/><rect x="52" y="26" width="4" height="2"/><rect x="57" y="6" width="4" height="22"/><rect x="62" y="4" width="4" height="24"/><rect x="67" y="26" width="4" height="2"/></g></svg></div>
+          </div>
+          <div class="fig">
+            <div class="v">30</div>
+            <div class="t"><span class="u">caught before merge</span><span class="s">Stop hook blocked, agent fixed</span></div>
+            <div class="d">−108<span class="vs">vs 138</span></div>
+            <div class="sp"><svg viewBox="0 0 74 28"><g fill="var(--dim)"><rect x="0" y="10" width="4" height="18"/><rect x="5" y="14" width="4" height="14"/><rect x="10" y="6" width="4" height="22"/><rect x="15" y="20" width="4" height="8"/><rect x="20" y="8" width="4" height="20"/><rect x="25" y="2" width="4" height="26"/><rect x="30" y="16" width="4" height="12"/></g><g fill="var(--machine)"><rect x="37" y="26" width="4" height="2"/><rect x="42" y="22" width="4" height="6"/><rect x="47" y="18" width="4" height="10"/><rect x="52" y="27" width="4" height="1"/><rect x="57" y="12" width="4" height="16"/><rect x="62" y="10" width="4" height="18"/><rect x="67" y="26" width="4" height="2"/></g></svg></div>
+          </div>
+          <div class="fig">
+            <div class="v">3</div>
+            <div class="t"><span class="u">releases</span><span class="s">site · blog · Shepherd</span></div>
+            <div class="d">+2<span class="vs">vs 1</span></div>
+            <div class="sp"></div>
+          </div>
+          <div class="fig">
+            <div class="v gap">—</div>
+            <div class="t"><span class="u">lines, net <span class="gap">· not recorded</span></span><span class="s">no fold reads git history yet</span></div>
+            <div class="d gap">—</div>
+            <div class="sp"></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <h3><span class="cap">Cost</span><span class="q">what it took</span></h3>
+          <div class="fig">
+            <div class="v">3.1B</div>
+            <div class="t"><span class="u">tokens in</span><span class="s">8.9M out · cache reads count as in</span></div>
+            <div class="d">−48%<span class="vs">vs 6.0B</span></div>
+            <div class="sp"><svg viewBox="0 0 74 28"><g fill="var(--dim)"><rect x="0" y="18" width="4" height="10"/><rect x="5" y="6" width="4" height="22"/><rect x="10" y="14" width="4" height="14"/><rect x="15" y="12" width="4" height="16"/><rect x="20" y="16" width="4" height="12"/><rect x="25" y="1" width="4" height="27"/><rect x="30" y="14" width="4" height="14"/></g><g fill="var(--machine)"><rect x="37" y="26" width="4" height="2"/><rect x="42" y="24" width="4" height="4"/><rect x="47" y="22" width="4" height="6"/><rect x="52" y="24" width="4" height="4"/><rect x="57" y="27" width="4" height="1"/><rect x="62" y="6" width="4" height="22"/><rect x="67" y="9" width="4" height="19"/></g></svg></div>
+          </div>
+          <div class="fig">
+            <div class="v">≈$412</div>
+            <div class="t"><span class="u">your rate table</span><span class="s">94% Opus · <span class="gap">0 unpriced</span></span></div>
+            <div class="d">−$395<span class="vs">vs $807</span></div>
+            <div class="sp"></div>
+          </div>
+          <div class="fig">
+            <div class="v">2h 10m</div>
+            <div class="t"><span class="u">yours</span><span class="s">155 turns · 73 sessions · gaps &gt;10m dropped</span></div>
+            <div class="d">−1h 50m<span class="vs">vs 4h 0m</span></div>
+            <div class="sp"></div>
+          </div>
+          <div class="fig">
+            <div class="v">13.8k</div>
+            <div class="t"><span class="u">rule tokens / session</span><span class="s">the corpus, before the first turn</span></div>
+            <div class="d">−1.1k<span class="vs">vs 14.9k</span></div>
+            <div class="sp"></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <h3><span class="cap">Speed</span><span class="q">how fast it moves, where it sticks</span></h3>
+          <div class="fig">
+            <div class="v">9.4h</div>
+            <div class="t"><span class="u">issue → merged</span><span class="s">median · p90 2.6 d</span></div>
+            <div class="d">+3.1h<span class="vs">vs 6.3h</span></div>
+            <div class="sp"><svg viewBox="0 0 74 28"><polyline fill="none" stroke="var(--dim)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="2,20 12,16 22,18 32,14 37,15"/><polyline fill="none" stroke="var(--machine)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="37,15 47,12 57,6 67,10"/><circle cx="67" cy="10" r="4" fill="var(--machine)" stroke="var(--sheet)" stroke-width="2"/></svg></div>
+          </div>
+          <div class="fig">
+            <div class="v">46m</div>
+            <div class="t"><span class="u">session → merged</span><span class="s">median · p90 5.2h · CI, then you</span></div>
+            <div class="d">−12m<span class="vs">vs 58m</span></div>
+            <div class="sp"></div>
+          </div>
+          <div class="fig">
+            <div class="v">6.7</div>
+            <div class="t"><span class="u">merged / day</span><span class="s">peak Sun 26 · 2 days with none</span></div>
+            <div class="d">−2.0<span class="vs">vs 8.7</span></div>
+            <div class="sp"></div>
+          </div>
+          <div class="fig">
+            <div class="v">4</div>
+            <div class="t"><span class="u">stuck 3 d+</span><span class="s"><b class="ask">2 parked for you</b> · 2 on the machine</span></div>
+            <div class="d bad">+3<span class="vs">vs 1</span></div>
+            <div class="sp"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="totals">
+        <div><b>≈$8.8</b> per merged PR <span class="sub">from $13.2 · 66M tok each</span></div>
+        <div><b>81%</b> autonomy <span class="sub">merged with nobody in the loop · yours : agent minutes 1 : 24</span></div>
+        <div><b>30</b> would have shipped broken <span class="sub">top rule pack-version-bumped ×11</span><button class="expand" id="toggle" aria-expanded="false" aria-controls="detail">per member ▾</button></div>
+      </div>
+      <div class="detail" id="detail" hidden>
+        <table>
+          <thead><tr><th class="cap">Member</th><th class="num cap">Merged</th><th class="num cap">Nobody in loop</th><th class="num cap">Caught</th><th class="num cap">Tokens in</th><th class="num cap">≈ $</th><th class="num cap">Yours</th><th class="num cap">Issue → merge</th><th class="num cap">Stuck</th></tr></thead>
+          <tbody>
+            <tr><td>Claudinite</td><td class="num">31</td><td class="num">27</td><td class="num">22</td><td class="num">2.4B</td><td class="num">$318</td><td class="num">1h 42m</td><td class="num">8.1h</td><td class="num">1</td></tr>
+            <tr><td>Shepherd</td><td class="num">7</td><td class="num">6</td><td class="num">4</td><td class="num">0.4B</td><td class="num">$52</td><td class="num">14m</td><td class="num">11.0h</td><td class="num">0</td></tr>
+            <tr><td>Sheepdog</td><td class="num">4</td><td class="num">2</td><td class="num">2</td><td class="num">0.2B</td><td class="num">$27</td><td class="num">9m</td><td class="num">2.6d</td><td class="num">2</td></tr>
+            <tr><td>EdFringeNow</td><td class="num">3</td><td class="num">2</td><td class="num">1</td><td class="num">0.1B</td><td class="num">$12</td><td class="num">5m</td><td class="num">6.4h</td><td class="num">1</td></tr>
+            <tr><td>site, blog</td><td class="num">2</td><td class="num">1</td><td class="num">1</td><td class="num">0.04B</td><td class="num">$3</td><td class="num">0</td><td class="num">4.0h</td><td class="num">0</td></tr>
+            <tr><td class="gap">lab, notes, dotfiles</td><td class="gap" colspan="8">no fold · counted in nothing above</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-label="Pulse">
+    <div class="stub"><span class="cap">Pulse</span><span class="q">sessions / day, 14 days</span></div>
+    <div class="body pulse">
+      <svg viewBox="0 0 1000 30" preserveAspectRatio="none" role="img" aria-label="14 columns, last week dimmed, this week in the machine's blue, today dashed because no member has folded yet">
+        <line x1="0" y1="30" x2="1000" y2="30" stroke="var(--ledger)"/>
+        <g fill="var(--dim)">
+          <rect x="16" y="4" width="40" height="26"/><rect x="87" y="11" width="40" height="19"/><rect x="158" y="10" width="40" height="20"/>
+          <rect x="230" y="20" width="40" height="10"/><rect x="301" y="9" width="40" height="21"/><rect x="373" y="2" width="40" height="28"/><rect x="444" y="27" width="40" height="3"/>
+        </g>
+        <g fill="var(--machine)">
+          <rect x="516" y="26" width="40" height="4"/><rect x="587" y="17" width="40" height="13"/><rect x="658" y="26" width="40" height="4"/>
+          <rect x="730" y="28" width="40" height="2"/><rect x="801" y="1" width="40" height="29"/><rect x="873" y="1" width="40" height="29"/>
+        </g>
+        <rect x="944" y="1" width="40" height="28" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+      </svg>
+      <span class="n">peak 26 · Sat 30 &amp; Sun 31 · today not folded yet</span>
+    </div>
+  </section>
+
+  <section class="band next" id="grid" aria-label="Members">
+    <div class="stub"><span class="cap">Members</span></div>
+    <div class="body">▼ worst first · the grid begins here</div>
+  </section>
+
+</div>
+</main>
+
+<footer class="note">
+  Design mock, illustrative. Fold-derived figures (tokens, turns, sessions, caught, rule tokens/session, the pulse) are Claudinite's real
+  <code>usage.GENERATED.json</code> for Aug 25–31 vs Aug 18–24; merged PRs, dollars, your minutes, lead times, the heartbeat and the per-member
+  rows are invented to show the shape. The rate table is the owner's own config; no price is asserted here. Deltas are coloured only where the
+  design's own <em>bad when</em> rule fires (stuck items parked for a person); a slower week is a figure, not a verdict.
+</footer>
+
+<script>
+  (function () {
+    var b = document.getElementById('toggle'), d = document.getElementById('detail');
+    b.addEventListener('click', function () {
+      d.hidden = !d.hidden;
+      b.setAttribute('aria-expanded', String(!d.hidden));
+      b.textContent = d.hidden ? 'per member ▾' : 'per member ▴';
+    });
+  })();
+</script>

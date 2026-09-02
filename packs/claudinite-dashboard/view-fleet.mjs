@@ -13,7 +13,7 @@ import {
   readContributions, liveSourcesNeeded, readDeploymentContributions, valueOf, fleetPhrase, phraseText,
 } from './contributions.mjs';
 import { miniCard, miniAbsent, packCard, CONTRIB_STATE_TEXT } from './contrib-view.mjs';
-import { fleetGrowth } from './fleet-growth.mjs';
+import { fleetGrowth, fleetCorpus } from './fleet-growth.mjs';
 import { fleetCandidates } from './next-work.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, leadCard, repoLink, tiles, segmentBar,
@@ -435,6 +435,206 @@ function renderBenefits(b, growth) {
   ].filter(Boolean));
 }
 
+
+// --- what the corpus is doing, in detail -------------------------------------------
+
+// The section the benefits block only headlines. Everything here is derived from the
+// usage folds the depth pass already read — no request — and it answers the questions
+// a single member's page structurally cannot: which check scope is doing the catching,
+// which rules earn their keep fleet-wide, and which skills are mounted in ten repos and
+// have never loaded in any of them.
+//
+// Two ranges, said on the panel: the workload tiles are this week against last, like
+// the block above; the tables are the whole folded range, because "never loaded" over
+// seven days is not a finding.
+
+const fmt = (n) => (n === null || n === undefined ? '—' : String(n));
+const pct = (r) => (r === null ? '—' : `${Math.round(r * 1000) / 10}%`);
+
+// A relative-volume bar: a length against the table's own maximum, so the column reads
+// as a shape rather than as a number to compare by eye.
+const volume = (n, max, cls) => el('div', { className: 'vol' }, [
+  el('i', { className: cls, style: `width:${max ? Math.max(2, Math.round((n / max) * 100)) : 0}%` }),
+]);
+
+function workloadTiles(c) {
+  const node = $('fleet-workload');
+  const { current, previous } = c.workload;
+  const change = (f) => (previous[f] === null || current[f] === null ? null : delta(current[f], previous[f]));
+  node.replaceChildren(
+    windowFigure(fmt(current.sessions), 'sessions', change('sessions'), `in ${c.folding} folding member(s)`),
+    windowFigure(fmt(current.captures), 'captures', change('captures'), current.merges === null ? 'merges not recorded' : `${current.merges} merged`),
+    windowFigure(fmt(current.userMessages), 'human turns', change('userMessages'),
+      current.sessions && current.userMessages !== null ? `${Math.round((current.userMessages / current.sessions) * 10) / 10} per session` : ''),
+    windowFigure(fmt(current.userCommands), 'slash commands', change('userCommands'),
+      current.userMessages && current.userCommands !== null ? `${Math.round((current.userCommands / current.userMessages) * 100)}% of turns` : ''),
+  );
+}
+
+const SCOPE_TEXT = {
+  work: { title: 'work', sub: 'Stop hook, per turn' },
+  world: { title: 'world', sub: 'full sweep, wired into tests' },
+};
+
+function scopeCard(name, s) {
+  const text = SCOPE_TEXT[name];
+  if (!s.seen) {
+    return el('div', { className: 'chart-card scope' }, [
+      el('div', { className: 'k' }, [el('b', { textContent: text.title }), ` · ${text.sub}`]),
+      el('div', { className: 'sub', textContent: 'no member recorded this scope in the range' }),
+    ]);
+  }
+  const rows = [
+    ['runs', s.runs], ['runs that caught something', s.failures], ['blocking reported', s.blocking],
+    ['advisory reported', s.advisory], ['of which CI runs / caught', `${s.ciRuns} / ${s.ciFailures}`], ['runner errors', s.errors],
+  ];
+  return el('div', { className: 'chart-card scope' }, [
+    el('div', { className: 'k' }, [el('b', { textContent: text.title }), ` · ${text.sub}`]),
+    el('dl', {}, rows.flatMap(([k, v]) => [
+      el('dt', { textContent: k }),
+      el('dd', { className: `num${k === 'runner errors' && s.errors ? ' warn critical' : ''}`, textContent: String(v) }),
+    ])),
+    el('div', { className: 'rate' }, [
+      el('span', { className: 'big num', textContent: pct(s.catchRate) }),
+      el('span', { className: 'sub', textContent: 'of runs caught something blocking' }),
+    ]),
+    el('div', { className: 'meter' }, [el('i', { style: `width:${Math.round((s.catchRate ?? 0) * 100)}%` })]),
+  ]);
+}
+
+function rulesTable(c) {
+  const tbody = groupedHead($('fleet-rules'), [['', ['Rule']], ['Findings', ['Blocking', 'Advisory', 'Members', 'Relative volume']]]);
+  if (!c.rules.length) { tbody.append(emptyRow(5, 'No check reported a finding in the range.')); return; }
+  const max = c.rules[0].total;
+  const shown = c.rules.slice(0, 15);
+  const rest = c.rules.slice(15);
+  for (const r of shown) {
+    tbody.append(el('tr', {}, [
+      el('td', { className: 'name nw', textContent: r.rule }),
+      el('td', { className: `num${r.blocking ? '' : ' dim'}`, textContent: String(r.blocking) }),
+      el('td', { className: `num${r.advisory ? '' : ' dim'}`, textContent: String(r.advisory) }),
+      el('td', { className: 'num', textContent: String(r.members) }),
+      el('td', { className: 'volcell' }, [volume(r.total, max, r.blocking >= r.advisory ? 'block' : 'advise')]),
+    ]));
+  }
+  if (rest.length) {
+    const b = rest.reduce((n, r) => n + r.blocking, 0);
+    const a = rest.reduce((n, r) => n + r.advisory, 0);
+    tbody.append(el('tr', {}, [
+      el('td', { className: 'name dim', textContent: `${rest.length} further rule(s)` }),
+      el('td', { className: 'num', textContent: String(b) }),
+      el('td', { className: 'num', textContent: String(a) }),
+      el('td', { className: 'num dim', textContent: '' }),
+      el('td', { className: 'volcell' }, [volume(a + b, max, 'block')]),
+    ]));
+  }
+}
+
+function skillsCards(c) {
+  const node = $('fleet-skills');
+  const { loaded, neverLoaded, treesRead } = c.skills;
+  const total = loaded.reduce((n, s) => n + s.loads, 0);
+  const max = loaded[0]?.loads ?? 0;
+  const top = loaded.slice(0, 8);
+  const rest = loaded.slice(8);
+
+  const loadedCard = el('div', { className: 'chart-card' }, [
+    el('div', { className: 'k' }, [el('b', { textContent: 'Loaded at least once' })]),
+    el('div', {
+      className: 'sub',
+      textContent: loaded.length
+        ? `${total} load(s) across ${loaded.length} distinct skill(s)${max ? ` — ${loaded[0].skill} is ${Math.round((max / total) * 100)}% of them` : ''}`
+        : 'no skill load recorded in the range',
+    }),
+    loaded.length ? el('table', { className: 'plain' }, [el('tbody', {}, [
+      ...top.map((s) => el('tr', { title: `${s.skill}: ${s.loads} load(s) in ${s.members} member(s)${s.mountedIn === null ? '' : `, mounted in ${s.mountedIn}`}` }, [
+        el('td', { className: 'name nw', textContent: s.skill }),
+        el('td', { className: 'num', textContent: String(s.loads) }),
+        el('td', { className: 'num dim nw', textContent: s.mountedIn === null ? `${s.members} repo(s)` : `${s.members}/${s.mountedIn} repos` }),
+        el('td', { className: 'volcell' }, [volume(s.loads, max, 'skill')]),
+      ])),
+      rest.length ? el('tr', {}, [
+        el('td', { className: 'name dim', textContent: `${rest.length} more` }),
+        el('td', { className: 'num', textContent: String(rest.reduce((n, s) => n + s.loads, 0)) }),
+        el('td', {}), el('td', { className: 'volcell' }, [volume(rest.reduce((n, s) => n + s.loads, 0), max, 'skill')]),
+      ]) : null,
+    ].filter(Boolean))]) : null,
+  ].filter(Boolean));
+
+  const neverCard = el('div', { className: 'chart-card' }, [
+    el('div', { className: 'k' }, [el('b', { textContent: 'Mounted, never loaded' })]),
+    el('div', {
+      className: 'sub',
+      textContent: treesRead
+        ? `${neverLoaded.length} of ${c.skills.mountedDistinct} mounted skill(s) recorded zero loads, across ${treesRead} member tree(s) read`
+        : 'no member tree was read, so what is mounted is unknown here',
+    }),
+    neverLoaded.length ? el('ul', { className: 'zero' }, neverLoaded.slice(0, 14).map((s) =>
+      el('li', {}, [el('span', { className: 'name', textContent: s.skill }), el('span', { className: 'dim', textContent: `${s.mountedIn} repo(s)` })]))) : null,
+    neverLoaded.length > 14 ? el('div', { className: 'sub', textContent: `and ${neverLoaded.length - 14} more` }) : null,
+  ].filter(Boolean));
+
+  node.replaceChildren(loadedCard, neverCard);
+}
+
+const CORPUS_MEMBER_GROUPS = [
+  ['', ['Member']],
+  ['Sessions', ['Sessions', 'Turns', 'Skill loads', 'Rule tokens / session']],
+  ['Checks', ['work runs / caught', 'world runs / caught', 'Findings']],
+  ['Fold', ['Through']],
+];
+
+function corpusMembers(c, onOpen) {
+  const tbody = groupedHead($('fleet-corpus-members'), CORPUS_MEMBER_GROUPS);
+  const cols = columnCount(CORPUS_MEMBER_GROUPS);
+  if (!c.members.length) { tbody.append(emptyRow(cols, 'No readable member.')); return; }
+  const starts = groupStarts(CORPUS_MEMBER_GROUPS);
+  const band = (cells) => cells.map((cell, i) => { if (starts.includes(i)) cell.classList.add('group-start'); return cell; });
+  for (const m of c.members) {
+    const open = (e) => { e.preventDefault(); onOpen(m.repo); };
+    const name = el('td', { className: 'nw' }, [
+      el('a', { href: `?repo=${encodeURIComponent(m.repo)}`, className: 'name', textContent: m.repo.split('/')[1] ?? m.repo, onclick: open }),
+    ]);
+    if (!m.folding) {
+      tbody.append(el('tr', { className: 'muted-row' }, [name, el('td', { colSpan: cols - 1, className: 'sub', textContent: 'no usage file — not folding, so counted in none of the figures above' })]));
+      continue;
+    }
+    const scope = (s) => el('td', { className: 'num nw', textContent: `${s.runs} / ${s.failures}${s.errors ? ` · ${s.errors} err` : ''}` });
+    const findings = el('td', { className: 'nw' }, [
+      m.blocking ? el('span', { className: 'chip block', textContent: `${m.blocking} B` }) : null,
+      m.blocking && m.advisory ? ' ' : null,
+      m.advisory ? el('span', { className: 'chip advise', textContent: `${m.advisory} A` }) : null,
+      !m.blocking && !m.advisory ? el('span', { className: 'dim', textContent: '0' }) : null,
+    ].filter(Boolean));
+    tbody.append(el('tr', {}, band([
+      name,
+      el('td', { className: 'num', textContent: fmt(m.sessions) }),
+      el('td', { className: 'num', textContent: fmt(m.turns) }),
+      el('td', { className: 'num', textContent: fmt(m.skillLoads) }),
+      el('td', { className: 'num', textContent: fmt(m.tokensPerSession) }),
+      scope(m.work), scope(m.world), findings,
+      el('td', { className: 'dim nw', textContent: m.foldedThrough ?? 'not stated' }),
+    ])));
+  }
+}
+
+function renderCorpus(c, onOpen) {
+  const section = $('fleet-corpus');
+  if (!c.readable) { section.hidden = true; return; }
+  section.hidden = false;
+  $('fleet-corpus-range').textContent = c.folding
+    ? `${c.from} to ${c.to} — ${c.folding}/${c.readable} member(s) fold a usage file${c.absent.length ? `; not folding: ${c.absent.map((r) => r.split('/')[1] ?? r).join(', ')}` : ''}`
+    : 'no member folds a usage file yet — everything below waits on the claudinite-growth pack’s usage-fold task';
+  workloadTiles(c);
+  $('fleet-scopes').replaceChildren(scopeCard('work', c.scopes.work), scopeCard('world', c.scopes.world));
+  $('fleet-rules-note').textContent = c.rules.length
+    ? `${c.findings.blocking + c.findings.advisory} finding(s) across ${c.rules.length} rule(s) — ${c.findings.blocking} blocking, ${c.findings.advisory} advisory`
+    : '';
+  rulesTable(c);
+  skillsCards(c);
+  corpusMembers(c, onOpen);
+}
+
 // --- the activity panel ----------------------------------------------------------
 
 // The one panel that answers "what has this fleet been doing". Everything else here
@@ -628,6 +828,7 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
   const growth = fleetGrowth(resolvedReads, { now });
   renderBenefits(fleetBenefits(resolvedReads, { now }), growth);
   renderActivity(activitySeries(resolvedReads, { now }), growth);
+  renderCorpus(fleetCorpus(resolvedReads, { now }), onOpen);
 
   const spread = taskSpread(resolvedReads, now).filter((t) => t.members > 0);
   const tbody = groupedHead($('fleet-tasks'), FLEET_TASK_GROUPS);
