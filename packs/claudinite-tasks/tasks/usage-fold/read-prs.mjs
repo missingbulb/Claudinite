@@ -15,27 +15,11 @@
 // costs that one PR's `issueLeadHours` and nothing else.
 
 import { lookbackFrom } from './read-queue.mjs';
+// The two pure field derivations, in their own module so the page that shares them
+// never loads this file's reader with them.
+import { closesIssueIn, hoursBetween } from './pr-fields.mjs';
 
-// The closing keyword GitHub itself acts on, which is also what this repo's lifecycle
-// asks a PR body to carry. The FIRST match wins: a PR closing several issues has one
-// issue it is *for*, and it is the one named first.
-const CLOSES_RE = /(?:^|\n)[^\S\n]*(?:closes|fixes|resolves)[^\S\n]+#(\d+)\b/i;
-
-export function closesIssueIn(body) {
-  const n = Number(CLOSES_RE.exec(String(body ?? ''))?.[1]);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-// A span in hours, to one decimal. Absent at either end is `null` — an unknown lead
-// time, which is not a zero one — and so is a span whose ends arrive in the wrong
-// order, which says the two clocks disagree rather than that the work took less than
-// no time.
-export function hoursBetween(from, to) {
-  if (!from || !to) return null;
-  const hours = (Date.parse(to) - Date.parse(from)) / 3600000;
-  if (!Number.isFinite(hours) || hours < 0) return null;
-  return Math.round(hours * 10) / 10;
-}
+export { closesIssueIn, hoursBetween };
 
 // The listing, plus one narrow read per merged PR that names a closing issue.
 // `{ prs, watermark, error? }`.

@@ -201,3 +201,18 @@ test('a day carrying no session count leaves the sum null, never zero', () => {
   assert.equal(c.workload.current.captures, 1);
   assert.equal(c.members[0].tokensPerSession, null);
 });
+
+// What a TYPICAL member's session carries — the figure one repo's page compares itself
+// against, which a number about itself alone cannot give it.
+test('the fleet mean of rule tokens per session averages MEMBERS, not sessions', () => {
+  const c = fleetCorpus([corpusMember('o/a'), corpusMember('o/b')], { now: NOW, days: 10 });
+  // Both fixtures carry 30,000 rule tokens over 2 attesting sessions per day, so each
+  // member's own figure is 15,000 and the fleet's is the same.
+  assert.equal(c.fleetTokensPerSession.mean, 15000);
+  assert.equal(c.fleetTokensPerSession.members, 2, 'a mean of two is a different claim from a mean of twenty');
+});
+
+test('a fleet where no member attested a corpus reports no mean, not a mean of zero', () => {
+  const c = fleetCorpus([{ repo: 'o/quiet', declaration: { packs: [] }, usage: null }], { now: NOW, days: 3 });
+  assert.deepEqual(c.fleetTokensPerSession, { mean: null, members: 0 });
+});

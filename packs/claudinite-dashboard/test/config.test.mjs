@@ -179,3 +179,10 @@ test('a stated roster wins over enumeration, and a failed enumeration is not an 
   assert.equal(failed.complete, false);
   assert.ok(failed.error);
 });
+
+test('the rate table is ordinary config, and UNSET is a supported deployment', () => {
+  // Every dollar figure on the page rests on this one key. An absent table is a
+  // configuration gap the page states by name — never a price of zero — so the default
+  // has to be null rather than an empty object a reader could mistake for a table.
+  assert.equal(DEFAULTS.rates, null);
+});

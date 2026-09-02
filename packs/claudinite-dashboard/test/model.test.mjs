@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import {
-  buildRoster, declaredPackDirs, describeItem, isWorkItem, outcomeTally,
+  buildRoster, declaredPackDirs, describeItem, isWorkItem, outcomeTally, wakeStrip, WAKE_STRIP_HOURS,
   parseDeclaration, taskDeclarationPaths, warningsFor, commentKind,
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STUCK_BLOCKED_MS, DUE_SLACK_MS,
   BLOCKED, READY, EXECUTING, AGENT,
@@ -354,4 +354,50 @@ test('commentKind names the protocol beat a comment carries', () => {
   assert.equal(commentKind('<!-- claudinite-claim -->\nclaimed'), 'claim');
   assert.equal(commentKind('<!-- claudinite-episode -->'), 'episode');
   assert.equal(commentKind('just a human talking'), null);
+});
+
+// --- the wake strip ---------------------------------------------------------------
+
+test('the strip buckets the next asks by UTC hour, from the hour we are in', () => {
+  const now = Date.parse('2026-09-02T10:30:00Z');
+  const strip = wakeStrip([
+    { key: 'a/b', nextAsk: { kind: 'anchor', at: new Date('2026-09-02T12:15:00Z') } },
+    { key: 'a/c', nextAsk: { kind: 'wake', at: '2026-09-02T12:45:00Z' } },
+  ], now);
+  assert.equal(strip.from, '2026-09-02T10', 'the hour containing now, not the minute');
+  assert.equal(strip.hours.length, WAKE_STRIP_HOURS);
+  assert.deepEqual(strip.hours.find((h) => h.hour === '2026-09-02T12').tasks.map((t) => t.key), ['a/b', 'a/c']);
+  assert.equal(strip.peak, 2, 'what the busiest hour holds — whether the day is spread out or piled up');
+});
+
+test('a HELD task is placed at now rather than dropped', () => {
+  // A blocking park stops the task being scheduled at all, so it has no future anchor.
+  // Dropping it would draw the emptiest strip on the worst-off repo — the one case
+  // where an empty hour must not read as a quiet one.
+  const now = Date.parse('2026-09-02T10:30:00Z');
+  const strip = wakeStrip([{ key: 'a/held', nextAsk: { kind: 'held' } }], now);
+  const first = strip.hours[0];
+  assert.deepEqual(first.tasks.map((t) => t.key), ['a/held']);
+  assert.equal(first.held, 1);
+});
+
+test('an ask that names no moment, or one past the strip, lands in no hour', () => {
+  const now = Date.parse('2026-09-02T10:30:00Z');
+  const strip = wakeStrip([
+    { key: 'a/ready', nextAsk: { kind: 'ready' } },
+    { key: 'a/running', nextAsk: { kind: 'running', phase: 'agent' } },
+    { key: 'a/deps', nextAsk: { kind: 'deps', on: [3] } },
+    { key: 'a/note', nextAsk: { kind: 'note', note: 'manual' } },
+    { key: 'a/weekly', nextAsk: { kind: 'anchor', at: new Date('2026-09-09T12:00:00Z') } },
+  ], now);
+  assert.equal(strip.peak, 0, 'these are happening, or waiting on something other than the clock');
+});
+
+test('the strip carries the repo a row came from, so one fleet-wide strip is possible', () => {
+  const now = Date.parse('2026-09-02T10:00:00Z');
+  const strip = wakeStrip([
+    { key: 'a/b', repo: 'o/one', nextAsk: { kind: 'anchor', at: new Date('2026-09-02T11:00:00Z') } },
+    { key: 'a/b', repo: 'o/two', nextAsk: { kind: 'anchor', at: new Date('2026-09-02T11:30:00Z') } },
+  ], now);
+  assert.deepEqual(strip.hours.find((h) => h.hour === '2026-09-02T11').tasks.map((t) => t.repo), ['o/one', 'o/two']);
 });

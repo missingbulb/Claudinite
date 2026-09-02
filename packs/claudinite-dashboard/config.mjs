@@ -24,7 +24,8 @@
 //     "scope":       "repo",                             // classic OAuth Apps only
 //     "rosterUrl":   "./fleet-roster.GENERATED.json",    // the repo selector's source
 //     "repos":       ["owner/a", "owner/b"],             // an inline roster instead
-//     "defaultRepo": "owner/a"
+//     "defaultRepo": "owner/a",
+//     "rates":       { "claude-opus-5": { "in": 15, "cacheRead": 1.5, "out": 75 } }
 //   }
 
 export const DEFAULTS = {
@@ -46,6 +47,10 @@ export const DEFAULTS = {
   owner: null,
   exclude: [],
   defaultRepo: null,
+  // USD per MILLION tokens, per model, per counter — the one deployment-specific fact
+  // behind every dollar figure the page shows. Null is a supported state and not a
+  // broken one: an unpriced page still counts tokens, and says which key to set.
+  rates: null,
 };
 
 export async function loadConfig(url = './dashboard.config.json') {

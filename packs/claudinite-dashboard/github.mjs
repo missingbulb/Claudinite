@@ -11,7 +11,10 @@
 // distinguishes calls that SPENT budget from 304s that did not, because "how much
 // did that cost" is the question a viewer asks when a fleet sweep feels slow.
 
-import { immutable, validated, ageing, rateState, projectIssue, projectPull, projectRun, DAY_MS } from './cache.mjs';
+import {
+  immutable, validated, ageing, rateState, projectIssue, projectPull, projectRun,
+  withinMergedWindow, DAY_MS,
+} from './cache.mjs';
 
 const API = 'https://api.github.com';
 
@@ -256,14 +259,28 @@ export async function listTreeAtSha(repo, sha, token) {
 // read as the end of history. Pagination is decided by the raw page length, which
 // is therefore carried alongside the projection, cached and all.
 //
-// The PRs are not thrown away either: an open pull request is work waiting on a
-// person, which is exactly what the fleet row's Work group reports, and it arrives
-// in a response the page was making anyway.
-const projectPage = (body) => {
+// The PRs are not thrown away either, and there are now two reasons to keep one: an
+// OPEN pull request is work waiting on a person, which is what the fleet row's Work
+// group reports, and a MERGED one inside the window is the lead-time series for the
+// days the fold has not reached yet. Both arrive in a response the page was making
+// anyway, and everything the page reads out of a PR body — the issue it closes — is
+// parsed on the way in, so the body itself is still never stored.
+//
+// The window is applied at PROJECTION time, which bounds what is STORED rather than
+// what is shown: a history page is cached for a day, so a row can age a day past the
+// bound before it is dropped, and every reader windows the series for itself anyway.
+const projectPage = (body, at = Date.now()) => {
   const list = Array.isArray(body) ? body : [];
+  const prs = [];
+  for (const entry of list) {
+    if (!entry.pull_request) continue;
+    const pull = projectPull(entry);
+    const open = String(entry.state ?? '').toLowerCase() === 'open';
+    if (open || withinMergedWindow(pull.merged_at, at)) prs.push(pull);
+  }
   return {
     items: list.filter((i) => !i.pull_request).map(projectIssue),
-    prs: list.filter((i) => i.pull_request && String(i.state ?? '').toLowerCase() === 'open').map(projectPull),
+    prs,
     raw: list.length,
   };
 };
@@ -390,11 +407,20 @@ export async function listIssues(repo, token, { pages = 5, perPage = 100, histor
   // history pages hold, which is why it was missing.
   issues.push(...live.items.filter((i) => !seen.has(i.number)));
 
+  // The live listing is the whole OPEN set to the depth it reached; only where it fell
+  // short does the history's own (staler) reading of open PRs still add depth.
+  const open = live.complete
+    ? live.prs
+    : [...live.prs, ...prs.filter((p) => !live.prs.some((l) => l.number === p.number))];
+  // The MERGED ones can only come from the history listing — the open listing is asked
+  // by state and cannot answer them — so they are added whatever the open set reached.
+  // A PR the history still has cached as open but which has since merged carries a
+  // merge date, so it lands here rather than being reported as waiting on someone.
+  const merged = prs.filter((p) => p.merged_at && !open.some((o) => o.number === p.number));
+
   return {
     issues,
-    // The live listing is the whole open set to the depth it reached; only where it
-    // fell short does the history's own (staler) reading of open PRs still add depth.
-    prs: live.complete ? live.prs : [...live.prs, ...prs.filter((p) => !live.prs.some((l) => l.number === p.number))],
+    prs: [...open, ...merged],
     scanned,
     complete,
     fromCache,
