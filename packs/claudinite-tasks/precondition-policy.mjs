@@ -87,9 +87,9 @@ export const resolveTerm = (name, taskTerms) => BUILTIN_TERMS.get(name) ?? taskT
 
 // --- the signal union, derived ------------------------------------------------
 
-// Every signal the expression's terms read. This is what replaced the declared
-// `precondition_signals`: the collector union can never disagree with what the
-// gate actually consults, because it IS what the gate consults.
+// Every signal the expression's terms read. The collector union cannot disagree
+// with what the gate actually consults, because it IS what the gate consults —
+// which a separately declared list could not guarantee.
 export function preconditionSignals(preconditions, taskTerms) {
   const parsed = parsePreconditions(preconditions);
   if (parsed.kind !== 'conditions') return [];

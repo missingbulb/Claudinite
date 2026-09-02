@@ -7,7 +7,7 @@ import rule from '../worldRules/task-md-only-when-agentic.mjs';
 const decl = (model, extra = '') => `export default {
   id: 'usage-fold',
   frequency: 'daily',
-  precondition_signals: ['commits'],
+  preconditions: ['none'],
   agent_model: '${model}',
   expected_outcome: 'pr',
   automerge: 'nothing',

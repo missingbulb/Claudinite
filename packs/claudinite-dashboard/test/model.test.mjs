@@ -72,18 +72,16 @@ test('parseDeclaration lifts the scalar fields', () => {
     export default {
       id: 'ci-performance',
       frequency: 'weekly',
-      precondition_signals: ['commits', 'prs'],
       agent_model: 'sonnet',
       expected_outcome: 'pr',
       code_work_timeout: 300,
-      precondition(signals) { return { run: true }; },
+      preconditions: ['substantive-change'],
     };
   `);
   assert.equal(d.id, 'ci-performance');
   assert.equal(d.frequency, 'weekly');
   assert.equal(d.agent_model, 'sonnet');
   assert.equal(d.expected_outcome, 'pr');
-  assert.deepEqual(d.precondition_signals, ['commits', 'prs']);
   assert.equal(d.has_precondition, true);
 });
 
@@ -100,7 +98,7 @@ test('parseDeclaration lifts the declarative preconditions, and `none` is no gat
     };
   `);
   assert.deepEqual(gated.preconditions, ['substantive-change', 'commits-outside:.claudinite/']);
-  assert.equal(gated.precondition_signals, null, 'the field is absent, not empty — it is derived now');
+  assert.equal(gated.precondition_signals, undefined, 'the retired field is not modelled at all — the union is derived');
   assert.equal(gated.has_precondition, true);
 
   const ungated = parseDeclaration("export default { id: 'update', frequency: 'daily', preconditions: ['none'] };");

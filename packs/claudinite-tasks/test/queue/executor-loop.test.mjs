@@ -68,9 +68,15 @@ const workItem = (number, task, labels, body = null) => ({
 
 // `taskDir` is a REAL directory: the executor probes it before it runs anything,
 // because a task can be deleted out from under an item this run already queued.
-const task = (id, decl = {}) => ({
+// `gate` is how a fixture states its verdict: the declarative expression is the
+// only precondition mechanism, so a fixture that must decline (or throw) does it
+// through a task-local term, exactly as a real task would.
+const term = (holds) => new Map([['gate', { signals: [], holds }]]);
+const RUNS = term(() => ({ holds: true }));
+const task = (id, decl = {}, terms = RUNS) => ({
   pack: 'p', id, taskDir: process.cwd(), taskPath: `packs/p/tasks/${id}/task.md`,
-  decl: { id, frequency: 'daily', agent_model: 'sonnet', precondition: () => ({ run: true }), ...decl },
+  decl: { id, frequency: 'daily', agent_model: 'sonnet', preconditions: ['gate'], ...decl },
+  terms,
 });
 
 // `random` is pinned ascending so a fixture with several pickable items picks the
@@ -149,7 +155,7 @@ test('a marked issue whose code_work is done is closed, like any other done item
 // validity, so it stands on the marked issue and leaves it open (§16.5).
 test('a marked issue the precondition declined wears the refusal and stays open', async () => {
   const repo = fakeRepo([markedItem(2, 'a', ['task:status:waiting-for-executor'])]);
-  const done = await drive(repo, [task('a', { precondition: () => ({ run: false, reason: 'nothing to do' }) })]);
+  const done = await drive(repo, [task('a', {}, term(() => ({ holds: false, reason: 'nothing to do' })))]);
   assert.deepEqual(done, [{ issue: 2, outcome: 'obsolete' }]);
   const issue = repo.find(2);
   assert.equal(issue.state, 'open');
@@ -270,7 +276,7 @@ test('an unconfigured declared secret parks at action', async () => {
 // sleeping issue.
 test('a no-go verdict closes a scheduled item with the reason — the roll is gone (#1115)', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
-  const done = await drive(repo, [task('a', { precondition: () => ({ run: false, reason: 'no work' }) })]);
+  const done = await drive(repo, [task('a', {}, term(() => ({ holds: false, reason: 'no work' })))]);
   assert.deepEqual(done, [{ issue: 1, outcome: 'obsolete' }]);
   const issue = repo.find(1);
   assert.equal(issue.state, 'closed');
@@ -286,22 +292,25 @@ test('a no-go verdict closes a scheduled item with the reason — the roll is go
 test('a no-go on an ad-hoc item closes it obsolete — there is no anchor to roll to (S17)', async () => {
   // Ad-hoc by structure: a `manual` task has no calendar to roll to (§15.26).
   const repo = fakeRepo([workItem(1, 'lever', ['task:status:waiting-for-executor'])]);
-  await drive(repo, [task('lever', { frequency: 'manual', precondition: () => ({ run: false, reason: 'the world settled' }) })]);
+  await drive(repo, [task('lever', { frequency: 'manual' }, term(() => ({ holds: false, reason: 'the world settled' })))]);
   const issue = repo.find(1);
   assert.equal(issue.state, 'closed');
   assert.ok(issue.labels.includes('task:status:rejected'));
 });
 
-test('a precondition that throws converges the item rather than sinking the run', async () => {
+// A THROW IS NOT A VERDICT. The retired function form turned a throw at pick into
+// a decline — which quietly closed the occurrence on a gate that never actually
+// answered, and the next anchor walked into the same throw. A term that throws
+// returns `{ error }`: the item parks open in the failure lane, where the ordinary
+// re-queue lever retries it once the cause is fixed, and nothing is written to a
+// world the gate could not read (F27).
+test('a term that throws parks the item open rather than closing it on a verdict nobody gave', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
-  const done = await drive(repo, [task('a', { precondition: () => { throw new Error('boom'); } })]);
-  // A throw at pick is a DECLINE (one task's bad verdict is that item's
-  // problem, never the executor's); only the scheduler run's anchor-side ask
-  // treats a throw as fail-open.
-  assert.deepEqual(done.map((d) => d.outcome), ['obsolete']);
+  const done = await drive(repo, [task('a', {}, term(() => { throw new Error('boom'); }))]);
+  assert.deepEqual(done.map((d) => d.outcome), ['needs-human']);
   const issue = repo.find(1);
-  assert.equal(issue.state, 'closed');
-  assert.ok(issue.comments.some((c) => /precondition threw: boom/.test(c.body)));
+  assert.equal(issue.state, 'open', 'a run that could not be decided must not close');
+  assert.ok(issue.comments.some((c) => /threw: boom/.test(c.body)));
 });
 
 test('a hand-off swaps to task:status:running-agent and invokes exactly one session', async () => {

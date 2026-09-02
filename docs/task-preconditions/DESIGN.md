@@ -21,9 +21,10 @@ Why data instead of code, when a function already works:
   can read an expression the way it reads an `automerge` policy: unknown terms,
   malformed arguments, and `none` misused beside real conditions are all
   author-time findings. A function body is opaque to every check.
-- **`precondition_signals` is derived, not declared.** Every term — built-in or
-  task-local — names the signals it reads, so the field disappears and the
-  collector union can never disagree with what the gate actually consults.
+- **The signal union is derived, never declared.** Every term — built-in or
+  task-local — names the signals it reads, so the collector union cannot disagree
+  with what the gate actually consults, which a separately declared list could not
+  guarantee.
 
 ## The grammar
 
@@ -121,15 +122,22 @@ declaration and reading the gate are one `cd` apart. Current task-local terms:
 (implement-request — the push-permission security check, unchanged in
 substance, relocated beside its declaration).
 
-The legacy `precondition` function field stays *accepted* forever — a member's
-own local task files rename on their own clock and nothing converges them — but
-the canon carries none: task-local terms express everything the function did,
-with the declaration still readable at a glance. Validation is a single
-either-or: a declaration carries exactly one of `preconditions` (the
-expression) or `precondition` (the function), enforced by the
-declaration-shape check — and because a member's engine and packs travel in
-one vendor set, no member ever holds an engine that cannot read its vendored
-packs' declarations.
+`preconditions` is the only gate a task declares. A task-local term expresses
+everything the retired `precondition` function did while staying pure over its
+inputs — the engine hands it the instant its verdict is for, so even a gate whose
+subject is the clock is assertable at a chosen moment — and the declaration stays
+readable at a glance. The contract and the declaration-shape check both reject
+the retired `precondition` and `precondition_signals` spellings **by name**, so a
+declaration carrying one is told what replaced it rather than reading as a task
+that forgot its gate.
+
+Because a member's engine and packs travel in one vendor set, no member ever
+holds an engine that cannot read its vendored packs' declarations. A member's own
+local task files are the case that does not converge, which is why they were
+migrated before the engine dropped the form rather than after: an invalid
+declaration is skipped by discovery with a recorded error rather than failing the
+mount, so the task would otherwise have stopped running with nothing red to say
+so.
 
 ## The silence gate
 

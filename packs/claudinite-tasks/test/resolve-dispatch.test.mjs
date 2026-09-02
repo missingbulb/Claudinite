@@ -24,13 +24,12 @@ const OK = 0, USAGE = 2, NO_TRIGGER = 12, SCOPE_MISMATCH = 15;
 const taskMjs = (id) => `export default {
   id: ${JSON.stringify(id)},
   frequency: 'daily',
-  precondition_signals: ['commits'],
+  preconditions: ['none'],
   agent_model: 'sonnet',
   expected_outcome: 'pr',
   automerge: 'nothing',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
-  precondition: () => ({ run: true, reason: 'due' }),
 };
 `;
 

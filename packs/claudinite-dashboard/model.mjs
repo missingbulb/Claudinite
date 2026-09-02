@@ -135,17 +135,16 @@ export function parseDeclaration(text) {
     interrupt_policy: scalar(src, 'interrupt_policy'),
     code_work: scalar(src, 'code_work'),
     agent_execution_timeout: scalar(src, 'agent_execution_timeout'),
-    // The conditions a task declares, in whichever of the two forms it carries:
-    // the `preconditions` expression, or the legacy `precondition` function with
-    // its own declared signal union (a member's local task files keep that one).
+    // The conditions a task declares. One form, and only one (#1617): the
+    // `preconditions` expression. A member still stamping the retired
+    // `precondition_signals` reads as no conditions here, which is what it is —
+    // a declaration the current engine does not accept.
     preconditions: stringArray(src, 'preconditions'),
-    precondition_signals: stringArray(src, 'precondition_signals'),
     // A task may decline to run; whether it CAN is the difference between "did not
     // run" being routine and being a fault, so the roster shows it. `['none']` is
     // the EMPTY precondition and answers no here, exactly as a task with no gate at
     // all does — which is what it means.
-    has_precondition: /^\s*(?:async\s+)?precondition\s*\(/m.test(src)
-      || (stringArray(src, 'preconditions') ?? []).some((c) => c !== 'none'),
+    has_precondition: (stringArray(src, 'preconditions') ?? []).some((c) => c !== 'none'),
   };
 }
 
