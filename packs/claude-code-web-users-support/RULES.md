@@ -1,12 +1,12 @@
 # claude-code-web-users-support — working from Claude Code on the web
 
-- **Adding or changing someone's personal interaction preference** — edit that person's
-  `<email>.md` in the store repo this pack names, never here and never in the canon; a project
-  convention in disguise belongs in the pack owning its subject, and a preference triggering a
-  command owns only the trigger phrase.
+- **A person asking to change one of their personal preferences** — edit their `<email>.md` in the
+  preferences store repo this pack names, never here and never in the canon; a project convention
+  in disguise belongs in the pack owning its subject, and a preference triggering a command owns
+  only the trigger phrase.
 
-- **Adding a file to a preferences store this repo holds** — name it for that person's exact
-  identity plus `.md`, case included, directly under the store path: the reader opens
+- **A person asking to record their personal preferences with no file yet** — create it in that
+  store repo, named for their exact identity plus `.md`, case included: the reader opens
   `<path>/<email>.md` and nothing else, so any other name is silently never read.
 
 - **A web session halt-gated on a missing toolchain requirement** — re-paste

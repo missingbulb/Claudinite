@@ -31,8 +31,8 @@ address, so the store is flat and each name is one person's exact identity, whic
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Adding or changing someone's personal interaction preference | medium | complexity | prose: 50 words |
-| Adding a file to a preferences store this repo holds | high | correctness | prose: 43 words + check (`preferences-store-file-names`) |
+| A person asking to change one of their personal preferences | medium | complexity | prose: 53 words |
+| A person asking to record their personal preferences with no file yet | high | correctness | prose: 44 words + check (`preferences-store-file-names`) |
 | A web session halt-gated on a missing toolchain requirement | medium | complexity | prose: 38 words |
 
 ## Checks
