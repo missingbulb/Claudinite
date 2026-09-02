@@ -41,15 +41,16 @@ test('isActive: activation matches both entry forms', () => {
 
 test('packEntryId/isActive: a local-pack declaration may be namespaced local/<name>', () => {
   // The namespaced `local/` form is the canonical way to declare a local pack;
-  // the pre-rename `local_packs/` form and the bare id both stay accepted while
-  // the fleet migrates (all three resolve to the bare id).
+  // the pre-rename `local_packs/` form and the bare id stay accepted permanently
+  // (all three resolve to the bare id) — a declaration is text a member wrote
+  // once, and no convergence pass rewrites every one of them.
   assert.equal(packEntryId('local/proj'), 'proj');
   assert.equal(packEntryId({ id: 'local/proj', config: {} }), 'proj');
   assert.equal(packEntryId('local_packs/proj'), 'proj'); // legacy form still resolves
   assert.ok(isActive({ id: 'proj', local: true }, { packs: ['local/proj'] }));
   assert.ok(isActive({ id: 'proj', local: true }, { packs: [{ id: 'local/proj', config: {} }] }));
-  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['local_packs/proj'] })); // legacy window
-  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['proj'] })); // migration window
+  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['local_packs/proj'] })); // pre-rename token
+  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['proj'] })); // bare id
   assert.ok(!isActive({ id: 'other' }, { packs: ['local/proj'] }));
 });
 
@@ -128,11 +129,11 @@ test('resolveDeclaredPacks: preserves an entry it cannot interpret rather than d
 // --- local-pack discovery ---------------------------------------------------
 
 // Build a throwaway consumer checkout with local packs at
-// <root>/.claudinite/local_packs/<name>/pack.mjs and return its root.
+// <root>/.claudinite/local/packs/<name>/pack.mjs and return its root.
 function makeLocalRoot(packs) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-localpacks-'));
   for (const [name, source] of Object.entries(packs)) {
-    const dir = join(root, '.claudinite', 'local_packs', name);
+    const dir = join(root, '.claudinite', 'local', 'packs', name);
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'pack.mjs'), source);
   }
@@ -158,7 +159,7 @@ test('discoverPacks: finds a consumer local pack, stamped local with its own dir
     const local = packs.find((p) => p.id === 'proj');
     assert.ok(local, 'the local pack is discovered');
     assert.equal(local.local, true);
-    assert.equal(local.dir, join(root, '.claudinite', 'local_packs', 'proj'));
+    assert.equal(local.dir, join(root, '.claudinite', 'local', 'packs', 'proj'));
     // canon packs are still present and marked non-local
     assert.ok(packs.some((p) => p.id === 'basics' && p.local === false));
   } finally {
@@ -181,11 +182,11 @@ test('discoverPacks: a broken local pack.mjs is isolated — an error, not a thr
   }
 });
 
-test('discoverPacks: a non-directory at the local_packs path is a reported fault, not a throw', async () => {
+test('discoverPacks: a non-directory at the local-packs path is a reported fault, not a throw', async () => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-nondir-'));
-  mkdirSync(join(root, '.claudinite'), { recursive: true });
-  // a FILE where local_packs/ should be a directory
-  writeFileSync(join(root, '.claudinite', 'local_packs'), 'not a directory\n');
+  mkdirSync(join(root, '.claudinite', 'local'), { recursive: true });
+  // a FILE where local/packs/ should be a directory
+  writeFileSync(join(root, '.claudinite', 'local', 'packs'), 'not a directory\n');
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root });
     assert.ok(packs.some((p) => p.id === 'basics'), 'canon packs still load');
@@ -225,7 +226,7 @@ test('discoverPacks: a local pack may not shadow a canon id — collision report
 
 test('discoverPacks: gathers a local pack\'s bundled skill-owned checks', async () => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-localskill-'));
-  const packDir = join(root, '.claudinite', 'local_packs', 'proj');
+  const packDir = join(root, '.claudinite', 'local', 'packs', 'proj');
   mkdirSync(join(packDir, 'skills', 'thing'), { recursive: true });
   writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', rules: [], skills: ['thing'] };`);
   writeFileSync(join(packDir, 'skills', 'thing', 'checks.mjs'),
@@ -242,7 +243,7 @@ test('discoverPacks: gathers a local pack\'s bundled skill-owned checks', async 
 
 test('discoverPacks: a pack\'s declared-checks.json rides its world rules, a skill\'s its skill checks', async () => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-declared-'));
-  const packDir = join(root, '.claudinite', 'local_packs', 'proj');
+  const packDir = join(root, '.claudinite', 'local', 'packs', 'proj');
   mkdirSync(join(packDir, 'skills', 'thing'), { recursive: true });
   writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', worldRules: [], skills: ['thing'], ruleRoutingGuidance: { belongs: 'whatever proj owns', excludes: 'whatever proj does not' } };`);
   writeFileSync(join(packDir, 'declared-checks.json'), JSON.stringify([
@@ -267,7 +268,7 @@ test('discoverPacks: a pack\'s declared-checks.json rides its world rules, a ski
 
 test('discoverPacks: a broken declared-checks.json is reported, and the pack still loads', async () => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-declared-broken-'));
-  const packDir = join(root, '.claudinite', 'local_packs', 'proj');
+  const packDir = join(root, '.claudinite', 'local', 'packs', 'proj');
   mkdirSync(packDir, { recursive: true });
   writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', worldRules: [], ruleRoutingGuidance: { belongs: 'whatever proj owns', excludes: 'whatever proj does not' } };`);
   writeFileSync(join(packDir, 'declared-checks.json'), '{ not json');

@@ -9,7 +9,7 @@ Promotion is the **judgment gate before shared canon**. This run opens a PR for 
 ## Conventions used in this doc
 
 - **GitHub access is MCP-only** (`mcp__github__*`). You are outside each member repo — read its files over the API (get-file-contents, never a cross-repo checkout; the sandbox has no cross-repo git). The canon PR is opened over MCP too.
-- **A member's local packs** are everything under `.claudinite/local/packs/` (the legacy `.claudinite/local_packs/` accepted during the rename window) — its own packs, never the read-only mounted canon elsewhere under `.claudinite/`.
+- **A member's local packs** are everything under `.claudinite/local/packs/` — its own packs, never the read-only mounted canon elsewhere under `.claudinite/`.
 - **`main`** stands for the canon's default branch.
 - **The canon shelf** is this repo's own `packs/` tree — the packs every member can declare. Together with any second corpus root the canon declares, it is the whole write surface below.
 

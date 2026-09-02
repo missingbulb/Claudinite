@@ -543,16 +543,30 @@ test('growth-write-scope: the canon README an extract run edited in #606 is caug
 });
 
 test('growth-write-scope: a run entirely inside the local packs passes, deletions included', () => {
-  const legacy = '.claudinite/local_packs/old/RULES.md';
   const root = makeRepo({
     base: { '.claudinite/local/packs/gcec/covered.mjs': 'export default {};\n' },
-    changed: { [PROSE]: '- a lesson\n', [legacy]: '- legacy-root lesson\n' },
+    changed: { [PROSE]: '- a lesson\n' },
     commitMsg: 'Claudinite growth: extract lessons\n\nRefs #12',
   });
   try {
     // A dedup run pruning a whole local check is a deletion INSIDE the surface.
     deletePath(root, '.claudinite/local/packs/gcec/covered.mjs', 'Claudinite growth: dedup local packs\n\nRefs #3');
     assert.equal(runScope(root).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('growth-write-scope: the retired .claudinite/local_packs/ root is outside the surface', () => {
+  // The rename's dual-root window is closed: a capture run writing the pre-rename
+  // root is writing somewhere no pack is discovered from, which is a stray write.
+  const root = makeRepo({
+    base: { [PROSE]: '- a lesson\n' },
+    changed: { '.claudinite/local_packs/old/RULES.md': '- legacy-root lesson\n' },
+    commitMsg: 'Claudinite growth: extract lessons\n\nRefs #12',
+  });
+  try {
+    const findings = runScope(root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, '.claudinite/local_packs/old/RULES.md');
   } finally { cleanup(root); }
 });
 

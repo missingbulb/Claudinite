@@ -64,7 +64,7 @@ function makeTarget(declaration = { packs: ['alpha'] }) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-target-'));
   writeAt(root, '.claudinite-settings.json', JSON.stringify(declaration, null, 2) + '\n');
   writeAt(root, 'src/app.js', 'project code\n');
-  writeAt(root, '.claudinite/local_packs/mine/pack.mjs', 'export default { id: "mine" };\n');
+  writeAt(root, '.claudinite/local/packs/mine/pack.mjs', 'export default { id: "mine" };\n');
   return root;
 }
 
@@ -98,7 +98,7 @@ test('convergence is whole-set: stale files vanish, drift reverts, everything ou
   assert.deepEqual(r.errors, []);
   assert.ok(!existsSync(join(target, '.claudinite', 'shared', 'zzz-stale.txt')), 'stale file must vanish');
   assert.equal(readFileSync(join(target, '.claudinite', 'shared', 'engine', 'checks', 'check_the_world.mjs'), 'utf8'), 'engine v2\n');
-  assert.ok(existsSync(join(target, '.claudinite', 'local_packs', 'mine', 'pack.mjs')), 'local_packs untouched');
+  assert.ok(existsSync(join(target, '.claudinite', 'local', 'packs', 'mine', 'pack.mjs')), 'local packs untouched');
   assert.equal(readFileSync(join(target, 'src', 'app.js'), 'utf8'), 'project code\n');
 });
 

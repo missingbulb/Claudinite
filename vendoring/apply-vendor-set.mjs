@@ -14,7 +14,7 @@ import { versionAbove } from '../engine/version.mjs';
 // it from a freshly fetched canon tree against the consumer checkout; the
 // nightly's fleet integration performs the equivalent writes over the API.
 // Convergence is unconditional and whole-set: shared/ is rebuilt from the set
-// (stale files vanish, local edits revert), .claudinite/local_packs/ and
+// (stale files vanish, local edits revert), .claudinite/local/packs/ and
 // everything else in the consumer is untouched. Errors abort BEFORE any write —
 // the repo keeps running its old snapshot (the transactional contract).
 //

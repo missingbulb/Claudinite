@@ -175,10 +175,10 @@ test('warning-suppression: a local pack\'s check layer spells markers as pattern
     changed: {
       // a local rule module and a bundled skill's checks.mjs spell the marker as
       // a detection pattern — exempt like the canon packs/ tree
-      '.claudinite/local_packs/proj/no-mute.mjs': '// detect: /eslint-disable/\nexport default {};\n',
-      '.claudinite/local_packs/proj/skills/x/checks.mjs': 'const p = /@ts-ignore/;\nexport default [];\n',
+      '.claudinite/local/packs/proj/no-mute.mjs': '// detect: /eslint-disable/\nexport default {};\n',
+      '.claudinite/local/packs/proj/skills/x/checks.mjs': 'const p = /@ts-ignore/;\nexport default [];\n',
       // but a scheduled task's script is ordinary code — a bare mute there still fires
-      '.claudinite/local_packs/proj/tasks/job/worker.js': '// eslint-disable-next-line no-undef\ny();\n',
+      '.claudinite/local/packs/proj/tasks/job/worker.js': '// eslint-disable-next-line no-undef\ny();\n',
     },
   });
   try {

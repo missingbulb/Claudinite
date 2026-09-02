@@ -7,6 +7,7 @@ forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60902.5 | 2026-09-02 | The rename's dual-root window closes: `dedup-integrity`, `growth-write-scope`, `references-integrity`, `merge-rules.json` and the two task declarations match only `.claudinite/local/packs/`, and a capture run writing the retired `.claudinite/local_packs/` root is now flagged as a stray write. `growth-dedup` and `prose-to-checks-sweep` lose their computed `automerge` scope with it, so every task declaration in the tree is now a plain literal object (#1627). |
 | 60902.4 | 2026-09-02 | `writing-tasks` states one gate mechanism: the retired `precondition` function and `precondition_signals` are named as rejected, and a gate the built-ins cannot express is a task-local term handed `{ arg, config, item, windowDays, now }` (#1617). |
 | 60902.3 | 2026-09-02 | `prose-to-checks-sweep` and `rule-revalidation` deliver into a STANDING PR: a round whose predecessor is still in review runs anyway and appends to it, under the subject its worker doc pins (`Claudinite growth: prose to checks`, `Claudinite growth: rule revalidation`), so one review covers several weeks of conversions or corrections. Neither is gated on the previous round, and neither may be narrowed to a movement gate — both work a standing backlog (#1611). |
 | 60902.2 | 2026-09-02 | `writing-pack-prose` records that a pack's `references.md` stays in the repo that owns the pack and never vendors — a member mounting a canon pack receives its rules, not the reasoning behind them (#1615). |
