@@ -3,8 +3,15 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { evaluatePrecondition, loadTaskTerms } from '../packs/claudinite-tasks/shared-code/preconditions.mjs';
+import { evaluatePrecondition, loadTaskTerms } from '../shared-code/preconditions.mjs';
 
+// It lives in this pack's own test/ because the semantics it pins are this pack's:
+// `manual` means the scheduler run never instantiates the task, the executor
+// evaluates the precondition at pick, and a no-go closes an item with no anchor to
+// roll to. Its SUBJECT spans every pack's tasks/, which is not a reason to sit in
+// engine-tests/ — that tree mirrors engine/, and task-code-work-env.test.mjs beside
+// this file already sweeps the same real tree.
+//
 // A `manual` task's gate IS a human creating its work item. Nothing else can put
 // one in the queue: the scheduler run skips `frequency: 'manual'` outright, so an item
 // exists only because someone asked for this task to run.
