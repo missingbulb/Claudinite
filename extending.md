@@ -83,8 +83,8 @@ same way:
   **normalized capture surface** (what used to sprawl as always-loaded `CLAUDE.md`/`dev/procedures`
   prose). `discoverPacks` scans both roots; a local pack carries its own `dir`, is `local: true`,
   may not shadow a canon id, and is declared by its namespaced token `local/<name>`
-  (the pre-rename `.claudinite/local_packs/` root and its `local_packs/<name>` token stay accepted
-  during the migration; [packs/README.md](packs/README.md#local-packs--a-projects-own-packs)). Prose injection, the Stop/CI checks, skill mounting, and
+  (the pre-rename `local_packs/<name>` token stays accepted permanently, its retired
+  `.claudinite/local_packs/` root no longer scanned; [packs/README.md](packs/README.md#local-packs--a-projects-own-packs)). Prose injection, the Stop/CI checks, skill mounting, and
   scheduling treat a declared local pack exactly like a canon one — the repo's own
   scheduler discovers a local pack's `tasks/<name>/` folders exactly as it does a canon
   pack's ([packs/README.md](packs/README.md)).

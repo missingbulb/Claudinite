@@ -80,7 +80,7 @@ test('interview: a stale answer is advisory (never run-failing); pending questio
 
 test('interview: a local pack with a malformed questions declaration is a blocking config finding', () => {
   const root = makeRepo({ changed: {
-    '.claudinite/local_packs/badq/pack.mjs': 'export default { id: "badq", questions: "nope" };\n',
+    '.claudinite/local/packs/badq/pack.mjs': 'export default { id: "badq", questions: "nope" };\n',
     '.claudinite-settings.json': JSON.stringify({ packs: ['badq'] }),
   } });
   try {
@@ -337,7 +337,7 @@ test('a skill-owned check rides its owning pack\'s activation, and is listed', (
   } finally { cleanup(declared); cleanup(undeclared); }
 });
 
-// --- local packs (.claudinite/local_packs/) -------------------------------
+// --- local packs (.claudinite/local/packs/) -------------------------------
 
 // A pack.mjs whose one rule fires on a marker file, dependency-free (a real
 // local pack's checks can't import the gitignored mount's helpers).
@@ -349,13 +349,13 @@ const LOCAL_PACK = `export default {
   },
   worldRules: [{
     id: 'no-todo-marker', severity: 'blocking',
-    description: 'no TODO_MARKER files', doc: '.claudinite/local_packs/proj/RULES.md',
+    description: 'no TODO_MARKER files', doc: '.claudinite/local/packs/proj/RULES.md',
     why: 'demo local check',
     run(ctx) {
       return ctx.files.filter((f) => f.endsWith('TODO_MARKER')).map((f) => ({
         rule: 'no-todo-marker', severity: 'blocking', file: f, line: null,
         what: 'TODO_MARKER present', why: 'demo', fix: 'remove it',
-        doc: '.claudinite/local_packs/proj/RULES.md',
+        doc: '.claudinite/local/packs/proj/RULES.md',
       }));
     },
   }],
@@ -363,11 +363,11 @@ const LOCAL_PACK = `export default {
 
 test('a declared local pack is valid and its check runs when active', () => {
   const clean = makeRepo({ changed: {
-    '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
+    '.claudinite/local/packs/proj/pack.mjs': LOCAL_PACK,
     '.claudinite-settings.json': JSON.stringify({ packs: ['proj'] }),
   } });
   const dirty = makeRepo({ changed: {
-    '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
+    '.claudinite/local/packs/proj/pack.mjs': LOCAL_PACK,
     '.claudinite-settings.json': JSON.stringify({ packs: ['proj'] }),
     'src/TODO_MARKER': 'x\n',
   } });
@@ -386,11 +386,11 @@ test('a declared local pack is valid and its check runs when active', () => {
 
 test('a local pack declared by its namespaced token local_packs/<name> validates and runs', () => {
   const clean = makeRepo({ changed: {
-    '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
+    '.claudinite/local/packs/proj/pack.mjs': LOCAL_PACK,
     '.claudinite-settings.json': JSON.stringify({ packs: ['local_packs/proj'] }),
   } });
   const dirty = makeRepo({ changed: {
-    '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
+    '.claudinite/local/packs/proj/pack.mjs': LOCAL_PACK,
     '.claudinite-settings.json': JSON.stringify({ packs: ['local_packs/proj'] }),
     'src/TODO_MARKER': 'x\n',
   } });
@@ -408,7 +408,7 @@ test('a local pack declared by its namespaced token local_packs/<name> validates
 
 test('an undeclared local pack does not run, but is not an unknown-pack error either', () => {
   const root = makeRepo({ changed: {
-    '.claudinite/local_packs/proj/pack.mjs': LOCAL_PACK,
+    '.claudinite/local/packs/proj/pack.mjs': LOCAL_PACK,
     '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
     'src/TODO_MARKER': 'x\n',
   } });
@@ -421,20 +421,20 @@ test('an undeclared local pack does not run, but is not an unknown-pack error ei
 
 test('a broken local pack.mjs surfaces a blocking config diagnostic, not a silent drop', () => {
   const root = makeRepo({ changed: {
-    '.claudinite/local_packs/broken/pack.mjs': 'export default { id: "broken" } this is not valid(',
+    '.claudinite/local/packs/broken/pack.mjs': 'export default { id: "broken" } this is not valid(',
     '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
   } });
   try {
     const r = runCli(root);
     assert.equal(r.status, 1);
     assert.match(r.stdout, /config/);
-    assert.match(r.stdout, /local_packs\/broken|failed to load/);
+    assert.match(r.stdout, /broken|failed to load/);
   } finally { cleanup(root); }
 });
 
 test('a local pack may not shadow a canon id — collision is a blocking config error', () => {
   const root = makeRepo({ changed: {
-    '.claudinite/local_packs/basics/pack.mjs': 'export default { id: "basics", rules: [] };',
+    '.claudinite/local/packs/basics/pack.mjs': 'export default { id: "basics", rules: [] };',
     '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
   } });
   try {

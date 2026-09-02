@@ -22,7 +22,7 @@ session needs no architecture lesson, its rules arrive injected):
   owning pack per skill). No pack is active undeclared — the baseline included; activation is
   the project's `.claudinite-settings.json` declaration ([packs/README.md](packs/README.md) —
   the one catalog; a pack's skills are listed nowhere but the pack, #385). A consumer's own
-  packs sit in its `.claudinite/local_packs/<name>/`, same slots, same engine.
+  packs sit in its `.claudinite/local/packs/<name>/`, same slots, same engine.
 - **`engine/`** — the machinery that runs pack content, and the one always-vendored root:
   `engine/hooks/` (the wired SessionStart/PreToolUse entry points),
   `engine/checks/check_the_world.mjs` / `engine/checks/check_the_work.mjs` (the world- and

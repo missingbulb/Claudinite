@@ -27,7 +27,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    credential exists — is a drop-in upgrade: the submodule lands a superset at the same root and
    **no wiring path changes**
    (`node .claudinite/shared/engine/hooks/stop-command.mjs`, …). This is also why nothing consumer-owned
-   lives inside it: `.claudinite/local_packs/` sits *beside* `shared/`, which the submodule
+   lives inside it: `.claudinite/local/packs/` sits *beside* `shared/`, which the submodule
    future outright requires — a submodule directory cannot carry the consumer's files.
 2. **Minimal set, derived structurally from the declaration.** The vendor set is a function of
    `.claudinite-settings.json`, computed by [vendor.mjs](compute-vendor-set.mjs) with **no hand-maintained
@@ -94,7 +94,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    (`CONFIG_KEYS` in engine/checks/helpers).
 6. **The shared mount is structurally out of the sweep.** The engine's file-set builder drops
    everything under `.claudinite/shared/` (`buildContext` in engine/checks/helpers) — the corpus is
-   canon-owned, never the project's own code — while `.claudinite/local_packs/` stays fully in
+   canon-owned, never the project's own code — while `.claudinite/local/packs/` stays fully in
    scope. Deliberately a structural rule in the engine, **not** a `.gitattributes` /
    `linguist-vendored` convention: the exclusion must hold on any git host and any checkout.
    The wiring converge does *also* declare the mount `linguist-vendored`, for what only the
@@ -112,7 +112,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    `.claude/` (settings hook registrations),
    `.gitignore`, `.gitattributes`, `.github/workflows/` (a repo's own workflows may run the
    vendored engine), and anything under
-   `.claudinite/` itself (`local_packs/` included). Product code that wants a canon helper
+   `.claudinite/` itself (`local/packs/` included). Product code that wants a canon helper
    inlines it — depending on canon internals would turn every canon refactor into a breaking
    migration for code the canon doesn't own. Enforced as a **fixed barrier the baseline pack
    contributes to the barriers mechanism pack** (manifest data under `contributes`; the baseline
@@ -125,7 +125,7 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
 9. **Migration notes v2.** A canon change that consumers must be amended for ships as a dated
    record (the `<flow>/migrations/<date>-<slug>/` shape): mechanical ops where code can
    express them, plus a **brief agentic note** for what it can't (chiefly adapting
-   consumer-authored `local_packs/` content to a changed engine contract). The nightly applies
+   consumer-authored `local/packs/` content to a changed engine contract). The nightly applies
    the notes dated on or after the day of the repo's stamp (same-day inclusive, note
    idempotency absorbing the overlap — #330), oldest first, inside the one transactional commit.
    No read-side tolerances in live code, no `LEGACY_*` constants, and **no per-consumer state

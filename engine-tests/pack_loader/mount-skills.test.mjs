@@ -161,7 +161,7 @@ test('mount-skills: removes a stale owned link, is idempotent, fails soft on a b
 test('mount-skills: a symlink outside the pack trees is the project\'s own — never overwritten', () => {
   // Phase 3 retired the pre-#385 legacy skills roots (the flat
   // .claudinite/skills/ tree and friends): the mounter owns only symlinks into
-  // pack trees (canon packs/ and local_packs/). Anything else — including a
+  // pack trees (canon packs/ and the repo's own local/packs/). Anything else — including a
   // leftover pointing into a retired tree — is the project's own entry: never
   // retargeted, never cleaned.
   const project = makeRepo({
@@ -194,7 +194,7 @@ test('mount-skills: mounts a local pack\'s bundled skill from the tracked pack d
   try {
     // The project's own local pack bundles its own skill; the canon skill
     // mounts from its owning pack's bundle (basics).
-    const packDir = join(project, '.claudinite', 'local_packs', 'proj');
+    const packDir = join(project, '.claudinite', 'local', 'packs', 'proj');
     mkdirSync(join(packDir, 'skills', 'proj-skill'), { recursive: true });
     writeFileSync(join(packDir, 'pack.mjs'),
       `export default { id: 'proj', rules: [] };\n`);
@@ -225,7 +225,7 @@ test('mount-skills: unmounts a local pack\'s skill when the pack is undeclared',
     changed: { '.claudinite-settings.json': '{ "packs": ["basics", "proj"] }\n' },
   });
   try {
-    const packDir = join(project, '.claudinite', 'local_packs', 'proj');
+    const packDir = join(project, '.claudinite', 'local', 'packs', 'proj');
     mkdirSync(join(packDir, 'skills', 'proj-skill'), { recursive: true });
     writeFileSync(join(packDir, 'pack.mjs'), `export default { id: 'proj', rules: [] };\n`);
     writeFileSync(join(packDir, 'skills', 'proj-skill', 'SKILL.md'), '---\nname: proj-skill\n---\nlocal\n');

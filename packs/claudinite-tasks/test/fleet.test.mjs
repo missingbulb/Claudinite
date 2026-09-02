@@ -134,7 +134,6 @@ test('localPacksChanged stays false when the window touched only product code', 
     ] }],
     [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['claudinite-growth'] })],
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local\/packs$/, { status: 200, json: [{ type: 'dir', name: 'app' }] }],
-    [/\/repos\/acme\/app\/contents\/\.claudinite\/local_packs$/, { status: 404, json: null }],
     [/\/repos\/acme\/app\/commits\?/, { status: 200, json: [{ sha: 'c1' }] }],
     [/\/repos\/acme\/app\/commits\/c1$/, { status: 200, json: { files: [{ filename: 'src/app.js' }] } }],
   ]);

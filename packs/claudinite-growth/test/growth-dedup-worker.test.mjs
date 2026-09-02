@@ -28,7 +28,7 @@ test('canonPackOf: both mount roots, and never a local pack', () => {
   assert.equal(canonPackOf('packs/basics/RULES.md'), 'basics');
   // A LOCAL pack is what this task prunes — never the yardstick it prunes against.
   assert.equal(canonPackOf('.claudinite/local/packs/mine/RULES.md'), null);
-  assert.equal(canonPackOf('.claudinite/local_packs/mine/RULES.md'), null);
+  assert.equal(canonPackOf('.claudinite/local/packs/mine/RULES.md'), null);
   assert.equal(canonPackOf('src/app.js'), null);
   assert.equal(canonPackOf('packs/basics'), null); // a pack directory is not a file in it
 });

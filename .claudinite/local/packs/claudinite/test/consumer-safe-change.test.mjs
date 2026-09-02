@@ -145,6 +145,29 @@ test('a stub whose head or base cannot be read is treated as a contract surface'
   assert.equal(contractChanges([STUB], () => null, () => text).length, 1);
 });
 
+test('a pack-schema change that only touches comments is not a contract surface', () => {
+  // The narrowing that spares a stub's inert prose is the same fact about the schema
+  // module: nothing reads the comment, so rewriting one carries no member anywhere.
+  const before = "// an old reason nobody needs\nexport const FIELDS = ['id'];\n";
+  const after = "// a shorter line\nexport const FIELDS = ['id'];\n";
+  assert.equal(contractChanges([SCHEMA], () => after, () => before).length, 0);
+});
+
+test('a pack-schema change that alters a real line is a contract surface, comments aside', () => {
+  const before = "// reason\nexport const FIELDS = ['id'];\n";
+  const after = "// reason\nexport const FIELDS = ['id', 'kind'];\n";
+  assert.equal(contractChanges([SCHEMA], () => after, () => before).length, 1);
+  // A `//` inside a string is not a comment — changing it is a real change.
+  const url = "export const DOC = 'https://x/a';\n";
+  assert.equal(contractChanges([SCHEMA], () => "export const DOC = 'https://x/b';\n", () => url).length, 1);
+});
+
+test('a pack-schema whose head or base cannot be read is treated as a contract surface', () => {
+  const text = "export const FIELDS = ['id'];\n";
+  assert.equal(contractChanges([SCHEMA], () => text, () => null).length, 1);
+  assert.equal(contractChanges([SCHEMA], () => null, () => text).length, 1);
+});
+
 test('a `#` inside a YAML value is not a comment — changing it is a real change', () => {
   const before = "jobs:\n  execute:\n    run: echo 'a # b'\n";
   const after = "jobs:\n  execute:\n    run: echo 'a # c'\n";

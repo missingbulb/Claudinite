@@ -161,9 +161,9 @@ much a settings error as bad JSON. `.claudinite-settings.json` additionally hold
 own entry for the ones that pack's declaration motivates (see engine/checks/README.md).
 
 A declared id may name a **canon** pack or one of the repo's **own local packs**
-(`.claudinite/local_packs/<id>/` — the project's tracked, project-specific packs, discovered from
+(`.claudinite/local/packs/<id>/` — the project's tracked, project-specific packs, discovered from
 the repo's own tree alongside the mounted canon; canonically declared by the namespaced token
-`local_packs/<id>`, the bare id accepted while the fleet migrates — see engine/checks/README.md). Both
+`local/<id>`, the pre-rename `local_packs/<id>` and the bare id permanently accepted — see engine/checks/README.md). Both
 are the same closed-declared-set execution;
 `knownIds` spans both, so a local id is valid, not an unknown-pack error, while a broken or
 id-colliding local `pack.mjs` is surfaced as a blocking `config` finding rather than silently

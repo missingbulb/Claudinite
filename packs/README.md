@@ -52,22 +52,22 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 ## Local packs — a project's own packs
 
 A consumer keeps its **project-specific** packs in its own tree at
-`.claudinite/local_packs/<name>/` — the same slots (prose `RULES.md`, `rules` checks, `skills`,
+`.claudinite/local/packs/<name>/` — the same slots (prose `RULES.md`, `rules` checks, `skills`,
 scheduled `tasks/`, `questions`), authored and committed by the project, discovered and run by the
 same engine as these canon packs. `discoverPacks({ localRoot })` ([registry.mjs](../engine/pack_loader/pack-registry.mjs)) scans this repo's
-`packs/` **and** the consumer's `local_packs/`; each pack is stamped with its own `dir` (prose and
+`packs/` **and** the consumer's `local/packs/`; each pack is stamped with its own `dir` (prose and
 bundled skills resolve off it) and a `local` flag. A local pack:
 
 - is **declared by hand** in `.claudinite-settings.json` like any pack — never fingerprinted or seeded
-  (`detect`/`marker` null) — by its **namespaced token `local_packs/<name>`** (the canonical form;
-  the engine's [`packEntryId`](../engine/pack_loader/pack-registry.mjs) resolves it and the legacy bare id alike to the bare
-  pack id, so the bare form keeps working while the fleet's update flows rewrite it), and its id must
+  (`detect`/`marker` null) — by its **namespaced token `local/<name>`** (the canonical form;
+  the engine's [`packEntryId`](../engine/pack_loader/pack-registry.mjs) resolves it, the pre-rename `local_packs/<name>` and the
+  bare id alike to the bare pack id, and it keeps resolving all three permanently), and its id must
   be unique (it may not shadow a canon id — the collision is a blocking `config` finding);
 - **bundles its skills** at `<pack>/skills/<skill>/` (mounted from the tracked pack dir — the
   same one shape canon packs use); a bundled skill may carry `checks.mjs`, run when the pack is
   active;
 - rides the deployment plumbing every consumer already vendors: the sync hook preserves
-  `.claudinite/local_packs/` across its dir swap and the `.gitignore` re-includes it.
+  `.claudinite/local/packs/` across its dir swap and the `.gitignore` re-includes it.
 
 A local pack contributes **every** slot first-class: prose, checks, skills, **and scheduled
 tasks** — `tasks/<name>/task.mjs`, found by the repo's own scheduler in the same uniform scan that
@@ -76,7 +76,7 @@ gated by the repo's declaration exactly like a canon pack's tasks. The canon hom
 tasks ride this path.
 
 The canon-vs-local line is the portable-vs-project-specific split ([../extending.md](../extending.md));
-adoption seeds a project's own local pack, and the growth lifecycle treats `.claudinite/local_packs/`
+adoption seeds a project's own local pack, and the growth lifecycle treats `.claudinite/local/packs/`
 as the project's capture surface.
 
 ## Settings validity
@@ -139,7 +139,7 @@ ruleRoutingGuidance: {
 
 Both sides are required and each is capped at **20 words**. The cap is a readability budget, not a style rule: the whole set is rendered as the two middle columns of [`directory.GENERATED.md`](directory.GENERATED.md), the catalog a session reads when deciding where a rule, doc, skill or check goes. Guess-by-default lands everything in `basics` — that is the failure this field exists to stop. (Until #807 the same rows were also injected into every session as a routing table; that duplicated the catalog on the one channel that charges for it, so the catalog is now the single home.)
 
-Write `excludes` to **name the pack that owns the other side** wherever one exists (`— that is app-store-release`), so the table routes rather than merely refuses. A boundary that is **true of every pack carries no routing information** and wastes the row: "anything portable belongs in the canon" is the local-pack rule restated, not this local pack's edge. State what separates a pack from its **nearest neighbours** — the packs a reader would actually confuse it with. Sibling packs that split a domain (`basics` and `git-github`, a mobile pack and its store-release pack) are where the pair earns its keep, and their two declarations should agree on where the line falls. "No pack fits" is a real answer — it means a new pack, or the project's own `local_packs/` — never the baseline as a fallback.
+Write `excludes` to **name the pack that owns the other side** wherever one exists (`— that is app-store-release`), so the table routes rather than merely refuses. A boundary that is **true of every pack carries no routing information** and wastes the row: "anything portable belongs in the canon" is the local-pack rule restated, not this local pack's edge. State what separates a pack from its **nearest neighbours** — the packs a reader would actually confuse it with. Sibling packs that split a domain (`basics` and `git-github`, a mobile pack and its store-release pack) are where the pair earns its keep, and their two declarations should agree on where the line falls. "No pack fits" is a real answer — it means a new pack, or the project's own `local/packs/` — never the baseline as a fallback.
 
 The catalog covers every canon pack, whether or not a repo declares it — a session weighing what to adopt needs the ones it does *not* hold. It is vendored into every mount for that reason. Local packs declare `ruleRoutingGuidance` on the same terms, and state their boundary in their own prose.
 

@@ -50,7 +50,7 @@ test('loadConfig: a pack entry object normalizes — id into packs, config into 
 });
 
 test('loadConfig: a namespaced local-pack declaration normalizes to the bare id everywhere', () => {
-  // local_packs/proj is the canonical declaration form for a local pack; the
+  // local_packs/proj is the pre-rename declaration form for a local pack; the
   // normalized view is bare ids, so packEntries lookups (interview answers) and
   // the packConfig view key by the pack's own id whichever form the file used.
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
@@ -269,17 +269,17 @@ test('loadConfig: taskScheduler.dispatch and the endpoint map are validated', ()
   } finally { cleanup(good); cleanup(bad); }
 });
 
-test('buildContext: the shared mount is structurally out of scope; local_packs stays in', () => {
+test('buildContext: the shared mount is structurally out of scope; local packs stay in', () => {
   const root = makeRepo({ changed: {
     'src/app.js': 'x\n',
     '.claudinite/shared/packs/basics/RULES.md': 'canon\n',
     '.claudinite/shared/engine/checks/check_the_world.mjs': 'canon\n',
-    '.claudinite/local_packs/mine/pack.mjs': 'export default { id: "mine" };\n',
+    '.claudinite/local/packs/mine/pack.mjs': 'export default { id: "mine" };\n',
   } });
   try {
     const ctx = buildContext({ root, mode: 'all' });
     assert.ok(ctx.files.includes('src/app.js'));
-    assert.ok(ctx.files.includes('.claudinite/local_packs/mine/pack.mjs'));
+    assert.ok(ctx.files.includes('.claudinite/local/packs/mine/pack.mjs'));
     assert.ok(!ctx.files.some((f) => f.startsWith('.claudinite/shared/')));
     // allFiles honors the same boundary: the corpus is not the project's code.
     assert.ok(!ctx.allFiles.some((f) => f.startsWith('.claudinite/shared/')));

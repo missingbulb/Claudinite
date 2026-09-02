@@ -163,13 +163,11 @@ test('release.manifestVersion reaches store-release, so the manifest-ahead trigg
   });
 });
 
-// A commit under EITHER local root is local-pack movement — the canonical
-// `.claudinite/local/packs/` and the pre-rename `.claudinite/local_packs/`, both
-// live until the rename's cleanup, and both under the one `.claudinite/local`
-// prefix the declaration names. Whether the repo HAS local packs is not asked at
-// all: adoption seeds them and the nightly never removes them.
-test('a local-pack commit reaches growth-dedup, under either local root', async () => {
-  for (const path of ['.claudinite/local/packs/mine/RULES.md', '.claudinite/local_packs/mine/RULES.md']) {
+// A commit under the local root is local-pack movement. Whether the repo HAS
+// local packs is not asked at all: adoption seeds them and the nightly never
+// removes them.
+test('a local-pack commit reaches growth-dedup', async () => {
+  for (const path of ['.claudinite/local/packs/mine/RULES.md']) {
     await withRepo(FULL, async (root) => {
       const gh = fakeGh([
         [/\/commits\/c1$/, { status: 200, json: { files: [{ filename: path }] } }],

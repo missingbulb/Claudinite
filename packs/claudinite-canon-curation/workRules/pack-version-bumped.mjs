@@ -1,5 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
+import { LOCAL_PACKS_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
 import { VERSION_SOURCE, versionFromLiteral, compareVersions, versionsEqual, nextVersion } from '../../../engine/version.mjs';
 
 // A PACK'S CONTENT IS DELIVERED ON ITS VERSION NUMBER, and on nothing else. The
@@ -28,9 +28,9 @@ import { VERSION_SOURCE, versionFromLiteral, compareVersions, versionsEqual, nex
 // WORK SCOPE: the question is what THIS change did. The tree always contains a
 // version number; only the diff says whether it moved with the content beside it.
 
-// A repo's OWN packs, under either spelling of the local root — neither versioned
-// nor vendored, so nothing about them is a delivery question.
-const LOCAL_ROOTS = [LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR].map((r) => `${r}/`);
+// A repo's OWN packs — neither versioned nor vendored, so nothing about them is
+// a delivery question.
+const LOCAL_ROOT = `${LOCAL_PACKS_SUBDIR}/`;
 
 // Each pack's version-bump log, next to its manifest — see `versionRecorded`
 // below for what it must carry once a bump lands.
@@ -47,7 +47,7 @@ export const VERSIONS_FILENAME = 'VERSIONS.md';
 export function packsTouched(changed) {
   const ids = [];
   for (const file of changed ?? []) {
-    if (LOCAL_ROOTS.some((root) => file.startsWith(root)) || file.endsWith('.test.mjs') || file.endsWith(`/${VERSIONS_FILENAME}`)) continue;
+    if (file.startsWith(LOCAL_ROOT) || file.endsWith('.test.mjs') || file.endsWith(`/${VERSIONS_FILENAME}`)) continue;
     const m = /^packs\/([^/]+)\//.exec(file);
     if (m && !ids.includes(m[1])) ids.push(m[1]);
   }

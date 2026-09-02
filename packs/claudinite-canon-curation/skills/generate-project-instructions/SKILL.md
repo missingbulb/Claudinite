@@ -19,7 +19,7 @@ The deliverable is therefore **two kinds of pack**, never a single "how to work 
 
 - **Canon pack seeds and refinements** — one `packs/<facet>/` per facet where this project has real
   portable insight, each written as if this project didn't exist, proposed to Claudinite.
-- **The project's own local pack(s)** — under `.claudinite/local_packs/<pack>/` in the project's tree:
+- **The project's own local pack(s)** — under `.claudinite/local/packs/<pack>/` in the project's tree:
   the project-specific working style, concrete values (real commands, paths, names, metrics), and the
   project-specific rules that *don't* generalize — carried the same way any pack carries them (a check
   in the pack's `rules`, an activity skill, prose in `RULES.md`, a scheduled task), not a thin doc.
@@ -149,7 +149,7 @@ the overlay.
 ## 5. What stays in the project
 
 The project-specific residue is not the canon's to take, and not the canon's to write: it lands in a
-**local pack** under `.claudinite/local_packs/<pack>/` in the project's own tree, seeded by that
+**local pack** under `.claudinite/local/packs/<pack>/` in the project's own tree, seeded by that
 repo's adoption and filled by its own capture runs. What follows is the shape of that residue, because
 the sort in step 3 cannot say "this stays local" without knowing what local looks like. Most projects
 need **one** general pack (name it for the project); segregate a **second** only along the repo's own
@@ -162,7 +162,7 @@ that owns the work). Each local pack is a real pack:
   is the directory name, the prose the `RULES.md` beside it and the skills its `skills/`
   subdirectories, all by convention — none of them is declared.
   A local pack is declared by hand, never fingerprinted or seeded (`detect`/`marker` stay null), as its
-  namespaced token `local_packs/<name>` in `.claudinite-settings.json`; its id
+  namespaced token `local/<name>` in `.claudinite-settings.json`; its id
   must be unique and may not shadow a canon pack.
 - **`RULES.md`** — the always-loaded judgment core and the project's concrete values (real
   setup/run/verify commands, real paths, inputs, metrics, invariants). Keep it terse; anything a check

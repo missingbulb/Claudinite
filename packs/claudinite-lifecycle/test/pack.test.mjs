@@ -99,7 +99,7 @@ const claudiniteIsolation = loadDeclaredChecks(
   fileURLToPath(new URL('../../../packs/claudinite-lifecycle', import.meta.url)),
 ).find((r) => r.id === 'claudinite-isolation');
 
-test('claudinite-isolation: inert without the vendored mount; a consumer file referencing the canon fires; wiring files and local_packs stay open', () => {
+test('claudinite-isolation: inert without the vendored mount; a consumer file referencing the canon fires; wiring files and local packs stay open', () => {
   const violating = {
     'src/tool.mjs': 'const p = ".claudinite/shared/engine/checks/check_the_world.mjs";\n',
   };
@@ -107,7 +107,7 @@ test('claudinite-isolation: inert without the vendored mount; a consumer file re
     '.claude/settings.json': '{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/stop-command.mjs" } ] } ] } }\n',
     '.gitignore': '/.claudinite/*\n!/.claudinite/shared/\n',
     '.github/workflows/claudinite-checks-ci.yml': 'run: node .claudinite/shared/engine/checks/check_the_world.mjs\n',
-    '.claudinite/local_packs/mine/check.mjs': 'import { run } from "../../shared/engine/check_the_world.mjs";\n',
+    '.claudinite/local/packs/mine/check.mjs': 'import { run } from "../../shared/engine/check_the_world.mjs";\n',
     // The generated pack index's import (#807) — the shape every converged member now
     // carries. It contributes no finding for TWO independent reasons, and only one of
     // them is the carve-out restored beside it: a bare unquoted `.claudinite/...` in

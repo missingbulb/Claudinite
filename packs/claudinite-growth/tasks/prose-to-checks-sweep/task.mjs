@@ -6,16 +6,7 @@
 // to ALSO include its core `packs/` (projects are not expected to improve core canon
 // packs — only Claudinite does). The method is owned by the prose-to-checks skill.
 //
-// The whole contract is this default export; the only imports are the shared
-// constants the local-pack policy scope is built from, never task logic.
-
-import { sep } from 'node:path';
-import { LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR } from '../../../../engine/pack_loader/pack-registry.mjs';
-
-// The two roots a local pack may sit under during the rename window, as the
-// '/'-separated prefixes a policy scope takes (the constants are platform-joined).
-const LOCAL_PACK_ROOTS = [LOCAL_PACKS_SUBDIR, LEGACY_LOCAL_PACKS_SUBDIR]
-  .map((subdir) => subdir.split(sep).join('/'));
+// Self-contained (imports nothing): the whole contract is this default export.
 
 export default {
   id: 'prose-to-checks-sweep',
@@ -38,7 +29,7 @@ export default {
   // since the built-in class already means exactly that; the check side needs
   // the pack's own file-name matcher.
   automerge: [
-    ...LOCAL_PACK_ROOTS.map((root) => `under:${root} && markdown-line-removals`),
+    'under:.claudinite/local/packs && markdown-line-removals',
     'claudinite-local-pack-check-changes',
   ],
   agent_instructions: 'task.md',

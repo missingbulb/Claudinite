@@ -537,7 +537,7 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
   // The vendored corpus under the shared mount is canon-owned, never the
   // project's own code — structurally out of scope for every check, on any git
   // host and any checkout (deliberately not attribute-driven). The consumer's
-  // own .claudinite/local_packs/ sits BESIDE the shared mount and stays fully
+  // own .claudinite/local/packs/ sits BESIDE the shared mount and stays fully
   // in scope.
   // git emits '/'-separated paths on every platform; SHARED_SUBDIR is joined
   // with the platform separator, so normalize before prefix-matching.
