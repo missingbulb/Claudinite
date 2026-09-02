@@ -210,7 +210,7 @@ export function makeSim({
     id: REQUEST_TASK,
     frequency: 'manual',
     agentMinutes: 45,
-    ceiling: 'open-pr',
+    ceiling: 'pr',
     deliversOpenPr: () => true,           // every successful run leaves a PR to review
     // Evaluated at pickup like every other precondition, and — the one addition
     // the contract needs — over THIS item, because which request it is about is a

@@ -31,13 +31,13 @@ A fictional but realistic repo, tasks drawn from the real fleet:
 
 | task | frequency (anchor) | model | ceiling | notes |
 |---|---|---|---|---|
-| `basics/baselining` | daily-2h (02:00Z) | sonnet | merged-pr | code-work converges the mount; conditional hand-off |
-| `grow/growth-extract` | daily-1h (03:00Z) | opus | merged-pr | `schedule_after: ['basics/baselining']` |
-| `grow/growth-promote` | daily (04:00Z) | opus | open-pr | canon repo; `schedule_after: ['grow/growth-extract']` |
+| `basics/baselining` | daily-2h (02:00Z) | sonnet | pr / anything | code-work converges the mount; conditional hand-off |
+| `grow/growth-extract` | daily-1h (03:00Z) | opus | pr / anything | `schedule_after: ['basics/baselining']` |
+| `grow/growth-promote` | daily (04:00Z) | opus | pr / nothing | canon repo; `schedule_after: ['grow/growth-extract']` |
 | `tidy/tidy-issues` | daily (04:00Z) | sonnet | none | precondition: issue touched in window |
-| `gcec/create-extractor` | hourly | sonnet | open-pr | code-work-heavy, conditional hand-off |
+| `gcec/create-extractor` | hourly | sonnet | pr / nothing | code-work-heavy, conditional hand-off |
 | `chrome/store-release` | daily (04:00Z) | none | none | agentless: code-work only |
-| `sheepdog/fleet-baseline` | manual | sonnet | merged-pr | fan-out target |
+| `sheepdog/fleet-baseline` | manual | sonnet | pr / anything | fan-out target |
 
 Constants: scheduler run cron minute **:17** (hourly); executor = post-scheduler run drain job +
 `task:status:waiting-for-executor`-labeled event runs; janitor = a daily item around 04:00; leashes —

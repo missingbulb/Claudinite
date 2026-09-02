@@ -9,7 +9,8 @@ const decl = (model, extra = '') => `export default {
   frequency: 'daily',
   precondition_signals: ['commits'],
   agent_model: '${model}',
-  expected_outcome: 'open-pr',
+  expected_outcome: 'pr',
+  automerge: 'nothing',
 ${extra}  precondition(signals, config) { return { run: false }; },
 };
 `;

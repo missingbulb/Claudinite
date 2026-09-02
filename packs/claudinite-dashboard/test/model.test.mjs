@@ -74,7 +74,7 @@ test('parseDeclaration lifts the scalar fields', () => {
       frequency: 'weekly',
       precondition_signals: ['commits', 'prs'],
       agent_model: 'sonnet',
-      expected_outcome: 'open-pr',
+      expected_outcome: 'pr',
       code_work_timeout: 300,
       precondition(signals) { return { run: true }; },
     };
@@ -82,7 +82,7 @@ test('parseDeclaration lifts the scalar fields', () => {
   assert.equal(d.id, 'ci-performance');
   assert.equal(d.frequency, 'weekly');
   assert.equal(d.agent_model, 'sonnet');
-  assert.equal(d.expected_outcome, 'open-pr');
+  assert.equal(d.expected_outcome, 'pr');
   assert.deepEqual(d.precondition_signals, ['commits', 'prs']);
   assert.equal(d.has_precondition, true);
 });

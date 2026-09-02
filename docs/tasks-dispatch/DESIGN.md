@@ -296,8 +296,8 @@ than assumed:
   comment names the CCR session.
 - **`succeeded-with-unexpected-result` became `outcome:delivered`, and then
   became a park.** "Unexpected" would blur two things that must not blur: a run
-  that legitimately left a pending artifact within its ceiling (open-pr task →
-  open PR: *expected*, but the world hasn't finished with it), and a run that
+  that legitimately left a pending artifact within its ceiling (a `pr` task whose
+  automerge is `nothing` → open PR: *expected*, but the world hasn't finished with it), and a run that
   violated its ceiling (a `none` task that opened a PR). The second is still a
   **failure**, now `task:status:needs-human-decision` — someone must say whether the
   overreach stands — exactly as `verify-outcome` enforces. The first turned out
@@ -1713,7 +1713,7 @@ collapse of the two retry levers into one (§16.3).*
 
 The engine ships **one** task, `engine/implement-request`, wherever the queue runs
 — `frequency: 'manual'` (the scheduler run never puts it on a calendar; an item exists only
-because an issue was marked), `expected_outcome: 'merged-pr'` (a ceiling, not an
+because an issue was marked), `expected_outcome: 'pr'`, `automerge: 'anything'` (a ceiling, not an
 instruction: it opens a pull request for review, and lands one only in the single
 authorized case §16.11 defines), no `schedule_after`, and **no code-work phase at all**.
 

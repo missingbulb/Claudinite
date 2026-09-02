@@ -9,7 +9,8 @@ const decl = (id, extra = "  agent_instructions: 'task.md',\n") => `export defau
   frequency: 'daily',
   precondition_signals: ['commits'],
   agent_model: 'opus',
-  expected_outcome: 'open-pr',
+  expected_outcome: 'pr',
+  automerge: 'nothing',
 ${extra}  agent_execution_timeout: 1800,
   precondition(signals, config) { return { run: false }; },
 };

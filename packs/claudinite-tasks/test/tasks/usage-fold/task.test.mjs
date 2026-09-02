@@ -8,7 +8,7 @@ import usageFold from '../../../tasks/usage-fold/task.mjs';
 
 // --- usage-fold (the skill-usage aggregate) ----------------------------------
 
-test('usage-fold: daily/agentless/merged-pr, on the two movement signals', () => {
+test('usage-fold: daily/agentless/pr, on the two movement signals', () => {
   assert.equal(usageFold.id, 'usage-fold');
   // Daily since the cron went to two ticks a day: a frequency finer than the cron cannot be
   // honoured (tasks-dispatch DESIGN §17.1). The hour rows are still recomputed from source
