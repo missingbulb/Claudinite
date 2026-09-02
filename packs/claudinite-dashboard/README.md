@@ -414,7 +414,7 @@ working through these has the settings page open in the next tab.
 - [ ] Copy the **Client ID** — the App's General page, under the app name; begins `Iv23`
 - [ ] Press **Generate a new client secret**, and copy the value under **Client secrets** — shown once
 - [ ] Install the App on the account holding the repos — the **Install App** tab of that page
-- [ ] Add the client secret as the Actions secret `GITHUB_OAUTH_CLIENT_SECRET` — `<repo>/settings/secrets/actions/new`
+- [ ] Add the client secret as the Actions secret `DASHBOARD_OAUTH_CLIENT_SECRET` — `<repo>/settings/secrets/actions/new`
 - [ ] Add the Client ID as the variable `CLAUDINITE_DASHBOARD_CLIENT_ID` — `<repo>/settings/variables/actions/new`
 - [ ] Add `CLOUDFLARE_ACCOUNT_ID` and the secret `CLOUDFLARE_API_TOKEN` — see the [deploy task](tasks/deploy-oauth-exchange/README.md)
 - [ ] Run `create-work-item claudinite-dashboard/deploy-oauth-exchange`, and copy the `workers.dev` URL it reports

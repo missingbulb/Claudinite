@@ -13,7 +13,7 @@ also the hand-runnable script (`node deploy.mjs --root <member> [--dry-run]`).
 |---|---|---|
 | Repo Actions secret | `CLOUDFLARE_API_TOKEN` | a token with **Account · Workers Scripts · Edit** on the hosting account, and nothing else |
 | Repo **variable** | `CLOUDFLARE_ACCOUNT_ID` | the Cloudflare account the endpoint is hosted on. Not a secret — it is in every dashboard URL its owner opens — and since #1494 the executor hands every repository variable to code-work with nothing declared |
-| Repo Actions secret | `GITHUB_OAUTH_CLIENT_SECRET` | the GitHub App's client secret |
+| Repo Actions secret | `DASHBOARD_OAUTH_CLIENT_SECRET` | the GitHub App's client secret |
 | Repo **variable** | `CLAUDINITE_DASHBOARD_CLIENT_ID` | the App's client id — public, and the same value the page's own build reads, through one shared reader so the two cannot diverge |
 | Declaration `config` | `allowedOrigins` | *optional*; the exact page origins allowed to call the endpoint. Falls back to `redirectUri`'s origin, then to `https://<owner>.github.io` |
 | Declaration `config` | `workerName` | *optional*; defaults to `claudinite-oauth-exchange` |

@@ -7,6 +7,7 @@ here forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60902.4 | 2026-09-02 | The deploy task's client-secret name is `DASHBOARD_OAUTH_CLIENT_SECRET`. It was `GITHUB_OAUTH_CLIENT_SECRET`, which GitHub refuses to create — so no deployment can be carrying the old name and there is nothing to migrate (#1592). |
 | 60902.3 | 2026-09-02 | The "Turning sign-in on" checklist matches the GitHub App registration form: the field it called **Callback URL** is **Redirect URI**, **Homepage URL** (which the form requires) is named beside it, and a step unticks **Webhook → Active**, which arrives ticked and blocks submission until a Webhook URL is given — this App receives no webhooks. README-only; nothing in a member changes shape and there is no migration (#1590). |
 | 60902.2 | 2026-09-02 | `deploy-oauth-exchange` converts to `preconditions: ['none']` — a manual lever's item exists only because somebody created one, and that IS the request. The task roster's declaration reader learns the new form beside the legacy one, and reads `['none']` as no gate rather than as a gate that always passes (#1578). |
 | 60902.1 | 2026-09-02 | The retired `merged-pr`/`open-pr` outcome spellings are swept out of the pack's own test fixtures and the CSS comment illustrating hyphenated declaration values (#1470). |

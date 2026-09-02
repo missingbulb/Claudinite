@@ -166,7 +166,7 @@ export async function deploy({ repoRoot, env = process.env, dryRun = false, log 
   // A repository variable, not a secret — see the header.
   const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim();
   const apiToken = env.CLOUDFLARE_API_TOKEN?.trim();
-  const clientSecret = env.GITHUB_OAUTH_CLIENT_SECRET?.trim();
+  const clientSecret = env.DASHBOARD_OAUTH_CLIENT_SECRET?.trim();
   const clientId = String(cfg.clientId ?? '').trim();
 
   // The three things this cannot invent, each named on its own: a combined "not
@@ -198,7 +198,7 @@ export async function deploy({ repoRoot, env = process.env, dryRun = false, log 
     throw new NeedsAction('set the repository variable CLOUDFLARE_ACCOUNT_ID '
       + '(Settings → Secrets and variables → Actions → Variables) to the account hosting the endpoint');
   }
-  const missing = [!apiToken && 'CLOUDFLARE_API_TOKEN', !clientSecret && 'GITHUB_OAUTH_CLIENT_SECRET'].filter(Boolean);
+  const missing = [!apiToken && 'CLOUDFLARE_API_TOKEN', !clientSecret && 'DASHBOARD_OAUTH_CLIENT_SECRET'].filter(Boolean);
   if (missing.length) throw new NeedsAction(`set the repo Actions secret(s): ${missing.join(', ')}`);
 
   const call = (path, opts) => cf(apiToken, path, opts);
