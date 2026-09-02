@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import decl from '../../../tasks/fleet-baseline/task.mjs';
+import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
 
 // fleet-baseline as a MANUAL task (#749) — the first task on the non-cadence
 // frequency, replacing the pack's standalone workflow (and the `.github/` managed
@@ -26,7 +27,9 @@ test('fleet-baseline: manual, agentless, outcome none — an operator lever, not
   assert.equal(decl.frequency, 'manual');
   assert.equal(decl.agent_model, 'none');
   assert.equal(decl.expected_outcome, 'none');
-  assert.deepEqual(decl.precondition_signals, []);
+  // `['none']`, not an empty signal list: nothing repo-side predicts this task's
+  // answer, and the declaration says so in the one word for it.
+  assert.deepEqual(decl.preconditions, ['none']);
   assert.equal(decl.session_scope, undefined);
 });
 
@@ -36,7 +39,7 @@ test('fleet-baseline: its precondition admits its own forced item', () => {
   // at pick, and a manual task has no anchor to roll to — so a no-go would close
   // the operator's own item `outcome:obsolete`, which is how the fleet's converge
   // lever silently stopped working at the flip.
-  const v = decl.precondition();
+  const v = evaluatePrecondition({ decl }, {});
   assert.equal(v.run, true);
   assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS|CLAUDINITE_OVERRIDES/, 'the slot-era force lever is deleted');
 });

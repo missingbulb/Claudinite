@@ -9,7 +9,9 @@ import assert from 'node:assert/strict';
 import { planSchedulerRun } from '../../queue/scheduler-run.mjs';
 import { runExecutor } from '../../queue/executor.mjs';
 import { collectSignals } from '../../signals/index.mjs';
-import requestTask, { eligibility } from '../../queue/tasks/implement-request/task.mjs';
+import requestTask from '../../queue/tasks/implement-request/task.mjs';
+import { eligibility } from '../../queue/tasks/implement-request/preconditions.mjs';
+import { evaluatePrecondition, loadTaskTerms } from '../../shared-code/preconditions.mjs';
 import { REQUEST_TASK_ID } from '../../built-in-tasks.mjs';
 import { parseWorkItemBody, machineBlockOf, ORIGIN_AD_HOC } from '../../queue/work-item.mjs';
 import { join } from 'node:path';
@@ -23,9 +25,13 @@ const TASK_PATH = LEGACY_BUILT_IN_TASK_PATH;
 // matches against; `taskDir` is where the task lives NOW, and it is a real directory
 // because the executor probes it before running anything (a task can be deleted out
 // from under an item this run already queued).
+const REQUEST_TASK_DIR = join(process.cwd(), 'packs/claudinite-tasks/queue/tasks/implement-request');
+// `terms` is part of a discovered task, not an extra: the security check IS a
+// task-local term, so a fixture without it is a task whose own gate is missing.
+const requestTerms = await loadTaskTerms(REQUEST_TASK_DIR);
 const REQUEST_TASK = {
-  pack: 'engine', id: 'implement-request', taskDir: join(process.cwd(), 'packs/claudinite-tasks/queue/tasks/implement-request'),
-  taskPath: TASK_PATH, decl: requestTask,
+  pack: 'engine', id: 'implement-request', taskDir: REQUEST_TASK_DIR,
+  taskPath: TASK_PATH, decl: requestTask, terms: requestTerms,
 };
 
 // A MARKED ISSUE — an ordinary issue wearing the origin and no status, which is the
@@ -175,7 +181,11 @@ const req = (over = {}) => ({
   number: 500, state: 'open', queued: true, labels: ['claude-queued'],
   author: 'stranger', authorPermission: 'none', approvals: [], ...over,
 });
-const verdict = (signalRequest) => requestTask.precondition({ request: signalRequest }, {}, { request: 500 });
+// Through the executor's own seam, with the task's own terms loaded the way
+// discovery loads them: the security check is a task-local term now, and a test
+// that called it directly would not prove the declaration reaches it.
+const verdict = (signalRequest) =>
+  evaluatePrecondition({ decl: requestTask, terms: requestTerms }, { request: signalRequest }, {}, { request: 500 });
 
 test('S45 — an issue nobody with push asked for is refused, as a plain no-go', () => {
   const v = verdict(req());
@@ -189,7 +199,7 @@ test('the passing verdict adds no Context of its own — adoption already bound 
   // the one section the session reads (#1074/#1075, the first live request).
   const v = verdict(req({ authorPermission: 'admin' }));
   assert.equal(v.run, true);
-  assert.equal(v.context, undefined);
+  assert.deepEqual(v.context, []);
 });
 
 test('S46 — the verdict is the PERMISSION, not the association (F30)', () => {
@@ -248,7 +258,7 @@ test('the request read gathers the author, the blessers and their permissions �
   assert.equal(got.author, 'stranger');
   assert.equal(got.authorPermission, 'none', 'a login the collaborators API does not know has no permission');
   assert.deepEqual(got.approvals, [{ login: 'dev', permission: 'write' }]);
-  assert.equal(requestTask.precondition({ request: got }, {}, { request: 500 }).run, true);
+  assert.equal(verdict(got).run, true);
 });
 
 test('the read distinguishes gone from unreadable, on both APIs it touches', async () => {
@@ -421,16 +431,21 @@ test('an eligible request is handed to a session, at the model its item names', 
 });
 
 test('the precondition is handed THIS occurrence\'s own facts, not just the signals', async () => {
-  // The third argument (§16.4) is what lets a verdict be about one target. Nothing
-  // else in this file would notice it going missing: the request task reads its
-  // issue out of the signal the collector filled from that same field.
+  // A term is handed THIS occurrence's own facts (§16.4), which is what lets a
+  // verdict be about one target. Nothing else in this file would notice it going
+  // missing: the request term reads its issue out of the signal the collector
+  // filled from that same field.
   const seen = [];
   const item = requestItem(500, ['task:status:waiting-for-executor'], { number: 1 });
   item.body = `${TASK_PATH}\n\nRequest: #500\nModel: sonnet\n`;
   const repo = fakeRepo([item, { number: 500, title: 'a thing', labels: ['claude-queued'], body: '' }]);
   const spy = {
     ...REQUEST_TASK,
-    decl: { ...requestTask, precondition: (signals, config, occurrence) => { seen.push(occurrence); return { run: false, reason: 'looked' }; } },
+    decl: { ...requestTask, preconditions: ['spy'] },
+    terms: new Map([['spy', {
+      signals: ['request'],
+      holds: (signals, { item: occurrence }) => { seen.push(occurrence); return { holds: false, reason: 'looked' }; },
+    }]]),
   };
   await drive(repo, req({ authorPermission: 'admin' }), { tasks: [spy] });
 

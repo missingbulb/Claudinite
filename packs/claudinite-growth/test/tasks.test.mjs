@@ -6,6 +6,14 @@ import extract from '../tasks/growth-extract/task.mjs';
 import dedup from '../tasks/growth-dedup/task.mjs';
 import logsPrune from '../tasks/logs-prune/task.mjs';
 import revalidation from '../tasks/rule-revalidation/task.mjs';
+import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
+import { readFileSync } from 'node:fs';
+
+const PACK_DIR = new URL('..', import.meta.url).pathname;
+const logsPruneTerms = await loadTaskTerms(new URL('../tasks/logs-prune', import.meta.url).pathname);
+const workerOf = (task) => readFileSync(`${PACK_DIR}tasks/${task.id}/${task.agent_instructions}`, 'utf8');
+const verdictFor = async (task, signals, config, item) =>
+  evaluatePrecondition({ decl: task, terms: await loadTaskTerms(`${PACK_DIR}tasks/${task.id}`) }, signals, config, item);
 
 // claudinite-growth per-repo task declarations + preconditions
 // (per-project-scheduling redesign: prose-to-checks is a local, per-repo
@@ -34,22 +42,32 @@ test('prose-to-checks-sweep: weekly/opus/pr+nothing, no signals', () => {
   assert.equal(proseToChecks.frequency, 'weekly');
   assert.equal(proseToChecks.agent_model, 'opus');
   assert.equal(proseToChecks.expected_outcome, 'pr'); // a check can break CI → its policy is review-only
-  assert.deepEqual(proseToChecks.precondition_signals, []);
+  assert.deepEqual(proseToChecks.preconditions, ['repo-active']);
 });
 
-test('prose-to-checks-sweep: defaults to the repo own local packs; config overrides the paths', () => {
-  const def = proseToChecks.precondition({}, {});
-  assert.equal(def.run, true);
-  assert.match(def.context.join(' '), /\.claudinite\/local\/packs/);
-  assert.doesNotMatch(def.context.join(' '), /(^|\s)packs(,|\s)/); // no core packs/ by default
+test('prose-to-checks-sweep: sleeps on a silent repo and resumes on the first active window', async () => {
+  // The subject is standing prose, but no new prose is written where nothing
+  // happens — and an opus dispatch a week on a corpus that has not moved is what
+  // the silence gate exists to stop.
+  const quiet = await verdictFor(proseToChecks, {
+    commits: { substantiveChange: false }, issues: { open: [], touched: [] }, prs: { touched: [] }, conversationLogs: {},
+  });
+  assert.equal(quiet.run, false);
+  assert.match(quiet.reason, /silent in the window/);
 
-  const canon = proseToChecks.precondition({}, { pack_paths: ['.claudinite/local/packs', 'packs'] });
-  assert.match(canon.context.join(' '), /\.claudinite\/local\/packs.*packs|packs.*\.claudinite\/local\/packs/);
+  const active = await verdictFor(proseToChecks, {
+    commits: { substantiveChange: true }, issues: { open: [], touched: [] }, prs: { touched: [] }, conversationLogs: {},
+  });
+  assert.equal(active.run, true);
 });
 
-test('prose-to-checks-sweep: an empty/invalid pack_paths falls back to the default', () => {
-  assert.match(proseToChecks.precondition({}, { pack_paths: [] }).context.join(' '), /\.claudinite\/local\/packs/);
-  assert.match(proseToChecks.precondition({}, { pack_paths: 'nope' }).context.join(' '), /\.claudinite\/local\/packs/);
+test('prose-to-checks-sweep: which pack paths it sweeps is config, read by the worker', () => {
+  // Config-shaped scope is not a precondition (task-preconditions DESIGN): the
+  // conditions decide run or no-run, and nothing else.
+  const worker = workerOf(proseToChecks);
+  assert.match(worker, /pack_paths/);
+  assert.match(worker, /\.claudinite\/local\/packs/);
+  assert.match(worker, /Never\*\* edit a read-only mounted canon pack/);
 });
 
 // --- rule-revalidation (re-probing environment claims, pack_paths config) ----
@@ -63,34 +81,28 @@ test('rule-revalidation: weekly/opus/pr+nothing, no signals (the calendar is the
   assert.equal(revalidation.expected_outcome, 'pr');
   // Deliberately signal-less: the repo does NOT move when its claims expire, so a
   // signal arm would gate this task on exactly the wrong evidence.
-  assert.deepEqual(revalidation.precondition_signals, []);
+  assert.deepEqual(revalidation.preconditions, ['repo-active']);
 });
 
-test('rule-revalidation: shares prose-to-checks-sweep pack_paths — local by default, canon by config', () => {
-  const def = revalidation.precondition({}, {});
-  assert.equal(def.run, true);
-  assert.match(def.context.join(' '), /\.claudinite\/local\/packs/);
-  assert.doesNotMatch(def.context.join(' '), /(^|\s)packs(,|\s)/); // no core packs/ by default
-
-  const canon = revalidation.precondition({}, { pack_paths: ['.claudinite/local/packs', 'packs'] });
-  assert.match(canon.context.join(' '), /\.claudinite\/local\/packs, packs/);
-});
-
-test('rule-revalidation: an empty/invalid pack_paths falls back to the default', () => {
-  assert.match(revalidation.precondition({}, { pack_paths: [] }).context.join(' '), /\.claudinite\/local\/packs/);
-  assert.match(revalidation.precondition({}, { pack_paths: 'nope' }).context.join(' '), /\.claudinite\/local\/packs/);
+test('rule-revalidation: shares prose-to-checks-sweep pack_paths, and the worker is what reads it', () => {
+  const worker = workerOf(revalidation);
+  assert.match(worker, /pack_paths/);
+  assert.match(worker, /\.claudinite\/local\/packs/);
+  assert.match(worker, /prose-to-checks-sweep/, 'the two share one setting, so the doc says so');
 });
 
 // The two probe rules are BINDING scope, not advice in task.md: the worst outcome
 // available to this task is a session with narrow reach rewriting a rule into "you
 // cannot do X", which is unfalsifiable afterwards. The work item has to carry
 // both, on every run, whatever the paths are.
-test('rule-revalidation: every run carries the read-only and unprobed rules as binding context', () => {
-  for (const config of [{}, { pack_paths: ['packs'] }]) {
-    const ctx = revalidation.precondition({}, config).context.join(' ');
-    assert.match(ctx, /read-only/i);
-    assert.match(ctx, /UNPROBED, not disproven/);
-  }
+// The two probe rules bind every run: the worst outcome available to this task is a
+// session with narrow reach rewriting a rule into "you cannot do X", which is
+// unfalsifiable afterwards. They are standing instruction, so they live in the
+// worker doc, where they hold whatever the run's paths are.
+test('rule-revalidation: the read-only and unprobed rules bind every run', () => {
+  const worker = workerOf(revalidation);
+  assert.match(worker, /\*\*Read-only\.\*\*/);
+  assert.match(worker, /`unprobed`, not disproven/);
 });
 
 // --- growth-extract (the capture stage — BOTH sources in one task) -----------
@@ -108,72 +120,56 @@ test('growth-extract: daily/opus/pr+automerge over the window signals alone', ()
   assert.equal(extract.expected_outcome, 'pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
   // The logs signal left with the retention prune (logs-prune owns it now): this
   // task's only reason to run is activity, so a quiet night costs no opus dispatch.
-  assert.deepEqual(extract.precondition_signals, ['commits', 'prs', 'issues']);
+  assert.deepEqual(extract.preconditions, ['substantive-change']);
+  assert.deepEqual(preconditionSignals(extract.preconditions, new Map()), ['commits']);
 });
 
-test('growth-extract: a SUBSTANTIVE default-branch change fires it (a bot bump does not)', () => {
+test('growth-extract: a SUBSTANTIVE default-branch change fires it (a bot bump does not)', async () => {
   // A bot bump / [skip ci] / nightly baselining commit advancing main is not a
-  // lesson to extract — the same discrimination the legacy gate made.
-  assert.equal(extract.precondition({ commits: { substantiveChange: false } }).run, false);
-  assert.equal(extract.precondition({}).run, false);
-  assert.equal(extract.precondition({ commits: { substantiveChange: true, list: [] } }).run, true);
+  // lesson to extract — and neither, now, is another task's own delivery, which the
+  // collector strips out before the condition ever sees it.
+  assert.equal((await verdictFor(extract, { commits: { substantiveChange: false } })).run, false);
+  assert.equal((await verdictFor(extract, {})).run, false);
+  assert.equal((await verdictFor(extract, { commits: { substantiveChange: true, list: [] } })).run, true);
 });
 
-test('growth-extract: carries the substantive shas and touched PR/issue numbers as binding scope', () => {
-  const v = extract.precondition({
+test('growth-extract: the trigger names the substantive commits, and only those', async () => {
+  const v = await verdictFor(extract, {
     commits: { substantiveChange: true, list: [{ sha: 'abcdef1234', substantive: true }, { sha: '9999999999', substantive: false }] },
-    prs: { touched: [4] },
-    issues: { touched: [5] },
   });
   const ctx = v.context.join(' ');
   assert.match(ctx, /abcdef1/);
-  assert.doesNotMatch(ctx, /9999999/); // the non-substantive commit is not in scope
-  assert.match(ctx, /#4/);
-  assert.match(ctx, /#5/);
+  assert.doesNotMatch(ctx, /9999999/); // the non-substantive commit is not a lesson
 });
 
-// The Context section is BINDING scope and task.md forbids widening past it, so a
-// PR merged during the window is unreadable to the worker unless the precondition
-// names it. Merged PRs carry the review discussion — usually the richest lesson
-// source in the window — so they have to be in there explicitly.
-test('growth-extract: merged-in-window PRs are named in the binding scope', () => {
-  const v = extract.precondition({
-    commits: { substantiveChange: true, list: [{ sha: 'abcdef1234', substantive: true }] },
-    prs: { touched: [4], merged: [{ number: 9, title: 'fix the parser' }] },
-  });
-  const ctx = v.context.join(' ');
-  assert.match(ctx, /#9/);
-  assert.match(ctx, /merged/i);
-  assert.match(ctx, /#4/); // the open-and-touched set is still there alongside
+// The REST of the window — the PRs merged and touched in it, the issues touched —
+// is the worker's to read, not the trigger's to hand over: which targets a granted
+// run works on is scope, and scope is decided in the work sections from the same
+// signals (task-preconditions DESIGN, "What is not a precondition").
+test('growth-extract: the window\'s merged PRs are the worker\'s scope, and task.md says so', () => {
+  const worker = workerOf(extract);
+  assert.match(worker, /merged/i);
+  assert.match(worker, /review discussion/);
+  assert.match(worker, /Never widen past the window/);
 });
 
-test('growth-extract: no merged PRs in the window adds no merged-PR line', () => {
-  const v = extract.precondition({
-    commits: { substantiveChange: true, list: [{ sha: 'abcdef1234', substantive: true }] },
-    prs: { touched: [], merged: [] },
-  });
-  assert.doesNotMatch(v.context.join(' '), /PRs merged in the window/);
-});
-
-test('growth-extract: a substantive merge puts the conversation half in scope too', () => {
+test('growth-extract: both halves are always live on a substantive merge', () => {
   // A merge means a fresh capture now sits on the logs branch — the reason the two
   // tasks always fired together.
-  const ctx = extract.precondition({
-    commits: { substantiveChange: true, list: [{ sha: 'abcdef1234', substantive: true }] },
-  }).context.join(' ');
-  assert.match(ctx, /Activity half IS in scope/);
-  assert.match(ctx, /Conversation half IS in scope/);
+  const worker = workerOf(extract);
+  assert.match(worker, /Both halves are always live/);
+  assert.match(worker, /origin\/conversation-logs/);
 });
 
-test('growth-extract: a quiet repo never fires it, however old its logs are', () => {
+test('growth-extract: a quiet repo never fires it, however old its logs are', async () => {
   // The age arm is gone with the prune. A log ageing out is logs-prune's business,
   // and waking an opus dispatch for it was exactly what that arm cost.
-  const v = extract.precondition({
+  const v = await verdictFor(extract, {
     commits: { substantiveChange: false },
     conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 14 },
   });
   assert.equal(v.run, false);
-  assert.match(v.reason, /nothing to extract/);
+  assert.match(v.reason, /no substantive default-branch change/);
 });
 
 // --- growth-dedup (the pruning stage) ----------------------------------------
@@ -188,7 +184,8 @@ test('growth-dedup: weekly/opus/pr+automerge — the prune PR is delivered to la
   // A ceiling, not a promise: a `review`-delivery member degrades this to
   // automerge: 'nothing', so the human gate is member config's call rather than hardcoded.
   assert.equal(dedup.expected_outcome, 'pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
-  assert.deepEqual(dedup.precondition_signals, ['localPacks', 'sharedMount', 'commits']);
+  assert.deepEqual(dedup.preconditions, ['mount-moved || commits-under:.claudinite/local']);
+  assert.deepEqual(preconditionSignals(dedup.preconditions, new Map()), ['sharedMount', 'commits']);
 });
 
 test('growth-dedup: code_work detects the canon window diff before the agentic phase', () => {
@@ -204,21 +201,22 @@ test('growth-dedup: code_work detects the canon window diff before the agentic p
 
 // Presence is not asked: adoption seeds the repo's own local pack and the nightly
 // never removes it, so movement is the whole gate.
-test('growth-dedup: local-pack movement alone fires it, with no presence question', () => {
-  assert.equal(dedup.precondition({ localPacks: { changedInWindow: true }, sharedMount: { changedPacks: [] } }).run, true);
-  assert.equal(dedup.precondition({ localPacks: { changedInWindow: false }, sharedMount: { changedPacks: [] } }).run, false);
+// Presence is not asked: adoption seeds the repo's own local pack and the nightly
+// never removes it, so movement is the whole gate. It reads that movement off the
+// window's own changed paths — the generic `commits-under:` condition — rather than
+// a collector field of its own.
+test('growth-dedup: local-pack movement alone fires it, with no presence question', async () => {
+  const moved = await verdictFor(dedup, { commits: { touchedPaths: ['.claudinite/local/packs/x/RULES.md'] }, sharedMount: { changedPacks: [] } });
+  assert.equal(moved.run, true);
+  assert.equal((await verdictFor(dedup, { commits: { touchedPaths: ['src/app.mjs'] }, sharedMount: { changedPacks: [] } })).run, false);
+  assert.equal((await verdictFor(dedup, { commits: {}, sharedMount: { changedPacks: [] } })).run, false);
 });
 
-test('growth-dedup: with local packs, a declared pack moving in the mount fires it (and names the packs)', () => {
-  const v = dedup.precondition({ localPacks: { present: true, changedInWindow: false }, sharedMount: { changedPacks: ['basics'] } });
+test('growth-dedup: a declared pack moving in the mount fires it (and names the packs)', async () => {
+  const v = await verdictFor(dedup, { commits: { touchedPaths: [] }, sharedMount: { changedPacks: ['basics'] } });
   assert.equal(v.run, true);
   assert.match(v.reason, /basics/);
   assert.match(v.context.join(' '), /basics/);
-});
-
-test('growth-dedup: a local-pack change in the window fires it; a quiet repo does not', () => {
-  assert.equal(dedup.precondition({ localPacks: { present: true, changedInWindow: true }, sharedMount: { changedPacks: [] } }).run, true);
-  assert.equal(dedup.precondition({ localPacks: { present: true, changedInWindow: false }, sharedMount: { changedPacks: [] } }).run, false);
 });
 
 // --- logs-prune (retention on the conversation-logs branch) ------------------
@@ -229,7 +227,8 @@ test('logs-prune: daily/agentless/none — its whole write is on a non-default b
   assert.equal(logsPrune.agent_model, 'none');
   // No PR at all: remove commits on the logs branch sit outside the outcome taxonomy.
   assert.equal(logsPrune.expected_outcome, 'none');
-  assert.deepEqual(logsPrune.precondition_signals, ['conversationLogs']);
+  assert.deepEqual(logsPrune.preconditions, ['log-past-retention']);
+  assert.deepEqual(preconditionSignals(logsPrune.preconditions, logsPruneTerms), ['conversationLogs']);
   // An agentless task's whole work is its preprocessing — with none it does nothing.
   assert.equal(logsPrune.code_work, 'node worker.mjs');
   // One fetch and at most one push: the bound guards a hung network call, and is
@@ -237,20 +236,21 @@ test('logs-prune: daily/agentless/none — its whole write is on a non-default b
   assert.ok(logsPrune.code_work_timeout > 0 && logsPrune.code_work_timeout <= 60);
 });
 
-test('logs-prune: fires on age alone, which is what makes it independent of activity', () => {
-  // The arm growth-extract used to carry, in the task that can act on it without
-  // an opus dispatch. A repo gone quiet still ages its logs out.
-  const v = logsPrune.precondition({
+test('logs-prune: fires on age alone, which is what makes it independent of activity', async () => {
+  // A CLOCK crossing a boundary, and deliberately no repo-movement condition beside
+  // it: the prune must keep firing on exactly the repos that went quiet, which is
+  // where logs sit long enough to expire.
+  const v = await verdictFor(logsPrune, {
     conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 14 },
   });
   assert.equal(v.run, true);
   assert.match(v.reason, /retention 10d/);
 });
 
-test('logs-prune: no branch, unset retention, or nothing aged yet — all silent', () => {
-  assert.match(logsPrune.precondition({ conversationLogs: { present: false } }).reason, /nothing captured/);
-  assert.match(logsPrune.precondition({}).reason, /nothing captured/);
-  assert.match(logsPrune.precondition({ conversationLogs: { present: true } }).reason, /retention_days is unset/);
+test('logs-prune: no branch, unset retention, or nothing aged yet — all silent', async () => {
+  assert.match((await verdictFor(logsPrune, { conversationLogs: { present: false } })).reason, /nothing captured/);
+  assert.match((await verdictFor(logsPrune, {})).reason, /nothing captured/);
+  assert.match((await verdictFor(logsPrune, { conversationLogs: { present: true } })).reason, /retention_days is unset/);
   for (const signals of [
     { conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 3 } },
     // The boundary: at exactly retention the log has not yet aged OUT.
@@ -258,7 +258,7 @@ test('logs-prune: no branch, unset retention, or nothing aged yet — all silent
     // A branch with retention set but no logs at all — no age to compare.
     { conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: null } },
   ]) {
-    const v = logsPrune.precondition(signals);
+    const v = await verdictFor(logsPrune, signals);
     assert.equal(v.run, false);
     assert.match(v.reason, /nothing to prune/);
   }

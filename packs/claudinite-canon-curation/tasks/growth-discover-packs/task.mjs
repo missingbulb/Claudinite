@@ -18,7 +18,11 @@
 export default {
   id: 'growth-discover-packs',
   frequency: 'weekly',                   // the fleet's stacks are slow-moving — a weekly sweep, not a daily one
-  precondition_signals: ['fleet'],       // canon-only aggregate: who the members are and what they declare
+  // No repo-side gate: the opportunity is standing — a technology the fleet uses
+  // that no canon pack homes — rather than a recent change here, so the weekly
+  // anchor is the whole trigger and the run no-ops cheaply when nothing is
+  // unhomed. The fleet roster it sweeps is read by the run itself.
+  preconditions: ['none'],
   // This task reads every member's tree, which an ordinary session in this repo does
   // not reach. Reach is a property of WHICH endpoint the hand-off calls, so a task
   // needing more than an ordinary session names one; the key resolves in this repo's
@@ -30,27 +34,4 @@ export default {
   automerge: 'nothing',              // a new canon pack every repo will read — owner-approved, never auto-merged
   agent_instructions: 'task.md',
   agent_execution_timeout: 3600,         // manifest N members' stacks + author a pack — a generous weekly bound, extreme protection
-
-  // Fire on the covered members, every week. There is no windowed trigger: the
-  // opportunity is standing (a technology the fleet uses that no canon pack
-  // homes), not a recent change, so the sweep runs weekly and no-ops cheaply
-  // when nothing is unhomed. A member with a parsable declaration but no declared
-  // packs is not running Claudinite in any usable sense — the same test the fleet
-  // reader uses before it probes a member — so it is not swept.
-  precondition(signals) {
-    const fleet = signals.fleet;
-    if (!fleet) return { run: false, reason: 'no fleet signal (FLEET_GITHUB_TOKEN unset, or this repo is not a canon home)' };
-    if (fleet.error) return { run: false, reason: `fleet enumeration failed — ${fleet.error} (sweeping nothing on unproven fleet state)` };
-    const members = (fleet.members ?? []).filter((m) => m.activePacks.length);
-    if (!members.length) return { run: false, reason: 'no covered member to sweep' };
-    const repos = members.map((m) => m.repo);
-    return {
-      run: true,
-      reason: `weekly canon pack-discovery sweep over ${members.length} covered member(s)`,
-      context: [
-        `Members to sweep: ${repos.join(', ')}.`,
-        'Read ONLY these members — do not enumerate the fleet yourself or widen past this list.',
-      ],
-    };
-  },
 };

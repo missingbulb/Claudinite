@@ -24,7 +24,10 @@ export default {
   // settle before promote reads the local packs it just wrote. A canon that does not declare
   // claudinite-growth queues no such item, and the ordering is then vacuous rather than blocking.
   schedule_after: ['claudinite-growth/growth-extract'],
-  precondition_signals: ['fleet'],       // canon-only aggregate: which members changed their local packs
+  // Fire on the members whose local packs moved in the window — the term beside
+  // this file (preconditions.mjs) both decides that and names them, so the
+  // executor's Context binds the worker to exactly that set.
+  preconditions: ['fleet-local-packs-changed'],
   // This task reads every member's local packs, which an ordinary session in this
   // repo does not reach. Reach is a property of WHICH endpoint the hand-off calls,
   // so a task needing more than an ordinary session names one; the key resolves in
@@ -36,31 +39,4 @@ export default {
   automerge: 'nothing',              // the judgment gate before shared canon — owner-approved, never auto-merged
   agent_instructions: 'task.md',
   agent_execution_timeout: 2700,         // reading N members + generalizing + authoring a PR — generous bound, extreme protection
-
-  // Fire when a participating member changed its local packs in the window. A
-  // participant declares claudinite-growth — every member carries local packs,
-  // seeded at adoption; the growth entry's `{ config: { promote: false } }`
-  // opts a member out of promotion while it keeps extracting/deduping locally
-  // (absent or true = participate). A member whose local packs didn't move in the
-  // window has nothing new to lift up — so the daily trigger targets exactly the
-  // changed set, and the executor's Context binds the worker to those members.
-  precondition(signals) {
-    const fleet = signals.fleet;
-    if (!fleet) return { run: false, reason: 'no fleet signal (FLEET_GITHUB_TOKEN unset, or this repo is not a canon home)' };
-    if (fleet.error) return { run: false, reason: `fleet enumeration failed — ${fleet.error} (retiring/promoting nothing on unproven fleet state)` };
-    const participants = (fleet.members ?? [])
-      .filter((m) => m.activePacks.includes('claudinite-growth'))
-      .filter((m) => m.packConfigs?.['claudinite-growth']?.promote !== false);
-    const changed = participants.filter((m) => m.localPacksChanged);
-    if (!changed.length) return { run: false, reason: 'no participating member changed its local packs in the window' };
-    const repos = changed.map((m) => m.repo);
-    return {
-      run: true,
-      reason: `${changed.length} participating member(s) changed their local packs in the window`,
-      context: [
-        `Target members (local packs changed in the window): ${repos.join(', ')}.`,
-        'Read ONLY these members\' local packs — do not enumerate the fleet yourself or widen past this list.',
-      ],
-    };
-  },
 };

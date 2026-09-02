@@ -7,6 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateTaskDeclaration } from '../../claudinite-tasks/shared-code/task-contract.mjs';
+import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 
 const PACK_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -16,8 +17,12 @@ const PACK_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 // canon does not home. (prose-to-checks-sweep moved to claudinite-growth as a
 // per-repo task; migration records need no curation task at all — they are kept
 // forever, and vendoring's recency window decides what ships.)
-// Each precondition is pure over the collected signals, so it tests directly
-// against a fabricated `fleet` signal.
+// Each verdict goes through `evaluatePrecondition` — the seam the executor calls
+// at pick — over a fabricated `fleet` signal, so what is asserted is what the
+// declaration plus its own terms actually decide.
+
+const promoteTerms = await loadTaskTerms(join(PACK_DIR, 'tasks/growth-promote'));
+const promoteVerdict = (signals) => evaluatePrecondition({ decl: promote, terms: promoteTerms }, signals);
 
 const member = (over = {}) => ({
   repo: 'acme/app', defaultBranch: 'main',
@@ -32,7 +37,9 @@ test('growth-promote: declaration is daily/opus/pr+nothing over the fleet signal
   assert.equal(promote.frequency, 'daily');
   assert.equal(promote.agent_model, 'opus');
   assert.equal(promote.expected_outcome, 'pr'); // owner-gated: its policy authorizes nothing to auto-merge
-  assert.deepEqual(promote.precondition_signals, ['fleet']);
+  // Derived from the one condition it states, never declared beside it.
+  assert.deepEqual(promote.preconditions, ['fleet-local-packs-changed']);
+  assert.deepEqual(preconditionSignals(promote.preconditions, promoteTerms), ['fleet']);
   // Same as discover: reach is the endpoint the hand-off calls, and this task reads
   // every member's local packs.
   assert.equal(promote.invocation_endpoint, 'fleet');
@@ -40,7 +47,7 @@ test('growth-promote: declaration is daily/opus/pr+nothing over the fleet signal
 });
 
 test('growth-promote: fires on participating members whose local packs changed', () => {
-  const v = promote.precondition({ fleet: { members: [
+  const v = promoteVerdict({ fleet: { members: [
     member({ repo: 'acme/a' }),
     member({ repo: 'acme/b', localPacksChanged: false }), // changed nothing → excluded
     member({ repo: 'acme/c' }),
@@ -52,7 +59,7 @@ test('growth-promote: fires on participating members whose local packs changed',
 });
 
 test('growth-promote: skips a member that opted out of promotion', () => {
-  const v = promote.precondition({ fleet: { members: [
+  const v = promoteVerdict({ fleet: { members: [
     member({ repo: 'acme/opt', packConfigs: { 'claudinite-growth': { promote: false } } }),
   ] } });
   assert.equal(v.run, false);
@@ -61,13 +68,18 @@ test('growth-promote: skips a member that opted out of promotion', () => {
 // Membership is the whole participation test now: every member carries local packs
 // (seeded at adoption), so a repo not declaring the growth pack is the only skip.
 test('growth-promote: skips a member not declaring the growth pack', () => {
-  assert.equal(promote.precondition({ fleet: { members: [member({ activePacks: ['basics'] })] } }).run, false);
+  assert.equal(promoteVerdict({ fleet: { members: [member({ activePacks: ['basics'] })] } }).run, false);
 });
 
-test('growth-promote: skips when there is no fleet signal or the enumeration errored', () => {
-  assert.equal(promote.precondition({ fleet: null }).run, false);
-  assert.equal(promote.precondition({ fleet: { error: 'wrong token' } }).run, false);
-  assert.equal(promote.precondition({ fleet: { members: [] } }).run, false);
+test('growth-promote: an unproven fleet state ERRORS — it never reads as "nothing to promote"', () => {
+  // The fail direction (task-preconditions DESIGN): a decline here is permanent,
+  // silent staleness — a missing credential and a converged fleet would look
+  // identical forever, and nothing in the repo goes red over it. An error parks the
+  // item where the re-queue lever retries it.
+  assert.match(promoteVerdict({ fleet: null }).error, /FLEET_GITHUB_TOKEN/);
+  assert.match(promoteVerdict({ fleet: { error: 'wrong token' } }).error, /wrong token/);
+  // An enumeration that SUCCEEDED and found nobody is a real answer, so it declines.
+  assert.equal(promoteVerdict({ fleet: { members: [] } }).run, false);
 });
 
 // --- growth-discover-packs (the FLEET sweep) ---------------------------------
@@ -83,29 +95,26 @@ test('growth-discover-packs: declaration is weekly/opus/pr+nothing, fleet-reachi
   // every member's tree, which an ordinary session in this repo does not.
   assert.equal(discover.invocation_endpoint, 'fleet');
   assert.equal(discover.session_scope, undefined, 'session_scope lost its last reader with the slot scheduler');
-  assert.deepEqual(discover.precondition_signals, ['fleet']);
+  // `['none']`: the opportunity is standing rather than windowed, and the roster
+  // the run sweeps is read by the run itself (task.md), not handed to it as scope.
+  assert.deepEqual(discover.preconditions, ['none']);
+  assert.deepEqual(preconditionSignals(discover.preconditions, new Map()), []);
 });
 
-test('growth-discover-packs: sweeps every covered member, binding them as Context', () => {
-  const v = discover.precondition({ fleet: { members: [
-    member({ repo: 'acme/a', localPacksChanged: false }),          // no window trigger — the opportunity is standing
-    member({ repo: 'acme/b', activePacks: ['basics'] }),                       // not a growth participant — still swept
-  ] } });
+test('growth-discover-packs: the weekly anchor IS the trigger — nothing repo-side gates it', () => {
+  // The opportunity is standing, so there is nothing to observe in advance: the
+  // sweep runs and no-ops cheaply when the shelf already homes what the fleet uses.
+  const v = evaluatePrecondition({ decl: discover }, {});
   assert.equal(v.run, true);
-  assert.match(v.context.join(' '), /acme\/a/);
-  assert.match(v.context.join(' '), /acme\/b/);
-  assert.match(v.context.join(' '), /do not enumerate the fleet yourself/i);
+  assert.deepEqual(v.context, []);
 });
 
-test('growth-discover-packs: skips a member that declares no packs', () => {
-  const v = discover.precondition({ fleet: { members: [member({ repo: 'acme/bare', activePacks: [] })] } });
-  assert.equal(v.run, false);
-});
-
-test('growth-discover-packs: skips when there is no fleet signal or the enumeration errored', () => {
-  assert.equal(discover.precondition({ fleet: null }).run, false);
-  assert.equal(discover.precondition({ fleet: { error: 'wrong token' } }).run, false);
-  assert.equal(discover.precondition({ fleet: { members: [] } }).run, false);
+test('growth-discover-packs: which members it sweeps is the worker\'s, and task.md says so', () => {
+  // Scope is not a precondition (task-preconditions DESIGN): the roster moved into
+  // the work sections when the fleet enumeration stopped being a gate.
+  const worker = readFileSync(join(PACK_DIR, 'tasks/growth-discover-packs', discover.agent_instructions), 'utf8');
+  assert.match(worker, /every COVERED member/);
+  assert.match(worker, /no declared packs is not running Claudinite/);
 });
 
 // --- upstream-watch (the shelf's own currency) --------------------------------
@@ -116,19 +125,22 @@ test('upstream-watch: a well-formed monthly, owner-gated declaration over no sig
   assert.deepEqual(validateTaskDeclaration(upstream), []);
   assert.equal(upstream.id, 'upstream-watch');
   assert.equal(upstream.frequency, 'monthly');
-  assert.deepEqual(upstream.precondition_signals, []); // the trigger is the outside world
+  assert.deepEqual(upstream.preconditions, ['none']); // the trigger is the outside world
   assert.equal(upstream.expected_outcome, 'pr');
   assert.equal(upstream.automerge, 'nothing');         // canon content every member reads
   // The shelf is the whole subject, so this one needs no reach past an ordinary session.
   assert.equal(upstream.invocation_endpoint, undefined);
 });
 
-test('upstream-watch: runs unconditionally, binding the run to the packs that opted in', () => {
-  const v = upstream.precondition();
+test('upstream-watch: runs unconditionally, and task.md carries the opt-in scope', () => {
+  // A shelf-side gate would only ask "is the shelf still the shelf?" — and which
+  // packs opted in is standing instruction, so it lives in the work sections.
+  const v = evaluatePrecondition({ decl: upstream }, {});
   assert.equal(v.run, true);
-  const context = v.context.join(' ');
-  assert.match(context, /## Upstream/);
-  assert.match(context, /Never edit a member repository/);
+  const worker = readFileSync(join(PACK_DIR, 'tasks/upstream-watch', upstream.agent_instructions), 'utf8');
+  assert.match(worker, /## Upstream/);
+  assert.match(worker, /opted out: do not add one/);
+  assert.match(worker, /reads the shelf, never a member/);
 });
 
 test('upstream-watch: the worker advances an anchor only for a source it read', () => {

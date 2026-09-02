@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import decl from '../../../tasks/fleet-roster/task.mjs';
+import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
 
 // The claudinite-fleet-sheepdog pack's fleet-roster task (#788): the coverage and freshness questions
 // answered from ONE walk of the fleet, replacing the separate fleet-census and
@@ -29,7 +30,9 @@ test('fleet-roster: daily, agentless, and ceilinged at "none" — it opens issue
   assert.equal(decl.frequency, 'daily');
   assert.equal(decl.agent_model, 'none');
   assert.equal(decl.expected_outcome, 'none');
-  assert.deepEqual(decl.precondition_signals, []);
+  // `['none']`, not an empty signal list: nothing repo-side predicts this task's
+  // answer, and the declaration says so in the one word for it.
+  assert.deepEqual(decl.preconditions, ['none']);
 });
 
 test('fleet-roster: an ordinary pack task — not wired as a fleet mechanism', () => {
@@ -37,7 +40,7 @@ test('fleet-roster: an ordinary pack task — not wired as a fleet mechanism', (
   // in the implementation, never in the wiring. A `fleet` signal or session scope
   // here would make the scheduler treat it as fleet infrastructure.
   assert.equal(decl.session_scope, undefined);
-  assert.ok(!decl.precondition_signals.includes('fleet'));
+  assert.deepEqual(decl.preconditions, ['none']);   // no `fleet` condition either
 });
 
 test('fleet-roster: the sweep is the preprocessing, bounded and task-local', () => {
@@ -55,7 +58,7 @@ test('fleet-roster: declares the fleet PAT, which is how the repo is asked for i
 });
 
 test('fleet-roster: fires unconditionally, with a reason', () => {
-  const v = decl.precondition({}, {});
+  const v = evaluatePrecondition({ decl }, {});
   assert.equal(v.run, true);
   assert.match(v.reason, /\S/);
 });

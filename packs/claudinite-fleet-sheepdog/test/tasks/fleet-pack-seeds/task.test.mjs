@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import decl from '../../../tasks/fleet-pack-seeds/task.mjs';
 import roster from '../../../tasks/fleet-roster/task.mjs';
+import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
 
 // The claudinite-fleet-sheepdog pack's fleet-pack-seeds task: the enforcer converging the pack
 // declarations this fleet standardizes on. Same agentless shape as the other
@@ -34,14 +35,16 @@ test('fleet-pack-seeds: daily, agentless, and ceilinged at "none" — its write 
   // Not a contradiction with a sweep that writes: the ceiling describes what a task may
   // do to its OWN repo, and this one opens no PR here at all.
   assert.equal(decl.expected_outcome, 'none');
-  assert.deepEqual(decl.precondition_signals, []);
+  // `['none']`, not an empty signal list: nothing repo-side predicts this task's
+  // answer, and the declaration says so in the one word for it.
+  assert.deepEqual(decl.preconditions, ['none']);
 });
 
 test('fleet-pack-seeds: an ordinary pack task — not wired as a fleet mechanism', () => {
   // Same classification the other sweeps carry (per-project-scheduling DESIGN §6): the
   // cross-repo reach is in the implementation, never in the wiring.
   assert.equal(decl.session_scope, undefined);
-  assert.ok(!decl.precondition_signals.includes('fleet'));
+  assert.deepEqual(decl.preconditions, ['none']);   // no `fleet` condition either
 });
 
 test('fleet-pack-seeds: the sweep is the code_work, bounded and task-local', () => {
@@ -62,7 +65,7 @@ test('fleet-pack-seeds: one fleet secret, and one place the grant is stated', ()
 });
 
 test('fleet-pack-seeds: fires unconditionally, with a reason', () => {
-  const v = decl.precondition({}, {});
+  const v = evaluatePrecondition({ decl }, {});
   assert.equal(v.run, true);
   assert.match(v.reason, /\S/);
 });

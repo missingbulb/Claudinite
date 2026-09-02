@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pack from '../../basics/pack.mjs';
 import update from '../tasks/update/task.mjs';
+import { evaluatePrecondition } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 
 const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/claudinite-lifecycle/tasks/update');
 
@@ -32,18 +33,20 @@ test('update declaration: the 02:00 anchor, an apply stage only when needed, det
   assert.equal(update.frequency, 'daily');
   assert.equal(update.agent_model, 'sonnet'); // the apply stage, requested only when a pack's rules moved
   assert.equal(update.expected_outcome, 'pr');
-  assert.deepEqual(update.precondition_signals, ['stamp', 'sharedMount']);
+  assert.deepEqual(update.preconditions, ['none']);
   assert.equal(update.code_work, 'node worker.mjs');
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the deterministic update worker must exist');
   assert.ok(existsSync(join(TASK_DIR, update.agent_instructions)), `worker doc missing: ${update.agent_instructions}`);
 });
 
-test('update: self-skips a repo with no vendored mount (a pre-adoption repo)', () => {
-  // No installed versions means there is no vendored mount to update — expressed
-  // structurally rather than by naming any particular repo.
-  const v = update.precondition(S({ present: false, engineVersion: null }));
-  assert.equal(v.run, false);
-  assert.match(v.reason, /no vendored mount/);
+test('update: a repo with no vendored mount is settings, not a nightly question', () => {
+  // "Has this repo a mount to update?" is a fact adoption settled, re-asked every
+  // night for an answer that cannot change on its own. Repo shape is not a
+  // precondition (task-preconditions DESIGN): such a repo names the task in its
+  // `taskScheduler.disabledTasks` and the scheduler never instantiates it.
+  const declaration = readFileSync(join(TASK_DIR, 'task.mjs'), 'utf8');
+  assert.match(declaration, /taskScheduler\.disabledTasks/);
+  assert.equal(evaluatePrecondition({ decl: update }, S({ present: false, engineVersion: null })).run, true);
 });
 
 // THE QUESTION THIS TASK EXISTS TO ASK — "am I behind the canon?" — CANNOT BE ASKED HERE.
@@ -58,34 +61,27 @@ test('update: self-skips a repo with no vendored mount (a pre-adoption repo)', (
 // So the decline is gone. The asymmetry decides it: declining wrongly costs permanent,
 // silent staleness that nothing in the member can repair, while running wrongly costs one
 // converge that finds nothing and exits. The worker already owns that decision.
-test('update: runs even when the mount converged in this window and no pack moved locally', () => {
-  const v = update.precondition(S({ convergedInWindow: true }));
-  assert.equal(v.run, true, 'a member canon moved past after its own converge must still run');
+test('update: no repo-side condition may gate it — the input is the CANON', () => {
+  // The canon moves when this repo does not, so a silent repo is exactly when the
+  // mount most needs the pass, and every local reading of "is anything new?"
+  // answers a different question. LaughCounter and TLDR sat four packs behind for a
+  // day declining their own updates on exactly that reading (#1344).
+  for (const signals of [
+    S({ convergedInWindow: true }),
+    S({ convergedInWindow: true }, ['basics', 'tidy-repo']),
+    S({ convergedInWindow: false }),
+    {},
+  ]) {
+    assert.equal(evaluatePrecondition({ decl: update }, signals).run, true);
+  }
 });
 
-test('update: runs when a declared pack\'s vendored files moved, however recent the converge', () => {
-  const v = update.precondition(S({ convergedInWindow: true }, ['basics', 'tidy-repo']));
-  assert.equal(v.run, true);
-});
-
-test('update: runs when the mount did not move in this window', () => {
-  assert.equal(update.precondition(S({ convergedInWindow: false })).run, true);
-});
-
-test('update: the precondition decides only whether the worker RUNS', () => {
-  // It reads the collected signals and nothing else. In particular it never reaches
-  // for a date: the only datetime a declaration ever carried was deleted in #1252
-  // precisely because it answered a different question than the one asked of it.
-  const src = update.precondition.toString();
-  assert.ok(!src.includes('mechanism'), 'the precondition must not re-derive the mechanism');
-  assert.ok(!/\bageDays\b|stamp\.updated/.test(src), 'newness comes from the window, never from a stamped date');
-});
-
-test('update: a run carries the agent\'s binding scope — the apply stage only', () => {
-  const v = update.precondition(S());
-  const ctx = v.context.join(' ');
-  assert.match(ctx, /deterministic flows have already run/);
-  assert.match(ctx, /Do not re-run the mechanical converge/);
+test('update: the apply stage\'s binding scope is task.md\'s, not a context line', () => {
+  // Standing instruction, not a term-computed scope list: it says the same thing on
+  // every run, so it belongs where the worker reads it.
+  const worker = readFileSync(join(TASK_DIR, update.agent_instructions), 'utf8');
+  assert.match(worker, /The deterministic half already ran/);
+  assert.match(worker, /binding scope — do not widen it/);
 });
 
 // Forcing is deliberately absent here: it is an engine decision (run.mjs

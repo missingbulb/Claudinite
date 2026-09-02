@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +15,7 @@ const growthLog = declaredCheck('packs/product-wiki', 'product-wiki-growth-log')
 const sources = declaredCheck('packs/product-wiki', 'product-wiki-sources');
 const freshness = declaredCheck('packs/product-wiki', 'product-wiki-freshness');
 import wikiGrowth from '../tasks/wiki-growth/task.mjs';
+import { evaluatePrecondition, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 // Built through the real path: a forbidReferences entry in the pack's own
 // declared-checks.json, compiled by the declarative engine.
 const isolation = declaredCheck('packs/product-wiki', 'product-wiki-isolation');
@@ -417,49 +418,58 @@ test('runner integration: a reasoned accept excuses an isolation crossing', () =
 
 // --- the scheduled task declaration ----------------------------------------------------
 
+// An ACTIVE repo, which every wiki-growth verdict below starts from: the pass is
+// gated on the repo being worked in, so a fixture that skipped it would only ever
+// be testing the silence gate.
+const active = (over = {}) => ({
+  commits: { substantiveChange: true }, issues: { open: [], touched: [] },
+  prs: { open: [], touched: [] }, conversationLogs: {}, ...over,
+});
+const verdict = (signals) => evaluatePrecondition({ decl: wikiGrowth }, signals);
+
 // Only the claims that can actually come apart. The declaration's own values
 // (frequency, agent_model, expected_outcome…) are not asserted: re-stating a
 // literal from the file under test proves nothing and turns every deliberate
 // change into a two-file edit — see the writing-tests skill, "Never pin a
 // declaration to itself".
-test('wiki-growth task: every signal the precondition reads is declared, and the worker doc it names exists', () => {
-  const read = new Set();
-  wikiGrowth.precondition(new Proxy({}, { get: (_, k) => { read.add(String(k)); return undefined; } }));
-  for (const signal of read) {
-    assert.ok(wikiGrowth.precondition_signals.includes(signal),
-      `precondition reads signals.${signal}, which precondition_signals does not declare — the scheduler would never collect it`);
-  }
+test('wiki-growth task: the worker doc it names exists, and its signals are derived from its conditions', () => {
+  // `precondition_signals` is gone: each condition names what it reads, so the
+  // collector union cannot disagree with the gate.
+  assert.equal(wikiGrowth.precondition_signals, undefined);
+  assert.deepEqual(preconditionSignals(wikiGrowth.preconditions, new Map()).sort(),
+    ['commits', 'conversationLogs', 'issues', 'prs']);
   assert.ok(existsSync(join(canonRoot, 'packs/product-wiki/tasks/wiki-growth', wikiGrowth.agent_instructions)),
     `worker doc missing: ${wikiGrowth.agent_instructions}`);
 });
 
-test('wiki-growth precondition: the weekly anchor IS the trigger; a wiki move only adds context', () => {
-  const quiet = wikiGrowth.precondition({});
-  assert.equal(quiet.run, true);
-  assert.equal(quiet.reason, 'weekly product-wiki growth pass');
-  assert.deepEqual(quiet.context, []);
+// THE SILENCE GATE, stated positively (task-preconditions DESIGN): the subject is
+// the world, but the value is zero on a repo nobody works in, and a task's own
+// output is not activity — the collectors strip it out before the condition sees
+// it. The first active window resumes the pass.
+test('wiki-growth precondition: it sleeps on a silent repo and resumes on the first active window', () => {
+  const silent = verdict({
+    commits: { substantiveChange: false }, issues: { open: [], touched: [] },
+    prs: { open: [], touched: [] }, conversationLogs: {},
+  });
+  assert.equal(silent.run, false);
+  assert.match(silent.reason, /silent in the window/);
 
-  const moved = wikiGrowth.precondition({ commits: { touchedPaths: ['product-wiki/Market/README.md'] } });
-  assert.equal(moved.run, true);
-  assert.match(moved.context.join(' '), /spot-check/);
-
-  // a change elsewhere still runs (weekly), but adds no wiki context
-  assert.deepEqual(wikiGrowth.precondition({ commits: { touchedPaths: ['src/app.js'] } }).context, []);
+  const active = verdict({
+    commits: { substantiveChange: true }, issues: { open: [], touched: [] },
+    prs: { open: [], touched: [] }, conversationLogs: {},
+  });
+  assert.equal(active.run, true);
 });
 
-// This precondition has exactly ONE declining arm, and it is the only decision
-// point in the task's life (per-project-scheduling DESIGN §12): an open PR with a
-// pending `product-wiki/` change means wiki work is waiting for review, and a
-// second unreviewed round is never stacked on it. It reads the PR's own CONTENT,
-// so a human's wiki edit in flight gates the round exactly as the task's own PR does.
-// Everything else always runs: a wiki grows on research availability, not repo
-// activity, so the weekly anchor itself is the trigger and the worker's own stop
-// condition (no citable material → no branch, no PR) is an empty OUTCOME, not a
-// skip. Pin both directions.
-test('wiki-growth precondition: declines ONLY while an open PR carries a pending product-wiki change', () => {
-  const withPr = wikiGrowth.precondition({
-    prs: { open: [{ number: 12, title: 'wiki round', changedPaths: ['product-wiki/Market/README.md'] }] },
-  });
+// The other condition, and it is the only one that can decline an ACTIVE repo: an
+// open PR with a pending `product-wiki/` change means wiki work is waiting for
+// review, and a second unreviewed round is never stacked on it. It reads the PR's
+// own CONTENT, so a human's wiki edit in flight gates the round exactly as the
+// task's own PR does.
+test('wiki-growth precondition: an active repo declines ONLY while a pending product-wiki PR is open', () => {
+  const withPr = verdict(active({
+    prs: { open: [{ number: 12, title: 'wiki round', changedPaths: ['product-wiki/Market/README.md'] }], touched: [] },
+  }));
   assert.equal(withPr.run, false);
   assert.match(withPr.reason, /#12/);
   assert.match(withPr.reason, /product-wiki\//);
@@ -467,54 +477,30 @@ test('wiki-growth precondition: declines ONLY while an open PR carries a pending
   // A PR whose paths could not be read at all is unknown, not clear — the arm that
   // makes the gate survive an unreadable file list and an engine that predates it.
   for (const opaque of [{ number: 13, title: 'unreadable' }, { number: 13, title: 'unreadable', changedPaths: null }]) {
-    const v = wikiGrowth.precondition({ prs: { open: [opaque] } });
+    const v = verdict(active({ prs: { open: [opaque], touched: [] } }));
     assert.equal(v.run, false);
     assert.match(v.reason, /#13/);
     assert.match(v.reason, /unknown/);
   }
 
-  const shapes = [
-    {},                                                   // no signals at all
-    { commits: {} },                                      // signal present, no touchedPaths (the ?? [] fallback)
-    { commits: { touchedPaths: [] } },                    // a genuinely quiet window
-    { commits: { touchedPaths: ['src/app.js'] } },        // busy, but nothing wiki-side
-    { commits: { touchedPaths: ['product-wiki/Market/README.md'] } },
-    { commits: null },                                    // malformed — still must not decline or throw
-    { prs: { open: [{ number: 9, title: 'other', changedPaths: ['src/app.js'] }] } },  // unrelated PR is not a gate
-    { prs: { open: [{ number: 9, title: 'empty diff', changedPaths: [] }] } },
-    // root-anchored, exactly as the wiki-moved context is: a nested directory of
-    // the same name, or a sibling whose name merely starts the same, is not the tree
-    { prs: { open: [{ number: 9, title: 'lookalike', changedPaths: ['docs/product-wiki/README.md', 'product-wikis/x.md'] }] } },
+  const clear = [
+    {},                                                                              // nothing pending
+    { prs: { open: [{ number: 9, title: 'other', changedPaths: ['src/app.js'] }], touched: [] } },
+    { prs: { open: [{ number: 9, title: 'empty diff', changedPaths: [] }], touched: [] } },
+    // root-anchored: a nested directory of the same name, or a sibling whose name
+    // merely starts the same, is not the tree
+    { prs: { open: [{ number: 9, title: 'lookalike', changedPaths: ['docs/product-wiki/README.md', 'product-wikis/x.md'] }], touched: [] } },
   ];
-  for (const signals of shapes) {
-    const v = wikiGrowth.precondition(signals);
-    assert.equal(v.run, true, `declined for ${JSON.stringify(signals)}`);
-    assert.equal(v.reason, 'weekly product-wiki growth pass');
+  for (const over of clear) {
+    const v = verdict(active(over));
+    assert.equal(v.run, true, `declined for ${JSON.stringify(over)}`);
     assert.ok(Array.isArray(v.context), 'context is always an array, even when empty');
   }
 });
 
-// The wiki-moved test is a path PREFIX anchored at the repo root, and the
-// dispatch renders each context entry as its own bullet — so both the anchoring
-// and the one-line shape are load-bearing.
-test('wiki-growth precondition: the wiki-moved context is root-anchored and exactly one line', () => {
-  const ctx = (paths) => wikiGrowth.precondition({ commits: { touchedPaths: paths } }).context;
-
-  // Fires anywhere inside the tree, however deep, and on a single wiki path
-  // among many unrelated ones.
-  assert.equal(ctx(['product-wiki/Users/competitors/README.md']).length, 1);
-  assert.equal(ctx(['src/app.js', 'product-wiki/README.md', 'package.json']).length, 1);
-
-  // ...but only one line no matter how many wiki paths moved — the dispatch
-  // renders each entry as a separate bullet, so this is a shape guarantee.
-  assert.deepEqual(
-    ctx(['product-wiki/Market/README.md', 'product-wiki/Users/README.md', 'product-wiki/sample-data/x.json']),
-    ctx(['product-wiki/Market/README.md']),
-  );
-
-  // Root-anchored: a nested directory of the same name, or a sibling whose name
-  // merely starts with it, is a different tree and must not fire.
-  assert.deepEqual(ctx(['docs/product-wiki/notes.md']), []);
-  assert.deepEqual(ctx(['product-wikis/notes.md']), []);
-  assert.deepEqual(ctx(['product-wiki-archive/notes.md']), []);
+// What a granted run then works on — including spot-checking pages a wiki move may
+// have superseded — is scope, and scope is the worker's (task-preconditions DESIGN).
+test('wiki-growth: what a granted run reads is task.md\'s, not the trigger\'s', () => {
+  const worker = readFileSync(join(canonRoot, 'packs/product-wiki/tasks/wiki-growth', wikiGrowth.agent_instructions), 'utf8');
+  assert.match(worker, /spot-check the pages it may have superseded/);
 });

@@ -36,7 +36,16 @@
 export default {
   id: 'fleet-add-missing-packs',
   frequency: 'weekly',                   // a repo's shape is slow-moving — the same cadence growth-discover-packs uses for the same reason
-  precondition_signals: [],              // no signal — every input is another repo's tree, which no per-repo collector can see
+  // Fire weekly unconditionally. Every input lives OUTSIDE this repo — another
+  // member's tree, another member's declaration — and no per-repo collector can
+  // see any of them, so there is no signal that would say in advance whether the
+  // answer changed. Cheap to no-op: a fleet that declares what it should converges
+  // nothing and fires nobody.
+  //
+  // A hand-created item runs against this too, and it says yes — so what makes a
+  // forced run different is its Context, not a bypass: the parameters there are
+  // what run this task as something other than its weekly self.
+  preconditions: ['none'],
   agent_model: 'none',                   // pure code here: scan/request, converge member issues, fire member schedulers — the AGENT is the member's own
   expected_outcome: 'none',              // it writes issues in MEMBERS and queues their runs; no PR here, ever
   // The weekly run's PARAMETERS, sent explicitly on the command line rather than
@@ -51,18 +60,4 @@ export default {
   // The same 900s the other sweeps carry: ~10x the expected walk.
   code_work_timeout: 900,
   required_secrets: ['FLEET_GITHUB_TOKEN'], // the account-spanning PAT; fleet-token.mjs states the grant
-
-  // Fire weekly unconditionally. Every input lives OUTSIDE this repo — another
-  // member's tree, another member's declaration — and no per-repo collector can see
-  // any of them, so there is no signal that would tell us in advance whether the
-  // answer changed. Cheap to no-op: a fleet that declares what it should converges
-  // nothing, fires nobody, and the run is one read-only sweep.
-  //
-  // A hand-created item runs this precondition too (the queue evaluates it at pick,
-  // tasks-dispatch DESIGN §6.4), and it says yes unconditionally — so what makes a
-  // forced run different is its Context, not a bypass: the parameters there are what
-  // run this task as something other than its weekly self.
-  precondition() {
-    return { run: true, reason: 'weekly fleet scan for packs a member is missing (no-ops cheaply on a fleet whose members already declare what their shape suspects)' };
-  },
 };

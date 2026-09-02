@@ -120,9 +120,12 @@ test('an empty ledger produces a report rather than an error', () => {
 // signals object itself) got `precondition threw` on every run.
 test('the precondition gates on movement in the window, not on CI existing', () => {
   const verdict = (signals) => evaluatePrecondition({ decl }, signals, {});
-  assert.equal(verdict({ commits: { count: 0 }, prs: { touched: [] } }).run, false);
-  assert.equal(verdict({ commits: { count: 4 }, prs: { touched: [] } }).run, true);
-  assert.equal(verdict({ commits: { count: 0 }, prs: { touched: [7] } }).run, true);
+  assert.equal(verdict({ commits: { substantiveChange: false }, prs: { touched: [] } }).run, false);
+  assert.equal(verdict({ commits: { substantiveChange: true }, prs: { touched: [] } }).run, true);
+  assert.equal(verdict({ commits: { substantiveChange: false }, prs: { touched: [7] } }).run, true);
+  // SUBSTANTIVE, not any commit: another task's own delivery landing is the
+  // machinery running, and CI timings measured against it are last week's again.
+  assert.equal(verdict({ commits: { count: 4, substantiveChange: false }, prs: { touched: [] } }).run, false);
   // A collector that returned nothing must read as no movement, not throw.
   const empty = verdict({});
   assert.equal(empty.run, false);

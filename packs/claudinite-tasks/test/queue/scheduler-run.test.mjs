@@ -608,3 +608,40 @@ test('an unreadable task list reaps nothing, and neither status nor qualifier is
   });
   assert.deepEqual(kinds(inFlight.ops, 'retire-orphan'), [], 'only a blocked, unqualified standing item is the rule\'s');
 });
+
+// --- settings-level disablement ------------------------------------------------
+// REPO SHAPE IS NOT A PRECONDITION (task-preconditions DESIGN). "This repo ships
+// the store pipeline", "this repo has a vendored mount" are facts adoption
+// settled, not questions worth re-asking every night — so a repo that carries a
+// pack but not one task's subject names that task in
+// `taskScheduler.disabledTasks`, read here, before anything is instantiated.
+
+test('a disabled task is never instantiated, and its standing item is retired', async () => {
+  const schedule = { ...SCHEDULE, disabledTasks: ['p/off'] };
+  const tasks = [task('off', 'daily'), task('on', 'daily')];
+
+  const fresh = await planSchedulerRun({ tasks, items: [], now: '2026-08-14T10:00:00Z', schedule });
+  assert.deepEqual(kinds(fresh.ops, 'create').map((o) => o.task), ['on']);
+
+  // …and the item a previous cycle filed, before the repo disabled it, closes with
+  // a reason naming the setting rather than pretending the task is gone.
+  const standing = item({
+    task: 'off', labels: ['task:status:blocked'], created_at: '2026-08-13T04:00:00Z',
+    body: 'packs/p/tasks/off/task.md\n\nNot-before: 2026-08-15T04:00:00Z\n',
+  });
+  const withItem = await planSchedulerRun({
+    tasks, items: [standing], now: '2026-08-14T10:00:00Z', schedule,
+    evaluate: async () => ({ run: true }),
+  });
+  const [retired] = kinds(withItem.ops, 'retire-orphan');
+  assert.equal(retired.issue, standing.number);
+  assert.match(retired.reason, /taskScheduler\.disabledTasks/);
+});
+
+test('with nothing disabled the setting is simply absent — never "misconfigured"', async () => {
+  // A value right for nearly every repo stays in code: unset means the default.
+  for (const schedule of [SCHEDULE, { ...SCHEDULE, disabledTasks: [] }]) {
+    const { ops } = await planSchedulerRun({ tasks: [task('on', 'daily')], items: [], now: '2026-08-14T10:00:00Z', schedule });
+    assert.deepEqual(kinds(ops, 'create').map((o) => o.task), ['on']);
+  }
+});

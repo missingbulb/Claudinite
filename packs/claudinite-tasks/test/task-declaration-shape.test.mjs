@@ -124,8 +124,64 @@ test('task-declaration-shape: flags missing required fields', () => {
   const whats = run({ [TASK]: bad }).map((f) => f.what).join(' | ');
   assert.match(whats, /declares no string "id"/);
   assert.match(whats, /declares no string "agent_instructions"/);
-  assert.match(whats, /declares no "precondition_signals" array/);
-  assert.match(whats, /declares no "precondition" function/);
+  assert.match(whats, /declares neither "preconditions" nor a "precondition" function/);
+});
+
+// --- the declarative expression, read statically ------------------------------
+// An expression is TEXT, where a function body is opaque — which is the whole
+// reason the check can rule on unknown terms and bad arguments at author time.
+
+const declarativeTask = goodTask
+  .replace("  precondition_signals: ['commits', 'prs'],\n", '')
+  .replace('  precondition(signals, config) { return { run: false }; },\n', '')
+  .replace("  frequency: 'daily',", "  frequency: 'daily',\n  preconditions: ['substantive-change', 'no-open-pr-titled:My sweep'],");
+
+test('task-declaration-shape: a declarative task.mjs yields no findings', () => {
+  assert.deepEqual(run({ [TASK]: declarativeTask }), []);
+});
+
+test('task-declaration-shape: the expression is judged term by term', () => {
+  const whatsFor = (expression) => run({
+    [TASK]: declarativeTask.replace(/preconditions: \[[^\]]*\]/, `preconditions: [${expression}]`),
+  }).map((f) => f.what).join(' | ');
+
+  assert.match(whatsFor("'no-such-thing'"), /unknown condition "no-such-thing"/);
+  assert.match(whatsFor("'commits-under'"), /takes an inline argument and was given none/);
+  assert.match(whatsFor("'substantive-change:oops'"), /takes no argument/);
+  assert.match(whatsFor("'none', 'substantive-change'"), /legal only as the sole entry/);
+  assert.match(whatsFor("'substantive-change ||'"), /alternative around "\|\|" is empty/);
+  // A computed trigger is unreadable to a reader and to this check alike.
+  assert.match(whatsFor('SOME_CONSTANT'), /not a literal list of condition strings/);
+});
+
+test('task-declaration-shape: a task-local term resolves from the preconditions.mjs beside it', () => {
+  const TERMS = TASK.replace('task.mjs', 'preconditions.mjs');
+  const withOwnTerm = declarativeTask.replace(/preconditions: \[[^\]]*\]/, "preconditions: ['my-own-gate']");
+
+  // Without the sibling, the condition is a typo as far as anyone can tell.
+  assert.match(run({ [TASK]: withOwnTerm }).map((f) => f.what).join(' | '), /unknown condition "my-own-gate"/);
+
+  assert.deepEqual(run({
+    [TASK]: withOwnTerm,
+    [TERMS]: "export const terms = {\n  'my-own-gate': { signals: ['stamp'], holds: () => ({ holds: true }) },\n};\n",
+  }), []);
+});
+
+test('task-declaration-shape: the two forms are exclusive, and only the old one declares its signals', () => {
+  const both = declarativeTask.replace("  agent_model: 'opus',",
+    "  precondition(signals) { return { run: true }; },\n  agent_model: 'opus',");
+  assert.match(run({ [TASK]: both }).map((f) => f.what).join(' | '),
+    /declares both "preconditions" and a "precondition" function/);
+
+  const beside = declarativeTask.replace("  agent_model: 'opus',",
+    "  precondition_signals: ['commits'],\n  agent_model: 'opus',");
+  assert.match(run({ [TASK]: beside }).map((f) => f.what).join(' | '),
+    /declares "precondition_signals" beside "preconditions"/);
+
+  // …and the legacy function still has to declare its own union.
+  const noSignals = goodTask.replace("  precondition_signals: ['commits', 'prs'],\n", '');
+  assert.match(run({ [TASK]: noSignals }).map((f) => f.what).join(' | '),
+    /declares a "precondition" function but no "precondition_signals" array/);
 });
 
 test('task-declaration-shape: flags a non-object export', () => {

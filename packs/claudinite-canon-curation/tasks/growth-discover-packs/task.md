@@ -6,7 +6,9 @@ This is the only thing that notices a technology in use across the fleet with **
 
 **Why central.** One run sees every member, so **first-sight dedup is free**: the third member using a technology is recognised as the same gap as the first, in the same pass, with no cross-run state and no chance of three repos each proposing the same pack.
 
-The run's **Context section is binding scope**: it names the exact members to sweep. Work exactly that list — the fleet enumeration already happened in the precondition; **do not enumerate the fleet yourself or widen past the Context**. Finding nothing unhomed is a perfectly good, common outcome.
+**Your scope is every COVERED member** — one whose declaration parses and names at least one pack. Enumerate them once at the start of the run and work that list; a member with no declared packs is not running Claudinite in any usable sense and is not swept. Finding nothing unhomed is a perfectly good, common outcome.
+
+The trigger is the weekly anchor and nothing else: the opportunity here is standing (a technology the fleet uses that no canon pack homes), not a change in this repo, so the run happens and no-ops cheaply when the shelf already covers what the fleet is built on.
 
 A new canon pack is read by every repo that declares it, so this run opens a PR for the owner to approve.
 
