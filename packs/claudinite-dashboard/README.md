@@ -17,6 +17,10 @@ inference cannot tell "this repo only" from "the fleet, whose members went missi
 a stated mode can, and the disagreement becomes a failed build instead of a quietly
 wrong site.
 
+The end-state specification of both pages, the fields the fold gains for them and the
+visual identity is [docs/](docs/README.md); this file describes what a reader of the
+pages sees.
+
 **Opt-in.** Nothing fingerprints it and `--init` never seeds it: a repo carries this
 because someone declared it. Adopting it wires the GitHub Pages deploy.
 

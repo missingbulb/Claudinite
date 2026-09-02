@@ -1,0 +1,491 @@
+<title>Claudinite Work Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #eef1ef; --sheet: #fbfcfb; --ink: #16211f; --ink-2: #4b5956; --muted: #7c8a86;
+    --rule: #d5ddda; --ledger: #c3d5dc; --wash: rgba(43,98,161,0.06);
+    --machine: #2b62a1; --machine-wash: rgba(43,98,161,0.13); --dim: #b9cad8;
+    --you: #c98a12; --you-text: #8a5f05; --you-paper: #fdf3e2;
+    --good: #1f8a4c; --good-text: #17703c;
+    --serious: #d0602a; --serious-text: #a3451a;
+    --critical: #bf3b2e; --critical-text: #a02f24;
+    --sans: "Archivo", "Archivo Narrow", "Helvetica Neue", Arial, sans-serif;
+    --mono: "DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #131917; --sheet: #1b2321; --ink: #e6ebe7; --ink-2: #b2bdb8; --muted: #7d8a86;
+      --rule: #2c3634; --ledger: #2f4149; --wash: rgba(127,178,232,0.08);
+      --machine: #7fb2e8; --machine-wash: rgba(127,178,232,0.16); --dim: #3b5570;
+      --you: #e3b458; --you-text: #e3b458; --you-paper: #2e2717;
+      --good: #4dbb7a; --good-text: #4dbb7a;
+      --serious: #ee8a58; --serious-text: #ee8a58;
+      --critical: #ee6d60; --critical-text: #ee6d60;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #131917; --sheet: #1b2321; --ink: #e6ebe7; --ink-2: #b2bdb8; --muted: #7d8a86;
+    --rule: #2c3634; --ledger: #2f4149; --wash: rgba(127,178,232,0.08);
+    --machine: #7fb2e8; --machine-wash: rgba(127,178,232,0.16); --dim: #3b5570;
+    --you: #e3b458; --you-text: #e3b458; --you-paper: #2e2717;
+    --good: #4dbb7a; --good-text: #4dbb7a;
+    --serious: #ee8a58; --serious-text: #ee8a58;
+    --critical: #ee6d60; --critical-text: #ee6d60;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font: 400 12.5px/1.4 var(--sans); font-stretch: 100%; -webkit-font-smoothing: antialiased; }
+  a { color: var(--machine); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { font: inherit; color: var(--ink-2); background: none; border: 1px solid var(--rule); border-radius: 3px; padding: 3px 9px; cursor: pointer; }
+  button:hover { color: var(--ink); border-color: var(--muted); }
+  button:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--machine); outline-offset: 2px; }
+  .mono { font-family: var(--mono); }
+  .cap { font-family: var(--sans); font-stretch: 78%; font-weight: 700; font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); }
+  .gap { color: var(--muted); font-style: italic; }
+  .ask { color: var(--you-text); }
+  .id { font-family: var(--mono); }
+
+  /* top bar */
+  header.top { display: flex; align-items: center; gap: 16px; max-width: 1200px; margin: 0 auto; padding: 10px 24px 8px; }
+  header.top .mark { font-family: var(--sans); font-stretch: 72%; font-weight: 800; font-size: 19px; letter-spacing: 0.02em; text-transform: uppercase; }
+  header.top .crumb { font-stretch: 85%; font-weight: 600; font-size: 13px; color: var(--ink-2); padding-left: 14px; border-left: 1px solid var(--rule); }
+  header.top .census { font-family: var(--mono); font-size: 12px; color: var(--ink-2); display: inline-flex; gap: 14px; }
+  header.top .grow { flex: 1; }
+  header.top .quota { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  header.top button.theme { padding: 3px 6px; line-height: 0; }
+  header.top button.theme svg { width: 13px; height: 13px; display: block; }
+
+  /* the sheet */
+  main.sheet { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  .page { background: var(--sheet); border: 1px solid var(--rule); border-radius: 2px; }
+  .band { display: grid; grid-template-columns: 112px 1fr; border-top: 1px solid var(--rule); }
+  .band:first-child { border-top: 0; }
+  .band .stub { padding: 10px 12px 10px 14px; border-right: 1px solid var(--ledger); }
+  .band .stub .cap { display: block; line-height: 1.25; }
+  .band .stub .q { display: block; font-size: 11px; color: var(--muted); font-style: italic; margin-top: 3px; line-height: 1.3; }
+  .band .body { padding: 8px 16px 10px; min-width: 0; }
+
+  /* start here: the slip */
+  .slip { background: var(--you-paper); border-radius: 2px; padding: 8px 14px 9px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; row-gap: 4px; }
+  .slip .hl { font-size: 17px; font-weight: 700; font-stretch: 92%; letter-spacing: -0.005em; line-height: 1.2; text-wrap: balance; }
+  .slip .where { font-family: var(--mono); font-size: 12px; }
+  .slip .chip { font-family: var(--mono); font-size: 12px; color: var(--you-text); }
+  .slip .chip b { font-size: 14px; font-weight: 500; }
+  .slip .more { color: var(--ink-2); font-size: 12px; margin-left: auto; text-align: right; }
+
+  /* the machine */
+  .machine { display: grid; gap: 0; }
+  .cell { padding: 2px 14px 0; border-left: 1px solid var(--ledger); min-width: 0; }
+  .cell:first-child { padding-left: 0; border-left: 0; }
+  .cell .k { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .sq { width: 7px; height: 7px; display: inline-block; flex: none; }
+  .sq.good { background: var(--good); } .sq.you { background: var(--you); } .sq.serious { background: var(--serious); } .sq.critical { background: var(--critical); } .sq.machine { background: var(--machine); } .sq.none { border: 1px solid var(--muted); }
+  .cell .v { font-family: var(--mono); font-size: 21px; font-weight: 500; line-height: 1.15; margin-top: 4px; display: flex; align-items: baseline; gap: 7px; }
+  .cell .v .u { font-family: var(--sans); font-size: 11.5px; font-weight: 400; color: var(--ink-2); }
+  .cell .n { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .beat { display: flex; gap: 2px; margin-top: 6px; }
+  .beat i { width: 10px; height: 10px; display: block; background: var(--good); }
+  .beat i.you { background: var(--you); } .beat i.critical { background: var(--critical); } .beat i.none { background: none; border: 1px solid var(--rule); }
+  .beat.hours i { width: 6px; }
+  .wake { margin-top: 5px; }
+  .wake svg { display: block; width: 100%; height: 30px; }
+  .wake text { font-family: var(--mono); font-size: 8.5px; fill: var(--muted); }
+
+  /* the ledger */
+  .ledger { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+  .ledger .col { padding: 0 16px; border-left: 1px solid var(--ledger); min-width: 0; }
+  .ledger .col:first-child { padding-left: 0; border-left: 0; }
+  .ledger .col:last-child { padding-right: 0; }
+  .ledger h3 { margin: 0; padding: 2px 0 6px; display: flex; gap: 8px; align-items: baseline; }
+  .ledger h3 .q { font-weight: 400; font-style: italic; font-size: 11.5px; color: var(--muted); }
+  .fig { display: grid; grid-template-columns: 70px minmax(0,1fr) 56px 46px; column-gap: 6px; align-items: center; min-height: 42px; border-top: 1px solid var(--ledger); }
+  .fig:first-of-type { border-top: 0; }
+  .fig .v { font-family: var(--mono); font-size: 18px; font-weight: 500; letter-spacing: -0.01em; line-height: 1; white-space: nowrap; }
+    .fig .t { line-height: 1.3; min-width: 0; }
+  .fig .t .u { display: block; font-size: 12.5px; white-space: nowrap; }
+  .fig .t .s { display: block; font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .fig .d { font-family: var(--mono); font-size: 12px; text-align: right; line-height: 1.3; color: var(--ink-2); white-space: nowrap; }
+  .fig .d .vs { display: block; font-size: 10.5px; color: var(--muted); }
+  .fig .d.bad { color: var(--serious-text); font-weight: 500; }
+  .fig .d.good { color: var(--good-text); font-weight: 500; }
+  .fig .sp svg { width: 46px; height: 20px; display: block; }
+  .fig .sp { justify-self: end; }
+  .tailrow { border-top: 1px solid var(--ledger); font-size: 11px; color: var(--muted); padding: 5px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .totals { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 3px double var(--ledger); margin-top: 8px; padding-top: 6px; }
+  .totals > div { padding: 0 16px; border-left: 1px solid var(--ledger); display: flex; gap: 8px; align-items: baseline; font-size: 11.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
+  .totals > div:first-child { padding-left: 0; border-left: 0; }
+  .totals > div:last-child { padding-right: 0; }
+  .totals b { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--ink); }
+  .totals .sub { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .totals .expand { margin-left: auto; flex: none; }
+  .expand { font: inherit; font-size: 11.5px; color: var(--machine); background: none; border: 0; padding: 0; cursor: pointer; }
+  .expand:hover { text-decoration: underline; }
+  .detail { margin-top: 8px; font-size: 12px; border-top: 1px solid var(--ledger); }
+  .detail table { border-collapse: collapse; width: 100%; }
+  .detail th { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--ledger); }
+  .detail td { padding: 4px 8px; border-bottom: 1px solid var(--ledger); }
+  .detail tr:last-child td { border-bottom: 0; }
+  .detail td.num, .detail th.num { text-align: right; font-family: var(--mono); }
+
+  /* pulse */
+  .pulse { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .pulse svg { width: 100%; height: 28px; display: block; }
+  .pulse .n { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+  .next .body { color: var(--muted); font-size: 12px; padding-top: 10px; padding-bottom: 10px; }
+  footer.note { max-width: 1200px; margin: 14px auto 32px; padding: 0 24px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  footer.note code { font-family: var(--mono); font-size: 10.5px; }
+  @media (max-width: 900px) { .band { grid-template-columns: 1fr; } .band .stub { border-right: 0; padding-bottom: 0; } .ledger, .totals, .machine { grid-template-columns: 1fr; } .ledger .col, .totals > div, .cell { border-left: 0; padding-left: 0; } }
+  @media (prefers-reduced-motion: no-preference) { button, .expand { transition: color .12s, border-color .12s; } }
+
+  /* work */
+  .band.wide { grid-template-columns: 1fr; }
+  .band.wide .body { padding: 8px 16px 12px; }
+  .work-bar { display: flex; align-items: baseline; gap: 12px; padding: 2px 0 6px; }
+  .work-bar .q { font-size: 11.5px; font-style: italic; color: var(--muted); }
+  .tabs { margin-left: auto; display: inline-flex; gap: 18px; }
+  .tab { font: inherit; font-size: 12px; color: var(--ink-2); background: none; border: 0; border-radius: 0; border-bottom: 2px solid transparent; padding: 2px 0; cursor: pointer; }
+  .tab.on { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+  .tab .c { font-family: var(--mono); color: var(--muted); margin-left: 5px; }
+  .legend { display: flex; gap: 16px; font-size: 11px; color: var(--ink-2); flex-wrap: wrap; padding: 0 0 8px; justify-content: flex-end; }
+  .legend svg { width: 14px; height: 12px; vertical-align: -2px; margin-right: 4px; }
+  .board svg { display: block; width: 100%; height: auto; }
+  .board text { font-family: var(--sans); font-size: 11px; fill: var(--ink); }
+  .board .id, .board .mono { font-family: var(--mono); font-size: 10.5px; }
+  .board .cnt { font-family: var(--mono); font-size: 9.5px; font-weight: 500; }
+  .board .glyph { font-family: var(--mono); font-size: 10px; font-weight: 500; }
+  .board .muted { fill: var(--muted); }
+  .board .note { paint-order: stroke; stroke: var(--sheet); stroke-width: 3px; stroke-linejoin: round; }
+  .board .b { font-weight: 600; }
+  .board .warnt { fill: var(--serious-text); }
+  .board .lab { font-weight: 600; font-size: 11.5px; }
+  .board .grp { font-stretch: 78%; font-weight: 700; font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; fill: var(--ink-2); }
+  .board .ax { font-family: var(--mono); font-size: 10px; fill: var(--muted); }
+  .board .now { font-family: var(--mono); font-size: 10.5px; font-weight: 500; fill: var(--ink); }
+  .board .mk { cursor: pointer; }
+  .tail { display: flex; gap: 20px; align-items: baseline; padding: 8px 0 4px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; }
+  .tail b { font-family: var(--mono); font-weight: 500; font-size: 13px; color: var(--ink); }
+  .tail .expand { margin-left: auto; }
+  .tail-detail { font-size: 12px; color: var(--ink-2); padding: 4px 0 8px; line-height: 1.5; }
+  code { font-family: var(--mono); font-size: 11px; background: var(--wash); padding: 0 4px; border-radius: 2px; }
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; border-top: 3px double var(--ledger); margin-top: 6px; padding-top: 10px; }
+  .panels.one { grid-template-columns: 1fr; }
+  .panel { font-size: 12px; padding-bottom: 4px; min-width: 0; }
+  .panel[hidden] { display: none; }
+  .ph { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; line-height: 1.3; }
+  .ph b { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .ph .sub { color: var(--muted); font-size: 11.5px; }
+  .ph .close { margin-left: auto; font: inherit; font-size: 11.5px; color: var(--machine); background: none; border: 0; padding: 0; cursor: pointer; }
+  .chipst { font-stretch: 85%; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 1px 7px; border: 1px solid currentColor; border-radius: 2px; color: var(--ink-2); }
+  .chipst.park { color: var(--you-text); } .chipst.crit { color: var(--critical-text); }
+  .panel dl { display: grid; grid-template-columns: 92px 1fr; gap: 5px 12px; margin: 0; }
+  .panel dt { font-stretch: 78%; font-weight: 700; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-top: 2px; }
+  .panel dd { margin: 0; color: var(--ink-2); line-height: 1.45; }
+  .panel dd b { color: var(--ink); }
+  .panel .one-col { grid-template-columns: 92px 1fr 92px 1fr; }
+</style>
+
+<header class="top">
+  <span class="mark">Claudinite</span><span class="crumb"><a href="#" style="color:inherit">← Fleet</a></span>
+  <span class="census" title="how you recognise the repo, not findings about it"><span>4 PRs</span><span>12 issues</span><span>★ 4</span><span>17 tasks</span></span>
+  <span class="grow"></span>
+  <span class="quota">4000/5000 · user · −28 this load</span>
+  <button type="button">Reload</button><button type="button">Clear cache</button><button type="button" class="theme" aria-label="Theme"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 1.5 A5.5 5.5 0 0 1 7 12.5 Z" fill="currentColor"/></svg></button>
+</header>
+
+<main class="sheet">
+<div class="page">
+
+  <section class="band" aria-label="Start here">
+    <div class="stub"><span class="cap">Start here</span><span class="q">the one thing only you can unblock</span></div>
+    <div class="body">
+      <div class="slip">
+        <span class="hl">#1418 waits on your decision · 2 d 4 h</span>
+        <a class="where" href="#">implement-request · retire the slot-era rows</a>
+        <span class="chip"><b>15</b> min · decision park</span>
+        <span class="more">1 more · growth-promote leash blown, janitor at 05:00</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-label="The machine">
+    <div class="stub"><span class="cap">The machine</span><span class="q">this repo's scheduler, right now, hour by hour</span></div>
+    <div class="body machine" style="grid-template-columns: 1.55fr 0.95fr 0.8fr 0.8fr 1.05fr 1.5fr">
+      <div class="cell">
+        <div class="k"><i class="sq you"></i><span class="cap">Scheduler</span></div>
+        <div class="v">12m<span class="u">ago · 22 of 24 h</span></div>
+        <div class="beat hours" title="one square per hour, coloured when a scheduler run completed in it; hollow = neither fold nor live runs reached it"><i title="10:00 — ran"></i><i title="11:00 — ran"></i><i title="12:00 — ran"></i><i title="13:00 — ran"></i><i class="you" title="04:00 — no run, 2h gap"></i><i title="15:00 — ran"></i><i title="16:00 — ran"></i><i title="17:00 — ran"></i><i title="18:00 — ran"></i><i title="19:00 — ran"></i><i title="20:00 — ran"></i><i title="21:00 — ran"></i><i title="22:00 — ran"></i><i title="23:00 — ran"></i><i title="00:00 — ran"></i><i title="01:00 — ran"></i><i title="02:00 — ran"></i><i title="03:00 — ran"></i><i title="04:00 — ran"></i><i title="05:00 — ran"></i><i title="06:00 — ran"></i><i title="07:00 — ran"></i><i class="none" title="09:00 — not folded yet, live runs page did not reach it"></i><i title="09:00 — ran"></i></div>
+        <div class="n">2 h gap at 04:00</div>
+      </div>
+      <div class="cell">
+        <div class="k"><i class="sq good"></i><span class="cap">Executor</span></div>
+        <div class="v">0<span class="u">of 9 failed · 24h</span></div>
+        <div class="n">1 in flight</div>
+      </div>
+      <div class="cell">
+        <div class="k"><i class="sq good"></i><span class="cap">CI · main</span></div>
+        <div class="v">passing</div>
+        <div class="n">41m ago</div>
+      </div>
+      <div class="cell">
+        <div class="k"><i class="sq you"></i><span class="cap">Fold age</span></div>
+        <div class="v">23h</div>
+        <div class="n">head moved</div>
+      </div>
+      <div class="cell">
+        <div class="k"><i class="sq serious"></i><span class="cap">Drift</span></div>
+        <div class="v">engine<span class="u">−1</span></div>
+        <div class="n">v60901 &lt; canon 60902</div>
+      </div>
+      <div class="cell">
+        <div class="k"><i class="sq good"></i><span class="cap">Next wake</span></div>
+        <div class="v">05:00<span class="u">7 tasks · in 19 h</span></div>
+        <div class="wake">
+          <svg viewBox="0 0 240 30" preserveAspectRatio="none" role="img" aria-label="This repo's task anchors over the next 24 hours">
+            <line x1="0" y1="19" x2="240" y2="19" stroke="var(--ledger)" stroke-width="1"/>
+            <g fill="var(--machine)">
+              <rect x="10" y="12" width="2.5" height="7"><title>task-janitor · hourly · 10:00</title></rect>
+              <rect x="20" y="12" width="2.5" height="7"><title>usage-fold · hourly, if the repo moved</title></rect>
+              <rect x="30" y="12" width="2.5" height="7"/><rect x="40" y="12" width="2.5" height="7"/><rect x="50" y="12" width="2.5" height="7"/><rect x="60" y="12" width="2.5" height="7"/><rect x="70" y="12" width="2.5" height="7"/><rect x="80" y="12" width="2.5" height="7"/><rect x="90" y="12" width="2.5" height="7"/><rect x="100" y="12" width="2.5" height="7"/><rect x="110" y="12" width="2.5" height="7"/><rect x="120" y="12" width="2.5" height="7"/><rect x="130" y="12" width="2.5" height="7"/><rect x="140" y="12" width="2.5" height="7"/><rect x="150" y="12" width="2.5" height="7"/><rect x="160" y="12" width="2.5" height="7"/><rect x="170" y="12" width="2.5" height="7"/><rect x="180" y="12" width="2.5" height="7"/><rect x="190" y="12" width="2.5" height="7"/><rect x="200" y="12" width="2.5" height="7"/><rect x="210" y="12" width="2.5" height="7"/><rect x="220" y="12" width="2.5" height="7"/><rect x="230" y="12" width="2.5" height="7"/>
+              <rect x="195" y="1" width="2.5" height="18"><title>05:00 · growth-extract, growth-promote, logs-prune, update, tidy-issues, usage-fold, task-janitor</title></rect>
+              <rect x="198.5" y="1" width="2.5" height="18"/><rect x="202" y="1" width="2.5" height="18"/><rect x="205.5" y="3" width="2.5" height="16"/><rect x="209" y="3" width="2.5" height="16"/><rect x="212.5" y="5" width="2.5" height="14"/><rect x="216" y="5" width="2.5" height="14"/>
+            </g>
+            <rect x="0" y="1" width="2.5" height="18" fill="var(--critical)"><title>growth-promote · schedule held by park #1402</title></rect>
+            <text x="0" y="29">now 09:27</text><text x="112" y="29">21:00</text><text x="240" y="29" text-anchor="end">+24h</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-label="This week against last">
+    <div class="stub"><span class="cap">This week</span><span class="q">against last · Aug 25 – 31 vs Aug 18 – 24 · this repo's fold · every figure clickable</span></div>
+    <div class="body">
+      <div class="ledger">
+        <div class="col">
+          <h3><span class="cap">Got</span><span class="q">what this repo produced</span></h3>
+          <div class="fig">
+            <div class="v">31</div>
+            <div class="t"><span class="u">merged PRs</span><span class="s">27 with nobody in the loop</span></div>
+            <div class="d">−12<span class="vs">vs 43</span></div>
+            <div class="sp"><svg viewBox="0 0 74 28"><g fill="var(--dim)"><rect x="0" y="13" width="4" height="15"/><rect x="5" y="8" width="4" height="20"/><rect x="10" y="15" width="4" height="13"/><rect x="15" y="10" width="4" height="18"/><rect x="20" y="20" width="4" height="8"/><rect x="25" y="13" width="4" height="15"/><rect x="30" y="8" width="4" height="20"/></g><g fill="var(--machine)"><rect x="35" y="25" width="4" height="3"/><rect x="40" y="23" width="4" height="5"/><rect x="45" y="15" width="4" height="13"/><rect x="50" y="25" width="4" height="3"/><rect x="55" y="27" width="4" height="1"/><rect x="60" y="0" width="4" height="28"/><rect x="65" y="0" width="4" height="28"/></g></svg></div>
+          </div>
+          <div class="fig">
+            <div class="v">65</div>
+            <div class="t"><span class="u">queue closes</span><span class="s">44 done · <b>15 obsolete</b> · 6 no outcome</span></div>
+            <div class="d">+1<span class="vs">vs 64</span></div>
+            <div class="sp"><svg viewBox="0 0 74 28"><g fill="var(--dim)"><rect x="0" y="23" width="4" height="5"/><rect x="5" y="22" width="4" height="6"/><rect x="10" y="15" width="4" height="13"/><rect x="15" y="16" width="4" height="12"/><rect x="20" y="8" width="4" height="20"/><rect x="25" y="20" width="4" height="8"/><rect x="30" y="24" width="4" height="4"/></g><g fill="var(--machine)"><rect x="35" y="25" width="4" height="3"/><rect x="40" y="26" width="4" height="2"/><rect x="45" y="20" width="4" height="8"/><rect x="50" y="23" width="4" height="5"/><rect x="55" y="26" width="4" height="2"/><rect x="60" y="0" width="4" height="28"/><rect x="65" y="6" width="4" height="22"/></g></svg></div>
+          </div>
+          <div class="fig">
+            <div class="v">30</div>
+            <div class="t"><span class="u">caught before merge</span><span class="s">of 246 Stop-hook runs · 1 from CI</span></div>
+            <div class="d">−108<span class="vs">vs 138</span></div>
+            <div class="sp"><svg viewBox="0 0 74 28"><g fill="var(--dim)"><rect x="0" y="18" width="4" height="10"/><rect x="5" y="0" width="4" height="28"/><rect x="10" y="17" width="4" height="11"/><rect x="15" y="23" width="4" height="5"/><rect x="20" y="23" width="4" height="5"/><rect x="25" y="24" width="4" height="4"/><rect x="30" y="22" width="4" height="6"/></g><g fill="var(--machine)"><rect x="40" y="26" width="4" height="2"/><rect x="45" y="26" width="4" height="2"/><rect x="50" y="27" width="4" height="1"/><rect x="60" y="24" width="4" height="4"/><rect x="65" y="22" width="4" height="6"/></g><rect x="35" y="0" width="4" height="28" fill="none" stroke="var(--muted)" stroke-dasharray="2 2"/><rect x="55" y="0" width="4" height="28" fill="none" stroke="var(--muted)" stroke-dasharray="2 2"/></svg></div>
+          </div>
+          <div class="tailrow">0 releases (vs 0) · lines, net: <span class="gap">not recorded — shallow checkout</span></div>
+        </div>
+
+        <div class="col">
+          <h3><span class="cap">Cost</span><span class="q">what it took here</span></h3>
+          <div class="fig">
+            <div class="v">3.1B</div>
+            <div class="t"><span class="u">tokens in</span><span class="s">8.9M out · 73 of 73 sessions recorded</span></div>
+            <div class="d">−48%<span class="vs">vs 6.0B</span></div>
+            <div class="sp"><svg viewBox="0 0 74 28"><g fill="var(--dim)"><rect x="0" y="17" width="4" height="11"/><rect x="5" y="6" width="4" height="22"/><rect x="10" y="15" width="4" height="13"/><rect x="15" y="13" width="4" height="15"/><rect x="20" y="16" width="4" height="12"/><rect x="25" y="0" width="4" height="28"/><rect x="30" y="13" width="4" height="15"/></g><g fill="var(--machine)"><rect x="35" y="25" width="4" height="3"/><rect x="40" y="24" width="4" height="4"/><rect x="45" y="22" width="4" height="6"/><rect x="50" y="23" width="4" height="5"/><rect x="55" y="27" width="4" height="1"/><rect x="60" y="6" width="4" height="22"/><rect x="65" y="9" width="4" height="19"/></g></svg></div>
+          </div>
+          <div class="fig">
+            <div class="v">≈$318</div>
+            <div class="t"><span class="u">your rate table</span><span class="s">96% Opus · <span class="gap">0 unpriced</span></span></div>
+            <div class="d">−$290<span class="vs">vs $608</span></div>
+            <div class="sp"></div>
+          </div>
+          <div class="fig">
+            <div class="v">13.8k</div>
+            <div class="t"><span class="u">rule tokens / session</span><span class="s">fleet mean 9.1k · heaviest: local pack 5.2k</span></div>
+            <div class="d">−1.1k<span class="vs">vs 14.9k</span></div>
+            <div class="sp"></div>
+          </div>
+          <div class="tailrow">155 of your turns · 73 sessions · exec 20 of 21 ok</div>
+        </div>
+
+        <div class="col">
+          <h3><span class="cap">Speed</span><span class="q">how fast it moves, where it sticks</span></h3>
+          <div class="fig">
+            <div class="v">8.1h</div>
+            <div class="t"><span class="u">issue → merged</span><span class="s">median · p90 1.9 d</span></div>
+            <div class="d">+2.4h<span class="vs">vs 5.7h</span></div>
+            <div class="sp"><svg viewBox="0 0 74 28"><polyline fill="none" stroke="var(--dim)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="2,18 12,20 22,16 32,17 37,15"/><polyline fill="none" stroke="var(--machine)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="37,15 47,14 57,8 67,9"/><circle cx="67" cy="9" r="4" fill="var(--machine)" stroke="var(--sheet)" stroke-width="2"/></svg></div>
+          </div>
+          <div class="fig">
+            <div class="v">9.3</div>
+            <div class="t"><span class="u">closes / day</span><span class="s">peak Sun 31 · 2 days with none</span></div>
+            <div class="d">+0.2<span class="vs">vs 9.1</span></div>
+            <div class="sp"></div>
+          </div>
+          <div class="fig">
+            <div class="v">1</div>
+            <div class="t"><span class="u">stuck 3 d+</span><span class="s"><b class="ask">parked for you</b> · #1418 · 0 on the machine</span></div>
+            <div class="d bad">+1<span class="vs">vs 0</span></div>
+            <div class="sp"></div>
+          </div>
+          <div class="tailrow">session → merged p50 38m · p90 4.1 h — CI, then you</div>
+        </div>
+      </div>
+
+      <div class="totals">
+        <div><b>≈$10.3</b> per merged PR <span class="sub">from $14.1 · 100M tok each</span></div>
+        <div><b>87%</b> autonomy <span class="sub">27 of 31 · yours : agent min 1 : 19</span></div>
+        <div><b>30</b> would have shipped broken <span class="sub">pack-version-bumped ×36</span><button class="expand" id="toggle" aria-expanded="false" aria-controls="detail">per task ▾</button></div>
+      </div>
+      <div class="detail" id="detail" hidden>
+        <table>
+          <thead><tr><th class="cap">Task</th><th class="num cap">Closed</th><th class="cap">done / obsolete / none</th><th class="num cap">Sessions</th><th class="num cap">Tokens in</th><th class="num cap">≈ $</th><th class="num cap">$ / close</th><th class="num cap">Exec failed</th><th class="num cap">Parked</th><th class="cap">Model</th></tr></thead>
+          <tbody>
+            <tr><td>engine/implement-request</td><td class="num">27</td><td>10 / <b>11</b> / 6</td><td class="num">14</td><td class="num">1.3B</td><td class="num">$131</td><td class="num">$13.1</td><td class="num">1</td><td class="num">3</td><td>opus</td></tr>
+            <tr><td>claudinite-growth/growth-extract</td><td class="num">3</td><td>3 / 0 / 0</td><td class="num">5</td><td class="num">0.9B</td><td class="num">$92</td><td class="num">$30.7</td><td class="num">0</td><td class="num">0</td><td>opus</td></tr>
+            <tr><td>tidy-repo/tidy-issues</td><td class="num">4</td><td>4 / 0 / 0</td><td class="num">5</td><td class="num">0.4B</td><td class="num">$41</td><td class="num">$10.3</td><td class="num">0</td><td class="num">0</td><td>sonnet</td></tr>
+            <tr><td>claudinite-growth/growth-discover-packs</td><td class="num">1</td><td>1 / 0 / 0</td><td class="num">2</td><td class="num">0.2B</td><td class="num">$21</td><td class="num">$21.0</td><td class="num">0</td><td class="num">0</td><td>opus</td></tr>
+            <tr><td>tidy-repo/improve-comments</td><td class="num">1</td><td>1 / 0 / 0</td><td class="num">2</td><td class="num">0.1B</td><td class="num">$12</td><td class="num">$12.0</td><td class="num">0</td><td class="num">0</td><td>opus</td></tr>
+            <tr><td>claudinite-tasks/task-janitor</td><td class="num">11</td><td>11 / 0 / 0</td><td class="num">0</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td>none · code-work</td></tr>
+            <tr><td>claudinite-tasks/usage-fold</td><td class="num">7</td><td>7 / 0 / 0</td><td class="num">0</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td>none · code-work</td></tr>
+            <tr><td class="gap">(no task) — sessions you started</td><td class="num gap">—</td><td class="gap">—</td><td class="num">45</td><td class="num">0.2B</td><td class="num">$21</td><td class="num gap">—</td><td class="num gap">—</td><td class="num gap">—</td><td class="gap">—</td></tr>
+            <tr><td class="gap">canon-curation/growth-promote · 4 others</td><td class="num">5</td><td>1 / 4 / 0</td><td class="num">0</td><td class="num gap" colspan="6">closed by the janitor · no session</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" aria-label="Pulse">
+    <div class="stub"><span class="cap">Pulse</span><span class="q">sessions / day, 14 days</span></div>
+    <div class="body pulse">
+      <svg viewBox="0 0 1000 30" preserveAspectRatio="none" role="img" aria-label="14 columns of sessions per day, last week dimmed, this week in the machine's blue, today dashed as not folded">
+        <line x1="0" y1="30" x2="1000" y2="30" stroke="var(--ledger)"/>
+        <g fill="var(--dim)">
+          <rect x="16" y="20" width="40" height="10"/><rect x="87" y="3" width="40" height="27"/><rect x="158" y="10" width="40" height="20"/>
+          <rect x="230" y="9" width="40" height="21"/><rect x="301" y="20" width="40" height="10"/><rect x="373" y="8" width="40" height="22"/><rect x="444" y="1" width="40" height="29"/>
+        </g>
+        <g fill="var(--machine)">
+          <rect x="516" y="28" width="40" height="2"/><rect x="587" y="27" width="40" height="3"/><rect x="658" y="16" width="40" height="14"/>
+          <rect x="730" y="27" width="40" height="3"/><rect x="801" y="28" width="40" height="2"/><rect x="873" y="0" width="40" height="30"/><rect x="944" y="0" width="40" height="30"/>
+        </g>
+        <rect x="1015" y="1" width="0" height="28" fill="none"/>
+      </svg>
+      <span class="n">peak 26 · Sat 30 &amp; Sun 31 · 2 days with 1 · today not folded yet</span>
+    </div>
+  </section>
+
+  <section class="band wide" aria-label="Work">
+    <div class="body">
+      <div class="work-bar">
+        <span class="cap" style="font-size:11.5px">Work</span>
+        <span class="q">Aug 26 → Sep 6 · a lane per flow, a cell per scheduled occurrence · every mark read off the issues</span>
+        <span class="tabs"><button class="tab on" type="button">board</button><button class="tab" type="button">stuck<span class="c">9</span></button><button class="tab" type="button">pending<span class="c">4</span></button><button class="tab" type="button">all<span class="c">24</span></button></span>
+      </div>
+      <span class="legend" aria-label="Marks">
+  <span><svg viewBox="0 0 14 12"><rect x="1" y="3.5" width="12" height="5" rx="1.5" fill="var(--machine-wash)" stroke="var(--machine)" stroke-width="1.25"/></svg>PR, opened → now</span>
+  <span><svg viewBox="0 0 14 12"><polygon points="7,2 2,8 12,8" fill="var(--you)"/></svg>for you</span>
+  <span><svg viewBox="0 0 14 12"><circle cx="7" cy="6" r="4.5" fill="none" stroke="var(--ink-2)" stroke-width="1.5"/></svg>queue item</span>
+  <span><svg viewBox="0 0 14 12"><rect x="2.5" y="1.5" width="9" height="9" fill="none" stroke="var(--serious)" stroke-width="1.75"/></svg>park × – ? ▨</span>
+  <span><svg viewBox="0 0 14 12"><polygon points="7,0.5 12.5,6 7,11.5 1.5,6" fill="none" stroke="var(--ink)" stroke-width="1.5"/></svg>plain issue</span>
+  <span><svg viewBox="0 0 14 12"><rect x="1" y="2" width="12" height="8" rx="1" fill="var(--good)"/></svg>ran</span>
+  <span><svg viewBox="0 0 14 12"><rect x="1.5" y="2.5" width="11" height="7" rx="1" fill="none" stroke="var(--muted)"/></svg>asked, declined</span>
+  <span><svg viewBox="0 0 14 12"><rect x="1.5" y="2.5" width="11" height="7" rx="1" fill="none" stroke="var(--machine)"/></svg>predicted</span>
+  <span><svg viewBox="0 0 14 12"><rect x="1.5" y="6" width="11" height="4" rx="1" fill="none" stroke="var(--muted)"/></svg>will decline</span>
+  <span><svg viewBox="0 0 14 12"><rect x="1.5" y="2" width="11" height="8" fill="url(#hatchl)" stroke="var(--critical)" stroke-width="1.25"/><defs><pattern id="hatchl" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="var(--sheet)"/><line x1="0" y1="0" x2="0" y2="4" stroke="var(--critical)" stroke-width="1.5"/></pattern></defs></svg>failure park</span>
+  <span><svg viewBox="0 0 14 12"><path d="M1,6 h4 M9,6 h4 M5,2 l2,4 l-2,4" fill="none" stroke="var(--critical)" stroke-width="1.5"/></svg>broken lane</span>
+</span>
+      <div class="board" id="board"><svg viewBox="0 0 1140 774" role="img" aria-label="The work board: a time axis from Aug 26 to Sep 6 with lanes for pull requests waiting now, ad-hoc flows placed at their predicted run time, and a task-by-day grid of scheduled outcomes; broken lanes are drawn with a gap">
+<defs>
+  <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z" fill="var(--ink-2)"/></marker>
+  <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="var(--sheet)"/><line x1="0" y1="0" x2="0" y2="4" stroke="var(--critical)" stroke-width="1.5"/></pattern>
+</defs>
+<rect x="250" y="14" width="547" height="734" fill="var(--wash)"/><line x1="250" y1="36" x2="250" y2="750" stroke="var(--ledger)"/><text x="255" y="32" class="ax">Wed Aug 26</text><line x1="265" y1="36" x2="265" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="324" y1="36" x2="324" y2="750" stroke="var(--ledger)"/><text x="328" y="32" class="ax">Thu Aug 27</text><line x1="339" y1="36" x2="339" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="397" y1="36" x2="397" y2="750" stroke="var(--ledger)"/><text x="402" y="32" class="ax">Fri Aug 28</text><line x1="412" y1="36" x2="412" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="470" y1="36" x2="470" y2="750" stroke="var(--ledger)"/><text x="476" y="32" class="ax">Sat Aug 29</text><line x1="486" y1="36" x2="486" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="544" y1="36" x2="544" y2="750" stroke="var(--ledger)"/><text x="549" y="32" class="ax">Sun Aug 30</text><line x1="559" y1="36" x2="559" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="618" y1="36" x2="618" y2="750" stroke="var(--ledger)"/><text x="622" y="32" class="ax">Mon Aug 31</text><line x1="633" y1="36" x2="633" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="691" y1="36" x2="691" y2="750" stroke="var(--ledger)"/><text x="696" y="32" class="ax">Tue Sep 1</text><line x1="706" y1="36" x2="706" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="764" y1="36" x2="764" y2="750" stroke="var(--ledger)"/><text x="770" y="32" class="ax">Wed Sep 2</text><line x1="780" y1="36" x2="780" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="838" y1="36" x2="838" y2="750" stroke="var(--ledger)"/><text x="843" y="32" class="ax">Thu Sep 3</text><line x1="853" y1="36" x2="853" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="912" y1="36" x2="912" y2="750" stroke="var(--ledger)"/><text x="916" y="32" class="ax">Fri Sep 4</text><line x1="927" y1="36" x2="927" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="985" y1="36" x2="985" y2="750" stroke="var(--ledger)"/><text x="990" y="32" class="ax">Sat Sep 5</text><line x1="1000" y1="36" x2="1000" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="1058" y1="36" x2="1058" y2="750" stroke="var(--ledger)"/><text x="1064" y="32" class="ax">Sun Sep 6</text><line x1="1074" y1="36" x2="1074" y2="41" stroke="var(--ink-2)" stroke-width="1.5"/><line x1="250" y1="36" x2="1132" y2="36" stroke="var(--ledger)"/><line x1="797" y1="14" x2="797" y2="754" stroke="var(--ink)" stroke-width="1.5"/><text x="797" y="10" class="now" text-anchor="middle">now · Wed Sep 2 10:30 UTC</text><text x="1132" y="766" class="ax" text-anchor="end">Sep 7 ▸ <tspan class="id">#1519</tspan> 12:00 · <tspan class="id">#1580</tspan></text><text x="250" y="766" class="ax">◂ before Aug 26: 9 PRs, 2 failure parks, 4 unpicked verifications</text>
+<text x="254" y="64" class="muted note">21 open PRs · every one waits for a person · +1 a day from growth-promote, 2–4 on Sunday</text><line x1="0" y1="70" x2="1132" y2="70" stroke="var(--rule)"/><line x1="0" y1="118" x2="1132" y2="118" stroke="var(--ledger)"/><g class="mk pr" tabindex="0" data-panel="p1583"><title>PR #1583 · opened 12 h ago · waits for you</title><rect x="757" y="95.0" width="40" height="10" rx="2" fill="var(--machine-wash)" stroke="var(--machine)" stroke-width="1.25"/><polygon points="797,90.0 792,84.0 802,84.0" fill="var(--you)"><title>waits for a person: no automerge policy covers it</title></polygon><text x="806" y="104.0"><tspan class="id">#1583</tspan> · 12 h</text></g><line x1="869" y1="100.0" x2="880" y2="100.0" stroke="var(--ink-2)" stroke-width="1.5" marker-end="url(#arrow)"/><g class="mk" tabindex="0"><title>#1583 closes #1578 (plain: Implement the preconditions evaluator) on merge</title><polygon points="888.65625,93.5 895.15625,100.0 888.65625,106.5 882.15625,100.0" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1.5"/></g><text x="900" y="104.0" text-anchor="start"><tspan class="id">#1578</tspan></text><line x1="933" y1="100.0" x2="962" y2="100.0" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arrow)"/><g class="mk"><title>#1579 · Blocked-by #1578 · released when #1578 closes — but carries no task:origin:ad-hoc mark, so the queue will never pick it</title><circle cx="970.65625" cy="100.0" r="5.5" fill="var(--sheet)" stroke="var(--ink-2)" stroke-width="1.5" stroke-dasharray="3 2"/></g><text x="982" y="104.0" text-anchor="start"><tspan class="id">#1579</tspan> <tspan class="warnt">unmarked</tspan></text><text x="1126" y="104.0" class="muted" text-anchor="end">▸ <tspan class="id">#1580</tspan></text><line x1="0" y1="154" x2="1132" y2="154" stroke="var(--ledger)"/><g class="mk pr" tabindex="0" data-panel="p1543"><title>PR #1543 · opened 1 d 12 h ago · waits for you</title><rect x="685" y="131.0" width="111" height="10" rx="2" fill="var(--machine-wash)" stroke="var(--machine)" stroke-width="1.25"/><polygon points="797,126.0 792,120.0 802,120.0" fill="var(--you)"><title>waits for a person: no automerge policy covers it</title></polygon><text x="806" y="140.0"><tspan class="id">#1543</tspan> · 1 d 12 h</text></g><line x1="889" y1="136.0" x2="917" y2="136.0" stroke="var(--ink-2)" stroke-width="1.5" marker-end="url(#arrow)"/><g class="mk" tabindex="0" data-panel="p1543"><title>#1542 · needs-human-approval · Ends-when: #1543 closed — rule G closes it done on merge, rejected on close · policy under:packs && markdown-line-removals did not cover the diff</title><rect x="920.65625" y="130.0" width="12" height="12" fill="var(--sheet)" stroke="var(--you)" stroke-width="1.75"/><line x1="923.65625" y1="136.0" x2="929.65625" y2="136.0" stroke="var(--you)" stroke-width="1.75"/></g><text x="938" y="140.0" text-anchor="start"><tspan class="id">#1542</tspan> ends-when</text><line x1="0" y1="190" x2="1132" y2="190" stroke="var(--ledger)"/><g class="mk pr" tabindex="0"><title>PR #1513 · opened 1 d 23 h ago · waits for you</title><rect x="652" y="167.0" width="145" height="10" rx="2" fill="var(--machine-wash)" stroke="var(--machine)" stroke-width="1.25"/><polygon points="797,162.0 792,156.0 802,156.0" fill="var(--you)"><title>waits for a person: no automerge policy covers it</title></polygon><text x="806" y="176.0"><tspan class="id">#1513</tspan> · 1 d 23 h</text></g><line x1="889" y1="172.0" x2="917" y2="172.0" stroke="var(--ink-2)" stroke-width="1.5" marker-end="url(#arrow)"/><g class="mk" tabindex="0"><title>#1169 · needs-human-approval · 11 d 21 h old · Blocked-by #1166 (closed) · Ends-when: #1513 closed</title><rect x="920.65625" y="166.0" width="12" height="12" fill="var(--sheet)" stroke="var(--you)" stroke-width="1.75"/><line x1="923.65625" y1="172.0" x2="929.65625" y2="172.0" stroke="var(--you)" stroke-width="1.75"/></g><text x="938" y="176.0" text-anchor="start"><tspan class="id">#1169</tspan> ends-when · 11 d</text><line x1="0" y1="226" x2="1132" y2="226" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>9 growth-promote PRs — #1021, #1157, #1204, #1303, #1345, #1372, #1409, #1419, #1451, #1524 (one of the ten is a canon-curation mint) — opened 14 d to 2 d ago · task automerge: nothing, so each waits for you</title><rect x="252" y="200.0" width="545" height="16" rx="2" fill="var(--machine-wash)" stroke="var(--machine)" stroke-width="1.25"/><text x="247" y="212.0" class="muted" text-anchor="end">◂</text><text x="260" y="212.0" text-anchor="start"><tspan class="b">9 PRs</tspan> · 14 d → 2 d · policy: nothing</text></g><polygon points="797,197.0 792,191.0 802,191.0" fill="var(--you)"><title>9 PRs wait for you</title></polygon><g class="mk"><title>#1584 growth-promote · running-agent since 09:54 · opus · will open PR #10 today</title><circle cx="810.65625" cy="208.0" r="5.5" fill="var(--machine)"/></g><text x="821" y="212.0" text-anchor="start"><tspan class="id">#1584</tspan></text><g class="mk"><title>Sep 3 05:00 · growth-promote · verdict fail-open (FLEET_GITHUB_TOKEN unset) → runs → one more PR for you</title><rect x="851.8125" y="201.0" width="3" height="14" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk"><title>Sep 4 05:00 · growth-promote · verdict fail-open (FLEET_GITHUB_TOKEN unset) → runs → one more PR for you</title><rect x="925.3125" y="201.0" width="3" height="14" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk"><title>Sep 5 05:00 · growth-promote · verdict fail-open (FLEET_GITHUB_TOKEN unset) → runs → one more PR for you</title><rect x="998.8125" y="201.0" width="3" height="14" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk"><title>Sep 6 05:00 · growth-promote · verdict fail-open (FLEET_GITHUB_TOKEN unset) → runs → one more PR for you</title><rect x="1072.3125" y="201.0" width="3" height="14" fill="none" stroke="var(--machine)" stroke-width="1"/></g><text x="1064" y="212.0" class="muted" text-anchor="end">+1 PR / day</text><text x="254" y="242" class="muted note">4 task PRs parked on approval (<tspan class="id">#1441</tspan>←<tspan class="id">#1428</tspan>, <tspan class="id">#1283</tspan>←<tspan class="id">#1275</tspan>, <tspan class="id">#1285</tspan>←<tspan class="id">#1274</tspan>, <tspan class="id">#1284</tspan>) · 5 session PRs (<tspan class="id">#1582</tspan> 13 h … <tspan class="id">#1031</tspan> 14 d)</text><text x="254" y="270" class="muted note">ad-hoc chains at their predicted run time · a lane is drawn broken where nothing scheduled can move it</text><line x1="0" y1="276" x2="1132" y2="276" stroke="var(--rule)"/><line x1="0" y1="324" x2="1132" y2="324" stroke="var(--ledger)"/><g class="mk" tabindex="0" data-panel="p1317"><title>#1317 · plain, no task, no mark · idle 8 d 22 h · blocks #1346</title><polygon points="262,299.5 268.5,306.0 262,312.5 255.5,306.0" fill="var(--sheet)" stroke="var(--ink)" stroke-width="1.5"/></g><text x="273" y="310.0" text-anchor="start"><tspan class="id">#1317</tspan> · idle 9 d</text><line x1="358" y1="306.0" x2="785" y2="306.0" stroke="var(--critical)" stroke-width="1.5" stroke-dasharray="4 3"/><path d="M565,300.0 l4,6 l-4,6 M573,300.0 l4,6 l-4,6" fill="none" stroke="var(--critical)" stroke-width="1.5"/><g class="mk"><title>#1346 · ad-hoc · blocked · Blocked-by #1317 · janitor: blocked for over 2 days · Automerge: if-narrow</title><circle cx="796.65625" cy="306.0" r="5.5" fill="var(--sheet)" stroke="var(--ink-2)" stroke-width="1.5"/></g><text x="808" y="310.0" text-anchor="start"><tspan class="id">#1346</tspan> <tspan class="warnt">no one is scheduled to close <tspan class="id">#1317</tspan></tspan></text><line x1="0" y1="360" x2="1132" y2="360" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>#1236 · needs-human-action · 10 d 19 h old · Blocked-by #1235 (closed) · Not-before 2026-08-25 · 14 comments</title><rect x="790.65625" y="336.0" width="12" height="12" fill="var(--sheet)" stroke="var(--serious)" stroke-width="1.75"/><line x1="793.65625" y1="339.0" x2="799.65625" y2="345.0" stroke="var(--serious)" stroke-width="1.75"/><line x1="799.65625" y1="339.0" x2="793.65625" y2="345.0" stroke="var(--serious)" stroke-width="1.75"/></g><text x="808" y="346.0" text-anchor="start"><tspan class="id">#1236</tspan> · 10 d</text><line x1="879" y1="342.0" x2="925" y2="342.0" stroke="var(--critical)" stroke-width="1.5" stroke-dasharray="4 3"/><path d="M896,336.0 l4,6 l-4,6 M904,336.0 l4,6 l-4,6" fill="none" stroke="var(--critical)" stroke-width="1.5"/><g class="mk"><title>#1237 · blocked · Blocked-by #1236 · Retry-every 7 d · runs at the first scheduler tick after #1236 closes — no date</title><circle cx="934.65625" cy="342.0" r="5.5" fill="var(--sheet)" stroke="var(--ink-2)" stroke-width="1.5"/></g><text x="946" y="346.0" text-anchor="start"><tspan class="id">#1237</tspan> <tspan class="warnt">after <tspan class="id">#1236</tspan></tspan></text><line x1="0" y1="396" x2="1132" y2="396" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>#1353 · needs-human-action · parked 1 d 23 h · Blocked-by #1352 (closed) · Not-before 2026-08-26 (passed)</title><rect x="790.65625" y="372.0" width="12" height="12" fill="var(--sheet)" stroke="var(--serious)" stroke-width="1.75"/><line x1="793.65625" y1="375.0" x2="799.65625" y2="381.0" stroke="var(--serious)" stroke-width="1.75"/><line x1="799.65625" y1="375.0" x2="793.65625" y2="381.0" stroke="var(--serious)" stroke-width="1.75"/></g><text x="808" y="382.0" text-anchor="start"><tspan class="id">#1353</tspan> · 2 d</text><line x1="0" y1="432" x2="1132" y2="432" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>#1517 · verify in production · needs-human-action · 1 d 23 h old</title><rect x="790.65625" y="408.0" width="12" height="12" fill="var(--sheet)" stroke="var(--serious)" stroke-width="1.75"/><line x1="793.65625" y1="411.0" x2="799.65625" y2="417.0" stroke="var(--serious)" stroke-width="1.75"/><line x1="799.65625" y1="411.0" x2="793.65625" y2="417.0" stroke="var(--serious)" stroke-width="1.75"/></g><g class="mk" tabindex="0"><title>#1495 · verify in production · needs-human-action · 2 d 0 h old</title><rect x="805.65625" y="408.0" width="12" height="12" fill="var(--sheet)" stroke="var(--serious)" stroke-width="1.75"/><line x1="808.65625" y1="411.0" x2="814.65625" y2="417.0" stroke="var(--serious)" stroke-width="1.75"/><line x1="814.65625" y1="411.0" x2="808.65625" y2="417.0" stroke="var(--serious)" stroke-width="1.75"/></g><g class="mk" tabindex="0"><title>#1469 · verify in production · needs-human-action · 2 d 13 h old</title><rect x="820.65625" y="408.0" width="12" height="12" fill="var(--sheet)" stroke="var(--serious)" stroke-width="1.75"/><line x1="823.65625" y1="411.0" x2="829.65625" y2="417.0" stroke="var(--serious)" stroke-width="1.75"/><line x1="829.65625" y1="411.0" x2="823.65625" y2="417.0" stroke="var(--serious)" stroke-width="1.75"/></g><g class="mk" tabindex="0"><title>#1458 · verify in production · needs-human-decision · 2 d 19 h old</title><rect x="835.65625" y="408.0" width="12" height="12" fill="var(--sheet)" stroke="var(--serious)" stroke-width="1.75"/><text x="841.65625" y="417.5" text-anchor="middle" class="glyph" fill="var(--serious-text)">?</text></g><g class="mk" tabindex="0"><title>#1455 · verify in production · needs-human-decision · 2 d 19 h old</title><rect x="850.65625" y="408.0" width="12" height="12" fill="var(--sheet)" stroke="var(--serious)" stroke-width="1.75"/><text x="856.65625" y="417.5" text-anchor="middle" class="glyph" fill="var(--serious-text)">?</text></g><g class="mk" tabindex="0"><title>#1160 · verify in production · needs-human-decision · 11 d 22 h old</title><rect x="865.65625" y="408.0" width="12" height="12" fill="var(--sheet)" stroke="var(--serious)" stroke-width="1.75"/><text x="871.65625" y="417.5" text-anchor="middle" class="glyph" fill="var(--serious-text)">?</text></g><text x="889" y="418.0" text-anchor="start">6 parked · 3 × · 3 ?</text><text x="258" y="418.0" class="muted" text-anchor="start">◂ <tspan class="id">#1388</tspan> · <tspan class="id">#1137</tspan> <tspan class="id">#1113</tspan> <tspan class="id">#1112</tspan> <tspan class="warnt">unpicked 13 d</tspan></text><text x="254" y="448" class="muted note"><tspan class="id">#1519</tspan> wakes Sep 7 12:00 · 8 ladder issues (<tspan class="id">#1330</tspan>→<tspan class="id">#1328</tspan>, <tspan class="id">#1321</tspan>→<tspan class="id">#1324</tspan>) free but unmarked · <tspan class="id">#1580</tspan> on a relative date</text><text x="254" y="476" class="muted note">a cell per task per day · a hatched cell is a failure park the roster calls held · Sep 1 also ran upstream-watch, forced, parked on action (<tspan class="id">#1570</tspan>)</text><line x1="0" y1="482" x2="1132" y2="482" stroke="var(--rule)"/><line x1="0" y1="530" x2="1132" y2="530" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>Wed Aug 26 05:00 · task-janitor · done ×1</title><rect x="256" y="506.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Thu Aug 27 05:00 · task-janitor · done ×1</title><rect x="330" y="506.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Fri Aug 28 05:00 · task-janitor · done ×1</title><rect x="403" y="506.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Sat Aug 29 05:00 · task-janitor · done ×1</title><rect x="477" y="506.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Sun Aug 30 05:00 · task-janitor · done ×4</title><rect x="550" y="506.0" width="18" height="12" rx="1" fill="var(--good)"/><text x="559" y="515.5" text-anchor="middle" class="cnt" fill="var(--sheet)">4</text></g><g class="mk" tabindex="0"><title>Mon Aug 31 05:00 · task-janitor · done ×2</title><rect x="624" y="506.0" width="18" height="12" rx="1" fill="var(--good)"/><text x="633" y="515.5" text-anchor="middle" class="cnt" fill="var(--sheet)">2</text></g><g class="mk" tabindex="0"><title>Tue Sep 1 05:00 · task-janitor · done ×1</title><rect x="697" y="506.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Wed Sep 2 05:00 · task-janitor · done ×1</title><rect x="771" y="506.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Thu Sep 3 05:00 · task-janitor · predict ×1</title><rect x="844" y="506.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Fri Sep 4 05:00 · task-janitor · predict ×1</title><rect x="918" y="506.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sat Sep 5 05:00 · task-janitor · predict ×1</title><rect x="991" y="506.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sun Sep 6 05:00 · task-janitor · predict ×1</title><rect x="1065" y="506.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><line x1="0" y1="566" x2="1132" y2="566" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>Wed Aug 26 05:00 · usage-fold · done ×1</title><rect x="256" y="542.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Thu Aug 27 05:00 · usage-fold · done ×1</title><rect x="330" y="542.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Fri Aug 28 05:00 · usage-fold · done ×1</title><rect x="403" y="542.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Sat Aug 29 05:00 · usage-fold · done ×1</title><rect x="477" y="542.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Sun Aug 30 05:00 · usage-fold · done ×1</title><rect x="550" y="542.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Mon Aug 31 05:00 · usage-fold · done ×1</title><rect x="624" y="542.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Tue Sep 1 05:00 · usage-fold · done ×1</title><rect x="697" y="542.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Wed Sep 2 05:00 · usage-fold · done ×1</title><rect x="771" y="542.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Thu Sep 3 05:00 · usage-fold · predict ×1</title><rect x="844" y="542.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Fri Sep 4 05:00 · usage-fold · predict ×1</title><rect x="918" y="542.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sat Sep 5 05:00 · usage-fold · predict ×1</title><rect x="991" y="542.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sun Sep 6 05:00 · usage-fold · predict ×1</title><rect x="1065" y="542.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><line x1="0" y1="602" x2="1132" y2="602" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>#1362 · growth-extract · needs-human-failure since Aug 26 06:05 — the converge could not run; the roster calls the lane held, the four filled cells after it say the task ran</title><rect x="256" y="578.0" width="18" height="12" rx="1" fill="url(#hatch)" stroke="var(--critical)" stroke-width="1.25"/></g><g class="mk" tabindex="0"><title>Thu Aug 27 05:00 · growth-extract · done ×1</title><rect x="330" y="578.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Sun Aug 30 05:00 · growth-extract · done ×1</title><rect x="550" y="578.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Mon Aug 31 05:00 · growth-extract · done ×1</title><rect x="624" y="578.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Tue Sep 1 05:00 · growth-extract · done ×1</title><rect x="697" y="578.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Thu Sep 3 05:00 · growth-extract · predict ×1</title><rect x="844" y="578.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Fri Sep 4 05:00 · growth-extract · predict ×1</title><rect x="918" y="578.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sat Sep 5 05:00 · growth-extract · predict ×1</title><rect x="991" y="578.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sun Sep 6 05:00 · growth-extract · predict ×1</title><rect x="1065" y="578.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><line x1="0" y1="638" x2="1132" y2="638" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>#1146 · tidy-issues · needs-human-failure since Aug 21 · 5 later runs closed done since — the roster calls the lane held; the filled cells say it ran</title><rect x="232" y="614.0" width="12" height="12" fill="url(#hatch)" stroke="var(--critical)" stroke-width="1.5"/></g><text x="228" y="624.0" class="muted" text-anchor="end">◂</text><g class="mk" tabindex="0"><title>Fri Aug 28 05:00 · tidy-issues · done ×2</title><rect x="403" y="614.0" width="18" height="12" rx="1" fill="var(--good)"/><text x="412" y="623.5" text-anchor="middle" class="cnt" fill="var(--sheet)">2</text></g><g class="mk" tabindex="0"><title>Sun Aug 30 05:00 · tidy-issues · done ×1</title><rect x="550" y="614.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Mon Aug 31 05:00 · tidy-issues · done ×1</title><rect x="624" y="614.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Tue Sep 1 05:00 · tidy-issues · done ×1</title><rect x="697" y="614.0" width="18" height="12" rx="1" fill="var(--good)"/></g><g class="mk" tabindex="0"><title>Thu Sep 3 05:00 · tidy-issues · predict ×1</title><rect x="844" y="614.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Fri Sep 4 05:00 · tidy-issues · predict ×1</title><rect x="918" y="614.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sat Sep 5 05:00 · tidy-issues · predict ×1</title><rect x="991" y="614.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sun Sep 6 05:00 · tidy-issues · predict ×1</title><rect x="1065" y="614.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><line x1="0" y1="674" x2="1132" y2="674" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>Fri Aug 28 05:00 · growth-promote · rejected ×1</title><rect x="403" y="650.0" width="18" height="12" rx="1" fill="var(--sheet)" stroke="var(--muted)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sun Aug 30 05:00 · growth-promote · rejected ×1</title><rect x="550" y="650.0" width="18" height="12" rx="1" fill="var(--sheet)" stroke="var(--muted)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Mon Aug 31 05:00 · growth-promote · rejected ×1</title><rect x="624" y="650.0" width="18" height="12" rx="1" fill="var(--sheet)" stroke="var(--muted)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>#1584 · growth-promote · running-agent since 09:54 · opus · will open PR #10 today, automerge: nothing</title><circle cx="780" cy="656.0" r="5.5" fill="var(--machine)"/></g><g class="mk" tabindex="0"><title>Sep 3 05:00 · growth-promote · verdict fail-open (FLEET_GITHUB_TOKEN unset) → runs → one more PR for you</title><rect x="844" y="650.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Fri Sep 4 05:00 · growth-promote · predict ×1</title><rect x="918" y="650.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sat Sep 5 05:00 · growth-promote · predict ×1</title><rect x="991" y="650.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sun Sep 6 05:00 · growth-promote · predict ×1</title><rect x="1065" y="650.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/></g><text x="865" y="660.0" class="muted" text-anchor="start">+1</text><text x="939" y="660.0" class="muted" text-anchor="start">+1</text><text x="1012" y="660.0" class="muted" text-anchor="start">+1</text><text x="1086" y="660.0" class="muted" text-anchor="start">+1</text><line x1="0" y1="710" x2="1132" y2="710" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>Aug 30 05:00 · logs-prune: retention_days unset · update: no vendored mount — both declined</title><rect x="550" y="686.0" width="18" height="12" rx="1" fill="var(--sheet)" stroke="var(--muted)" stroke-width="1"/><text x="559" y="695.5" text-anchor="middle" class="cnt" fill="var(--ink-2)">2</text></g><g class="mk" tabindex="0"><title>Sep 2 05:00 · logs-prune — declined: retention_days unset · update — declined: no vendored mount</title><rect x="771" y="692.0" width="18" height="6.0" rx="1" fill="none" stroke="var(--muted)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Thu Sep 3 05:00 · logs-prune · update · decline ×2</title><rect x="844" y="692.0" width="18" height="6.0" rx="1" fill="none" stroke="var(--muted)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Fri Sep 4 05:00 · logs-prune · update · decline ×2</title><rect x="918" y="692.0" width="18" height="6.0" rx="1" fill="none" stroke="var(--muted)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sat Sep 5 05:00 · logs-prune · update · decline ×2</title><rect x="991" y="692.0" width="18" height="6.0" rx="1" fill="none" stroke="var(--muted)" stroke-width="1"/></g><g class="mk" tabindex="0"><title>Sun Sep 6 05:00 · logs-prune · update · decline ×2</title><rect x="1065" y="692.0" width="18" height="6.0" rx="1" fill="none" stroke="var(--muted)" stroke-width="1"/></g><line x1="0" y1="746" x2="1132" y2="746" stroke="var(--ledger)"/><g class="mk" tabindex="0"><title>#1271 · growth-dedup · needs-human-failure since Aug 23 · growth-dedup · 1 later run closed done since — the roster calls the lane held; the filled cells say it ran</title><rect x="232" y="722.0" width="12" height="12" fill="url(#hatch)" stroke="var(--critical)" stroke-width="1.5"/></g><text x="228" y="732.0" class="muted" text-anchor="end">◂</text><g class="mk" tabindex="0"><title>Sun Aug 30 05:00 · ci-performance, growth-dedup, growth-discover-packs ×2, prose-to-checks-sweep, improve-comments, tidy-prs done · rule-revalidation parked on approval (#1428 → PR #1441) · tidy-branches asked and declined</title><rect x="550" y="722.0" width="18" height="12" rx="1" fill="var(--good)"/><text x="559" y="731.5" text-anchor="middle" class="cnt" fill="var(--sheet)">7</text></g><g class="mk" tabindex="0"><title>Aug 30 05:00 · rule-revalidation → parked on approval (#1428 → PR #1441)</title><rect x="565" y="722.0" width="18" height="12" rx="1" fill="var(--you)"/></g><g class="mk" tabindex="0"><title>Sun Sep 6 05:00 · ci-performance, growth-dedup, prose-to-checks-sweep, rule-revalidation, improve-comments, tidy-branches, tidy-prs, growth-discover-packs · 2–4 leave PRs for you</title><rect x="1065" y="722.0" width="18" height="12" rx="1" fill="none" stroke="var(--machine)" stroke-width="1"/><text x="1074" y="731.5" text-anchor="middle" class="cnt" fill="var(--ink-2)">8</text></g><text x="1050" y="732.0" class="muted" text-anchor="end">Sun 05:00 · 8 tasks · 2–4 PRs for you</text>
+<text x="8" y="64" class="grp">Now — waiting for you</text><rect x="8" y="97.0" width="6" height="6" fill="var(--you)"/><text x="20" y="104.0" class="lab"><tspan class="id">#1583</tspan> → <tspan class="id">#1578</tspan> → <tspan class="id">#1579</tspan></text><rect x="8" y="133.0" width="6" height="6" fill="var(--you)"/><text x="20" y="140.0" class="lab"><tspan class="id">#1543</tspan> ⇢ <tspan class="id">#1542</tspan></text><rect x="8" y="169.0" width="6" height="6" fill="var(--you)"/><text x="20" y="176.0" class="lab"><tspan class="id">#1513</tspan> ⇢ <tspan class="id">#1169</tspan></text><rect x="8" y="205.0" width="6" height="6" fill="var(--serious)"/><text x="20" y="212.0" class="lab">growth-promote · 9 PRs + 1/day</text><text x="8" y="242" class="muted">2 more rows</text><text x="8" y="270" class="grp">Flows — blocked, parked, waiting</text><rect x="8" y="303.0" width="6" height="6" fill="var(--serious)"/><text x="20" y="310.0" class="lab"><tspan class="id">#1317</tspan> ⟂ <tspan class="id">#1346</tspan></text><rect x="8" y="339.0" width="6" height="6" fill="var(--serious)"/><text x="20" y="346.0" class="lab"><tspan class="id">#1236</tspan> ⟂ <tspan class="id">#1237</tspan></text><rect x="8" y="375.0" width="6" height="6" fill="var(--serious)"/><text x="20" y="382.0" class="lab"><tspan class="id">#1353</tspan> action park</text><rect x="8" y="411.0" width="6" height="6" fill="var(--serious)"/><text x="20" y="418.0" class="lab">verifications · 10</text><text x="8" y="448" class="muted">3 more rows</text><text x="8" y="476" class="grp">Scheduled — 05:00 UTC anchor</text><text x="8" y="516.0" class="lab">task-janitor</text><text x="8" y="552.0" class="lab">usage-fold</text><rect x="8" y="581.0" width="6" height="6" fill="var(--critical)"/><text x="20" y="588.0" class="lab">growth-extract</text><rect x="8" y="617.0" width="6" height="6" fill="var(--critical)"/><text x="20" y="624.0" class="lab">tidy-issues</text><text x="8" y="660.0" class="lab">growth-promote</text><text x="8" y="696.0" class="lab">logs-prune · update</text><rect x="8" y="725.0" width="6" height="6" fill="var(--critical)"/><text x="20" y="732.0" class="lab">weekly · 8 tasks</text>
+</svg></div>
+      <div class="tail" aria-label="The quiet tail">
+        <span><b>50</b> issues, quiet — plain, on no edge</span><span><b>15</b> rotting ≥ 14 d</span><span><b>18</b> quick-win</span><span><b>13</b> needs-decision</span>
+        <button class="expand" id="tail-toggle" aria-expanded="false" aria-controls="tail-detail">show ▾</button>
+      </div>
+      <div class="tail-detail" id="tail-detail" hidden>
+        <b>Rotting</b> (untouched ≥ 14 d — revalidate before doing): #498 36 d · #409 34 d · #841 18 d · #239 17 d · #923, #920, #223 16 d · #991, #952, #766 15 d · #1003, #996, #840, #590, #334 14 d.
+        <b>Quick-win</b> (18): none unblocks anything by <code>Blocked-by</code>; #1550 and #1485 are bugs, 9 of the 18 are also rotting.
+        <b>Needs-decision</b> (13): a decision park by another name; #1137, #1113, #1112 are the legacy-queued verifications on the board.
+      </div>
+      <section class="panels one" id="panels" aria-label="Explore">
+<div class="panel" id="p1362">
+  <div class="ph"><span class="chipst crit">failed task · failure park</span><b>#1362</b> growth-extract <span class="sub">parked since 2026-08-26 06:05 · 8 d 4 h old · still wears the legacy <code>needs-human</code> too</span></div>
+  <dl class="one-col">
+    <dt>Last run</dt><dd>claimed by <code>actions-32815326242</code> 2026-08-25 06:06 · handed off, nonce <code>1362-pc87ph21</code> · session 01GcVY… · <b>delivered</b>: two lessons landed via <b>PR #1368, merged</b></dd>
+    <dt>What broke</dt><dd>the converge, not the work: <code>converge-item: #1362 could not be read</code> — the session was MCP-only and the script needs an Actions <code>GITHUB_TOKEN</code>; the agent left the labels untouched on purpose (its comment, 06:31)</dd>
+    <dt>Park history</dt><dd>1 park · janitor rule B (agent leash 3 h): "carried task:agent for over 3h with no activity … labeling needs-human for triage" · never re-queued · never superseded by rule E, though 4 later runs closed <code>done</code> (#1402, #1426, #1504, #1551)</dd>
+    <dt>Lane</dt><dd>the roster reads this as <b>held</b> (a failure park blocks scheduling) — the record disagrees: the schedule board shows growth-extract asked and run every day since; this park is stale, not holding</dd>
+    <dt>Do</dt><dd><b>converge it done with PR #1368</b> — <code>node packs/claudinite-tasks/queue/converge-item.mjs --issue 1362 --outcome done --pr 1368</code></dd>
+    <dt>Then</dt><dd>ask why rule E skipped an item with no origin label — #1146 and #1271 are the same shape</dd>
+  </dl>
+</div>
+<div class="panel" id="p1543">
+  <div class="ph"><span class="chipst park">pending PR · approval park</span><b>#1543</b> Enforce newest-first ordering in every pack's VERSIONS.md <span class="sub">opened 1 d 12 h ago · claude/dreamy-johnson-g32yjq</span><button class="close" type="button">close ×</button></div>
+  <dl>
+    <dt>Waits for</dt><dd><b>you</b> — the run's own verdict: "AUTOMERGE: no per the item's Merge: policy" · policy on #1542: <code>under:packs &amp;&amp; markdown-line-removals; under:.claudinite/local/packs</code> · the diff adds <code>packs/claudinite-canon-curation/</code> files and touches 9 <code>VERSIONS.md</code> — neither term covers an addition</dd>
+    <dt>Closes / ends</dt><dd>#1542 (<code>Ends-when: #1543 closed</code>) — merge ⇒ rule G closes it <code>done</code>; close without merge ⇒ <code>rejected</code></dd>
+    <dt>Unblocks</dt><dd>nothing names #1542 or #1543 in a <code>Blocked-by</code></dd>
+    <dt>Size · CI</dt><dd><span class="gap">not read</span> — additions/deletions absent from the listing; the head sha's check runs are one more read</dd>
+    <dt>Left by</dt><dd>#1542 · <code>task:origin:ad-hoc</code> · opus · claimed 2026-08-31 22:02, handed off 22:02, converged 22:21 (19 min)</dd>
+    <dt>Do</dt><dd><b>merge or close #1543</b>; nothing else is owed — the item closes itself</dd>
+  </dl>
+</div>
+<div class="panel" id="p1583">
+  <div class="ph"><span class="chipst park">pending PR</span><b>#1583</b> Declarative task preconditions, and the repo-active silence gate <span class="sub">opened 12 h ago · claude/issue-1572-preconditions-6qw3x7</span><button class="close" type="button">close ×</button></div>
+  <dl>
+    <dt>Waits for</dt><dd><b>you</b> — a session PR with no <code>Automerge:</code> line and no task policy behind it</dd>
+    <dt>Closes</dt><dd>#1578 (<code>Closes #1578</code>, phase 2 of #1572)</dd>
+    <dt>Unblocks</dt><dd>#1579 (<code>Blocked-by: #1578</code>) — <b>which nothing will pick up</b>: no <code>task:origin:ad-hoc</code> mark; then #1580, whose <code>Not-before: 7 days after #1579 closes</code> is a relative form the parser reads as absent</dd>
+    <dt>Size · CI</dt><dd><span class="gap">not read</span></dd>
+    <dt>Do</dt><dd>merge; then mark #1579 ad-hoc, or the chain stops at a plain issue</dd>
+  </dl>
+</div>
+<div class="panel" id="p1317">
+  <div class="ph"><span class="chipst">plain issue · blocker</span><b>#1317</b> Extract the task execution/scheduling surface into a claudinite-tasks pack <span class="sub">opened 9 d 1 h ago · idle 8 d 22 h · 4 comments · no label</span><button class="close" type="button">close ×</button></div>
+  <dl>
+    <dt>Blocks</dt><dd><b>#1346</b> (ad-hoc, blocked, janitor flagged stuck 2 d+, Automerge: if-narrow) — and by reading, the two L1→L4 ladders (#1330…, #1321…) this extraction filed and nothing has marked</dd>
+    <dt>Who moves it</dt><dd><b>nobody is scheduled to</b>: no <code>task:origin:ad-hoc</code>, no <code>Task:</code> field, no open PR carries <code>Closes #1317</code></dd>
+    <dt>Rot</dt><dd>idle 9 d — under the 14 d bar, but its premise has moved (#1537 promoted canon-curation on Aug 31); <b>revalidate before implementing</b></dd>
+    <dt>Quick win?</dt><dd>not labelled; the leverage is real anyway — closing it releases #1346 at the next scheduler tick</dd>
+    <dt>Do</dt><dd>close it if the extraction is done (<code>packs/claudinite-tasks/</code> exists), else mark it ad-hoc so the queue owns it</dd>
+  </dl>
+</div></section>
+    </div>
+  </section>
+</div>
+</main>
+
+<footer class="note">
+  Design mock. The top block carries the approved repo-page figures (real fold values for Aug 25–31 vs Aug 18–24, invented machine cells, lead times and dollars — see that mock's note).
+  The Work board is built from Claudinite's real state at 2026-09-02 10:30 UTC: the 86 open issues, 21 open PRs, the schedule board #1130 and the items closed since Aug 26 — every
+  number, date, label and body line on it. Predicted ticks are the next anchors (daily 05:00 UTC, weekly Sun) from #1130's <em>next window</em>. PR sizes and CI are <em>not read</em>. A delta is tinted only where the design's own <em>bad when</em> rule fires (a stuck item parked for a person); amber on the board means one thing, <em>waits for you</em>.
+</footer>
+<script>
+  (function () {
+    var t = document.getElementById('tail-toggle'), d = document.getElementById('tail-detail');
+    t.addEventListener('click', function () { d.hidden = !d.hidden; t.setAttribute('aria-expanded', String(!d.hidden)); t.textContent = d.hidden ? 'show ▾' : 'hide ▴'; });
+    var panels = Array.prototype.slice.call(document.querySelectorAll('.panel')), grid = document.getElementById('panels');
+    var shown = ['p1362'];
+    function paint() { panels.forEach(function (p) { p.hidden = shown.indexOf(p.id) === -1; }); grid.className = 'panels' + (shown.length === 1 ? ' one' : ''); }
+    paint();
+    document.querySelectorAll('.mk[data-panel]').forEach(function (m) {
+      var open = function () { var id = m.getAttribute('data-panel'); if (shown.indexOf(id) === -1) { shown = [shown[0], id].filter(function (x) { return x !== id; }).concat([id]).slice(-2); paint(); } };
+      m.addEventListener('click', open);
+      m.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    });
+    document.querySelectorAll('.panel .close').forEach(function (b) { b.addEventListener('click', function () { shown = shown.filter(function (x) { return x !== b.closest('.panel').id; }); if (!shown.length) shown = ['p1362']; paint(); }); });
+    var b = document.getElementById('toggle'), dd = document.getElementById('detail');
+    b.addEventListener('click', function () { dd.hidden = !dd.hidden; b.setAttribute('aria-expanded', String(!dd.hidden)); b.textContent = dd.hidden ? 'per task ▾' : 'per task ▴'; });
+  })();
+</script>
