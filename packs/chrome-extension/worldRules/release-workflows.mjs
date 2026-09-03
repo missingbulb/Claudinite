@@ -162,7 +162,7 @@ const rule = {
           file: path,
           severity: 'advisory',
           what: 'still calls Claudinite\'s core release workflows @main, which the vendoring is retiring',
-          fix: 'let baselining vendor the pack\'s stubs/workflows/ + stubs/actions/ into this repo\'s .github/, or copy them by hand — the tolerance for the @main calls ends when no repo still makes them (#1643)',
+          fix: 'let baselining vendor the pack\'s stubs/workflows/ + stubs/actions/ into this repo\'s .github/, or copy them by hand — the tolerance for the @main calls ends one convergence window after this advisory ships (#1643)',
         }));
         return out;
       }

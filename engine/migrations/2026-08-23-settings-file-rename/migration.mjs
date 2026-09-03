@@ -17,7 +17,7 @@
 // SETTINGS_FILES order (engine/settings-file.mjs), so a member is read correctly
 // whether or not this has run — which is what lets the rename land in one pass
 // instead of a phased stack. That tolerance is the thing this record exists to make
-// removable: it can go when no member still carries the old name, and never on a date.
+// removable: it goes on #1640's window, a week after the advisory that reports the old name.
 export default {
   id: 'settings-file-rename',
   landed: '2026-08-23',

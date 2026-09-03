@@ -31,8 +31,9 @@ const escapesTaskDir = (cmd) => /(^|\s)\//.test(cmd) || cmd.includes('..');
 // wins where both are present.
 //
 // Scaffolding, not a second vocabulary the contract keeps: `legacy-task-fields`
-// reports a declaration still on an old spelling, and the acceptance ends once
-// none is (#1642).
+// reports a declaration still on an old spelling, and the acceptance ends one
+// convergence window after that advisory ships (#1642). Not "once nobody declares
+// them" — nothing here can count that.
 // @legacy-tolerance advisory:legacy-task-fields retire:#1642
 export const LEGACY_FIELDS = {
   agent_preprocessing: 'code_work',
@@ -87,7 +88,8 @@ export const OUTCOMES = ['none', 'pr'];
 // The retired one-word ceilings, each carrying the policy it always meant, and
 // normalizing at the door like the code-work renames above: `open-pr` is a pr task
 // that merges nothing, `merged-pr` a pr task authorized for anything. Accepted on
-// the same terms — while members still declare them, and no longer (#1642).
+// the same terms as the renames above — one convergence window past the advisory,
+// and no longer (#1642).
 // @legacy-tolerance advisory:legacy-task-fields retire:#1642
 export const LEGACY_OUTCOMES = { 'open-pr': 'nothing', 'merged-pr': 'anything' };
 

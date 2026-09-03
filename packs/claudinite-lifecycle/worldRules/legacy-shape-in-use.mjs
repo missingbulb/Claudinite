@@ -15,8 +15,9 @@ import * as servedBy from '../../../engine/served-by.mjs';
 
 // THE ADVISORY HALF OF EVERY DECLARATION-SHAPE TOLERANCE the engine still
 // carries. Each of those tolerances lets a member's own file be read in a shape
-// that has since been renamed, and each is scheduled for removal (#1638) on one
-// gate: no member still carries the shape. Nothing was telling the members.
+// that has since been renamed, and each is removed a week after this advisory ships
+// (#1638) — the window a repo converging nightly needs to act on its own finding.
+// Nothing was telling the repos, which is why the window needed the advisory first.
 //
 // A tolerance with no advisory asks people to migrate off something they have no
 // way of knowing they are on, so this rule fires in the repo that HOLDS the old
@@ -33,7 +34,7 @@ const rule = {
   severity: 'advisory',
   since: '2026-09-03',
   description: 'This repo\'s Claudinite declaration and stamp use no shape the engine only tolerates',
-  why: 'every legacy shape here is read through a tolerance scheduled for removal (#1638), gated on no member still carrying it — a repo left on the old shape is what holds that gate shut, and loses the mount on the day it opens',
+  why: 'every legacy shape here is read through a tolerance that comes out a week after this advisory ships (#1638) — the canon cannot see which repos still carry the old shape, so a repo that does not act inside that window loses its mount rather than holding the removal up',
 
   run(ctx) {
     const names = Array.isArray(settingsNames.SETTINGS_FILES) ? settingsNames.SETTINGS_FILES : [];

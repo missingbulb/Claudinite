@@ -63,8 +63,8 @@
 
 - **Adding a legacy tolerance** (a dual read, an accepted old spelling, a shim) — it is
   scaffolding, not a feature: ship it with an advisory that fires where the old shape is still in
-  use, and with its removal already a link in the migration's chain, gated on a condition that
-  reads back true rather than on a date. (2)
+  use, and with its removal already a link in the migration's chain, due one stated convergence
+  window after that advisory reaches the holders. (2)
 
 - **Choosing an automerge policy for a PR or a chain link** — write it as a prediction of the
   change's shape, the folders and kinds you expect the diff to touch, and never widen it to fit the

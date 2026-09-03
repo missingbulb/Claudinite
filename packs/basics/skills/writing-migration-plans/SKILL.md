@@ -118,12 +118,15 @@ Three things ship *with* it, in the same stack, never afterwards:
   holders cannot see, the advisory is the one that fires in *their* repo, not a note in yours.
 - **The removal, written now.** It is code, so it goes in the approved stack with everything else
   (above); what waits is its merge, and the thing that performs that merge is a link in the chain.
-- **The gate that releases it** — a condition that *reads back true*: "no member's declaration or
-  stamp still carries the spelling", "the oldest row in the retention window postdates the
-  rename". Never a date. A date is a guess about other people's convergence, and the two ways it
-  is wrong are a tolerance retired while somebody still needed it, and a date that quietly passes
-  with the code still there. Where the gate is genuinely unreadable from the repo that must act on
-  it, making it readable is the chain's *first* link — not a caveat in the removal's brief.
+- **The window that releases it** — how long a correctly-behaving holder needs to pick the
+  advisory up and act on it, written as the date the removal link waits on. The tempting
+  alternative is a census — "when no holder still carries the old shape" — and it is usually
+  unanswerable: a project cannot see which of the things consuming it are live, which are
+  dormant and which stopped updating months ago, so the removal waits on an answer that never
+  arrives and the tolerance becomes permanent while looking scheduled. Read a count only where
+  you own both sides of it and it really does come back ("the oldest row in the retention window
+  postdates the rename"). Everywhere else, pick the window, say in the link what it assumes, and
+  let a holder that ignored the advisory for that long take the break.
 
 Say at the tolerance site which link removes it, so the next reader of that code is looking at a
 scheduled removal rather than a permanent-looking feature with an optimistic comment beside it.
@@ -242,8 +245,9 @@ not land as predicted; write each link's brief so the chain holds through all of
 - **The plan is a tracking issue**, and the phases are its checkboxes. Status and remaining work
   live there; a design document, where the project keeps one, carries the mechanism and not the
   progress.
-- **Each phase names its exit condition**, observable and stated as a thing that reads back true —
-  not "cutover done" but "every member's stamp shows the new ref". A phase whose end is a judgment
+- **Each phase names its exit condition**, observable and stated as a thing that reads back true
+  from where the phase runs — not "cutover done" but "the new field is in the rendered output on
+  `main`". A condition only somebody else's repo could answer is not observable from here. A phase whose end is a judgment
   call is a phase that stays open.
 - **Nothing closes on a human's memory.** A step you cannot verify now gets a mechanism that comes
   to you — a link in the chain, a scheduled task, an issue something converges (basics' *When

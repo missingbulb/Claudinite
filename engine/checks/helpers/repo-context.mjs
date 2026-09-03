@@ -107,9 +107,9 @@ function vendoredSet(root, files) {
 // JSON, caught at load so it can't silently change nothing. `packConfig` is the
 // legacy home of per-pack parameters — still honored while the fleet migrates to
 // pack-entry `config` (the converge folds it in), no longer documented. The
-// `pack-entry-config` baseline migration (engine/migrations/) documents the fold; when
-// the fleet is off the old shape, drop the key here (and the overlay below) so
-// a straggler gets the unknown-setting error.
+// `pack-entry-config` baseline migration (engine/migrations/) documents the fold; the
+// key and the overlay below come out on #1640's window, after which a straggler gets
+// the unknown-setting error.
 // `engineVersion` is the engine version this repo's mount holds, written by the
 // update flows; a pack's installed version sits on that pack's own entry. Both were
 // a nested `claudinite` block until #1252, alongside an `updated` datetime and a

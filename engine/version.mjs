@@ -47,9 +47,9 @@ export const ENGINE_VERSION = '60902.1';
 // is exactly where a member that has not re-stamped belongs. Dependency-free, like
 // the manifest spec it serves.
 //
-// It comes out when no member's stamp still holds an integer, never on a date: the
-// date this once carried passed with the tolerance still here and nothing scheduled
-// to notice, which is what #1638 exists to stop happening again.
+// It comes out on #1640's window — a week after the advisory that reports an integer
+// stamp. The date this once carried passed with the tolerance still here and nothing
+// scheduled to notice; a window a queued link waits on is the difference.
 
 // The day part of a Date, in UTC. Callers that have a `YYYY-MM-DD` string already
 // (the corpus passes `today` around in that form) can hand it straight over.
