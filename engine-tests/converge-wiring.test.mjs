@@ -9,6 +9,7 @@ import {
   ensureHooks, removeRetiredCorpusImport, convergeWiring, SETTINGS_PATH,
   removeRetiredBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
   BADGE_ROW_START, BADGE_ROW_END, README,
+  PRETOOLUSE_MATCHER,
   ensureRulesIndexImport, ensureRulesIndexMergeAttribute, RULES_INDEX_MERGE_ATTR,
   ensureMountVendoredAttribute, MOUNT_VENDORED_ATTR,
   seedRepoLocalPack, packIdForRepo,
@@ -24,13 +25,30 @@ const REPO = 'missingbulb/GoogleCalendarEventCreator';
 test('ensureHooks: adds every required hook to a fresh repo, idempotently', () => {
   const root = mkRepo();
   const first = ensureHooks(root);
-  assert.deepEqual(first.added.sort(), ['PreToolUse[Bash]', 'SessionEnd', 'SessionStart', 'Stop']);
+  assert.deepEqual(first.added.sort(), [`PreToolUse[${PRETOOLUSE_MATCHER}]`, 'SessionEnd', 'SessionStart', 'Stop']);
   const settings = JSON.parse(readFileSync(join(root, SETTINGS_PATH), 'utf8'));
   assert.equal(settings.hooks.SessionStart[0].hooks[0].command, 'bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start-command.sh');
-  assert.equal(settings.hooks.PreToolUse[0].matcher, 'Bash');
+  assert.equal(settings.hooks.PreToolUse[0].matcher, PRETOOLUSE_MATCHER);
+  assert.equal(settings.hooks.PreToolUse.length, 1);
   assert.equal(settings.hooks.SessionEnd[0].hooks[0].command, 'node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-end-command.mjs');
   // idempotent — nothing added on a second pass
   assert.deepEqual(ensureHooks(root).added, []);
+});
+
+
+test('ensureHooks: a group already running the guard under an earlier matcher is retargeted, not doubled', () => {
+  const root = mkRepo();
+  mkdirSync(join(root, '.claude'), { recursive: true });
+  const guard = 'node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/pretooluse-command.mjs';
+  writeFileSync(join(root, SETTINGS_PATH), JSON.stringify({
+    hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: guard }] }] },
+  }, null, 2));
+  const r = ensureHooks(root);
+  assert.ok(r.added.includes(`PreToolUse[${PRETOOLUSE_MATCHER}]`));
+  const settings = JSON.parse(readFileSync(join(root, SETTINGS_PATH), 'utf8'));
+  assert.equal(settings.hooks.PreToolUse.length, 1, 'one group, retargeted');
+  assert.equal(settings.hooks.PreToolUse[0].matcher, PRETOOLUSE_MATCHER);
+  assert.deepEqual(ensureHooks(root).added, [], 'idempotent afterwards');
 });
 
 

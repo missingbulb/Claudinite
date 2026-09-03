@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup, writeFiles, declaredCheck } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import pack from '../pack.mjs';
+import { skillMetadata } from '../../../engine/pack_loader/skill-frontmatter.mjs';
 
 const layout = declaredCheck('packs/product-wiki', 'product-wiki-layout');
 const pageSections = declaredCheck('packs/product-wiki', 'product-wiki-page-sections');
@@ -75,6 +76,10 @@ test('pack manifest: marker, prose, the coded rule plus the seven declared check
   assert.equal(new Set(ids).size, 7);
   assert.ok(ids.every((id) => id.startsWith('product-wiki-')));
   assert.deepEqual(pack.requires, ['barriers']);
+  // The page-editing rules are the writing-wiki-pages skill: it scopes itself to the
+  // tree, and the weekly worker loads it by name — two artifacts that could drift.
+  assert.ok(skillMetadata(join(here, '..', 'skills', 'writing-wiki-pages')).forceLoadPaths.length, 'the skill forces itself for files');
+  assert.ok(readFileSync(join(here, '..', 'tasks', 'wiki-growth', 'task.md'), 'utf8').includes('skill: `writing-wiki-pages`'));
   assert.equal(pack.contributes, undefined);
   // The pack's scheduled task is NOT a pack.mjs slot any more — the repo's
   // scheduler finds tasks/<name>/task.json structurally (#394).

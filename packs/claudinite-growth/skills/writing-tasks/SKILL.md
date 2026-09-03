@@ -1,6 +1,9 @@
 ---
 name: writing-tasks
 description: The contract a Claudinite task is written to — the declaration's fields, the code-work and agentic phases, the precondition as the only decision point, ordering, and how a work item converges. Use when writing or changing a tasks/<name>/task.json or its worker, or when a task-declaration check fires.
+metadata:
+  force-load-on-file-edits-paths:
+    - "**/tasks/**"
 ---
 
 # Writing a task

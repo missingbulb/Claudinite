@@ -7,7 +7,7 @@
 import { SINK_README } from './lib.mjs';
 
 export default {
-  version: '60903.1',
+  version: '60903.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink',
@@ -21,6 +21,10 @@ export default {
   // fails closed on an empty product-wiki/ expansion, and layout owns the
   // missing-skeleton complaint.
   requires: ['barriers'],
+  // Editing the wiki tree is the writing-wiki-pages skill's territory — its own
+  // `force-load-on-file-edits-paths` names product-wiki/**, and the guard holds a file tool aimed
+  // there until the session has loaded it — so the page rules are read once, by
+  // the session that edits, rather than carried as prose by every session.
   // Adoption interview: the standard takes no config (the layout IS the config),
   // but a wiki with no research scope is a hollow skeleton — the answers frame
   // WHICH wikis get seeded and what the competitor set is measured against. They
