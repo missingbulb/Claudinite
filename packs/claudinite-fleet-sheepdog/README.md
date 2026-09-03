@@ -202,20 +202,27 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 
 ## Rules (`RULES.md`)
 
+The always-on rules, for any session reading a sweep's report:
+
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Keeping a repo out of the fleet | low | correctness | prose: 75 words |
-| Adding or changing a packSeeds entry | critical | correctness | prose: 66 words |
-| Declaring a pack this fleet also seeds | high | correctness | prose: 66 words |
 | Acting on an add-packs work-list issue | high | correctness | prose: 70 words |
 | Acting on a scanned pack suggestion | medium | correctness | prose: 77 words |
 | Reading unknown in a report | high | correctness | prose: 64 words |
 | Judging whether a member is behind | high | correctness | prose: 69 words |
 | Answering why the fleet did not move | medium | complexity | prose: 52 words |
-| Pushing canon to the whole fleet now | low | complexity | prose: 137 words |
-| Adding a pack across the fleet | medium | complexity | prose: 53 words |
-| Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 52 words |
-| A sweep reporting 403 or no-permission | medium | complexity | prose: 48 words |
+
+The config rules (`exclude`, `packSeeds`, the declaration a seed must agree with) are the
+[`configuring-the-fleet`](skills/configuring-the-fleet/SKILL.md) skill, forced for
+`.claudinite-settings.json`; the manual levers and the `FLEET_GITHUB_TOKEN` grant are
+[`running-fleet-levers`](skills/running-fleet-levers/SKILL.md).
+
+## Skills
+
+| Skill | Trigger |
+|---|---|
+| [`configuring-the-fleet`](skills/configuring-the-fleet/SKILL.md) | any edit of `.claudinite-settings.json` — held by the guard until loaded |
+| [`running-fleet-levers`](skills/running-fleet-levers/SKILL.md) | a manual fleet dispatch (`fleet-baseline`, a forced `fleet-add-missing-packs`) or a token grant to make or repair |
 
 ## Checks
 

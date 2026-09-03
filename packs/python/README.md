@@ -3,16 +3,22 @@
 Active when the repo has a `pyproject.toml` at the root (or one directory down). The
 package built around an optional heavy/native dependency. Two of the rules mechanize
 into check-the-work rules (mounted via the [`python-optional-deps`](skills/python-optional-deps/SKILL.md)
-skill, run at every Stop and in CI — each failure message is the rule); the rest is
-architecture judgment with no false-positive-free signature, kept as prose.
+skill, run at every Stop and in CI — each failure message is the rule); the extra
+declaration and the availability-probe suppression are that skill's prose, forced onto the
+packaging files; the stdlib-backend architecture is judgment with no false-positive-free
+signature, kept as `RULES.md` prose.
 
 ## Rules (`RULES.md`)
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Keep the importable core dependency-free | high | complexity | prose: 50 words + skill check (`python-optional-import-top-level`) |
 | Ship a stdlib-only backend behind the interface | medium | complexity | prose: 49 words |
-| Mark the availability-probe import suppressed | low | complexity | prose: 49 words + skill check (`python-optional-import-install-hint`) |
+
+## Skills
+
+| Skill | Trigger |
+|---|---|
+| [`python-optional-deps`](skills/python-optional-deps/SKILL.md) | adding or changing an optional dependency or heavy backend; any edit of `pyproject.toml`, `setup.cfg` or `setup.py` (root or one directory down) — held by the guard until loaded |
 
 ## Checks
 

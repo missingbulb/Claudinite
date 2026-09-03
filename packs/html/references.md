@@ -22,7 +22,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   than enabling it”, before this pack had a references.md to hold it). Reaffirm against the
   HTML fragment parsing algorithm; retire only if the content model stops disallowing block
   content in `<p>`.
-- **(RULES-2)** When both parts are ≤ 12 the day-first/month-first order is genuinely
+- **(parsing-page-dates-2)** When both parts are ≤ 12 the day-first/month-first order is genuinely
   undecidable from the value alone — the rule is not a preference between conventions but an
   admission that the digits carry no answer, which is why it resolves once per document rather
   than per field. The month-first default is the order `Date` and most JS parsers assume, from

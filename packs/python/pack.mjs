@@ -3,9 +3,10 @@
 // at module top level, and guarded with a re-raise that names the extra — are
 // carried by the mounted `python-optional-deps` skill's check-the-work rules
 // (the failure message is the rule, so there is no prose copy to drift from).
-// What stays as prose in RULES.md is the residue with no false-positive-free
-// signature: which deps belong in the dependency-free base set, the stdlib-
-// backend architecture, and the F401 availability-probe suppression.
+// The skill's own prose carries which deps belong in the dependency-free base
+// set and the F401 availability-probe suppression, forced onto the packaging
+// files. What stays as prose in RULES.md is the residue with no file to key on:
+// the stdlib-backend architecture.
 //
 // Fingerprint: a `pyproject.toml` at the repo root OR one directory down (a
 // subproject/tool dir) — but never deeper, so a pyproject.toml inside a nested
@@ -19,7 +20,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
   });
 
 export default {
-  version: '60904.1',
+  version: '60904.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'packaging and import conventions for a Python project — pyproject extras, lazy optional heavy deps, stdlib-only core',
