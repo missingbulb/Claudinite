@@ -4,6 +4,7 @@ Records for `packs/claudinite-canon-curation/pack.mjs`'s `version` field, one ro
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.2 | 2026-09-03 | A task's `task.md` opens on what the run does: the stage-labelling framing, the why-it-runs-centrally rationale and the skill procedure it already points at are gone. |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.2 | 2026-09-02 | `pack-version-bumped` and the `growth-promote` task doc drop the retired `.claudinite/local_packs/` root — a repo's own packs live at `.claudinite/local/packs/` and nowhere else (#1627). |
 | 60902.1 | 2026-09-02 | The three curation tasks convert to declarative `preconditions`. `growth-promote` keeps its fleet gate as a task-local term (`fleet-local-packs-changed`) — and an unreadable fleet is now an ERROR rather than a decline, since "no credential" and "nothing to promote" looked identical forever. `growth-discover-packs` and `upstream-watch` become `['none']`: their standing scope (the covered members, the packs carrying an `## Upstream` section) moves into their worker docs, where instruction that says the same thing every run belongs (#1578). |
