@@ -38,7 +38,7 @@ forever, whether or not it ever applies — so prose is rationed, and the ration
 - **Moving a rule out of `RULES.md` into a skill** — only where the skill's
   `force-load-on-file-edits-paths` covers *every* moment the rule is needed. A skill whose only
   trigger is its description is picked by the model, not the harness, so a rule that must fire at
-  a moment no file edit predicts stays prose, however activity-shaped it reads. (5)
+  a moment no file edit predicts stays prose, however activity-shaped it reads. (2)
 
 ## Shape a rule so it fires
 
