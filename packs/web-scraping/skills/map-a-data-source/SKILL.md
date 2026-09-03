@@ -85,3 +85,17 @@ is allowed to do the fetching.
 
 The bar: **a later session should be able to write the parser from this doc without
 touching the live service.** If it can't, the reconnaissance isn't finished.
+
+## Standing rules while you map
+
+- **Adding a source, or deciding what to parse** — scraping rendered markup is the **last**
+  resort. Prefer, in order: the hydration blob a server-rendered app embeds in the page, then
+  the JSON/GraphQL endpoint a single-page app fetches its rows from, and only then the markup
+  — where you prefer the page's self-describing metadata (JSON-LD, `og:` tags) over element
+  positions, because metadata survives a redesign and `.results > div:nth-child(2)` does not.
+
+- **Learning something non-obvious by probing the service** — write it down in a reference doc
+  beside the scripts: endpoints, auth, the field surface, the enum values. Keep it complete
+  enough that **nothing needs to re-probe the live service to answer a question**. The
+  expensive part of this work is the knowledge rather than the code, and re-probing is slow,
+  rate-limited, sometimes blocked, and occasionally the thing that gets you banned.

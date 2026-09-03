@@ -5,47 +5,54 @@ reached without a contract: no support channel, no changelog, no SLA. No
 fingerprint — a scraper is ordinary HTTP client code, indistinguishable from a call
 to an API the project owns.
 
-Prose plus one skill, and no checks: every rule is about a *remote* service's
+Prose plus three skills, and no checks: every rule is about a *remote* service's
 behaviour (which field is authoritative, whether an instant is UTC, when a 200 is a
 bot wall), none of which is written into repo state in a shape a check could read
 without firing on ordinary HTTP code.
 
 ## Rules (`RULES.md`)
 
+The always-on rules — what a session needs whether or not it is touching the fetch or the
+conversion code:
+
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Adding a source, or what to parse | medium | complexity | prose: 90 words |
 | A rendered-snapshot expectation shifting after a re-record | medium | correctness | prose: 31 words |
-| Learning something non-obvious by probing the service | medium | complexity | prose: 71 words |
-| Writing the fetch itself | medium | correctness | prose: 44 words |
-| Deciding whether to retry a failed request | medium | correctness | prose: 43 words |
-| Porting a fetch to an HTTP client | medium | correctness | prose: 47 words |
-| Setting the retry budget | medium | performance | prose: 38 words |
-| One item in a batch failing | high | correctness | prose: 30 words |
-| A sandbox refusing the target host | critical | legal | prose: 80 words |
-| A fetch that fails only in CI | medium | correctness | prose: 108 words |
-| Needing many items with no list endpoint | medium | performance | prose: 66 words |
-| A fetch that cannot produce a page | medium | correctness | prose: 66 words |
 | Deciding whether a fetch succeeded | high | correctness | prose: 55 words |
 | Getting an empty body back | high | correctness | prose: 36 words |
 | Choosing which field to read | high | correctness | prose: 57 words |
 | Filtering rows by a status | high | correctness | prose: 40 words |
 | Reading a numeric field | high | correctness | prose: 17 words |
 | Reducing a set to its cheapest | medium | correctness | prose: 45 words |
-| Converting an instant to local time | high | correctness | prose: 132 words |
-| Taking a "now" | high | correctness | prose: 38 words |
-| Parsing a value whose format is ambiguous | high | correctness | prose: 129 words |
-| Changing the conversion | high | correctness | prose: 78 words |
 | Emitting a value the pipeline hasn't reached | high | correctness | prose: 64 words |
-| Deciding what a fetch writes to disk | medium | complexity | prose: 128 words |
+| Deciding what a fetch writes to disk | medium | complexity | prose: 61 words |
 | Re-running a fetch that already ran | medium | correctness | prose: 70 words |
 | Scheduling the refresh | medium | correctness | prose: 75 words |
 | Generating artifacts from the stored data | medium | correctness | prose: 55 words |
 
-## Skill
+The fetching rules — the single module, the retry set and budget, per-item failure, batching,
+the sandbox and datacenter-IP blocks — are the [`fetch-layer`](skills/fetch-layer/SKILL.md)
+skill; the time-zone and ambiguous-format rules, and what a conversion change costs, are
+[`time-at-the-boundary`](skills/time-at-the-boundary/SKILL.md); choosing the surface and
+writing the probe findings down are in [`map-a-data-source`](skills/map-a-data-source/SKILL.md).
+All three are activity-triggered by their descriptions — the files a member names its fetch or
+normalize code by are not fixed enough to earn a forced path scope.
+
+### Why the cache and the raw record are kept apart
+
+The fetched artifact is git-ignored and the extracted raw record is committed because that
+split buys three things at once: re-deriving the normalized output becomes an **offline**
+operation, so a parser change costs no requests; the committed record doubles as the fixture
+for a self-test of the transform that needs no network; and a field you didn't parse this
+month is still there next month, because the whole object was kept rather than the subset
+needed at the time.
+
+## Skills
 
 | Skill | Trigger |
 |---|---|
+| [`fetch-layer`](skills/fetch-layer/SKILL.md) | writing or changing the code that fetches from the web, or a fetch that fails from CI or a sandbox |
+| [`time-at-the-boundary`](skills/time-at-the-boundary/SKILL.md) | writing or changing timestamp, time-zone or date-format handling in the pipeline, or taking a "now" |
 | [`map-a-data-source`](skills/map-a-data-source/SKILL.md) | adding a new source, or an existing one stopped parsing — locate the surface and write the reference doc before any parser exists |
 
 Provenance: distilled from three fleet members that each take data from a site they
@@ -69,10 +76,10 @@ Each was already written; none is new material.
 
 | What moved | From | Landed in |
 |---|---|---|
-| The datacenter-IP diagnosis: a fetch that works locally and 403s from CI is the IP, not the User-Agent; the residential/rendering proxy is the answer, and a target still blocked through it is un-cacheable | the baseline prose (deleted there in this change) | **A fetch that works on your machine and fails from CI** |
-| Cross a time zone exactly once, at the ingest edge — including the downstream double-conversion and the device-clock "now" | `missingbulb/EdFringeNow`'s local `edfringe-data` pack | **Converting an instant to the domain's local time** (landed with the pack) and **Taking a "now"** |
-| A conversion change is a full-snapshot change: regenerate from the raw record, and expect the boundary to move records between partitions | `missingbulb/EdFringeNow`'s local `edfringe-data` pack | **Changing the conversion** |
-| Read an ambiguous value by what the page declares, centrally — the numeric slash date resolved from a positive locale signal, and `Z` as serialization rather than the subject's zone | `missingbulb/GoogleCalendarEventCreator`'s local `gcec` pack | **Parsing a value whose format is ambiguous** |
+| The datacenter-IP diagnosis: a fetch that works locally and 403s from CI is the IP, not the User-Agent; the residential/rendering proxy is the answer, and a target still blocked through it is un-cacheable | the baseline prose (deleted there in this change) | **A fetch that works on your machine and fails from CI** (`fetch-layer`) |
+| Cross a time zone exactly once, at the ingest edge — including the downstream double-conversion and the device-clock "now" | `missingbulb/EdFringeNow`'s local `edfringe-data` pack | **Converting an instant to the domain's local time** (landed with the pack) and **Taking a "now"** (`time-at-the-boundary`) |
+| A conversion change is a full-snapshot change: regenerate from the raw record, and expect the boundary to move records between partitions | `missingbulb/EdFringeNow`'s local `edfringe-data` pack | **Changing the conversion** (`time-at-the-boundary`) |
+| Read an ambiguous value by what the page declares, centrally — the numeric slash date resolved from a positive locale signal, and `Z` as serialization rather than the subject's zone | `missingbulb/GoogleCalendarEventCreator`'s local `gcec` pack | **Parsing a value whose format is ambiguous** (`time-at-the-boundary`) |
 
 The basics deletion is done here. The two members' local copies are theirs to prune —
 this session has no write access to either — so they are left for `growth-dedup` to
