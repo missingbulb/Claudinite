@@ -1,6 +1,10 @@
 ---
 name: writing-pack-prose
-description: How pack prose is written — RULES.md rules, SKILL.md bodies and check text in a Claudinite pack, local or canon — brevity, structure, triggerability, findability, and the per-pack references doc that carries each rule's rationale. Use before writing or editing any pack's RULES.md or SKILL.md, or when landing a lesson as prose.
+description: How pack prose is written — RULES.md rules, SKILL.md bodies and check text in a Claudinite pack, local or canon — brevity, structure, triggerability, findability, and the per-pack references doc. Loaded for any edit of a pack's RULES.md or SKILL.md, and when landing a lesson as prose.
+metadata:
+  force-load-on-file-edits-paths:
+    - "**/packs/*/RULES.md"
+    - "**/packs/*/skills/*/SKILL.md"
 ---
 
 # Writing pack prose

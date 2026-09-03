@@ -1,6 +1,10 @@
 ---
 name: static-site-releases
 description: The release standard every static-site repo of ours ships — the date-anchored version scheme, release-on-push, the explicit publish set, .github/site.config, the vendored workflows, the Pages deploy, and the setup a new site repo needs. Use when setting up a site repo, changing or debugging its release pipeline or site.config, when asked to "bump version" on a site repo, or when a static-website check fires.
+metadata:
+  force-load-on-file-edits-paths:
+    - ".github/site.config"
+    - ".github/workflows/static-site-*.yml"
 ---
 
 # Releasing a static site

@@ -1,6 +1,10 @@
 ---
 name: authoring-agent-docs
 description: How to write instruction files coding agents follow reliably. Use before writing or editing any Claude instruction doc — a project CLAUDE.md, a convention doc, a routine spec.
+metadata:
+  force-load-on-file-edits-paths:
+    - "**/CLAUDE.md"
+    - "**/.claude/rules/**"
 ---
 
 # Writing instruction files coding agents follow

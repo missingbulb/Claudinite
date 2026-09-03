@@ -23,7 +23,7 @@ the round is granted. Your job is the research.
 3. **Research.** *Web mode* (WebSearch/WebFetch available): the open web. *Repo-derived mode* (web tools
    absent — do not fail, do not fake): citable repo-native signal only — new feature-request/extractor-request
    issues, merged PRs, issue/PR discussion carrying user-side signal — each citable to its own GitHub URL.
-4. **Write into the relevant wiki page(s) only**, per the pack's RULES.md: cite every claim in that page's
+4. **Load the [writing-wiki-pages](../../skills/writing-wiki-pages/SKILL.md) skill** (Skill tool, skill: `writing-wiki-pages`) — the guard holds every edit under `product-wiki/` until it is loaded — then **write into the relevant wiki page(s) only**, per that skill: cite every claim in that page's
    `## Sources`; correct a wrong or superseded claim with a note of why, never a silent deletion; touch
    `product-wiki/sample-data/` only when a new claim needs an illustrative example; **never write
    `product-wiki/product-requirements/`** — a finding that should move a requirement gets a growth-log note

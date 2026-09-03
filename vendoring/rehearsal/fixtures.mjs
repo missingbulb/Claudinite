@@ -47,6 +47,8 @@
 //                 `hidden` sits here on the same terms: it decides only whether the
 //                 CANON's catalog names a pack, so a local one carrying it does nothing
 //                 either, and validation is the half that could turn a member red.
+//                 The dated pack also bundles a skill forcing itself for files (#1648): a
+//                 consumer's own path-scoped skill must mount, index and load.
 //   legacy-task   a local pack whose scheduled task still declares the DEPRECATED
 //                 task-level `session_scope` — the shape a consumer that predates
 //                 the 2026-08-09 retirement still has on disk. It holds the
@@ -913,6 +915,8 @@ export const FIXTURES = [
       '.claudinite/local/packs/fixture-versioned/RULES.md': '# fixture-versioned\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-dated/pack.mjs': PACK_DATED,
       '.claudinite/local/packs/fixture-dated/RULES.md': '# fixture-dated\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-dated/skills/fixture-dated-skill/SKILL.md':
+        '---\nname: fixture-dated-skill\ndescription: A rehearsal fixture skill. Never invoked.\nmetadata:\n  force-load-on-file-edits-paths:\n    - "scoped/**"\n---\n\nNothing to do.\n',
     },
   },
   {

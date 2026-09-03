@@ -36,18 +36,19 @@ standard.
 
 ## Rules (`RULES.md`)
 
+Two rules, for the sessions that only read the wiki:
+
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Every page opens with what it found. | medium | complexity | prose: 92 words + check (`product-wiki-key-insights`) |
-| Terse, plain, and only the non-obvious. | low | complexity | prose: 96 words |
-| The header is a current view | medium | complexity | prose: 63 words |
-| The sink is human-reviewed only. | critical | correctness | prose: 56 words |
-| Compile once, refine in place. | medium | complexity | prose: 49 words |
-| Cited, never silently rewritten. | high | correctness | prose: 48 words + check (`product-wiki-sources`) |
-| Seeing a figure in several places | high | correctness | prose: 78 words |
-| No fabricated growth. | critical | correctness | prose: 22 words |
-| sample-data and new wikis. | medium | complexity | prose: 66 words |
-| Review discipline. | medium | complexity | prose: 44 words |
+| Working on a requirement or spec | high | correctness | prose: 45 words |
+| Building on `product-wiki/` elsewhere | critical | correctness | prose: 26 words + check (`product-wiki-isolation`) |
+
+Everything about *editing* a page — the `## Key insights` header, citation, correction without
+deletion, the growth log, sample-data, the no-fabricated-growth stop — is the
+[`writing-wiki-pages`](skills/writing-wiki-pages/SKILL.md) skill, forced for `product-wiki/**` by
+its own `force-load-on-file-edits-paths`: the PreToolUse guard holds a file tool aimed there until the
+session has loaded it, and the `skill-loaded-before-editing` work rule catches an edit made
+another way. The weekly task loads it by name.
 
 ## Checks
 
@@ -83,6 +84,7 @@ unattended growth channel silently stopped firing". Silence it with
 
 | Skill | Trigger |
 |---|---|
+| [`writing-wiki-pages`](skills/writing-wiki-pages/SKILL.md) | any edit under `product-wiki/` — held by the guard until loaded |
 | [`explore-link`](skills/explore-link/SKILL.md) | the owner hands over a URL (`/explore-link <url>`) — mine it for product, market, usage and pricing insights and fold them into an existing wiki page |
 
 The two growth lanes differ only in who chooses the source: the weekly task picks
