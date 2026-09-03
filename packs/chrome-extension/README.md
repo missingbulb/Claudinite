@@ -11,8 +11,7 @@ The `cer/` check ids are kept as they were: a member's `accept` entries name rul
 ## What the pack carries
 
 The gotchas themselves live in [`RULES.md`](RULES.md), grouped by the surface each concerns —
-service worker, content scripts, permissions and host access, sign-in and tokens, extension UI
-surfaces, and introspecting a service worker over CDP. The index below is held against that prose by
+service worker, content scripts, permissions and host access, and extension UI surfaces. The index below is held against that prose by
 the corpus-wide rule-index drift guard, which is what makes a second listing safe here: an earlier
 hand-kept one drifted into claiming a prose rule that never existed (#777).
 
@@ -21,29 +20,24 @@ hand-kept one drifted into claiming a prose rule that never existed (#777).
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | Passing a path from a service worker | high | correctness | prose: 68 words |
-| Wanting import/export in extension code | medium | correctness | prose: 51 words |
+| Wanting import/export in extension code | medium | correctness | prose: 50 words |
 | Assembling a shared global across files | high | correctness | prose: 51 words |
 | Accumulating state in a re-injected file | high | correctness | prose: 22 words |
-| Loading module code into a content script | high | correctness | prose: 118 words + check (`content-script-module-syntax`) |
-| Adding an import to a content-script module | high | correctness | prose: 30 words |
-| Keeping that webaccessibleresources list correct | high | correctness | prose: 29 words |
 | Matching a host with chrome.events.UrlFilter | high | correctness | prose: 63 words |
-| Running on third-party pages without a warning | high | legal | prose: 60 words |
-| Starting the worker on a granted permission | medium | correctness | prose: 43 words |
 | A listed host's fetch failing in-browser | medium | correctness | prose: 42 words |
 | Reaching your own backend | medium | correctness | prose: 35 words |
-| Authenticating an extension to a JWT-validating backend | critical | correctness | prose: 83 words |
-| Refreshing a token silently | medium | correctness | prose: 28 words |
-| Refreshing silently with two accounts | medium | correctness | prose: 41 words |
-| Storing a token | critical | correctness | prose: 38 words |
-| Keeping a token across a restart | medium | correctness | prose: 30 words |
 | Knowing whether your side panel is open | low | correctness | prose: 37 words |
 | Opening the side panel programmatically | medium | correctness | prose: 15 words |
 | Putting a menu on the toolbar icon | low | correctness | prose: 30 words |
 | Recreating menu items on startup | medium | correctness | prose: 30 words |
-| Awaiting a chrome. callback API inside Runtime.evaluate | low | correctness | prose: 34 words |
-| Reading a worker value over CDP | low | correctness | prose: 30 words |
-| Attaching to a dormant worker | low | correctness | prose: 39 words |
+
+The rules a session needs only while it is on one job are skills: Google sign-in and token
+handling is [`extension-google-signin`](skills/extension-google-signin/SKILL.md), ES modules in
+content scripts and the `web_accessible_resources` list are
+[`content-script-modules`](skills/content-script-modules/SKILL.md), runtime host access is
+[`extension-host-permissions`](skills/extension-host-permissions/SKILL.md), and probing a service
+worker over CDP is [`probe-extension-worker-over-cdp`](skills/probe-extension-worker-over-cdp/SKILL.md).
+The two that concern the manifest force themselves for any `manifest.json` edit.
 
 ## Checks
 
@@ -66,6 +60,14 @@ Every `cer/` rule is about a release that would otherwise fail — or publish th
 ## Skills
 
 [**chrome-store-releases**](skills/chrome-store-releases/SKILL.md) is the release standard itself — the vendored workflows and composite actions, `.github/release.config`, versioning and the packaged artifact, the store secrets, the README install sections, and the manual Chrome Web Store steps. It is the contract the `cer/` checks judge against, reached when a pipeline is being set up or debugged rather than carried by every session in the repo.
+
+| Skill | Trigger |
+|---|---|
+| [`chrome-store-releases`](skills/chrome-store-releases/SKILL.md) | setting up, changing or debugging the release pipeline, a `cer/` check firing; any edit of `.github/release.config` or a vendored `chrome-extension-*` workflow — held by the guard until loaded |
+| [`extension-google-signin`](skills/extension-google-signin/SKILL.md) | adding or debugging Google sign-in, token refresh or token storage |
+| [`content-script-modules`](skills/content-script-modules/SKILL.md) | adding an import to a content script; any edit of a `manifest.json` — held by the guard until loaded |
+| [`extension-host-permissions`](skills/extension-host-permissions/SKILL.md) | putting a content script on third-party pages; any edit of a `manifest.json` — held by the guard until loaded |
+| [`probe-extension-worker-over-cdp`](skills/probe-extension-worker-over-cdp/SKILL.md) | driving or probing the service worker through CDP |
 
 ## Task
 
