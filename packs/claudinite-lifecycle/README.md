@@ -35,6 +35,7 @@ not prose: the session that has lost its rules is the session least able to noti
 | `conformance-workflow` | high | correctness | check: advisory |
 | `conformance-work-scope` | high | correctness | check: advisory |
 | `scheduler-workflow-shape` | high | correctness | check: blocking |
+| `legacy-shape-in-use` | medium | complexity | check: advisory |
 
 What goes wrong when one fires:
 
