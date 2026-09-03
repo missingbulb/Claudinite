@@ -2,7 +2,7 @@ import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
 import { FREQUENCIES } from '../../claudinite-tasks/calendar.mjs';
 import { MODEL_FAMILIES } from '../../claudinite-tasks/model-map.mjs';
-import { OUTCOMES, LEGACY_OUTCOMES, defaultAgentModel } from '../../claudinite-tasks/task-contract.mjs';
+import { OUTCOMES, LEGACY_OUTCOMES, defaultAgentModel, descriptionProblem } from '../../claudinite-tasks/task-contract.mjs';
 import { validatePreconditions, BUILTIN_TERM_NAMES, termsMap } from '../../claudinite-tasks/precondition-policy.mjs';
 import {
   TASK_DECLARATION_PATH_RE, isLegacyTaskDeclarationPath, readDeclarationFields,
@@ -47,7 +47,7 @@ const isReExport = (text) => {
 const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
-  description: 'A tasks/<name>/task.json carries the task contract (id, frequency, preconditions, expected_outcome) with legal enum values and a well-formed precondition expression; a pr task pairs its ceiling with a automerge policy, and any code_work carries a timeout and stays task-local',
+  description: 'A tasks/<name>/task.json carries the task contract (id, description, frequency, preconditions, expected_outcome) with legal enum values and a well-formed precondition expression; a pr task pairs its ceiling with a automerge policy, and any code_work carries a timeout and stays task-local',
   doc: 'packs/claudinite-tasks/README.md',
   why: 'the scheduler run and executor read agent_model/expected_outcome/frequency from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
@@ -120,6 +120,14 @@ const rule = {
       }
 
       if (str('id') === null) flag('declares no string "id"', 'add "id": the task name (matching its directory)');
+      // ADVISORY when absent — a member's converted task carries none, and its
+      // vendor refresh must not go red over it — and blocking when declared badly.
+      if (!decl.has('description')) {
+        advise('declares no "description"', 'add "description": up to fifty words on what the task does or why it exists — not what the other fields already say');
+      } else {
+        const problem = descriptionProblem(decl.scalar('description'));
+        if (problem) flag(problem.what, problem.fix);
+      }
       // agent_instructions defaults to the `task.md` beside the declaration, so
       // only a declared value that is not a file name is wrong here. A `none` task
       // runs no agent, so the field is not applicable.

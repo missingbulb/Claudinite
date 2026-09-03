@@ -112,6 +112,21 @@ export const SIGNAL_NAMES = [
   'localPacks', 'sharedMount', 'conversationLogs', 'stamp', 'fleet', 'request',
 ];
 
+// `description` — what the task does, or why it exists, for the person reading the
+// declaration or a roster of them: free prose, bounded so it stays a summary. It
+// must not restate what the other fields already say (the cadence, the
+// conditions, the policy, the files); the writing-tasks skill holds that rule,
+// which no check can read.
+export const DESCRIPTION_MAX_WORDS = 50;
+export const wordCount = (text) => String(text).trim().split(/\s+/).filter(Boolean).length;
+export function descriptionProblem(description) {
+  if (typeof description !== 'string') return { what: `"description" is not a string`, fix: 'write one sentence or two saying what the task does or why it exists' };
+  if (description.trim() === '') return { what: '"description" is empty', fix: 'say what the task does or why it exists, or drop the field' };
+  const words = wordCount(description);
+  if (words > DESCRIPTION_MAX_WORDS) return { what: `"description" runs to ${words} words`, fix: `keep it to ${DESCRIPTION_MAX_WORDS} words — a summary, not the README` };
+  return null;
+}
+
 // Validate one task declaration. Returns an array of `{ what, fix }` problems —
 // empty means the declaration is well-formed. Pure: no I/O, no imports of the
 // task itself; the caller supplies the already-loaded default export.
@@ -125,6 +140,12 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
 
   if (typeof decl.id !== 'string' || decl.id.trim() === '') {
     bad('the task has no string "id"', 'give the task an "id" matching its directory name');
+  }
+  // Optional at the door — nothing converges a member's task files — and judged
+  // only when declared; the shape check asks for one where it is missing.
+  if (decl.description !== undefined) {
+    const problem = descriptionProblem(decl.description);
+    if (problem) bad(problem.what, problem.fix);
   }
   // ACCEPTED, not FREQUENCIES: a member's own task file may still carry a retired spelling and
   // must keep running, since nothing converges a member's task files. Stopping a NEW declaration

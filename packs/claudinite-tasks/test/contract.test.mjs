@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { MODEL_FAMILIES, MODEL_MAP, resolveModel, isAgentless } from '../model-map.mjs';
 import {
   validateTaskDeclaration, normalizeTaskDeclaration, taskSignalNames, OUTCOMES, SIGNAL_NAMES,
-  DEFAULT_AGENT_MODEL, DEFAULT_AGENT_EXECUTION_TIMEOUT, defaultAgentModel,
+  DEFAULT_AGENT_MODEL, DEFAULT_AGENT_EXECUTION_TIMEOUT, defaultAgentModel, DESCRIPTION_MAX_WORDS,
 } from '../task-contract.mjs';
 import {
   FREQUENCIES, ACCEPTED_FREQUENCIES, LEGACY_FREQUENCIES, normalizeFrequency,
@@ -91,6 +91,19 @@ test('normalizeTaskDeclaration fills the agentic defaults, and only where absent
   assert.deepEqual(defaultAgentModel({}), DEFAULT_AGENT_MODEL);
   // The editor's pointer leaves at the door.
   assert.equal(normalizeTaskDeclaration({ ...minimalAgentic, $schema: 'x' }).$schema, undefined);
+});
+
+// `description` — what the task does or why it exists, in at most fifty words.
+// Absent, it validates: nothing converges a member's task files, so a member's
+// own declaration keeps loading; the shape check is what asks for one.
+test('validateTaskDeclaration: a description is free prose up to fifty words', () => {
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, description: 'Folds the logs into an aggregate.' }), []);
+  assert.deepEqual(validateTaskDeclaration(validTask), [], 'absent is accepted');
+  assert.match(validateTaskDeclaration({ ...validTask, description: '' })[0].what, /"description" is empty/);
+  assert.match(validateTaskDeclaration({ ...validTask, description: 42 })[0].what, /"description" is not a string/);
+  const long = Array.from({ length: DESCRIPTION_MAX_WORDS + 1 }, (_, i) => `w${i}`).join(' ');
+  assert.match(validateTaskDeclaration({ ...validTask, description: long })[0].what, /"description" runs to 51 words/);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, description: long.split(' ').slice(0, DESCRIPTION_MAX_WORDS).join(' ') }), []);
 });
 
 test('validateTaskDeclaration: agent_instructions defaults for an agentic task and is not applicable to none', () => {

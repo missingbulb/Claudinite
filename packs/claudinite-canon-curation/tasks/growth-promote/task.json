@@ -1,6 +1,7 @@
 {
   "$schema": "../../../claudinite-tasks/task.schema.json",
   "id": "growth-promote",
+  "description": "The growth lifecycle's central stage: reads the participating members' merged local-pack lessons, generalises the portable ones, and opens an owner-gated pull request against the canon.",
   "frequency": "daily",
   "schedule_after": [
     "claudinite-growth/growth-extract"

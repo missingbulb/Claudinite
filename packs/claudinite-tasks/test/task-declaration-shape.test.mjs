@@ -6,6 +6,7 @@ import rule from '../worldRules/task-declaration-shape.mjs';
 
 const good = {
   id: 'growth-extract',
+  description: 'Mines the window for durable lessons and folds them into the local packs.',
   frequency: 'daily',
   agent_model: 'opus',
   expected_outcome: 'pr',
@@ -36,22 +37,37 @@ test('task-declaration-shape: is inert when no task declaration exists', () => {
 // task; the loader fills `agent_model`, `agent_instructions` and
 // `agent_execution_timeout` (task-contract.mjs), so their absence is not a finding.
 test('task-declaration-shape: the minimal agentic declaration is clean', () => {
-  assert.deepEqual(run({ [TASK]: json({ id: 'growth-extract', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none' }) }), []);
+  assert.deepEqual(run({ [TASK]: json({ id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none' }) }), []);
 });
 
 // …and a declaration of only code_work is agentless without saying so: no
 // agent_instructions is asked of it, and the missing-code-work finding cannot fire.
 test('task-declaration-shape: a code_work-only declaration is judged as an agentless task', () => {
-  assert.deepEqual(run({ [TASK]: json({ id: 'growth-extract', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 60 }) }), []);
+  assert.deepEqual(run({ [TASK]: json({ id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 60 }) }), []);
   // Declaring an agentic field beside code_work makes it agentic again — and the
   // default model is not `none`, so the pair is still clean.
-  assert.deepEqual(run({ [TASK]: json({ id: 'growth-extract', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 60, agent_execution_timeout: 900 }) }), []);
+  assert.deepEqual(run({ [TASK]: json({ id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 60, agent_execution_timeout: 900 }) }), []);
 });
 
 test('task-declaration-shape: a declared agentic field that is not usable still blocks', () => {
   assert.match(whatsOf({ [TASK]: json({ ...good, agent_instructions: 42 }) }), /"agent_instructions" that is not a file name/);
   assert.match(whatsOf({ [TASK]: json({ ...good, agent_execution_timeout: 'soon' }) }), /"agent_execution_timeout" that is not a number/);
   assert.match(whatsOf({ [TASK]: json({ ...good, agent_model: 'gpt' }) }), /"agent_model" is "gpt", not a legal value/);
+});
+
+// The description is asked for, never demanded: a member's converted task carries
+// none, and its vendor refresh must not go red over it. A bad one blocks.
+test('task-declaration-shape: a missing description is an advisory, a bad one blocks', () => {
+  const { description, ...none } = good;
+  const f = run({ [TASK]: json(none) });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].severity, 'advisory');
+  assert.match(f[0].what, /declares no "description"/);
+  const long = run({ [TASK]: json({ ...good, description: Array.from({ length: 51 }, () => 'word').join(' ') }) });
+  assert.equal(long.length, 1);
+  assert.equal(long[0].severity, 'blocking');
+  assert.match(long[0].what, /"description" runs to 51 words/);
+  assert.match(whatsOf({ [TASK]: json({ ...good, description: '' }) }), /"description" is empty/);
 });
 
 test('task-declaration-shape: a file that is not a JSON object is flagged', () => {
@@ -108,7 +124,7 @@ test('task-declaration-shape: the legacy outcome ceilings are an advisory rename
 });
 
 const noneTask = {
-  id: 'growth-extract', frequency: 'daily', preconditions: ['none'], agent_model: 'none', expected_outcome: 'none',
+  id: 'growth-extract', description: 'An agentless task.', frequency: 'daily', preconditions: ['none'], agent_model: 'none', expected_outcome: 'none',
   code_work: 'node w.mjs', code_work_timeout: 60,
 };
 
@@ -227,6 +243,7 @@ const conversionAdvisory = (findings) => findings.filter((f) => f.severity === '
 test('task-declaration-shape: a well-formed task.mjs earns the conversion advisory and nothing else', () => {
   const findings = run({ [MJS]: mjsOf(good) });
   assert.equal(findings.length, 1, JSON.stringify(findings));
+  assert.match(findings[0].what, /retired module form/);
   assert.equal(conversionAdvisory(findings).length, 1);
   assert.match(findings[0].fix, /task-declarations-to-json\.mjs/);
 });

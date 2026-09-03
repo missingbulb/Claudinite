@@ -4,7 +4,7 @@
   "title": "Claudinite task declaration",
   "description": "A tasks/<name>/task.json: what a scheduled task is, when it runs, and what it may write. The runtime contract is packs/claudinite-tasks/task-contract.mjs; the enums here mirror its lists and a test holds them in step.",
   "type": "object",
-  "required": ["id", "frequency", "preconditions", "expected_outcome"],
+  "required": ["id", "description", "frequency", "preconditions", "expected_outcome"],
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
@@ -12,6 +12,11 @@
       "type": "string",
       "minLength": 1,
       "description": "The task's name — the same as its directory name."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the task does, or why it exists, in at most fifty words — never what the other fields already say (the cadence, the conditions, the policy, the files)."
     },
     "frequency": {
       "type": "string",

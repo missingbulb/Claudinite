@@ -247,6 +247,7 @@ const PACK_PROSE_ONLY = `export default {
 const FIXTURE_TASK = `{
   "$schema": "../../../../../shared/packs/claudinite-tasks/task.schema.json",
   "id": "fixture-task",
+  "description": "A rehearsal fixture task; it never runs.",
   "frequency": "weekly",
   "precondition_signals": [],
   "agent_model": "none",

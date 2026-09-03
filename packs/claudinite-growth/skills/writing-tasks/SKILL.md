@@ -72,9 +72,17 @@ than by replaying a ledger.
   crons, or a missing concurrency/dispatch guard, break staggering, double-run
   safety, or manual runs.
 
+- **Every declaration carries a `description`** — up to fifty words on what the
+  task does, or why it exists, for whoever reads the declaration or a roster of
+  them. It says only what no other field says: never the cadence, the conditions,
+  the automerge policy, or where the files live — those are read off the fields
+  beside it, and a description restating them goes stale the day one changes.
+  `task-declaration-shape` bounds the length; the rest is yours.
+
 - **Every task declaration carries the full contract.** A `tasks/<name>/task.json`
   (one JSON object, `"$schema"` pointing at `packs/claudinite-tasks/task.schema.json`
-  so an editor validates it) declares `id` (matching its directory), `frequency`
+  so an editor validates it) declares `id` (matching its directory), `description`
+  (below), `frequency`
   (`daily | weekly | monthly | manual`), `preconditions` (the conditions that must
   hold for it to run — below), `expected_outcome` (`none | pr` — the retired
   `open-pr`/`merged-pr` normalize to `pr` with a policy of `nothing`/`anything`).
