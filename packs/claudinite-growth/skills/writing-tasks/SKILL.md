@@ -5,10 +5,8 @@ description: The contract a Claudinite task is written to — the declaration's 
 
 # Writing a task
 
-The contract a task is written to. How a repo's own Claudinite work runs: A repo schedules **itself**, and
-every occurrence of every task is an **issue in that repo** — a `[claudinite-work]`
-work item whose labels are its state. That is the work-item queue; what follows is
-the contract a task is written to, not how the queue works internally.
+Every occurrence of every task is an issue in this repo — a `[claudinite-work]` item whose labels
+are its state — so write the task against that queue, never a runner of its own.
 
 **A cadence is one way an occurrence is created, not what a task is.** A task is a
 unit of the repo's own work with a precondition, a code-work phase and optionally an

@@ -5,15 +5,11 @@ description: Decompose a project into its pack facets (working-style class, tech
 
 # Generate project instructions — extract packs, not a project doc
 
-This skill grows a canon's pack library using a project as the evidence. Whether a project's insight
-becomes a pack every repo can declare is the canon's call, made here — never the project's own, which
-is why this method lives with the curation stages that run it and not in what a member reads. The owner's
-projects recur — not as wholes, but **along axes**: the same working style returns with a different
-product, the same technology returns with a different working style, the same audience returns on a
-different stack. The first project to exhibit a facet pays the cost of working out how that facet is
-handled; a **canon** pack is how every later project sharing it starts from the answer instead of
-re-deriving it — and what stays specific to *this* project lands in **its own local pack**, the same
-pack machinery run from the project's tree.
+Grow the canon's pack library using a project as the evidence, and decide here — never in the project —
+whether an insight becomes a pack every repo can declare. Projects recur **along axes**, not as wholes:
+the same working style with a different product, the same technology under a different working style. So
+split what you find by axis — a facet later projects will share becomes a **canon** pack, and what stays
+specific to *this* project lands in **its own local pack**.
 
 The deliverable is therefore **two kinds of pack**, never a single "how to work on this repo" document:
 
