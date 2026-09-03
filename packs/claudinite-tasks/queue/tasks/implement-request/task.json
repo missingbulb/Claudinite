@@ -6,11 +6,11 @@
   "preconditions": [
     "request-eligible"
   ],
-  "agent_model": "opus",
-  "model_from_request": true,
   "expected_outcome": "pr",
   "automerge": "anything",
+  "on_interrupt": "needs-human",
+  "agent_model": "opus",
+  "model_from_request": true,
   "agent_instructions": "task.md",
-  "agent_execution_timeout": 14400,
-  "on_interrupt": "needs-human"
+  "agent_execution_timeout": 14400
 }

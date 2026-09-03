@@ -6,11 +6,11 @@
   "preconditions": [
     "repo-active"
   ],
-  "agent_model": "opus",
   "expected_outcome": "pr",
   "automerge": [
     "claudinite-local-pack-md-changes"
   ],
+  "agent_model": "opus",
   "agent_instructions": "task.md",
   "agent_execution_timeout": 2700
 }

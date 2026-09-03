@@ -81,7 +81,8 @@ than by replaying a ledger.
 
 - **Every task declaration carries the full contract.** A `tasks/<name>/task.json`
   (one JSON object, `"$schema"` pointing at `packs/claudinite-tasks/task.schema.json`
-  so an editor validates it) declares `id` (matching its directory), `description`
+  so an editor validates it; keys grouped as identity, cadence, outcome, then the
+  `code_*` fields, then the `agent_*` fields) declares `id` (matching its directory), `description`
   (below), `frequency`
   (`daily | weekly | monthly | manual`), `expected_outcome` (`none | pr` — the retired
   `open-pr`/`merged-pr` normalize to `pr` with a policy of `nothing`/`anything`).

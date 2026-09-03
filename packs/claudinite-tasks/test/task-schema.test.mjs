@@ -8,6 +8,7 @@ import { MODEL_FAMILIES } from '../model-map.mjs';
 import { OUTCOMES, INTERRUPT_POLICIES, SESSION_SCOPES, validateTaskDeclaration, normalizeTaskDeclaration } from '../task-contract.mjs';
 import { loadTaskTerms } from '../task-terms.mjs';
 import { parseTaskDeclaration, findTaskDeclaration, loadTaskDeclaration, siblingTaskDeclaration } from '../task-declaration.mjs';
+import { orderTaskKeys } from '../../../engine/migrations/task-declarations-to-json.mjs';
 
 const root = join(import.meta.dirname, '../../..');
 const schema = JSON.parse(readFileSync(join(root, 'packs/claudinite-tasks/task.schema.json'), 'utf8'));
@@ -50,6 +51,7 @@ test('every canon task.json satisfies the schema, points at it, and validates ag
   for (const f of files) {
     const raw = JSON.parse(readFileSync(join(root, f), 'utf8'));
     assert.deepEqual(violations(raw), [], f);
+    assert.deepEqual(Object.keys(raw), Object.keys(orderTaskKeys(raw)), `${f}: keys grouped in the canonical order`);
     const pointer = join(root, f, '..', raw.$schema);
     assert.equal(pointer, join(root, 'packs/claudinite-tasks/task.schema.json'), `${f}: $schema resolves to the schema`);
     const dir = join(root, f, '..');

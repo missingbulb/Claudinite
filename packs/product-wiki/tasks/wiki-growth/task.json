@@ -7,11 +7,11 @@
     "repo-active",
     "no-open-pr-touching:product-wiki/"
   ],
-  "agent_model": "opus",
   "expected_outcome": "pr",
   "automerge": [
     "under:product-wiki/ && doc-changes"
   ],
+  "agent_model": "opus",
   "agent_instructions": "task.md",
   "agent_execution_timeout": 2700
 }

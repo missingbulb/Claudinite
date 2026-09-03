@@ -35,12 +35,27 @@ export const schemaPath = (exists) => (exists(`.claudinite/shared/${SCHEMA_FILE}
 export const LOCAL_PACK_ROOT = '.claudinite/local/packs';
 export const CANON_PACK_ROOT = 'packs';
 
-// The JSON text for a declaration object, `$schema` first. Returns the keys that
-// could not be carried (functions, undefined) so the caller can say so.
+// The order a declaration's keys are written in, grouped by what they say: what
+// the task is, when it runs, what it may write, then the two phases — code work,
+// then the agent. A key not listed keeps its place after the listed ones.
+export const KEY_ORDER = [
+  '$schema', 'id', 'description',
+  'frequency', 'schedule_after', 'preconditions',
+  'expected_outcome', 'automerge', 'on_interrupt', 'invocation_endpoint', 'required_secrets',
+  'code_work', 'code_work_timeout',
+  'agent_model', 'model_from_request', 'agent_instructions', 'agent_execution_timeout',
+];
+export function orderTaskKeys(decl) {
+  const rank = (k) => { const i = KEY_ORDER.indexOf(k); return i === -1 ? KEY_ORDER.length : i; };
+  return Object.fromEntries(Object.entries(decl).sort(([a], [b]) => rank(a) - rank(b)));
+}
+
+// The JSON text for a declaration object, keys in KEY_ORDER. Returns the keys
+// that could not be carried (functions, undefined) so the caller can say so.
 export function serializeTaskDeclaration(decl, schemaRelative) {
   const dropped = Object.keys(decl).filter((k) => typeof decl[k] === 'function' || decl[k] === undefined);
   const data = Object.fromEntries(Object.entries(decl).filter(([k]) => !dropped.includes(k)));
-  return { text: `${JSON.stringify({ $schema: schemaRelative, ...data }, null, 2)}\n`, dropped };
+  return { text: `${JSON.stringify(orderTaskKeys({ $schema: schemaRelative, ...data }), null, 2)}\n`, dropped };
 }
 
 // The comment lines a module carried, for the report: everything outside the

@@ -7,12 +7,12 @@
     "substantive-change",
     "commits-outside:.claudinite/"
   ],
-  "agent_model": "opus",
   "expected_outcome": "pr",
   "automerge": [
     "comment-only-changes",
     "readme-changes"
   ],
+  "agent_model": "opus",
   "agent_instructions": "task.md",
   "agent_execution_timeout": 1800
 }

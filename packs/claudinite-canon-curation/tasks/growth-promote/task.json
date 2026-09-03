@@ -9,9 +9,9 @@
   "preconditions": [
     "fleet-local-packs-changed"
   ],
+  "expected_outcome": "pr",
   "invocation_endpoint": "fleet",
   "agent_model": "opus",
-  "expected_outcome": "pr",
   "agent_instructions": "task.md",
   "agent_execution_timeout": 2700
 }

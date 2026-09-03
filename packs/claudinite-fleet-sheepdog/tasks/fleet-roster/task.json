@@ -4,9 +4,9 @@
   "description": "Walks every repository under the owner over the fleet token, builds the roster of members and non-members, and files an issue per finding: repositories that should adopt Claudinite, and members whose declaration or mount is off.",
   "frequency": "daily",
   "expected_outcome": "none",
-  "code_work": "node worker.mjs",
-  "code_work_timeout": 900,
   "required_secrets": [
     "FLEET_GITHUB_TOKEN"
-  ]
+  ],
+  "code_work": "node worker.mjs",
+  "code_work_timeout": 900
 }

@@ -70,6 +70,9 @@ test('serializeTaskDeclaration: a function-valued field is dropped and named; th
   const { text, dropped } = serializeTaskDeclaration({ id: 'x', precondition() { return 1; }, frequency: 'daily' }, '../../../claudinite-tasks/task.schema.json');
   assert.deepEqual(dropped, ['precondition']);
   assert.deepEqual(JSON.parse(text), { $schema: '../../../claudinite-tasks/task.schema.json', id: 'x', frequency: 'daily' });
+  // Keys land grouped — identity, cadence, outcome, code work, agent — whatever order the module spelled them in.
+  const shuffled = serializeTaskDeclaration({ agent_execution_timeout: 5, code_work: 'x', frequency: 'daily', agent_model: 'opus', description: 'd', code_work_timeout: 1, id: 'x', expected_outcome: 'none' }, 's');
+  assert.deepEqual(Object.keys(JSON.parse(shuffled.text)), ['$schema', 'id', 'description', 'frequency', 'expected_outcome', 'code_work', 'code_work_timeout', 'agent_model', 'agent_execution_timeout']);
   assert.equal(moduleComments('// a\nexport default {\n  id: 1, // b\n  url: \'http://x\',\n};\n'), 'a\nb');
 });
 
