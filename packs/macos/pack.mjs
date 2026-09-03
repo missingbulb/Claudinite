@@ -15,7 +15,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
   });
 
 export default {
-  version: '60902.1',
+  version: '60903.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'native macOS apps: app-bundle assembly, TCC usage strings, Hardened Runtime entitlements, Developer ID signing, notarization and DMG distribution',
@@ -30,7 +30,7 @@ export default {
   // that both state an OS floor. sudden-termination-vs-teardown lives in
   // declared-checks.json beside this file; the other two stay coded, for an
   // ordered-occurrence arm and a cross-file comparison respectively.
-  // Everything else in RULES.md stays prose — runtime device behaviour, a CI
+  // Everything else stays prose, in the skills — runtime device behaviour, a CI
   // lane's shape, or a plist/entitlement judgment call, none of which a scan can
   // separate from a healthy repo.
 };
