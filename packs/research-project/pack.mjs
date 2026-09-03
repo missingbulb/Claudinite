@@ -1,9 +1,8 @@
 // A project-CLASS pack (prose-only, no fingerprint): a project of this class
 // declares it, the way a project used to link the research-project template.
-// No detect — declaration is authoritative. Natural seams for future splitting
-// (session-continuity, reading-source-articles) are noted in RULES.md.
+// No detect — declaration is authoritative.
 export default {
-  version: '60902.1',
+  version: '60903.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'methodology for iterating an algorithm over sample inputs against annotated ground truth — scoring, phases, session continuity',
