@@ -5,6 +5,7 @@ the version this file was introduced beside (60820.1); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.1 | 2026-09-03 | A throwaway script that imports a project dependency can't resolve it from an external scratchpad — Node's module resolution walks up from the script's own directory and never reaches the project's `node_modules`; the script has to live inside the project tree instead. Promoted from a member's local pack. |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60823.1 | 2026-08-23 | Names the member settings file by its current name in its config prose (#1252). |
 | 60822.1 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |

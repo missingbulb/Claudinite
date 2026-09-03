@@ -139,6 +139,18 @@ GitHub **Actions** reports results as **check runs**, not the legacy **commit st
 
 A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped check-run query above doesn't apply to it. Confirm such a run through the GitHub API/MCP tools: `get_job_logs(run_id, failed_only: true)` — "0 failed jobs" means green — or, for a release build, `get_release_by_tag`. `get_job_logs` needs more than a bare `run_id`: it rejects with "job_id is required when failed_only is false" unless you pass `failed_only: true` or fetch a `job_id` first (`list_workflow_jobs`), and it 404s for a job still `in_progress` — wait for the job to finish. Don't `curl` the run's status instead: in a sandboxed session `api.github.com` is proxy-blocked and returns an error body that never matches a success pattern, so a `curl`/`Monitor` poll silently reports "still running" until it times out.
 
+## A green workflow run can still have skipped the job that mattered
+
+A workflow that short-circuits at an early gating job ("has anything relevant changed since the last release?") concludes **success** even when a later, more important job — the actual publish/deploy step — was skipped entirely; the run's overall conclusion says nothing about which of its jobs executed. When triaging whether a scheduled or release workflow actually did its real work, read that specific job's own conclusion, never the run's. This matters most when the thing being triaged is a **platform-side** state outside the repo (a store listing stuck in review, a pending external approval): no repo-side change can be credited with fixing it, however plausible the timing looks, and the only closing evidence is a run that reaches the job in question and goes green, or external confirmation that the platform state itself changed.
+
+## `list_pull_requests`'s `head` filter needs an owner-qualified branch, and its `merged` field can't be trusted
+
+Passing a bare branch name to `list_pull_requests`'s `head` parameter does not filter the results — it can silently hand back an unrelated PR as if it matched, for every branch queried, with no error to flag the miss. Qualify it as `owner:branch-name`, or skip the lookup and check `git merge-base`/`diff --stat` against the branch directly. The same tool's `merged`/`merged_at` fields are unreliable even on a PR that has genuinely landed by squash-merge — confirm landed-ness by grepping `origin/main`'s commit subjects for the squash's `(#N)`, or call `pull_request_read` `get` on the one PR you actually care about.
+
+## `issue_read`'s `get_*` methods reject a PR number
+
+`issue_read` (`get`, `get_comments`, `get_labels`, …) resolves only true issues and errors "Could not resolve to an Issue" on a PR number, even though a PR is an issue at the API level. Read a PR's labels, comments, or metadata through `pull_request_read` (or `search_pull_requests`) instead.
+
 ## A deleted workflow's old runs outlive it, and no session tool can clear them
 
 Removing a `.yml` from every branch does not remove its run history — the workflow stays listed in
