@@ -5,5 +5,6 @@ the version this file was introduced beside (60820.1); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.1 | 2026-09-03 | The pixel-golden rules (pinning, the recipe budget, the font jail, rasterisation flags, the WAAPI freeze) move out of `RULES.md` into the `pixel-stable-goldens` skill, forced for `**/__screenshots__/**` and `**/goldens/**`; the hermetic-world rules (fake `https` origin, vendored-asset routing, init-script fakes, clock modes, script stripping) into `hermetic-page`; the clip mechanics into `capture-a-screenshot`. `RULES.md` shrinks to the always-on rules (#1662). |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60822.1 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |
