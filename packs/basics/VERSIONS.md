@@ -5,6 +5,7 @@ the version this file was introduced beside (60821.4); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.3 | 2026-09-03 | A legacy tolerance is scaffolding, not a feature: `RULES.md` gains the rule that one ships with an advisory firing where the old shape is still in use and with its removal already a link in the migration's chain, and the migration bullet names that removal among the code written before approval. `writing-migration-plans` gains the section behind it — the three things that ship with a tolerance, the gate that reads back true rather than a date, making an unreadable gate the chain's first link, and the asymmetry that decides between a narrow policy and `nothing` — plus the review finding for a tolerance with neither advisory nor removal link (#1637). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60903.2 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60902.5 | 2026-09-02 | `file-placement`'s pack-module pattern drops the retired `.claudinite/local_packs/` root: a repo's own packs are discovered from `.claudinite/local/packs/` and nowhere else (#1627). |

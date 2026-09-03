@@ -217,3 +217,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   full rebase, a discarded CI run and a fresh wait — paid twice in one evening.
 - **(RULES-67)** #922: a stale tracking ref makes git count the pre-squash commits as unpushed,
   so the next push is rejected and the stop hook reports local work that does not exist.
+- **(RULES-68)** #1637: the tree carried ~28 legacy declaration sites, none of which told a
+  holder to move, and `engine/version.mjs` carried a stated end date that passed with the
+  tolerance still in place and nothing scheduled to notice. Reaffirm while a tolerance can be
+  added without a removal issue.

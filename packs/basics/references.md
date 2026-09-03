@@ -69,6 +69,12 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   a major speed bump, but it allows us to make sure the wagon is on the right trail." Reaffirm
   while a person still reviews chain PRs by their footprint; retire only if the owner redefines
   what review is for.
+- **(RULES-2)** An audit of this repo's own tree (#1637) found ~28 legacy declaration sites across
+  `engine/` and `packs/` — none of which told a holder to move, and several, `engine/version.mjs`'s
+  integer tolerance among them, carrying a stated end date that had passed with nothing scheduled
+  to act on it. A tolerance added without those two halves is indistinguishable from a permanent
+  feature. Reaffirm while tolerances can be added without a removal link; retire if a mechanism
+  makes the omission impossible.
 - **(writing-migration-plans-1)** Same decision as RULES-1: the sizing questions and the
   breakage cases were the ones the owner asked while planning #1602, and asked to have made
   into the planning skill "highlighting the importance of continuation".

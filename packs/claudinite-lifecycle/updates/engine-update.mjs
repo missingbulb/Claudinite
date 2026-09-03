@@ -60,6 +60,7 @@ const canonRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)
 // load, and the self-test gate below refuses to land the converge at all — which also
 // means the member cannot receive the pack that would have fixed it. A shim and its
 // target are one unit; the lane that ships one ships the other. Removed with the shims.
+// @legacy-tolerance advisory:none retire:#1643
 const LEGACY_SHIM_TARGET = 'packs/claudinite-tasks/';
 export const isEngineFile = (rel) => rel.startsWith('engine/') || rel.startsWith(LEGACY_SHIM_TARGET) || rel === PACK_DIRECTORY_FILE;
 

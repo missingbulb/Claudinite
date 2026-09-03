@@ -9,11 +9,39 @@
         "eachTrackedPathMatching": "/^packs\\/(?<pack>[^/]+)\\/pack\\.mjs$/",
         "whoseTextMatches": "/(^|[^\\w.$])seededByDefault\\s*:\\s*true\\b/",
         "indexFile": ".claudinite-settings.json",
-        "coveredByValueInArrayAtField": { "atField": "packs", "value": "{pack}", "matchingEntryObjectsByField": "id" },
+        "coveredByValueInArrayAtField": {
+          "atField": "packs",
+          "value": "{pack}",
+          "matchingEntryObjectsByField": "id"
+        },
         "whenIndexFileAbsent": "assertNothing",
         "anchorFindingsAt": "indexFile",
         "what": "the \"{pack}\" pack flags seededByDefault (packs/{pack}/pack.mjs) but is not declared here",
         "fix": "add \"{pack}\" to the \"packs\" array — baselining skips the home, so this repo's declaration is hand-maintained; a deliberate opt-out is an acceptance with a reason instead"
+      }
+    ]
+  },
+  {
+    "id": "legacy-tolerance-scheduled",
+    "severity": "blocking",
+    "since": "2026-09-03",
+    "failureMessage": "a legacy tolerance nobody is scheduled to remove is a permanent feature wearing a temporary name, and its holders are never told to move off it",
+    "scanFiles": "/^(engine|packs)\\/.*\\.mjs$/",
+    "excludeFileClasses": [
+      "testFiles"
+    ],
+    "matchLines": [
+      {
+        "match": "/^(?:export\\s+)?(?:const|let|function|async function)\\s+\\w*(?:LEGACY|Legacy)\\w*/",
+        "unlessPreviousLineMatches": "/@legacy-tolerance/",
+        "what": "{match} declares a legacy tolerance with no scheduled removal above it",
+        "fix": "put `// @legacy-tolerance advisory:<rule-id|none> retire:#<issue>` directly above it: the rule that tells a holder to migrate, and the issue whose merge deletes this code"
+      },
+      {
+        "match": "/@legacy-tolerance/",
+        "unlessLineMatches": "/@legacy-tolerance advisory:(?:[a-z][a-z0-9/-]*) retire:#\\d+$/",
+        "what": "{match} is not a readable tolerance annotation",
+        "fix": "write it as `// @legacy-tolerance advisory:<rule-id|none> retire:#<issue>` with nothing after — a grep for this token is the register, and an unparseable form is not in it"
       }
     ]
   }

@@ -25,12 +25,16 @@ const escapesTaskDir = (cmd) => /(^|\s)\//.test(cmd) || cmd.includes('..');
 // of two peers, and a task may declare only it.
 //
 // Two renames have reached these fields (2026-08-06 agent_preprocessing →
-// prework, 2026-08-18 prework → code-work); both legacy spellings stay accepted
-// here, since a consumer's own local packs rename on their own clock. Every
-// legacy key maps straight to today's canonical name rather than to its
-// immediate successor, so a declaration written for the oldest vocabulary
-// normalizes in one pass. Canonical names win when both are present.
-const LEGACY_FIELDS = {
+// prework, 2026-08-18 prework → code-work). Every legacy key maps straight to
+// today's canonical name rather than to its immediate successor, so a declaration
+// written for the oldest vocabulary normalizes in one pass, and a canonical name
+// wins where both are present.
+//
+// Scaffolding, not a second vocabulary the contract keeps: `legacy-task-fields`
+// reports a declaration still on an old spelling, and the acceptance ends once
+// none is (#1642).
+// @legacy-tolerance advisory:legacy-task-fields retire:#1642
+export const LEGACY_FIELDS = {
   agent_preprocessing: 'code_work',
   agent_preprocessing_timeout: 'code_work_timeout',
   prework: 'code_work',
@@ -80,10 +84,11 @@ export function normalizeTaskDeclaration(decl) {
 // diff against. "No change" is always legal.
 export const OUTCOMES = ['none', 'pr'];
 
-// The retired one-word ceilings, each carrying the policy it always meant. They
-// stay accepted forever — a member's own task files rename on their own clock —
-// and normalize at the door like the code-work renames: `open-pr` is a pr task
-// that merges nothing, `merged-pr` a pr task authorized for anything.
+// The retired one-word ceilings, each carrying the policy it always meant, and
+// normalizing at the door like the code-work renames above: `open-pr` is a pr task
+// that merges nothing, `merged-pr` a pr task authorized for anything. Accepted on
+// the same terms — while members still declare them, and no longer (#1642).
+// @legacy-tolerance advisory:legacy-task-fields retire:#1642
 export const LEGACY_OUTCOMES = { 'open-pr': 'nothing', 'merged-pr': 'anything' };
 
 
@@ -98,6 +103,7 @@ export const LEGACY_OUTCOMES = { 'open-pr': 'nothing', 'merged-pr': 'anything' }
 // instead, and the field is dropped as each declaration is next edited.
 // @deprecated Declares nothing. Name an `invocation_endpoint` if the task needed
 //   reach an ordinary session in its repo does not have.
+// @legacy-tolerance advisory:task-declaration-shape retire:#1642
 export const SESSION_SCOPES = ['self', 'fleet'];
 
 // What must happen to a task's work item when a recovery path would re-execute it

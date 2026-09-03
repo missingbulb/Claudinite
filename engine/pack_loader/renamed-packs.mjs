@@ -30,6 +30,7 @@
 // that now carries its rules, so a member declaring the absorbed one activates the
 // survivor instead of activating nothing. The declaration then holds two ids that
 // resolve to one, which is what `applyPackRenames` merges (registry.mjs).
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#1641
 export const RENAMED_PACKS = Object.freeze({
   core: 'claudinite-lifecycle',
   grow_with_claudinite: 'claudinite-growth',

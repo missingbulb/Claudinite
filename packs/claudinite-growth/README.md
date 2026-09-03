@@ -245,6 +245,7 @@ made the change, and is one sweep away from being closed as stale.
 |---|---|---|---|
 | `dedup-prune-integrity` | high | correctness | check: blocking |
 | `growth-write-scope` | high | correctness | check: blocking |
+| `legacy-check-spellings` | low | complexity | check: advisory |
 | `in-session-github-access` | high | correctness | check: blocking |
 | `references-integrity` | high | correctness | check: blocking |
 | `routine-structure` | medium | complexity | check: blocking |

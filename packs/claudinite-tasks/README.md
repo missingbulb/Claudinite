@@ -72,6 +72,7 @@ once no fielded member names one.
 | `task-declaration-shape` | high | correctness | check: blocking |
 | `task-code-work-env` | high | correctness | check: blocking |
 | `automerge-policy-scope` | high | correctness | check: blocking |
+| `legacy-task-fields` | low | complexity | check: advisory |
 
 The first two are relevance-first — inert until the repo carries a `tasks/<name>/task.json` of its own; the third is self-gating on the branch's own arming trailer.
 

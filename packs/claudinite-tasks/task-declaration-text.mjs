@@ -12,6 +12,7 @@
 // Canonical first: when a folder carries both, the JSON is the declaration and
 // the module is a leftover the converter did not get to delete.
 export const TASK_DECLARATION_FILE = 'task.json';
+// @legacy-tolerance advisory:legacy-task-fields retire:#1642
 export const LEGACY_TASK_DECLARATION_FILE = 'task.mjs';
 export const TASK_DECLARATION_FILES = [TASK_DECLARATION_FILE, LEGACY_TASK_DECLARATION_FILE];
 
@@ -20,6 +21,7 @@ export const TASK_DECLARATION_FILES = [TASK_DECLARATION_FILE, LEGACY_TASK_DECLAR
 // is the task's directory name, group 2 the declaration file's extension.
 export const TASK_DECLARATION_PATH_RE = /(^|\/)tasks\/([^/]+)\/task\.(json|mjs)$/;
 export const isTaskDeclarationPath = (path) => TASK_DECLARATION_PATH_RE.test(path);
+// @legacy-tolerance advisory:legacy-task-fields retire:#1642
 export const isLegacyTaskDeclarationPath = (path) => path.endsWith(`/${LEGACY_TASK_DECLARATION_FILE}`) && isTaskDeclarationPath(path);
 
 // The file name of a path, without a path module.

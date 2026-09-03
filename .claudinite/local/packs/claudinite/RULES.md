@@ -198,6 +198,11 @@ Below are rules on how to work on this repo.
   alone (`scanFiles`, `matchLines`, `relevantWhen`). If it needs a comment to be read, it needs a
   better name.
 
+- **Adding a legacy tolerance to `engine/` or `packs/`** — file the issue that removes it first,
+  then put `// @legacy-tolerance advisory:<rule-id|none> retire:#<issue>` on the line directly
+  above the declaration; `advisory:none` claims no member file can hold the old shape, so that
+  issue must then name what does read the holder. (68)
+
 - **Wanting prose in a check declaration** — there is none. `packs/<pack>/declared-checks.json`
   holds no `description` and no comment; the line the agent reads is `failureMessage`.
 

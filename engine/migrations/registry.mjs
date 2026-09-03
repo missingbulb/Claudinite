@@ -291,6 +291,7 @@ export async function applyLocalDeclarationNormalization(migration, { read, writ
 // imported from the pack registry: this module is the write side a consumer runs
 // out of its own mount, and the two prefixes are the whole of what it needs.
 const LOCAL_DECL = 'local/';
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#1640
 const LEGACY_LOCAL_DECL = 'local_packs/';
 
 // Write side — "the packs this repo declares have been renamed": rewrite each
