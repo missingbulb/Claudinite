@@ -5,11 +5,8 @@ description: How pack prose is written — RULES.md rules, SKILL.md bodies and c
 
 # Writing pack prose
 
-How the prose in a Claudinite pack is written — the rules in a `RULES.md`, the body of a
-`SKILL.md`, the `failureMessage`/`what`/`fix` text of a check — in a repo's own local packs and
-in the shared canon alike. What *qualifies* as a rule and which mechanism carries it is
-[extracting-lessons.md](../../extracting-lessons.md)'s territory; instruction files outside a
-pack (a consumer repo's CLAUDE.md, a convention doc) are the `authoring-agent-docs` skill's.
+Whether a candidate *qualifies* as a rule at all, and which mechanism carries it, is
+[extracting-lessons.md](../../extracting-lessons.md)'s call — settle it there before writing.
 
 **Start from the foundation:** read the "Write each rule" section of
 [authoring-agent-docs](../../../basics/skills/authoring-agent-docs/SKILL.md) first — its

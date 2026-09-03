@@ -7,6 +7,7 @@ forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.6 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60902.5 | 2026-09-02 | The rename's dual-root window closes: `dedup-integrity`, `growth-write-scope`, `references-integrity`, `merge-rules.json` and the two task declarations match only `.claudinite/local/packs/`, and a capture run writing the retired `.claudinite/local_packs/` root is now flagged as a stray write. `growth-dedup` and `prose-to-checks-sweep` lose their computed `automerge` scope with it, so every task declaration in the tree is now a plain literal object (#1627). |
 | 60902.4 | 2026-09-02 | `writing-tasks` states one gate mechanism: the retired `precondition` function and `precondition_signals` are named as rejected, and a gate the built-ins cannot express is a task-local term handed `{ arg, config, item, windowDays, now }` (#1617). |

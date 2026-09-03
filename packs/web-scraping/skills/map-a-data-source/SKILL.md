@@ -7,8 +7,7 @@ description: Reconnaissance on a website you want data from but don't control â€
 
 This runs **once per source** (and again when a site is redesigned). Its output is
 not code â€” it is a committed reference doc plus one saved raw payload. Everything
-after it is ordinary parsing. The standing rules for the pipeline that follows live
-in [the `web-scraping` pack's RULES.md](../../RULES.md).
+after it is ordinary parsing.
 
 ## 1. Fetch one page and look at what came back
 

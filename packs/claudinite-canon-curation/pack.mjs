@@ -20,7 +20,7 @@
 // (claudinite-growth). The tasks are discovered structurally from this pack's own
 // `tasks/<name>/task.mjs` (packs/claudinite-tasks/discover.mjs), so none is declared here.
 export default {
-  version: '60902.2',
+  version: '60903.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'curating a canon — promoting member lessons onto its packs/ shelf, sweeping the fleet for unhomed technologies, policing the shelf',

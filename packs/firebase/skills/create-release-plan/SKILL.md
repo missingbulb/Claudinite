@@ -5,9 +5,8 @@ description: The Firebase release standard — two separate dev/prod projects wi
 
 # Planning a Firebase release — environments, provenance, attestation
 
-The release standard for Firebase-backed apps. **Decided ahead of first exercise** (from TLDR's
-worked AWS split + the design in ShoutsAndWhispers `docs/ENVIRONMENTS.md`); refine on the first
-real release rather than treating this as settled canon.
+This standard was decided ahead of its first exercise: refine it on the first real release rather than
+treating it as settled canon.
 
 ## 1. The committed default is dev, always
 

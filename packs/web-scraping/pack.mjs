@@ -17,7 +17,7 @@
 // skill rather than sitting in always-loaded prose.
 
 export default {
-  version: '60902.1',
+  version: '60903.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs:

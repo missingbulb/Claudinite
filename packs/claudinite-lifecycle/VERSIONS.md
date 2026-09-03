@@ -8,6 +8,7 @@ own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.3 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60902.2 | 2026-09-02 | `rules-index-current` stops probing the retired `.claudinite/local_packs/` root for a declared pack's `RULES.md` (#1627). |
 | 60902.1 | 2026-09-02 | `update` converts to `preconditions: ['none']` — the input is the CANON, which moves when this repo does not, so no repo-side condition may gate it; a repo with no vendored mount names the task in its `taskScheduler.disabledTasks` rather than the task re-asking nightly. Its worker stamps `Claudinite-Task: claudinite-lifecycle/update` on the commits and merges it makes, so the converge reads as machinery to every movement-gated task (#1578). |

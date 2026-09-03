@@ -5,4 +5,4 @@ description: Wiring browser voice I/O — speech-to-text (webkitSpeechRecognitio
 
 # Web-speech I/O
 
-Wire recognition and synthesis to the project's own shape. The portable runtime gotchas — n-best reading, settle-once cycles, error taxonomy, pause watchdogs, lazy voice lists, terminal-event resolution — live in this pack's own [prose](../../RULES.md). MV3 service-worker and content-script mechanics that also touch non-speech APIs are out of scope.
+Wire recognition and synthesis to the project's own shape. MV3 service-worker and content-script mechanics that also touch non-speech APIs are out of scope.
