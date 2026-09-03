@@ -28,17 +28,22 @@ setup a new site repo needs, and the one-time GitHub settings no automation can 
 contract the four checks above judge against, reached when a pipeline is being set up or debugged
 rather than carried by every session in the repo.
 
+| Skill | Trigger |
+|---|---|
+| [`static-site-releases`](skills/static-site-releases/SKILL.md) | any edit of `.github/site.config` or a `static-site-*` workflow — held by the guard until loaded; setting up or debugging the pipeline, "bump version" |
+| [`client-cache-manifest`](skills/client-cache-manifest/SKILL.md) | designing or changing how the site's pages cache, refresh or join downloaded data |
+
 ## Rules (`RULES.md`)
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | The publish set names every published file | high | correctness | prose: 120 words + check (`sw/site-config`) |
-| The version moves with the change | high | correctness | prose: 133 words + checks (`sw/version-bumped`, `sw/version-scheme`) |
-| The pipeline files are managed stub copies | high | correctness | prose: 55 words + check (`sw/release-workflows`) |
 | The site is served from a subpath | high | correctness | prose: 64 words |
-| Freshness is a published manifest's job | high | correctness | prose: 174 words |
-| Nothing attests to its own freshness | high | correctness | prose: 183 words |
-| Split caches join across generations | critical | correctness | prose: 182 words |
 | Follow missing data to the pixel | high | correctness | prose: 123 words |
+
+The version-moves-with-the-change and managed-stub-copies rules are the
+[`static-site-releases`](skills/static-site-releases/SKILL.md) skill's, forced for `.github/site.config`
+and the `static-site-*` workflows; the three client-side freshness rules — the hash manifest, what
+can attest to freshness, split caches — are [`client-cache-manifest`](skills/client-cache-manifest/SKILL.md).
 
 The version scheme and the code that computes it live together in [stubs/actions/bump-site-version/bump.mjs](stubs/actions/bump-site-version/bump.mjs) — the checks import `VERSION_RE` from there rather than restating it, so the rule and the bump can't disagree about what a version is.

@@ -60,18 +60,6 @@
   rule proves only that the client cooperates, not that the boundary holds; if the real enforcement is
   the backend, a leaf must exist there, exercised against the real handler.
 
-## 5. A supported-targets matrix is spec, not folklore
-
-- **When part of the product's value is breadth over external targets** — supported sites, file
-  formats, providers, locales — each supported target is its own leaf, so dropping a target is a
-  visible spec change, not a silent regression.
-- **Prove each target against a committed, real sample of it** (a captured page, a genuine file), with
-  the owner-reviewed exact-values expectation committed beside it — capture the sample first and read
-  the expecteds off the committed bytes (canon in the writing-tests skill). A hand-invented sample
-  proves support for a target the world doesn't actually serve.
-- **Adding a target is a documented, repeatable flow** that lands the new leaf, its real sample, and
-  its reviewed expected together.
-
 ## 6. Green means "claimed", not "fully verified" — track the gap honestly
 
 - **Say what the harness cannot reach, naming the exact boundary of each stub.** A faithful harness is
@@ -79,11 +67,6 @@
   for the action, not that the platform *performs* it". Put that statement where readers of the spec
   will see it — a banner on the requirements doc, linking the issue that tracks closing the gap —
   rather than in a test README footnote.
-- **Deliberate gaps are marked at the leaf and committed, never remembered.** A leaf that can't be
-  faithfully verified yet stays in the spec, visibly provisional (a loud "to be decided" marker, and a
-  pointer to whatever covers it meanwhile), and is listed in a committed allowlist the coverage gate
-  checks — the allowlist is the burn-down list, shrunk deliberately. Prefer a real validation; reach
-  for the marker only for a genuinely undecided edge case or a not-yet-wired harness.
 
 ## 7. The owner reviews the product surface, not the internals
 
@@ -92,10 +75,6 @@
   approving the spec *is* approving the product's appearance.
 - **Regenerate, never hand-edit.** The gallery is derived output of a committed generator; fixing it
   means fixing the source (or the generator) and regenerating. (6)
-- **The deterministic golden-image method this leans on is canon in the writing-tests skill** —
-  matching the render engine to the surface (a bit-exact rasterizer for inline-styled/SVG surfaces, a
-  headless browser for pages that use grid/vars/emoji/form-widgets), bundled fonts, capturing a
-  host-page surface with styles inlined, and a drift gate on the embedded gallery.
 
 ## 8. Ship automatically while `main` stays green
 

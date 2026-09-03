@@ -14,17 +14,23 @@ Some of these APIs are extension-only, and where a rule touches MV3 service-work
 | Read the whole n-best list | medium | correctness | prose: 34 words |
 | Settle the listen cycle exactly once | high | correctness | prose: 47 words |
 | A missing isFinal means final | high | correctness | prose: 35 words |
-| Classic recognition streams to the cloud | critical | legal | prose: 74 words |
-| Biasing works only on-device | medium | correctness | prose: 71 words |
 | Map error names to a small taxonomy | medium | complexity | prose: 48 words |
 | A missed endpoint needs a pause watchdog | high | correctness | prose: 82 words |
-| Mic permission is per-origin | high | correctness | prose: 93 words |
 | Prefer chrome.tts over speechSynthesis | medium | correctness | prose: 58 words |
-| Relay chrome.tts from a content script | high | correctness | prose: 66 words + skill check (`web-speech-no-window-api-in-service-worker`) |
 | An empty getVoices() means not-ready | high | correctness | prose: 44 words |
 | Don't trust the default voice | low | correctness | prose: 39 words |
 | Resolve speak() on any terminal event | high | correctness | prose: 60 words |
 | Neither engine reliably supports SSML | low | correctness | prose: 37 words |
+
+The cloud-streaming / on-device probe, contextual biasing, mic-permission preflight and content-script
+TTS relay rules are the [`web-speech-io`](skills/web-speech-io/SKILL.md) skill's, loaded when recognition
+or synthesis is being wired.
+
+## Skills
+
+| Skill | Trigger |
+|---|---|
+| [`web-speech-io`](skills/web-speech-io/SKILL.md) | adding or changing speech recognition or synthesis |
 
 ## Provenance
 

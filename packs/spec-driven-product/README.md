@@ -1,11 +1,11 @@
 # spec-driven-product pack
 
-A project-class pack (prose-only, declared — no fingerprint) for the recurring class: build and ship a
+A project-class pack (declared — no fingerprint) for the recurring class: build and ship a
 small end-user product against an executable spec — every requirement a numbered leaf claimed by
 exactly one right-kind proof, expected results owner-owned, releases automatic while `main` is green.
 Its enforcement deliberately lives inside the declaring project (the committed coverage gate and
 allowlist the playbook requires), so the pack itself ships no checks; the sections are loop and
-judgment, kept as prose.
+judgment, kept as prose and two skills.
 
 Distilled from the two worked examples of the class in the owner's fleet:
 missingbulb/GoogleCalendarEventCreator's executable-requirements methodology (`dev/requirements/` —
@@ -33,13 +33,23 @@ rules both build on are corpus canon already, and are pointed to rather than res
 | Expected changes ride the normal review flow | high | correctness | prose: 29 words |
 | One rule, sibling leaves per enforcing tier | medium | complexity | prose: 46 words |
 | Prove a rule where it is enforced | medium | correctness | prose: 45 words |
-| When breadth of targets is the value | medium | complexity | prose: 40 words |
-| Prove each target against a real sample | high | correctness | prose: 56 words |
-| Adding a target is a documented flow | low | complexity | prose: 22 words |
 | Name what the harness cannot reach | high | correctness | prose: 78 words |
-| Mark a deliberate gap at its leaf | high | correctness | prose: 79 words |
 | Embed regenerated renders in the spec | medium | complexity | prose: 40 words |
 | Regenerate, never hand-edit. | high | correctness | prose: 25 words |
-| The golden-image method is writing-tests' canon | low | complexity | prose: 53 words |
 | main is always releasable, automation releases | high | correctness | prose: 53 words |
 | The version users see moves deliberately. | medium | correctness | prose: 48 words |
+
+The supported-targets matrix (§5) is the [`add-a-supported-target`](skills/add-a-supported-target/SKILL.md)
+skill and the deliberate-gap allowlist rule is
+[`mark-a-verification-gap`](skills/mark-a-verification-gap/SKILL.md). The deterministic golden-image
+method the gallery leans on is canon in the writing-tests skill — matching the render engine to the
+surface (a bit-exact rasterizer for inline-styled/SVG surfaces, a headless browser for pages that use
+grid/vars/emoji/form-widgets), bundled fonts, capturing a host-page surface with styles inlined, and a
+drift gate on the embedded gallery.
+
+## Skills
+
+| Skill | Trigger |
+|---|---|
+| [`add-a-supported-target`](skills/add-a-supported-target/SKILL.md) | adding, dropping or changing a supported site, format, provider or locale |
+| [`mark-a-verification-gap`](skills/mark-a-verification-gap/SKILL.md) | a requirement the harness can't faithfully verify yet, or shrinking the gap allowlist |
