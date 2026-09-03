@@ -75,9 +75,10 @@ Below are rules on how to work on this repo.
   derivation's own inputs can mutate while the object stays open, silently reinterpreting its
   history. Prefer a marker stamped once at creation and never revisited.
 
-- **Scheduling the removal of a temporary compatibility tolerance** — gate it on a
-  converge-cycle-confirmable precondition ("no member still stamps the legacy format"), never a
-  calendar date alone. (12)
+- **Scheduling the removal of a temporary compatibility tolerance** — gate it on a convergence
+  window after the advisory ships (a week of nightly converges), never on a census of members: the
+  canon cannot see which repos are active, inert or long stale, so "no member still stamps the old
+  format" never reads true and the tolerance stands forever. (12)
 
 ## Working with the owner and the session's tools
 

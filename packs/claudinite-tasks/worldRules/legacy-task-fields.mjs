@@ -8,8 +8,8 @@ import * as declarationText from '../task-declaration-text.mjs';
 // THE ADVISORY HALF OF THE TASK CONTRACT'S FIELD TOLERANCES. `normalizeTaskDeclaration`
 // accepts two generations of field names and the retired one-word outcome
 // ceilings, so a task declared in the oldest vocabulary runs exactly like one
-// declared today — and nothing tells its author that the acceptance is scheduled
-// to end (#1642).
+// declared today — and nothing told its author that the acceptance ends a week
+// after this advisory ships (#1642).
 //
 // It reads the declaration SOURCE rather than the normalized object, because by
 // the time anything holds a task declaration the legacy spelling is gone: the
@@ -32,7 +32,7 @@ const rule = {
   severity: 'advisory',
   since: '2026-09-03',
   description: 'Task declarations name their fields and outcome in the current vocabulary',
-  why: 'the contract accepts two retired generations of field names and the one-word outcome ceilings only until no member still declares them (#1642) — a declaration left on the old spelling is what holds that gate shut, and stops being read at all on the day it opens',
+  why: 'the contract accepts two retired generations of field names and the one-word outcome ceilings for one convergence window after this advisory ships (#1642) — nothing counts who is still on them, so a declaration not renamed inside that window simply stops being read',
 
   run(ctx) {
     const fields = contract.LEGACY_FIELDS ?? {};

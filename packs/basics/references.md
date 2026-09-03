@@ -75,6 +75,12 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   to act on it. A tolerance added without those two halves is indistinguishable from a permanent
   feature. Reaffirm while tolerances can be added without a removal link; retire if a mechanism
   makes the omission impossible.
+- **(RULES-2a)** The rule first said the gate must read back true rather than be a date, and the
+  owner reversed it the same day (#1637): "assume that all repos are behaving correctly and clean
+  up after themselves in 1 week, and do the cleanup then … the canon will never know the state of
+  all active or inert repos that use it." A census gate is not the rigorous choice when the census
+  cannot be taken; it is how the tolerance becomes permanent. Reaffirm while consumers converge on
+  their own schedule and cannot be enumerated.
 - **(writing-migration-plans-1)** Same decision as RULES-1: the sizing questions and the
   breakage cases were the ones the owner asked while planning #1602, and asked to have made
   into the planning skill "highlighting the importance of continuation".
