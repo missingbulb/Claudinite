@@ -29,21 +29,18 @@
 // because the failure is silent — a rejected descriptor renders as one apologetic line
 // in someone else's browser and nothing goes red where the author is looking.
 //
-// PUBLISHING IS THE ADOPTION MOMENT. `.github/workflows/` is the one directory the
-// nightly update can never push to (the Action's `GITHUB_TOKEN` is refused there), so
-// a deploy workflow can only arrive by being SEEDED — written by the install flow and
-// committed by the adopting session, which holds a credential the Action does not.
-// Hence the `seedOps` entry: adopting the pack is what wires the Pages deploy, and
-// the workflow is the member's from the moment it lands.
-//
-// THE BUILD SCRIPT DELIBERATELY IS NOT SEEDED. `build-site.mjs` lives in the pack and
-// is read out of the mount by the seeded workflow, exactly as the scheduler stub reads
-// the engine's scheduler run. So the assembly logic keeps converging with the canon while the
-// workflow — the part that cannot converge — stays a one-time seed. Only the file that
-// has to be frozen is frozen.
+// PUBLISHING IS A TASK, AND A FOUR-STEP WORKFLOW. `.github/workflows/` is the one
+// directory the nightly update can never push to (the Action's `GITHUB_TOKEN` is
+// refused there), so whatever the deploy keeps there is frozen at adoption. It keeps
+// the least it can: a Pages deploy with source "GitHub Actions" is marketplace actions
+// that only workflow YAML can invoke, so the seeded workflow (`seedOps`, below) holds
+// exactly those — checkout of `gh-pages`, configure, upload, deploy — and nothing that
+// could ever need to change. The `publish-pages` task owns the rest: when to run, the
+// build, the push of the built tree to `gh-pages`, the dispatch, the follow-through.
+// What adoption cannot do is enable Pages — the handover step below.
 
 export default {
-  version: '60902.14',
+  version: '60902.15',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state and the site that publishes it',
@@ -103,13 +100,13 @@ export default {
   // Holding a credential that wide, in every member, to save one click is a far worse
   // trade than naming the click. So it is named.
   //
-  // In a README this would be met after the first deploy had already failed; here it
+  // In a README this would be met after the first publish had already parked; here it
   // arrives at the moment someone is present and the pack is new.
   adoptionHandover: [
     {
       step: 'Enable GitHub Pages with source "GitHub Actions" — this repo\'s /settings/pages',
-      breaks: 'the deploy job fails on every run; the build still succeeds, so nothing else is affected',
-      done: 'the Pages URL serves the dashboard, and the Claudinite dashboard workflow is green',
+      breaks: 'the publish-pages task pushes the build, and its deploy run then fails — the task parks at needs-human-action naming this',
+      done: 'the Pages URL serves the dashboard, and a publish-pages run converged done',
     },
     // ONE entry, not the four mechanical steps, because for many deployments the right
     // answer is "nothing" — a member's own dashboard read with a pasted token is on the
@@ -131,9 +128,8 @@ export default {
   ],
 
   // Seeded, never converged: `.github/workflows/` cannot be written by the nightly, so
-  // this arrives once, at adoption, and the repo owns it from there. It is a thin shim
-  // over `build-site.mjs` in the mount for exactly that reason — the part that cannot
-  // be updated is kept as small as possible.
+  // this arrives once, at adoption, and the repo owns it from there. Only `uses:` steps,
+  // for exactly that reason — the part that cannot be updated holds nothing to update.
   seedOps: [
     {
       template: 'stubs/workflows/claudinite-dashboard-pages.yml',

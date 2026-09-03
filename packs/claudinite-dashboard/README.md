@@ -32,11 +32,13 @@ because someone declared it. Adopting it wires the GitHub Pages deploy.
 ```
 
 That is the whole of it for a member: the dashboard covers this repo, signs in with a
-pasted token, and publishes to Pages. Adoption seeds
-[the deploy workflow](stubs/workflows/claudinite-dashboard-pages.yml) into
-`.github/workflows/`, and **you must enable Pages with source *GitHub Actions*** — a
-repository setting no Action can flip; until then the deploy job is the only thing
-that fails.
+pasted token, and publishes to Pages. The
+[publish-pages task](tasks/publish-pages/README.md) builds the site whenever the
+page's sources move and fires
+[the deploy workflow](stubs/workflows/claudinite-dashboard-pages.yml) adoption seeds
+into `.github/workflows/` — four `uses:` steps and nothing else — and **you must enable
+Pages with source *GitHub Actions***, a repository setting no Action can flip; until
+then that task parks naming it, and nothing else is affected.
 
 Everything else is optional `config` on the declaration:
 

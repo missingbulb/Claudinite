@@ -1,11 +1,8 @@
 // Assemble the publishable site from the mount.
 //
-// Lives in the pack rather than in the member, and is read out of `.claudinite/shared/`
-// by the seeded workflow — the same shape as the scheduler stub reading the engine's
-// scheduler run. So the assembly logic keeps converging with the canon while only the workflow,
-// the file that cannot converge, is frozen at adoption.
-//
-// Run from the member's root:
+// Run by the `publish-pages` task, which pushes what this produces to `gh-pages` for
+// the seeded workflow to deploy; and by hand, from the member's root, to see what a
+// run would publish:
 //   node .claudinite/shared/packs/claudinite-dashboard/build-site.mjs [--out _site]
 //
 // Reads its deployment settings through `deployment-config.mjs`, which is also what the
@@ -38,7 +35,7 @@ const TASKS = 'packs/claudinite-tasks';
 // Local-only or explanatory files. None belong on a published site — `serve.mjs` least
 // of all, being a file server's source sitting where it reads as part of the page.
 const NOT_PUBLISHED = ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'oauth-exchange.mjs',
-  'dashboard.config.example.json', 'README.md', 'badge.svg', 'stubs'];
+  'dashboard.config.example.json', 'README.md', 'badge.svg', 'stubs', 'tasks'];
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
 
