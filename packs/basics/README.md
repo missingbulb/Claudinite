@@ -4,26 +4,23 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 
 ## Rules (`RULES.md`)
 
+The always-on rules — the ones a session must hold before it decides which file to open.
+
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | Starting any requested change | high | correctness | prose: 59 words |
 | Replying to an owner comment | high | complexity | prose: 109 words |
 | Acting on a correction | high | correctness | prose: 39 words |
 | Acting on a feature | high | correctness | prose: 39 words |
-| Acting on a process change | medium | complexity | prose: 67 words |
-| Choosing what goes on that ladder | medium | complexity | prose: 82 words |
-| Landing a rule anywhere on the ladder | high | correctness | prose: 64 words |
+| Acting on a process change | medium | complexity | prose: 45 words + skill (`mechanism-promotion-ladder`) |
 | Building a mechanism for a behavior | medium | complexity | prose: 18 words |
 | Building release, deploy, versioning or CI plumbing | medium | complexity | prose: 46 words |
 | Finishing a change | high | correctness | prose: 33 words |
 | Changing scheduled or unattended machinery | high | correctness | prose: 36 words |
-| Planning a migration | medium | complexity | prose: 99 words + skill (`writing-migration-plans`) |
+| Planning a migration | medium | complexity | prose: 50 words + skill (`writing-migration-plans`) |
 | Adding a legacy tolerance | high | complexity | prose: 59 words |
-| Choosing an automerge policy | high | correctness | prose: 65 words |
-| Predicting an irreversible change | critical | correctness | prose: 42 words |
-| Handing over a wider diff than asked | medium | complexity | prose: 63 words |
-| When verifying now is genuinely impossible | high | correctness | prose: 138 words + skill (`verify-in-production`) |
-| Finishing a larger element | medium | correctness | prose: 94 words + skill (`production-retrospective`) |
+| When verifying now is genuinely impossible | high | correctness | prose: 60 words + skill (`verify-in-production`) |
+| Finishing a larger element | medium | correctness | prose: 58 words + skill (`production-retrospective`) |
 | Receiving feedback that flags a misunderstanding | medium | complexity | prose: 29 words |
 | Writing anything | low | complexity | prose: 18 words |
 | Auditing an artifact against its source | high | correctness | prose: 35 words |
@@ -32,7 +29,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Calling Edit | low | complexity | prose: 39 words |
 | Calling Grep with a context flag | medium | complexity | prose: 51 words |
 | Needing exact text from the web | high | correctness | prose: 56 words |
-| Hitting a denied fetch | critical | legal | prose: 152 words |
+| Hitting a denied fetch | critical | legal | prose: 88 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
@@ -40,22 +37,17 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Working around a vendored check's finding | medium | complexity | prose: 29 words |
 | Deferring a warning you can't fix now | medium | complexity | prose: 255 words |
 | Spotting a change that should wait | medium | complexity | prose: 46 words + skill (`do-later`) |
-| Filing anything into the ad-hoc queue | high | correctness | prose: 125 words |
-| Filing an issue under another | medium | complexity | prose: 69 words |
 | Handing over a human-only step | high | complexity | prose: 96 words + skill (`writing-handover-issues`) |
 | Naming a file, module, or symbol | low | complexity | prose: 22 words |
 | Referring to a value from two places | high | correctness | prose: 117 words + check (`shared-constants`) |
 | Writing a file that depends on another | medium | complexity | prose: 97 words |
 | Committing | medium | complexity | prose: 43 words |
-| Working with a generated file | high | correctness | prose: 64 words + check (`generated-merge-driver`) |
 | Depending on platform or runtime behaviour | high | correctness | prose: 31 words |
-| Optimising | high | correctness | prose: 53 words |
 | Needing a library for a narrow job | medium | complexity | prose: 27 words |
 | Answering an edge case a review raised | medium | complexity | prose: 55 words |
 | Documenting a procedure | medium | complexity | prose: 40 words |
 | Writing code that can silently do nothing | high | correctness | prose: 76 words |
 | Persisting anything on a user's machine | medium | correctness | prose: 43 words |
-| Changing what you do with user data | critical | legal | prose: 90 words |
 | Driving an external runtime repeatedly | low | complexity | prose: 51 words |
 | Automating something that needs live conversation context | medium | complexity | prose: 46 words |
 | Writing a pipeline step's exit path | medium | correctness | prose: 26 words |
@@ -64,8 +56,39 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Working in a fresh checkout or sandbox | low | complexity | prose: 54 words |
 | Deciding where a config value lives | medium | complexity | prose: 69 words |
 | Handling a value that can be unknown | high | correctness | prose: 103 words |
-| Writing a check that scans the repo | high | correctness | prose: 170 words |
 | Writing a comment | low | complexity | prose: 93 words |
+
+The rules that only apply once an activity is under way are skills: the automerge policy a PR
+or chain link carries (`automerge-policy`), landing a process change on the mechanism promotion
+ladder (`mechanism-promotion-ladder`), writing a check that scans the repo
+(`writing-repo-scanning-checks`), editing a `GENERATED` file (`working-with-generated-files`),
+proving an optimisation (`optimising-safely`), changing what the software does with a user's
+data (`user-data-disclosure`) and attaching a sub-issue (`filing-sub-issues`); what the ad-hoc
+queue's run can reach is `do-later`'s. `RULES.md` keeps a one-sentence pointer for the skills a
+session must know to load before it starts.
+
+## Skills
+
+| Skill | Trigger |
+|---|---|
+| [`writing-repo-scanning-checks`](skills/writing-repo-scanning-checks/SKILL.md) | any edit of a coded or declared check (`engine/checks/**`, a pack's `worldRules/**`, `workRules/**`, a skill's `checks.mjs`, `declared-checks.json`) — held by the guard until loaded |
+| [`working-with-generated-files`](skills/working-with-generated-files/SKILL.md) | any edit of a `*GENERATED*` file — held by the guard until loaded |
+| [`writing-tests`](skills/writing-tests/SKILL.md) | any edit of a test file — held by the guard until loaded |
+| [`authoring-agent-docs`](skills/authoring-agent-docs/SKILL.md) | any edit of a `CLAUDE.md` or `.claude/rules/` file — held by the guard until loaded |
+| [`automerge-policy`](skills/automerge-policy/SKILL.md) | opening a PR or filing a chain link that states an `Automerge:` policy |
+| [`mechanism-promotion-ladder`](skills/mechanism-promotion-ladder/SKILL.md) | landing a process change as durable rules |
+| [`optimising-safely`](skills/optimising-safely/SKILL.md) | optimising code that must behave exactly as before |
+| [`user-data-disclosure`](skills/user-data-disclosure/SKILL.md) | changing what the software does with a user's data |
+| [`filing-sub-issues`](skills/filing-sub-issues/SKILL.md) | filing an issue that belongs under another |
+| [`do-later`](skills/do-later/SKILL.md) | the owner defers a change (`/do-later …`, "after this lands") |
+| [`verify-in-production`](skills/verify-in-production/SKILL.md) | immediately after a merge whose proof lives in production |
+| [`production-retrospective`](skills/production-retrospective/SKILL.md) | designing or completing an element that earned a design doc or a phased tracking issue |
+| [`writing-migration-plans`](skills/writing-migration-plans/SKILL.md) | before any design doc, migration or phased plan |
+| [`writing-handover-issues`](skills/writing-handover-issues/SKILL.md) | filing an issue a person will execute |
+| [`bug-investigation`](skills/bug-investigation/SKILL.md) | investigating a bug or a fix that didn't hold |
+| [`ci-performance-evaluation`](skills/ci-performance-evaluation/SKILL.md) | CI feels slow, or the weekly `ci-performance` task hands over a finding |
+| [`file-placement`](skills/file-placement/SKILL.md) | placing, moving or renaming a file |
+| [`repo-text-sweeps`](skills/repo-text-sweeps/SKILL.md) | a bulk find-replace, rename or file move |
 
 ## Checks
 

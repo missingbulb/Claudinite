@@ -129,6 +129,18 @@ refuses an unknown label, and only the scheduler run creates it). Say so in your
 reply and leave the issue filed — the label appears on the next scheduler run, and
 the owner can mark it from the issue page.
 
+## What the run can reach
+
+**Filing anything into the ad-hoc queue** (a deferral, a verification, any marked
+issue) asks an unattended session **on this repository** to do the work, so only
+file what such a session can actually do here. A read of another repository or a
+console is not work it can do: that item parks minutes after it is picked, and a
+park is a person's problem filed under a mechanism's name. A public URL is the one
+exception, and only through the coded verification form
+([`verify-in-production`](../verify-in-production/SKILL.md)'s probes) — never by
+asking a session to fetch it. Where the work is out of reach, do it now, hand it to
+a routine that has the reach, or do not file it — and say which.
+
 ## Then say what you filed
 
 One line back to the owner: the issue link, what it waits on, the model family,
