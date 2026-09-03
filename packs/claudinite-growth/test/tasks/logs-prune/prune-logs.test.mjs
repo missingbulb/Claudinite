@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planPrune } from '../../../tasks/logs-prune/prune-logs.mjs';
+import { planPrune, resolveRetentionDays, DEFAULT_RETENTION_DAYS } from '../../../tasks/logs-prune/prune-logs.mjs';
 import { logFilename } from '../../../capture-log.mjs';
 
 const NOW = '2026-07-22T00:00:00.000Z';
@@ -50,14 +50,85 @@ test('readRetentionDays takes this pack own entry config, and nothing else', asy
   write({ packs: ['basics', { id: 'claudinite-growth', config: { retention_days: 10 } }] });
   assert.equal(readRetentionDays(root), 10);
 
-  // Every miss reads as "unset", never as a number: the prune's one failure
-  // direction is deleting what it should not.
+  // No miss reads as a number: the prune's one failure direction is deleting what
+  // it should not. `undefined` is "said nothing" (the default answers it) and
+  // `null` is "cannot tell" (nothing does) — the case below covers which is which.
   write({ packs: ['claudinite-growth'] });
-  assert.equal(readRetentionDays(root), null);
+  assert.equal(readRetentionDays(root), undefined);
   write({ packs: [{ id: 'other', config: { retention_days: 10 } }] });
   assert.equal(readRetentionDays(root), null);
   write({ packs: [{ id: 'claudinite-growth', config: { retention_days: '10' } }] });
   assert.equal(readRetentionDays(root), null);
   writeFileSync(join(root, '.claudinite-settings.json'), '{ not json');
+  assert.equal(readRetentionDays(root), null);
+});
+
+// --- the retention default (#1620) -------------------------------------------
+
+test('an absent retention resolves to the documented default, not to "off"', () => {
+  for (const declared of [undefined, null]) {
+    assert.equal(resolveRetentionDays(declared), DEFAULT_RETENTION_DAYS);
+  }
+  assert.equal(DEFAULT_RETENTION_DAYS, 10, 'the floor the pack has recommended in prose all along');
+});
+
+test('a declared retention overrides the default', () => {
+  assert.equal(resolveRetentionDays(30), 30);
+  assert.equal(resolveRetentionDays(1), 1);
+});
+
+test('a non-positive retention is the explicit capture-only opt-out', () => {
+  // What "unset" used to mean. A member that wants the old behaviour has to say so
+  // now, which is the whole point: absence can no longer express a decision.
+  for (const declared of [0, -1]) {
+    assert.equal(resolveRetentionDays(declared), null, `retention ${declared} must turn the prune off`);
+  }
+});
+
+test('an unparsable retention is unknown, and unknown never resolves to the default', () => {
+  // The prune's one failure direction is deleting what it should not, so anything
+  // we cannot read as a number turns it off rather than falling back to 10 days.
+  for (const declared of ['10', NaN, Infinity, {}, [], true]) {
+    assert.equal(resolveRetentionDays(declared), null, `${JSON.stringify(declared)} must not become the default`);
+  }
+});
+
+test('the resolved default deletes exactly what a declared 10 would', () => {
+  const viaDefault = planPrune({ names: [OLD, YOUNG], retentionDays: resolveRetentionDays(undefined), now: NOW });
+  const viaDeclared = planPrune({ names: [OLD, YOUNG], retentionDays: 10, now: NOW });
+  assert.deepEqual(viaDefault.delete, viaDeclared.delete);
+  assert.equal(viaDefault.off, false);
+});
+
+test('readRetentionDays separates "said nothing" from "cannot tell"', async () => {
+  const { readRetentionDays } = await import('../../../../../packs/claudinite-growth/tasks/logs-prune/worker.mjs');
+  const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-prune-default-test-'));
+  const settings = join(root, '.claudinite-settings.json');
+  const write = (config) => writeFileSync(settings, JSON.stringify(config));
+
+  // Declared with no config: the pack said nothing, so the default applies.
+  write({ packs: ['claudinite-growth'] });
+  assert.equal(readRetentionDays(root), undefined);
+  assert.equal(resolveRetentionDays(readRetentionDays(root)), DEFAULT_RETENTION_DAYS);
+
+  write({ packs: [{ id: 'claudinite-growth', config: {} }] });
+  assert.equal(readRetentionDays(root), undefined);
+
+  // A declared number still wins, opt-out included.
+  write({ packs: [{ id: 'claudinite-growth', config: { retention_days: 30 } }] });
+  assert.equal(readRetentionDays(root), 30);
+  write({ packs: [{ id: 'claudinite-growth', config: { retention_days: 0 } }] });
+  assert.equal(resolveRetentionDays(readRetentionDays(root)), null);
+
+  // Cannot tell: unreadable settings, and a value that is not a number. Both are
+  // `null` — the state the worker refuses to prune on, distinct from `undefined`.
+  write({ packs: [{ id: 'claudinite-growth', config: { retention_days: '10' } }] });
+  assert.equal(readRetentionDays(root), null);
+  writeFileSync(settings, '{ not json');
+  assert.equal(readRetentionDays(root), null);
+  rmSync(settings);
   assert.equal(readRetentionDays(root), null);
 });

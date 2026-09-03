@@ -176,7 +176,8 @@
       }
     },
     "disabledTasks": [
-      "claudinite-lifecycle/update"
+      "claudinite-lifecycle/update",
+      "claudinite-growth/logs-prune"
     ],
     "dailyHour": 5,
     "weeklyDay": "Sun",

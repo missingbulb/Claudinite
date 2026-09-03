@@ -222,11 +222,31 @@ test('conversationLogs.oldestLogAgeDays reaches logs-prune, so young logs keep i
   });
 });
 
-test('conversationLogs: retention unset keeps the prune silent — no default is invented', async () => {
+// The layering, both halves in one test. The SIGNAL still invents no default — it is
+// keyed by the parameter rather than by the pack, so it cannot know a growth-pack
+// policy and reports `null` for "nothing declared it". The TASK is what turns that
+// into 10 days (#1620), which is why the verdict runs here where it used to be silent.
+test('conversationLogs: the signal invents no retention default — the task supplies it', async () => {
   await withRepo({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
-    assert.equal(signals.conversationLogs.retentionDays, null);
-    assert.equal((await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals)).run, false);
+    assert.equal(signals.conversationLogs.retentionDays, null, 'the signal reports what the declaration said, and it said nothing');
+    const v = await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals);
+    assert.equal(v.run, true, 'and the undeclared repo prunes on the default rather than leaking forever');
+    assert.match(v.reason, /retention 10d/);
+  });
+});
+
+// The opt-out, on the same wire: absence no longer expresses capture-only, so a repo
+// that wants it has to declare it — and that declaration must reach the precondition
+// and stop the item being filed at all.
+test('conversationLogs: a declared non-positive retention is the capture-only opt-out', async () => {
+  const settings = JSON.stringify({ packs: [{ id: 'claudinite-growth', config: { retention_days: 0 } }] }) + '\n';
+  await withRepo({ '.claudinite-settings.json': settings }, async (root) => {
+    const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
+    assert.equal(signals.conversationLogs.retentionDays, 0);
+    const v = await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals);
+    assert.equal(v.run, false);
+    assert.match(v.reason, /capture-only/);
   });
 });
 
