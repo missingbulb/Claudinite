@@ -47,12 +47,24 @@ test('convertTaskDeclarations: writes the JSON with $schema, deletes the module,
     assert.match(applied[0], /header: why this task exists/, 'the dropped header is in the report');
     assert.match(applied[0], /the weekly anchor/, 'so is an inline comment');
     assert.ok(!existsSync(join(root, TASK, 'task.mjs')), 'module deleted');
+    const readme = readFileSync(join(root, TASK, 'README.md'), 'utf8');
+    assert.match(readme, /^# alpha\n/, 'a README is created for the task');
+    assert.match(readme, /## Why the declaration reads as it does\n[^]*header: why this task exists\n[^]*the weekly anchor/, 'the comments live in the README now');
     const json = JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8'));
     assert.equal(json.$schema, `../../../../../shared/${SCHEMA_FILE}`, 'the schema pointer is relative to the task folder, into the mount');
     assert.equal(json.id, 'alpha');
     assert.equal(json.code_work_timeout, 60);
     // Idempotent: nothing left to convert.
     assert.deepEqual(await convertTaskDeclarations(taskDirsWithModule([LOCAL_PACK_ROOT], io), io), []);
+  } finally { removeTree(root); }
+});
+
+test('convertTaskDeclarations: an existing README gains the notes section below its own content', async () => {
+  const root = repo({ [`${TASK}/task.mjs`]: MODULE, [`${TASK}/README.md`]: '# alpha\n\nWhat the worker does.\n' });
+  try {
+    await convertTaskDeclarations([TASK], checkoutIo(root));
+    const readme = readFileSync(join(root, TASK, 'README.md'), 'utf8');
+    assert.ok(readme.startsWith('# alpha\n\nWhat the worker does.\n\n## Why the declaration reads as it does'), readme);
   } finally { removeTree(root); }
 });
 
@@ -126,6 +138,10 @@ test('task-declarations-json record: applies only where the mounted pack reads t
   assert.equal(await m.appliesTo(async () => "export const TASK_DECLARATION_FILE = 'task.mjs';\n"), false, 'an older pack');
   assert.equal(await m.appliesTo(async () => null), false, 'an unreadable mount is not capable');
   assert.equal(await m.legacyPresent(() => true, async () => 'x'), false);
+  // The descriptions are the apply stage's: judgment, briefed to the session.
+  assert.match(m.applyStage.why, /description/);
+  assert.match(m.applyStage.instructions, /no `description`/);
+  assert.match(m.applyStage.instructions, /fifty words/);
 });
 
 // The canon's own declarations, converted: each loads through the door to a
