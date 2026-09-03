@@ -8,6 +8,7 @@ own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.1 | 2026-09-03 | `legacy-shape-in-use` — an advisory over this repo's own declaration and stamp for every shape the engine merely tolerates: the retired settings-file name, the `claudinite`/`maintenance` blocks, top-level `packConfig`, `taskScheduler.endpoints`, the `local_packs/` declaration prefix, a renamed or absorbed pack id, an integer version and the `updates` mechanism alias. Each finding names the edit that moves the repo forward; each tolerance is scheduled for removal on no member still carrying it (#1637). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60903.2 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60902.2 | 2026-09-02 | `rules-index-current` stops probing the retired `.claudinite/local_packs/` root for a declared pack's `RULES.md` (#1627). |

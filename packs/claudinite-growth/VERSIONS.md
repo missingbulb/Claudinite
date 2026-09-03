@@ -7,6 +7,7 @@ forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60903.1 | 2026-09-03 | `legacy-check-spellings` — a declared check's pre-merge `eachValueInParsedArray` spelling is reported advisory, naming the `extractValueSets` + `eachValueOfSet` pair that replaces it. The normalizer that rewrites the old spelling at load is scheduled for removal, and a declaration left on it silently stops asserting the day that lands (#1637). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60903.2 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60902.5 | 2026-09-02 | The rename's dual-root window closes: `dedup-integrity`, `growth-write-scope`, `references-integrity`, `merge-rules.json` and the two task declarations match only `.claudinite/local/packs/`, and a capture run writing the retired `.claudinite/local_packs/` root is now flagged as a stray write. `growth-dedup` and `prose-to-checks-sweep` lose their computed `automerge` scope with it, so every task declaration in the tree is now a plain literal object (#1627). |

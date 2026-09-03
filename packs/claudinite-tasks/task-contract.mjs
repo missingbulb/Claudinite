@@ -30,7 +30,8 @@ const escapesTaskDir = (cmd) => /(^|\s)\//.test(cmd) || cmd.includes('..');
 // legacy key maps straight to today's canonical name rather than to its
 // immediate successor, so a declaration written for the oldest vocabulary
 // normalizes in one pass. Canonical names win when both are present.
-const LEGACY_FIELDS = {
+// @legacy-tolerance advisory:legacy-task-fields retire:#1642
+export const LEGACY_FIELDS = {
   agent_preprocessing: 'code_work',
   agent_preprocessing_timeout: 'code_work_timeout',
   prework: 'code_work',
@@ -84,6 +85,7 @@ export const OUTCOMES = ['none', 'pr'];
 // stay accepted forever — a member's own task files rename on their own clock —
 // and normalize at the door like the code-work renames: `open-pr` is a pr task
 // that merges nothing, `merged-pr` a pr task authorized for anything.
+// @legacy-tolerance advisory:legacy-task-fields retire:#1642
 export const LEGACY_OUTCOMES = { 'open-pr': 'nothing', 'merged-pr': 'anything' };
 
 

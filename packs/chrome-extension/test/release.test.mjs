@@ -207,17 +207,22 @@ jobs:
   } finally { cleanup(cutOverStillCron); cleanup(cutOverDeCron); }
 });
 
-test('release-workflows: the pre-vendoring @main shape is tolerated while the migration is live, flagged once it retires', () => {
+test('release-workflows: the pre-vendoring @main shape is advisory while the migration is live, blocking once it retires', () => {
   const files = { ...CONFORMANT, '.github/workflows/chrome-extension-release.yml': LEGACY_ORCHESTRATOR };
   // A legacy repo need not carry the vendored reusables yet.
   for (const p of Object.keys(VENDORED)) if (p !== '.github/workflows/chrome-extension-release.yml') delete files[p];
   const root = makeRepo({ changed: files });
   try {
-    // In flight: baselining will vendor it — tolerated, no red window.
-    assert.deepEqual(run(releaseWorkflows, root, { tolerateLegacy: true }), []);
+    // In flight: baselining will vendor it, so nothing blocks — but the repo
+    // holding the shape is told, since the removal is gated on it letting go.
+    const tolerated = run(releaseWorkflows, root, { tolerateLegacy: true });
+    assert.equal(tolerated.length, 1);
+    assert.equal(tolerated[0].severity, 'advisory');
+    assert.match(tolerated[0].fix, /baselining vendor/);
     // Retired: the canon workflows are gone, so a repo still on @main is flagged.
     const flagged = run(releaseWorkflows, root, { tolerateLegacy: false });
     assert.equal(flagged.length, 1);
+    assert.equal(flagged[0].severity, 'blocking');
     assert.match(flagged[0].what, /still calls Claudinite's core release workflows @main/);
   } finally { cleanup(root); }
 });
