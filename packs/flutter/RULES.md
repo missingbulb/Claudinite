@@ -1,9 +1,5 @@
 # Flutter
 
-Portable, project-agnostic practices for Flutter / Dart codebases — true for any Flutter project
-read cold. Earned in missingbulb/ShoutsAndWhispers (a Firebase-backed, location-driven app with an
-executable-requirements UI suite); keep anything project-specific in the consuming repo's docs.
-
 ## Architecture: ports out of the widget tree
 
 - **Widgets depend on ports, never on plugins.** Every platform/backend concern (location, auth,

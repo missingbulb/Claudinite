@@ -1,9 +1,5 @@
 # claudinite-fleet-sheepdog — the fleet enforcer marker
 
-Declaring this pack marks a repo as the **fleet enforcer**: the one repo that covers and maintains
-every repo under an owner. What the pack *is* — its six sweeps, their schedule, their reports, the
-config schema — is [README.md](README.md). This file is what a session **here** has to get right.
-
 ## Configuring the fleet
 
 - **Keeping a repo out of the fleet** — add its full `owner/name` to `exclude` on this pack's

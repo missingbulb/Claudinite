@@ -9,6 +9,8 @@ A project-class pack (prose-only, declared — no fingerprint) for the recurring
 | Never annotate in the signal's own colour | medium | correctness | prose: 63 words |
 | Show where the method breaks | high | correctness | prose: 71 words |
 | Say which reported numbers are trustworthy | high | correctness | prose: 112 words |
+| Show the owner pictures, proactively | medium | complexity | prose: 35 words |
+| Leave finished work committed and pushed | medium | complexity | prose: 24 words |
 | The owner's annotations are the ground truth. | high | correctness | prose: 24 words |
 | Ground truth is annotated, never fabricated. | critical | correctness | prose: 38 words |
 | Separate source-of-truth from generated artifacts. | high | correctness | prose: 52 words |

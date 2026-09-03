@@ -5,6 +5,7 @@ the version this file was introduced beside (60821.4); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60902.6 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60902.5 | 2026-09-02 | `file-placement`'s pack-module pattern drops the retired `.claudinite/local_packs/` root: a repo's own packs are discovered from `.claudinite/local/packs/` and nowhere else (#1627). |
 | 60902.4 | 2026-09-02 | Three rules on what human review is for: an automerge policy is a prediction of the change's folders and kinds, never widened to fit the diff; `nothing` for anything a later PR cannot undo; a diff wider than its ask is reported in the hand-over as a separation-of-concerns lesson. `writing-migration-plans` gains the sizing questions — how many PRs, each link's predicted diff and the policy it becomes, phases against divisions — and how the chain survives a policy park, a red CI and a PR closed unmerged (#1613). |
 | 60902.3 | 2026-09-02 | `writing-handover-issues` gains the producer/consumer adjacency rule: a step that mints or reveals a value and the step that pastes it where it lives go immediately after each other, rather than a block of producers followed by a block of consumers. Every box between them is a value the reader holds in their head while doing something else, and one shown once is held there at the price of minting it again (#1592). |

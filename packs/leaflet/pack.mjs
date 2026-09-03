@@ -14,7 +14,7 @@ const LEAFLET_API = /\bL\.(map|tileLayer|markerClusterGroup)\s*\(/;
 const SOURCE = /\.(html?|mjs|cjs|jsx?|tsx?)$/;
 
 export default {
-  version: '60901.1',
+  version: '60902.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'map rendering with the Leaflet library — map init options, tile layers, markers and divIcons, CDN plugin pinning',

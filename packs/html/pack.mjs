@@ -1,7 +1,7 @@
 // Prose-only pack with no reliable structural fingerprint — declaration is
 // authoritative (detect: null skips the drift check in both directions).
 export default {
-  version: '60901.1',
+  version: '60902.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'hand-authored HTML markup gotchas — element nesting, injected content placement, live browser verification of a page',

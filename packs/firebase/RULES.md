@@ -1,9 +1,5 @@
 # Firebase
 
-Portable practices for repos built on Firebase (Auth, Firestore, Cloud Functions, FCM). Earned in
-missingbulb/ShoutsAndWhispers; keep product-specific schema in the consuming repo's docs.
-Environment separation — dev/prod projects, App Check, store gating — is not this pack's.
-
 ## 1. Security rules are merge-aware and default-deny
 
 - **End every ruleset with an explicit catch-all deny** and grant per collection; a collection

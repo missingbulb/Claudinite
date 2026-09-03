@@ -1,14 +1,5 @@
 # macOS
 
-Portable practices for a **native macOS app** — the ones that are true whatever the app does:
-assembling the app bundle, the TCC and Hardened Runtime pair, the Developer ID → notarization →
-DMG lane, and the process-lifecycle facts a Mac app cannot get wrong. A default to adapt, not a
-contract.
-
-Distilled from a fleet project shipping a menu-bar agent app built with SwiftPM and published as a
-notarized DMG. Mac App Store submission is a different track — see `app-store-release`; an iPhone
-target is `ios`.
-
 ## The app bundle is assembled, not built
 
 - **SwiftPM builds a binary; nothing builds you a `.app`.** `swift build -c release` yields an
@@ -25,13 +16,12 @@ target is `ios`.
 
 ## TCC and the Hardened Runtime are two different gates — know which applies
 
-Every protected resource needs a **usage-description string** in `Info.plist` (the text of the
-consent prompt; without it the app is killed rather than prompted) — one key per resource, and they
-are separate keys for capabilities that feel like one feature: `NSMicrophoneUsageDescription` covers
-audio input, `NSSpeechRecognitionUsageDescription` covers the Speech framework, and an app that
-listens *and* transcribes needs both or is killed at whichever it forgot. What each string says is
-what the user consents to. Only *some* resources also need a **codesign entitlement**, and only
-under the Hardened Runtime:
+- **Reaching for a protected resource** — give it its own **usage-description string** in
+  `Info.plist`, the text the user consents to; without one the app is killed rather than prompted.
+  Capabilities that feel like one feature take separate keys — an app that listens *and*
+  transcribes needs `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`, or
+  is killed at whichever it forgot — and only *some* resources also need a codesign entitlement,
+  and only under the Hardened Runtime.
 
 - **Notarization requires the Hardened Runtime** (`codesign --options runtime`), and under it a
   resource-access exception must be granted explicitly by entitlement — device capture
@@ -92,8 +82,6 @@ under the Hardened Runtime:
 
 ## Assume the user's Mac has no developer toolchain
 
-The machine running a distributed app installed the artifact; it has no Xcode. Two consequences:
-
 - **Diagnostics belong inside the shipped app**, or in a script using only what ships with macOS.
   Anything requiring a compiler on the user's machine is a diagnostic that will never be run.
 - **`command -v swift` does not test for a Swift toolchain.** `/usr/bin/swift` exists on every Mac
@@ -136,9 +124,6 @@ The machine running a distributed app installed the artifact; it has no Xcode. T
   awake").
 
 ## Holding a device the user can unplug
-
-If the app captures from shared hardware (microphone, camera), these are the rules that cost the
-most to learn:
 
 - **Release the device on every path where capture ends.** A process that dies with its IO proc
   still registered can leave some USB devices wedged until physically re-plugged. This is necessary
