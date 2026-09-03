@@ -1,70 +1,19 @@
 # Firebase
 
-## 1. Security rules are merge-aware and default-deny
-
-- **End every ruleset with an explicit catch-all deny** and grant per collection; a collection
-  nobody thought about must be unreachable, not accidentally open.
-- **Write rules against merge semantics, not just creates.** Clients using `set(merge: true)`
-  surface the **post-merge** document in `request.resource.data` — a key-presence check that is
-  right for `create` silently breaks on `update`. For updates, validate
-  `request.resource.data.diff(resource.data).affectedKeys()` (what the client actually touched);
-  for creates, validate `keys()`. (1)
-- **Guard every field dereference for absence.** Distinct writers legitimately upsert disjoint
-  field subsets of one doc; an unguarded `d.field` on a missing key throws and denies. Pattern:
-  `!('field' in d) || <validation>`.
-- **Server-owned fields are absent from the client-allowed key list**, not "checked for equality"
-  — with `diff().affectedKeys().hasOnly([...])` a client physically cannot touch them (rate-limit
-  stamps, server-computed aggregates).
-- **Pin client timestamps to `request.time`** (`FieldValue.serverTimestamp()` satisfies it) on any
-  write whose freshness matters — but scope the pin to
-  writes that touch those fields, or unrelated single-field merges get rejected. (5)
-- **Bound every client-writable string/blob** (length caps in rules); an unbounded field is a
-  free storage channel.
 - **Admin-SDK code bypasses rules** — a rules review must enumerate what *functions* write too;
   "rules allow it" and "the system writes it" are different lists.
 
-## 2. Functions own identity, validation, and limits
-
 - **Identity comes from the verified token, never the request body** (`request.auth`,
   `token.name`/`picture` claims). (2)
+
 - **Validate inputs at the boundary like an adversary wrote them**: type-check, range-check
   (`NaN`/`Infinity` slip through naive numeric checks), length-cap, and enum-check before any
   read or write; reject with typed `HttpsError`s (`invalid-argument`, `unauthenticated`,
   `resource-exhausted`) so clients can react specifically.
-- **Rate limits need a transaction.** A read-check-write cooldown is bypassable by firing calls
-  concurrently; run the read + check + stamp inside `runTransaction` so concurrent invocations
-  serialize. A thrown `HttpsError` inside the transaction aborts it and propagates unchanged.
-- **Chunk batched writes well under the 500-op limit** and treat multi-batch fan-out as
-  at-least-once: a mid-sequence crash plus client retry duplicates the early batches. Document
-  the idempotency-key escape hatch even if v1 doesn't implement it.
-- **Push is best-effort by construction**: notification failures must never fail the triggering
-  call; clean up dead tokens on the *actual* error codes
-  (`messaging/registration-token-not-registered` — verify codes against the installed
-  firebase-admin, not memory or old blog posts).
-
-## 3. Test logic pure, rules empirically
 
 - **Extract decision logic into pure modules** (audience selection, filtering, formatting) so the
   default suite runs with zero emulators and zero mocks of the Firebase SDK.
-- **When rules themselves are under test, test them empirically** with
-  `@firebase/rules-unit-testing` against the real emulator — simulate each *exact client write
-  shape* the app performs (create vs merge-update vs single-field token write) plus each
-  forbidden shape. (3)
+
 - **Cross-language contracts get mirrored test vectors.** When client and server must compute the
   same derived value (a geohash, a normalization), commit identical input→output vectors in both
   suites and diff the literals in CI — "both use the standard algorithm" is not a proof.
-
-## 4. Deploy layout and aliases
-
-- **Keep the Firebase project root self-contained** — the directory holding `firebase.json`, its
-  `.firebaserc`, rules/indexes, and `functions/`. That root may be the repo root or a dedicated
-  subfolder (e.g. `firebase/`); the CLI walks up to find `firebase.json` and resolves every path
-  inside it *relative to that file*, so a subfolder needs no path edits — just run deploys from it
-  (or pass `--config <dir>/firebase.json`). Keep compiled output (`functions/lib/`) and
-  `.firebase/` gitignored.
-- **Commit `.firebaserc` with named aliases and make the default the safe target** (see
-  the create-release-plan skill for the full environment discipline). Deploy commands in docs always name
-  what they deploy (`--only functions,firestore`). (4)
-- **Smoke-load the built entrypoint in the test lane** (`node -e "require('./lib/index.js')"`).
-  A Node-major skew between build and runtime, or a bad build, surfaces as a module crash the
-  first time the deployed function is invoked. (6)
