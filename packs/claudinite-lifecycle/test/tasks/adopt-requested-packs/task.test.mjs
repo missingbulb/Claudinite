@@ -47,7 +47,7 @@ test('adopt-requested-packs: needs no fleet secret — it reads and edits only i
   // The whole point of the fan-out: the member side runs on the ordinary Action
   // token and the member's own executor grant. A required fleet secret here would
   // mean the model regressed.
-  assert.equal(decl.required_secrets, undefined);
+  assert.equal(decl.code_work_required_secrets, undefined);
 });
 
 test('adopt-requested-packs: its precondition admits its own forced item', () => {

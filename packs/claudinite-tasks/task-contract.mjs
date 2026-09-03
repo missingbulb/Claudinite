@@ -36,6 +36,9 @@ const LEGACY_FIELDS = {
   prework: 'code_work',
   prework_timeout: 'code_work_timeout',
   after: 'schedule_after',
+  // 2026-09-03: the secrets a task needs are the CODE-WORK phase's (that is the
+  // only phase that runs Action-side, where a secret exists), and the name says so.
+  required_secrets: 'code_work_required_secrets',
 };
 
 // The defaults live in task-defaults.mjs — a module with no imports, so the
@@ -297,15 +300,15 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
     bad('"invocation_endpoint" is not a kebab-case endpoint name', 'name a key from the repo\'s taskScheduler.agenticTaskInvocationEndpoints map, e.g. "fleet" — never a URL');
   }
 
-  // The repo Actions secrets this task needs configured (DESIGN §9). Purely
+  // The repo Actions secrets this task's code work needs configured (DESIGN §9). Purely
   // DECLARATIVE — like a pack's adoption `questions`, its job is to drive the ask
   // (adoption interactively, the scheduler by owner issue), not to gate anything
   // here. So the only shape asserted is "a list of names"; whether the repo has
   // actually configured them is a fact about the repo, answered where the secrets
   // bundle is readable, never at author time.
-  if (decl.required_secrets !== undefined
-      && !(Array.isArray(decl.required_secrets) && decl.required_secrets.every((s) => typeof s === 'string' && s.trim() !== ''))) {
-    bad('"required_secrets" is not an array of secret names', 'list the repo Actions secret names this task needs, e.g. ["SOME_API_KEY"]');
+  if (decl.code_work_required_secrets !== undefined
+      && !(Array.isArray(decl.code_work_required_secrets) && decl.code_work_required_secrets.every((s) => typeof s === 'string' && s.trim() !== ''))) {
+    bad('"code_work_required_secrets" is not an array of secret names', 'list the repo Actions secret names this task needs, e.g. ["SOME_API_KEY"]');
   }
 
   // The one exception to "whether the repo has them is not our business": GitHub
@@ -313,7 +316,7 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   // GITHUB_" on the secret form. Such a name cannot be configured by anyone, so the
   // task parks forever on a secret its owner is refused — and only the declaration
   // can catch it, since the park reads as ordinary missing configuration.
-  for (const name of (Array.isArray(decl.required_secrets) ? decl.required_secrets : [])) {
+  for (const name of (Array.isArray(decl.code_work_required_secrets) ? decl.code_work_required_secrets : [])) {
     if (typeof name === 'string' && name.toUpperCase().startsWith('GITHUB_')) {
       bad(`required secret "${name}" cannot be created — GitHub reserves the GITHUB_ prefix`,
         'rename it without that prefix, e.g. one carrying the pack\'s own name');

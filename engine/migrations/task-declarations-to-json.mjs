@@ -41,8 +41,8 @@ export const CANON_PACK_ROOT = 'packs';
 export const KEY_ORDER = [
   '$schema', 'id', 'description',
   'frequency', 'schedule_after', 'preconditions',
-  'expected_outcome', 'automerge', 'on_interrupt', 'invocation_endpoint', 'required_secrets',
-  'code_work', 'code_work_timeout',
+  'expected_outcome', 'automerge', 'on_interrupt', 'invocation_endpoint',
+  'code_work', 'code_work_timeout', 'code_work_required_secrets',
   'agent_model', 'model_from_request', 'agent_instructions', 'agent_execution_timeout',
 ];
 export function orderTaskKeys(decl) {

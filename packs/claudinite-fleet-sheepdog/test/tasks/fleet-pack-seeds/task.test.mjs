@@ -60,8 +60,8 @@ test('fleet-pack-seeds: the sweep is the code_work, bounded and task-local', () 
 });
 
 test('fleet-pack-seeds: one fleet secret, and one place the grant is stated', () => {
-  assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
-  assert.deepEqual(decl.required_secrets, roster.required_secrets);
+  assert.deepEqual(decl.code_work_required_secrets, ['FLEET_GITHUB_TOKEN']);
+  assert.deepEqual(decl.code_work_required_secrets, roster.code_work_required_secrets);
   // The sweep needs a scope the read-only ones never did, and says so — but it renders
   // the GRANT from fleet-token.mjs rather than stating its own subset, which is what
   // let a fleet run for two days short one permission (#1030).

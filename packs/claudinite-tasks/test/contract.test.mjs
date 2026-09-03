@@ -128,39 +128,39 @@ test('validateTaskDeclaration validates code_work + its required timeout and con
   );
 });
 
-test('validateTaskDeclaration accepts required_secrets as a plain list of names (DESIGN §9)', () => {
+test('validateTaskDeclaration accepts code_work_required_secrets as a plain list of names (DESIGN §9)', () => {
   // Declarative, not a permission list: the only rule is "a list of names". Where
   // it is declared, and whether the repo has them, are deliberately NOT its business.
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['SOME_API_KEY'] }), []);
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: [] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['SOME_API_KEY'] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, code_work_required_secrets: [] }), []);
   assert.deepEqual(validateTaskDeclaration(validTask), []);              // absent is fine
   // Only a shape that could not be read at all is rejected.
-  assert.match(validateTaskDeclaration({ ...validTask, required_secrets: 'SOME_API_KEY' })[0].what, /not an array of secret names/);
-  assert.match(validateTaskDeclaration({ ...validTask, required_secrets: [''] })[0].what, /not an array of secret names/);
+  assert.match(validateTaskDeclaration({ ...validTask, code_work_required_secrets: 'SOME_API_KEY' })[0].what, /not an array of secret names/);
+  assert.match(validateTaskDeclaration({ ...validTask, code_work_required_secrets: [''] })[0].what, /not an array of secret names/);
 });
 
-test('validateTaskDeclaration rejects a required_secrets name GitHub refuses to create', () => {
+test('validateTaskDeclaration rejects a code_work_required_secrets name GitHub refuses to create', () => {
   // GitHub reserves the `GITHUB_` prefix: the secret form answers "Secret names must
   // not start with GITHUB_", so such a name can never be configured and the task parks
   // for a secret nobody can add. The one name-shape rule that is not a fact about the
   // repo — it is a fact about the platform, knowable at author time.
   assert.match(
-    validateTaskDeclaration({ ...validTask, required_secrets: ['GITHUB_OAUTH_CLIENT_SECRET'] })[0].what,
+    validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['GITHUB_OAUTH_CLIENT_SECRET'] })[0].what,
     /cannot be created/,
   );
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['MY_GITHUB_TOKEN'] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['MY_GITHUB_TOKEN'] }), []);
 });
 
-test('validateTaskDeclaration rejects a required_secrets name inside the code-work namespace', () => {
+test('validateTaskDeclaration rejects a code_work_required_secrets name inside the code-work namespace', () => {
   // `CLAUDINITE_*` in a task file means the code-work contract, and `task-code-work-env`
   // reads every one it does not recognise as a variable nobody sets. A secret named into
   // that namespace is delivered perfectly well and still trips the rule, so the two
   // cannot coexist — and the collision is knowable here, where the name is chosen.
   assert.match(
-    validateTaskDeclaration({ ...validTask, required_secrets: ['CLAUDINITE_DASHBOARD_CLIENT_SECRET'] })[0].what,
+    validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['CLAUDINITE_DASHBOARD_CLIENT_SECRET'] })[0].what,
     /code-work namespace/,
   );
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['DASHBOARD_OAUTH_CLIENT_SECRET'] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['DASHBOARD_OAUTH_CLIENT_SECRET'] }), []);
 });
 
 test('validateTaskDeclaration flags every malformed field', () => {
@@ -428,6 +428,10 @@ test('schedule_after / on_interrupt / invocation_endpoint are optional and valid
   // The legacy spelling still validates — the door renames it at load, so a member's own task
   // file keeps its ordering rather than silently losing it.
   assert.deepEqual(validateTaskDeclaration({ ...base, after: ['claudinite-lifecycle/update'] }), []);
+  // The secrets field's rename normalizes the same way.
+  const secrets = normalizeTaskDeclaration({ required_secrets: ['X'] });
+  assert.deepEqual(secrets.code_work_required_secrets, ['X']);
+  assert.equal(secrets.required_secrets, undefined);
   const renamed = normalizeTaskDeclaration({ after: ['a/b'] });
   assert.deepEqual(renamed.schedule_after, ['a/b']);
   assert.equal(renamed.after, undefined);

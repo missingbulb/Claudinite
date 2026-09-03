@@ -60,7 +60,7 @@ than by replaying a ledger.
   for the task to fire: that is two files and two edit sites for one job, and a
   workflow whose only caller is the thing that replaced it. (The exception is narrow,
   and it is **not** about privilege. An Actions-only secret is reachable from
-  code-work, which runs Action-side — `required_secrets`, below. A deploy target's
+  code-work, which runs Action-side — `code_work_required_secrets`, below. A deploy target's
   OIDC identity is one `permissions:` line in the executor's own workflow, not a wall.
   A one-shot external effect is handled by `on_interrupt: 'needs-human'`, not by
   escaping to a workflow. What genuinely does not fit is the Actions **composition
@@ -153,7 +153,8 @@ than by replaying a ledger.
 
 - **A task says which repo secrets it needs.** Code-work runs Action-side, so repo
   Actions secrets are reachable there and nowhere else in a task's life (an agent
-  session carries none). A task lists what it needs in `required_secrets`; the
+  session carries none). A task lists what it needs in `code_work_required_secrets`
+  (the retired `required_secrets` still normalizes to it); the
   executor holds every repo secret and hands each task's code-work exactly the names
   that task declared, so a worker reads it as ordinary environment. A declared
   secret the repo has not configured is **named, not guessed at**: code-work is the

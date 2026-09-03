@@ -4,9 +4,9 @@
   "description": "The operator's lever to force every member, or a named few, to baseline against the canon now rather than on its own nightly schedule.",
   "frequency": "manual",
   "expected_outcome": "none",
-  "required_secrets": [
-    "FLEET_GITHUB_TOKEN"
-  ],
   "code_work": "node worker.mjs",
-  "code_work_timeout": 1800
+  "code_work_timeout": 1800,
+  "code_work_required_secrets": [
+    "FLEET_GITHUB_TOKEN"
+  ]
 }

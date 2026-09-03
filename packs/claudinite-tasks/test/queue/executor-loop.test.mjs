@@ -382,7 +382,7 @@ test('failed code_work converges to triage and never hands off', async () => {
 // names exactly which secret to set.
 test('a declared-but-unconfigured secret names itself on the item', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
-  await drive(repo, [task('a', { code_work: 'node w.mjs', code_work_timeout: 60, required_secrets: ['STORE_TOKEN'] })], {
+  await drive(repo, [task('a', { code_work: 'node w.mjs', code_work_timeout: 60, code_work_required_secrets: ['STORE_TOKEN'] })], {
     runTaskCodeWork: async () => ({ ok: true, missingSecrets: ['STORE_TOKEN'] }),
   });
   const issue = repo.find(1);

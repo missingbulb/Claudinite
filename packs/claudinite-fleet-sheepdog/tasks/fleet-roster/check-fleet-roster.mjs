@@ -8,7 +8,7 @@
 //
 // Run by this pack's `fleet-roster` scheduled task, whose worker calls `main()` below
 // as the task's `code_work` — Action-side inside the enforcer repo's scheduler workflow,
-// where the FLEET_GITHUB_TOKEN the task declares in `required_secrets` is reachable as
+// where the FLEET_GITHUB_TOKEN the task declares in `code_work_required_secrets` is reachable as
 // ordinary environment. Still runnable by hand (`node check-fleet-roster.mjs`) via the
 // CLI guard at the foot.
 //

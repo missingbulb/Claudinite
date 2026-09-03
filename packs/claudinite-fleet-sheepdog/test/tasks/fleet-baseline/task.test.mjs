@@ -52,7 +52,7 @@ test('fleet-baseline: code_work is bounded and task-local', () => {
   assert.ok(!decl.code_work.includes('..'));
   assert.ok(Number.isInteger(decl.code_work_timeout) && decl.code_work_timeout > 0);
   assert.ok(existsSync(join(taskDir, 'worker.mjs')));
-  assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
+  assert.deepEqual(decl.code_work_required_secrets, ['FLEET_GITHUB_TOKEN']);
 });
 
 test('fleet-baseline: the worker invokes the sweep rather than reimplementing it', () => {

@@ -123,13 +123,22 @@
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "description": "A key in the repo's taskScheduler.agenticTaskInvocationEndpoints — never a URL — for a task needing reach an ordinary session in its repo does not have."
     },
+    "code_work_required_secrets": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "The repo Actions secret names the code-work phase needs configured — the phase that runs Action-side, where a secret exists. Never GITHUB_* or CLAUDINITE_*."
+    },
     "required_secrets": {
       "type": "array",
       "items": {
         "type": "string",
         "minLength": 1
       },
-      "description": "The repo Actions secret names this task needs configured. Never GITHUB_* or CLAUDINITE_*."
+      "deprecated": true,
+      "description": "The retired spelling of code_work_required_secrets; normalized at the door. Rename it."
     },
     "model_from_request": {
       "const": true,

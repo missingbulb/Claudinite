@@ -178,6 +178,12 @@ const rule = {
       // CI must not go red over a declaration nobody has edited. Worth making because the bare
       // preposition invited reading the field as a time — it is not one; it names task ids, and
       // what it steers is when the item is scheduled onto an executor.
+      // The secrets field's rename, advisory for the same reason: the door normalizes
+      // it, and only the name changed — the secrets are the code-work phase's.
+      if (decl.has('required_secrets')) {
+        advise('declares its secrets under the legacy name "required_secrets"',
+          'rename "required_secrets" to "code_work_required_secrets" — the secrets are what the code-work phase, the one that runs Action-side, is handed');
+      }
       if (decl.has('after')) {
         advise('declares its ordering under the legacy name "after"',
           'rename "after" to "schedule_after" (it names task ids, not a time — what it steers is when this item is scheduled onto an executor)');

@@ -108,6 +108,14 @@ test('task-declaration-shape: the legacy `after` ordering field is an advisory r
 // The outcome-ceiling rename boundary: a member's file still declaring the
 // one-word ceilings keeps validating (the runtime normalizes them), and earns
 // exactly one advisory naming the ceiling/policy pair to write instead.
+test('task-declaration-shape: the legacy `required_secrets` is an advisory rename', () => {
+  const f = run({ [TASK]: json({ ...good, required_secrets: ['X'] }) });
+  assert.equal(f.length, 1);
+  assert.equal(f[0].severity, 'advisory');
+  assert.match(f[0].fix, /rename "required_secrets" to "code_work_required_secrets"/);
+  assert.deepEqual(run({ [TASK]: json({ ...good, code_work_required_secrets: ['X'] }) }), []);
+});
+
 test('task-declaration-shape: the legacy outcome ceilings are an advisory rename', () => {
   for (const [legacy, policy] of [['open-pr', 'nothing'], ['merged-pr', 'anything']]) {
     const { automerge, ...rest } = good;

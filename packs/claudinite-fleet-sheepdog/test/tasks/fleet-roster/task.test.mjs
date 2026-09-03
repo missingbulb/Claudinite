@@ -55,9 +55,9 @@ test('fleet-roster: the sweep is the preprocessing, bounded and task-local', () 
 });
 
 test('fleet-roster: declares the fleet PAT, which is how the repo is asked for it', () => {
-  // `required_secrets` is what stamps FLEET_GITHUB_TOKEN into the scheduler workflow's
+  // `code_work_required_secrets` is what stamps FLEET_GITHUB_TOKEN into the scheduler workflow's
   // env, so no workflow needs to exist just to hold it (claudinite-growth/skills/writing-tasks).
-  assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
+  assert.deepEqual(decl.code_work_required_secrets, ['FLEET_GITHUB_TOKEN']);
 });
 
 test('fleet-roster: fires unconditionally, with a reason', () => {
