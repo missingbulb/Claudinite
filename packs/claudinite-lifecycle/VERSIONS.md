@@ -38,4 +38,3 @@ own row.
 | 60830.1 | 2026-08-30 | The `update` brief and the updates README name today's park spelling rather than the retired bare label (#1395). |
 | 60902.3 | 2026-09-02 | The update flows hand the migration registry a directory listing, a delete and a module import, which the task-declaration conversion needs (#1633). |
 | 60903.5 | 2026-09-03 | Path-scoped skills (#1648): `skill-loaded-before-editing` flags a changed file a skill forces itself for (`force-load-on-file-edits-paths`) in a session that never loaded that skill — the edits the PreToolUse guard cannot see — and `skills-index-current` keeps the generated skills index naming what the declared packs bundle. |
-| 60903.6 | 2026-09-03 | The two mount-staleness rules move out of `RULES.md` into the `diagnosing-mount-staleness` skill, loaded by a staleness question or a failed converge; the prose shrinks to the always-on rules (#1662). |

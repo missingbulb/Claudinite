@@ -30,7 +30,7 @@ export default {
   // that both state an OS floor. sudden-termination-vs-teardown lives in
   // declared-checks.json beside this file; the other two stay coded, for an
   // ordered-occurrence arm and a cross-file comparison respectively.
-  // Everything else stays prose, in the skills — runtime device behaviour, a CI
+  // Everything else stays prose — runtime device behaviour, a CI
   // lane's shape, or a plist/entitlement judgment call, none of which a scan can
   // separate from a healthy repo.
 };

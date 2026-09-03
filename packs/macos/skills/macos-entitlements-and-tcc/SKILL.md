@@ -16,12 +16,6 @@ metadata:
   is killed at whichever it forgot — and only *some* resources also need a codesign entitlement,
   and only under the Hardened Runtime.
 
-- **Notarization requires the Hardened Runtime** (`codesign --options runtime`), and under it a
-  resource-access exception must be granted explicitly by entitlement — device capture
-  (`com.apple.security.device.audio-input`, camera) is the classic one. So **turning on
-  notarization can silently break a capability an ad-hoc build had**, because the ad-hoc build was
-  never running under the restriction. Ship the entitlement in the same change as the runtime flag.
-
 - **Capabilities gated purely by TCC plus their usage string need no entitlement at all** (speech
   recognition is the worked example). Adding one you don't need is noise; omitting one you do need
   is a runtime failure no build step catches.

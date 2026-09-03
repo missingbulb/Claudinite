@@ -5,7 +5,7 @@ the version this file was introduced beside (60820.1); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
-| 60903.2 | 2026-09-03 | The fetching rules move out of `RULES.md` into the `fetch-layer` skill and the time-zone / ambiguous-format / conversion-change rules into `time-at-the-boundary`; the source-choice and probe-record rules join `map-a-data-source`; the cache-vs-record rationale moves to the README. `RULES.md` keeps the always-on rules (#1662). |
+| 60903.2 | 2026-09-03 | The cache-vs-raw-record rationale moves from `RULES.md` to the README; the rule keeps its directive (#1662). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60822.1 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |

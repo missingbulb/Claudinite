@@ -22,7 +22,7 @@ For every substantive algorithmic change, in this order:
    a sensible default and state what you chose.
 5. **Wire it in fully** — see *Definition of done* (§5).
 6. **Record it** as a numbered iteration note — what was wrong, what changed, the
-   metric delta, and **what you tried and rejected** (the `write-an-iteration-note` skill).
+   metric delta, and **what you tried and rejected** (§5).
 
 ### Show, don't just tell
 - Every algorithmic change is presented as a rendered comparison against the
@@ -69,7 +69,26 @@ For every substantive algorithmic change, in this order:
   agreement against them, not against your own expectation of the answer.
 - **Ground truth is annotated, never fabricated.** Do not invent labels to make a
   dataset scorable. If a dataset lacks the annotation a given harness needs, it
-  does not go into that harness (the `add-an-external-corpus` skill owns the validation tiers).
+  does not go into that harness (see §9 on validation tiers).
+- **Separate source-of-truth from generated artifacts.** The hand-annotation is
+  the source; the machine-usable ground-truth (registered masks, parsed labels,
+  normalized tables) is **generated from it and regenerated on demand** — never
+  hand-edited, because the generator overwrites it. To fix ground truth, **fix
+  the source annotation (or the extraction code) and regenerate**, then re-score.
+- **Make extraction deterministic and self-checking.** Same annotation → same
+  derived ground truth. Pin the things a human counted (number of objects,
+  number of regions) as assertions/tests so a silent extraction regression fails
+  loudly.
+- **Auto-detect annotation conventions from the data**, don't hard-code a
+  per-input flag. When the owner uses more than one annotation scheme over time,
+  detect which scheme an input uses from the ink/markup itself. Record the
+  **conventions** (what each colour / mark / region means) in a durable doc; they
+  are requirements, not incidental.
+- **Verify the annotation actually parses before trusting a score.** Inspect two
+  things: did the markup parse into the labels you expected, and did the derived
+  ground truth land correctly on the raw input (registration / alignment)? Keep
+  the review overlays.
+
 ---
 
 ## 3. Inputs — a small, similarly-formatted learning set
@@ -121,7 +140,49 @@ if it improves a metric.
 
 ---
 
-## 5. Repeatable improvement iterations — *definition of done*
+## 5. Repeatable improvement iterations — the numbered notes, and *definition of done*
+
+Each accepted change is recorded as a **numbered iteration note** (pick a short
+tag and stick to it, e.g. `R1, R2, …`) in a running method-narrative doc, so
+**the next session does not re-derive what this one already learned.**
+
+An iteration note captures:
+- **What was wrong** (the observed failure, ideally with the diagnostic that
+  showed it).
+- **What changed** (the rule/parameter and why, in scale-free terms where
+  possible).
+- **The metric delta** — before/after, per input, on the real scoring harness.
+- **What you tried and rejected, and why** — this is what stops the next session
+  (or the next model) from walking back into the same dead end.
+
+### A metric's definition is part of its identity
+
+Write down what each reported metric actually counts, and treat **re-defining
+one as the owner's call, never a tuning step**. A definition change is uniquely
+silent: the column keeps its name and its units, so every number ever recorded
+under it *looks* comparable while the quantity underneath has moved. When a
+definition does change, the history is **re-measured, never re-labelled** — rerun
+the old inputs under the new definition, or mark the old numbers as belonging to
+the old one. Carrying both definitions' numbers in one series under one name is
+the failure this rule exists to prevent.
+
+### A raw measurement is comparable only inside one calibration
+
+When each input carries its own scale (a per-image conversion factor, a per-run
+sampling rate, a per-source unit), a raw absolute quantity means something
+different in every input. **Aggregate and compare only normalized quantities** —
+a density, a ratio, a per-unit rate — never the raw number, and never a mean
+spanning two sources that differ in more than scale (a different instrument,
+subject or protocol changes *what* is measured, not just how much of it fits in
+frame). Group the rollup by source and say what the grouping is for.
+
+The conversion factor is a **measurement of that input**, not a constant: read it
+off the input itself, never infer it from a stated setting or borrow it from a
+neighbour. It lives in exactly one place in the code — a second copy is a second
+calibration, and whichever copy a given script happens to read wins silently. An
+input offering nothing to measure the factor from is **not** quietly dropped:
+mark it uncalibrated *with the reason*, report only its scale-free quantities,
+and leave it visible as a known gap.
 
 ### Definition of done for an accepted change
 - **Source updated — never the generated artifacts.** (Regenerate them.)
@@ -129,9 +190,9 @@ if it improves a metric.
 - **Tests green**, and the **scoring deltas reported** (per input, per metric).
 - **Committed with a clear message and pushed**, so the work is reviewable and
   resumable from a fresh session / another machine.
-- **Learnings cached**: the iteration note (the `write-an-iteration-note` skill), plus a
-  pointer/update in the session warm-up doc or the relevant reference doc **if the map or
-  procedure changed**.
+- **Learnings cached**: the iteration note above, plus a pointer/update in the
+  session warm-up doc or the relevant reference doc **if the map or procedure
+  changed**.
 
 ---
 
@@ -150,6 +211,72 @@ if it improves a metric.
 
 ---
 
+## 7. Reading & summarizing source articles
+
+When a paper, tool, or reference method matters to the project:
+
+- **Write a self-contained notes file so the source never has to be re-read.**
+  Capture everything algorithmically relevant: the exact method/pipeline and its
+  parameters, the definitions and formulae, calibration details, and **sanity-check
+  values** you can validate your own outputs against.
+- **Capture the method that exists only inside a figure.** Part of a source's
+  actual procedure is often drawn rather than written — a panel's inset, an
+  annotated overlay, a legend. Extract and describe it in the notes; a summary
+  built from the prose alone silently omits it, and the omission is invisible
+  until someone re-opens the source.
+- **Write down what the source *fails* to say**, as an explicit gap list — the
+  parameters, thresholds and units it never states. Recording an absence is what
+  stops the next reader re-opening the source to hunt for something that was
+  never in it. The intake is done when the notes make the original redundant, and
+  a stated gap is part of that.
+- **Explicitly record where your approach diverges from the reference and why.**
+- **State what you deliberately omitted** (material not relevant to the
+  algorithm — e.g. procedural/experimental setup detail, incidental statistics,
+  acknowledgements) and that you cross-checked against the full text — so a later
+  reader trusts the summary is complete for its purpose.
+- Note that upload paths for source PDFs are **session-specific and won't
+  persist**; the notes file is the durable artifact, not the upload.
+
+---
+
+## 8. Extracting images — samples vs illustrations
+
+- **Samples** are inputs you will run the algorithm on; **illustrations** are
+  figures that explain a method or a definition. Keep the two roles distinct and
+  store extracted figures alongside the notes that reference them.
+- **Render documents with a library, not an assumed system binary.** The
+  environment often lacks common tools (e.g. a PDF rasterizer such as poppler /
+  `pdftoppm`); use an in-process library instead. Locate embedded raster images
+  and render just the region you need, at a zoom high enough to read fine
+  annotation, with a little padding to catch ink drawn outside the frame.
+- **Verify identity when an extracted image should match an existing input**
+  (e.g. an annotated crop over an original) by an exact pixel diff — so you know
+  an annotation set is a labelling of the *same* data, not a new input.
+
+---
+
+## 9. Fetching more sample data from the outside
+
+- **Grow the corpus from public sources that match the input regime.** Curate and
+  **rank candidates by fit** = modality match × ground-truth availability × ease
+  of access, and record licence and provenance for each.
+- **Make ingestion a committed, repeatable fetch script**, not a manual download,
+  so anyone can reproduce the corpus.
+- **Respect the two validation tiers — and don't mix them:**
+  - **Full ground truth** (per-item annotations) → scores the *algorithm's
+    detailed output* (overlap / detection) on the real harness.
+  - **Aggregate label only** (a published summary number, no per-item
+    annotation) → validates the *summary quantity* the project reports, and
+    nothing finer.
+  Wiring an aggregate-only dataset into the detailed-overlap harness would force
+  you to **fabricate annotations**, which violates §2. Keep a separate,
+  mask-free validation path for those sets.
+- **External data is rarely drop-in.** Expect a scale/regime gap (§3) and
+  *measure* it with the appropriate tier rather than assuming the corpus is
+  covered.
+
+---
+
 ## 10. Environment limitations — stay lightweight
 
 - **A fresh container has nothing installed.** Assume dependencies must be
@@ -160,7 +287,7 @@ if it improves a metric.
   gated, isolated route** (documented, opt-in, scoped to the cases that need it)
   rather than a new baseline dependency — and prove the lightweight route is
   exhausted first.
-- **Route around missing system binaries with libraries** (the `source-intake` skill). Document the
+- **Route around missing system binaries with libraries** (see §8). Document the
   exact install lines and any "install ad hoc, not in requirements" tools in the
   warm-up doc.
 
@@ -229,3 +356,36 @@ The owner works across many sessions and machines. Every session should end in a
   isn't captured yet.
 - Follow the repo's **branch/commit/PR conventions**: develop on the named
   branch, commit with clear messages, push; don't open a PR unless asked.
+
+---
+
+## 14. Reviving a prior session to **enhance this document** (not to continue the research)
+
+Some of the owner's process preferences live only in the **dialogue of earlier
+Claude Code (web) sessions**, not in any committed file. If the owner revives
+such a session and points it at this playbook, here is the instruction for that
+revived session:
+
+> **Your job in this revived session is to mine our conversation for *process and
+> working-style preferences*, and fold them into this playbook — NOT to continue
+> the research task itself.**
+> Re-read the whole dialogue and extract only the durable, project-agnostic
+> signal about *how the owner wants research run*: how they want results shown;
+> what they praised or rejected about the workflow (not just the algorithm);
+> ground-truth and annotation conventions; anti-overfitting rules they insisted
+> on; how they want articles summarized, images extracted, and external data
+> fetched; environment constraints they flagged; and how they hand off algorithm
+> ideas. For each item, strip out anything specific to this project's subject
+> matter and generalise it to the class of "run a CV/analysis algorithm over
+> similarly-formatted inputs, scored against user ground truth, improved in
+> reviewable iterations." Then propose additions/edits to the relevant numbered
+> section above (merge, don't duplicate; keep the principle-first phrasing). Show
+> the owner a diff of what you'd add and confirm the wording before committing.
+> **Do not run or modify the research pipeline.** If a preference contradicts what
+> is already written here, surface the conflict for the owner rather than silently
+> overwriting.
+
+To make revival productive, when the owner asks for it they should say **which
+session(s)** to revive (a link or a description) and, if possible, what topic the
+process discussion centred on — so the revived session knows where in the
+transcript to look.

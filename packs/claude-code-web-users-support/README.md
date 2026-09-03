@@ -31,17 +31,9 @@ address, so the store is flat and each name is one person's exact identity, whic
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
+| Changing a person's preferences | medium | complexity | prose: 53 words |
+| A person's first preferences file | high | correctness | prose: 44 words + check (`preferences-store-file-names`) |
 | A web session's missing toolchain | medium | complexity | prose: 38 words |
-
-Recording or changing a person's preferences — the store, the file name, what belongs there — is
-the [`record-user-preference`](skills/record-user-preference/SKILL.md) skill; the file lives in
-another repo, so the ask loads it rather than a path.
-
-## Skills
-
-| Skill | Trigger |
-|---|---|
-| [`record-user-preference`](skills/record-user-preference/SKILL.md) | a person asking to record or change one of their personal preferences |
 
 ## Checks
 

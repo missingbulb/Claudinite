@@ -234,6 +234,4 @@ Close this issue once the first release-on-push run has deployed successfully.
 
 ## What the checks hold a change to
 
-- **The version moves with the change.** A change touching the published site raises `<major>.<ymmdd>.<n>` in the same PR — `node .github/actions/bump-site-version/bump.mjs $(version_files)` computes it from the previous version and the UTC date, and `sw/version-bumped` is what holds the line. Never hand-write the `ymmdd` or the counter: a typed value either collides with a released one or is dated in the future, and the next bump refuses. The release flow writes no version of its own — it ships what it finds on `main` — so a shipped change without a bump is never released at all. The one deliberate human part is the **major**, a "this is a new generation of the site" statement; the owner's **"bump version"** means exactly that, and the release workflow's `bump: major` dispatch is what performs it.
-
 - **The pipeline files under `.github/workflows/static-site-*` and `.github/actions/{read-site-config,bump-site-version,assemble-site}` are managed copies of the pack's `stubs/`.** Fix the pack and re-vendor; an edit to the copy is overwritten and, until it is, makes this repo's pipeline differ from every other site repo's. The repo's own values all live in `.github/site.config`, which is what the copies read.

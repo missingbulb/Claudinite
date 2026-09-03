@@ -4,9 +4,9 @@
 // carried by the mounted `python-optional-deps` skill's check-the-work rules
 // (the failure message is the rule, so there is no prose copy to drift from).
 // The skill's own prose carries which deps belong in the dependency-free base
-// set and the F401 availability-probe suppression, forced onto the packaging
-// files. What stays as prose in RULES.md is the residue with no file to key on:
-// the stdlib-backend architecture.
+// set, forced onto the packaging files. What stays as prose in RULES.md is the
+// residue with no file to key on: the stdlib-backend architecture and the F401
+// availability-probe suppression.
 //
 // Fingerprint: a `pyproject.toml` at the repo root OR one directory down (a
 // subproject/tool dir) — but never deeper, so a pyproject.toml inside a nested

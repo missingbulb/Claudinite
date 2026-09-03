@@ -54,7 +54,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   reading the old path, and the doc then points right while *reading* wrong. Both the plain
   `[old/path.md]` and backticked label forms need the same rewrite. Reaffirm while Markdown
   duplicates the path across label and target; retire only if that stops being true.
-- **(automerge-policy-1)** Owner decision, set while planning the dashboard chain (#1613): "The owner
+- **(RULES-1)** Owner decision, set while planning the dashboard chain (#1613): "The owner
   reviews are here not to make sure all code was created perfectly … Your ability to write
   code at fantastic speeds means that making sure a code is perfect is a goal that pales in
   comparison to get the code out the door and working. The things I now care about are much
@@ -82,11 +82,6 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   the owner set a week for the cleanup that prompted this — which is why the rule asks for a
   stated window and not a fixed one. Reaffirm while consumers converge on their own schedule and
   cannot be enumerated.
-- **(RULES-3)** An egress block is domain-wide, so working down a list of alternate sources for
-  the same fact spends the same denial again on each one, where a publisher `403` is at least
-  per-site; and no later agent pass can close a policy-level block either, so a gap filed as
-  "re-verify next pass" waits on a pass that cannot help. Reaffirm while sessions run behind an
-  egress policy no agent pass can step outside of.
-- **(writing-migration-plans-1)** Same decision as automerge-policy-1: the sizing questions and the
+- **(writing-migration-plans-1)** Same decision as RULES-1: the sizing questions and the
   breakage cases were the ones the owner asked while planning #1602, and asked to have made
   into the planning skill "highlighting the importance of continuation".

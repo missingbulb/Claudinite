@@ -18,10 +18,8 @@ reports it.
 | Adding a pack | medium | complexity | prose: 27 words |
 | Setting a project up on Claudinite | medium | complexity | prose: 15 words |
 | Deciding which pack owns a lesson | medium | complexity | prose: 59 words |
-
-Judging whether the mount is current, and why it did not update, is the
-[`diagnosing-mount-staleness`](skills/diagnosing-mount-staleness/SKILL.md) skill, loaded by the
-question rather than carried by every session.
+| Judging whether Claudinite is current here | medium | correctness | prose: 51 words |
+| Answering "why did the mount not update" | medium | correctness | prose: 39 words |
 
 ## Checks
 
@@ -77,7 +75,6 @@ scoped ones first — naming what the declared packs actually bundle.
 |---|---|
 | [`adopt-claudinite`](skills/adopt-claudinite/SKILL.md) | setting a project up on Claudinite for the first time — mount, hooks, checks, skills — and re-baselining one to pick up updates |
 | [`adopt-pack`](skills/adopt-pack/SKILL.md) | adding a pack to a repo that already runs Claudinite: declare, interview, re-vendor, scaffold, land |
-| [`diagnosing-mount-staleness`](skills/diagnosing-mount-staleness/SKILL.md) | a staleness question — is Claudinite current here, why did the mount not update, a failed converge |
 
 The adoption skills bundle two more checks of the same kind, over the answers a member stores
 against each declared pack's questions:

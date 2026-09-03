@@ -21,10 +21,22 @@
   document (its executable spec, where it keeps one), write the test that proves it and watch it
   fail, then implement until it passes.
 
-- **Acting on a process change** — the owner is changing *how* work is done: land it as durable
-  rules in the project's local scope, its own local packs, through the mechanism promotion
-  ladder — [mechanism-promotion-ladder](skills/mechanism-promotion-ladder/SKILL.md) owns the
-  rungs and what earns a rule one.
+- **Acting on a process change** — the owner is changing *how* work is done. Land it as durable
+  rules in the project's local scope, its own local packs (in Claudinite itself, its packs), routed
+  through the mechanism promotion ladder (platform setting → hook → check → skill → prose).
+  Promoting a rule into the shared canon is the growth lifecycle's separate call, not the
+  interactive session's.
+
+- **Choosing what goes on that ladder** — only a rule that constrains *how work is done* and
+  outlives any one feature; a checkable signature doesn't earn a rule its place. Reject two shapes
+  outright: a check that asserts particular code exists or still reads a particular way (it pins a
+  point in time), and a rule derivable from the product's requirements (that is a requirement —
+  take it to the feature path, the requirements document and the test that proves it).
+
+- **Landing a rule anywhere on the ladder** — author the assurance first, the check the future
+  world must satisfy, execute it and watch it fail, and only then make the fixes that turn it green.
+  At the prose rung, where no check can carry an in-flight judgment rule, the equivalent step is
+  showing the corpus doesn't already cover the rule before writing it.
 
 - **Building a mechanism for a behavior** — verify against a real run that it isn't already
   provided.
@@ -40,28 +52,52 @@
   `workflow_dispatch`, the fleet-wide force sweep) and watch it to a terminal state rather than wait
   for its next natural run.
 
-- **Planning a migration** — prefer the design that converges in one forced pass, write every
-  phase's code before asking for approval, and chain each execution step to the verification of
-  the one before it rather than to anyone's memory;
-  [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns the shape, the
-  ordering and the chain's mechanics.
+- **Planning a migration** — prefer the design that converges in one forced pass to the one that
+  trickles across nightly cycles, accept legacy input at the door so nothing has to wait for
+  stragglers, and drive the stragglers with a standing mechanism rather than a phase someone must
+  remember to close. Write every phase's code — the cleanup, the destructive tail and every
+  legacy tolerance's removal included — before asking for approval, and chain each execution step
+  to the verification of the one before it rather than to anyone's memory;
+  [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns that ordering and the
+  chain's mechanics.
 
 - **Adding a legacy tolerance** (a dual read, an accepted old spelling, a shim) — it is
   scaffolding, not a feature: ship it with an advisory that fires where the old shape is still in
   use, and with its removal already a link in the migration's chain, due one stated convergence
   window after that advisory reaches the holders. (2)
 
+- **Choosing an automerge policy for a PR or a chain link** — write it as a prediction of the
+  change's shape, the folders and kinds you expect the diff to touch, and never widen it to fit the
+  diff that arrived: a policy that fails is the speed bump that puts a person back on the trail,
+  not an error to route around. (1)
+
+- **Predicting a change that could delete production data or degrade the experience past what a
+  later PR undoes** — its policy is `nothing`, whatever its diff class; irreversibility is the
+  first of the two things review here exists to catch. (1)
+
+- **Handing over a change whose diff reached more folders or files than its request implied** —
+  say so, and name the abstraction that would have kept it in one place: the reviewer reads which
+  folders moved to judge whether the change made sense, and a wide diff for a small ask is the
+  growth lesson review is for, not a defect. (1)
+
 - **When verifying now is genuinely impossible** (an external release window, an upstream fix in
   flight, an effect that only appears once the change is deployed, converged or loaded by a later
-  session) — the follow-up is a mechanism that comes to you, never a human's memory: file it with
+  session) — the follow-up is a mechanism that comes to you, never a human's memory and never an
+  offer to the owner to go and check later. File it with
   [verify-in-production](skills/verify-in-production/SKILL.md), unasked, **once the PR has
-  merged** and never before.
+  merged** and never before — a PR can be rejected, and a still-open branch can be rewritten
+  under you, either of which strands a verification whose premise never reached `main`. The
+  skill owns both halves — whether this change needs one at all (most don't; a test that ran is
+  already the mechanism), and the issue that states what puts the change in production and what
+  proves it works there.
 
 - **Finishing a larger element** — one that earned a design doc or a phased tracking issue — a
   point verification is not enough: schedule the review that comes back once the element has
-  lived in production about a week, with its brief written at design time;
+  lived in production about a week, asking whether it is working, misused, overused or underused
+  against its real record — with the brief written at design time, expected amounts, signals and
+  the metrics that measure them included, never improvised when the review runs.
   [production-retrospective](skills/production-retrospective/SKILL.md) owns the trigger, the
-  brief, and the lane's other classes.
+  brief, and the lane's other classes — canon, local-pack and fleet alike.
 
 - **Receiving feedback that flags a misunderstanding** — check whether the artifact is already
   correct before expanding it; if it is, say so and push back rather than edit.
@@ -102,10 +138,14 @@
 
 - **Hitting a sandbox or proxy that denies a fetch** — treat it as a **policy boundary, not an
   obstacle to route around**: don't reach for an open-network runner, an ad-hoc CI workflow or a
-  push-triggered "probe"; answer from committed reference material or ask the owner, say plainly
-  that anything unverifiable is unverified, read a fetch tool's own egress-block signal (an
-  explicit `EGRESS_BLOCKED`) as domain-wide rather than as a per-site `403`, and mark the gap as
-  needing a human or an unblocked environment, never "re-verify next pass". (3)
+  push-triggered "probe", to make the request from somewhere the policy doesn't apply. Answer from
+  committed reference material or ask the owner, and say plainly that anything unverifiable is
+  unverified. Recognize a fetch tool's own signal for a domain-wide **egress block** (e.g. an
+  explicit `EGRESS_BLOCKED` error) rather than reading it as an ordinary publisher `403` — a block
+  is domain-wide, so working down a list of alternate sources for the same fact spends the same
+  denial again on each one, where a `403` is at least per-site. And never file the gap as
+  "re-verify next pass": no later agent pass can close a policy-level block either, so mark it as
+  needing a human or an unblocked environment instead.
 
 - **Scheduling a wake-up with the harness** — pass `prompt`, the instruction the woken turn is to
   act on, on any call that isn't `stop: true`; a no-op flag and a stated `reason` do not exempt it,
@@ -155,6 +195,21 @@ For every new task:
   comes back on its own rather than doing it now or trusting anyone to remember it: the
   [do-later](skills/do-later/SKILL.md) skill, which queues it behind what it waits on.
 
+- **Filing anything into the ad-hoc queue** (a deferral, a verification, any marked issue) — it
+  asks an unattended session **on this repository** to do the work, so only file what such a
+  session can actually do here. A read of another repository or a console is not work it can
+  do: that item parks minutes after it is picked, and a park is a person's problem filed under
+  a mechanism's name. A public URL is the one exception, and only through the coded
+  verification form (`verify-in-production`'s probes) — never by asking a session to fetch it.
+  Where the work is out of reach, do it now, hand it to a routine that has the reach, or do
+  not file it — and say which.
+
+- **Filing an issue that belongs under another** — a phase of a plan, a verification of a change,
+  a follow-up its parent tracks — attach it as a **sub-issue** (`mcp__github__sub_issue_write`,
+  method `add`, `sub_issue_id` the **id** the create call returned, not its number), never only a
+  number named in the body. The parent then carries what is still open under it, in the place a
+  reader is already looking.
+
 - **Handing over a step only a human can perform** (flipping a repository or console setting,
   granting a permission, adding a secret) — first confirm you genuinely can't do it yourself, then
   give it **its own issue**, never a note in the PR body, with a checkbox per step, what breaks
@@ -190,6 +245,11 @@ For every new task:
 - **Writing code that depends on how a platform or runtime behaves** — verify that behaviour
   against authoritative docs or a real run, not a comment or a prior commit's claim.
 
+- **Optimising** — if the change is meant to preserve behaviour, prove it: hash the full outputs
+  of both paths across every branch, fuzzing the inputs that select each, and accept only a
+  bit-identical match. If the correctness risk outweighs the speed-up, leave the path alone and
+  record that as a deliberate call.
+
 - **Needing a library for a narrow job** — prefer a built-in, or a few lines. When the assumption
   that justified an existing dependency lapses, drop it.
 
@@ -211,6 +271,13 @@ For every new task:
 - **Persisting anything on a user's machine** — put it under the one user-deletable location, and
   extend that location rather than earn a second one. If the platform forces something outside it, a
   registration the OS owns, name that explicitly as the exception.
+
+- **Changing what the software does with a user's data** — the permission string, privacy policy
+  and store listing are part of the contract, so change them in the same commit. Retaining something
+  new, opening a listener or adding an outbound connection changes the promise rather than adding a
+  field: decide it explicitly and rewrite the disclosure before the code. Expect the claim in more
+  than one place — grep the whole surface for the standing absolutes it touches ("no tracking",
+  "no cookies", "no external assets") and reconcile every hit.
 
 - **Driving an external runtime more than once in a session** — a headless browser, a device, a
   REPL, a deploy target — write one parameterised driver into the scratchpad, taking the target,
@@ -260,4 +327,3 @@ For every new task:
   removed or renamed. If a comment narrates a past fix, keep only the part still true of the code in
   front of you. When it must name a path, spell that path in one canonical place and point every
   other mention there.
-

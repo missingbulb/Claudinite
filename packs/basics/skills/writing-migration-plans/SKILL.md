@@ -17,11 +17,9 @@ approval is a queued continuation armed on the step before it, so the migration 
 anyone remembering it exists.
 
 Everything below assumes the change is already agreed: the problem, and that this migration is the
-right way to solve it (basics' *Starting any requested change*). The end state's **shape** comes
-first: prefer the design that converges in one forced pass to the one that trickles across
-nightly cycles, accept legacy input at the door so nothing has to wait for stragglers, and drive
-the stragglers with a standing mechanism rather than a phase someone must remember to close. The
-rest of this skill is the ordering.
+right way to solve it (basics' *Starting any requested change*). The end-state's **shape** —
+converging in one forced pass, accepting legacy input at the door, a standing mechanism for
+stragglers — is [RULES.md](../../RULES.md)' *Planning a migration*; this skill is the ordering.
 
 ## Two deliverables, two homes — and only two
 
@@ -158,8 +156,8 @@ to read whether the design survived contact.
 [production-retrospective](../production-retrospective/SKILL.md) owns what that brief answers and
 its horizon.
 
-Each link is a **sub-issue of the tracking issue**
-([filing-sub-issues](../filing-sub-issues/SKILL.md)), so the plan and its chain are one hierarchy read two ways rather
+Each link is a **sub-issue of the tracking issue** ([RULES.md](../../RULES.md)' *Filing an issue
+that belongs under another*), so the plan and its chain are one hierarchy read two ways rather
 than two lists that can disagree. Where a link is a PR's merge rather than a run, that PR's body
 closes **the link**, never the tracker: a phase PR carrying `Closes #<tracker>` ends the whole
 migration on its first merge.
@@ -205,7 +203,7 @@ per link, at plan time, and record the answers in the tracking issue:
   approval but stalls on any red; a PR per division buys exit conditions at the cost of a rebase
   each and the stacked-PR version-bump hazard. The count is what remains after both are refused.
 - **What the diff will touch.** Name the folders and kinds, and the size. Then the policy is
-  that prediction, written narrow (the [automerge-policy](../automerge-policy/SKILL.md) skill): `under:<folder>`
+  that prediction, written narrow (basics' *Choosing an automerge policy*): `under:<folder>`
   intersected with the kind where the kind is known, the same folder's `test-changes` and
   `doc-changes` beside it. Two things earn `nothing` whatever their diff class: a link that
   changes what leaves the repo irreversibly (a fold every member writes, a deletion, a

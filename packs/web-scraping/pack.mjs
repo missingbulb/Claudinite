@@ -9,13 +9,12 @@
 // every candidate signature suspects the pack in repos that want nothing to do
 // with it. Declaration is authoritative instead.
 //
-// Prose and three skills, no checks. Every rule here is about a REMOTE service's
+// Prose and one skill, no checks. Every rule here is about a REMOTE service's
 // behaviour — which field is authoritative, whether an instant is UTC, when a 200
 // is actually a bot wall — and none of it is written into repo state in a shape a
 // deterministic check could read without false-positiving on ordinary HTTP code.
-// What has a nameable activity — reconnaissance on a new source, writing the
-// fetch layer, converting time at the ingestion boundary — descends to a skill
-// rather than sitting in always-loaded prose.
+// The one-off reconnaissance procedure has a nameable trigger, so it descends to a
+// skill rather than sitting in always-loaded prose.
 
 export default {
   version: '60903.2',

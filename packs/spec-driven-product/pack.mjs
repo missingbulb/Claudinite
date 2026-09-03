@@ -1,4 +1,4 @@
-// A project-CLASS pack (no fingerprint): a product project of this
+// A project-CLASS pack (prose-only, no fingerprint): a product project of this
 // class declares it. No detect — declaration is authoritative. The general
 // test-trust rules the playbook leans on (see-it-fail, snapshot hygiene,
 // re-baselining approval) stay in the writing-tests skill; release mechanics
