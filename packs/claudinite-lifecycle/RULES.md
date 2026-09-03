@@ -24,12 +24,3 @@
   *every* canon pack, never the mounted subset: the mount holds only what this repo declares, so the
   pack that owns the territory may be absent and invisible. When the owning pack is merely too
   narrow, widen its `ruleRoutingGuidance.belongs` rather than opening a local pack beside it.
-
-- **Judging whether Claudinite is current here** — read the stamp's `engineVersion` and
-  `packVersions`, never `claudinite.updated` or `ref`: the versioned flows stamp versions and
-  nothing else, so those two hold the provenance of the last full re-vendor rather than of this
-  mount, and a member converging nightly reads as weeks stale.
-
-- **Answering "why did the mount not update"** — read the member's own artifacts (its declaration,
-  its stamp, the head sha's runs) before theorizing about a platform setting; propose a settings
-  change as a conclusion, never as a diagnosis.
