@@ -128,9 +128,12 @@ test('parseDeclaration reads a task.json, defaults filled', () => {
   const d = parseDeclaration('{ "$schema": "x", "id": "tidy-prs", "frequency": "weekly", "preconditions": ["substantive-change"], "expected_outcome": "none" }', 'packs/tidy-repo/tasks/tidy-prs/task.json');
   assert.equal(d.id, 'tidy-prs');
   assert.equal(d.frequency, 'weekly');
-  assert.equal(d.agent_model, 'sonnet');
-  assert.equal(d.agent_execution_timeout, 1800);
+  assert.equal(d.agent_model, 'none');
+  assert.equal(d.agent_execution_timeout, null);
   assert.equal(d.has_precondition, true);
+  const ungated = parseDeclaration('{ "id": "x", "frequency": "daily", "expected_outcome": "none" }', 'p/tasks/x/task.json');
+  assert.deepEqual(ungated.preconditions, ['none']);
+  assert.equal(ungated.has_precondition, false);
   const broken = parseDeclaration('{ "id": ', 'packs/tidy-repo/tasks/tidy-prs/task.json');
   assert.equal(broken.frequency, null);
 });

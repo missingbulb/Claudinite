@@ -46,16 +46,13 @@ function fields(file, text) {
   };
 }
 
-// Whether the task runs an agent. An absent `agent_model` is the loader's to fill
-// (`defaultAgentModel` in packs/claudinite-tasks/task-contract.mjs): `none` when
-// the task declares `code_work` and nothing agentic beside it, otherwise an
-// agent. Spelled again here rather than imported because this pack does not
-// require that one; the test beside this rule holds the two in step.
+// Whether the task runs an agent: a declared `agent_model` other than `none`. An
+// absent one is `none` (the contract's default, packs/claudinite-tasks/task-defaults.mjs),
+// spelled again here rather than imported because this pack does not require
+// that one; the test beside this rule holds the two in step.
 export function runsAgent(decl) {
   const declared = decl.str('agent_model');
-  if (declared !== null) return declared !== 'none';
-  const agentless = decl.has('code_work') && !decl.has('agent_instructions') && !decl.has('agent_execution_timeout');
-  return !agentless;
+  return declared !== null && declared !== 'none';
 }
 
 const rule = {

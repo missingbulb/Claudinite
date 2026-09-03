@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { MODEL_FAMILIES, MODEL_MAP, resolveModel, isAgentless } from '../model-map.mjs';
 import {
   validateTaskDeclaration, normalizeTaskDeclaration, taskSignalNames, OUTCOMES, SIGNAL_NAMES,
-  DEFAULT_AGENT_MODEL, DEFAULT_AGENT_EXECUTION_TIMEOUT, defaultAgentModel, DESCRIPTION_MAX_WORDS,
+  DEFAULT_AGENT_MODEL, DEFAULT_PRECONDITIONS, DEFAULT_AUTOMERGE, DESCRIPTION_MAX_WORDS,
 } from '../task-contract.mjs';
 import {
   FREQUENCIES, ACCEPTED_FREQUENCIES, LEGACY_FREQUENCIES, normalizeFrequency,
@@ -43,11 +43,10 @@ test('validateTaskDeclaration: session_scope is optional, defaults valid, and re
   assert.match(validateTaskDeclaration({ ...validTask, session_scope: 'global' })[0].what, /not a legal session scope/);
 });
 
-test('validateTaskDeclaration: an agentic task\'s execution bound defaults, and a declared one must be a positive integer', () => {
+test('validateTaskDeclaration requires agent_execution_timeout on an agentic task — no default', () => {
   const { agent_execution_timeout, ...noBound } = validTask;
-  assert.deepEqual(validateTaskDeclaration(noBound), []);
-  assert.equal(normalizeTaskDeclaration(noBound).agent_execution_timeout, DEFAULT_AGENT_EXECUTION_TIMEOUT);
-  // a non-integer or non-positive bound is rejected
+  assert.match(validateTaskDeclaration(noBound)[0].what, /no positive-integer "agent_execution_timeout"/);
+  // a non-integer or non-positive bound is equally rejected
   assert.ok(validateTaskDeclaration({ ...validTask, agent_execution_timeout: 0 }).length);
   assert.ok(validateTaskDeclaration({ ...validTask, agent_execution_timeout: 12.5 }).length);
 });
@@ -65,48 +64,32 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
   );
 });
 
-// THE AGENTIC FIELDS ARE OPTIONAL (#1633): a declaration says what is particular to
-// its task, and the door fills the rest. `agent_model` derives from the shape —
-// `none` for a task that declares only code_work — so the simplest agentless task
-// is four fields plus its command, and the simplest agentic task is four fields.
-test('normalizeTaskDeclaration fills the agentic defaults, and only where absent', () => {
-  const minimalAgentic = { id: 't', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none' };
-  const agentic = normalizeTaskDeclaration(minimalAgentic);
-  assert.equal(agentic.agent_model, DEFAULT_AGENT_MODEL);
-  assert.equal(agentic.agent_instructions, 'task.md');
-  assert.equal(agentic.agent_execution_timeout, DEFAULT_AGENT_EXECUTION_TIMEOUT);
-  assert.deepEqual(validateTaskDeclaration(minimalAgentic), []);
-
-  const minimalAgentless = { ...minimalAgentic, code_work: 'node w.mjs', code_work_timeout: 60 };
-  const agentless = normalizeTaskDeclaration(minimalAgentless);
-  assert.equal(agentless.agent_model, 'none');
-  assert.equal(agentless.agent_instructions, undefined, 'no worker doc for a task that runs no agent');
-  assert.deepEqual(validateTaskDeclaration(minimalAgentless), []);
-
-  // An agentic field beside code_work makes it agentic again; a declared model is kept.
-  assert.equal(normalizeTaskDeclaration({ ...minimalAgentless, agent_execution_timeout: 5 }).agent_model, DEFAULT_AGENT_MODEL);
-  assert.equal(normalizeTaskDeclaration({ ...minimalAgentless, agent_model: 'opus' }).agent_model, 'opus');
-  assert.equal(normalizeTaskDeclaration({ ...minimalAgentic, agent_instructions: 'spec.md' }).agent_instructions, 'spec.md');
-  assert.deepEqual(defaultAgentModel({ code_work: 'x' }), 'none');
-  assert.deepEqual(defaultAgentModel({}), DEFAULT_AGENT_MODEL);
+// THE DEFAULTS (#1633, owner 2026-09-03): a declaration says what is particular
+// to its task and the door fills the rest — preconditions is run-always, automerge
+// is nothing, agent_model is none. The timeouts have no default: an agent or a
+// code-work subprocess always carries its own bound, and an agent its worker file.
+test('normalizeTaskDeclaration fills the defaults, and only where absent', () => {
+  const minimal = { id: 't', frequency: 'daily', expected_outcome: 'pr' };
+  const filled = normalizeTaskDeclaration(minimal);
+  assert.deepEqual(filled.preconditions, DEFAULT_PRECONDITIONS);
+  assert.equal(filled.automerge, DEFAULT_AUTOMERGE);
+  assert.equal(filled.agent_model, DEFAULT_AGENT_MODEL);
+  assert.equal(filled.agent_instructions, undefined);
+  assert.equal(filled.agent_execution_timeout, undefined);
+  assert.equal(filled.code_work, undefined);
+  // …so the minimal declaration is an agentless task with no code work, which does nothing.
+  assert.match(validateTaskDeclaration(minimal)[0].what, /declares no "code_work"/);
+  assert.deepEqual(validateTaskDeclaration({ ...minimal, code_work: 'node w.mjs', code_work_timeout: 60 }), []);
+  // A declared field is kept; a none task takes no automerge default.
+  assert.equal(normalizeTaskDeclaration({ ...minimal, agent_model: 'opus' }).agent_model, 'opus');
+  assert.deepEqual(normalizeTaskDeclaration({ ...minimal, preconditions: ['substantive-change'] }).preconditions, ['substantive-change']);
+  assert.equal(normalizeTaskDeclaration({ ...minimal, automerge: 'anything' }).automerge, 'anything');
+  assert.equal(normalizeTaskDeclaration({ ...minimal, expected_outcome: 'none' }).automerge, undefined);
   // The editor's pointer leaves at the door.
-  assert.equal(normalizeTaskDeclaration({ ...minimalAgentic, $schema: 'x' }).$schema, undefined);
+  assert.equal(normalizeTaskDeclaration({ ...minimal, $schema: 'x' }).$schema, undefined);
 });
 
-// `description` — what the task does or why it exists, in at most fifty words.
-// Absent, it validates: nothing converges a member's task files, so a member's
-// own declaration keeps loading; the shape check is what asks for one.
-test('validateTaskDeclaration: a description is free prose up to fifty words', () => {
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, description: 'Folds the logs into an aggregate.' }), []);
-  assert.deepEqual(validateTaskDeclaration(validTask), [], 'absent is accepted');
-  assert.match(validateTaskDeclaration({ ...validTask, description: '' })[0].what, /"description" is empty/);
-  assert.match(validateTaskDeclaration({ ...validTask, description: 42 })[0].what, /"description" is not a string/);
-  const long = Array.from({ length: DESCRIPTION_MAX_WORDS + 1 }, (_, i) => `w${i}`).join(' ');
-  assert.match(validateTaskDeclaration({ ...validTask, description: long })[0].what, /"description" runs to 51 words/);
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, description: long.split(' ').slice(0, DESCRIPTION_MAX_WORDS).join(' ') }), []);
-});
-
-test('validateTaskDeclaration: agent_instructions defaults for an agentic task and is not applicable to none', () => {
+test('validateTaskDeclaration: agent_instructions is required for an agentic task but not applicable to none', () => {
   // a none task with NO agent_instructions at all is clean — the field is not
   // applicable when there is no agent.
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 120 };
@@ -115,12 +98,9 @@ test('validateTaskDeclaration: agent_instructions defaults for an agentic task a
   delete none.automerge;
   assert.deepEqual(validateTaskDeclaration(none), []);
 
-  // an agentic task (agent_model !== 'none') with no agent_instructions reads task.md.
+  // an agentic task (agent_model !== 'none') with no agent_instructions still fails — no default.
   const { agent_instructions, ...noInstructions } = validTask;
-  assert.deepEqual(validateTaskDeclaration(noInstructions), []);
-  assert.equal(normalizeTaskDeclaration(noInstructions).agent_instructions, 'task.md');
-  // …and one declaring a value that is not a file name fails.
-  assert.match(validateTaskDeclaration({ ...validTask, agent_instructions: '' })[0].what, /"agent_instructions" that is not a file name/);
+  assert.match(validateTaskDeclaration(noInstructions)[0].what, /no string "agent_instructions"/);
 });
 
 test('validateTaskDeclaration validates code_work + its required timeout and containment', () => {
@@ -197,9 +177,8 @@ test('validateTaskDeclaration flags every malformed field', () => {
   assert.match(whats, /not a legal frequency/);
   assert.match(whats, /not a legal model family/);
   assert.match(whats, /not a legal outcome ceiling/);
-  assert.match(whats, /"agent_instructions" that is not a file name/);
+  assert.match(whats, /no string "agent_instructions"/);
   assert.match(whats, /"precondition_signals" is retired/);
-  assert.match(whats, /declares no "preconditions"/);
 });
 
 // ONE FORM, and the derivation that comes with it (task-preconditions DESIGN,
@@ -269,10 +248,10 @@ test('normalizeTaskDeclaration maps the legacy outcome ceilings onto the outcome
   assert.deepEqual(explicit.automerge, ['doc-changes']);
 });
 
-test('validateTaskDeclaration: a pr task must say what may auto-merge', () => {
+test('validateTaskDeclaration: a pr task that says nothing about automerge lands nothing', () => {
   const { automerge, ...noAutomerge } = validTask;
-  const { what } = validateTaskDeclaration(noAutomerge)[0];
-  assert.match(what, /automerge/);
+  assert.deepEqual(validateTaskDeclaration(noAutomerge), []);
+  assert.equal(normalizeTaskDeclaration(noAutomerge).automerge, 'nothing');
   for (const policy of ['nothing', 'anything', ['comment-only-changes', 'readme-changes'], ['anything', 'reject:js-code-changes']]) {
     assert.deepEqual(validateTaskDeclaration({ ...validTask, automerge: policy }), [], JSON.stringify(policy));
   }

@@ -33,30 +33,26 @@ test('task-declaration-shape: is inert when no task declaration exists', () => {
   assert.deepEqual(run({ 'src/app.js': 'x\n' }), []);
 });
 
-// THE AGENTIC FIELDS ARE OPTIONAL. A declaration says what is particular to its
-// task; the loader fills `agent_model`, `agent_instructions` and
-// `agent_execution_timeout` (task-contract.mjs), so their absence is not a finding.
-test('task-declaration-shape: the minimal agentic declaration is clean', () => {
-  assert.deepEqual(run({ [TASK]: json({ id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none' }) }), []);
+// THE DEFAULTS: preconditions is run-always, automerge is nothing, agent_model is
+// none — so a declaration carrying none of them is a clean agentless task once it
+// names its code work, and the two timeouts are never defaulted.
+test('task-declaration-shape: the minimal declaration is a code-work task, and needs its timeout', () => {
+  const minimal = { id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', expected_outcome: 'pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
+  assert.deepEqual(run({ [TASK]: json(minimal) }), []);
+  const { code_work_timeout, ...noBound } = minimal;
+  assert.match(whatsOf({ [TASK]: json(noBound) }), /no numeric "code_work_timeout"/);
+  const { code_work, ...nothing } = noBound;
+  assert.match(whatsOf({ [TASK]: json(nothing) }), /declares no "code_work"/);
 });
 
-// …and a declaration of only code_work is agentless without saying so: no
-// agent_instructions is asked of it, and the missing-code-work finding cannot fire.
-test('task-declaration-shape: a code_work-only declaration is judged as an agentless task', () => {
-  assert.deepEqual(run({ [TASK]: json({ id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 60 }) }), []);
-  // Declaring an agentic field beside code_work makes it agentic again — and the
-  // default model is not `none`, so the pair is still clean.
-  assert.deepEqual(run({ [TASK]: json({ id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', preconditions: ['none'], expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 60, agent_execution_timeout: 900 }) }), []);
-});
-
-test('task-declaration-shape: a declared agentic field that is not usable still blocks', () => {
-  assert.match(whatsOf({ [TASK]: json({ ...good, agent_instructions: 42 }) }), /"agent_instructions" that is not a file name/);
-  assert.match(whatsOf({ [TASK]: json({ ...good, agent_execution_timeout: 'soon' }) }), /"agent_execution_timeout" that is not a number/);
+test('task-declaration-shape: an agent carries its own worker file and bound — neither defaults', () => {
+  const { agent_instructions, ...noWorker } = good;
+  assert.match(whatsOf({ [TASK]: json(noWorker) }), /declares no string "agent_instructions"/);
+  const { agent_execution_timeout, ...noBound } = good;
+  assert.match(whatsOf({ [TASK]: json(noBound) }), /no numeric "agent_execution_timeout"/);
   assert.match(whatsOf({ [TASK]: json({ ...good, agent_model: 'gpt' }) }), /"agent_model" is "gpt", not a legal value/);
 });
 
-// The description is asked for, never demanded: a member's converted task carries
-// none, and its vendor refresh must not go red over it. A bad one blocks.
 test('task-declaration-shape: a missing description is an advisory, a bad one blocks', () => {
   const { description, ...none } = good;
   const f = run({ [TASK]: json(none) });
@@ -128,9 +124,9 @@ const noneTask = {
   code_work: 'node w.mjs', code_work_timeout: 60,
 };
 
-test('task-declaration-shape: a pr task without automerge, and a none task with one, block', () => {
+test('task-declaration-shape: a pr task without automerge lands nothing, and a none task with one blocks', () => {
   const { automerge, ...missing } = good;
-  assert.match(whatsOf({ [TASK]: json(missing) }), /declares no "automerge"/);
+  assert.deepEqual(run({ [TASK]: json(missing) }), []);
   assert.match(whatsOf({ [TASK]: json({ ...noneTask, automerge: 'anything' }) }), /a "none" task declares "automerge"/);
 });
 
@@ -140,10 +136,11 @@ test('task-declaration-shape: the canonical `schedule_after` is clean', () => {
 });
 
 test('task-declaration-shape: flags missing required fields', () => {
-  const whats = whatsOf({ [TASK]: json({ frequency: 'daily', agent_model: 'sonnet' }) });
+  const whats = whatsOf({ [TASK]: json({ agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 5 }) });
   assert.match(whats, /declares no string "id"/);
+  assert.match(whats, /declares no "frequency"/);
   assert.match(whats, /declares no "expected_outcome"/);
-  assert.match(whats, /declares no "preconditions"/);
+  assert.doesNotMatch(whats, /preconditions/, 'absent preconditions is run-always');
 });
 
 // --- the declarative expression, read statically ------------------------------
@@ -186,12 +183,10 @@ test('task-declaration-shape: a task-local term resolves from the preconditions.
 test('task-declaration-shape: the retired precondition spellings are named, not merely unrecognised', () => {
   assert.match(whatsOf({ [TASK]: json({ ...declarativeTask, precondition: 'x' }) }), /declares "precondition", which is retired/);
   assert.match(whatsOf({ [TASK]: json({ ...declarativeTask, precondition_signals: ['commits'] }) }), /declares "precondition_signals", which is retired/);
-  // A task with the retired field and nothing else is missing its gate too —
-  // both findings, so the fix is unambiguous.
+  // A task with the retired field and no `preconditions` runs always — the
+  // retired field is still named so the author knows it declares nothing.
   const { preconditions, ...onlyRetired } = { ...declarativeTask, precondition: 'x' };
-  const whats = whatsOf({ [TASK]: json(onlyRetired) });
-  assert.match(whats, /which is retired/);
-  assert.match(whats, /declares no "preconditions"/);
+  assert.match(whatsOf({ [TASK]: json(onlyRetired) }), /which is retired/);
 });
 
 test('task-declaration-shape: a none task needs no execution bound but flags code_work without a timeout', () => {

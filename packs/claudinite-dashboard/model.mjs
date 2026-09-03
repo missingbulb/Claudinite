@@ -19,7 +19,7 @@
 // that drifts from the canonical one is worse than the distance.
 
 import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
-import { parseTaskDeclaration, applyAgentDefaults } from '../claudinite-tasks/shared-code/task-declaration.mjs';
+import { parseTaskDeclaration, applyTaskDefaults } from '../claudinite-tasks/shared-code/task-declaration.mjs';
 import { mostRecentAnchor, nextAnchor, periodMs } from '../claudinite-tasks/shared-code/anchors.mjs';
 import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
@@ -97,8 +97,8 @@ export function taskDeclarationPaths(paths, config) {
 
 // The page reads a declaration as TEXT: it renders other repos over the API, where
 // there is nothing to import and no Node to import it with. A `task.json` parses
-// whole and takes the contract's defaults for the agentic fields it omits — the
-// same door the engine's loader runs it through. The retired `task.mjs` is a JS
+// whole and takes the contract's defaults for the fields it omits — the same
+// door the engine's loader runs it through. The retired `task.mjs` is a JS
 // object literal, so its scalar fields are lifted by pattern over comment-stripped
 // source — the engine's own `stripComments`, so a `// frequency: 'weekly'` in a
 // task's header prose can never be mistaken for the declaration.
@@ -159,7 +159,7 @@ function parseJsonDeclaration(text) {
   let decl;
   try {
     decl = parseTaskDeclaration(String(text ?? ''));
-    if (decl !== null && typeof decl === 'object' && !Array.isArray(decl)) applyAgentDefaults(decl);
+    if (decl !== null && typeof decl === 'object' && !Array.isArray(decl)) applyTaskDefaults(decl);
   } catch {
     decl = null;
   }

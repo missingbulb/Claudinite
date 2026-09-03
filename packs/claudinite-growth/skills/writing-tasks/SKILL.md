@@ -83,15 +83,17 @@ than by replaying a ledger.
   (one JSON object, `"$schema"` pointing at `packs/claudinite-tasks/task.schema.json`
   so an editor validates it) declares `id` (matching its directory), `description`
   (below), `frequency`
-  (`daily | weekly | monthly | manual`), `preconditions` (the conditions that must
-  hold for it to run — below), `expected_outcome` (`none | pr` — the retired
+  (`daily | weekly | monthly | manual`), `expected_outcome` (`none | pr` — the retired
   `open-pr`/`merged-pr` normalize to `pr` with a policy of `nothing`/`anything`).
-  The agentic fields are optional: `agent_model` (`opus | sonnet | haiku | none`)
-  is `none` for a task declaring only `code_work` and the default family otherwise,
-  `agent_instructions` defaults to `task.md`, and `agent_execution_timeout` to the
-  contract's bound — declare one only to say something different. A `pr` task also carries
-  `automerge` — what it authorizes to land unreviewed: `'nothing'`,
-  `'anything'`, or a list of diff classes, each optionally `reject:`-prefixed.
+  Everything else has a default or is conditional: `preconditions` (the conditions
+  that must hold for it to run — below) is *run always* when absent; `agent_model`
+  (`opus | sonnet | haiku | none`) is `none`, no agent; `code_work` is no code work.
+  The two timeouts have **no default**: an agent declares `agent_execution_timeout`
+  and code work declares `code_work_timeout`, because a running phase always has a
+  bound. An agent also declares `agent_instructions`, its worker file — nothing
+  stands in for it. A `pr` task may also carry
+  `automerge` — what it authorizes to land unreviewed: `'nothing'` (the default
+  when absent), `'anything'`, or a list of diff classes, each optionally `reject:`-prefixed.
   Choose the **narrowest policy that covers the task's whole write surface** — the
   policy is the contract's statement of why landing unattended is safe, and the
   policy engine plus the `automerge-policy-scope` check hold every run to it.

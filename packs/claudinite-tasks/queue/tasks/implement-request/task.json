@@ -10,6 +10,7 @@
   "model_from_request": true,
   "expected_outcome": "pr",
   "automerge": "anything",
+  "agent_instructions": "task.md",
   "agent_execution_timeout": 14400,
   "on_interrupt": "needs-human"
 }

@@ -21,7 +21,7 @@ test('task.schema.json: its enums are the contract\'s lists', () => {
   assert.deepEqual(p.expected_outcome.enum, OUTCOMES);
   assert.deepEqual(p.on_interrupt.enum, INTERRUPT_POLICIES);
   assert.deepEqual(p.session_scope.enum, SESSION_SCOPES);
-  assert.deepEqual(schema.required, ['id', 'description', 'frequency', 'preconditions', 'expected_outcome']);
+  assert.deepEqual(schema.required, ['id', 'description', 'frequency', 'expected_outcome']);
   assert.equal(schema.properties.description.maxWords, undefined, 'JSON Schema has no word bound — the contract holds it');
   assert.equal(schema.additionalProperties, false);
 });
@@ -41,7 +41,6 @@ function violations(decl) {
     const enumOf = spec.enum ?? spec.oneOf?.find((o) => o.enum)?.enum;
     if (enumOf && typeof value === 'string' && !enumOf.includes(value)) out.push(`${key}: "${value}" not in enum`);
   }
-  if (decl.expected_outcome === 'pr' && decl.automerge === undefined) out.push('pr without automerge');
   return out;
 }
 

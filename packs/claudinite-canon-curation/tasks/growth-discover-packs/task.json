@@ -3,12 +3,9 @@
   "id": "growth-discover-packs",
   "description": "The fleet sweep for technologies the canon's shelf does not yet home: reads what every member is built on, subtracts what the shelf covers, and opens a reviewed pull request authoring the missing pack. The only stage anywhere that mints a pack.",
   "frequency": "weekly",
-  "preconditions": [
-    "none"
-  ],
   "invocation_endpoint": "fleet",
   "agent_model": "opus",
   "expected_outcome": "pr",
-  "automerge": "nothing",
+  "agent_instructions": "task.md",
   "agent_execution_timeout": 3600
 }

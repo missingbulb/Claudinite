@@ -2,8 +2,8 @@ import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
 import { FREQUENCIES } from '../../claudinite-tasks/calendar.mjs';
 import { MODEL_FAMILIES } from '../../claudinite-tasks/model-map.mjs';
-import { OUTCOMES, LEGACY_OUTCOMES, defaultAgentModel, descriptionProblem } from '../../claudinite-tasks/task-contract.mjs';
-import { validatePreconditions, BUILTIN_TERM_NAMES, termsMap } from '../../claudinite-tasks/precondition-policy.mjs';
+import { OUTCOMES, LEGACY_OUTCOMES, DEFAULT_AGENT_MODEL, descriptionProblem } from '../../claudinite-tasks/task-contract.mjs';
+import { validatePreconditions, termsMap } from '../../claudinite-tasks/precondition-policy.mjs';
 import {
   TASK_DECLARATION_PATH_RE, isLegacyTaskDeclarationPath, readDeclarationFields,
 } from '../../claudinite-tasks/task-declaration-text.mjs';
@@ -47,7 +47,7 @@ const isReExport = (text) => {
 const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
-  description: 'A tasks/<name>/task.json carries the task contract (id, description, frequency, preconditions, expected_outcome) with legal enum values and a well-formed precondition expression; a pr task pairs its ceiling with a automerge policy, and any code_work carries a timeout and stays task-local',
+  description: 'A tasks/<name>/task.json carries the task contract (id, description, frequency, expected_outcome) with legal enum values and a well-formed precondition expression; an agentic task names its worker file and bounds its run, and any code_work carries a timeout and stays task-local',
   doc: 'packs/claudinite-tasks/README.md',
   why: 'the scheduler run and executor read agent_model/expected_outcome/frequency from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
@@ -87,18 +87,13 @@ const rule = {
         else if (!legal.includes(v)) flag(`"${key}" is "${v}", not a legal value`, `use one of: ${legal.join(', ')}`);
       };
       enumField('frequency', FREQUENCIES);
-      // agent_model is OPTIONAL: absent, the loader derives it (task-contract.mjs
-      // `defaultAgentModel`), and the same derivation runs here so the checks below
-      // judge the model the task will actually run at.
+      // agent_model is OPTIONAL: absent means no agent (task-defaults.mjs), so the
+      // checks below judge the model the task will actually run at.
       const declaredModel = str('agent_model');
       if (decl.has('agent_model') && (declaredModel === null || !MODEL_FAMILIES.includes(declaredModel))) {
-        flag(`"agent_model" is ${JSON.stringify(decl.scalar('agent_model') ?? null)}, not a legal value`, `use one of: ${MODEL_FAMILIES.join(', ')} — or drop it: a task declaring only code_work runs no agent, any other runs at the default family`);
+        flag(`"agent_model" is ${JSON.stringify(decl.scalar('agent_model') ?? null)}, not a legal value`, `use one of: ${MODEL_FAMILIES.join(', ')} — or drop it: a task with no agent_model runs no agent`);
       }
-      const model = declaredModel ?? defaultAgentModel({
-        code_work: decl.has('code_work') ? true : undefined,
-        agent_instructions: decl.has('agent_instructions') ? true : undefined,
-        agent_execution_timeout: decl.has('agent_execution_timeout') ? true : undefined,
-      });
+      const model = declaredModel ?? DEFAULT_AGENT_MODEL;
 
       // expected_outcome takes the ceiling/policy split, with the retired
       // one-word ceilings an ADVISORY rename like the code-work names below:
@@ -113,8 +108,6 @@ const rule = {
           `write the pair it normalizes to: "expected_outcome": "pr", "automerge": "${LEGACY_OUTCOMES[outcome]}" — and consider a narrower policy than "${LEGACY_OUTCOMES[outcome]}" (a list of diff classes, e.g. ["comment-only-changes"])`);
       } else if (!OUTCOMES.includes(outcome)) {
         flag(`"expected_outcome" is "${outcome}", not a legal value`, `use one of: ${OUTCOMES.join(', ')}`);
-      } else if (outcome === 'pr' && !hasMayAutomerge) {
-        flag('a "pr" task declares no "automerge"', 'say what may land unreviewed: "nothing", "anything", or a list of diff classes, e.g. ["comment-only-changes", "readme-changes"]');
       } else if (outcome === 'none' && hasMayAutomerge) {
         flag('a "none" task declares "automerge"', 'drop it — a task that opens no pull request has nothing to merge; or set expected_outcome: "pr"');
       }
@@ -128,11 +121,11 @@ const rule = {
         const problem = descriptionProblem(decl.scalar('description'));
         if (problem) flag(problem.what, problem.fix);
       }
-      // agent_instructions defaults to the `task.md` beside the declaration, so
-      // only a declared value that is not a file name is wrong here. A `none` task
-      // runs no agent, so the field is not applicable.
-      if (model !== 'none' && decl.has('agent_instructions') && str('agent_instructions') === null) {
-        flag('an agentic task (agent_model !== "none") declares an "agent_instructions" that is not a file name', 'point "agent_instructions" at the worker file beside the declaration (e.g. "task.md"), or drop it for that default');
+      // agent_instructions is required only for an agentic task (agent_model !==
+      // 'none') — that's the worker file the agent reads, and it has no default. A
+      // `none` task runs no agent, so the field is not applicable.
+      if (model !== 'none' && str('agent_instructions') === null) {
+        flag('an agentic task (agent_model !== "none") declares no string "agent_instructions"', 'add "agent_instructions": the worker file beside the declaration (e.g. "task.md")');
       }
       // `preconditions` is the only gate a task declares (#1617). Both retired
       // spellings are flagged by NAME rather than merely going unrecognised, so a
@@ -147,10 +140,9 @@ const rule = {
       if (decl.has('precondition_signals')) {
         flag('declares "precondition_signals", which is retired', 'drop it — the signal union is derived from the conditions, each of which names what it reads');
       }
-      if (!decl.has('preconditions')) {
-        flag('declares no "preconditions"',
-          `add "preconditions": a list of conditions that must all hold — built-ins are ${BUILTIN_TERM_NAMES.join(', ')}, plus 'none' for a task the calendar or a filed item triggers`);
-      } else {
+      // Absent, the task runs always (task-defaults.mjs); declared, the expression
+      // is judged term by term.
+      if (decl.has('preconditions')) {
         // Deliberately strict: a declaration whose trigger is computed cannot be
         // audited by anyone reading it, which is the whole reason the field is data.
         const expression = decl.list('preconditions');
@@ -200,9 +192,9 @@ const rule = {
         advise('declares "session_scope", which nothing reads',
           'drop it — reach is a property of which endpoint the hand-off calls, so a task needing wider access declares "invocation_endpoint": <a key in the repo\'s taskScheduler.agenticTaskInvocationEndpoints> instead');
       }
-      // The agentic bound defaults at the door; only a declared non-number is wrong.
-      if (model !== 'none' && decl.has('agent_execution_timeout') && !hasNum('agent_execution_timeout')) {
-        flag('an agentic task (agent_model !== "none") declares an "agent_execution_timeout" that is not a number', 'set "agent_execution_timeout": seconds bounding the agentic run, or drop it for the default');
+      // No default for the bound: a running agent always has one.
+      if (model !== 'none' && !hasNum('agent_execution_timeout')) {
+        flag('an agentic task (agent_model !== "none") declares no numeric "agent_execution_timeout"', 'add "agent_execution_timeout": seconds bounding the agentic run');
       }
       if (model === 'none' && !hasCodeWork) {
         flag('an agentless task (agent_model: "none") declares no "code_work"', 'add "code_work" (a none task does its work in that subprocess) — or give the task an agent_model');

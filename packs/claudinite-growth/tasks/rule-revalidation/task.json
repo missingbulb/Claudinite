@@ -11,5 +11,6 @@
   "automerge": [
     "claudinite-local-pack-md-changes"
   ],
+  "agent_instructions": "task.md",
   "agent_execution_timeout": 2700
 }

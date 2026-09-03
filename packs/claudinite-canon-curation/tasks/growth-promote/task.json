@@ -12,6 +12,6 @@
   "invocation_endpoint": "fleet",
   "agent_model": "opus",
   "expected_outcome": "pr",
-  "automerge": "nothing",
+  "agent_instructions": "task.md",
   "agent_execution_timeout": 2700
 }

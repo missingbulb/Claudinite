@@ -125,9 +125,9 @@ test('task-declarations-json record: applies only where the mounted pack reads t
   assert.equal(await m.legacyPresent(() => true, async () => 'x'), false);
 });
 
-// The canon's own declarations, converted: each loads through the door to the
-// same declaration its module form did — pinned here so the conversion is not
-// re-proven by hand (the stripped defaults are what the door fills back in).
+// The canon's own declarations, converted: each loads through the door to a
+// complete declaration — pinned here so the conversion is not re-proven by hand
+// (the stripped defaults are what the door fills back in).
 test('every canon task.json normalizes to a complete declaration', async () => {
   const { execSync } = await import('node:child_process');
   const files = execSync('git ls-files "packs/*/tasks/*/task.json" "packs/*/queue/tasks/*/task.json"', { cwd: join(import.meta.dirname, '..') }).toString().trim().split('\n');

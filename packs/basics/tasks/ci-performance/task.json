@@ -6,8 +6,10 @@
   "preconditions": [
     "substantive-change || prs-touched"
   ],
+  "agent_model": "sonnet",
   "expected_outcome": "pr",
   "automerge": "anything",
+  "agent_instructions": "task.md",
   "code_work": "node worker.mjs",
   "code_work_timeout": 300,
   "agent_execution_timeout": 3600

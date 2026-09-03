@@ -12,5 +12,7 @@
   "automerge": [
     "comment-only-changes",
     "readme-changes"
-  ]
+  ],
+  "agent_instructions": "task.md",
+  "agent_execution_timeout": 1800
 }
