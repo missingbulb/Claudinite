@@ -1,51 +1,15 @@
-# Publish the Claudinite task dashboard to GitHub Pages.
+# Deploy the Claudinite task dashboard to GitHub Pages.
 #
-# SEEDED ONCE, AT ADOPTION, and this repo's from that moment. `.github/workflows/` is
-# the one directory the nightly update cannot push to — the Action's `GITHUB_TOKEN` is
-# refused there — so this file arrives with the adopting session and never converges.
-# That is why it is a thin shim: everything that can be updated lives in the mount, and
-# only what must be frozen is frozen here.
-#
-# The site holds NO repository data. It is a shell that calls the GitHub API from the
-# viewer's own browser with the viewer's own credential, so publishing it discloses
-# nothing a viewer could not already read — someone who cannot see a repo sees nothing
-# of it here. Do not bake API responses into the build; that property is the reason a
-# public Pages site is a safe host for it.
-#
-# Configure it in `.claudinite-settings.json`, on the `claudinite-dashboard` entry's
-# `config` — not here. Every key is optional. The two SIGN-IN values are the exception
-# and are repository variables, passed below: they are what an owner sets while standing
-# in the GitHub App's settings, and the exchange URL is minted by a deploy rather than
-# authored, so requiring a commit to record it would put a merge between the endpoint
-# going live and the button appearing. Neither is a secret — the client id is in every
-# authorize URL and the exchange URL is fetched by the browser.
+# SEEDED ONCE, AT ADOPTION — `.github/workflows/` is the one directory the nightly
+# update cannot push to — so this holds only what needs a workflow job: the Pages
+# actions, which `uses:` alone can invoke. Nothing here decides, builds or configures.
+# The `claudinite-dashboard/publish-pages` task does all of that, pushes the built tree
+# to `gh-pages`, and fires this by `workflow_dispatch`. Dispatching by hand redeploys
+# the last build; a rebuild is the task's (`create-work-item --wake`).
 
 name: Claudinite dashboard
 
 on:
-  push:
-    branches: [main]
-    paths:
-      # The mount is the page's source, so a converge that moves it republishes.
-      - '.claudinite/shared/packs/claudinite-dashboard/**'
-      - '.claudinite/shared/engine/**'
-      # Both settings-file names: a stub is copied into a member once and never
-      # re-copied, so this file outlives the #1252 rename in every repo holding it.
-      - '.claudinite-settings.json'
-      - '.claudinite-checks.json'
-      - '.github/workflows/claudinite-dashboard-pages.yml'
-  # The push trigger above cannot see the one push that moves the mount most often.
-  # Claudinite's own update PRs are auto-merged by the Actions token, and a push made
-  # with `GITHUB_TOKEN` deliberately fires no workflow — so every converge lands
-  # silently and the site keeps serving whatever the last human merge built.
-  #
-  # The catch-up hangs off the scheduler rather than a `cron:` of its own, because the
-  # vendored scheduler is this repo's one permitted schedule. Following it is not
-  # competing with it: the cadence stays the scheduler's, and this only asks, each time
-  # it finishes, whether the page's sources have moved since the last deploy.
-  workflow_run:
-    workflows: ['Claudinite scheduler']
-    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -53,114 +17,23 @@ permissions:
   pages: write
   id-token: write
 
-# Never two deployments at once, and a superseded build is not worth finishing.
 concurrency:
   group: claudinite-dashboard-pages
   cancel-in-progress: true
 
-# GitHub's implicit run shell is `bash -e` WITHOUT pipefail, so a failing command
-# feeding a pipe leaves the step green. The cache key below pipes, and a key computed
-# from a half-failed pipeline is a key that silently matches the wrong build.
-defaults:
-  run:
-    shell: bash
-
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      # The scheduler finishes every hour, and on almost all of those the page's
-      # sources are exactly what was deployed last time. A cache entry keyed on those
-      # sources is the cheapest available answer to "has anything moved": a hit means
-      # this same tree is already live, and the run stops here. The entry is written
-      # only once the deploy has succeeded, so a failed one is retried rather than
-      # recorded as done. A `push` or a hand dispatch skips the question — those are
-      # asked for, and a forced republish must not be answered with a cache hit.
-      - name: What the page would be built from
-        id: sources
-        env:
-          # Through `env:` rather than inline in `run:`: a repository variable is text
-          # an owner typed into a settings box, and interpolating it straight into a
-          # shell line makes that box a command.
-          CLAUDINITE_DASHBOARD_CLIENT_ID: ${{ vars.CLAUDINITE_DASHBOARD_CLIENT_ID }}
-          CLAUDINITE_DASHBOARD_EXCHANGE_URL: ${{ vars.CLAUDINITE_DASHBOARD_EXCHANGE_URL }}
-        run: |
-          # The sign-in pair are repository variables, so no file hash covers them.
-          # Without this a change to either would hit the cache, skip the build, and
-          # leave the site serving the previous client id indefinitely — the silent
-          # half of "is that already deployed?". Hashed rather than embedded so a
-          # value's own characters cannot break the key.
-          signin=$(printf '%s|%s' "$CLAUDINITE_DASHBOARD_CLIENT_ID" "$CLAUDINITE_DASHBOARD_EXCHANGE_URL" | sha256sum | cut -c1-16)
-          echo "key=dashboard-deployed-${{ hashFiles('.claudinite/shared/packs/claudinite-dashboard/**', '.claudinite/shared/engine/**', '.claudinite-settings.json', '.claudinite-checks.json', '**/*.GENERATED.json') }}-$signin" >> "$GITHUB_OUTPUT"
-
-      - name: Is that already deployed?
-        id: deployed
-        if: github.event_name == 'workflow_run'
-        uses: actions/cache/restore@v4
-        with:
-          path: .deployed
-          key: ${{ steps.sources.outputs.key }}
-          lookup-only: true
-
-      - uses: actions/setup-node@v5
-        if: steps.deployed.outputs.cache-hit != 'true'
-        with:
-          node-version: 24
-
-      - name: Assemble the site
-        if: steps.deployed.outputs.cache-hit != 'true'
-        # The sign-in pair, which the build bakes into the page's own config. Named
-        # lines rather than one `toJSON(vars)` bag: this workflow is not a function of
-        # anything a member declares, so there is no list to keep in step, and the two
-        # names spare the dashboard from parsing a bag it cannot import across packs.
-        env:
-          CLAUDINITE_DASHBOARD_CLIENT_ID: ${{ vars.CLAUDINITE_DASHBOARD_CLIENT_ID }}
-          CLAUDINITE_DASHBOARD_EXCHANGE_URL: ${{ vars.CLAUDINITE_DASHBOARD_EXCHANGE_URL }}
-        run: node .claudinite/shared/packs/claudinite-dashboard/build-site.mjs
-
-      # The build exits clean with no `_site` when the mount does not yet carry the
-      # dashboard — adopted, not yet converged. Uploading nothing would fail the run,
-      # and deploying an empty artifact would replace a working site with a 404.
-      - name: Is there a site to publish?
-        id: built
-        if: steps.deployed.outputs.cache-hit != 'true'
-        run: |
-          if [ -f _site/index.html ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "No _site/index.html — skipping the deploy until the mount carries the dashboard."
-          fi
-
-      - uses: actions/configure-pages@v5
-        if: steps.built.outputs.ready == 'true'
-
-      - uses: actions/upload-pages-artifact@v3
-        if: steps.built.outputs.ready == 'true'
-        with:
-          path: _site
-
-    outputs:
-      ready: ${{ steps.built.outputs.ready }}
-      key: ${{ steps.sources.outputs.key }}
-
   deploy:
-    needs: build
-    if: needs.build.outputs.ready == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: gh-pages
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
       - id: deployment
         uses: actions/deploy-pages@v4
-
-      # Now, and only now, is this tree deployed — which is what the next scheduler
-      # wake-up reads to decide it has nothing to do.
-      - run: mkdir -p .deployed && echo "${{ github.sha }}" > .deployed/sha
-      - uses: actions/cache/save@v4
-        with:
-          path: .deployed
-          key: ${{ needs.build.outputs.key }}

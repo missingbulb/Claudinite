@@ -60,26 +60,13 @@ test('a repo with neither store configured is an ordinary token-box deployment',
   assert.deepEqual(legacy, []);
 });
 
-// The hole a variable opens that a config key does not: the deploy workflow skips the
-// build when a cache key over the SOURCE FILES is unchanged, and no file hash covers a
-// repository variable. Without the pair in the key, changing either would hit the cache
-// and leave the site serving the previous client id with nothing to show for it.
-test('the seeded workflow passes both variables and folds them into its cache key', () => {
+// The variables reach the build through the task's code-work, where the executor hands
+// every repository variable over with nothing declared — so the frozen stub names none
+// of them, and adding or changing one never needs a workflow edit in any member.
+test('the seeded workflow names no variable — the build reads them task-side', () => {
   const yml = readFileSync(join(PACK_DIR, 'stubs/workflows/claudinite-dashboard-pages.yml'), 'utf8');
   for (const name of Object.values(SIGN_IN_VARS)) {
-    assert.match(yml, new RegExp(`${name}: \\$\\{\\{ vars\\.${name} \\}\\}`),
-      `${name} must reach the build`);
+    assert.doesNotMatch(yml, new RegExp(name), `${name} must not be frozen into the stub`);
   }
-  const sources = /- name: What the page would be built from[\s\S]*?(?=\n      - )/.exec(yml)?.[0] ?? '';
-  // The KEY LINE, not the step around it: the variables also appear in this step's own
-  // `env:`, so asserting over the whole block passes just as happily with the digest
-  // dropped from the key — which is the entire bug this test exists for.
-  const keyLine = sources.split('\n').find((l) => l.includes('key=dashboard-deployed-'));
-  assert.ok(keyLine, 'the step must still compute a cache key');
-  const digest = /signin=\$\(([^)]*\)[^)]*)\)/.exec(sources)?.[0] ?? '';
-  assert.match(digest, /sha256sum/, 'the variables must be hashed into something');
-  for (const name of Object.values(SIGN_IN_VARS)) {
-    assert.ok(digest.includes(name), `${name} must be part of that digest`);
-  }
-  assert.match(keyLine, /\$signin/, 'and the digest must actually be in the cache key');
+  assert.doesNotMatch(yml, /vars\./);
 });

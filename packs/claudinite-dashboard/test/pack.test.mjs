@@ -61,37 +61,27 @@ test('adoption seeds the Pages workflow, and its template exists', async () => {
 });
 
 // A seeded workflow never converges, so anything it hardcodes is frozen in every
-// member forever. It must therefore call the mount, not carry the logic.
-test('the seeded workflow is a shim over the mount, holding no build logic', async () => {
+// member forever. It therefore holds only what needs a workflow job — the Pages
+// actions, which `uses:` alone can invoke — and no logic: the build, its inputs and
+// the decision to run are the publish-pages task's.
+test('the seeded workflow is the Pages actions and nothing else', async () => {
   const yml = await readFile(join(PACK_DIR, pack.seedOps[0].template), 'utf8');
-  assert.match(yml, /node \.claudinite\/shared\/packs\/claudinite-dashboard\/build-site\.mjs/);
-  assert.doesNotMatch(yml, /\bcp -r\b|\brsync\b/, 'the workflow must not stage files itself');
-  // Configuration lives in the declaration, so the frozen file has none to go stale.
-  assert.doesNotMatch(yml, /vars\.DASHBOARD_/, 'settings belong in .claudinite-settings.json, not in the frozen stub');
+  const steps = [...yml.matchAll(/^\s+(?:- )?uses: ([^@\n]+)@/gm)].map((m) => m[1]);
+  assert.deepEqual(steps, ['actions/checkout', 'actions/configure-pages', 'actions/upload-pages-artifact', 'actions/deploy-pages']);
+  assert.doesNotMatch(yml, /^\s+run:/m, 'a run: step is logic the frozen file cannot converge');
+  assert.match(yml, /ref: gh-pages/, 'it deploys the tree the task pushed');
+  // Configuration reaches the build task-side, so the frozen file has none to go stale.
+  assert.doesNotMatch(yml, /vars\./, 'settings belong in the declaration and the variables, read by the task');
 });
 
-// The catch-up trigger, and the one string in it this pack does not own. A push that
-// moves a member's mount is made by the Actions token, which fires no workflow — so
-// the deploy hangs off the vendored scheduler finishing instead. `workflow_run` names
-// that workflow by its DISPLAY NAME, and a name that does not match any workflow is
-// not an error: the trigger simply never fires, and the site quietly stops being
-// republished. Which is the exact failure this trigger was added to fix.
-test('the seeded workflow follows the scheduler, by a name the engine actually ships', async () => {
+// The task is the trigger. A push filter or a catch-up in the stub would be a second
+// decision point beside the precondition, and the vendored scheduler is a member's
+// ONE permitted schedule.
+test('the seeded workflow fires only on dispatch', async () => {
   const yml = await readFile(join(PACK_DIR, pack.seedOps[0].template), 'utf8');
-  const named = /workflow_run:\s*\n\s*workflows:\s*\['([^']+)'\]/.exec(yml);
-  assert.ok(named, 'the stub must follow the scheduler rather than declare a cron of its own');
-
-  const schedulerRun = await readFile(resolve(ROOT, 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml'), 'utf8');
-  assert.match(schedulerRun, new RegExp(`^name:\\s*${named[1]}\\s*$`, 'm'),
-    `the stub follows "${named[1]}", which no engine stub declares`);
-});
-
-// The repo's own rule, and the reason this is a `workflow_run` and not a `cron`: the
-// vendored scheduler is a member's ONE permitted schedule.
-test('the seeded workflow declares no cron of its own', async () => {
-  const yml = await readFile(join(PACK_DIR, pack.seedOps[0].template), 'utf8');
-  assert.doesNotMatch(yml, /^\s*schedule:/m,
-    'a second cron competes with the scheduler that owns every recurring job');
+  const on = /^on:\n((?:[ \t]+.*\n)+)/m.exec(yml)?.[1] ?? '';
+  assert.deepEqual(on.trim().split('\n').map((l) => l.trim()), ['workflow_dispatch:']);
+  assert.doesNotMatch(yml, /^\s*schedule:/m, 'a second cron competes with the scheduler that owns every recurring job');
 });
 
 test('the build script is NOT seeded — it has to keep converging', () => {
