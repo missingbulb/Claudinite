@@ -23,6 +23,7 @@
 export const SETTINGS_FILE = '.claudinite-settings.json';
 
 // Retired from what anything WRITES; still read while members carry it.
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#1640
 export const LEGACY_SETTINGS_FILE = '.claudinite-checks.json';
 
 // Both names, newest first — the read order, so a member mid-rename that somehow

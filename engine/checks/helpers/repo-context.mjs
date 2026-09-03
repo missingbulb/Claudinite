@@ -140,6 +140,7 @@ export const CONFIG_KEYS = ['packs', 'rules', 'accept', 'sharedConstants', 'pack
 
 // The retired blocks, read but never written. Their content is folded into the
 // current shape by the load below, so nothing downstream sees either name.
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#1640
 export const LEGACY_CONFIG_KEYS = ['claudinite', 'maintenance'];
 const KNOWN_CONFIG_KEYS = [...CONFIG_KEYS, ...LEGACY_CONFIG_KEYS];
 
@@ -179,6 +180,7 @@ const SCHEDULE_KEYS = ['dailyHour', 'weeklyDay', 'monthlyDay', 'dispatch', 'agen
 // the routine URLs a task's agentic phase is invoked through (#1252). The old
 // spelling is read while members carry it and written by nothing.
 export const ENDPOINTS_KEY = 'agenticTaskInvocationEndpoints';
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#1640
 export const LEGACY_ENDPOINTS_KEY = 'endpoints';
 
 // `taskScheduler.dispatch` chose between the slot scheduler and the work-item
