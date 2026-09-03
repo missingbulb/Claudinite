@@ -2,15 +2,7 @@
 
 One weekly pass over **every member**: read what the fleet is actually built on, subtract what the shared canon already homes, and open a PR **for the owner to approve** authoring the pack that is missing. Declared only by the canon's home repo, so it runs **once, centrally**, never per project.
 
-This is the only thing that notices a technology in use across the fleet with **no canon pack** — and the only stage anywhere that authors one. A member never mints a pack of its own: its local packs are what adoption seeded, and [growth-extract](../../../claudinite-growth/tasks/growth-extract/task.md) writes rules into those. So a gap the canon does not home is closed here or nowhere.
-
-**Why central.** One run sees every member, so **first-sight dedup is free**: the third member using a technology is recognised as the same gap as the first, in the same pass, with no cross-run state and no chance of three repos each proposing the same pack.
-
 **Your scope is every COVERED member** — one whose declaration parses and names at least one pack. Enumerate them once at the start of the run and work that list; a member with no declared packs is not running Claudinite in any usable sense and is not swept. Finding nothing unhomed is a perfectly good, common outcome.
-
-The trigger is the weekly anchor and nothing else: the opportunity here is standing (a technology the fleet uses that no canon pack homes), not a change in this repo, so the run happens and no-ops cheaply when the shelf already covers what the fleet is built on.
-
-A new canon pack is read by every repo that declares it, so this run opens a PR for the owner to approve.
 
 ## Conventions used in this doc
 
