@@ -184,7 +184,7 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
   // MCP-only and carries no repo token, so there is no code path here to assert instead.
   const fs = await import('node:fs');
   const brief = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/task.md', 'utf8');
-  const decl = (await import('../../../packs/claudinite-lifecycle/tasks/update/task.mjs')).default;
+  const decl = (await import('../../../packs/claudinite-lifecycle/tasks/update/task.json', { with: { type: 'json' } })).default;
 
   // Merging must be within the ceiling, or the instruction below tells the session to
   // violate its own contract — verify-outcome.mjs would then fail every apply stage.

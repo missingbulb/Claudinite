@@ -173,7 +173,7 @@ export function scheduledTaskPanel(row, { siblings = [], declaration = null, cos
       field('cost per run', cost && cost.sessions ? `${Math.round((cost.tokensIn ?? 0) / cost.sessions).toLocaleString('en-US')} tok/session` : null,
         'this fold carries no per-task cost yet'),
     ],
-    do: 'Nothing — it is scheduled. Change its cadence or model in its own task.mjs.',
+    do: 'Nothing — it is scheduled. Change its cadence or model in its own task.json.',
   };
 }
 

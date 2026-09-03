@@ -27,3 +27,4 @@ here forward adds its own row.
 | 60822.1 | 2026-08-22 | The canon-clone dispose goes through the shared `removeTree`, whose retry survives git's own housekeeping still writing into the tree (#1219). |
 | 60822.2 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |
 | 60830.1 | 2026-08-30 | The pack and task READMEs say a failed sweep parks, rather than naming the retired bare `needs-human` label (#1395). |
+| 60903.1 | 2026-09-02 | Task declarations converted to `task.json`; the declaration's comments moved into each task's README (#1633). |

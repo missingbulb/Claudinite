@@ -54,7 +54,7 @@ test('code-work is handed the secrets it declared, and none of the others', asyn
   const result = await run({
     pack: 'p', id: 't', taskDir: process.cwd(),
     decl: {
-      required_secrets: ['MINE'],
+      code_work_required_secrets: ['MINE'],
       code_work_timeout: 60,
       code_work: `node -e "require('fs').writeFileSync(process.argv[1], JSON.stringify(process.env))" ${out}`,
     },

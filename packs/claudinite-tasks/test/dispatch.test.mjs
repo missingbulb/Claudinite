@@ -401,14 +401,16 @@ test('a built-in dispatch validates from the pack path and the legacy engine pat
   // …including the one the code actually mints, so this cannot pass on shapes I spelled
   // correctly while the real path is a fifth thing.
   const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../..');
-  const requestDecl = (await import('../queue/tasks/implement-request/task.mjs')).default;
+  const requestDecl = (await import('../queue/tasks/implement-request/task.json', { with: { type: 'json' } })).default;
   const { loadTaskTerms } = await import('../task-terms.mjs');
   const requestTerms = await loadTaskTerms(join(CANON, 'packs/claudinite-tasks/queue/tasks/implement-request'));
   paths.push(requestTaskPath(CANON));
 
   for (const p of paths) {
     const v = validateDispatchBody(`${p}\n`, {
-      exists: () => true,
+      // Everything exists but the retired module: a folder carrying both forms is
+      // refused, and the real built-in carries only the task.json.
+      exists: (path) => !path.endsWith('task.mjs'),
       isPackDeclared: () => true,
       // The REAL declaration and the REAL terms beside it, so the test cannot pass
       // on a hand-built stand-in that happens to satisfy the contract the live one

@@ -7,13 +7,20 @@ import { fileURLToPath } from 'node:url';
 import { buildSignalContext } from '../signals/context.mjs';
 import { collectSignals } from '../signals/index.mjs';
 import { loadConfig } from '../../../engine/checks/helpers/repo-context.mjs';
-import storeRelease from '../../chrome-extension/tasks/store-release/task.mjs';
-import dedup from '../../claudinite-growth/tasks/growth-dedup/task.mjs';
-import logsPrune from '../../claudinite-growth/tasks/logs-prune/task.mjs';
-import proseToChecks from '../../claudinite-growth/tasks/prose-to-checks-sweep/task.mjs';
-import revalidation from '../../claudinite-growth/tasks/rule-revalidation/task.mjs';
+import storeReleaseJson from '../../chrome-extension/tasks/store-release/task.json' with { type: 'json' };
+import dedupJson from '../../claudinite-growth/tasks/growth-dedup/task.json' with { type: 'json' };
+import logsPruneJson from '../../claudinite-growth/tasks/logs-prune/task.json' with { type: 'json' };
+import proseToChecksJson from '../../claudinite-growth/tasks/prose-to-checks-sweep/task.json' with { type: 'json' };
+import revalidationJson from '../../claudinite-growth/tasks/rule-revalidation/task.json' with { type: 'json' };
 import { removeTree } from '../../../engine/remove-tree.mjs';
 import { evaluatePrecondition, loadTaskTerms } from '../shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const storeRelease = normalizeTaskDeclaration(storeReleaseJson);
+const dedup = normalizeTaskDeclaration(dedupJson);
+const logsPrune = normalizeTaskDeclaration(logsPruneJson);
+const proseToChecks = normalizeTaskDeclaration(proseToChecksJson);
+const revalidation = normalizeTaskDeclaration(revalidationJson);
 
 const PACKS = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const verdictFor = async (decl, dir, signals) =>

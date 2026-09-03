@@ -617,7 +617,7 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   const declPaths = declaration ? taskDeclarationPaths(paths, declaration) : [];
   const tasks = await Promise.all(declPaths.map(async (t) => ({
     ...t,
-    declaration: parseDeclaration(await gh.getTextAtSha(repo, sha, t.path, token)),
+    declaration: parseDeclaration(await gh.getTextAtSha(repo, sha, t.path, token), t.path),
   })));
 
   const items = issuePage.issues.filter(isWorkItem);

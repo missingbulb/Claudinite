@@ -58,3 +58,47 @@ Its *implementation* reads and writes every repo under the owner, but its declar
 ## Failure is loud
 
 A member whose declaration cannot be read, or written (an unusable token, a protected default branch, a 409), is classified `unknown`: it is named in the summary and the sweep exits non-zero. The executor treats a non-zero code-work subprocess as a failed task and parks the item, so a missing **Contents write** scope escalates rather than silently leaving members undeclared.
+
+## Why the declaration reads as it does
+
+Carried over from the declaration's comments when it became `task.json`.
+
+claudinite-fleet-sheepdog task: fleet-pack-seeds — does every member declare the packs this fleet
+standardizes on? `agent_model: 'none'` with `code_work: 'node worker.mjs'`: the whole
+pass is deterministic code the executor runs as code-work — no agent, no dispatch
+issue. The worker calls its sibling, the sweep (check-fleet-pack-seeds.mjs): read
+every covered member's declaration and add the seeds it lacks.
+
+WHY: some packs need a parameter no member can derive, because the answer is a fact
+about the FLEET rather than about that repo. Canon cannot supply it — a bootstrap run
+does not know which fleet it is bootstrapping into — and one fleet's value hardcoded
+in shared code is exactly the coupling packs exist to prevent. The enforcer can: it
+IS the fleet. So this repo's `packSeeds` config lists what its members should
+declare, and the sweep converges that list across them.
+
+IT NAMES NO PACK. Every id comes from this repo's own config; the task and its sweep
+carry the mechanism only. A fleet standardizing on different packs changes its
+config, not this pack.
+
+THE ONE SWEEP IN THIS PACK THAT WRITES. The others report a condition and converge an
+issue for a human; a seed carries no human decision (the fleet already made it, in
+this repo's config), so an issue asking someone to copy it into every member would be
+ceremony around a mechanical edit. Hence `expected_outcome: 'none'`: the write goes to
+OTHER repos, not this one, and the outcome ceiling describes what a task may do to its
+OWN repo — this task opens no PR here at all.
+
+CLASSIFICATION (per-project-scheduling DESIGN §6, the same note the other sweeps
+carry): an ORDINARY PACK TASK, not a fleet mechanism. Its *implementation* reaches
+every repo under the owner over a PAT, but its declaration, scheduling and lifecycle
+are exactly those of any pack task — it is active because this repo declares the
+claudinite-fleet-sheepdog pack, and it runs however this repo's tasks run. Hence no
+`session_scope: 'fleet'` and no `fleet` signal: those describe how a task is WIRED,
+and nothing about this task's wiring is fleet-shaped.
+
+A daily sweep with nothing repo-side to gate on: what it converges is other
+repos' declarations, and it no-ops on a fleet already converged.
+Two or three REST reads per member (declaration, whether each seeded pack is on its
+disk, and one PUT for the members being written) plus the enumeration, all serial,
+with a secondary rate limit making it slower still. The same 900s the other sweeps
+carry, for the same reason: ~10x the expected walk while staying inside the hourly
+cadence.

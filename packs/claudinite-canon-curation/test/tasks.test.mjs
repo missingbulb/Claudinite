@@ -1,13 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import promote from '../tasks/growth-promote/task.mjs';
-import discover from '../tasks/growth-discover-packs/task.mjs';
-import upstream from '../tasks/upstream-watch/task.mjs';
+import promoteJson from '../tasks/growth-promote/task.json' with { type: 'json' };
+import discoverJson from '../tasks/growth-discover-packs/task.json' with { type: 'json' };
+import upstreamJson from '../tasks/upstream-watch/task.json' with { type: 'json' };
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateTaskDeclaration } from '../../claudinite-tasks/shared-code/task-contract.mjs';
 import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const promote = normalizeTaskDeclaration(promoteJson);
+const discover = normalizeTaskDeclaration(discoverJson);
+const upstream = normalizeTaskDeclaration(upstreamJson);
 
 const PACK_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 

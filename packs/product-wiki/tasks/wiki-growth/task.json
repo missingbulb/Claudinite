@@ -1,0 +1,17 @@
+{
+  "$schema": "../../../claudinite-tasks/task.schema.json",
+  "id": "wiki-growth",
+  "description": "One research-and-refine pass over the repository's product wikis: reads what each wiki already knows, researches only what its own backlog flags, and writes the findings back cited. Most runs find nothing new, and that is the documented good outcome.",
+  "frequency": "weekly",
+  "preconditions": [
+    "repo-active",
+    "no-open-pr-touching:product-wiki/"
+  ],
+  "expected_outcome": "pr",
+  "automerge": [
+    "under:product-wiki/ && doc-changes"
+  ],
+  "agent_model": "opus",
+  "agent_instructions": "task.md",
+  "agent_execution_timeout": 2700
+}

@@ -8,7 +8,7 @@ forward adds its own row.
 | Version | Date | What changed |
 |---|---|---|
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
-| 60902.6 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
+| 60903.2 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60902.5 | 2026-09-02 | The rename's dual-root window closes: `dedup-integrity`, `growth-write-scope`, `references-integrity`, `merge-rules.json` and the two task declarations match only `.claudinite/local/packs/`, and a capture run writing the retired `.claudinite/local_packs/` root is now flagged as a stray write. `growth-dedup` and `prose-to-checks-sweep` lose their computed `automerge` scope with it, so every task declaration in the tree is now a plain literal object (#1627). |
 | 60902.4 | 2026-09-02 | `writing-tasks` states one gate mechanism: the retired `precondition` function and `precondition_signals` are named as rejected, and a gate the built-ins cannot express is a task-local term handed `{ arg, config, item, windowDays, now }` (#1617). |
 | 60902.3 | 2026-09-02 | `prose-to-checks-sweep` and `rule-revalidation` deliver into a STANDING PR: a round whose predecessor is still in review runs anyway and appends to it, under the subject its worker doc pins (`Claudinite growth: prose to checks`, `Claudinite growth: rule revalidation`), so one review covers several weeks of conversions or corrections. Neither is gated on the previous round, and neither may be narrowed to a movement gate — both work a standing backlog (#1611). |
@@ -37,3 +37,4 @@ forward adds its own row.
 | 60821.2 | 2026-08-21 | This pack's inline version-history comments moved out of `pack.mjs` into this file. |
 | 60822.2 | 2026-08-23 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |
 | 60830.1 | 2026-08-30 | `writing-tasks` and the `task-phase-discipline` remedy state today's terminal and park spellings (#1395). |
+| 60902.6 | 2026-09-02 | The task-folder checks read `task.json` as well as the retired `task.mjs`, and read an omitted `agent_model` as no agent; the writing-tasks skill describes the data form and the `description` field (#1633). |

@@ -4,6 +4,8 @@ import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { discoverTasks } from '../discover.mjs';
 
 const packMjs = (id) => `export default { id: '${id}' };\n`;
+const taskJson = (id, over = {}) => `${JSON.stringify({ id, frequency: 'daily', expected_outcome: 'none', ...over })}\n`;
+// The retired module form, which still loads (task-declaration.mjs).
 const taskMjs = (id, over = {}) => {
   const d = { id, frequency: 'daily', preconditions: ['none'], agent_model: 'sonnet', expected_outcome: 'none', agent_instructions: 'task.md', agent_execution_timeout: 900, ...over };
   const fields = Object.entries(d).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ');
@@ -60,5 +62,41 @@ test('discoverTasks reports a malformed declaration and a dir/id mismatch as err
     assert.equal(errors.length, 2);
     assert.match(errors.map((e) => e.what).join(' | '), /not a valid task declaration/);
     assert.match(errors.map((e) => e.what).join(' | '), /declares id "other" but its directory is "mismatch"/);
+  } finally { cleanup(root); }
+});
+
+test('discoverTasks reads a task.json, with the defaults filled at the door', async () => {
+  const root = makeRepo({ changed: {
+    '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.json': taskJson('alpha', { $schema: '../../../../../shared/packs/claudinite-tasks/task.schema.json', agent_model: 'sonnet', agent_instructions: 'task.md', agent_execution_timeout: 900 }),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# alpha worker\n',
+    '.claudinite/local/packs/mypack/tasks/beta/task.json': taskJson('beta', { code_work: 'node w.mjs', code_work_timeout: 60 }),
+    '.claudinite/local/packs/mypack/tasks/broken/task.json': '{ "id": \n',
+  } });
+  try {
+    const { tasks, errors } = await discoverTasks(root, { packs: ['local/mypack'] });
+    const byId = Object.fromEntries(tasks.map((t) => [t.id, t]));
+    assert.deepEqual(Object.keys(byId).sort(), ['alpha', 'beta']);
+    assert.deepEqual(byId.alpha.decl.preconditions, ['none'], 'run always, by default');
+    assert.equal(byId.alpha.decl.$schema, undefined);
+    assert.equal(byId.beta.decl.agent_model, 'none', 'no agent, by default');
+    assert.equal(byId.alpha.taskPath, '.claudinite/local/packs/mypack/tasks/alpha/task.md');
+    assert.equal(errors.length, 1);
+    assert.match(errors[0].what, /broken\/task\.json failed to load/);
+  } finally { cleanup(root); }
+});
+
+test('discoverTasks reports a folder carrying both task.json and task.mjs as an error, not a task', async () => {
+  const root = makeRepo({ changed: {
+    '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.json': taskJson('alpha', { code_work: 'node w.mjs', code_work_timeout: 5 }),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha'),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# w\n',
+  } });
+  try {
+    const { tasks, errors } = await discoverTasks(root, { packs: ['local/mypack'] });
+    assert.deepEqual(tasks, []);
+    assert.equal(errors.length, 1);
+    assert.match(errors[0].what, /carries both task\.json and task\.mjs/);
   } finally { cleanup(root); }
 });

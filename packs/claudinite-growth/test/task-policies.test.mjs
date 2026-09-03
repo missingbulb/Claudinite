@@ -10,10 +10,16 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { policyVerdict, declaredMergeRules } from '../../claudinite-tasks/shared-code/merge-policy.mjs';
-import dedup from '../tasks/growth-dedup/task.mjs';
-import extract from '../tasks/growth-extract/task.mjs';
-import revalidation from '../tasks/rule-revalidation/task.mjs';
-import sweep from '../tasks/prose-to-checks-sweep/task.mjs';
+import dedupJson from '../tasks/growth-dedup/task.json' with { type: 'json' };
+import extractJson from '../tasks/growth-extract/task.json' with { type: 'json' };
+import revalidationJson from '../tasks/rule-revalidation/task.json' with { type: 'json' };
+import sweepJson from '../tasks/prose-to-checks-sweep/task.json' with { type: 'json' };
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const dedup = normalizeTaskDeclaration(dedupJson);
+const extract = normalizeTaskDeclaration(extractJson);
+const revalidation = normalizeTaskDeclaration(revalidationJson);
+const sweep = normalizeTaskDeclaration(sweepJson);
 
 const packDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const { rules, errors } = declaredMergeRules(

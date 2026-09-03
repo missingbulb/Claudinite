@@ -4,9 +4,13 @@ import { readdirSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pack from '../pack.mjs';
-import tidyIssues from '../tasks/tidy-issues/task.mjs';
-import tidyPrs from '../tasks/tidy-prs/task.mjs';
+import tidyIssuesJson from '../tasks/tidy-issues/task.json' with { type: 'json' };
+import tidyPrsJson from '../tasks/tidy-prs/task.json' with { type: 'json' };
 import { evaluatePrecondition, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const tidyIssues = normalizeTaskDeclaration(tidyIssuesJson);
+const tidyPrs = normalizeTaskDeclaration(tidyPrsJson);
 
 const PACK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/tidy-repo');
 const taskDir = (id) => join(PACK_DIR, 'tasks', id);
@@ -25,7 +29,7 @@ test('tidy-repo is a declared pack (no fingerprint) with its skills; its tasks a
   // `detect` to null.
   assert.equal(pack.detect, undefined);
   // The tasks moved out of the manifest: the repo's scheduler finds
-  // tasks/<name>/task.mjs structurally (#394).
+  // tasks/<name>/task.json structurally (#394).
   assert.equal(pack.run_daily, undefined);
   assert.deepEqual(
     readdirSync(join(PACK_DIR, 'skills')).sort(),

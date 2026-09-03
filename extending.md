@@ -49,7 +49,7 @@ A pack is a directory `packs/<name>/pack.mjs` exporting contribution slots (any 
 | **Prose** | `<pack>/RULES.md` | always-relevant-to-a-project guidance, injected into context when the pack is active — found by convention, not declared |
 | **Checks** | `<pack>/worldRules/`, `<pack>/workRules/` | deterministic conformance rules run at every Stop and in CI — one module per rule, the directory naming its scope; found by convention, not declared |
 | **Skills** | `<pack>/skills/<name>/` | activity-scoped procedures bundled in the pack's own tree, mounted wherever the pack is declared — found by convention, not declared |
-| **Scheduled tasks** | `<pack>/tasks/<name>/` | a `task.mjs` declaration (frequency, precondition, model, expected outcome) plus its worker — `task.md` for an agent stage, `worker.mjs` for deterministic code-work — found structurally by the repo's scheduler, not listed on `pack.mjs` |
+| **Scheduled tasks** | `<pack>/tasks/<name>/` | a `task.json` declaration (frequency, preconditions, expected outcome; the agentic fields optional) plus its worker — `task.md` for an agent stage, `worker.mjs` for deterministic code-work — found structurally by the repo's scheduler, not listed on `pack.mjs` |
 | **Questions** | `questions: [...]` | mandatory adoption-interview questions; the owner's answers live verbatim on the project's pack entry ([packs/README.md](packs/README.md#adoption-interview-questions)) |
 | **Contributed config** | `contributes: { <pack>: ... }` | configuration addressed to another (required) pack — a fixed folder-barrier is the canonical case. The target pack interprets its active contributors' data via its own `contributedRules(activePacks)` seam, returning first-class rules; the runner wires the two together, so composition is declaration + data, never a cross-pack import |
 
@@ -108,7 +108,7 @@ Ask what *kind* of thing you're adding; each kind has exactly one home, and none
 2. **A new technology's conventions** → a new technology pack, with a `detect` fingerprint so
    `--init` seeds it when the technology is present (declaring it stays the project's call).
 3. **A new scheduled maintenance behavior** → a `tasks/<name>/` directory on the owning pack (a
-   `task.mjs` declaration plus its worker). Every declaring repo's scheduler discovers it
+   `task.json` declaration plus its worker). Every declaring repo's scheduler discovers it
    automatically — **no edit to the scheduler, and no cron of its own.** This is the load-bearing
    case: "add a nightly job" must never become "add a stage to the scheduler" or "add a
    `schedule:` workflow."

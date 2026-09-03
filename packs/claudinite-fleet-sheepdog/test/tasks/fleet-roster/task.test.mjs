@@ -5,8 +5,11 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
-import decl from '../../../tasks/fleet-roster/task.mjs';
+import declJson from '../../../tasks/fleet-roster/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const decl = normalizeTaskDeclaration(declJson);
 
 // The claudinite-fleet-sheepdog pack's fleet-roster task (#788): the coverage and freshness questions
 // answered from ONE walk of the fleet, replacing the separate fleet-census and
@@ -52,9 +55,9 @@ test('fleet-roster: the sweep is the preprocessing, bounded and task-local', () 
 });
 
 test('fleet-roster: declares the fleet PAT, which is how the repo is asked for it', () => {
-  // `required_secrets` is what stamps FLEET_GITHUB_TOKEN into the scheduler workflow's
+  // `code_work_required_secrets` is what stamps FLEET_GITHUB_TOKEN into the scheduler workflow's
   // env, so no workflow needs to exist just to hold it (claudinite-growth/skills/writing-tasks).
-  assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
+  assert.deepEqual(decl.code_work_required_secrets, ['FLEET_GITHUB_TOKEN']);
 });
 
 test('fleet-roster: fires unconditionally, with a reason', () => {

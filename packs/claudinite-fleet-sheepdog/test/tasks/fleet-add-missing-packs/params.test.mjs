@@ -4,7 +4,7 @@ import { parseParams, parseArgv, ALL_MEMBERS } from '../../../tasks/fleet-add-mi
 import { parseParamBag } from '../../../param-bag.mjs';
 
 // The parameter layer decides WHAT A RUN IS, from two call sites that cannot see each
-// other — a command line in task.mjs and the Context lines a hand-created work item
+// other — a command line in task.json and the Context lines a hand-created work item
 // carries. Everything asserted here is a property whose loss would let one of them mean
 // something its author did not type.
 

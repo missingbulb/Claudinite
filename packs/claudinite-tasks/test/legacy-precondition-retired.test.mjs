@@ -18,9 +18,12 @@ const base = {
 };
 const whats = (decl) => validateTaskDeclaration(decl, new Map()).map((p) => p.what).join(' | ');
 
-test('a declaration carrying only the retired function is rejected', () => {
+test('a declaration carrying only the retired function is rejected by name', () => {
+  // Absent `preconditions` is run-always (the default), so what fails here is the
+  // retired field itself, not a missing gate.
   const problems = whats({ ...base, precondition: () => ({ run: true }), precondition_signals: [] });
-  assert.match(problems, /declares no "preconditions"/);
+  assert.match(problems, /"precondition" function, which is retired/);
+  assert.match(problems, /"precondition_signals" is retired/);
 });
 
 test('"precondition_signals" is rejected wherever it appears', () => {

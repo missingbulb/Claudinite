@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../claudinite-tasks/task.schema.json",
+  "id": "fleet-add-missing-packs",
+  "description": "The fleet enforcer for pack coverage: scans covered members for packs their repository shape calls for but they do not declare, and files each such member an add-packs work list that its own adoption task acts on.",
+  "frequency": "weekly",
+  "expected_outcome": "none",
+  "code_work": "node worker.mjs --scan-for-needed-packs=true --repos=all-covered-members",
+  "code_work_timeout": 900,
+  "code_work_required_secrets": [
+    "FLEET_GITHUB_TOKEN"
+  ]
+}

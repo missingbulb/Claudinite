@@ -14,8 +14,11 @@ const keyInsights = declaredCheck('packs/product-wiki', 'product-wiki-key-insigh
 const growthLog = declaredCheck('packs/product-wiki', 'product-wiki-growth-log');
 const sources = declaredCheck('packs/product-wiki', 'product-wiki-sources');
 const freshness = declaredCheck('packs/product-wiki', 'product-wiki-freshness');
-import wikiGrowth from '../tasks/wiki-growth/task.mjs';
+import wikiGrowthJson from '../tasks/wiki-growth/task.json' with { type: 'json' };
 import { evaluatePrecondition, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const wikiGrowth = normalizeTaskDeclaration(wikiGrowthJson);
 // Built through the real path: a forbidReferences entry in the pack's own
 // declared-checks.json, compiled by the declarative engine.
 const isolation = declaredCheck('packs/product-wiki', 'product-wiki-isolation');
@@ -74,7 +77,7 @@ test('pack manifest: marker, prose, the coded rule plus the seven declared check
   assert.deepEqual(pack.requires, ['barriers']);
   assert.equal(pack.contributes, undefined);
   // The pack's scheduled task is NOT a pack.mjs slot any more — the repo's
-  // scheduler finds tasks/<name>/task.mjs structurally (#394).
+  // scheduler finds tasks/<name>/task.json structurally (#394).
   assert.equal(pack.run_daily, undefined);
   // Adoption interview scopes the research: product, users, market.
   assert.deepEqual(pack.questions.map((q) => q.id), ['product', 'users', 'market']);

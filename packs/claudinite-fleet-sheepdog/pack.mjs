@@ -7,7 +7,7 @@
 // account-spanning sweeps
 // that ARE the cross-repo reach the pack adds — each with the ordinary agentless
 // scheduled task that runs it (the sweep IS its code-work, and its
-// required_secrets is what asks the repo for FLEET_GITHUB_TOKEN):
+// code_work_required_secrets is what asks the repo for FLEET_GITHUB_TOKEN):
 //
 //   tasks/fleet-roster/check-fleet-roster.mjs          is a repo a MEMBER, and is that
 //     adoption-issues.mjs + drift-issues.mjs           membership still MEANING anything?
@@ -73,7 +73,7 @@
 import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
-  version: '60902.3',
+  version: '60903.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, standardized packs',

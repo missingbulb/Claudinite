@@ -4,8 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pack from '../pack.mjs';
-import storeRelease from '../tasks/store-release/task.mjs';
+import storeReleaseJson from '../tasks/store-release/task.json' with { type: 'json' };
 import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const storeRelease = normalizeTaskDeclaration(storeReleaseJson);
 
 const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/chrome-extension/tasks/store-release');
 
@@ -27,7 +30,7 @@ const verdict = (signals) => evaluatePrecondition({ decl: storeRelease, terms },
 
 test('chrome-extension contributes store-release as a structural task, not a pack.mjs slot', () => {
   // The task moved out of the manifest: the repo's scheduler finds
-  // tasks/<name>/task.mjs structurally (#394).
+  // tasks/<name>/task.json structurally (#394).
   assert.equal(pack.run_daily, undefined);
   assert.equal(storeRelease.id, 'store-release');
 });
@@ -81,6 +84,6 @@ test('store-release: a substantive default-branch move fires it even at the rele
 // the scheduler never instantiates it.
 test('store-release: whether the repo publishes at all is settings, not a condition', () => {
   assert.ok(!storeRelease.preconditions.join(' ').includes('ships'));
-  const readMe = readFileSync(join(TASK_DIR, 'task.mjs'), 'utf8');
-  assert.match(readMe, /taskScheduler\.disabledTasks/, 'the declaration says where that answer lives now');
+  const readMe = readFileSync(join(TASK_DIR, 'README.md'), 'utf8');
+  assert.match(readMe, /taskScheduler\.disabledTasks/, 'the task\'s notes say where that answer lives now');
 });

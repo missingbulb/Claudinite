@@ -19,6 +19,7 @@
 // that drifts from the canonical one is worse than the distance.
 
 import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
+import { parseTaskDeclaration, applyTaskDefaults } from '../claudinite-tasks/shared-code/task-declaration.mjs';
 import { mostRecentAnchor, nextAnchor, periodMs } from '../claudinite-tasks/shared-code/anchors.mjs';
 import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
@@ -74,7 +75,7 @@ export function declaredPackDirs(config) {
   return dirs;
 }
 
-const TASK_PATH_RE = /^(.*)\/tasks\/([^/]+)\/task\.mjs$/;
+const TASK_PATH_RE = /^(.*)\/tasks\/([^/]+)\/task\.(json|mjs)$/;
 
 // Every declared pack's task declarations, from one recursive tree listing.
 // `paths` is the flat list of blob paths the tree API returned.
@@ -94,11 +95,13 @@ export function taskDeclarationPaths(paths, config) {
 
 // --- reading a task declaration -----------------------------------------------
 
-// The declaration is a JS object literal, and the page reads it as TEXT: it renders
-// other repos over the API, where there is nothing to import and no Node to import
-// it with. So the scalar fields are lifted by pattern, over comment-stripped source
-// — the engine's own `stripComments`, so a `// frequency: 'weekly'` in a task's
-// header prose can never be mistaken for the declaration.
+// The page reads a declaration as TEXT: it renders other repos over the API, where
+// there is nothing to import and no Node to import it with. A `task.json` parses
+// whole and takes the contract's defaults for the fields it omits — the same
+// door the engine's loader runs it through. The retired `task.mjs` is a JS
+// object literal, so its scalar fields are lifted by pattern over comment-stripped
+// source — the engine's own `stripComments`, so a `// frequency: 'weekly'` in a
+// task's header prose can never be mistaken for the declaration.
 //
 // A field this cannot read comes back NULL and renders as "unknown". It is never
 // defaulted: a task whose declaration this misreads must look unreadable, because a
@@ -125,7 +128,8 @@ const stringArray = (src, field) => {
   return [...m[1].matchAll(/'([^']*)'|"([^"]*)"/g)].map((x) => x[1] ?? x[2]);
 };
 
-export function parseDeclaration(text) {
+export function parseDeclaration(text, path = '') {
+  if (path.endsWith('.json') || /^\s*\{/.test(String(text ?? ''))) return parseJsonDeclaration(text);
   const src = stripComments(String(text ?? ''));
   return {
     id: scalar(src, 'id'),
@@ -145,6 +149,33 @@ export function parseDeclaration(text) {
     // the EMPTY precondition and answers no here, exactly as a task with no gate at
     // all does — which is what it means.
     has_precondition: (stringArray(src, 'preconditions') ?? []).some((c) => c !== 'none'),
+  };
+}
+
+// The JSON form. The fields the roster reads, and only those, so a declaration
+// carrying more renders the same as one carrying exactly these. Unparseable text
+// reads as every field unknown, the same face the module form shows.
+function parseJsonDeclaration(text) {
+  let decl;
+  try {
+    decl = parseTaskDeclaration(String(text ?? ''));
+    if (decl !== null && typeof decl === 'object' && !Array.isArray(decl)) applyTaskDefaults(decl);
+  } catch {
+    decl = null;
+  }
+  if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) decl = {};
+  const scalarOf = (v) => (['string', 'number', 'boolean'].includes(typeof v) ? v : null);
+  const preconditions = Array.isArray(decl.preconditions) && decl.preconditions.every((c) => typeof c === 'string') ? decl.preconditions : null;
+  return {
+    id: scalarOf(decl.id),
+    frequency: scalarOf(decl.frequency),
+    agent_model: scalarOf(decl.agent_model),
+    expected_outcome: scalarOf(decl.expected_outcome),
+    interrupt_policy: scalarOf(decl.interrupt_policy),
+    code_work: scalarOf(decl.code_work),
+    agent_execution_timeout: scalarOf(decl.agent_execution_timeout),
+    preconditions,
+    has_precondition: (preconditions ?? []).some((c) => c !== 'none'),
   };
 }
 

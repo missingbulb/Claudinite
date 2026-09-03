@@ -67,7 +67,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   owner repeated it.
 - **(RULES-16)** #1069: the writing-tasks workflow carve-out justified itself on two grounds
   that are false, because code-work runs inside the executor's own Action job — it declares
-  `required_secrets`, and `id-token: write` is one line in that job's `permissions:`. Retire
+  `code_work_required_secrets`, and `id-token: write` is one line in that job's `permissions:`. Retire
   the rule only if code-work stops running Action-side.
 - **(RULES-17)** #364 recorded the owner's reversal of #360's position as standing decisions in
   this pack's own `RULES.md` expressly "so they are never re-litigated" — the durable artifact,

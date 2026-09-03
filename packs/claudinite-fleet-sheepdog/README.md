@@ -196,7 +196,7 @@ adopt-requested-packs task's, which opens the PR and lands it unattended *there*
 
 There is **no coverage workflow**: preprocessing runs Action-side inside the repo's one scheduler
 workflow, where the Actions secret is already reachable, and each task's
-`required_secrets: ['FLEET_GITHUB_TOKEN']` stamps the name into that workflow's env — which is what
+`code_work_required_secrets: ['FLEET_GITHUB_TOKEN']` stamps the name into that workflow's env — which is what
 asks the owner for it. A workflow that exists only to hold a secret is redundant
 ([the writing-tasks skill](../claudinite-growth/skills/writing-tasks/SKILL.md)).
 

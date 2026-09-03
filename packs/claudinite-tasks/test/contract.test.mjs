@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { MODEL_FAMILIES, MODEL_MAP, resolveModel, isAgentless } from '../model-map.mjs';
 import {
   validateTaskDeclaration, normalizeTaskDeclaration, taskSignalNames, OUTCOMES, SIGNAL_NAMES,
+  DEFAULT_AGENT_MODEL, DEFAULT_PRECONDITIONS, DEFAULT_AUTOMERGE, DESCRIPTION_MAX_WORDS,
 } from '../task-contract.mjs';
 import {
   FREQUENCIES, ACCEPTED_FREQUENCIES, LEGACY_FREQUENCIES, normalizeFrequency,
@@ -42,7 +43,7 @@ test('validateTaskDeclaration: session_scope is optional, defaults valid, and re
   assert.match(validateTaskDeclaration({ ...validTask, session_scope: 'global' })[0].what, /not a legal session scope/);
 });
 
-test('validateTaskDeclaration requires agent_execution_timeout on an agentic task', () => {
+test('validateTaskDeclaration requires agent_execution_timeout on an agentic task — no default', () => {
   const { agent_execution_timeout, ...noBound } = validTask;
   assert.match(validateTaskDeclaration(noBound)[0].what, /no positive-integer "agent_execution_timeout"/);
   // a non-integer or non-positive bound is equally rejected
@@ -63,6 +64,31 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
   );
 });
 
+// THE DEFAULTS (#1633, owner 2026-09-03): a declaration says what is particular
+// to its task and the door fills the rest — preconditions is run-always, automerge
+// is nothing, agent_model is none. The timeouts have no default: an agent or a
+// code-work subprocess always carries its own bound, and an agent its worker file.
+test('normalizeTaskDeclaration fills the defaults, and only where absent', () => {
+  const minimal = { id: 't', frequency: 'daily', expected_outcome: 'pr' };
+  const filled = normalizeTaskDeclaration(minimal);
+  assert.deepEqual(filled.preconditions, DEFAULT_PRECONDITIONS);
+  assert.equal(filled.automerge, DEFAULT_AUTOMERGE);
+  assert.equal(filled.agent_model, DEFAULT_AGENT_MODEL);
+  assert.equal(filled.agent_instructions, undefined);
+  assert.equal(filled.agent_execution_timeout, undefined);
+  assert.equal(filled.code_work, undefined);
+  // …so the minimal declaration is an agentless task with no code work, which does nothing.
+  assert.match(validateTaskDeclaration(minimal)[0].what, /declares no "code_work"/);
+  assert.deepEqual(validateTaskDeclaration({ ...minimal, code_work: 'node w.mjs', code_work_timeout: 60 }), []);
+  // A declared field is kept; a none task takes no automerge default.
+  assert.equal(normalizeTaskDeclaration({ ...minimal, agent_model: 'opus' }).agent_model, 'opus');
+  assert.deepEqual(normalizeTaskDeclaration({ ...minimal, preconditions: ['substantive-change'] }).preconditions, ['substantive-change']);
+  assert.equal(normalizeTaskDeclaration({ ...minimal, automerge: 'anything' }).automerge, 'anything');
+  assert.equal(normalizeTaskDeclaration({ ...minimal, expected_outcome: 'none' }).automerge, undefined);
+  // The editor's pointer leaves at the door.
+  assert.equal(normalizeTaskDeclaration({ ...minimal, $schema: 'x' }).$schema, undefined);
+});
+
 test('validateTaskDeclaration: agent_instructions is required for an agentic task but not applicable to none', () => {
   // a none task with NO agent_instructions at all is clean — the field is not
   // applicable when there is no agent.
@@ -72,7 +98,7 @@ test('validateTaskDeclaration: agent_instructions is required for an agentic tas
   delete none.automerge;
   assert.deepEqual(validateTaskDeclaration(none), []);
 
-  // an agentic task (agent_model !== 'none') with no agent_instructions still fails.
+  // an agentic task (agent_model !== 'none') with no agent_instructions still fails — no default.
   const { agent_instructions, ...noInstructions } = validTask;
   assert.match(validateTaskDeclaration(noInstructions)[0].what, /no string "agent_instructions"/);
 });
@@ -102,39 +128,39 @@ test('validateTaskDeclaration validates code_work + its required timeout and con
   );
 });
 
-test('validateTaskDeclaration accepts required_secrets as a plain list of names (DESIGN §9)', () => {
+test('validateTaskDeclaration accepts code_work_required_secrets as a plain list of names (DESIGN §9)', () => {
   // Declarative, not a permission list: the only rule is "a list of names". Where
   // it is declared, and whether the repo has them, are deliberately NOT its business.
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['SOME_API_KEY'] }), []);
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: [] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['SOME_API_KEY'] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, code_work_required_secrets: [] }), []);
   assert.deepEqual(validateTaskDeclaration(validTask), []);              // absent is fine
   // Only a shape that could not be read at all is rejected.
-  assert.match(validateTaskDeclaration({ ...validTask, required_secrets: 'SOME_API_KEY' })[0].what, /not an array of secret names/);
-  assert.match(validateTaskDeclaration({ ...validTask, required_secrets: [''] })[0].what, /not an array of secret names/);
+  assert.match(validateTaskDeclaration({ ...validTask, code_work_required_secrets: 'SOME_API_KEY' })[0].what, /not an array of secret names/);
+  assert.match(validateTaskDeclaration({ ...validTask, code_work_required_secrets: [''] })[0].what, /not an array of secret names/);
 });
 
-test('validateTaskDeclaration rejects a required_secrets name GitHub refuses to create', () => {
+test('validateTaskDeclaration rejects a code_work_required_secrets name GitHub refuses to create', () => {
   // GitHub reserves the `GITHUB_` prefix: the secret form answers "Secret names must
   // not start with GITHUB_", so such a name can never be configured and the task parks
   // for a secret nobody can add. The one name-shape rule that is not a fact about the
   // repo — it is a fact about the platform, knowable at author time.
   assert.match(
-    validateTaskDeclaration({ ...validTask, required_secrets: ['GITHUB_OAUTH_CLIENT_SECRET'] })[0].what,
+    validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['GITHUB_OAUTH_CLIENT_SECRET'] })[0].what,
     /cannot be created/,
   );
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['MY_GITHUB_TOKEN'] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['MY_GITHUB_TOKEN'] }), []);
 });
 
-test('validateTaskDeclaration rejects a required_secrets name inside the code-work namespace', () => {
+test('validateTaskDeclaration rejects a code_work_required_secrets name inside the code-work namespace', () => {
   // `CLAUDINITE_*` in a task file means the code-work contract, and `task-code-work-env`
   // reads every one it does not recognise as a variable nobody sets. A secret named into
   // that namespace is delivered perfectly well and still trips the rule, so the two
   // cannot coexist — and the collision is knowable here, where the name is chosen.
   assert.match(
-    validateTaskDeclaration({ ...validTask, required_secrets: ['CLAUDINITE_DASHBOARD_CLIENT_SECRET'] })[0].what,
+    validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['CLAUDINITE_DASHBOARD_CLIENT_SECRET'] })[0].what,
     /code-work namespace/,
   );
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, required_secrets: ['DASHBOARD_OAUTH_CLIENT_SECRET'] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['DASHBOARD_OAUTH_CLIENT_SECRET'] }), []);
 });
 
 test('validateTaskDeclaration flags every malformed field', () => {
@@ -153,7 +179,6 @@ test('validateTaskDeclaration flags every malformed field', () => {
   assert.match(whats, /not a legal outcome ceiling/);
   assert.match(whats, /no string "agent_instructions"/);
   assert.match(whats, /"precondition_signals" is retired/);
-  assert.match(whats, /declares no "preconditions"/);
 });
 
 // ONE FORM, and the derivation that comes with it (task-preconditions DESIGN,
@@ -197,7 +222,7 @@ test('validateTaskDeclaration reads the expression statically: unknown terms and
 });
 
 test('validateTaskDeclaration rejects a non-object export', () => {
-  assert.match(validateTaskDeclaration(null)[0].what, /does not default-export a declaration object/);
+  assert.match(validateTaskDeclaration(null)[0].what, /is not a declaration object/);
 });
 
 test('the contract enums are exactly the DESIGN vocabulary', () => {
@@ -223,10 +248,10 @@ test('normalizeTaskDeclaration maps the legacy outcome ceilings onto the outcome
   assert.deepEqual(explicit.automerge, ['doc-changes']);
 });
 
-test('validateTaskDeclaration: a pr task must say what may auto-merge', () => {
+test('validateTaskDeclaration: a pr task that says nothing about automerge lands nothing', () => {
   const { automerge, ...noAutomerge } = validTask;
-  const { what } = validateTaskDeclaration(noAutomerge)[0];
-  assert.match(what, /automerge/);
+  assert.deepEqual(validateTaskDeclaration(noAutomerge), []);
+  assert.equal(normalizeTaskDeclaration(noAutomerge).automerge, 'nothing');
   for (const policy of ['nothing', 'anything', ['comment-only-changes', 'readme-changes'], ['anything', 'reject:js-code-changes']]) {
     assert.deepEqual(validateTaskDeclaration({ ...validTask, automerge: policy }), [], JSON.stringify(policy));
   }
@@ -287,18 +312,36 @@ test('validateDispatchBody rejects a bad first line, a missing file, an undeclar
   assert.match(validateDispatchBody('not a path\n', caps({ existsPaths: [] })).reason, /not a valid task path/);
   // task file missing at HEAD
   assert.match(validateDispatchBody(goodPath, caps({ existsPaths: [] })).reason, /does not exist at HEAD/);
-  // task.mjs sibling missing
-  assert.match(validateDispatchBody(goodPath, caps({ existsPaths: [goodPath] })).reason, /task\.mjs sibling.*missing/);
+  // declaration sibling missing
+  assert.match(validateDispatchBody(goodPath, caps({ existsPaths: [goodPath] })).reason, /task\.json sibling.*missing/);
   // pack not declared
   assert.match(validateDispatchBody(goodPath, caps({ existsPaths: [goodPath, mjs], declared: [] })).reason, /not declared/);
-  // task.mjs declaration invalid
+  // declaration invalid
   assert.match(
     validateDispatchBody(goodPath, caps({ existsPaths: [goodPath, mjs], task: { ...validTask, frequency: 'nope' } })).reason,
     /not a valid task declaration/,
   );
 });
 
-test('validateDispatchBody surfaces a parse failure of task.mjs', () => {
+// The declaration sibling is task.json; the retired task.mjs still resolves, and a
+// folder carrying both is refused rather than guessed at (task-declaration.mjs).
+test('validateDispatchBody resolves the task.json sibling, or the retired task.mjs, never both', () => {
+  const json = goodPath.replace('task.md', 'task.json');
+  const mjs = goodPath.replace('task.md', 'task.mjs');
+  const loaded = [];
+  const withLoad = (paths) => validateDispatchBody(goodPath, {
+    exists: (p) => paths.includes(p), isPackDeclared: () => true, loadTask: (p) => { loaded.push(p); return validTask; },
+  });
+  assert.equal(withLoad([goodPath, json]).ok, true);
+  assert.equal(withLoad([goodPath, mjs]).ok, true);
+  assert.deepEqual(loaded, [json, mjs]);
+  const both = withLoad([goodPath, json, mjs]);
+  assert.equal(both.ok, false);
+  assert.equal(both.gone, undefined, 'two declarations is malformed, not a task the repo dropped');
+  assert.match(both.reason, /carries both a task\.json and a task\.mjs/);
+});
+
+test('validateDispatchBody surfaces a parse failure of the declaration', () => {
   const mjs = goodPath.replace('task.md', 'task.mjs');
   const v = validateDispatchBody(goodPath, {
     exists: (p) => [goodPath, mjs].includes(p),
@@ -385,7 +428,13 @@ test('schedule_after / on_interrupt / invocation_endpoint are optional and valid
   // The legacy spelling still validates — the door renames it at load, so a member's own task
   // file keeps its ordering rather than silently losing it.
   assert.deepEqual(validateTaskDeclaration({ ...base, after: ['claudinite-lifecycle/update'] }), []);
-  assert.deepEqual(normalizeTaskDeclaration({ after: ['a/b'] }), { schedule_after: ['a/b'] });
+  // The secrets field's rename normalizes the same way.
+  const secrets = normalizeTaskDeclaration({ required_secrets: ['X'] });
+  assert.deepEqual(secrets.code_work_required_secrets, ['X']);
+  assert.equal(secrets.required_secrets, undefined);
+  const renamed = normalizeTaskDeclaration({ after: ['a/b'] });
+  assert.deepEqual(renamed.schedule_after, ['a/b']);
+  assert.equal(renamed.after, undefined);
 
   const bad = (patch, re) => {
     const problems = validateTaskDeclaration({ ...base, ...patch });

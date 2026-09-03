@@ -4,8 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
-import decl from '../../../tasks/fleet-baseline/task.mjs';
+import declJson from '../../../tasks/fleet-baseline/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const decl = normalizeTaskDeclaration(declJson);
 
 // fleet-baseline as a MANUAL task (#749) — the first task on the non-cadence
 // frequency, replacing the pack's standalone workflow (and the `.github/` managed
@@ -49,7 +52,7 @@ test('fleet-baseline: code_work is bounded and task-local', () => {
   assert.ok(!decl.code_work.includes('..'));
   assert.ok(Number.isInteger(decl.code_work_timeout) && decl.code_work_timeout > 0);
   assert.ok(existsSync(join(taskDir, 'worker.mjs')));
-  assert.deepEqual(decl.required_secrets, ['FLEET_GITHUB_TOKEN']);
+  assert.deepEqual(decl.code_work_required_secrets, ['FLEET_GITHUB_TOKEN']);
 });
 
 test('fleet-baseline: the worker invokes the sweep rather than reimplementing it', () => {

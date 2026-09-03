@@ -9,7 +9,10 @@ import {
   SOURCE, DEFAULT_WORKER_NAME, COMPATIBILITY_DATE, NeedsAction,
   resolveOrigins, uploadForm, probe, deploy, wiringNote,
 } from '../../../tasks/deploy-oauth-exchange/deploy.mjs';
-import declaration from '../../../tasks/deploy-oauth-exchange/task.mjs';
+import declarationJson from '../../../tasks/deploy-oauth-exchange/task.json' with { type: 'json' };
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const declaration = normalizeTaskDeclaration(declarationJson);
 
 const member = (config) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-deploy-'));
@@ -81,7 +84,7 @@ test('the probe accepts only the two answers this endpoint gives, and retries wh
 // the executor hands every repository variable to code-work with nothing declared, so
 // the only thing that must be true is that this task does not ask for it as a secret.
 test('only the two real credentials are declared secrets — the account id is a repository variable', () => {
-  assert.deepEqual(declaration.required_secrets, ['CLOUDFLARE_API_TOKEN', 'DASHBOARD_OAUTH_CLIENT_SECRET']);
+  assert.deepEqual(declaration.code_work_required_secrets, ['CLOUDFLARE_API_TOKEN', 'DASHBOARD_OAUTH_CLIENT_SECRET']);
 });
 
 test('a missing clientId, an unresolvable origin and a missing secret are each a NeedsAction naming what to set', async () => {

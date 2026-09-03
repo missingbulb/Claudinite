@@ -1,13 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import pack from '../pack.mjs';
-import proseToChecks from '../tasks/prose-to-checks-sweep/task.mjs';
-import extract from '../tasks/growth-extract/task.mjs';
-import dedup from '../tasks/growth-dedup/task.mjs';
-import logsPrune from '../tasks/logs-prune/task.mjs';
-import revalidation from '../tasks/rule-revalidation/task.mjs';
+import proseToChecksJson from '../tasks/prose-to-checks-sweep/task.json' with { type: 'json' };
+import extractJson from '../tasks/growth-extract/task.json' with { type: 'json' };
+import dedupJson from '../tasks/growth-dedup/task.json' with { type: 'json' };
+import logsPruneJson from '../tasks/logs-prune/task.json' with { type: 'json' };
+import revalidationJson from '../tasks/rule-revalidation/task.json' with { type: 'json' };
 import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 import { readFileSync } from 'node:fs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
+const proseToChecks = normalizeTaskDeclaration(proseToChecksJson);
+const extract = normalizeTaskDeclaration(extractJson);
+const dedup = normalizeTaskDeclaration(dedupJson);
+const logsPrune = normalizeTaskDeclaration(logsPruneJson);
+const revalidation = normalizeTaskDeclaration(revalidationJson);
 
 const PACK_DIR = new URL('..', import.meta.url).pathname;
 const logsPruneTerms = await loadTaskTerms(new URL('../tasks/logs-prune', import.meta.url).pathname);
@@ -29,7 +36,7 @@ const verdictFor = async (task, signals, config, item) =>
 
 test('the pack contributes its tasks structurally, not as a pack.mjs slot', () => {
   // The descriptors moved out of the manifest: the repo's scheduler finds
-  // tasks/<name>/task.mjs structurally (#394).
+  // tasks/<name>/task.json structurally (#394).
   assert.equal(pack.run_daily, undefined);
 });
 
@@ -216,7 +223,7 @@ test('growth-dedup: weekly/opus/pr+automerge — the prune PR is delivered to la
 
 test('growth-dedup: code_work detects the canon window diff before the agentic phase', () => {
   // The detection is deterministic code over commit records, so it is code-work's
-  // half — inside the pack, beside task.mjs. The bound stays under the executor's
+  // half — inside the pack, beside task.json. The bound stays under the executor's
   // claim leash, which validateTaskDeclaration enforces for every task.
   assert.equal(dedup.code_work, 'node worker.mjs');
   assert.ok(Number.isInteger(dedup.code_work_timeout) && dedup.code_work_timeout > 0);

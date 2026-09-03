@@ -1,0 +1,13 @@
+{
+  "$schema": "../../../claudinite-tasks/task.schema.json",
+  "id": "deploy-oauth-exchange",
+  "description": "Puts the dashboard's sign-in endpoint live on Cloudflare Workers, with its bindings and route, and reports success only once the deployed URL answers as that endpoint. Run by hand when the source, the client secret or the allowed page origins change.",
+  "frequency": "manual",
+  "expected_outcome": "none",
+  "code_work": "node worker.mjs",
+  "code_work_timeout": 300,
+  "code_work_required_secrets": [
+    "CLOUDFLARE_API_TOKEN",
+    "DASHBOARD_OAUTH_CLIENT_SECRET"
+  ]
+}
