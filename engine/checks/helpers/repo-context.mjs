@@ -587,6 +587,7 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
     allFiles,
     changedFiles,
     tracked,
+    untracked,
     deleted,
     commits,
     branch,
@@ -633,6 +634,23 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
 
     // Parsed transcript entries of the session driving this run, or null when no
     // transcript is available (see conversationCache above).
+    // The lines the change REMOVES from a tracked file, numbered as the base
+    // had them — the diff's "-" side, the mirror of addedLines. A file the
+    // base did not hold removed nothing.
+    removedLines(file) {
+      if (!mergeBase || !tracked.includes(file)) return [];
+      const out = gitTry(root, 'diff', '-U0', diffBase, '--', file);
+      const removed = [];
+      let lineNo = 0;
+      for (const l of (out || '').split('\n')) {
+        const hunk = /^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@/.exec(l);
+        if (hunk) { lineNo = Number(hunk[1]); continue; }
+        if (l.startsWith('-') && !l.startsWith('---')) { removed.push({ line: lineNo, text: l.slice(1) }); lineNo += 1; }
+        else if (!l.startsWith('+')) lineNo += l ? 1 : 0;
+      }
+      return removed;
+    },
+
     conversation() {
       if (conversationCache !== undefined) return conversationCache;
       if (!transcriptPath || !existsSync(transcriptPath)) return (conversationCache = null);

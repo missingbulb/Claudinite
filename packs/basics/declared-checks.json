@@ -123,5 +123,18 @@
         "fix": "add a \"{name}\" entry to packs/README.md (or delete the pack if it is dead)"
       }
     ]
+  },
+  {
+    "id": "untracked-test-file",
+    "severity": "advisory",
+    "scope": "work",
+    "failureMessage": "a suite driven by git ls-files never executes an untracked test, so a green run is not coverage of it",
+    "flagUntrackedFilesMatching": [
+      {
+        "match": "/\\.(test|spec)\\.[cm]?[jt]sx?$|(^|\\/)test_[^/]+\\.py$|_test\\.(py|go)$/",
+        "what": "{path} is untracked, so the suite you are certifying never ran it",
+        "fix": "git add {path}, then re-run the suite"
+      }
+    ]
   }
 ]

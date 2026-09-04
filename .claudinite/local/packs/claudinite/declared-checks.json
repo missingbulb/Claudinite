@@ -44,5 +44,20 @@
         "fix": "write it as `// @legacy-tolerance advisory:<rule-id|none> retire:#<issue>` with nothing after — a grep for this token is the register, and an unparseable form is not in it"
       }
     ]
+  },
+  {
+    "id": "rules-append-only",
+    "severity": "advisory",
+    "scope": "work",
+    "failureMessage": "a pack's RULES.md is written several times a day, and a whole-file re-apply onto a moved main deletes lessons with nothing going red",
+    "forbidRemovedLinesMatching": [
+      {
+        "inFilesMatching": "/(^|\\/)packs\\/[^/]+\\/RULES\\.md$/",
+        "match": "/^- \\*\\*(?<title>[^*]+)\\*\\*/",
+        "unlessMatchRemainsInFile": true,
+        "what": "removes the rule \"{title}\"",
+        "fix": "re-apply your edit onto the fetched file as an insertion, and say in the PR when a rule is deliberately retired"
+      }
+    ]
   }
 ]
