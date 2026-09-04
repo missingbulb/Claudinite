@@ -9,7 +9,7 @@ ruleTester(declaredCheck('packs/claudinite-growth', 'doc-pointers-resolve'), {
       'packs/p/README.md': 'depth\n',
     } },
     'a commented-out pointer is not a pointer': { files: {
-      'packs/p/workRules/a.mjs': "// doc: 'packs/p/gone.md'\nexport default { id: 'a', run() { return []; } };\n",
+      'packs/p/workRules/a.mjs': "export default { id: 'a', run() { return []; } }; // was { doc: 'packs/p/gone.md' }\n",
     } },
     'a fragment after the path is not part of it': { files: {
       'packs/p/skills/s/checks.mjs': "export default [{ id: 'a', doc: 'packs/p/README.md#section', run() { return []; } }];\n",
