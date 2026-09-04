@@ -189,3 +189,8 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   holder to move, and `engine/version.mjs` carried a stated end date that passed with the
   tolerance still in place and nothing scheduled to notice. Reaffirm while a tolerance can be
   added without a removal issue.
+- **(RULES-69)** #1677: the schedule board sat open at the top of every member's issue list for
+  weeks, and stating closed+label only at create would have left every existing board that way
+  forever — a member's rows can stay settled for days, so nothing else brings a write. The
+  closed half of a long-lived repo is thousands of issues, which is what the label buys.
+  Reaffirm while the queue keeps any machine-maintained issue.

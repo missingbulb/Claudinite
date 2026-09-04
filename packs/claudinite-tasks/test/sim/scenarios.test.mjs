@@ -1556,6 +1556,24 @@ test('S60 a go row outliving a failed create must not eat the occurrence (F31)',
   assert.ok(done, 'and the work ran within the hour — never fewer runs because a write failed');
 });
 
+// ---- S61 — the board is kept CLOSED (#1677), and every write states so, which
+// is what converges one somebody reopened. The case the row-driven write alone
+// cannot reach: a settled repo, where no verdict moves for hours — the open
+// board is itself the write the run owes, or a reopened board stays open until
+// something unrelated happens to change a row.
+test('S61 a reopened board is closed by the next run, row change or not', () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  sim.run('2026-08-12T00:00Z', '2026-08-12T06:00Z');          // the board exists, rows settled
+  const settled = sim.boardWrites().length;
+  sim.reopenBoard();
+  sim.run('2026-08-12T06:00Z', '2026-08-12T09:00Z');          // between anchors: nothing to say
+
+  assert.equal(sim.board.open, false, 'the next run closed it');
+  assert.equal(sim.log.filter((e) => e.kind === 'board-close').length, 1, 'closed once, not per run');
+  assert.equal(sim.boardWrites().length, settled,
+    'and no row was invented to carry the close — the state is the write');
+});
+
 // ---- M. The label vocabulary (owner, 2026-08-20, #1119): the sim writes the
 // canonical `task:status:`/`task:origin:` spellings and decodes every spelling
 // a fielded engine ever wrote. Two directions, both artifact-level: the labels

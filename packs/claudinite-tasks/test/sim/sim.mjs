@@ -257,7 +257,13 @@ export function makeSim({
   // it changed — so a corrupt board's unparsable rows are genuinely lost on
   // the next write, which is the artifact-level truth a rows-always-survive
   // model would hide.
-  const board = { exists: false, corrupt: false, rows: new Map() }; // taskId -> {frequency,lastAsked,verdict,reason}
+  //
+  // `open` is the board's issue state (#1677). The engine states closed on
+  // every write, and a board found open is written even where no row moved —
+  // so an open board is a write the run OWES, which is what the model has to
+  // carry: a row-driven-writes-only model would show a board reopened on a
+  // quiet repo staying open forever.
+  const board = { exists: false, corrupt: false, open: false, rows: new Map() }; // taskId -> {frequency,lastAsked,verdict,reason}
   const boardRow = (taskId) => (!board.exists || board.corrupt ? null : board.rows.get(taskId) ?? null);
   // The change test compares the AUTHORITATIVE columns only (last asked,
   // verdict, reason) — never the derived next-window column, which is
@@ -269,7 +275,15 @@ export function makeSim({
     if (!board.exists) { board.exists = true; record('board-create', {}); }
     if (board.corrupt) { board.rows.clear(); board.corrupt = false; } // rewrite replaces the mangled body
     board.rows.set(taskId, { frequency, lastAsked, verdict, reason });
+    closeBoard();
     record('board-write', { task: taskId, verdict, lastAsked: iso(lastAsked) });
+  }
+  // Every write states the state, so any write converges a board somebody
+  // reopened; a run that moved no row still owes this one where it is open.
+  function closeBoard() {
+    if (!board.open) return;
+    board.open = false;
+    record('board-close', {});
   }
   // Which tasks the scheduler cannot collect signals for (a missing
   // credential) — the fail-open lever the scenarios pull.
@@ -497,6 +511,9 @@ export function makeSim({
       }
       createIssue({ taskId: task.id, labels: ['task:status:waiting-for-executor'] });
     }
+    // The board write a settled repo still owes: nothing moved a row, but a
+    // board left open is a write in itself (#1677).
+    closeBoard();
     // job 2: ready whatever is due
     for (const it of open().filter((i) => is(i, 'task:status:blocked'))) {
       const blockersDone = it.blockedBy.every(
@@ -1207,6 +1224,9 @@ export function makeSim({
     // Somebody mangles the body: the issue exists but no row parses. The next
     // write replaces the whole body, so the mangled rows are genuinely lost.
     corruptBoard() { board.corrupt = true; record('board-corrupt', {}); return sim; },
+    // Somebody reopens the board, or it predates the closed rule: the next
+    // scheduler run closes it, row change or not.
+    reopenBoard() { board.open = true; record('board-reopen', {}); return sim; },
     // The scheduler run cannot collect this task's signals (a missing
     // credential): its anchor-side ask fails OPEN — the item is created as the
     // calendar-only model created it, and the executor decides at pick.

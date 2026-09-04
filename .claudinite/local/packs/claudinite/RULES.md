@@ -309,6 +309,11 @@ Below are rules on how to work on this repo.
 
 ## Scheduled tasks
 
+- **Filing an issue no person will ever act on** — a board, a watermark, the machine's own
+  bookkeeping — file it CLOSED and labelled, state both on every write so a reopened or
+  pre-rule one converges, and find it by that label rather than paging the repo's closed
+  history. (69)
+
 - **Opening a queue work-item's own delivered PR** — never `Closes #<the item's own issue>` in
   the body. `converge-item.mjs` closes or parks that issue with the right label state; the native
   keyword fires on merge regardless and overrides an intended `needs-human-approval` park. (49)
