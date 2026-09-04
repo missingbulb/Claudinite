@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup, writeFiles, git, ruleTester } from './helpers.mjs';
+import { makeRepo, cleanup, writeFiles, git, ruleTester, makeTranscript } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -1869,4 +1869,106 @@ test('two-pass keys: the authoring errors', () => {
   assert.throws(() => patternRule({
     ...meta('fx-e10'), requireIdenticalFiles: [{ everyFileMatching: /x/, twinAt: 'y', whenTwinAbsent: 'ignore', what: 'w', fix: 'f' }],
   }), /whenTwinAbsent/);
+});
+
+// --- work scope: the change's own lines, co-changes, untracked files, reply classes ---
+
+const workMeta = (id) => ({ ...meta(id), scope: 'work' });
+
+test('forbidAddedLinesMatching: every added line the pattern hits, in changed files the path pattern selects', () => {
+  const rule = patternRule({
+    ...workMeta('fx-added-lines'),
+    forbidAddedLinesMatching: [{ inFilesMatching: /\.md$/, match: /TODO (?<who>\w+)/, unlessLineMatches: /allowed/, what: '{who} left "{match}"', fix: 'f' }],
+  });
+  const root = makeRepo({
+    base: { 'a.md': 'old\nTODO base\n', 'c.mjs': 'x\n' },
+    changed: { 'a.md': 'old\nTODO base\nTODO ann\nTODO bob allowed\n', 'b.md': 'TODO cid\n', 'c.mjs': 'TODO dan\n' },
+  });
+  try {
+    assert.deepEqual(runRule(rule, ctxOf(root)).map((f) => [f.file, f.line, f.what]), [
+      ['a.md', 3, 'ann left "TODO ann"'],
+      ['b.md', 1, 'cid left "TODO cid"'],
+    ]);
+  } finally { cleanup(root); }
+});
+
+test('forbidRemovedLinesMatching: a removed line flags where the base held it', () => {
+  const rule = patternRule({
+    ...workMeta('fx-removed-lines'),
+    forbidRemovedLinesMatching: [{ inFilesMatching: /RULES\.md$/, match: /^- \*\*(?<title>[^*]+)\*\*/, what: 'removed the rule "{title}"', fix: 'f' }],
+  });
+  const root = makeRepo({
+    base: { 'RULES.md': '- **Keep** — x\n- **Gone** — y\n  continued\n- **Stay** — z\n' },
+    changed: { 'RULES.md': '- **Keep** — x\n- **Stay** — z\n- **New** — w\n' },
+  });
+  try {
+    assert.deepEqual(runRule(rule, ctxOf(root)).map((f) => [f.file, f.line, f.what]), [['RULES.md', 2, 'removed the rule "Gone"']]);
+  } finally { cleanup(root); }
+});
+
+// A change to one thing requires a change to another, triggered by a changed
+// path or by an added line.
+ruleTester(patternRule({
+  ...workMeta('fx-co-change'),
+  requireCoChange: [
+    { whenChangedFileMatches: /^src\//, requireChangedFileMatching: /\.test\.mjs$/, what: '{path} changed without a test', fix: 'f' },
+    { whenAddedLineMatches: { inFilesMatching: /checks\.json$/, match: /"id"\s*:/ }, requireChangedFileMatching: /(^|\/)test\//, what: '{path} declares a check without a fixture', fix: 'f' },
+  ],
+}), {
+  clean: {
+    'the required sibling changed too': { base: { 'src/a.mjs': '1\n', 'a.test.mjs': 't\n' }, files: { 'src/a.mjs': '2\n', 'a.test.mjs': 't2\n' } },
+    'nothing triggering changed': { base: { 'src/a.mjs': '1\n' }, files: { 'README.md': 'x\n' } },
+    'an edit to a declaration that adds no id needs no fixture': { base: { 'checks.json': '[{\n  "id": "a",\n  "what": "w"\n}]\n' }, files: { 'checks.json': '[{\n  "id": "a",\n  "what": "reworded"\n}]\n' } },
+  },
+  flagged: {
+    'each triggering file flags once when the sibling is absent': {
+      base: { 'src/a.mjs': '1\n', 'src/b.mjs': '1\n' },
+      files: { 'src/a.mjs': '2\n', 'src/b.mjs': '2\n', 'checks.json': '[{"id":"new","what":"w"}]\n' },
+      at: [
+        { file: 'src/a.mjs', what: /changed without a test/ },
+        { file: 'src/b.mjs', what: /changed without a test/ },
+        { file: 'checks.json', what: /declares a check without a fixture/ },
+      ],
+    },
+  },
+});
+
+test('flagUntrackedFilesMatching: a file git does not track, and nothing else', () => {
+  const rule = patternRule({
+    ...workMeta('fx-untracked'),
+    flagUntrackedFilesMatching: [{ match: /\.test\.mjs$/, what: '{path} is untracked', fix: 'git add it' }],
+  });
+  const root = makeRepo({ changed: { 'a.test.mjs': 't\n' }, uncommitted: { 'b.test.mjs': 't\n', 'notes.md': 'n\n' } });
+  try {
+    assert.deepEqual(runRule(rule, ctxOf(root)).map((f) => [f.file, f.what]), [['b.test.mjs', 'b.test.mjs is untracked']]);
+  } finally { cleanup(root); }
+});
+
+test('whenReplyClassIncludes: the rule asserts only when a reply declared one of the classes', () => {
+  const rule = patternRule({
+    ...workMeta('fx-reply-gate'),
+    whenReplyClassIncludes: 'process-change',
+    requireCoChange: [{ whenChangedFileMatches: /./, requireChangedFileMatching: /^\.claudinite\/local\/packs\//, what: 'a process change that reached no local pack', fix: 'f' }],
+  });
+  const session = (cls) => makeTranscript([
+    { type: 'user', timestamp: '2026-09-04T10:00:00Z', message: { content: 'please change how we work' } },
+    { type: 'assistant', message: { content: [{ type: 'text', text: `Comment class: ${cls}\nDoing it.` }] } },
+  ]);
+  const root = makeRepo({ changed: { 'src/a.mjs': 'x\n' } });
+  const gated = session('process-change');
+  const other = session('other');
+  try {
+    const run = (transcriptPath) => runRule(rule, buildContext({ root, mode: 'all', transcriptPath }));
+    assert.equal(run(gated.path).length, 1);
+    assert.deepEqual(run(other.path), []);
+    assert.deepEqual(run(null), []);
+  } finally { cleanup(root); gated.cleanup(); other.cleanup(); }
+});
+
+test('work keys: the authoring errors', () => {
+  assert.throws(() => patternRule({ ...meta('fx-w1'), forbidAddedLinesMatching: [{ inFilesMatching: /a/, match: /b/, what: 'w', fix: 'f' }] }), /scope: "work"/);
+  assert.throws(() => patternRule({ ...workMeta('fx-w2'), forbidRemovedLinesMatching: [{ match: /b/, what: 'w', fix: 'f' }] }), /needs "inFilesMatching"/);
+  assert.throws(() => patternRule({ ...workMeta('fx-w3'), requireCoChange: [{ whenChangedFileMatches: /a/, whenAddedLineMatches: { inFilesMatching: /a/, match: /b/ }, requireChangedFileMatching: /c/, what: 'w', fix: 'f' }] }), /exactly one of/);
+  assert.throws(() => patternRule({ ...workMeta('fx-w4'), requireCoChange: [{ whenChangedFileMatches: /a/, what: 'w', fix: 'f' }] }), /requireChangedFileMatching/);
+  assert.throws(() => patternRule({ ...workMeta('fx-w5'), whenReplyClassIncludes: 'bogus', flagUntrackedFilesMatching: [{ match: /x/, what: 'w', fix: 'f' }] }), /comment classes/);
 });

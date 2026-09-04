@@ -69,6 +69,8 @@ class Work {
   get changedFiles() { return this.ctx.changedFiles; }
   get deleted() { return this.ctx.deleted; }
   get tracked() { return this.ctx.tracked; }
+  // The run's files git does not track — the new test a green run never executed.
+  get untracked() { return this.ctx.untracked ?? []; }
   // The discovered pack objects (runner-attached) and the normalized config —
   // the pair a rule that reasons over pack metadata (e.g. adoption-interview
   // state) hands to the interview helpers, without reaching into ctx itself.
@@ -82,6 +84,25 @@ class Work {
   conversation() { return new Conversation(this.ctx.conversation()); }
 
   addedLines(files) { return addedLines(this.ctx, files ?? this.ctx.changedFiles); }
+
+  // The change's removed lines across `files` (default: every changed file):
+  // [{ file, line, text }], line as the base numbered it.
+  removedLines(files) {
+    const out = [];
+    if (typeof this.ctx.removedLines !== 'function') return out;
+    for (const file of files ?? this.ctx.changedFiles) {
+      for (const { line, text } of this.ctx.removedLines(file)) out.push({ file, line, text });
+    }
+    return out;
+  }
+
+  // Every comment class the session's replies declared, across all owner turns
+  // — the set a work rule gates itself on. Empty without a transcript.
+  replyClasses() {
+    const classes = new Set();
+    for (const turn of this.conversation().ownerTurns()) for (const c of turn.classes()) classes.add(c);
+    return classes;
+  }
 
   onDefaultBranch() { return this.ctx.branch === 'main' || this.ctx.branch === 'master'; }
 
