@@ -231,3 +231,7 @@ Close this issue once the first release-on-push run has deployed successfully.
 - **A failed release** leaves a `workflow-failure` issue with the run link. Nothing before the tag
   changes anything at all, and the version is already on `main` either way — so the next push (or a
   `force` dispatch) releases from there with nothing to unwind.
+
+## What the checks hold a change to
+
+- **The pipeline files under `.github/workflows/static-site-*` and `.github/actions/{read-site-config,bump-site-version,assemble-site}` are managed copies of the pack's `stubs/`.** Fix the pack and re-vendor; an edit to the copy is overwritten and, until it is, makes this repo's pipeline differ from every other site repo's. The repo's own values all live in `.github/site.config`, which is what the copies read.

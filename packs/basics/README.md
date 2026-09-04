@@ -47,7 +47,6 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Referring to a value from two places | high | correctness | prose: 117 words + check (`shared-constants`) |
 | Writing a file that depends on another | medium | complexity | prose: 97 words |
 | Committing | medium | complexity | prose: 43 words |
-| Working with a generated file | high | correctness | prose: 64 words + check (`generated-merge-driver`) |
 | Depending on platform or runtime behaviour | high | correctness | prose: 31 words |
 | Optimising | high | correctness | prose: 53 words |
 | Needing a library for a narrow job | medium | complexity | prose: 27 words |
@@ -64,8 +63,12 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Working in a fresh checkout or sandbox | low | complexity | prose: 54 words |
 | Deciding where a config value lives | medium | complexity | prose: 69 words |
 | Handling a value that can be unknown | high | correctness | prose: 103 words |
-| Writing a check that scans the repo | high | correctness | prose: 170 words |
 | Writing a comment | low | complexity | prose: 93 words |
+
+Two rules are skills the guard forces for the files they concern: writing a check that scans the
+repo ([`writing-repo-scanning-checks`](skills/writing-repo-scanning-checks/SKILL.md), for any coded
+or declared check) and editing a `GENERATED` file
+([`working-with-generated-files`](skills/working-with-generated-files/SKILL.md)).
 
 ## Checks
 

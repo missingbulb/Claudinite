@@ -21,3 +21,10 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(check:task-md-only-when-agentic)** `task.md` is defined as the spec an agentic session
   follows, and `README.md` is what an agentless worker's human-facing record is called — the
   naming decision recorded in #1055. Retire the check only if that vocabulary changes.
+- **(writing-pack-prose-2)** Owner decision on #1662's extraction pass (PR #1667): forty-odd
+  rules had moved into description-triggered skills, and the owner's call was "unless we have a
+  force-load-on-file-edits-paths that covers all the relevant times those instructions are needed,
+  let's move them back to RULES.md" — a description is matched by the model reading the skill
+  listing, which is not a predictable load. Reaffirm while the harness offers no deterministic
+  trigger for a skill other than a file edit (or a user's own slash invocation); retire if one
+  arrives and the corpus adopts it.

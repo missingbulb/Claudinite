@@ -9,31 +9,14 @@
 - **Commit one high-resolution icon master and generate the `.icns`** in the build script (`sips`
   to each size into an `.iconset`, then `iconutil -c icns`). Both tools ship with macOS, so the
   repo carries one PNG instead of ten, and the icon can't half-update.
-- **A menu-bar-only app is `LSUIElement: true`** in `Info.plist` — that, not code, is what removes
-  the Dock icon and the main window.
-- **Pin `LSMinimumSystemVersion` to the same OS version the package's `platforms:` declares.** They
-  are two independent claims about the same floor, and only one of them is enforced at launch.
 
 ## TCC and the Hardened Runtime are two different gates — know which applies
-
-- **Reaching for a protected resource** — give it its own **usage-description string** in
-  `Info.plist`, the text the user consents to; without one the app is killed rather than prompted.
-  Capabilities that feel like one feature take separate keys — an app that listens *and*
-  transcribes needs `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`, or
-  is killed at whichever it forgot — and only *some* resources also need a codesign entitlement,
-  and only under the Hardened Runtime.
 
 - **Notarization requires the Hardened Runtime** (`codesign --options runtime`), and under it a
   resource-access exception must be granted explicitly by entitlement — device capture
   (`com.apple.security.device.audio-input`, camera) is the classic one. So **turning on
   notarization can silently break a capability an ad-hoc build had**, because the ad-hoc build was
   never running under the restriction. Ship the entitlement in the same change as the runtime flag.
-- **Capabilities gated purely by TCC plus their usage string need no entitlement at all** (speech
-  recognition is the worked example). Adding one you don't need is noise; omitting one you do need
-  is a runtime failure no build step catches.
-- **Do not enable the App Sandbox on the Developer ID track.** The sandbox belongs to the Mac App
-  Store lane, needs a different (Apple Distribution) certificate, and silently removes
-  capabilities the direct-download build has — distributed notifications, for one.
 
 ## Speech recognition leaves the machine unless you say it must not
 
@@ -46,7 +29,7 @@
   is per-recognizer and false until then, and requiring on-device recognition where it isn't
   supported fails the request rather than quietly falling back — so check it and decide the degrade
   deliberately (refuse the feature, or say plainly that this locale would transcribe off-device).
-- Speech is TCC-gated, so it needs its usage string and **no** entitlement — see the section above.
+- Speech is TCC-gated, so it needs its usage string and **no** entitlement — see [macos-entitlements-and-tcc](skills/macos-entitlements-and-tcc/SKILL.md).
 
 ## Keep signing and notarization an optional, secret-gated lane
 
@@ -77,8 +60,6 @@
   right-click → *Open* bypass; the current path is System Settings → Privacy & Security →
   *Open Anyway*, or `xattr -dr com.apple.quarantine <app>`. An install doc that still says
   right-click → Open reads as broken software.
-- **A notarized build should need none of that** — if your README's manual-bypass section is the
-  one users actually follow, the signing lane isn't running.
 
 ## Assume the user's Mac has no developer toolchain
 

@@ -15,38 +15,38 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 |---|---|---|---|
 | <img src="claudinite-lifecycle/badge.svg" width="18" height="18" alt=""> [claudinite-lifecycle](claudinite-lifecycle/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 10 | 8 (Claudinite's own surface, plus the scheduled-task contract) |
 | <img src="claudinite-tasks/badge.svg" width="18" height="18" alt=""> [claudinite-tasks](claudinite-tasks/README.md) | declared (seeded by `--init`, opt-out by removal — a repo without it runs no scheduled work) | 2 | 0 (the work-item queue, the executor, the task contract, and the delivery lane) |
-| <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 14 | 49 (working-discipline + task-lifecycle, plus the [folder-access graph](basics/barriers.md)) |
+| <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 14 | 58 (working-discipline + task-lifecycle, plus the [folder-access graph](basics/barriers.md); 2 path-forced skills: writing-repo-scanning-checks, working-with-generated-files) |
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 9 | 0 (3 skills: git-github-advanced, github-actions-scheduling, merge-to-main) |
 | <img src="claudinite-growth/badge.svg" width="18" height="18" alt=""> [claudinite-growth](claudinite-growth/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | 0 — growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
 | <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | 2 (policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly)) |
-| <img src="claudinite-fleet-sheepdog/badge.svg" width="18" height="18" alt=""> [claudinite-fleet-sheepdog](claudinite-fleet-sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | 0 (fleet-enforcer marker + config + the agentless `fleet-roster` daily task (coverage + freshness in one walk)) |
-| <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/RULES.md) | declared (seeded by `--init`) | 2 | 3 (what a project offers people working from the web — their personal interaction preferences, and the environment Setup script body) |
+| <img src="claudinite-fleet-sheepdog/badge.svg" width="18" height="18" alt=""> [claudinite-fleet-sheepdog](claudinite-fleet-sheepdog/README.md) | declared (opt-in; the fleet-enforcer repo only) | 1 | 9 (fleet-enforcer marker + config + the agentless `fleet-roster` daily task (coverage + freshness in one walk)) + 1 skill: configuring-the-fleet |
+| <img src="claude-code-web-users-support/badge.svg" width="18" height="18" alt=""> [claude-code-web-users-support](claude-code-web-users-support/README.md) | declared (seeded by `--init`) | 2 | 3 (what a project offers people working from the web — their personal interaction preferences, and the environment Setup script body) |
 | <img src="claudinite-canary-repo/badge.svg" width="18" height="18" alt=""> [claudinite-canary-repo](claudinite-canary-repo/README.md) | declared (opt-in; the canary repo only, and `hidden` from the consumer catalog) | 0 | 0 (one inert workflow, seeded then converged — the live proof of the workflow-delivery lane) |
 | <img src="claudinite-canon-curation/badge.svg" width="18" height="18" alt=""> [claudinite-canon-curation](claudinite-canon-curation/README.md) | declared (opt-in; a canon home repo only, and `hidden` from the consumer catalog) | 4 | 27 (curating a canon — the central promote stage, the weekly fleet pack-discovery sweep, the monthly upstream reconciliation, and the shelf's own policing: naming, config, modules, checks and prose; 2 skills: generate-project-instructions, writing-claudinite-skills) |
 | <img src="claudinite-dashboard/badge.svg" width="18" height="18" alt=""> [claudinite-dashboard](claudinite-dashboard/README.md) | declared (opt-in) | 0 | 0 (a browser dashboard over scheduler state, published to Pages; adoption seeds the deploy workflow) |
-| <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 10 | 24 |
-| <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 5 |
-| <img src="python/badge.svg" width="18" height="18" alt=""> [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 3 |
+| <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 10 | 22 (+ 2 skills: chrome-store-releases, extension-host-permissions) |
+| <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 4 (+ 1 skill: node-test-discovery) |
+| <img src="python/badge.svg" width="18" height="18" alt=""> [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 2 (+ 1 skill: python-optional-deps) |
 | <img src="web-speech/badge.svg" width="18" height="18" alt=""> [web-speech](web-speech/README.md) | speech API in JS/TS source | 0 (2 in its skill) | 15 |
 | <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 2 | 4 |
 | <img src="headless-browser/badge.svg" width="18" height="18" alt=""> [headless-browser](headless-browser/README.md) | driver reference in JS/TS source | 0 | 18 |
-| <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 13 |
+| <img src="aws-sam/badge.svg" width="18" height="18" alt=""> [aws-sam](aws-sam/README.md) | SAM template | 3 | 6 (+ 2 skills: sam-template, sam-build-and-deps) |
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills; the technology's own movement is watched from the canon, not from here) |
 | <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 4 |
-| <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 8 (+ RELEASE contract) |
-| <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 15 |
-| <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 18 (rules / functions / deploy discipline) + 1 skill: create-release-plan |
-| <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/) | `AndroidManifest.xml` | 0 | 0 (stub) |
-| <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/) | `ios/Runner/Info.plist` | 0 | 0 (stub) |
-| <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 3 | 31 (bundle / TCC + Hardened Runtime / on-device speech / Developer ID + notarization / lifecycle) |
-| <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/) | declared (opt-in) | 0 | 0 (stub) |
-| <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/) | declared (opt-in) | 0 | 0 (stub) |
+| <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 7 (+ RELEASE contract; 1 skill: static-site-releases) |
+| <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 10 (+ 2 skills: flutter-golden-tests, flutter-pubspec) |
+| <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 5 + 3 skills: firestore-security-rules, firebase-functions, create-release-plan |
+| <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/README.md) | `AndroidManifest.xml` | 0 | 0 (stub) |
+| <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/README.md) | `ios/Runner/Info.plist` | 0 | 0 (stub) |
+| <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 3 | 26 (+ 2 skills: macos-app-bundle, macos-entitlements-and-tcc) |
+| <img src="play-store-release/badge.svg" width="18" height="18" alt=""> [play-store-release](play-store-release/README.md) | declared (opt-in) | 0 | 0 (stub) |
+| <img src="app-store-release/badge.svg" width="18" height="18" alt=""> [app-store-release](app-store-release/README.md) | declared (opt-in) | 0 | 0 (stub) |
 | <img src="web-scraping/badge.svg" width="18" height="18" alt=""> [web-scraping](web-scraping/README.md) | declared (opt-in) | 0 | 27 (+ 1 skill: map-a-data-source) |
 | <img src="research-project/badge.svg" width="18" height="18" alt=""> [research-project](research-project/README.md) | declared (class) | 0 | 54 (14 sections) |
 | <img src="product-wiki/badge.svg" width="18" height="18" alt=""> [product-wiki](product-wiki/README.md) | declared (marker: `product-wiki/product-requirements/README.md`) | 7 | 9 (wiki growth discipline + weekly growth daily task) |
-| <img src="spec-driven-product/badge.svg" width="18" height="18" alt=""> [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 26 (8 sections) |
-| <img src="executable-requirements/badge.svg" width="18" height="18" alt=""> [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | 19 (framework standard: layout / gates / kinds) |
+| <img src="spec-driven-product/badge.svg" width="18" height="18" alt=""> [spec-driven-product](spec-driven-product/README.md) | declared (class) | 0 | 25 (8 sections) |
+| <img src="executable-requirements/badge.svg" width="18" height="18" alt=""> [executable-requirements](executable-requirements/README.md) | `dev/requirements/requirements.md` | 0 | 2 (+ 3 skills: write-a-requirement-leaf, write-a-saga, deterministic-expecteds) |
 
 ## Local packs — a project's own packs
 

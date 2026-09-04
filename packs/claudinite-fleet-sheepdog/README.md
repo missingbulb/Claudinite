@@ -204,9 +204,6 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Keeping a repo out of the fleet | low | correctness | prose: 75 words |
-| Adding or changing a packSeeds entry | critical | correctness | prose: 66 words |
-| Declaring a pack this fleet also seeds | high | correctness | prose: 66 words |
 | Acting on an add-packs work-list issue | high | correctness | prose: 70 words |
 | Acting on a scanned pack suggestion | medium | correctness | prose: 77 words |
 | Reading unknown in a report | high | correctness | prose: 64 words |
@@ -216,6 +213,16 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 | Adding a pack across the fleet | medium | complexity | prose: 53 words |
 | Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 52 words |
 | A sweep reporting 403 or no-permission | medium | complexity | prose: 48 words |
+
+The config rules (`exclude`, `packSeeds`, the declaration a seed must agree with) are the
+[`configuring-the-fleet`](skills/configuring-the-fleet/SKILL.md) skill, forced for
+`.claudinite-settings.json`.
+
+## Skills
+
+| Skill | Trigger |
+|---|---|
+| [`configuring-the-fleet`](skills/configuring-the-fleet/SKILL.md) | any edit of `.claudinite-settings.json` in the fleet-enforcer repo — held by the guard until loaded |
 
 ## Checks
 

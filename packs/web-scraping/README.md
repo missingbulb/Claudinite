@@ -37,10 +37,19 @@ without firing on ordinary HTTP code.
 | Parsing a value whose format is ambiguous | high | correctness | prose: 129 words |
 | Changing the conversion | high | correctness | prose: 78 words |
 | Emitting a value the pipeline hasn't reached | high | correctness | prose: 64 words |
-| Deciding what a fetch writes to disk | medium | complexity | prose: 128 words |
+| Deciding what a fetch writes to disk | medium | complexity | prose: 61 words |
 | Re-running a fetch that already ran | medium | correctness | prose: 70 words |
 | Scheduling the refresh | medium | correctness | prose: 75 words |
 | Generating artifacts from the stored data | medium | correctness | prose: 55 words |
+
+### Why the cache and the raw record are kept apart
+
+The fetched artifact is git-ignored and the extracted raw record is committed because that
+split buys three things at once: re-deriving the normalized output becomes an **offline**
+operation, so a parser change costs no requests; the committed record doubles as the fixture
+for a self-test of the transform that needs no network; and a field you didn't parse this
+month is still there next month, because the whole object was kept rather than the subset
+needed at the time.
 
 ## Skill
 

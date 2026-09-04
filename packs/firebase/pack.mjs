@@ -16,7 +16,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
 // pipeline-injected prod config and App Check gating — is a skill rather than
 // prose: it is read when a project plans its release, not on every session.
 export default {
-  version: '60903.1',
+  version: '60903.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'building on Firebase: Firestore rules, callable Cloud Function patterns, FCM, emulator testing, deploy layout, dev/prod release split',
@@ -24,7 +24,7 @@ export default {
   },
   marker: 'firebase.json (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'firebase.json'),
-  // The deploy-layout guards (RULES.md §4). Both are relevance-first: inert
+  // The deploy-layout guards. Both are relevance-first: inert
   // until the repo carries a firebase.json declaring a functions codebase whose
   // package.json is in this checkout — so a rules-only or hosting-only Firebase
   // repo never hears from them.

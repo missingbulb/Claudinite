@@ -134,12 +134,7 @@
 - **Deciding what a fetch writes to disk** — two forms, separated deliberately. The fetched
   artifact (page HTML, raw response pages) is a **cache**: git-ignore it, since it is large,
   regenerable, and not what you reason about. The extracted raw record — the site's own object,
-  before any of your normalization — is **committed**, and is the durable source of truth. That
-  split buys three things at once: re-deriving your normalized output becomes an **offline**
-  operation, so a parser change costs no requests; the committed record doubles as the fixture
-  for a self-test of the transform that needs no network; and a field you didn't parse this
-  month is still there next month, because you kept the whole object rather than the subset you
-  needed at the time.
+  before any of your normalization — is **committed**, and is the durable source of truth.
 
 - **Re-running a fetch that already ran** — **fetch only what's missing**, with an explicit flag
   to force a refresh, so repeat runs are a no-op. Note what "resumable" is measured against: the

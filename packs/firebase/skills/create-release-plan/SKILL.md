@@ -1,6 +1,10 @@
 ---
 name: create-release-plan
-description: The Firebase release standard — two separate dev/prod projects with the committed default pinned to dev, prod config injected only by the release pipeline, App Check attestation gating, and deliberate promotion. Use when planning a Firebase-backed app's first release, splitting a project into dev and prod, or wiring prod config and App Check into a release pipeline.
+description: The Firebase release standard — two separate dev/prod projects with the committed default pinned to dev, prod config injected only by the release pipeline, App Check attestation gating, and deliberate promotion. Use when planning a Firebase-backed app's first release, splitting a project into dev and prod, wiring prod config and App Check into a release pipeline, or editing firebase.json or .firebaserc.
+metadata:
+  force-load-on-file-edits-paths:
+    - ".firebaserc"
+    - "firebase.json"
 ---
 
 # Planning a Firebase release — environments, provenance, attestation
@@ -52,3 +56,15 @@ treating it as settled canon.
   compromised or misconfigured dev lane cannot touch prod.
 - Data hygiene follows the project split: seed/backfill tooling targets dev by name and refuses
   the prod project id as a hard guard, not a convention.
+
+## 5. Deploy layout and aliases
+
+- **Keep the Firebase project root self-contained** — the directory holding `firebase.json`, its
+  `.firebaserc`, rules/indexes, and `functions/`. That root may be the repo root or a dedicated
+  subfolder (e.g. `firebase/`); the CLI walks up to find `firebase.json` and resolves every path
+  inside it *relative to that file*, so a subfolder needs no path edits — just run deploys from it
+  (or pass `--config <dir>/firebase.json`). Keep compiled output (`functions/lib/`) and
+  `.firebase/` gitignored.
+- **Commit `.firebaserc` with named aliases and make the default the safe target** (§1 above is
+  the full environment discipline). Deploy commands in docs always name
+  what they deploy (`--only functions,firestore`). (4)

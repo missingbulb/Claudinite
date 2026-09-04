@@ -1,8 +1,7 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { functionsCodebases } from '../lib.mjs';
 
-// RULES.md §4: "Wire a predeploy build hook for functions … so a deploy can never
-// ship stale JS." The relevance gate is the build step itself — a codebase whose
+// The predeploy build hook, so a deploy can never ship stale JS. The relevance gate is the build step itself — a codebase whose
 // package.json declares no `build` script compiles nothing, so it has no stale
 // output to ship and the rule does not apply to it.
 
@@ -14,7 +13,7 @@ const rule = {
   id: 'firebase/functions-predeploy-build',
   severity: 'blocking',
   description: 'A Firebase functions codebase with a build script wires that build as a firebase.json predeploy hook',
-  doc: 'packs/firebase/RULES.md',
+  doc: 'packs/firebase/skills/firebase-functions/SKILL.md',
   why: 'without the hook a deploy ships whatever compiled output happens to be on disk — a local `firebase deploy` after an edit silently publishes the previous build',
 
   run(ctx) {

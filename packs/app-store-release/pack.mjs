@@ -1,9 +1,9 @@
 // Opt-in release stub pack: releasing to the Apple App Store (App Store Connect, provisioning, review, TestFlight). Declared when a project first ships
 // there — no fingerprint until the first exercised release wires one.
-// Stub — no rules captured yet; add durable, project-agnostic practices to RULES.md
-// as they are earned. Expected first source: missingbulb/ShoutsAndWhispers.
+// Stub — no rules captured yet, so no RULES.md; durable, project-agnostic practices
+// earn one as they are captured. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
-  version: '60902.1',
+  version: '60903.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'shipping to the Apple App Store: App Store Connect, provisioning, App Attest, TestFlight, review guidelines, release cadence',

@@ -12,13 +12,13 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   subdirectory from the artifact and a subdirectory-carrying Handler fails only at first invoke
   with `Runtime.ImportModuleError`. Reaffirm against esbuild's outbase documentation and SAM's
   esbuild builder; retire only if either changes that default.
-- **(RULES-1)** Declaring esbuild in `dependencies` does not bloat the deployed artifact: it is
+- **(sam-build-and-deps-1)** Declaring esbuild in `dependencies` does not bloat the deployed artifact: it is
   not bundled unless the handler imports it, so the usual objection to the remedy — shipping a
   build tool to production — does not apply. Recovered from the rule's own pre-#467 text (cut
   by 2f3e4e9a as “consequence prose arguing for a rule rather than enabling it”, before this
   pack had a references.md to hold it). Reaffirm against SAM's esbuild builder; retire if it
   stops running a production-only install.
-- **(RULES-2)** Cache key and origin forwarding are independent controls — a `CachePolicy`
+- **(sam-template-2)** Cache key and origin forwarding are independent controls — a `CachePolicy`
   defines the cache key, an `OriginRequestPolicy` defines what reaches the origin — which is
   why the two are set separately to cache public GETs on one entry while still delivering
   `Authorization` for authenticated writes. Recovered from the rule's own pre-#467 text (cut by

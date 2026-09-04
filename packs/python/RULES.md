@@ -1,10 +1,5 @@
 # Python
 
-- **Adding a heavy, native or ML dependency to a Python package** — declare it under a named
-  `[project.optional-dependencies]` extra, never in base `dependencies`: the core (logic, storage,
-  CLI, any web layer) must import, run and be fully testable on a bare `pip install <pkg>` with the
-  standard library alone.
-
 - **Wrapping a heavy backend behind an interface** — ship a stdlib-only implementation of that same
   interface for the test suite and any offline mode, and select between them at runtime through a
   `load_default()`/registry that lazy-imports only the chosen one, so the wiring module imports

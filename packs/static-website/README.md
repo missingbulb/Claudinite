@@ -26,7 +26,8 @@ What each holds:
 version scheme, the publish set, `.github/site.config`, the vendored workflows and actions, the
 setup a new site repo needs, and the one-time GitHub settings no automation can turn on. It is the
 contract the four checks above judge against, reached when a pipeline is being set up or debugged
-rather than carried by every session in the repo.
+rather than carried by every session in the repo. The rule that the pipeline files are managed
+copies of the pack's stubs lives there too, forced for the `static-site-*` workflows it concerns.
 
 ## Rules (`RULES.md`)
 
@@ -34,7 +35,6 @@ rather than carried by every session in the repo.
 |---|---|---|---|
 | The publish set names every published file | high | correctness | prose: 120 words + check (`sw/site-config`) |
 | The version moves with the change | high | correctness | prose: 133 words + checks (`sw/version-bumped`, `sw/version-scheme`) |
-| The pipeline files are managed stub copies | high | correctness | prose: 55 words + check (`sw/release-workflows`) |
 | The site is served from a subpath | high | correctness | prose: 64 words |
 | Freshness is a published manifest's job | high | correctness | prose: 174 words |
 | Nothing attests to its own freshness | high | correctness | prose: 183 words |

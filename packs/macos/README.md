@@ -13,14 +13,9 @@ mechanics for the CI that runs the lane).
 |---|---|---|---|
 | SwiftPM builds a binary, not a .app | high | correctness | prose: 49 words |
 | Commit an icon master, generate .icns | low | complexity | prose: 44 words |
-| A menu-bar-only app is LSUIElement: true | medium | correctness | prose: 23 words |
-| Pin LSMinimumSystemVersion to the package's platform | high | correctness | prose: 30 words + check (`minimum-system-version-agrees`) |
-| A protected resource needs a usage string | critical | correctness | prose: 73 words |
 | Notarization requires the Hardened Runtime | critical | legal | prose: 64 words |
-| TCC-gated capabilities need no entitlement | medium | correctness | prose: 41 words |
-| No App Sandbox on Developer ID | high | correctness | prose: 40 words |
 | SFSpeechRecognizer streams to Apple by default | critical | legal | prose: 70 words |
-| On-device opt-in needs the locale's model | high | correctness | prose: 74 words |
+| On-device opt-in needs the locale's model | high | correctness | prose: 72 words |
 | The unsigned path stays a working path | medium | complexity | prose: 57 words |
 | An ad-hoc signature cannot be notarized. | high | legal | prose: 40 words |
 | Notarize the distributed container, then staple it | high | legal | prose: 41 words |
@@ -28,7 +23,6 @@ mechanics for the CI that runs the lane).
 | Annotate which signing lane ran | medium | complexity | prose: 27 words |
 | A drag-install DMG is a staged folder | medium | complexity | prose: 55 words |
 | Write the Gatekeeper bypass users actually have | medium | correctness | prose: 51 words |
-| A notarized build needs no bypass | low | complexity | prose: 26 words |
 | Diagnostics belong inside the shipped app | medium | complexity | prose: 33 words |
 | command -v swift doesn't test the toolchain | medium | correctness | prose: 62 words |
 | NSApplication installs no signal handlers. | high | correctness | prose: 75 words + check (`signal-teardown-routing`) |
@@ -43,6 +37,19 @@ mechanics for the CI that runs the lane).
 | A duration claims a span you observed | high | correctness | prose: 119 words |
 | "Started" is not "working". | high | correctness | prose: 50 words |
 | Compile-green is no gate for device code | high | correctness | prose: 81 words |
+
+The bundle keys and the TCC/entitlement pair are skills the guard forces for the files they
+govern (`Info.plist`, `Package.swift`, `*.entitlements`): [`macos-app-bundle`](skills/macos-app-bundle/SKILL.md)
+and [`macos-entitlements-and-tcc`](skills/macos-entitlements-and-tcc/SKILL.md). A notarized build
+should need no Gatekeeper bypass at all — a README whose manual-bypass section is the one users
+actually follow is the sign the signing lane isn't running.
+
+## Skills
+
+| Skill | Trigger |
+|---|---|
+| [`macos-app-bundle`](skills/macos-app-bundle/SKILL.md) | any edit of `Info.plist` or `Package.swift` — held by the guard until loaded |
+| [`macos-entitlements-and-tcc`](skills/macos-entitlements-and-tcc/SKILL.md) | any edit of an `.entitlements` file or `Info.plist` — held by the guard until loaded |
 
 ## Checks
 
