@@ -80,6 +80,11 @@
   folders moved to judge whether the change made sense, and a wide diff for a small ask is the
   growth lesson review is for, not a defect. (1)
 
+- **Retiring a system by folding its function into another** — audit that the live generator
+  moved, not only its past output: a copied directory of old artifacts hides the generator's
+  absence, and a stateless recompute over inputs kept for a bounded window starts the series
+  shorter than the file it replaced.
+
 - **When verifying now is genuinely impossible** (an external release window, an upstream fix in
   flight, an effect that only appears once the change is deployed, converged or loaded by a later
   session) — the follow-up is a mechanism that comes to you, never a human's memory and never an
@@ -120,7 +125,9 @@
 - **Searching for a tool with `ToolSearch`** — a search that finds nothing is evidence about your
   query, not about the environment. Search the fully-qualified name (`select:mcp__<server>__<tool>`,
   copied off the deferred-tools listing) and try the tool before telling the owner a step is theirs;
-  the bare short name returns "no matching tools", which reads exactly like absence.
+  the bare short name returns "no matching tools", which reads exactly like absence. The one
+  exception is a server whose whole roster the deferred-tools listing already names: one miss there
+  is the answer, so read the roster rather than rephrase the query.
 
 - **Calling `Edit`** — the file must have been read *with the read tool*; `cat`/`grep`/`sed` don't
   count. The moment shell output tells you which file you're about to change, read that exact path;
@@ -146,6 +153,30 @@
   denial again on each one, where a `403` is at least per-site. And never file the gap as
   "re-verify next pass": no later agent pass can close a policy-level block either, so mark it as
   needing a human or an unblocked environment instead.
+
+- **Discovering a fix that belongs in a repo outside this session's write scope** — the missing
+  scope is the same policy boundary as a denied fetch: verify the fix in a scratch clone, then
+  attach it as a patch to an issue in a repo you can write to, rather than hunting a wider
+  credential or editing a read-only mirror in place.
+
+- **Reaching for `AskUserQuestion`** — it blocks on a human, so first check whether the answer is
+  already decided: by an instruction in context, by state one read away, or by the recommended
+  option being the status quo. Batch every open decision into one call, and for anything
+  answerable from the instruction, the tree or a reversible default, act and say what you assumed.
+
+- **Waiting on a background command across two separate Bash calls** — each call is a fresh
+  shell, so a bare `wait` in a later call has no job to wait on and returns at once, looking like
+  a satisfied wait; the same blind sleep hides in an `until` loop whose condition is already true
+  on its first check. Consume the launching call's own result, or `run_in_background: true`.
+
+- **Waiting on a background subagent or task with nothing left to do** — say so in plain text
+  with no tool call: a manufactured no-op (`sleep 1; echo waiting`) can come back with no visible
+  text, which the harness then interrupts to ask for a real response.
+
+- **Handing the owner a command block to paste into their terminal** — carry no trailing
+  `# comment` on any line: interactive zsh treats `#` as a comment only under
+  `interactive_comments`, off by default, so the pasted line fails. Put the explanation in the
+  prose around the block.
 
 - **Scheduling a wake-up with the harness** — pass `prompt`, the instruction the woken turn is to
   act on, on any call that isn't `stop: true`; a no-op flag and a stated `reason` do not exempt it,
@@ -278,6 +309,11 @@ For every new task:
   field: decide it explicitly and rewrite the disclosure before the code. Expect the claim in more
   than one place — grep the whole surface for the standing absolutes it touches ("no tracking",
   "no cookies", "no external assets") and reconcile every hit.
+
+- **Changing an observable behavior your own docs make a claim about** — not only privacy: when
+  a site deploys, a job's cadence, which targets are supported. Grep the doc surface for what the
+  change falsifies and correct it in the same commit, or the doc goes on describing behavior the
+  code no longer has.
 
 - **Driving an external runtime more than once in a session** — a headless browser, a device, a
   REPL, a deploy target — write one parameterised driver into the scratchpad, taking the target,

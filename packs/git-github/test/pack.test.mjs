@@ -193,6 +193,76 @@ jobs:
   } finally { cleanup(bad); cleanup(good); }
 });
 
+test('scheduled-failure-escalation: a workflow_run-triggered workflow must escalate its own failure too', () => {
+  const bad = makeRepo({ changed: { [WF]:
+`name: publish
+on:
+  workflow_run:
+    workflows: ['build']
+    types: [completed]
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+` } });
+  const good = makeRepo({ changed: { [WF]:
+`name: publish
+on:
+  workflow_run:
+    workflows: ['build']
+    types: [completed]
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+  report:
+    if: \${{ failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo escalate
+` } });
+  try {
+    assert.equal(run(scheduledEscalation, bad).length, 1);
+    assert.equal(run(scheduledEscalation, good).length, 0);
+  } finally { cleanup(bad); cleanup(good); }
+});
+
+test('scheduled-failure-escalation: a repository_dispatch-triggered workflow must escalate its own failure too', () => {
+  const bad = makeRepo({ changed: { [WF]:
+`name: dispatch
+on:
+  repository_dispatch:
+    types: [external-event]
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+` } });
+  const good = makeRepo({ changed: { [WF]:
+`name: dispatch
+on:
+  repository_dispatch:
+    types: [external-event]
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hi
+  report:
+    if: \${{ failure() }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo escalate
+` } });
+  try {
+    assert.equal(run(scheduledEscalation, bad).length, 1);
+    assert.equal(run(scheduledEscalation, good).length, 0);
+  } finally { cleanup(bad); cleanup(good); }
+});
+
 test('label-create-before-add: --add-label without an idempotent create', () => {
   const bad = makeRepo({ changed: { [WF]:
 `name: x

@@ -7,6 +7,7 @@ forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60904.5 | 2026-09-04 | `promote-to-canon` (#1671): `unattended-agents` sharpens the shared-checkout rule and adds three subagent-dispatch lessons (don't shadow a delegated read, `completed` means the turn ended, check every channel before declaring a lost subagent made no progress); `extract-from-conversations` notes a captured JSONL line can overflow a raw `Read`. |
 | 60904.4 | 2026-09-04 | `writing-tasks` stops naming the schedule board's issue and state — a task author needs that a decline files no item, not where the record lives. A rule says so for any pack's prose (#1696). |
 | 60904.2 | 2026-09-04 | `references-integrity` is declared as data — a two-pass check deriving the markers and check entries from lines (`extractValueSets`) and quantifying over them (`checkSetValues`) — in place of its rule module; `doc-pointers-resolve` (blocking, since 2026-09-04) holds every rule module's `doc:` pointer to a path the tree carries, and `routine-structure`'s own pointer is corrected by it (#1675). |
 | 60904.1 | 2026-09-04 | `writing-tasks` says the schedule board is one closed issue, not one open one (#1677). |

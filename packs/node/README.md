@@ -8,6 +8,9 @@ Active when the repo has a root `package.json`. The module-resolution and jsdom 
 |---|---|---|---|
 | A named CJS import can yield undefined | high | correctness | prose: 130 words |
 | Node detects ES-module syntax on its own | medium | correctness | prose: 79 words |
+| A scratchpad script can't reach node_modules | medium | correctness | prose: 81 words |
+| Check what Node version CI pins | medium | correctness | prose: 57 words |
+| btoa/atob operate on Latin1 code units | high | correctness | prose: 60 words |
 | body.innerText is null in jsdom. | medium | correctness | prose: 53 words |
 | jsdom parses <noscript> into live DOM | medium | correctness | prose: 52 words |
 

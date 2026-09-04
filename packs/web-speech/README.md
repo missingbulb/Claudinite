@@ -18,6 +18,7 @@ Some of these APIs are extension-only, and where a rule touches MV3 service-work
 | Biasing works only on-device | medium | correctness | prose: 71 words |
 | Map error names to a small taxonomy | medium | complexity | prose: 48 words |
 | A missed endpoint needs a pause watchdog | high | correctness | prose: 82 words |
+| OS-rendered TTS bypasses echo cancellation | high | correctness | prose: 58 words |
 | Mic permission is per-origin | high | correctness | prose: 93 words |
 | Prefer chrome.tts over speechSynthesis | medium | correctness | prose: 58 words |
 | Relay chrome.tts from a content script | high | correctness | prose: 66 words + skill check (`web-speech-no-window-api-in-service-worker`) |

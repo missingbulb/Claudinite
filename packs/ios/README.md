@@ -1,4 +1,13 @@
-# iOS
+# ios pack
 
-> **Stub.** No rules captured yet. Filled when a project first exercises this for real —
-> Claudinite canon is distilled from worked examples, not written from imagination. Candidate first material: ShoutsAndWhispers' iOS configuration at its Firebase release milestone.
+Active when the repo has `ios/Runner/Info.plist`. Durable, project-agnostic iOS app-development
+practices in `RULES.md`: Xcode project mechanics, Info.plist usage-description strings,
+entitlements, code signing and provisioning, and simulator/device workflows. Prose-only, filled
+from worked examples as a project first exercises this for real.
+
+## Rules (`RULES.md`)
+
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Verifying a Swift/iOS change from a sandbox | high | correctness | prose: 51 words |
+| Apple Developer Documentation pages are JS-rendered | medium | complexity | prose: 35 words |

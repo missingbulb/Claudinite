@@ -53,6 +53,11 @@
   themselves). Set the threshold **well above a natural mid-command thinking
   pause** — a tight window (~1.2 s) cuts real commands; a wider one (~1.8 s) keeps
   only the genuine missed-endpoint case.
+- **Rendering TTS outside the browser's own pipeline (`chrome.tts`, an OS speech API rather
+  than `speechSynthesis`) defeats the browser's echo cancellation**, which attenuates only its
+  own playout, so a live microphone hears the assistant's speech as the user's. There is no
+  capture-side fix: compare each new transcript against what was just spoken and discard a
+  match as self-echo.
 - **Mic permission is per-origin, and the grant belongs to whatever page the
   recognizer runs in.** In a content script the prompt reads as the *host site*
   asking and the grant persists for that origin. Surface it in a controlled moment:
