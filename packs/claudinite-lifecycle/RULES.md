@@ -15,6 +15,14 @@
   activates by being mounted, fingerprinted or present on disk, so a pack whose files you can see
   but whose id is undeclared contributes no prose, no checks, no skills and no tasks.
 
+- **Renaming or removing a pack's declaration outside the `adopt-pack` skill** — re-run the badge
+  row in the same change, since the update flow never re-derives it and the stale row surfaces
+  later as a blocking `reference-integrity` finding:
+
+  ```
+  node .claudinite/shared/engine/converge-wiring.mjs <owner/repo> --badges
+  ```
+
 - **Adding a pack** — run the `adopt-pack` skill, which declares it, asks its adoption questions,
   re-vendors and scaffolds. Never hand-copy a pack's content into the repo.
 
@@ -33,3 +41,16 @@
 - **Answering "why did the mount not update"** — read the member's own artifacts (its declaration,
   its stamp, the head sha's runs) before theorizing about a platform setting; propose a settings
   change as a conclusion, never as a diagnosis.
+
+- **A file a vendored module references but that is absent from `.claudinite/shared/`** — that is
+  evidence about the vendor set, not the canon: check the canon itself (a shallow clone, or a
+  canon-scoped session) before filing an issue claiming it was never shipped, and where you can't,
+  report only that the mount lacks the file.
+
+- **Pushing a change that touches `.github/workflows/`, `.claudinite-checks.json` or pack config**
+  — the world sweep runs in CI, not the Stop hook, so run it locally first rather than spend a
+  push → CI → fix round trip on a finding it reports in seconds:
+
+  ```
+  node .claudinite/shared/engine/checks/check_the_world.mjs
+  ```

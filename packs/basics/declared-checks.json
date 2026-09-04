@@ -69,6 +69,19 @@
     ]
   },
   {
+    "id": "no-conflict-markers",
+    "severity": "blocking",
+    "failureMessage": "a conflict marker left behind breaks the file, and in a rules or config file it silently changes what the repo instructs every later session and check to do",
+    "scanFiles": "/.*/",
+    "matchLines": [
+      {
+        "match": "/^(<{7}|\\|{7}|>{7}) \\S/",
+        "what": "a merge-conflict marker line survives here",
+        "fix": "finish the resolution, delete the marker line, then re-read the whole file before staging — never chain the grep that checks for markers with the command that stages"
+      }
+    ]
+  },
+  {
     "id": "rules-line-length",
     "severity": "advisory",
     "failureMessage": "a rule changed one word at a time still shows as a whole-paragraph diff when its bullet is one physical line",
