@@ -128,8 +128,9 @@ shrinks):
 The queue's open issues are exactly the work that needs doing or a human: a
 work item exists only where a precondition said yes, or where the scheduler
 could not ask and filed one for the executor to decide. What is NOT work — the
-asked-and-declined record — lives on one open issue per repo, the schedule
-board (§5), never as a sleeping work item. The scheduler run is a function of
+asked-and-declined record — lives on one CLOSED issue per repo, the schedule
+board (§5), never as a sleeping work item and never in the issue list a person
+reads. The scheduler run is a function of
 the clock, the issue list, the board, and the signals it collects at each
 anchor; §5 says why that last read came back after being deliberately deleted,
 and what bounds it.
@@ -416,7 +417,8 @@ forward, so the board's row is a watermark, never a verdict — and a no-go
 The roll is gone: no `Not-before` stamp, no open-blocked resting state, no
 executor session spent on standing down.
 
-**The schedule board.** One open issue per repo, titled with the exact prefix
+**The schedule board.** One issue per repo, kept CLOSED (#1677) and carrying
+the `claudinite-schedule` label, titled with the exact prefix
 `[claudinite-schedule]`, body a table with one row per scheduled task: task id,
 frequency, last-asked anchor, verdict, a short reason, and the next window
 (derived fresh from `anchors.mjs` at every write — display, never data).
@@ -446,10 +448,19 @@ Rules, each load-bearing:
   `issues` signal collector excludes `/^\[claudinite-(task|work|schedule)\]/`,
   so a board rewrite can never read as repo activity and wake tidy-issues on
   the queue's own churn (the F8 class).
+- **Kept closed** (#1677), because nobody acts on it and the issue list is
+  where work that is a person's own lives. Every write states the state and
+  the `claudinite-schedule` label, so a board filed before the rule and one
+  somebody reopened both converge on the next run that touches it — and a
+  board found open is rewritten even when no row moved, since a repo whose
+  rows are all settled would otherwise never reach a write. Finding it again
+  is two lookups: the open issues by title (a page or two, and the adoption
+  path), then the label-scoped listing over both states — never a page-walk
+  of a long-lived repo's closed history.
 
 **What this buys**, measured against the roll model it replaces: open issues
 are only work-in-flight or a human's inbox (the ~12 permanently-sleeping
-items go to at most 1 open board); issue-number burn drops below the roll
+items go to none at all — the board itself is closed, #1677); issue-number burn drops below the roll
 model's (a decline consumes no number at all); and a declined occurrence
 costs one scheduler-side evaluation instead of a whole dispatched executor
 session.
@@ -1553,7 +1564,7 @@ deployment coupling did not:
     unconditional creation and roll. The scheduler run evaluates each task's
     precondition when its anchor comes (the injectable `evaluate` seam; the
     executor still re-evaluates at pick) and files a work item only on a yes;
-    a no is a row on the one open `[claudinite-schedule]` issue per repo;
+    a no is a row on the one `[claudinite-schedule]` issue per repo;
     anything the scheduler cannot read fails open into an item the executor
     decides. The alternatives, and why each lost:
 

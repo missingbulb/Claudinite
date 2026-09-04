@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SCHEDULE_PREFIX, scheduleBoardTitle, isScheduleBoardTitle,
-  renderScheduleBoard, parseScheduleBoard, findScheduleBoard,
+  renderScheduleBoard, parseScheduleBoard, findScheduleBoard, SCHEDULE_BOARD_LABEL, writeScheduleBoard,
 } from '../../queue/schedule-board.mjs';
 import { isWorkItemTitle } from '../../queue/work-item.mjs';
 
@@ -67,4 +67,104 @@ test('findScheduleBoard: oldest open board wins; an unreadable list forbids the 
   assert.equal(none.issue, null);
   const broken = await findScheduleBoard(async () => ({ status: 500, json: null }), 'o/r');
   assert.equal(broken.readable, false, 'never write what could not be read');
+});
+
+// #1677 — the board is a machine artifact nobody acts on, so it is kept CLOSED
+// and out of the repo's issue list. Which makes finding it again the whole
+// problem: paging a long-lived repo's closed history every hour is not an
+// option, so the board carries a label and the closed lookup is scoped to it.
+test('findScheduleBoard: a closed board is found by its label, without paging the closed history', async () => {
+  const seen = [];
+  const gh = async (path) => {
+    seen.push(path);
+    if (path.includes('state=open')) return { status: 200, json: [{ number: 3, title: '[claudinite-work] p/t' }] };
+    if (path.includes(`labels=${SCHEDULE_BOARD_LABEL.name}`)) {
+      return { status: 200, json: [{ number: 7, title: scheduleBoardTitle(), body: 'b', state: 'closed', labels: [{ name: SCHEDULE_BOARD_LABEL.name }] }] };
+    }
+    return { status: 200, json: [] };
+  };
+  const found = await findScheduleBoard(gh, 'o/r');
+  assert.equal(found.readable, true);
+  assert.equal(found.issue.number, 7);
+  assert.equal(found.issue.state, 'closed');
+  assert.equal(found.issue.labeled, true, 'no relabel write is owed');
+  assert.ok(seen.every((p) => p.includes('state=open') || p.includes(`labels=${SCHEDULE_BOARD_LABEL.name}`)),
+    `the closed half is only ever read through the label: ${seen.join(' ')}`);
+});
+
+test('findScheduleBoard: an OPEN board is adopted — it predates the label, or someone reopened it', async () => {
+  const gh = async (path) => (path.includes('state=open')
+    ? { status: 200, json: [{ number: 4, title: scheduleBoardTitle(), body: 'a', state: 'open', labels: [] }] }
+    : { status: 200, json: [] });
+  const found = await findScheduleBoard(gh, 'o/r');
+  assert.equal(found.issue.number, 4);
+  assert.equal(found.issue.state, 'open', 'the write closes it');
+  assert.equal(found.issue.labeled, false, 'and labels it');
+});
+
+test('findScheduleBoard: an unreadable label listing forbids the write too', async () => {
+  const gh = async (path) => (path.includes('state=open')
+    ? { status: 200, json: [] } : { status: 500, json: null });
+  assert.equal((await findScheduleBoard(gh, 'o/r')).readable, false);
+});
+
+test("the board's own body says it is kept closed on purpose", () => {
+  const body = renderScheduleBoard(rows, { now: new Date('2026-08-14T10:00:00Z'), schedule: SCHEDULE });
+  assert.match(body, /closed/i);
+});
+
+// The write is where "kept closed" is actually enforced (#1677): the state and
+// the label are stated on EVERY write, which is what converges a board filed
+// before either rule and one somebody reopened.
+const recorder = (over = {}) => {
+  const calls = [];
+  const gh = async (path, opts = {}) => {
+    calls.push({ path, method: opts.method ?? 'GET', body: opts.body ?? null });
+    for (const [re, res] of Object.entries(over)) if (new RegExp(re).test(path)) return res;
+    if (opts.method === 'POST' && /\/issues$/.test(path)) return { status: 201, json: { number: 42 } };
+    return { status: 200, json: {} };
+  };
+  return { gh, calls };
+};
+
+test('the board is created CLOSED and labelled', async () => {
+  const { gh, calls } = recorder();
+  const line = await writeScheduleBoard(gh, 'o/r', { issue: null, rows, schedule: SCHEDULE, now: new Date('2026-08-14T10:00:00Z') });
+  const label = calls.find((c) => c.path === '/repos/o/r/labels');
+  assert.equal(label?.body?.name, SCHEDULE_BOARD_LABEL.name, 'the label is ensured before it is applied');
+  const create = calls.find((c) => c.method === 'POST' && c.path === '/repos/o/r/issues');
+  assert.deepEqual(create.body.labels, [SCHEDULE_BOARD_LABEL.name]);
+  assert.equal(create.body.title, scheduleBoardTitle());
+  const shut = calls.find((c) => c.method === 'PATCH' && c.path === '/repos/o/r/issues/42');
+  assert.deepEqual(shut.body, { state: 'closed', state_reason: 'completed' });
+  assert.match(line, /created closed as #42/);
+});
+
+test('an open, unlabelled board is rewritten, closed and labelled in one write', async () => {
+  const { gh, calls } = recorder();
+  const line = await writeScheduleBoard(gh, 'o/r', {
+    issue: { number: 4, body: 'old', state: 'open', labeled: false },
+    rows, schedule: SCHEDULE, now: new Date('2026-08-14T10:00:00Z'),
+  });
+  const patch = calls.find((c) => c.method === 'PATCH' && c.path === '/repos/o/r/issues/4');
+  assert.equal(patch.body.state, 'closed');
+  assert.equal(patch.body.state_reason, 'completed');
+  assert.match(patch.body.body, /p\/daily1/, 'the rows are written in the same call');
+  assert.deepEqual(calls.find((c) => c.path === '/repos/o/r/issues/4/labels')?.body,
+    { labels: [SCHEDULE_BOARD_LABEL.name] });
+  assert.match(line, /updated and closed/);
+});
+
+test('an already-labelled board is not relabelled, and a failed create is reported, not closed', async () => {
+  const { gh, calls } = recorder();
+  await writeScheduleBoard(gh, 'o/r', {
+    issue: { number: 7, body: '', state: 'closed', labeled: true },
+    rows, schedule: SCHEDULE, now: new Date('2026-08-14T10:00:00Z'),
+  });
+  assert.equal(calls.some((c) => c.path.endsWith('/issues/7/labels')), false);
+
+  const denied = recorder({ '/issues$': { status: 403, json: { message: 'no' } } });
+  const line = await writeScheduleBoard(denied.gh, 'o/r', { issue: null, rows, schedule: SCHEDULE });
+  assert.match(line, /^! could not create the schedule board: 403/);
+  assert.equal(denied.calls.some((c) => c.method === 'PATCH'), false, 'nothing to close');
 });

@@ -431,6 +431,22 @@ test('with no seam wired every occurrence fails open — the calendar-only behav
   assert.deepEqual(kinds(ops, 'board'), [], 'no seam, no board');
 });
 
+test('a board found OPEN owes a write even when no row moved — closing it (#1677)', async () => {
+  const noRow = { task: 'p/daily1', frequency: 'daily', lastAsked: '2026-08-14T04:00:00.000Z', verdict: 'no', reason: 'quiet' };
+  const args = {
+    tasks: [task('daily1', 'daily')], items: [seeded('daily1')],
+    now: '2026-08-14T10:00:00Z', schedule: SCHEDULE,
+    evaluate: async () => ({ run: false, reason: 'quiet' }),
+  };
+  const closed = await planSchedulerRun({ ...args, board: { rows: new Map([['p/daily1', noRow]]), open: false } });
+  assert.deepEqual(kinds(closed.ops, 'board'), [], 'a settled, already-closed board is left alone');
+
+  const open = await planSchedulerRun({ ...args, board: { rows: new Map([['p/daily1', noRow]]), open: true } });
+  const [write] = kinds(open.ops, 'board');
+  assert.ok(write, 'an open board is rewritten, which is what closes it');
+  assert.equal(write.rows.find((r) => r.task === 'p/daily1').reason, 'quiet', 'and its rows survive the rewrite');
+});
+
 test('an absent board reads as absent: evaluate, and rewrite from what this run knows', async () => {
   const { ops } = await planSchedulerRun({
     tasks: [task('daily1', 'daily')], items: [seeded('daily1')],
