@@ -88,8 +88,8 @@ test('findScheduleBoard: a closed board is found by its label, without paging th
   assert.equal(found.issue.number, 7);
   assert.equal(found.issue.state, 'closed');
   assert.equal(found.issue.labeled, true, 'no relabel write is owed');
-  assert.ok(!seen.some((p) => p.includes('state=closed') && !p.includes('labels=')),
-    'the closed half is only ever read through the label');
+  assert.ok(seen.every((p) => p.includes('state=open') || p.includes(`labels=${SCHEDULE_BOARD_LABEL.name}`)),
+    `the closed half is only ever read through the label: ${seen.join(' ')}`);
 });
 
 test('findScheduleBoard: an OPEN board is adopted — it predates the label, or someone reopened it', async () => {
