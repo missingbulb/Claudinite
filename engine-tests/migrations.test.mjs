@@ -628,11 +628,14 @@ test('applyPackRenames: converges a real member declaration, entry objects and a
     read: async (f) => (f === '.claudinite-settings.json' ? before : null),
     write: async (_f, c) => { written = c; },
   });
-  assert.equal(done.length, 3, `expected every rename this map carries, got ${JSON.stringify(done)}`);
+  assert.equal(done.length, 5, `expected every rename this map carries, got ${JSON.stringify(done)}`);
   const after = JSON.parse(written);
+  // `barriers` was absorbed into `basics`, which this declaration already carries,
+  // so its entry merges into that one — and the `via: ['basics']` it was pulled in
+  // by names the survivor itself, so it goes rather than leaving basics required by
+  // basics. What remains is the bare string a plainly-declared pack has.
   assert.deepEqual(after.packs, [
     'basics',
-    { id: 'barriers', via: ['basics'] },
     { id: 'git-github', via: ['basics'] },
     'claudinite-growth',
     'tidy-repo',
@@ -676,6 +679,57 @@ test('applyPackRenames: idempotent, and blind to everything outside the packs ar
 // it merges is the member's own writing: the config it answered at adoption, the
 // severities it chose, the acceptances standing against findings that would
 // otherwise come straight back.
+// The absorption the plain merge gets WRONG on its own. Two flat `config` objects
+// spread over each other, so the absorbed pack's parameters land under the
+// survivor's own key namespace — and an answer recorded against a question the
+// absorbed pack declared outlives that question. `absorbedPackConfig` is the record
+// saying which of its renames is an absorption, and what to do about both.
+test('absorbedPackConfig: the absorbed config nests under its own id and its stale answers go', async () => {
+  const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default;
+  const declaration = JSON.stringify({
+    packs: [
+      'claudinite-lifecycle',
+      'basics',
+      { id: 'barriers', config: { rules: [{ from: 'engine', to: 'packs/*' }] }, answers: { goals: 'keep core generic' } },
+    ],
+  }, null, 2);
+  // The record probes the mounted registry for its op before doing anything, so the
+  // io has to answer that read as a capable mount does.
+  const read = async (f) => (f.endsWith('migrations/registry.mjs') ? 'absorbedPackConfig' : declaration);
+  let written = null;
+  const done = await applyPackRenames(rec, { read, write: async (_f, c) => { written = c; } });
+  assert.equal(done.length, 2, `expected the rename and the merge, got ${JSON.stringify(done)}`);
+  assert.deepEqual(JSON.parse(written).packs, [
+    'claudinite-lifecycle',
+    { id: 'basics', config: { barriers: { rules: [{ from: 'engine', to: 'packs/*' }] } } },
+  ], 'the graph reaches the key the absorbed check reads, and the answer to the retired question is gone');
+});
+
+// An answer the record does NOT name is a live answer to a question the surviving
+// pack still asks — dropping every answer would lose it.
+test('absorbedPackConfig: only the named answers are dropped', async () => {
+  const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default;
+  let written = null;
+  await applyPackRenames(rec, {
+    read: async (f) => (f.endsWith('migrations/registry.mjs') ? 'absorbedPackConfig'
+      : JSON.stringify({ packs: [{ id: 'barriers', answers: { goals: 'gone', keep: 'stays' } }] })),
+    write: async (_f, c) => { written = c; },
+  });
+  assert.deepEqual(JSON.parse(written).packs, [{ id: 'basics', answers: { keep: 'stays' } }]);
+});
+
+// The record is inert until the member's own mount carries the op, so a stale
+// engine cannot half-apply it — rename the id and leave the graph flat, where the
+// absorbed check does not look.
+test('the barriers-absorbed record stands down on a mount whose engine lacks the op', async () => {
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default;
+  assert.equal(await rec.appliesTo(async () => 'export function applyPackRenames() {}\n'), false);
+  assert.equal(await rec.appliesTo(async () => null), false);
+  assert.equal(await rec.appliesTo(async (f) => (f.startsWith('.claudinite/shared/') ? 'absorbedPackConfig' : null)), true);
+});
+
 test('applyPackRenames: an absorbed pack merges into the entry that already exists', async () => {
   const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
   const rec = (await import('../packs/chrome-extension/migrations/2026-08-19-chrome-release-collapse/migration.mjs')).default;

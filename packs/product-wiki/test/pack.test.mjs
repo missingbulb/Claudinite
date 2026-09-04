@@ -75,7 +75,6 @@ test('pack manifest: marker, prose, the coded rule plus the seven declared check
   const ids = [layout, isolation, pageSections, keyInsights, growthLog, sources, freshness].map((r) => r.id);
   assert.equal(new Set(ids).size, 7);
   assert.ok(ids.every((id) => id.startsWith('product-wiki-')));
-  assert.deepEqual(pack.requires, ['barriers']);
   // The page-editing rules are the writing-wiki-pages skill: it scopes itself to the
   // tree, and the weekly worker loads it by name — two artifacts that could drift.
   assert.ok(skillMetadata(join(here, '..', 'skills', 'writing-wiki-pages')).forceLoadPaths.length, 'the skill forces itself for files');

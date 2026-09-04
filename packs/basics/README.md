@@ -87,3 +87,13 @@ The working-discipline rules with a deterministic signature. The world rules rea
 | `runnable-doc-commands` | high | correctness | check: blocking |
 | `task-lifecycle` | medium | complexity | check: blocking |
 | `squash-merge-history` | high | correctness | check: blocking |
+| `barrier` | high | complexity | check: blocking |
+
+`barrier` is the one check a project has to configure before it does anything: it enforces a
+**directed folder-access graph** the repo declares on this pack's entry as `config.barriers.rules`,
+and a repo that declares none is silent rather than failing. [barriers.md](barriers.md) is the whole
+vocabulary — the rule forms, how a reference is resolved against the tree, the exception kinds, and
+how another pack ships a fixed barrier of its own as manifest data. It arrived here when the
+`barriers` pack was absorbed (#1681): no project ever chose that pack, it rode in on the baseline's
+`requires` closure, and a separate identity for a mechanism everyone already has bought only a
+second catalog row and an adoption question nobody had asked for.

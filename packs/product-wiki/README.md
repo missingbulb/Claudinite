@@ -127,7 +127,7 @@ What this wiki tracks, in a sentence or two.
 ## Excusing a deliberate crossing (accept, not except)
 
 `product-wiki-isolation` is a **fixed** barrier — its edges are pack code, so a
-consumer cannot add the barriers pack's per-rule `except` entries to it. Each
+consumer cannot add the barrier mechanism's per-rule `except` entries to it. Each
 crossing finding's own fix text says so and names the lever that works: a
 top-level (or pack-entry) **accept**:
 
@@ -147,7 +147,7 @@ staleness-audited — prune one by hand when the crossing it excused is gone.
 Declaring the pack before scaffolding `product-wiki/` yields two `layout` findings
 plus the barrier's fail-closed empty-glob finding — three blocking arrows all
 pointing at the same two-file scaffold. That is deliberate: a declaration is a
-statement of intent, unlike the barriers pack's unconfigured no-op (where
+statement of intent, unlike an unconfigured barrier graph's no-op (where
 config absence means "nothing declared").
 
 ## Known gaps

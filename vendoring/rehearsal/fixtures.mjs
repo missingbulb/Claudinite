@@ -1025,9 +1025,7 @@ module.exports = { issue, check };
     why: 'a second canon: a member declaring `claudinite-canon-curation` over a `packs/` shelf of its own, proving the curation pack\'s blocking rules are silent on a conforming shelf that is not this repo',
     files: {
       'README.md': '# fixture-canon-home\n\nA rehearsal fixture.\n',
-      // `barriers` is the curation pack's `requires`; declaring it explicitly is what
-      // a real canon's file looks like after adoption resolves the closure.
-      '.claudinite-settings.json': checks(['basics', 'barriers', 'claudinite-canon-curation']),
+      '.claudinite-settings.json': checks(['basics', 'claudinite-canon-curation']),
       // The shelf. A member's own `packs/` is NOT discovered as canon content (the
       // engine reads a canon's packs from the mount root), so this pack never
       // activates here — it is published content, and what the curation rules

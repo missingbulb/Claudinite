@@ -31,7 +31,7 @@ test('loadConfig: a pack entry object normalizes — id into packs, config into 
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: [
       'basics',
-      { id: 'barriers',
+      { id: 'product-wiki',
         config: { rules: [{ from: 'a', to: 'b' }] },
         rules: { 'file-placement': 'advisory' },
         accept: [{ rule: 'reference-integrity', path: 'x.md', reason: 'why' }] },
@@ -41,11 +41,11 @@ test('loadConfig: a pack entry object normalizes — id into packs, config into 
   try {
     const cfg = loadConfig(root);
     assert.deepEqual(cfg.errors, []);
-    assert.deepEqual(cfg.packs, ['basics', 'barriers', 'executable-requirements']);
-    assert.deepEqual(cfg.packConfig, { barriers: { rules: [{ from: 'a', to: 'b' }] } });
+    assert.deepEqual(cfg.packs, ['basics', 'product-wiki', 'executable-requirements']);
+    assert.deepEqual(cfg.packConfig, { 'product-wiki': { rules: [{ from: 'a', to: 'b' }] } });
     assert.deepEqual(cfg.rules, { 'file-placement': 'advisory' });
     // The entry-sourced acceptance carries its provenance: the pack that motivated it.
-    assert.deepEqual(cfg.accept, [{ rule: 'reference-integrity', path: 'x.md', reason: 'why', pack: 'barriers' }]);
+    assert.deepEqual(cfg.accept, [{ rule: 'reference-integrity', path: 'x.md', reason: 'why', pack: 'product-wiki' }]);
   } finally { cleanup(root); }
 });
 
@@ -71,28 +71,28 @@ test('loadConfig: a namespaced local-pack declaration normalizes to the bare id 
 
 test('loadConfig: entry config overlays the legacy top-level packConfig, which stays readable', () => {
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['node', { id: 'barriers', config: { rules: [] } }],
-    packConfig: { node: { dirs: ['fn'] }, barriers: { rules: [{ from: 'x', to: 'y' }] } },
+    packs: ['node', { id: 'product-wiki', config: { rules: [] } }],
+    packConfig: { node: { dirs: ['fn'] }, 'product-wiki': { rules: [{ from: 'x', to: 'y' }] } },
   }) } });
   try {
     const cfg = loadConfig(root);
     assert.deepEqual(cfg.errors, []);
     assert.deepEqual(cfg.packConfig.node, { dirs: ['fn'] }); // legacy still read
-    assert.deepEqual(cfg.packConfig.barriers, { rules: [] }); // the entry wins
+    assert.deepEqual(cfg.packConfig['product-wiki'], { rules: [] }); // the entry wins
   } finally { cleanup(root); }
 });
 
 test('loadConfig: pack-entry answers — verbatim strings kept, wrong shapes a settings error', () => {
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: [
-      { id: 'barriers', answers: { goals: 'keep core off pack names' } },
+      { id: 'product-wiki', answers: { goals: 'keep core off pack names' } },
       { id: 'node', answers: ['nope'] },
       { id: 'html', answers: { q: 7 } },
     ],
   }) } });
   try {
     const cfg = loadConfig(root);
-    assert.deepEqual(cfg.packEntries.find((e) => e.id === 'barriers').answers, { goals: 'keep core off pack names' });
+    assert.deepEqual(cfg.packEntries.find((e) => e.id === 'product-wiki').answers, { goals: 'keep core off pack names' });
     assert.equal(cfg.errors.length, 2);
     assert.match(cfg.errors[0].what, /"answers" on the "node" pack entry must be/);
     assert.match(cfg.errors[1].what, /"answers" on the "html" pack entry must be/);

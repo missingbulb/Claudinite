@@ -20,7 +20,7 @@
 // (claudinite-growth). The tasks are discovered structurally from this pack's own
 // `tasks/<name>/task.json` (packs/claudinite-tasks/discover.mjs), so none is declared here.
 export default {
-  version: '60904.1',
+  version: '60904.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'curating a canon\'s packs/ shelf — promoting member lessons, sweeping members for unhomed technologies, authoring and policing its packs',
@@ -36,8 +36,10 @@ export default {
   // pack's declared-checks.json, run by the engine's reference-scanning (the
   // same shape basics uses for claudinite-isolation). Its `allow` list IS the
   // engine surface — the one always-vendored engine/ root; a new surface root
-  // would join it there, loudly (the barrier fails closed, never widens).
-  requires: ['barriers'],
+  // would join it there, loudly (the barrier fails closed, never widens). A
+  // declared check is run by the engine, so nothing else has to be declared for
+  // it (#1681 dropped the `barriers` requirement, vestigial since the wall
+  // stopped being code).
   // The prose-narration rule polices pack prose CONTENT (not segregation), so
   // it stays a code check, bundled here.
   // Delivery, not content: a pack's directory ships on its version number, so

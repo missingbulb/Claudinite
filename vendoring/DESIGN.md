@@ -114,14 +114,12 @@ applied to the whole corpus. The **nightly maintenance is the only regular write
    vendored engine), and anything under
    `.claudinite/` itself (`local/packs/` included). Product code that wants a canon helper
    inlines it — depending on canon internals would turn every canon refactor into a breaking
-   migration for code the canon doesn't own. Enforced as a **fixed barrier the baseline pack
-   contributes to the barriers mechanism pack** (manifest data under `contributes`; the baseline
-   `requires` barriers, so the mechanism rides everywhere the baseline is declared) — the
-   declaration-and-configuration composition pattern packs use with each other, never a
-   cross-pack code import (the canon-side `pack-independence` barrier) — universal via the
-   baseline, with no per-project barriers config to maintain; its `gateDir` keeps it inert
-   until the vendored mount exists, so it fires neither in the canon repo nor in pre-flip
-   consumers.
+   migration for code the canon doesn't own. Enforced as a **fixed barrier declared as data**
+   (a `forbidReferences` entry in the Claudinite-lifecycle pack's `declared-checks.json`, run by
+   the engine's reference-scanning) rather than as bespoke checking code — universal via the
+   baseline's `requires` closure, with no per-project barrier config to maintain; its gate keeps
+   it inert until the vendored mount exists, so it fires neither in the canon repo nor in
+   pre-flip consumers.
 9. **Migration notes v2.** A canon change that consumers must be amended for ships as a dated
    record (the `<flow>/migrations/<date>-<slug>/` shape): mechanical ops where code can
    express them, plus a **brief agentic note** for what it can't (chiefly adapting

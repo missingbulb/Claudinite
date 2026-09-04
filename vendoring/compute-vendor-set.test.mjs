@@ -370,17 +370,20 @@ test('an import resolving to no canon file at all is an error (the tree itself i
 });
 
 // Regression for the nightly failure that motivated the guard (#349): the
-// baseline and product-wiki compose the barriers mechanism, and their vendor
-// sets must carry it — now via the requires closure — and be import-closed.
-test('real corpus: the composing packs\' vendor sets carry the barriers pack and are import-closed', async () => {
+// barrier mechanism lives in the baseline pack, and every vendor set that can
+// run a barrier must carry it — via the requires closure — and be import-closed.
+test('real corpus: the barrier mechanism vendors with the baseline and is import-closed', async () => {
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
-  for (const pack of ['basics', 'product-wiki']) {
-    const { files, errors } = await computeVendorSet([pack]);
-    assert.deepEqual(errors, [], `${pack}: the vendor set must be coherent`);
-    for (const carried of ['packs/barriers/pack.mjs', 'engine/checks/helpers/reference-scanning.mjs', 'packs/barriers/contributed.mjs']) {
-      assert.ok(files.includes(carried), `${pack} must vendor ${carried}`);
-    }
+  const { files, errors } = await computeVendorSet(['basics']);
+  assert.deepEqual(errors, [], 'basics: the vendor set must be coherent');
+  for (const carried of ['packs/basics/pack.mjs', 'packs/basics/barriers.mjs',
+    'packs/basics/worldRules/barrier.mjs', 'engine/checks/helpers/reference-scanning.mjs']) {
+    assert.ok(files.includes(carried), `basics must vendor ${carried}`);
   }
+  // product-wiki's own wall is a declared check the engine runs, so it needs no
+  // pack beyond itself — what it must still be is coherent.
+  assert.deepEqual((await computeVendorSet(['product-wiki'])).errors, [],
+    'product-wiki: the vendor set must be coherent');
 });
 
 test('fetching is version-gated: an up-to-date repo carries no records, a lagging one carries its gap', async () => {
