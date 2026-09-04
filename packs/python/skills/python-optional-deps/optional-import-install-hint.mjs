@@ -77,7 +77,7 @@ const rule = {
   id: 'python-optional-import-install-hint',
   severity: 'advisory',
   description: 'A guarded optional import that re-raises does so with a `pip install` hint naming the extra, not a bare ImportError',
-  doc: 'skills/python-optional-deps/SKILL.md',
+  doc: 'packs/python/skills/python-optional-deps/SKILL.md',
   why: 'a `try/except ImportError` guard that re-raises without an install hint leaves the user a bare ModuleNotFoundError from deep inside a backend instead of the exact `pip install pkg[extra]` that fixes it',
 
   run(ctx) {

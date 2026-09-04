@@ -13,7 +13,7 @@ const rule = {
   id: 'google-client-id-single-origin',
   severity: 'advisory',
   description: 'A change does not add a copy of a Google OAuth client-id literal that already lives in another file',
-  doc: 'skills/google-id-token-validation/SKILL.md',
+  doc: 'packs/google-identity/skills/google-id-token-validation/SKILL.md',
   scope: 'work',
   why: 'the client requests the token for this id and the validator expects it as audience — one value; independently-edited copies drift, and a drifted pair rejects every well-formed token with an opaque 401',
 

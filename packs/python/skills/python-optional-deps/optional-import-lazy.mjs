@@ -43,7 +43,7 @@ const rule = {
   id: 'python-optional-import-top-level',
   severity: 'blocking',
   description: 'A declared-optional dependency is imported lazily (inside the code that needs it), never at module top level',
-  doc: 'skills/python-optional-deps/SKILL.md',
+  doc: 'packs/python/skills/python-optional-deps/SKILL.md',
   why: 'a top-level import runs at `import <pkg>` time, so a package the project itself declared optional drags its heavy/native stack into the dependency-free core and breaks every path for anyone who installed without that extra',
 
   run(ctx) {
