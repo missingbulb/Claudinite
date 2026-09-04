@@ -5,7 +5,7 @@ import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { patternRule, loadDeclaredChecks, unplacedSpecKeys } from '../engine/checks/helpers/pattern-rules.mjs';
+import { patternRule, loadDeclaredChecks, unplacedSpecKeys, guardFindings } from '../engine/checks/helpers/pattern-rules.mjs';
 import { runRule } from '../engine/checks/helpers/work.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 
@@ -1971,4 +1971,60 @@ test('work keys: the authoring errors', () => {
   assert.throws(() => patternRule({ ...workMeta('fx-w3'), requireCoChange: [{ whenChangedFileMatches: /a/, whenAddedLineMatches: { inFilesMatching: /a/, match: /b/ }, requireChangedFileMatching: /c/, what: 'w', fix: 'f' }] }), /exactly one of/);
   assert.throws(() => patternRule({ ...workMeta('fx-w4'), requireCoChange: [{ whenChangedFileMatches: /a/, what: 'w', fix: 'f' }] }), /requireChangedFileMatching/);
   assert.throws(() => patternRule({ ...workMeta('fx-w5'), whenReplyClassIncludes: 'bogus', flagUntrackedFilesMatching: [{ match: /x/, what: 'w', fix: 'f' }] }), /comment classes/);
+});
+
+// --- action scope: guards on tool calls ---
+
+test('guardToolCalls: each condition and unless clause, against one call', () => {
+  const rule = patternRule({
+    ...meta('fx-guards'), scope: 'action',
+    guardToolCalls: [
+      { tool: 'Bash', inputField: 'command', match: /\bgit\s+pull\b/, unlessMatches: /--ff-only/, what: 'pull: {match}', fix: 'f' },
+      { tool: 'mcp__github__create_pull_request', inputField: 'body', requireMatch: /^Closes #\d+$/m, what: 'no closing line', fix: 'f' },
+      { tool: /^mcp__github__(list|search)_/, inputFieldAbsent: ['fields'], what: '{tool} without fields', fix: 'f' },
+      { tool: 'Grep', inputMatches: /"-A":/, unlessInputMatches: /"output_mode":"content"/, what: 'context flag', fix: 'f' },
+      { tool: 'AskUserQuestion', atMostPerSession: 1, what: 'a second question', fix: 'f' },
+    ],
+  });
+  const call = (name, input) => ({ name, input });
+  const whats = (c, prior = []) => guardFindings(rule, c, prior).map((f) => f.what);
+  assert.deepEqual(whats(call('Bash', { command: 'git pull origin main' })), ['pull: git pull']);
+  assert.deepEqual(whats(call('Bash', { command: 'git pull --ff-only' })), []);
+  assert.deepEqual(whats(call('Bash', { command: 'git fetch' })), []);
+  assert.deepEqual(whats(call('mcp__github__create_pull_request', { body: 'Refs #1\n' })), ['no closing line']);
+  assert.deepEqual(whats(call('mcp__github__create_pull_request', { body: 'x\nCloses #12\n' })), []);
+  assert.deepEqual(whats(call('mcp__github__list_issues', { owner: 'o' })), ['mcp__github__list_issues without fields']);
+  assert.deepEqual(whats(call('mcp__github__list_issues', { fields: ['number'] })), []);
+  assert.deepEqual(whats(call('Grep', { pattern: 'x', '-A': 2 })), ['context flag']);
+  assert.deepEqual(whats(call('Grep', { pattern: 'x', '-A': 2, output_mode: 'content' })), []);
+  assert.deepEqual(whats(call('AskUserQuestion', { questions: [] })), []);
+  assert.deepEqual(whats(call('AskUserQuestion', { questions: [] }), [call('AskUserQuestion', { questions: [] })]), ['a second question']);
+  assert.deepEqual(whats(call('Read', { file_path: 'x' })), []);
+});
+
+test('an action rule at Stop judges every recorded call, anchored by tool and ordinal', () => {
+  const rule = patternRule({
+    ...meta('fx-guard-backstop'), scope: 'action',
+    guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: /sleep \d+/, what: '{match}', fix: 'f' }],
+  });
+  const session = makeTranscript([
+    { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }] } },
+    { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'sleep 5' } }, { type: 'tool_use', name: 'Read', input: { file_path: 'a' } }] } },
+    { type: 'assistant', isSidechain: true, message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'sleep 9' } }] } },
+  ]);
+  const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
+  try {
+    const findings = runRule(rule, buildContext({ root, mode: 'all', transcriptPath: session.path }));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]), [['(session) Bash call #2', 'sleep 5'], ['(session) Bash call #3', 'sleep 9']]);
+    assert.deepEqual(runRule(rule, ctxOf(root)), []);
+  } finally { cleanup(root); session.cleanup(); }
+});
+
+test('action scope: the authoring errors', () => {
+  assert.throws(() => patternRule({ ...meta('fx-a1'), guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: /x/, what: 'w', fix: 'f' }] }), /scope: "action"/);
+  assert.throws(() => patternRule({ ...meta('fx-a2'), scope: 'action' }), /asserts nothing/);
+  assert.throws(() => patternRule({ ...meta('fx-a3'), scope: 'action', guardToolCalls: [{ inputField: 'command', match: /x/, what: 'w', fix: 'f' }] }), /needs "tool"/);
+  assert.throws(() => patternRule({ ...meta('fx-a4'), scope: 'action', guardToolCalls: [{ tool: 'Bash', what: 'w', fix: 'f' }] }), /names a condition/);
+  assert.throws(() => patternRule({ ...meta('fx-a5'), scope: 'action', guardToolCalls: [{ tool: 'Bash', match: /x/, what: 'w', fix: 'f' }] }), /name the field/);
+  assert.throws(() => patternRule({ ...meta('fx-a6'), scope: 'action', guardToolCalls: [{ tool: 'Bash', atMostPerSession: 0, what: 'w', fix: 'f' }] }), /positive whole number/);
 });

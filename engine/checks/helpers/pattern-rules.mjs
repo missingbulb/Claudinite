@@ -367,6 +367,30 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 //                      nothing unless some reply declared one of the classes;
 //                      no transcript, nothing asserted
 //
+// The ACTION assertion — declarable only under `scope: "action"`: a rule about
+// a TOOL CALL, evaluated twice from one declaration. The PreToolUse hook
+// (engine/hooks/pretooluse-command.mjs) judges the call about to run — a
+// blocking finding denies it and hands the agent the text, an advisory one lets
+// it run and injects the text as context, so the bias is heard at the moment it
+// applies — and check_the_work judges every call the session's transcript
+// records, one finding per offending call: the backstop for a hook that never
+// fired, and the count the usage fold reads.
+//   guardToolCalls     [{ tool, inputField, match, requireMatch, unlessMatches,
+//                         inputMatches, unlessInputMatches, inputFieldAbsent,
+//                         atMostPerSession, what, fix }]
+//                      `tool` is the tool's exact name or a regex over names
+//                      (/^mcp__github__(list|search)_/). The entry fires on a
+//                      call to it when every condition it declares holds and
+//                      no unless-condition does: `match` hits the value at
+//                      `inputField` (a dot path into the tool's input, read as
+//                      text) / `requireMatch` MISSES it / `inputMatches` hits
+//                      the whole input serialized as JSON / some field named
+//                      in `inputFieldAbsent` is missing / this is the call past
+//                      `atMostPerSession` earlier calls of the tool in this
+//                      session with the same `inputField` value (the same
+//                      whole input, without one). {tool}, {field} (the field's
+//                      text) and {match} interpolate
+//
 // The reference-barrier assertion — a directed folder-access graph enforced by
 // the reference-scanning engine (helpers/reference-scanning.mjs, which owns the
 // edge vocabulary's semantics):
@@ -455,7 +479,7 @@ const SPEC_KEYS = {
     'checkSetValues', 'checkSetPairs', 'requireIdenticalFiles',
     'checkBranchCommits', 'forbidIntroducedMergeCommits', 'forbidAddedValueInArray',
     'forbidAddedLinesMatching', 'forbidRemovedLinesMatching', 'requireCoChange', 'flagUntrackedFilesMatching',
-    'whenReplyClassIncludes',
+    'whenReplyClassIncludes', 'guardToolCalls',
     'listedInFile', 'coveredByGlobLine', 'checkParsedFile', 'equalParsedValues',
     'forEachParsedEntry', 'checkKeyValueFile', 'checkSections'],
   checkParsedFiles: ['file', 'filesMatching', 'whereFileContains', 'everyScannedFile',
@@ -517,6 +541,8 @@ const SPEC_KEYS = {
   requireCoChange: ['whenChangedFileMatches', 'whenAddedLineMatches', 'requireChangedFileMatching', ...MSG],
   whenAddedLineMatches: ['inFilesMatching', 'match'],
   flagUntrackedFilesMatching: ['match', ...MSG],
+  guardToolCalls: ['tool', 'inputField', 'match', 'requireMatch', 'unlessMatches', 'inputMatches',
+    'unlessInputMatches', 'inputFieldAbsent', 'atMostPerSession', ...MSG],
   listedInFile: ['eachTrackedPathMatching', 'listFile', 'asText', ...MSG],
   coveredByGlobLine: ['eachPathMatching', 'includeVendored', 'globFile', 'globLineMatching', ...MSG],
   checkParsedFile: ['file', 'whenFieldPresent', 'requireField', 'forbidField', ...MSG],
@@ -664,12 +690,36 @@ const WORK_ASSERTIONS = ['checkBranchCommits', 'forbidIntroducedMergeCommits', '
 const REPLY_CLASSES = ['correction', 'feature', 'process-change', 'other'];
 
 function validateEntryShapes(spec, where) {
-  if (spec.scope !== undefined && spec.scope !== 'work') {
-    throw new Error(`${where}: "scope" takes "work" (judging the change) or nothing at all (the default, judging the repo), not ${JSON.stringify(spec.scope)}`);
+  if (spec.scope !== undefined && spec.scope !== 'work' && spec.scope !== 'action') {
+    throw new Error(`${where}: "scope" takes "work" (judging the change), "action" (judging a tool call) or nothing at all (the default, judging the repo), not ${JSON.stringify(spec.scope)}`);
   }
   for (const key of WORK_ASSERTIONS) {
     if (spec[key] !== undefined && spec.scope !== 'work') {
       throw new Error(`${where}: "${key}" reads the change, so its declaration needs scope: "work"`);
+    }
+  }
+  if (spec.guardToolCalls !== undefined && spec.scope !== 'action') {
+    throw new Error(`${where}: "guardToolCalls" judges a tool call, so its declaration needs scope: "action"`);
+  }
+  if (spec.scope === 'action' && !(spec.guardToolCalls ?? []).length) {
+    throw new Error(`${where}: an action declaration asserts nothing — add "guardToolCalls"`);
+  }
+  for (const a of spec.guardToolCalls ?? []) {
+    if (!(typeof a.tool === 'string' && a.tool.trim()) && !(a.tool instanceof RegExp)) {
+      throw new Error(`${where}: a guardToolCalls entry needs "tool" — the tool's exact name, or a regex over names`);
+    }
+    const conditions = ['match', 'requireMatch', 'inputMatches', 'inputFieldAbsent', 'atMostPerSession'].filter((k) => a[k] !== undefined);
+    if (!conditions.length) {
+      throw new Error(`${where}: a guardToolCalls entry names a condition — "match", "requireMatch", "inputMatches", "inputFieldAbsent" or "atMostPerSession"`);
+    }
+    if ((a.match !== undefined || a.requireMatch !== undefined || a.unlessMatches !== undefined) && typeof a.inputField !== 'string') {
+      throw new Error(`${where}: "match", "requireMatch" and "unlessMatches" read the value at "inputField" — name the field`);
+    }
+    if (a.inputFieldAbsent !== undefined && !(Array.isArray(a.inputFieldAbsent) && a.inputFieldAbsent.length && a.inputFieldAbsent.every((k) => typeof k === 'string'))) {
+      throw new Error(`${where}: "inputFieldAbsent" is a non-empty list of field names`);
+    }
+    if (a.atMostPerSession !== undefined && !(Number.isInteger(a.atMostPerSession) && a.atMostPerSession > 0)) {
+      throw new Error(`${where}: "atMostPerSession" is a positive whole number of calls`);
     }
   }
   for (const key of ['forbidAddedLinesMatching', 'forbidRemovedLinesMatching']) {
@@ -1585,6 +1635,56 @@ function workFindings(rule, work) {
   return out;
 }
 
+// One tool call judged against an action rule's guards: the findings for
+// `call` ({ name, input }), anchored at `at`, with `priorCalls` (the session's
+// earlier calls, in order) for the atMostPerSession count. The PreToolUse hook
+// calls this for the call about to run; the transcript backstop for each
+// recorded one.
+export function guardFindings(rule, call, priorCalls = [], at = '(tool call)') {
+  const out = [];
+  const input = call.input ?? {};
+  const json = JSON.stringify(input);
+  const namesTool = (a, name) => (a.tool instanceof RegExp ? a.tool.test(name) : a.tool === name);
+  const textAt = (obj, field) => {
+    const v = fieldAt(obj ?? {}, field);
+    return v === undefined || v === null ? '' : typeof v === 'string' ? v : JSON.stringify(v);
+  };
+  for (const a of rule.spec.guardToolCalls ?? []) {
+    if (!namesTool(a, call.name)) continue;
+    const field = a.inputField ? textAt(input, a.inputField) : '';
+    let m = null;
+    if (a.match !== undefined) { m = field.match(a.match); if (!m) continue; }
+    if (a.requireMatch !== undefined && a.requireMatch.test(field)) continue;
+    if (a.inputMatches !== undefined) { const mm = json.match(a.inputMatches); if (!mm) continue; m ??= mm; }
+    if (a.inputFieldAbsent !== undefined && !a.inputFieldAbsent.some((k) => fieldAt(input, k) === undefined)) continue;
+    if (a.atMostPerSession !== undefined) {
+      const key = a.inputField ? field : json;
+      const earlier = priorCalls.filter((c) => namesTool(a, c.name) &&
+        (a.inputField ? textAt(c.input, a.inputField) : JSON.stringify(c.input ?? {})) === key).length;
+      if (earlier < a.atMostPerSession) continue;
+    }
+    if (a.unlessMatches !== undefined && a.unlessMatches.test(field)) continue;
+    if (a.unlessInputMatches !== undefined && a.unlessInputMatches.test(json)) continue;
+    const vars = { ...(m?.groups ?? {}), tool: call.name, field, match: m ? m[0] : '' };
+    out.push(finding(rule, { file: at, what: fill(a.what, vars), fix: fill(a.fix, vars) }));
+  }
+  return out;
+}
+
+// The Stop-time backstop: every call the transcript records, judged in order,
+// each anchored by its tool and ordinal so a finding names the call it means.
+function actionFindings(rule, work) {
+  const calls = work.toolCalls();
+  const counts = new Map();
+  const out = [];
+  calls.forEach((call, i) => {
+    const n = (counts.get(call.name) ?? 0) + 1;
+    counts.set(call.name, n);
+    out.push(...guardFindings(rule, call, calls.slice(0, i), `(session) ${call.name} call #${n}`));
+  });
+  return out;
+}
+
 // The rule-level reply-class gate: open when some reply in the session declared
 // one of the named classes. No transcript, no declared class — closed.
 function replyGateOpen(work, classes) {
@@ -1850,7 +1950,8 @@ function results(ctx) {
 // Where a declaration says RegExp: keys reading `/body/flags` strings. The two
 // sets differ in what a NON-regex string means — a path at PATH_OR_PATTERN_KEYS
 // (scanFiles: "README.md" is read directly), an authoring error anywhere else.
-const PATH_OR_PATTERN_KEYS = new Set(['scanFiles', 'excludeFiles']);
+// `tool` reads a non-regex string as an exact tool name, the way scanFiles reads one as a path.
+const PATH_OR_PATTERN_KEYS = new Set(['scanFiles', 'excludeFiles', 'tool']);
 const PATTERN_KEYS = new Set([
   'skipLinesMatching', 'match', 'andLineMatches', 'unlessLineMatches',
   'unlessPreviousLineMatches', 'andIndentedBlockBelowMatches', 'unlessIndentedBlockBelowMatches',
@@ -1863,6 +1964,7 @@ const PATTERN_KEYS = new Set([
   'fromParsedFilesMatching', 'someMessageMatches', 'inParsedFilesMatching',
   'fromLinesMatching', 'fromTrackedPathsMatching', 'fromAddedLinesMatching', 'splitValuesOn',
   'everyFileMatching', 'whenChangedFileMatches', 'requireChangedFileMatching',
+  'requireMatch', 'unlessMatches', 'inputMatches', 'unlessInputMatches',
 ]);
 // Containers whose pattern strings are TEMPLATES — holes like {value} filled per
 // set value — so they compile at assertion time, not at load. Their form is still
@@ -1993,6 +2095,7 @@ export function patternRule(declaration, { selfExclude = null } = {}) {
     // on the scope above); the scan machinery underneath it still reads the raw
     // context the surface wraps.
     run(input) {
+      if (spec.scope === 'action') return actionFindings(rule, input);
       const work = spec.scope === 'work' ? input : null;
       if (work && spec.whenReplyClassIncludes !== undefined && !replyGateOpen(work, spec.whenReplyClassIncludes)) return [];
       const scanned = results(work ? work.ctx : input).get(rule);

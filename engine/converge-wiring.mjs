@@ -31,9 +31,10 @@ import { ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from './checks/helpers/repo-conte
 // The settings-hook registrations a scheduled repo carries (bootstrap Part 5).
 // Ensured present without clobbering — a set-union keyed on the command string, so
 // a repo's own extra hooks and any hand-added entries survive untouched.
-// The tools the PreToolUse guard watches: Bash for the commands it blocks, and the
-// file tools for the path-scoped skills it enforces (engine/hooks/pretooluse-command.mjs).
-export const PRETOOLUSE_MATCHER = 'Bash|Edit|Write|NotebookEdit';
+// The PreToolUse guard watches EVERY tool: an active pack's action declaration
+// (guardToolCalls) may name any of them, and the guard fast-exits on a call no
+// declaration names (engine/hooks/pretooluse-command.mjs).
+export const PRETOOLUSE_MATCHER = '.*';
 
 export const REQUIRED_HOOKS = [
   { event: 'SessionStart', matcher: null, command: 'bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start-command.sh' },
