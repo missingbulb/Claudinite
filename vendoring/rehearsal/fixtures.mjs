@@ -210,7 +210,9 @@ export default rule;
 // The one pack a fixture publishes rather than runs — content on a second canon's
 // shelf. It carries the two things the curation rules read of shelf content: a
 // `version` (the whole delivery signal) and prose that narrates no enforcement.
-const PACK_SHELF = `export default {
+const PACK_SHELF = `import './publish.mjs';
+
+export default {
   version: '60831.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
@@ -221,6 +223,20 @@ const PACK_SHELF = `export default {
   marker: null,
   prose: 'RULES.md',
 };
+`;
+
+// A CLI entry inside that shelf pack's own import graph, in the one shape pack
+// discovery tolerates: the work starts after module evaluation completes, never
+// in a top-level await. A second canon's shelf is exactly the tree the curation
+// pack's entry-await rule walks, so this is where its silence on a conforming
+// module is proved.
+const SHELF_CLI = `import { pathToFileURL } from 'node:url';
+
+export async function publish() { return []; }
+
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
+  publish().catch((e) => process.stderr.write(String(e.message) + '\\n'));
+}
 `;
 
 const PACK_PROSE_ONLY = `export default {
@@ -1018,6 +1034,7 @@ module.exports = { issue, check };
       // police. Conforming on every count: a version with its VERSIONS.md row,
       // prose that names none of its own rules, imports that stay inside the pack.
       'packs/fixture-shelf/pack.mjs': PACK_SHELF,
+      'packs/fixture-shelf/publish.mjs': SHELF_CLI,
       'packs/fixture-shelf/RULES.md': '# fixture-shelf\n\n- **Publishing a shelf pack** — say what it is for in one line.\n',
       'packs/fixture-shelf/VERSIONS.md': '# Version history\n\n| Version | Date | What changed |\n|---|---|---|\n| 60831.1 | 2026-08-31 | First version. |\n',
       'packs/fixture-shelf/README.md': '# fixture-shelf\n\nA rehearsal fixture pack on a fixture canon\'s shelf.\n',

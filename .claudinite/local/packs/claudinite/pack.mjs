@@ -12,8 +12,8 @@
 // id must equal its directory name ("claudinite") and may not shadow a canon pack.
 export default {
   ruleRoutingGuidance: {
-    belongs: 'working rules and lessons specific to developing Claudinite itself and not portable to any consumer',
-    excludes: 'fleet-facing curation duties and policing of the packs/ tree — that is the claudinite-canon-curation pack',
+    belongs: 'developing Claudinite itself — its scope and standing decisions, the engine, the mount, the queue and what reaches members',
+    excludes: 'the packs on the shelf — naming, config, modules, checks, prose, versions — and fleet-facing curation: claudinite-canon-curation',
   },
   // home-seeded-packs-declared rides beside these as a declared check
   // (declared-checks.json in this directory).
