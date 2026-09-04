@@ -34,6 +34,13 @@ them (#707, #789, #799).
 
 ## World scope: two passes
 
+A rule about a document's shape reaches neither pass. A required field, a closed value set, a type, a key
+set nothing may extend is a property of the JSON Schema the document points at with `$schema`, enforced
+for every such document by the engine's `schema-conformance` check and shown by an editor while the
+document is written; the declared assertions over parsed fields carry only what a schema cannot state — a
+relation between documents, a value that depends on the tree. Anything a schema can enforce is handled
+there, and a declared assertion that restates a schema property is one more place for the contract to drift.
+
 Most world rules are "these patterns over these files" — one pass, one file at a time. The rules
 the single pass cannot carry share one shape: **something read in one place must agree with, exist
 in, or be absent from another place** — a name in prose must be read by code, a path named in a
@@ -219,6 +226,9 @@ defines, once it has lived a week in production. The expectations the review rea
   the mechanism lands converts rules from the A, B, C and D classes rather than logging them as
   un-checkable — expected at least three conversions per sweep for the first month, measured by
   the sweep PRs' declared-check diffs.
+- **Schema rung in use.** No `checkParsedFiles` entry added after the mechanism lands restates a
+  property a schema could carry; measured by reading each sweep PR's added entries against the schemas
+  the same documents point at.
 - **Two-pass rules in use.** At least five declarations carry `checkSetValues`, `checkSetPairs`
   or `requireIdenticalFiles` a month in, at least one of them in a member's local pack; measured
   by grepping the mounts' `declared-checks.json` files.

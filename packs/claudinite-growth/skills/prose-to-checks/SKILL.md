@@ -94,6 +94,13 @@ Follow the extract stage's check-authoring discipline (the local promotion ladde
 > see-it-fail fixture is the only gate a converted check gets there. Convert only what you can prove;
 > anything shakier stays prose and waits for the weekly sweep's reviewed PR.
 
+**A shape rule is a schema property, not a check.** Where the rule says a document must carry a field, take a
+value from a closed set, have a type, or carry nothing beyond a key set, write it into the JSON Schema the
+document points at with `$schema` — creating the schema on the first such rule — and let the
+`schema-conformance` check enforce it; convert to a `checkParsedFiles` assertion only what a schema cannot
+say (a relation between two documents, a value that depends on the tree). A declared assertion over a field
+is a schema check in disguise, and a coded rule mirroring a schema's shape by hand is one that will drift.
+
 1. **Author the check** in the owning pack, at the ladder's highest check rung the rule allows: an entry
    in `<pack>/declared-checks.json` when its logic is patterns over files, dropping to `<pack>/<rule>.mjs`
    listed in `pack.mjs` only when it needs what patterns can't say. Either way the failure message *is*
