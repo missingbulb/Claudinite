@@ -4,7 +4,7 @@
 
 - **Wanting a rule about what the `packs/` tree may reference** — configure the baseline pack's
   `config.barriers`, extending the mechanism generically if a capability is missing. Never
-  standalone segregation-checking code.
+  standalone segregation-checking code. (12)
 
 - **Naming a new canon pack** — kebab-case, named for the surface it serves rather than the first
   feature you are building for it. The directory name is the public id every member declares, so
