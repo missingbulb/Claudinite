@@ -52,6 +52,40 @@ why.
 | `growth-discover-packs` | weekly, over every covered member | a PR against the canon's default branch, plus an adopt issue in each member that evidenced the pack |
 | `upstream-watch` | monthly, over the packs that declared an upstream source | a PR against the canon's default branch |
 
+### Rules (`RULES.md`)
+
+What a canon session follows when it names, configures, writes or polices a pack on the shelf.
+
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Segregation rules go through barriers | medium | complexity | prose: 30 words |
+| Name a pack for its surface | high | correctness | prose: 41 words |
+| Claudinite-feature packs take the prefix | medium | complexity | prose: 24 words |
+| Read an unmounted skill from the tree | medium | correctness | prose: 37 words |
+| Cross-pack paths must resolve everywhere | high | correctness | prose: 39 words |
+| Never quote a corpus total | low | complexity | prose: 26 words |
+| Universal values live in pack code | medium | complexity | prose: 36 words |
+| Config validation is a JSON Schema | medium | complexity | prose: 33 words |
+| No shared code between sibling packs | high | correctness | prose: 36 words |
+| Pack modules stay import-light, no top-level await | critical | correctness | prose: 41 words |
+| Guard a new engine export by capability | critical | correctness | prose: 62 words |
+| A failed pack load strands members | critical | correctness | prose: 33 words |
+| A check change re-runs against main | high | correctness | prose: 35 words |
+| Fix text matches the severity | medium | correctness | prose: 36 words |
+| No prose in a check declaration | low | complexity | prose: 25 words |
+| Transcript checks screen plain-text pseudo-turns | high | correctness | prose: 46 words |
+| Stop-hook fixtures carry an interruption marker | medium | correctness | prose: 35 words |
+| An authoring-time how-to becomes a skill | low | complexity | prose: 35 words |
+| Re-verify doc pointers after a move | medium | correctness | prose: 36 words |
+| Two signals for a missing-or-misnamed check | high | correctness | prose: 40 words |
+| Widen a check to its sibling surface | medium | correctness | prose: 28 words |
+| Assert a path-pattern scope is non-empty | high | correctness | prose: 45 words |
+| Grep a named directory before shipping | medium | correctness | prose: 21 words |
+| Measure whether a check earns its keep | low | performance | prose: 43 words |
+| Re-bump after a stacked PR's base lands | high | correctness | prose: 42 words |
+| RULES.md instructs, never describes | medium | complexity | prose: 64 words |
+| Mechanize a re-derived procedure | low | performance | prose: 29 words |
+
 ### Checks
 
 | Check | Severity | Reason | Enforcement |
@@ -59,6 +93,7 @@ why.
 | `pack-no-enforcement-narration` | medium | complexity | check: blocking |
 | `pack-version-bumped` | high | correctness | check: blocking |
 | `pack-version-claimed-once` | high | correctness | check: blocking |
+| `pack-discovery-entry-await` | critical | correctness | check: blocking |
 | `skill-no-enforcement-narration` | medium | complexity | check: blocking |
 | `pack-independence` | high | correctness | declared check: blocking |
 

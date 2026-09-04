@@ -2,10 +2,6 @@ Below are rules on how to work on this repo.
 
 ## Standing owner decisions — settled, do not re-litigate
 
-- **Wanting a rule about what the `packs/` tree may reference** — declare and configure the
-  `barriers` pack, extending it generically if a capability is missing. Never standalone
-  segregation-checking code.
-
 - **Writing a `docs/<initiative>/DESIGN.md`** — the end state and its rationale only, with
   alternatives and their drawbacks. Never requests, prior-state narrative, or owner opinions.
 
@@ -19,6 +15,9 @@ Below are rules on how to work on this repo.
 - **Sweeping a deleted design doc's `§`-numbered pointers** — re-point each at a pack README, or
   drop it where the sentence only cited itself.
 
+- **Having a deferred direction, blocked proposal or status to record** — `docs/`, pointed at from
+  the issue or PR. Never a pack file: `docs/` is outside the vendor set.
+
 - **Ending a session on unfinished work** — write the state into the tracking issue; the owner's
   opener is `continue work on #<n>`. Never compose a hand-off prompt.
 
@@ -31,10 +30,6 @@ Below are rules on how to work on this repo.
 
 - **Landing a derived fleet artifact** — a daily auto-merged PR of a `GENERATED` file in Shepherd,
   never a commit to its `main`.
-
-- **Choosing a value right for nearly every project** — keep it in the pack's own code: ask
-  nothing at adoption, write nothing into member config. Read config as optional; unset means the
-  default, never "misconfigured".
 
 - **Needing a member to flip a platform setting** — last resort; per-repo manual work reliably
   does not happen. Prefer the route that works with the Action's own `GITHUB_TOKEN`, or neutralise
@@ -53,14 +48,6 @@ Below are rules on how to work on this repo.
 - **Retiring a field, option or module** — `@deprecated` on its definition, plus a comment at each
   sanctioned holdout saying why it still carries the field. Never a bespoke conformance check for a
   deprecation; keep the contract validating it.
-
-- **Wanting a `.claudinite-settings.json` entry's config validated** — a real JSON Schema the file
-  points at with `$schema`. Never a coded per-pack validation vocabulary or a `configSchema` type
-  system on the manifest. (7)
-
-- **Wanting to share logic between two sibling packs** — never `engine/`, which breaks the
-  package-manager model, and never a pack-to-pack dependency, which breaks independence. Prefer
-  self-describing data; else duplicate, possibly with a drift guard. (8)
 
 - **Surfacing a number a human reads as a report card** — report a window against the previous
   window. Never a monotonic cumulative total, never a figure nothing measures. (9)
@@ -154,46 +141,12 @@ Below are rules on how to work on this repo.
   first. A verdict inferred from structure or memory alone has shipped as a wrongly-merged fix for a
   bug that wasn't there.
 
-## Authoring packs, prose and checks
-
-- **Writing anything into a pack's `RULES.md` that describes rather than instructs** — how a
-  mechanism works, or what the pack's own tasks do — not there, where every session in every
-  declaring repo pays for it whether or not it is that session's work. Description belongs in the
-  module header and the pack `README.md`; a worker's policy belongs in the `task.md` it loads.
-
-- **Deciding whether a line earns its place in `RULES.md`** — the test is whether an agent could
-  act differently for having read it.
-
-- **Having a deferred direction, blocked proposal or status to record** — `docs/`, pointed at from
-  the issue or PR. Never a pack file: `docs/` is outside the vendor set.
-
-- **Naming a new canon pack** — kebab-case, named for the surface it serves rather than the first
-  feature you are building for it. The directory name is the public id every member declares, so
-  another casing costs a fleet-wide rename.
-
-- **Naming a pack whose subject is a Claudinite feature itself** — the `claudinite-` prefix
-  (`claudinite-lifecycle`, `claudinite-dashboard`). `claudinite-growth` is grandfathered.
-  (convertible → prose-to-checks) (18)
+## Checks and capabilities built here
 
 - **Starting a new Claudinite-facing capability** — decide which distribution model it is before
   writing the first file: a member-local tool, always-on engine code, or an opt-in pack with its
   own adoption. Nothing prompts this choice, and getting it wrong costs a move-and-rewrite
   cycle. (19)
-
-- **Looking for a skill and not finding it in `.claude/skills/`** — read
-  `packs/<pack>/skills/<name>/SKILL.md` out of the tracked tree. Mounting filters on the literal
-  declaration, so an unmounted skill says nothing about whether its procedure applies. (20)
-
-- **Adding or changing a check** — update the pack's catalog row, and re-run the suite against
-  current `main` before merging: a whole-tree aggregate is judged post-merge, so a branch's own
-  green never covers it. (portable → `merge-to-main`)
-
-- **Wanting to state how many checks or rules the corpus has** — don't. `packs/README.md` states
-  how to count them instead of quoting a number. (21)
-
-- **Writing a check's `fix` text** — name only remedies matching the enforced severity; sessions
-  follow the words, not the `severity` field. An advisory's remedies are act on it or leave it,
-  never a config-acceptance escape.
 
 - **Declaring a check, or adding a key to the vocabulary** — name the key so the declaration reads
   alone (`scanFiles`, `matchLines`, `relevantWhen`). If it needs a comment to be read, it needs a
@@ -204,40 +157,7 @@ Below are rules on how to work on this repo.
   above the declaration; `advisory:none` claims no member file can hold the old shape, so that
   issue must then name what does read the holder. (68)
 
-- **Wanting prose in a check declaration** — there is none. `packs/<pack>/declared-checks.json`
-  holds no `description` and no comment; the line the agent reads is `failureMessage`.
-
-- **Writing a check that reads the session transcript** — screen the harness's plain-text
-  pseudo-turns, not only tag-wrapped ones. `humanText` in
-  `engine/checks/helpers/session-transcript.mjs` drops an entry starting with `<`, so a marker
-  like `[Request interrupted by user for tool use]` reads as the owner's latest comment. (22)
-
-- **Fixturing a check that fires at the Stop hook** — carry an interruption marker beside a real
-  owner turn. A false positive there spends a whole cycle on something no edit can clear. (23)
-
-- **A doc reached only by following a link out of `RULES.md` or a check's `doc:` line** — if it is
-  a how-to wanted at authoring time, convert it into a skill invocable by description.
-
-- **Moving or renaming a file a check's `doc:` field points at** — grep for and re-verify every
-  `doc:` by hand. Nothing opens the field until the check fires, so a stale pointer sits broken
-  indefinitely.
-
-- **A check built to catch a thing being missing or misnamed** — don't gate its relevance on the
-  single signal it exists to validate, or the failure it catches also silences it. Use two
-  independent signals, either sufficient. (24)
-
-- **Deciding whether an enforced check still earns its keep** — measure its blocking-firing rate
-  against what it buys. A check whose firings are dominated by cases where the agent already did
-  the right thing is a demotion candidate (check → prose-only). (25)
-
-- **A documented multi-step procedure the agent re-derives every run** — mechanize it into a
-  script the agent runs once. That pattern, not the doc's polish, is the signal.
-
 - **Creating the artifact a check will demand** — create it before the action it gates, not after.
-
-- **A canon pack's prose naming another pack by literal path** — check the name resolves inside
-  every consumer's vendored tree. `.claudinite/local/packs/<pack>/` exists only in the canon home,
-  so naming a home-only local pack dangles everywhere else it mounts.
 
 ## The engine, the mount and what reaches members
 
@@ -252,11 +172,6 @@ Below are rules on how to work on this repo.
 - **Writing a path, regex or command against the mount** — the two-root form: the
   `.claudinite/(shared|local)/` prefix optional in a pattern, and a probe for `.claudinite/shared/`
   falling back to the repo root. The home runs the same code from the repo root. (26)
-
-- **Adding a module under `packs/`** — keep it import-light, and start work after evaluation
-  completes (`check(…).catch(…)`), never in a top-level `await`. Discovery imports every
-  `pack.mjs` before activation is consulted, so a CLI entry point re-imports mid-evaluation and
-  Node exits 13. `pack-discovery-entry-await` enforces the await half only.
 
 - **Tightening a contract member-owned files must satisfy** — first ask what carries it across the
   fleet. Vendoring refreshes `.claudinite/shared/` only and a migration record moves paths, not
@@ -296,14 +211,6 @@ Below are rules on how to work on this repo.
 - **Renaming or deleting an `engine/` module a `packs/` file imports** — leave a shim at the old
   path re-exporting what it named. The two lanes deliver on separate cycles, so every member spends
   a window holding the NEW engine beside an OLD pack. (31)
-
-- **A pack module consuming a brand-new engine helper export** — import the engine module as a
-  namespace and guard the call with a `typeof` capability check, never a named import: the pack and
-  engine lanes deliver on separate cadences, so a named import of an export the member's engine
-  hasn't reached yet is a link-time `SyntaxError` that faults the whole pack.
-
-- **A pack that fails to load** — it fails the mount's self-test, the converge refuses to land at
-  all, and the member cannot receive the pack version that would have fixed it.
 
 - **Asking which imported symbols are still fielded** — walk the TRUNK's pack history, never
   `--all`. An import that only ever existed on an unmerged branch is not fielded. (32)
@@ -389,9 +296,6 @@ Below are rules on how to work on this repo.
   real `GITHUB_TOKEN`, `gh`/`curl` reachability) whenever its caller's context changes. Every
   script built against the old assumption fails identically, not just the one that broke first.
 
-- **Finding a check that watches only one of two structurally-identical surfaces** — widen it to
-  the sibling in the same change rather than filing it separately. (44)
-
 - **Picking a compact date-encoded identifier** — check the encoding's rollover boundary years
   ahead, not just today's decode. Anchoring a year on its last digit wraps to 0 in 2030; use
   `year - 2020`, not `year % 10`. (45)
@@ -402,10 +306,6 @@ Below are rules on how to work on this repo.
 - **Designing text that instructs a model to echo an exact string** — state the instruction first,
   have it disclaim itself as instruction-not-payload, and put the literal string once, last. Never
   reference the payload anaphorically ("that line"); recency is what resolves it. (47)
-
-- **A work-scope check that verifies "this PR bumped X" by diffing against `main`** — on a stacked
-  PR that diff carries the lower PR's bump and passes green wrongly. Re-verify and re-bump after
-  every earlier PR in the stack lands (`pack-version-bumped`). (48)
 
 ## Scheduled tasks
 
@@ -488,13 +388,6 @@ Below are rules on how to work on this repo.
 - **Testing a fail-soft step** — assert the positive effect (the output IS emitted), never
   `status === 0`, which fail-soft makes meaningless. The engine is vendored verbatim, so one
   regression disables that step fleet-wide.
-
-- **Writing a check that selects inputs by path pattern** — assert over the real tree that its
-  scope is non-empty. A pattern left behind by a layout change matches nothing, reads as live, and
-  fixtures spelling the same dead layout keep proving the matching.
-
-- **Naming a directory in a finding, a remedy or a doc pointer** — grep the tree for it before
-  shipping.
 
 - **Testing a helper reapplied across a hand-off, a re-queue or a retry** — call it twice and
   assert no duplication. A suite of single-call tests stays green while the multi-call case
