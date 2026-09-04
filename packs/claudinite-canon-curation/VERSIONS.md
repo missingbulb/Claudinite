@@ -4,7 +4,7 @@ Records for `packs/claudinite-canon-curation/pack.mjs`'s `version` field, one ro
 
 | Version | Date | What changed |
 |---|---|---|
-| 60904.1 | 2026-09-04 | The pack drops its `barriers` requirement, vestigial since its segregation wall became a declared `forbidReferences` check the engine runs; the mechanism itself was absorbed into `basics` (#1681). |
+| 60904.2 | 2026-09-04 | The pack drops its `barriers` requirement, vestigial since its segregation wall became a declared `forbidReferences` check the engine runs, and the segregation rule points at where a shelf's graph now lives — the baseline pack's `config.barriers`, the mechanism having been absorbed into `basics` (#1681). The Claudinite canon's own reason for that graph, retired from the barriers pack's adoption answer, becomes `(RULES-12)`. |
 | 60903.3 | 2026-09-03 | A task's `task.md` opens on what the run does: the stage-labelling framing, the why-it-runs-centrally rationale and the skill procedure it already points at are gone. |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.2 | 2026-09-02 | `pack-version-bumped` and the `growth-promote` task doc drop the retired `.claudinite/local_packs/` root — a repo's own packs live at `.claudinite/local/packs/` and nowhere else (#1627). |

@@ -58,7 +58,7 @@ What a canon session follows when it names, configures, writes or polices a pack
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Segregation rules go through barriers | medium | complexity | prose: 30 words |
+| Segregation rules go through barriers | medium | complexity | prose: 31 words |
 | Name a pack for its surface | high | correctness | prose: 41 words |
 | Claudinite-feature packs take the prefix | medium | complexity | prose: 24 words |
 | Read an unmounted skill from the tree | medium | correctness | prose: 37 words |
