@@ -260,6 +260,7 @@ made the change, and is one sweep away from being closed as stale.
 | `task-declaration-matches-folder` | high | correctness | check: blocking |
 | `task-md-only-when-agentic` | high | correctness | check: blocking |
 | `task-phase-discipline` | medium | complexity | check: advisory |
+| `check-ships-with-test` | high | correctness | check: blocking |
 
 The last five are the **task contract** ([the writing-tasks skill](skills/writing-tasks/SKILL.md)), which
 lives here because it judges whether a task is *written* correctly — authoring, the subject of this

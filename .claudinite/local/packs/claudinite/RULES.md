@@ -519,3 +519,8 @@ Below are rules on how to work on this repo.
 - **Writing a regex import-path rewriter for a bulk file-move** — anchor to real import/export
   syntax (line-start, or after a specific separator), never a bare `from '...'` searched across the
   whole text. A fixture embedding import syntax as string data matches identically and is corrupted.
+
+- **Running the prose-to-checks sweep here** — the worklist is
+  `docs/declarative-checks/rule-inventory.md`, every rule classified by the moment that could
+  carry it; convert from its A–F rows, and correct a mis-read row there, dated, rather than
+  re-deriving the class.

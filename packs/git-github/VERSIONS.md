@@ -7,6 +7,7 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60904.1 | 2026-09-04 | `merge-to-main` forces itself for `mcp__github__merge_pull_request` and for the owner's LGTM (#1701). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.1 | 2026-09-02 | Eight of the `gha/*` checks scan `packs/<pack>/stubs/workflows/` as well as `.github/workflows/`. A stub is copied verbatim into every adopting repo, so a defect there shipped fleet-wide while being visible in no repo until after seeding — which is how `claudinite-dashboard`'s Pages stub carried a piped `run:` with no bash default until a member re-seeded it. `gha/no-scheduled-fleet-executor` and `gha/scheduled-failure-escalation` stay repo-only: each asserts a fact about an adopting repo rather than about the file (#1596). |
 | 60901.1 | 2026-09-01 | Adds `references.md`: the four workflow checks #552 converted out of `git-github-advanced` now record the GitHub behaviour each encodes and what would retire it, and `merge-to-main` records why the capture step runs in-session (#1576). |
