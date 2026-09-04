@@ -207,7 +207,7 @@
       {
         "tool": "Bash",
         "inputField": "command",
-        "match": "/\\bpkill\\s+-f\\s+['\"]?(?<pattern>[^\\[\\s'\"]\\S*)/",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)pkill\\s+-f\\s+['\"]?(?<pattern>[^\\[\\s'\"]\\S*)/",
         "what": "pkill -f with the unbracketed pattern \"{pattern}\"",
         "fix": "bracket one character of the pattern ([h]ttp.server) and never chain the pkill"
       }

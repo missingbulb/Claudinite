@@ -7,8 +7,9 @@ import { discoverPacks } from '../../../engine/pack_loader/pack-registry.mjs';
 import rule from '../workRules/skill-loaded-before-editing.mjs';
 
 // The tool-call half of the Stop-time rule: a call a skill forces itself for,
-// made before the session loaded that skill, is a finding whether or not the
-// PreToolUse guard saw it.
+// in a session that never loaded that skill, is a finding whether or not the
+// PreToolUse guard saw it — and a load anywhere in the session clears it, as
+// for an edit under a scoped path, so the fix's "load it now" converges.
 const PACK = `export default {
   id: 'fixture-op',
   ruleRoutingGuidance: { belongs: 'the fixture project only', excludes: 'anything portable' },
@@ -37,15 +38,11 @@ async function judge(entries) {
   } finally { cleanup(root); session.cleanup(); }
 }
 
-test('a forced call before the load flags once per skill; the load before the call is clean', async () => {
+test('a forced call in a session that never loaded the skill flags once per skill; a load anywhere clears it', async () => {
   assert.deepEqual(await judge([call('Bash', { command: 'deploy --prod' }), call('Bash', { command: 'deploy --again' })]), [
-    ['(session) Bash call', "a Bash call the fixture-op pack's `op-skill` skill forces itself for (Bash.command /\\bdeploy\\b/) ran before this session loaded that skill"],
+    ['(session) Bash call', "a Bash call the fixture-op pack's `op-skill` skill forces itself for (Bash.command /\\bdeploy\\b/) ran, and this session never loaded that skill"],
   ]);
   assert.deepEqual(await judge([call('Skill', { skill: 'op-skill' }), call('Bash', { command: 'deploy --prod' })]), []);
+  assert.deepEqual(await judge([call('Bash', { command: 'deploy' }), call('Skill', { skill: 'op-skill' })]), [], 'the load the fix asks for converges the finding');
   assert.deepEqual(await judge([call('Bash', { command: 'ls' })]), []);
-});
-
-test('a load after the call is the review the skill was meant to spare — still a finding', async () => {
-  const findings = await judge([call('Bash', { command: 'deploy' }), call('Skill', { skill: 'op-skill' })]);
-  assert.equal(findings.length, 1);
 });

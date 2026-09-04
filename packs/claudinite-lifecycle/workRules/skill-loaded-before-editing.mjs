@@ -35,19 +35,21 @@ const rule = {
         }));
       }
     }
-    // The tool-call half: a call a skill forces itself for, made before the
-    // session had loaded it (a load later in the session came after the fact).
+    // The tool-call half: a call a skill forces itself for, in a session that
+    // never loaded it. Judged against the whole session's loads like the path
+    // half — the PreToolUse guard holds the call until the load, and what is left
+    // for Stop is the session that loaded it never; a load now, with the re-read
+    // the fix asks for, is what converges the finding.
     if (typeof scoped.triggeredSkills === 'function' && typeof transcript.toolCalls === 'function') {
       const triggers = scoped.triggeredSkills(active).filter((d) => d.kind === 'toolCall');
       const reported = new Set();
       for (const call of triggers.length ? transcript.toolCalls(entries) : []) {
-        const loadedByThen = transcript.skillLoads(entries.slice(0, call.index + 1));
-        for (const d of scoped.missingSkillsForCall(call, triggers, loadedByThen)) {
+        for (const d of scoped.missingSkillsForCall(call, triggers, loaded)) {
           if (reported.has(d.skill)) continue;
           reported.add(d.skill);
           out.push(finding(rule, {
             file: `(session) ${call.name} call`,
-            what: `a ${call.name} call the ${d.pack} pack's \`${d.skill}\` skill forces itself for (${d.source}) ran before this session loaded that skill`,
+            what: `a ${call.name} call the ${d.pack} pack's \`${d.skill}\` skill forces itself for (${d.source}) ran, and this session never loaded that skill`,
             fix: `load it now — Skill tool, skill: "${d.skill}", or Read its SKILL.md — and re-read what the call did against what it says before stopping`,
           }));
         }
