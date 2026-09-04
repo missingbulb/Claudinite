@@ -31,6 +31,27 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/engine/hooks/user-prompt-submit-command.mjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/engine/hooks/post-tool-use-command.mjs"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [

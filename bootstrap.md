@@ -99,7 +99,7 @@ tracked content and the adoption commit is one `git commit` away.
 ## Part 5 — the hooks
 
 The script registers the settings hooks (`converge-wiring.mjs`'s `REQUIRED_HOOKS` — the single
-SessionStart orchestrator, the Stop work-scope gate, the PreToolUse guard, the SessionEnd
+SessionStart orchestrator, the Stop work-scope gate, the PreToolUse guard, the UserPromptSubmit and PostToolUse skill triggers, the SessionEnd
 runner), added-if-missing, never clobbering entries of your own. What a session should know about
 them:
 

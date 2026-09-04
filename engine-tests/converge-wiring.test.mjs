@@ -25,7 +25,7 @@ const REPO = 'missingbulb/GoogleCalendarEventCreator';
 test('ensureHooks: adds every required hook to a fresh repo, idempotently', () => {
   const root = mkRepo();
   const first = ensureHooks(root);
-  assert.deepEqual(first.added.sort(), [`PreToolUse[${PRETOOLUSE_MATCHER}]`, 'SessionEnd', 'SessionStart', 'Stop']);
+  assert.deepEqual(first.added.sort(), ['PostToolUse[.*]', `PreToolUse[${PRETOOLUSE_MATCHER}]`, 'SessionEnd', 'SessionStart', 'Stop', 'UserPromptSubmit']);
   const settings = JSON.parse(readFileSync(join(root, SETTINGS_PATH), 'utf8'));
   assert.equal(settings.hooks.SessionStart[0].hooks[0].command, 'bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start-command.sh');
   assert.equal(settings.hooks.PreToolUse[0].matcher, PRETOOLUSE_MATCHER);

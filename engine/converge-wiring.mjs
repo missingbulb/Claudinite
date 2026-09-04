@@ -41,6 +41,11 @@ export const REQUIRED_HOOKS = [
   { event: 'Stop', matcher: null, command: 'node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/stop-command.mjs' },
   { event: 'PreToolUse', matcher: PRETOOLUSE_MATCHER, command: 'node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/pretooluse-command.mjs' },
   { event: 'SessionEnd', matcher: null, command: 'node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-end-command.mjs' },
+  // The two trigger hooks (engine/pack_loader/path-scoped-skills.mjs): an owner
+  // prompt or a tool result a skill forces itself for gets the load instruction
+  // injected at that moment. PostToolUse, like PreToolUse, watches every tool.
+  { event: 'UserPromptSubmit', matcher: null, command: 'node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/user-prompt-submit-command.mjs' },
+  { event: 'PostToolUse', matcher: '.*', command: 'node $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/post-tool-use-command.mjs' },
 ];
 
 export const SETTINGS_PATH = '.claude/settings.json';
