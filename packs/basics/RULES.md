@@ -23,9 +23,9 @@
 
 - **Acting on a process change** — the owner is changing *how* work is done. Land it as durable
   rules in the project's local scope, its own local packs (in Claudinite itself, its packs), routed
-  through the mechanism promotion ladder (platform setting → hook → check → skill → prose).
-  Promoting a rule into the shared canon is the growth lifecycle's separate call, not the
-  interactive session's.
+  through the mechanism promotion ladder (platform setting → schema → hook → check → skill
+  → prose). Promoting a rule into the shared canon is the growth lifecycle's separate call, not
+  the interactive session's.
 
 - **Choosing what goes on that ladder** — only a rule that constrains *how work is done* and
   outlives any one feature; a checkable signature doesn't earn a rule its place. Reject two shapes

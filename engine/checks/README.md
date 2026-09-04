@@ -200,6 +200,14 @@ TOML), git/diff/conversation state beyond the work assertions, or a cross-file c
 two-pass keys cannot state (`extractValueSets` derives a named set from lines, paths or parsed
 fields; `checkSetValues`, `checkSetPairs` and `requireIdenticalFiles` quantify over it).
 
+**Prefer a schema over a declaration for a document's shape.** A rule that a JSON document must carry a
+field, take a value from a closed set, have a type, or carry nothing beyond a key set is a property of the
+JSON Schema the document points at with `"$schema": "<repo-relative path>"` — one place, read by the editor
+as the document is written and enforced by the `schema-conformance` check for every such document at once
+([helpers/json-schema.mjs](helpers/json-schema.mjs) validates the draft-2020 subset the corpus's schemas use).
+A `checkParsedFiles` assertion over a field is a schema check in disguise; reach for it only where a schema
+cannot say what the rule says — a relation between two documents, a value that depends on the tree.
+
 **Shared helpers carry mechanism, not policy.** A `engine/checks/helpers/` helper owns only the walking —
 resolve a file set, find the lines a pattern matches, list the change's added lines
 ([helpers/line-scanning.mjs](helpers/line-scanning.mjs)), evaluate declared pattern specs in one pass

@@ -55,19 +55,27 @@ Read `.claudinite/shared/packs/directory.GENERATED.md` (canon-side `packs/direct
 which states every canon pack's boundary including the ones this repo doesn't hold. Where the owning
 pack's stated territory is merely too narrow, propose widening it rather than routing around it.
 
-1. **A declared check** — an entry in that pack's `declared-checks.json`, whose `failureMessage` *is* the
+1. **A schema property** — when the lesson is about a document's *shape*: a field that must be present, a
+   value from a closed set, a type, a key set nothing may extend. It belongs in the JSON Schema the document
+   points at with `$schema` (created from the first such rule where the document has none), which an editor
+   shows while the document is written and the engine's `schema-conformance` check enforces for every such
+   document at once. Anything a schema can enforce is better handled there: a declared `checkParsedFiles`
+   assertion over a field, or a coded rule re-reading a document's shape by hand, is a schema check in
+   disguise. Only what a schema cannot say — a relation between two documents, a value that depends on the
+   tree — goes on to the rungs below.
+2. **A declared check** — an entry in that pack's `declared-checks.json`, whose `failureMessage` *is* the
    lesson. Nothing wires it: writing the declaration adds the check. This is the first rung to try for any
    lesson whose whole logic is "these patterns over these files", and most captured conditions are. Give it
    `severity: 'blocking'` and `since: '<today>'`: the engine holds a check to advisory for its first two
    weeks, so a check may land against a tree that still violates it and the backlog it surfaces is somebody
    else's next change, not this run's.
-2. **A custom code rule** — a `<rule>.mjs` exporting `run(ctx)`, listed on the pack's `pack.mjs` — only
+3. **A custom code rule** — a `<rule>.mjs` exporting `run(ctx)`, listed on the pack's `pack.mjs` — only
    when the check needs what patterns can't say: real parsing, structured-data field logic, git/diff or
    conversation state, a derived comparison. Reaching for code where a declaration would do costs a module
    to read and maintain for nothing. An **unattended** run ships one `advisory`: hand-written logic has
    failure modes a declaration cannot have, and nobody reviewed this one.
-3. **A pack skill**, when the lesson is an activity-scoped procedure rather than a condition.
-4. **Terse prose** in the pack's `RULES.md` — the fallback, only what none of the above can carry.
+4. **A pack skill**, when the lesson is an activity-scoped procedure rather than a condition.
+5. **Terse prose** in the pack's `RULES.md` — the fallback, only what none of the above can carry.
 
 Either check rung ships with a **red-first fixture**; the declaration vocabulary is documented in
 [`pattern-rules.mjs`](../../engine/checks/helpers/pattern-rules.mjs)'s header, and the authoring shape for
