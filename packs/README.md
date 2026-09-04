@@ -15,8 +15,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 |---|---|---|---|
 | <img src="claudinite-lifecycle/badge.svg" width="18" height="18" alt=""> [claudinite-lifecycle](claudinite-lifecycle/README.md) | declared (seeded by `--init`, mandatory — pulled in via `basics` `requires`) | 10 | 8 (Claudinite's own surface, plus the scheduled-task contract) |
 | <img src="claudinite-tasks/badge.svg" width="18" height="18" alt=""> [claudinite-tasks](claudinite-tasks/README.md) | declared (seeded by `--init`, opt-out by removal — a repo without it runs no scheduled work) | 2 | 0 (the work-item queue, the executor, the task contract, and the delivery lane) |
-| <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 13 | 49 (working-discipline + task-lifecycle) |
-| <img src="barriers/badge.svg" width="18" height="18" alt=""> [barriers](barriers/README.md) | declared (or pulled in via `requires`) | 1 | 0 (config-driven segregation) |
+| <img src="basics/badge.svg" width="18" height="18" alt=""> [basics](basics/README.md) | declared (seeded by `--init`) | 14 | 49 (working-discipline + task-lifecycle, plus the [folder-access graph](basics/barriers.md)) |
 | <img src="git-github/badge.svg" width="18" height="18" alt=""> [git-github](git-github/README.md) | pulled in via `basics` `requires` | 9 | 0 (3 skills: git-github-advanced, github-actions-scheduling, merge-to-main) |
 | <img src="claudinite-growth/badge.svg" width="18" height="18" alt=""> [claudinite-growth](claudinite-growth/README.md) | declared (seeded by `--init`, opt-out by removal) | 1 | 0 — growth member-side tasks (extract over activity + conversations / dedup / pack discovery / prose-to-checks) + in-session merge capture |
 | <img src="tidy-repo/badge.svg" width="18" height="18" alt=""> [tidy-repo](tidy-repo/README.md) | declared (seeded by `--init`, opt-out by removal) | 0 | 2 (policy (assess-only-vs-act) + 3 per-dimension tidy tasks (issues daily, PRs/branches weekly)) |
@@ -297,15 +296,20 @@ Wiring a consumer up — the check hook + the pack entries' `config`, with the s
 
 ## Adoption interview (`questions`)
 
-A pack that needs to know the project's **intent** before it can provide value (barriers with no
-graph is a silent no-op; a visual-testing pack can't assert anything before learning how this repo
-should be tested) declares the mandatory questions its adoption must ask, in an optional
-`questions` field on its `pack.mjs` — stable-id'd entries, `distill` saying how the answer becomes
-the entry's `config`:
+A pack that needs to know the project's **intent** before it can provide value (a research wiki
+can't cite anything before learning what the product is; a visual-testing pack can't assert
+anything before learning how this repo should be tested) declares the mandatory questions its
+adoption must ask, in an optional `questions` field on its `pack.mjs` — stable-id'd entries,
+`distill` saying how the answer becomes the entry's `config`:
 
 ```js
-questions: [{ id: 'goals', prompt: 'What should these barriers accomplish — …?', distill: 'derive the edge list into config.rules …' }],
+questions: [{ id: 'ui_testing', prompt: 'How are the executable UI requirements exercised — …?', distill: 'record the mechanism as config.ui_testing …' }],
 ```
+
+Only a pack a project **chooses** earns one. A pack that arrives through another's `requires` was
+never adopted, so its question reaches an owner who did not ask for it — which is why the
+folder-access graph, pulled in everywhere the baseline is declared, asks nothing and simply stays
+inert until a repo writes one (#1681).
 
 The answers live **verbatim** on the pack's entry in `.claudinite-settings.json` (`answers:
 { "<question-id>": "<answer>" }` — [engine/checks/README.md](../engine/checks/README.md)): the settings file

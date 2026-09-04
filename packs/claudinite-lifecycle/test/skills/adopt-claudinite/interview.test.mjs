@@ -88,17 +88,17 @@ test('renderPending: prompts + distill notes, and the unattended self-defuse wor
   assert.match(out, /never a gate/);
 });
 
-test('integration: declaring barriers pends its goals question until the entry answers it', async () => {
+test('integration: declaring executable-requirements pends its question until the entry answers it', async () => {
   const packs = await loadPacks();
-  const unanswered = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['barriers'] }) } });
+  const unanswered = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['executable-requirements'] }) } });
   const answered = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({
-    packs: [{ id: 'barriers', answers: { goals: 'keep core generic' } }],
+    packs: [{ id: 'executable-requirements', answers: { ui_testing: 'Playwright', requirements_source: 'dev/requirements' } }],
   }) } });
   try {
     const p = interviewState(packs, loadConfig(unanswered)).pending;
     assert.equal(p.length, 1);
-    assert.equal(p[0].packId, 'barriers');
-    assert.deepEqual(p[0].questions.map((q) => q.id), ['goals']);
+    assert.equal(p[0].packId, 'executable-requirements');
+    assert.deepEqual(p[0].questions.map((q) => q.id), ['ui_testing', 'requirements_source']);
     assert.deepEqual(interviewState(packs, loadConfig(answered)).pending, []);
   } finally { cleanup(unanswered); cleanup(answered); }
 });
@@ -111,7 +111,7 @@ test('integration: declaring barriers pends its goals question until the entry a
 // note reaches stdout, not merely that the exit code is 0, is deliberate — a
 // process that exits clean having printed nothing is the bug's own signature.
 test('CLI: `check` prints the pending note and exits clean (its import cycle must not deadlock)', () => {
-  const repo = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['barriers'] }) } });
+  const repo = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['executable-requirements'] }) } });
   try {
     const r = spawnSync(process.execPath, [CLI, 'check'], {
       encoding: 'utf8',
@@ -120,13 +120,13 @@ test('CLI: `check` prints the pending note and exits clean (its import cycle mus
     assert.equal(r.status, 0, `exited ${r.status}\nstderr: ${r.stderr}`);
     assert.doesNotMatch(r.stderr, /unsettled top-level await/, 'the CLI deadlocked on its own import cycle');
     assert.match(r.stdout, /Pack adoption interview pending/);
-    assert.match(r.stdout, /- barriers \/ goals:/);
+    assert.match(r.stdout, /- executable-requirements \/ ui_testing:/);
   } finally { cleanup(repo); }
 });
 
 test('CLI: a repo with nothing pending prints nothing and exits clean', () => {
   const repo = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({
-    packs: [{ id: 'barriers', answers: { goals: 'n/a — none wanted' } }],
+    packs: [{ id: 'executable-requirements', answers: { ui_testing: 'n/a — none wanted', requirements_source: 'n/a — none wanted' } }],
   }) } });
   try {
     const r = spawnSync(process.execPath, [CLI, 'check'], {

@@ -99,7 +99,7 @@ What a canon session follows when it names, configures, writes or polices a pack
 
 `pack-independence` is barrier **data**, not code: a `forbidReferences` entry in
 [declared-checks.json](declared-checks.json), compiled by the engine's reference scanning. The
-[barriers pack](../barriers/README.md) documents the edge vocabulary.
+[barrier guide](../basics/barriers.md) documents the edge vocabulary.
 
 - **[tasks/growth-promote/](tasks/growth-promote/task.md)** — the growth lifecycle's central stage:
   read the changed members' local packs, **generalize** the portable lessons, route each to the

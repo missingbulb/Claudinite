@@ -36,8 +36,10 @@ export default {
   // pack's declared-checks.json, run by the engine's reference-scanning (the
   // same shape basics uses for claudinite-isolation). Its `allow` list IS the
   // engine surface — the one always-vendored engine/ root; a new surface root
-  // would join it there, loudly (the barrier fails closed, never widens).
-  requires: ['barriers'],
+  // would join it there, loudly (the barrier fails closed, never widens). A
+  // declared check is run by the engine, so nothing else has to be declared for
+  // it (#1681 dropped the `barriers` requirement, vestigial since the wall
+  // stopped being code).
   // The prose-narration rule polices pack prose CONTENT (not segregation), so
   // it stays a code check, bundled here.
   // Delivery, not content: a pack's directory ships on its version number, so

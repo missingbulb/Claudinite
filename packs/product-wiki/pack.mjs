@@ -7,7 +7,7 @@
 import { SINK_README } from './lib.mjs';
 
 export default {
-  version: '60903.2',
+  version: '60904.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'agent-maintained market, user and competitor research wikis — cited pages, growth logs, the reviewed product-requirements sink',
@@ -19,8 +19,9 @@ export default {
   // (product-wiki-layout) are both declared checks in this pack's
   // declared-checks.json. They are a designed pair: the barrier's glob target
   // fails closed on an empty product-wiki/ expansion, and layout owns the
-  // missing-skeleton complaint.
-  requires: ['barriers'],
+  // missing-skeleton complaint. A declared check is run by the engine, so this
+  // pack needs nothing else declared for its wall to stand (#1681 dropped the
+  // `barriers` requirement, vestigial since the wall stopped being code).
   // Editing the wiki tree is the writing-wiki-pages skill's territory — its own
   // `force-load-on-file-edits-paths` names product-wiki/**, and the guard holds a file tool aimed
   // there until the session has loaded it — so the page rules are read once, by

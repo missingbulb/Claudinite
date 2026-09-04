@@ -2,21 +2,51 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
-import barrier from '../worldRules/check.mjs';
+import barrier from '../worldRules/barrier.mjs';
 import {
   normalizeEdges, resolveRef, candidatesOn, buildIndex, under, normPrefix,
 } from '../../../engine/checks/helpers/reference-scanning.mjs';
-import { contributedBarrierRules } from '../contributed.mjs';
+import { contributedBarrierRules } from '../barriers.mjs';
 
-// Run the config-driven check with the given packConfig.barriers and repo files.
+// Run the config-driven check with the given graph and repo files, from where a
+// converged member carries it: `config.barriers` on the basics entry.
 function runCheck(barriersConfig, files) {
+  return runCheckAt({ basics: { barriers: barriersConfig } }, files);
+}
+
+function runCheckAt(packConfig, files) {
   const root = makeRepo({ changed: files });
   try {
     const ctx = buildContext({ root, mode: 'all' });
-    ctx.config = { ...ctx.config, packConfig: { barriers: barriersConfig } };
+    ctx.config = { ...ctx.config, packConfig };
     return barrier.run(ctx);
   } finally { cleanup(root); }
 }
+
+// --- where the graph is read from -------------------------------------------
+
+const CROSSING = {
+  'extension/popup.js': "import { db } from '../server/db.js';\n",
+  'server/db.js': 'export const db = 1;\n',
+};
+const GRAPH = { rules: [{ from: 'extension', to: 'server' }] };
+
+// The window between a member's mount converging and the record rewriting its
+// declaration: the graph is still on the old `barriers` entry, and it must keep
+// being enforced rather than reading as "no graph declared". Retired by #1682.
+test('the graph is read from the pre-absorption placement too', () => {
+  assert.equal(runCheckAt({ barriers: GRAPH }, CROSSING).length, 1);
+});
+
+test('the converged placement wins over the pre-absorption one', () => {
+  const f = runCheckAt({ basics: { barriers: GRAPH }, barriers: { rules: [] } }, CROSSING);
+  assert.equal(f.length, 1);
+});
+
+test('a repo that declares no graph is silent, not unconfigured', () => {
+  assert.deepEqual(runCheckAt({}, CROSSING), []);
+  assert.deepEqual(runCheckAt({ basics: {} }, CROSSING), []);
+});
 
 // --- import / relative-path detection ---------------------------------------
 

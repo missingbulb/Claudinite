@@ -26,7 +26,7 @@ const PACKS = [
 
 test('packEntryId: reads a string entry, an object entry, and rejects malformed ones', () => {
   assert.equal(packEntryId('basics'), 'basics');
-  assert.equal(packEntryId({ id: 'barriers', config: {} }), 'barriers');
+  assert.equal(packEntryId({ id: 'product-wiki', config: {} }), 'product-wiki');
   assert.equal(packEntryId({ config: {} }), undefined);
   assert.equal(packEntryId(null), undefined);
   assert.equal(packEntryId(42), undefined);
@@ -34,7 +34,7 @@ test('packEntryId: reads a string entry, an object entry, and rejects malformed 
 
 test('isActive: activation matches both entry forms', () => {
   assert.ok(isActive({ id: 'basics' }, { packs: ['basics'] }));
-  assert.ok(isActive({ id: 'barriers' }, { packs: ['basics', { id: 'barriers', config: {} }] }));
+  assert.ok(isActive({ id: 'product-wiki' }, { packs: ['basics', { id: 'product-wiki', config: {} }] }));
   assert.ok(!isActive({ id: 'node' }, { packs: ['basics'] }));
   assert.ok(!isActive({ id: 'node' }, {}));
 });
@@ -311,9 +311,9 @@ test('isActive: a declaration still carrying the old spelling activates the rena
 });
 
 test('resolveDeclaredPacks: the old spelling pulls in the renamed pack requires', () => {
-  const packs = [{ id: 'claudinite-lifecycle', requires: ['barriers'] }, { id: 'barriers' }];
+  const packs = [{ id: 'claudinite-lifecycle', requires: ['product-wiki'] }, { id: 'product-wiki' }];
   const ids = resolveDeclaredPacks(['core'], packs).map(packEntryId);
-  assert.deepEqual(ids, ['claudinite-lifecycle', 'barriers']);
+  assert.deepEqual(ids, ['claudinite-lifecycle', 'product-wiki']);
 });
 
 test('canonicalPackVersions: a version stamped under the old key is not read as absent', () => {

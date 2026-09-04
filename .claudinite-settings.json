@@ -2,7 +2,108 @@
   "packs": [
     "claudinite-lifecycle",
     "claudinite-tasks",
-    "basics",
+    {
+      "id": "basics",
+      "config": {
+        "barriers": {
+          "rules": [
+            {
+              "from": [
+                "engine",
+                ".github",
+                "bootstrap.md",
+                "consumer-safe-changes.md",
+                "extending.md"
+              ],
+              "to": "packs/*",
+              "matchNames": true,
+              "matchUniqueFilenames": false,
+              "reason": "core is the engine that runs pack content — it must not name the specific packs it runs (extending.md)",
+              "except": [
+                {
+                  "path": ".github/workflows/README.md",
+                  "to": [
+                    "packs/chrome-extension"
+                  ],
+                  "reason": "decouple(release-infra): the core .github/ README documents the chrome-extension release plumbing being vendored out of core (#276)"
+                },
+                {
+                  "path": ".github/workflows/chrome-extension-daily-release.yml",
+                  "to": [
+                    "packs/chrome-extension"
+                  ],
+                  "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
+                },
+                {
+                  "path": ".github/workflows/chrome-extension-publish-store.yml",
+                  "to": [
+                    "packs/chrome-extension"
+                  ],
+                  "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
+                },
+                {
+                  "path": ".github/workflows/chrome-extension-release.yml",
+                  "to": [
+                    "packs/chrome-extension"
+                  ],
+                  "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
+                },
+                {
+                  "path": "extending.md",
+                  "to": [
+                    "packs/claudinite-lifecycle"
+                  ],
+                  "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill (moved with that skill into the claudinite-lifecycle pack, #835)"
+                },
+                {
+                  "path": ".github/workflows/claudinite-scheduler.yml",
+                  "to": [
+                    "packs/claudinite-tasks"
+                  ],
+                  "reason": "inherent(#1317): a member's scheduler workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the run — the pack boundary is what the workflow points across"
+                },
+                {
+                  "path": ".github/workflows/claudinite-executor.yml",
+                  "to": [
+                    "packs/claudinite-tasks"
+                  ],
+                  "reason": "inherent(#1317): a member's executor workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the executor"
+                },
+                "engine/migrations",
+                {
+                  "path": "engine/pack_loader/renamed-packs.mjs",
+                  "to": [
+                    "packs/claudinite-lifecycle",
+                    "packs/claudinite-growth",
+                    "packs/chrome-extension",
+                    "packs/git-github",
+                    "packs/claudinite-canary-repo",
+                    "packs/claudinite-fleet-sheepdog"
+                  ],
+                  "reason": "inherent(#1022): a map from a pack's old id to its current one IS a list of pack names — there is nothing else for it to be made of, and the loader must hold it so a member declaring either spelling keeps its packs"
+                },
+                {
+                  "path": "engine/RELEASES.md",
+                  "to": [
+                    "packs/claudinite-lifecycle",
+                    "packs/claudinite-growth"
+                  ],
+                  "reason": "inherent(#1022): the release log says what each engine version shipped, and version 5 shipped a pack rename — a row that could not name the packs would not be a record of it"
+                }
+              ]
+            },
+            {
+              "siblings": "packs",
+              "to": "docs",
+              "reason": "docs/ is outside the vendor set, so a pack file's reference to it resolves to nothing in every consumer (#424) — cite the doc from the issue or PR instead; a pack's updates/ is carved out because no vendor set carries that either, so the premise cannot arise there (#1317)",
+              "except": [
+                "packs/claudinite-lifecycle/updates"
+              ]
+            }
+          ]
+        }
+      }
+    },
     "git-github",
     {
       "id": "claudinite-growth",
@@ -21,109 +122,6 @@
       }
     },
     "claudinite-canon-curation",
-    {
-      "id": "barriers",
-      "answers": {
-        "goals": "Keep extending.md's engine/content boundary structural: core (checks/, mount/, engine/, .github/, the top-level docs, and the shared engine modules under packs/ and skills/) must never name a specific pack or skill — packs and skills are discovered content, and a core file citing one couples the engine to its content. One rule per namespace (packs/*, skills/*); reviewed inherent couplings live in each rule's except. migrations/ is deliberately NOT core here: a migration record is a dated one-off that exists to move the fleet off a specific pack's old shape, so naming that pack is its purpose, not a coupling — and records accumulate as dated folders, one per change, which no path-keyed exception list should have to chase."
-      },
-      "config": {
-        "rules": [
-          {
-            "from": [
-              "engine",
-              ".github",
-              "bootstrap.md",
-              "consumer-safe-changes.md",
-              "extending.md"
-            ],
-            "to": "packs/*",
-            "matchNames": true,
-            "matchUniqueFilenames": false,
-            "reason": "core is the engine that runs pack content — it must not name the specific packs it runs (extending.md)",
-            "except": [
-              {
-                "path": ".github/workflows/README.md",
-                "to": [
-                  "packs/chrome-extension"
-                ],
-                "reason": "decouple(release-infra): the core .github/ README documents the chrome-extension release plumbing being vendored out of core (#276)"
-              },
-              {
-                "path": ".github/workflows/chrome-extension-daily-release.yml",
-                "to": [
-                  "packs/chrome-extension"
-                ],
-                "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
-              },
-              {
-                "path": ".github/workflows/chrome-extension-publish-store.yml",
-                "to": [
-                  "packs/chrome-extension"
-                ],
-                "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
-              },
-              {
-                "path": ".github/workflows/chrome-extension-release.yml",
-                "to": [
-                  "packs/chrome-extension"
-                ],
-                "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
-              },
-              {
-                "path": "extending.md",
-                "to": [
-                  "packs/claudinite-lifecycle"
-                ],
-                "reason": "inherent(#385): the engine map documents where the adoption-interview machinery lives now that it is bundled in the adoption skill (moved with that skill into the claudinite-lifecycle pack, #835)"
-              },
-              {
-          "path": ".github/workflows/claudinite-scheduler.yml",
-          "to": [
-            "packs/claudinite-tasks"
-          ],
-          "reason": "inherent(#1317): a member's scheduler workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the run — the pack boundary is what the workflow points across"
-        },
-        {
-          "path": ".github/workflows/claudinite-executor.yml",
-          "to": [
-            "packs/claudinite-tasks"
-          ],
-          "reason": "inherent(#1317): a member's executor workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the executor"
-        },
-        "engine/migrations",
-              {
-                "path": "engine/pack_loader/renamed-packs.mjs",
-                "to": [
-                  "packs/claudinite-lifecycle",
-                  "packs/claudinite-growth",
-                  "packs/chrome-extension",
-                  "packs/git-github",
-                  "packs/claudinite-canary-repo",
-                  "packs/claudinite-fleet-sheepdog"
-                ],
-                "reason": "inherent(#1022): a map from a pack's old id to its current one IS a list of pack names — there is nothing else for it to be made of, and the loader must hold it so a member declaring either spelling keeps its packs"
-              },
-              {
-                "path": "engine/RELEASES.md",
-                "to": [
-                  "packs/claudinite-lifecycle",
-                  "packs/claudinite-growth"
-                ],
-                "reason": "inherent(#1022): the release log says what each engine version shipped, and version 5 shipped a pack rename — a row that could not name the packs would not be a record of it"
-              }
-            ]
-          },
-          {
-            "siblings": "packs",
-            "to": "docs",
-            "reason": "docs/ is outside the vendor set, so a pack file's reference to it resolves to nothing in every consumer (#424) — cite the doc from the issue or PR instead; a pack's updates/ is carved out because no vendor set carries that either, so the premise cannot arise there (#1317)",
-            "except": [
-              "packs/claudinite-lifecycle/updates"
-            ]
-          }
-        ]
-      }
-    },
     {
       "id": "claude-code-web-users-support",
       "config": {

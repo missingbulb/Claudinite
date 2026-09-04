@@ -12,7 +12,7 @@ and the `chrome-release-vendoring` migration vendors the full set into each cons
 `.github/` — so a consumer runs the whole pipeline locally, with **no** cross-repo `@main`
 dependency. Once every consumer has vendored (0 repos on the `@main` shape, confirmed by hand
 against the fleet), these files are deleted here in one deliberate change that also prunes the
-inline references naming them (the barriers `except` entries, this README's links, the
+inline references naming them (the barrier `except` entries, this README's links, the
 migration's tests). Until then they remain the `@main` API for the consumers baselining hasn't
 reached yet, so while any survive, the frozen-API rule still holds: renaming or removing one by
 hand breaks an un-migrated consumer's pipeline. Any *other* rename here is the two-phase

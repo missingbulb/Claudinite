@@ -64,17 +64,17 @@ test('a new suppression marker blocks the run (fail fast)', () => {
 test('interview: a stale answer is advisory (never run-failing); pending questions are no finding at all', () => {
   // The hygiene check is core's (bundled in the adopt-claudinite skill), so that
   // pack must be active for it to run; it inspects every active pack's answers.
-  // barriers declares the `goals` question: `old-id` is stale, and `goals` itself
-  // stays unanswered — which must NOT surface in the sweep (an unattended nightly
-  // run can't answer it; only SessionStart may nudge).
+  // executable-requirements declares the `ui_testing` question: `old-id` is stale,
+  // and `ui_testing` itself stays unanswered — which must NOT surface in the sweep
+  // (an unattended nightly run can't answer it; only SessionStart may nudge).
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['claudinite-lifecycle', { id: 'barriers', answers: { 'old-id': 'kept intent' } }],
+    packs: ['claudinite-lifecycle', { id: 'executable-requirements', answers: { 'old-id': 'kept intent' } }],
   }) } });
   try {
     const r = runCli(root);
     assert.equal(r.status, 0);
     assert.match(r.stdout, /stores an answer for "old-id"/);
-    assert.doesNotMatch(r.stdout, /goals/);
+    assert.doesNotMatch(r.stdout, /ui_testing/);
   } finally { cleanup(root); }
 });
 
@@ -273,11 +273,11 @@ test('--init writes the pack declaration once and is idempotent', () => {
     // No pack is active by default, so --init materializes the seeded-by-default
     // declared packs: basics and core plus claudinite-growth, tidy-repo and
     // claude-code-web-users-support (each opt-out by removal) — and the requires
-    // closure: basics pulls core and git-github in, core pulls the barriers
-    // mechanism pack in, each materialized with its provenance (`via`). core is
-    // seeded AND required, so it appears once, in the seeded order, with no `via`.
+    // closure: basics pulls core and git-github in, each materialized with its
+    // provenance (`via`). core is seeded AND required, so it appears once, in the
+    // seeded order, with no `via`.
     assert.deepEqual(JSON.parse(first).packs,
-      ['basics', 'claudinite-lifecycle', { id: 'barriers', via: ['claudinite-lifecycle'] }, { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'claudinite-tasks', 'tidy-repo']);
+      ['basics', 'claudinite-lifecycle', { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'claudinite-tasks', 'tidy-repo']);
     // The declaration is the ONLY key seeded. The delivery preference used to be
     // materialized here too, but every project made the same selection, so the line
     // said nothing — it is an override now, written only by the project that wants
@@ -288,14 +288,13 @@ test('--init writes the pack declaration once and is idempotent', () => {
   } finally { cleanup(root); }
 });
 
-test('the contributedRules seam: a pack\'s contributed barrier runs via the runner, under its own id', () => {
-  // product-wiki contributes its isolation wall to the barriers pack as
-  // manifest data; the runner hands barriers the active-pack list and the
-  // contribution runs as a first-class rule — no cross-pack import anywhere.
+test('a declared forbidReferences wall runs via the runner, under its own id', () => {
+  // product-wiki's isolation wall is declared data the ENGINE runs, so the pack
+  // needs no other pack declared beside it — no cross-pack import anywhere.
   const root = makeRepo({ changed: {
     'product-wiki/Users/README.md': '# Users\n',
     'dev/notes.md': 'see product-wiki/Users/README.md\n',
-    '.claudinite-settings.json': JSON.stringify({ packs: ['product-wiki', 'barriers'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['product-wiki'] }),
   } });
   try {
     const r = runCli(root);
