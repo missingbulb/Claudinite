@@ -42,7 +42,8 @@ test('pipe-tail-hides-exit and pkill-pattern-self-match', () => {
   assert.deepEqual(judge('pipe-tail-hides-exit', [
     ['Bash', { command: 'node --test $(git ls-files "*.test.mjs") 2>&1 | tail -20' }],
     ['Bash', { command: 'node --test x.test.mjs > out.txt; tail -3 out.txt' }],
-  ]), ['a command whose output ends in "| tail -20"']);
+    ['Bash', { command: 'grep -n needle file.txt | head -5' }],
+  ]), ['a run whose output ends in "node --test $(git ls-files "*.test.mjs") 2>&1 | tail -20"']);
   assert.deepEqual(judge('pkill-pattern-self-match', [
     ['Bash', { command: 'pkill -f http.server' }],
     ['Bash', { command: "pkill -f '[h]ttp.server'" }],

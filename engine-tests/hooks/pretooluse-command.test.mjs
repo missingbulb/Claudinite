@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup } from '../helpers.mjs';
+import { makeRepo, cleanup, makeTranscript } from '../helpers.mjs';
 
 // The real PreToolUse command, run against a scratch repo whose own local pack
 // declares action guards — the wiring a member's session actually executes.
@@ -99,4 +99,30 @@ test('an undeclared pack\'s guards bind nothing, and the remote-branch guard sti
     assert.equal(r.status, 2);
     assert.match(r.stderr, /never delete a remote branch/);
   } finally { cleanup(root); }
+});
+
+const OP_SKILL = [
+  '---', 'name: fixture-op', 'description: A rehearsal fixture skill.', 'metadata:',
+  '  force-load-on-tool-calls:', "    - 'Bash.command /\\bforbidden-op\\b/'",
+  '---', '# fixture-op', '',
+].join('\n');
+const opRepo = () => makeRepo({ changed: {
+  '.claudinite-settings.json': JSON.stringify({ packs: ['local/fixture-guards'] }),
+  '.claudinite/local/packs/fixture-guards/pack.mjs': PACK,
+  '.claudinite/local/packs/fixture-guards/RULES.md': '# fixture-guards\n\nNo standing rules.\n',
+  '.claudinite/local/packs/fixture-guards/skills/fixture-op/SKILL.md': OP_SKILL,
+} });
+
+test('a tool call a skill forces itself for is held until the skill is loaded, like an edit under a scoped path', () => {
+  const root = opRepo();
+  const loaded = makeTranscript([{ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Skill', input: { skill: 'fixture-op' } }] } }]);
+  try {
+    const blocked = run(root, bash('forbidden-op --go'));
+    assert.equal(blocked.status, 2, blocked.stderr);
+    assert.match(blocked.stderr, /Bash is called only with the `fixture-op` skill loaded/);
+    assert.match(blocked.stderr, /skill: "fixture-op"/);
+    const allowed = run(root, { ...bash('forbidden-op --go'), transcript_path: loaded.path });
+    assert.equal(allowed.status, 0, allowed.stderr);
+    assert.equal(run(root, bash('ls')).status, 0);
+  } finally { cleanup(root); loaded.cleanup(); }
 });

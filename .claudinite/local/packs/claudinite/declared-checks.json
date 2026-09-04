@@ -125,21 +125,20 @@
     "severity": "advisory",
     "scope": "action",
     "failureMessage": "node --test does not recurse and a bash glob without globstar reached 37 of 65 files, so every hand-written form under-runs the suite silently",
+    "fix": "node --test $(git ls-files '*.test.mjs')",
     "guardToolCalls": [
       {
         "tool": "Bash",
         "inputField": "command",
         "match": "/\\bnode\\s+--test\\s+[^\\s;&|]*\\*/",
         "unlessMatches": "/git ls-files/",
-        "what": "the suite run through a glob: \"{match}\"",
-        "fix": "node --test $(git ls-files '*.test.mjs')"
+        "what": "the suite run through a glob: \"{match}\""
       },
       {
         "tool": "Bash",
         "inputField": "command",
         "match": "/\\bnode\\s+--test\\s*($|[;&|>])/",
-        "what": "node --test with no files named",
-        "fix": "node --test $(git ls-files '*.test.mjs')"
+        "what": "node --test with no files named"
       }
     ]
   },

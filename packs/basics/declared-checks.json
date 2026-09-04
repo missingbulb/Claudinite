@@ -192,8 +192,8 @@
       {
         "tool": "Bash",
         "inputField": "command",
-        "match": "/\\|\\s*(tail|head)\\b[^|;&]*$/",
-        "what": "a command whose output ends in \"{match}\"",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)(node\\s+(--test|\\S+\\.[cm]?js)|npm\\s+(test|run)|npx|make|pytest|cargo|go\\s+test|gradle|mvn)\\b[^|;\\n]*\\|\\s*(tail|head)\\b[^|;&]*$/",
+        "what": "a run whose output ends in \"{match}\"",
         "fix": "redirect the run to a file, read $? from that invocation, and grep the file for the slice you need"
       }
     ]

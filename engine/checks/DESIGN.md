@@ -41,7 +41,7 @@ picked per rule:
 |---|---|---|
 | **Post-hoc check** (this system) | The rule constrains the *state of the repo* after work | file placement, dangling references, workflow lint, lifecycle compliance |
 | **PreToolUse hook** | The action must be blocked *before* it runs | never delete a remote branch; don't `issue_write`-overwrite an issue body |
-| **Skill / script** | A *procedure* or *knowledge* with a nameable (or path-scoped) trigger — a skill's `force-load-on-file-edits-paths` (frontmatter `metadata`) makes the path-scoped trigger deterministic: the PreToolUse hook holds a file tool under the pattern until the skill is loaded, and `skill-loaded-before-editing` catches the rest at Stop | the merge recipe; the lessons pass; the technology gotcha files |
+| **Skill / script** | A *procedure* or *knowledge* with a nameable trigger — a skill's `force-load-on-file-edits-paths`, `force-load-on-tool-calls`, `force-load-on-prompts-matching` and `force-load-on-tool-results-matching` (frontmatter `metadata`) make the trigger deterministic: the hooks hold a file tool or a tool call until the skill is loaded and inject the load instruction beside a prompt or a result, and `skill-loaded-before-editing` catches the rest at Stop | the merge recipe; committing; fetching from the web; the technology gotcha files |
 | **Platform setting** | The platform enforces it outright, for free | squash-only merges; branch protection |
 
 Two classes deliberately **stay as instructions**:

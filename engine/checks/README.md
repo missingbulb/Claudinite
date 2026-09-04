@@ -149,6 +149,13 @@ the change in front of the session, one about the repo as a whole:
   never fired, and the count the usage fold reads. The hook is registered on every tool
   (`PRETOOLUSE_MATCHER`) and says nothing on a call no declaration names; each call pays the pack
   load, about 150 ms.
+- **Trigger scope → the PreToolUse, UserPromptSubmit and PostToolUse hooks.** A skill names the
+  moments it must be loaded for under its frontmatter `metadata` — `force-load-on-file-edits-paths`,
+  `force-load-on-tool-calls`, `force-load-on-prompts-matching`, `force-load-on-tool-results-matching`
+  ([../pack_loader/path-scoped-skills.mjs](../pack_loader/path-scoped-skills.mjs)). An edit or a tool
+  call is held until the skill is loaded; a prompt or a result gets the load instruction injected.
+  Each fires once per session, and `skill-loaded-before-editing` catches at Stop what a hook never
+  saw.
 - **World scope → the project's test/CI flow.** The whole-repo sweep is a repo-wide invariant
   assertion — the same kind of thing a test suite is — and is only *meaningful* at a
   commit/verify boundary, not every turn. So [check_the_world.mjs](check_the_world.mjs) is wired
