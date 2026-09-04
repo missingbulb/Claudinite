@@ -167,6 +167,7 @@ here: its subject is Claudinite's own surface, not lesson capture.
 |---|---|---|---|
 | Recording a local pack change | high | complexity | prose: 66 words |
 | Wanting a job to run in Actions | high | complexity | prose: 55 words + check (`scheduler-workflow-shape`) |
+| Describing another pack's artifact | medium | complexity | prose: 37 words |
 
 ## Coded rules
 
