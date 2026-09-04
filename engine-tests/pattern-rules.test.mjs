@@ -1595,3 +1595,278 @@ ruleTester(patternRule({
     },
   },
 });
+
+// --- pass two: value sets derived from lines and paths, then quantified --------
+
+// A line-derived set joined to another file through the path regex's named
+// group: each pack's markers resolve against its OWN references doc.
+ruleTester(patternRule({
+  ...meta('fx-set-join'),
+  extractValueSets: [{
+    setName: 'markers',
+    fromLinesMatching: /\((?<value>\d+(?:\s*,\s*\d+)*)\)\s*$/,
+    inFilesMatching: /^(?<packDir>packs\/[^/]+\/)RULES\.md$/,
+    splitValuesOn: /\s*,\s*/,
+    whenSetEmpty: 'assertNothing',
+  }],
+  checkSetValues: [{
+    setName: 'markers',
+    requireSomeFileMatching: { pathMatching: '/^{packDir}references\\.md$/', text: '/\\*\\*\\(RULES-{value}\\)\\*\\*/' },
+    what: 'marker ({value}) has no entry in {packDir}references.md', fix: 'add RULES-{value}',
+  }],
+}), {
+  clean: {
+    'every marker, split from one capture, resolves in its own pack': { files: {
+      'packs/a/RULES.md': '- **Do** — settled. (3, 7)\n- **Other** — no marker.\n',
+      'packs/a/references.md': '- **(RULES-3)** why.\n- **(RULES-7)** why.\n',
+    } },
+    'no markers anywhere is an empty set, declared inert': { files: { 'packs/a/RULES.md': '- **Do** — plain.\n' } },
+  },
+  flagged: {
+    'a missing entry flags at the marker line, once per value': {
+      files: {
+        'packs/a/RULES.md': '- **Do** — settled. (3, 7)\n- **Again** — also settled. (7)\n',
+        'packs/a/references.md': '- **(RULES-3)** why.\n',
+      },
+      at: [{ file: 'packs/a/RULES.md', line: 1, what: /\(7\) has no entry in packs\/a\/references\.md/ }],
+    },
+    'a value never resolves through ANOTHER pack\'s references': {
+      files: {
+        'packs/a/RULES.md': '- **Do** — settled. (3)\n',
+        'packs/b/RULES.md': '- **Do** — settled. (3)\n',
+        'packs/b/references.md': '- **(RULES-3)** b\'s reason.\n',
+      },
+      at: [{ file: 'packs/a/RULES.md', line: 1, what: /packs\/a\/references\.md/ }],
+    },
+  },
+});
+
+test('extractValueSets: a line source reads the rule\'s comment-blind view, so a commented mention is not a value', () => {
+  const rule = patternRule({
+    ...meta('fx-set-comment-blind'),
+    scanIgnoringComments: true,
+    extractValueSets: [{
+      setName: 'knobs', fromLinesMatching: /process\.env\.(?<value>[A-Z_]+)/, inFilesMatching: /\.mjs$/,
+      whenSetEmpty: 'assertNothing',
+    }],
+    checkSetValues: [{
+      setName: 'knobs', requireSomeFileMatching: { pathMatching: '/README\\.md$/', text: '/`{value}`/' },
+      what: '{value} is read but undocumented', fix: 'document it',
+    }],
+  });
+  const root = makeRepo({ changed: {
+    'a.mjs': 'const x = process.env.LIVE_KNOB;\n// process.env.COMMENTED_KNOB was retired\n',
+    'README.md': 'Set `LIVE_KNOB`.\n',
+  } });
+  try { assert.deepEqual(rule.run(ctxOf(root)), []); } finally { cleanup(root); }
+});
+
+// A path-derived set and a path template: every pack directory must carry a manifest.
+ruleTester(patternRule({
+  ...meta('fx-path-set'),
+  extractValueSets: [{
+    setName: 'packDirs', fromTrackedPathsMatching: /^packs\/(?<value>[^/]+)\/RULES\.md$/, whenSetEmpty: 'assertNothing',
+  }],
+  checkSetValues: [{
+    setName: 'packDirs', requirePathExists: 'packs/{value}/pack.mjs',
+    what: 'pack "{value}" has prose but no manifest at {target}', fix: 'add it',
+  }],
+}), {
+  clean: { 'every pack with prose has its manifest': { files: { 'packs/a/RULES.md': 'x\n', 'packs/a/pack.mjs': 'export default {};\n' } } },
+  flagged: {
+    'a pack without one flags at the prose file, naming the missing path': {
+      files: { 'packs/a/RULES.md': 'x\n', 'packs/a/pack.mjs': 'export default {};\n', 'packs/b/RULES.md': 'y\n' },
+      at: [{ file: 'packs/b/RULES.md', line: null, what: /pack "b" .* packs\/b\/pack\.mjs/ }],
+    },
+  },
+});
+
+// Fan-out over a root-array document, and a value that IS a pattern: every
+// declared scan pattern must select at least one tracked file.
+ruleTester(patternRule({
+  ...meta('fx-pattern-values'),
+  extractValueSets: [{
+    setName: 'scanPatterns', fromParsedFilesMatching: /declared-checks\.json$/, valuesAtFields: ['scanFiles'],
+    whenSetEmpty: 'assertNothing',
+  }],
+  checkSetValues: [{
+    setName: 'scanPatterns', valueIsPattern: true, requireTrackedPathMatching: '/{value}/',
+    what: 'scanFiles {value} in {path} selects no tracked file', fix: 'fix the pattern',
+  }],
+}), {
+  clean: {
+    'each entry\'s pattern selects something': { files: {
+      'p/declared-checks.json': '[{"id":"a","scanFiles":"/\\\\.yml$/"},{"id":"b","scanFiles":"/^src\\\\//"}]',
+      'ci.yml': 'x\n', 'src/index.mjs': 'y\n',
+    } },
+  },
+  flagged: {
+    'a pattern selecting nothing flags at the declaring document': {
+      files: { 'p/declared-checks.json': '[{"id":"a","scanFiles":"/\\\\.yml$/"},{"id":"b","scanFiles":"/^lib\\\\//"}]', 'ci.yml': 'x\n' },
+      at: [{ file: 'p/declared-checks.json', what: /scanFiles \/\^lib\\\/\/ in p\/declared-checks\.json selects no tracked file/ }],
+    },
+  },
+});
+
+test('extractValueSets: whenSetEmpty as a message reports the empty set at its source', () => {
+  const rule = patternRule({
+    ...meta('fx-set-empty'),
+    extractValueSets: [{
+      setName: 'ids', fromParsedFilesMatching: /catalog\.json$/, valuesAtFields: ['ids'],
+      whenSetEmpty: { what: 'the {setName} set read nothing from {path}', fix: 'populate it' },
+    }],
+    checkSetValues: [{ setName: 'ids', requirePathExists: 'items/{value}.md', what: 'w', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: { 'catalog.json': '{"ids":[]}' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]), [['catalog.json', 'the ids set read nothing from catalog.json']]);
+  } finally { cleanup(root); }
+});
+
+// The join between two sets, both directions.
+ruleTester(patternRule({
+  ...meta('fx-set-pairs'),
+  extractValueSets: [
+    { setName: 'declaredIds', fromParsedFile: 'ids.json', valuesAtFields: ['ids'], whenSetEmpty: 'assertNothing' },
+    { setName: 'usedIds', fromLinesMatching: /use\((?<value>\w+)\)/, inFilesMatching: /\.mjs$/, whenSetEmpty: 'assertNothing' },
+    { setName: 'retiredIds', fromLinesMatching: /^- (?<value>\w+)$/, inFilesMatching: /^RETIRED\.md$/, whenSetEmpty: 'assertNothing' },
+  ],
+  checkSetPairs: [
+    { everyValueOf: 'usedIds', mustAlsoBeIn: 'declaredIds', what: '{value} is used but never declared', fix: 'declare it' },
+    { everyValueOf: 'usedIds', mustNotBeIn: 'retiredIds', what: '{value} is used but retired in {other}', fix: 'stop using it' },
+  ],
+}), {
+  clean: { 'used ids are declared and none is retired': { files: {
+    'ids.json': '{"ids":["alpha","beta"]}', 'a.mjs': 'use(alpha); use(beta);\n', 'RETIRED.md': '- gamma\n',
+  } } },
+  flagged: {
+    'an undeclared use and a retired use each flag at the use': {
+      files: { 'ids.json': '{"ids":["alpha","gamma"]}', 'a.mjs': 'use(alpha)\nuse(delta)\nuse(gamma)\n', 'RETIRED.md': '- gamma\n' },
+      at: [
+        { file: 'a.mjs', line: 2, what: /delta is used but never declared/ },
+        { file: 'a.mjs', line: 3, what: /gamma is used but retired in RETIRED\.md/ },
+      ],
+    },
+  },
+});
+
+test('checkSetValues: forbidEveryFileMatching anchors at the file still carrying the value, naming its source', () => {
+  const rule = patternRule({
+    ...meta('fx-forbid-everywhere'),
+    extractValueSets: [{
+      setName: 'retired', fromLinesMatching: /^- (?<value>\w+)$/, inFilesMatching: /^RETIRED\.md$/, whenSetEmpty: 'assertNothing',
+    }],
+    checkSetValues: [{
+      setName: 'retired', forbidEveryFileMatching: { pathMatching: '/\\.mjs$/', text: '/\\b{value}\\b/' },
+      what: '{path}:{line} still names {value}, retired in {source}', fix: 'drop it',
+    }],
+  });
+  const root = makeRepo({ changed: { 'RETIRED.md': '- oldName\n', 'a.mjs': 'const x = 1;\nconst y = oldName;\n' } });
+  try {
+    const findings = rule.run(ctxOf(root));
+    assert.deepEqual(findings.map((f) => [f.file, f.line, f.what]), [['a.mjs', 2, 'a.mjs:2 still names oldName, retired in RETIRED.md']]);
+  } finally { cleanup(root); }
+});
+
+// Two files that must stay identical: a stub and its canon twin, joined by basename.
+ruleTester(patternRule({
+  ...meta('fx-twins'),
+  requireIdenticalFiles: [{
+    everyFileMatching: /^stubs\/(?<name>[^/]+\.yml)$/, twinAt: '.github/workflows/{name}',
+    whenTwinAbsent: { what: '{path} has no twin at {twin}', fix: 'add it' },
+    what: '{path} differs from its twin {twin}', fix: 'edit both in one commit',
+  }],
+}), {
+  clean: { 'identical twins are silent': { files: { 'stubs/ci.yml': 'a: 1\n', '.github/workflows/ci.yml': 'a: 1\n' } } },
+  flagged: {
+    'a drifted twin flags at the stub': {
+      files: { 'stubs/ci.yml': 'a: 1\n', '.github/workflows/ci.yml': 'a: 2\n' },
+      at: [{ file: 'stubs/ci.yml', what: /differs from its twin \.github\/workflows\/ci\.yml/ }],
+    },
+    'an absent twin reports as declared': {
+      files: { 'stubs/ci.yml': 'a: 1\n' },
+      at: [{ file: 'stubs/ci.yml', what: /no twin at \.github\/workflows\/ci\.yml/ }],
+    },
+  },
+});
+
+test('requireIdenticalFiles: whenTwinAbsent "assertNothing" stays silent', () => {
+  const rule = patternRule({
+    ...meta('fx-twins-quiet'),
+    requireIdenticalFiles: [{ everyFileMatching: /^stubs\/(?<name>.+)$/, twinAt: 'canon/{name}', whenTwinAbsent: 'assertNothing', what: 'w', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: { 'stubs/x.yml': 'a\n' } });
+  try { assert.deepEqual(rule.run(ctxOf(root)), []); } finally { cleanup(root); }
+});
+
+test('extractValueSets: fromAddedLinesMatching derives from the change under scope work, and demands that scope', () => {
+  const rule = patternRule({
+    ...meta('fx-added-set'), scope: 'work',
+    extractValueSets: [{
+      setName: 'newExports', fromAddedLinesMatching: /^export function (?<value>\w+)/, inFilesMatching: /^engine\//,
+      whenSetEmpty: 'assertNothing',
+    }],
+    checkSetValues: [{
+      setName: 'newExports', forbidEveryFileMatching: { pathMatching: '/^packs\\//', text: '/import \\{[^}]*\\b{value}\\b/' },
+      what: '{path} names the brand-new engine export {value} by name', fix: 'import the module as a namespace and guard with typeof',
+    }],
+  });
+  const root = makeRepo({
+    base: { 'engine/h.mjs': 'export function old() {}\n', 'packs/p/a.mjs': "import { old } from '../../engine/h.mjs';\n" },
+    changed: { 'engine/h.mjs': 'export function old() {}\nexport function fresh() {}\n', 'packs/p/a.mjs': "import { old, fresh } from '../../engine/h.mjs';\n" },
+  });
+  try {
+    const findings = runRule(rule, ctxOf(root));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]), [['packs/p/a.mjs', 'packs/p/a.mjs names the brand-new engine export fresh by name']]);
+  } finally { cleanup(root); }
+  assert.throws(() => patternRule({
+    ...meta('fx-added-set-noscope'),
+    extractValueSets: [{ setName: 's', fromAddedLinesMatching: /(?<value>x)/, inFilesMatching: /a/, whenSetEmpty: 'assertNothing' }],
+  }), /scope: "work"/);
+});
+
+test('requireIndexCoverage: eachValueOfSet quantifies a line-derived set (filled by the sweep)', () => {
+  const rule = patternRule({
+    ...meta('fx-coverage-line-set'),
+    extractValueSets: [{
+      setName: 'tasks', fromLinesMatching: /^task: (?<value>[\w-]+)$/, inFilesMatching: /\.task$/, whenSetEmpty: 'assertNothing',
+    }],
+    requireIndexCoverage: [{
+      eachValueOfSet: 'tasks', indexFile: 'INDEX.md', coveredByText: '`{value}`',
+      whenIndexFileAbsent: 'flagEveryPath', anchorFindingsAt: 'eachUncoveredPath', what: '{value} unindexed', fix: 'index it',
+    }],
+  });
+  const root = makeRepo({ changed: { 'a.task': 'task: one\ntask: two\n', 'INDEX.md': '`one`\n' } });
+  try {
+    assert.deepEqual(rule.run(ctxOf(root)).map((f) => [f.file, f.line, f.what]), [['a.task', 2, 'two unindexed']]);
+  } finally { cleanup(root); }
+});
+
+test('two-pass keys: the authoring errors', () => {
+  const set = (extra) => ({ setName: 's', whenSetEmpty: 'assertNothing', ...extra });
+  assert.throws(() => patternRule({ ...meta('fx-e1'), extractValueSets: [set({ fromParsedFile: 'a.json', fromLinesMatching: /(?<value>x)/, valuesAtFields: ['a'] })] }), /exactly one source/);
+  assert.throws(() => patternRule({ ...meta('fx-e2'), extractValueSets: [set({ fromLinesMatching: /x/, inFilesMatching: /a/ })] }), /named group "\(\?<value>/);
+  assert.throws(() => patternRule({ ...meta('fx-e3'), extractValueSets: [set({ fromLinesMatching: /(?<value>x)/ })] }), /needs "inFilesMatching"/);
+  assert.throws(() => patternRule({ ...meta('fx-e4'), extractValueSets: [set({ fromTrackedPathsMatching: /x/, valuesAtFields: ['a'] })] }), /cannot go with "fromTrackedPathsMatching"/);
+  assert.throws(() => patternRule({ ...meta('fx-e5'), extractValueSets: [set({ fromParsedFile: 'a.json', valuesAtFields: ['a'], whenSetEmpty: 'flag' })] }), /whenSetEmpty/);
+  assert.throws(() => patternRule({
+    ...meta('fx-e6'), extractValueSets: [set({ fromParsedFile: 'a.json', valuesAtFields: ['a'] })],
+    checkSetValues: [{ setName: 'nope', requirePathExists: '{value}', what: 'w', fix: 'f' }],
+  }), /names no declared value set/);
+  assert.throws(() => patternRule({
+    ...meta('fx-e7'), extractValueSets: [set({ fromParsedFile: 'a.json', valuesAtFields: ['a'] })],
+    checkSetValues: [{ setName: 's', requirePathExists: '{value}', requireTrackedPathMatching: '/{value}/', what: 'w', fix: 'f' }],
+  }), /exactly one of/);
+  assert.throws(() => patternRule({
+    ...meta('fx-e8'), extractValueSets: [set({ fromParsedFile: 'a.json', valuesAtFields: ['a'] })],
+    checkSetValues: [{ setName: 's', requireSomeFileMatching: { pathMatching: 'not-a-regex', text: '/x/' }, what: 'w', fix: 'f' }],
+  }), /regex template/);
+  assert.throws(() => patternRule({
+    ...meta('fx-e9'), extractValueSets: [set({ fromParsedFile: 'a.json', valuesAtFields: ['a'] })],
+    checkSetPairs: [{ everyValueOf: 's', what: 'w', fix: 'f' }],
+  }), /exactly one of "mustAlsoBeIn" or "mustNotBeIn"/);
+  assert.throws(() => patternRule({
+    ...meta('fx-e10'), requireIdenticalFiles: [{ everyFileMatching: /x/, twinAt: 'y', whenTwinAbsent: 'ignore', what: 'w', fix: 'f' }],
+  }), /whenTwinAbsent/);
+});
