@@ -40,4 +40,4 @@ the version this file was introduced beside (60821.4); earlier bumps are not bac
 | 60901.5 | 2026-09-01 | `references.md` gains the two checks #552 converted out of the `repo-text-sweeps` skill — `reference-integrity` and `markdown-link-labels` — with the sweep failure each was built to catch (#1576). |
 | 60902.6 | 2026-09-02 | Task declarations converted to `task.json`; the declaration's comments moved into each task's README (#1633). |
 | 60903.5 | 2026-09-03 | `writing-tests` and `authoring-agent-docs` force themselves for the files they are for (`force-load-on-file-edits-paths`, #1648): the guard holds an edit of a test file, a `CLAUDE.md` or a `.claude/rules/` file until the skill is loaded. |
-| 60904.2 | 2026-09-04 | Two rules become skills the guard forces for their files: `writing-repo-scanning-checks` (coded and declared checks) and `working-with-generated-files` (`**/*GENERATED*`) (#1662). |
+| 60904.3 | 2026-09-04 | Two rules become skills the guard forces for their files: `writing-repo-scanning-checks` (coded and declared checks) and `working-with-generated-files` (`**/*GENERATED*`) (#1662). |
