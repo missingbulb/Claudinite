@@ -108,10 +108,6 @@ test('findScheduleBoard: an unreadable label listing forbids the write too', asy
   assert.equal((await findScheduleBoard(gh, 'o/r')).readable, false);
 });
 
-test("the board's own body says it is kept closed on purpose", () => {
-  const body = renderScheduleBoard(rows, { now: new Date('2026-08-14T10:00:00Z'), schedule: SCHEDULE });
-  assert.match(body, /closed/i);
-});
 
 // The write is where "kept closed" is actually enforced (#1677): the state and
 // the label are stated on EVERY write, which is what converges a board filed

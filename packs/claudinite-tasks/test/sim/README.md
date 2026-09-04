@@ -122,7 +122,7 @@ test's title in `scenarios.test.mjs`.
 | §15.25 `task:done`/`task:obsolete` — the `outcome:` namespace dissolves | **prose** — a label spelling; the sim stores outcomes as values, not labels |
 | §15.26 no origin marker — standing vs ad-hoc is structural (unqualified + frequency at HEAD) | `S13'`, `S15`, `S17`, `S44`, `S57` (an open unqualified item preempts the anchor's ask) |
 | §15.27 the tick is the scheduler run, with `tick.mjs` kept as an entry-point shim | **live-only** — a rename of a module path and a workflow's `run:` line; nothing the sim models changes, and what has to hold is that a member's un-converged workflow still starts a run (`scheduler-run-entry-shim.test.mjs`) |
-| §15.28 no work, no item — evaluate at the anchor, the schedule board as watermark, fail-open, the migration | `S52`, `S53`, `S54`, `S54b`, `S55`, `S56`, `S57`, `S58`, `S59`, `S60` (F31) |
+| §15.28 no work, no item — evaluate at the anchor, the schedule board as watermark, fail-open, the migration | `S52`, `S53`, `S54`, `S54b`, `S55`, `S56`, `S57`, `S58`, `S59`, `S60` (F31), `S61` |
 | §15.29 the unified vocabulary: one `task:status:*` per item, emitted at every transition, terminal + origin on the closed issue | `S61`; `S43` (the re-queue leaves nothing behind) |
 | §15.29 the decode-forever direction: legacy spellings drain, the first write canonicalizes, a bare or unknown park blocks | `S62`, `S62b`, `S63` |
 | §15.29 the origin label as the standing/ad-hoc authority (structural read = fallback only) | `S61` (planned at birth), `S62` (fallback on unlabeled legacy), `S64` (ad-hoc) |
