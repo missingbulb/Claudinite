@@ -64,8 +64,14 @@ pack's stated territory is merely too narrow, propose widening it rather than ro
    disguise. Only what a schema cannot say — a relation between two documents, a value that depends on the
    tree — goes on to the rungs below.
 2. **A declared check** — an entry in that pack's `declared-checks.json`, whose `failureMessage` *is* the
-   lesson. Nothing wires it: writing the declaration adds the check. This is the first rung to try for any
-   lesson whose whole logic is "these patterns over these files", and most captured conditions are. Give it
+   lesson. Nothing wires it: writing the declaration adds the check. Declare it at the moment its signature
+   lives: a **world** check over the tree — one pass ("these patterns over these files"), or two when a value
+   read in one place must agree with, exist in or be absent from another (`extractValueSets` derives the set,
+   `checkSetValues`/`checkSetPairs`/`requireIdenticalFiles` quantify over it); a **work** check over the
+   change (`scope: "work"` — the lines it adds or removes, a co-change, an untracked file, the session's
+   declared comment classes); or an **action** guard on a tool call (`scope: "action"`, `guardToolCalls` —
+   denied or nudged at PreToolUse, backstopped over the transcript at Stop). Most captured conditions are
+   one of these, and a lesson about *how an operation is performed* is usually the third. Give it
    `severity: 'blocking'` and `since: '<today>'`: the engine holds a check to advisory for its first two
    weeks, so a check may land against a tree that still violates it and the backlog it surfaces is somebody
    else's next change, not this run's.
@@ -74,7 +80,12 @@ pack's stated territory is merely too narrow, propose widening it rather than ro
    conversation state, a derived comparison. Reaching for code where a declaration would do costs a module
    to read and maintain for nothing. An **unattended** run ships one `advisory`: hand-written logic has
    failure modes a declaration cannot have, and nobody reviewed this one.
-4. **A pack skill**, when the lesson is an activity-scoped procedure rather than a condition.
+4. **A pack skill**, when the lesson is an activity-scoped procedure or a bias rather than a condition —
+   and name the moment it must load under its `metadata`: `force-load-on-file-edits-paths`,
+   `force-load-on-tool-calls` (opening a PR, committing, merging, fetching), `force-load-on-prompts-matching`
+   (an owner's command phrase) or `force-load-on-tool-results-matching` (a symptom in a result). A skill
+   with no trigger loads on description alone, which is model discretion; a procedure keyed to an act has a
+   call to name, and rules sharing a trigger belong in one skill so one load carries the whole procedure.
 5. **Terse prose** in the pack's `RULES.md` — the fallback, only what none of the above can carry.
 
 Either check rung ships with a **red-first fixture**; the declaration vocabulary is documented in
