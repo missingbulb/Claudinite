@@ -1,5 +1,5 @@
 import { dirname, join, normalize } from 'node:path';
-import { humanTurns, assistantTextAfter, classificationLine, classesIn } from './session-transcript.mjs';
+import { humanTurns, assistantTextAfter, classificationLine, classesIn, toolCalls } from './session-transcript.mjs';
 import { addedLines } from './line-scanning.mjs';
 import { extractLinks } from './markdown.mjs';
 
@@ -18,7 +18,11 @@ export const work = (ctx) => new Work(ctx);
 // The single dispatch seam: the runner and every rule test invoke rules through
 // this, so a rule's scope decides its context in exactly one place. Extra args
 // pass through (some rules take test-only options after the context).
-export const runRule = (rule, ctx, ...args) => rule.run(rule.scope === 'work' ? work(ctx) : ctx, ...args);
+export const runRule = (rule, ctx, ...args) => rule.run(READS_THE_SESSION.has(rule.scope) ? work(ctx) : ctx, ...args);
+
+// The scopes handed the fluent surface: a work rule reads the change and the
+// session, an action rule the session's tool calls — both at Stop.
+export const READS_THE_SESSION = new Set(['work', 'action']);
 
 // Null-object for "no such turn": every accessor answers emptily, so a chain
 // ending in .last() never needs an existence guard before its predicates.
@@ -52,6 +56,9 @@ class Turns extends Array {
 class Conversation {
   constructor(entries) { this.entries = entries ?? []; }
 
+  // The session's tool calls in order — what an action rule judges at Stop.
+  toolCalls() { return toolCalls(this.entries); }
+
   ownerTurns() {
     const turns = new Turns();
     for (const t of humanTurns(this.entries)) turns.push(new Turn(this.entries, t));
@@ -82,6 +89,7 @@ class Work {
   packConfig(id) { return this.ctx.config?.packConfig?.[id]; }
 
   conversation() { return new Conversation(this.ctx.conversation()); }
+  toolCalls() { return this.conversation().toolCalls(); }
 
   addedLines(files) { return addedLines(this.ctx, files ?? this.ctx.changedFiles); }
 

@@ -78,6 +78,23 @@ export function classifiedTurns(entries) {
   }));
 }
 
+// Every tool call the session made, in order: [{ index, name, input, sidechain }]
+// — each `tool_use` block on an assistant entry. Subagent (sidechain) calls
+// count, flagged: a guard a delegated call breaks is still broken.
+export function toolCalls(entries) {
+  const calls = [];
+  (entries ?? []).forEach((entry, index) => {
+    if (entry?.type !== 'assistant') return;
+    const content = entry.message?.content;
+    if (!Array.isArray(content)) return;
+    for (const block of content) {
+      if (block?.type !== 'tool_use' || typeof block.name !== 'string') continue;
+      calls.push({ index, name: block.name, input: block.input ?? {}, sidechain: Boolean(entry.isSidechain) });
+    }
+  });
+  return calls;
+}
+
 // Every skill the session has loaded so far, in order of loading: the `input.skill`
 // of each `Skill` tool_use block on an assistant entry, and the name of any skill
 // whose SKILL.md a `Read` tool_use opened — the body reached the context either

@@ -141,6 +141,14 @@ the change in front of the session, one about the repo as a whole:
   loop, judging what the session just did (and the conversation-surface rules, which only exist
   at Stop). On blocking findings it exits 2 so the session fixes them before stopping.
   Self-limiting: after blocking twice on identical findings it lets the stop through.
+- **Action scope → the PreToolUse hook, and the Stop hook again.** A declaration with
+  `scope: "action"` (`guardToolCalls`) is judged by [../hooks/pretooluse-command.mjs](../hooks/pretooluse-command.mjs)
+  against the call about to run — a blocking finding denies it and hands the agent the text, an
+  advisory one lets it run and injects the text as context — and by `check_the_work` over the
+  transcript's recorded calls at Stop, one finding per offending call: the backstop for a hook that
+  never fired, and the count the usage fold reads. The hook is registered on every tool
+  (`PRETOOLUSE_MATCHER`) and says nothing on a call no declaration names; each call pays the pack
+  load, about 150 ms.
 - **World scope → the project's test/CI flow.** The whole-repo sweep is a repo-wide invariant
   assertion — the same kind of thing a test suite is — and is only *meaningful* at a
   commit/verify boundary, not every turn. So [check_the_world.mjs](check_the_world.mjs) is wired
