@@ -29,6 +29,15 @@
   or charting library often boils down to a handful of constructors and methods) and install a
   minimal no-op implementation of just those as an init script, before the page's own scripts run.
 
+- **When a live host answers `curl` but not the browser's own request pipeline, relay through
+  your fetcher rather than reading the failure as the host being unreachable.** A network-sandboxed
+  agent environment commonly proxies egress at the HTTP-client level, and a headless browser's own
+  network stack can fail to tunnel through it for a host a plain `curl` from the same shell reaches
+  cleanly — even with the same proxy passed to the browser explicitly at launch. When the page needs
+  that host's *real* content (not a vendored stand-in), intercept every request
+  (`page.route('**/*', …)`) and fulfil it yourself with bytes fetched by the client that actually
+  works, so the render carries the genuine page instead of an error.
+
 - **A committed pixel golden is only comparable under the exact build that rendered it.** Two
   browsers a version apart rasterise text and shadows differently, so a comparison across them
   measures the renderer, not the product. Where the output is compared pixel by pixel, read the
