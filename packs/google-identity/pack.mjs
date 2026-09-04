@@ -11,7 +11,7 @@
 // messages. Obtaining the ID token in a browser/extension client is the
 // chrome-extension pack's turf; this pack owns the *validator* side.
 export default {
-  version: '60822.1',
+  version: '60904.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'server-side Google Sign-In ID token validation: audience pinning, issuer and email_verified checks, JWT authorizer/OIDC verifier config',

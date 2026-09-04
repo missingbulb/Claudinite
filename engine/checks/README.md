@@ -195,9 +195,10 @@ Regexes are strings in `/pattern/flags` form. A rule needing a hand-written `run
 module, listed in the manifest as before. The engine runs every pattern rule in
 ONE shared pass — each file read once, its lines walked once for all subscribing rules — so a
 declared rule costs nothing extra however many exist. Reach for a hand-written `run(ctx)` only
-when the check needs what patterns can't say: real parsing (comment/string stripping, indentation
-blocks, balanced braces), structured-data field logic, git/diff/conversation state, or a derived
-comparison.
+when the check needs what patterns can't say: real parsing (balanced braces, HTML attributes,
+TOML), git/diff/conversation state beyond the work assertions, or a cross-file comparison the
+two-pass keys cannot state (`extractValueSets` derives a named set from lines, paths or parsed
+fields; `checkSetValues`, `checkSetPairs` and `requireIdenticalFiles` quantify over it).
 
 **Shared helpers carry mechanism, not policy.** A `engine/checks/helpers/` helper owns only the walking —
 resolve a file set, find the lines a pattern matches, list the change's added lines

@@ -1,14 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
+import { makeRepo, cleanup, declaredCheck } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
-import rule from '../worldRules/references-integrity.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
+const rule = declaredCheck('packs/claudinite-growth', 'references-integrity');
 const PACK = '.claudinite/local/packs/mypack/';
 
 const run = (files) => {
   const root = makeRepo({ changed: files });
-  try { return rule.run(buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
+  try { return runRule(rule, buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
 };
 
 test('references-integrity: is inert when no pack carries markers or a references doc', () => {
@@ -35,6 +36,7 @@ test('references-integrity: a multi-citation marker resolves each number', () =>
   const findings = run(files);
   assert.equal(findings.length, 1);
   assert.match(findings[0].what, /\(7\)/);
+  assert.equal(findings[0].line, 1);
 });
 
 test('references-integrity: flags a marker with no references doc beside the pack', () => {
@@ -43,7 +45,8 @@ test('references-integrity: flags a marker with no references doc beside the pac
   });
   assert.equal(findings.length, 1);
   assert.equal(findings[0].severity, 'blocking');
-  assert.match(findings[0].what, /no references\.md/);
+  assert.match(findings[0].what, /mypack\/references\.md does not carry as RULES-3/);
+  assert.match(findings[0].fix, /creating .*references\.md if the pack has none/);
 });
 
 test('references-integrity: flags a marker whose number has no entry', () => {
@@ -62,6 +65,7 @@ test('references-integrity: reads SKILL.md markers too', () => {
   });
   assert.equal(findings.length, 1);
   assert.match(findings[0].file, /SKILL\.md$/);
+  assert.match(findings[0].what, /do-a-thing-9/);
 });
 
 test('references-integrity: namespaces are per file — a RULES.md marker never resolves through a skill\'s entry', () => {
@@ -73,6 +77,16 @@ test('references-integrity: namespaces are per file — a RULES.md marker never 
   assert.equal(findings.length, 1);
   assert.match(findings[0].file, /RULES\.md$/);
   assert.match(findings[0].what, /RULES-3/);
+});
+
+test('references-integrity: a marker never resolves through ANOTHER pack\'s references', () => {
+  const findings = run({
+    [`${PACK}RULES.md`]: '- **Doing a thing** — the settled way. (3)\n',
+    '.claudinite/local/packs/other/RULES.md': '- **Doing a thing** — the settled way. (3)\n',
+    '.claudinite/local/packs/other/references.md': '- **(RULES-3)** The other pack\'s reason.\n',
+  });
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].file, `${PACK}RULES.md`);
 });
 
 test('references-integrity: an inline issue id or an ordinary parenthetical is not a marker', () => {
@@ -95,6 +109,7 @@ test('references-integrity: a check entry naming a declared check is clean, an u
   const findings = run(files);
   assert.equal(findings.length, 1);
   assert.match(findings[0].what, /retired-check/);
+  assert.equal(findings[0].file, `${PACK}references.md`);
 });
 
 test('references-integrity: a slashed check id resolves and a dangling slashed one flags', () => {
@@ -121,5 +136,5 @@ test('references-integrity: canon-root packs/ are scanned the same way', () => {
     'packs/somepack/RULES.md': '- **Doing a thing** — the settled way. (2)\n',
   });
   assert.equal(findings.length, 1);
-  assert.match(findings[0].what, /no references\.md/);
+  assert.match(findings[0].what, /packs\/somepack\/references\.md does not carry as RULES-2/);
 });
