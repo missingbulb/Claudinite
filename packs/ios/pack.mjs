@@ -1,8 +1,6 @@
-// Technology stub pack: iOS app development (Xcode project, Info.plist usage strings, entitlements, signing).
-// Stub — no rules captured yet, so no RULES.md; durable, project-agnostic practices
-// earn one as they are captured. Expected first source: missingbulb/ShoutsAndWhispers.
+// Technology pack: iOS app development (Xcode project, Info.plist usage strings, entitlements, signing).
 export default {
-  version: '60903.1',
+  version: '60904.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'app-target conventions for iOS — Xcode project, Info.plist usage strings, entitlements, code signing',

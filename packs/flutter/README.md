@@ -19,6 +19,7 @@ committed tests inside the consuming project.
 | Inject the clock. | high | correctness | prose: 25 words |
 | Anything that fetches must be injectable | medium | complexity | prose: 47 words |
 | Async lifecycle guards need an epoch counter. | high | correctness | prose: 51 words |
+| Real I/O in testWidgets needs runAsync | high | correctness | prose: 67 words |
 | Verify plugin APIs against installed source | high | correctness | prose: 41 words |
 | flutter analyze at zero issues | medium | complexity | prose: 39 words |
 | Sandboxed/CI runners | medium | complexity | prose: 57 words |
