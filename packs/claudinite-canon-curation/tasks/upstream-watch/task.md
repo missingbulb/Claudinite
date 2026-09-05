@@ -39,8 +39,8 @@ its skills and its checks against what published, and land in one of three place
 - **The pack's content is now wrong, incomplete, or advises something deprecated** → change it.
   Edit the rule, the skill or the check whose text is dated; add a rule only when the upstream
   change is a durable constraint on how work is done, never a restatement of the news. Record why
-  in the pack's `references.md`, and bump the pack's version with a `VERSIONS.md` row — a member
-  receives the correction on that number.
+  in the pack's `references.md`. Never bump the pack's version or write a `VERSIONS.md` row —
+  both are cut on the base branch once the correction lands, and a member receives it then.
 - **Nothing published bears on the pack's content** → change nothing but the anchor.
 - **Something published might bear on it, and deciding needs the owner** → change nothing, and put
   the question in the PR body with the source line that raised it.

@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import promoteJson from '../tasks/growth-promote/task.json' with { type: 'json' };
 import discoverJson from '../tasks/growth-discover-packs/task.json' with { type: 'json' };
 import upstreamJson from '../tasks/upstream-watch/task.json' with { type: 'json' };
+import bumpJson from '../tasks/pack-version-bump/task.json' with { type: 'json' };
+import historyJson from '../tasks/pack-version-history/task.json' with { type: 'json' };
+import { declaredMergeRules, policyVerdict } from '../../claudinite-tasks/shared-code/merge-policy.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +16,8 @@ import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.m
 const promote = normalizeTaskDeclaration(promoteJson);
 const discover = normalizeTaskDeclaration(discoverJson);
 const upstream = normalizeTaskDeclaration(upstreamJson);
+const bump = normalizeTaskDeclaration(bumpJson);
+const history = normalizeTaskDeclaration(historyJson);
 
 const PACK_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -159,9 +164,45 @@ test('upstream-watch: the worker advances an anchor only for a source it read', 
   assert.match(worker, /do not add one/);
 });
 
-test('the pack keeps exactly the three curation tasks', () => {
+test('the pack keeps exactly the five curation tasks', () => {
   assert.deepEqual(
     readdirSync(join(PACK_DIR, 'tasks')).sort(),
-    ['growth-discover-packs', 'growth-promote', 'upstream-watch'],
+    ['growth-discover-packs', 'growth-promote', 'pack-version-bump', 'pack-version-history', 'upstream-watch'],
   );
+});
+
+// --- pack-version-bump / pack-version-history (the shelf's version numbers) --
+// A pull request never bumps a pack; the number is cut on the base branch after the
+// merge, and the record of what each number shipped is derived from git.
+
+test('pack-version-bump: a well-formed agentless daily declaration that opens no pull request', () => {
+  assert.deepEqual(validateTaskDeclaration(bump), []);
+  assert.equal(bump.agent_model, 'none');
+  assert.equal(bump.expected_outcome, 'no_code_changes');   // it commits onto the base branch
+  // The trigger is the merges the push workflow cannot see, and the walk itself
+  // answers whether any happened — so no precondition, and no signal to collect.
+  assert.deepEqual(preconditionSignals(bump.preconditions, new Map()), []);
+  assert.equal(evaluatePrecondition({ decl: bump }, {}).run, true);
+  // The canon's push-to-main workflow runs the very worker this declaration names.
+  const workflow = readFileSync(join(PACK_DIR, '../../.github/workflows/pack-versions.yml'), 'utf8');
+  assert.match(workflow, new RegExp(`run: node packs/claudinite-canon-curation/tasks/pack-version-bump/${bump.code_work.replace(/^node /, '')}$`, 'm'));
+});
+
+test('pack-version-history: agentless, weekly on shipping movement, landing itself under a policy that covers only the records', () => {
+  assert.deepEqual(validateTaskDeclaration(history), []);
+  assert.equal(history.agent_model, 'none');
+  assert.equal(history.expected_outcome, 'amend_existing_or_create_new_pr');
+  assert.deepEqual(preconditionSignals(history.preconditions, new Map()), ['commits']);
+  // The policy names the pack's own declared class, and that class covers exactly a
+  // shelf pack's VERSIONS.md — a manifest or a rule in the same diff parks the run.
+  const { rules, errors } = declaredMergeRules([{ id: 'claudinite-canon-curation', dir: PACK_DIR }], { packs: ['claudinite-canon-curation'] });
+  assert.deepEqual(errors, []);
+  const verdict = (files) => policyVerdict({
+    policy: history.automerge,
+    entries: files.map((file) => ({ file, before: 'a\n', after: 'b\n' })),
+    declaredRules: rules,
+  });
+  assert.equal(verdict(['packs/basics/VERSIONS.md', 'packs/leaflet/VERSIONS.md']).mergeable, true);
+  assert.equal(verdict(['packs/basics/VERSIONS.md', 'packs/basics/pack.mjs']).mergeable, false);
+  assert.equal(verdict(['.claudinite/local/packs/x/VERSIONS.md']).mergeable, false);
 });

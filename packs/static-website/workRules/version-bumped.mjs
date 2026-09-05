@@ -19,8 +19,9 @@ import { CONFIG_PATH } from '../worldRules/site-config.mjs';
 // publishes it, and a version-only change is trivially satisfied.
 //
 // WORK SCOPE: the tree always carries a version; only the diff says whether it
-// moved with the content beside it. The pack-side twin in Claudinite's own canon
-// is `pack-version-bumped`, which holds the identical line for a pack directory.
+// moved with the content beside it. (A canon pack's version is not held this way:
+// it is cut on the base branch after the change lands, by the canon-curation
+// pack's `pack-version-bump` task.)
 
 // Repo-relative prefixes of the publish set. Mirrors the resolution the deploy
 // does — publish paths are relative to publish_root, and "." means they already

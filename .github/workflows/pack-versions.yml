@@ -1,0 +1,39 @@
+# The CANON's pack versioning: every push to main cuts a new version for each pack
+# whose shipping content moved since its version last did, committed straight back
+# onto main (packs/claudinite-canon-curation/tasks/pack-version-bump/README.md). A
+# pull request never bumps a pack itself.
+#
+# A push made with the Action's own token starts no workflow run, so this never fires
+# for a pull request the queue landed — the pack-version-bump task's daily code-work
+# runs the same worker for those. Dispatchable to cut versions on demand.
+name: Pack versions
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One bump at a time: two runs planning from the same tip would race their pushes,
+# and the loser only replans, but there is nothing to gain from the race.
+concurrency:
+  group: pack-versions
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The worker walks main back to each pack's last bump; a one-commit
+          # checkout would unshallow itself, so fetch the history up front.
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Cut a version for every pack whose content moved
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node packs/claudinite-canon-curation/tasks/pack-version-bump/worker.mjs

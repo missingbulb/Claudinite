@@ -23,6 +23,7 @@ migration in [../../consumer-safe-changes.md](../../consumer-safe-changes.md), n
 | File | Purpose |
 |---|---|
 | [`ci.yml`](ci.yml) | This repo's own unit tests + conformance sweep (`pull_request`, `push` to `main`). |
+| [`pack-versions.yml`](pack-versions.yml) | Cuts each pack's version on `main` after a merge (`push` to `main`, `workflow_dispatch`) — the canon-curation pack's `pack-version-bump` worker. |
 
 ## Fleet orchestration — runs only here
 
