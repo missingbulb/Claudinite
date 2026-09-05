@@ -155,19 +155,18 @@ export const NEEDS_HUMAN_APPROVAL = STATUS_NEEDS_HUMAN_APPROVAL;
 export const NEEDS_HUMAN_FAILURE = STATUS_NEEDS_HUMAN_FAILURE;
 export const TRIAGE_LABELS = PARK_STATUSES;
 
-// WHICH PARKS HOLD THE TASK'S LANE. A task's open STANDING item is the occurrence
-// itself, so while one exists the generator files no further occurrence
-// (`planSchedulerRun` job 1) — which for a park means the task stops being scheduled at
-// all until a human clears it. That is right for a `failure`: filing a queue of
-// items that will break the same way helps nobody, and the silence is the signal.
-// It is wrong for the other three, which are a person's inbox, not a fault in the
-// task: a PR waiting to be approved, a choice waiting to be made and a secret
-// waiting to be set must not also stop tomorrow's run.
+// WHICH PARK IS A BROKEN RUN. A park is not live, so no park holds its task's lane by
+// itself: the scheduler asks the task again on its own conditions, and only a task
+// declaring `last-run-not-failed` stops past its own failure. What this predicate
+// tells apart is the park a person DIAGNOSES from the three that are a person's
+// inbox — a PR waiting to be approved, a choice waiting to be made, a secret waiting
+// to be set — which is the split every renderer alarms on and the run-history term
+// reads (`parkKindOf`).
 //
-// A park wearing NO sub-label blocks, which is what makes this safe on the way in:
-// every item parked by an engine older than the sub-labels, and every kind word a
-// future engine invents that this one does not know, holds the lane rather than
-// silently letting a broken task keep filing work.
+// A park wearing NO sub-label counts as broken, which is what makes this safe on the
+// way in: every item parked by an engine older than the sub-labels, and every kind
+// word a future engine invents that this one does not know, reads as "diagnose me"
+// rather than quietly joining the mechanical lane.
 export const isBlockingPark = (item) => statusOf(item) === STATUS_NEEDS_HUMAN_FAILURE;
 
 // --- the decode (DESIGN §4, "legacy spellings — written never, read forever") --

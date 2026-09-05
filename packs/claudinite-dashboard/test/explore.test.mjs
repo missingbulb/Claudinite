@@ -68,10 +68,13 @@ test('a field this page cannot read says NOT READ rather than being left out', (
   assert.match(left.note, /have not been fetched/);
 });
 
+// Only a declaration carrying `last-run-not-failed` holds its lane on a failure.
+const HOLDING = { preconditions: ['due:daily', 'last-run-not-failed'] };
+
 test('the failed-task panel says when the lane\'s HELD claim is disproved by the record', () => {
   const parked = item({ number: 42, created_at: iso(NOW - 5 * DAY) });
   const panel = failedTaskPanel({ kind: 'item', parkKind: 'failure', gutter: '#42', title: 't' }, {
-    item: parked, repo: 'o/r',
+    item: parked, repo: 'o/r', declaration: HOLDING,
     siblings: [
       { number: 50, state: 'closed', closed_at: iso(NOW - 2 * DAY), labels: [{ name: OUTCOME_DONE }] },
       { number: 51, state: 'closed', closed_at: iso(NOW - DAY), labels: [{ name: OUTCOME_OBSOLETE }] },
@@ -85,8 +88,26 @@ test('the failed-task panel says when the lane\'s HELD claim is disproved by the
 
 test('a held lane with no later occurrence says only that it is held', () => {
   const panel = failedTaskPanel({ kind: 'item', parkKind: 'failure', gutter: '#42', title: 't' },
-    { item: item(), repo: 'o/r', siblings: [] });
+    { item: item(), repo: 'o/r', siblings: [], declaration: HOLDING });
   assert.match(panel.fields.find((f) => f.label === 'lane').value, /^held/);
+});
+
+// A failure park on a task whose declaration does not name `last-run-not-failed`
+// holds nothing: the lane is open and the panel says so, never HELD — and an unread
+// declaration is stated as unread rather than guessed either way.
+test('a failure park holds no lane the declaration does not hold, and an unread declaration says so', () => {
+  const later = [{ number: 50, state: 'closed', closed_at: iso(NOW - DAY), labels: [{ name: OUTCOME_DONE }] }];
+  const open = failedTaskPanel({ kind: 'item', parkKind: 'failure', gutter: '#42', title: 't' }, {
+    item: item({ created_at: iso(NOW - 5 * DAY) }), repo: 'o/r', siblings: later, declaration: { preconditions: ['due:daily'] },
+  });
+  assert.match(open.fields.find((f) => f.label === 'lane').value, /^open/);
+  assert.doesNotMatch(open.fields.find((f) => f.label === 'lane').value, /HELD/);
+
+  const unread = failedTaskPanel({ kind: 'item', parkKind: 'failure', gutter: '#42', title: 't' },
+    { item: item(), repo: 'o/r', siblings: later });
+  const lane = unread.fields.find((f) => f.label === 'lane');
+  assert.equal(lane.value, null);
+  assert.match(lane.note, /has not been read/);
 });
 
 test('the stuck-item panel names WHO is scheduled to move each blocker', () => {

@@ -183,13 +183,24 @@ const OUTCOME_CELL = { done: 'ran', delivered: 'ran', obsolete: 'declined' };
 // semantic set, never colour alone.
 //
 // A FAILURE PARK LANDS ON ITS OWN TASK'S ROW, followed by whatever the task did after
-// it — so a hatched cell followed by filled ones is the record disagreeing with the
-// roster's claim that the lane is held, read left to right on one line. There is no
-// separate held-lanes row, because the contradiction is a row fact.
+// it — so where the declaration holds its lane on a failure, a hatched cell followed
+// by filled ones is the record disagreeing with the roster's claim that the lane is
+// held, read left to right on one line. There is no separate held-lanes row, because
+// the contradiction is a row fact.
+//
+// A task gets its OWN row when it can fire on any day of the axis — a daily cadence,
+// an elapsed one of a day or under, or no cadence term at all (asked at every tick).
+// Anything on a longer cadence shares one row: the reader's question of a weekly
+// task is whether it fired at all this week, not which weekday it prefers.
+const onOwnRow = (row) => row.periodMs === null || row.periodMs <= DAY;
+
 export function scheduleGrid(rows, items, axis, { now, schedule }) {
-  const scheduled = rows.filter((r) => r.frequency && r.frequency !== 'manual');
-  const daily = scheduled.filter((r) => r.frequency === 'daily');
-  const others = scheduled.filter((r) => r.frequency !== 'daily');
+  // A woken-gated task is never on the schedule, and a declaration this could not
+  // read (`scheduled: null`) is not put on it either — a row there would be a claim
+  // about a future nothing was read for.
+  const scheduled = rows.filter((r) => r.scheduled);
+  const daily = scheduled.filter(onOwnRow);
+  const others = scheduled.filter((r) => !onOwnRow(r));
 
   const cellsFor = (row) => axis.days.map((day) => {
     const occurrences = items.filter((i) => {
@@ -229,8 +240,6 @@ export function scheduleGrid(rows, items, axis, { now, schedule }) {
   });
 
   const gridRows = daily.map((row) => ({ key: row.key, task: row.task, pack: row.pack, cells: cellsFor(row), row }));
-  // Everything on a longer cadence is one row: the reader's question of a weekly task
-  // is whether it fired at all this week, not which weekday it prefers.
   if (others.length) {
     gridRows.push({
       key: 'other-cadences',
@@ -250,10 +259,12 @@ export function scheduleGrid(rows, items, axis, { now, schedule }) {
   return gridRows;
 }
 
+// Only a `due:` cadence is on the calendar; every other reading has no instant to
+// predict, so its future cells stay empty rather than guessed.
 const nextAnchorFor = (row, now, schedule) => {
   if (row.nextAsk?.at) return ms(row.nextAsk.at);
-  if (!row.frequency || row.frequency === 'manual' || !schedule) return null;
-  const at = nextAnchor(row.frequency, schedule, now);
+  if (row.cadence?.kind !== 'due' || !schedule) return null;
+  const at = nextAnchor(row.cadence.cadence, schedule, now);
   return at ? ms(at) : null;
 };
 
@@ -261,16 +272,20 @@ const nextAnchorFor = (row, now, schedule) => {
 
 // The Now group's header sentence, DERIVED and never a tile: the PRs waiting now, plus
 // the scheduled runs whose own declaration cannot land the PR they will open. It is the
-// `automerge` field read against the schedule, not a guess about tomorrow.
+// `automerge` field read against each task's cadence, not a guess about tomorrow — and
+// a task with no cadence term is counted apart, because "a day" is a promise its
+// declaration never made.
 export function workloadLine(waitingPrs, rows, { schedule, now }) {
-  const producers = rows.filter((r) => r.frequency && r.frequency !== 'manual'
+  const producers = rows.filter((r) => r.scheduled
     && (r.declaration?.automerge === 'nothing' || r.declaration?.automerge == null));
-  const daily = producers.filter((r) => r.frequency === 'daily');
-  const rest = producers.filter((r) => r.frequency !== 'daily');
+  const daily = producers.filter((r) => r.periodMs !== null && r.periodMs <= DAY);
+  const rest = producers.filter((r) => r.periodMs !== null && r.periodMs > DAY);
+  const movement = producers.filter((r) => r.periodMs === null);
   const parts = [`${waitingPrs} open PR${waitingPrs === 1 ? '' : 's'}`];
   parts.push(waitingPrs ? 'every one waits for a person' : 'nothing waits for a person');
   if (daily.length) parts.push(`+${daily.length} a day from ${daily.map((r) => r.task).slice(0, 2).join(', ')}${daily.length > 2 ? ` +${daily.length - 2}` : ''}`);
   if (rest.length) parts.push(`${rest.length} more on longer cadences`);
+  if (movement.length) parts.push(`${movement.length} more on movement`);
   return parts.join(' · ');
 }
 

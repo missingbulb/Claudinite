@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluatePreconditions, parsePreconditions, validatePreconditions, preconditionSignals } from '../precondition-policy.mjs';
-import { cadenceOf, isWokenGated, cadenceTermFor, parseDuration } from '../calendar.mjs';
+import { cadenceOf, isWokenGated, holdsOnFailure, cadenceTermFor, parseDuration } from '../calendar.mjs';
 
 // The run-history terms (tasks-dispatch DESIGN §5): a task's cadence, its view of
 // its own last failure, and whether it runs only when somebody asks — every one a
@@ -199,6 +199,15 @@ test('woken gates only as a whole conjunct', () => {
   assert.equal(isWokenGated(['woken', 'request-eligible']), true);
   assert.equal(isWokenGated(['due:daily || woken']), false);
   assert.equal(isWokenGated(['due:daily']), false);
+});
+
+// Nothing holds a task's lane past a failure park but the task's own word, and only
+// as a whole conjunct: an alternative beside it means the task still runs some way.
+test('a declaration holds its lane on a failure only when last-run-not-failed gates it', () => {
+  assert.equal(holdsOnFailure(['due:daily', 'last-run-not-failed']), true);
+  assert.equal(holdsOnFailure(['due:daily', 'last-run-not-failed || woken']), false);
+  assert.equal(holdsOnFailure(['due:daily']), false);
+  assert.equal(holdsOnFailure(undefined), false);
 });
 
 test('the retired frequency spells as the cadence term it always meant', () => {

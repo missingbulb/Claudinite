@@ -167,10 +167,11 @@ export function summariseMember(read, { now, canon = null } = {}) {
 
   const parked = described.filter((d) => d.state === PARKED);
   // The triage split (tasks-dispatch DESIGN §4): a failure park — or one an older
-  // engine left unclassified — holds its task's lane; an action or decision park is
-  // a person's inbox; an approval park is a run that SUCCEEDED and waits on a merge.
-  // Three different alarms, because a page that rings identically for all four
-  // teaches the reader to ignore the ring.
+  // engine left unclassified — is a broken run to diagnose (whether it also holds
+  // the task's lane is the declaration's word, which this summary does not read);
+  // an action or decision park is a person's inbox; an approval park is a run that
+  // SUCCEEDED and waits on a merge. Three different alarms, because a page that
+  // rings identically for all four teaches the reader to ignore the ring.
   const holding = parked.filter((d) => d.blockingPark);
   const approvals = parked.filter((d) => !d.blockingPark && d.triage === NEEDS_HUMAN_APPROVAL);
   // The person's inbox, split by remedy because the two cost differently (`PARK_MINUTES`):
@@ -202,7 +203,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
   // drops what already has a cell of its own.
   const reasons = [];
   if (holding.length) {
-    reasons.push({ kind: 'park', level: 'critical', text: `${n(holding.length, 'item')} parked broken — holding the task's lane` });
+    reasons.push({ kind: 'park', level: 'critical', text: `${n(holding.length, 'item')} parked broken — a run to diagnose` });
   }
   if (inbox.length) {
     reasons.push({ kind: 'park', level: 'serious', text: `${n(inbox.length, 'item')} parked for a person — an action or a decision` });

@@ -7,8 +7,9 @@ first, extensible second** — a reader asks "what must be true for this task to
 run?" and the declaration answers in the conditions' own names, with no comment
 needed above it. The evaluator is a sibling of the merge-policy engine
 (`packs/claudinite-tasks/precondition-policy.mjs` beside `merge-policy.mjs`),
-running at the one place a verdict has ever been formed: the executor's pick
-(and the scheduler's planning read).
+running at the two sites that ask the same question of the same code: the
+scheduler's tick, which files an item on a yes, and the executor's pick, which
+re-derives the verdict (tasks-dispatch DESIGN §5).
 
 Why data instead of code, when a function already works:
 
@@ -19,8 +20,8 @@ Why data instead of code, when a function already works:
   three-valued semantics decided once.
 - **A declaration becomes statically checkable.** The declaration-shape check
   can read an expression the way it reads an `automerge` policy: unknown terms,
-  malformed arguments, and `none` misused beside real conditions are all
-  author-time findings. A function body is opaque to every check.
+  malformed arguments, a cadence outside the vocabulary and the retired `none`
+  are all author-time findings. A function body is opaque to every check.
 - **The signal union is derived, never declared.** Every term — built-in or
   task-local — names the signals it reads, so the collector union cannot disagree
   with what the gate actually consults, which a separately declared list could not
@@ -44,10 +45,13 @@ preconditions: ['mount-moved || local-packs-changed']
   the two was considered and rejected: each field would then read against its
   own English, and a requirements list parsed as a union is exactly the shape
   that made the earlier veto grammar read as a contradiction.
-- **`none`** is the empty precondition — the task runs unconditionally, because
-  its trigger is the calendar or the filed work item itself (a manual lever, a
-  fleet sweep, the daily mount update). It is legal only as the list's sole
-  entry: any real condition beside it would be the actual precondition.
+- **There is no empty precondition.** `none` is retired: every scheduler tick
+  asks every task through this expression, so a task with no condition at all
+  would run at every tick (tasks-dispatch DESIGN §5, decision §15.33). A task
+  states *when* it runs as its first condition — a cadence term, or `woken`
+  for one that runs only from an item somebody created — and what it waits
+  for after that. The retired `frequency` field is read at one door and
+  becomes that first condition; nothing else reads it.
 - **Parameterized terms** carry their argument inline after a colon:
   `no-open-pr-touching:product-wiki/`, `paths-touched-outside:.claudinite/`.
 - Conditions are **positively named** — what must be true, never "run always,
@@ -66,7 +70,7 @@ in the expression, because they are not "should this run fire now?" questions:
   repo that adoption settled, not questions worth re-asking every run. A repo
   that carries a pack but not one task's subject disables that task in its own
   `.claudinite-settings.json` — `taskScheduler.disabledTasks:
-  ['<pack>/<task>']` — which the scheduler reads before instantiating anything.
+  ['<pack>/<task>']` — which the scheduler reads before asking anything.
 - **Scope.** Which files, PRs or members a granted run works on is the
   worker's decision, made in the work sections (task.md, the code-work) from
   the same signals — e.g. whether a substantive default-branch move widens a
@@ -92,7 +96,26 @@ whose cost is unbounded.
 **Built-ins** live in one place, `packs/claudinite-tasks/precondition-policy.mjs`,
 as predicates over fields the signal collectors
 (`packs/claudinite-tasks/signals/index.mjs`) already produce. The set is small
-— the movement conditions every repo shares, plus the pending-PR conditions:
+— the run-history conditions that say *when*, the movement conditions every
+repo shares, and the pending-PR conditions.
+
+**The run-history terms** come first, in this table and in a declaration. They
+read the `runs` signal — the task's own unqualified `[claudinite-work]` items
+over a 40-day horizon, newest first, the item under evaluation excluded — and
+they are judged before any other signal is collected, so a task whose cadence
+declines costs no read at all (tasks-dispatch DESIGN §5 owns the model):
+
+| term | holds when | signal |
+| --- | --- | --- |
+| `due:<daily\|weekly\|monthly>` | no run of this task started or ended since that cadence's most recent anchor on the repo's `taskScheduler` schedule — fixed hours, no drift | `runs` |
+| `last-run-over:<12h\|1d\|7d>` | the newest run started more than that long ago, or there is no run in the horizon — elapsed, so the hour drifts by up to a tick's gap each period | `runs` |
+| `last-run-not-failed` | the newest run does not stand at a `needs-human-failure` park; only the newest speaks. Declared by a task that must not run past its own failure — never an engine default | `runs` |
+| `woken` | this item was created or woken by somebody (the `Woken:` field, or any shape the scheduler does not file itself); never at the scheduler's own ask. As a whole entry it takes the task off the schedule | — |
+
+`due:` and `last-run-over:` hold on a woken item without reading the history —
+the wake stands in for the cadence — while every other condition still applies.
+
+**The movement and pending-PR terms**:
 
 | term | holds when | signal |
 | --- | --- | --- |
@@ -111,7 +134,8 @@ as predicates over fields the signal collectors
 **Task-local terms** are the extension mechanism: a task whose gate is its own
 — an age against a configured retention, a manifest against a release tag, a
 fleet read — ships a **`preconditions.mjs` beside its `task.mjs`**, exporting
-`terms`: a map from term name to `{ signals, holds(signals, { config, item }) }`
+`terms`: a map from term name to
+`{ signals, takesArg?, holds(signals, { arg, config, item, windowDays, now, schedule }) }`
 where `holds` returns `{ holds, reason?, context? }` or `{ error }`. The
 evaluator resolves a name against the built-ins first, then the task's own
 file; the namespace is flat, a collision is loud, and an unknown name is
@@ -139,6 +163,20 @@ declaration is skipped by discovery with a recorded error rather than failing th
 mount, so the task would otherwise have stopped running with nothing red to say
 so.
 
+## The window — since this task's newest run started
+
+Every movement term is judged over a window, and the window is the task's own
+(`packs/claudinite-tasks/queue/signals.mjs`): from the instant its newest run
+started to now, so a task reads exactly what moved since it last looked, and
+one that declined for a month then sees the month. A run is any unqualified
+item of the task; a `rejected` one — asked, said yes, declined at pick — did
+nothing and does not move the seam, so the next ask sees what it saw. With no
+run in the horizon the window is the task's own cadence — the `due:` period or
+the `last-run-over:` duration, a day for a task stating neither — plus an hour
+of slack. The `runs` signal carries the window it decided, which is where
+`windowDays` comes from for a term whose dimension reports an age rather than a
+windowed flag (the conversation-logs branch).
+
 ## The silence gate
 
 **No task runs on a silent repo unless its declaration says so — and the
@@ -154,21 +192,22 @@ The gate needs no operator of its own, because the vocabulary carries it:
   or issue never satisfies `substantive-change`, `issues-touched` or
   `prs-touched` — so every movement-gated task is silence-safe by its own
   conditions.
-- **A calendar-triggered task that should sleep on a silent repo states
-  `repo-active`** — the positive umbrella over all four activity dimensions.
-  `rule-revalidation`, `prose-to-checks-sweep` and `wiki-growth` carry it:
-  their subject is the world, but their value is zero on a repo nobody works
-  in, and the first active window resumes them.
-- **A task whose trigger is not repo movement states its own condition or
-  `none`**, and that absence of any repo term is visible in the declaration:
-  the manual levers and fleet sweeps (`['none']` — the filed item or the
-  fleet is the mandate), `update` (`['none']` — the input is the canon, which
-  moves when this repo does not), `upstream-watch` (`['none']` — the canon
-  home curates its shelf on the world's clock), `logs-prune`
-  (`['log-past-retention']` — a clock crossing a boundary, which must keep
-  firing on exactly the repos that went quiet), and `usage-fold`
-  (`['any-commit || session-captured']` — task-authored movement is exactly
-  what the aggregate folds).
+- **A cadence-only task that should sleep on a silent repo states
+  `repo-active`** beside its cadence — the positive umbrella over all four
+  activity dimensions. `rule-revalidation`, `prose-to-checks-sweep` and
+  `wiki-growth` carry it: their subject is the world, but their value is zero
+  on a repo nobody works in, and the first active window resumes them.
+- **A task whose trigger is not repo movement states its cadence term and
+  nothing about the repo**, and that absence of any movement term is visible
+  in the declaration: the levers (`['woken']` — the item somebody created is
+  the mandate), the fleet sweeps (`['due:daily']`, `['due:weekly']` — the
+  fleet is the subject, not this repo), `update` (`['due:daily']` — the input
+  is the canon, which moves when this repo does not), `upstream-watch`
+  (`['due:monthly']` — the canon home curates its shelf on the world's
+  clock), `logs-prune` (`['due:daily', 'log-past-retention']` — a clock
+  crossing a boundary, which must keep firing on exactly the repos that went
+  quiet), and `usage-fold` (`['due:daily', 'any-commit || session-captured']`
+  — task-authored movement is exactly what the aggregate folds).
 
 ### Classifying task output structurally
 
@@ -190,27 +229,48 @@ non-task housekeeping; the trailer is the authority for everything written
 after it exists. The trailer is stamped by the writer, so a new task is
 classified correctly on its first run with nothing to remember.
 
-## The full conversion
+## The declarations
+
+Every canon task's expression begins with its cadence term or `woken`
+(`packs/*/tasks/*/task.json` and the built-in under
+`packs/claudinite-tasks/queue/tasks/`):
 
 ```
-growth-extract:      ['substantive-change']
-tidy-issues:         ['issues-touched']
-tidy-prs:            ['prs-touched']
-improve-comments:    ['substantive-change', 'commits-outside:.claudinite/',
-                      'no-open-pr-titled:Claudinite tidy: improve comments']
-growth-dedup:        ['mount-moved || commits-under:.claudinite/local']
-ci-performance:      ['substantive-change || prs-touched']
-store-release:       ['manifest-ahead || substantive-change']
-wiki-growth:         ['repo-active', 'no-open-pr-touching:product-wiki/']
-rule-revalidation:   ['repo-active']
-prose-to-checks-sweep: ['repo-active']
-usage-fold:          ['any-commit || session-captured']
-logs-prune:          ['log-past-retention']
-growth-promote:      ['fleet-local-packs-changed']
-implement-request:   ['request-eligible']
-update, upstream-watch, growth-discover-packs,
-the manual levers, the fleet sweeps, task-janitor: ['none']
+ci-performance:          ['due:weekly', 'substantive-change || prs-touched']
+store-release:           ['due:daily', 'manifest-ahead || substantive-change']
+growth-discover-packs:   ['due:weekly']
+growth-promote:          ['due:daily', 'fleet-local-packs-changed']
+upstream-watch:          ['due:monthly']
+deploy-oauth-exchange:   ['woken']
+publish-pages:           ['due:daily', 'mount-moved || commits-under:.claudinite-settings.json
+                                       || commits-under:.claudinite-checks.json']
+fleet-add-missing-packs: ['due:weekly']
+fleet-baseline:          ['woken']
+fleet-pack-seeds:        ['due:daily']
+fleet-roster:            ['due:daily']
+growth-dedup:            ['due:weekly', 'mount-moved || commits-under:.claudinite/local']
+growth-extract:          ['due:daily', 'substantive-change']
+logs-prune:              ['due:daily', 'log-past-retention']
+prose-to-checks-sweep:   ['due:weekly', 'repo-active']
+rule-revalidation:       ['due:weekly', 'repo-active']
+adopt-requested-packs:   ['woken']
+update:                  ['due:daily']
+task-janitor:            ['due:daily']
+usage-fold:              ['due:daily', 'any-commit || session-captured']
+verify-production:       ['woken']
+wiki-growth:             ['due:weekly', 'repo-active']
+improve-comments:        ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/']
+tidy-issues:             ['due:daily', 'issues-touched']
+tidy-prs:                ['due:weekly', 'prs-touched']
+implement-request:       ['woken', 'request-eligible']
 ```
+
+A declaration that still carries `frequency` enters by one door,
+`normalizeTaskDeclaration` in `packs/claudinite-tasks/task-contract.mjs`: the
+field becomes the cadence term it always meant (`due:<cadence>`, `woken` for
+`manual`), first in the expression, a `none` beside it is dropped, and the
+field is deleted, so nothing downstream reads it. `legacy-task-fields` advises
+the holder; the tolerance retires one convergence window after #1725 ships.
 
 ## Alternatives
 
@@ -219,7 +279,8 @@ the manual levers, the fleet sweeps, task-janitor: ['none']
   "preconditions" reads as requirements, so a union list beside a veto parses
   as a contradiction — run always, or not? — and the negative phrasing hides
   what the precondition *is*. Conjunction plus `||` spells every real gate more
-  directly, and the markers dissolve: `['none']` already says everything.
+  directly, and the markers dissolve: the cadence term says when, and the rest
+  says what.
 - **Scope terms in the expression (`widen:`).** Rejected: which targets a
   granted run works on is scope — the worker's decision, from the same signals
   — and folding it into the trigger grammar made the declarations harder to
@@ -241,6 +302,12 @@ the manual levers, the fleet sweeps, task-janitor: ['none']
   every new task title is a new leak, discovered only as a task re-armed by its
   own output — the failure mode the corpus-only exclusion was itself a patch
   for.
+- **A cadence field beside the expression, with the engine deciding at the
+  anchor** (`frequency`, and a scheduler that remembered its asks). Rejected
+  in tasks-dispatch DESIGN §15.33: the engine's calendar was a second clock and
+  its memory a second authority, and every place it kept state was a place a
+  dropped tick or a rename could eat a run. The cadence is a condition like
+  any other, read off the task's own run history at both sites.
 - **Keeping all preconditions as code.** The status quo: the repeated gates
   drift copy by copy, none of it is statically checkable, and a standard
   requirement like the silence gate lands as 25 hand edits plus review

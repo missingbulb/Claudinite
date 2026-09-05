@@ -17,6 +17,7 @@ import {
   parseWorkItemBody, parseWorkItemTitle, statusOf, labelNames, outcomeOf,
   PARK_PREFIX, CLAIM_MARKER, HANDOFF_MARKER,
 } from '../claudinite-tasks/shared-code/work-items.mjs';
+import { holdsOnFailure } from '../claudinite-tasks/shared-code/anchors.mjs';
 
 const NOT_READ = 'not read';
 const ms = (t) => (t == null ? null : new Date(t).getTime());
@@ -80,10 +81,19 @@ export function pendingPrPanel(row, { item, declaration, repo, prs = [], items =
   };
 }
 
-export function failedTaskPanel(row, { item, repo, siblings = [], comments = null }) {
+export function failedTaskPanel(row, { item, repo, siblings = [], declaration = null, comments = null }) {
   const later = siblings
     .filter((i) => i.state === 'closed' && ms(i.closed_at) > ms(item?.created_at))
     .map((i) => `#${i.number} ${outcomeOf(i) ?? 'no outcome'}`);
+  // No park holds a lane by itself: the declaration's own `last-run-not-failed` is
+  // what stops a task past its failure, so the lane field reads the declaration —
+  // and says so when it could not.
+  const holds = Array.isArray(declaration?.preconditions) ? holdsOnFailure(declaration.preconditions) : null;
+  const lane = holds === null ? null
+    : !holds ? 'open — this declaration does not hold its lane on a failure, so the task is asked on schedule around the park'
+      : later.length
+        ? `the roster says this lane is HELD, and ${later.length} later occurrence(s) closed anyway: ${later.slice(0, 4).join(', ')}`
+        : 'held — nothing new is scheduled for this task until it clears';
   return {
     kind: 'failed-task',
     title: `${row.gutter} — ${row.title}`,
@@ -93,12 +103,9 @@ export function failedTaskPanel(row, { item, repo, siblings = [], comments = nul
         comments ? 'no converge comment on the item' : 'the item\'s comments have not been fetched'),
       field('park history', comments ? janitorRules(comments).join(' · ') || null : null,
         comments ? 'no janitor rule comment on the item' : 'the item\'s comments have not been fetched'),
-      // THE CONTRADICTION THIS PANEL EXISTS FOR: the roster reads a failure park as
-      // holding its task's lane, and later closed items of the same task are the
-      // record disagreeing.
-      field('lane', later.length
-        ? `the roster says this lane is HELD, and ${later.length} later occurrence(s) closed anyway: ${later.slice(0, 4).join(', ')}`
-        : 'held — nothing new is scheduled for this task until it clears'),
+      // THE CONTRADICTION THIS PANEL EXISTS FOR: a declaration that holds its lane on
+      // a failure, and later closed items of the same task as the record disagreeing.
+      field('lane', lane, 'the task declaration has not been read — only its own `last-run-not-failed` holds a lane'),
     ],
     do: `Diagnose, then converge it:\n${convergeCommand(item ?? { number: row.gutter.replace('#', '') }, repo, 'done')}`,
   };
@@ -166,7 +173,7 @@ export function scheduledTaskPanel(row, { siblings = [], declaration = null, cos
     title: row.task ?? row.key,
     fields: [
       field('last occurrences', recent.length ? recent.join(' · ') : null, 'no closed occurrence in the window'),
-      field('next anchor', row.row?.nextAsk?.at ? stamp(row.row.nextAsk.at) : null, row.row?.anchorNote ?? 'no anchor — the declaration names no frequency'),
+      field('next anchor', row.row?.nextAsk?.at ? stamp(row.row.nextAsk.at) : null, row.row?.anchorNote ?? 'no anchor — the declaration names no cadence'),
       field('model', declaration?.agent_model ?? 'none · code-work'),
       field('expected outcome', declaration?.expected_outcome ?? null, 'the declaration names none'),
       field('automerge', declaration?.automerge ?? null, 'the declaration names none — its PRs wait for a person'),

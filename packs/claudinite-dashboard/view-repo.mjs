@@ -15,7 +15,7 @@
 
 import * as gh from './github.mjs';
 import {
-  buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths, periodMs,
+  buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths,
   PARKED,
 } from './model.mjs';
 import {
@@ -90,7 +90,7 @@ function nextAskCell(r, repo, now) {
     case 'held':
       return el('td', {}, [
         el('div', { className: 'warn critical', textContent: 'schedule held' }),
-        sub('no next run until the park is cleared or re-queued'),
+        sub('this task declares it does not run past its own failure — no next run until the park clears'),
       ]);
     case 'deps':
       return el('td', {}, [el('div', {}, refNodes(repo, `after ${ask.on.map((n) => `#${n}`).join(', ')}`))]);
@@ -637,10 +637,7 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   const byNumber = new Map(issuePage.issues.map((i) => [i.number, i.state === 'open']));
   const isOpen = (n) => byNumber.get(n) ?? null;
   const rows = buildRoster({ tasks, items, now, schedule, isOpen });
-  const periodFor = (k) => {
-    const f = rows.find((r) => r.key === k)?.frequency;
-    return f && f !== 'manual' ? periodMs(f) : null;
-  };
+  const periodFor = (k) => rows.find((r) => r.key === k)?.periodMs ?? null;
   const open = items.filter((i) => i.state === 'open').map((i) => describeItem(i, now, { periodFor, isOpen }));
 
   // The canon reference for the drift tile. Optional in every direction: with none

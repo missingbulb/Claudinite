@@ -514,9 +514,9 @@ async function executeItem({
       }
       // A run that deliberately left an UNMERGED PR is not finished, it is waiting
       // on a person — so the item stays OPEN at `task:needs-human-approval` rather
-      // than closing as delivered. It does not hold the task's lane while it waits
-      // (`isBlockingPark`): the next occurrence is filed on schedule around it, so
-      // an unreviewed PR delays nobody but its reviewer.
+      // than closing as delivered. A park is not live, so the next occurrence is
+      // filed on schedule around it and an unreviewed PR delays nobody but its
+      // reviewer.
       if (result.openPr) {
         await converge(api, gh, repo, item, STATUS_RUNNING_EXECUTOR, NEEDS_HUMAN_APPROVAL, claim,
           `Code-work did this run's work and opened a PR for you to approve:\n${result.delivered.map((d) => `- ${d}`).join('\n')}`

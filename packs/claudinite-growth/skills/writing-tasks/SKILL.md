@@ -11,27 +11,31 @@ metadata:
 Every occurrence of every task is an issue in this repo — a `[claudinite-work]` item whose labels
 are its state — so write the task against that queue, never a runner of its own.
 
-**A cadence is one way an occurrence is created, not what a task is.** A task is a
-unit of the repo's own work with a precondition, a code-work phase and optionally an
-agentic-work phase; `frequency` says only how often the queue offers to run it, and
-`manual` — no cadence at all — is a first-class value. Work that fires on an event,
-on a condition, or on a force is a task in exactly the same sense as work that fires
+**A cadence is one of a task's conditions, not what a task is.** A task is a unit
+of the repo's own work with preconditions, a code-work phase and optionally an
+agentic-work phase; its `preconditions` say when the queue runs it — a cadence term
+(`due:daily`, `last-run-over:7d`) beside whatever else must hold, or `woken` for
+work that runs only from an item somebody created. Work that fires on an event, on
+a condition, or on a force is a task in exactly the same sense as work that fires
 nightly, and reads the same contract. Anything reachable from the executor belongs
 here rather than in a workflow of its own; see the cron rule below for the narrow
 case that genuinely cannot be.
 
 Three responsibilities, strictly separated (owner, 2026-08-06):
 
-1. **The scheduler run** — a vendored hourly Action
-   (`.github/workflows/claudinite-scheduler.yml`) that is pure label mechanics
-   over the issue list: **instantiate** each recurring task's standing item when
-   its anchor comes, **ready** blocked items whose wait has passed, **reclaim**
-   dead executor claims. It evaluates no precondition and collects no signal.
+1. **The scheduler run** — a vendored Action
+   (`.github/workflows/claudinite-scheduler.yml`, two ticks a day) over the issue
+   list: **ask** every task on the schedule, through its own preconditions,
+   whether it wants to run now, and file its item only on a yes — a no is a log
+   line, and the next tick asks again; **ready** blocked items whose wait has
+   passed; **reclaim** dead executor claims. It keeps no calendar and no state:
+   a task's cadence is one of its conditions, read off its own run history in
+   the queue.
 2. **The executor** — a pull worker over the queue (the scheduler run's post-scheduler run drain,
    and a `labeled`-event run for latency) that picks the next ready item, claims
    it, evaluates **that one task's** precondition, runs its code-work, and either
    converges the item or hands off to an agent session.
-3. **The task-janitor** — an ordinary daily task (`basics/task-janitor`,
+3. **The task-janitor** — an ordinary daily task (`claudinite-tasks/task-janitor`,
    `agent_model: none`) that owns everything about the queue that is *nobody's
    task*: items stuck ready past their period, items wearing no state label after
    a torn transition, and a health review of the open set.
@@ -41,16 +45,17 @@ pack owns the conformance guards for the surfaces a repo authors around it —
 scheduling is baseline Claudinite discipline, present wherever basics is
 declared (everywhere), not an opt-in feature.
 
-There is no watermark and no per-run state: an occurrence exists because its
-issue exists, which is why an outage self-heals by looking at the queue rather
-than by replaying a ledger.
+There is no watermark, no per-run state and no calendar: an occurrence exists
+because its issue exists, and a task's history is its issues, which is why an
+outage self-heals by looking at the queue rather than by replaying a ledger.
 
 ## What the checks guard
 
 - **The scheduler workflow is a thin shim.** The vendored
-  `claudinite-scheduler.yml` carries a single **hourly** cron on a repo-hashed
-  minute constrained to **:10–:50** (the one repo-specific value in the stub —
-  `packs/claudinite-tasks/hash-minute.mjs`, a pure function of the repo full name that
+  `claudinite-scheduler.yml` carries a single cron — two ticks a day, at the
+  repo's `dailyHour` and twelve hours later, every task asked at both — on a
+  repo-hashed minute constrained to **:10–:50** (the one repo-specific value in
+  the stub — `packs/claudinite-tasks/hash-minute.mjs`, a pure function of the repo full name that
   bootstrap stamps in and baselining re-derives), a `concurrency` group, a
   `workflow_dispatch` trigger (whose one `wake` input is how a task is forced,
   here or from another repo), and a call into the vendored scheduler run — no logic of its own
@@ -58,9 +63,9 @@ than by replaying a ledger.
   is the repo's **only** cron; the executor's workflow beside it carries none. Work
   that had its own cron'd workflow becomes a **task**, and that workflow is deleted
   — its steps move into the task's worker. So does work with no cron at all: an
-  event-driven or condition-gated job becomes a task on `frequency: 'manual'`, woken
-  by whatever knows the event happened. Don't keep either as a dispatch-only workflow
-  for the task to fire: that is two files and two edit sites for one job, and a
+  event-driven or condition-gated job becomes a woken-gated task
+  (`"preconditions": ["woken"]`), woken by whatever knows the event happened.
+  Don't keep either as a dispatch-only workflow for the task to fire: that is two files and two edit sites for one job, and a
   workflow whose only caller is the thing that replaced it. (The exception is narrow,
   and it is **not** about privilege. An Actions-only secret is reachable from
   code-work, which runs Action-side — `code_work_required_secrets`, below. A deploy target's
@@ -72,8 +77,8 @@ than by replaying a ledger.
   built on marketplace or composite actions, a Pages deploy being the standing example,
   keeps a workflow for those steps. Even then the task owns the trigger and the
   decision to run; the workflow carries only the `uses:` steps.) Off-band or multiple
-  crons, or a missing concurrency/dispatch guard, break staggering, double-run
-  safety, or manual runs.
+  crons, or a missing concurrency/dispatch guard, break the ticks, double-run
+  safety, or forced runs.
 
 - **Every declaration carries a `description`** — up to fifty words on what the
   task does, or why it exists, for whoever reads the declaration or a roster of
@@ -84,10 +89,10 @@ than by replaying a ledger.
 
 - **Every task declaration carries the full contract.** A `tasks/<name>/task.json`
   (one JSON object, `"$schema"` pointing at `packs/claudinite-tasks/task.schema.json`
-  so an editor validates it; keys grouped as identity, cadence, outcome, then the
+  so an editor validates it; keys grouped as identity, preconditions, outcome, then the
   `code_*` fields, then the `agent_*` fields) declares `id` (matching its directory), `description`
-  (below), `frequency`
-  (`daily | weekly | monthly | manual`), `expected_outcome` — what the run does to
+  (below), `preconditions` (when it runs — **required**, no default; its first
+  entry is normally the cadence term, below), `expected_outcome` — what the run does to
   pull requests, resolved once by the executor before code-work and handed to both
   phases: `no_code_changes` (opens none), `fresh_pr` (one on a freshly minted
   branch; the task's earlier pull requests are left alone),
@@ -97,8 +102,7 @@ than by replaying a ledger.
   close once its own exists; a green, unlanded one on an auto-merge repo is landed
   instead). The retired `none`/`pr` normalize to the first two, and
   `open-pr`/`merged-pr` to `fresh_pr` with a policy of `nothing`/`anything`.
-  Everything else has a default or is conditional: `preconditions` (the conditions
-  that must hold for it to run — below) is *run always* when absent; `agent_model`
+  Everything else has a default or is conditional: `agent_model`
   (`opus | sonnet | haiku | none`) is `none`, no agent; `code_work` is no code work.
   The two timeouts have **no default**: an agent declares `agent_execution_timeout`
   and code work declares `code_work_timeout`, because a running phase always has a
@@ -126,7 +130,7 @@ than by replaying a ledger.
   task knows a finer boundary than a class or a folder can state — a file-name
   matcher, or a grant like the mount rewrite's. A `none` task runs no agent, so
   `agent_instructions` is not applicable and is omitted. The
-  scheduler run and executor read agent_model/expected_outcome/frequency from this file — never from the work
+  scheduler run and executor read agent_model/expected_outcome/preconditions from this file — never from the work
   item — so an illegal or missing value means a task never fires, fires wrong,
   or writes past its declared ceiling. The same contract
   (`packs/claudinite-tasks/task-contract.mjs`) is re-validated at run time, so the
@@ -266,20 +270,41 @@ inside one entry, and a parameterized condition carries its argument inline afte
 a colon (`no-open-pr-touching:product-wiki/`). It is deliberately the opposite of
 an `automerge` list, which is a union — one field grants, the other requires.
 
-```js
-preconditions: ['substantive-change', 'no-open-pr-titled:Claudinite tidy: improve comments'],
+```json
+"preconditions": ["due:weekly", "substantive-change", "commits-outside:.claudinite/"]
 ```
 
-**`['none']` is the empty precondition** — the task runs unconditionally, because
-its trigger is the calendar or the filed work item itself. It is legal only as the
-sole entry: any real condition beside it would be the actual precondition.
+**The first condition says when.** Every scheduler tick asks every task, so the
+expression is the whole of a task's schedule and there is no empty precondition —
+`none` is retired, because a task with no condition would run at every tick. Four
+built-ins read the task's own run history (its unqualified `[claudinite-work]`
+items over the last 40 days), and they are judged before anything else is
+collected, so a task whose cadence declines costs no read:
+
+- `due:<daily|weekly|monthly>` — no run since that cadence's most recent anchor on
+  the repo's `taskScheduler` schedule; fixed hours, so the hour never drifts.
+- `last-run-over:<12h|1d|7d>` — the newest run started more than that long ago;
+  the hour drifts by up to a tick's gap each period.
+- `last-run-not-failed` — the newest run does not stand at a failure park.
+  Declare it where a run past the task's own failure would repeat the fault;
+  absent it, the next occurrence is filed beside the park.
+- `woken` — this item was created or woken by somebody. As a whole entry it takes
+  the task off the schedule: the scheduler never asks it, and it runs only from a
+  hand-created item, a mark or a chain link (the spelling of the retired
+  `frequency: manual`).
+
+A `due:` or `last-run-over:` term holds on a woken item — the wake stands in for
+the cadence — while every other condition still applies. A task with a movement
+condition and no cadence term is legal and runs whenever the movement is there, at
+most once per tick. A declaration still carrying `frequency` is rewritten into its
+cadence term at the door and reported by `legacy-task-fields`: write the term.
 
 **`preconditions` is the only gate there is.** The `precondition` function and its
 `precondition_signals` companion are retired: both are rejected by name, and the
 signal union is derived from the conditions — each names what it reads, so the
 collector can never disagree with the gate. A gate the built-ins cannot express is
 a **task-local term** in a `preconditions.mjs` beside the declaration, which is
-handed `{ arg, config, item, windowDays, now }` and stays pure over them.
+handed `{ arg, config, item, windowDays, now, schedule }` and stays pure over them.
 
 **Three things are NOT preconditions**, and putting them there is the common
 mistake:
@@ -288,7 +313,7 @@ mistake:
   vendored mount" are facts adoption settled, not questions worth re-asking every
   night. A repo that carries a pack but not one task's subject names that task in
   its own `.claudinite-settings.json` — `taskScheduler.disabledTasks:
-  ['<pack>/<task>']` — which the scheduler reads before instantiating anything.
+  ['<pack>/<task>']` — which the scheduler reads before asking anything.
 - **Scope.** Which files, PRs or members a granted run works on is the worker's
   decision, made in the work sections from the same signals. The conditions decide
   run or no-run, nothing else.
@@ -310,15 +335,17 @@ The vocabulary carries the gate; no operator or marker states it:
 - **Movement conditions are non-task by construction** — `substantive-change`,
   `issues-touched`, `prs-touched` — so a movement-gated task is already
   silence-safe.
-- **A calendar-triggered task that should sleep on a silent repo states
-  `repo-active`**, the positive umbrella over all four activity dimensions.
-- **A task whose trigger is not repo movement states its own condition or
-  `['none']`**, and that absence is visible where a reader audits the trigger.
+- **A cadence-only task that should sleep on a silent repo states
+  `repo-active`** beside its cadence, the positive umbrella over all four
+  activity dimensions.
+- **A task whose trigger is not repo movement states its cadence term and
+  nothing about the repo** (`["due:daily"]`, `["due:monthly"]`, `["woken"]`),
+  and that absence is visible where a reader audits the trigger.
 
 ### When no built-in condition fits
 
 Ship a **`preconditions.mjs` beside the `task.json`**, exporting `terms`: a map from
-term name to `{ signals, takesArg?, holds(signals, { arg, config, item }) }`, where
+term name to `{ signals, takesArg?, holds(signals, { arg, config, item, windowDays, now, schedule }) }`, where
 `holds` returns `{ holds, reason?, context? }` or `{ error }`. Names resolve
 against the built-ins first, then the task's own, in one flat namespace where a
 collision is loud. Reach for it when the gate is genuinely this task's — an age
@@ -418,9 +445,16 @@ or `outcome:delivered`, which nothing writes any more; every reader accepts them
 
 Whether an item is a task's **standing occurrence** or an **ad-hoc run** is not a
 label but a property of the item: the standing one is titled with the task and
-nothing else, and its task is on a calendar. A `manual` task's item and every
-qualified one — a fan-out target, a request naming its issue — are ad-hoc, which
-is what lets them run beside the schedule rather than consuming it.
+nothing else, and its task is on the schedule (not woken-gated). A woken-gated
+task's item and every qualified one — a fan-out target, a request naming its issue
+— are ad-hoc, which is what lets them run beside the schedule rather than consuming
+it; the run-history terms read every one of them as woken.
+
+**`Woken: <instant>`** in the item's machine block is what those terms read on a
+standing item: every lever that creates or wakes an item by hand stamps it —
+`create-work-item`, a forced mint, `--wake` — and an item the scheduler filed on
+its own never carries it. Never stamp it by hand: it is the record of somebody
+asking, and the cadence terms hold on it.
 
 Two rules follow, and both are about not borrowing the vocabulary:
 
@@ -459,9 +493,10 @@ closing or running anything.
 - **Parked for a human** → one `task:status:needs-human-*` label naming what is being
   asked for, one comment, issue left open. Nothing keeps updating a parked issue:
   one visible convergence, then it is a person's to look at. Re-queueing it by hand
-  (`create-work-item --wake #<n>`) is the sanctioned road back, and the
-  precondition is re-evaluated at that pickup — which is what makes the retry safe
-  even when the failed run half-did its work. The four:
+  (`create-work-item --wake #<n>`) is the sanctioned road back: the wake stamps
+  `Woken:`, so the cadence terms hold, and every other condition is re-evaluated
+  at that pickup — which is what makes the retry safe even when the failed run
+  half-did its work. The four:
   - `task:status:needs-human-approval` — succeeded, and deliberately left an unmerged PR
     for a person to merge or close. The only park that is not a fault. `--pr` names that
     PR, and any park may name what would end it: the item then closes by itself when
@@ -474,21 +509,21 @@ closing or running anything.
   - `task:status:needs-human-failure` — the run broke. A bug, a contract-forbidden shape, a
     malformed item. The default when nothing else fits.
 
-  **An open item is the task's standing item, and a `failure` park therefore stops
-  the task being scheduled** — no further occurrence is filed until it is woken or
-  closed. That is deliberate: a queue of items that will break the same way helps
-  nobody, and the silence is the signal — bounded, though: the janitor closes a
-  standing failure park nobody has touched in ten days, so a report no one read
-  never silences a task for good. The other three do **not** hold the lane —
-  they are one person's inbox, not a fault in the task, so the schedule carries on
-  around them.
+  **A parked item is not live, so no park holds the task's lane by itself**: the
+  scheduler asks the task beside it. Whether a `failure` park stops the next
+  occurrence is the task's own declaration, `last-run-not-failed`, with no default:
+  declare it where a queue of items that will break the same way helps nobody and
+  the silence is the signal; leave it out where the next run is what clears a
+  transient fault. The other three parks are one person's inbox, not a fault in
+  the task, and no term reads them.
 - **Never ran** → `task:status:rejected`, closed as not planned: the precondition
   declined, or the task is gone (file removed, pack undeclared). An obsolete item
-  is not an anomaly and gets no park. A scheduled task's next occurrence
-  is the scheduler run's ask at its next anchor — and most declines never make an
-  item at all: the scheduler run asks the precondition when the anchor comes,
-  files an item only on a yes, and records a no as a row on the repo's schedule
-  board.
+  is not an anomaly and gets no park. A scheduled task's next occurrence is the
+  next tick's ask — and most declines never make an item at all: the scheduler
+  run asks the preconditions at every tick, files an item only on a yes, and a no
+  is a line in its log. A rejected item is still a run to `due:` (the period is
+  consumed) but does not move the signal window: the next run sees what the
+  rejected one saw.
 - Every terminal state is recorded in code as a `claudinite-task-exec` line
   (`record-exec.mjs`), so the usage fold counts task statuses out of the captured
   conversation logs deterministically.
@@ -501,6 +536,6 @@ A project nobody is working on declares itself dormant in `.claudinite-settings.
 "dormant": true
 ```
 
-The scheduler run instantiates, readies and reclaims nothing, and the executor picks
+The scheduler run asks, readies and reclaims nothing, and the executor picks
 nothing up; the fleet sweeps skip it; sessions are unaffected. Delete it to wake — a dormant spell is not replayed, so the repo
 simply starts scheduling again from now.

@@ -186,10 +186,17 @@ export function cadenceOf(preconditions) {
   return isWokenGated(preconditions) ? { kind: 'woken' } : null;
 }
 
-// A task runs only when somebody asks when `woken` is a whole conjunct of its
-// expression — `['woken', …]` gates, `['due:daily || woken']` merely widens.
-export const isWokenGated = (preconditions) =>
-  entriesOf(preconditions).some((alts) => alts.length === 1 && alts[0].name === WOKEN_TERM && alts[0].arg === null);
+// A term gates when it is a whole conjunct of the expression — `['woken', …]`
+// gates, `['due:daily || woken']` merely widens.
+const gatesOn = (preconditions, term) =>
+  entriesOf(preconditions).some((alts) => alts.length === 1 && alts[0].name === term && alts[0].arg === null);
+
+// A task runs only when somebody asks when `woken` gates it.
+export const isWokenGated = (preconditions) => gatesOn(preconditions, WOKEN_TERM);
+
+// A task stops past its own failure park only when it says so: nothing holds a
+// task's lane but its own `last-run-not-failed`.
+export const holdsOnFailure = (preconditions) => gatesOn(preconditions, NOT_FAILED_TERM);
 
 // What the retired `frequency` field always meant, as the term that now says it.
 export const cadenceTermFor = (frequency) =>
