@@ -485,8 +485,13 @@ export function makeSim({
   // under evaluation excluded — what the cadence terms and the since-last-run
   // window read. "Newest" is creation order, which is what GitHub's issue
   // numbering guarantees and the sim's per-lever number ranges do not.
+  // A run begins at the pick: an item still wearing the status it waited in —
+  // open, or closed beside the terminal label (`closeUnpicked`) — was never
+  // picked, so it is not a run; else twins decline each other at pick and a
+  // deduped one spends the period on the survivor (F32).
+  const unpicked = (i) => i.labels.has('task:status:blocked') || i.labels.has(READY);
   const runsOf = (taskId, exclude = null) => family(taskId)
-    .filter((i) => i.number !== exclude
+    .filter((i) => i.number !== exclude && !unpicked(i)
       && Math.max(i.createdAt, i.closedAt ?? 0, i.lastActivity ?? 0) >= now - RUN_HORIZON_DAYS * DAY)
     .map((i) => ({
       number: i.number, createdAt: i.createdAt, closedAt: i.closedAt, state: i.state,
@@ -525,7 +530,7 @@ export function makeSim({
     catch (e) { verdict = { error: `precondition threw: ${e.message}` }; }
     if (verdict.error) return { verdict: 'fail-open', reason: verdict.error };
     if (verdict.run === false) return { verdict: 'no', reason: verdict.reason ?? 'no work' };
-    return { verdict: 'go', reason: verdict.reason ?? history.reason };
+    return { verdict: 'go', reason: [history.reason, verdict.reason].filter(Boolean).join('; ') };
   }
   // THE ASK, the executor's (DESIGN §6.4): the whole expression over the item's
   // own facts and its own run history — excluding it — where a woken item
@@ -537,8 +542,13 @@ export function makeSim({
     const history = judgeHistory(task.preconditions, runsOf(it.taskId, it.number), itemFacts(it), now);
     if (!history.run) return history;
     if (!task.precondition) return { run: true, reason: history.reason };
-    try { return task.precondition(world, now, it, windowOf(task, it.number)) ?? {}; }
+    let verdict;
+    try { verdict = task.precondition(world, now, it, windowOf(task, it.number)) ?? {}; }
     catch (e) { return { run: false, reason: `precondition threw: ${e.message}` }; }
+    // A go carries every held reason, joined as the engine's verdict joins them;
+    // a decline or an error is the precondition's own, untouched.
+    if (verdict.error || verdict.run === false) return verdict;
+    return { ...verdict, run: true, reason: [history.reason, verdict.reason].filter(Boolean).join('; ') };
   }
 
   // F18/F24: the episode boundary is an ARTIFACT on the item, not a property of
@@ -577,6 +587,18 @@ export function makeSim({
     }
   }
 
+  // The scheduler run's own close of an item nobody picked (the F16 dedupe;
+  // scheduler-run.mjs's `dedupe`/`retire-orphan`/`superseded` ops): it ADDS the
+  // terminal label and closes, and the status the item waited in stays on — which
+  // is exactly what the run history reads to know the item never ran (F32).
+  function closeUnpicked(it) {
+    it.state = 'closed';
+    it.closedAt = now;
+    it.outcome = 'rejected';
+    it.labels.add('task:status:rejected');
+    record('close', { task: it.taskId, issue: it.number, outcome: 'rejected' });
+  }
+
   // ---- the scheduler run (DESIGN §5, §15.33): a stateless loop --------------
   function schedulerRun() {
     if (suspendedAll) { record('suspended-skip', { workflow: 'scheduler-run' }); return; }
@@ -603,7 +625,7 @@ export function makeSim({
       // sees a creation seconds old), close every live one but the oldest. The
       // scheduler run is serialized (concurrency group), so this cannot race itself.
       for (const dup of live.slice(1)) {
-        close(dup, 'rejected', { dispatchDrain: false });
+        closeUnpicked(dup);
         record('dedupe', { task: task.id, issue: dup.number });
       }
       if (live.length > 0) continue; // the standing item already exists

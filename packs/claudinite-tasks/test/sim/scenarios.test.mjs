@@ -4,15 +4,16 @@
 // prose document (§H's standing-item replay + the stable earlier scenarios);
 // a test here going red means the DESIGN.md mechanism, as modeled, breaks.
 //
-// The cast mirrors SCENARIOS.md's "Cast and constants" table. Preconditions
-// read `world`, the scenario-owned signal state — task questions only, never
-// calendar ones (DESIGN §6.4).
+// The cast mirrors SCENARIOS.md's "Cast and constants" table. A task's
+// `preconditions` carries its run-history terms — the cadence it keeps — and
+// its `precondition` function stands for every other condition, reading
+// `world`, the scenario-owned signal state, and `window`, the since-last-run
+// window the engine collects every movement signal over (DESIGN §5, §6.4).
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  makeSim, T, NH, READY, ORIGIN_AD_HOC, ORIGIN_PLANNED, statusOf,
-  periodMs, normalizeFrequency, mostRecentAnchor,
+  makeSim, T, NH, READY, ORIGIN_AD_HOC, ORIGIN_PLANNED, statusOf, periodMs,
 } from './sim.mjs';
 
 // `makeSim`'s default, restated once so the cadence scenarios can derive tick
@@ -25,45 +26,52 @@ const isParked = (it) => (statusOf(it) ?? '').startsWith(NH(''));
 function cast() {
   return [
     {
-      id: 'basics/baselining', frequency: 'daily', outcome: 'done',
+      // The one task in the cast that declares it does not run past its own
+      // failure: a broken mount is not something to re-run every morning.
+      id: 'basics/baselining', preconditions: ['due:daily', 'last-run-not-failed'], outcome: 'done',
       codeWorkMinutes: 21, agentMinutes: 30,
       precondition: (w) => ({ run: !!w.mountBehind, reason: 'mount converged, no pending notes' }),
       requestsAgent: (w) => !!w.baseliningNeedsJudgment,
       codeWorkFails: (w) => !!w.mountBroken,
     },
     {
-      id: 'grow/growth-extract', frequency: 'daily', schedule_after: ['basics/baselining'],
+      id: 'grow/growth-extract', preconditions: ['due:daily'], schedule_after: ['basics/baselining'],
       outcome: 'done', codeWorkMinutes: 2, agentMinutes: 35,
       precondition: (w) => ({ run: !!w.extractHasLessons, reason: 'nothing new to extract' }),
     },
     {
-      id: 'grow/growth-promote', frequency: 'daily', schedule_after: ['grow/growth-extract'],
+      id: 'grow/growth-promote', preconditions: ['due:daily'], schedule_after: ['grow/growth-extract'],
       outcome: 'done', codeWorkMinutes: 1, agentMinutes: 2,
       precondition: (w) => ({ run: !!w.promoteHasCandidates, reason: 'nothing staged' }),
     },
     {
-      id: 'tidy/tidy-issues', frequency: 'daily', outcome: 'done',
+      // A movement-gated task: its signal is windowed the way the engine's
+      // collectors window it — since this task's newest run started.
+      id: 'tidy/tidy-issues', preconditions: ['due:daily'], outcome: 'done',
       codeWorkMinutes: 1, agentMinutes: 16,
-      precondition: (w, now) => ({
-        run: w.issueTouchedAt != null && now - w.issueTouchedAt <= 24 * 3600e3,
+      precondition: (w, _now, _item, window) => ({
+        run: w.issueTouchedAt != null && w.issueTouchedAt >= window.since,
         reason: 'no issue touched in window',
       }),
     },
     {
-      id: 'chrome/store-release', frequency: 'daily', outcome: 'done', codeWorkMinutes: 3,
+      id: 'chrome/store-release', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 3,
       precondition: (w) => ({ run: !!w.releasePending, reason: 'nothing to release' }),
     },
     {
-      id: 'gcec/create-extractor', frequency: 'daily', outcome: 'done',
+      id: 'gcec/create-extractor', preconditions: ['due:daily'], outcome: 'done',
       codeWorkMinutes: 4, agentMinutes: 10,
-      precondition: (w) => ({ run: !!w.pendingRequest, reason: 'no eligible requests' }),
+      precondition: (w, _now, _item, window) => ({
+        run: w.requestAt != null && w.requestAt >= window.since,
+        reason: 'no eligible requests',
+      }),
     },
     {
-      id: 'tidy/tidy-prs', frequency: 'weekly', outcome: 'done',
+      id: 'tidy/tidy-prs', preconditions: ['due:weekly'], outcome: 'done',
       codeWorkMinutes: 1, agentMinutes: 5,
       precondition: (w) => ({ run: !!w.stalePrs, reason: 'no stale PRs' }),
     },
-    { id: 'sheepdog/fleet-baseline', frequency: 'manual', outcome: 'done', codeWorkMinutes: 1, agentMinutes: 5 },
+    { id: 'sheepdog/fleet-baseline', preconditions: ['woken'], outcome: 'done', codeWorkMinutes: 1, agentMinutes: 5 },
   ];
 }
 
@@ -71,44 +79,52 @@ function cast() {
 // always-run tasks would add executor contention to every other scenario, and
 // S15's mutex timing is sensitive to exactly that.
 const SEEDS = {
-  id: 'sheepdog/fleet-seeds', frequency: 'daily', outcome: 'done', codeWorkMinutes: 2,
+  id: 'sheepdog/fleet-seeds', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 2,
   precondition: () => ({ run: true }),
   codeWorkFails: (w) => !!w.patScopeMissing,
   codeWorkTriage: () => 'action', // the PAT lacks Contents: write — a person grants it
 };
 const REGENERATE = {
-  id: 'site/regenerate', frequency: 'daily', outcome: 'done', codeWorkMinutes: 2,
+  id: 'site/regenerate', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 2,
   precondition: () => ({ run: true }),
   deliversOpenPr: () => true,
 };
 
 const evals = (sim, task) => sim.log.filter((e) => e.kind === 'evaluate' && e.task === task);
-// The anchor-side ask (#1115): the scheduler run's evaluation when the anchor
-// comes — distinct from `evals`, the executor's pick-time re-evaluation.
-const asks = (sim, task) => sim.log.filter((e) => e.kind === 'anchor-evaluate' && e.task === task);
+// The scheduler's ask (DESIGN §5, §15.33): one `ask` entry per tick per task
+// asked, `verdict` go | no | fail-open — distinct from `evals`, the executor's
+// pick-time re-evaluation. A decline is this entry and nothing else.
+const asks = (sim, task) => sim.log.filter((e) => e.kind === 'ask' && e.task === task);
+const goes = (sim, task) => asks(sim, task).filter((e) => e.verdict === 'go');
 const closedOf = (sim, task) =>
   sim.family(task).filter((i) => !i.seeded && i.state === 'closed' && i.outcome != null);
+const ticks = (sim) => sim.log.filter((e) => e.kind === 'scheduler-run');
 
-// ---- S1' — quiet night: one anchor-side ask per task per period, no items at
-// all — a no creates nothing, and the board carries the verdicts (#1115).
-test("S1' quiet night: one ask per period, no items — the board carries the verdicts", () => {
+// ---- S1' — quiet night: every tick asks every scheduled task, every ask
+// declines, and a decline is a log line — no item, no board, nothing durable.
+test("S1' quiet night: asked at every tick, no items, nothing recorded", () => {
   const sim = makeSim({ tasks: cast() })
     .seedSteadyState('2026-08-12T00:00Z')
     .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
-  for (const task of ['basics/baselining', 'tidy/tidy-issues', 'chrome/store-release']) {
-    assert.equal(asks(sim, task).length, 1, `${task} asked once`);
+  assert.equal(ticks(sim).length, 24, 'the hourly cron ran all day');
+  for (const task of ['basics/baselining', 'tidy/tidy-issues', 'chrome/store-release', 'gcec/create-extractor']) {
+    assert.equal(asks(sim, task).length, 24, `${task} asked at every tick`);
+    assert.ok(asks(sim, task).every((e) => e.verdict === 'no'), `${task} declined every time`);
     assert.equal(sim.standingItem(task), undefined, `${task} filed no item`);
-    assert.equal(sim.board.rows.get(task).verdict, 'no', `${task}'s decline is a board row`);
   }
-  // `gcec/create-extractor` still DECLARES the retired `hourly` — it models a member whose task
-  // file has not converged — and the door reads it as daily (DESIGN §17.1), so it asks once like
-  // everything else rather than twenty-three times.
-  assert.equal(asks(sim, 'gcec/create-extractor').length, 1);
-  // manual tasks never instantiate
+  // The ticks before the day's anchor decline on the cadence — yesterday's run
+  // is still the current period's — the ones after it on the task's own
+  // condition. Both are the same nothing.
+  const early = asks(sim, 'tidy/tidy-issues').filter((e) => e.t < T('2026-08-12T04:00Z'));
+  assert.ok(early.length === 4 && early.every((e) => /already ran since the daily anchor/.test(e.reason)));
+  assert.equal(asks(sim, 'tidy/tidy-issues').find((e) => e.t > T('2026-08-12T04:00Z')).reason, 'no issue touched in window');
+  // a woken-gated task is never asked and never instantiates
+  assert.equal(asks(sim, 'sheepdog/fleet-baseline').length, 0);
   assert.equal(sim.family('sheepdog/fleet-baseline').length, 0);
   // the executor evaluated nothing: no item ever existed to pick
   assert.equal(sim.log.filter((e) => e.kind === 'evaluate').length, 0);
+  assert.equal(sim.log.filter((e) => e.kind === 'create').length, 0);
   // nothing ran, nothing escalated, nothing closed
   assert.equal(sim.log.filter((e) => e.kind === 'handoff' || e.kind === 'escalate').length, 0);
 });
@@ -125,20 +141,27 @@ test('S2 happy path: touched issues -> item runs, closes done', () => {
   // claimed at the 04:17 drain, agent 16m: closed ~04:34
   assert.ok(done.closedAt <= T('2026-08-12T04:40Z'));
   assert.equal(evals(sim, 'tidy/tidy-issues').length, 1);
+  assert.equal(goes(sim, 'tidy/tidy-issues').length, 1, 'the one go was the 04:17 tick');
 });
 
-// ---- S3' — work appears mid-window: nothing wakes until the next anchor;
-// the ask happens once per period, and tomorrow's ask finds the work.
-test("S3' mid-window work waits for the next anchor, then runs", () => {
+// ---- S3' — work appears mid-window: the NEXT TICK finds it, not the next
+// anchor. The scheduler keeps no memory of the morning's decline (§15.33), so
+// every tick asks again; `due:daily` still holds — nothing ran since 04:00 —
+// and the window, since the last run, contains the touch.
+test("S3' mid-window work runs at the next tick, not the next anchor", () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T09:03Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T09:03Z'); });
   sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
 
-  const a = asks(sim, 'tidy/tidy-issues');
-  assert.equal(a.length, 2, 'one ask per day, two days');
-  assert.ok(a[0].t < T('2026-08-12T05:00Z') && a[0].run === false, 'day 1: declined — a board row, no item');
-  assert.ok(a[1].t > T('2026-08-13T04:00Z') && a[1].run === true, 'day 2: found the work and filed the item');
-  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1);
+  const g = goes(sim, 'tidy/tidy-issues');
+  assert.equal(g.length, 1, 'one go across two days');
+  assert.equal(g[0].t, T('2026-08-12T09:17Z'), 'the tick after the touch, the same day');
+  const [done] = closedOf(sim, 'tidy/tidy-issues');
+  assert.ok(done && done.outcome === 'done' && done.closedAt < T('2026-08-12T10:00Z'));
+  // Tomorrow's anchor is asked again — and declines: the window is since the
+  // 09:17 run started, and the 09:03 touch sits before it. Once a touch, once a run.
+  const tomorrow = asks(sim, 'tidy/tidy-issues').filter((e) => e.t >= T('2026-08-13T04:00Z'));
+  assert.ok(tomorrow.length >= 8 && tomorrow.every((e) => e.verdict === 'no'));
 });
 
 // ---- S4 — the late-fire night: all cron fires drop, one late scheduler run at 05:41,
@@ -171,53 +194,59 @@ test('S4 late fire: the chain completes the same morning, ordered', () => {
   assert.ok(extractClaim.t <= base.closedAt + 5 * 60e3, 'picked within minutes of the upstream closing');
 });
 
-// ---- S5 — the scheduler run is down for three days: the first run back asks
-// about the most recent occurrence only; exactly one catch-up ask, no backfill.
-test('S5 three-day outage: one catch-up ask, no backfill', () => {
+// ---- S5 — the scheduler run is down for three days: the first tick back asks
+// about NOW — `due:daily` against the current anchor, the window since the last
+// run — so a touch from the outage is found once. No backfill of the missed
+// days, and nothing to catch up on but the present.
+test('S5 three-day outage: the first tick back finds the work once, no backfill', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-11T00:00Z');
+  sim.at('2026-08-12T12:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T12:00Z'); });
   sim.dropSchedulerRuns('2026-08-11T09:00Z', '2026-08-14T10:00Z');
-  sim.run('2026-08-11T00:00Z', '2026-08-14T23:00Z');
+  sim.run('2026-08-11T00:00Z', '2026-08-15T12:00Z');
 
   const a = asks(sim, 'tidy/tidy-issues');
-  assert.equal(a.length, 2, 'Tuesday once, Friday once — Wed/Thu gone, not backfilled');
-  assert.ok(a[1].t >= T('2026-08-14T10:17Z'), 'catch-up on the first scheduler run back');
-  assert.equal(sim.family('tidy/tidy-issues').filter((i) => i.state === 'open').length, 0,
-    'declines file nothing — the catch-up ask is a board row');
-  assert.equal(sim.board.rows.get('tidy/tidy-issues').lastAsked, T('2026-08-14T04:00Z'),
-    "the board's watermark is Friday's anchor, the only occurrence asked about");
+  assert.equal(a.filter((e) => e.t >= T('2026-08-11T09:00Z') && e.t < T('2026-08-14T10:00Z')).length, 0,
+    'no ask while the cron was down — nothing durable was owed');
+  const g = goes(sim, 'tidy/tidy-issues');
+  assert.equal(g.length, 1, 'exactly one go: the first tick back');
+  assert.equal(g[0].t, T('2026-08-14T10:17Z'));
+  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1, 'one run for the outage, not one per missed day');
+  // Saturday's anchor asks again and declines: the window is since Friday's run.
+  assert.ok(a.filter((e) => e.t >= T('2026-08-15T04:00Z')).every((e) => e.verdict === 'no'));
 });
 
-// ---- S13' — an ad-hoc item's no-go closes it (no anchor to roll to).
-// Ad-hoc is STRUCTURAL (DESIGN §3): a qualifier is what makes this item ad-hoc —
-// an unqualified item of a scheduled task would BE the standing item, and roll.
-test("S13' ad-hoc no-go closes obsolete instead of rolling", () => {
+// ---- S13' — an ad-hoc item's no-go closes it. Ad-hoc is STRUCTURAL (DESIGN §3):
+// a qualifier is what makes this item ad-hoc — an unqualified item of a
+// scheduled task would BE the standing item.
+test("S13' ad-hoc no-go closes obsolete; the scheduled family is undisturbed", () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   let adhoc;
   sim.at('2026-08-12T10:00Z', (s) => { adhoc = s.createItem('tidy/tidy-issues', { urgent: true, qualifier: 'one-off' }); });
-  sim.run('2026-08-12T05:00Z', '2026-08-12T12:00Z'); // start past the 04:17 ask: the scheduled decline is a board row
+  sim.run('2026-08-12T05:00Z', '2026-08-12T12:00Z');
 
   assert.equal(adhoc.state, 'closed');
   assert.equal(adhoc.outcome, 'rejected');
   // …and the ad-hoc twin neither consumed nor disturbed the scheduled family:
-  // the anchor's decline sits on the board, and no unqualified item exists.
-  assert.equal(sim.family('tidy/tidy-issues').filter((i) => i.state === 'open').length, 0);
-  assert.equal(sim.board.rows.get('tidy/tidy-issues')?.verdict, 'no');
+  // the ticks kept asking and declining, and no unqualified item exists.
+  assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded).length, 0);
+  assert.ok(asks(sim, 'tidy/tidy-issues').length >= 6 && asks(sim, 'tidy/tidy-issues').every((e) => e.verdict === 'no'));
 });
 
 // ---- S14'/S16' — forcing MINTS the standing item (no item exists between
-// occurrences once a decline files nothing); a force that finds no work closes
-// with the reason on record, a force that finds work runs.
-test("S14' force mints the standing item; no-go closes with a reason", () => {
+// occurrences once a decline files nothing), stamped `Woken`; a force that finds
+// no work closes with the reason on record, a force that finds work runs.
+test("S14' force mints the standing item, stamped Woken; no-go closes with a reason", () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T15:00Z', (s) => s.force('tidy/tidy-issues'));
   sim.run('2026-08-12T00:00Z', '2026-08-12T18:00Z');
 
   assert.ok(sim.log.some((e) => e.kind === 'force' && e.minted), 'nothing to wake — the force minted');
   const forced = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  assert.equal(forced.woken, T('2026-08-12T15:00Z'), 'the mint is stamped with the wake');
   assert.equal(forced.state, 'closed');
   assert.equal(forced.outcome, 'rejected', 'the forced ask found no work and said so');
   assert.equal(sim.log.find((e) => e.kind === 'decline-close' && e.issue === forced.number).reason,
-    'no issue touched in window', 'the force reads its answer');
+    'no issue touched in window', 'the force reads its answer — the cadence held, the work did not');
   assert.equal(evals(sim, 'tidy/tidy-issues').length, 1, 'the executor evaluated the forced item once');
 });
 
@@ -231,63 +260,77 @@ test("S16' force with work present runs immediately, mid-day", () => {
   assert.ok(done && done.closedAt < T('2026-08-12T15:30Z'), 'ran within minutes of the force');
 });
 
-// ---- S20 — the task file disappears: validate-in-code closes the item.
-test('S20 removed task: standing item closes obsolete at next pick', () => {
+// ---- S20 — the task file disappears while its item is open: validate-in-code
+// closes the item at the next pick, and a force naming the gone task wakes
+// nothing (planWake's `unmatched`) rather than minting for a task that is not at HEAD.
+test('S20 removed task: its open item closes obsolete at the next pick; a force finds no owner', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T10:00Z', (s) => { s.removeTask('tidy/tidy-issues'); s.force('tidy/tidy-issues'); });
+  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.at('2026-08-12T04:17:10Z', (s) => s.removeTask('tidy/tidy-issues')); // filed at 04:17, gone before the 04:17:40 drain
+  sim.at('2026-08-12T10:00Z', (s) => s.force('tidy/tidy-issues'));
   sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
 
-  const it = sim.family('tidy/tidy-issues').find((i) => i.createdAt >= T('2026-08-12T00:00Z'));
+  const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
   assert.equal(it.state, 'closed');
   assert.equal(it.outcome, 'rejected');
+  assert.equal(evals(sim, 'tidy/tidy-issues').length, 0, 'validate closed it before any evaluation');
+  assert.ok(sim.log.some((e) => e.kind === 'force' && e.unmatched), 'the force matched no declared task');
+  assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded).length, 1, 'and minted nothing');
 });
 
-// ---- S21 — the quiet month: no items at all, five weekly board asks, zero
-// escalations. The quiet task's whole footprint is one row on the board.
-test('S21 quiet weeks: no items, five board asks, no janitor noise', () => {
+// ---- S21 — the quiet month: no items at all, an ask at every tick, zero
+// escalations. The quiet task's whole footprint is the scheduler's log lines.
+test('S21 quiet weeks: no items, an ask per tick, no janitor noise', () => {
   const sim = makeSim({ tasks: cast() })
     .seedSteadyState('2026-08-02T05:00Z') // Sunday, past the 04:00 anchor
     .run('2026-08-02T05:00Z', '2026-09-07T00:00Z');
 
   assert.equal(sim.family('tidy/tidy-prs').filter((i) => !i.seeded).length, 0,
     'five quiet weeks file nothing');
-  assert.equal(asks(sim, 'tidy/tidy-prs').length, 5, 'one ask per Sunday');
-  assert.equal(sim.boardWrites().filter((e) => e.task === 'tidy/tidy-prs').length, 5,
-    'each ask moved the row — and only an ask ever writes it');
+  assert.equal(asks(sim, 'tidy/tidy-prs').length, ticks(sim).length, 'asked at every tick, nothing skipped');
+  assert.ok(asks(sim, 'tidy/tidy-prs').every((e) => e.verdict === 'no'));
+  // Between Sundays the cadence declines; on a Sunday, past its anchor, the
+  // task's own condition does — no run is ever recorded anywhere but here.
+  assert.ok(asks(sim, 'tidy/tidy-prs').some((e) => /already ran since the weekly anchor/.test(e.reason)));
+  assert.ok(asks(sim, 'tidy/tidy-prs').some((e) => e.reason === 'no stale PRs'));
   assert.equal(sim.log.filter((e) => e.kind === 'escalate').length, 0,
     'nothing to escalate: no item ever sat anywhere');
 });
 
-// ---- S22 — the hourly task: asks hourly while quiet (board rows, no issues),
-// runs within the hour once work exists. The churn is the declared cadence.
-test('S22 churn on the board, then work found at the next anchor', () => {
+// ---- S22 — the task asked every tick: quiet ticks are log lines, and the tick
+// that finds the work runs it — the churn is the declared cadence, and the
+// window since the last run is what keeps the next anchor from running it twice.
+test('S22 asked every tick; the tick that finds work runs it, the next anchor does not repeat it', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   // Work arrives on the second day, after a quiet first one.
-  sim.at('2026-08-13T01:40Z', ({ world }) => { world.pendingRequest = true; });
+  sim.at('2026-08-13T01:40Z', ({ world }) => { world.requestAt = T('2026-08-13T01:40Z'); });
   sim.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
 
   const fam = sim.family('gcec/create-extractor').filter((i) => !i.seeded);
   assert.equal(fam.length, 1, 'the quiet period filed nothing — only the working one has an item');
   const it = fam[0];
-  assert.ok(it.createdAt >= T('2026-08-13T04:00Z'), 'created at the first anchor after the work arrived');
+  assert.equal(it.createdAt, T('2026-08-13T02:17Z'), 'created at the first tick after the work arrived');
   assert.equal(it.state, 'closed');
-  assert.ok(it.closedAt <= T('2026-08-13T05:00Z'), 'ran at the anchor that found it');
-  // Each quiet period was still ASKED, and each decline is a board row rather than an item —
-  // the churn this scenario is named for, now counted in days because the door reads this
-  // task's retired `hourly` as `daily`.
-  assert.equal(asks(sim, 'gcec/create-extractor').length, 2);
+  assert.ok(it.closedAt <= T('2026-08-13T03:00Z'), 'ran at the tick that found it');
+  assert.equal(asks(sim, 'gcec/create-extractor').length, ticks(sim).length,
+    'every tick asked — the item ran and closed between two of them, so none found it live');
+  // Thursday's 04:17 anchor asks again — `due:daily` holds, the 02:17 run was
+  // Wednesday's period — and the window since that run holds no request.
+  const anchor = asks(sim, 'gcec/create-extractor').find((e) => e.t === T('2026-08-13T04:17Z'));
+  assert.equal(anchor.verdict, 'no');
+  assert.equal(anchor.reason, 'no eligible requests');
 });
 
 // ---- S23 — the upstream declines (or is broken): dependents run anyway. A
-// declined upstream now has NO item at all, so the yield sees nothing live.
+// declined upstream has NO item at all, so the yield sees nothing live.
 test('S23 declined upstream leaves nothing to yield to; the dependent runs', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:01Z', ({ world }) => { world.extractHasLessons = true; }); // baselining stays quiet
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
   assert.equal(sim.standingItem('basics/baselining'), undefined,
-    'the quiet upstream filed nothing — its decline is a board row');
-  assert.equal(sim.board.rows.get('basics/baselining').verdict, 'no');
+    'the quiet upstream filed nothing — its declines are log lines');
+  assert.ok(asks(sim, 'basics/baselining').every((e) => e.verdict === 'no'));
   const [extract] = closedOf(sim, 'grow/growth-extract');
   assert.ok(extract && extract.closedAt < T('2026-08-12T05:00Z'),
     'extract ran the same morning — a declined upstream is not a blocker');
@@ -322,20 +365,8 @@ test('S24 three quiet-upstream days: the yield never holds the dependent', () =>
     'the quiet upstream filed nothing all week');
 });
 
-// ---- S25 — adoption: a brand-new task's first item is born blocked until its
-// next real anchor, so a fresh repo never fires weekly work off-anchor.
-test('S25 adoption: first ask lands on the real anchor, not the first scheduler run', () => {
-  const sim = makeSim({ tasks: cast() }) // no seeded history — a fresh repo
-    .run('2026-08-12T00:00Z', '2026-08-13T00:00Z'); // Wednesday
-
-  assert.equal(evals(sim, 'tidy/tidy-prs').length, 0, 'weekly task not asked mid-week');
-  const weekly = sim.standingItem('tidy/tidy-prs');
-  assert.equal(new Date(weekly.notBefore).getUTCDay(), 0, 'sleeps until Sunday');
-  // daily tasks still get their first ask the same day — at their anchor
-  const asks = evals(sim, 'tidy/tidy-issues');
-  assert.equal(asks.length, 1);
-  assert.ok(asks[0].t >= T('2026-08-12T04:00Z'), 'not before the 04:00 anchor');
-});
+// ---- S25 — RETIRED (§15.33): the first-window booking is gone with the
+// board. A brand-new task is asked at its first tick like any other — S78.
 
 // ---- S8-flavored — a dead executor's claim is reclaimed by the scheduler run's leash
 // and the item is simply re-picked; code-work re-entrancy is the contract.
@@ -351,21 +382,45 @@ test('S8 dead executor: leash reclaim, re-pick, converge', () => {
   assert.ok(done.closedAt > T('2026-08-12T05:17Z'), 'recovery cost is the leash, not a day');
 });
 
-// ---- backlog guard — a needs-human item suppresses new occurrences until a
-// human acts; one broken task, one triage item, however many days pass.
-test('backlog guard: a failed run blocks new occurrences until re-queued', () => {
-  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T00:01Z', ({ world }) => { world.mountBehind = true; world.mountBroken = true; });
-  sim.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
+// ---- backlog guard — a failure park holds the task's lane ONLY where the task
+// says so: `last-run-not-failed` is the task's own declaration, never the
+// engine's. Both sides: baselining declares it and stays at one item however
+// many days pass; the same task without it is filed beside its own park.
+test('backlog guard: a failure park holds the lane only for a task declaring last-run-not-failed', () => {
+  const held = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  held.at('2026-08-12T00:01Z', ({ world }) => { world.mountBehind = true; world.mountBroken = true; });
+  held.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
 
-  const fam = sim.family('basics/baselining').filter((i) => i.createdAt >= T('2026-08-12T00:00Z'));
-  assert.equal(fam.length, 1, 'no second item while needs-human sits open');
-  assert.ok(isParked(fam[0]));
-  assert.equal(evals(sim, 'basics/baselining').length, 1, 'not re-asked while broken');
+  const fam = held.family('basics/baselining').filter((i) => !i.seeded);
+  assert.equal(fam.length, 1, 'no second item while the failure park sits open');
+  assert.ok(isParked(fam[0]) && fam[0].labels.has(NH('failure')));
+  assert.equal(evals(held, 'basics/baselining').length, 1, 'not re-run while broken');
+  // The park does not silence the ask: every later tick still asks. For the
+  // rest of Wednesday `due:daily` declines first — the parked item IS this
+  // period's run — and from Thursday's anchor on it is the task's own
+  // `last-run-not-failed` that declines, reading the park.
+  const after = asks(held, 'basics/baselining').filter((e) => e.t > T('2026-08-12T05:00Z'));
+  assert.ok(after.length >= 40 && after.every((e) => e.verdict === 'no'));
+  assert.ok(after.filter((e) => e.t < T('2026-08-13T04:00Z')).every((e) => /already ran since the daily anchor/.test(e.reason)));
+  const thursday = after.filter((e) => e.t >= T('2026-08-13T04:00Z'));
+  assert.ok(thursday.length >= 19 && thursday.every((e) => /failure park/.test(e.reason)));
+
+  // The contrast: strip the term and the next anchor files beside the park —
+  // a parked item is not live, and nothing in the engine holds a lane by itself.
+  const open = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  open.at('2026-08-12T00:01Z', (s) => {
+    s.updateTask('basics/baselining', { preconditions: ['due:daily'] });
+    s.world.mountBehind = true; s.world.mountBroken = true;
+  });
+  open.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
+  const beside = open.family('basics/baselining').filter((i) => !i.seeded);
+  assert.equal(beside.length, 2, "Thursday's occurrence was filed beside Wednesday's park");
+  assert.ok(beside.every((i) => isParked(i)), 'and broke the same way — two parks, one cause');
 });
 
-// ---- S6 — double-fire: two scheduler runs in the same minute, one item.
-test('S6 double scheduler run: the occurrence guard holds under a duplicate fire', () => {
+// ---- S6 — double-fire: two scheduler runs in the same minute, one item. The
+// second run sees the first's LIVE item and does not ask — the one invariant.
+test('S6 double scheduler run: the live-item invariant holds under a duplicate fire', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
   sim.dropSchedulerRuns('2026-08-12T04:00Z', '2026-08-12T05:00Z'); // replace the cron fire…
@@ -376,6 +431,8 @@ test('S6 double scheduler run: the occurrence guard holds under a duplicate fire
   const fam = sim.family('tidy/tidy-issues').filter((i) => !i.seeded);
   assert.equal(fam.length, 1, 'one item despite two scheduler runs');
   assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1, 'and it ran once');
+  assert.equal(asks(sim, 'tidy/tidy-issues').filter((e) => e.t >= T('2026-08-12T04:17Z') && e.t < T('2026-08-12T04:18Z')).length,
+    1, 'the second run did not ask — the live item held the lane');
 });
 
 // ---- S7 — two executors race for one item: the verified lease, stale read
@@ -463,11 +520,11 @@ test('S11 dead agent: janitor leash converges needs-human, names the session', (
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
   assert.ok(isParked(it));
   // A dead session is a `decision` park — whether the interrupted run left
-  // anything behind is the choice being handed over — and a decision is one
-  // person's inbox, not a fault in the task. So it does NOT hold the lane: the
-  // next day's occurrence is asked and filed beside it, which is the #1032
-  // delta (before the split a park froze the task's schedule outright, and a
-  // permission gap parked Shepherd's fleet-digest for two days on exactly that).
+  // anything behind is the choice being handed over — and a park is not LIVE:
+  // nothing in the engine holds a lane on its own (§15.33), so the next day's
+  // occurrence is asked and filed beside it (the #1032 delta — before the split
+  // a park froze the task's schedule outright, and a permission gap parked
+  // Shepherd's fleet-digest for two days on exactly that).
   assert.ok(it.labels.has('task:status:needs-human-decision'));
   const beside = sim.family('tidy/tidy-issues')
     .filter((i) => !i.seeded && i.createdAt >= T('2026-08-13T04:00Z'));
@@ -477,9 +534,9 @@ test('S11 dead agent: janitor leash converges needs-human, names the session', (
 });
 
 // ---- S12' — agent did the work, died before converging; the human re-queue
-// re-evaluates, and the no-go CLOSES the item with the reason (#1115 — the
-// roll's stay-open-blocked resting state is gone). The incident leaves no
-// open issue behind once its person has acted.
+// re-evaluates, and the no-go CLOSES the item with the reason. The re-queue is
+// a label edit — no `Woken` stamp — so at pick the cadence terms are judged over
+// the task's OTHER runs, and hold; the task's own condition is what declines.
 test("S12' re-queue after work landed: the re-ask closes with the reason", () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
@@ -492,13 +549,17 @@ test("S12' re-queue after work landed: the re-ask closes with the reason", () =>
   sim.run('2026-08-12T00:00Z', '2026-08-13T18:00Z');
 
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
+  assert.equal(it.woken, null, 'the human re-queue stamps nothing');
   assert.equal(it.state, 'closed', 'the re-ask found no work and closed the incident item');
   assert.equal(it.outcome, 'rejected');
-  assert.ok(sim.log.some((e) => e.kind === 'decline-close' && e.issue === it.number),
-    'with the reason on its record');
+  assert.equal(sim.log.find((e) => e.kind === 'decline-close' && e.issue === it.number).reason,
+    'no issue touched in window', "the task's own condition declined, not the cadence");
   // The 13th's own occurrence was still asked — the incident never froze the
-  // schedule; its decline is a board row, not another sleeping issue.
+  // schedule — and, after the re-queued item closed, the rest of the day
+  // declines on the cadence: that close is this period's run.
   assert.ok(asks(sim, 'tidy/tidy-issues').some((e) => e.t >= T('2026-08-13T04:00Z')));
+  const afterClose = asks(sim, 'tidy/tidy-issues').filter((e) => e.t > it.closedAt);
+  assert.ok(afterClose.length >= 5 && afterClose.every((e) => /already ran since the daily anchor/.test(e.reason)));
   assert.equal(sim.family('tidy/tidy-issues').filter((i) => i.state === 'open').length, 0,
     'nothing open remains once the person acted');
 });
@@ -521,6 +582,11 @@ test('S15 force-while-executing: the mutex queues the twin', () => {
   const twinEval = sim.log.find((e) => e.kind === 'evaluate' && e.issue === twin.number);
   assert.ok(twinEval.t >= schedClose, 'the twin waited for the scheduled run to converge');
   assert.equal(twin.state, 'closed', 'then had its own verdict');
+  // An unstamped hand-made twin is judged on the cadence over the task's other
+  // runs, and the scheduled item IS this period's run.
+  assert.equal(twin.outcome, 'rejected');
+  assert.match(sim.log.find((e) => e.kind === 'decline-close' && e.issue === twin.number).reason,
+    /already ran since the daily anchor/);
 });
 
 // ---- S16 — urgent item, lost label event: the scheduler run drain is the guarantee;
@@ -537,13 +603,14 @@ test('S16 lost label event: the poll picks it up within a scheduler run', () => 
   assert.ok(evalAt, 'picked without any event');
   assert.ok(evalAt.t >= T('2026-08-12T14:17Z') && evalAt.t <= T('2026-08-12T14:18Z'),
     'at the next scheduler run drain — events are latency sugar, listing is the guarantee');
+  assert.equal(it.outcome, 'done', 'an ad-hoc item of a woken-gated task is woken by construction');
 });
 
 // ---- S17 — delayed validation: Blocked-by + Not-before, then the pick
 // verdict decides — obsolete when the world settled, a run when it did not.
 test('S17 follow-up validates on day 3, closes obsolete when all landed', () => {
   const tasks = cast().concat([{
-    id: 'chrome/store-validate', frequency: 'manual', outcome: 'done',
+    id: 'chrome/store-validate', preconditions: ['woken'], outcome: 'done',
     codeWorkMinutes: 1, agentMinutes: 5,
     precondition: (w) => ({ run: !!w.storeRejected, reason: 'v2.4 live — landed on its own' }),
   }]);
@@ -567,7 +634,7 @@ test('S17 follow-up validates on day 3, closes obsolete when all landed', () => 
 
 test('S17b follow-up finds the store rejected the release, and runs', () => {
   const tasks = cast().concat([{
-    id: 'chrome/store-validate', frequency: 'manual', outcome: 'done',
+    id: 'chrome/store-validate', preconditions: ['woken'], outcome: 'done',
     codeWorkMinutes: 1, agentMinutes: 5,
     precondition: (w) => ({ run: !!w.storeRejected, reason: 'v2.4 live' }),
   }]);
@@ -592,7 +659,7 @@ test('S17b follow-up finds the store rejected the release, and runs', () => {
 // (F14) surfaces the starving fan-in, and a human close unsticks everything.
 test('S18 fan-out: stuck member escalates, fan-in proceeds after the human acts', () => {
   const tasks = cast().concat([{
-    id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', codeWorkMinutes: 2,
+    id: 'sheepdog/fleet-status', preconditions: ['woken'], outcome: 'done', codeWorkMinutes: 2,
   }]);
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-10T00:00Z');
   const members = [];
@@ -619,7 +686,9 @@ test('S18 fan-out: stuck member escalates, fan-in proceeds after the human acts'
 });
 
 // ---- S19 — human re-queues after fixing the cause: F7 is the whole path
-// from needs-human back to execution.
+// from needs-human back to execution. The force wakes the parked item —
+// stamped `Woken`, so the cadence holds at pick — and `last-run-not-failed`
+// reads the task's OTHER runs, none of which failed.
 test('S19 re-queue after a fix: needs-human -> ready -> normal run', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:01Z', ({ world }) => { world.mountBehind = true; world.mountBroken = true; });
@@ -628,6 +697,7 @@ test('S19 re-queue after a fix: needs-human -> ready -> normal run', () => {
   sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
 
   const it = sim.family('basics/baselining').find((i) => !i.seeded);
+  assert.equal(it.woken, T('2026-08-13T09:00Z'), 'the wake is stamped on the item it woke');
   assert.equal(it.state, 'closed');
   assert.equal(it.outcome, 'done', 'the same item converged after the fix — no new item was ever needed');
   assert.equal(sim.family('basics/baselining').filter((i) => !i.seeded).length, 1);
@@ -640,7 +710,7 @@ test('S19 re-queue after a fix: needs-human -> ready -> normal run', () => {
 // never a HAND close's business either (S18 already covers that path).
 test('S33 fan-in waits for the scheduler run to ready it, not the closing side', () => {
   const tasks = cast().concat([{
-    id: 'sheepdog/fleet-status', frequency: 'manual', outcome: 'done', codeWorkMinutes: 2,
+    id: 'sheepdog/fleet-status', preconditions: ['woken'], outcome: 'done', codeWorkMinutes: 2,
   }]);
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
   const members = [];
@@ -686,11 +756,11 @@ test('S34 busy morning: one drain run settles all its hour\'s items; every run\'
   const runs = sim.log.filter((e) => e.kind === 'executor-run');
   assert.equal(runs.length, 1, 'exactly one executor invocation all morning');
   for (const e of runs) assert.equal(e.trigger, 'scheduler-run-drain');
-  // the 04:17 run settled BOTH of its hour's items in one invocation — the
+  // the 04:17 run settled its hour's items in one invocation — the
   // batch, not a chain: no run was ever caused by a re-dispatch
   const ends = sim.log.filter((e) => e.kind === 'run-end');
   assert.ok(ends.some((e) => e.settled === 3), 'the batch run settled all three items');
-  // picks stay auditable per run — the batch run's picks both name it
+  // picks stay auditable per run — the batch run's picks all name it
   const picks = sim.log.filter((e) => e.kind === 'pick');
   const perRun = new Map();
   for (const p of picks) perRun.set(p.run, (perRun.get(p.run) ?? 0) + 1);
@@ -716,7 +786,7 @@ test('S34 busy morning: one drain run settles all its hour\'s items; every run\'
 // reclaim, and the scheduler run remains the backstop behind all of it.
 test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the leash recovers the item', () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
-    id: `x/${n}`, frequency: 'daily', outcome: 'done', codeWorkMinutes: 5,
+    id: `x/${n}`, preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 5,
     precondition: () => ({ run: true }),
   }));
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -758,7 +828,7 @@ test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the lea
 // exactly where they were, no labels touched, nothing lost.
 test('S37 suspend-all: workflows exit at start, the queue freezes in place', () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
-    id: `x/${n}`, frequency: 'daily', outcome: 'done', codeWorkMinutes: 5,
+    id: `x/${n}`, preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 5,
     precondition: () => ({ run: true }),
   }));
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -793,9 +863,9 @@ test('S37 suspend-all: workflows exit at start, the queue freezes in place', () 
 // reclaims the cancelled run's claim, drains the queue, converges all.
 test('S38 resume after a hold: clearing the variable + the next scheduler run recovers everything', () => {
   const tasks = [
-    { id: 'x/slow', frequency: 'daily', outcome: 'done', codeWorkMinutes: 30,
+    { id: 'x/slow', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 30,
       precondition: () => ({ run: true }) },
-    { id: 'x/quick', frequency: 'daily', outcome: 'done', codeWorkMinutes: 3,
+    { id: 'x/quick', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 3,
       precondition: () => ({ run: true }) },
   ];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -828,56 +898,70 @@ test('S38 resume after a hold: clearing the variable + the next scheduler run re
     'recovery took the scheduler run + the work bound, not another day');
 });
 
-// ---- S26 — the guard's second half must not over-block either: after an
-// item runs and closes, the NEXT period's ask still happens.
-test('S26b the closed-at guard half releases at the next anchor', () => {
-  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T09:03Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T09:03Z'); });
-  sim.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
+// ---- S26b — the `due:` term's second half (F13): an item CREATED before the
+// anchor that CLOSES after it consumed this period, or the tick after its close
+// would run the task twice. A forced mint at 03:00 doing two hours of work is
+// exactly that shape; and the next day's anchor must still be asked.
+test("S26b the closed-at half covers the rest of the day; the next anchor is asked again", () => {
+  const tasks = [{
+    id: 'x/long', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 120,
+    precondition: () => ({ run: true }),
+  }];
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  sim.at('2026-08-12T03:00Z', (s) => s.force('x/long'));
+  sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
 
-  // Wednesday's ask declines (nothing touched yet at 04:17). Thursday's ask
-  // finds the 09:03 touch, files the item, it runs and closes 04:34. The
-  // closed-at guard half (and the board's go row) must suppress only the REST
-  // OF THURSDAY — Friday's anchor must still be asked.
-  const fam = sim.family('tidy/tidy-issues').filter((i) => !i.seeded);
-  assert.equal(closedOf(sim, 'tidy/tidy-issues').length, 1, 'Thursday ran once, not twice');
-  assert.equal(fam.length, 1, "Thursday's item is the only one — Friday's ask declined on the board");
-  const friday = asks(sim, 'tidy/tidy-issues').filter((e) => e.t >= T('2026-08-14T04:00Z'));
-  assert.equal(friday.length, 1, "Friday's occurrence was not eaten by Thursday's close");
-  assert.equal(friday[0].run, false, 'and its verdict (stale window) is a board row');
+  const [forced, next, ...rest] = sim.family('x/long').filter((i) => !i.seeded);
+  assert.ok(forced.createdAt < T('2026-08-12T04:00Z') && forced.closedAt > T('2026-08-12T04:00Z'),
+    'the scenario\'s premise: created before the anchor, closed after it');
+  // Every tick after the close, for the rest of Wednesday, declines on the
+  // closed-at half — the created-at half alone would have filed a second run.
+  const afterClose = asks(sim, 'x/long').filter((e) => e.t > forced.closedAt && e.t < T('2026-08-13T04:00Z'));
+  assert.ok(afterClose.length >= 20, 'asked every remaining tick');
+  assert.ok(afterClose.every((e) => e.verdict === 'no' && new RegExp(`#${forced.number} already ran since the daily anchor`).test(e.reason)));
+  // Thursday's anchor is not eaten by Wednesday's close.
+  assert.ok(next && next.createdAt === T('2026-08-13T04:17Z') && next.outcome === 'done');
+  assert.equal(rest.length, 0, 'two days, two runs — never a double execution');
 });
 
 // ---- S28 — the mechanism (or a task) changes mid-flight: nothing durable
-// carries a schedule (a declined task holds no item at all, and the board's
-// row is a watermark, not a wake), so a declaration change applies at the
-// very next scheduler run with no migration and no relabeling.
-test('S28 declaration change mid-flight: the next ask follows HEAD', () => {
+// carries a schedule (a declined task holds no item, and the scheduler
+// remembers nothing — §15.33), so a declaration change applies at the very
+// next tick with no migration and no relabeling.
+test('S28 declaration change mid-flight: the next tick follows HEAD', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  // Mid-day, an update lands: tidy-prs moves from the weekly anchor to the daily one, and its
-  // precondition is replaced outright. The direction matters — a change that makes occurrences
-  // RARER leaves the watermark already covering them, so it is the weekly→daily move that
-  // exposes an uncovered occurrence for the next run to find.
+  // Mid-day, an update lands: tidy-prs moves from the weekly cadence to the daily one, and its
+  // precondition is replaced outright.
   sim.at('2026-08-12T12:00Z', (s) => s.updateTask('tidy/tidy-prs', {
-    frequency: 'daily',
-    precondition: (w) => ({ run: !!w.newSignal, reason: 'new precondition, no work' }),
+    preconditions: ['due:daily'],
+    precondition: (w, _now, _item, window) => ({
+      run: w.newSignalAt != null && w.newSignalAt >= window.since,
+      reason: 'new precondition, no work',
+    }),
   }));
-  sim.at('2026-08-14T01:00Z', ({ world }) => { world.newSignal = true; });
+  sim.at('2026-08-14T01:00Z', ({ world }) => { world.newSignalAt = T('2026-08-14T01:00Z'); });
   sim.run('2026-08-12T00:00Z', '2026-08-15T12:00Z');
 
   const a = asks(sim, 'tidy/tidy-prs');
-  // The very next scheduler run reads the new frequency: today's NEW-calendar occurrence, which
-  // the weekly row's watermark does not cover, is asked at 12:17 and judged by the NEW
-  // precondition. One extra ask on the day of the change, never a double run — the occurrence
-  // guard's closed-at half covers a same-period item that already ran.
-  assert.ok(a[0].t >= T('2026-08-12T12:00Z') && a[0].t < T('2026-08-12T13:00Z'),
-    'the first ask after the update is immediate, under the new calendar');
-  assert.equal(a[0].run, false, 'judged by the new precondition');
-  assert.equal(sim.board.rows.get('tidy/tidy-prs').reason, 'new precondition, no work');
-  // day 2 quiet at the new 04:17; day 3, work present: asked at 04:17 and run
-  assert.ok(a[1].t >= T('2026-08-13T04:00Z') && a[1].t < T('2026-08-13T05:00Z'));
-  assert.ok(a[2].t >= T('2026-08-14T04:00Z') && a[2].t < T('2026-08-14T05:00Z'));
-  assert.equal(a[2].run, true);
-  assert.ok(closedOf(sim, 'tidy/tidy-prs').length >= 1, 'and ran under the new declaration');
+  // Under the weekly cadence every Wednesday-morning tick declined on Sunday's run.
+  assert.ok(a.filter((e) => e.t < T('2026-08-12T12:00Z')).every((e) => /weekly anchor/.test(e.reason)));
+  // The very next tick reads the new cadence — daily, so Wednesday's occurrence
+  // is open — and judges it by the NEW precondition.
+  const first = a.find((e) => e.t >= T('2026-08-12T12:00Z'));
+  assert.equal(first.t, T('2026-08-12T12:17Z'), 'the first ask after the update is immediate');
+  assert.equal(first.verdict, 'no');
+  assert.equal(first.reason, 'new precondition, no work', 'judged by the new precondition');
+  // Day 3, work present at 01:00: the 01:17 tick runs it — the next TICK, not the
+  // next anchor, because the scheduler carries nothing forward from its declines.
+  const g = goes(sim, 'tidy/tidy-prs');
+  assert.equal(g.length, 1);
+  assert.equal(g[0].t, T('2026-08-14T01:17Z'));
+  assert.equal(closedOf(sim, 'tidy/tidy-prs').length, 1, 'and ran under the new declaration');
+  // Friday's own anchor asks again under the daily cadence — the 01:17 run was
+  // Thursday's period — and the window, since that run, holds nothing new.
+  const anchor = a.find((e) => e.t === T('2026-08-14T04:17Z'));
+  assert.equal(anchor.verdict, 'no');
+  assert.equal(anchor.reason, 'new precondition, no work');
 });
 
 // ---- S29 — bootstrap into a repo with old-mechanism issues: the disjoint
@@ -895,19 +979,22 @@ test('S29 old-vocabulary issues are invisible to the new mechanism', () => {
   assert.equal(relic.comments.length, 0);
   assert.ok(asks(sim, 'basics/baselining').length >= 1,
     'the new mechanism asked its own question beside the relic, undisturbed');
-  assert.equal(sim.board.rows.get('basics/baselining').verdict, 'no',
-    'and recorded the decline on its own board');
+  assert.ok(asks(sim, 'basics/baselining').every((e) => e.verdict === 'no'), 'and the relic is not a run of it');
 });
 
 // ---- S30 — a stale issue list let a duplicate standing item through (F16):
 // nothing documents REST-list read-your-writes across runs, so the design
-// self-heals instead of assuming — the next scheduler run closes every open standing
+// self-heals instead of assuming — the next scheduler run closes every LIVE standing
 // item but the oldest.
 test('S30 duplicate standing item: the next scheduler run self-heals (F16)', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   // The one open unqualified item a stale list lets through is now simply the
   // minted standing item (§8) — F16's fault needs TWO open ones, so inject two.
+  // Work appears AFTER the 04:17 tick declined, so nothing else runs today: the
+  // survivor's own precondition passes at pick and the only thing that could
+  // decline it is its run history.
   let first; let dup;
+  sim.at('2026-08-12T04:29Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:29Z'); });
   sim.at('2026-08-12T04:30Z', (s) => { first = s.injectDuplicateStanding('tidy/tidy-issues'); });
   sim.at('2026-08-12T04:31Z', (s) => { dup = s.injectDuplicateStanding('tidy/tidy-issues'); });
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
@@ -915,8 +1002,16 @@ test('S30 duplicate standing item: the next scheduler run self-heals (F16)', () 
   assert.equal(dup.state, 'closed');
   assert.equal(dup.outcome, 'rejected');
   assert.ok(sim.log.some((e) => e.kind === 'dedupe' && e.issue === dup.number));
-  const openFam = sim.family('tidy/tidy-issues').filter((i) => i.state === 'open');
-  assert.ok(openFam.every((i) => i.number === first.number), 'only the oldest may survive');
+  // The dedupe is the scheduler's own close: it adds the terminal label and the
+  // status the twin waited in stays on — the shape the run history reads as
+  // "never picked".
+  assert.ok(dup.labels.has(READY) && dup.labels.has('task:status:rejected'), 'the deduped twin wears both');
+  // F32 (found by this port, fixed): the survivor is judged at pick over its run
+  // history, and the deduped twin — closed since the anchor but never picked —
+  // is NOT a run there, so the survivor is the period's one run and runs.
+  assert.equal(first.state, 'closed');
+  assert.equal(first.outcome, 'done');
+  assert.ok(!sim.log.some((e) => e.kind === 'decline-close' && e.issue === first.number), 'the survivor never declined');
 });
 
 // ---- S31 — the leash under long work (F17, reframed by the work-as-work
@@ -933,7 +1028,7 @@ test('S31 heartbeat interval >= executing leash is refused at wiring (F17 refram
 
 test('S31b the livelock heartbeats prevent: silent long work reclaimed alive, forever', () => {
   const tasks = [{
-    id: 'x/slow', frequency: 'daily', outcome: 'done', codeWorkMinutes: 130, // > 1h leash
+    id: 'x/slow', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 130, // > 1h leash
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks, heartbeatsDisabled: true }).seedSteadyState('2026-08-12T00:00Z');
@@ -948,7 +1043,7 @@ test('S31b the livelock heartbeats prevent: silent long work reclaimed alive, fo
 
 test('S31c long work with heartbeats: never reclaimed alive, converges once', () => {
   const tasks = [{
-    id: 'x/slow', frequency: 'daily', outcome: 'done', codeWorkMinutes: 130, // > 1h leash — legal now
+    id: 'x/slow', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 130, // > 1h leash — legal now
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -962,7 +1057,7 @@ test('S31c long work with heartbeats: never reclaimed alive, converges once', ()
 
 test('S31d dead executor mid-long-work: recovery is bounded by the leash, not the work', () => {
   const tasks = [{
-    id: 'x/slow', frequency: 'daily', outcome: 'done', codeWorkMinutes: 130,
+    id: 'x/slow', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 130,
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -981,22 +1076,26 @@ test('S31d dead executor mid-long-work: recovery is bounded by the leash, not th
 // ---- S32 — the pick-filter race (F15): two executors, same stale snapshot,
 // each claims a DIFFERENT item of the same title. The per-item lease cannot
 // see it; only the post-claim re-verify serializes the pair.
+// The twins are two hand-created items of a woken-gated task: the race is a
+// claim-protocol question, and it needs twins that both PASS at pick — under
+// the stateless model a scheduled task's picked twin is this period's run to
+// its sibling (S15), which declines the instant it is picked and closes before
+// the second executor's re-verify has anything to see.
 test('S32 twin-title race: post-claim re-verify serializes, later claim reverts', () => {
   // scoped cast: the scenario is about one title's twins racing
-  const tasks = cast().filter((t) => t.id === 'tidy/tidy-issues');
+  const tasks = cast().filter((t) => t.id === 'sheepdog/fleet-baseline');
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
-  sim.dropSchedulerRuns('2026-08-12T04:00Z', '2026-08-12T05:00Z');
-  sim.schedulerRunAt('2026-08-12T04:16Z'); // scheduled item exists ready…
-  sim.at('2026-08-12T04:16:20Z', (s) =>
-    s.createItem('tidy/tidy-issues', { urgent: true, eventLost: true })); // …and its twin
-  sim.raceExecutorsAt('2026-08-12T04:16:35Z', ['E1', 'E2'], { spread: true }); // before the drain
+  sim.at('2026-08-12T04:16:20Z', (s) => {
+    s.createItem('sheepdog/fleet-baseline', { urgent: true, eventLost: true });
+    s.createItem('sheepdog/fleet-baseline', { urgent: true, eventLost: true }); // the twin
+  });
+  sim.raceExecutorsAt('2026-08-12T04:16:35Z', ['E1', 'E2'], { spread: true }); // before the 04:17 drain
   sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
 
   const reverts = sim.log.filter((e) => e.kind === 'claim-reverted');
   assert.equal(reverts.length, 1, 'exactly one of the two simultaneous claims reverted');
   // no instant ever had two same-title items in execution
-  const twinEvals = sim.log.filter((e) => e.kind === 'evaluate' && e.task === 'tidy/tidy-issues');
+  const twinEvals = sim.log.filter((e) => e.kind === 'evaluate' && e.task === 'sheepdog/fleet-baseline');
   const times = twinEvals.map((e) => e.t);
   assert.equal(new Set(times).size, times.length, 'the twins were never evaluated at the same instant');
   // and BOTH still converged — the reverted one was re-claimed in a fresh
@@ -1004,6 +1103,7 @@ test('S32 twin-title race: post-claim re-verify serializes, later claim reverts'
   // next live claimant) and simply waited its turn
   for (const it of sim.issues.filter((i) => !i.seeded)) {
     assert.equal(it.state, 'closed', `#${it.number} converged`);
+    assert.equal(it.outcome, 'done', `#${it.number} ran — a woken item passes its cadence by construction`);
   }
 });
 
@@ -1052,17 +1152,25 @@ test('S41 a worker that names its failure class parks there, not at failure', ()
 });
 
 // A worker that says nothing is the compatibility case — every worker written
-// before the marker existed, in every run. An unexplained break is a break.
-test('S41b a worker that says nothing parks at failure, and holds the lane', () => {
-  const sim = makeSim({ tasks: [{ ...SEEDS, codeWorkTriage: undefined }] });
-  sim.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
-  sim.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
+// before the marker existed, in every run. An unexplained break is a break —
+// and whether it holds the task's lane is the task's own declaration.
+test('S41b a worker that says nothing parks at failure; the lane is held only where the task says so', () => {
+  const holding = makeSim({ tasks: [{ ...SEEDS, codeWorkTriage: undefined, preconditions: ['due:daily', 'last-run-not-failed'] }] });
+  holding.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
+  holding.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
 
-  const fam = sim.family('sheepdog/fleet-seeds');
+  const fam = holding.family('sheepdog/fleet-seeds');
   const parked = fam.find((i) => isParked(i));
   assert.ok(parked.labels.has('task:status:needs-human-failure'));
-  assert.equal(fam.filter((i) => i.state === 'open').length, 1,
+  assert.equal(fam.length, 1,
     'the lane is held — two days of anchors passed and nothing was filed behind it');
+
+  // Without the term the same failure parks the same way, and every anchor
+  // files the next occurrence beside it: the engine holds no lane by itself.
+  const open = makeSim({ tasks: [{ ...SEEDS, codeWorkTriage: undefined }] });
+  open.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
+  open.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
+  assert.ok(open.family('sheepdog/fleet-seeds').length >= 3, 'one park per anchor, none holding the next');
 });
 
 // ---- S42 — the approval park: succeeded, and waiting on a reviewer ----------
@@ -1080,6 +1188,13 @@ test('S42 a run that left an unmerged PR parks open for approval and keeps its s
   // Two anchors passed and each filed its own item, around the ones still parked.
   assert.ok(fam.length >= 2, 'the schedule went on around the unreviewed PR');
   assert.ok(sim.log.filter((e) => e.kind === 'delivered-open-pr').length >= 2);
+
+  // Even a task that does not run past its own FAILURE runs past its own
+  // review: `last-run-not-failed` reads the failure park and no other kind.
+  const strict = makeSim({ tasks: [{ ...REGENERATE, preconditions: ['due:daily', 'last-run-not-failed'] }] });
+  strict.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
+  assert.ok(strict.family('site/regenerate').length >= 2, 'an approval park is not a failure — the lane is open');
+  assert.ok(asks(strict, 'site/regenerate').every((e) => !/failure park/.test(e.reason)));
 });
 
 // ---- S43 — the road back clears BOTH labels --------------------------------
@@ -1089,21 +1204,20 @@ test('S42 a run that left an unmerged PR parks open for approval and keeps its s
 test('S43 the human re-queue leaves no triage label behind', () => {
   const sim = makeSim({ tasks: [SEEDS] });
   sim.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
-  // A task's first-ever item is born BLOCKED until its next real anchor (S25),
-  // so nothing can park before the 13th — re-queue after that, or this asserts
-  // over an item that never failed.
+  // A new task is asked at its first tick (S78), so the first park lands at
+  // 00:20 — re-queue after that, or this asserts over an item that never failed.
   // Asserted AT the re-queue, not at the end of the run: the invariant is about
   // the item's state the moment the lever is pulled, and by the end the re-queued
   // item has run and closed, taking every label with it.
   let after = null;
-  sim.at('2026-08-13T09:00Z', (s) => {
+  sim.at('2026-08-12T02:00Z', (s) => {
     s.world.patScopeMissing = false; // the scope was granted
     const parked = s.issues.find((i) => isParked(i));
     assert.ok(parked, 'precondition of this scenario: something is parked to re-queue');
     s.requeue(parked.number);
     after = [...parked.labels];
   });
-  sim.run('2026-08-12T00:00Z', '2026-08-13T18:00Z');
+  sim.run('2026-08-12T00:00Z', '2026-08-12T18:00Z');
 
   assert.ok(after, 'the re-queue ran');
   assert.deepEqual(after.filter((l) => l.startsWith('task:status:needs-human-')), [],
@@ -1148,6 +1262,9 @@ test('S44 a marked issue becomes exactly one run, parked for the reviewer', () =
   // in-review state, on the same labels, beside the lifelong mark.
   assert.deepEqual([...req.labels].sort(), [ORIGIN_AD_HOC, NH('approval')].sort());
   assert.equal(sim.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 1);
+  // The request task is woken-gated: the schedule never asked it, and its item
+  // exists only because somebody marked the issue.
+  assert.equal(asks(sim, REQ).length, 0);
 });
 
 test('S45 an unauthorized mark is refused once, disarmed, and never re-adopted', () => {
@@ -1342,82 +1459,27 @@ test('S51 an impatient re-ask mid-run changes nothing; after the park it re-runs
   assert.ok(adopts(sim)[1].readopt);
 });
 
-// ---- L. No work, no item — the schedule board (owner, 2026-08-20, #1115) ----
-// The scheduler run evaluates the precondition when the anchor comes and files
-// a work item only on a yes; a no is a row on the per-repo schedule board. The
-// board is the watermark ("have I asked this task about this anchor?") and a
-// FIRST authority only for "asked and declined" — every other column derives
-// fresh. It fails toward evaluating, never toward skipping, and the executor
-// still re-evaluates at pick: the board carries no verdict forward.
-
-// ---- S52 — a decline at the anchor: no item, a board row, and the board
-// itself created lazily by the first row that needs writing.
-test('S52 a decline files no item; the board is created lazily and records it', () => {
-  const sim = makeSim({ tasks: cast() })
-    .seedSteadyState('2026-08-12T00:00Z')
-    .run('2026-08-12T00:00Z', '2026-08-12T06:00Z');
-
-  assert.equal(sim.log.filter((e) => e.kind === 'board-create').length, 1,
-    'one board, created by the first decline — never ahead of one');
-  assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded).length, 0, 'no item');
-  const row = sim.board.rows.get('tidy/tidy-issues');
-  assert.equal(row.verdict, 'no');
-  assert.equal(row.lastAsked, T('2026-08-12T04:00Z'), 'the row names the anchor asked about');
-  assert.equal(row.frequency, 'daily');
-  assert.equal(row.reason, 'no issue touched in window');
-});
-
-// ---- S53 — the watermark: the hourly scheduler runs between anchors re-ask
-// nothing; the next anchor asks again.
-test('S53 the board watermark stops re-asks until the next anchor', () => {
-  const sim = makeSim({ tasks: cast() })
-    .seedSteadyState('2026-08-12T00:00Z')
-    .run('2026-08-12T00:00Z', '2026-08-13T06:00Z');
-
-  const a = asks(sim, 'tidy/tidy-issues');
-  assert.equal(a.length, 2, 'two days, two asks — ~28 hourly scheduler runs asked nothing extra');
-  assert.ok(a[0].t < T('2026-08-12T05:00Z'));
-  assert.ok(a[1].t >= T('2026-08-13T04:17Z'), "the next day's anchor is asked again");
-  assert.ok(sim.log.filter((e) => e.kind === 'scheduler-run').length >= 28,
-    'the scheduler kept running hourly throughout');
-});
-
-// ---- S54 — the board is deleted mid-window: absent reads fail toward
-// evaluating. Cost: at most ONE redundant evaluation per task; never a double
-// run — the occurrence guard's closed-at half still covers a completed one.
-test('S54 a deleted board costs one redundant ask, never a double run', () => {
-  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T00:01Z', ({ world }) => { world.releasePending = true; }); // store-release has work
-  sim.at('2026-08-12T12:00Z', (s) => s.deleteBoard());
-  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
-
-  // the declining task: asked at 04:17, re-asked once at 12:17 (row gone),
-  // then the rewritten row holds every later run back
-  assert.equal(asks(sim, 'tidy/tidy-issues').length, 2, 'exactly one redundant ask');
-  assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded).length, 0);
-  // the task that RAN: its item closed this period, so the closed-at guard —
-  // not the board — is what prevents a second run
-  assert.equal(asks(sim, 'chrome/store-release').length, 1, 'not even re-asked');
-  assert.equal(closedOf(sim, 'chrome/store-release').length, 1, 'and certainly not re-run');
-});
-
-test('S54b a corrupt board degrades to absent per-row, and the next write repairs it', () => {
-  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T12:00Z', (s) => s.corruptBoard());
-  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
-
-  assert.equal(asks(sim, 'tidy/tidy-issues').length, 2, 'one redundant ask, same as deletion');
-  assert.equal(sim.board.corrupt, false, 'the redundant ask\'s write replaced the mangled body');
-  assert.equal(sim.board.rows.get('tidy/tidy-issues').verdict, 'no');
-  assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded).length, 0, 'still no items');
-});
+// ---- L. No work, no item — the stateless ask (owner, 2026-08-20, #1115;
+// stateless since #1725, DESIGN §15.33) -------------------------------------
+// The scheduler run asks every task at every tick and files a work item only
+// on a yes. There is no board and no watermark: a no is a log line, the next
+// tick asks again, and the cadence a task keeps is one of its own conditions,
+// read off its run history. The executor still re-evaluates at pick — nothing
+// is carried forward from the tick's answer.
+//
+// RETIRED with the board (§15.33): S52 (the board created lazily by a decline),
+// S53 (the watermark between anchors — S74 is its replacement), S54/S54b (a
+// deleted or corrupt board), S56 (the sleeping-item migration), S58 (write only
+// the rows that changed) and the board-closing S61. Their intent, where it
+// survives, lives in S1' (a decline files nothing), S74 and S75.
 
 // ---- S55 — fail-open: signal collection fails for ONE task (the scheduler
-// stub holds no fleet credential); its item is created exactly as the
-// calendar-only model created it, and the executor — which holds the
-// credentials — decides at pick. The other tasks are untouched. Never fewer
-// runs because a read failed.
-test('S55 signals unavailable for one task: fail-open item, executor decides; others unaffected', () => {
+// stub holds no fleet credential); its item is created and the executor —
+// which holds the credentials — decides at pick. The other tasks are untouched.
+// Never fewer runs because a read failed — and never MORE asks than the
+// cadence allows: the run-history terms are judged first, off the queue the
+// run already holds, so a tick the cadence declines needs no signal at all.
+test('S55 signals unavailable for one task: fail-open item, executor decides; the cadence still gates', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.setSignalsUnavailable('basics/baselining');
   // day 2 the executor-side read finds real work
@@ -1426,152 +1488,89 @@ test('S55 signals unavailable for one task: fail-open item, executor decides; ot
 
   const fam = sim.family('basics/baselining').filter((i) => !i.seeded);
   assert.equal(fam.length, 2, 'an item per occurrence — fail-open never files fewer');
-  assert.equal(sim.board.rows.get('basics/baselining').verdict, 'fail-open');
+  const a = asks(sim, 'basics/baselining');
+  assert.deepEqual(a.filter((e) => e.verdict === 'fail-open').map((e) => e.t),
+    [T('2026-08-12T04:17Z'), T('2026-08-13T04:17Z')],
+    'failed open exactly where the cadence held — every other tick declined on the run history alone');
+  assert.ok(a.filter((e) => e.verdict !== 'fail-open').every((e) => e.verdict === 'no'));
   // day 1: the executor's own evaluation declined, and the item closed
   assert.equal(fam[0].outcome, 'rejected');
   assert.ok(sim.log.some((e) => e.kind === 'decline-close' && e.issue === fam[0].number));
   // day 2: the executor's evaluation found the work and ran it
   assert.equal(fam[1].outcome, 'done');
-  // the other tasks still decided at the anchor and filed nothing
+  // the other tasks still decided at every tick and filed nothing
   assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded).length, 0);
 });
 
-// ---- S56 — the one-time migration: the roll model's sleeping items close,
-// their last verdict seeds the board, and the pass is idempotent. Items
-// waiting on a blocker, and first-ever/adoption Not-befores, are untouched.
-test('S56 the migration closes sleeping items once, seeds the board, and spares the waiting', () => {
-  const sim = makeSim({ tasks: cast() });
-  // a weekly item the old engine left sleeping: rolled Sunday, wakes next Sunday
-  const sleeping = sim.seedSleepingItem('tidy/tidy-prs',
-    { rolledAtIso: '2026-08-09T04:18Z', notBeforeIso: '2026-08-16T04:00Z', reason: 'no stale PRs' });
-  // a rolled-looking item that also waits on a BLOCKER: not the migration's
-  let blocker; let waiting;
-  sim.at('2026-08-12T00:05Z', (s) => {
-    blocker = s.createItem('sheepdog/fleet-baseline', { qualifier: 'blocker', eventLost: true });
-    s.quarantine(blocker.number); // keep it open across the window
-    waiting = s.seedSleepingItem('chrome/store-release',
-      { rolledAtIso: '2026-08-11T04:18Z', notBeforeIso: '2026-08-20T04:00Z', blockedBy: [blocker.number] });
-  });
-  // several scheduler runs = the pass runs "twice"; the window ends before the
-  // 04:00 anchor so the first-ever assertion below sees the item still waiting
-  sim.run('2026-08-12T00:00Z', '2026-08-12T03:00Z');
-
-  assert.equal(sleeping.state, 'closed');
-  assert.equal(sleeping.outcome, 'rejected');
-  assert.equal(sim.log.filter((e) => e.kind === 'migrate-sleeping').length, 1,
-    'closed exactly once across repeated runs — idempotent');
-  const row = sim.board.rows.get('tidy/tidy-prs');
-  assert.equal(row.verdict, 'no');
-  assert.equal(row.reason, 'no stale PRs', "the item's last verdict became its row");
-  assert.equal(waiting.state, 'open', 'an item waiting on a blocker is not the migration\'s');
-  // first-ever items (fresh repo, no history): born blocked with a future
-  // Not-before and NO roll on record — the migration must not eat them
-  const firstEver = sim.standingItem('tidy/tidy-issues');
-  assert.ok(firstEver && firstEver.labels.has('task:status:blocked'), 'the first-ever item still waits');
-});
-
-// ---- S57 — a decline racing a hand-created item. An open unqualified item
-// IS the standing item (§3), so the ask is skipped entirely — the scheduler
-// neither writes a row nor files a second item beside the minted one.
-test('S57 a hand-minted item preempts the anchor ask; no row, no duplicate', () => {
+// ---- S57 — a hand-created item racing the tick. An open unqualified item
+// IS the standing item (§3) and it is LIVE, so the tick does not ask — the
+// scheduler neither files a second item beside it nor dedupes it.
+test('S57 a hand-minted item preempts the tick\'s ask; no duplicate, no dedupe', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:10Z', (s) => s.createItem('tidy/tidy-issues', { eventLost: true }));
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
-  assert.equal(asks(sim, 'tidy/tidy-issues').length, 0,
-    'the open minted item held the lane — the anchor never asked');
+  assert.equal(asks(sim, 'tidy/tidy-issues').filter((e) => e.t === T('2026-08-12T04:17Z')).length, 0,
+    'the open minted item held the lane — the 04:17 tick never asked');
   const fam = sim.family('tidy/tidy-issues').filter((i) => !i.seeded);
   assert.equal(fam.length, 1, 'no second item was ever filed beside it');
   assert.equal(fam[0].outcome, 'rejected', 'the executor evaluated the minted item and declined');
   assert.equal(sim.log.filter((e) => e.kind === 'dedupe').length, 0);
-  // and the other race order: the anchor declines FIRST, a mint follows —
-  // covered by S14' (the forced item is evaluated on its own; the closed-at
-  // guard and the watermark keep the occurrence single)
+  // Once it closed, the later ticks ask again — and the closed item is this
+  // period's run, so they decline on the cadence.
+  const later = asks(sim, 'tidy/tidy-issues').filter((e) => e.t > fam[0].closedAt);
+  assert.ok(later.length === 3 && later.every((e) => /already ran since the daily anchor/.test(e.reason)));
 });
 
-// ---- S58 — write only what changed (F31): an hourly task declining all day
-// moves only its own row, once per ask; a scheduler run that asked nothing
-// writes nothing — the "record changes, never scans" rule, artifact-side.
-// F31, caught here: a change test over the RENDERED body would count the
-// derived next-window column, whose recomputation differs on every run, and
-// quietly turn every scheduler run into a board rewrite. The change test must
-// compare the authoritative columns only.
-test('S58 only rows that changed are written; a quiet run writes nothing', () => {
-  const sim = makeSim({ tasks: cast() })
-    .seedSteadyState('2026-08-12T00:00Z')
-    .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
-
-  const writes = sim.boardWrites();
-  // every write coincides with an ask of the same task at the same instant —
-  // no write was ever caused by anything but a verdict moving
-  for (const w of writes) {
-    assert.ok(sim.log.some((e) => e.kind === 'anchor-evaluate' && e.task === w.task && e.t === w.t),
-      `board write for ${w.task} at ${w.at} has no ask beside it`);
-  }
-  // the daily tasks wrote once; the hourly task once per ask; nothing else
-  assert.equal(writes.filter((w) => w.task === 'tidy/tidy-issues').length, 1);
-  assert.equal(writes.filter((w) => w.task === 'gcec/create-extractor').length,
-    asks(sim, 'gcec/create-extractor').length);
-});
-
-// ---- S59 — the verdict flips between the anchor's yes and the pick: the
-// executor re-evaluates and closes. The board's verdict is a watermark, never
-// a verdict carried forward (trap three of #1115).
-test('S59 a go at the anchor, a no at pick: the executor\'s verdict wins, once', () => {
+// ---- S59 — the verdict flips between the tick's yes and the pick: the
+// executor re-evaluates and closes. The tick's answer is never carried
+// forward, and the closed item — rejected or not — is this period's run.
+test('S59 a go at the tick, a no at pick: the executor\'s verdict wins, once', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
   // the world changes in the seconds between the scheduler run and its drain
   sim.at('2026-08-12T04:17:20Z', ({ world }) => { world.issueTouchedAt = null; });
   sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
 
-  assert.equal(asks(sim, 'tidy/tidy-issues')[0].run, true, 'the anchor said go and filed the item');
+  assert.equal(goes(sim, 'tidy/tidy-issues').length, 1, 'the tick said go and filed the item');
   const it = sim.family('tidy/tidy-issues').find((i) => !i.seeded);
   assert.equal(it.outcome, 'rejected', 'the pick re-derived the world and declined');
   assert.ok(sim.log.some((e) => e.kind === 'decline-close' && e.issue === it.number));
   assert.equal(evals(sim, 'tidy/tidy-issues').length, 1, 'one pick-time evaluation');
-  // and the rest of the day re-runs nothing: the closed item covers the
-  // occurrence, and the board's go row covers the watermark
-  assert.equal(asks(sim, 'tidy/tidy-issues').length, 1);
+  // and the rest of the day re-runs nothing: every later tick asks, and the
+  // closed item covers the occurrence — a rejected run is still a run for `due:`
+  const later = asks(sim, 'tidy/tidy-issues').filter((e) => e.t > it.closedAt && e.t < T('2026-08-13T00:00Z'));
+  assert.ok(later.length >= 7 && later.every((e) => e.verdict === 'no'));
   assert.equal(sim.family('tidy/tidy-issues').filter((i) => !i.seeded).length, 1);
+
+  // …but a rejected item did nothing, so it does NOT move the window: the
+  // touch it (transiently) could not see is still inside tomorrow's window,
+  // which reaches back to the last run that actually ran — Tuesday's.
+  sim.at('2026-08-12T05:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.run('2026-08-12T12:00Z', '2026-08-13T12:00Z');
+  const [tomorrow] = goes(sim, 'tidy/tidy-issues').filter((e) => e.t >= T('2026-08-13T04:00Z'));
+  assert.equal(tomorrow?.t, T('2026-08-13T04:17Z'), 'found at the next anchor, over a window the rejected item did not shorten');
+  assert.equal(closedOf(sim, 'tidy/tidy-issues').filter((i) => i.outcome === 'done').length, 1);
 });
 
-// ---- S60 — F31, found by this simulator: the go row must not be a watermark.
-// A go verdict's row lands beside an item CREATE that can fail (a refused
-// POST); if the watermark honored go rows, the row would then say "asked"
-// while nothing exists to run — the occurrence silently eaten, fewer runs
-// because a WRITE failed, the exact inversion of fail-open. So the watermark
-// is scoped to DECLINED rows only: for a go (and a fail-open) the created
-// item is the occurrence's own cover, and the row is record, never a gate.
-test('S60 a go row outliving a failed create must not eat the occurrence (F31)', () => {
+// ---- S60 — F31, restated without the board: a go whose item CREATE fails
+// (a refused POST) leaves nothing behind — and because nothing durable records
+// the go, the next tick simply asks again and creates. A refused write costs
+// one tick of latency, never the occurrence: the inversion of fail-open cannot
+// happen when there is no row to honour.
+test('S60 a refused create costs one tick, never the occurrence (F31)', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
   sim.at('2026-08-12T04:01Z', (s) => s.failNextCreateOf('tidy/tidy-issues'));
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
   assert.ok(sim.log.some((e) => e.kind === 'create-failed'), 'the 04:17 POST was refused');
-  // the next scheduler run must re-ask and re-create — the go row is not a gate
-  const a = asks(sim, 'tidy/tidy-issues');
-  assert.ok(a.length >= 2, 'the occurrence was re-asked after the refused write');
+  const g = goes(sim, 'tidy/tidy-issues');
+  assert.deepEqual(g.map((e) => e.t), [T('2026-08-12T04:17Z'), T('2026-08-12T05:17Z')],
+    'the go was re-asked at the very next tick, and not again once the item existed');
   const [done] = closedOf(sim, 'tidy/tidy-issues');
-  assert.ok(done, 'and the work ran within the hour — never fewer runs because a write failed');
-});
-
-// ---- S61 — the board is kept CLOSED (#1677), and every write states so, which
-// is what converges one somebody reopened. The case the row-driven write alone
-// cannot reach: a settled repo, where no verdict moves for hours — the open
-// board is itself the write the run owes, or a reopened board stays open until
-// something unrelated happens to change a row.
-test('S61 a reopened board is closed by the next run, row change or not', () => {
-  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.run('2026-08-12T00:00Z', '2026-08-12T06:00Z');          // the board exists, rows settled
-  const settled = sim.boardWrites().length;
-  sim.reopenBoard();
-  sim.run('2026-08-12T06:00Z', '2026-08-12T09:00Z');          // between anchors: nothing to say
-
-  assert.equal(sim.board.open, false, 'the next run closed it');
-  assert.equal(sim.log.filter((e) => e.kind === 'board-close').length, 1, 'closed once, not per run');
-  assert.equal(sim.boardWrites().length, settled,
-    'and no row was invented to carry the close — the state is the write');
+  assert.ok(done && done.createdAt === T('2026-08-12T05:17Z') && done.outcome === 'done',
+    'the work ran one tick late — never fewer runs because a write failed');
 });
 
 // ---- M. The label vocabulary (owner, 2026-08-20, #1119): the sim writes the
@@ -1590,7 +1589,7 @@ test('S61 the emitted labels: origin at birth, one status per phase, terminal + 
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
   const seen = [];
   const it = () => sim.family('tidy/tidy-issues').find((i) => !i.seeded);
-  sim.at('2026-08-12T04:17:10Z', () => seen.push(labelsOf(it())));  // filed at the anchor ask
+  sim.at('2026-08-12T04:17:10Z', () => seen.push(labelsOf(it())));  // filed at the tick's ask
   sim.at('2026-08-12T04:17:50Z', () => seen.push(labelsOf(it())));  // claimed by the drain
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
@@ -1602,6 +1601,7 @@ test('S61 the emitted labels: origin at birth, one status per phase, terminal + 
   assert.equal(closed.state, 'closed');
   assert.deepEqual(labelsOf(closed), ['task:origin:planned', 'task:status:done'],
     'the terminal status goes ON at close, and the closed issue keeps its origin');
+  assert.equal(closed.woken, null, 'the scheduler\'s own item carries no Woken stamp');
 });
 
 // ---- S62 — the decode direction: open items a FIELDED engine left behind,
@@ -1624,15 +1624,17 @@ test('S62 legacy-labeled items drain; the first write canonicalizes; a legacy pa
 
 // ---- S62b — the legacy park PAIR routes by its sub-label: an approval park
 // from the old engine holds nobody's lane (the next occurrence still files),
-// while a BARE legacy `needs-human` — kind unknown — decodes as failure and
-// blocks, the conservative direction the decode must preserve.
-test('S62b a legacy approval pair spares the lane; a bare legacy park blocks it', () => {
+// while a BARE legacy `needs-human` — kind unknown — decodes as failure, which
+// holds the lane of a task declaring `last-run-not-failed`: the conservative
+// direction the decode must preserve, for the one term that reads it.
+test('S62b a legacy approval pair spares the lane; a bare legacy park reads as failure and holds it', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:30Z', (s) => {
+    s.updateTask('gcec/create-extractor', { preconditions: ['due:daily', 'last-run-not-failed'] });
     s.legacyIssue('tidy/tidy-issues', ['needs-human', 'task:needs-human-approval']);
     s.legacyIssue('gcec/create-extractor', ['needs-human']);
     s.world.issueTouchedAt = T('2026-08-12T04:00Z');
-    s.world.extractorRequestOpen = true;
+    s.world.requestAt = T('2026-08-12T04:00Z');
   });
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
@@ -1641,15 +1643,19 @@ test('S62b a legacy approval pair spares the lane; a bare legacy park blocks it'
   assert.ok(tidy.some((i) => i.state === 'closed' && i.labels.has('task:status:done')), 'and it ran');
   assert.ok(tidy.some((i) => i.state === 'open'), 'while the legacy park sat untouched, its PR still in review');
   assert.equal(sim.family('gcec/create-extractor').filter((i) => !i.seeded).length, 1,
-    'the bare park holds the lane: no hourly occurrence files behind it');
+    'the bare park holds the lane: no occurrence files behind it');
+  assert.ok(asks(sim, 'gcec/create-extractor').filter((e) => e.t > T('2026-08-12T04:00Z'))
+    .every((e) => /failure park/.test(e.reason)), 'declined by the task\'s own term, reading the decoded kind');
 });
 
 // ---- S63 — a kind this engine does not know (a future writer, a typo) reads
-// as failure — the unclassifiable park must block, never silently join an
-// inbox lane nobody treats as urgent.
-test('S63 an unknown park kind decodes as failure and holds the lane', () => {
+// as failure — the unclassifiable park must not silently join an inbox lane
+// nobody treats as urgent, so a task that does not run past its own failure
+// does not run past this either.
+test('S63 an unknown park kind decodes as failure and holds the lane of a task that declares it', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:30Z', (s) => {
+    s.updateTask('tidy/tidy-issues', { preconditions: ['due:daily', 'last-run-not-failed'] });
     s.legacyIssue('tidy/tidy-issues', ['needs-human', 'task:needs-human-shrugged']);
     s.world.issueTouchedAt = T('2026-08-12T04:00Z');
   });
@@ -1681,24 +1687,26 @@ test('S64 the request labels: bare mark, adopted, running, in review — one iss
 // job's minutes rounded UP, so the day's cost is the invocation count, not
 // the minutes worked — the accounting the model must keep low. A full day of
 // scheduled work (the morning chain, tidy, a release) plus ad-hoc work (a
-// marked request, a hand-created item of a manual task) converges on the
-// hourly cron's 24 scheduler runs plus FIVE executor runs: one drain per
-// hour that had work — each settling its whole hour in one invocation — and
-// one label event. Every quiet hour skips its drain and costs the cron's one
-// run alone.
+// marked request, a hand-created item of a woken-gated task) converges on the
+// hourly cron's 24 scheduler runs plus FOUR executor runs: one drain per
+// hour that had work — each settling its whole hour in one invocation — the
+// close-drain that chains the tail of the morning, and one label event. Every
+// quiet hour skips its drain and costs the cron's one run alone. Under the
+// stateless ask (§15.33) the quiet hours are still ASKED — 24 asks per task —
+// and cost nothing beyond that run: a decline files nothing.
 test('S65 a working day: 7 pieces of work cost 28 invocations, and each is accounted', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:01Z', ({ world }) => {
-    world.mountBehind = true;                      // baselining has work (02:00 anchor)
-    world.extractHasLessons = true;                // growth-extract has work (03:00)
-    world.promoteHasCandidates = true;             // growth-promote has work (04:00)
+    world.mountBehind = true;                      // baselining has work
+    world.extractHasLessons = true;                // growth-extract has work
+    world.promoteHasCandidates = true;             // growth-promote has work
   });
   sim.at('2026-08-12T04:00Z', ({ world }) => {
     world.issueTouchedAt = T('2026-08-12T04:00Z'); // tidy-issues has work
     world.releasePending = true;                   // store-release has work
   });
   sim.at('2026-08-12T09:40Z', (s) => s.markIssue({ author: 'owner' }));          // ad-hoc request
-  sim.at('2026-08-12T14:03Z', (s) => s.createItem('sheepdog/fleet-baseline'));   // ad-hoc manual-task item
+  sim.at('2026-08-12T14:03Z', (s) => s.createItem('sheepdog/fleet-baseline'));   // ad-hoc woken-gated item
   sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
   // the whole day's work converged…
@@ -1710,12 +1718,12 @@ test('S65 a working day: 7 pieces of work cost 28 invocations, and each is accou
   const [reqItem] = sim.requestItems();
   assert.equal(statusOf(reqItem), NH('approval'), 'the request delivered its PR and parks for review');
 
-  // …for exactly this invocation bill: the cron's 24 scheduler runs, four
-  // drains (02:17, 03:17, 04:17, 10:17 — each hour that had work), and the
-  // hand-created item's one label event. Nothing else ever started a runner.
+  // …for exactly this invocation bill: the cron's 24 scheduler runs, the
+  // drains of the two hours that had work, the close-drain behind the chain,
+  // and the hand-created item's one label event. Nothing else ever started a runner.
   const acct = sim.actionExecutions();
   assert.equal(acct.scheduler, 24, 'the hourly cron is the floor');
-  // Two drains, not four: the morning chain's three tasks all anchor at 04:00 now, so one drain
+  // Two drains, not four: the morning chain's three tasks all anchor at 04:00, so one drain
   // takes what it can and the close that releases the next one chains a close-drain rather than
   // waiting for a fresh hour's tick (DESIGN §17.1, §17.3).
   assert.deepEqual(acct.executorByTrigger,
@@ -1729,6 +1737,10 @@ test('S65 a working day: 7 pieces of work cost 28 invocations, and each is accou
     'the busiest tick settled four items in one run');
   // and the hours with nothing pickable dispatched no executor at all
   assert.equal(sim.log.filter((e) => e.kind === 'drain-skipped').length, 22);
+  // the ticks before the anchor asked and declined on the cadence: yesterday's
+  // run was still this period's; the ticks after the morning's runs, the same
+  assert.equal(asks(sim, 'chrome/store-release').length, 24, 'every tick — its three-minute run never spanned one');
+  assert.equal(goes(sim, 'chrome/store-release').length, 1);
 });
 
 // ---- S66 — the quiet day's floor (#1212): no signals, no items — the cron's
@@ -1801,15 +1813,19 @@ test('S67 twice-daily cron: a full day of work completes on 4 billed runs, not 2
     assert.equal(new Date(closedOf(twice, task)[0].createdAt).toISOString().slice(11, 16), '04:17');
   }
 
-  // WHAT IT COSTS SCHEDULED WORK: nothing. Once the anchor offsets retired (DESIGN §17.1) the
-  // hourly grid starts the same chain at the same 04:17 tick, so both cadences finish the day at
-  // the same instant — the 22 extra runs an hourly cron bills were buying latency for ad-hoc
-  // work (S68) and nothing at all for the schedule. The bound is kept rather than asserting a
-  // bare 0, so a future task whose anchor moves shows up as a slip instead of a crash.
+  // WHAT IT COSTS SCHEDULED WORK: nothing. The hourly grid's ticks before 04:00
+  // ask and decline on `due:daily` — yesterday's run is still this period's —
+  // so both cadences start the same chain at the same 04:17 tick and finish the
+  // day at the same instant; the 22 extra runs an hourly cron bills were buying
+  // latency for ad-hoc work (S68) and nothing at all for the schedule. The bound
+  // is kept rather than asserting a bare 0, so a future task whose anchor moves
+  // shows up as a slip instead of a crash.
   const lastClose = (s) => Math.max(...DAILY.map((t) => closeAt(s, t)));
   const slip = (lastClose(twice) - lastClose(hourly)) / 60_000;
   assert.equal(slip, 0, 'the collapsed vocabulary leaves scheduled work no later than hourly did');
   assert.ok(slip <= 60, `the day's work slips ${slip} min, within the hour`);
+  assert.ok(asks(hourly, 'tidy/tidy-issues').filter((e) => e.t < T('2026-08-12T04:00Z'))
+    .every((e) => e.verdict === 'no'), 'the pre-anchor ticks asked and declined on the cadence');
 });
 
 // ---- S68 — the ad-hoc mark is what the second tick is FOR. A mark is adopted
@@ -1868,7 +1884,7 @@ test('S68 ad-hoc latency is the wait for the next tick: 0.2h hourly, 7.2h twice-
 // drain it landed in. This is the whole case for an `issues: [labeled]` trigger.
 test('S69 a mark landing mid-drain waits for the next tick — continuations chain dependents, not marks', () => {
   const slow = [{
-    id: 'tidy/tidy-issues', frequency: 'daily', outcome: 'done',
+    id: 'tidy/tidy-issues', preconditions: ['due:daily'], outcome: 'done',
     codeWorkMinutes: 90, agentMinutes: 60, precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks: slow, cronHours: [4, 16] }).seedSteadyState('2026-08-12T00:00Z');
@@ -1888,47 +1904,55 @@ test('S69 a mark landing mid-drain waits for the next tick — continuations cha
   assert.equal(sim.log.filter((e) => e.kind === 'executor-run' && e.trigger === 'scheduler-run-drain').length, 2);
 });
 
-// ---- S70 — THE DOOR, NOW SHUT (#1234). A member's task file is its own data that no vendoring
-// pass rewrites, so a retired spelling could sit in a declaration indefinitely and had to keep
-// working — read as `daily` where the declaration LOADS, so nothing downstream ever saw the old
-// token. That tolerance came out once the fleet's own declarations were read and none named one.
-// What the scenario proves now is the shut door: the spellings pass through unchanged and the
-// calendar refuses them, rather than an anchor being invented for a token nothing understands.
-test('S70 a retired spelling is no longer normalized, and the calendar refuses it', () => {
-  const hourlyCron = makeSim({ tasks: cast() })
-    .seedSteadyState('2026-08-12T00:00Z')
-    .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
-  const twice = makeSim({ tasks: cast(), cronHours: [4, 16] })
-    .seedSteadyState('2026-08-12T00:00Z')
-    .run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+// ---- S70 — THE DOOR, for a retired FIELD now (#1725). `frequency` is retired:
+// a task's cadence is one of its own preconditions. A member's task file is its
+// own data that no vendoring pass rewrites, so a declaration still carrying the
+// field must keep working — it reads, where it LOADS, as the cadence term it
+// always meant, first in the expression, and a `none` beside it drops; nothing
+// downstream ever sees the field. The retired SPELLINGS stay shut (#1234): a
+// `frequency` no calendar understands is refused at the door, never given an anchor.
+test('S70 the door: a retired `frequency` field reads as its cadence term at load; a retired spelling is refused', () => {
+  const sim = makeSim({ tasks: [
+    { id: 'x/daily', frequency: 'daily', outcome: 'done', codeWorkMinutes: 1, precondition: () => ({ run: true }) },
+    { id: 'x/weekly', frequency: 'weekly', preconditions: ['none', 'last-run-not-failed'], outcome: 'done', codeWorkMinutes: 1 },
+    { id: 'x/manual', frequency: 'manual', outcome: 'done', codeWorkMinutes: 1 },
+    { id: 'x/stated', frequency: 'daily', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 1 },
+  ] }).seedSteadyState('2026-08-12T00:00Z');
+  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
-  // `gcec/create-extractor` declares `daily` now; it is asked once a day whatever the cron's own
-  // cadence, which is the half of this scenario the retirement does not touch.
-  for (const s of [hourlyCron, twice]) {
-    assert.equal(asks(s, 'gcec/create-extractor').length, 1);
-    for (const task of ['tidy/tidy-issues', 'chrome/store-release']) {
-      assert.equal(asks(s, task).length, 1);
-    }
-  }
+  // what passed the door: the term first, the empty `none` gone, the field gone
+  assert.deepEqual(sim.task('x/daily').preconditions, ['due:daily']);
+  assert.deepEqual(sim.task('x/weekly').preconditions, ['due:weekly', 'last-run-not-failed']);
+  assert.deepEqual(sim.task('x/manual').preconditions, ['woken']);
+  assert.deepEqual(sim.task('x/stated').preconditions, ['due:daily'], 'a term already stated is not doubled');
+  for (const id of ['x/daily', 'x/weekly', 'x/manual', 'x/stated']) assert.equal(sim.task(id).frequency, undefined);
+  // and the loaded declaration behaves as its term: a daily task asked at every
+  // tick and run once at its anchor, a `manual` one never asked
+  assert.equal(goes(sim, 'x/daily').length, 1);
+  assert.equal(closedOf(sim, 'x/daily').length, 1);
+  assert.equal(asks(sim, 'x/manual').length, 0);
+  assert.equal(sim.family('x/manual').length, 0);
 
-  // The door passes a retired token through untouched now, and the calendar has no answer for it.
+  // The door passes no retired spelling: the legacy map is empty, and a token
+  // the calendar has no anchor for is refused where the declaration loads.
   for (const retired of ['hourly', 'daily-2h', 'daily-1h', 'daily+1h']) {
-    assert.equal(normalizeFrequency(retired), retired, 'the map is empty, so normalizing is identity');
-    // The sim words it its own way (`no anchor hour for …`); what matters is that it refuses.
-    assert.throws(() => mostRecentAnchor(retired, T('2026-08-12T10:00Z')),
-      new RegExp(retired.replace('+', '\\+')), `${retired} has no anchor`);
+    assert.throws(() => makeSim({ tasks: [{ id: 'x/r', frequency: retired, outcome: 'done' }] }),
+      new RegExp(retired.replace('+', '\\+')), `${retired} is refused`);
   }
-  // `periodMs` still answers a day, and deliberately: its fallthrough — not the door — is what
-  // keeps an unrecognized token off an HOUR-scale bound, which is what would park a task
-  // needs-human on every janitor sweep. That safety outlives the vocabulary it was written for.
-  assert.equal(periodMs('hourly'), periodMs('daily'));
+  // `periodMs` answers the cadence words alone — the janitor's stale-ready bound
+  // and the default signal window count in it, so a token it does not know is a
+  // throw rather than an hour-scale bound that parks a task on every sweep.
+  assert.equal(periodMs('daily'), 24 * 3_600_000);
+  assert.equal(periodMs('weekly'), 7 * periodMs('daily'));
+  assert.throws(() => periodMs('hourly'), /hourly/);
 });
 
 // ---- S71 — a DROPPED tick. GitHub drops scheduled runs under load, and the
 // cadence sets what that costs: an hourly grid absorbs it in an hour, two ticks
 // a day absorb it in twelve, and one tick a day loses the occurrence for the
-// whole day. Nothing is stranded either way — dueness is decided from the ANCHOR
-// and never from whether the cron fired, which is the invariant this pins.
+// whole day. Nothing is stranded either way — `due:daily` is decided from the
+// ANCHOR and the run history, never from whether the cron fired, which is the
+// invariant this pins.
 test('S71 a dropped anchor tick is caught by the next one — the cost is latency, never the occurrence', () => {
   const armed = (opts) => {
     const s = makeSim({ tasks: cast(), ...opts }).seedSteadyState('2026-08-12T00:00Z');
@@ -1964,12 +1988,11 @@ test('S71 a dropped anchor tick is caught by the next one — the cost is latenc
 test('S72 a Not-before falling between ticks waits for the next tick, and is not escalated for it', () => {
   const sim = makeSim({ tasks: cast(), cronHours: [4, 16] }).seedSteadyState('2026-08-12T00:00Z');
   let deferred;
-  // released at 09:00 — six hours after one tick, seven before the next
+  // released at 09:00 — six hours after one tick, seven before the next. An
+  // item of a woken-gated task: it is woken by construction, so the wait is the
+  // only thing the pick has to say about it.
   sim.at('2026-08-12T04:30Z', (s) => {
-    // the task's own precondition must pass, or the item converges `rejected` and
-    // the scenario measures a decline rather than a wait
-    s.world.issueTouchedAt = T('2026-08-12T04:30Z');
-    deferred = s.createItem('tidy/tidy-issues', { notBefore: T('2026-08-12T09:00Z'), qualifier: 'deferred' });
+    deferred = s.createItem('sheepdog/fleet-baseline', { notBefore: T('2026-08-12T09:00Z'), qualifier: 'deferred' });
   });
   sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
@@ -1978,8 +2001,9 @@ test('S72 a Not-before falling between ticks waits for the next tick, and is not
   const item = deferred;
   assert.equal(item.state, 'closed', 'the deferred item ran');
   assert.equal(item.outcome, 'done');
-  // Readied by the 16:17 tick, not at 09:00 and not by the drain that was already
+  // Readied by the 16:17 tick, not at 09:00 and not by a drain that happened to be
   // running: releasing a Not-before is the scheduler run's job, like adoption.
+  assert.equal(sim.log.find((e) => e.kind === 'ready' && e.issue === item.number).t, T('2026-08-12T16:17Z'));
   assert.ok(item.closedAt >= T('2026-08-12T16:17Z'), 'it waited for the tick, not the instant');
   // Seven hours blocked is normal under this cadence and must read as normal —
   // an escalation here would park every deferred item the queue holds.
@@ -1988,9 +2012,10 @@ test('S72 a Not-before falling between ticks waits for the next tick, and is not
 });
 
 // ---- S73 — the weekly anchor under a coarse cron, INCLUDING one whose hours do
-// not contain the anchor hour at all. Dueness is decided from the anchor, so a
-// weekly task must fire exactly once a week whatever hours the cron names — never
-// twice for being looked at twice a day, and never never for being looked at late.
+// not contain the anchor hour at all. `due:weekly` is decided from the anchor
+// and the run history, so a weekly task must fire exactly once a week whatever
+// hours the cron names — never twice for being looked at twice a day, and never
+// never for being looked at late.
 test('S73 a weekly task fires exactly once a week, even when no tick lands on its anchor hour', () => {
   const week = (opts) => {
     const s = makeSim({ tasks: cast(), ...opts }).seedSteadyState('2026-08-09T00:00Z');
@@ -2004,10 +2029,13 @@ test('S73 a weekly task fires exactly once a week, even when no tick lands on it
   const hourly = week({});
 
   // One occurrence per week in all three — the cadence changes WHEN it is seen,
-  // never how many there are.
+  // never how many there are. Every other tick asked and declined: on the run
+  // since the anchor, since `stalePrs` stands all week.
   for (const s of [onAnchor, offAnchor, hourly]) {
-    assert.equal(asks(s, 'tidy/tidy-prs').length, 2, 'two weekly anchors in the window');
+    assert.equal(goes(s, 'tidy/tidy-prs').length, 2, 'two weekly anchors in the window');
     assert.equal(closedOf(s, 'tidy/tidy-prs').length, 2);
+    assert.ok(asks(s, 'tidy/tidy-prs').filter((e) => e.verdict === 'no')
+      .every((e) => /already ran since the weekly anchor/.test(e.reason)));
   }
 
   // …and each is picked up by the FIRST tick at or after its anchor, which is
@@ -2016,4 +2044,129 @@ test('S73 a weekly task fires exactly once a week, even when no tick lands on it
     .map((i) => new Date(i.createdAt).toISOString().slice(11, 16));
   assert.deepEqual(createdHours(onAnchor), ['04:17', '04:17']);
   assert.deepEqual(createdHours(offAnchor), ['06:17', '06:17']);
+});
+
+// ---- O. The stateless scheduler (owner, 2026-09-05, #1725 — DESIGN §15.33) --
+// The engine keeps no calendar and no memory of an ask: every tick asks every
+// scheduled task, and a task's cadence is a term in its own preconditions, read
+// off its run history. These pin the terms one at a time, from the side the
+// board used to hide.
+
+// ---- S74 — `due:daily` under the twice-daily cron: BOTH ticks ask. The 04:17
+// tick finds no run since the anchor and files; the 16:17 tick finds that run
+// and declines. Once a day is the term's doing, not a watermark's.
+test('S74 due:daily is asked at both daily ticks; the second declines on the run since the anchor', () => {
+  const tasks = [{
+    id: 'x/daily', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 2,
+    precondition: () => ({ run: true }),
+  }];
+  const sim = makeSim({ tasks, cronHours: [4, 16] }).seedSteadyState('2026-08-12T00:00Z');
+  sim.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
+
+  const a = asks(sim, 'x/daily');
+  assert.deepEqual(a.map((e) => [e.at, e.verdict]), [
+    ['2026-08-12T04:17Z', 'go'], ['2026-08-12T16:17Z', 'no'],
+    ['2026-08-13T04:17Z', 'go'], ['2026-08-13T16:17Z', 'no'],
+  ]);
+  const [wed] = closedOf(sim, 'x/daily');
+  assert.equal(a[1].reason, `#${wed.number} already ran since the daily anchor at 2026-08-12T04:00Z`);
+  assert.equal(closedOf(sim, 'x/daily').length, 2, 'one run per day, two days');
+});
+
+// ---- S75 — `last-run-over:1d` keeps no anchor: it measures from the newest
+// run's START, strictly more than the duration ago. A task that runs at the
+// first tick of the day then drifts one tick later each day — the tick exactly
+// 24h after the last start is "not over 1d", the one after it is.
+test('S75 last-run-over:1d drifts one tick a day: strictly over, measured from the last start', () => {
+  const tasks = [{
+    id: 'x/drift', preconditions: ['last-run-over:1d'], outcome: 'done', codeWorkMinutes: 2,
+    precondition: () => ({ run: true }),
+  }];
+  const sim = makeSim({ tasks }); // no history at all: "no run in the horizon" holds
+  sim.run('2026-08-12T00:00Z', '2026-08-15T00:00Z');
+
+  assert.equal(asks(sim, 'x/drift')[0].reason, 'no run of this task in the last 40 days');
+  assert.deepEqual(closedOf(sim, 'x/drift').map((i) => i.createdAt),
+    [T('2026-08-12T00:17Z'), T('2026-08-13T01:17Z'), T('2026-08-14T02:17Z')],
+    'the first tick, then one tick later each day');
+  // the tick exactly 24h after a start declines — `>` not `>=` — and names the run
+  const [first] = closedOf(sim, 'x/drift');
+  const exact = asks(sim, 'x/drift').find((e) => e.t === first.createdAt + 24 * 3_600_000);
+  assert.equal(exact.verdict, 'no');
+  assert.equal(exact.reason, `the newest run, #${first.number}, started inside 1d`);
+  assert.ok(asks(sim, 'x/drift').every((e) => e.verdict !== 'fail-open'));
+});
+
+// ---- S76 — `woken` as a whole conjunct gates: the scheduler never asks such a
+// task, and its item exists only because somebody created one. The same word
+// inside an alternative (`due:daily || woken`) merely widens — that task IS on
+// the schedule, and a person's wake is one more way for it to run.
+test('S76 a woken-gated task is never asked; `due:daily || woken` widens and is asked like any other', () => {
+  const tasks = [
+    { id: 'x/gated', preconditions: ['woken'], outcome: 'done', codeWorkMinutes: 1, precondition: () => ({ run: true }) },
+    { id: 'x/widened', preconditions: ['due:daily || woken'], outcome: 'done', codeWorkMinutes: 1, precondition: () => ({ run: true }) },
+  ];
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  let byHand;
+  sim.at('2026-08-12T10:00Z', (s) => { byHand = s.createItem('x/gated'); });
+  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+
+  assert.equal(asks(sim, 'x/gated').length, 0, 'never asked, at any of the 24 ticks');
+  assert.equal(sim.family('x/gated').filter((i) => !i.seeded && i !== byHand).length, 0, 'never filed');
+  assert.equal(byHand.outcome, 'done', 'the hand-created item is woken by construction and runs');
+  assert.equal(asks(sim, 'x/widened').length, 24, 'asked at every tick — its one-minute run never spanned one');
+  assert.equal(goes(sim, 'x/widened').length, 1);
+  assert.equal(closedOf(sim, 'x/widened')[0].createdAt, T('2026-08-12T04:17Z'), 'on its cadence');
+  // the scheduler's own ask never satisfies `woken`: the widened task's declines
+  // name both alternatives
+  assert.match(asks(sim, 'x/widened').find((e) => e.verdict === 'no').reason,
+    /already ran since the daily anchor.*; nor the scheduler's own ask/);
+});
+
+// ---- S77 — a forced mint satisfies the cadence at pick: the item is stamped
+// `Woken`, and the wake stands in for `due:daily` even though today's run
+// already happened. The contrast: an unstamped hand-made item of the same task
+// is judged over the same history and declines — the stamp, not the shape, is
+// what the terms read.
+test('S77 a forced mint passes the cadence at pick by its Woken stamp; an unstamped twin does not', () => {
+  const tasks = [{
+    id: 'x/ran', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 1,
+    precondition: () => ({ run: true }),
+  }];
+  // seeded as of 05:00: the task ran at TODAY's 04:00 anchor
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T05:00Z');
+  let forced; let byHand;
+  sim.at('2026-08-12T10:00Z', (s) => { forced = s.force('x/ran'); });
+  sim.at('2026-08-12T13:00Z', (s) => { byHand = s.createItem('x/ran'); });
+  sim.run('2026-08-12T05:00Z', '2026-08-12T18:00Z');
+
+  assert.ok(asks(sim, 'x/ran').every((e) => e.verdict === 'no'), 'the schedule itself never re-runs today');
+  assert.equal(forced.woken, T('2026-08-12T10:00Z'));
+  assert.equal(forced.outcome, 'done', 'the wake stood in for the cadence');
+  assert.match(sim.log.find((e) => e.kind === 'evaluate' && e.issue === forced.number).reason,
+    /was woken by hand — the wake stands in for the cadence/);
+  assert.equal(byHand.woken, null);
+  assert.equal(byHand.outcome, 'rejected', 'judged over the day\'s runs like the schedule\'s own item');
+  assert.match(sim.log.find((e) => e.kind === 'decline-close' && e.issue === byHand.number).reason,
+    /already ran since the daily anchor/);
+});
+
+// ---- S78 — a brand-new task is asked at its first tick like any other: no
+// first-window booking, no born-blocked item (the retired S25). A weekly task
+// with no history and work waiting runs mid-week at the first tick — "no run
+// since the anchor" is simply true — and its NEXT run is the following Sunday's.
+test('S78 a new task is asked at its first tick; its next occurrence is the cadence\'s', () => {
+  const sim = makeSim({ tasks: cast() }); // no seeded history — a fresh repo
+  sim.at('2026-08-12T00:00Z', ({ world }) => { world.stalePrs = true; });
+  sim.run('2026-08-12T00:00Z', '2026-08-17T00:00Z'); // Wednesday to the Monday after Sunday's anchor
+
+  const runs = closedOf(sim, 'tidy/tidy-prs');
+  assert.equal(runs.length, 2);
+  assert.equal(runs[0].createdAt, T('2026-08-12T00:17Z'), 'the first tick, mid-week, off-anchor');
+  assert.match(asks(sim, 'tidy/tidy-prs')[0].reason, /^no run since the weekly anchor at 2026-08-09T04:00Z/);
+  assert.equal(runs[1].createdAt, T('2026-08-16T04:17Z'), "then Sunday's anchor, and nothing between");
+  assert.equal(sim.family('tidy/tidy-prs').filter((i) => i.state === 'open').length, 0, 'nothing born blocked');
+  // the daily tasks were asked at 00:17 too, and declined on their own conditions
+  assert.equal(asks(sim, 'tidy/tidy-issues')[0].t, T('2026-08-12T00:17Z'));
+  assert.equal(asks(sim, 'tidy/tidy-issues')[0].reason, 'no issue touched in window');
 });
