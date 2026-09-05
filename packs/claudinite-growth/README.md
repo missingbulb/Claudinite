@@ -259,12 +259,15 @@ made the change, and is one sweep away from being closed as stale.
 | `task-declaration-matches-folder` | high | correctness | check: blocking |
 | `task-md-only-when-agentic` | high | correctness | check: blocking |
 | `task-phase-discipline` | medium | complexity | check: advisory |
+| `task-worker-restores-main` | high | correctness | check: blocking |
 
-The last five are the **task contract** ([the writing-tasks skill](skills/writing-tasks/SKILL.md)), which
+The last six are the **task contract** ([the writing-tasks skill](skills/writing-tasks/SKILL.md)), which
 lives here because it judges whether a task is *written* correctly — authoring, the subject of this
-pack — and not whether Claudinite is *working* in the repo. Relevance-first: all five are inert until
-the repo carries a `tasks/<name>/task.json` of its own.
+pack — and not whether Claudinite is *working* in the repo. Relevance-first: all six are inert until
+the repo carries a `tasks/<name>/task.json` of its own (`task-worker-restores-main` inert until a
+`tasks/<name>/worker.sh` exists to judge).
 
 - `task-declaration-matches-folder` — a declaration disagrees with its folder: discovery drops it into `errors` and every run keeps reporting healthy without it.
 - `task-md-only-when-agentic` — an agentless task carries a `task.md`, which the corpus reads as "an agent runs here": prose no session will ever open, judged by the routine contract and named by every work item as the file the run is about.
 - `task-phase-discipline` — a task decides not to run after its precondition already said run, hiding the decision from the run records.
+- `task-worker-restores-main` — a local task worker that commits or pushes never returns the checkout to `main` first: the executor runs every due task in one shared checkout, so a worker left on another branch (or restoring only after it already wrote) inherits it silently, and a bare push from an upstream-less branch can fail for days unnoticed.

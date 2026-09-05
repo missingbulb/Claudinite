@@ -93,6 +93,12 @@
   scope is non-empty. A pattern left behind by a layout change matches nothing, reads as live, and
   fixtures spelling the same dead layout keep proving the matching.
 
+- **Writing a check that verifies some command is wired into a script or CI step** — match the
+  actual invocation line, never a step's display label. A plain token grep passes on the label
+  alone (`step "Normalizer self-test — some-cmd --flag"`) even after the real command line was
+  deleted, so the check proves nothing about whether the command still runs; strip a labeling
+  helper's quoted argument (and trailing comments) before searching for a surviving command line.
+
 - **Naming a directory in a finding, a remedy or a doc pointer** — grep the tree for it before
   shipping.
 

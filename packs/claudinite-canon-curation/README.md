@@ -80,6 +80,7 @@ What a canon session follows when it names, configures, writes or polices a pack
 | Two signals for a missing-or-misnamed check | high | correctness | prose: 40 words |
 | Widen a check to its sibling surface | medium | correctness | prose: 28 words |
 | Assert a path-pattern scope is non-empty | high | correctness | prose: 45 words |
+| Match the invocation, not a step's label | high | correctness | prose: 77 words |
 | Grep a named directory before shipping | medium | correctness | prose: 21 words |
 | Measure whether a check earns its keep | low | performance | prose: 43 words |
 | Re-bump after a stacked PR's base lands | high | correctness | prose: 42 words |
