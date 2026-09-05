@@ -25,7 +25,9 @@ task retraces from the same history which pull requests each version shipped.
 
 ## Why the declaration reads as it does
 
-Daily, on `['none']`: the trigger is the merges the workflow cannot observe, and whether any
-happened is what the walk itself answers — a run that finds nothing says so and costs one fetch.
+Daily, gated on commits under `packs/`: the trigger is the merges the workflow cannot observe,
+and a day with no shipping change has nothing to cut. A bump commit carries the task trailer,
+so the machinery's own output never re-arms it; a run whose changes were all already versioned
+says so and costs one fetch.
 `no_code_changes`, because the bump is a commit on the base branch and opens no pull request.
 Agentless: which packs and which numbers is arithmetic over git, never a judgment.

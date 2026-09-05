@@ -179,10 +179,10 @@ test('pack-version-bump: a well-formed agentless daily declaration that opens no
   assert.deepEqual(validateTaskDeclaration(bump), []);
   assert.equal(bump.agent_model, 'none');
   assert.equal(bump.expected_outcome, 'no_code_changes');   // it commits onto the base branch
-  // The trigger is the merges the push workflow cannot see, and the walk itself
-  // answers whether any happened — so no precondition, and no signal to collect.
-  assert.deepEqual(preconditionSignals(bump.preconditions, new Map()), []);
-  assert.equal(evaluatePrecondition({ decl: bump }, {}).run, true);
+  // The trigger is the merges the push workflow cannot see: shipping movement under
+  // the shelf, read off the commits signal, which classifies the bump's own commits
+  // as machinery.
+  assert.deepEqual(preconditionSignals(bump.preconditions, new Map()), ['commits']);
   // The canon's push-to-main workflow runs the very worker this declaration names.
   const workflow = readFileSync(join(PACK_DIR, '../../.github/workflows/pack-versions.yml'), 'utf8');
   assert.match(workflow, new RegExp(`run: node packs/claudinite-canon-curation/tasks/pack-version-bump/${bump.code_work.replace(/^node /, '')}$`, 'm'));

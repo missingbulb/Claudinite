@@ -51,7 +51,7 @@ why.
 | `growth-promote` | a participating member changed its local packs in the window | a PR against the canon's default branch |
 | `growth-discover-packs` | weekly, over every covered member | a PR against the canon's default branch, plus an adopt issue in each member that evidenced the pack |
 | `upstream-watch` | monthly, over the packs that declared an upstream source | a PR against the canon's default branch |
-| `pack-version-bump` | daily, and on every push to the canon's default branch (its workflow) | a commit straight onto the canon's default branch |
+| `pack-version-bump` | daily when commits landed under `packs/`, and on every push to the canon's default branch (its workflow) | a commit straight onto the canon's default branch |
 | `pack-version-history` | weekly, when commits landed under `packs/` | a self-landing PR touching only `packs/*/VERSIONS.md` |
 
 ### Rules (`RULES.md`)
