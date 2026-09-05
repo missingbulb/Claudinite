@@ -124,8 +124,9 @@ test('pack-version-bump: a well-formed agentless daily declaration that opens no
   assert.equal(bump.expected_outcome, 'no_code_changes');   // it commits onto the base branch
   // The trigger is the merges the push workflow cannot see: shipping movement under
   // the shelf, read off the commits signal, which classifies the bump's own commits
-  // as machinery.
-  assert.deepEqual(preconditionSignals(bump.preconditions, new Map()), ['commits']);
+  // as machinery — behind the cadence's own run history.
+  assert.deepEqual(taskCadence(bump), { kind: 'due', cadence: 'daily' });
+  assert.deepEqual(preconditionSignals(bump.preconditions, new Map()), ['runs', 'commits']);
   // The canon's push-to-main workflow runs the very worker this declaration names.
   const workflow = readFileSync(join(PACK_DIR, '../../.github/workflows/pack-versions.yml'), 'utf8');
   assert.match(workflow, new RegExp(`run: node packs/claudinite-canon-curation/tasks/pack-version-bump/${bump.code_work.replace(/^node /, '')}$`, 'm'));
@@ -135,7 +136,8 @@ test('pack-version-history: agentless, weekly on shipping movement, landing itse
   assert.deepEqual(validateTaskDeclaration(history), []);
   assert.equal(history.agent_model, 'none');
   assert.equal(history.expected_outcome, 'amend_existing_or_create_new_pr');
-  assert.deepEqual(preconditionSignals(history.preconditions, new Map()), ['commits']);
+  assert.deepEqual(taskCadence(history), { kind: 'due', cadence: 'weekly' });
+  assert.deepEqual(preconditionSignals(history.preconditions, new Map()), ['runs', 'commits']);
   // The policy names the pack's own declared class, and that class covers exactly a
   // shelf pack's VERSIONS.md — a manifest or a rule in the same diff parks the run.
   const { rules, errors } = declaredMergeRules([{ id: 'claudinite-canon-curation', dir: PACK_DIR }], { packs: ['claudinite-canon-curation'] });
