@@ -159,6 +159,11 @@ Below are rules on how to work on this repo.
 
 - **Creating the artifact a check will demand** — create it before the action it gates, not after.
 
+- **Changing a per-call hook** (`engine/hooks/*-judge.mjs`, the runner) — you are a guest in the
+  harness: a judge returns a verdict and `hook-runner.mjs` alone exits, 0 or a deliberate 2;
+  measure before and after with `node dev/tools/hook-latency.mjs` and record the numbers in the
+  element's retrospective brief. (70)
+
 ## The engine, the mount and what reaches members
 
 - **Editing `claudinite-scheduler.yml` or `claudinite-executor.yml`** — nothing beyond triggers,

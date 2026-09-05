@@ -145,10 +145,20 @@ did not fire, and the count the usage fold reads to say whether the guard is ear
 The severity vocabulary is the check's: a guard that blocks is `blocking`; a bias that should be
 heard and may be overruled is `advisory`.
 
-The hook already loads the active packs to resolve path-scoped skills; action declarations ride
-the same load, and the per-repo `rules` and `accept` overrides apply to them as to any rule. A
-guard whose evaluation fails lets the call through and logs — a broken declaration is the mount
-self-test's finding, never a session wedged on every tool call.
+Every per-call hook is a guest in the harness, which reads exit 2 as the one block and prints
+any other failure — another exit code, a timeout, stdout that is not JSON — beside the call it
+happened on. So the three entries hand one runner (`engine/hooks/hook-runner.mjs`) their event
+and a judge; the judge returns a verdict, and the runner alone exits: 0 with one JSON context or
+nothing, 2 only for a block on an event that can block. A payload that is not JSON, an engine
+module that fails to load, a registry that throws or whose import never settles, a closed
+stdout — each ends in exit 0 and a hook-log line, never an error on the call. The advisory
+context carries no `permissionDecision`: `allow` would skip the permission prompt for the call,
+and an advisory has no business approving anything. What the judges read — the active packs'
+triggers and action declarations, with the per-repo `rules` overrides — is derived once and
+cached under the OS temp dir behind a stat fingerprint of everything it came from
+(`hookContext` in `engine/hooks/hook-context.mjs`), and the transcript is parsed only once a
+trigger names the call, so a call no declaration names costs the node start and a cache read.
+`dev/tools/hook-latency.mjs` measures each path; the brief below carries the budget.
 
 ## Trigger scope: skills that load at a deterministic moment
 
@@ -242,6 +252,18 @@ defines, once it has lived a week in production. The expectations the review rea
   file-wide `requireSomeFileMatching` on a large repo shows up as the slowest declared rule in the
   run's timing; a guard declared `blocking` for a bias rather than a defect shows up as repeated
   overrules in the transcript.
+- **Hook cost.** Each per-call hook on a call no declaration names, measured by
+  `node dev/tools/hook-latency.mjs` at HEAD on the runner class the recorded table came from (this
+  sandbox, 2026-09-05: PreToolUse ~88 ms, PostToolUse ~80 ms, UserPromptSubmit ~80 ms; a guarded
+  call parsing a 5 MB transcript ~165 ms; before the runner and the cache, ~185 ms, ~172 ms and
+  ~172 ms, and ~250 ms with that transcript): expected within a quarter of the recorded figures,
+  and a registry miss (`registry-loaded` in the hook log) once per session rather than per call —
+  a hook that keeps re-deriving means the fingerprint reads something that moves on every call.
+- **Hook health.** Zero `hook_non_blocking_error` attachments naming a Claudinite hook and no
+  exit code but 0 and 2 for one, across the window's captured transcripts on `conversation-logs`
+  (the hook log is per machine, so the transcripts are the durable record); where a session's
+  own `.claudinite-hooks.log` is at hand, its `done exit=0 deadline` and `hook-failed` lines name
+  what failed open and how often.
 - **Cheap to re-examine:** the once-per-session trigger semantics, the advisory-vs-blocking
   default for guards, which operation skills exist. **Expensive:** the four-moment split itself
   and the named-set vocabulary, which member declarations will carry.

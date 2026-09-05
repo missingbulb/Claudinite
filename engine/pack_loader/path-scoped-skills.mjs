@@ -64,12 +64,17 @@ export function pathScopedSkills(packs) {
 
 // The declarations `hit` admits whose skill is not among `loaded`, deduped by
 // skill name — the reason to stop an action, or the empty list that lets it run.
+// `loaded` may be the names or a function producing them: the function is called
+// only once a declaration hits, so the transcript behind it is read only when a
+// verdict actually depends on it.
 function missing(declarations, loaded, hit) {
-  const have = new Set(loaded ?? []);
+  let have = null;
   const seen = new Set();
   const out = [];
   for (const d of declarations) {
-    if (!hit(d) || have.has(d.skill) || seen.has(d.skill)) continue;
+    if (!hit(d) || seen.has(d.skill)) continue;
+    have ??= new Set((typeof loaded === 'function' ? loaded() : loaded) ?? []);
+    if (have.has(d.skill)) continue;
     seen.add(d.skill);
     out.push(d);
   }

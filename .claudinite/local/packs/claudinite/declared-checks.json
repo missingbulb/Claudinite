@@ -170,5 +170,20 @@
         "fix": "if the instruction, the tree or a reversible default answers it, act and say what you assumed instead"
       }
     ]
+  },
+  {
+    "id": "hook-judges-never-exit",
+    "severity": "blocking",
+    "since": "2026-09-05",
+    "failureMessage": "a hook is a guest in the harness: the runner alone exits or writes, and a judge that does prints an error on every call",
+    "fix": "return the verdict — { block, reason } or { context } — and let hook-runner.mjs write it",
+    "scanFiles": "/^engine\\/hooks\\/[^/]+-judge\\.mjs$/",
+    "scanIgnoringComments": true,
+    "matchLines": [
+      {
+        "match": "/\\bprocess\\.(exit|stdout|stderr|stdin)\\b/",
+        "what": "a judge touching the process itself: {match}"
+      }
+    ]
   }
 ]

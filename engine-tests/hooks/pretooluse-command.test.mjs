@@ -59,7 +59,9 @@ test('an advisory action guard allows the call and injects the finding as contex
     assert.equal(r.status, 0, r.stderr);
     const out = JSON.parse(r.stdout).hookSpecificOutput;
     assert.equal(out.hookEventName, 'PreToolUse');
-    assert.equal(out.permissionDecision, 'allow');
+    // No permissionDecision: `allow` would skip the permission prompt for the
+    // call, and an advisory only speaks — the harness's own flow decides.
+    assert.equal(out.permissionDecision, undefined);
     assert.match(out.additionalContext, /\[claudinite fixture-advise\] ran noisy-cmd\. the fixture frowns on it\. Fix: quieter/);
   } finally { cleanup(root); }
 });

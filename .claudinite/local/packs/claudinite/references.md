@@ -194,3 +194,10 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   forever — a member's rows can stay settled for days, so nothing else brings a write. The
   closed half of a long-lived repo is thousands of issues, which is what the label buys.
   Reaffirm while the queue keeps any machine-maintained issue.
+- **(RULES-70)** #1711: the per-call hooks run on every tool call, prompt and result, and the
+  harness reads exit 2 as the one block while any other exit code, a timeout or non-JSON stdout is
+  an error printed beside that call — a judge module missing for a few minutes printed "Cannot
+  find module" on every call until it existed. Measured 2026-09-05 (`dev/tools/hook-latency.mjs`):
+  a call no declaration named cost ~185 ms at PreToolUse and ~172 ms at PostToolUse before the
+  runner and the cached context, ~88 ms and ~80 ms after. Retire the rule when the harness runs
+  hooks in-process or the per-call hooks are gone.

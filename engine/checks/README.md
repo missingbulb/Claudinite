@@ -147,8 +147,11 @@ the change in front of the session, one about the repo as a whole:
   advisory one lets it run and injects the text as context — and by `check_the_work` over the
   transcript's recorded calls at Stop, one finding per offending call: the backstop for a hook that
   never fired, and the count the usage fold reads. The hook is registered on every tool
-  (`PRETOOLUSE_MATCHER`) and says nothing on a call no declaration names; each call pays the pack
-  load, about 150 ms.
+  (`PRETOOLUSE_MATCHER`) and says nothing on a call no declaration names. What it reads is cached
+  per project ([../hooks/hook-context.mjs](../hooks/hook-context.mjs)), and every per-call entry
+  exits only through [../hooks/hook-runner.mjs](../hooks/hook-runner.mjs) — 0, or 2 for a block —
+  so a failing hook never prints an error on the call; `dev/tools/hook-latency.mjs` measures the
+  cost of each path.
 - **Trigger scope → the PreToolUse, UserPromptSubmit and PostToolUse hooks.** A skill names the
   moments it must be loaded for under its frontmatter `metadata` — `force-load-on-file-edits-paths`,
   `force-load-on-tool-calls`, `force-load-on-prompts-matching`, `force-load-on-tool-results-matching`
