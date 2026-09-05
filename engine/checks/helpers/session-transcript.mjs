@@ -82,6 +82,7 @@ export function classifiedTurns(entries) {
 // — each `tool_use` block on an assistant entry. Subagent (sidechain) calls
 // count, flagged: a guard a delegated call breaks is still broken.
 export function toolCalls(entries) {
+  const denials = deniedCalls(entries);
   const calls = [];
   (entries ?? []).forEach((entry, index) => {
     if (entry?.type !== 'assistant') return;
@@ -89,10 +90,36 @@ export function toolCalls(entries) {
     if (!Array.isArray(content)) return;
     for (const block of content) {
       if (block?.type !== 'tool_use' || typeof block.name !== 'string') continue;
-      calls.push({ index, name: block.name, input: block.input ?? {}, sidechain: Boolean(entry.isSidechain) });
+      calls.push({
+        index, name: block.name, input: block.input ?? {}, sidechain: Boolean(entry.isSidechain),
+        deniedBy: denials.get(block.id) ?? [],
+      });
     }
   });
   return calls;
+}
+
+// A call the PreToolUse guard denied never ran: the harness records the hook's
+// stderr as that call's error result, and an action guard's denial names its
+// rule there — `Blocked by <rule-id>: …`, the line engine/hooks/pretooluse-judge.mjs
+// writes. Map of tool_use id → the rule ids that denied it, so the Stop-time
+// backstop can tell a call that ran past a hook from one the hook held.
+const DENIAL = /(?:^|\n)Blocked by ([\w.-]+):/g;
+function deniedCalls(entries) {
+  const out = new Map();
+  for (const entry of entries ?? []) {
+    if (entry?.type !== 'user') continue;
+    const content = entry.message?.content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      if (block?.type !== 'tool_result' || !block.is_error || typeof block.tool_use_id !== 'string') continue;
+      const text = typeof block.content === 'string' ? block.content
+        : Array.isArray(block.content) ? block.content.map((c) => (typeof c?.text === 'string' ? c.text : '')).join('\n') : '';
+      const rules = [...text.matchAll(DENIAL)].map((m) => m[1]);
+      if (rules.length) out.set(block.tool_use_id, rules);
+    }
+  }
+  return out;
 }
 
 // Every skill the session has loaded so far, in order of loading: the `input.skill`

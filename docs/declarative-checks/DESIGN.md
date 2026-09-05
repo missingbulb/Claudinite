@@ -142,6 +142,8 @@ advisory one lets the call through and injects the finding as context, so the ag
 bias at the moment it applies. **`check_the_work`** evaluates it again over the transcript's
 tool-call blocks at Stop, one finding per offending call: the backstop for a member whose hook
 did not fire, and the count the usage fold reads to say whether the guard is earning its place.
+A call the hook denied never ran, so at Stop it is recorded advisory — the firing counted, with
+no block left for the session to clear.
 The severity vocabulary is the check's: a guard that blocks is `blocking`; a bias that should be
 heard and may be overruled is `advisory`.
 

@@ -2020,6 +2020,34 @@ test('an action rule at Stop judges every recorded call, anchored by tool and or
   } finally { cleanup(root); session.cleanup(); }
 });
 
+test('a call the hook denied is recorded advisory at Stop — the firing counted, no block left to clear', () => {
+  const rule = patternRule({
+    ...meta('fx-guard-denied'), scope: 'action',
+    guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: /sleep \d+/, what: '{match}', fix: 'f' }],
+  });
+  // The harness records a denial as the call's error result carrying the hook's
+  // stderr, with the judge's `Blocked by <rule>:` line; another rule's denial, or
+  // a result that is not an error, leaves the call as one that ran.
+  const denied = (id, text) => ({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, is_error: true, content: text }] } });
+  const session = makeTranscript([
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'sleep 5' } }] } },
+    denied('t1', 'PreToolUse:Bash hook error: [node x]: log line\nBlocked by fx-guard-denied: sleep 5. why. Fix: f'),
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't2', name: 'Bash', input: { command: 'sleep 6' } }] } },
+    denied('t2', 'Blocked by some-other-rule: no'),
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't3', name: 'Bash', input: { command: 'sleep 7' } }] } },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't3', is_error: false, content: 'Blocked by fx-guard-denied: printed by the command itself' }] } },
+  ]);
+  const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
+  try {
+    const findings = runRule(rule, buildContext({ root, mode: 'all', transcriptPath: session.path }));
+    assert.deepEqual(findings.map((f) => [f.file, f.severity, f.what]), [
+      ['(session) Bash call #1', 'advisory', 'sleep 5 (denied at the hook)'],
+      ['(session) Bash call #2', 'blocking', 'sleep 6'],
+      ['(session) Bash call #3', 'blocking', 'sleep 7'],
+    ]);
+  } finally { cleanup(root); session.cleanup(); }
+});
+
 test('action scope: the authoring errors', () => {
   assert.throws(() => patternRule({ ...meta('fx-a1'), guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: /x/, what: 'w', fix: 'f' }] }), /scope: "action"/);
   assert.throws(() => patternRule({ ...meta('fx-a2'), scope: 'action' }), /asserts nothing/);
