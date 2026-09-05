@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { globToRegExp, expandBraces, pathScopedSkills, missingSkillsFor, triggeredSkills, missingSkillsForCall, missingSkillsForPrompt, missingSkillsForResult } from '../../engine/pack_loader/path-scoped-skills.mjs';
 import { parseFrontmatter, skillMetadata, forceLoadPathsOf, parseToolTrigger } from '../../engine/pack_loader/skill-frontmatter.mjs';
 import { skillLoads } from '../../engine/checks/helpers/session-transcript.mjs';
+import { commandName } from '../../packs/claudinite-tasks/tasks/usage-fold/fold-usage.mjs';
 import { removeTree } from '../../engine/remove-tree.mjs';
 
 test('globToRegExp: ** spans directories, * and ? stay inside a segment, braces expand, the rest is literal', () => {
@@ -70,6 +71,40 @@ test('skillLoads reads every Skill tool_use on assistant entries, sidechain incl
   ];
   assert.deepEqual(skillLoads(entries), ['a', 'b', 'c']);
   assert.deepEqual(skillLoads(null), []);
+});
+
+test('skillLoads reads a slash command the owner typed: the <command-name> block the harness records, no tool call', () => {
+  const entries = [
+    { type: 'user', message: { content: '<command-message>e is running…</command-message>\n<command-name>/e</command-name>\n<command-args>now</command-args>' } },
+    { type: 'user', message: { content: [{ type: 'text', text: '<command-name>f</command-name>' }] } },
+    { type: 'user', message: { content: '<command-name>/plugin:g</command-name>' } },
+    // A tool result that happens to carry the literal tag is output, not a command.
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't', content: 'grep hit: <command-name>/h</command-name>' }] } },
+    { type: 'user', message: { content: 'please run /i for me' } },
+  ];
+  assert.deepEqual(skillLoads(entries), ['e', 'f', 'plugin:g']);
+});
+
+// Drift guard: the usage fold spells the same block grammar in its own
+// `commandName` (a pack cannot import a fresh engine export), so the two are
+// run over one vector set in both directions — every name one reads, the other
+// reads, and every entry one ignores, the other ignores.
+test('skillLoads and the usage fold agree on what a typed slash command is', () => {
+  const vectors = [
+    '<command-message>x is running…</command-message>\n<command-name>/x</command-name>',
+    '<command-name>y</command-name>',
+    '<command-name>/plugin:z</command-name>\n<command-args>a b</command-args>',
+    '<command-name>  /spaced  </command-name>',
+    'please run /x for me',
+    '<command-name></command-name>',
+    '<command-name>/bad name</command-name>',
+    'hi',
+  ];
+  for (const content of vectors) {
+    const entry = { type: 'user', message: { content } };
+    const fold = commandName(entry);
+    assert.deepEqual(skillLoads([entry]), fold === null ? [] : [fold], JSON.stringify(content));
+  }
 });
 
 test('parseToolTrigger: a name, a name with a field, a regex over names, each with an optional regex; malformed drops', () => {

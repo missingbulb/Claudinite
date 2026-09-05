@@ -128,3 +128,13 @@ test('a tool call a skill forces itself for is held until the skill is loaded, l
     assert.equal(run(root, bash('ls')).status, 0);
   } finally { cleanup(root); loaded.cleanup(); }
 });
+
+test('a skill the owner invoked as a slash command counts as loaded: the held call goes through', () => {
+  const root = opRepo();
+  const typed = makeTranscript([{ type: 'user', message: { content: '<command-message>fixture-op is running…</command-message>\n<command-name>/fixture-op</command-name>' } }]);
+  try {
+    assert.equal(run(root, bash('forbidden-op --go')).status, 2, 'held without any load');
+    const allowed = run(root, { ...bash('forbidden-op --go'), transcript_path: typed.path });
+    assert.equal(allowed.status, 0, allowed.stderr);
+  } finally { cleanup(root); typed.cleanup(); }
+});

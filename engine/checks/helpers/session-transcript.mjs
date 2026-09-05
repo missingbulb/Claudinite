@@ -122,19 +122,37 @@ function deniedCalls(entries) {
   return out;
 }
 
-// Every skill the session has loaded so far, in order of loading: the `input.skill`
-// of each `Skill` tool_use block on an assistant entry, and the name of any skill
-// whose SKILL.md a `Read` tool_use opened — the body reached the context either
-// way. Subagent (sidechain) entries count: a skill a delegated edit loaded was
+// Every skill the session has loaded so far, in order of loading — the body
+// reached the context by any of three routes:
+//  - the `input.skill` of a `Skill` tool_use block on an assistant entry;
+//  - a `Read` tool_use that opened the skill's own SKILL.md;
+//  - a slash command the owner typed (`/do-later …`), which the harness expands
+//    itself and records as a `<command-name>` block in the user turn rather than
+//    as any tool call — the Skill tool's own contract: "if a `<command-name>`
+//    block is already present this turn, the skill is loaded". The leading
+//    slash is dropped; a plugin prefix (`plugin:skill`) is kept, so a plugin's
+//    skill never passes for a pack's skill of the same bare name.
+// Subagent (sidechain) entries count: a skill a delegated edit loaded was
 // loaded for that edit.
+// The usage fold reads the same block with its own `commandName`
+// (packs/claudinite-tasks/tasks/usage-fold/fold-usage.mjs): a pack cannot
+// depend on a fresh engine export, since the two lanes deliver on separate
+// cadences, so the grammar is spelled twice and a drift guard in
+// engine-tests/pack_loader/path-scoped-skills.test.mjs holds them together.
 const SKILL_FILE = /(?:^|\/)skills\/([^/]+)\/SKILL\.md$/;
+const COMMAND_NAME = /<command-name>\s*\/?([A-Za-z0-9:_-]+)\s*<\/command-name>/g;
 
 export function skillLoads(entries) {
   const names = [];
   for (const entry of entries ?? []) {
-    if (entry?.type !== 'assistant') continue;
-    const content = entry.message?.content;
-    if (!Array.isArray(content)) continue;
+    const content = entry?.message?.content;
+    if (entry?.type === 'user') {
+      const text = typeof content === 'string' ? content
+        : Array.isArray(content) ? content.map((b) => (typeof b?.text === 'string' ? b.text : '')).join('\n') : '';
+      for (const m of text.matchAll(COMMAND_NAME)) names.push(m[1]);
+      continue;
+    }
+    if (entry?.type !== 'assistant' || !Array.isArray(content)) continue;
     for (const block of content) {
       if (block?.type !== 'tool_use') continue;
       if (block.name === 'Skill' && typeof block.input?.skill === 'string') names.push(block.input.skill);
