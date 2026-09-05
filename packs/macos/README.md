@@ -24,7 +24,7 @@ mechanics for the CI that runs the lane).
 | A drag-install DMG is a staged folder | medium | complexity | prose: 55 words |
 | Write the Gatekeeper bypass users actually have | medium | correctness | prose: 51 words |
 | Diagnostics belong inside the shipped app | medium | complexity | prose: 33 words |
-| command -v swift doesn't test the toolchain | medium | correctness | prose: 62 words |
+| command -v swift doesn't test the toolchain | medium | correctness | prose: 62 words + check (`swift-toolchain-gate`) |
 | NSApplication installs no signal handlers. | high | correctness | prose: 75 words + check (`signal-teardown-routing`) |
 | An uncaught Objective-C exception is an exit | high | correctness | prose: 63 words |
 | There is no wake notification | high | correctness | prose: 57 words |
@@ -58,8 +58,9 @@ actually follow is the sign the signing lane isn't running.
 | `sudden-termination-vs-teardown` | high | correctness | check: blocking |
 | `signal-teardown-routing` | high | correctness | check: blocking |
 | `minimum-system-version-agrees` | high | correctness | check: blocking |
+| `swift-toolchain-gate` | high | correctness | check: blocking |
 
-Three checks, each on a rule whose static signature is false-positive-free *because the rule is
+Four checks, each on a rule whose static signature is false-positive-free *because the rule is
 itself conditional*: each fires only where the tree already shows the posture the rule is about —
 terminate-time teardown, an AppKit app that installs a capture tap, or a plist and a package
 manifest that both state an OS floor. The rest stays prose: runtime device behaviour, a CI lane's

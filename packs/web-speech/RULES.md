@@ -46,6 +46,17 @@
   `aborted`, `audio-capture`, else `other`. In particular `aborted` is the
   *self-inflicted* stop (you called `recognizer.abort()`), so the caller should
   ignore it rather than surface it as a failure.
+- **Turning `interimResults` on — use them as a "still speaking" signal, never as input.**
+  Interim hypotheses arrive on the *same* `result` event as the finished utterance and are
+  revised several times per utterance, so a handler that delivers
+  `results[i][0].transcript` acts on words the user had not finished saying, and acts again on
+  each revision. Gate delivery on `isFinal !== false`, and let the interim traffic drive only
+  the watchdog below.
+- **Hearing your own spoken output come back as a transcript — fix it in the application, not
+  at the capture layer.** Chrome's default echo cancellation is a loopback of *page* playout,
+  so it attenuates `speechSynthesis` and misses `chrome.tts` entirely, whose audio the OS
+  renders. Match the recognized text against what you just spoke and discard it; that guard is
+  the design, not a stopgap. (3)
 - **A missed endpoint mid-utterance needs a pause watchdog, not just `onend`.**
   If interim hypotheses exist but no final arrives, the engine may have lost the
   endpoint; a timer that fires after a pause discards the half-heard input and
@@ -60,7 +71,9 @@
   `getUserMedia` to raise the prompt. **Retry the capture bare** (`{ audio: true }`)
   if the first constrained call is rejected — a browser balking at the constraint
   *shape* must not be misread as a permission denial; only a second failure is a
-  real "denied".
+  real "denied". Run that preflight **even when the permission is already granted** —
+  skipping it leaves the device warmed, and echo cancellation confirmed, only on the very
+  first grant.
 
 ## Text-to-speech (`chrome.tts` / `speechSynthesis`)
 
@@ -82,7 +95,9 @@
   again next turn.
 - **Don't trust the OS/browser default voice — it's often the most robotic one
   installed.** Keep an ordered list of preferred voice names, take the first one
-  actually installed, and fall back to the default only when none match.
+  actually installed, and fall back to the default only when none match. Treat that order
+  and the speaking rate as user-facing settings with a modest default rather than constants
+  tuned once — they are taste, and taste is wrong often enough to be worth a control. (4)
 - **Resolve a `speak()` promise on *any* terminal event, and never reject.** For
   `chrome.tts` that's `end` / `interrupted` / `cancelled` / `error`; for
   `speechSynthesis` it's `onend` / `onerror`. Resolving (not rejecting) on error
