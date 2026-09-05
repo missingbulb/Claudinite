@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   WORK_PREFIX, workItemTitle, parseWorkItemTitle, isWorkItemTitle,
-  workItemBody, parseWorkItemBody, withNotBefore, withEndsWhen, withSection,
+  workItemBody, parseWorkItemBody, withNotBefore, withEndsWhen, withTarget, withSection,
   QUEUE_LABELS, STATE_LABELS, labelNames, hasLabel,
   DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
   TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
@@ -44,6 +44,9 @@ test('the body carries the task path first and the two scheduling fields', () =>
     model: null,
     merge: null,
     endsWhen: null,
+    targetBranch: null,
+    targetPr: null,
+    supersedes: [],
   });
   assert.match(body, /### Context\n- only the mount\n- nothing else/);
 });
@@ -52,7 +55,7 @@ test('absence is meaningful: no fields parse to null and an empty list', () => {
   const body = workItemBody({ taskPath: 'packs/x/tasks/y/task.md' });
   assert.deepEqual(parseWorkItemBody(body), {
     taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [], request: null, model: null, merge: null,
-    endsWhen: null,
+    endsWhen: null, targetBranch: null, targetPr: null, supersedes: [],
   });
 });
 
@@ -86,6 +89,45 @@ test('withEndsWhen stamps a park\'s end condition once, under the task path', ()
   const again = withEndsWhen(stamped, 140);
   assert.equal(parseWorkItemBody(again).endsWhen, 140);
   assert.equal((again.match(/^Ends-when:/gm) ?? []).length, 1);
+});
+
+// THE TARGET (DESIGN §6.4b): the executor decides which branch and pull request a
+// run works on and stamps it on the item at hand-off, so the agent reads it where
+// it reads everything else and never chooses its own. Same text surgery as the
+// other fields — the Context and the Delivered section belong to whoever wrote them.
+test('withTarget stamps the branch, the pull request and the superseded set, replacing what was there', () => {
+  const ran = withSection(workItemBody({ taskPath: 'p/t/task.md', context: ['scope'] }), DELIVERED_HEADING, ['Branch: `x`']);
+  const amend = withTarget(ran, { mode: 'amend', branch: 'claudinite/p/t/2026-09-04-ab12', pr: 41, supersedes: [] });
+  const fields = parseWorkItemBody(amend);
+  assert.equal(fields.targetBranch, 'claudinite/p/t/2026-09-04-ab12');
+  assert.equal(fields.targetPr, 41);
+  assert.deepEqual(fields.supersedes, []);
+  assert.match(amend, /### Context\n- scope/);
+  assert.match(amend, /Branch: `x`/);
+  assert.equal(amend.split('\n')[0], 'p/t/task.md');
+
+  // A re-pick re-resolves: the second stamp replaces the first rather than adding lines.
+  const fresh = withTarget(amend, { mode: 'fresh', branch: 'claudinite/p/t/2026-09-05-cd34', pr: null, supersedes: [41, 40] });
+  const again = parseWorkItemBody(fresh);
+  assert.equal(again.targetBranch, 'claudinite/p/t/2026-09-05-cd34');
+  assert.equal(again.targetPr, null, 'a fresh target names no pull request');
+  assert.deepEqual(again.supersedes, [41, 40]);
+  assert.equal((fresh.match(/^Target-branch:/gm) ?? []).length, 1);
+  assert.equal((fresh.match(/^Target-pr:/gm) ?? []).length, 0);
+
+  // No target at all clears every line, and a body that never had one is untouched.
+  const none = withTarget(fresh, { mode: 'none', branch: null, pr: null, supersedes: [] });
+  assert.deepEqual([parseWorkItemBody(none).targetBranch, parseWorkItemBody(none).targetPr, parseWorkItemBody(none).supersedes], [null, null, []]);
+  assert.equal(withTarget(ran, { mode: 'none', branch: null, pr: null, supersedes: [] }), ran);
+});
+
+test('the target fields land in a marked issue\'s machine block, never its prose', () => {
+  const marked = 'Please do the thing.\n\n<!-- claudinite-item -->\npacks/p/tasks/a/task.md\n\nRequest: #7\n<!-- /claudinite-item -->\n';
+  const stamped = withTarget(marked, { mode: 'fresh', branch: 'claudinite/p/a/2026-09-04-ef56', pr: null, supersedes: [2] });
+  assert.equal(parseWorkItemBody(stamped).targetBranch, 'claudinite/p/a/2026-09-04-ef56');
+  assert.deepEqual(parseWorkItemBody(stamped).supersedes, [2]);
+  assert.ok(stamped.startsWith('Please do the thing.\n'), 'the person\'s prose is untouched');
+  assert.equal(parseWorkItemBody(stamped).request, 7);
 });
 
 // The fencing every behaviour-defining field here gets: what the machinery cannot

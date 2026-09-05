@@ -26,7 +26,7 @@ test('usage-fold: daily/agentless/pr, on the two movement signals', () => {
   // across a three-day window, so only the newest rows' freshness moves.
   assert.equal(usageFold.frequency, 'daily');
   assert.equal(usageFold.agent_model, 'none');
-  assert.equal(usageFold.expected_outcome, 'pr'); // its policy is proven against this pack's merge rules in merge-policy.test.mjs
+  assert.equal(usageFold.expected_outcome, 'amend_existing_or_create_new_pr'); // a daily regenerate updates yesterday's unmerged fold rather than stacking a second // its policy is proven against this pack's merge rules in merge-policy.test.mjs
   // Derived, never declared: the conditions name what they read.
   assert.equal(usageFold.precondition_signals, undefined);
   assert.deepEqual(preconditionSignals(usageFold.preconditions, terms), ['commits', 'conversationLogs']);

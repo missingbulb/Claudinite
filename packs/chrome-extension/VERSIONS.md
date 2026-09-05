@@ -4,6 +4,7 @@ the version this file was introduced beside (60821.1); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr`. |
 | 60903.4 | 2026-09-03 | The tolerated `@main` advisory names the convergence window its tolerance ends on rather than a census of repos still making those calls (#1652). |
 | 60903.3 | 2026-09-03 | The pre-vendoring `@main` orchestrator shape now reports an advisory while the vendoring migration is live instead of returning silently: the tolerance's removal is gated on no repo still making those calls, and a repo that is never told it makes them is what holds that gate shut (#1637). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |

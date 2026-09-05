@@ -52,11 +52,11 @@ Two rules this task most easily breaks, because it is writing from *other* repos
 
 Strip the member (names, paths, and product concepts stay in the origin repo — a canon pack is written as if no particular repo existed); a technology mention is the point, a *product* mention is a defect.
 
-**One pack per PR.** A new pack earns its own review surface, so a run that finds two gaps opens two PRs.
+**One pack per run.** A new pack earns its own review surface, and a run delivers on one branch, so a run that finds two gaps authors the stronger one and names the other on the tracker for the next pass.
 
 ### 5. Open the PR
 
-Open a PR against `main` on a per-run-unique branch — never a direct push. Write surface is **`packs/` only**: the new pack's files and the `packs/README.md` index row. Don't "improve" unrelated packs while you're in there. Keep every commit and PR terse, and **put the issue reference in the commit message** (`Refs #<n>` for the tracker below), in the commit itself and not only the PR body.
+Deliver on the branch and pull request your item names — push to `Target-branch:`, and onto `Target-pr:` where one is named (the round then joins the review already pending); open the PR against `main` on that branch where none is named. Never a direct push, never a search for an open pull request, never a branch of your own. Write surface is **`packs/` only**: the new pack's files and the `packs/README.md` index row. Don't "improve" unrelated packs while you're in there. Keep every commit and PR terse, and **put the issue reference in the commit message** (`Refs #<n>` for the tracker below), in the commit itself and not only the PR body.
 
 ### 6. Tell the members that evidenced the pack
 

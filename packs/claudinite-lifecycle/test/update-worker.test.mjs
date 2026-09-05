@@ -139,6 +139,26 @@ test('the runner finds its incumbent by the same prefix it delivers on', async (
     'the delivered branch and the searched prefix are the same family');
 });
 
+// THE TARGET (tasks-dispatch DESIGN §6.4b). The executor resolves which branch this
+// run pushes to and which incumbents it supersedes, and hands the branch in as
+// `CLAUDINITE_TARGET_BRANCH`. Given one, the runner disposes of nothing and mints
+// nothing: that was the second decision site #1695 removed. The old path stands
+// only for an executor that predates the hand-off, until #1698 removes it.
+test('given a target branch, the runner neither disposes of an incumbent nor mints a branch of its own', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
+  const target = src.indexOf('CLAUDINITE_TARGET_BRANCH');
+  const disposal = src.indexOf('disposeOpenPull(');
+  const mint = src.indexOf('updateBranchName(day, seed)');
+  assert.ok(target > 0 && target < disposal, 'the target is read before the legacy disposal it guards');
+  // Both legacy sites sit under the guard on the target's absence.
+  const guardedDisposal = src.slice(src.lastIndexOf('if (!targetBranch)', disposal), disposal);
+  assert.ok(guardedDisposal.length > 0 && guardedDisposal.length < 1500, 'the disposal is inside the no-target branch');
+  assert.match(src.slice(mint - 200, mint + 40), /targetBranch \?\? updateBranchName\(day, seed\)/,
+    'the branch is the target when there is one, and the runner\'s own only when there is not');
+  assert.match(src.slice(target, disposal), /@legacy-tolerance advisory:none retire:#1698/, 'the held path names the link that removes it');
+});
+
 test('rehearsal mode announces that it converged, and the gate greps for it', async () => {
   // The canary rehearsal is "the required final step of any core change" — and it
   // silently rehearsed NOTHING from the day the canary flipped to `updates` until
@@ -188,7 +208,8 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
 
   // Merging must be within the ceiling, or the instruction below tells the session to
   // violate its own contract — verify-outcome.mjs would then fail every apply stage.
-  assert.equal(decl.expected_outcome, 'pr');
+  const { canonicalOutcome, opensPullRequest } = await import('../../claudinite-tasks/task-contract.mjs');
+  assert.ok(opensPullRequest(canonicalOutcome(decl.expected_outcome)), 'the declared outcome must let the run open a pull request');
 
   const land = brief.slice(brief.indexOf('## 5.'));
   assert.ok(land, 'the brief must still carry a §5');

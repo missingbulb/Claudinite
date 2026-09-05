@@ -77,6 +77,7 @@ test('S44 — the marked issue BECOMES the item, and any status holds the mark',
   assert.ok(machineBlockOf(adopt.body), 'the machine block is appended, never the whole body');
   assert.deepEqual(parseWorkItemBody(adopt.body), {
     taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: null, merge: null, endsWhen: null,
+    targetBranch: null, targetPr: null, supersedes: [],
   });
 
   // The item is structurally ad-hoc — a `manual` task, and a title that names no
@@ -452,7 +453,7 @@ test('the precondition is handed THIS occurrence\'s own facts, not just the sign
   };
   await drive(repo, req({ authorPermission: 'admin' }), { tasks: [spy] });
 
-  assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet', merge: null, endsWhen: null }]);
+  assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet', merge: null, endsWhen: null, targetBranch: null, targetPr: null, supersedes: [] }]);
 });
 
 test('the request task is the one task allowed to read its item\'s model', () => {
@@ -463,7 +464,7 @@ test('the request task is the one task allowed to read its item\'s model', () =>
   assert.equal(requestTask.model_from_request, true);
   // The ceiling PERMITS a merge (§16.11) — what decides whether one happens is the
   // item's `Merge:` field, asserted below, and the policy engine the worker runs.
-  assert.equal(requestTask.expected_outcome, 'pr');
+  assert.equal(requestTask.expected_outcome, 'fresh_pr');
   assert.equal(requestTask.code_work, undefined, 'and has no code-work phase to carry a payload');
 });
 

@@ -8,6 +8,7 @@ here forward adds its own row.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr`. |
 | 60902.3 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60902.2 | 2026-09-02 | The four fleet sweeps convert to `preconditions: ['none']`. Every input lives outside this repo, so no collector signal can predict the answer; the honest declaration is "always run, and no-op cheaply" (#1578). |
 | 60902.1 | 2026-09-02 | The README's two mentions of the member's `adopt-requested-packs` task being "ceilinged at `open-pr`" are corrected: that ceiling changed to landing unattended in #1453, and both mentions now say so instead of naming the retired outcome spelling (#1470). |

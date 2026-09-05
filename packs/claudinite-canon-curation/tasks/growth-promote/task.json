@@ -9,7 +9,7 @@
   "preconditions": [
     "fleet-local-packs-changed"
   ],
-  "expected_outcome": "pr",
+  "expected_outcome": "amend_existing_or_create_new_pr",
   "invocation_endpoint": "fleet",
   "agent_model": "opus",
   "agent_instructions": "task.md",

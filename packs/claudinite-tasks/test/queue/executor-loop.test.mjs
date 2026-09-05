@@ -13,12 +13,30 @@ const CONFIG = { taskScheduler: SCHEDULE, packConfig: {} };
 
 // A fake repo: issues with labels, bodies, comments and state, driven through the
 // same REST paths the shell calls.
-function fakeRepo(issues = []) {
-  const state = { issues: issues.map((i) => ({ comments: [], state: 'open', ...i })), commentSeq: 100, calls: [] };
+function fakeRepo(issues = [], pulls = []) {
+  const state = {
+    issues: issues.map((i) => ({ comments: [], state: 'open', ...i })), commentSeq: 100, calls: [],
+    pulls: pulls.map((p) => ({ comments: [], state: 'open', ...p })),
+  };
   const find = (n) => state.issues.find((i) => i.number === n);
+  const findPull = (n) => state.pulls.find((p) => p.number === n);
   const gh = async (path, { method = 'GET', body } = {}) => {
     state.calls.push(`${method} ${path}`);
     let m;
+    if (method === 'GET' && /^\/repos\/[^/]+\/[^/]+\/pulls\?/.test(path)) {
+      return { status: 200, json: state.pulls.filter((p) => p.state === 'open') };
+    }
+    if ((m = /^\/repos\/[^/]+\/[^/]+\/pulls\/(\d+)$/.exec(path))) {
+      const pr = findPull(Number(m[1]));
+      if (!pr) return { status: 404, json: null };
+      if (method === 'PATCH') Object.assign(pr, body);
+      return { status: 200, json: pr };
+    }
+    if (/\/git\/refs\/heads\//.test(path)) return { status: 204, json: null };
+    if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/(\d+)\/comments/.exec(path)) && !find(Number(m[1])) && findPull(Number(m[1]))) {
+      if (method === 'POST') findPull(Number(m[1])).comments.push({ body: body.body });
+      return { status: 201, json: {} };
+    }
     if (method === 'GET' && /^\/repos\/[^/]+\/[^/]+\/issues\?/.test(path)) {
       const page = Number(/[?&]page=(\d+)/.exec(path)?.[1] ?? 1); // NOT /page=/ — that matches per_page
       return { status: 200, json: page === 1 ? state.issues.filter((i) => i.state === 'open') : [] };
@@ -57,7 +75,7 @@ function fakeRepo(issues = []) {
     }
     return { status: 404, json: null };
   };
-  return { state, gh, find };
+  return { state, gh, find, findPull };
 }
 
 const workItem = (number, task, labels, body = null) => ({
@@ -75,7 +93,7 @@ const term = (holds) => new Map([['gate', { signals: [], holds }]]);
 const RUNS = term(() => ({ holds: true }));
 const task = (id, decl = {}, terms = RUNS) => ({
   pack: 'p', id, taskDir: process.cwd(), taskPath: `packs/p/tasks/${id}/task.md`,
-  decl: { id, frequency: 'daily', agent_model: 'sonnet', preconditions: ['gate'], ...decl },
+  decl: { id, frequency: 'daily', agent_model: 'sonnet', preconditions: ['gate'], expected_outcome: 'fresh_pr', ...decl },
   terms,
 });
 
@@ -92,6 +110,101 @@ const drive = (repo, tasks, over = {}) => runExecutor({
   invokeAgent: async () => ({ ok: true, sessionId: 's-1' }),
   log: () => {},
   ...over,
+});
+
+// --- the target (DESIGN §6.4b) ---------------------------------------------------
+// The executor decides which branch and pull request the run works on ONCE, after
+// the precondition's go and before code-work, and both phases are handed the
+// answer: code-work as environment, the agent as item fields.
+
+test('code-work is handed the target the executor resolved, minted under the task\'s prefix', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  const seen = [];
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runTaskCodeWork: async (t, { target }) => { seen.push(target); return { ok: true, agentRequested: false }; },
+  });
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].mode, 'fresh');
+  assert.match(seen[0].branch, /^claudinite\/p\/a\/2026-08-14-[a-z0-9]+$/);
+  assert.ok(!repo.state.calls.some((c) => /\/pulls/.test(c)), 'a fresh_pr target reads no pull request');
+});
+
+test('a supersede run closes the pull requests it was told to, once its own exists', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])], [{ number: 3, head: { ref: 'claudinite/p/a/2026-08-13-old', sha: 'x' } }]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60, expected_outcome: 'supersede_existing_pr' })], {
+    resolveTargetFor: async () => ({ mode: 'fresh', branch: 'claudinite/p/a/2026-08-14-new', pr: null, supersedes: [3], landed: null, reason: 'r' }),
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['PR: #7 (open)'], openPr: 7, deliveredPr: 7 }),
+  });
+  assert.equal(repo.findPull(3).state, 'closed');
+  assert.match(repo.findPull(3).comments.at(-1).body, /#7/);
+  assert.ok(repo.find(1).labels.includes('task:status:needs-human-approval'));
+});
+
+test('a supersede run that delivered no pull request leaves the incumbents where they were', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])], [{ number: 3, head: { ref: 'claudinite/p/a/2026-08-13-old', sha: 'x' } }]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60, expected_outcome: 'supersede_existing_pr' })], {
+    resolveTargetFor: async () => ({ mode: 'fresh', branch: 'claudinite/p/a/2026-08-14-new', pr: null, supersedes: [3], landed: null, reason: 'r' }),
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: false }),
+  });
+  assert.equal(repo.findPull(3).state, 'open');
+  assert.equal(repo.find(1).state, 'closed');
+});
+
+// The previous delivery had concluded green and was never landed. Resolution
+// lands it, and that IS this occurrence: the tree the run holds predates the
+// merge, so nothing runs and the item closes done saying what landed.
+test('a landed incumbent ends the occurrence without running the work', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])], [{ number: 2, head: { ref: 'claudinite/p/a/2026-08-12-older', sha: 'y' } }]);
+  let ran = 0;
+  const done = await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60, expected_outcome: 'supersede_existing_pr' })], {
+    resolveTargetFor: async () => ({ mode: 'none', branch: null, pr: null, supersedes: [2], landed: 5, reason: 'landed #5' }),
+    runTaskCodeWork: async () => { ran += 1; return { ok: true, agentRequested: false }; },
+  });
+  assert.equal(ran, 0);
+  assert.deepEqual(done, [{ issue: 1, outcome: 'task:status:done' }]);
+  const issue = repo.find(1);
+  assert.equal(issue.state, 'closed');
+  assert.match(issue.comments.at(-1).body, /#5/);
+  assert.match(issue.comments.at(-1).body, /claudinite-task-exec v1 p\/a \[#1\] success/);
+  assert.equal(repo.findPull(2).state, 'closed', 'the older incumbent is superseded by the landed one');
+});
+
+test('the hand-off stamps the target on the item, where the agent reads it', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  await drive(repo, [task('a', { expected_outcome: 'supersede_existing_pr' })], {
+    resolveTargetFor: async () => ({ mode: 'fresh', branch: 'claudinite/p/a/2026-08-14-new', pr: null, supersedes: [3, 4], landed: null, reason: 'r' }),
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: true }),
+  });
+  const fields = parseWorkItemBody(repo.find(1).body);
+  assert.equal(fields.targetBranch, 'claudinite/p/a/2026-08-14-new');
+  assert.equal(fields.targetPr, null);
+  assert.deepEqual(fields.supersedes, [3, 4], 'the agent\'s converge closes these once its own pull request exists');
+});
+
+test('a supersede already performed by code-work is not handed to the agent again', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])], [{ number: 3, head: { ref: 'claudinite/p/a/2026-08-13-old', sha: 'x' } }]);
+  await drive(repo, [task('a', { code_work: 'node w.mjs', code_work_timeout: 60, expected_outcome: 'supersede_existing_pr' })], {
+    resolveTargetFor: async () => ({ mode: 'fresh', branch: 'claudinite/p/a/2026-08-14-new', pr: null, supersedes: [3], landed: null, reason: 'r' }),
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: true, delivered: ['PR: #7 (open)'], openPr: 7, deliveredPr: 7 }),
+  });
+  assert.equal(repo.findPull(3).state, 'closed');
+  assert.deepEqual(parseWorkItemBody(repo.find(1).body).supersedes, []);
+  assert.equal(parseWorkItemBody(repo.find(1).body).targetBranch, 'claudinite/p/a/2026-08-14-new');
+});
+
+test('a target that could not be resolved parks the run, and nothing runs', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  let ran = 0;
+  const done = await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60, expected_outcome: 'amend_existing_or_create_new_pr' })], {
+    resolveTargetFor: async () => ({ error: 'could not list the open pull requests in o/r (500)' }),
+    runTaskCodeWork: async () => { ran += 1; return { ok: true, agentRequested: false }; },
+  });
+  assert.equal(ran, 0);
+  assert.deepEqual(done.map((d) => d.outcome), ['needs-human']);
+  const issue = repo.find(1);
+  assert.equal(issue.state, 'open');
+  assert.ok(issue.labels.includes('task:status:needs-human-failure'));
+  assert.match(issue.comments.at(-1).body, /could not list/);
 });
 
 test('a go verdict with agentless code_work closes the item task:status:done', async () => {

@@ -21,7 +21,7 @@ const item = (over = {}) => ({
 
 // A fake repo driven through the same REST paths the shell calls.
 function fakeRepo(issues) {
-  const state = { issues, comments: [], calls: [] };
+  const state = { issues, comments: [], calls: [], closedPulls: [] };
   const find = (n) => state.issues.find((i) => i.number === n);
   const gh = async (path, { method = 'GET', body } = {}) => {
     state.calls.push(`${method} ${path}`);
@@ -73,6 +73,7 @@ function run(repo, plan, over = {}) {
     else if (op.kind === 'addLabel') target.labels.push(op.name);
     else if (op.kind === 'setBody') target.body = op.body;
     else if (op.kind === 'close') { target.state = 'closed'; target.state_reason = op.stateReason; closed = true; }
+    else if (op.kind === 'closePull') repo.state.closedPulls.push({ number: op.number, successor: op.successor });
   }
   const { request } = parseWorkItemBody(item.body ?? '');
   return { ok: true, closed, request: request ?? null };
@@ -172,6 +173,38 @@ test('a park leaves the item open wearing the one park label', async () => {
   assert.equal(issue.state, 'open');
   // ONE label since the write-side flip: the park IS the status (#1119).
   assert.deepEqual(issue.labels.sort(), ['task:status:needs-human-failure']);
+});
+
+// --- superseding (DESIGN §6.4b) --------------------------------------------------
+
+// A `supersede_existing_pr` task's earlier pull requests close once THIS run's own
+// exists — never before, so a run that delivers nothing leaves a review member's
+// pending pull request where it was. The executor decided the set at resolution
+// and stamped it on the item; the session performs the closes it is handed.
+const superseding = () => item({ body: 'packs/p/tasks/a/task.md\n\nTarget-branch: claudinite/p/a/2026-09-04-ab12\nSupersedes: #3, #4\n' });
+
+test('a run that left its own pull request closes the ones the executor said it supersedes', async () => {
+  for (const outcome of ['done', 'approval']) {
+    const repo = fakeRepo([superseding()]);
+    run(repo, { issue: 7, outcome, summary: 'delivered', pr: 9 });
+    assert.deepEqual(repo.state.closedPulls, [{ number: 3, successor: 9 }, { number: 4, successor: 9 }], outcome);
+  }
+});
+
+test('a run that delivered no pull request, or broke, supersedes nothing', async () => {
+  const done = fakeRepo([superseding()]);
+  run(done, { issue: 7, outcome: 'done', summary: 'nothing to change' });
+  assert.deepEqual(done.state.closedPulls, []);
+  const failed = fakeRepo([superseding()]);
+  run(failed, { issue: 7, outcome: 'failure', summary: 'broke', pr: 9 });
+  assert.deepEqual(failed.state.closedPulls, []);
+});
+
+test('the session script spells each supersede as a comment and a state write on that pull request', () => {
+  const script = sessionScript(superseding(), { issue: 7, outcome: 'approval', summary: 'delivered', pr: 9 }, 'o/r');
+  assert.match(script, /pullNumber `3`[\s\S]*state `closed`/);
+  assert.match(script, /pullNumber `4`[\s\S]*state `closed`/);
+  assert.match(script, /superseded by #9/i);
 });
 
 // --- the park's end condition (#1468) ------------------------------------------

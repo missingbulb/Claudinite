@@ -14,7 +14,7 @@ import { evaluatePrecondition } from '../queue/executor.mjs';
 // path that no longer exists.
 
 const base = {
-  id: 'x', frequency: 'daily', agent_model: 'none', expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 60,
+  id: 'x', frequency: 'daily', agent_model: 'none', expected_outcome: 'no_code_changes', code_work: 'node worker.mjs', code_work_timeout: 60,
 };
 const whats = (decl) => validateTaskDeclaration(decl, new Map()).map((p) => p.what).join(' | ');
 

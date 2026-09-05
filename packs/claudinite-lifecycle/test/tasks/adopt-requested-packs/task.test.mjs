@@ -36,7 +36,7 @@ test('adopt-requested-packs: manual, sonnet, lands its PR', () => {
   // always be reviewed. The review never came — ClaudiniteCanary#133 sat parked for
   // eleven days — so the ceiling moved and this pin moves with the decision rather than
   // being loosened. The member's own checks still gate the merge.
-  assert.equal(decl.expected_outcome, 'pr');
+  assert.equal(decl.expected_outcome, 'fresh_pr');
   // `['none']`, not an empty signal list: nothing repo-side predicts this task's
   // answer, and the declaration says so in the one word for it.
   assert.deepEqual(decl.preconditions, ['none']);

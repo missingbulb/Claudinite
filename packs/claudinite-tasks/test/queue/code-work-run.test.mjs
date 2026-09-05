@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { deliveredLines, missingSecrets, taskEnv } from '../../queue/code-work-run.mjs';
+import { deliveredLines, missingSecrets, taskEnv, codeWorkEnv, CODE_WORK_ENV_VARS } from '../../queue/code-work-run.mjs';
 import { SECRETS_BAG_ENV } from '../../queue/secrets-bag.mjs';
 import { VARS_BAG_ENV } from '../../queue/vars-bag.mjs';
 
@@ -31,6 +31,23 @@ test('an ISSUE code_work resolved reaches the agent', () => {
 test('absence stays absence — no placeholder for what was not created', () => {
   for (const delivered of [null, undefined, {}, { pr: null, branch: null, issue: null }]) {
     assert.deepEqual(deliveredLines(delivered), [], JSON.stringify(delivered));
+  }
+});
+
+// THE TARGET RIDES THE ENV (DESIGN §6.4b): the executor resolved which branch and
+// pull request this run works on, and code-work reads it here rather than looking
+// for one itself. Three variables, present in every mode — an absent one would be
+// indistinguishable from a worker running under an older executor.
+test('code-work is handed the target the executor resolved, in every mode', () => {
+  const base = { root: '/r', repo: 'o/r', defaultBranch: 'main', task: { pack: 'p', id: 't' }, item: { number: 4 }, requestPath: '/tmp/x' };
+  const amend = codeWorkEnv({ ...base, target: { mode: 'amend', branch: 'claudinite/p/t/2026-09-04-ab12', pr: 41 } });
+  assert.equal(amend.CLAUDINITE_TARGET_MODE, 'amend');
+  assert.equal(amend.CLAUDINITE_TARGET_BRANCH, 'claudinite/p/t/2026-09-04-ab12');
+  assert.equal(amend.CLAUDINITE_TARGET_PR, '41');
+  const none = codeWorkEnv({ ...base, target: { mode: 'none', branch: null, pr: null } });
+  assert.deepEqual([none.CLAUDINITE_TARGET_MODE, none.CLAUDINITE_TARGET_BRANCH, none.CLAUDINITE_TARGET_PR], ['none', '', '']);
+  for (const name of ['CLAUDINITE_TARGET_MODE', 'CLAUDINITE_TARGET_BRANCH', 'CLAUDINITE_TARGET_PR']) {
+    assert.ok(CODE_WORK_ENV_VARS.includes(name), `${name} is in the contract the env check polices`);
   }
 });
 

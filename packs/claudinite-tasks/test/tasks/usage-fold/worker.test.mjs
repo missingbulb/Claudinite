@@ -118,3 +118,14 @@ test('a deepen that could not run says so, rather than passing for one that did'
   };
   assert.equal(deepenHistory(git, '/r', 'https://x/y', 'main', '2026-07-22T00:00:00Z'), 'unchanged');
 });
+
+// The executor resolves which branch and pull request the fold lands on (DESIGN
+// §6.4b) and hands it to code-work as environment; the worker passes it through to
+// the lane and reads nothing of its own about open pull requests.
+test('the fold hands the executor\'s target to the delivery lane', async () => {
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../../../tasks/usage-fold/worker.mjs', import.meta.url), 'utf8');
+  const call = src.slice(src.indexOf('deliverGenerated({'));
+  assert.match(call, /branch: process\.env\.CLAUDINITE_TARGET_BRANCH/);
+  assert.match(call, /pr: .*CLAUDINITE_TARGET_PR/);
+});
