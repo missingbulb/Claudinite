@@ -271,6 +271,29 @@ test('a task that has never had an item at all is also minted, not refused', () 
   assert.equal(create.length, 1);
 });
 
+test('a MANUAL task is never minted by a force — it wakes the items routed to it, or reports nothing', () => {
+  // A manual task has no standing item to stand in for: an item exists only because
+  // an issue named the task, and a bare one carries nothing its worker can read (#1721).
+  const lever = task('lever', 'manual');
+  const none = planWake('lever', [...wakeTasks, lever], []);
+  assert.deepEqual(none.create, []);
+  assert.deepEqual(none.wake, []);
+  assert.equal(none.unmatched.length, 1);
+  assert.match(none.unmatched[0].why, /manual/);
+  // An adopted issue routed to the task keeps its own title, so the force reaches it
+  // by the task path in its machine block — and leaves one in flight alone.
+  const routed = (number, status) => ({
+    number, title: `Verify in production: thing ${number}`, state: 'open',
+    labels: ['task:origin:ad-hoc', status],
+    body: `Task: p/lever\n\n<!-- claudinite-item -->\npacks/p/tasks/lever/task.md\n\nNot-before: 2026-09-05T21:07:20Z\n<!-- /claudinite-item -->\n`,
+  });
+  const some = planWake('lever', [...wakeTasks, lever], [routed(1708, 'task:status:blocked'), routed(1710, 'task:status:running-executor')]);
+  assert.deepEqual(some.create, []);
+  assert.deepEqual(some.unmatched, []);
+  assert.deepEqual(some.wake, [{ id: 'p/lever', issue: 1708 }]);
+  assert.deepEqual(some.already, [{ id: 'lever', issue: 1710 }]);
+});
+
 test('a minted item consumes the current occurrence, so the scheduler run does not double it', async () => {
   // It is titled with the task and nothing else for exactly this reason — that is
   // what makes it the standing item structurally, and an item outside the family
