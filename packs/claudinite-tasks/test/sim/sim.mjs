@@ -1094,7 +1094,22 @@ export function makeSim({
     // forcing a scheduled task = waking its standing item where one exists,
     // MINTING one where none does (DESIGN §8) — the common case once a decline
     // files nothing: for most of a quiet task's day there is no item to wake.
+    // A MANUAL task is never minted: the engine wakes the open items routed to
+    // it and reports nothing where there are none (#1721).
     force(taskId, { urgent = true } = {}) {
+      if (registry.get(taskId)?.frequency === 'manual') {
+        const routed = issues.filter((i) => i.taskId === taskId && i.state === 'open'
+          && !['task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent'].some((l) => is(i, l)));
+        for (const i of routed) {
+          i.notBefore = null;
+          if (is(i, 'task:status:blocked')) setStatus(i, READY);
+          if (isParked(i)) { setStatus(i, READY); endEpisode(i); }
+          record('force', { task: taskId, issue: i.number });
+        }
+        if (!routed.length) record('force', { task: taskId, issue: null, nothing: true });
+        else schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
+        return routed[0] ?? null;
+      }
       let it = standingItem(taskId);
       if (!it) {
         it = createIssue({ taskId, labels: ['task:status:waiting-for-executor'], urgent });
