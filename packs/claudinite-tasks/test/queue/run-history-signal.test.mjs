@@ -39,6 +39,26 @@ test('runs is a collector of its own, read off the queue the caller holds', asyn
   assert.equal(runs.list[2].createdAt, '2026-09-03T04:05:00Z');
 });
 
+// A run begins at the pick. An item still wearing the status it waited in was
+// never picked — open, or closed beside the terminal label the scheduler's
+// dedupe, orphan and supersede writes add (a person's close adds nothing). It
+// never ran and never declined, so it is not a run: counted, two twins would
+// decline each other at pick and a deduped one would spend the period on the
+// survivor (SCENARIOS F32), and a hand-closed item would stand between
+// `last-run-not-failed` and the failure park behind it.
+test('runs excludes an item nobody picked, open or closed; one declined at pick stays a run', async () => {
+  const items = [
+    item(14, { state: 'open', labels: ['task:status:running-agent', 'task:origin:planned'], created_at: '2026-09-05T15:00:00Z', closed_at: null }),
+    item(13, { state: 'open', labels: ['task:status:waiting-for-executor', 'task:origin:planned'], created_at: '2026-09-05T14:00:00Z', closed_at: null }),
+    item(12, { labels: ['task:status:rejected', 'task:origin:planned'], created_at: '2026-09-05T04:05:00Z', closed_at: '2026-09-05T04:20:00Z' }),
+    item(11, { labels: ['task:status:waiting-for-executor', 'task:status:rejected', 'task:origin:planned'], created_at: '2026-09-05T04:04:00Z', closed_at: '2026-09-05T04:05:30Z' }),
+    item(10, { labels: ['task:status:blocked', 'task:origin:planned'], created_at: '2026-09-04T04:05:00Z', closed_at: '2026-09-04T09:00:00Z' }),
+  ];
+  const { runs } = await collectSignals(noGh, ctx({ items }), ['runs']);
+  assert.deepEqual(runs.list.map((r) => r.number), [14, 12],
+    'the waiting twin (#13), the deduped twin (#11) and the hand-closed waiting item (#10) were never picked; the running item and the pick-time decline are runs');
+});
+
 test('runs excludes the item under evaluation — an item is never its own history', async () => {
   const items = [item(9), item(8, { created_at: '2026-09-05T04:05:00Z', closed_at: null, state: 'open', labels: ['task:status:running-executor'] })];
   const { runs } = await collectSignals(noGh, ctx({ items, item: { number: 8, woken: false } }), ['runs']);

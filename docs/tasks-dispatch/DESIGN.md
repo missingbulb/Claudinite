@@ -388,14 +388,20 @@ own task files, and the tolerance retires one convergence window after #1725
 ships.
 
 **A run.** To the history terms a run of task T is an **unqualified** item
-titled `[claudinite-work] <pack>/<task>` — whatever its origin and however it
-ended: done, rejected at pick, parked, still open. A qualified item (a fan-out
-target, a request naming its issue) is neither an occurrence of T nor evidence
-of one; it is invisible to the history, exactly as it is to the guards (§3).
-The item under evaluation is excluded, so at pick a task never reads its own
-occurrence as a prior run. A rejected item *is* a run — the task was asked and
-said yes, and `due:` counts it against the period — but it did nothing, so it
-does not move the signal window below.
+titled `[claudinite-work] <pack>/<task>` that an executor **picked** — whatever
+its origin and however it ended: done, rejected at pick, parked, still running.
+A qualified item (a fan-out target, a request naming its issue) is neither an
+occurrence of T nor evidence of one; it is invisible to the history, exactly
+as it is to the guards (§3). The item under evaluation is excluded, so at pick
+a task never reads its own occurrence as a prior run. A rejected item *is* a
+run — the task was asked and said yes, and `due:` counts it against the period
+— but it did nothing, so it does not move the signal window below. An item
+nobody picked is not a run: it still wears the status it waited in
+(`blocked`, `waiting-for-executor`), open or — closed by the scheduler's
+dedupe, orphan or supersede write, which adds the terminal label beside it,
+or by a person — closed. Read as runs, two twins would decline each other at
+pick and a deduped one would spend the period on its survivor (SCENARIOS
+F32); the `runs` collector drops them.
 
 **The run history is the queue.** The `runs` collector (`signals/index.mjs`)
 reads T's runs off the issue list, newest first, over a fixed horizon of

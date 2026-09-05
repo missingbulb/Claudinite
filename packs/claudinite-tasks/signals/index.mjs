@@ -12,7 +12,8 @@
 import { SHARED_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
 import { LOCAL_PACK_ROOT } from './local.mjs';
 import {
-  QUEUED_LABEL, ORIGIN_AD_HOC, REQUEST_LABEL, workItemTitle, statusOf, parkKindOf, outcomeOf, parseWorkItemBody,
+  QUEUED_LABEL, ORIGIN_AD_HOC, REQUEST_LABEL, STATUS_BLOCKED, STATUS_READY,
+  workItemTitle, statusOf, statusesOn, parkKindOf, outcomeOf, parseWorkItemBody,
 } from '../queue/work-item.mjs';
 import { isQueueItem } from '../queue/read.mjs';
 import { APPROVAL_RE } from '../built-in-tasks.mjs';
@@ -474,8 +475,17 @@ const COLLECTORS = {
     const title = workItemTitle({ pack: ctx.task.pack, task: ctx.task.id });
     const horizonIso = new Date(new Date(ctx.now).getTime() - RUN_HORIZON_DAYS * 86400e3).toISOString();
     const items = ctx.items ?? await readWorkItems(gh, ctx.repo, horizonIso);
+    // A run begins at the pick. An item nobody has picked yet, or that was closed
+    // before anyone picked it, still wears the status it waited in — open, or
+    // beside the terminal label the scheduler's dedupe, orphan and supersede
+    // writes add (a person's close adds nothing; the executor's own close always
+    // swaps it out). It never ran and never declined, so it is not a run:
+    // counted, two twins decline each other at pick and a deduped one spends the
+    // period on the survivor (SCENARIOS F32), and a hand-closed item stands
+    // between `last-run-not-failed` and the failure park behind it.
+    const unpicked = (i) => statusesOn(i).some((s) => s === STATUS_BLOCKED || s === STATUS_READY);
     const list = items
-      .filter((i) => String(i.title ?? '').trim() === title && i.number !== ctx.item?.number)
+      .filter((i) => String(i.title ?? '').trim() === title && i.number !== ctx.item?.number && !unpicked(i))
       .map((i) => ({
         number: i.number,
         createdAt: i.created_at,
