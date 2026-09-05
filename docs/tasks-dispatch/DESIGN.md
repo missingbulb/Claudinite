@@ -634,9 +634,42 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    head, are migration notes unapplied — with cadence carried by
    `frequency: daily-2h` and nothing else. The corpus enters the new mechanism
    with zero calendar preconditions.
+4b. **Resolve the target — which pull request this run works on** (owner,
+   2026-09-04, decision §15.32). A task's `expected_outcome` says what its run
+   does to pull requests, and the executor turns that into a concrete branch and
+   pull request **once**, here, between the go and the work — never in code-work
+   or the session, which used to decide it three different ways. The four words:
+
+   | `expected_outcome` | the run gets |
+   |---|---|
+   | `no_code_changes` | no branch, no pull request |
+   | `fresh_pr` | a freshly minted branch; the task's earlier pull requests are left as they are |
+   | `amend_existing_or_create_new_pr` | the task's newest open pull request's branch while that pull request has no conflicts with its base; a fresh branch otherwise |
+   | `supersede_existing_pr` | a fresh branch, and once the run's own pull request exists the task's earlier ones close as superseded. A green, unlanded incumbent on an auto-merge repo is **landed** instead, and that landing is the occurrence: the checkout predates the merge, so the item closes `done` and the next occurrence converges from the moved base |
+
+   A task's open pull requests are recognised two ways, either sufficient: the
+   branch prefix the executor mints, `claudinite/<pack>/<task>/`, or the
+   `Claudinite-Task:` trailer on the pull request's head commit — the authority
+   the movement signals already read, which is what still finds a pull request a
+   lane opened under its own name before the executor minted them.
+
+   The answer is handed to both phases: code-work as `CLAUDINITE_TARGET_MODE`
+   (`none` / `fresh` / `amend`), `CLAUDINITE_TARGET_BRANCH` and
+   `CLAUDINITE_TARGET_PR`; the agent as `Target-branch:` / `Target-pr:` /
+   `Supersedes:` fields in the item's machine block, stamped at the hand-off.
+   The lanes push to that branch and open or update that pull request; neither
+   discovers, chooses or disposes of one. Superseded pull requests close only
+   once the run's own pull request exists — the executor does it after
+   code-work delivered one, the session's converge does it when the agent did —
+   so a run that delivered nothing leaves a review member's pending pull request
+   where it was. A read the resolver could not make (an unreadable pull request
+   list) is a run failure like an unanswerable precondition (F27): "nothing to
+   amend" on that evidence stacks a duplicate. The two outcomes that involve no
+   existing pull request read nothing at all.
+
 5. **The work step**, Action-side, unchanged contract: subprocess, task dir
    cwd, `required_secrets` as env, timeout, `CLAUDINITE_REQUEST_AGENT`
-   conditional hand-off. **This step is the work, not preparation for it**
+   conditional hand-off, plus the target of step 4b as environment. **This step is the work, not preparation for it**
    (owner correction, 2026-08-15): for most of the fleet it is the whole task —
    long-running, crash-prone, PR-creating — and the agent phase is the
    sometimes-important judgment minority. The contract key is still spelled
@@ -1657,6 +1690,36 @@ deployment coupling did not:
     left; `isReleasable` and the scheduler run's job 2 are untouched and stay
     the sole releaser. (S33 rewritten to the new bound; S18 already covered a
     HAND close on this same backstop.)
+32. **The task declares what its run does to pull requests, and the executor
+    resolves it once** (owner, 2026-09-04,
+    [#1695](https://github.com/missingbulb/Claudinite/issues/1695)) — *changed
+    the design*: §6 gains step 4b. `expected_outcome` grows from a two-word
+    ceiling (`none` / `pr`) to four words — `no_code_changes`, `fresh_pr`,
+    `amend_existing_or_create_new_pr`, `supersede_existing_pr` — and which
+    branch and pull request a run works on is decided by the executor between
+    the precondition's go and the work step, then handed to both phases. The
+    alternatives, and why each lost:
+
+    - *Leave it to the lanes* (the status quo: the update worker disposing of
+      its own incumbent, the generated lane reusing by branch prefix, a session
+      picking its own branch). Three decisions in three places that drifted
+      independently, and no way for a task to say "append to my open pull
+      request" at all.
+    - *A separate `pr_output` field beside the ceiling.* Rejected: a ceiling of
+      `pr` plus a targeting policy is one axis said twice — every value of one
+      constrains the other — so one word carries both.
+    - *Keep the update worker's close-and-recut as its own concern.* Rejected
+      by the owner in favour of a fourth value: one decision site, no exception.
+      Its merge-a-green-incumbent branch survives inside `supersede_existing_pr`
+      because dropping it strands exactly the member whose CI outruns the
+      landing budget every day.
+
+    The retired `none`/`pr` normalize at the door and are advised by
+    `legacy-task-fields`, retiring under #1642 with the contract's other
+    tolerances; the lanes' own discovery survives only under an executor that
+    predates the hand-off, until #1698. The sim models no pull request content,
+    so the decision is pinned by `queue/target.test.mjs` and the executor loop's
+    tests rather than a scenario.
 
 ---
 

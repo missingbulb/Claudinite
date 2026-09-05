@@ -129,6 +129,7 @@ test's title in `scenarios.test.mjs`.
 | §15.29 one-issue requests: the mark-with-no-status guard, the one clearing lever, gated body parameters, terminals on an open issue | `S64`, `S44`, `S45`, `S47`, `S49`, `S51` |
 | §15.30 invocations are the cost unit: the batched drain, the conditional drain dispatch, the between-items hold check, the executions accounting | `S34`, `S36`, `S37` (the hold parks between items), `S65` (a working day's bill), `S66` (the quiet-day floor) |
 | §15.31 convergence must not write to other work items — reversing §15.19 | `S33` |
+| §15.32 the task declares what its run does to pull requests; the executor resolves the target once (#1695) | **unit** — the sim models no pull request content: `test/queue/target.test.mjs` (the planner's matrix, the I/O shell), `test/queue/executor-loop.test.mjs` (handed to code-work, stamped at hand-off, superseding after a delivered pull request, a landed incumbent ending the occurrence) |
 | §17 the cron's cadence: a day's work completes on 4 billed runs, not 27 | `S67` |
 | §17 `schedule_after:` is what orders a chain — collapsing the anchor hours costs ordering nothing | `S67` |
 | §17 ad-hoc latency IS the wait for the next tick; the second tick roughly halves it | `S68` |

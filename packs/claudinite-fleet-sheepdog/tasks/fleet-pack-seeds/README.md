@@ -45,7 +45,7 @@ A declared pack whose code is **not in the member's mount** is a blocking `confi
 
 One PUT to the member's default branch, guarded by the blob sha the read returned (the file moving under the run is a 409, which fails that member and is retried next run). It deliberately does *not* ride the maintenance-branch lane baselining delivers migrations on: there is no code in it, nothing to review, and it is idempotent. It does **reformat** the declaration it edits to canonical 2-space JSON — the shape `--init` writes — because it round-trips the file through JSON instead of editing settings as text.
 
-`expected_outcome: none` is therefore not a contradiction: the ceiling describes what a task may do to **its own** repo, and this task opens no PR here at all.
+`expected_outcome: no_code_changes` is therefore not a contradiction: the ceiling describes what a task may do to **its own** repo, and this task opens no PR here at all.
 
 ## A dormant member is not written to
 
@@ -83,7 +83,7 @@ config, not this pack.
 THE ONE SWEEP IN THIS PACK THAT WRITES. The others report a condition and converge an
 issue for a human; a seed carries no human decision (the fleet already made it, in
 this repo's config), so an issue asking someone to copy it into every member would be
-ceremony around a mechanical edit. Hence `expected_outcome: 'none'`: the write goes to
+ceremony around a mechanical edit. Hence `expected_outcome: 'no_code_changes'`: the write goes to
 OTHER repos, not this one, and the outcome ceiling describes what a task may do to its
 OWN repo — this task opens no PR here at all.
 

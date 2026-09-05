@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import rule from '../worldRules/legacy-task-fields.mjs';
-import { LEGACY_FIELDS, LEGACY_OUTCOMES, normalizeTaskDeclaration } from '../task-contract.mjs';
+import { LEGACY_FIELDS, LEGACY_OUTCOMES, LEGACY_CEILINGS, normalizeTaskDeclaration } from '../task-contract.mjs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -15,7 +15,7 @@ const declaration = (body) => `{\n  "id": "sweep",\n${body}}\n`;
 const moduleDeclaration = (body) => `export default {\n  id: 'sweep',\n${body}};\n`;
 
 test('legacy-task-fields: silent on a declaration in the current vocabulary', () => {
-  assert.deepEqual(run(declaration('  "code_work": "run.mjs",\n  "schedule_after": "other",\n  "expected_outcome": "pr"\n')), []);
+  assert.deepEqual(run(declaration('  "code_work": "run.mjs",\n  "schedule_after": "other",\n  "expected_outcome": "fresh_pr"\n')), []);
 });
 
 test('legacy-task-fields: reads task declarations only, in either form', () => {
@@ -47,7 +47,20 @@ test('legacy-task-fields: a retired outcome ceiling is reported as the pair it a
     assert.match(findings[0].what, new RegExp(`retired outcome ceiling \`${legacy}\``));
     assert.match(findings[0].fix, new RegExp(`automerge: '${policy}'`));
   }
-  assert.deepEqual(run(declaration('  "expected_outcome": "pr"\n')), []);
+  assert.deepEqual(run(declaration('  "expected_outcome": "fresh_pr"\n')), []);
+});
+
+// The two-word ceilings are the other retired generation: each became one of the
+// four words that say what the run does to pull requests, and the fix names it.
+test('legacy-task-fields: a two-word ceiling is reported as the word it became', () => {
+  assert.deepEqual(Object.keys(LEGACY_CEILINGS).sort(), ['none', 'pr']);
+  for (const [legacy, today] of Object.entries(LEGACY_CEILINGS)) {
+    const findings = run(declaration(`  "expected_outcome": "${legacy}"\n`));
+    assert.equal(findings.length, 1, legacy);
+    assert.match(findings[0].what, new RegExp(`retired outcome ceiling \`${legacy}\``));
+    assert.match(findings[0].fix, new RegExp(`expected_outcome: '${today}'`));
+    assert.equal(findings[0].severity, 'advisory');
+  }
 });
 
 // The advisory exists because the tolerance is invisible downstream: by the time
@@ -56,7 +69,8 @@ test('legacy-task-fields: what it reports is exactly what the door normalizes aw
   const normalized = normalizeTaskDeclaration({ prework: 'x', after: 'y', expected_outcome: 'open-pr' });
   assert.equal(normalized.prework, undefined);
   assert.equal(normalized.after, undefined);
-  assert.equal(normalized.expected_outcome, 'pr');
+  assert.equal(normalized.expected_outcome, 'fresh_pr');
+  assert.equal(normalizeTaskDeclaration({ expected_outcome: 'none' }).expected_outcome, 'no_code_changes');
 });
 
 test('legacy-task-fields: never blocking', () => {

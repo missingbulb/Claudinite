@@ -9,9 +9,9 @@ GitHub access is the session's **GitHub MCP tools** (`mcp__github__*`) — never
 "Default branch" below means the repo's actual default branch. The wiki set is derived **structurally**: every `README.md` at depth ≥ 2 under
 `product-wiki/`, excluding the `product-wiki/product-requirements/` and `product-wiki/sample-data/` subtrees.
 
-There is no preflight: whether this run happens was decided by the task's **precondition** (it declines while
-any open PR carries a pending change under `product-wiki/`, whoever opened it), so by the time you read this
-the round is granted. Your job is the research.
+There is no preflight: whether this run happens was decided by the task's **precondition** (it declines on a
+repo that saw no activity in the window), so by the time you read this the round is granted. Your job is
+the research.
 
 ## Method
 
@@ -47,9 +47,10 @@ Neither mode yields citable material → stop. No commit, no log entry, no PR.
 
 ## Delivery
 
-A unique branch per run, commits touching only `product-wiki/**` minus `product-requirements/`, one
-**PR — never a push to the default branch directly**. Its `product-wiki/` paths are what the next run's
-precondition sees, so nothing further has to be applied to it.
+Commits touching only `product-wiki/**` minus `product-requirements/`, on the branch your item names
+(`Target-branch:`), pushed onto `Target-pr:` where one is named — the round then joins the review already
+pending — and otherwise one **PR opened on that branch — never a push to the default branch directly**.
+Never search for an open pull request or pick a branch of your own.
 Then hand it to the one delivery procedure (`deliver-pr.md`) and do what it says. PR body: the question(s)
 researched, what changed where, the citations added, and the open questions left for the next run.
 

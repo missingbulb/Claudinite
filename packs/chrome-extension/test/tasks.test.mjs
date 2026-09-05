@@ -38,7 +38,7 @@ test('chrome-extension contributes store-release as a structural task, not a pac
 test('store-release: agentless (model none) — the preprocessing worker IS the task', () => {
   assert.equal(storeRelease.agent_model, 'none'); // the whole decision is code; no agent phase
   assert.equal(storeRelease.frequency, 'daily');
-  assert.equal(storeRelease.expected_outcome, 'none'); // it only triggers the gated publish workflow
+  assert.equal(storeRelease.expected_outcome, 'no_code_changes'); // it only triggers the gated publish workflow
   assert.deepEqual(storeRelease.preconditions, ['manifest-ahead || substantive-change']);
   // Derived from those two conditions, never declared beside them.
   assert.deepEqual(preconditionSignals(storeRelease.preconditions, terms), ['release', 'commits']);

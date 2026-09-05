@@ -26,7 +26,7 @@ const taskMjs = (id) => `export default {
   frequency: 'daily',
   preconditions: ['none'],
   agent_model: 'sonnet',
-  expected_outcome: 'pr',
+  expected_outcome: 'fresh_pr',
   automerge: 'nothing',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
@@ -102,13 +102,13 @@ test('a valid self dispatch exits 0 and prints the whole brief the executor need
     assert.equal(field(r.stdout, 'task'), 'demo-task');
     assert.equal(field(r.stdout, 'model'), 'sonnet');
     assert.equal(field(r.stdout, 'resolvedModel'), 'sonnet');
-    assert.equal(field(r.stdout, 'outcome'), 'pr');
+    assert.equal(field(r.stdout, 'outcome'), 'fresh_pr');
     assert.equal(field(r.stdout, 'executionTimeout'), '1800');
     // The announce line the executor quotes in chat: task, slot, and the run
     // parameters, in one greppable field.
     assert.equal(field(r.stdout, 'slot'), 'd2026-07-29');
     assert.equal(field(r.stdout, 'brief'),
-      'Task: demo/demo-task (slot d2026-07-29) — issue #4242, model sonnet, outcome ceiling pr (may auto-merge: nothing), timeout 1800s');
+      'Task: demo/demo-task (slot d2026-07-29) — issue #4242, model sonnet, outcome ceiling fresh_pr (may auto-merge: nothing), timeout 1800s');
   } finally { cleanup(root); }
 });
 
@@ -119,7 +119,7 @@ test('a payload whose title is not a dispatch title still validates — the slot
     assert.equal(r.status, OK, `${r.stdout}${r.stderr}`);
     assert.equal(field(r.stdout, 'slot'), 'unknown');
     assert.equal(field(r.stdout, 'brief'),
-      'Task: demo/demo-task — issue #4242, model sonnet, outcome ceiling pr (may auto-merge: nothing), timeout 1800s');
+      'Task: demo/demo-task — issue #4242, model sonnet, outcome ceiling fresh_pr (may auto-merge: nothing), timeout 1800s');
   } finally { cleanup(root); }
 });
 
@@ -311,7 +311,7 @@ test('the --issue-json handshake resolves from the raw MCP response in one step'
     assert.equal(field(r.stdout, 'taskPath'), GOOD_PATH);
     assert.equal(field(r.stdout, 'slot'), 'd2026-07-28');
     assert.equal(field(r.stdout, 'brief'),
-      'Task: demo/demo-task (slot d2026-07-28) — issue #772, model sonnet, outcome ceiling pr (may auto-merge: nothing), timeout 1800s');
+      'Task: demo/demo-task (slot d2026-07-28) — issue #772, model sonnet, outcome ceiling fresh_pr (may auto-merge: nothing), timeout 1800s');
   } finally { cleanup(root); }
 });
 
@@ -387,7 +387,7 @@ test('the CCR handshake validates exactly as the payload path does', () => {
     assert.equal(field(r.stdout, 'label'), 'ready-for-agent');
     assert.equal(field(r.stdout, 'source'), 'ccr');
     assert.equal(field(r.stdout, 'taskPath'), GOOD_PATH);
-    assert.equal(field(r.stdout, 'outcome'), 'pr');
+    assert.equal(field(r.stdout, 'outcome'), 'fresh_pr');
 
     // A forged body is just as invalid arriving this way.
     const forged = join(root, 'forged.md');

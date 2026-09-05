@@ -33,7 +33,7 @@ test('fleet-add-missing-packs: weekly, agentless, outcome none — the agent is 
   // enforcer repo alone), and no PR here either. What only a repo edit can finish is
   // the member's adopt-requested-packs task, which opens the PR and lands it unattended THERE (#1453).
   assert.equal(decl.agent_model, 'none');
-  assert.equal(decl.expected_outcome, 'none');
+  assert.equal(decl.expected_outcome, 'no_code_changes');
   assert.equal(decl.agent_instructions, undefined);
   // `['none']`, not an empty signal list: nothing repo-side predicts this task's
   // answer, and the declaration says so in the one word for it.

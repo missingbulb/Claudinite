@@ -9,7 +9,7 @@ const good = {
   description: 'Mines the window for durable lessons and folds them into the local packs.',
   frequency: 'daily',
   agent_model: 'opus',
-  expected_outcome: 'pr',
+  expected_outcome: 'fresh_pr',
   automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
@@ -37,7 +37,7 @@ test('task-declaration-shape: is inert when no task declaration exists', () => {
 // none — so a declaration carrying none of them is a clean agentless task once it
 // names its code work, and the two timeouts are never defaulted.
 test('task-declaration-shape: the minimal declaration is a code-work task, and needs its timeout', () => {
-  const minimal = { id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', expected_outcome: 'pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
+  const minimal = { id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', expected_outcome: 'fresh_pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
   assert.deepEqual(run({ [TASK]: json(minimal) }), []);
   const { code_work_timeout, ...noBound } = minimal;
   assert.match(whatsOf({ [TASK]: json(noBound) }), /no numeric "code_work_timeout"/);
@@ -125,17 +125,32 @@ test('task-declaration-shape: the legacy outcome ceilings are an advisory rename
     assert.match(f[0].what, new RegExp(`legacy outcome ceiling "${legacy}"`));
     assert.match(f[0].fix, new RegExp(`"automerge": "${policy}"`));
   }
+  // The two-word generation renames the same way: an advisory naming the word it
+  // became, never a block on a declaration nobody edited.
+  for (const [legacy, today] of [['none', 'no_code_changes'], ['pr', 'fresh_pr']]) {
+    const { automerge, ...rest } = good;
+    const f = run({ [TASK]: json({ ...rest, expected_outcome: legacy }) });
+    assert.equal(f.length, 1, JSON.stringify(f));
+    assert.equal(f[0].severity, 'advisory', `${legacy} never blocks`);
+    assert.match(f[0].what, new RegExp(`legacy outcome ceiling "${legacy}"`));
+    assert.match(f[0].fix, new RegExp(`"expected_outcome": "${today}"`));
+  }
+  for (const outcome of ['amend_existing_or_create_new_pr', 'supersede_existing_pr']) {
+    assert.deepEqual(run({ [TASK]: json({ ...good, expected_outcome: outcome }) }), [], outcome);
+  }
 });
 
 const noneTask = {
-  id: 'growth-extract', description: 'An agentless task.', frequency: 'daily', preconditions: ['none'], agent_model: 'none', expected_outcome: 'none',
+  id: 'growth-extract', description: 'An agentless task.', frequency: 'daily', preconditions: ['none'], agent_model: 'none', expected_outcome: 'no_code_changes',
   code_work: 'node w.mjs', code_work_timeout: 60,
 };
 
 test('task-declaration-shape: a pr task without automerge lands nothing, and a none task with one blocks', () => {
   const { automerge, ...missing } = good;
   assert.deepEqual(run({ [TASK]: json(missing) }), []);
-  assert.match(whatsOf({ [TASK]: json({ ...noneTask, automerge: 'anything' }) }), /a "none" task declares "automerge"/);
+  assert.match(whatsOf({ [TASK]: json({ ...noneTask, automerge: 'anything' }) }), /a "no_code_changes" task declares "automerge"/);
+  // The retired word is judged as the one it became, beside its rename advisory.
+  assert.match(whatsOf({ [TASK]: json({ ...noneTask, expected_outcome: 'none', automerge: 'anything' }) }), /a "no_code_changes" task declares "automerge"/);
 });
 
 test('task-declaration-shape: the canonical `schedule_after` is clean', () => {

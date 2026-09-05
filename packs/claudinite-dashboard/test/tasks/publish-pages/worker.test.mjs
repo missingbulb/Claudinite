@@ -16,7 +16,7 @@ test('the declaration is the contract\'s, and yields to the converge it publishe
   const decl = normalizeTaskDeclaration(declarationJson);
   assert.deepEqual(validateTaskDeclaration(decl, {}), []);
   assert.equal(decl.agent_model, 'none');
-  assert.equal(decl.expected_outcome, 'none', 'it opens no PR — its one write is the Pages branch');
+  assert.equal(decl.expected_outcome, 'no_code_changes', 'it opens no PR — its one write is the Pages branch');
   assert.deepEqual(decl.schedule_after, ['claudinite-lifecycle/update']);
 });
 

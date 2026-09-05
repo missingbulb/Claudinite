@@ -13,7 +13,7 @@ That one roster then answers two questions, each with its own issue family and i
 | is this repo a **member**? | [`adoption-issues.mjs`](adoption-issues.mjs) | an uncovered repo under the owner | `fleet-adoption` |
 | is that membership still **meaning** anything? | [`drift-issues.mjs`](drift-issues.mjs) | a covered member whose mount has fallen behind | `fleet-drift` |
 
-It **reports; it does not repair** — `expected_outcome: none`. Adoption issues open while a repo is uncovered, close `completed` once covered and `not planned` once excluded. Drift issues open while a member is unhealthy, close `completed` once fresh again and `not planned` once the repo leaves the fleet; an already-open one is re-commented only when its **root cause changes**, which is what lets this ride a daily cadence without turning every thread into a wall of identical notes.
+It **reports; it does not repair** — `expected_outcome: no_code_changes`. Adoption issues open while a repo is uncovered, close `completed` once covered and `not planned` once excluded. Drift issues open while a member is unhealthy, close `completed` once fresh again and `not planned` once the repo leaves the fleet; an already-open one is re-commented only when its **root cause changes**, which is what lets this ride a daily cadence without turning every thread into a wall of identical notes.
 
 ## Why one task
 

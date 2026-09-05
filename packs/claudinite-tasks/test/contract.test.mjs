@@ -25,7 +25,7 @@ const validTask = {
   id: 'growth-extract',
   frequency: 'daily',
   agent_model: 'opus',
-  expected_outcome: 'pr',
+  expected_outcome: 'fresh_pr',
   automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
@@ -226,7 +226,7 @@ test('validateTaskDeclaration rejects a non-object export', () => {
 });
 
 test('the contract enums are exactly the DESIGN vocabulary', () => {
-  assert.deepEqual(OUTCOMES, ['none', 'pr']);
+  assert.deepEqual(OUTCOMES, ['no_code_changes', 'fresh_pr', 'amend_existing_or_create_new_pr', 'supersede_existing_pr']);
   assert.ok(SIGNAL_NAMES.includes('fleet') && SIGNAL_NAMES.includes('sharedMount'));
 });
 
@@ -235,11 +235,20 @@ test('the contract enums are exactly the DESIGN vocabulary', () => {
 test('normalizeTaskDeclaration maps the legacy outcome ceilings onto the outcome/policy pair', () => {
   const { automerge, ...baseTask } = validTask;
   const open = normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'open-pr' });
-  assert.equal(open.expected_outcome, 'pr');
+  assert.equal(open.expected_outcome, 'fresh_pr');
   assert.equal(open.automerge, 'nothing');
   const merged = normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'merged-pr' });
-  assert.equal(merged.expected_outcome, 'pr');
+  assert.equal(merged.expected_outcome, 'fresh_pr');
   assert.equal(merged.automerge, 'anything');
+  // The two-word generation: `none` never opened one, `pr` opened a fresh one and
+  // left the task's earlier pull requests alone — which is what the words now say.
+  assert.equal(normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'none' }).expected_outcome, 'no_code_changes');
+  const pr = normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'pr' });
+  assert.equal(pr.expected_outcome, 'fresh_pr');
+  assert.equal(pr.automerge, 'nothing');
+  for (const outcome of OUTCOMES) {
+    assert.equal(normalizeTaskDeclaration({ ...baseTask, expected_outcome: outcome }).expected_outcome, outcome, `${outcome} is already canonical`);
+  }
   // An explicit policy beside a legacy spelling wins — a half-migrated declaration
   // keeps the narrower intent it states.
   const explicit = normalizeTaskDeclaration({
@@ -258,13 +267,21 @@ test('validateTaskDeclaration: a pr task that says nothing about automerge lands
 });
 
 test('validateTaskDeclaration: malformed policies and a policy on a none task are flagged', () => {
-  const pr = (policy) => validateTaskDeclaration({ ...validTask, expected_outcome: 'pr', automerge: policy });
+  const pr = (policy) => validateTaskDeclaration({ ...validTask, expected_outcome: 'fresh_pr', automerge: policy });
   assert.match(pr([])[0].what, /automerge/);
   assert.match(pr(['reject:js-code-changes'])[0].what, /automerge/);
   assert.match(pr('Not A Policy')[0].what, /automerge/);
-  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', code_work: 'node w.mjs', code_work_timeout: 60, automerge: 'anything' };
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'no_code_changes', code_work: 'node w.mjs', code_work_timeout: 60, automerge: 'anything' };
   delete none.agent_execution_timeout;
-  assert.match(validateTaskDeclaration(none)[0].what, /"none" task/);
+  assert.match(validateTaskDeclaration(none)[0].what, /"no_code_changes" task declares "automerge"/);
+  // Every outcome that opens a pull request takes a policy; the legacy `none` is
+  // judged as what it normalizes to.
+  for (const outcome of ['amend_existing_or_create_new_pr', 'supersede_existing_pr']) {
+    assert.deepEqual(validateTaskDeclaration({ ...validTask, expected_outcome: outcome }), [], outcome);
+    assert.equal(normalizeTaskDeclaration({ ...validTask, expected_outcome: outcome, automerge: undefined }).automerge, 'nothing', outcome);
+  }
+  assert.match(validateTaskDeclaration({ ...none, expected_outcome: 'none' })[0].what, /"no_code_changes" task declares "automerge"/);
+  assert.match(validateTaskDeclaration({ ...validTask, expected_outcome: 'push' })[0].what, /not a legal outcome ceiling/);
 });
 
 // --- validate-dispatch ---
@@ -301,7 +318,7 @@ test('validateDispatchBody accepts a well-formed dispatch and resolves model + o
   assert.equal(v.task, 'create-extractor');
   assert.equal(v.model, 'opus');
   assert.equal(v.resolvedModel, 'opus');
-  assert.equal(v.outcome, 'pr');
+  assert.equal(v.outcome, 'fresh_pr');
   assert.equal(v.automerge, 'anything');
   assert.equal(v.executionTimeout, 1800); // surfaced for the executor's best-effort bound (§6)
 });
@@ -360,19 +377,24 @@ test('verifyOutcome enforces each ceiling and always allows no-change', () => {
   // no-change is always legal
   for (const outcome of OUTCOMES) assert.deepEqual(verifyOutcome({ outcome }), { ok: true, violation: null });
 
-  // none must not open or merge
-  assert.equal(verifyOutcome({ outcome: 'none', openedPr: true }).ok, false);
-  assert.equal(verifyOutcome({ outcome: 'none', mergedPr: true }).ok, false);
+  // no_code_changes must not open or merge — under today's word and the retired one
+  for (const outcome of ['no_code_changes', 'none']) {
+    assert.equal(verifyOutcome({ outcome, openedPr: true }).ok, false);
+    assert.equal(verifyOutcome({ outcome, mergedPr: true }).ok, false);
+  }
 
-  // a pr task with nothing authorized (explicitly, or by omission) may open but not merge
-  assert.equal(verifyOutcome({ outcome: 'pr', openedPr: true }).ok, true);
-  assert.equal(verifyOutcome({ outcome: 'pr', automerge: 'nothing', mergedPr: true }).ok, false);
-  assert.equal(verifyOutcome({ outcome: 'pr', mergedPr: true }).ok, false);
+  // every outcome that opens a pull request, with nothing authorized (explicitly, or
+  // by omission), may open but not merge
+  for (const outcome of ['fresh_pr', 'amend_existing_or_create_new_pr', 'supersede_existing_pr', 'pr']) {
+    assert.equal(verifyOutcome({ outcome, openedPr: true }).ok, true, outcome);
+    assert.equal(verifyOutcome({ outcome, automerge: 'nothing', mergedPr: true }).ok, false, outcome);
+    assert.equal(verifyOutcome({ outcome, mergedPr: true }).ok, false, outcome);
+  }
 
   // an authorization — full or granular — permits the merge at this seam (the
   // diff-level verdict is the policy engine's, which sees the tree)
-  assert.equal(verifyOutcome({ outcome: 'pr', automerge: 'anything', mergedPr: true }).ok, true);
-  assert.equal(verifyOutcome({ outcome: 'pr', automerge: ['comment-only-changes'], mergedPr: true }).ok, true);
+  assert.equal(verifyOutcome({ outcome: 'fresh_pr', automerge: 'anything', mergedPr: true }).ok, true);
+  assert.equal(verifyOutcome({ outcome: 'amend_existing_or_create_new_pr', automerge: ['comment-only-changes'], mergedPr: true }).ok, true);
 
   // the legacy spellings keep their meaning — a fielded caller passing a raw
   // declaration's value is judged, never rejected as unknown

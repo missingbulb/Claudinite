@@ -29,7 +29,7 @@ test('fleet-baseline: manual, agentless, outcome none — an operator lever, not
   // runs is a work item created by hand.
   assert.equal(decl.frequency, 'manual');
   assert.equal(decl.agent_model, 'none');
-  assert.equal(decl.expected_outcome, 'none');
+  assert.equal(decl.expected_outcome, 'no_code_changes');
   // `['none']`, not an empty signal list: nothing repo-side predicts this task's
   // answer, and the declaration says so in the one word for it.
   assert.deepEqual(decl.preconditions, ['none']);

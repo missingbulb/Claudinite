@@ -25,7 +25,7 @@ test('the declaration is a valid manual agentless code-work task', () => {
   assert.equal(declaration.id, 'verify-production');
   assert.equal(declaration.frequency, 'manual', 'items exist only because a verification was filed');
   assert.equal(declaration.agent_model, 'none', 'the whole point: no session, so no egress wall');
-  assert.equal(declaration.expected_outcome, 'none', 'a verification has nothing to merge');
+  assert.equal(declaration.expected_outcome, 'no_code_changes', 'a verification has nothing to merge');
 });
 
 test('the precondition always runs — a filed verification is its own mandate', () => {

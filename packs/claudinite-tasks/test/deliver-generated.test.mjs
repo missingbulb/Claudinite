@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { baseTip, readAt, pushGenerated } from '../deliver-generated.mjs';
+import { baseTip, readAt, pushGenerated, generatedTarget } from '../deliver-generated.mjs';
 import { removeTree } from '../../../engine/remove-tree.mjs';
 
 // The PR half needs GitHub; the GIT half is where the risk lives and it is fully
@@ -108,4 +108,32 @@ test('the throwaway index is cleaned up even when the push fails', () => {
     }));
     assert.deepEqual(readFileSync(join(work, '.git/index')), before, "the repo's real index was never the one written");
   } finally { removeTree(dir); }
+});
+
+// --- which branch and pull request the regenerate lands on (DESIGN §6.4b) ---------
+// The executor resolved the target and handed it in; the lane takes it as given.
+// Without one — an executor that predates the hand-off — the prefix discovery it
+// used to do on its own stands, for the window #1698 closes.
+const open = [
+  { number: 40, head: { ref: 'claudinite/claudinite-tasks/usage-fold/2026-09-03-aa11' } },
+  { number: 41, head: { ref: 'claudinite/usage-fold/2026-09-02' } },
+  { number: 42, head: { ref: 'feature/other' } },
+];
+
+test('a handed-in target is taken as given: its pull request when it names one, a fresh one on its branch otherwise', () => {
+  const amend = generatedTarget({ pulls: open, branch: 'claudinite/claudinite-tasks/usage-fold/2026-09-03-aa11', pr: 40 });
+  assert.deepEqual([amend.branch, amend.pr?.number, amend.reused], ['claudinite/claudinite-tasks/usage-fold/2026-09-03-aa11', 40, true]);
+  const fresh = generatedTarget({ pulls: open, branch: 'claudinite/claudinite-tasks/usage-fold/2026-09-04-bb22', pr: null });
+  assert.deepEqual([fresh.branch, fresh.pr, fresh.reused], ['claudinite/claudinite-tasks/usage-fold/2026-09-04-bb22', null, false]);
+  // A named pull request the open list does not carry is not reused — it was closed
+  // under the run — and the branch it names is still the one to push to.
+  const gone = generatedTarget({ pulls: open, branch: 'claudinite/claudinite-tasks/usage-fold/2026-09-03-aa11', pr: 99 });
+  assert.deepEqual([gone.pr, gone.reused], [null, false]);
+});
+
+test('without a target the lane falls back to its own prefix discovery, as before', () => {
+  const found = generatedTarget({ pulls: open, branchPrefix: 'claudinite/usage-fold', stamp: '2026-09-04' });
+  assert.deepEqual([found.branch, found.pr?.number, found.reused], ['claudinite/usage-fold/2026-09-02', 41, true]);
+  const minted = generatedTarget({ pulls: [], branchPrefix: 'claudinite/usage-fold', stamp: '2026-09-04' });
+  assert.deepEqual([minted.branch, minted.pr, minted.reused], ['claudinite/usage-fold/2026-09-04', null, false]);
 });

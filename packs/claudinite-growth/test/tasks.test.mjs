@@ -48,7 +48,7 @@ test('the pack contributes its tasks structurally, not as a pack.mjs slot', () =
 test('prose-to-checks-sweep: weekly/opus/pr+nothing, no signals', () => {
   assert.equal(proseToChecks.frequency, 'weekly');
   assert.equal(proseToChecks.agent_model, 'opus');
-  assert.equal(proseToChecks.expected_outcome, 'pr'); // a check can break CI → its policy is review-only
+  assert.equal(proseToChecks.expected_outcome, 'amend_existing_or_create_new_pr'); // a check can break CI → its policy is review-only, and a round joins the review already pending
   assert.deepEqual(proseToChecks.preconditions, ['repo-active']);
 });
 
@@ -85,12 +85,15 @@ for (const [task, subject] of [[proseToChecks, PROSE_SUBJECT], [revalidation, RE
     assert.ok(!task.preconditions.some((c) => c.startsWith('no-open-pr-titled:')));
   });
 
-  // The subject is how a round FINDS the PR to append to, so the doc that tells it
-  // to deliver under that title is the one place it has to be right.
-  test(`${task.id}: the worker doc pins the subject a round delivers under`, () => {
+  // Which pull request a round works on is the executor's decision (tasks-dispatch
+  // DESIGN §6.4b): the doc delivers on the branch the item names and never goes
+  // looking for a standing PR itself. The subject still has to be right — it is
+  // the title the round opens under when the item names no pull request.
+  test(`${task.id}: the worker doc delivers on the item's target, never a standing PR it found itself`, () => {
     assert.ok(workerOf(task).includes(subject), `${task.id}/task.md does not pin its delivery subject`);
-    assert.match(workerOf(task), /If one exists, push this\s+round onto its branch|push this round onto its branch/,
-      `${task.id}/task.md must tell the round to append to the standing PR`);
+    assert.match(workerOf(task), /Target-branch:/, `${task.id}/task.md must deliver on the branch the item names`);
+    assert.doesNotMatch(workerOf(task), /Search the repo's OPEN pull requests/,
+      `${task.id}/task.md must not tell the round to find a standing PR — the executor resolved that`);
   });
 }
 
@@ -111,7 +114,7 @@ test('rule-revalidation: weekly/opus/pr+nothing, no signals (the calendar is the
   assert.equal(revalidation.agent_model, 'opus');
   // It rewrites the rules sessions obey, on evidence a reviewer cannot re-derive
   // from the diff — reviewed, like its two weekly siblings.
-  assert.equal(revalidation.expected_outcome, 'pr');
+  assert.equal(revalidation.expected_outcome, 'supersede_existing_pr'); // a later round's evidence replaces an unreviewed earlier one
   // Deliberately signal-less: the repo does NOT move when its claims expire, so a
   // signal arm would gate this task on exactly the wrong evidence.
   assert.deepEqual(revalidation.preconditions, ['repo-active']);
@@ -150,7 +153,7 @@ test('growth-extract: daily/opus/pr+automerge over the window signals alone', ()
   // The offset only ever implied the ordering; this is what enforces it.
   assert.deepEqual(extract.schedule_after, ['claudinite-lifecycle/update']);
   assert.equal(extract.agent_model, 'opus');
-  assert.equal(extract.expected_outcome, 'pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
+  assert.equal(extract.expected_outcome, 'amend_existing_or_create_new_pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
   // The logs signal left with the retention prune (logs-prune owns it now): this
   // task's only reason to run is activity, so a quiet night costs no opus dispatch.
   assert.deepEqual(extract.preconditions, ['substantive-change']);
@@ -216,7 +219,7 @@ test('growth-dedup: weekly/opus/pr+automerge — the prune PR is delivered to la
   assert.equal(dedup.agent_model, 'opus');
   // A ceiling, not a promise: a `review`-delivery member degrades this to
   // automerge: 'nothing', so the human gate is member config's call rather than hardcoded.
-  assert.equal(dedup.expected_outcome, 'pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
+  assert.equal(dedup.expected_outcome, 'supersede_existing_pr'); // its policy is proven against the built-in diff classes in task-policies.test.mjs
   assert.deepEqual(dedup.preconditions, ['mount-moved || commits-under:.claudinite/local']);
   assert.deepEqual(preconditionSignals(dedup.preconditions, new Map()), ['sharedMount', 'commits']);
 });
@@ -259,7 +262,7 @@ test('logs-prune: daily/agentless/none — its whole write is on a non-default b
   assert.equal(logsPrune.frequency, 'daily');
   assert.equal(logsPrune.agent_model, 'none');
   // No PR at all: remove commits on the logs branch sit outside the outcome taxonomy.
-  assert.equal(logsPrune.expected_outcome, 'none');
+  assert.equal(logsPrune.expected_outcome, 'no_code_changes');
   assert.deepEqual(logsPrune.preconditions, ['log-past-retention']);
   assert.deepEqual(preconditionSignals(logsPrune.preconditions, logsPruneTerms), ['conversationLogs']);
   // An agentless task's whole work is its preprocessing — with none it does nothing.

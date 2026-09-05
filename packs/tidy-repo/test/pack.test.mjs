@@ -51,7 +51,7 @@ test('every GitHub-object tidy task: id matches its dir, sonnet, outcome none, b
   for (const t of [tidyIssues, tidyPrs]) {
     assert.ok(existsSync(taskDir(t.id)), `${t.id} has no task directory of its own`);
     assert.equal(t.agent_model, 'sonnet');    // landed-status / implemented-in-main are judgment calls
-    assert.equal(t.expected_outcome, 'none'); // no GitHub-object dimension ever opens or merges a PR
+    assert.equal(t.expected_outcome, 'no_code_changes'); // no GitHub-object dimension ever opens or merges a PR
     assert.ok(Number.isInteger(t.agent_execution_timeout) && t.agent_execution_timeout > 0);
     assert.ok(existsSync(join(taskDir(t.id), t.agent_instructions)), `worker doc missing: ${t.id}/${t.agent_instructions}`);
   }

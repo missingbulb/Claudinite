@@ -473,32 +473,20 @@ test('wiki-growth precondition: it sleeps on a silent repo and resumes on the fi
 // review, and a second unreviewed round is never stacked on it. It reads the PR's
 // own CONTENT, so a human's wiki edit in flight gates the round exactly as the
 // task's own PR does.
-test('wiki-growth precondition: an active repo declines ONLY while a pending product-wiki PR is open', () => {
-  const withPr = verdict(active({
-    prs: { open: [{ number: 12, title: 'wiki round', changedPaths: ['product-wiki/Market/README.md'] }], touched: [] },
-  }));
-  assert.equal(withPr.run, false);
-  assert.match(withPr.reason, /#12/);
-  assert.match(withPr.reason, /product-wiki\//);
-
-  // A PR whose paths could not be read at all is unknown, not clear — the arm that
-  // makes the gate survive an unreadable file list and an engine that predates it.
-  for (const opaque of [{ number: 13, title: 'unreadable' }, { number: 13, title: 'unreadable', changedPaths: null }]) {
-    const v = verdict(active({ prs: { open: [opaque], touched: [] } }));
-    assert.equal(v.run, false);
-    assert.match(v.reason, /#13/);
-    assert.match(v.reason, /unknown/);
-  }
-
-  const clear = [
-    {},                                                                              // nothing pending
+test('wiki-growth precondition: a pending product-wiki PR no longer declines an active repo — the round amends it', () => {
+  // The gate that stood here existed so an unreviewed round was never stacked on
+  // one in flight. `amend_existing_or_create_new_pr` is what now prevents the
+  // stack — the executor points the round at that pull request — so the
+  // precondition is the activity umbrella alone and the pending PR is scope, not
+  // a reason to wait.
+  assert.ok(!wikiGrowth.preconditions.some((c) => c.startsWith('no-open-pr-')), 'no pending-PR term remains');
+  const pending = [
+    { prs: { open: [{ number: 12, title: 'wiki round', changedPaths: ['product-wiki/Market/README.md'] }], touched: [] } },
+    { prs: { open: [{ number: 13, title: 'unreadable' }], touched: [] } },
+    {},
     { prs: { open: [{ number: 9, title: 'other', changedPaths: ['src/app.js'] }], touched: [] } },
-    { prs: { open: [{ number: 9, title: 'empty diff', changedPaths: [] }], touched: [] } },
-    // root-anchored: a nested directory of the same name, or a sibling whose name
-    // merely starts the same, is not the tree
-    { prs: { open: [{ number: 9, title: 'lookalike', changedPaths: ['docs/product-wiki/README.md', 'product-wikis/x.md'] }], touched: [] } },
   ];
-  for (const over of clear) {
+  for (const over of pending) {
     const v = verdict(active(over));
     assert.equal(v.run, true, `declined for ${JSON.stringify(over)}`);
     assert.ok(Array.isArray(v.context), 'context is always an array, even when empty');

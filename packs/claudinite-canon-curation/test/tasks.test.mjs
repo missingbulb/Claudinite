@@ -41,7 +41,7 @@ const member = (over = {}) => ({
 test('growth-promote: declaration is daily/opus/pr+nothing over the fleet signal', () => {
   assert.equal(promote.frequency, 'daily');
   assert.equal(promote.agent_model, 'opus');
-  assert.equal(promote.expected_outcome, 'pr'); // owner-gated: its policy authorizes nothing to auto-merge
+  assert.equal(promote.expected_outcome, 'amend_existing_or_create_new_pr'); // owner-gated: its policy authorizes nothing to auto-merge, and a round joins the review already pending
   // Derived from the one condition it states, never declared beside it.
   assert.deepEqual(promote.preconditions, ['fleet-local-packs-changed']);
   assert.deepEqual(preconditionSignals(promote.preconditions, promoteTerms), ['fleet']);
@@ -95,7 +95,7 @@ test('growth-discover-packs: declaration is weekly/opus/pr+nothing, fleet-reachi
   assert.equal(discover.id, 'growth-discover-packs');
   assert.equal(discover.frequency, 'weekly');
   assert.equal(discover.agent_model, 'opus');
-  assert.equal(discover.expected_outcome, 'pr'); // a new canon pack is owner-reviewed: its policy authorizes nothing to auto-merge
+  assert.equal(discover.expected_outcome, 'amend_existing_or_create_new_pr'); // a new canon pack is owner-reviewed: its policy authorizes nothing to auto-merge, and a round joins the review already pending
   // Reach is which endpoint the hand-off calls, and nothing else — this task reads
   // every member's tree, which an ordinary session in this repo does not.
   assert.equal(discover.invocation_endpoint, 'fleet');
@@ -131,7 +131,7 @@ test('upstream-watch: a well-formed monthly, owner-gated declaration over no sig
   assert.equal(upstream.id, 'upstream-watch');
   assert.equal(upstream.frequency, 'monthly');
   assert.deepEqual(upstream.preconditions, ['none']); // the trigger is the outside world
-  assert.equal(upstream.expected_outcome, 'pr');
+  assert.equal(upstream.expected_outcome, 'fresh_pr');
   assert.equal(upstream.automerge, 'nothing');         // canon content every member reads
   // The shelf is the whole subject, so this one needs no reach past an ordinary session.
   assert.equal(upstream.invocation_endpoint, undefined);

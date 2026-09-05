@@ -73,7 +73,7 @@ test('parseDeclaration lifts the scalar fields', () => {
       id: 'ci-performance',
       frequency: 'weekly',
       agent_model: 'sonnet',
-      expected_outcome: 'pr',
+      expected_outcome: 'fresh_pr',
       code_work_timeout: 300,
       preconditions: ['substantive-change'],
     };
@@ -81,7 +81,7 @@ test('parseDeclaration lifts the scalar fields', () => {
   assert.equal(d.id, 'ci-performance');
   assert.equal(d.frequency, 'weekly');
   assert.equal(d.agent_model, 'sonnet');
-  assert.equal(d.expected_outcome, 'pr');
+  assert.equal(d.expected_outcome, 'fresh_pr');
   assert.equal(d.has_precondition, true);
 });
 
@@ -125,13 +125,13 @@ test('parseDeclaration reports an unreadable field as null, never a default', ()
 // The JSON form parses whole, and an omitted agentic field takes the contract's
 // default — the loader's door, not a guess of this page's.
 test('parseDeclaration reads a task.json, defaults filled', () => {
-  const d = parseDeclaration('{ "$schema": "x", "id": "tidy-prs", "frequency": "weekly", "preconditions": ["substantive-change"], "expected_outcome": "none" }', 'packs/tidy-repo/tasks/tidy-prs/task.json');
+  const d = parseDeclaration('{ "$schema": "x", "id": "tidy-prs", "frequency": "weekly", "preconditions": ["substantive-change"], "expected_outcome": "no_code_changes" }', 'packs/tidy-repo/tasks/tidy-prs/task.json');
   assert.equal(d.id, 'tidy-prs');
   assert.equal(d.frequency, 'weekly');
   assert.equal(d.agent_model, 'none');
   assert.equal(d.agent_execution_timeout, null);
   assert.equal(d.has_precondition, true);
-  const ungated = parseDeclaration('{ "id": "x", "frequency": "daily", "expected_outcome": "none" }', 'p/tasks/x/task.json');
+  const ungated = parseDeclaration('{ "id": "x", "frequency": "daily", "expected_outcome": "no_code_changes" }', 'p/tasks/x/task.json');
   assert.deepEqual(ungated.preconditions, ['none']);
   assert.equal(ungated.has_precondition, false);
   const broken = parseDeclaration('{ "id": ', 'packs/tidy-repo/tasks/tidy-prs/task.json');

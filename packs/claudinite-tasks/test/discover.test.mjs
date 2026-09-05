@@ -4,10 +4,10 @@ import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { discoverTasks } from '../discover.mjs';
 
 const packMjs = (id) => `export default { id: '${id}' };\n`;
-const taskJson = (id, over = {}) => `${JSON.stringify({ id, frequency: 'daily', expected_outcome: 'none', ...over })}\n`;
+const taskJson = (id, over = {}) => `${JSON.stringify({ id, frequency: 'daily', expected_outcome: 'no_code_changes', ...over })}\n`;
 // The retired module form, which still loads (task-declaration.mjs).
 const taskMjs = (id, over = {}) => {
-  const d = { id, frequency: 'daily', preconditions: ['none'], agent_model: 'sonnet', expected_outcome: 'none', agent_instructions: 'task.md', agent_execution_timeout: 900, ...over };
+  const d = { id, frequency: 'daily', preconditions: ['none'], agent_model: 'sonnet', expected_outcome: 'no_code_changes', agent_instructions: 'task.md', agent_execution_timeout: 900, ...over };
   const fields = Object.entries(d).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ');
   return `export default { ${fields} };\n`;
 };
@@ -15,7 +15,7 @@ const taskMjs = (id, over = {}) => {
 test('discoverTasks finds a declared local pack\'s tasks with the repo-relative task path', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
-    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha', { frequency: 'daily', agent_model: 'opus', expected_outcome: 'pr', automerge: 'anything' }),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha', { frequency: 'daily', agent_model: 'opus', expected_outcome: 'fresh_pr', automerge: 'anything' }),
     '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# alpha worker\n',
     '.claudinite/local/packs/mypack/tasks/beta/task.mjs': taskMjs('beta', { frequency: 'weekly' }),
     '.claudinite/local/packs/mypack/tasks/beta/task.md': '# beta worker\n',

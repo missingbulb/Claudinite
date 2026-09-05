@@ -32,7 +32,7 @@ test('fleet-roster: daily, agentless, and ceilinged at "none" — it opens issue
   assert.equal(decl.id, 'fleet-roster');           // must match its directory name (discover.mjs)
   assert.equal(decl.frequency, 'daily');
   assert.equal(decl.agent_model, 'none');
-  assert.equal(decl.expected_outcome, 'none');
+  assert.equal(decl.expected_outcome, 'no_code_changes');
   // `['none']`, not an empty signal list: nothing repo-side predicts this task's
   // answer, and the declaration says so in the one word for it.
   assert.deepEqual(decl.preconditions, ['none']);

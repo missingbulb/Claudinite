@@ -38,7 +38,7 @@ test('fleet-pack-seeds: daily, agentless, and ceilinged at "none" — its write 
   assert.equal(decl.agent_model, 'none');
   // Not a contradiction with a sweep that writes: the ceiling describes what a task may
   // do to its OWN repo, and this one opens no PR here at all.
-  assert.equal(decl.expected_outcome, 'none');
+  assert.equal(decl.expected_outcome, 'no_code_changes');
   // `['none']`, not an empty signal list: nothing repo-side predicts this task's
   // answer, and the declaration says so in the one word for it.
   assert.deepEqual(decl.preconditions, ['none']);

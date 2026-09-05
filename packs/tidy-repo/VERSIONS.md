@@ -5,6 +5,7 @@ the version this file was introduced beside (60820.1); earlier bumps are not bac
 
 | Version | Date | What changed |
 |---|---|---|
+| 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr` — except that `improve-comments` declares `amend_existing_or_create_new_pr` (owner, 2026-09-04), its `task.md` delivering on the branch and pull request the item names instead of searching for a standing pull request itself. |
 | 60903.3 | 2026-09-03 | A task's `task.md` opens on what the run does: the stage-labelling framing, the why-it-runs-centrally rationale and the skill procedure it already points at are gone. |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.2 | 2026-09-02 | `improve-comments` stops standing down while its previous round is in review: the round runs and appends to the open `Claudinite tidy: improve comments` PR, so one review covers several weeks of comment work. The pinned subject survives as how a round FINDS that PR rather than as a gate (#1611). |
