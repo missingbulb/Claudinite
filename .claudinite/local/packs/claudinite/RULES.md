@@ -426,21 +426,6 @@ Below are rules on how to work on this repo.
   file whose current state you are ready to throw away. `git checkout --` restores from the index,
   destroying uncommitted work just as thoroughly. (58)
 
-- **Running the test suite** — `node --test $(git ls-files '*.test.mjs')`. There is no test
-  script, and every hand-written glob under-runs it silently: `node --test <dir>` doesn't recurse,
-  and bash `**` without `globstar` reached 37 of 65 files. `ci.yml`'s array is not authoritative.
-
-- **Wanting a different slice of a suite run's output** — redirect one run to a file and grep that
-  file. Never re-run the ~55s suite to re-slice unchanged output. (59)
-
-- **Certifying a run green that covers a new test file** — `git add` it first. `git ls-files`
-  silently excludes an unstaged file, so the run may never have executed it. (60)
-
-- **Iterating on a sweep across many files** — run only the test files the edit touches, plus
-  `check_the_work`. Spend the whole suite and `check_the_world` once, at the end: both are
-  whole-tree aggregates whose verdict cannot turn on one file, and per-edit reruns took 25 of one
-  session's 26 minutes of tool wall-clock. (61)
-
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a miss is
   not. Survey by reading each file.
 
@@ -534,3 +519,8 @@ Below are rules on how to work on this repo.
 - **Writing a regex import-path rewriter for a bulk file-move** — anchor to real import/export
   syntax (line-start, or after a specific separator), never a bare `from '...'` searched across the
   whole text. A fixture embedding import syntax as string data matches identically and is corrupted.
+
+- **Running the prose-to-checks sweep here** — the worklist is
+  `docs/declarative-checks/rule-inventory.md`, every rule classified by the moment that could
+  carry it; convert from its A–F rows, and correct a mis-read row there, dated, rather than
+  re-deriving the class.

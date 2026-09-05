@@ -154,11 +154,11 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   restoring from it silently destroyed that work.
 - **(RULES-58)** #1010: `git checkout --` restores from the index, so it destroys uncommitted
   work in the same file just as thoroughly as the `.bak` above.
-- **(RULES-59)** #930/#931: five reruns of the ~55s suite cost 4.5 minutes to serve five
+- **(running-the-suite-1)** #930/#931: five reruns of the ~55s suite cost 4.5 minutes to serve five
   different greps of the same unchanged output.
-- **(RULES-60)** #1274: `git ls-files` excludes a test file created and not staged, so the run
+- **(running-the-suite-2)** #1274: `git ls-files` excludes a test file created and not staged, so the run
   that certified green may never have executed it.
-- **(RULES-61)** Measured across three sessions' tool wall-clock: #993's spent 18 full-suite
+- **(running-the-suite-3)** Measured across three sessions' tool wall-clock: #993's spent 18 full-suite
   runs (18 min) and 22 world sweeps (7 min) of 26 min, #941's 22 (22 min) and 27 (12 min) of 33
   min, #992's 7 and 8 of 14 min.
 - **(RULES-62)** Three misses in one window, one of each shape: `CLAUDINITE_TASKS_SUSPEND_ALL`

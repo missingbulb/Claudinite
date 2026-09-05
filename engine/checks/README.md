@@ -141,6 +141,21 @@ the change in front of the session, one about the repo as a whole:
   loop, judging what the session just did (and the conversation-surface rules, which only exist
   at Stop). On blocking findings it exits 2 so the session fixes them before stopping.
   Self-limiting: after blocking twice on identical findings it lets the stop through.
+- **Action scope → the PreToolUse hook, and the Stop hook again.** A declaration with
+  `scope: "action"` (`guardToolCalls`) is judged by [../hooks/pretooluse-command.mjs](../hooks/pretooluse-command.mjs)
+  against the call about to run — a blocking finding denies it and hands the agent the text, an
+  advisory one lets it run and injects the text as context — and by `check_the_work` over the
+  transcript's recorded calls at Stop, one finding per offending call: the backstop for a hook that
+  never fired, and the count the usage fold reads. The hook is registered on every tool
+  (`PRETOOLUSE_MATCHER`) and says nothing on a call no declaration names; each call pays the pack
+  load, about 150 ms.
+- **Trigger scope → the PreToolUse, UserPromptSubmit and PostToolUse hooks.** A skill names the
+  moments it must be loaded for under its frontmatter `metadata` — `force-load-on-file-edits-paths`,
+  `force-load-on-tool-calls`, `force-load-on-prompts-matching`, `force-load-on-tool-results-matching`
+  ([../pack_loader/path-scoped-skills.mjs](../pack_loader/path-scoped-skills.mjs)). An edit or a tool
+  call is held until the skill is loaded; a prompt or a result gets the load instruction injected.
+  Each fires once per session, and `skill-loaded-before-editing` catches at Stop what a hook never
+  saw.
 - **World scope → the project's test/CI flow.** The whole-repo sweep is a repo-wide invariant
   assertion — the same kind of thing a test suite is — and is only *meaningful* at a
   commit/verify boundary, not every turn. So [check_the_world.mjs](check_the_world.mjs) is wired
@@ -199,6 +214,14 @@ when the check needs what patterns can't say: real parsing (balanced braces, HTM
 TOML), git/diff/conversation state beyond the work assertions, or a cross-file comparison the
 two-pass keys cannot state (`extractValueSets` derives a named set from lines, paths or parsed
 fields; `checkSetValues`, `checkSetPairs` and `requireIdenticalFiles` quantify over it).
+
+**Prefer a schema over a declaration for a document's shape.** A rule that a JSON document must carry a
+field, take a value from a closed set, have a type, or carry nothing beyond a key set is a property of the
+JSON Schema the document points at with `"$schema": "<repo-relative path>"` — one place, read by the editor
+as the document is written and enforced by the `schema-conformance` check for every such document at once
+([helpers/json-schema.mjs](helpers/json-schema.mjs) validates the draft-2020 subset the corpus's schemas use).
+A `checkParsedFiles` assertion over a field is a schema check in disguise; reach for it only where a schema
+cannot say what the rule says — a relation between two documents, a value that depends on the tree.
 
 **Shared helpers carry mechanism, not policy.** A `engine/checks/helpers/` helper owns only the walking —
 resolve a file set, find the lines a pattern matches, list the change's added lines
