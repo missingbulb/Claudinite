@@ -971,6 +971,101 @@ export const FIXTURES = [
     },
   },
   {
+    name: 'voice-on-a-host-page',
+    why: 'a member declaring web-speech and host-page over conforming source — nine of their rules are blocking, and this proves code in the exact shape those rules are about (a recognizer, a TTS relay, a mic preflight, an observer, synthetic input) converges green rather than going red overnight on rules nobody asked for',
+    files: {
+      'README.md': '# fixture-voice-on-a-host-page\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'web-speech', 'host-page']),
+      // Deliberately the shape every one of the nine rules engages on, so the
+      // fixture proves them inert on a conforming member rather than passing
+      // because it dodged the gates. (That they FIRE is their own tests' job.)
+      //
+      // web-speech: a recognizer wired for all three terminal events, interim
+      // results gated on isFinal, a total error map, a preflight whose tracks are
+      // released in a finally, and mic constraints that are mic constraints.
+      'src/listen.js': `const ERROR_KINDS = (name) => {
+  switch (name) {
+    case 'not-allowed':
+    case 'service-not-allowed': return 'permission-denied';
+    case 'no-speech': return 'nothing-heard';
+    case 'network': return 'offline';
+    case 'aborted': return 'self-stopped';
+    default: return 'other';
+  }
+};
+
+export async function preflight(media) {
+  const stream = await media.getUserMedia({ audio: { echoCancellation: true } });
+  try {
+    return stream.getAudioTracks()[0].getSettings();
+  } finally {
+    stream.getTracks().forEach((track) => track.stop());
+  }
+}
+
+export function listen(onFinal, onKind) {
+  const rec = new webkitSpeechRecognition();
+  rec.interimResults = true;
+  rec.onresult = (event) => {
+    const result = event.results[event.resultIndex];
+    if (result.isFinal === false) return;
+    onFinal(result[0].transcript);
+  };
+  rec.addEventListener('end', () => onKind('nothing-heard'));
+  rec.addEventListener('error', (event) => onKind(ERROR_KINDS(event.error)));
+  rec.start();
+  // pagehide, not beforeunload: it fires on a bfcache freeze too, where a live
+  // recognizer would otherwise keep the microphone claimed on a suspended page.
+  addEventListener('pagehide', () => rec.abort());
+  return rec;
+}
+`,
+      // web-speech: a speak() that settles on every terminal outcome of both engines.
+      'src/speak.js': `export const speak = (text) => new Promise((resolve) => {
+  chrome.tts.speak(text, {
+    enqueue: false,
+    onEvent(event) {
+      if (['end', 'interrupted', 'cancelled', 'error'].includes(event.type)) resolve();
+    },
+  });
+});
+
+export const speakInPage = (text) => new Promise((resolve) => {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.onend = () => resolve();
+  utterance.onerror = () => resolve();
+  speechSynthesis.speak(utterance);
+});
+`,
+      // host-page: an observer that is disconnected, and synthetic input that
+      // bubbles and targets a node inside the app rather than document/body.
+      'src/adapter.js': `export function watch(root, onChange) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(root, { childList: true, subtree: true });
+  return () => observer.disconnect();
+}
+
+const keyEventInit = (key) => ({
+  key,
+  code: key,
+  keyCode: key.charCodeAt(0),
+  which: key.charCodeAt(0),
+  bubbles: true,
+  cancelable: true,
+  composed: true,
+});
+
+export function type(cell, key) {
+  cell.dispatchEvent(new KeyboardEvent('keydown', { ...keyEventInit(key) }));
+  cell.dispatchEvent(new KeyboardEvent('keyup', { ...keyEventInit(key) }));
+}
+
+export const click = (cell) =>
+  cell.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+`,
+    },
+  },
+  {
     name: 'canon-packs',
     why: 'no local pack at all — isolates canon-side breakage from local-pack breakage',
     files: {
@@ -1114,7 +1209,7 @@ export function attempt(fn) {
   },
   {
     name: 'macos-app',
-    why: 'a member declaring the macos pack over a conforming Mac app — the pack\'s two exit-path rules are blocking, and this proves an app in the shape they are about (AppKit, a capture tap, terminate-time teardown) converges green rather than going red overnight on a rule nobody asked for',
+    why: 'a member declaring the macos pack over a conforming Mac app — the pack\'s exit-path and toolchain-gate rules are blocking, and this proves an app in the shape they are about (AppKit, a capture tap, terminate-time teardown, a diagnostic script that probes for swift) converges green rather than going red overnight on a rule nobody asked for',
     files: {
       'README.md': '# fixture-macos-app\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics', 'macos']),
@@ -1171,6 +1266,19 @@ let signalSources = [SIGTERM, SIGINT, SIGHUP].map { sig -> DispatchSourceSignal 
 }
 
 NSApplication.shared.run()
+`,
+      // A diagnostic script in the shape swift-toolchain-gate is about: it probes
+      // for a toolchain, and it does so BEHIND the xcode-select gate. Without a
+      // file of this kind the rule scans nothing here and passes vacuously, which
+      // is the dodge this fixture set exists to refuse.
+      'scripts/diagnose.sh': `#!/bin/bash
+# \`command -v swift\` is NOT a usable test on its own: /usr/bin/swift is a stub
+# present on every Mac, so it succeeds where no toolchain is installed.
+if xcode-select -p >/dev/null 2>&1 && command -v swift >/dev/null 2>&1; then
+  swift run Diagnose
+else
+  echo "no developer tools; reading the log only"
+fi
 `,
       // No NSSupportsSuddenTermination: the app has teardown that must run.
       'Resources/Info.plist': `<?xml version="1.0" encoding="UTF-8"?>
