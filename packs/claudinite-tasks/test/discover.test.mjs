@@ -4,8 +4,9 @@ import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { discoverTasks } from '../discover.mjs';
 
 const packMjs = (id) => `export default { id: '${id}' };\n`;
-const taskJson = (id, over = {}) => `${JSON.stringify({ id, frequency: 'daily', expected_outcome: 'no_code_changes', ...over })}\n`;
-// The retired module form, which still loads (task-declaration.mjs).
+const taskJson = (id, over = {}) => `${JSON.stringify({ id, preconditions: ['due:daily'], expected_outcome: 'no_code_changes', ...over })}\n`;
+// The retired module form, which still loads (task-declaration.mjs) — and the
+// retired `frequency` field with it, which the door reads as its cadence term.
 const taskMjs = (id, over = {}) => {
   const d = { id, frequency: 'daily', preconditions: ['none'], agent_model: 'sonnet', expected_outcome: 'no_code_changes', agent_instructions: 'task.md', agent_execution_timeout: 900, ...over };
   const fields = Object.entries(d).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ');
@@ -27,10 +28,11 @@ test('discoverTasks finds a declared local pack\'s tasks with the repo-relative 
     assert.deepEqual(Object.keys(byId).sort(), ['alpha', 'beta']);
     assert.equal(byId.alpha.pack, 'mypack');
     assert.equal(byId.alpha.taskPath, '.claudinite/local/packs/mypack/tasks/alpha/task.md');
-    // The door: a retired spelling is normalized where the declaration is LOADED, so nothing
-    // downstream ever sees it (DESIGN §17.1).
-    assert.equal(byId.alpha.decl.frequency, 'daily');
-    assert.equal(byId.beta.decl.frequency, 'weekly');
+    // The door: the retired `frequency` field is read where the declaration is LOADED as the
+    // cadence term it meant, and nothing downstream ever sees the field (DESIGN §5).
+    assert.deepEqual(byId.alpha.decl.preconditions, ['due:daily']);
+    assert.deepEqual(byId.beta.decl.preconditions, ['due:weekly']);
+    assert.equal(byId.alpha.decl.frequency, undefined);
   } finally { cleanup(root); }
 });
 
@@ -49,7 +51,7 @@ test('discoverTasks skips tasks of an undeclared (inactive) pack', async () => {
 test('discoverTasks reports a malformed declaration and a dir/id mismatch as errors, not tasks', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
-    // bad frequency
+    // bad cadence
     '.claudinite/local/packs/mypack/tasks/bad/task.mjs': taskMjs('bad', { frequency: 'nightly' }),
     '.claudinite/local/packs/mypack/tasks/bad/task.md': '# w\n',
     // dir name != declared id
@@ -77,7 +79,7 @@ test('discoverTasks reads a task.json, with the defaults filled at the door', as
     const { tasks, errors } = await discoverTasks(root, { packs: ['local/mypack'] });
     const byId = Object.fromEntries(tasks.map((t) => [t.id, t]));
     assert.deepEqual(Object.keys(byId).sort(), ['alpha', 'beta']);
-    assert.deepEqual(byId.alpha.decl.preconditions, ['none'], 'run always, by default');
+    assert.deepEqual(byId.alpha.decl.preconditions, ['due:daily'], 'the expression is the author\'s — it has no default');
     assert.equal(byId.alpha.decl.$schema, undefined);
     assert.equal(byId.beta.decl.agent_model, 'none', 'no agent, by default');
     assert.equal(byId.alpha.taskPath, '.claudinite/local/packs/mypack/tasks/alpha/task.md');

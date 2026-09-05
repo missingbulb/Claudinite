@@ -23,8 +23,12 @@ const proseToChecks = normalizeTaskDeclaration(proseToChecksJson);
 const revalidation = normalizeTaskDeclaration(revalidationJson);
 
 const PACKS = join(dirname(fileURLToPath(import.meta.url)), '../..');
+// The task's cadence term reads its run history and the repo's schedule, which are
+// not what these cases are about: an empty history at the tick's own instant lets
+// every cadence hold, so what decides is the signal under test.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const verdictFor = async (decl, dir, signals) =>
-  evaluatePrecondition({ decl, terms: await loadTaskTerms(join(PACKS, dir)) }, signals);
+  evaluatePrecondition({ decl, terms: await loadTaskTerms(join(PACKS, dir)) }, { runs: { list: [] }, ...signals }, {}, null, '2026-07-22T00:00:00Z', SCHEDULE);
 
 // The collectors take an injected `ctx` — which makes them unit-testable with no
 // repo, and also makes it possible for a key NOTHING EVER SETS to look healthy

@@ -131,7 +131,12 @@ test('the member-side scheduler run resolves the very id this lever sends', asyn
   // member's own declared tasks. A bare id must be owned by exactly one canon pack,
   // or planWake refuses it as ambiguous and the force silently wakes nothing.
   const { planWake } = await import('../../../../claudinite-tasks/shared-code/wake.mjs');
-  const tasks = [{ pack: 'claudinite-lifecycle', id: FORCED_TASK }];
+  const { normalizeTaskDeclaration } = await import('../../../../claudinite-tasks/task-contract.mjs');
+  const { readFileSync } = await import('node:fs');
+  // The member's real declaration: a bare wake mints or wakes a SCHEDULED task's
+  // standing item, where a woken-gated one has nothing standing to reach.
+  const decl = normalizeTaskDeclaration(JSON.parse(readFileSync(join(ROOT, 'packs/claudinite-lifecycle/tasks/update/task.json'), 'utf8')));
+  const tasks = [{ pack: 'claudinite-lifecycle', id: FORCED_TASK, decl }];
   const items = [{
     number: 1, state: 'open', labels: ['task:blocked'],
     title: `[claudinite-work] core/${FORCED_TASK}`,

@@ -18,6 +18,13 @@
 // The conversion prints each block too. A field that is not data (the retired
 // `precondition()` function) is dropped, and named in the report line: the
 // contract rejects it either way.
+//
+// Beside the conversion, the second rewrite of the same files: the retired
+// `frequency` field (tasks-dispatch DESIGN §5, #1725) folded into `preconditions`
+// as the cadence term it always meant. Patched as ANCHORED TEXT, never re-serialized —
+// a member's task.json is its author's, and a round-trip would rewrite its layout
+// while nothing failed. The `task-cadence-terms` record runs it nightly; the CLI
+// runs it after the conversion.
 
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, relative, posix } from 'node:path';
@@ -41,7 +48,7 @@ export const CANON_PACK_ROOT = 'packs';
 // then the agent. A key not listed keeps its place after the listed ones.
 export const KEY_ORDER = [
   '$schema', 'id', 'description',
-  'frequency', 'schedule_after', 'preconditions',
+  'schedule_after', 'preconditions',
   'expected_outcome', 'automerge', 'on_interrupt', 'invocation_endpoint',
   'code_work', 'code_work_timeout', 'code_work_required_secrets',
   'agent_model', 'model_from_request', 'agent_instructions', 'agent_execution_timeout',
@@ -175,6 +182,121 @@ export function checkoutIo(root) {
   };
 }
 
+// --- the retired `frequency` field --------------------------------------------
+
+// What the field always meant, as the condition that now says it. The one mapping
+// the contract's door reads (`cadenceTermFor` in packs/claudinite-tasks/calendar.mjs),
+// spelled again here because the engine imports no pack; the engine test pins the
+// two to each other over every accepted value.
+const cadenceTermFor = (frequency) => (frequency === 'manual' ? 'woken' : `due:${frequency}`);
+
+// The field wherever it sits: on a line of its own (the converter's layout, and
+// nearly every hand-written one) or inline in a one-line object. The commas
+// around it are captured so the patch keeps exactly the separators the file needs.
+const FREQUENCY_FIELD = /(,[ \t]*)?"frequency"[ \t]*:[ \t]*"([^"]*)"([ \t]*,)?/;
+const PRECONDITIONS_ARRAY = /"preconditions"[ \t]*:[ \t]*\[([^\]]*)\]/;
+
+// Patch one task.json's text: the field goes, the cadence term leads the
+// `preconditions` list (created in the field's own place where the file stated
+// none), a `none` beside it drops, and the array keeps its own layout — inline or
+// one entry per line at its own indent. Returns `{ text, term, frequency }`, or
+// null where there is no field or where the patch would leave the file unparsable
+// (the file is then left alone; the contract reports it as it is).
+export function retireFrequencyText(source) {
+  const text = String(source ?? '');
+  const field = FREQUENCY_FIELD.exec(text);
+  if (!field) return null;
+  const frequency = field[2];
+  const term = cadenceTermFor(frequency);
+  const array = PRECONDITIONS_ARRAY.exec(text);
+
+  let out;
+  if (array) {
+    let stated;
+    try { stated = JSON.parse(`[${array[1]}]`); } catch { return null; }
+    if (!stated.every((e) => typeof e === 'string')) return null;
+    const kept = stated.filter((e) => e.trim() !== 'none');
+    const terms = kept.includes(term) ? kept : [term, ...kept];
+    const multiline = array[1].includes('\n');
+    const itemIndent = multiline ? (/\n([ \t]*)"/.exec(array[1])?.[1] ?? '    ') : null;
+    const closeIndent = multiline ? (/\n([ \t]*)$/.exec(array[1])?.[1] ?? '  ') : null;
+    const rendered = multiline
+      ? `"preconditions": [\n${terms.map((t) => `${itemIndent}${JSON.stringify(t)}`).join(',\n')}\n${closeIndent}]`
+      : `"preconditions": [${terms.map((t) => JSON.stringify(t)).join(', ')}]`;
+    out = text.replace(PRECONDITIONS_ARRAY, rendered);
+    out = withoutField(out);
+  } else {
+    // The field's own place becomes the list, its separators kept: a one-entry
+    // list on its own lines where the field had a line, inline where it was inline.
+    const [whole, leading = '', , trailing = ''] = field;
+    const lineStart = text.lastIndexOf('\n', field.index) + 1;
+    const indent = /^[ \t]*/.exec(text.slice(lineStart))[0];
+    const ownLine = text.slice(lineStart, field.index).trim() === '' && /^[ \t]*(\n|$)/.test(text.slice(field.index + whole.length));
+    const list = ownLine
+      ? `"preconditions": [\n${indent}  ${JSON.stringify(term)}\n${indent}]`
+      : `"preconditions": [${JSON.stringify(term)}]`;
+    out = text.slice(0, field.index) + leading + list + trailing + text.slice(field.index + whole.length);
+  }
+  try { JSON.parse(out); } catch { return null; }
+  return { text: out, term, frequency };
+}
+
+// Remove the field from text that already carries the list. A field alone on its
+// line takes the line with it — and, where it was the object's last key, the comma
+// the key before it carried; an inline field leaves exactly one separator behind.
+function withoutField(text) {
+  const f = FREQUENCY_FIELD.exec(text);
+  const [whole, leading, , trailing] = f;
+  const start = f.index;
+  const end = start + whole.length;
+  const lineStart = text.lastIndexOf('\n', start) + 1;
+  const lineEndAt = text.indexOf('\n', end);
+  const lineEnd = lineEndAt === -1 ? text.length : lineEndAt;
+  const restOfLine = text.slice(lineStart, start) + text.slice(end, lineEnd);
+  if (restOfLine.trim() === '') {
+    let before = text.slice(0, lineStart);
+    if (!trailing) before = before.replace(/,[ \t]*\n$/, '\n');
+    return before + text.slice(lineEnd + 1);
+  }
+  const separator = leading && trailing ? ',' : '';
+  return text.slice(0, start) + separator + text.slice(end).replace(/^[ \t]+(?=\S)/, leading && trailing ? ' ' : '');
+}
+
+// Every `<root>/<pack>/tasks/<task>/` directory under the given pack roots that
+// carries a task.json, repo-relative and posix.
+export function taskDirsWithJson(packRoots, { listDir, exists }) {
+  const out = [];
+  for (const root of packRoots) {
+    for (const pack of listDir(root) ?? []) {
+      const tasks = `${root}/${pack}/tasks`;
+      for (const task of listDir(tasks) ?? []) {
+        const dir = `${tasks}/${task}`;
+        if (exists(`${dir}/${TASK_JSON}`)) out.push(dir);
+      }
+    }
+  }
+  return out.sort();
+}
+
+// Rewrite the task.json in each directory that still carries the field. One
+// report line per file changed; a file the patch cannot make is reported and left.
+export async function retireTaskFrequency(taskDirs, io) {
+  const applied = [];
+  for (const dir of taskDirs) {
+    const json = `${dir}/${TASK_JSON}`;
+    const source = io.read(json);
+    if (source === null || !FREQUENCY_FIELD.test(source)) continue;
+    const patched = retireFrequencyText(source);
+    if (!patched) {
+      applied.push(`${json}: not rewritten — its "frequency" could not be folded into "preconditions" as text; edit it by hand`);
+      continue;
+    }
+    io.write(json, patched.text);
+    applied.push(`${json}: frequency "${patched.frequency}" → "${patched.term}", first in preconditions`);
+  }
+  return applied;
+}
+
 export async function main(argv = process.argv.slice(2)) {
   let root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const dirs = [];
@@ -183,11 +305,12 @@ export async function main(argv = process.argv.slice(2)) {
     else dirs.push(argv[i]);
   }
   const io = checkoutIo(root);
-  const targets = dirs.length
-    ? dirs.map((d) => posix.normalize(relative(root, join(root, d)).split('\\').join('/')))
-    : taskDirsWithModule([CANON_PACK_ROOT, LOCAL_PACK_ROOT], io);
+  const named = dirs.map((d) => posix.normalize(relative(root, join(root, d)).split('\\').join('/')));
+  const targets = dirs.length ? named : taskDirsWithModule([CANON_PACK_ROOT, LOCAL_PACK_ROOT], io);
   const applied = await convertTaskDeclarations(targets, io);
   console.log(applied.length ? applied.join('\n') : 'no task.mjs to convert');
+  const retired = await retireTaskFrequency(dirs.length ? named : taskDirsWithJson([CANON_PACK_ROOT, LOCAL_PACK_ROOT], io), io);
+  console.log(retired.length ? retired.join('\n') : 'no task.json carries a frequency');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

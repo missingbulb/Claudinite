@@ -19,8 +19,8 @@ const NOW = '2026-08-14T04:00:00Z';
 
 test('the stale-ready escalation counts the task\'s OWN declared period', () => {
   const periodFor = periodForTasks([
-    { pack: 'p', id: 'dailyish', decl: { frequency: 'daily' } },
-    { pack: 'p', id: 'weeklyish', decl: { frequency: 'weekly' } },
+    { pack: 'p', id: 'dailyish', decl: { preconditions: ['due:daily'] } },
+    { pack: 'p', id: 'weeklyish', decl: { preconditions: ['due:weekly', 'repo-active'] } },
   ]);
   const daily = it({ task: 'dailyish', labels: ['task:ready'], updated_at: '2026-08-11T01:00:00Z' });
   const weekly = it({ task: 'weeklyish', labels: ['task:ready'], updated_at: '2026-08-11T01:00:00Z' });
@@ -28,12 +28,13 @@ test('the stale-ready escalation counts the task\'s OWN declared period', () => 
   assert.deepEqual(staleReadyItems([daily, weekly], NOW, { periodFor }).map((i) => i.number), [daily.number]);
 });
 
-// The retired `hourly` spelling reads as `daily` at the door (DESIGN §17.1), and this rule is
-// exactly why the normalization cannot live in the calendar alone: judged on its raw token, a
-// member's un-converged `hourly` task would be called stale after two HOURS and parked
-// needs-human on every sweep — on precisely the members the tolerance exists to protect.
-test('a retired `hourly` declaration is judged on a DAY, not an hour', () => {
-  const periodFor = periodForTasks([{ pack: 'p', id: 'legacy', decl: { frequency: 'hourly' } }]);
+// A task that keeps no cadence term — asked at every tick, it runs on movement or
+// when woken — has no period of its own, and the rule counts it on a day: an
+// elapsed cadence counts on its own duration, never finer than the hours it states.
+test('a task with no cadence term is judged on a DAY, and an elapsed cadence on its own duration', () => {
+  const elapsed = periodForTasks([{ pack: 'p', id: 'paced', decl: { preconditions: ['last-run-over:2d'] } }]);
+  assert.equal(elapsed('p/paced'), 2 * 86_400_000);
+  const periodFor = periodForTasks([{ pack: 'p', id: 'legacy', decl: { preconditions: ['substantive-change'] } }]);
   const threeHours = it({ task: 'legacy', labels: ['task:ready'], updated_at: '2026-08-14T01:00:00Z' });
   assert.deepEqual(staleReadyItems([threeHours], NOW, { periodFor }), [], 'three hours is not stale');
 

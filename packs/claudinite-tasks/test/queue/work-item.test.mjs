@@ -9,6 +9,7 @@ import {
   NEEDS_HUMAN_FAILURE, triageLabelFor, isBlockingPark,
   TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, outcomeOf,
   LAST_VERDICT_HEADING, lastVerdictLines, parseLastVerdict,
+  withWoken, itemFacts,
 } from '../../queue/work-item.mjs';
 import { planSchedulerRun } from '../../queue/scheduler-run.mjs';
 import { convergeOps, OUTCOMES } from '../../queue/converge-item.mjs';
@@ -49,15 +50,40 @@ test('the body carries the task path first and the two scheduling fields', () =>
     targetBranch: null,
     targetPr: null,
     supersedes: [],
+    woken: null,
   });
   assert.match(body, /### Context\n- only the mount\n- nothing else/);
+});
+
+// WOKEN (DESIGN §5, §8): the lever's own stamp, and the one fact the cadence terms
+// and the `woken` term read off an item beside its origin and its title's shape.
+test('Woken is stamped by the lever, replaced on a second wake, and read as the item\'s facts', () => {
+  const body = workItemBody({ taskPath: 'packs/x/tasks/y/task.md', woken: '2026-09-05T10:00:00Z' });
+  assert.equal(parseWorkItemBody(body).woken, '2026-09-05T10:00:00Z');
+  const bare = workItemBody({ taskPath: 'packs/x/tasks/y/task.md', context: ['scope'] });
+  const once = withWoken(bare, '2026-09-05T11:00:00Z');
+  assert.equal(parseWorkItemBody(once).woken, '2026-09-05T11:00:00Z');
+  assert.match(once, /### Context\n- scope/, 'the sections belong to whoever wrote them');
+  const twice = withWoken(once, '2026-09-06T00:00:00Z');
+  assert.equal(parseWorkItemBody(twice).woken, '2026-09-06T00:00:00Z');
+  assert.equal((twice.match(/^Woken:/gm) ?? []).length, 1, 'one field, the later instant');
+
+  const facts = (item) => itemFacts({ number: 7, labels: [], body: bare, ...item });
+  assert.equal(facts({ title: '[claudinite-work] x/y', labels: ['task:origin:planned'] }).woken, false, 'the scheduler\'s own ask');
+  assert.equal(facts({ title: '[claudinite-work] x/y' }).woken, false, 'an unqualified item with no origin is an older engine\'s scheduled one');
+  assert.equal(facts({ title: '[claudinite-work] x/y', body: once }).woken, true, 'stamped');
+  assert.equal(facts({ title: '[claudinite-work] x/y', labels: ['task:origin:ad-hoc'] }).woken, true, 'born ad-hoc');
+  assert.equal(facts({ title: '[claudinite-work] x/y #12' }).woken, true, 'a qualified item is never the scheduler\'s');
+  assert.equal(facts({ title: 'Verify in production: a thing' }).woken, true, 'a marked issue');
+  assert.equal(facts({ title: '[claudinite-work] x/y' }).number, 7);
+  assert.equal(itemFacts(null), null);
 });
 
 test('absence is meaningful: no fields parse to null and an empty list', () => {
   const body = workItemBody({ taskPath: 'packs/x/tasks/y/task.md' });
   assert.deepEqual(parseWorkItemBody(body), {
     taskPath: 'packs/x/tasks/y/task.md', notBefore: null, blockedBy: [], request: null, model: null, merge: null,
-    endsWhen: null, targetBranch: null, targetPr: null, supersedes: [],
+    endsWhen: null, targetBranch: null, targetPr: null, supersedes: [], woken: null,
   });
 });
 

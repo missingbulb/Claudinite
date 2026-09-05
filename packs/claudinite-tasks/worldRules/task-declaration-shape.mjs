@@ -1,8 +1,10 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { FREQUENCIES } from '../../claudinite-tasks/calendar.mjs';
+import { ACCEPTED_FREQUENCIES, cadenceTermFor } from '../../claudinite-tasks/calendar.mjs';
 import { MODEL_FAMILIES } from '../../claudinite-tasks/model-map.mjs';
-import { OUTCOMES, LEGACY_OUTCOMES, LEGACY_CEILINGS, OUTCOME_NO_PR, DEFAULT_AGENT_MODEL, descriptionProblem } from '../../claudinite-tasks/task-contract.mjs';
+import {
+  OUTCOMES, LEGACY_OUTCOMES, LEGACY_CEILINGS, OUTCOME_NO_PR, DEFAULT_AGENT_MODEL, descriptionProblem, normalizeTaskDeclaration,
+} from '../../claudinite-tasks/task-contract.mjs';
 import { validatePreconditions, termsMap } from '../../claudinite-tasks/precondition-policy.mjs';
 import {
   TASK_DECLARATION_PATH_RE, isLegacyTaskDeclarationPath, readDeclarationFields,
@@ -12,7 +14,7 @@ import {
 // contract (per-project-scheduling DESIGN §1) with legal enum values. This
 // asserts that shape statically at author time — the executor and scheduler
 // validate the same contract at run time (task-contract.mjs), so an illegal
-// frequency/model/outcome, or a missing field, is caught here first.
+// condition/model/outcome, or a missing field, is caught here first.
 //
 // RELEVANCE FIRST (engine/checks/README.md): gated on a task declaration file
 // existing, so the check is inert on any repo without tasks. Static text over the
@@ -47,9 +49,9 @@ const isReExport = (text) => {
 const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
-  description: 'A tasks/<name>/task.json carries the task contract (id, description, frequency, expected_outcome) with legal enum values and a well-formed precondition expression; an agentic task names its worker file and bounds its run, and any code_work carries a timeout and stays task-local',
+  description: 'A tasks/<name>/task.json carries the task contract (id, description, preconditions, expected_outcome) with legal enum values and a well-formed precondition expression stating when the task runs; an agentic task names its worker file and bounds its run, and any code_work carries a timeout and stays task-local',
   doc: 'packs/claudinite-tasks/README.md',
-  why: 'the scheduler run and executor read agent_model/expected_outcome/frequency from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
+  why: 'the scheduler run and executor read agent_model/expected_outcome/preconditions from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
   run(ctx) {
     const out = [];
@@ -69,13 +71,13 @@ const rule = {
         advise('is a task.mjs, the retired module form of a task declaration',
           'convert it to task.json — node <engine>/migrations/task-declarations-to-json.mjs rewrites every task.mjs under the repo\'s packs and deletes the module');
         if (!/export\s+default\s*\{/.test(text)) {
-          flag('does not default-export a declaration object', 'convert it to a task.json carrying { id, frequency, preconditions, expected_outcome, … }');
+          flag('does not default-export a declaration object', 'convert it to a task.json carrying { id, description, preconditions, expected_outcome, … }');
           continue;
         }
       }
       const decl = readDeclarationFields(file, legacy ? stripComments(text) : text);
       if (decl.error) {
-        flag(`is not a JSON object: ${decl.error}`, 'write one JSON object: { "id", "frequency", "preconditions", "expected_outcome", … }');
+        flag(`is not a JSON object: ${decl.error}`, 'write one JSON object: { "id", "description", "preconditions", "expected_outcome", … }');
         continue;
       }
       const str = (key) => (typeof decl.scalar(key) === 'string' ? decl.scalar(key) : null);
@@ -86,7 +88,16 @@ const rule = {
         if (v === null) flag(`declares no "${key}"`, `add "${key}": one of ${legal.join(', ')}`);
         else if (!legal.includes(v)) flag(`"${key}" is "${v}", not a legal value`, `use one of: ${legal.join(', ')}`);
       };
-      enumField('frequency', FREQUENCIES);
+      // `frequency` is retired (tasks-dispatch DESIGN §5): the cadence is a condition
+      // in `preconditions`, and the door reads the field as exactly that term. ADVISORY
+      // for the same reason as every rename below — the file keeps working, and the
+      // nightly update rewrites a member's own — so what blocks is only a declaration
+      // that states no "when" at all.
+      const legacyFrequency = str('frequency');
+      if (decl.has('frequency')) {
+        advise('declares the retired field "frequency"',
+          `write it as the first condition — "preconditions": [${JSON.stringify(ACCEPTED_FREQUENCIES.includes(legacyFrequency) ? cadenceTermFor(legacyFrequency) : 'due:<daily|weekly|monthly>')}, …] — and drop a "none" beside it; the field reads as exactly that today`);
+      }
       // agent_model is OPTIONAL: absent means no agent (task-defaults.mjs), so the
       // checks below judge the model the task will actually run at.
       const declaredModel = str('agent_model');
@@ -146,15 +157,19 @@ const rule = {
       if (decl.has('precondition_signals')) {
         flag('declares "precondition_signals", which is retired', 'drop it — the signal union is derived from the conditions, each of which names what it reads');
       }
-      // Absent, the task runs always (task-defaults.mjs); declared, the expression
-      // is judged term by term.
-      if (decl.has('preconditions')) {
+      // The expression is the whole of when the task runs, so it is REQUIRED — a
+      // retired `frequency` stands in for it exactly as the door reads it, cadence
+      // term first and a `none` beside it dropped — and judged term by term.
+      if (!decl.has('preconditions') && !decl.has('frequency')) {
+        flag('declares no "preconditions"', 'add "preconditions": a cadence first where the task keeps one ("due:daily", "due:weekly", "last-run-over:7d"), "woken" for a task run only from an item somebody created, then what it waits for — e.g. ["due:daily", "substantive-change"]');
+      } else {
         // Deliberately strict: a declaration whose trigger is computed cannot be
         // audited by anyone reading it, which is the whole reason the field is data.
-        const expression = decl.list('preconditions');
-        if (expression === null) {
-          flag('"preconditions" is not a literal list of condition strings', 'write it as a literal, e.g. "preconditions": ["substantive-change"] — a computed expression is unreadable to this check and to the next person');
+        const stated = decl.has('preconditions') ? decl.list('preconditions') : [];
+        if (stated === null) {
+          flag('"preconditions" is not a literal list of condition strings', 'write it as a literal, e.g. "preconditions": ["due:daily", "substantive-change"] — a computed expression is unreadable to this check and to the next person');
         } else {
+          const expression = normalizeTaskDeclaration({ preconditions: stated, ...(decl.has('frequency') ? { frequency: legacyFrequency } : {}) }).preconditions;
           for (const problem of validatePreconditions(expression, siblingTerms(ctx, file))) flag(problem.what, problem.fix);
         }
       }

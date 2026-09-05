@@ -64,12 +64,26 @@ test('legacy-task-fields: a two-word ceiling is reported as the word it became',
 
 // The advisory exists because the tolerance is invisible downstream: by the time
 // anything holds a declaration, the door has already renamed the field away.
+test('legacy-task-fields: the retired frequency field is reported with the condition it reads as', () => {
+  for (const [field, term] of [['daily', 'due:daily'], ['weekly', 'due:weekly'], ['monthly', 'due:monthly'], ['manual', 'woken']]) {
+    const findings = run(declaration(`  "frequency": "${field}"\n`));
+    assert.equal(findings.length, 1, field);
+    assert.match(findings[0].what, /retired field `frequency`/);
+    assert.match(findings[0].fix, new RegExp(`"preconditions": \\["${term}", …\\]`));
+    assert.equal(findings[0].line, 3);
+  }
+  // The module form too, and a value the door cannot read still names the shape.
+  assert.equal(run(moduleDeclaration("  frequency: 'daily',\n"), { path: 'packs/own/tasks/sweep/task.mjs' }).length, 1);
+  assert.match(run(declaration('  "frequency": "hourly"\n'))[0].fix, /due:<daily\|weekly\|monthly>/);
+});
+
 test('legacy-task-fields: what it reports is exactly what the door normalizes away', () => {
   const normalized = normalizeTaskDeclaration({ prework: 'x', after: 'y', expected_outcome: 'open-pr' });
   assert.equal(normalized.prework, undefined);
   assert.equal(normalized.after, undefined);
   assert.equal(normalized.expected_outcome, 'fresh_pr');
   assert.equal(normalizeTaskDeclaration({ expected_outcome: 'none' }).expected_outcome, 'no_code_changes');
+  assert.equal(normalizeTaskDeclaration({ frequency: 'daily' }).frequency, undefined);
 });
 
 test('legacy-task-fields: never blocking', () => {

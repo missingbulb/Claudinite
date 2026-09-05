@@ -149,8 +149,10 @@ test('a comment-only edit inside .claudinite/ is still outside this pass\'s surf
 });
 
 test('the precondition never hands a round a .claudinite/ path, and stays silent when that is all there is', () => {
-  const S = (touched) => ({ prs: { open: [] }, commits: { substantiveChange: true, touchedPaths: touched } });
-  const verdict = (touched) => evaluatePrecondition({ decl: task }, S(touched));
+  // The cadence term reads an empty run history at a chosen instant, so it holds and
+  // the touched paths decide.
+  const S = (touched) => ({ runs: { list: [] }, prs: { open: [] }, commits: { substantiveChange: true, touchedPaths: touched } });
+  const verdict = (touched) => evaluatePrecondition({ decl: task }, S(touched), {}, null, '2026-09-05T16:00:00Z', { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 });
 
   const mixed = verdict(['.claudinite/shared/packs/basics/RULES.md', 'src/app.mjs']);
   assert.equal(mixed.run, true);

@@ -11,9 +11,18 @@
 
 import { SHARED_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
 import { LOCAL_PACK_ROOT } from './local.mjs';
-import { QUEUED_LABEL, ORIGIN_AD_HOC, REQUEST_LABEL } from '../queue/work-item.mjs';
+import {
+  QUEUED_LABEL, ORIGIN_AD_HOC, REQUEST_LABEL, workItemTitle, statusOf, parkKindOf, outcomeOf, parseWorkItemBody,
+} from '../queue/work-item.mjs';
+import { isQueueItem } from '../queue/read.mjs';
 import { APPROVAL_RE } from '../built-in-tasks.mjs';
 import { taskFromMessage } from '../task-trailer.mjs';
+
+// How far back the run history reads (tasks-dispatch DESIGN §5): the longest any
+// cadence term looks, a month, plus slack. A run older than this is not in the
+// record — a task then reads as not having run in that long, which is the honest
+// state-free answer. The scheduler's own queue read is bounded by the same figure.
+export const RUN_HORIZON_DAYS = 40;
 
 // A default-branch commit is genuine project work unless it is bot/CI
 // housekeeping or one of Claudinite's own automated writes — the same exclusions
@@ -450,10 +459,60 @@ const COLLECTORS = {
     };
   },
 
+  // THE RUN HISTORY (tasks-dispatch DESIGN §5): this task's own unqualified work
+  // items over the horizon, newest first, the item under evaluation excluded — what
+  // the cadence terms and the since-last-run window read. Off `ctx.items` where the
+  // caller already holds the queue (the scheduler run fetched it, so the whole
+  // repo's tasks cost no read); off the ISSUES list API otherwise (the executor at
+  // pick) — never the search index (S6/F11), and `since` bounded to the horizon so
+  // a long-lived repo's closed history is not paged.
+  //
+  // A qualified item (a fan-out target, a request naming its issue) is not a run of
+  // the task's standing occurrence and is not evidence of one; it is invisible here.
+  async runs(gh, ctx) {
+    if (!ctx.task?.pack || !ctx.task?.id) throw new Error('the runs collector needs the task whose history it reads');
+    const title = workItemTitle({ pack: ctx.task.pack, task: ctx.task.id });
+    const horizonIso = new Date(new Date(ctx.now).getTime() - RUN_HORIZON_DAYS * 86400e3).toISOString();
+    const items = ctx.items ?? await readWorkItems(gh, ctx.repo, horizonIso);
+    const list = items
+      .filter((i) => String(i.title ?? '').trim() === title && i.number !== ctx.item?.number)
+      .map((i) => ({
+        number: i.number,
+        createdAt: i.created_at,
+        closedAt: i.closed_at ?? null,
+        state: i.state,
+        status: statusOf(i),
+        park: parkKindOf(i),
+        outcome: outcomeOf(i),
+        woken: parseWorkItemBody(i.body ?? '').woken !== null,
+      }))
+      .sort((a, b) => b.number - a.number);
+    return { list, horizonDays: RUN_HORIZON_DAYS };
+  },
+
   async fleet(gh, ctx) {
     return ctx.fleet ?? null;
   },
 };
+
+// Every work item updated since `sinceIso`, off the issues list. A page that
+// could not be read THROWS — the collector then records `{ error }` and every
+// term over it fails loud — because a truncated history reads as a shorter one,
+// and "no run since the anchor" on that evidence is a double run.
+async function readWorkItems(gh, repo, sinceIso) {
+  const out = [];
+  for (let page = 1; ; page += 1) {
+    const q = `state=all&sort=created&direction=desc&per_page=100&page=${page}&since=${encodeURIComponent(sinceIso)}`;
+    const { status, json } = await gh(`/repos/${repo}/issues?${q}`);
+    if (status !== 200 || !Array.isArray(json)) throw new Error(`the work-item list could not be read at page ${page} (${status})`);
+    for (const i of json) {
+      if (i.pull_request || !isQueueItem(i)) continue;
+      out.push(i);
+    }
+    if (json.length < 100) break;
+  }
+  return out;
+}
 
 export const SIGNAL_COLLECTORS = Object.keys(COLLECTORS);
 

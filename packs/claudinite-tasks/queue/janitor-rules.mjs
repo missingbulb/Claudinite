@@ -9,7 +9,7 @@
 // siting, not in principle — recovery still happens once, in one place per rule,
 // in code, and never as a sweep inside a session that is executing something.
 
-import { periodMs } from './anchors.mjs';
+import { taskPeriodMs } from './anchors.mjs';
 import {
   READY, AGENT, requeueHint,
   STATUS_READY, STATUS_RUNNING_AGENT, STATUS_BLOCKED, STATUS_DONE, STATUS_REJECTED, isStatus, statusOf,
@@ -37,8 +37,8 @@ const idle = (item, now) => ms(now) - (ms(item.updated_at) ?? ms(item.created_at
 
 // Rule A — STALE READY. An item no executor picked for ~2 of its own periods comes
 // out of the queue as a human's problem. The period is read from the task's
-// declared `frequency` at HEAD (no title parsing — that was the slot grammar); an
-// item whose task is unknown falls back to a day.
+// declared cadence term at HEAD (no title parsing — that was the slot grammar); an
+// item whose task is unknown, or keeps no cadence, falls back to a day.
 //
 // WHICH TASK, on a marked issue: its title is the person's own, so the id comes
 // from the worker path its machine block names — without that fallback a request
@@ -246,10 +246,11 @@ export const endedParkComment = (target, resolution) => (resolution === 'merged'
   : `#${target} was closed without merging, which ends what this item was parked waiting for. `
     + `Closing it \`${STATUS_REJECTED}\` — nothing landed, so if the work is still wanted, re-queue it (${requeueHint}).`);
 
-// The period of a task, for rule A — read from the declaration at HEAD.
+// The period of a task, for rule A — read from the cadence term its declaration
+// at HEAD states; null (a day, in rule A) for a task that keeps none.
 export const periodForTasks = (tasks = []) => {
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
-  return (id) => periodMs(byId.get(id)?.decl?.frequency);
+  return (id) => taskPeriodMs(byId.get(id)?.decl);
 };
 
 // Rule H — THE UNCLOSED TERMINAL (#1526). A terminal status says the item is over:

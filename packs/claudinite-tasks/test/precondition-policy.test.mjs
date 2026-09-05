@@ -29,14 +29,10 @@ test('the list is a CONJUNCTION and `||` binds inside one entry', () => {
   assert.equal(run(false, true, true), false);   // !X — no alternative rescues a failed conjunct
 });
 
-test('`none` is the empty precondition, and only ever the sole entry', () => {
-  assert.deepEqual(parsePreconditions(['none']), { kind: 'none' });
-  assert.equal(evaluate(['none'], {}).run, true);
-  assert.deepEqual(evaluate(['none'], {}).context, []);
-
-  for (const illegal of [['none', 'substantive-change'], ['substantive-change', 'none'], ['none || prs-touched']]) {
+test('`none` is retired wherever it appears — the expression is the whole of when a task runs', () => {
+  for (const illegal of [['none'], ['none', 'substantive-change'], ['substantive-change', 'none'], ['none || prs-touched']]) {
     assert.equal(parsePreconditions(illegal).kind, 'invalid', JSON.stringify(illegal));
-    assert.match(evaluate(illegal, {}).error, /legal only as the sole entry/);
+    assert.match(evaluate(illegal, {}).error, /"none" is retired/);
   }
 });
 

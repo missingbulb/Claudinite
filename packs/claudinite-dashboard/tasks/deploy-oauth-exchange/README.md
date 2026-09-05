@@ -48,7 +48,7 @@ Carried over from the declaration's comments when it became `task.json`.
 claudinite-dashboard task: deploy-oauth-exchange — put the dashboard's sign-in
 endpoint live, and prove the deployed URL answers.
 
-`frequency: 'manual'` — nothing recurring is being asked. The endpoint changes
+`woken` — nothing recurring is being asked. The endpoint changes
 when its source changes, when the app's client secret is rotated, or when the set
 of page origins allowed to call it changes; none of those is a cadence, so the
 scheduler never instantiates this and the only way it runs is a work item created

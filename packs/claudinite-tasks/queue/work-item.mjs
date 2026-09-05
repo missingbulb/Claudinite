@@ -403,21 +403,22 @@ export function taskIdFromPath(path) {
 }
 
 // STANDING OR AD-HOC, DERIVED (DESIGN §15.26). A task's standing item is the one
-// the generator files at an anchor: its title names the task and nothing else, and
-// the task it names is on a calendar. Everything else is ad-hoc — a `manual` task
-// (which has no anchor to stand for) and every qualified item (a fan-out target, a
-// request naming its issue), each of which may legitimately run beside the
-// occurrence rather than being it.
+// the scheduler files when the task says yes: its title names the task and nothing
+// else, and the task it names is on the schedule. Everything else is ad-hoc — a
+// woken-gated task's item (the scheduler never asks it) and every qualified item
+// (a fan-out target, a request naming its issue), each of which may legitimately
+// run beside the occurrence rather than being it.
 //
 // It is read off the item and the declaration at HEAD rather than off a label the
 // creator applied, because the two could disagree: a marker says what its writer
 // believed, the structure says what the item IS, and the guards that consume this
-// (the occurrence guard, the dedupe, the `after` yield) are only sound on the
-// second. `frequency` is the declared frequency of the task the title names —
-// absent when the repo no longer carries it, which is ad-hoc by the same rule.
-export function isStandingItem(item, frequency) {
+// (the live-item guard, the dedupe, the `after` yield) are only sound on the
+// second. `scheduled` is whether the task the title names is asked by the
+// scheduler (`isScheduledTask` in task-contract.mjs) — null when the repo no
+// longer carries it, which is ad-hoc by the same rule.
+export function isStandingItem(item, scheduled) {
   const parsed = parseWorkItemTitle(item?.title ?? item);
-  return !!parsed && parsed.qualifier === null && frequency != null && frequency !== 'manual';
+  return !!parsed && parsed.qualifier === null && scheduled === true;
 }
 
 // --- comment markers ----------------------------------------------------------
@@ -462,6 +463,13 @@ export const ENDS_WHEN_CLOSED = 'closed';
 export const TARGET_BRANCH_FIELD = 'Target-branch';
 export const TARGET_PR_FIELD = 'Target-pr';
 export const SUPERSEDES_FIELD = 'Supersedes';
+
+// WOKEN (DESIGN §5, §8) — the instant somebody created this item by hand or woke
+// it: a hand-created item, a forced mint, a `--wake`. The cadence terms hold on a
+// woken item (a person's wake stands in for the cadence) and the `woken` term holds
+// only on one, so an item the scheduler filed on its own never carries the field.
+// Stamped by the lever that woke it, never inferred from a comment.
+export const WOKEN_FIELD = 'Woken';
 
 // The three fields a REQUEST item carries (DESIGN §16.3, §16.11). `Request` is the issue this
 // run implements — the whole payload, since the request task has no code-work phase
@@ -596,6 +604,7 @@ const ENDS_WHEN_RE = /^Ends-when:[ \t]*#(\d+)[ \t]+(\S+)[ \t]*$/m;
 const TARGET_BRANCH_RE = /^Target-branch:[ \t]*(\S+)[ \t]*$/m;
 const TARGET_PR_RE = /^Target-pr:[ \t]*#?(\d+)[ \t]*$/m;
 const SUPERSEDES_RE = /^Supersedes:[ \t]*(.*)$/m;
+const WOKEN_RE = /^Woken:[ \t]*(\S+)[ \t]*$/m;
 
 // Build a work item body. The first line is the task path — the only thing an
 // executor reads to locate the worker, validated in code before anything trusts
@@ -603,7 +612,7 @@ const SUPERSEDES_RE = /^Supersedes:[ \t]*(.*)$/m;
 // command) is read from the tracked task files at HEAD, never from here.
 export function workItemBody({
   taskPath, notBefore = null, blockedBy = [], context = [], delivered = [], reason = null,
-  request = null, model = null, merge = null,
+  request = null, model = null, merge = null, woken = null,
 }) {
   const lines = [taskPath, ''];
   const fields = [];
@@ -612,6 +621,7 @@ export function workItemBody({
   if (request) fields.push(`${REQUEST_FIELD}: #${request}`);
   if (model) fields.push(`${MODEL_FIELD}: ${model}`);
   if (merge) fields.push(`${MERGE_FIELD}: ${merge}`);
+  if (woken) fields.push(`${WOKEN_FIELD}: ${woken}`);
   if (fields.length) lines.push(...fields, '');
   lines.push('Execute the Claudinite task above.');
   if (context.length) {
@@ -660,7 +670,28 @@ export function parseWorkItemBody(body) {
   const targetBranch = TARGET_BRANCH_RE.exec(text)?.[1] ?? null;
   const targetPr = TARGET_PR_RE.exec(text) ? Number(TARGET_PR_RE.exec(text)[1]) : null;
   const supersedes = [...(SUPERSEDES_RE.exec(text)?.[1] ?? '').matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
-  return { taskPath, notBefore: nb, blockedBy, request, model, merge, endsWhen, targetBranch, targetPr, supersedes };
+  const woken = WOKEN_RE.exec(text)?.[1] ?? null;
+  return { taskPath, notBefore: nb, blockedBy, request, model, merge, endsWhen, targetBranch, targetPr, supersedes, woken };
+}
+
+// THE ITEM'S OWN FACTS, as a precondition term sees them (DESIGN §16.4, §5): the
+// body's fields plus the two the terms read that are not fields — the issue number,
+// and whether somebody created or woke this item. `woken` is everything that is
+// NOT the scheduler's own ask: an item stamped by a lever, one born ad-hoc (a
+// marked issue, a chain link), and any qualified item (a fan-out target, a request
+// naming its issue) — the scheduler files only unqualified planned items, so an
+// item of any other shape exists because somebody asked, which is what the `woken`
+// term and the cadence terms need to know.
+export function itemFacts(item) {
+  if (!item) return null;
+  const fields = parseWorkItemBody(item.body);
+  const parsed = parseWorkItemTitle(item.title);
+  const schedulesOwn = !!parsed && parsed.qualifier === null && originOf(item) !== ORIGIN_AD_HOC;
+  return {
+    ...fields,
+    number: item.number ?? null,
+    woken: fields.woken !== null || !schedulesOwn,
+  };
 }
 
 // WHAT A MARKED ISSUE ASKS FOR (DESIGN §16.3, §16.7, §16.11) — read from the
@@ -777,6 +808,20 @@ export function withNotBefore(body, iso) {
   if (at === -1) return `${NOT_BEFORE_FIELD}: ${iso}\n`;
   lines.splice(at + 1, 0, '', `${NOT_BEFORE_FIELD}: ${iso}`);
   return lines.join('\n');
+}
+
+// Stamp `Woken` on an existing body — the lever's write, same text surgery as
+// `withNotBefore`. Re-stamping replaces the instant: an item woken twice was woken
+// last at the later one, and the field says so once.
+export function withWoken(body, iso) {
+  return editItemBody(body, (text) => {
+    if (WOKEN_RE.test(text)) return text.replace(WOKEN_RE, `${WOKEN_FIELD}: ${iso}`);
+    const lines = String(text ?? '').split('\n');
+    const at = lines.findIndex((l) => l.trim() !== '');
+    if (at === -1) return `${WOKEN_FIELD}: ${iso}\n`;
+    lines.splice(at + 1, 0, '', `${WOKEN_FIELD}: ${iso}`);
+    return lines.join('\n');
+  });
 }
 
 // Stamp `Ends-when` on an existing body, same text surgery as `withNotBefore` and

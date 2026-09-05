@@ -2,12 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/missingbulb/Claudinite/blob/main/packs/claudinite-tasks/task.schema.json",
   "title": "Claudinite task declaration",
-  "description": "A tasks/<name>/task.json: what a scheduled task is, when it runs, and what its run does to pull requests. The runtime contract is packs/claudinite-tasks/task-contract.mjs; the enums here mirror its lists and a test holds them in step. Absent, preconditions is run-always, automerge is nothing and agent_model is none; the timeouts have no default.",
+  "description": "A tasks/<name>/task.json: what a task is, when it runs — its preconditions, cadence included — and what its run does to pull requests. The runtime contract is packs/claudinite-tasks/task-contract.mjs; the enums here mirror its lists and a test holds them in step. Absent, automerge is nothing and agent_model is none; preconditions and the timeouts have no default.",
   "type": "object",
   "required": [
     "id",
     "description",
-    "frequency",
+    "preconditions",
     "expected_outcome"
   ],
   "additionalProperties": false,
@@ -33,7 +33,8 @@
         "monthly",
         "manual"
       ],
-      "description": "The anchor the task is instantiated on. `manual` is woken by whatever knows the event happened."
+      "deprecated": true,
+      "description": "The retired cadence field; read at the door as the first condition it always meant (`due:<cadence>`, or `woken` for `manual`). Write that condition instead."
     },
     "preconditions": {
       "type": "array",
@@ -42,7 +43,7 @@
         "type": "string",
         "minLength": 1
       },
-      "description": "The conditions that must all hold for the task to run: built-in terms (e.g. \"substantive-change\", \"commits-under:<dir>\"), terms the task's own preconditions.mjs exports, `||` between alternatives. Optional: absent, the task runs always ([\"none\"])."
+      "description": "When the task runs — every listed condition must hold, `||` between alternatives. A cadence first where the task keeps one (`due:daily|weekly|monthly` on the repo's schedule, or `last-run-over:<12h|1d|7d>`), `woken` for a task run only from an item somebody created, `last-run-not-failed` to stop past the task's own failure park, then the built-in movement terms (e.g. \"substantive-change\", \"commits-under:<dir>\") or terms the task's own preconditions.mjs exports. Every scheduler tick asks every task; a task with no cadence term runs whenever its other conditions hold."
     },
     "expected_outcome": {
       "type": "string",

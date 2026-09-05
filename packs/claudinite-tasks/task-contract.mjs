@@ -4,11 +4,11 @@
 // `validate-dispatch` validate against this one function, so the accepted shape
 // can never drift between the two surfaces.
 
-import { ACCEPTED_FREQUENCIES, normalizeFrequency } from './calendar.mjs';
+import { ACCEPTED_FREQUENCIES, cadenceTermFor, cadenceOf, isWokenGated, DUE_TERM } from './calendar.mjs';
 import { MODEL_FAMILIES } from './model-map.mjs';
 import { EXECUTING_LEASH_MS } from './queue/leases.mjs';
 import { normalizePolicy } from './merge-policy.mjs';
-import { validatePreconditions, preconditionSignals } from './precondition-policy.mjs';
+import { validatePreconditions, preconditionSignals, NONE } from './precondition-policy.mjs';
 import { applyTaskDefaults } from './task-defaults.mjs';
 
 // A declared timeout is always a whole number of seconds, > 0.
@@ -48,7 +48,14 @@ export const LEGACY_FIELDS = {
 
 // The defaults live in task-defaults.mjs — a module with no imports, so the
 // dashboard's browser bundle can fill them the way the loader does.
-export { DEFAULT_PRECONDITIONS, DEFAULT_AUTOMERGE, DEFAULT_AGENT_MODEL } from './task-defaults.mjs';
+export { DEFAULT_AUTOMERGE, DEFAULT_AGENT_MODEL } from './task-defaults.mjs';
+
+// WHEN a task runs, read off its declaration (tasks-dispatch DESIGN §5): the
+// cadence term it states, and whether it is on the schedule at all. A task is
+// SCHEDULED unless `woken` gates it — the scheduler asks every scheduled task at
+// every tick, and a woken-gated one only ever runs from an item somebody created.
+export const taskCadence = (decl) => cadenceOf(decl?.preconditions);
+export const isScheduledTask = (decl) => !!decl && !isWokenGated(decl.preconditions);
 
 // Return the declaration with canonical field names and the defaults filled in.
 // Non-objects pass through untouched so validateTaskDeclaration still reports
@@ -65,9 +72,29 @@ export function normalizeTaskDeclaration(decl) {
       delete out[legacy];
     }
   }
-  // THE ONE DOOR for the retired frequency spellings (DESIGN §17.1). Here rather than in the
-  // calendar because a frequency is read by more than the calendar — see `normalizeFrequency`.
-  if (out.frequency !== undefined) out.frequency = normalizeFrequency(out.frequency);
+  // THE FREQUENCY DOOR (tasks-dispatch DESIGN §5). `frequency` is retired: a task's
+  // cadence is one of its own preconditions, read off its run history. A declaration
+  // still carrying the field reads exactly as it always did — the field becomes the
+  // cadence term it always meant, first in the expression, and a `none` beside it
+  // (the empty precondition it used to need) drops. The field itself does not
+  // survive the door: nothing downstream reads it.
+  //
+  // Scaffolding, not a second vocabulary: `legacy-task-fields` reports the field,
+  // and the nightly update rewrites a member's own task files (the
+  // `task-cadence-terms` record), so the acceptance ends one convergence window
+  // after #1725 ships (#1732).
+  // @legacy-tolerance advisory:legacy-task-fields retire:#1732
+  if (out.frequency !== undefined) {
+    const stated = Array.isArray(out.preconditions) ? out.preconditions.filter((e) => String(e).trim() !== NONE) : [];
+    if (ACCEPTED_FREQUENCIES.includes(out.frequency)) {
+      const term = cadenceTermFor(out.frequency);
+      out.preconditions = stated.some((e) => String(e).trim() === term) ? stated : [term, ...stated];
+    } else {
+      // An illegal frequency is still reported, as the illegal condition it becomes.
+      out.preconditions = [`${DUE_TERM}:${out.frequency}`, ...stated];
+    }
+    delete out.frequency;
+  }
   // The retired outcome ceilings become the outcome/policy pair. An explicit
   // `automerge` beside a legacy spelling wins: a half-migrated declaration
   // keeps the narrower intent it states.
@@ -175,7 +202,7 @@ export function descriptionProblem(description) {
 export function validateTaskDeclaration(raw, terms = new Map()) {
   const decl = normalizeTaskDeclaration(raw);
   if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) {
-    return [{ what: 'task.json is not a declaration object', fix: 'write one JSON object: { "id", "frequency", "preconditions", "expected_outcome", … }' }];
+    return [{ what: 'task.json is not a declaration object', fix: 'write one JSON object: { "id", "description", "preconditions", "expected_outcome", … }' }];
   }
   const problems = [];
   const bad = (what, fix) => problems.push({ what, fix });
@@ -188,14 +215,6 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   if (decl.description !== undefined) {
     const problem = descriptionProblem(decl.description);
     if (problem) bad(problem.what, problem.fix);
-  }
-  // ACCEPTED, not FREQUENCIES: a member's own task file may still carry a retired spelling and
-  // must keep running, since nothing converges a member's task files. Stopping a NEW declaration
-  // from naming one is the author-time declaration-shape check's job, not this one's — the split
-  // is deliberate, and `FREQUENCIES` beside `ACCEPTED_FREQUENCIES` in calendar.mjs is where it is
-  // spelled out.
-  if (!ACCEPTED_FREQUENCIES.includes(decl.frequency)) {
-    bad(`"frequency" ${JSON.stringify(decl.frequency)} is not a legal frequency`, `set one of: ${ACCEPTED_FREQUENCIES.join(', ')}`);
   }
   // `precondition_signals` is retired with the function form it belonged to
   // (#1617). The union is DERIVED from the expression's terms, each of which
@@ -250,8 +269,11 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   if (decl.precondition !== undefined) {
     bad('the task declares a "precondition" function, which is retired', 'move the gate into "preconditions" — a built-in condition, or a term this task\'s preconditions.mjs exports');
   }
+  // REQUIRED, with no default (DESIGN §5): the expression is the whole of when the
+  // task runs, so a declaration without one has not said. A retired `frequency`
+  // arrives here already turned into its cadence term by the door.
   if (decl.preconditions === undefined) {
-    bad('the task declares no "preconditions"', 'add "preconditions": a list of named conditions, all of which must hold (e.g. ["substantive-change"], or ["none"] for a task the calendar triggers)');
+    bad('the task declares no "preconditions"', 'add "preconditions": a list of named conditions, all of which must hold — a cadence first where the task keeps one ("due:daily", "due:weekly", "last-run-over:7d"), "woken" for a task run only from an item somebody created, then what it waits for (e.g. ["due:daily", "substantive-change"])');
   } else {
     for (const problem of validatePreconditions(decl.preconditions, terms)) bad(problem.what, problem.fix);
   }

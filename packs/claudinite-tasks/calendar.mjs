@@ -134,3 +134,63 @@ export function anchorInstant(frequency, schedule, now) {
 
   throw new Error(`unknown frequency "${frequency}"`);
 }
+
+// --- the cadence terms ----------------------------------------------------------
+// How a task states WHEN it runs, inside its own `preconditions` (tasks-dispatch
+// DESIGN §5): the engine keeps no calendar of its own, so the cadence is one of the
+// task's conditions, read off its own run history at every scheduler tick.
+//
+//   due:<daily|weekly|monthly>   no run since that cadence's most recent anchor on
+//                                this repo's schedule — fixed hours, no drift
+//   last-run-over:<12h|1d|7d>    the newest run started more than that long ago
+//   woken                        only from an item somebody created — the spelling
+//                                of the retired `frequency: manual`
+//
+// The parse lives here, beside the frequency vocabulary it replaces, and imports
+// nothing: the dashboard's browser bundle reads a cadence the way the scheduler does.
+export const CADENCES = ['daily', 'weekly', 'monthly'];
+export const DUE_TERM = 'due';
+export const ELAPSED_TERM = 'last-run-over';
+export const NOT_FAILED_TERM = 'last-run-not-failed';
+export const WOKEN_TERM = 'woken';
+
+// `12h`, `1d`, `7d` — a whole number of hours or days, nothing else.
+const DURATION_RE = /^(\d+)(h|d)$/;
+export function parseDuration(text) {
+  const m = DURATION_RE.exec(String(text ?? ''));
+  if (!m) return null;
+  const n = Number(m[1]);
+  return n > 0 ? n * (m[2] === 'h' ? HOUR_MS : DAY_MS) : null;
+}
+
+// The term references an expression carries: each entry split on `||`, each
+// reference `{ name, arg }` with the argument after the first colon. The same
+// grammar precondition-policy.mjs parses, re-spelled here so this module stays
+// import-free; the policy engine's parse is the one that validates.
+const alternativesOf = (entry) => String(entry ?? '').split('||').map((t) => t.trim()).filter(Boolean)
+  .map((t) => { const c = t.indexOf(':'); return c === -1 ? { name: t, arg: null } : { name: t.slice(0, c).trim(), arg: t.slice(c + 1).trim() }; });
+const entriesOf = (preconditions) => (Array.isArray(preconditions) ? preconditions : []).map(alternativesOf);
+
+// The cadence a declaration states — `{ kind: 'due', cadence }`, `{ kind:
+// 'elapsed', ms, text }`, `{ kind: 'woken' }`, or null for a task with no cadence
+// term at all (asked at every tick, it runs whenever its other conditions hold).
+// The first cadence term wins; `woken` only counts where it gates.
+export function cadenceOf(preconditions) {
+  for (const ref of entriesOf(preconditions).flat()) {
+    if (ref.name === DUE_TERM && CADENCES.includes(ref.arg)) return { kind: 'due', cadence: ref.arg };
+    if (ref.name === ELAPSED_TERM) {
+      const ms = parseDuration(ref.arg);
+      if (ms) return { kind: 'elapsed', ms, text: ref.arg };
+    }
+  }
+  return isWokenGated(preconditions) ? { kind: 'woken' } : null;
+}
+
+// A task runs only when somebody asks when `woken` is a whole conjunct of its
+// expression — `['woken', …]` gates, `['due:daily || woken']` merely widens.
+export const isWokenGated = (preconditions) =>
+  entriesOf(preconditions).some((alts) => alts.length === 1 && alts[0].name === WOKEN_TERM && alts[0].arg === null);
+
+// What the retired `frequency` field always meant, as the term that now says it.
+export const cadenceTermFor = (frequency) =>
+  (normalizeFrequency(frequency) === 'manual' ? WOKEN_TERM : `${DUE_TERM}:${normalizeFrequency(frequency)}`);

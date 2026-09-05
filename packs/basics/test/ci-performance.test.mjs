@@ -121,8 +121,12 @@ test('an empty ledger produces a report rather than an error', () => {
 // what the test imagines it is passed: this precondition was first written to take
 // `{ signals }`, its direct-call test passed, and the real caller (which passes the
 // signals object itself) got `precondition threw` on every run.
+// The cadence term reads an empty run history at a chosen instant, so it holds and
+// the movement signals decide.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+
 test('the precondition gates on movement in the window, not on CI existing', () => {
-  const verdict = (signals) => evaluatePrecondition({ decl }, signals, {});
+  const verdict = (signals) => evaluatePrecondition({ decl }, { runs: { list: [] }, ...signals }, {}, null, new Date(NOW), SCHEDULE);
   assert.equal(verdict({ commits: { substantiveChange: false }, prs: { touched: [] } }).run, false);
   assert.equal(verdict({ commits: { substantiveChange: true }, prs: { touched: [] } }).run, true);
   assert.equal(verdict({ commits: { substantiveChange: false }, prs: { touched: [7] } }).run, true);

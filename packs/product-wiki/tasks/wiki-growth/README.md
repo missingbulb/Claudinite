@@ -11,7 +11,7 @@ WEEKLY, not daily and not commit-gated: research arrives on the world's clock,
 not the repo's, and a nightly high-model pass economically pressures
 fabrication (the Karpathy LLM-wiki cadence). The `commits` signal is declared
 only so the precondition can note recent product-relevant movement in context;
-the run itself is scheduled by frequency, not triggered by a commit.
+the run itself is scheduled by its `due:weekly` term, not triggered by a commit.
 
 The pending-wiki-change gate lives HERE, in the precondition (DESIGN §12: the
 precondition is the ONLY decision point — it used to be a task.md preflight,

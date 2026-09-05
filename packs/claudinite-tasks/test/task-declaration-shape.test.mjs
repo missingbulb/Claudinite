@@ -7,13 +7,12 @@ import rule from '../worldRules/task-declaration-shape.mjs';
 const good = {
   id: 'growth-extract',
   description: 'Mines the window for durable lessons and folds them into the local packs.',
-  frequency: 'daily',
   agent_model: 'opus',
   expected_outcome: 'fresh_pr',
   automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
-  preconditions: ['substantive-change'],
+  preconditions: ['due:daily', 'substantive-change'],
 };
 const json = (obj) => `${JSON.stringify(obj, null, 2)}\n`;
 const goodTask = json(good);
@@ -33,11 +32,11 @@ test('task-declaration-shape: is inert when no task declaration exists', () => {
   assert.deepEqual(run({ 'src/app.js': 'x\n' }), []);
 });
 
-// THE DEFAULTS: preconditions is run-always, automerge is nothing, agent_model is
-// none — so a declaration carrying none of them is a clean agentless task once it
-// names its code work, and the two timeouts are never defaulted.
+// THE DEFAULTS: automerge is nothing, agent_model is none — so a declaration
+// carrying neither is a clean agentless task once it names its code work and when
+// it runs, and the two timeouts are never defaulted.
 test('task-declaration-shape: the minimal declaration is a code-work task, and needs its timeout', () => {
-  const minimal = { id: 'growth-extract', description: 'A minimal task.', frequency: 'daily', expected_outcome: 'fresh_pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
+  const minimal = { id: 'growth-extract', description: 'A minimal task.', preconditions: ['due:daily'], expected_outcome: 'fresh_pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
   assert.deepEqual(run({ [TASK]: json(minimal) }), []);
   const { code_work_timeout, ...noBound } = minimal;
   assert.match(whatsOf({ [TASK]: json(noBound) }), /no numeric "code_work_timeout"/);
@@ -72,26 +71,29 @@ test('task-declaration-shape: a file that is not a JSON object is flagged', () =
 });
 
 test('task-declaration-shape: flags illegal enum values', () => {
-  const whats = whatsOf({ [TASK]: json({ ...good, frequency: 'nightly', agent_model: 'gpt', expected_outcome: 'push' }) });
-  assert.match(whats, /"frequency" is "nightly", not a legal value/);
+  const whats = whatsOf({ [TASK]: json({ ...good, preconditions: ['due:nightly'], agent_model: 'gpt', expected_outcome: 'push' }) });
+  assert.match(whats, /"due" takes one of daily, weekly, monthly, not "nightly"/);
   assert.match(whats, /"agent_model" is "gpt", not a legal value/);
   assert.match(whats, /"expected_outcome" is "push", not a legal value/);
 });
 
-// The strict half of the frequency door (tasks-dispatch DESIGN §17.1). The RUNTIME accepts a
-// retired spelling forever, because a member's task file is its own data and no vendoring pass
-// rewrites it — so the only thing standing between the corpus and a new declaration on the dead
-// vocabulary is this author-time check, which runs in the canon.
-test('task-declaration-shape: the retired frequency spellings cannot be written anew', () => {
-  for (const retired of ['hourly', 'daily-2h', 'daily-1h', 'daily+1h']) {
-    const findings = run({ [TASK]: json({ ...good, frequency: retired }) });
-    const whats = findings.map((f) => f.what).join(' | ');
-    assert.match(whats, new RegExp(`"frequency" is "${retired.replace('+', '\\+')}", not a legal value`),
-      `${retired} is rejected at author time`);
-    assert.ok(findings.some((f) => f.severity === 'blocking'), `${retired} blocks, not advises`);
-    // …and the remedy names only the surviving vocabulary.
-    assert.match(findings.find((f) => f.what.includes('frequency')).fix, /use one of: daily, weekly, monthly, manual/);
+// The retired cadence field (tasks-dispatch DESIGN §5). ADVISORY, like every rename here: the
+// runtime reads the field as the cadence term it meant, a member's task file is its own data,
+// and the nightly update rewrites it — so this finding names the edit and its CI stays green.
+test('task-declaration-shape: the retired frequency field is an advisory rename to its cadence term', () => {
+  const { preconditions, ...bare } = good;
+  for (const [field, term] of [['daily', 'due:daily'], ['weekly', 'due:weekly'], ['monthly', 'due:monthly'], ['manual', 'woken']]) {
+    const findings = run({ [TASK]: json({ ...bare, frequency: field, preconditions: ['none'] }) });
+    assert.equal(findings.length, 1, `${field}: the field is the one finding — the none beside it is what the door strips`);
+    assert.equal(findings[0].severity, 'advisory');
+    assert.match(findings[0].what, /retired field "frequency"/);
+    assert.match(findings[0].fix, new RegExp(`\\["${term}", …\\]`));
   }
+  // A field the door cannot read is still reported as the illegal condition it becomes.
+  const findings = run({ [TASK]: json({ ...bare, frequency: 'hourly' }) });
+  assert.ok(findings.some((f) => f.severity === 'blocking' && /"due" takes one of daily, weekly, monthly, not "hourly"/.test(f.what)), 'hourly blocks');
+  // …and a well-formed expression beside the field is judged as the door reads it: no double term.
+  assert.deepEqual(run({ [TASK]: json({ ...bare, frequency: 'daily', preconditions: ['due:daily', 'substantive-change'] }) }).map((f) => f.severity), ['advisory']);
 });
 
 // The ordering field's rename. ADVISORY, not blocking: the runtime normalizes `after` at the
@@ -141,7 +143,7 @@ test('task-declaration-shape: the legacy outcome ceilings are an advisory rename
 });
 
 const noneTask = {
-  id: 'growth-extract', description: 'An agentless task.', frequency: 'daily', preconditions: ['none'], agent_model: 'none', expected_outcome: 'no_code_changes',
+  id: 'growth-extract', description: 'An agentless task.', preconditions: ['due:daily'], agent_model: 'none', expected_outcome: 'no_code_changes',
   code_work: 'node w.mjs', code_work_timeout: 60,
 };
 
@@ -161,9 +163,10 @@ test('task-declaration-shape: the canonical `schedule_after` is clean', () => {
 test('task-declaration-shape: flags missing required fields', () => {
   const whats = whatsOf({ [TASK]: json({ agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 5 }) });
   assert.match(whats, /declares no string "id"/);
-  assert.match(whats, /declares no "frequency"/);
+  assert.match(whats, /declares no "preconditions"/, 'a task that has not said when it runs');
   assert.match(whats, /declares no "expected_outcome"/);
-  assert.doesNotMatch(whats, /preconditions/, 'absent preconditions is run-always');
+  // `none` alone is "at every tick", which no task declares; it blocks by name.
+  assert.match(whatsOf({ [TASK]: json({ ...good, preconditions: ['none'] }) }), /"none" is retired/);
 });
 
 // --- the declarative expression, read statically ------------------------------
@@ -181,7 +184,7 @@ test('task-declaration-shape: the expression is judged term by term', () => {
   assert.match(whatsFor(['no-such-thing']), /unknown condition "no-such-thing"/);
   assert.match(whatsFor(['commits-under']), /takes an inline argument and was given none/);
   assert.match(whatsFor(['substantive-change:oops']), /takes no argument/);
-  assert.match(whatsFor(['none', 'substantive-change']), /legal only as the sole entry/);
+  assert.match(whatsFor(['none', 'substantive-change']), /"none" is retired/);
   assert.match(whatsFor(['substantive-change ||']), /alternative around "\|\|" is empty/);
   // A list that is not one of strings is unreadable to a reader and to this check alike.
   assert.match(whatsFor([{ name: 'substantive-change' }]), /not a literal list of condition strings/);
@@ -220,7 +223,7 @@ test('task-declaration-shape: a none task needs no execution bound but flags cod
 });
 
 test('task-declaration-shape: flags an agentless (none) task that declares no code_work', () => {
-  assert.match(whatsOf({ [TASK]: json({ id: 'x', frequency: 'daily', preconditions: ['none'], agent_model: 'none', expected_outcome: 'none' }) }), /declares no "code_work"/);
+  assert.match(whatsOf({ [TASK]: json({ id: 'x', preconditions: ['due:daily'], agent_model: 'none', expected_outcome: 'none' }) }), /declares no "code_work"/);
 });
 
 test('task-declaration-shape: a none task with no agent_instructions is clean — the field is not applicable', () => {
@@ -267,8 +270,8 @@ test('task-declaration-shape: a well-formed task.mjs earns the conversion adviso
 });
 
 test('task-declaration-shape: a task.mjs is judged on the same contract', () => {
-  const findings = run({ [MJS]: mjsOf({ ...good, frequency: 'nightly' }) });
-  assert.match(findings.map((f) => f.what).join(' | '), /"frequency" is "nightly", not a legal value/);
+  const findings = run({ [MJS]: mjsOf({ ...good, preconditions: ['due:nightly'] }) });
+  assert.match(findings.map((f) => f.what).join(' | '), /"due" takes one of daily, weekly, monthly, not "nightly"/);
   assert.equal(conversionAdvisory(findings).length, 1);
 });
 
@@ -283,7 +286,7 @@ test('task-declaration-shape: the retired precondition function is named in a ta
 });
 
 test('task-declaration-shape: a computed expression in a task.mjs is unreadable', () => {
-  assert.match(whatsOf({ [MJS]: mjsOf(good).replace("['substantive-change']", 'SOME_CONSTANT') }), /not a literal list of condition strings/);
+  assert.match(whatsOf({ [MJS]: mjsOf(good).replace("['due:daily','substantive-change']", 'SOME_CONSTANT') }), /not a literal list of condition strings/);
 });
 
 test('task-declaration-shape: flags a non-object export', () => {

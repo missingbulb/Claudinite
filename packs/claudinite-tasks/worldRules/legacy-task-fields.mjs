@@ -3,13 +3,15 @@ import { finding } from '../../../engine/checks/helpers/findings.mjs';
 // member's pack lane and engine lane converge on separate cycles, and this pack
 // can sit beside a task-contract that predates either export.
 import * as contract from '../task-contract.mjs';
+import * as calendar from '../calendar.mjs';
 import * as declarationText from '../task-declaration-text.mjs';
 
 // THE ADVISORY HALF OF THE TASK CONTRACT'S FIELD TOLERANCES. `normalizeTaskDeclaration`
-// accepts two generations of field names and the retired one-word outcome
-// ceilings, so a task declared in the oldest vocabulary runs exactly like one
-// declared today — and nothing told its author that the acceptance ends a week
-// after this advisory ships (#1642).
+// accepts two generations of field names, the retired one-word outcome ceilings
+// and the retired `frequency` field (which reads as the cadence term it always
+// meant, tasks-dispatch DESIGN §5), so a task declared in the oldest vocabulary
+// runs exactly like one declared today — and nothing told its author that the
+// acceptance ends a convergence window after this advisory ships (#1642, #1725).
 //
 // It reads the declaration SOURCE rather than the normalized object, because by
 // the time anything holds a task declaration the legacy spelling is gone: the
@@ -32,7 +34,7 @@ const rule = {
   severity: 'advisory',
   since: '2026-09-03',
   description: 'Task declarations name their fields and outcome in the current vocabulary',
-  why: 'the contract accepts two retired generations of field names and two retired generations of outcome ceilings for one convergence window after this advisory ships (#1642) — nothing counts who is still on them, so a declaration not renamed inside that window simply stops being read',
+  why: 'the contract accepts two retired generations of field names, two retired generations of outcome ceilings and the retired frequency field for one convergence window after this advisory ships (#1642, #1725) — nothing counts who is still on them, so a declaration not renamed inside that window simply stops being read',
 
   run(ctx) {
     const fields = contract.LEGACY_FIELDS ?? {};
@@ -43,6 +45,10 @@ const rule = {
 
     const fieldRe = names.length ? new RegExp(`^\\s*"?(${names.join('|')})"?\\s*:`) : null;
     const outcomeRe = /^\s*"?expected_outcome"?\s*:\s*['"]([^'"]+)['"]/;
+    // The cadence field, retired into the expression. Guarded on the engine
+    // exporting the term spelling: beside an older calendar the field is not a
+    // tolerance yet, and reporting it would ask for an edit that engine rejects.
+    const frequencyRe = typeof calendar.cadenceTermFor === 'function' ? /^\s*"?frequency"?\s*:\s*['"]([^'"]+)['"]/ : null;
 
     const out = [];
     for (const file of ctx.files.filter(isTaskFile)) {
@@ -56,6 +62,16 @@ const rule = {
             line: i + 1,
             what: `declares the retired field \`${field[1]}\``,
             fix: `rename it to \`${fields[field[1]]}\` — the contract maps every retired spelling straight to today's name, so this is a one-line edit with no behaviour change`,
+          }));
+        }
+        const frequency = frequencyRe?.exec(text_line);
+        if (frequency) {
+          const term = (calendar.ACCEPTED_FREQUENCIES ?? []).includes(frequency[1]) ? calendar.cadenceTermFor(frequency[1]) : 'due:<daily|weekly|monthly>';
+          out.push(finding(rule, {
+            file,
+            line: i + 1,
+            what: 'declares the retired field `frequency`',
+            fix: `write it as the first condition — \`"preconditions": ["${term}", …]\` — and drop a \`"none"\` beside it; the field reads as exactly that today, and the nightly update rewrites a member's own task files`,
           }));
         }
         const outcome = outcomeRe.exec(text_line);

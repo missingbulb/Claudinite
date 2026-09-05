@@ -6,9 +6,11 @@ import { join } from 'node:path';
 import { removeTree } from '../engine/remove-tree.mjs';
 import {
   checkoutIo, convertTaskDeclarations, taskDirsWithModule, serializeTaskDeclaration, moduleComments, main,
+  retireFrequencyText, retireTaskFrequency, taskDirsWithJson,
   LOCAL_PACK_ROOT, CANON_PACK_ROOT, SCHEMA_FILE,
 } from '../engine/migrations/task-declarations-to-json.mjs';
-import { applyTaskDeclarationConversion, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
+import { applyTaskDeclarationConversion, applyTaskFrequencyRetirement, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
+import { ACCEPTED_FREQUENCIES } from '../packs/claudinite-tasks/calendar.mjs';
 import { normalizeTaskDeclaration } from '../packs/claudinite-tasks/task-contract.mjs';
 import { parseTaskDeclaration } from '../packs/claudinite-tasks/task-declaration.mjs';
 
@@ -82,9 +84,11 @@ test('serializeTaskDeclaration: a function-valued field is dropped and named; th
   const { text, dropped } = serializeTaskDeclaration({ id: 'x', precondition() { return 1; }, frequency: 'daily' }, '../../../claudinite-tasks/task.schema.json');
   assert.deepEqual(dropped, ['precondition']);
   assert.deepEqual(JSON.parse(text), { $schema: '../../../claudinite-tasks/task.schema.json', id: 'x', frequency: 'daily' });
-  // Keys land grouped — identity, cadence, outcome, code work, agent — whatever order the module spelled them in.
-  const shuffled = serializeTaskDeclaration({ agent_execution_timeout: 5, code_work: 'x', frequency: 'daily', agent_model: 'opus', description: 'd', code_work_timeout: 1, id: 'x', expected_outcome: 'no_code_changes' }, 's');
-  assert.deepEqual(Object.keys(JSON.parse(shuffled.text)), ['$schema', 'id', 'description', 'frequency', 'expected_outcome', 'code_work', 'code_work_timeout', 'agent_model', 'agent_execution_timeout']);
+  // Keys land grouped — identity, when it runs, outcome, code work, agent — whatever order the
+  // module spelled them in; a key the order does not list (the retired `frequency`) keeps its
+  // place after the listed ones.
+  const shuffled = serializeTaskDeclaration({ agent_execution_timeout: 5, code_work: 'x', frequency: 'daily', agent_model: 'opus', description: 'd', preconditions: ['substantive-change'], code_work_timeout: 1, id: 'x', expected_outcome: 'no_code_changes' }, 's');
+  assert.deepEqual(Object.keys(JSON.parse(shuffled.text)), ['$schema', 'id', 'description', 'preconditions', 'expected_outcome', 'code_work', 'code_work_timeout', 'agent_model', 'agent_execution_timeout', 'frequency']);
   assert.equal(moduleComments('// a\nexport default {\n  id: 1, // b\n  url: \'http://x\',\n};\n'), 'a\nb');
 });
 
@@ -193,4 +197,99 @@ test('convertTaskDeclarations: rewrites the siblings that imported the module', 
     assert.match(spec, /import task from "\.\/task\.json" with \{ type: "json" \};/);
     for (const t of [worker, spec]) assert.doesNotMatch(t, /task\.mjs/, 'no dangling reference to the deleted module');
   } finally { removeTree(root); }
+});
+// --- the retired `frequency` field, folded into the expression (tasks-dispatch DESIGN §5, #1725)
+// A member's own task.json is patched as ANCHORED TEXT — never re-serialized —
+// because a hand-written file's indentation, key order and comments-by-way-of-
+// layout are its author's, and a round-trip would rewrite them while nothing failed.
+
+test('retireFrequencyText: the field becomes the first condition; a none beside it drops; the layout survives', () => {
+  const before = '{\n  "$schema": "s",\n  "id": "sweep",\n  "frequency": "weekly",\n  "preconditions": [\n    "none"\n  ],\n  "expected_outcome": "no_code_changes"\n}\n';
+  const out = retireFrequencyText(before);
+  assert.equal(out.term, 'due:weekly');
+  assert.equal(out.text, '{\n  "$schema": "s",\n  "id": "sweep",\n  "preconditions": [\n    "due:weekly"\n  ],\n  "expected_outcome": "no_code_changes"\n}\n');
+  assert.deepEqual(JSON.parse(out.text).preconditions, ['due:weekly']);
+
+  const stated = '{\n  "id": "sweep",\n  "frequency": "daily",\n  "preconditions": [\n    "substantive-change",\n    "no-open-pr-titled:My sweep"\n  ]\n}\n';
+  assert.deepEqual(JSON.parse(retireFrequencyText(stated).text).preconditions, ['due:daily', 'substantive-change', 'no-open-pr-titled:My sweep']);
+  assert.match(retireFrequencyText(stated).text, /\n    "due:daily",\n    "substantive-change",\n/, 'the array keeps its own indentation');
+
+  const inline = '{ "id": "x", "frequency": "manual", "preconditions": ["request-eligible"] }\n';
+  assert.equal(retireFrequencyText(inline).text, '{ "id": "x", "preconditions": ["woken", "request-eligible"] }\n');
+});
+
+test('retireFrequencyText: with no preconditions the field\'s own line becomes the list, comma and indent kept', () => {
+  const middle = '{\n  "id": "x",\n  "frequency": "monthly",\n  "expected_outcome": "fresh_pr"\n}\n';
+  assert.equal(retireFrequencyText(middle).text, '{\n  "id": "x",\n  "preconditions": [\n    "due:monthly"\n  ],\n  "expected_outcome": "fresh_pr"\n}\n');
+  // The last key carries no comma, and neither does what replaces it.
+  const last = '{\n  "id": "x",\n  "frequency": "daily"\n}\n';
+  assert.equal(retireFrequencyText(last).text, '{\n  "id": "x",\n  "preconditions": [\n    "due:daily"\n  ]\n}\n');
+  // …and when the field was last and the list already exists, the line before it loses its comma.
+  const lastWithList = '{\n  "id": "x",\n  "preconditions": ["repo-active"],\n  "frequency": "weekly"\n}\n';
+  assert.equal(retireFrequencyText(lastWithList).text, '{\n  "id": "x",\n  "preconditions": ["due:weekly", "repo-active"]\n}\n');
+});
+
+test('retireFrequencyText: nothing to do, a term already stated, and an unknown value', () => {
+  assert.equal(retireFrequencyText('{\n  "id": "x",\n  "preconditions": ["due:daily"]\n}\n'), null, 'no field, no rewrite');
+  const doubled = '{\n  "id": "x",\n  "frequency": "daily",\n  "preconditions": ["due:daily", "any-commit"]\n}\n';
+  assert.deepEqual(JSON.parse(retireFrequencyText(doubled).text).preconditions, ['due:daily', 'any-commit'], 'never given the term twice');
+  // A value the door cannot read still leaves the file: the illegal condition it
+  // becomes is what the contract then reports, exactly as the door reads it.
+  assert.deepEqual(JSON.parse(retireFrequencyText('{\n  "id": "x",\n  "frequency": "hourly"\n}\n').text).preconditions, ['due:hourly']);
+  // A file the patch would leave unparsable is left alone and said so.
+  assert.equal(retireFrequencyText('{\n  "id": "x",\n  "frequency": "daily",\n  "preconditions": [1, 2\n}\n'), null);
+});
+
+test('retireFrequencyText agrees with the contract\'s door on every accepted value', () => {
+  // Two spellings of one mapping: the engine cannot import the pack, so the term
+  // it writes is pinned to what the door reads (`cadenceTermFor`).
+  for (const f of ACCEPTED_FREQUENCIES) {
+    const text = `{\n  "id": "x",\n  "frequency": "${f}",\n  "preconditions": ["repo-active"]\n}\n`;
+    assert.deepEqual(JSON.parse(retireFrequencyText(text).text).preconditions, normalizeTaskDeclaration({ frequency: f, preconditions: ['repo-active'] }).preconditions, f);
+  }
+});
+
+test('retireTaskFrequency rewrites every local task.json carrying the field, and reports each', async () => {
+  const root = repo({
+    [`${TASK}/task.json`]: '{\n  "id": "alpha",\n  "frequency": "daily",\n  "preconditions": ["none"]\n}\n',
+    [`${LOCAL_PACK_ROOT}/mypack/tasks/beta/task.json`]: '{\n  "id": "beta",\n  "preconditions": ["woken"]\n}\n',
+    [`${CANON_PACK_ROOT}/p/tasks/one/task.json`]: '{\n  "id": "one",\n  "frequency": "daily"\n}\n',
+  });
+  try {
+    const io = checkoutIo(root);
+    const applied = await retireTaskFrequency(taskDirsWithJson([LOCAL_PACK_ROOT], io), io);
+    assert.equal(applied.length, 1);
+    assert.match(applied[0], /alpha\/task\.json: frequency "daily" → "due:daily"/);
+    assert.deepEqual(JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8')).preconditions, ['due:daily']);
+    assert.match(readFileSync(join(root, CANON_PACK_ROOT, 'p/tasks/one/task.json'), 'utf8'), /"frequency"/, 'the canon packs are the canon\'s');
+    assert.deepEqual(await retireTaskFrequency(taskDirsWithJson([LOCAL_PACK_ROOT], io), io), [], 'idempotent: nothing left to rewrite');
+  } finally { removeTree(root); }
+});
+
+test('applyTaskFrequencyRetirement: gated on the flag, the probe and the io, and one runner with every other op', async () => {
+  const root = repo({ [`${TASK}/task.json`]: '{\n  "id": "alpha",\n  "frequency": "weekly"\n}\n' });
+  try {
+    const io = { ...checkoutIo(root), move: () => {}, readTemplate: () => null };
+    const record = { id: 'r', retireTaskFrequency: true, appliesTo: async () => true };
+    assert.deepEqual(await applyTaskFrequencyRetirement({ id: 'r' }, io), [], 'a record without the flag rewrites nothing');
+    assert.deepEqual(await applyTaskFrequencyRetirement({ ...record, appliesTo: async () => false }, io), [], 'the probe gates it');
+    const { listDir, ...classic } = io;
+    assert.deepEqual(await applyTaskFrequencyRetirement(record, classic), [], 'an older caller without the listing rewrites nothing');
+    const applied = await applyMigration(record, io);
+    assert.equal(applied.length, 1);
+    assert.deepEqual(JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8')).preconditions, ['due:weekly']);
+  } finally { removeTree(root); }
+});
+
+test('task-cadence-terms record: applies only where the mounted pack reads the cadence term, in either root', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'task-cadence-terms');
+  assert.ok(m, 'discovered');
+  assert.equal(m.retireTaskFrequency, true);
+  const capable = 'export const cadenceTermFor = (frequency) => …;\n';
+  assert.equal(await m.appliesTo(async (p) => (p.startsWith('.claudinite/shared/') ? capable : null)), true, 'a member\'s mount');
+  assert.equal(await m.appliesTo(async (p) => (p.startsWith('.claudinite/shared/') ? null : capable)), true, 'the canon\'s own tree');
+  assert.equal(await m.appliesTo(async () => 'export const FREQUENCIES = [];\n'), false, 'an older pack');
+  assert.equal(await m.appliesTo(async () => null), false, 'an unreadable mount is not capable');
+  assert.equal(await m.legacyPresent(() => true, async () => 'x'), false);
+  assert.equal(m.applyStage, undefined, 'a text rewrite needs no session');
 });
