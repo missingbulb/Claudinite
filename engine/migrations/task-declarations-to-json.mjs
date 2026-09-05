@@ -98,6 +98,29 @@ export function readmeWithNotes(existing, id, comments) {
   return `${existing ? `${existing.replace(/\n*$/, '\n')}` : `# ${id}\n`}${section}`;
 }
 
+// The conversion deletes the module, so any sibling that imported it would stop
+// resolving — and a task whose worker cannot load parks its lane rather than
+// running degraded. Rewrite the import in place, preserving the quote style, and
+// carry the JSON import attribute the runtime requires.
+export const rewriteTaskImport = (text) => text.replace(
+  /(\bfrom\s*)(['"])\.\/task\.mjs\2/g,
+  (_m, from, q) => `${from}${q}./task.json${q} with { type: ${q}json${q} }`,
+);
+
+// Every sibling .mjs in the task folder, except the module being converted.
+export function rewriteTaskImporters(dir, io) {
+  const rewritten = [];
+  for (const name of io.listDir(dir) ?? []) {
+    if (!name.endsWith('.mjs') || name === TASK_MJS) continue;
+    const at = `${dir}/${name}`;
+    const before = io.read(at);
+    if (before == null) continue;
+    const after = rewriteTaskImport(before);
+    if (after !== before) { io.write(at, after); rewritten.push(name); }
+  }
+  return rewritten;
+}
+
 // Convert the task.mjs in each directory. Capabilities, all repo-relative:
 //   exists(p), read(p), write(p, text), remove(p), importModule(p) -> module
 // Returns one report line per directory. A directory already carrying a
@@ -112,7 +135,9 @@ export async function convertTaskDeclarations(taskDirs, io) {
     if (!io.exists(mjs)) continue;
     if (io.exists(json)) {
       io.remove(mjs);
-      applied.push(`${mjs}: deleted — ${json} already exists and is the declaration`);
+      const also = rewriteTaskImporters(dir, io);
+      applied.push(`${mjs}: deleted — ${json} already exists and is the declaration`
+        + (also.length ? ` (rewrote the import in ${also.join(', ')})` : ''));
       continue;
     }
     const decl = (await io.importModule(mjs)).default;
@@ -124,11 +149,13 @@ export async function convertTaskDeclarations(taskDirs, io) {
     const { text, dropped } = serializeTaskDeclaration(decl, posix.relative(dir, schema));
     io.write(json, text);
     io.remove(mjs);
+    const rewritten = rewriteTaskImporters(dir, io);
     if (comments) {
       const readme = `${dir}/README.md`;
       io.write(readme, readmeWithNotes(io.read(readme), decl.id ?? dir.slice(dir.lastIndexOf('/') + 1), comments));
     }
     applied.push(`${mjs} -> ${json}${dropped.length ? ` (dropped non-data field${dropped.length > 1 ? 's' : ''}: ${dropped.join(', ')})` : ''}`
+      + (rewritten.length ? ` (rewrote the import in ${rewritten.join(', ')})` : '')
       + (comments ? `\n  comments not carried over:\n${comments.split('\n').map((l) => `    ${l}`).join('\n')}` : ''));
   }
   return applied;
