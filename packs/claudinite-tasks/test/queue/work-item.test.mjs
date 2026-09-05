@@ -10,6 +10,8 @@ import {
   TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, outcomeOf,
   LAST_VERDICT_HEADING, lastVerdictLines, parseLastVerdict,
 } from '../../queue/work-item.mjs';
+import { planSchedulerRun } from '../../queue/scheduler-run.mjs';
+import { convergeOps, OUTCOMES } from '../../queue/converge-item.mjs';
 
 // The title is the identity's readable half; the ISSUE NUMBER is the identity.
 // Nothing ever encodes a date here — that was the slot grammar.
@@ -146,19 +148,23 @@ test('withSection appends code_work\'s delivered artifacts without disturbing th
   assert.equal(parseWorkItemBody(out).taskPath, 'p/t/task.md');
 });
 
-test('every label the mechanism applies is ensured, and the four states are named', () => {
-  const names = QUEUE_LABELS.map((l) => l.name);
-  for (const l of STATE_LABELS) assert.ok(names.includes(l), `${l} must be ensurable`);
-  for (const l of ['needs-human', 'task:done', 'task:obsolete', 'outcome:delivered', 'task:urgent']) {
-    assert.ok(names.includes(l), `${l} must be ensurable`);
+// GitHub 422s the write that applies a label it does not know, so every label the
+// mechanism writes has to be in the set it ensures first — read off the writers.
+test('every label the scheduler run and a convergence apply is one the queue ensures', async () => {
+  const ensured = new Set(QUEUE_LABELS.map((l) => l.name));
+  const written = [];
+  const { ops } = await planSchedulerRun({
+    tasks: [{ pack: 'p', id: 'daily1', taskPath: 'packs/p/tasks/daily1/task.md', decl: { id: 'daily1', frequency: 'daily' } }],
+    items: [], now: '2026-08-14T10:00:00Z', schedule: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
+  });
+  for (const op of ops) if (op.kind === 'create') written.push(...op.labels);
+  const held = { number: 7, title: '[claudinite-work] p/a', state: 'open', labels: ['task:status:running-agent'], body: 'packs/p/tasks/a/task.md\n' };
+  for (const outcome of Object.keys(OUTCOMES)) {
+    for (const op of convergeOps(held, { issue: 7, outcome, summary: 's', pr: 9 })) if (op.kind === 'addLabel') written.push(op.name);
   }
-  // The retired origin marker is NOT ensured: nothing applies it any more, and a
-  // label the mechanism keeps minting is one a reader would keep expecting to mean
-  // something (§15.26).
-  assert.ok(!names.includes('origin:schedule'), 'the retired origin marker is not ensured');
-  // Every label carries a colour and a description, so nothing is ever minted
-  // grey-and-undocumented by being applied.
-  for (const l of QUEUE_LABELS) assert.ok(l.color && l.description, `${l.name} needs a colour and a description`);
+  assert.ok(written.length >= 6, 'the writers wrote something');
+  for (const l of written) assert.ok(ensured.has(l), `${l} is applied but never ensured`);
+  for (const l of STATE_LABELS) assert.ok(ensured.has(l), `${l} must be ensurable`);
 });
 
 test('labels are read from either shape GitHub returns them in', () => {

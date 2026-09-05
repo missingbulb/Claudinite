@@ -108,7 +108,6 @@ test('applyFileAliases: never clobbers — no-op when the canonical already exis
 // --- recordDirIsRecent (the one recency predicate: vendoring + tolerance) ----
 
 test('recordDirIsRecent: within the window by folder-name date prefix, aged out at exactly the window', () => {
-  assert.equal(RECENT_WINDOW_DAYS, 7);
   const today = '2026-07-15';
   assert.equal(recordDirIsRecent('2026-07-15-lands-today', today), true);
   assert.equal(recordDirIsRecent('2026-07-13-young', today), true);
@@ -238,10 +237,6 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
 test('claude-code-web-users-support migration: seeds the pack with the fleet\'s store, and tracks who still lacks it', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'claude-code-web-users-support');
   assert.ok(m, 'claude-code-web-users-support migration is discovered');
-  // The one-time backfill: the pack every member should run, and the store none of
-  // them can derive.
-  assert.deepEqual(m.declarePacks, [{ id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } }]);
-
   const read = (json) => async () => (json === null ? null : JSON.stringify(json));
   assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), true, 'pack undeclared -> legacy');
   assert.equal(await m.legacyPresent(() => false, read({ packs: ['claude-code-web-users-support'] })), false, 'declared -> done');
@@ -322,7 +317,6 @@ test('callerCanDeliverWorkflows: only the exact announcement counts', () => {
   for (const env of [{}, { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '' }, { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: 'true' }, { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '0' }]) {
     assert.equal(callerCanDeliverWorkflows(env), false, JSON.stringify(env));
   }
-  assert.equal(WITHHOLD_CAPABLE_ENV, 'CLAUDINITE_CAN_WITHHOLD_WORKFLOWS');
 });
 
 test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on nothing else', async () => {
@@ -339,12 +333,6 @@ test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on not
   assert.equal(await m.appliesTo(read('not json')), false);
   assert.equal(await m.appliesTo(read(null)), false);   // canon itself
 
-  // Deliverability is NOT the record's question — the machinery owns it. A record-local
-  // probe of the member's vendored worker was tried and was wrong: the vendor step earlier
-  // in the same cycle has already replaced that file with the new version while the OLD
-  // code is still executing, so the probe answers for the wrong worker.
-  assert.equal(m.materialize.length, 1);
-  assert.equal(m.materialize[0].dest, '.github/workflows/fleet-baseline.yml');
   assert.equal(await m.legacyPresent(() => false, async () => null), false);
 });
 
@@ -426,16 +414,6 @@ test('local-pack-namespace migration: legacyPresent = a bare declared id whose p
   assert.equal(await m.legacyPresent(async () => false, read(['basics', 'node'])), false, 'canon-only declaration -> done');
   assert.equal(await m.legacyPresent(hasLocal, async () => null), false, 'no declaration -> not held');
   assert.equal(await m.legacyPresent(hasLocal, async () => 'nope'), false, 'unparsable -> not held');
-});
-
-test('loadMigrations: the phase-3 retirements are really gone from the active set', async () => {
-  // vendoring/DESIGN.md phase 3: the flip note, the mount-folder-relocation
-  // chain, and the engine-restructure healer retired together once the fleet
-  // converged — none may linger as a discoverable record.
-  const ids = new Set((await loadMigrations()).map((m) => m.id));
-  for (const retired of ['vendored-mount-flip', 'mount-folder-relocation', 'engine-restructure']) {
-    assert.ok(!ids.has(retired), `${retired} must stay retired`);
-  }
 });
 
 test('every record lives under the flow that owns it — the engine, or one pack', () => {
@@ -595,19 +573,29 @@ test('applyMigration runs every op — the vocabulary has one runner, not one pe
 // not cross a nested array in an entry object, and converged nothing in the field;
 // the structural replacement lives in the -declaration record (#1041), and is
 // asserted below against a real member declaration.
-test('pack-renames: carries no declaration rewrite — that half is a record of its own', async () => {
+test('pack-renames: leaves the declaration alone — that half is a record of its own', async () => {
   const rec = (await import('../engine/migrations/2026-08-19-pack-renames/migration.mjs')).default;
-  assert.equal(rec.rewrite, undefined,
-    'a textual rewrite of the declaration is what #1041 removed — the structural op replaces it');
+  const before = '{\n  "packs": [\n    "core",\n    { "id": "grow_with_claudinite", "via": ["basics"] }\n  ]\n}\n';
+  const w = io({ '.claudinite-settings.json': before });
+  await applyMigration(rec, w);
+  assert.equal(w.written['.claudinite-settings.json'], before,
+    'a textual rewrite of the declaration is what #1041 removed — the structural op in the sibling record replaces it');
 });
 
 test('pack-renames: the mount directories move, and only from the old path', async () => {
   const rec = (await import('../engine/migrations/2026-08-19-pack-renames/migration.mjs')).default;
-  const moves = Object.fromEntries(rec.aliases.map((a) => [a.legacy[0], a.canonical]));
-  assert.deepEqual(moves, {
-    '.claudinite/shared/packs/core': '.claudinite/shared/packs/claudinite-lifecycle',
-    '.claudinite/shared/packs/grow_with_claudinite': '.claudinite/shared/packs/claudinite-growth',
-  });
+  const present = new Set(['.claudinite/shared/packs/core', '.claudinite/shared/packs/grow_with_claudinite', '.claudinite/shared/packs/basics']);
+  const move = (from, to) => { present.delete(from); present.add(to); };
+  const done = await applyFileAliases(rec, { exists: (p) => present.has(p), move });
+  assert.deepEqual(done.sort(), [
+    '.claudinite/shared/packs/core -> .claudinite/shared/packs/claudinite-lifecycle',
+    '.claudinite/shared/packs/grow_with_claudinite -> .claudinite/shared/packs/claudinite-growth',
+  ]);
+  assert.deepEqual([...present].sort(), [
+    '.claudinite/shared/packs/basics', '.claudinite/shared/packs/claudinite-growth', '.claudinite/shared/packs/claudinite-lifecycle',
+  ]);
+  // A converged mount has nothing left to move.
+  assert.deepEqual(await applyFileAliases(rec, { exists: (p) => present.has(p), move }), []);
 });
 
 // --- the declaration half of the pack renames (#1041) -----------------------

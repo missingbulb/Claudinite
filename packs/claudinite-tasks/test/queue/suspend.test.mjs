@@ -6,6 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SUSPEND_ALL_VAR, isSuspended, readSuspendedNow, suspendedNotice } from '../../queue/suspend.mjs';
@@ -37,8 +38,9 @@ test('a held run says why it did nothing, and how to resume', () => {
 // THE PRODUCER AND THE CONSUMER MUST AGREE. A knob stamped into no workflow is a
 // knob nobody can turn; a knob read by no entry point is one that looks turnable
 // and does nothing. Both halves are asserted here because the failure mode is
-// silence on either side (#974).
-test('every workflow stamps the hold, and every entry point reads it', () => {
+// silence on either side (#974): the workflows against the constant the reader
+// imports, and each entry point by running it under the hold.
+test('every workflow stamps the hold, and every entry point exits on it before reading anything', () => {
   for (const wf of [
     '.github/workflows/claudinite-scheduler.yml',
     '.github/workflows/claudinite-executor.yml',
@@ -47,8 +49,14 @@ test('every workflow stamps the hold, and every entry point reads it', () => {
   ]) {
     assert.match(read(wf), new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`), wf);
   }
+  // FIRST ACT means before the config load and before the first API call: with no
+  // token and no repository in the environment, a run that read anything would fail
+  // — a held one exits clean, saying why.
   for (const entry of ['packs/claudinite-tasks/queue/scheduler-run.mjs', 'packs/claudinite-tasks/queue/executor.mjs']) {
-    assert.match(read(entry), /isSuspended\(\)/, entry);
+    const env = { ...process.env, [SUSPEND_ALL_VAR]: 'true', GITHUB_TOKEN: '', GITHUB_REPOSITORY: '' };
+    const r = spawnSync(process.execPath, [join(CANON, entry)], { encoding: 'utf8', env });
+    assert.equal(r.status, 0, `${entry}: ${r.stdout}${r.stderr}`);
+    assert.ok(r.stdout.includes(suspendedNotice()), `${entry}: a held run must say it is held`);
   }
 });
 
@@ -91,19 +99,6 @@ test('a refused live read falls back to the start value and names what would fix
   assert.ok(lines.some((l) => /variables read/.test(l)), 'the log names the access it lacked');
 });
 
-// FIRST ACT means before the config load and before the first API call: a gate
-// that ran after them would read the world it is meant not to touch.
-test('the gate is the first thing either entry point does', () => {
-  for (const entry of ['packs/claudinite-tasks/queue/scheduler-run.mjs', 'packs/claudinite-tasks/queue/executor.mjs']) {
-    const main = read(entry).slice(read(entry).indexOf('async function main() {'));
-    const gate = main.indexOf('isSuspended()');
-    const firstRead = Math.min(
-      ...[main.indexOf('loadConfig('), main.indexOf('makeGh(')].filter((n) => n > 0),
-    );
-    assert.ok(gate > 0 && gate < firstRead, `${entry}: the hold is checked after the run has already started reading`);
-  }
-});
-
 // --- the bounds the heartbeat reframed (§15.15) --------------------------------
 
 // F17, restated: what must hold is that a LIVE holder is never reclaimed. The old
@@ -121,21 +116,4 @@ test('no executor run is capped at the leash any more', () => {
   assert.deepEqual(caps.length, 1, 'the executing job carries exactly one bound');
   assert.ok(caps[0] > EXECUTING_LEASH_MS / 60e3,
     'a cap at or under the leash is the retired F17 arithmetic, not a wedged-runner backstop');
-});
-
-// The drain must not sit in the scheduler run's concurrency group (§15.16). It leaves by
-// dispatching the executor workflow rather than being one — which is also why it
-// needs no secrets and no work bound. The workflow only NAMES the module; what
-// that module does is the assertion below it.
-test('the scheduler run workflow starts the drain rather than running it', () => {
-  const schedulerRun = read('packs/claudinite-tasks/stubs/claudinite-scheduler.yml');
-  assert.match(schedulerRun, /queue\/drain-dispatch\.mjs/, 'the drain runs the dispatcher');
-  assert.doesNotMatch(schedulerRun, /queue\/executor\.mjs/, 'and never runs an executor inside the scheduler run\'s group');
-});
-
-test('the drain dispatches the executor workflow rather than executing anything', () => {
-  const drain = read('packs/claudinite-tasks/queue/drain-dispatch.mjs');
-  assert.match(drain, /dispatchWorkflow\(/, 'the drain dispatches');
-  assert.match(drain, /EXECUTOR_WORKFLOW_FILE/, 'and names the executor workflow, not a hard-coded string');
-  assert.doesNotMatch(drain, /runExecutor|queue\/executor\.mjs/, 'and never runs an executor in-process');
 });

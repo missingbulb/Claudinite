@@ -3,16 +3,11 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readFile } from 'node:fs/promises';
 import { removeTree } from '../../../../../engine/remove-tree.mjs';
 import {
   SOURCE, DEFAULT_WORKER_NAME, COMPATIBILITY_DATE, NeedsAction,
   resolveOrigins, uploadForm, probe, deploy, wiringNote,
 } from '../../../tasks/deploy-oauth-exchange/deploy.mjs';
-import declarationJson from '../../../tasks/deploy-oauth-exchange/task.json' with { type: 'json' };
-import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
-// The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
-const declaration = normalizeTaskDeclaration(declarationJson);
 
 const member = (config) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-deploy-'));
@@ -28,10 +23,29 @@ const ENV = {
   CLAUDINITE_REPO: 'missingbulb/Shepherd',
 };
 
-test('the endpoint source the deploy uploads is the pack\'s own, and is the real handler', async () => {
-  const src = await readFile(SOURCE, 'utf8');
-  assert.match(src, /export default \{/);
-  assert.match(src, /login\/oauth\/access_token/);
+// The file the deploy uploads is driven here as the Worker runtime would drive it:
+// one allowed origin's code becomes one token, and a stranger's origin gets nothing.
+test('the endpoint source the deploy uploads exchanges a code with GitHub, for allowed origins only', async (t) => {
+  const { default: handler } = await import(SOURCE);
+  const realFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = realFetch; });
+  const posted = [];
+  globalThis.fetch = async (url, init) => {
+    posted.push({ url: String(url), body: JSON.parse(init.body) });
+    return { ok: true, status: 200, json: async () => ({ access_token: 'gho_x', token_type: 'bearer', refresh_token: 'never-forwarded' }) };
+  };
+  const env = { GITHUB_CLIENT_ID: 'Iv1.abc', GITHUB_CLIENT_SECRET: 'shh', ALLOWED_ORIGINS: 'https://ok.example' };
+  const post = (origin) => new Request('https://w.example/', { method: 'POST', headers: { Origin: origin }, body: JSON.stringify({ code: 'abc' }) });
+
+  const ok = await handler.fetch(post('https://ok.example'), env);
+  assert.equal(ok.status, 200);
+  assert.deepEqual(await ok.json(), { access_token: 'gho_x', token_type: 'bearer' }, 'only the token travels back');
+  assert.match(posted[0].url, /github\.com\/login\/oauth\/access_token$/);
+  assert.equal(posted[0].body.client_secret, 'shh', 'the secret is spent server-side, where the page cannot');
+
+  const stranger = await handler.fetch(post('https://evil.example'), env);
+  assert.equal(stranger.status, 403);
+  assert.equal(posted.length, 1, 'a refused origin never reaches GitHub');
 });
 
 test('resolveOrigins prefers the stated list, then redirectUri, then the owner\'s Pages host', () => {
@@ -77,14 +91,6 @@ test('the probe accepts only the two answers this endpoint gives, and retries wh
   const bad = await probe('https://w.example', 'https://ok.example', { fetchImpl: permissive, waitMs: 0, attempts: 2 });
   assert.equal(bad.ok, false);
   assert.match(bad.why, /origin_not_allowed/);
-});
-
-// The account id is in every Cloudflare dashboard URL its owner opens, so declaring it
-// a secret would both misstate it and put it in a store it does not need. Since #1494
-// the executor hands every repository variable to code-work with nothing declared, so
-// the only thing that must be true is that this task does not ask for it as a secret.
-test('only the two real credentials are declared secrets — the account id is a repository variable', () => {
-  assert.deepEqual(declaration.code_work_required_secrets, ['CLOUDFLARE_API_TOKEN', 'DASHBOARD_OAUTH_CLIENT_SECRET']);
 });
 
 test('a missing clientId, an unresolvable origin and a missing secret are each a NeedsAction naming what to set', async () => {

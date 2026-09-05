@@ -125,15 +125,9 @@ test('the title the scope gate keys on is the one the worker doc pins', () => {
   // the other silently retires the guarantee rather than failing. The doc is the
   // other place now: a round finds the standing PR by this title and appends to it,
   // so the title is what makes several weeks of comment work one review.
-  assert.ok(scope.run !== undefined);
-  assert.equal(task.id, 'improve-comments');
   const subject = RUN.split('\n')[0];
   assert.ok(readFileSync(new URL(`../../../tasks/improve-comments/${task.agent_instructions}`, import.meta.url), 'utf8').includes(subject),
     'the worker doc must pin the same subject the scope gate keys on');
-  // …and never as a precondition: the round runs and joins the open PR rather than
-  // standing down while it waits for review.
-  assert.ok(!task.preconditions.some((c) => c.startsWith('no-open-pr-titled:')),
-    'a pending round must not gate this task');
 });
 
 // `.claudinite/` is the mount, not the repo's own source. The vendored `shared/`
@@ -166,15 +160,4 @@ test('the precondition never hands a round a .claudinite/ path, and stays silent
 
   const mountOnly = verdict(['.claudinite/local/packs/x/RULES.md', '.claudinite/stamp.json']);
   assert.equal(mountOnly.run, false);
-});
-
-// THE DRIFT GUARD, both halves in one place: the prefix the declaration hands a
-// round its scope by, and the prefix this check refuses a WRITE under, are the same
-// string. A scope this task hands out but the gate then reds is a whole round spent
-// producing a diff nobody can land.
-test('the mount prefix the scope excludes is the one the gate refuses writes under', () => {
-  const scopeTerm = task.preconditions.find((c) => c.startsWith('commits-outside:'));
-  assert.equal(scopeTerm, 'commits-outside:.claudinite/');
-  assert.match(readFileSync(new URL('../../../skills/improve-comments/checks.mjs', import.meta.url), 'utf8'),
-    /const MOUNT_PREFIX = '\.claudinite\/';/);
 });

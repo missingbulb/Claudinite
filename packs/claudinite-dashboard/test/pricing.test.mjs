@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { priceModel, priceWindow, tokensByModelOver, modelTokens, RATES_KEY } from '../pricing.mjs';
+import { priceModel, priceWindow, tokensByModelOver, modelTokens } from '../pricing.mjs';
 
 // A million of each counter, so a rate reads straight out of the arithmetic.
 const M = 1e6;
@@ -62,8 +62,6 @@ test('no rate table at all is UNPRICED, which is a configuration gap and not a z
     assert.equal(out.ratesSet, false, 'and this is what lets it name the key instead');
     assert.equal(out.unpricedTokens, M, 'the tokens are still counted');
   }
-  // The key is named once, so the note the page writes and this module agree.
-  assert.equal(RATES_KEY, 'rates');
 });
 
 test('an empty window has no top model rather than a zero share of nothing', () => {

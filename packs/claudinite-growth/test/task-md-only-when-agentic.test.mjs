@@ -45,7 +45,6 @@ test('task-md-only-when-agentic: an omitted agent_model is no agent', () => {
 // The rule spells the loader's default itself (this pack does not require
 // claudinite-tasks); the two must agree.
 test('task-md-only-when-agentic: runsAgent agrees with the contract\'s default', () => {
-  assert.equal(DEFAULT_AGENT_MODEL, 'none');
   const view = (c) => ({ has: (k) => c[k] !== undefined, str: (k) => (typeof c[k] === 'string' ? c[k] : null) });
   assert.equal(runsAgent(view({})), DEFAULT_AGENT_MODEL !== 'none');
   assert.equal(runsAgent(view({ agent_model: 'opus' })), true);

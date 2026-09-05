@@ -13,7 +13,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { removeTree, REMOVE_TREE_OPTIONS } from '../engine/remove-tree.mjs';
+import { removeTree } from '../engine/remove-tree.mjs';
 import { stripComments } from '../engine/checks/helpers/code-scanning.mjs';
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -28,16 +28,6 @@ test('it removes a git working tree, and a second call is not an error', () => {
   removeTree(root);
   assert.equal(existsSync(root), false);
   removeTree(root); // a `finally` may run twice; `force` makes that a no-op
-});
-
-// The retry is the whole point of the helper existing, so it is stated as data
-// rather than buried in the call — and ENOTEMPTY, the error that actually fires,
-// is one Node retries only when maxRetries is set.
-test('the options carry a retry, which is what the bare delete lacked', () => {
-  assert.ok(REMOVE_TREE_OPTIONS.maxRetries > 0);
-  assert.ok(REMOVE_TREE_OPTIONS.retryDelay > 0);
-  assert.equal(REMOVE_TREE_OPTIONS.recursive, true);
-  assert.equal(REMOVE_TREE_OPTIONS.force, true);
 });
 
 // THE GUARD. A recursive delete written by hand is the bug; every one of them in

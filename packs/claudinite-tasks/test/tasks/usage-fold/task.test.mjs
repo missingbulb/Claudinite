@@ -19,20 +19,10 @@ const verdict = (signals) => evaluatePrecondition({ decl: usageFold, terms }, si
 
 // --- usage-fold (the skill-usage aggregate) ----------------------------------
 
-test('usage-fold: daily/agentless/pr, on the two movement signals', () => {
-  assert.equal(usageFold.id, 'usage-fold');
-  // Daily since the cron went to two ticks a day: a frequency finer than the cron cannot be
-  // honoured (tasks-dispatch DESIGN §17.1). The hour rows are still recomputed from source
-  // across a three-day window, so only the newest rows' freshness moves.
-  assert.equal(usageFold.frequency, 'daily');
-  assert.equal(usageFold.agent_model, 'none');
-  assert.equal(usageFold.expected_outcome, 'amend_existing_or_create_new_pr'); // a daily regenerate updates yesterday's unmerged fold rather than stacking a second // its policy is proven against this pack's merge rules in merge-policy.test.mjs
-  // Derived, never declared: the conditions name what they read.
-  assert.equal(usageFold.precondition_signals, undefined);
+test('usage-fold: the signals its gate reads are derived from its conditions', () => {
+  // Derived, never declared: the conditions name what they read, and that is the
+  // whole set the executor collects before asking.
   assert.deepEqual(preconditionSignals(usageFold.preconditions, terms), ['commits', 'conversationLogs']);
-  // An agentless task's whole work is its preprocessing — with none it does nothing.
-  assert.equal(usageFold.code_work, 'node worker.mjs');
-  assert.ok(usageFold.code_work_timeout > 0);
 });
 
 test('usage-fold: a commit or a captured session in the window is what runs it', () => {
@@ -46,11 +36,12 @@ test('usage-fold: a commit or a captured session in the window is what runs it',
 });
 
 test('usage-fold: task-authored movement counts here, unlike every other task', () => {
-  // `any-commit`, deliberately: this task measures the MACHINERY, so a task's own
-  // delivery is exactly what the aggregate folds. Every other movement term reads a
-  // field the collectors have already stripped task output out of.
-  assert.ok(usageFold.preconditions.some((c) => c.includes('any-commit')));
-  assert.ok(!usageFold.preconditions.some((c) => c.includes('substantive-change')));
+  // This task measures the MACHINERY, so a task's own delivery is exactly what the
+  // aggregate folds: a window whose only commit is non-substantive (a task's own)
+  // still runs it, where every other movement-gated task would read it as silence.
+  const machineryOnly = verdict({ commits: { count: 1, substantiveChange: false }, conversationLogs: { newestLogAgeDays: 5 } });
+  assert.equal(machineryOnly.run, true);
+  assert.match(machineryOnly.reason, /1 default-branch commit/);
 });
 
 test('usage-fold: a quiet period declines, and loses nothing by it', () => {

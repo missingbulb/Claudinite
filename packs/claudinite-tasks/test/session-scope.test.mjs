@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SESSION_SCOPES, validateTaskDeclaration } from '../task-contract.mjs';
+import { validateTaskDeclaration } from '../task-contract.mjs';
 import { readyLabelForScope, READY_LABEL, READY_FLEET_LABEL } from '../dispatch.mjs';
 
 // Session scope is RETIRED as something a task (or pack) declares — an executor's
@@ -13,13 +13,12 @@ test('an undeclared scope rides the ordinary ready label — almost every task',
   assert.equal(readyLabelForScope(undefined), READY_LABEL);
 });
 
-test("a lingering 'fleet' still routes to the fleet label, and the two labels are distinct", () => {
+test("a lingering 'fleet' still routes to the fleet label, and the two scopes route apart", () => {
   // The canon repo's ordinary executor does NOT hold the fleet; the second label is
   // what keeps that grant off it. Collapsing the labels would hand it over silently.
   assert.equal(readyLabelForScope('fleet'), READY_FLEET_LABEL);
   assert.equal(readyLabelForScope('self'), READY_LABEL);
-  assert.notEqual(READY_LABEL, READY_FLEET_LABEL);
-  assert.deepEqual(SESSION_SCOPES, ['self', 'fleet']);
+  assert.notEqual(readyLabelForScope('fleet'), readyLabelForScope('self'));
 });
 
 test('the deprecated field is still validated, never silently ignored', () => {

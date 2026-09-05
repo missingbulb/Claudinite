@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  makeReader, workflowRuns, readRuns, lookbackFrom, WATCHED_WORKFLOWS, FIRST_FOLD_LOOKBACK_DAYS,
+  makeReader, workflowRuns, readRuns, lookbackFrom, WATCHED_WORKFLOWS,
 } from '../../../tasks/usage-fold/read-runs.mjs';
 import { SCHEDULER_WORKFLOW_FILE, EXECUTOR_WORKFLOW_FILE } from '../../../../claudinite-tasks/signals/gh.mjs';
 
@@ -25,7 +25,6 @@ test('the watched workflows are the scheduler\'s and the executor\'s own file na
   // Not re-spelled here: the two names are the engine's, and a member's vendored stub
   // is what actually files the runs. A second spelling would silently count nothing.
   assert.deepEqual(WATCHED_WORKFLOWS.map((w) => w.file), [SCHEDULER_WORKFLOW_FILE, EXECUTOR_WORKFLOW_FILE]);
-  assert.deepEqual(WATCHED_WORKFLOWS.map((w) => w.workflow), ['scheduler', 'executor']);
 });
 
 test('workflowRuns skips runs at or before the watermark — the day-grained filter is not enough', () => {
@@ -86,7 +85,6 @@ test('the first fold looks back only as far as the hour tier is wide', async () 
   // Anything older would be read and immediately pruned, which is a request spent on
   // nothing.
   assert.equal(lookbackFrom('2026-08-21T11:00:00Z'), '2026-08-18T11:00:00.000Z');
-  assert.equal(FIRST_FOLD_LOOKBACK_DAYS, 3);
 
   const { reader, calls } = fakeGh({
     [SCHEDULER_WORKFLOW_FILE]: { workflow_runs: [] }, [EXECUTOR_WORKFLOW_FILE]: { workflow_runs: [] },

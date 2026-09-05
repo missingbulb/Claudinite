@@ -15,11 +15,9 @@ import { parseParamBag } from '../../../param-bag.mjs';
 // item's Context parameters reach the sweep.
 
 test('the forced member-side task is one a member actually runs', () => {
-  // `update` since #768 Phase 5 retired the task this lever used to force. Pinned
-  // against the REAL task ids a member's scheduler can discover, because a lever
-  // naming a task nothing runs still reports a clean dispatch — this sweep counts
-  // dispatches, not outcomes (Sheepdog#172), so a wrong id here is invisible.
-  assert.equal(FORCED_TASK, 'update');
+  // Checked against the REAL task ids a member's scheduler can discover, because a
+  // lever naming a task nothing runs still reports a clean dispatch — this sweep
+  // counts dispatches, not outcomes (Sheepdog#172), so a wrong id here is invisible.
   // Searched across every pack rather than pinned to the one that happens to own
   // it today: the scheduler discovers tasks by scanning each ACTIVE pack's
   // `tasks/`, so which pack holds `update` is not this lever's business and has

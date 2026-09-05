@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   axisOf, edgesOf, componentsOf, placeItem, prWaits, scheduleGrid, workloadLine,
-  quietTail, buildBoard, DAYS_BACK, DAYS_AHEAD, GROUP_CAP, ROT_DAYS, nextDailyAnchor,
+  quietTail, buildBoard, DAYS_BACK, DAYS_AHEAD, GROUP_CAP, nextDailyAnchor,
 } from '../board.mjs';
 import {
   WORK_PREFIX, ORIGIN_AD_HOC, STATUS_READY, STATUS_RUNNING_AGENT,
@@ -205,7 +205,6 @@ test('the quiet tail counts the plain issues on NO edge, by what matters', () =>
   assert.equal(quiet.rotting, 1);
   assert.equal(quiet.quickWin, 1);
   assert.equal(quiet.needsDecision, 1);
-  assert.equal(ROT_DAYS, 14);
 });
 
 // --- the whole board ---------------------------------------------------------------------------

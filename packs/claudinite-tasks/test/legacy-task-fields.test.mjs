@@ -53,7 +53,6 @@ test('legacy-task-fields: a retired outcome ceiling is reported as the pair it a
 // The two-word ceilings are the other retired generation: each became one of the
 // four words that say what the run does to pull requests, and the fix names it.
 test('legacy-task-fields: a two-word ceiling is reported as the word it became', () => {
-  assert.deepEqual(Object.keys(LEGACY_CEILINGS).sort(), ['none', 'pr']);
   for (const [legacy, today] of Object.entries(LEGACY_CEILINGS)) {
     const findings = run(declaration(`  "expected_outcome": "${legacy}"\n`));
     assert.equal(findings.length, 1, legacy);

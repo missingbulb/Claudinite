@@ -8,16 +8,29 @@ import {
   main, pushSite, NeedsHuman, WORKFLOW_FILE, PAGES_BRANCH, STAMP_FILE,
 } from '../../../tasks/publish-pages/worker.mjs';
 import declarationJson from '../../../tasks/publish-pages/task.json' with { type: 'json' };
+import updateJson from '../../../../claudinite-lifecycle/tasks/update/task.json' with { type: 'json' };
 import { normalizeTaskDeclaration, validateTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+import { pickOrder } from '../../../../claudinite-tasks/queue/executor.mjs';
+import { WORK_PREFIX, STATUS_READY, STATUS_RUNNING_EXECUTOR } from '../../../../claudinite-tasks/shared-code/work-items.mjs';
 
 const REPO = 'o/r';
 
 test('the declaration is the contract\'s, and yields to the converge it publishes', () => {
   const decl = normalizeTaskDeclaration(declarationJson);
   assert.deepEqual(validateTaskDeclaration(decl, {}), []);
-  assert.equal(decl.agent_model, 'none');
-  assert.equal(decl.expected_outcome, 'no_code_changes', 'it opens no PR — its one write is the Pages branch');
-  assert.deepEqual(decl.schedule_after, ['claudinite-lifecycle/update']);
+  // Driven through the executor's real pick order: while the converge's standing item
+  // is live this cycle, the Pages item is not picked; the moment it is gone, it is.
+  const update = normalizeTaskDeclaration(updateJson);
+  const byId = new Map([['claudinite-dashboard/publish-pages', decl], ['claudinite-lifecycle/update', update]]);
+  const opts = { taskAfter: (id) => byId.get(id)?.schedule_after ?? [], frequencyOf: (id) => byId.get(id)?.frequency ?? null };
+  const item = (number, key, status) => ({
+    number, title: `${WORK_PREFIX} ${key}`, body: `packs/${key.replace('/', '/tasks/')}/task.md\n`,
+    state: 'open', labels: [status], created_at: '2026-08-14T01:00:00Z', updated_at: '2026-08-14T01:00:00Z',
+  });
+  const pages = item(1, 'claudinite-dashboard/publish-pages', STATUS_READY);
+  const converging = item(2, 'claudinite-lifecycle/update', STATUS_RUNNING_EXECUTOR);
+  assert.deepEqual(pickOrder([pages, converging], opts), [], 'the Pages item waits for the converge');
+  assert.deepEqual(pickOrder([pages], opts).map((i) => i.number), [1], 'and is picked once it has gone');
 });
 
 // A bare repo standing in for GitHub: what the worker pushes is read back from it.

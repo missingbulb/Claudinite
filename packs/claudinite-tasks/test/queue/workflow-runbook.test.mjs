@@ -83,9 +83,15 @@ test('a refused create reports no issue number rather than a plausible one', asy
   assert.equal(res.issue, null);
 });
 
-test('the failure label set is ensured to spec and names the queue vocabulary', () => {
-  assert.ok(FAILURE_LABELS.some((l) => l.name === WORKFLOW_FAILURE));
-  for (const l of FAILURE_LABELS) assert.ok(l.color && l.description, `${l.name} is ensured to spec`);
+test('the labels a failure issue is filed under are ensured to spec, and name the failure', () => {
+  const gh = fakeGh();
+  return reportWorkflowFailure(gh, REPO, { title: 'It broke', body: 'b' }).then(() => {
+    const ensured = gh.calls.filter((c) => c.path === `/repos/${REPO}/labels`).map((c) => c.body);
+    for (const l of ensured) assert.ok(l.color && l.description, `${l.name} is ensured to spec, never applied bare`);
+    const create = gh.calls.find((c) => c.path === `/repos/${REPO}/issues` && c.method === 'POST');
+    assert.ok(create.body.labels.includes(WORKFLOW_FAILURE));
+    assert.deepEqual(create.body.labels, ensured.map((l) => l.name), 'exactly the ensured set is applied');
+  });
 });
 
 test('the run url is null outside Actions rather than a url naming undefined', () => {

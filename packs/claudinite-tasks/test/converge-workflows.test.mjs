@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,8 @@ import {
   SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW,
 } from '../converge-workflows.mjs';
 import { hashedCron } from '../hash-minute.mjs';
+import { VARS_BAG_ENV } from '../queue/vars-bag.mjs';
+import { SUSPEND_ALL_VAR } from '../queue/suspend.mjs';
 
 const mkRepo = () => mkdtempSync(join(tmpdir(), 'claudinite-workflows-'));
 const CANON_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -105,11 +107,6 @@ test("the canon's own executor workflow has not drifted from the stub it ships",
 // matter: `--badges` writes a correct row, and a converge without it leaves the
 // README untouched.
 
-const CHECKS_PATH = '.claudinite-settings.json';
-
-const ROW = [{ id: 'basics', path: 'packs/basics/badge.svg' }, { id: 'tidy-repo', path: 'packs/tidy-repo/badge.svg' }];
-
-
 // A workflow is a pure function of its stub now. That is the point of #1301: while
 // its content tracked the task set, every new secret needed a human-merged PR in
 // every member, and a member that needed one to start its agent could never get it.
@@ -141,45 +138,23 @@ test('a task set that changes leaves the executor workflow untouched', async () 
 });
 
 
-test('the vendored stubs are what the converge is written against', () => {
-  const canon = join(dirname(fileURLToPath(import.meta.url)), '../../..');
-  const schedulerRun = readFileSync(join(canon, 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml'), 'utf8');
-  const executor = readFileSync(join(canon, 'packs/claudinite-tasks/stubs/claudinite-executor.yml'), 'utf8');
-  // The EXECUTOR is the only place secrets live (§14), and it names them one by one,
-  // stamped by the converge at the `# claudinite:secrets` marker. Since the scheduler
-  // run's drain became a dispatch rather than an executor run (§15.16), the scheduler
-  // run runs no task code and gets nothing.
-  assert.match(executor, /^\s*# claudinite:secrets\s*$/m, 'the marker the converge stamps at');
-  assert.equal((schedulerRun.match(/\$\{\{ secrets\./g) ?? []).length, 0, 'the scheduler run holds no secret at all');
-  assert.ok(!schedulerRun.includes('# claudinite:secrets'), 'and carries no marker to stamp one into');
-
-  // NEITHER stub may serialise the whole secrets context (#1336). It is the shape
-  // GitHub's malicious-workflow detection flags, and a flagged workflow parks every
-  // run with zero jobs until a person approves it — which an unattended queue can
-  // neither absorb nor notice. This is the guard on that never coming back by
-  // accident; a member's copy is its own, but every member's copy starts here.
-  for (const [name, text] of [['scheduler run', schedulerRun], ['executor', executor]]) {
-    assert.ok(!/toJSON\(\s*secrets\s*\)/.test(text.replace(/^\s*#.*$/gm, '')),
-      `${name}: toJSON(secrets) is the flagged pattern — name the secrets instead`);
+// The stubs and the code that reads what they stamp are two artifacts on two delivery
+// lanes. Each stamp below is read by a module in this pack, so the stub is held to the
+// constant that module reads rather than to a spelling of its own.
+test('the vendored stubs stamp what the readers in this pack actually read', () => {
+  const schedulerRun = readFileSync(join(CANON_ROOT, 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml'), 'utf8');
+  const executor = readFileSync(join(CANON_ROOT, 'packs/claudinite-tasks/stubs/claudinite-executor.yml'), 'utf8');
+  // The declared secrets are stamped by the converge at the marker it looks for, and
+  // only into the executor — the one workflow that runs task code.
+  const root = mkRepo();
+  writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: [] }));
+  convergeWorkflows(root, REPO, { schedulerStub: schedulerRun, executorStub: executor, secretNames: ['STORE_TOKEN'] });
+  assert.match(readFileSync(join(root, EXECUTOR_WORKFLOW), 'utf8'), /STORE_TOKEN: \$\{\{ secrets\.STORE_TOKEN \}\}/);
+  assert.doesNotMatch(readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8'), /secrets\.STORE_TOKEN/);
+  // The variable bag the executor's task env unpacks (vars-bag.mjs), and the hold both
+  // entry points gate on (suspend.mjs), under the names those readers import.
+  assert.match(executor, new RegExp(`${VARS_BAG_ENV}: \\$\\{\\{ toJSON\\(vars\\) \\}\\}`));
+  for (const text of [schedulerRun, executor]) {
+    assert.match(text, new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`));
   }
-  // REPOSITORY VARIABLES TRAVEL AS ONE BAG (#1492), and only in the executor, which
-  // is the only one of the two that runs task code. `vars` is the context GitHub's own
-  // docs define as non-sensitive and render unmasked in logs, so serialising it is not
-  // the exfiltration shape the guard above exists for — and the static-website pack has
-  // fielded the same line since before that safeguard shipped.
-  assert.match(executor, /CLAUDINITE_VARS: \$\{\{ toJSON\(vars\) \}\}/,
-    'the executor carries the whole vars context as one static line');
-  assert.doesNotMatch(schedulerRun, /toJSON\(vars\)/,
-    'the scheduler run runs no task code, so it gets no bag');
-
-  // The hold reaches every workflow, or it is not a hold (§15.24).
-  for (const [name, text] of [['scheduler run', schedulerRun], ['executor', executor]]) {
-    assert.match(text, /CLAUDINITE_TASKS_SUSPEND_ALL: \$\{\{ vars\.CLAUDINITE_TASKS_SUSPEND_ALL \}\}/,
-      `${name}: the operator hold must be stamped into its env`);
-  }
-  // The run cap that used to bound a work step retired with the heartbeat
-  // (§15.15): a run is bounded by ONE work step now, not by the leash.
-  assert.doesNotMatch(schedulerRun, /timeout-minutes/, 'the scheduler-run job does no work to bound');
-  assert.equal((schedulerRun.match(/^\s*- cron:/gm) ?? []).length, 1, 'the scheduler run is the repo\'s only cron');
-  assert.equal((executor.match(/^\s*- cron:/gm) ?? []).length, 0, 'the executor has no schedule of its own');
 });

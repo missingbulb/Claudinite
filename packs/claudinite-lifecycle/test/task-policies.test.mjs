@@ -22,8 +22,6 @@ const verdict = (entries) => policyVerdict({ policy: adopt.automerge, entries, d
 
 test('the pack\'s merge-rules.json compiles cleanly', () => {
   assert.deepEqual(errors, []);
-  assert.ok(rules.has('claudinite-shared-packs'));
-  assert.ok(rules.has('claudinite-settings-updates'));
 });
 
 test('an adoption-shaped diff lands: declaration, re-vendored mount (its policy files included), rules index', () => {

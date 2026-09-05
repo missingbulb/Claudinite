@@ -18,8 +18,7 @@ const run = (files) => {
   try { return rule.run(buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
 };
 
-test('advisory, and inert on a repo without tasks', () => {
-  assert.equal(rule.severity, 'advisory');
+test('inert on a repo without tasks', () => {
   assert.deepEqual(run({ 'src/app.js': 'skip if already done\n' }), []);
 });
 

@@ -14,9 +14,6 @@ test('a repo that says nothing gets the only mechanism there is, by its current 
   for (const shape of [undefined, {}, { [MAINTENANCE]: {} }]) {
     assert.deepEqual(servedBy(shape), { mechanism: VERSIONED_MECHANISM, declared: false });
   }
-  // The same rule that once pointed this at baselining is what moves it: a default
-  // may only point at what is already true.
-  assert.equal(DEFAULT_MECHANISM, VERSIONED_MECHANISM);
 });
 
 test('the renamed mechanism answers to BOTH spellings while the record drains', () => {
@@ -33,7 +30,6 @@ test('the renamed mechanism answers to BOTH spellings while the record drains', 
     assert.equal(servedByBaselining(declaring(m)), false);
   }
   // Distinct from RETIRED: the legacy name is fully SERVED, just spelled the old way.
-  assert.notEqual(LEGACY_MECHANISM, RETIRED_MECHANISM);
   assert.equal(servedByUpdates(declaring(RETIRED_MECHANISM)), false, 'retired is not merely a spelling');
 });
 
@@ -42,7 +38,6 @@ test('the retired mechanism still PARSES — a stale declaration is read, not re
   // say `baselining`. Reading that as anything else would hand it to a mechanism its
   // owner never chose, so it stays a recognised value that reports itself declared —
   // and the flows refuse to serve it rather than pretending it means `updates`.
-  assert.equal(RETIRED_MECHANISM, 'baselining');
   assert.deepEqual(servedBy({ [MAINTENANCE]: { [MECHANISM_KEY]: RETIRED_MECHANISM } }),
     { mechanism: 'baselining', declared: true });
   assert.equal(servedByUpdates({ [MAINTENANCE]: { [MECHANISM_KEY]: RETIRED_MECHANISM } }), false);

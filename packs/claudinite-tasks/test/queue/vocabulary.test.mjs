@@ -25,7 +25,8 @@ import {
   spellingsOf, isBlockingPark, outcomeOf, triageLabelFor, TRIAGE_LABELS, requeueHint,
 } from '../../queue/work-item.mjs';
 import { swapStatus, clearStatus } from '../../queue/apply-status.mjs';
-import { FAILURE_LABELS } from '../../queue/workflow-failure.mjs';
+import { convergeOps, OUTCOMES } from '../../queue/converge-item.mjs';
+import { reportWorkflowFailure } from '../../queue/workflow-failure.mjs';
 
 const item = (...labels) => ({ number: 1, title: '[claudinite-work] basics/task-janitor', state: 'open', labels });
 
@@ -186,17 +187,20 @@ test('the executor triggers on the ready spelling the engine writes, and on no o
 });
 
 // A workflow reporting its own failure has an origin like anything else, and it is
-// a break to diagnose — the one park lane that holds the task's lane.
-test('a workflow-failure issue is filed with its origin and its park', () => {
-  const names = FAILURE_LABELS.map((l) => l.name);
-  for (const label of [ORIGIN_GITHUB, STATUS_NEEDS_HUMAN_FAILURE]) {
-    assert.ok(names.includes(label), `a failure issue must be labelled ${label}`);
-  }
-  // Ensured, not merely applied: GitHub 422s the write that applies an unknown
-  // label, and a first-run failure may precede any other label-ensure.
-  for (const { name, color, description } of FAILURE_LABELS) {
-    assert.ok(name && color && description, `${name} must be ensured to spec, not applied bare`);
-  }
+// a break to diagnose — the one park lane that holds the task's lane. Driven through
+// the reporter and read back through the queue's own decoders.
+test('a workflow-failure issue is filed wearing the platform origin and a lane-holding park', async () => {
+  let filed = null;
+  const gh = async (path, opts = {}) => {
+    if (path.startsWith('/search/issues')) return { status: 200, json: { items: [] } };
+    if (/\/issues$/.test(path) && opts.method === 'POST') { filed = opts.body; return { status: 201, json: { number: 9 } }; }
+    return { status: 201, json: {} };
+  };
+  await reportWorkflowFailure(gh, 'o/r', { title: 'It broke', body: 'why' });
+  const issue = { labels: filed.labels };
+  assert.equal(originOf(issue), ORIGIN_GITHUB);
+  assert.equal(statusOf(issue), STATUS_NEEDS_HUMAN_FAILURE);
+  assert.equal(isBlockingPark(issue), true, 'a break to diagnose holds the lane');
 });
 
 // --- what the decode is FOR: the machinery reacting to either spelling ---------
@@ -207,7 +211,7 @@ test('a workflow-failure issue is filed with its origin and its park', () => {
 
 import { pickOrder } from '../../queue/executor.mjs';
 import { planSchedulerRun } from '../../queue/scheduler-run.mjs';
-import { staleReadyItems, deadAgentItems, statelessItems } from '../../queue/janitor-rules.mjs';
+import { staleReadyItems, deadAgentItems, statelessItems, statelessComment } from '../../queue/janitor-rules.mjs';
 import { isReleasable } from '../../queue/readiness.mjs';
 
 const workItem = (n, labels, extra = {}) => ({
@@ -318,19 +322,24 @@ test('a marked issue that nobody picks up still goes stale', () => {
 // WRITTEN — the half a member sees on its issues, and the half that has to move
 // exactly once for the fleet to converge on one vocabulary (#1119).
 
-test('the engine writes canonical spellings, and only canonical spellings', () => {
-  for (const [name, value] of [
-    ['BLOCKED', BLOCKED], ['READY', READY], ['EXECUTING', EXECUTING], ['AGENT', AGENT],
-    ['TASK_DONE', TASK_DONE], ['TASK_OBSOLETE', TASK_OBSOLETE],
-    ['NEEDS_HUMAN_ACTION', NEEDS_HUMAN_ACTION], ['NEEDS_HUMAN_DECISION', NEEDS_HUMAN_DECISION],
-    ['NEEDS_HUMAN_APPROVAL', NEEDS_HUMAN_APPROVAL], ['NEEDS_HUMAN_FAILURE', NEEDS_HUMAN_FAILURE],
-  ]) {
-    assert.ok(STATUS_LABELS.includes(value), `${name} must be a canonical status, got ${value}`);
+test('the engine writes canonical spellings, and only canonical spellings', async () => {
+  // Read off the WRITES, not off the constants: every label the scheduler run files
+  // and every label a convergence adds is a canonical status or origin.
+  const written = [];
+  const { ops } = await planSchedulerRun({
+    tasks: [{ pack: 'p', id: 'daily1', taskPath: 'packs/p/tasks/daily1/task.md', decl: { id: 'daily1', frequency: 'daily' } },
+      { pack: 'p', id: 'weekly1', taskPath: 'packs/p/tasks/weekly1/task.md', decl: { id: 'weekly1', frequency: 'weekly' } }],
+    items: [], now: '2026-08-14T10:00:00Z', schedule: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
+  });
+  for (const op of ops) if (op.kind === 'create') written.push(...op.labels);
+  const held = { number: 7, title: '[claudinite-work] p/a', state: 'open', labels: [STATUS_RUNNING_AGENT], body: 'packs/p/tasks/a/task.md\n' };
+  for (const outcome of Object.keys(OUTCOMES)) {
+    for (const op of convergeOps(held, { issue: 7, outcome, summary: 's', pr: 9 })) if (op.kind === 'addLabel') written.push(op.name);
   }
-  // The names survive the flip because fielded pack versions import them — a pack on
-  // the old engine writes a legacy label, which every decoder here still reads.
-  assert.notEqual(BLOCKED, LEGACY_BLOCKED);
-  assert.equal(statusOf(item(LEGACY_BLOCKED)), BLOCKED);
+  assert.ok(written.length >= 6, 'the writers wrote something');
+  for (const name of written) assert.ok([...STATUS_LABELS, ...ORIGIN_LABELS].includes(name), `${name} is not a canonical spelling`);
+  // A pack on the old engine writes a legacy label, which every decoder here still reads.
+  assert.equal(statusOf(item(LEGACY_BLOCKED)), STATUS_BLOCKED);
 });
 
 test('a park is one label, and a kind word resolves to it', () => {
@@ -343,9 +352,9 @@ test('a park is one label, and a kind word resolves to it', () => {
   assert.equal(TRIAGE_LABELS.every((l) => l.startsWith('task:status:needs-human-')), true);
 });
 
-test('the re-queue lever is stated in one place, and it is clearing the status', () => {
-  assert.match(requeueHint, /clear its status label/);
-  assert.match(requeueHint, new RegExp(STATUS_READY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+test('the re-queue lever reaches the comment a parked person reads', () => {
+  assert.ok(statelessComment().includes(requeueHint), 'the park says how to come back');
+  assert.match(requeueHint, new RegExp(STATUS_READY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'and the lever names the label to apply');
 });
 
 // THE WRITER-FACING PROSE. A brief is read by an agent at run time and is the only

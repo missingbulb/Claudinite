@@ -55,7 +55,6 @@ test('packEntryId/isActive: a local-pack declaration may be namespaced local/<na
 });
 
 test('declTokenFor: the writer-side token — canonical namespaced for a local pack, bare for a canon one', () => {
-  assert.equal(LOCAL_DECL_PREFIX, 'local/');
   assert.equal(declTokenFor({ id: 'proj', local: true }), 'local/proj');
   assert.equal(declTokenFor({ id: 'basics', local: false }), 'basics');
   assert.equal(packEntryId(declTokenFor({ id: 'proj', local: true })), 'proj'); // round-trips

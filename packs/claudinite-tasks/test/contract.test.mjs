@@ -10,6 +10,7 @@ import {
 } from '../calendar.mjs';
 import { validateDispatchBody, dispatchFirstLine, DISPATCH_PATH_RE } from '../validate-dispatch.mjs';
 import { verifyOutcome } from '../verify-outcome.mjs';
+import { SIGNAL_COLLECTORS } from '../signals/index.mjs';
 
 // --- model-map ---
 test('resolveModel maps every family and rejects unknowns; none is agentless', () => {
@@ -225,9 +226,10 @@ test('validateTaskDeclaration rejects a non-object export', () => {
   assert.match(validateTaskDeclaration(null)[0].what, /is not a declaration object/);
 });
 
-test('the contract enums are exactly the DESIGN vocabulary', () => {
-  assert.deepEqual(OUTCOMES, ['no_code_changes', 'fresh_pr', 'amend_existing_or_create_new_pr', 'supersede_existing_pr']);
-  assert.ok(SIGNAL_NAMES.includes('fleet') && SIGNAL_NAMES.includes('sharedMount'));
+// The contract's signal vocabulary and the collectors are two lists in two modules;
+// a signal a term may name with no collector behind it is a permanent null.
+test('every signal the contract lets a term name has a collector', () => {
+  for (const name of SIGNAL_NAMES) assert.ok(SIGNAL_COLLECTORS.includes(name), `${name} has no collector`);
 });
 
 // --- expected_outcome × automerge -----------------------------------------

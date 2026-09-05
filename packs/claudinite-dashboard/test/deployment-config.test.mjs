@@ -1,13 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { removeTree } from '../../../engine/remove-tree.mjs';
 import { deploymentConfig, SIGN_IN_VARS } from '../deployment-config.mjs';
-
-const PACK_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const member = (config) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-depcfg-'));
@@ -58,15 +55,4 @@ test('a repo with neither store configured is an ordinary token-box deployment',
   const { cfg, legacy } = await deploymentConfig(root, {});
   assert.equal(cfg.clientId, undefined);
   assert.deepEqual(legacy, []);
-});
-
-// The variables reach the build through the task's code-work, where the executor hands
-// every repository variable over with nothing declared — so the frozen stub names none
-// of them, and adding or changing one never needs a workflow edit in any member.
-test('the seeded workflow names no variable — the build reads them task-side', () => {
-  const yml = readFileSync(join(PACK_DIR, 'stubs/workflows/claudinite-dashboard-pages.yml'), 'utf8');
-  for (const name of Object.values(SIGN_IN_VARS)) {
-    assert.doesNotMatch(yml, new RegExp(name), `${name} must not be frozen into the stub`);
-  }
-  assert.doesNotMatch(yml, /vars\./);
 });

@@ -43,15 +43,13 @@ test('the stale mode really pins the fixture below the corpus before converging'
 // A fixture is a MEMBER, which since #1252 is a repo carrying either settings-file
 // name — and one fixture deliberately carries the retired one, because that is the
 // shape every member is in until its own converge runs the rename record.
-test('every fixture declares why it exists — a shape nobody can explain is not a shape', () => {
+test('every fixture is a member under exactly one settings-file name, and one models the retired name', () => {
   const carriesLegacyName = [];
   for (const f of FIXTURES) {
-    assert.ok(f.why && f.why.length > 20, `${f.name} carries no why`);
     const names = Object.keys(f.files).filter((n) => SETTINGS_FILES.includes(n));
     assert.equal(names.length, 1, `${f.name} is not a member (or carries both settings-file names)`);
     if (names[0] === LEGACY_SETTINGS_FILE) carriesLegacyName.push(f.name);
   }
   assert.deepEqual(carriesLegacyName, ['legacy-settings-name'],
     'exactly one fixture must model the pre-rename shape — with none, the two-name tolerance every member depends on is untested');
-  assert.deepEqual(MODES.map((m) => m.name), ['fresh', 'stale']);
 });

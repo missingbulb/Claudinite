@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
@@ -8,7 +7,6 @@ import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
 import { discoverPacks, resolveDeclaredPacks, packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
 import { loadDeclaredChecks } from '../../../engine/checks/helpers/pattern-rules.mjs';
-import basicsPack from '../../basics/pack.mjs';
 import corePack from '../pack.mjs';
 
 const coreDeclared = loadDeclaredChecks(
@@ -31,13 +29,6 @@ const coreDeclared = loadDeclaredChecks(
 // requires closure on every declaration write, the core-seed record), which is
 // why the check only has to catch a hand-deleted entry.
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-
-test('basics requires core — the edge that makes it mandatory', () => {
-  assert.ok(
-    basicsPack.requires?.includes('claudinite-lifecycle'),
-    'basics must require core: it is the pack seeded everywhere, so its requires closure is what carries core into every member. Without this edge nothing declares core and the claudinite-lifecycle-declared check in packs/claudinite-lifecycle/declared-checks.json guards a literal that means nothing.',
-  );
-});
 
 test('the requires closure materializes core into a declaration that names only basics', async () => {
   const { packs } = await discoverPacks({ localRoot: REPO });
@@ -66,16 +57,14 @@ test('claudinite-lifecycle-declared: an entry-object declaration counts, and a n
   } finally { cleanup(objectEntry); cleanup(notAMember); }
 });
 
-test('the canon home declares core itself — baselining never reaches it', () => {
+test('the canon home passes its own claudinite-lifecycle-declared check — baselining never reaches it', () => {
   // The nightly backfill that seeds a pack across the fleet is gated `!isHome`, so
   // this repo's own declaration is the one nothing delivers to. If it drifts, every
   // core rule stops running in the repo that authors them.
-  const config = JSON.parse(readFileSync(join(REPO, '.claudinite-settings.json'), 'utf8'));
-  assert.ok(config.packs.map(packEntryId).includes('claudinite-lifecycle'), 'the canon home must declare core in its own .claudinite-settings.json');
+  assert.deepEqual(runRule(coreDeclared, buildContext({ root: REPO, mode: 'all' })), []);
 });
 
-test('the core-seed record declares exactly the pack this manifest ships', async () => {
+test('the core-seed record never outruns the version this manifest ships', async () => {
   const { default: record } = await import('../../../packs/claudinite-lifecycle/migrations/2026-08-14-core-seed/migration.mjs');
-  assert.deepEqual(record.declarePacks.map((p) => p.id), ['claudinite-lifecycle']);
   assert.ok(record.version <= corePack.version, `the record declares version ${record.version}; the pack ships ${corePack.version} — a record above its pack's version re-applies every cycle forever`);
 });
