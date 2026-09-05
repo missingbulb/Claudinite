@@ -134,8 +134,7 @@ function deniedCalls(entries) {
 //    skill never passes for a pack's skill of the same bare name.
 // Subagent (sidechain) entries count: a skill a delegated edit loaded was
 // loaded for that edit.
-// The usage fold reads the same block with its own `commandName`
-// (packs/claudinite-tasks/tasks/usage-fold/fold-usage.mjs): a pack cannot
+// The usage fold's own `commandName` reads the same block: a pack cannot
 // depend on a fresh engine export, since the two lanes deliver on separate
 // cadences, so the grammar is spelled twice and a drift guard in
 // engine-tests/pack_loader/path-scoped-skills.test.mjs holds them together.
