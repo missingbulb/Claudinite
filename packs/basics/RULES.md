@@ -131,10 +131,32 @@
   list, never the lines you asked for, with no error to catch it. Pass `output_mode: "content"`
   in the same call as any context flag.
 
+- **A `mcp__github__*` call that returns a list of objects** (`search_issues`, `list_issues`,
+  `search_repositories`, `pull_request_read get`, `actions_list list_workflow_runs`, `issue_read
+  get_comments`) — the result is routinely tens to hundreds of KB, over the token cap, and spills
+  to a `tool-results/*.txt` file instead of reaching the session. The obvious knob is the wrong
+  one: `per_page` bounds the object *count*, not the payload, so a smaller `per_page` returns the
+  identical byte count when it overflows. Pass a **`fields` subset** instead (e.g.
+  `["number","title","state"]`) — dropping the body alone is usually the whole difference. Where
+  a method carries no `fields`/`minimal_output` (`actions_list` is one), narrow the query instead,
+  or read the spilled file directly (`python3 -c "import json; …"` / `jq`) rather than retrying
+  smaller.
+
+- **Fetching a repo's tarball with `curl … | tar -xz`** (`codeload.github.com`) — a sandboxed
+  network egress proxy commonly blocks it with a `403` even though ordinary git traffic is
+  allowed. `git clone --depth 1 https://github.com/<owner>/<repo>` reaches the same tree through
+  the allowed path.
+
 - **Needing exact text from the web** — a summarizing fetch tool is not a source; when the bytes
   matter, `curl` into the scratchpad and read from disk. On a `403` don't retry and don't try a
   sibling URL — attribute the search snippet to the publisher instead of asserting it, and mark it
   for re-verification.
+
+- **The primary source for a fact about a named, real person is blocked** (a profile fetch
+  returns `403`, a paywall) — don't substitute a data-broker/aggregator listing as a stand-in, and
+  don't publish the substitute with a caveat flagging it for review. A wrong public claim about a
+  real person is not a research gap to hedge; ask whoever is present rather than research around
+  the block — one question is cheaper than the correction that follows a wrong published fact.
 
 - **Hitting a sandbox or proxy that denies a fetch** — treat it as a **policy boundary, not an
   obstacle to route around**: don't reach for an open-network runner, an ad-hoc CI workflow or a

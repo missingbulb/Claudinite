@@ -20,6 +20,8 @@ reports it.
 | Deciding which pack owns a lesson | medium | complexity | prose: 59 words |
 | Judging whether Claudinite is current here | medium | correctness | prose: 51 words |
 | Answering "why did the mount not update" | medium | correctness | prose: 39 words |
+| A dangling engine doc pointer | low | complexity | prose: 60 words |
+| Silent check run means clean | low | complexity | prose: 54 words |
 
 ## Checks
 

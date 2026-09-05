@@ -31,7 +31,10 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Searching for a tool with ToolSearch | medium | complexity | prose: 57 words |
 | Calling Edit | low | complexity | prose: 39 words |
 | Calling Grep with a context flag | medium | complexity | prose: 51 words |
+| A GitHub MCP list call overflows | medium | complexity | prose: 118 words |
+| Fetching a repo's tarball via codeload.github.com | low | complexity | prose: 44 words |
 | Needing exact text from the web | high | correctness | prose: 56 words |
+| A real person's fact-source is blocked | high | legal | prose: 81 words |
 | Hitting a denied fetch | critical | legal | prose: 152 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |

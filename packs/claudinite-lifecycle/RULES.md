@@ -33,3 +33,13 @@
 - **Answering "why did the mount not update"** — read the member's own artifacts (its declaration,
   its stamp, the head sha's runs) before theorizing about a platform setting; propose a settings
   change as a conclusion, never as a diagnosis.
+
+- **An engine source comment under the mount points at a design doc** (e.g. `DESIGN.md`) — the
+  mount vendors `.mjs` sources and pack docs only, never the canon's own internal design-doc
+  tree, so the pointer dangles in every member. Read the module's own header comment instead of
+  hunting for the file; it restates what the missing section would have said.
+
+- **Running `check_the_world.mjs` (or `check_the_work.mjs`) and seeing no output** — that is the
+  clean result, not a stall: a run with no findings prints nothing and exits `0`. Re-run once with
+  `; echo "EXIT:$?"` if in doubt and read the code, never a second pass of `--help`/`head`/`tail`
+  hunting for confirmation that silence is safe.
