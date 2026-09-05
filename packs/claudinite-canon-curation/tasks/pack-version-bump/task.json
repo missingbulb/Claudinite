@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../claudinite-tasks/task.schema.json",
+  "id": "pack-version-bump",
+  "description": "Cuts a new version for every pack on the shelf whose shipping content changed since its version last moved, committing the new manifests straight onto the base branch — the backstop behind the canon's push-to-main workflow, which runs the same worker the moment a merge lands.",
+  "frequency": "daily",
+  "preconditions": [
+    "commits-under:packs"
+  ],
+  "expected_outcome": "no_code_changes",
+  "code_work": "node worker.mjs",
+  "code_work_timeout": 300
+}

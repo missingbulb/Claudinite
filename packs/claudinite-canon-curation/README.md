@@ -51,6 +51,8 @@ why.
 | `growth-promote` | a participating member changed its local packs in the window | a PR against the canon's default branch |
 | `growth-discover-packs` | weekly, over every covered member | a PR against the canon's default branch, plus an adopt issue in each member that evidenced the pack |
 | `upstream-watch` | monthly, over the packs that declared an upstream source | a PR against the canon's default branch |
+| `pack-version-bump` | daily when commits landed under `packs/`, and on every push to the canon's default branch (its workflow) | a commit straight onto the canon's default branch |
+| `pack-version-history` | weekly, when commits landed under `packs/` | a self-landing PR touching only `packs/*/VERSIONS.md` |
 
 ### Rules (`RULES.md`)
 
@@ -82,7 +84,6 @@ What a canon session follows when it names, configures, writes or polices a pack
 | Assert a path-pattern scope is non-empty | high | correctness | prose: 45 words |
 | Grep a named directory before shipping | medium | correctness | prose: 21 words |
 | Measure whether a check earns its keep | low | performance | prose: 43 words |
-| Re-bump after a stacked PR's base lands | high | correctness | prose: 42 words |
 | RULES.md instructs, never describes | medium | complexity | prose: 64 words |
 | Mechanize a re-derived procedure | low | performance | prose: 29 words |
 
@@ -91,8 +92,6 @@ What a canon session follows when it names, configures, writes or polices a pack
 | Check | Severity | Reason | Enforcement |
 |---|---|---|---|
 | `pack-no-enforcement-narration` | medium | complexity | check: blocking |
-| `pack-version-bumped` | high | correctness | check: blocking |
-| `pack-version-claimed-once` | high | correctness | check: blocking |
 | `pack-discovery-entry-await` | critical | correctness | check: blocking |
 | `skill-no-enforcement-narration` | medium | complexity | check: blocking |
 | `pack-independence` | high | correctness | declared check: blocking |
@@ -137,6 +136,16 @@ What a canon session follows when it names, configures, writes or polices a pack
   for, and this task does not give it one. The reason a source is worth watching, and what a
   reconciliation concluded, belong in the pack's `references.md`.
 
+- **[tasks/pack-version-bump/](tasks/pack-version-bump/README.md)** — the one writer of a pack's
+  `version`. A pack's directory reaches a member only when the canon's number exceeds the
+  member's, so every shipping change needs a fresh one and no two changes may share one; the
+  worker reads the base branch after a merge, finds each pack's last bump and cuts today's next
+  version for every pack with a shipping change since. A pull request never bumps a pack itself,
+  and no check asks it to. The canon's `pack-versions.yml` workflow runs the same worker on every
+  push to the default branch; the daily task covers the merges GitHub turns into no push run.
+- **[tasks/pack-version-history/](tasks/pack-version-history/README.md)** — the weekly derivation
+  of each pack's `VERSIONS.md` from git: which pull requests landed between one version and the
+  next. Rows already written stand; only the versions with no row gain one.
 - **[item-routing.md](item-routing.md)** — the shared worthiness + routing method promote (and an
   owner-requested retrospective pass) defers to, so every decision about admitting and placing an
   item is made the same way.

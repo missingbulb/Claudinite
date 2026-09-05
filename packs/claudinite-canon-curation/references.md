@@ -11,11 +11,13 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   the pack README names what it bundles.
 - **(generate-project-instructions-1)** #385 settled that there is no agent-facing corpus index —
   the corpus map row in the repo README is the only place a new pack kind is announced.
-- **(check:pack-version-claimed-once)** #1482 is what a shared version number cost: two branches
-  each bumped to the same next version, both went green, `pack.mjs` auto-merged on identical
-  bytes, and #1466's janitor-rule widening reached no member — the fleet swept with the old code
-  while every stamp read current. Retire the check only if members stop keying re-fetch on
-  `installed < canon`.
+- **(task:pack-version-bump)** #1482 is what a shared version number cost: two branches each
+  bumped to the same next version, both went green, `pack.mjs` auto-merged on identical bytes,
+  and #1466's janitor-rule widening reached no member — the fleet swept with the old code while
+  every stamp read current. #939 is what no bump cost: seven repos frozen for five days. The
+  checks that asked each pull request to bump (`pack-version-bumped`, `pack-version-claimed-once`)
+  were retired for a single writer on the base branch (#1723); retire that only if members stop
+  keying re-fetch on `installed < canon`.
 - **(RULES-1)** Owner decision, 2026-08-18: a pack whose subject is a Claudinite feature
   rather than a technology or a way of working carries the prefix. `claudinite-growth` predates
   the decision.
@@ -52,9 +54,6 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   all blocking findings, the second-most-fired check — each one a blocked Stop-hook turn spent
   re-emitting a line the session had already been told to emit. The owner's call was to keep
   the rule and drop the check.
-- **(RULES-11)** #1119: the false green survives only until the lower PR merges and this one
-  rebases onto its real base, so the check's own result against a pre-merge base proves
-  nothing.
 - **(RULES-12)** Owner decision on the Claudinite canon, recorded as the barriers pack's `goals`
   answer until #1681 retired that question. What the graph is for: keep the engine/content
   boundary structural — core (the engine tree, the workflows, the top-level docs and the shared

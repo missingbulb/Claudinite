@@ -42,8 +42,9 @@ export default {
   // stopped being code).
   // The prose-narration rule polices pack prose CONTENT (not segregation), so
   // it stays a code check, bundled here.
-  // Delivery, not content: a pack's directory ships on its version number, so
-  // whether THIS change moved it is a question only the diff can answer.
+  // Delivery, not content: a pack's directory ships on its version number, and
+  // that number is cut on the base branch by this pack's pack-version-bump task,
+  // never by the change itself (pack-versions.mjs).
   // writing-claudinite-skills is canon-side activity (authoring corpus skills), so
   // this pack bundles it under its own skills/ — a member authors no corpus skills.
 };

@@ -69,6 +69,13 @@
                   ],
                   "reason": "inherent(#1317): a member's executor workflow is the one file that cannot converge, so its `run:` line names the mount path of the pack that owns the executor"
                 },
+                {
+                  "path": ".github/workflows/pack-versions.yml",
+                  "to": [
+                    "packs/claudinite-canon-curation"
+                  ],
+                  "reason": "inherent(#1723): the canon's push-to-main trigger is a workflow, the one thing no task can be, so its `run:` line names the worker of the pack that owns pack versioning"
+                },
                 "engine/migrations",
                 {
                   "path": "engine/pack_loader/renamed-packs.mjs",

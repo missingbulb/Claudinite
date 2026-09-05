@@ -774,7 +774,7 @@ Scan scope for every A row is structural, expressible today: harness files are t
 
 | # | Rule | Class | Signature / trigger / derived set | Needs |
 |---|------|-------|-----------------------------------|-------|
-| 1 | Recording a local pack change — no changelog | A | forbid tracked `.claudinite/local/packs/*/(VERSIONS|CHANGELOG)\.md`; canon half X `pack-version-claimed-once`/`pack-version-bumped` | `forbidTrackedPathsMatching` |
+| 1 | Recording a local pack change — no changelog | A | forbid tracked `.claudinite/local/packs/*/(VERSIONS|CHANGELOG)\.md`; canon half is the canon-curation pack's version tasks | `forbidTrackedPathsMatching` |
 | 2 | Wanting a job to run in Actions — make a task | D | Write to a new `.github/workflows/*.ya?ml` not a vendored stub name → warn "make it a task"; C backstop: added workflow file | PreToolUse Write-path guard (warn) + work `forbidAddedFilesMatching` |
 
 ## claude-code-web-users-support — `packs/claude-code-web-users-support/RULES.md`

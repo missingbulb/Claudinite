@@ -100,10 +100,6 @@
   against what it buys. A check whose firings are dominated by cases where the agent already did
   the right thing is a demotion candidate (check → prose-only). (10)
 
-- **A work-scope check that verifies "this PR bumped X" by diffing against `main`** — on a stacked
-  PR that diff carries the lower PR's bump and passes green wrongly. Re-verify and re-bump after
-  every earlier PR in the stack lands. (11)
-
 ## Writing pack prose and skills
 
 - **Writing anything into a pack's `RULES.md` that describes rather than instructs** — how a
