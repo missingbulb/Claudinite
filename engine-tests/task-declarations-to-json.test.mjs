@@ -173,3 +173,24 @@ test('every canon task.json normalizes to a complete declaration', async () => {
     }
   }
 });
+
+// The conversion deletes task.mjs, so a sibling that imported it stops resolving —
+// and a task whose worker cannot load is a blocking park, not a degraded run
+// (Shepherd#449 froze its lane exactly this way). Converting the declaration and
+// leaving its importers behind is half a migration.
+test('convertTaskDeclarations: rewrites the siblings that imported the module', async () => {
+  const root = repo({
+    [`${TASK}/task.mjs`]: MODULE,
+    [`${TASK}/worker.mjs`]: "import task from './task.mjs';\nconsole.log(task.id);\n",
+    [`${TASK}/task.test.mjs`]: 'import task from "./task.mjs";\n',
+    [`.claudinite/shared/${SCHEMA_FILE}`]: '{}',
+  });
+  try {
+    await convertTaskDeclarations([TASK], checkoutIo(root));
+    const worker = readFileSync(join(root, TASK, 'worker.mjs'), 'utf8');
+    const spec = readFileSync(join(root, TASK, 'task.test.mjs'), 'utf8');
+    assert.match(worker, /import task from '\.\/task\.json' with \{ type: 'json' \};/);
+    assert.match(spec, /import task from "\.\/task\.json" with \{ type: "json" \};/);
+    for (const t of [worker, spec]) assert.doesNotMatch(t, /task\.mjs/, 'no dangling reference to the deleted module');
+  } finally { removeTree(root); }
+});
