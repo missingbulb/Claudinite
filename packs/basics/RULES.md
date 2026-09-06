@@ -61,6 +61,11 @@
   [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns that ordering and the
   chain's mechanics.
 
+- **Filing the issues a multi-step plan or migration decomposes into** — take the owner's
+  approval of the plan first, in one submission carrying a line per step, the graph of which
+  step waits on which, and each link's automerge policy beside the diff it was predicted from.
+  Filed first, the plan is a structure to react to rather than a decision to make. (5)
+
 - **Adding a legacy tolerance** (a dual read, an accepted old spelling, a shim) — it is
   scaffolding, not a feature: ship it with an advisory that fires where the old shape is still in
   use, and with its removal already a link in the migration's chain, due one stated convergence
