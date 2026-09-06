@@ -2,7 +2,7 @@ import { relative, sep } from 'node:path';
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { isActive } from '../../../engine/pack_loader/pack-registry.mjs';
 import { taskDeclarationFiles } from '../discover.mjs';
-import { parseTaskDeclaration, TASK_DECLARATION_FILE } from '../task-declaration.mjs';
+import { parseTaskDeclaration } from '../task-declaration.mjs';
 import { normalizeTaskDeclaration } from '../task-contract.mjs';
 import { EXECUTOR_WORKFLOW, taskSecretNames, secretEnvLine, passesSecret } from '../converge-workflows.mjs';
 
@@ -66,10 +66,6 @@ function taskDeclarations(ctx) {
   const { found } = taskDeclarationFiles(ctx.root, (ctx.packs ?? []).filter((p) => isActive(p, ctx.config)));
   const out = [];
   for (const { file } of found) {
-    // A retired `task.mjs` declaration is a module, and reading one needs the async
-    // import this synchronous surface cannot make; the JSON form is what the
-    // declarations-to-JSON migration leaves behind.
-    if (!file.endsWith(TASK_DECLARATION_FILE)) continue;
     const text = ctx.read(relative(ctx.root, file).split(sep).join('/'));
     if (text === null) continue;
     try { out.push(normalizeTaskDeclaration(parseTaskDeclaration(text))); } catch { /* the declaration checks own a file that will not parse */ }

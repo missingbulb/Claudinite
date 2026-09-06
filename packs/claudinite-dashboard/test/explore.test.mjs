@@ -12,7 +12,7 @@ import {
 const NOW = Date.parse('2026-09-02T10:30:00Z');
 const DAY = 86400e3;
 const iso = (t) => new Date(t).toISOString();
-const body = (lines = []) => `${MACHINE_BLOCK_START}\npacks/p/tasks/t/task.mjs\n${lines.join('\n')}\n${MACHINE_BLOCK_END}`;
+const body = (lines = []) => `${MACHINE_BLOCK_START}\npacks/p/tasks/t/task.md\n${lines.join('\n')}\n${MACHINE_BLOCK_END}`;
 const item = (over = {}) => ({
   number: 42, title: `${WORK_PREFIX} p/t`, state: 'open', labels: [], body: body(),
   created_at: iso(NOW - 3 * DAY), updated_at: iso(NOW - DAY), ...over,

@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, rmSync, renameSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../../../vendoring/compute-vendor-set.mjs';
 import { PACK_DIRECTORY_FILE } from '../../../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../../../engine/version.mjs';
@@ -190,10 +190,10 @@ export async function engineUpdate(targetRoot, {
   // `env: {}` — never the ambient environment: the withhold handshake is an
   // announcement about the RUNNING process, and this process cannot deliver a
   // workflow file whatever its parent was able to do.
+  // Beyond the classic set, for the scheduling-fields codemod (the registry says
+  // why it is inert without it).
   const listDir = (p) => { try { return readdirSync(join(targetRoot, p)); } catch { return null; } };
-  const remove = (p) => rmSync(join(targetRoot, p), { force: true });
-  const importModule = (p) => import(pathToFileURL(join(targetRoot, p)).href);
-  const io = { exists, move, read, write, readTemplate, listDir, remove, importModule, env: {} };
+  const io = { exists, move, read, write, readTemplate, listDir, env: {} };
   const applied = [];
   for (const m of specs) applied.push(...(await applyMigration(m, io)));
 

@@ -408,9 +408,7 @@ test('a built-in dispatch validates from the pack path and the legacy engine pat
 
   for (const p of paths) {
     const v = validateDispatchBody(`${p}\n`, {
-      // Everything exists but the retired module: a folder carrying both forms is
-      // refused, and the real built-in carries only the task.json.
-      exists: (path) => !path.endsWith('task.mjs'),
+      exists: () => true,
       isPackDeclared: () => true,
       // The REAL declaration and the REAL terms beside it, so the test cannot pass
       // on a hand-built stand-in that happens to satisfy the contract the live one

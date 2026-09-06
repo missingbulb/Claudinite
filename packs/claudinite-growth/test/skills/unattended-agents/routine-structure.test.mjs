@@ -61,7 +61,7 @@ test('routine-structure: flags phase scripts in a folder with no routine.md entr
 
 test('routine-structure: a converted task folder (task.md entry + invoked phase script) passes', () => {
   const root = makeRepo({ changed: {
-    '.claudinite/local/packs/gcec/tasks/demo/task.mjs': 'export default { id: "demo" }\n',
+    '.claudinite/local/packs/gcec/tasks/demo/task.json': '{ "id": "demo" }\n',
     '.claudinite/local/packs/gcec/tasks/demo/task.md':
       '# Demo task\n\n## Postcondition\n\n```sh\nbash .claudinite/local/packs/gcec/tasks/demo/postconditions.sh\n```\n',
     '.claudinite/local/packs/gcec/tasks/demo/postconditions.sh': '#!/usr/bin/env bash\nexit 0\n',

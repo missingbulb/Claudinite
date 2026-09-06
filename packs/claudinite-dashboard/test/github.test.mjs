@@ -64,13 +64,13 @@ test('content at a sha is fetched once and served from cache after', async () =>
   let hits = 0;
   globalThis.fetch = async () => { hits += 1; return res('declaration', { headers: RATE, text: true }); };
 
-  assert.equal(await gh.getTextAtSha('o/r', 'sha1', 'task.mjs', 't'), 'declaration');
-  assert.equal(await gh.getTextAtSha('o/r', 'sha1', 'task.mjs', 't'), 'declaration');
+  assert.equal(await gh.getTextAtSha('o/r', 'sha1', 'task.json', 't'), 'declaration');
+  assert.equal(await gh.getTextAtSha('o/r', 'sha1', 'task.json', 't'), 'declaration');
   assert.equal(hits, 1, 'the second read never touched the network');
   assert.equal(gh.rate.spent, 1);
   assert.equal(gh.rate.served, 1);
 
-  await gh.getTextAtSha('o/r', 'sha2', 'task.mjs', 't');
+  await gh.getTextAtSha('o/r', 'sha2', 'task.json', 't');
   assert.equal(hits, 2, 'a new sha is a new fetch');
 });
 

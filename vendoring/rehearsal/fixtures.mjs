@@ -359,7 +359,7 @@ const PACK_LEGACY_TASK = `export default {
 
 // Deliberately declares the deprecated task-level scope AND no pack-level one —
 // the exact shape a consumer that has not migrated still has on disk.
-const LEGACY_TASK = `export default {
+const LEGACY_TASK = `${JSON.stringify({
   id: 'legacy-scoped',
   frequency: 'weekly',
   precondition_signals: [],
@@ -368,11 +368,7 @@ const LEGACY_TASK = `export default {
   agent_instructions: 'task.md',
   session_scope: 'fleet',
   agent_execution_timeout: 600,
-  precondition() {
-    return { run: false, reason: 'a rehearsal fixture task — never runs' };
-  },
-};
-`;
+}, null, 2)}\n`;
 
 const PACK_CODE_WORK_ENV = `export default {
   id: 'fixture-code-work',
@@ -388,7 +384,7 @@ const PACK_CODE_WORK_ENV = `export default {
 };
 `;
 
-const CODE_WORK_TASK = `export default {
+const CODE_WORK_TASK = `${JSON.stringify({
   id: 'code-work-only',
   frequency: 'daily',
   precondition_signals: [],
@@ -396,11 +392,7 @@ const CODE_WORK_TASK = `export default {
   expected_outcome: 'none',
   code_work: 'node worker.mjs',
   code_work_timeout: 60,
-  precondition() {
-    return { run: false, reason: 'a rehearsal fixture task — never runs' };
-  },
-};
-`;
+}, null, 2)}\n`;
 
 // Reads the code-work contract and nothing else — the shape a member's own worker
 // has. `task-code-work-env` is blocking, so a member carrying a worker like this
@@ -934,7 +926,7 @@ export const FIXTURES = [
       '.claudinite-settings.json': checks(['basics', 'local/fixture-legacy']),
       '.claudinite/local/packs/fixture-legacy/pack.mjs': PACK_LEGACY_TASK,
       '.claudinite/local/packs/fixture-legacy/RULES.md': '# fixture-legacy\n\nNo standing rules.\n',
-      '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.mjs': LEGACY_TASK,
+      '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.json': LEGACY_TASK,
       '.claudinite/local/packs/fixture-legacy/tasks/legacy-scoped/task.md':
         '# legacy-scoped\n\nA rehearsal fixture task. Its precondition never fires.\n',
     },
@@ -947,7 +939,7 @@ export const FIXTURES = [
       '.claudinite-settings.json': checks(['basics', 'local/fixture-code-work']),
       '.claudinite/local/packs/fixture-code-work/pack.mjs': PACK_CODE_WORK_ENV,
       '.claudinite/local/packs/fixture-code-work/RULES.md': '# fixture-code-work\n\nNo standing rules.\n',
-      '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/task.mjs': CODE_WORK_TASK,
+      '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/task.json': CODE_WORK_TASK,
       '.claudinite/local/packs/fixture-code-work/tasks/code-work-only/worker.mjs': CODE_WORK_WORKER,
       // An agentless task's doc is a README — `task.md` is the spec an agent
       // session reads, and `task-md-only-when-agentic` (blocking, growth) turns a

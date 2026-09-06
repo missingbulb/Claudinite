@@ -54,8 +54,3 @@ test('task-md-only-when-agentic: runsAgent agrees with the contract\'s default',
 test('task-md-only-when-agentic: is inert when no task declaration exists', () => {
   assert.deepEqual(run({ 'src/app.js': 'x\n', 'docs/task.md': '# not a task folder\n' }), []);
 });
-
-test('task-md-only-when-agentic: the retired task.mjs form is judged too', () => {
-  const mjs = "export default {\n  id: 'usage-fold',\n  agent_model: 'none', // agentless\n  code_work: 'node worker.mjs',\n};\n";
-  assert.equal(run({ [`${DIR}task.mjs`]: mjs, [`${DIR}task.md`]: '# spec nobody reads\n' }).length, 1);
-});

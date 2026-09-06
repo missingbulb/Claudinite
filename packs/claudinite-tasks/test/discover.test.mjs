@@ -5,20 +5,13 @@ import { discoverTasks } from '../discover.mjs';
 
 const packMjs = (id) => `export default { id: '${id}' };\n`;
 const taskJson = (id, over = {}) => `${JSON.stringify({ id, preconditions: ['due:daily'], expected_outcome: 'no_code_changes', ...over })}\n`;
-// The retired module form, which still loads (task-declaration.mjs) — and the
-// retired `frequency` field with it, which the door reads as its cadence term.
-const taskMjs = (id, over = {}) => {
-  const d = { id, frequency: 'daily', preconditions: ['none'], agent_model: 'sonnet', expected_outcome: 'no_code_changes', agent_instructions: 'task.md', agent_execution_timeout: 900, ...over };
-  const fields = Object.entries(d).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(', ');
-  return `export default { ${fields} };\n`;
-};
 
 test('discoverTasks finds a declared local pack\'s tasks with the repo-relative task path', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
-    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha', { frequency: 'daily', agent_model: 'opus', expected_outcome: 'fresh_pr', automerge: 'anything' }),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.json': taskJson('alpha', { frequency: 'daily', preconditions: ['none'], agent_model: 'opus', expected_outcome: 'fresh_pr', automerge: 'anything', agent_instructions: 'task.md', agent_execution_timeout: 900 }),
     '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# alpha worker\n',
-    '.claudinite/local/packs/mypack/tasks/beta/task.mjs': taskMjs('beta', { frequency: 'weekly' }),
+    '.claudinite/local/packs/mypack/tasks/beta/task.json': taskJson('beta', { preconditions: ['due:weekly'], code_work: 'node worker.mjs', code_work_timeout: 60 }),
     '.claudinite/local/packs/mypack/tasks/beta/task.md': '# beta worker\n',
   } });
   try {
@@ -39,7 +32,7 @@ test('discoverTasks finds a declared local pack\'s tasks with the repo-relative 
 test('discoverTasks skips tasks of an undeclared (inactive) pack', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
-    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha'),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.json': taskJson('alpha'),
     '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# w\n',
   } });
   try {
@@ -52,10 +45,10 @@ test('discoverTasks reports a malformed declaration and a dir/id mismatch as err
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
     // bad cadence
-    '.claudinite/local/packs/mypack/tasks/bad/task.mjs': taskMjs('bad', { frequency: 'nightly' }),
+    '.claudinite/local/packs/mypack/tasks/bad/task.json': taskJson('bad', { preconditions: ['due:nightly'] }),
     '.claudinite/local/packs/mypack/tasks/bad/task.md': '# w\n',
     // dir name != declared id
-    '.claudinite/local/packs/mypack/tasks/mismatch/task.mjs': taskMjs('other'),
+    '.claudinite/local/packs/mypack/tasks/mismatch/task.json': taskJson('other', { code_work: 'node worker.mjs', code_work_timeout: 60 }),
     '.claudinite/local/packs/mypack/tasks/mismatch/task.md': '# w\n',
   } });
   try {
@@ -85,20 +78,5 @@ test('discoverTasks reads a task.json, with the defaults filled at the door', as
     assert.equal(byId.alpha.taskPath, '.claudinite/local/packs/mypack/tasks/alpha/task.md');
     assert.equal(errors.length, 1);
     assert.match(errors[0].what, /broken\/task\.json failed to load/);
-  } finally { cleanup(root); }
-});
-
-test('discoverTasks reports a folder carrying both task.json and task.mjs as an error, not a task', async () => {
-  const root = makeRepo({ changed: {
-    '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
-    '.claudinite/local/packs/mypack/tasks/alpha/task.json': taskJson('alpha', { code_work: 'node w.mjs', code_work_timeout: 5 }),
-    '.claudinite/local/packs/mypack/tasks/alpha/task.mjs': taskMjs('alpha'),
-    '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# w\n',
-  } });
-  try {
-    const { tasks, errors } = await discoverTasks(root, { packs: ['local/mypack'] });
-    assert.deepEqual(tasks, []);
-    assert.equal(errors.length, 1);
-    assert.match(errors[0].what, /carries both task\.json and task\.mjs/);
   } finally { cleanup(root); }
 });

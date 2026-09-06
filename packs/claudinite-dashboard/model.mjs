@@ -12,13 +12,7 @@
 // import graph. Living inside `packs/claudinite-tasks/` makes the queue modules siblings,
 // so the dashboard sits beside the mechanism it renders rather than reaching across
 // the tree at it.
-//
-// `stripComments` is the one remaining cross-tree reach, and it is deliberate:
-// `file-placement` flags it advisory and its own remedy sanctions exactly this case.
-// Shortening it would mean copying a comment-stripper nearer, and a second stripper
-// that drifts from the canonical one is worse than the distance.
 
-import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
 import { parseTaskDeclaration, applyTaskDefaults } from '../claudinite-tasks/shared-code/task-declaration.mjs';
 import {
   mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, holdsOnFailure, statesConditions,
@@ -78,7 +72,7 @@ export function declaredPackDirs(config) {
   return dirs;
 }
 
-const TASK_PATH_RE = /^(.*)\/tasks\/([^/]+)\/task\.(json|mjs)$/;
+const TASK_PATH_RE = /^(.*)\/tasks\/([^/]+)\/task\.json$/;
 
 // Every declared pack's task declarations, from one recursive tree listing.
 // `paths` is the flat list of blob paths the tree API returned.
@@ -101,10 +95,7 @@ export function taskDeclarationPaths(paths, config) {
 // The page reads a declaration as TEXT: it renders other repos over the API, where
 // there is nothing to import and no Node to import it with. A `task.json` parses
 // whole and takes the contract's defaults for the fields it omits — the same
-// door the engine's loader runs it through. The retired `task.mjs` is a JS
-// object literal, so its scalar fields are lifted by pattern over comment-stripped
-// source — the engine's own `stripComments`, so a `// preconditions: ['due:weekly']`
-// in a task's header prose can never be mistaken for the declaration.
+// door the engine's loader runs it through.
 //
 // A field this cannot read comes back NULL and renders as "unknown". It is never
 // defaulted: a task whose declaration this misreads must look unreadable, because a
@@ -113,33 +104,6 @@ export function taskDeclarationPaths(paths, config) {
 // read and carries no key requires nothing, exactly as its author wrote it, and
 // reads as `[]`. An absent `trigger` is not unread either — it is derived, as the
 // contract's own door derives it.
-// The key must open the line or follow a `{` / `,` — anchoring on the line start
-// alone would miss a declaration written on one line, and anchoring on nothing
-// would let `code_work` be found inside `agent_code_work`. The value may close on a
-// comma, the object's brace, or the line's end, so a last field without a trailing
-// comma still reads.
-const at = (field) => `(?:^|[{,])\\s*${field}:\\s*`;
-
-const scalar = (src, field) => {
-  const m = new RegExp(`${at(field)}(?:'([^']*)'|"([^"]*)"|(\\d+)|(true|false))\\s*(?=[,}\\n]|$)`, 'm').exec(src);
-  if (!m) return null;
-  if (m[3] !== undefined) return Number(m[3]);
-  if (m[4] !== undefined) return m[4] === 'true';
-  return m[1] ?? m[2];
-};
-
-// A literal list of strings: `undefined` where the field is absent, `null` where it
-// is present but not one a reader can see through (a computed expression).
-const stringArray = (src, field) => {
-  if (!new RegExp(at(field), 'm').test(src)) return undefined;
-  const m = new RegExp(`${at(field)}\\[([^\\]]*)\\]`, 'm').exec(src);
-  if (!m) return null;
-  return [...m[1].matchAll(/'([^']*)'|"([^"]*)"/g)].map((x) => x[1] ?? x[2]);
-};
-
-// The module form is a default-exported object literal; text without that shape is
-// no declaration at all, so an absent field on it is unread rather than unstated.
-const MODULE_DECLARATION_RE = /\bexport\s+default\s*\{/;
 
 // THE FREQUENCY DOOR, as the page runs it (#1725). `frequency` is retired: a task's
 // cadence is a term in its own `preconditions`. A declaration still carrying the
@@ -184,32 +148,10 @@ const isGate = (entry) => String(entry ?? '').split('||')
   .some((t) => termName(t) !== NONE && !CADENCE_TERM_NAMES.includes(termName(t)));
 const hasGate = (preconditions) => (preconditions ?? []).some(isGate);
 
-export function parseDeclaration(text, path = '') {
-  if (path.endsWith('.json') || /^\s*\{/.test(String(text ?? ''))) return parseJsonDeclaration(text);
-  const src = stripComments(String(text ?? ''));
-  // The conditions a task declares. One form, and only one (#1617): the
-  // `preconditions` expression — absent, the empty one. A member still stamping the
-  // retired `precondition_signals` reads as exactly that here, which is what it is —
-  // a declaration the current engine does not accept states no condition it reads.
-  const stated = MODULE_DECLARATION_RE.test(src) ? stringArray(src, 'preconditions') : null;
-  const preconditions = withCadenceTerm(scalar(src, 'frequency'), stated === undefined ? [] : stated);
-  return {
-    id: scalar(src, 'id'),
-    trigger: withTrigger(scalar(src, 'trigger'), preconditions),
-    agent_model: scalar(src, 'agent_model'),
-    expected_outcome: scalar(src, 'expected_outcome'),
-    interrupt_policy: scalar(src, 'interrupt_policy'),
-    code_work: scalar(src, 'code_work'),
-    agent_execution_timeout: scalar(src, 'agent_execution_timeout'),
-    preconditions,
-    has_precondition: hasGate(preconditions),
-  };
-}
-
-// The JSON form. The fields the roster reads, and only those, so a declaration
-// carrying more renders the same as one carrying exactly these. Unparseable text
-// reads as every field unknown, the same face the module form shows.
-function parseJsonDeclaration(text) {
+// The fields the roster reads, and only those, so a declaration carrying more
+// renders the same as one carrying exactly these. Unparseable text reads as every
+// field unknown.
+export function parseDeclaration(text) {
   let decl;
   try {
     decl = parseTaskDeclaration(String(text ?? ''));

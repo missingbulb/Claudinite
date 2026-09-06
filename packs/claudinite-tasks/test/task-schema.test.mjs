@@ -7,8 +7,7 @@ import { FREQUENCIES } from '../calendar.mjs';
 import { MODEL_FAMILIES } from '../model-map.mjs';
 import { OUTCOMES, INTERRUPT_POLICIES, SESSION_SCOPES, validateTaskDeclaration, normalizeTaskDeclaration } from '../task-contract.mjs';
 import { loadTaskTerms } from '../task-terms.mjs';
-import { parseTaskDeclaration, findTaskDeclaration, loadTaskDeclaration, siblingTaskDeclaration } from '../task-declaration.mjs';
-import { orderTaskKeys } from '../../../engine/migrations/task-declarations-to-json.mjs';
+import { parseTaskDeclaration, findTaskDeclaration, loadTaskDeclaration, siblingTaskDeclaration, orderTaskKeys } from '../task-declaration.mjs';
 
 const root = join(import.meta.dirname, '../../..');
 const schema = JSON.parse(readFileSync(join(root, 'packs/claudinite-tasks/task.schema.json'), 'utf8'));
@@ -63,10 +62,8 @@ test('parseTaskDeclaration strips $schema and leaves a non-object as it is', () 
   assert.equal(parseTaskDeclaration('42'), 42);
 });
 
-test('siblingTaskDeclaration: json over mjs, both is an error state, neither is absent', () => {
+test('siblingTaskDeclaration: the task.json beside the worker doc, or null when absent', () => {
   const at = (present) => (p) => present.includes(p);
-  assert.deepEqual(siblingTaskDeclaration('packs/p/tasks/t/task.md', at(['packs/p/tasks/t/task.json'])), { file: 'packs/p/tasks/t/task.json', both: false });
-  assert.deepEqual(siblingTaskDeclaration('packs/p/tasks/t/task.md', at(['packs/p/tasks/t/task.mjs'])), { file: 'packs/p/tasks/t/task.mjs', both: false });
-  assert.deepEqual(siblingTaskDeclaration('packs/p/tasks/t/task.md', at(['packs/p/tasks/t/task.mjs', 'packs/p/tasks/t/task.json'])), { file: null, both: true });
-  assert.deepEqual(siblingTaskDeclaration('packs/p/tasks/t/task.md', at([])), { file: null, both: false });
+  assert.equal(siblingTaskDeclaration('packs/p/tasks/t/task.md', at(['packs/p/tasks/t/task.json'])), 'packs/p/tasks/t/task.json');
+  assert.equal(siblingTaskDeclaration('packs/p/tasks/t/task.md', at([])), null);
 });

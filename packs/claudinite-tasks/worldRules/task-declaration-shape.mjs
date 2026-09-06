@@ -7,9 +7,7 @@ import {
   TRIGGERS, TRIGGER_SCHEDULE, TRIGGER_REQUEST,
 } from '../../claudinite-tasks/task-contract.mjs';
 import { validatePreconditions, termsMap, preconditionNeedsItem } from '../../claudinite-tasks/precondition-policy.mjs';
-import {
-  TASK_DECLARATION_PATH_RE, isLegacyTaskDeclarationPath, readDeclarationFields,
-} from '../../claudinite-tasks/task-declaration-text.mjs';
+import { TASK_DECLARATION_PATH_RE, readDeclarationFields } from '../../claudinite-tasks/task-declaration-text.mjs';
 
 // Every scheduler task is a `tasks/<name>/task.json` carrying the declaration
 // contract (per-project-scheduling DESIGN §1) with legal enum values. This
@@ -19,9 +17,8 @@ import {
 //
 // RELEVANCE FIRST (engine/checks/README.md): gated on a task declaration file
 // existing, so the check is inert on any repo without tasks. Static text over the
-// self-contained file — a `task.json` parsed whole, the retired `task.mjs` lifted
-// by pattern — keyed off the canonical enum lists so the legal values never drift
-// from the runtime validator.
+// self-contained file — a `task.json` parsed whole — keyed off the canonical enum
+// lists so the legal values never drift from the runtime validator.
 
 // The term names the task's own `preconditions.mjs` exports, read as text: the
 // check runs over a file listing, not a module graph, so it recognises a
@@ -34,7 +31,7 @@ import {
 // all. Either quote style, because a member's file is its author's.
 const TERM_NAME = /^ {2}['"]([^'"]+)['"]:/gm;
 function siblingTerms(ctx, taskFile) {
-  const text = ctx.read(taskFile.replace(/task\.(json|mjs)$/, 'preconditions.mjs'));
+  const text = ctx.read(taskFile.replace(/task\.json$/, 'preconditions.mjs'));
   if (text === null) return new Map();
   const body = stripComments(text);
   const start = body.indexOf('export const terms');
@@ -46,15 +43,6 @@ function siblingTerms(ctx, taskFile) {
     return [m[1], { signals: [], needsItem: /\bneedsItem\s*:\s*true\b/.test(block) }];
   })));
 }
-
-// A file that only re-exports another module declares nothing of its own — a
-// legacy-path shim left behind by a relocation is the shape. The declaration it
-// names is scanned where it actually lives, so judging the shim would report the
-// same task twice and fail it on text it does not carry.
-const isReExport = (text) => {
-  const code = text.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('//'));
-  return code.length > 0 && code.every((l) => /^(import|export)\b.*\bfrom\b/.test(l) || /^import\s+['"]/.test(l));
-};
 
 const rule = {
   id: 'task-declaration-shape',
@@ -71,21 +59,7 @@ const rule = {
       const flag = (what, fix) => out.push(finding(rule, { file, what, fix }));
       const advise = (what, fix) => out.push(finding(rule, { file, severity: 'advisory', what, fix }));
 
-      const legacy = isLegacyTaskDeclarationPath(file);
-      if (legacy) {
-        if (isReExport(text)) continue;
-        // ADVISORY, like every other retired spelling here: the runtime still loads
-        // the module form, and a member's vendor refresh must not turn its CI red
-        // over a file nothing has converted yet. The nightly update converts a
-        // member's own; this finding names the edit for anyone editing sooner.
-        advise('is a task.mjs, the retired module form of a task declaration',
-          'convert it to task.json — node <engine>/migrations/task-declarations-to-json.mjs rewrites every task.mjs under the repo\'s packs and deletes the module');
-        if (!/export\s+default\s*\{/.test(text)) {
-          flag('does not default-export a declaration object', 'convert it to a task.json carrying { id, description, preconditions, expected_outcome, … }');
-          continue;
-        }
-      }
-      const decl = readDeclarationFields(file, legacy ? stripComments(text) : text);
+      const decl = readDeclarationFields(text);
       if (decl.error) {
         flag(`is not a JSON object: ${decl.error}`, 'write one JSON object: { "id", "description", "preconditions", "expected_outcome", … }');
         continue;
@@ -183,14 +157,11 @@ const rule = {
       if (model !== 'none' && str('agent_instructions') === null) {
         flag('an agentic task (agent_model !== "none") declares no string "agent_instructions"', 'add "agent_instructions": the worker file beside the declaration (e.g. "task.md")');
       }
-      // `preconditions` is the only gate a task declares (#1617). Both retired
-      // spellings are flagged by NAME rather than merely going unrecognised, so a
-      // declaration carrying one is told what replaced it instead of reading as a
+      // `preconditions` is the only gate a task declares (#1617). The retired
+      // spelling is flagged by NAME rather than merely going unrecognised, so a
+      // declaration carrying it is told what replaced it instead of reading as a
       // task that simply forgot its gate.
-      if (decl.format === 'mjs' && /\bprecondition\s*[:(]/.test(decl.code.replace(/\bpreconditions\b/g, '').replace(/\bprecondition_signals\b/g, ''))) {
-        flag('declares a "precondition" function, which is retired', 'move the gate into "preconditions" — a built-in condition, or a term this task\'s preconditions.mjs exports');
-      }
-      if (decl.format === 'json' && decl.has('precondition')) {
+      if (decl.has('precondition')) {
         flag('declares "precondition", which is retired', 'move the gate into "preconditions" — a built-in condition, or a term this task\'s preconditions.mjs exports');
       }
       if (decl.has('precondition_signals')) {

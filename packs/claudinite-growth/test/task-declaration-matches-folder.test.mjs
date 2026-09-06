@@ -48,10 +48,3 @@ test('task-declaration-matches-folder: an omitted agent_instructions is not a da
   const { agent_instructions, ...rest } = JSON.parse(decl('growth-extract'));
   assert.deepEqual(run({ [`${DIR}task.json`]: `${JSON.stringify(rest)}\n` }), []);
 });
-
-test('task-declaration-matches-folder: the retired task.mjs form is judged on the same invariant', () => {
-  const mjs = "export default {\n  id: 'growth-prune', // the id\n  agent_instructions: 'task.md',\n};\n";
-  const f = run({ [`${DIR}task.mjs`]: mjs, [`${DIR}task.md`]: '# worker\n' });
-  assert.equal(f.length, 1);
-  assert.match(f[0].what, /declares id "growth-prune"/);
-});

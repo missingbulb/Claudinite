@@ -69,15 +69,13 @@ test('taskDeclarationPaths takes only declared packs, from either root', () => {
 });
 
 test('parseDeclaration lifts the scalar fields', () => {
-  const d = parseDeclaration(`
-    export default {
-      id: 'ci-performance',
-      agent_model: 'sonnet',
-      expected_outcome: 'fresh_pr',
-      code_work_timeout: 300,
-      preconditions: ['due:weekly', 'substantive-change'],
-    };
-  `);
+  const d = parseDeclaration(JSON.stringify({
+    id: 'ci-performance',
+    agent_model: 'sonnet',
+    expected_outcome: 'fresh_pr',
+    code_work_timeout: 300,
+    preconditions: ['due:weekly', 'substantive-change'],
+  }));
   assert.equal(d.id, 'ci-performance');
   assert.deepEqual(d.preconditions, ['due:weekly', 'substantive-change']);
   assert.equal(d.agent_model, 'sonnet');
@@ -89,79 +87,60 @@ test('parseDeclaration lifts the scalar fields', () => {
 // themselves. A cadence term says WHEN, not whether, and `none` is the empty
 // precondition — so a task carrying only those has no gate, which is what they mean.
 test('parseDeclaration lifts the declarative preconditions; a cadence term and `none` are no gate', () => {
-  const gated = parseDeclaration(`
-    export default {
-      id: 'improve-comments',
-      preconditions: ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/'],
-      agent_model: 'sonnet',
-    };
-  `);
+  const gated = parseDeclaration(JSON.stringify({
+    id: 'improve-comments',
+    preconditions: ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/'],
+    agent_model: 'sonnet',
+  }));
   assert.deepEqual(gated.preconditions, ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/']);
   assert.equal(gated.precondition_signals, undefined, 'the retired field is not modelled at all — the union is derived');
   assert.equal(gated.has_precondition, true);
 
-  const cadenceOnly = parseDeclaration("export default { id: 'update', preconditions: ['due:daily'] };");
+  const cadenceOnly = parseDeclaration('{ "id": "update", "preconditions": ["due:daily"] }');
   assert.deepEqual(cadenceOnly.preconditions, ['due:daily']);
   assert.equal(cadenceOnly.has_precondition, false);
-  assert.equal(parseDeclaration("export default { id: 'x', preconditions: ['none'] };").has_precondition, false);
-  assert.equal(parseDeclaration("export default { id: 'x', preconditions: [] };").has_precondition, false);
-  assert.equal(parseDeclaration("export default { id: 'x' };").has_precondition, false, 'no conditions at all is no gate');
-  assert.equal(parseDeclaration("export default { id: 'x', preconditions: ['last-run-over:7d', 'last-run-not-failed'] };").has_precondition, true,
+  assert.equal(parseDeclaration('{ "id": "x", "preconditions": ["none"] }').has_precondition, false);
+  assert.equal(parseDeclaration('{ "id": "x", "preconditions": [] }').has_precondition, false);
+  assert.equal(parseDeclaration('{ "id": "x" }').has_precondition, false, 'no conditions at all is no gate');
+  assert.equal(parseDeclaration('{ "id": "x", "preconditions": ["last-run-over:7d", "last-run-not-failed"] }').has_precondition, true,
     'a run-history gate is a gate; only the cadence term is exempt');
 });
 
 // The retired `frequency` field is still read — another repo's declaration, rendered
 // over the API, may carry it — and it reads as exactly the cadence term the contract's
 // door makes of it: first in the list, the `none` beside it dropped, the field gone.
-test('a legacy `frequency` in the module form goes through the door', () => {
-  const d = parseDeclaration(`
-    export default { id: 'update', frequency: 'daily', preconditions: ['none'] };
-  `);
+test('a legacy `frequency` goes through the door', () => {
+  const d = parseDeclaration('{ "id": "update", "frequency": "daily", "preconditions": ["none"] }');
   assert.deepEqual(d.preconditions, ['due:daily']);
   assert.equal(d.frequency, undefined, 'the field does not survive the door');
   assert.equal(d.has_precondition, false);
-});
-
-test('parseDeclaration ignores a field named in a comment', () => {
-  const d = parseDeclaration(`
-    // WHY weekly: frequency: 'daily' would measure the same runs twice, and
-    // preconditions: ['substantive-change'] alone would never rest.
-    export default { id: 'x', preconditions: ['due:weekly'] , };
-  `);
-  assert.deepEqual(d.preconditions, ['due:weekly']);
-});
-
-// A field it cannot read must come back unknown. Defaulting it would put a
-// confident wrong cadence — and so a wrong next-anchor — on the roster.
-test('parseDeclaration reports an unreadable field as null, never a default', () => {
-  const d = parseDeclaration('export default { id: computeId(), preconditions: CONDITIONS, };');
-  assert.equal(d.preconditions, null);
-  assert.equal(d.agent_model, null);
 });
 
 // An ABSENT `preconditions` is another fact from an unreadable one: the declaration
 // states the empty expression, which is what its author wrote — a task off the
 // schedule. Only text that is no declaration at all has said nothing.
 test('parseDeclaration reads an absent `preconditions` as the empty expression, and text that is no declaration as unknown', () => {
-  assert.deepEqual(parseDeclaration("export default { id: 'lever' };").preconditions, []);
+  assert.deepEqual(parseDeclaration('{ "id": "lever" }').preconditions, []);
   assert.equal(parseDeclaration('<!doctype html><title>Not Found</title>').preconditions, null, 'not a declaration at all — nothing was read');
 });
 
 // The JSON form parses whole, and an omitted agentic field takes the contract's
-// default — the loader's door, not a guess of this page's.
+// default — the loader's door, not a guess of this page's. A field this cannot
+// read (a broken parse) comes back null, never a default — a confident wrong
+// cadence would put a wrong next-anchor on the roster.
 test('parseDeclaration reads a task.json, defaults filled', () => {
-  const d = parseDeclaration('{ "$schema": "x", "id": "tidy-prs", "preconditions": ["due:weekly", "substantive-change"], "expected_outcome": "no_code_changes" }', 'packs/tidy-repo/tasks/tidy-prs/task.json');
+  const d = parseDeclaration('{ "$schema": "x", "id": "tidy-prs", "preconditions": ["due:weekly", "substantive-change"], "expected_outcome": "no_code_changes" }');
   assert.equal(d.id, 'tidy-prs');
   assert.deepEqual(d.preconditions, ['due:weekly', 'substantive-change']);
   assert.equal(d.agent_model, 'none');
   assert.equal(d.agent_execution_timeout, null);
   assert.equal(d.has_precondition, true);
-  const unsaid = parseDeclaration('{ "id": "x", "expected_outcome": "no_code_changes" }', 'p/tasks/x/task.json');
+  const unsaid = parseDeclaration('{ "id": "x", "expected_outcome": "no_code_changes" }');
   assert.deepEqual(unsaid.preconditions, [], 'no `preconditions` key is the empty expression — off the schedule, not unknown');
   assert.equal(unsaid.has_precondition, false);
-  const unreadable = parseDeclaration('{ "id": "x", "preconditions": "due:daily" }', 'p/tasks/x/task.json');
+  const unreadable = parseDeclaration('{ "id": "x", "preconditions": "due:daily" }');
   assert.equal(unreadable.preconditions, null, 'a field that is present but not a list of strings was not read');
-  const broken = parseDeclaration('{ "id": ', 'packs/tidy-repo/tasks/tidy-prs/task.json');
+  const broken = parseDeclaration('{ "id": ');
   assert.equal(broken.preconditions, null);
 });
 
@@ -189,7 +168,7 @@ test('the page\'s frequency and trigger doors agree with the contract\'s on ever
   ];
   for (const decl of vectors) {
     const contract = normalizeTaskDeclaration({ ...decl, expected_outcome: 'no_code_changes' });
-    const page = parseDeclaration(JSON.stringify({ ...decl, expected_outcome: 'no_code_changes' }), 'p/tasks/x/task.json');
+    const page = parseDeclaration(JSON.stringify({ ...decl, expected_outcome: 'no_code_changes' }));
     assert.deepEqual(page.preconditions, contract.preconditions, `vector ${decl.id}`);
     assert.equal(page.trigger, contract.trigger, `vector ${decl.id}: the two doors read one trigger`);
     assert.equal(page.frequency, contract.frequency, `vector ${decl.id}: neither side keeps the field`);
@@ -207,9 +186,9 @@ test('describeCadence follows a stated trigger against what the conditions look 
   assert.equal(on.frequency, 'on movement', 'asked at every tick, and nothing narrows it');
 });
 
-test('taskDeclarationPaths selects a task.json and a task.mjs alike', () => {
-  const paths = ['packs/basics/tasks/a/task.json', 'packs/basics/tasks/b/task.mjs', 'packs/basics/tasks/c/task.md'];
-  assert.deepEqual(taskDeclarationPaths(paths, { packs: ['basics'] }).map((t) => t.task), ['a', 'b']);
+test('taskDeclarationPaths selects only a task.json', () => {
+  const paths = ['packs/basics/tasks/a/task.json', 'packs/basics/tasks/b/task.yaml', 'packs/basics/tasks/c/task.md'];
+  assert.deepEqual(taskDeclarationPaths(paths, { packs: ['basics'] }).map((t) => t.task), ['a']);
 });
 
 test('parseDeclaration survives a missing file', () => {

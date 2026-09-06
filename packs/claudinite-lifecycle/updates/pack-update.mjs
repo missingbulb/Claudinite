@@ -1,6 +1,6 @@
 import { copyFileSync, mkdirSync, rmSync, renameSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { computeVendorSet, SHARED_SUBDIR } from '../../../vendoring/compute-vendor-set.mjs';
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../../../engine/version.mjs';
@@ -263,12 +263,10 @@ export async function packUpdate(targetRoot, {
   // handshake rather than a probe of the disk because what matters is what THIS process
   // can do, and the vendor step earlier in this same cycle already replaced the on-disk
   // worker while the old code is still running (registry.mjs states the same).
-  // The three the task-declaration conversion needs beyond the classic set (the
-  // registry says why it is inert without them).
+  // Beyond the classic set, for the scheduling-fields codemod (the registry says
+  // why it is inert without it).
   const listDir = (p) => { try { return readdirSync(join(targetRoot, p)); } catch { return null; } };
-  const remove = (p) => rmSync(join(targetRoot, p), { force: true });
-  const importModule = (p) => import(pathToFileURL(join(targetRoot, p)).href);
-  const io = { exists, move, read, write, readTemplate, listDir, remove, importModule, env: { [WITHHOLD_CAPABLE_ENV]: '1' } };
+  const io = { exists, move, read, write, readTemplate, listDir, env: { [WITHHOLD_CAPABLE_ENV]: '1' } };
   const applied = [];
   for (const m of [...specs, ...extraRecords]) {
     owedBy = flowOf(m.dir).pack ?? null;

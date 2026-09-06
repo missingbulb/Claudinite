@@ -253,66 +253,6 @@ test('task-declaration-shape: legacy agent_preprocessing names satisfy the contr
   assert.match(findings[0].fix, /"agent_preprocessing" → "code_work"/);
 });
 
-// --- the retired module form ---------------------------------------------------
-// A `task.mjs` still loads (task-declaration.mjs), so it is judged on the same
-// contract, plus exactly one ADVISORY naming the conversion: a member's vendor
-// refresh must not turn its CI red over a file its own nightly update converts.
-
-const MJS = TASK.replace('task.json', 'task.mjs');
-const mjsOf = (obj) => `export default {\n${Object.entries(obj).map(([k, v]) => `  ${k}: ${JSON.stringify(v).replace(/"/g, "'")},`).join('\n')}\n};\n`;
-const conversionAdvisory = (findings) => findings.filter((f) => f.severity === 'advisory' && /retired module form/.test(f.what));
-
-test('task-declaration-shape: a well-formed task.mjs earns the conversion advisory and nothing else', () => {
-  const findings = run({ [MJS]: mjsOf(good) });
-  assert.equal(findings.length, 1, JSON.stringify(findings));
-  assert.match(findings[0].what, /retired module form/);
-  assert.equal(conversionAdvisory(findings).length, 1);
-  assert.match(findings[0].fix, /task-declarations-to-json\.mjs/);
-});
-
-test('task-declaration-shape: a task.mjs is judged on the same contract', () => {
-  const findings = run({ [MJS]: mjsOf({ ...good, preconditions: ['due:nightly'] }) });
-  assert.match(findings.map((f) => f.what).join(' | '), /"due" takes one of daily, weekly, monthly, not "nightly"/);
-  assert.equal(conversionAdvisory(findings).length, 1);
-});
-
-test('task-declaration-shape: a comment naming automerge is not a declaration of it', () => {
-  const commented = mjsOf(noneTask).replace("expected_outcome: 'none',", "expected_outcome: 'none', // not automerge: material");
-  assert.equal(run({ [MJS]: commented }).length, 1, 'only the conversion advisory');
-});
-
-test('task-declaration-shape: the retired precondition function is named in a task.mjs', () => {
-  const withFunction = mjsOf(declarativeTask).replace("  agent_model: 'opus',", "  precondition(signals) { return { run: true }; },\n  agent_model: 'opus',");
-  assert.match(whatsOf({ [MJS]: withFunction }), /declares a "precondition" function, which is retired/);
-});
-
-test('task-declaration-shape: a computed expression in a task.mjs is unreadable', () => {
-  assert.match(whatsOf({ [MJS]: mjsOf(good).replace("['due:daily','substantive-change']", 'SOME_CONSTANT') }), /not a literal list of condition strings/);
-});
-
-test('task-declaration-shape: flags a non-object export', () => {
-  const f = run({ [MJS]: 'export default 42;\n' });
-  assert.equal(f.filter((x) => x.severity === 'blocking').length, 1);
-  assert.match(f.find((x) => x.severity === 'blocking').what, /does not default-export a declaration object/);
-});
-
-// A relocation leaves the old path behind as a re-export so a fielded caller still
-// resolves. That file declares nothing of its own — judging it would fail the task on
-// text it does not carry, while the real declaration is scanned where it now lives.
-test('task-declaration-shape: a legacy-path re-export shim is not a declaration to judge', () => {
-  const shim = '.claudinite/local/packs/oldpack/tasks/growth-extract/task.mjs';
-  assert.deepEqual(run({
-    [TASK]: goodTask,
-    [shim]: "// A legacy-path shim.\nimport './legacy-entry.mjs';\nexport * from '../../../mypack/tasks/growth-extract/task.json' with { type: 'json' };\nexport { default } from '../../../mypack/tasks/growth-extract/task.mjs';\n",
-  }), []);
-});
-
-// …and an empty file is not a shim: nothing re-exports, so the missing declaration is real.
-test('task-declaration-shape: an empty task.mjs is still flagged', () => {
-  const findings = run({ [MJS]: '// nothing here\n' });
-  assert.match(findings.find((x) => x.severity === 'blocking').what, /does not default-export a declaration object/);
-});
-
 // --- the trigger (#1725) ---------------------------------------------------------
 
 test('task-declaration-shape: a stated trigger is checked; an unstated one is the advisory\'s', () => {
