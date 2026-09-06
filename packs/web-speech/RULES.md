@@ -20,10 +20,10 @@
   `maxAlternatives` > 1 and iterate `result[0..length]` for `{ transcript,
   confidence }`; the ranked alternatives are exactly where homophone / near-miss
   recovery lives. (1)
-- **`onresult`, `onend`, and `onerror` all fire — settle the cycle exactly once.**
-  Guard a `settled` flag: interim results arrive before the final one, a cycle can
-  end with no result at all (treat `onend`-without-result as `no-speech`), and an
-  error and an end can both arrive. (2)
+- **Guard a `settled` flag so a listen cycle settles exactly once.** Interim
+  results arrive before the final one, a cycle can end with no result at all
+  (treat `onend`-without-result as `no-speech`), and an error and an end can
+  both arrive. (2)
 - **With `interimResults` off, engines omit `isFinal` — treat a result as final
   unless `isFinal === false`.** Don't test `if (result.isFinal)` (it's `undefined`
   on those engines and you'll drop every result); test `result.isFinal !== false`.
@@ -46,12 +46,6 @@
   `aborted`, `audio-capture`, else `other`. In particular `aborted` is the
   *self-inflicted* stop (you called `recognizer.abort()`), so the caller should
   ignore it rather than surface it as a failure.
-- **Turning `interimResults` on — use them as a "still speaking" signal, never as input.**
-  Interim hypotheses arrive on the *same* `result` event as the finished utterance and are
-  revised several times per utterance, so a handler that delivers
-  `results[i][0].transcript` acts on words the user had not finished saying, and acts again on
-  each revision. Gate delivery on `isFinal !== false`, and let the interim traffic drive only
-  the watchdog below.
 - **Hearing your own spoken output come back as a transcript — fix it in the application, not
   at the capture layer.** Chrome's default echo cancellation is a loopback of *page* playout,
   so it attenuates `speechSynthesis` and misses `chrome.tts` entirely, whose audio the OS
@@ -98,12 +92,10 @@
   actually installed, and fall back to the default only when none match. Treat that order
   and the speaking rate as user-facing settings with a modest default rather than constants
   tuned once — they are taste, and taste is wrong often enough to be worth a control. (4)
-- **Resolve a `speak()` promise on *any* terminal event, and never reject.** For
-  `chrome.tts` that's `end` / `interrupted` / `cancelled` / `error`; for
-  `speechSynthesis` it's `onend` / `onerror`. Resolving (not rejecting) on error
-  keeps a spoken-prompt sequence from deadlocking on one bad utterance. Use
-  `enqueue: false` so a new line interrupts the current one for turn-taking rather
-  than stacking up.
+- **Never reject a `speak()` promise — resolve it on every terminal event
+  instead.** Resolving on error (not rejecting) keeps a spoken-prompt sequence
+  from deadlocking on one bad utterance. Use `enqueue: false` so a new line
+  interrupts the current one for turn-taking rather than stacking up.
 - **Neither engine reliably supports SSML — you can't force intonation.** If a
   punctuation cue matters (a question's rising tone), speak the cue in words
   ("question mark") rather than relying on prosody the engine may not apply.

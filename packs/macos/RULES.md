@@ -65,19 +65,13 @@
 
 - **Diagnostics belong inside the shipped app**, or in a script using only what ships with macOS.
   Anything requiring a compiler on the user's machine is a diagnostic that will never be run.
-- **`command -v swift` does not test for a Swift toolchain.** `/usr/bin/swift` exists on every Mac
-  as a stub that pops the *"install the command line developer tools?"* dialog when invoked — so
-  the probe passes and the script asks the user to install several gigabytes of Xcode. Gate on
-  `xcode-select -p >/dev/null 2>&1`, which fails quietly when the tools are absent.
 
 ## Exit paths: `applicationWillTerminate` is not "every exit"
 
-- **`NSApplication` installs no signal handlers.** `NSApp.terminate` (menu Quit, ⌘Q, the
-  logout/shutdown Apple Event) runs `applicationWillTerminate`; a bare `SIGTERM` (Activity
-  Monitor's Quit, `killall`), `SIGINT` or `SIGHUP` kills the process with **no** teardown. Route
-  them through a `DispatchSourceSignal` into `NSApp.terminate` — and set `signal(sig, SIG_IGN)`
-  **before** `resume()`, or a signal arriving in the gap still takes the fatal default.
-  `SIGKILL`, Force Quit and a crash stay uncoverable; name that as residual risk rather than
+- **`NSApplication` installs no signal handlers**, so a bare `SIGTERM` (Activity Monitor's Quit,
+  `killall`), `SIGINT` or `SIGHUP` kills the process with **no** teardown unless routed to
+  `NSApp.terminate` (only `NSApp.terminate` itself runs `applicationWillTerminate`). `SIGKILL`,
+  Force Quit and a crash stay uncoverable regardless; name that as residual risk rather than
   claiming coverage.
 - **An uncaught Objective-C exception is an exit path too.** It aborts the process, so no teardown
   runs; a framework call that *raises* (rather than throws) is therefore a resource-release bug as
