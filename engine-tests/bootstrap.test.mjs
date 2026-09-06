@@ -25,14 +25,16 @@ const run = (root, ...args) => execFileSync(process.execPath, [BOOTSTRAP, '--tar
   { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
 // A fresh consumer: a git repo with one committed README and nothing else —
-// the state bootstrap.md's Part 1 meets.
+// the state bootstrap.md's Part 1 meets. The README's exact text is a constant
+// because a case below asserts bootstrap gave it back unchanged.
+const FIXTURE_README = '# WidgetWorks\n\nA fixture.\n';
 function freshRepo() {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-bootstrap-'));
   const git = (...a) => execFileSync('git', a, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
   git('init', '-q');
   git('config', 'user.email', 'test@example.invalid');
   git('config', 'user.name', 'test');
-  writeFileSync(join(root, 'README.md'), '# WidgetWorks\n\nA fixture.\n');
+  writeFileSync(join(root, 'README.md'), FIXTURE_README);
   git('add', '-A');
   git('commit', '-qm', 'seed');
   return root;
@@ -77,8 +79,7 @@ test('bootstrap converges a fresh repo in one invocation', () => {
   assert.ok(existsSync(join(root, '.claudinite/claudinite-rules.GENERATED.md')));
   assert.ok(at(root, 'CLAUDE.md').includes('claudinite-rules.GENERATED.md'));
   assert.ok(existsSync(join(root, `.claudinite/local/packs/${LOCAL_PACK_ID}/pack.mjs`)));
-  assert.equal(at(root, 'README.md'), '# WidgetWorks\n\nA fixture.\n',
-    "the repo's README is not bootstrap's to write");
+  assert.equal(at(root, 'README.md'), FIXTURE_README, "the repo's README is not bootstrap's to write");
 
   // A repo with no CI gets the minimal sweeps workflow.
   const ci = at(root, '.github/workflows/claudinite-ci.yml');
