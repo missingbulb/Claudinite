@@ -6,7 +6,7 @@ import { SETTINGS_FILE, SETTINGS_FILES, LEGACY_SETTINGS_FILE } from '../settings
 import { installedVersions, withInstalledVersions, LEGACY_STAMP_KEY } from '../installed-versions.mjs';
 import { ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from '../checks/helpers/repo-context.mjs';
 import {
-  LOCAL_PACK_ROOT, taskDirsWithModule, convertTaskDeclarations, taskDirsWithJson, retireTaskFrequency,
+  LOCAL_PACK_ROOT, taskDirsWithModule, convertTaskDeclarations, taskDirsWithJson, updateTaskSchedulingFields,
 } from './task-declarations-to-json.mjs';
 
 // <corpus>/engine/migrations/ — records are addressed corpus-relative, because they
@@ -543,17 +543,17 @@ export async function applyTaskDeclarationConversion(migration, io) {
 // DESIGN §5, #1725): fold the retired `frequency` of every local pack's task.json
 // into its `preconditions`, as anchored text. A named codemod for the same reason
 // the conversion above is: which files carry the field is the repo's own disk.
-// The record declares `retireTaskFrequency: true`; the rewrite ships with the
+// The record declares `updateTaskSchedulingFields: true`; the rewrite ships with the
 // engine (task-declarations-to-json.mjs) and is the same one the CLI runs.
 //
 // Needs the directory listing beyond the classic io; a caller without it rewrites
-// nothing rather than half-rewriting, and the field keeps working at the door
-// until a worker that can do the step runs.
-export async function applyTaskFrequencyRetirement(migration, io) {
-  if (!migration.retireTaskFrequency) return [];
+// nothing rather than half-rewriting, and both retired shapes keep working at the
+// door until a worker that can do the step runs.
+export async function applyTaskSchedulingFields(migration, io) {
+  if (!migration.updateTaskSchedulingFields) return [];
   if (typeof io.listDir !== 'function') return [];
   if (migration.appliesTo && !(await migration.appliesTo(io.read))) return [];
-  return retireTaskFrequency(taskDirsWithJson([LOCAL_PACK_ROOT], io), io);
+  return updateTaskSchedulingFields(taskDirsWithJson([LOCAL_PACK_ROOT], io), io);
 }
 
 export async function applyMigration(migration, io) {
@@ -565,7 +565,7 @@ export async function applyMigration(migration, io) {
   applied.push(...(await applyLocalDeclarationNormalization(migration, io)));
   applied.push(...(await applyTaskDeclarationConversion(migration, io)));
   // After the conversion: a module converted this very run is a task.json too.
-  applied.push(...(await applyTaskFrequencyRetirement(migration, io)));
+  applied.push(...(await applyTaskSchedulingFields(migration, io)));
   applied.push(...(await applyPackRenames(migration, io)));
   // LAST: every op above writes to whichever name the member still carries, and this
   // is the one that changes which name that is.

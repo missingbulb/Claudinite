@@ -297,23 +297,78 @@ export function taskDirsWithJson(packRoots, { listDir, exists }) {
   return out.sort();
 }
 
-// Rewrite the task.json in each directory that still carries the field. One
-// report line per file changed; a file the patch cannot make is reported and left.
-export async function retireTaskFrequency(taskDirs, io) {
+// --- the unstated `trigger` -----------------------------------------------------
+
+// Whether a declaration states any condition — the pack's `statesConditions`
+// (packs/claudinite-tasks/calendar.mjs), spelled again here because the engine
+// imports no pack; the engine test pins the two over one vector set. An entry
+// carrying only separators states nothing, which is why this is not a length test.
+const statesConditions = (preconditions) => (Array.isArray(preconditions) ? preconditions : [])
+  .some((e) => String(e ?? '').split('||').some((alt) => alt.trim() !== ''));
+
+const TRIGGER_FIELD = /(^|[{,\s])"trigger"[ \t]*:/;
+// The field goes immediately BEFORE one of these, never after a key: the last key
+// of an object carries no comma, so appending past one is what breaks the file.
+// `preconditions` first, the pair being one sentence; `expected_outcome` is the
+// fallback because the contract requires it, so a declaration always carries one.
+const TRIGGER_ANCHORS = [/"preconditions"[ \t]*:/, /"expected_outcome"[ \t]*:/];
+
+// Patch one task.json's text to state the trigger its shape already implied.
+// Returns `{ text, trigger }`, or null where the field is already there, the file
+// does not parse, no anchor was found, or the patch would leave it unparsable.
+// Run AFTER the frequency fold, so the conditions it reads are the final ones.
+export function stateTriggerText(source) {
+  const text = String(source ?? '');
+  if (TRIGGER_FIELD.test(text)) return null;
+  let decl;
+  try { decl = JSON.parse(text); } catch { return null; }
+  if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) return null;
+  const trigger = statesConditions(decl.preconditions) ? 'schedule' : 'request';
+  const field = `"trigger": ${JSON.stringify(trigger)}`;
+
+  for (const anchor of TRIGGER_ANCHORS) {
+    const m = anchor.exec(text);
+    if (!m) continue;
+    // A key on its own line gets a line of its own at the same indent; one inline
+    // in a one-line object gets exactly the separator that object uses.
+    const lineStart = text.lastIndexOf('\n', m.index) + 1;
+    const indent = text.slice(lineStart, m.index);
+    const out = indent.trim() === ''
+      ? `${text.slice(0, m.index)}${field},\n${indent}${text.slice(m.index)}`
+      : `${text.slice(0, m.index)}${field}, ${text.slice(m.index)}`;
+    try { JSON.parse(out); } catch { return null; }
+    return { text: out, trigger };
+  }
+  return null;
+}
+
+// Bring the task.json in each directory up to the current scheduling vocabulary:
+// the retired `frequency` folded into `preconditions`, and the `trigger` its shape
+// implied stated outright. One report line per file changed; a file a patch cannot
+// be made to is reported and left.
+export async function updateTaskSchedulingFields(taskDirs, io) {
   const applied = [];
   for (const dir of taskDirs) {
     const json = `${dir}/${TASK_JSON}`;
-    const source = io.read(json);
-    if (source === null || !FREQUENCY_FIELD.test(source)) continue;
-    const patched = retireFrequencyText(source);
-    if (!patched) {
-      applied.push(`${json}: not rewritten — its "frequency" could not be folded into "preconditions" as text; edit it by hand`);
-      continue;
+    let source = io.read(json);
+    if (source === null) continue;
+    if (FREQUENCY_FIELD.test(source)) {
+      const patched = retireFrequencyText(source);
+      if (!patched) {
+        applied.push(`${json}: not rewritten — its "frequency" could not be folded into "preconditions" as text; edit it by hand`);
+        continue;
+      }
+      source = patched.text;
+      io.write(json, source);
+      applied.push(patched.term === null
+        ? `${json}: frequency "${patched.frequency}" dropped — no schedule, so no preconditions`
+        : `${json}: frequency "${patched.frequency}" → "${patched.term}", first in preconditions`);
     }
-    io.write(json, patched.text);
-    applied.push(patched.term === null
-      ? `${json}: frequency "${patched.frequency}" dropped — no schedule, so no preconditions`
-      : `${json}: frequency "${patched.frequency}" → "${patched.term}", first in preconditions`);
+    const stated = stateTriggerText(source);
+    if (stated) {
+      io.write(json, stated.text);
+      applied.push(`${json}: trigger "${stated.trigger}" stated — the answer its conditions already gave`);
+    }
   }
   return applied;
 }
@@ -330,7 +385,7 @@ export async function main(argv = process.argv.slice(2)) {
   const targets = dirs.length ? named : taskDirsWithModule([CANON_PACK_ROOT, LOCAL_PACK_ROOT], io);
   const applied = await convertTaskDeclarations(targets, io);
   console.log(applied.length ? applied.join('\n') : 'no task.mjs to convert');
-  const retired = await retireTaskFrequency(dirs.length ? named : taskDirsWithJson([CANON_PACK_ROOT, LOCAL_PACK_ROOT], io), io);
+  const retired = await updateTaskSchedulingFields(dirs.length ? named : taskDirsWithJson([CANON_PACK_ROOT, LOCAL_PACK_ROOT], io), io);
   console.log(retired.length ? retired.join('\n') : 'no task.json carries a frequency');
 }
 

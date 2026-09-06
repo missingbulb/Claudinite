@@ -6,10 +6,10 @@ import { join } from 'node:path';
 import { removeTree } from '../engine/remove-tree.mjs';
 import {
   checkoutIo, convertTaskDeclarations, taskDirsWithModule, serializeTaskDeclaration, moduleComments, main,
-  retireFrequencyText, retireTaskFrequency, taskDirsWithJson,
+  retireFrequencyText, stateTriggerText, updateTaskSchedulingFields, taskDirsWithJson,
   LOCAL_PACK_ROOT, CANON_PACK_ROOT, SCHEMA_FILE,
 } from '../engine/migrations/task-declarations-to-json.mjs';
-import { applyTaskDeclarationConversion, applyTaskFrequencyRetirement, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
+import { applyTaskDeclarationConversion, applyTaskSchedulingFields, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
 import { ACCEPTED_FREQUENCIES } from '../packs/claudinite-tasks/calendar.mjs';
 import { normalizeTaskDeclaration } from '../packs/claudinite-tasks/task-contract.mjs';
 import { parseTaskDeclaration } from '../packs/claudinite-tasks/task-declaration.mjs';
@@ -255,7 +255,37 @@ test('retireFrequencyText agrees with the contract\'s door on every accepted val
   }
 });
 
-test('retireTaskFrequency rewrites every local task.json carrying the field, and reports each', async () => {
+// --- the unstated `trigger` ------------------------------------------------------
+
+test('stateTriggerText writes the answer the conditions already gave, keeping the layout', () => {
+  const listed = '{\n  "id": "x",\n  "preconditions": [\n    "due:daily"\n  ],\n  "expected_outcome": "fresh_pr"\n}\n';
+  assert.equal(stateTriggerText(listed).trigger, 'schedule');
+  assert.match(stateTriggerText(listed).text, /\n  "trigger": "schedule",\n  "preconditions": \[/, 'a line of its own at the key\'s indent');
+  // No conditions: `preconditions` may not be there to anchor on, so the required
+  // outcome field is — and the field goes BEFORE it, never after a trailing key.
+  const bare = '{\n  "id": "x",\n  "description": "d",\n  "expected_outcome": "fresh_pr"\n}\n';
+  assert.equal(stateTriggerText(bare).text, '{\n  "id": "x",\n  "description": "d",\n  "trigger": "request",\n  "expected_outcome": "fresh_pr"\n}\n');
+  // One-line object: the separator it uses, not a new line.
+  assert.equal(stateTriggerText('{ "id": "x", "preconditions": ["due:daily"] }\n').text,
+    '{ "id": "x", "trigger": "schedule", "preconditions": ["due:daily"] }\n');
+  // Nothing to do, and nothing safe to do.
+  assert.equal(stateTriggerText('{\n  "id": "x",\n  "trigger": "request",\n  "preconditions": []\n}\n'), null, 'already stated');
+  assert.equal(stateTriggerText('{\n  "id": "x",\n  "preconditions": [1\n}\n'), null, 'does not parse');
+  assert.equal(stateTriggerText('{\n  "id": "x"\n}\n'), null, 'no anchor to place it against');
+});
+
+test('stateTriggerText agrees with the contract\'s door on every shape of expression', () => {
+  // Two spellings of one rule: the engine cannot import the pack, so what it writes
+  // is pinned to what the door derives (`statesConditions`).
+  const shapes = [undefined, [], ['due:daily'], ['substantive-change'], ['||'], ['', ' '], ['a || b'], ['due:weekly', 'repo-active']];
+  for (const preconditions of shapes) {
+    const decl = { id: 'x', expected_outcome: 'fresh_pr', ...(preconditions === undefined ? {} : { preconditions }) };
+    const patched = stateTriggerText(`${JSON.stringify(decl, null, 2)}\n`);
+    assert.equal(patched.trigger, normalizeTaskDeclaration(decl).trigger, JSON.stringify(preconditions));
+  }
+});
+
+test('updateTaskSchedulingFields brings every local task.json up to the vocabulary, and reports each', async () => {
   const root = repo({
     [`${TASK}/task.json`]: '{\n  "id": "alpha",\n  "frequency": "daily",\n  "preconditions": ["none"]\n}\n',
     [`${LOCAL_PACK_ROOT}/mypack/tasks/beta/task.json`]: '{\n  "id": "beta",\n  "expected_outcome": "no_code_changes"\n}\n',
@@ -263,38 +293,52 @@ test('retireTaskFrequency rewrites every local task.json carrying the field, and
   });
   try {
     const io = checkoutIo(root);
-    const applied = await retireTaskFrequency(taskDirsWithJson([LOCAL_PACK_ROOT], io), io);
-    assert.equal(applied.length, 1);
+    const applied = await updateTaskSchedulingFields(taskDirsWithJson([LOCAL_PACK_ROOT], io), io);
+    // alpha needs both rewrites; beta only the trigger, which its shape reads as `request`.
+    assert.equal(applied.length, 3);
     assert.match(applied[0], /alpha\/task\.json: frequency "daily" → "due:daily"/);
-    assert.deepEqual(JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8')).preconditions, ['due:daily']);
+    assert.match(applied[1], /alpha\/task\.json: trigger "schedule" stated/);
+    assert.match(applied[2], /beta\/task\.json: trigger "request" stated/);
+    const alpha = JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8'));
+    assert.deepEqual(alpha.preconditions, ['due:daily']);
+    assert.equal(alpha.trigger, 'schedule');
+    assert.equal(JSON.parse(readFileSync(join(root, LOCAL_PACK_ROOT, 'mypack/tasks/beta/task.json'), 'utf8')).trigger, 'request');
     assert.match(readFileSync(join(root, CANON_PACK_ROOT, 'p/tasks/one/task.json'), 'utf8'), /"frequency"/, 'the canon packs are the canon\'s');
-    assert.deepEqual(await retireTaskFrequency(taskDirsWithJson([LOCAL_PACK_ROOT], io), io), [], 'idempotent: nothing left to rewrite');
+    assert.deepEqual(await updateTaskSchedulingFields(taskDirsWithJson([LOCAL_PACK_ROOT], io), io), [], 'idempotent: nothing left to rewrite');
   } finally { removeTree(root); }
 });
 
-test('applyTaskFrequencyRetirement: gated on the flag, the probe and the io, and one runner with every other op', async () => {
+test('applyTaskSchedulingFields: gated on the flag, the probe and the io, and one runner with every other op', async () => {
   const root = repo({ [`${TASK}/task.json`]: '{\n  "id": "alpha",\n  "frequency": "weekly"\n}\n' });
   try {
     const io = { ...checkoutIo(root), move: () => {}, readTemplate: () => null };
-    const record = { id: 'r', retireTaskFrequency: true, appliesTo: async () => true };
-    assert.deepEqual(await applyTaskFrequencyRetirement({ id: 'r' }, io), [], 'a record without the flag rewrites nothing');
-    assert.deepEqual(await applyTaskFrequencyRetirement({ ...record, appliesTo: async () => false }, io), [], 'the probe gates it');
+    const record = { id: 'r', updateTaskSchedulingFields: true, appliesTo: async () => true };
+    assert.deepEqual(await applyTaskSchedulingFields({ id: 'r' }, io), [], 'a record without the flag rewrites nothing');
+    assert.deepEqual(await applyTaskSchedulingFields({ ...record, appliesTo: async () => false }, io), [], 'the probe gates it');
     const { listDir, ...classic } = io;
-    assert.deepEqual(await applyTaskFrequencyRetirement(record, classic), [], 'an older caller without the listing rewrites nothing');
+    assert.deepEqual(await applyTaskSchedulingFields(record, classic), [], 'an older caller without the listing rewrites nothing');
     const applied = await applyMigration(record, io);
-    assert.equal(applied.length, 1);
-    assert.deepEqual(JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8')).preconditions, ['due:weekly']);
+    assert.equal(applied.length, 2, 'the field folded, then the trigger stated');
+    const decl = JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8'));
+    assert.deepEqual(decl.preconditions, ['due:weekly']);
+    assert.equal(decl.trigger, 'schedule');
   } finally { removeTree(root); }
 });
 
-test('task-cadence-terms record: applies only where the mounted pack reads the cadence term, in either root', async () => {
+test('task-cadence-terms record: applies only where the mounted pack reads BOTH fields, in either root', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'task-cadence-terms');
   assert.ok(m, 'discovered');
-  assert.equal(m.retireTaskFrequency, true);
-  const capable = 'export const cadenceTermFor = (frequency) => …;\n';
-  assert.equal(await m.appliesTo(async (p) => (p.startsWith('.claudinite/shared/') ? capable : null)), true, 'a member\'s mount');
-  assert.equal(await m.appliesTo(async (p) => (p.startsWith('.claudinite/shared/') ? null : capable)), true, 'the canon\'s own tree');
+  assert.equal(m.updateTaskSchedulingFields, true);
+  // The two files the probe reads, each answering for one of the two rewrites.
+  const capable = (p) => (p.endsWith('.json') ? '{ "properties": { "trigger": {} } }\n' : 'export const cadenceTermFor = (frequency) => …;\n');
+  const inRoot = (root) => async (p) => (p.startsWith('.claudinite/shared/') === root ? capable(p) : null);
+  assert.equal(await m.appliesTo(inRoot(true)), true, 'a member\'s mount');
+  assert.equal(await m.appliesTo(inRoot(false)), true, 'the canon\'s own tree');
   assert.equal(await m.appliesTo(async () => 'export const FREQUENCIES = [];\n'), false, 'an older pack');
+  // Each half alone is not enough: writing either field into a mount that does not
+  // read it is what the probe exists to stop.
+  assert.equal(await m.appliesTo(async (p) => (p.endsWith('.json') ? null : capable(p))), false, 'the cadence term without the schema');
+  assert.equal(await m.appliesTo(async (p) => (p.endsWith('.json') ? capable(p) : null)), false, 'the schema without the cadence term');
   assert.equal(await m.appliesTo(async () => null), false, 'an unreadable mount is not capable');
   assert.equal(await m.legacyPresent(() => true, async () => 'x'), false);
   assert.equal(m.applyStage, undefined, 'a text rewrite needs no session');
