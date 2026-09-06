@@ -4,6 +4,7 @@ import {
   axisOf, edgesOf, componentsOf, placeItem, prWaits, scheduleGrid, workloadLine,
   quietTail, buildBoard, DAYS_BACK, DAYS_AHEAD, GROUP_CAP, nextDailyAnchor,
 } from '../board.mjs';
+import { describeCadence } from '../model.mjs';
 import {
   WORK_PREFIX, ORIGIN_AD_HOC, STATUS_READY, STATUS_RUNNING_AGENT,
   NEEDS_HUMAN_FAILURE, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, OUTCOME_DONE, OUTCOME_OBSOLETE,
@@ -128,8 +129,12 @@ test('three different reasons a PR waits, told apart', () => {
 
 // --- the schedule grid --------------------------------------------------------------------
 
+// A row's cadence fields come from the roster's own reader rather than being typed
+// here, so the fixture is what `buildRoster` would hand the board and not a copy that
+// can drift from it.
+const cadenced = (terms, declaration = {}) => ({ declaration: { preconditions: terms, ...declaration }, ...describeCadence(terms) });
 const taskRow = (over = {}) => ({
-  key: 'p/t', pack: 'p', task: 't', frequency: 'daily', declaration: { frequency: 'daily' },
+  key: 'p/t', pack: 'p', task: 't', ...cadenced(['due:daily']),
   nextAsk: { kind: 'anchor', at: new Date(NOW + DAY) }, lastClosed: null, ...over,
 });
 
@@ -146,9 +151,9 @@ test('a cell is read off the item that closed, parked or ran that day', () => {
 });
 
 test('A FAILURE PARK LANDS ON ITS OWN TASK\'S ROW, and the later cells are the record disagreeing', () => {
-  // The roster reads such a park as holding the task's lane. A hatched cell followed by
-  // filled ones is that claim being disproved, read left to right on one line — which
-  // is why there is no separate held-lanes row.
+  // Where the declaration holds its lane on a failure, the roster reads such a park as
+  // holding it. A hatched cell followed by filled ones is that claim being disproved,
+  // read left to right on one line — which is why there is no separate held-lanes row.
   const axis = axisOf(NOW, SCHEDULE);
   const grid = scheduleGrid([taskRow()], [
     item({ number: 1, labels: labelled(NEEDS_HUMAN_FAILURE), updated_at: iso(NOW - 3 * DAY) }),
@@ -171,24 +176,59 @@ test('a future cell is predicted, and half-height where the last verdict decline
 test('everything on a longer cadence is one row — the question is whether it fired at all', () => {
   const axis = axisOf(NOW, SCHEDULE);
   const grid = scheduleGrid(
-    [taskRow(), taskRow({ key: 'p/w', task: 'w', frequency: 'weekly', declaration: { frequency: 'weekly' } })],
+    [
+      taskRow(),
+      taskRow({ key: 'p/w', task: 'w', ...cadenced(['due:weekly']) }),
+      // An elapsed cadence longer than a day shares the row too — the period, not the
+      // term's spelling, is what puts a task there.
+      taskRow({ key: 'p/slow', task: 'slow', ...cadenced(['last-run-over:3d']), nextAsk: { kind: 'note', note: 'x' } }),
+    ],
     [], axis, { now: NOW, schedule: SCHEDULE },
   );
   assert.equal(grid.length, 2);
   assert.match(grid[1].task, /longer cadence/);
+  assert.deepEqual(grid[1].collapsed, ['p/w', 'p/slow']);
+});
+
+// The scheduler asks a task with no cadence term at every tick, so it earns a row of
+// its own — but nothing on the calendar says when it will next run, so its future
+// cells are empty rather than predicted. A task with no conditions is never asked and
+// is off the grid, and so is a declaration whose cadence could not be read.
+test('no cadence term is a row with no prediction; unscheduled and unreadable tasks are off the grid', () => {
+  const axis = axisOf(NOW, SCHEDULE);
+  const grid = scheduleGrid([
+    taskRow({ key: 'p/lever', task: 'lever', ...cadenced([]), nextAsk: { kind: 'note', note: 'x' } }),
+    taskRow({ key: 'p/move', task: 'move', ...cadenced(['substantive-change']), nextAsk: { kind: 'note', note: 'x' } }),
+    taskRow({ key: 'p/unread', task: 'unread', ...cadenced(null), nextAsk: { kind: 'note', note: 'x' } }),
+  ], [], axis, { now: NOW, schedule: SCHEDULE });
+  assert.deepEqual(grid.map((g) => g.key), ['p/move']);
+  assert.ok(grid[0].cells.every((c) => c.state === 'none'), 'nothing on the calendar to predict');
 });
 
 // --- the workload line ---------------------------------------------------------------------
 
 test('tomorrow\'s workload is the declarations read against the schedule, never a guess', () => {
   const line = workloadLine(21, [
-    taskRow({ key: 'p/promote', task: 'promote', declaration: { automerge: 'nothing' } }),
-    taskRow({ key: 'p/quiet', task: 'quiet', declaration: { automerge: 'generated-file-changes' } }),
+    taskRow({ key: 'p/promote', task: 'promote', ...cadenced(['due:daily'], { automerge: 'nothing' }) }),
+    taskRow({ key: 'p/quiet', task: 'quiet', ...cadenced(['due:daily'], { automerge: 'generated-file-changes' }) }),
   ], { schedule: SCHEDULE, now: NOW });
   assert.match(line, /21 open PRs/);
   assert.match(line, /every one waits for a person/);
   assert.match(line, /\+1 a day from promote/);
   assert.doesNotMatch(line, /quiet/, 'a task that lands its own PR adds nothing to your day');
+});
+
+test('the workload line counts a task with no cadence term apart, and an unscheduled one not at all', () => {
+  const line = workloadLine(0, [
+    taskRow({ key: 'p/move', task: 'move', ...cadenced(['substantive-change'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
+    taskRow({ key: 'p/lever', task: 'lever', ...cadenced([], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
+    taskRow({ key: 'p/slow', task: 'slow', ...cadenced(['last-run-over:7d'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
+  ], { schedule: SCHEDULE, now: NOW });
+  assert.match(line, /nothing waits for a person/);
+  assert.match(line, /1 more on movement/, '"a day" is a promise a task with no cadence term never made');
+  assert.match(line, /1 more on longer cadences/);
+  assert.doesNotMatch(line, /a day from/);
+  assert.doesNotMatch(line, /lever/, 'a task with no conditions is not on the schedule at all');
 });
 
 // --- the quiet tail --------------------------------------------------------------------------

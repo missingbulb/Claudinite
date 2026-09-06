@@ -13,7 +13,7 @@ forcing, recovery — is the canon's own tasks-dispatch design document, and aut
 
 | Path | What lives there |
 |---|---|
-| `queue/` | the work item and its vocabulary, the scheduler run, the executor and its continuation, the drain, leases, readiness, the janitor's rules, the schedule board, workflow-failure escalation |
+| `queue/` | the work item and its vocabulary, the scheduler run, the executor and its continuation, the drain, leases, readiness, the janitor's rules, workflow-failure escalation |
 | `queue/tasks/` | the built-in tasks (`implement-request`) |
 | `signals/` | the signal collectors a precondition is handed |
 | `stubs/` | the two workflow files an adopting repo receives |
@@ -21,7 +21,7 @@ forcing, recovery — is the canon's own tasks-dispatch design document, and aut
 | `tasks/` | this pack's own tasks: `task-janitor` (the queue's sweeps), `usage-fold` (it folds this mechanism's run records and outcome labels) and `verify-production` (coded production validations — URL probes judged as code-work) |
 | `worldRules/` | the task-declaration checks |
 | `workRules/` | the armed-auto-merge gate (`automerge-policy-scope`) |
-| `precondition-policy.mjs` | the precondition engine: the `preconditions` expression grammar (a conjunction, `\|\|` inside a term, `none` as the empty precondition, inline `:` arguments), the built-in term vocabulary and its three-valued semantics, the derived signal union, and the loud fail direction |
+| `precondition-policy.mjs` | the precondition engine: the `preconditions` expression grammar (a conjunction, `\|\|` inside a term, inline `:` arguments, the run-history terms `due:`/`last-run-over:`/`last-run-not-failed` that say how often; never whether the scheduler asks the task, which its `trigger` says), the built-in term vocabulary and its three-valued semantics, the derived signal union, and the loud fail direction |
 | `task-terms.mjs`, `tasks/<name>/preconditions.mjs` | a task's OWN precondition terms — the extension point beside the declaration that names them |
 | `task-trailer.mjs` | the `Claudinite-Task:` commit trailer the delivery lanes stamp and the movement signals classify by — how a task's own output is told from the project moving |
 | `merge-policy.mjs` | the auto-merge policy engine: what a task's `automerge`, an item's `Merge:` field and the arming trailer mean, the built-in diff classes, the inline `under:<dir>` folder scope, the `&&` intersection, and the `merge-rules.json` vocabulary a pack extends them with |
@@ -36,7 +36,7 @@ equivalent surface by existing.
 
 | Module | What it publishes | Who reads it |
 |---|---|---|
-| `work-items.mjs` | the title grammar that is a work item's identity, the outcome/status decode over its labels, lease state, the dispatch vocabulary, and what a scheduler run would instantiate | claudinite-dashboard, claudinite-fleet-sheepdog |
+| `work-items.mjs` | the title grammar that is a work item's identity, the outcome/status decode over its labels, lease state, the dispatch vocabulary, and which items are a task's standing ones | claudinite-dashboard, claudinite-fleet-sheepdog |
 | `anchors.mjs` | period length, and the instant a task's window last opened at or opens next | claudinite-dashboard |
 | `delivery.mjs` | `landPr`, `deliverGenerated` — how a task's output becomes a landed PR or a regenerated file | any pack whose tasks deliver |
 | `github.mjs` | the GitHub client and REST helpers, and the tracker issue a worker records on | any pack whose tasks reach GitHub |
@@ -77,7 +77,7 @@ once no fielded member names one.
 
 The first two are relevance-first — inert until the repo carries a `tasks/<name>/task.json` of its own; the third is self-gating on the branch's own arming trailer.
 
-- `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal, so the task never fires or fires wrong.
+- `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal — no `preconditions` saying when it runs, an unknown condition, an illegal value — so the task never fires or fires wrong.
 - `task-code-work-env` — a task reads a `CLAUDINITE_*` variable code-work never sets, so a parameter (a scope filter, a dry-run switch) silently never arrives and the run goes green in its most dangerous mode.
 - `executor-workflow-secrets` — the executor workflow does not pass a secret a task or an invocation endpoint declares, so the queue picks the item up and only the run finds out the token is not there. Advisory because the remedy is a human-merged PR to `.github/workflows/`, the one fix a member's own machinery cannot make.
 - `automerge-policy-scope` — a branch that stamped the `Claudinite-Automerge-Policy` trailer (its run intends to land its own PR) carries a diff its declared policy does not cover, which is exactly the unreviewed change the policy exists to stop.

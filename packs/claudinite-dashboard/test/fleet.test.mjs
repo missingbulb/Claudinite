@@ -89,14 +89,14 @@ test('a healthy adopted member has no reasons and reads ok', () => {
 // --- attention is earned ---------------------------------------------------------
 
 // The triage split (tasks-dispatch DESIGN §4): only a failure park — or one an older
-// engine left unclassified — holds its task's lane. The other three are a person's
-// inbox, and a fleet view that alarms identically on all four teaches the reader to
-// ignore the alarm.
-test('an unclassified park is critical — it is holding the task\'s lane', () => {
+// engine left unclassified — is a broken run. The other three are a person's inbox,
+// and a fleet view that alarms identically on all four teaches the reader to ignore
+// the alarm.
+test('an unclassified park is critical — it is a broken run', () => {
   const s = summariseMember(read({ items: [item({ labels: [NEEDS_HUMAN] })] }), { now: NOW, canon: CANON });
   assert.equal(s.level, 'critical');
   assert.equal(s.parked, 1);
-  assert.match(s.reasons[0].text, /holding.*lane/);
+  assert.match(s.reasons[0].text, /parked broken/);
 });
 
 test('an action or decision park is serious, and an approval park is a waiting PR', () => {

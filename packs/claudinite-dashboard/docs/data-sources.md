@@ -45,8 +45,8 @@ one for the days it reaches and the fold for the rest, as `queueSeries` and `hou
 | Per-member expand | fleet | the above, per member | `fleet-growth.mjs` |
 | Per-task expand: closed, sessions, tokens, $, exec failed, parked, model | repo | fold `queue`, `taskCost` (§2), `taskExec`, `parks` (§2); declaration `agent_model` | day rows, `parseDeclaration` |
 | Pulse | both | fold `sessions` per day | day rows |
-| Board: kinds, edges, times, landing, run record | repo | live issues and PRs (labels, body lines, timestamps, comments); declarations; the schedule board | `work.mjs`, `model.mjs` |
-| Board: scheduled cells | repo | closed items since the window opened (`outcomeOf`, `closed_at`); the schedule board's verdicts; `nextAnchor` | `work.mjs` |
+| Board: kinds, edges, times, landing, run record | repo | live issues and PRs (labels, body lines, timestamps, comments); declarations | `work.mjs`, `model.mjs` |
+| Board: scheduled cells | repo | closed items since the window opened (`outcomeOf`, `closed_at`); `nextAnchor` | `work.mjs` |
 | Board: cost per run in the task panel | repo | fold `taskCost` | day rows |
 | Corpus panel: per-rule table, last fired | repo | fold `checkFindings`, `checks.work.runs` | `growthSeries` |
 
@@ -227,7 +227,8 @@ not read*.
 
 `buildRoster` in [`model.mjs`](../model.mjs) computes `nextAsk.at` per task for the roster's
 next-anchor column. The wake strip collects those (fleet: across members) and buckets them by
-UTC hour over the next 24 h; a `held` next ask is a critical tick at *now*.
+UTC hour over the next 24 h; a `held` next ask — a failure park on a task whose declaration
+holds its lane with `last-run-not-failed` — is a critical tick at *now*.
 
 ### The `rates` config
 

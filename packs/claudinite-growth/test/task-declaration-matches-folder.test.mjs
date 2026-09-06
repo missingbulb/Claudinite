@@ -5,7 +5,7 @@ import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import rule from '../worldRules/task-declaration-matches-folder.mjs';
 
 const decl = (id, extra = {}) => `${JSON.stringify({
-  id, frequency: 'daily', preconditions: ['none'], agent_model: 'opus', expected_outcome: 'fresh_pr', automerge: 'nothing',
+  id, preconditions: ['due:daily'], agent_model: 'opus', expected_outcome: 'fresh_pr', automerge: 'nothing',
   agent_instructions: 'task.md', agent_execution_timeout: 1800, ...extra,
 }, null, 2)}\n`;
 

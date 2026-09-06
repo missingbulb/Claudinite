@@ -18,7 +18,7 @@
 //   tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs  does a member DECLARE what
 //                                                      this fleet standardizes on?
 //   tasks/fleet-baseline/force-fleet-baseline.mjs      make every member baseline NOW
-//                                                      (frequency: manual — the
+//                                                      (no preconditions — the
 //                                                      operator's lever, forced only)
 //
 // Each sweep lives INSIDE its task's folder — nothing outside that task uses it.

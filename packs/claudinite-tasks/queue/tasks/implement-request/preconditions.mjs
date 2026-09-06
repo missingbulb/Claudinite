@@ -36,6 +36,10 @@ export function eligibility(req) {
 export const terms = {
   'request-eligible': {
     signals: ['request'],
+    // About one named issue, so there is nothing to judge at the scheduler's own
+    // ask — which is why this task declares `trigger: 'request'` and runs only from
+    // a marked issue. The shape check holds the two together.
+    needsItem: true,
     holds(signals, { item }) {
       const req = signals.request;
       if (!req) {

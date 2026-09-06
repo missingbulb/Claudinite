@@ -101,7 +101,11 @@ export function workRows(rows, open) {
       pack: i.pack,
       task: i.task,
       declaration: null,
+      // No declaration, so nothing about its cadence was read — unknown, not "none".
       frequency: null,
+      cadence: null,
+      scheduled: null,
+      periodMs: null,
       // Not a schedule problem to be waited out: the item names a task this repo does
       // not declare, so nothing will ever pick it up until a person acts.
       nextAsk: { kind: 'note', note: 'no declared task — nothing will pick this up' },

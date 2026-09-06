@@ -13,7 +13,7 @@ trigger, scope, and tracker, so there is no ordering barrier.
 WEEKLY, and full every time it runs — but it only runs when a PR actually moved
 in the window. A PR verdict is a standing recommendation for a human, not a
 same-day alert, so re-deriving the whole picture once a week beats a daily partial
-one — and "weekly" is a frequency DECLARATION, never a gate trick inside a daily
+one — and `due:weekly` is a cadence DECLARATION, never a gate trick inside a daily
 task (DESIGN §3). What "full" does not mean is unconditional: an untouched set of
 open PRs yields last week's verdicts again, so the sweep is gated on newness even
 though its scope stays full.

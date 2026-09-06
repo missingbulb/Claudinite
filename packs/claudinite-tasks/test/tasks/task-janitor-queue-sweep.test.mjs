@@ -245,9 +245,13 @@ test('a terminal that closed itself between the read and the write is left alone
 
 // --- rule I, the abandoned failure park (#1785) -------------------------------
 
-const HEAD_TASKS = [{ pack: 'p', id: 'a', taskPath: 'packs/p/tasks/a/task.md', decl: { frequency: 'daily' } }];
+const HEAD_TASKS = [{ pack: 'p', id: 'a', taskPath: 'packs/p/tasks/a/task.md', decl: { trigger: 'schedule', preconditions: ['due:daily'] } }];
 
-test('a failure park nobody has answered past the bound closes obsolete and releases the lane', async () => {
+// Not "releases the lane": since #1725 a park is not live, so the lane was never
+// held unless the task declares `last-run-not-failed`. What the close buys is that
+// the report stops standing unread, and for a task that does declare it, the next
+// occurrence can run again.
+test('a failure park nobody has answered past the bound closes obsolete', async () => {
   const { gh, added, patched } = janitorGh([
     workItem(41, ['needs-human', 'origin:schedule'], { created: '2026-07-01T00:00:00Z' }),
   ]);

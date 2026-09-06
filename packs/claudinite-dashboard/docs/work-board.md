@@ -79,7 +79,7 @@ rows are placed. Scheduled's header names the anchor.
 | ad-hoc item, blocked on a date | hollow circle at its `Not-before` | body line, absolute form only |
 | ad-hoc item, blocked on an issue | hollow circle **after** the blocker's predicted time; a PR blocker puts it at *now* + "when you merge"; a plain-issue blocker nothing is scheduled to close gives it **no time — the lane is drawn broken** | `Blocked-by: #n` and the blocker's own placement |
 | ad-hoc item, ready | hollow circle at the next scheduler tick — the daily anchor, or the drain tick (its hour not read here) | `task:status:waiting-for-executor` |
-| item on no mark | dashed hollow circle, `unmarked` beside it | a `Blocked-by` chain with no `task:origin:ad-hoc` on the link |
+| item on no mark | dashed hollow circle, `unmarked` beside it | a `Blocked-by` chain with no `task:origin:*` on the link |
 | park | square at *now*, the kind as the glyph inside: `×` action, `–` approval, `?` decision, hatch failure | `task:status:needs-human-<kind>` |
 | running | filled circle at *now* | `task:status:running-agent` / `running-executor` |
 | plain issue | diamond at the *head* of the edge it blocks: hollow ink = plain; filled good = `quick-win`; dotted outline = rotting (`updated_at` ≥ 14 d ago); ghost in the past wash = a ladder phase with no time | labels, `updated_at`, reverse `Blocked-by` |
@@ -98,11 +98,11 @@ carried by **form and the semantic set**, so it reads in either theme:
 | State | Cell | Read from |
 |---|---|---|
 | **ran** | filled, good | a closed item of that task with `outcome:done` / `delivered`, by `closed_at` |
-| **asked, declined** | hollow, muted | a closed item with `outcome:obsolete`, or the schedule board's `verdict: no` for that ask |
+| **asked, declined** | hollow, muted | a closed item with `outcome:obsolete` |
 | **parked** | filled, amber | an open item of that task at `needs-human-approval` (it waits for a person) |
 | **failure park** | hatched, critical stroke | an open item at `needs-human-failure`, placed on the day it parked; `◂` at the left edge when older than the window |
-| **predicted** | hollow, the machine's blue | the next anchor for a task whose last verdict on the board was `go` or `fail-open` |
-| **will decline** | **half-height** hollow, muted | the next anchor for a task whose last verdict was `no` |
+| **predicted** | hollow, the machine's blue | the next anchor of a task on a `due:` cadence whose last closed occurrence ran |
+| **will decline** | **half-height** hollow, muted | that anchor where the last closed occurrence declined (`outcome:obsolete`) |
 | **running** | filled circle at *now* | `task:status:running-agent` |
 
 A day with more than one occurrence carries the count *in* the cell in mono (`4`, `7`); the
@@ -110,9 +110,11 @@ hover names the tasks and their outcomes. Predicted and declined are told apart 
 never by dash pattern, which at 3 px is invisible.
 
 **A failure park lands on its own task's row**, followed by whatever the task did after it.
-The roster reads such a park as *the lane is held — nothing new is scheduled*; a hatched cell
+Where the task's declaration holds its lane on a failure (`last-run-not-failed`), the roster
+reads such a park as *the lane is held — nothing new is scheduled*, and a hatched cell
 followed by filled cells is the record disagreeing, read left to right on one line. There is
-no separate "held lanes" row, because the contradiction is a row fact.
+no separate "held lanes" row, because the contradiction is a row fact. On every other task the
+park holds nothing and the filled cells after it are the task running on schedule around it.
 
 ## Tomorrow's human workload
 
@@ -121,8 +123,8 @@ scheduled runs whose declaration cannot land their own PR** — `automerge: 'not
 the runs whose policy covers only local packs and habitually write wider (currently parked on
 approval). Each predicted cell of such a task carries `+1` in the lane and the row ends in
 `+1 PR / day`; the sentence reads `21 open PRs · every one waits for a person · +1 a day from
-growth-promote, 2–4 on Sunday`. It is the declarations' `automerge` field read against the
-schedule board's `next window`, not a guess.
+growth-promote, 2–4 on Sunday`. It is the declarations' `automerge` field read against each
+task's cadence term, not a guess; a task with no cadence term is counted apart, as `on movement`.
 
 ## The quiet tail
 
@@ -144,7 +146,7 @@ differs. Every panel ends in **do**: one imperative.
 | **failed task** | *last run*: claim, nonce, session, what it delivered and the PR it left (merged?); *what broke*: the converge comment's own sentence; *park history*: which janitor rule parked it, when, whether it was re-queued or superseded, and the later runs of the same task with their outcomes; *lane*: what the roster claims against what the record shows; *do*: the `converge-item` command | item comments, closed items of the same task |
 | **stuck ad-hoc item** | the chain as a list: each `Blocked-by` target with its state and *who is scheduled to move it* (a task, a PR, nobody); the janitor's stuck-dependency comment and its date; the age of the premise — `created_at` and the latest `main` commit touching the paths it names; its `Automerge:` policy as the landing it will get; *do*: close the blocker, mark it ad-hoc, or re-scope | body lines, blocker issues, janitor comment |
 | **plain issue** | age and idle; *blocks*: reverse edges and, transitively, the rows it holds; *who moves it*: no mark, no `Task:` field, no PR `Closes` it; *rot*: idle against the 14 d bar and whether its premise moved (a later issue or merge naming the same subject); *quick-win*: the label, and what closing it unblocks; *do* | labels, reverse edges, PR bodies |
-| **scheduled task** | the last N occurrences as a strip with outcome words and the decline reasons from the schedule board; next anchor; `agent_model`, `expected_outcome`, `automerge`; cost per run from the fold's `taskCost`; the PRs it has left open | task declaration, the schedule board, fold, PR listing |
+| **scheduled task** | the last N occurrences as a strip with outcome words; next anchor, or the cadence's own note where it has none; `agent_model`, `expected_outcome`, `automerge`; cost per run from the fold's `taskCost`; the PRs it has left open | task declaration, fold, PR listing |
 | **park** | approval: as pending PR (it *is* the PR); action and decision: the converge comment's ask, verbatim, and the `Ends-when` / `Retry-every` that would close it without a person | item comments, body lines |
 
 ## The three views as tabs
@@ -169,7 +171,7 @@ time axis under them.
    `nothing`, and a run whose converge verdict was `AUTOMERGE: no` are three different reasons
    drawn as one amber flag; the panel says which, in the run's own words. The workload line
    then says how many more arrive tomorrow, and from which task, read off the declarations.
-2. **A held lane that is not held.** A failure park the roster reads as holding its task's
+2. **A held lane that is not held.** A failure park on a task whose declaration holds its
    lane, followed on the same row by that task's later `done` cells — the record disproving
    the claim, and a pointer at the superseded-park rule that should have closed it.
 3. **Leverage on plain issues nobody is scheduled to touch.** A quick-win that unblocks
@@ -190,7 +192,7 @@ time axis under them.
 | edges | body lines `Blocked-by: #n`, `Ends-when: #n closed`; PR body `Closes #n` / `Refs #n` |
 | time | `Not-before:` (absolute only), `created_at`, `updated_at`, PR `created_at` |
 | landing | `Merge:` on the item — the one spelling `parseWorkItemBody` reads, and therefore the one the panel names; `automerge` in the task declaration; the converge comment's `AUTOMERGE:` verdict |
-| schedule | the schedule board's `last asked / verdict / next window`; `nextAnchor` from the queue's `anchors.mjs` with the repo's `dailyHour` / `weeklyDay` |
+| schedule | the cadence term in the declaration's `preconditions` (`cadenceOf`); `nextAnchor` from the queue's `anchors.mjs` with the repo's `dailyHour` / `weeklyDay` for a `due:` cadence |
 | past outcomes | closed items since the window opened, narrow fields, `outcomeOf` |
 | run record | the item's claim / hand-off / converge comments (`CLAIM_MARKER`, `HANDOFF_MARKER`), the janitor's rule comments |
 | not read here | PR additions / deletions, CI on the head sha, the drain tick's hour, cost per run (the fold) — each drawn as *not read*, never as 0 |

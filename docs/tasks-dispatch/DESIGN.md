@@ -17,19 +17,20 @@ usage-metrics records.
 
 The shape in one paragraph: **work items are issues, available for work; any
 number of executors pull from them — and an issue exists only when there is
-work.** The generator — one scheduler run on the repo's one cron — asks each
-recurring task's precondition when its anchor comes and files its work item
-only on a yes (#1115, decision §15.28); a no is a row on the repo's one
-**schedule board** issue, and a read the scheduler cannot make fails open into
+work.** The scheduler run — twice a day on the repo's one cron — asks every
+task on the schedule, through the task's own preconditions, whether it wants to
+run now and files its work item only on a yes (decision §15.33); a no is a
+line in the run's log, and a read the scheduler cannot make fails open into
 an item the executor decides. An executor — a GitHub Action by default, but
 anything that can read issues — picks up the next ready item, claims it by
 label, re-evaluates the precondition (a chained stage re-derives world state):
 on a go it runs the work step and hands off to agentic work (a CCR session
 invoked by API); on a no-go it **closes** the item with the reason. Follow-ups,
 fan-outs, urgency, and one-off forcing are all just *creating or waking work
-items*. There is no slot id, no exclusive claim, and no label-event re-arm;
-the one watermark is the board's declined rows, and it fails toward asking
-again, never toward skipping.
+items*. There is no slot id, no exclusive claim, no label-event re-arm and no
+watermark at all: the scheduler keeps no state, a task's cadence is one of its
+own conditions read off its run history in the queue, and a decline is simply
+asked again at the next tick.
 
 ---
 
@@ -105,9 +106,9 @@ Four roles, strictly separated (this refines, rather than replaces, the
 shrinks):
 
 1. **The generator** — a scheduled run (the repo's one cron, unchanged rule).
-   Three jobs: *instantiate* — when a recurring task's anchor comes, collect
-   its signals, ask its precondition, and file its work item only on a yes
-   (§5); *ready* blocked items whose dependencies have resolved and whose
+   Three jobs: *ask* — at every tick, every task on the schedule, through its
+   own preconditions with its cadence among them, filing its work item only on
+   a yes (§5); *ready* blocked items whose dependencies have resolved and whose
    not-before has passed; and *reclaim* dead executor claims. It executes
    nothing, and it never turns a read failure into a skipped run — anything it
    cannot decide it files for the executor to decide.
@@ -127,13 +128,11 @@ shrinks):
 
 The queue's open issues are exactly the work that needs doing or a human: a
 work item exists only where a precondition said yes, or where the scheduler
-could not ask and filed one for the executor to decide. What is NOT work — the
-asked-and-declined record — lives on one CLOSED issue per repo, the schedule
-board (§5), never as a sleeping work item and never in the issue list a person
-reads. The scheduler run is a function of
-the clock, the issue list, the board, and the signals it collects at each
-anchor; §5 says why that last read came back after being deliberately deleted,
-and what bounds it.
+could not ask and filed one for the executor to decide. What is NOT work — a
+task asked and declined — is written nowhere durable: it is a line in the
+run's log, and the next tick asks again (§5). The scheduler run is a function
+of the clock, the issue list, and the signals it collects at each tick; §5
+says what bounds that last read.
 
 ## 3. The work item
 
@@ -143,7 +142,7 @@ items — a fan-out names its target: `[claudinite-work] sheepdog/fleet-baseline
 member-repo-x`). **The issue number is the identity.** No slot id: an
 occurrence needs no name beyond the item that embodies it, and everything the
 slot id encoded is recovered elsewhere — dedup from the family's creation
-timestamps (§5), staleness from the task's own declared frequency read at HEAD
+timestamps (§5), staleness from the task's own declared cadence term read at HEAD
 (§11), forcing from the fact that creating an item *is* forcing (§8).
 
 Body, machine-first (same parsing discipline as today's dispatch body — the
@@ -176,10 +175,10 @@ exactly like today's exit-14.
 this section carried until the vocabulary migration): `task:origin:planned` |
 `task:origin:ad-hoc` | `task:origin:github`, mutually exclusive, applied when
 the item is born and never removed — the closed issue keeps saying where it
-came from. The generator writes `planned` at an anchor (and §8's force lever
+came from. The scheduler run writes `planned` when a task says yes (and §8's force lever
 writes it when minting the standing item, the same act); a person's ask wears
-`ad-hoc` (the request mark, §16.1, and every `manual`-task or qualified item);
-GitHub-side infrastructure writes `github` (a workflow-failure report, which
+`ad-hoc` (the request mark, §16.1, every item of a task with no schedule, and
+every qualified item); GitHub-side infrastructure writes `github` (a workflow-failure report, which
 is a park — `task:status:needs-human-failure` — and not a parseable work item,
 a shape every reader of parks must tolerate). The occurrence guards (§5) key
 on `planned`. *Alternative — the structural derivation this reverses (bare
@@ -187,7 +186,7 @@ unqualified title of a task with a frequency at HEAD is the standing item): a
 marker beside a derivation was two authorities over one fact, which is why the
 2026-08-19 decision deleted `origin:schedule`; making the label the one
 authority removes the duplication in the other direction, and unlike the
-derivation it survives a declaration changing under an open item (a frequency
+derivation it survives a declaration changing under an open item (a cadence
 edit, a pack rename) without re-interpreting history.* The structural read
 survives only as the decode fallback for items that predate the scheme and
 carry no origin at all; fielded `origin:schedule` labels stay inert stored
@@ -248,8 +247,8 @@ authority of §3.
 **A park whose kind cannot be decoded reads as `needs-human-failure`.** That is
 the compatibility direction chosen deliberately: every bare legacy park an
 older engine left behind, and every kind word a newer engine invents that this
-one does not know, holds the lane rather than silently letting a broken task
-keep filing work.
+one does not know, reads as a fault — the kind a task's `last-run-not-failed`
+stops on — rather than as somebody's inbox the schedule carries on around.
 
 **Legacy spellings — written never, read forever.** Labels are stored data:
 closed issues keep theirs, and fielded engines keep writing their own spellings
@@ -273,16 +272,19 @@ names label strings literally, so it accepts the legacy ready/urgent spellings
 for as long as any fielded engine writes them; and the legacy constants stay
 exported for the pack workers that import them.
 
-**Only a `failure` park holds the task's lane** (§5). An open unqualified item
-of a scheduled task *is* its standing item (§3), so while one exists no further
-occurrence is filed — for a break that is the point, since a queue of items that will fail the
-same way helps nobody and the silence is the signal. For the other three it is a
-bug: a PR waiting on a reviewer, a decision waiting on its owner and a secret
-waiting to be set are one person's inbox, not a fault in the task, and #1032
-measured what conflating them costs — a permission gap parked `missingbulb/Shepherd`'s
-`fleet-digest` for two days while its dashboard read healthy, because no item was
-ever filed behind the parked one. So the generator drops non-blocking parks from
-both the standing-item test and the duplicate sweep beside it.
+**No park holds the task's lane by itself** (§5). An open unqualified item of
+a scheduled task that is *live* — blocked, waiting, running — is its current
+occurrence (§3), and no further one is filed beside it; a parked item is not
+live, and the task is asked beside it. A PR waiting on a reviewer, a decision
+waiting on its owner and a secret waiting to be set are one person's inbox,
+not a fault in the task — #1032 measured what conflating them with a fault
+costs: a permission gap parked `missingbulb/Shepherd`'s `fleet-digest` for two
+days while its dashboard read healthy, because no item was ever filed behind
+the parked one. Whether a `failure` park stops the next occurrence is the
+task's own declaration, `last-run-not-failed`, with no engine default: a task
+that breaks the same way each period declares it, since a queue of such items
+helps nobody and the silence is the signal; a task whose next run is what
+clears a transient fault leaves it out.
 
 This is the sketch's lifecycle with two adjustments, both argued for rather
 than assumed:
@@ -327,178 +329,237 @@ like every label operation here. The next pickup re-runs the precondition
 its work. Alternatively the human closes the item (optionally superseding it
 with a forced retry, §8); nothing mechanical ever re-queues a parked item.
 
-## 5. The generator — decide at the anchor, file only work
+## 5. The scheduler run — ask every task at every tick, keep nothing
 
-> Rewritten 2026-08-20 (#1115, decision §15.28). The section this replaces was
-> built on the standing-item roll: creation was calendar-only, the scheduler run
-> evaluated nothing, a no-go rolled the item forward, and the run was "a pure
-> function of the clock and the issue list". That purity was itself the
-> deliberate deletion of the slot scheduler's watermark machinery, and this
-> section un-decides half of it, on purpose — the roll's price arrived as 12 of
-> 46 open issues being permanently-asleep machine bookkeeping and an executor
-> session dispatched per declined occurrence. §15.28 records the decision and
-> the alternatives; §H/§L in SCENARIOS.md replay the model.
+**Every tick asks every task; a yes files the item; nothing else is written.**
+The scheduler run (§17: twice a day, at the repo's `dailyHour` and twelve hours
+later) puts one question to every task on the schedule — *do you want to run
+now?* — and the task answers through its own `preconditions`, which are the
+whole of its "when" (decision §15.33). A **yes** creates the work item,
+`task:origin:planned`, ready. A **no** creates nothing and records nothing: it
+is one line in the run's log (`asked <pack>/<task>: no — <reason>`), and the
+next tick asks again. Anything the scheduler cannot decide — a credential it
+does not hold (the scheduler stub carries no `FLEET_GITHUB_TOKEN`; the executor
+workflow does), a signal read that failed, a term that threw — **fails open**:
+the item is created with the reason in its Context and the executor decides at
+pick (§6.4). Never fewer runs because a read failed.
 
-**No work, no item.** When a task's anchor comes, the scheduler run collects
-that task's declared signals, asks its precondition — through an injectable
-`evaluate(task)` seam, so the decision core stays pure and fixture-testable —
-and creates the work item only on a **yes**. A **no** creates nothing: it is
-recorded as a row on the repo's one **schedule board** issue. Anything the
-scheduler cannot decide — a credential it does not hold (the scheduler stub
-carries no `FLEET_GITHUB_TOKEN`; the executor workflow does), a signal read
-that failed, a precondition that threw — **fails open**: the item is created
-exactly as the calendar-only model created it, and the executor decides at
-pick. Never fewer runs because a read failed.
+The engine keeps no calendar and no memory of an ask. Whether this is the
+morning or the afternoon tick, whether the previous tick was dropped, whether
+the task's last run failed, whether the task was declared five minutes ago —
+the scheduler does not know and does not need to: each is a question the task
+can put to its own run history, and the vocabulary below is how. Cadence is
+therefore not something the engine guarantees, exactly-once or at-least-once.
+A task is asked; it decides; and "once a day" is a property of the task's own
+expression judged against the queue, not of a scheduler that counts.
 
-The invariant this trades away, and the one it keeps. The scheduler run is no
-longer a pure function of the clock and the issue list — it collects signals,
-once per task per period, at the anchor. What it keeps, and what actually
-mattered about the purity, is that **no durable scheduler state can silently
-eat a run**: the board is the only watermark, it gates only occurrences that
-were genuinely asked and declined, and every degradation — absent row, deleted
-board, mangled body, unreadable listing — resolves to "evaluate again", at the
-cost of one redundant evaluation and never a double run (the occurrence guard
-below still holds). This is not the slot scheduler's run-ledger returned: that
-ledger was a side-channel whose *unreadability had to fail the whole run*,
-because reading past it would advance it over slots it never evaluated. The
-board fails soft in the exact place the ledger failed hard.
+**The run-history terms.** Three built-ins read the task's own history
+(`precondition-policy.mjs`, beside the movement terms of the
+[task-preconditions design](../task-preconditions/DESIGN.md)). By convention
+the cadence a task keeps is the first entry of its expression, so a reader sees
+*when* before *what*.
+
+| term | holds when | reads |
+|---|---|---|
+| `due:<daily\|weekly\|monthly>` | no run of the task started **or ended** since that cadence's most recent anchor on the repo's `taskScheduler` schedule (`dailyHour`, `weeklyDay`, `monthlyDay` — `anchorInstant` in `calendar.mjs`). Fixed hours, no drift, so the cross-repo ordering `dailyHour` carries (§17.4) survives | `runs` |
+| `last-run-over:<12h\|1d\|7d>` | the newest run **started** more than that long ago; no run in the horizon holds. Elapsed, not anchored: the hour walks by up to a tick's gap each period, which is accepted | `runs` |
+| `last-run-not-failed` | the newest run does not stand at a `needs-human-failure` park. Only the newest speaks — a failure behind a later clean run is history | `runs` |
+
+`due:` and `last-run-over:` hold on a **woken** item without reading the
+history — a person's wake stands in for the cadence — while every other
+condition the task states still applies, so a force that finds no work still
+says so (§8).
+
+**Whether a task is on the schedule at all is read off the expression, never
+declared.** `preconditions` is optional. Absent or empty, the task is **not on
+the schedule**: the scheduler never asks it, and it runs only from an item
+somebody created — a mark, a hand-created item, a `--wake`, a chain link, a
+fan-out target — at whose pick the empty expression holds. A non-empty
+expression puts the task on the schedule and is asked at every tick, with one
+structural exception: a term that reads the item itself (one declaring
+`needsItem`, which only the built-in request implementer's `request-eligible`
+does) has nothing to be judged against at a tick, so a task whose expression
+carries one is not asked either. `isScheduledTask(decl, terms)` decides both.
+No term says "somebody created my item": a precondition states what must be
+true of the world or of the task's run history, and "somebody created my item"
+is true of every run, so it would say nothing. Nor is there an explicit empty marker — `none` is
+retired, because it is a second spelling of absence.
+
+A task on the schedule normally states its cadence first, but a task with a
+movement condition and no cadence (`['substantive-change']`) is legal and
+simply runs whenever the movement is there, at most once per tick. The
+`frequency` field is retired into the two fields it always meant, and one door
+still reads it: `normalizeTaskDeclaration` rewrites a declaration carrying the
+field into `due:<cadence>` first in the expression with `trigger: schedule`
+beside it, drops a `none` and deletes the field — `manual` becoming
+`trigger: request` and no term at all — so nothing downstream ever sees it. The
+same door derives `trigger` for a declaration stating none, off the shape of its
+conditions. `legacy-task-fields` advises the holder of either, the nightly update
+rewrites members' own task files, and the two tolerances retire one convergence
+window after #1725 ships (#1732, #1789).
+
+**A run.** To the history terms a run of task T is an **unqualified** item
+titled `[claudinite-work] <pack>/<task>` that an executor **picked** — whatever
+its origin and however it ended: done, rejected at pick, parked, still running.
+A qualified item (a fan-out target, a request naming its issue) is neither an
+occurrence of T nor evidence of one; it is invisible to the history, exactly
+as it is to the guards (§3). The item under evaluation is excluded, so at pick
+a task never reads its own occurrence as a prior run. A rejected item *is* a
+run — the task was asked and said yes, and `due:` counts it against the period
+— but it did nothing, so it does not move the signal window below. An item
+nobody picked is not a run: it still wears the status it waited in
+(`blocked`, `waiting-for-executor`), open or — closed by the scheduler's
+dedupe, orphan or supersede write, which adds the terminal label beside it,
+or by a person — closed. Read as runs, two twins would decline each other at
+pick and a deduped one would spend the period on its survivor (SCENARIOS
+F32); the `runs` collector drops them.
+
+**The run history is the queue.** The `runs` collector (`signals/index.mjs`)
+reads T's runs off the issue list, newest first, over a fixed horizon of
+`RUN_HORIZON_DAYS` = 40 — the longest any cadence looks, a month, plus slack.
+At the tick it costs nothing: the scheduler already holds the whole
+`[claudinite-work]` list back to that horizon for its other jobs, and every
+task's history is a filter over it. At pick the executor reads the same list
+itself. There is no other memory of a task, and that is the design: no board,
+no ledger, no stamp, no variable — nothing whose loss, corruption or rename can
+eat a run, nothing to fail hard on when unreadable, and nothing to migrate when
+a mechanism changes. A run older than the horizon is simply not in the record,
+and a task then honestly reads as not having run in that long. The rename
+consequence follows: a task whose id or pack changes reads as never having run,
+and its `due:` term holds at the next tick. That is local to the task — one
+extra run, visible in the queue — not a scheduler fault.
+
+**One invariant is the engine's own: one live item per task.** While an
+unqualified item of T is open and **live** — `task:status:blocked`,
+`waiting-for-executor`, `running-executor`, `running-agent` — T is not asked;
+the item is its current occurrence. A **parked** item is not live: it is a
+person's inbox (`approval`, `action`, `decision`) or a fault on record
+(`failure`), and the task is asked beside it. Whether a failure park stops the
+next occurrence is the **task's** decision and nobody's default — a task that
+must not run past its own failure says `last-run-not-failed`; absent that term
+the next occurrence is filed beside the park, which the dedupe must never
+mistake for a duplicate. A second live unqualified item, however it arose (a
+stale list from another node, F16), is closed obsolete, oldest kept.
+
+**The ask is cheap first.** The history terms read only the queue the scheduler
+already holds, so they are judged **first, alone** (`evaluatePreconditions` in
+partial mode: a signal not yet collected is *unknown*, never false), and a task
+they decline costs no other read — a weekly task asked fourteen times a week
+collects nothing on the thirteen ticks it says no, and a fleet task's
+enumeration is never paid on a tick its cadence has already ruled out. Only
+where the history cannot decide are the task's other signals collected and the
+whole expression judged. This is also what **bounds fail-open**: a read the
+scheduler cannot make can fail open only on a tick the cadence holds, so a
+`fleet`-signal task costs one created-then-decided item per period, never one
+per tick.
+
+**The window every other signal is read over is "since this task's newest run
+started"** (`queue/signals.mjs`): a task reads exactly what moved since it last
+looked, and one that declined for a week then sees the week. With no run in the
+horizon the window falls back to the task's own cadence — the `due:` period or
+the `last-run-over:` duration, a day for a task stating neither — plus an hour
+of slack. A rejected item does not move the seam (it looked and did nothing),
+so the next ask still sees what the rejected one saw. Overlap at the seam — a
+run's own duration — is absorbed by the conditions' own dedupe.
+
+**Forcing stamps `Woken:`.** A hand-created item, a forced mint and a `--wake`
+all write `Woken: <instant>` into the item's machine block (`WOKEN_FIELD`), and
+`itemFacts` treats any item that is not the scheduler's own unqualified planned
+item — a marked issue, a chain link, a qualified item — as woken too. That is
+what the history terms read at pick: the cadence terms hold on a woken item,
+and an item the scheduler filed on its own never carries the field (§8).
+
+**There is no first-sight rule.** A task the repo has just adopted, or that was
+just declared, is asked at the first tick like any other; a `due:` task with no
+run in its history is due, and runs. A task that wants a gentler start — or,
+the other way, wants to run the moment it is introduced — says so in its own
+preconditions; the engine books nothing on its behalf.
+
+**The one repo knob is `taskScheduler.disabledTasks`**: a repo that carries a
+pack but not one task's subject names the task there, and it is never asked; a
+blocked standing item it left behind is reaped. Repo shape is a fact adoption
+settled, not a question worth re-asking every tick (task-preconditions design,
+"What is not a precondition").
 
 ```text
 scheduler run(now):
-  if dormant: return                            # before any read, as today
+  if suspended or dormant: return                # before any read
 
-  # ---- the one-time migration (#1115, #1215) -----------------------------
-  # Sleeping standing items — open, blocked, unqualified, a FUTURE Not-before,
-  # no Blocked-by — close with a comment and their window seeded onto the
-  # board: a rolled one (a Last-verdict section) carries its own verdict, a
-  # born-blocked one carries the window it was waiting for. Idempotent; items
-  # waiting on a blocker are untouched.
-  #
-  # ---- the orphan reap (#1215) -------------------------------------------
-  # A blocked, unqualified standing item whose <pack>/<task> is not declared at
-  # HEAD closes: job 1's family match is title-exact on the declared id, so a
-  # retired or renamed spelling is invisible to it, and job 2 would ready the
-  # item at its Not-before onto a task path that is not on disk. Guarded on a
-  # non-empty task list, so an unreadable declaration reaps nothing.
+  items = every [claudinite-work] issue, state=all, back to RUN_HORIZON_DAYS
+  disabled = config.taskScheduler.disabledTasks
 
-  # ---- job 1: instantiate — evaluate at the anchor -----------------------
+  # ---- the orphan reap ------------------------------------------------------
+  # A blocked, unqualified item whose <pack>/<task> is not declared at HEAD, or
+  # is disabled, closes: job 2 would otherwise ready it onto a task path that
+  # is not on disk. Guarded on a non-empty task list.
+
+  # ---- job 1: ask every task on the schedule --------------------------------
   for task in discoverTasks():
-    if task.frequency == 'manual': continue
-    A = mostRecentAnchor(task.frequency, config.taskScheduler, now)
-    family = issues(title == "[claudinite-work] <pack>/<task>", state ALL)
-                    # title-EXACT; REST issue list, never search (S6/F11)
-    live = [i for i in family if not (isParked(i) and not blockingPark(i))]
-    if count(i.state == OPEN for i in live) > 1: closeAllButOldest(live)   # F16
-    if any(i.state == OPEN for i in live):      continue  # the item exists
-    # occurrence guard, BOTH halves (F13): created-at-or-after A, or
-    # closed-at-or-after A — an item that ran and closed today consumed today
-    if any(i.created_at >= A or i.closed_at >= A for i in family): continue
-    # the WATERMARK: a declined row for this anchor means do not re-ask.
-    # Scoped to declined rows only (F31): a go row is record, never a gate.
-    row = board[task]
-    if row.verdict == 'no' and row.lastAsked == A: continue
-    if family.isEmpty and not row:              # first sight: no ask (S25)
-      board[task] = no, "first window at nextAnchor"; continue
-    verdict = evaluate(task)                    # signals + precondition
-    if verdict.error:  board[task] = fail-open; create(task:status:waiting-for-executor)  # executor decides
-    elif verdict.run:  board[task] = go;        create(task:status:waiting-for-executor)
-    else:              board[task] = no         # no work, no item
+    if not isScheduledTask(task) or task in disabled: continue   # no schedule
+    family = [i for i in items if i.title == "[claudinite-work] <pack>/<task>"]
+    live = [i for i in family if i.open and i.status in LIVE]   # a park is not live
+    if len(live) > 1: closeAllButOldest(live)                    # F16
+    if live: continue                                            # ONE LIVE ITEM PER TASK
 
-  # ---- job 2: ready whatever is due (unchanged) ---------------------------
-  # ---- job 4: adopt marked issues (§16.3, unchanged) ----------------------
-  # ---- job 3: reclaim dead executor claims (§11, unchanged) ---------------
-  # ---- the board write, LAST and only when a row changed ------------------
+    history = runs(family)                                       # off `items`: no read
+    v = evaluate(task, history, partial=True)                    # due:, last-run-over:,
+    if v.undecided:                                              # last-run-not-failed
+      signals = collect(task, window=sinceNewestRunStarted(history))
+      v = evaluate(task, signals)
+    if v.error:  log("fail-open"); create(planned, ready, context=v.error)
+    elif v.run:  log("go");        create(planned, ready, context=v.context)
+    else:        log("no — " + v.reason)                         # nothing written
+
+  # ---- job 2: ready whatever is due (Not-before passed, Blocked-by closed) ---
+  # ---- job 4: adopt marked issues (§16.3) -----------------------------------
+  # ---- job 3: reclaim dead executor claims (§11) ----------------------------
+  # ---- the forced wake (§8), then the drain gate (§15.30) -------------------
 ```
 
-And at pick, executor-side (the full flow is §6): the executor **re-evaluates**
-— a chained stage re-derives world state rather than trusting a verdict passed
-forward, so the board's row is a watermark, never a verdict — and a no-go
-**closes** the item, `task:status:rejected`, with the reason in the close comment.
-The roll is gone: no `Not-before` stamp, no open-blocked resting state, no
-executor session spent on standing down.
+And at pick, executor-side (the full flow is §6): the executor
+**re-evaluates** the same expression over freshly collected signals — a
+chained stage re-derives world state rather than trusting a verdict passed
+forward, and nothing durable carries the tick's verdict anyway — and a no-go
+**closes** the item, `task:status:rejected`, with the reason in the close
+comment.
 
-**The schedule board.** One issue per repo, kept CLOSED (#1677) and carrying
-the `claudinite-schedule` label, titled with the exact prefix
-`[claudinite-schedule]`, body a table with one row per scheduled task: task id,
-frequency, last-asked anchor, verdict, a short reason, and the next window
-(derived fresh from `anchors.mjs` at every write — display, never data).
-Rules, each load-bearing:
-
-- **It is the watermark**: a row whose verdict is `no` and whose last-asked
-  equals the current anchor means this occurrence was asked and declined — do
-  not re-ask. Only declined rows gate (F31): a `go` row must never suppress a
-  re-ask, because the item creation beside it can fail after the row lands,
-  and the row would then eat the occurrence — fewer runs because a *write*
-  failed, the exact inversion of fail-open.
-- **It is a first authority for exactly one fact** — "asked at anchor A,
-  declined, because R" — which is written nowhere else once the roll is gone.
-  Every other column derives from the declarations and the anchors.
-- **Rewrite only when a row actually changes** (the authoritative columns:
-  last-asked, verdict, reason — never the derived next-window). A run that
-  asked nothing writes nothing; a quiet day is zero writes.
-- **Created lazily**, by the first row that needs writing — never ahead of one.
-- **Parse/serialize lives in one module**, `queue/schedule-board.mjs`, the way
-  `work-item.mjs` owns the item's schema. A malformed or partially-parsable
-  board degrades to absent per-row; an unreadable issue *listing* additionally
-  forbids the write (never write what you could not read — a blind create
-  could mint a second board). The body is budgeted two-tier under the ~64KB
-  field cap, trivial at ~25 rows.
-- **Invisible to everything else**: it is not a `[claudinite-work]` title, so
-  the family match, `listOpenWorkItems` and the janitor never see it; and the
-  `issues` signal collector excludes `/^\[claudinite-(task|work|schedule)\]/`,
-  so a board rewrite can never read as repo activity and wake tidy-issues on
-  the queue's own churn (the F8 class).
-- **Kept closed** (#1677), because nobody acts on it and the issue list is
-  where work that is a person's own lives. Every write states the state and
-  the `claudinite-schedule` label, so a board filed before the rule and one
-  somebody reopened both converge on the next run that touches it — and a
-  board found open is rewritten even when no row moved, since a repo whose
-  rows are all settled would otherwise never reach a write. Finding it again
-  is two lookups: the open issues by title (a page or two, and the adoption
-  path), then the label-scoped listing over both states — never a page-walk
-  of a long-lived repo's closed history.
-
-**What this buys**, measured against the roll model it replaces: open issues
-are only work-in-flight or a human's inbox (the ~12 permanently-sleeping
-items go to none at all — the board itself is closed, #1677); issue-number burn drops below the roll
-model's (a decline consumes no number at all); and a declined occurrence
-costs one scheduler-side evaluation instead of a whole dispatched executor
-session.
+**What this buys.** The scheduler has no state to corrupt, lose, migrate or
+explain: its whole record of a tick is its log, and a reader who wants to know
+why a task did not run reads the `asked` line, where the task's own reason is.
+A task's "when" is one readable expression beside its "whether", judged by one
+evaluator at two sites. Open issues are only work in flight or a human's inbox
+— no sleeping items, no board — and a decline consumes no issue number. A
+dropped tick, a late tick, a rename and an adoption all converge by the same
+rule: ask again.
 
 **The costs, named:**
 
-- **Signals are collected twice for an occurrence that runs** — scheduler run
-  at the anchor, executor at pick. Accepted: it is the re-derive rule, and it
-  is paid only on occurrences that do work, against a saving on every one
-  that does not.
-- **A task whose signals need a credential the scheduler lacks pays the old
-  price**: every occurrence fails open into a created-then-declined issue
-  (one closed issue per occurrence — today the two `fleet`-signal tasks).
-  Accepted as the cost of never skipping on a read failure; it ends if the
-  scheduler stub ever holds the credential.
-- **The board's next-window column goes stale between writes** — it is
-  recomputed only when a row changes. The frequency column beside it is what
-  a reader derives a fresh answer from; claudinite-dashboard is the live
-  surface.
-- **A declined occurrence is no longer an open issue's timeline** — the board
-  row keeps only the LAST ask per task. History of declines is not kept
-  anywhere, deliberately: nothing read the roll's history either (the item
-  was "a status line, not a log").
-
-**Errored and forced items against the guards** (restated for the new shape):
-
-- A **failed run** parks its item open under a `needs-human-*` status exactly as before — a
-  real exit; a `failure` park still holds the task's lane (§4), and a
-  non-blocking park leaves it open, with the next occurrence ASKED (and filed
-  only on a yes) beside it.
-- A **forced ad-hoc item** (qualified, or a manual task's — §3) stays
-  invisible to both guards in both directions.
-- **Force-of-a-scheduled-task MINTS the standing item in the common case**
-  (§8): between occurrences there is now no item at all for a quiet task, so
-  the wake lever's minting half — built for the gap after a completed run —
-  becomes the ordinary path. An open minted item preempts the anchor's ask
-  entirely (it IS the standing item, §3), so a decline racing a hand-created
-  item resolves structurally: no row, no duplicate (S57).
+- **An elapsed cadence drifts.** `last-run-over:1d` measured at twice-daily
+  ticks runs at the first tick past the duration, so its hour walks by up to a
+  tick's gap each period. A task that needs a fixed hour — anything in the
+  cross-repo chain `dailyHour` orders — states `due:` instead.
+- **A decline is re-asked at every tick, forever.** Nothing tells a task it
+  has declined a hundred times in a row; the record is a hundred log lines
+  nobody reads unless they look. The history terms keep the re-ask free of
+  reads, but a task whose cadence holds and whose movement condition never
+  does pays its collection twice a day.
+- **A task that declined for weeks reads a wide window when it finally runs.**
+  The window is since its newest run, so a weekly task silent for a month sees
+  the month. That is the right scope — nothing that moved is missed — and it
+  is also a large Context and a large session; a term's capped context
+  (`MAX_CONTEXT_ITEMS`) is what keeps it readable.
+- **The engine no longer stops a task from running beside its own failure
+  park** unless the task says `last-run-not-failed`. A task that omits the
+  term and breaks the same way each period files a parked item per period,
+  each a fault on record; the count of such items is the signal to decide
+  whether the task should declare the term (§15.33's retrospective reads it).
+- **Signals are collected twice for an occurrence that runs** — at the tick
+  and at pick. Accepted: it is the re-derive rule, paid only on occurrences
+  that do work.
+- **A task whose signals need a credential the scheduler lacks fails open**
+  once per period its cadence holds — one created-then-decided item (today the
+  `fleet`-signal tasks). Accepted as the cost of never skipping on a read
+  failure, and bounded by the cheap-first ask.
 
 ## 6. The executor — pick up, claim, prepare, hand off
 
@@ -523,7 +584,7 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
      declares `schedule_after: [T]` while T's standing item is `task:status:waiting-for-executor`,
      `task:status:running-executor`, or `task:status:running-agent` — yield *while the upstream is live
      this cycle*, nothing more. A declined upstream does not block — it has
-     no item at all (#1115: a no files only a board row) — and neither does
+     no item at all (§5: a no files nothing) — and neither does
      one sitting parked: a broken upstream must not halt its
      dependents indefinitely, the same bound the old exclusive claim drew at
      three days. This is deliberately **not** a `Blocked-by` edge: `schedule_after`
@@ -602,38 +663,33 @@ events irrelevant; `workflow_dispatch` for a hand-started drain):
    `task:status:rejected`, comment. Malformed →    `task:status:needs-human-failure` (possible forgery, a human must see it),
    unchanged from today.
 4. **Re-evaluate the precondition — the verdict that becomes a run.** The
-   scheduler run already asked once, at the anchor (§5, #1115); the executor
-   asks again over freshly collected signals, because a chained stage
-   re-derives world state rather than trusting a verdict passed forward — the
-   board's row is a watermark, never a verdict. On **go**: proceed, with the
-   pick-time verdict's Context written into the body as the agent's binding
+   scheduler run already asked once, at the tick that filed the item (§5); the
+   executor asks again over freshly collected signals, because a chained stage
+   re-derives world state rather than trusting a verdict passed forward — and
+   nothing durable carries the tick's verdict anyway. On **go**: proceed, with
+   the pick-time verdict's Context written into the body as the agent's binding
    scope. On **no-go**: the item **closes**, `task:status:rejected`, with the reason
-   in the close comment (#1115 — standing and ad-hoc alike; a standing
-   item's close also points at the schedule board, and the closed-at half of
-   the occurrence guard keeps the period consumed). **This keeps §12.3's "the
+   in the close comment (standing and ad-hoc alike; a rejected standing item
+   is still a run to the task's `due:` term, so the period stays consumed, and
+   it does not move the signal window, §5). **This keeps §12.3's "the
    precondition is the only decision point" in spirit**: still exactly the
    precondition deciding, at two sites that ask the same question of the
    same code — and the work step and the agent still may not skip; the
    doctrine's target (later phases inventing "new reasons to skip") is
    untouched.
 
-   **This stays clean only while preconditions ask task questions, not
-   calendar ones** (owner's condition, 2026-08-13). "Is there work?" is a
-   question about the world; "has it been more than a day?" is the scheduler's
-   own question leaking into a task, and under this model it is doubly wrong —
-   the schedule already lives in the anchors and the board's watermark, so a
-   calendar precondition would be a second clock disagreeing with the first.
-   Timing belongs to `frequency`, the anchors, and — for follow-ups and
-   deferred requests — `Not-before`. The rule is
-   **advisory** by owner ruling: no mechanical check (the property is not
-   checkable), and the residual exposure is an occurrence declined with a calendar
-   reason in its record — visible, and it costs a cycle, not correctness. The one live offender is resolved by
-   ruling rather than grandfathered: **baselining's `ageDays > 1` gate is
-   dropped outright** (owner, 2026-08-13: "the wrong precondition"). Its
-   precondition becomes the work question alone — is the mount behind canon
-   head, are migration notes unapplied — with cadence carried by
-   `frequency: daily-2h` and nothing else. The corpus enters the new mechanism
-   with zero calendar preconditions.
+   **The expression asks the calendar's question as well as the task's**
+   (decision §15.33). "Is there work?" is a question about the world; "has it
+   been a day?" is a question about the task's own history — and both are the
+   task's to ask, in one expression, because the engine keeps no calendar of
+   its own for a second clock to disagree with. The cadence terms (§5) read
+   the same run history at both sites, so a verdict cannot flip between tick
+   and pick for scheduling reasons alone: the item filed at the tick is a run
+   in the history, and at pick the item under evaluation is excluded from it.
+   Two things stay out of a precondition: the process clock — a term is handed
+   `now`, so a gate whose subject is the instant is assertable at a chosen
+   moment — and a wait that belongs to one item rather than to the task, which
+   is `Not-before` (follow-ups and deferred requests, §9).
 4b. **Resolve the target — which pull request this run works on** (owner,
    2026-09-04, decision §15.32). A task's `expected_outcome` says what its run
    does to pull requests, and the executor turns that into a concrete branch and
@@ -864,13 +920,16 @@ comes from a file under review.
   alone, so an item merely stripped of `task:status:blocked` wears no state any
   executor selects on, and the run reports `nothing ready to pick up` —
   indistinguishable from a healthy idle run. **When the standing item does
-  not exist, forcing MINTS it — and under #1115 that is the ordinary case**:
+  not exist, forcing MINTS it — and that is the ordinary case**:
   a decline files nothing and a completed task closes its item, so for most
   of a quiet task's day there is nothing to wake, and refusing there would
   make a fleet-wide converge lever fail on most members most of the time. The minted item is an
-  ordinary standing item: it consumes the current
-  occurrence (so the scheduler run does not create a second one beside it) and leaves
-  the next anchor's alone. Cross-repo, the enforcer does not perform any of
+  ordinary standing item stamped `Woken:` (§5): it is the task's live item, so
+  the scheduler asks nothing beside it, and it is a run in the task's history,
+  so a `due:` task forced this morning is not due again until its next anchor
+  and a `last-run-over:` one not until the duration passes. The cadence terms
+  hold on it — the wake stands in for the cadence — while everything else the
+  task requires still applies. Cross-repo, the enforcer does not perform any of
   this itself; it dispatches the member's scheduler with a `wake` input and
   the member's own scheduler run applies the recipe (§14). The executor evaluates the
   precondition at pick like always; a no-go closes the item with the
@@ -881,10 +940,10 @@ comes from a file under review.
   never consults the task"; its motivating case — the slot gate running
   before preconditions made mid-day forcing unreachable — does not exist
   here: nothing runs before the pick.)*
-- **Forcing ad-hoc work is creating an item**: parameterized runs, `manual`
-  tasks, fan-out targets. The CLI/composite (`create-work-item <pack>/<task>
-  [--urgent] [--context …] [--supersedes #N]`) writes the generic "forced by
-  hand — no precondition asserts there is work" Context; `--supersedes`
+- **Forcing ad-hoc work is creating an item**: parameterized runs, tasks with
+  no schedule, fan-out targets. The CLI/composite (`create-work-item <pack>/<task>
+  [--urgent] [--context …] [--supersedes #N]`) stamps `Woken:` and writes the
+  generic "forced by hand — no precondition asserts there is work" Context; `--supersedes`
   additionally closes a named errored item as superseded by this retry. The
   CLI warns when an open same-title item exists — the pick-time mutex (§6.1)
   means the new item queues behind it, and the operator should know they are
@@ -928,9 +987,12 @@ comes from a file under review.
   **scheduler** workflow by hand — the scheduler run-plus-drain pair, *not* the bare
   executor, whose run would drain ready items but skip the reclaim/ready
   half that makes resume complete. (S38.)
-- **`manual` tasks** are simply tasks the scheduler run never instantiates: their items
-  are only ever created by hand or by other tasks. The frequency token
-  survives; the special-case slot resolution for it dies.
+- **Tasks with no schedule** (no `preconditions`, which is what the retired
+  `frequency: manual` meant) are simply tasks the scheduler run never asks:
+  their items are only ever created by hand or by other tasks, and at their
+  pick the empty expression holds (§5). A force never mints one — there is
+  no standing item to stand in for — it wakes the open items routed to the
+  task by path, or reports that there is nothing to wake (#1721).
 - **Fan-out across repos** is the enforcer creating one item per member repo
   (urgent when the pass is urgent) instead of firing member schedulers with
   `FORCE_TASKS` — same write-gated surface, and the fan-in below gives the
@@ -959,14 +1021,14 @@ by the scheduler run (§5). Three patterns fall out, all from the sketch:
   skips the dependent while the upstream's standing item is live
   (ready/executing/agent) this cycle, and picks it the moment the upstream
   converges. The distinction is load-bearing: `Blocked-by` requires the
-  blocker *closed*, and a quiet upstream may have no item at all (#1115 — a
-  declined anchor files only a board row), so there is nothing for an edge
+  blocker *closed*, and a quiet upstream may have no item at all (§5 — a
+  declined ask files nothing), so there is nothing for an edge
   to name. (Under the retired roll model the trap was a rolling item that
   never closed, starving every dependent forever — S24's record.) As a
   yield: on the late-fire night all chain items are created together,
   baselining runs first, extract and promote follow *the same night* in
-  order; on the routine night where baselining's precondition declines at
-  its anchor, no baselining item exists and extract is pickable a minute
+  order; on the routine night where baselining declines at
+  the tick, no baselining item exists and extract is pickable a minute
   after its own yes. Nothing is spent, no task claims a run, and the engine
   still never knows what baselining is — `schedule_after` names a task id, and the
   pick filter reads item states, generically. §12's exclusive-claim
@@ -1093,15 +1155,15 @@ enumerates executors, which is why adding one requires telling no one.
 
 | failure | today | proposed |
 |---|---|---|
-| scheduler/scheduler run miss or late fire | run-ledger catch-up math | same property from the occurrence guard (§5) — the next scheduler run instantiates the most recent occurrence only |
-| double scheduler run | concurrency group + slot-title search | concurrency group + occurrence-guard search (same window, same answer) |
+| scheduler/scheduler run miss or late fire | run-ledger catch-up math | the next tick asks every task, and a `due:` term reads the missed period as the current one — the most recent anchor only (§5) |
+| double scheduler run | concurrency group + slot-title search | concurrency group + the one-live-item invariant over the same issue list (§5) |
 | lost label event | janitor re-arm (remove/re-add), 20-min grace, bounded by stale escalation | **retired** — executors poll on the scheduler run's cron; events are latency sugar, never the only delivery |
 | duplicate events / racing executors | claim lease on one implicit executor | same lease, N executors — the loser picks a different item |
 | executor died mid-claim | — (executor was a session; janitor reclaimed via `agent-running`) | **the scheduler run** (owner, 2026-08-13): `task:status:running-executor` with no activity past ~1h → strip to `task:status:waiting-for-executor` with a comment, so a dead executor's item is back in the queue within ~2h rather than ~25h. An executor iteration is minutes, not hours, and a lease checked once a day is not a short lease |
 | executor run died with items still queued | n/a (one implicit executor; the next slot was a day away) | **the failure-continuation job** (owner, 2026-08-15): `needs: execute`, `if: failure() \|\| cancelled()` re-dispatches on a fresh runner, so the *queue* resumes in ~a minute while the dead run's own item waits for the leash; the scheduler run drain is the backstop when the whole workflow run is lost (§10, S36) |
 | agent session died mid-run | janitor: stale `agent-running` → `needs-human` after ~3h | same, on `task:status:running-agent` (a hand-off comment names the session, so the janitor can say *which* session died) — the park is a `needs-human-*` status |
 | CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: a refused call parks with the error at once; an unanswered call leaves the item with the agent and the agent leash settles it — one call per item, never retried (§6.6) |
-| item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared `frequency` at HEAD (or a default for ad-hoc items) — no title parsing; the stale item converges `task:status:needs-human-action` — the lane is not being drained and the fix is outside the item — and leaves the queue |
+| item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared cadence term at HEAD (a day for a task stating none, or for an ad-hoc item) — no title parsing; the stale item converges `task:status:needs-human-action` — the lane is not being drained and the fix is outside the item — and leaves the queue |
 | a park's question is answered outside the queue | n/a (an approval park held an open PR forever, and rule E excludes `approval` because a later clean run does not answer it) | **`Ends-when: #<n> closed`**, stamped by the converge on any park given a `--pr`. The janitor reads the target's resolution: merged → the work landed, so the item closes `task:status:done`; closed unmerged → `task:status:rejected`. A condition it cannot evaluate reads as absent, never as met |
 | dependency never resolves | n/a | **the stale-ready rule cannot see it** — a blocked item is never ready (F14, caught by the simulator against S18's claim). The janitor gains a third rule: a blocked item whose blockers have not resolved for ~2 days gets an escalation *comment* — labels untouched, so the item still proceeds by itself the moment its blockers resolve; a human who decides it is dead closes it by hand |
 
@@ -1270,11 +1332,12 @@ engine at HEAD:
    secrets env — below).
 3. **Config**: `taskScheduler.dispatch: "queue"`, the endpoint map (§12), the
    anchor schedule.
-4. **Nothing else** — no seed items, no ledger to initialize. The first scheduler run
-   after wiring books every task's first window as a board row and files nothing
-   (§5's first-sight rule, S25), so adoption never fires weekly or monthly work
-   off-anchor on the least-proven repo. The adoption smoke test is the force
-   lever: create one item by hand and watch it converge.
+4. **Nothing else** — no seed items, no ledger, no board. The first scheduler
+   run after wiring asks every task like any other tick (§5): a `due:` task
+   with no run in its history is due, so the repo's daily, weekly and monthly
+   work all run at the first tick, and a task that wants a gentler start on a
+   new repo says so in its own preconditions. The adoption smoke test is the
+   force lever: create one item by hand and watch it converge.
 
 Pre-existing issues from the slot mechanism (`[claudinite-task]` titles) are
 invisible to the scheduler run — the family list is title-filtered — so bootstrap into
@@ -1289,15 +1352,15 @@ comments as record. Everything else — anchors, guards, yields, leashes,
 verdicts — is **computed fresh at every scheduler run and pick from the engine and the
 declarations at HEAD**. That one property decides every update question:
 
-- **A task declaration change** (frequency, `schedule_after`, precondition, secrets)
-  applies at the very next scheduler run, with no migration and no
-  relabeling: a declined task holds no item at all, and the board's row is a
-  watermark, not a wake, so nothing durable carries a schedule to migrate
-  (S28, re-pinned under #1115). A frequency change may cost one extra ask on
-  the day it lands — the new calendar's current occurrence is not covered by
-  the old anchor's row — and never a double run, because the occurrence
-  guard's closed-at half covers a same-period item that already ran. An item
-  already in flight finishes under the declaration it was picked with.
+- **A task declaration change** (cadence, `schedule_after`, precondition, secrets)
+  applies at the very next tick, with no migration and no relabeling: a
+  declined task holds no item at all and the engine keeps no record of the
+  decline, so nothing durable carries a schedule to migrate (S28). A cadence
+  change is judged against the same run history — a task moved from weekly
+  to daily runs at the next tick its new term holds, and never twice in a
+  period, because `due:` reads both the created-at and the closed-at of every
+  run in the horizon. An item already in flight finishes under the
+  declaration it was picked with.
 - **An engine change** lands through the ordinary update flow (engine release
   → members' baselining converges the vendored workflows). In-flight items
   survive by construction: a run that claimed an item finishes it on the code
@@ -1396,11 +1459,15 @@ the design rather than confirming it, the section it changed is named.
    §12.6; the session-creation credential in every repo is an accepted cost.
 2. **The precondition re-runs at pickup, and forcing loses its exemption**
    (§6.4) — conditioned on preconditions asking task questions, not calendar
-   ones. #515's rationale does not survive the pull model.
+   ones. #515's rationale does not survive the pull model. *(The condition
+   lapsed with decision 33: the calendar question is a precondition term by
+   design, read from the same run history at both sites.)*
 3. **Timing in a precondition is advisory, not forbidden** (§6.4): permitted
    where the verdict cannot flip between creation and pickup for scheduling
    reasons alone. No check — the property is not mechanically checkable, and
    the residual failure is a visible `task:status:rejected`, not a wrong result.
+   *(Decision 33 makes timing the expression's own first term rather than an
+   advisory exception.)*
 4. **A precondition is go/no-go, never maybe-later** (§5) — *changed the
    design twice*. First cut: one verdict per occurrence at the first scheduler run
    after the anchor, which required a `lastSchedulerRun` read from the Actions ledger
@@ -1411,7 +1478,10 @@ the design rather than confirming it, the section it changed is named.
    roll), deleting the ledger read entirely. Mid-window firing stays out; a
    task wanting finer latency declares a finer `frequency`. *(The memory's
    home moved again with decision 28: the roll retired, and "asked, declined"
-   became a schedule-board row. Go/no-go, once per period, stands.)*
+   became a schedule-board row. With decision 33 the memory left entirely:
+   nothing records "asked, declined", the next tick asks again, and
+   once-per-period is the task's own `due:` term reading its run history.
+   Go/no-go stands.)*
 5. **The fleet concept is eliminated** (§12, §13) — *changed the design*.
    Wider reach is a different invocation endpoint, declared by the task that
    needs it. `ready-for-agent-fleet`, the second executor routine, and
@@ -1629,6 +1699,9 @@ deployment coupling did not:
     fact ("asked at A, declined"), and every failure of it degrades to one
     redundant evaluation — it fails toward evaluating, never toward skipping
     (F31 pins the one place that could have inverted: a go row never gates).
+    *(Superseded by decision 33, 2026-09-05: the board is deleted, a decline
+    is a log line, and the anchor moved into the task's own `due:` term. What
+    stands: no work, no item; the injectable `evaluate` seam; fail-open.)*
 29. **The unified vocabulary, the origin authority, and one-issue requests**
     (owner, 2026-08-20, #1119) — *changed the design, three ways at once.*
     Every queue label becomes a single mutually-exclusive `task:status:*` (the
@@ -1721,6 +1794,135 @@ deployment coupling did not:
     predates the hand-off, until #1698. The sim models no pull request content,
     so the decision is pinned by `queue/target.test.mjs` and the executor loop's
     tests rather than a scenario.
+33. **Scheduling as preconditions; the scheduler keeps no state** (owner,
+    2026-09-05, [#1725](https://github.com/missingbulb/Claudinite/issues/1725))
+    — *changed the design*: §5 is rewritten around it, and it supersedes
+    decision 28 (the board), the calendar condition on decisions 2–3, and
+    decision 4's once-per-period memory. The
+    problem was opacity and state: a scheduler that decided *at the anchor*
+    and remembered its decisions had to be right about which tick it was,
+    which occurrence a run belonged to, what a first sight meant and what a
+    failure park held — and each of those was a place where bad state, a
+    dropped tick or a rename could eat a run, invisibly. The decision: **each
+    task defines its own scheduling**, in its own `preconditions`, taking or
+    not taking its previous runs into account; the engine decides neither
+    exactly-once nor at-least-once per expected execution, because cadence is
+    not guaranteed in this model at all — a task is asked at every tick
+    whether it wants to run, it does not know whether this is the morning or
+    the afternoon tick, it checks its conditions and decides. The engine keeps
+    exactly one invariant (one live item per task) and no memory; a task may
+    miss an occurrence because of an issue rename, and that is the task's
+    local problem, never the scheduler's. The three terms:
+
+    | term | what it says |
+    |---|---|
+    | `due:<daily\|weekly\|monthly>` | calendar-anchored on the repo's `taskScheduler` schedule — fixed hours, so the cross-repo `dailyHour` ordering survives |
+    | `last-run-over:<duration>` | elapsed since the newest run started — drifts across ticks, accepted |
+    | `last-run-not-failed` | the task's own choice to stop past its failure park — never an engine default |
+
+    `trigger` (`schedule | request`) says whether the scheduler asks the task at
+    all, and `preconditions` is optional and says only what must then hold (§5);
+    `none` is retired (an explicit empty marker is a second spelling of an empty
+    list); `frequency` is retired into the pair, at the door, `manual` becoming
+    `trigger: request`; the first-sight rule is
+    dropped outright, a task wanting to run the moment it is introduced saying
+    so itself; the schedule board is deleted and a decline is a log line. The
+    alternatives, and why each lost:
+
+    - *Keep the board as a decline watermark.* It was the one durable thing
+      the scheduler wrote, and everything it prevented — re-asking a declined
+      occurrence — the history terms prevent for free by reading the queue the
+      run already holds: a `due:` task that ran declines on its history at no
+      read, and one that declined is simply asked again, which costs nothing
+      where the cadence decides. What the board added was a second authority
+      over "did this period happen", a parse/serialize module, a write per
+      changed row, a closed-issue lookup path, and a class of degradations
+      (absent row, mangled body, reopened board) to reason about.
+    - *An engine-owned lane hold on failure.* "A `failure` park holds the
+      task's lane" was one rule the engine applied to every task; it was right
+      for a task that breaks the same way each period and wrong for one whose
+      next run is exactly what clears a transient fault, and the engine could
+      not tell which. The task can: `last-run-not-failed`, stated — and no
+      default either way, because a default puts the choice back in the
+      engine.
+    - *Booking a first window.* A just-adopted task never ran off-anchor; the
+      price was a booked row the scheduler had to remember and a special case
+      in the ask. Dropped, entirely: a task's first tick is a tick like any
+      other, and a task that wants a gentler or an immediate start writes the
+      condition.
+    - *One cadence shape only.* Elapsed-only (`last-run-over:`) loses fixed
+      hours, and with them the members-before-canon ordering `dailyHour`
+      carries across repos (§17.4); calendar-only (`due:`) cannot say "not
+      more often than every 12h" for work that has no anchor. Both are
+      offered, and a task picks the shape its ordering needs.
+    - *A `woken` term* (owner, 2026-09-06, retired on the review of #1733).
+      The first cut spelled `frequency: manual` as a fourth run-history term,
+      `woken`, holding only on an item somebody created or woke, so a task
+      carrying it as a whole conjunct read as off the schedule. The owner
+      ruled it is not a precondition at all — it means "run when I run", and
+      since every run of every task begins with somebody's item, the term
+      said nothing. The `Woken:` stamp, and the cadence terms holding on a
+      woken item, are untouched — those state a fact about one item, not a
+      tautology.
+    - *The shape of `preconditions` as the signal* (owner, 2026-09-06, the
+      same review). Retiring `woken` left absence carrying the meaning: a
+      declaration stating no condition, or one whose condition read the item,
+      was off the schedule. It read as cryptic — `"preconditions": ["none"]`
+      and no `preconditions` at all were a keystroke apart and meant opposite
+      things — and it made a scheduling question need the task's own terms
+      loaded to answer, which is how one call site came to answer it wrong.
+      Two fields, orthogonal, replace it: `trigger` for who asks,
+      `preconditions` for what must hold, judged identically whichever asked.
+      A structural classifier was weighed against it — "on the schedule iff
+      the expression carries a cadence term" — and lost on the same ground
+      the owner raised: the answer would still be inferred rather than
+      declared, and inferred from an absence.
+
+    **The retrospective brief** — per the `production-retrospective` skill,
+    filed at the merge that completes #1725 and reading the canon's own record
+    after about a week in production:
+
+    - *Expected, and where each is read.* Every tick asks every scheduled task:
+      one `asked <pack>/<task>: <verdict>` line per task in the scheduler run's
+      log, about a dozen per tick on the canon — some 26 lines a day across
+      the two ticks — and none missing. Items filed per day roughly what the
+      board model filed: the `[claudinite-work]` issues created per day, from
+      the issue list; more would mean the ask fires where the anchor did not,
+      fewer that a cadence term declines where it should not. Zero writes to
+      any `[claudinite-schedule]` issue — the `claudinite-schedule`
+      label-scoped listing stays static. At most one fail-open item per
+      `fleet`-signal task per period: items whose Context reads "could not
+      decide this occurrence". Zero duplicate live standing items: no
+      `deduped` line in any scheduler log. The count of items filed beside an
+      open failure park — each one a task to decide `last-run-not-failed` for
+      — small and non-zero. How many tasks declare `last-run-over:` and
+      whether their run hours drifted: the created-at of their items across
+      the week. `Woken:` on every hand-created, minted or woken item and on
+      no scheduler-filed one: the bodies of the week's `task:origin:planned`
+      items, where a forced mint also carries its "Minted by a force" Context
+      line and a scheduler-filed item carries neither.
+    - *Misuse.* A task stuck asking twice a day and declining forever with a
+      reason nobody reads — the same `no` line for one task on every tick of
+      the week, which is a cadence or a movement condition written wrong, or
+      a task that should carry no schedule. A `none`, a `woken`, a
+      `frequency`, or a hand-stamped `Woken:` on a scheduler-filed item. A
+      member whose signal reads at every tick cost more than the board did — a task with no
+      cadence term whose collection runs at both ticks every day (a
+      movement reason on every one of its `asked` lines).
+    - *Overuse, or a wrong decision.* A drift that broke the
+      members-before-canon ordering (a canon `growth-promote` run reading a
+      member's extract from the day before) says an elapsed cadence was
+      stated where a `due:` was needed — or that offering both shapes was the
+      wrong call. An item filed beside a failure park whose run failed the
+      same way says the engine hold was right for that task and the term
+      should be declared. A `due:weekly` task whose first-tick run after
+      adoption was rejected at pick says a gentler start belongs in the
+      writing-tasks skill.
+    - *Cheap to re-examine:* the 40-day horizon; the window fallback (period
+      + 1h); the two-tick cadence (§17); offering both cadence shapes.
+      *Load-bearing:* no engine state; the four-term vocabulary and
+      `preconditions` as the whole of "when"; the door as the only reader of
+      `frequency`.
 
 ---
 
@@ -1731,9 +1933,9 @@ deployment coupling did not:
 > possibly of my choice). I want minimal security here … evaluated as a
 > precondition."*
 
-Everything the queue runs today is **recurring**: a task whose anchor comes round
-and whose precondition finds work. A one-off ask — *implement this issue* — has no
-anchor and no task of its own, so until now it had to be started by a person in a
+Everything the queue runs today is **recurring**: a task the tick asks and whose
+preconditions find work. A one-off ask — *implement this issue* — has no
+cadence and no task of its own, so until now it had to be started by a person in a
 session. This section makes it a **first-class origin of work items**, and
 deliberately not a feature beside the queue: a request is dispatched by the same
 scheduler run, claimed under the same lease, evaluated by a precondition at the same single
@@ -1787,8 +1989,9 @@ collapse of the two retry levers into one (§16.3).*
 ### 16.2 A built-in task, so a request is an ordinary run
 
 The engine ships **one** task, `engine/implement-request`, wherever the queue runs
-— `frequency: 'manual'` (the scheduler run never puts it on a calendar; an item exists only
-because an issue was marked), `expected_outcome: 'pr'`, `automerge: 'anything'` (a ceiling, not an
+— `preconditions: ['request-eligible']` (a term that reads the item itself, so the task is not on
+the schedule and the scheduler run never asks it; an item exists only because an issue was
+marked), `expected_outcome: 'pr'`, `automerge: 'anything'` (a ceiling, not an
 instruction: it opens a pull request for review, and lands one only in the single
 authorized case §16.11 defines), no `schedule_after`, and **no code-work phase at all**.
 
@@ -1803,7 +2006,7 @@ parts of this that touch code every member runs.
 
 ### 16.3 The scheduler run's fourth job — adopt
 
-Beside instantiate, ready and reclaim: **adopt**. For every open issue wearing
+Beside ask, ready and reclaim: **adopt**. For every open issue wearing
 `task:origin:ad-hoc` with **no status** — that combination is the whole of the
 exactly-once guard — the scheduler run appends the machine block to the
 issue's own body and applies the first status:
@@ -1839,10 +2042,11 @@ sits outside every scheduled family (§3).
 ### 16.4 The precondition is the security check — and there is no code-work
 
 The verdict happens where every request verdict happens: **at pickup, on the
-executor** (§6.4 — the request task is `manual`, so the scheduler run's
-anchor-side ask never applies to it). The built-in task's precondition refuses
-three ways, each a plain no-go that converges the item `task:status:rejected` (a
-refusal is nobody's inbox — it closes rather than joining a triage
+executor** (§6.4 — the request task's one term reads the item, so it is not
+on the schedule and the scheduler run's own ask never applies to it). The
+built-in task's precondition refuses three ways, each a plain no-go that
+converges the item `task:status:rejected` (a refusal is nobody's inbox — it
+closes rather than joining a triage
 lane):
 
 - the issue is closed, or no longer carries the `task:origin:ad-hoc` mark —
@@ -2132,63 +2336,63 @@ minutes a day per member to perform about 13 minutes of work, and an idle hour �
 case — pays a full minute to find nothing.
 
 Optimising the job cannot reach this. The only lever is fewer runs, and the cron fires **twice a
-day** at the repo's hashed minute: the **anchor tick**, which covers every occurrence the calendar
-can produce, and the **drain tick** twelve hours later, which exists for the work that has no
-anchor at all.
+day** at the repo's hashed minute: the **anchor tick**, the hour every `due:` cadence anchors on,
+and the **second tick** twelve hours later. Both ticks ask every task (§5); the names say only
+which one the calendar-anchored cadences come due at.
 
-Both hours come from the repo's own `taskScheduler.dailyHour` — the anchor the calendar already
-resolves every occurrence against (§5) — so the cron is
+Both hours come from the repo's own `taskScheduler.dailyHour` — the anchor every `due:` term
+measures a task's run history against (§5) — so the cron is
 `<hashed-minute> <dailyHour>,<(dailyHour + 12) % 24> * * *`. On the default schedule
 (`dailyHour: 4`) that is `<hashed> 4,16 * * *`, and every example below reads in those terms; a
 member that sets `dailyHour` to anything else gets its two ticks moved with it. Deriving the hours
 from the anchor rather than fixing them is what keeps the cron and the calendar from disagreeing —
-a cron pinned at 4 on a member anchored at 9 would fire five hours before every occurrence it
-exists to instantiate, and each task would run a day late, forever.
+a cron pinned at 4 on a member anchored at 9 would fire five hours before every `due:` anchor,
+and each such task would run at the tick after its anchor — hours late, forever.
 
-### 17.1 The frequency vocabulary
+### 17.1 The cadence vocabulary, and the door the retired `frequency` field enters by
 
-`FREQUENCIES` is `daily`, `weekly`, `monthly`, `manual`. Two tokens retire:
+A task's cadence is the first term of its own `preconditions` (§5): `due:daily`, `due:weekly`,
+`due:monthly` — the three calendar cadences, anchored on `dailyHour` — `last-run-over:<duration>`
+for an elapsed one — and no `preconditions` at all for a task that runs only when somebody asks.
+The `frequency` field is retired into that term. **One door, at declaration load**, still reads it:
+`normalizeTaskDeclaration` turns a declaration carrying `frequency` into the term it always
+meant (`due:<cadence>`; `manual` drops the field and adds no term), first in the expression,
+drops a `none` beside it, and deletes the field — so `periodMs`, which feeds the janitor's
+stale-ready bound
+(`queue/janitor-rules.mjs`) and the signal window's fallback (`queue/signals.mjs`), reads the
+cadence term like everything else, and nothing downstream can see the field. A member's
+declaration is member-owned data, so the door is what lets it converge on its own schedule:
+`legacy-task-fields` advises the holder, the nightly update rewrites members' own task files, and
+the tolerance retires one convergence window after #1725 ships.
 
-- **`hourly`** cannot mean anything under a twice-daily tick. Its occurrence is the top of each
-  hour, so a cron that comes twice a day instantiates two of the day's twenty-four and the
-  declared frequency silently becomes the cron's cadence (`S70`). The corpus has exactly one
-  genuine user — `claudinite-growth/usage-fold`, the dashboard's past-data plane — and it becomes
-  `daily`: the aggregate still recomputes its hour rows from source over a three-day window, so
-  what changes is the newest rows' freshness, not the shape of the data. Its `WINDOW_DAYS` is
-  sized to its own period and must move with it; left at `2/24`, the signal window closes before
-  the next anchor and the precondition declines every run.
+Two spellings have no term, deliberately:
+
+- **`hourly`** cannot mean anything under a twice-daily tick: a task is asked twice a day, so an
+  elapsed cadence shorter than the gap between ticks runs at every tick and the declared cadence
+  silently becomes the cron's (`S70`). `due:` takes only the three calendar cadences, so
+  `due:hourly` is an author-time finding. The one task that genuinely ran hourly,
+  `claudinite-tasks/usage-fold`, is `due:daily` and recomputes its hour rows over a window sized
+  to its own period.
 - **`daily-2h` / `daily-1h` / `daily+1h`** existed to *stagger* anchors so dependent tasks ran in
-  order. `schedule_after:` (§9) enforces the same intent, and the offsets never could — a task whose
-  predecessor overruns its hour runs anyway. With all four collapsed onto one anchor hour, the
-  chain is instantiated by a single tick and `schedule_after:` alone still settles it in declaration
-  order (`S67`).
-
-A member's declaration converges on its own schedule, so both retired tokens are **accepted at
-the door and normalized**: `daily±Nh` reads as `daily`, `hourly` reads as `daily`. Nothing fails
-on a stale declaration, and the normalization is permanent rather than a migration window — a
-declaration is member-owned data and no vendoring pass rewrites it.
-
-**One door, at declaration load.** The normalization belongs where a task's declaration is first
-read, never inside `anchorInstant`. A frequency is read by more than the calendar: `periodMs`
-feeds the janitor's stale-ready bound (`queue/janitor-rules.mjs`, `staleReadyPeriods` × period)
-and the precondition's signal window (`queue/signals.mjs`, period + an hour of slack). Normalizing
-only the anchor would leave `periodMs('hourly')` returning an hour, so a task that now runs daily
-would be judged stale after two HOURS and see a two-hour signal window — a spurious
-park on every member still declaring the old token, which is precisely the population the
-tolerance exists for.
+  order. `schedule_after:` (§9) enforces the same intent, and the offsets never could — a task
+  whose predecessor overruns its hour runs anyway. With every calendar cadence on one anchor
+  hour, a chain is filed by a single tick and `schedule_after:` alone settles it in declaration
+  order (`S67`). A cross-repo stagger is `dailyHour` itself (§17.4).
 
 ### 17.2 What the two ticks each carry
 
-The **anchor tick** does the calendar work: every `daily`, `weekly` and `monthly` occurrence falls
-at `dailyHour` — that is what `anchorInstant` resolves them to (§5) — so one tick sees them all,
-whatever the member sets that hour to. Nothing is spread across hours any more, which
-is what makes one tick sufficient rather than merely cheaper.
+Both ticks run the same four jobs and ask every task on the schedule (§5); what differs is what
+the tasks answer. At the **anchor tick** every `due:` cadence has just come due — `anchorInstant`
+resolves daily, weekly and monthly alike to `dailyHour` — so that is where the calendar-anchored
+work runs, whatever the member sets that hour to, and one tick sees all of it because nothing is
+spread across hours any more.
 
-The **drain tick** carries the three jobs that are not anchor-bound — adopting issues somebody
-marked (§16.3), readying items whose `Not-before` has passed or whose `Blocked-by` has resolved,
-and reclaiming dead executor claims (§11). None of these has an occurrence; each is simply work
-that arrived since the last look. A second tick roughly halves the wait for all three, for one
-extra billed minute a day.
+At the **second tick** a `due:` task has already run since its anchor and declines on its run
+history alone, at no read. What that tick carries is everything not bound to the calendar: a
+`last-run-over:` cadence whose duration has elapsed, a task with no cadence term whose movement
+condition holds, adopting issues somebody marked (§16.3), readying items whose `Not-before` has
+passed or whose `Blocked-by` has resolved, and reclaiming dead executor claims (§11). A second
+tick roughly halves the wait for all of those, for one extra billed minute a day.
 
 ### 17.3 What the drain already chains, and what it does not
 
@@ -2238,7 +2442,8 @@ whatever has already merged on their mains, so the members' anchor must precede 
 same-night promotion degrades to T+1. That ordering survives the collapse by moving to the one
 knob that still expresses it — **`dailyHour` itself**, set an hour earlier on members than on the
 canon. A cross-repo constraint belongs at the repo's altitude rather than a task's, which is where
-the retired offsets were trying and failing to hold it.
+the retired offsets were trying and failing to hold it. It is also why the chain's tasks state
+`due:` and not `last-run-over:`, whose hour drifts (§5).
 
 ### 17.5 Rejected alternatives
 
@@ -2272,8 +2477,8 @@ delivered is still exactly what the next tick's parting look sees.
 
 What does change is how much a **missed tick** costs. GitHub drops scheduled runs under load, and
 an hourly grid absorbs that in an hour where two ticks a day absorb it in twelve — the same
-dropped fire, twelve times the latency (`S71`). Nothing is stranded, because dueness is decided
-from the anchor and not from whether the cron fired, so the next tick instantiates whatever the
+dropped fire, twelve times the latency (`S71`). Nothing is stranded, because a `due:` term reads the
+run history against its anchor and not whether the cron fired, so the next tick files whatever the
 dropped one would have; the exposure is delay, and it is the reason the second tick is not
 optional.
 
@@ -2332,7 +2537,7 @@ spelling (§4), and lease state; `anchors.mjs` — the **anchor math** (`periodM
 to land output; `signals.mjs` — the signal shapes a precondition is handed; `task-contract.mjs` —
 task-declaration validation and precondition evaluation, which other packs' tests exercise;
 `usage-format.mjs` — the usage aggregate's codec, for the fleet-wide aggregator that copies members'
-rows through; and `wake.mjs` — what a scheduler run would instantiate, kept out of `work-items.mjs`
+rows through; and `wake.mjs` — what a forced wake mints or wakes, kept out of `work-items.mjs`
 because the dashboard loads that one unbundled in a browser, where Node built-ins do not resolve.
 
 A pack whose **non-task** code reads any of it declares `requires: ['claudinite-tasks']`. A pack's

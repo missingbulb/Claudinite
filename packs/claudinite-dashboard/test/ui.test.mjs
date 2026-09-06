@@ -33,7 +33,7 @@ const candidate = (over = {}) => ({
   kind: 'item',
   repo: 'an-owner/TicketWatch',
   level: 'critical',
-  why: 'parked broken — holding the task\'s lane',
+  why: 'parked broken — a run to diagnose',
   more: [],
   number: 42,
   title: '[claudinite-work] basics/baselining',
@@ -47,7 +47,7 @@ const candidate = (over = {}) => ({
 test('the card names the work, its repo and the issue to open', () => {
   const card = leadCard(candidate());
   assert.match(card.className, /lvl-critical/);
-  assert.match(card.text, /holding the task's lane/);
+  assert.match(card.text, /parked broken/);
   assert.match(card.text, /an-owner\/TicketWatch/);
   assert.match(card.text, /#42/);
   assert.equal(card.find('lead-act')[0].href, 'https://github.com/an-owner/TicketWatch/issues/42');

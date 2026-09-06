@@ -9,11 +9,12 @@
 // siting, not in principle — recovery still happens once, in one place per rule,
 // in code, and never as a sweep inside a session that is executing something.
 
-import { periodMs } from './anchors.mjs';
+import { taskPeriodMs } from './anchors.mjs';
+import { isScheduledTask } from '../task-contract.mjs';
 import {
   READY, AGENT, requeueHint,
   STATUS_READY, STATUS_RUNNING_AGENT, STATUS_BLOCKED, STATUS_DONE, STATUS_REJECTED, isStatus, statusOf,
-  isParked, parkKindOf, originOf, ORIGIN_AD_HOC, STATUS_NEEDS_HUMAN_FAILURE, isStandingItem,
+  isParked, parkKindOf, originOf, ASKED_FOR_ORIGINS, STATUS_NEEDS_HUMAN_FAILURE, isStandingItem,
   parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
 } from './work-item.mjs';
 
@@ -37,8 +38,8 @@ const idle = (item, now) => ms(now) - (ms(item.updated_at) ?? ms(item.created_at
 
 // Rule A — STALE READY. An item no executor picked for ~2 of its own periods comes
 // out of the queue as a human's problem. The period is read from the task's
-// declared `frequency` at HEAD (no title parsing — that was the slot grammar); an
-// item whose task is unknown falls back to a day.
+// declared cadence term at HEAD (no title parsing — that was the slot grammar); an
+// item whose task is unknown, or keeps no cadence, falls back to a day.
 //
 // WHICH TASK, on a marked issue: its title is the person's own, so the id comes
 // from the worker path its machine block names — without that fallback a request
@@ -136,16 +137,19 @@ export const statelessComment = () =>
 // live one is the machinery working — and only the kinds that named something
 // broken (`SUPERSEDABLE_PARKS`).
 //
-// NEVER AN AD-HOC ITEM (#1498). The whole rule rests on one item being a FUNGIBLE
-// OCCURRENCE of a repeating task: a later clean run did the same work, so this
-// park's question is answered. An ad-hoc item is the opposite — it is somebody's
-// own issue, adopted as itself, and every one of them runs the SAME task
+// NEVER AN ITEM SOMEBODY ASKED FOR (#1498). The whole rule rests on one item being
+// a FUNGIBLE OCCURRENCE of a repeating task: a later clean run did the same work,
+// so this park's question is answered. Both origins a person's action produces are
+// the opposite of fungible, for their own reasons. An AD-HOC item is somebody's own
+// issue, adopted as itself, and every one of them runs the SAME task
 // (`implement-request`), so any later ad-hoc run at all reads as evidence about
 // every parked one. That is not a near miss: two verification issues were closed
 // citing a third issue's run, their own `Verify:` assertion never executed and the
-// owed verification silently discarded (#1161, #1253, on #1154's evidence). What
-// answers an ad-hoc park is its own work being done, which is rule G's `Ends-when`
-// or a person.
+// owed verification silently discarded (#1161, #1253, on #1154's evidence). A
+// MANUAL item names a task the queue does know, but somebody pulled its lever to
+// ask something the schedule was not asking — usually a qualifier scoping the run —
+// so the task's next clean occurrence did different work. What answers either park
+// is its own work being done, which is rule G's `Ends-when` or a person.
 //
 // `doneAfter(taskId, since)` answers "the newest item for this task that converged
 // done strictly after `since`", or null. The worker supplies it from the closed
@@ -153,7 +157,7 @@ export const statelessComment = () =>
 export function supersededItems(open = [], { doneAfter = () => null } = {}) {
   return open.filter((item) => {
     if (!isParked(item)) return false;
-    if (originOf(item) === ORIGIN_AD_HOC) return false;
+    if (ASKED_FOR_ORIGINS.includes(originOf(item))) return false;
     if (!SUPERSEDABLE_PARKS.includes(parkKindOf(item))) return false;
     const p = parseWorkItemTitle(item.title) ?? taskIdFromPath(parseWorkItemBody(item.body).taskPath);
     if (!p) return false;
@@ -246,10 +250,11 @@ export const endedParkComment = (target, resolution) => (resolution === 'merged'
   : `#${target} was closed without merging, which ends what this item was parked waiting for. `
     + `Closing it \`${STATUS_REJECTED}\` — nothing landed, so if the work is still wanted, re-queue it (${requeueHint}).`);
 
-// The period of a task, for rule A — read from the declaration at HEAD.
+// The period of a task, for rule A — read from the cadence term its declaration
+// at HEAD states; null (a day, in rule A) for a task that keeps none.
 export const periodForTasks = (tasks = []) => {
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
-  return (id) => periodMs(byId.get(id)?.decl?.frequency);
+  return (id) => taskPeriodMs(byId.get(id)?.decl);
 };
 
 // Rule H — THE UNCLOSED TERMINAL (#1526). A terminal status says the item is over:
@@ -300,31 +305,32 @@ export const unclosedTerminalComment = (status) => (status === STATUS_DONE
 // re-parks against a run from this week rather than leaving a month-old trace to read.
 //
 // STANDING ONLY, and structurally (`isStandingItem` against HEAD's declaration): the
-// warrant is that this item is a FUNGIBLE OCCURRENCE whose lane is being held, which
-// is exactly what a qualified item, a `manual` task's item and an adopted issue are
-// not — each is somebody's own work, and no clock answers those. A task absent from
-// HEAD answers no frequency and so is not standing either; that item is rule F's.
+// warrant is that this item is a FUNGIBLE OCCURRENCE, which is exactly what a
+// qualified item, a `request` task's item and an adopted issue are not — each is
+// somebody's own work, and no clock answers those. A task absent from HEAD states no
+// trigger and so is not standing either; that item is rule F's.
 export const ABANDONED_PARK_MS = 10 * 86400e3;
 
-export function abandonedParkItems(open = [], now, { frequencyFor = () => null, boundMs = ABANDONED_PARK_MS } = {}) {
+export function abandonedParkItems(open = [], now, { scheduledFor = () => null, boundMs = ABANDONED_PARK_MS } = {}) {
   return open.filter((item) => {
     if (statusOf(item) !== STATUS_NEEDS_HUMAN_FAILURE) return false;
     const p = parseWorkItemTitle(item.title);
     if (!p) return false;
-    if (!isStandingItem(item, frequencyFor(`${p.pack}/${p.task}`))) return false;
+    if (!isStandingItem(item, scheduledFor(`${p.pack}/${p.task}`))) return false;
     return idle(item, now) >= boundMs;
   });
 }
 
 export const abandonedParkComment = () =>
-  `Nothing has touched this park in over ${Math.round(ABANDONED_PARK_MS / 86400e3)} days. A \`failure\` park holds its task's lane, `
-  + 'so leaving it standing does not preserve the report — it keeps the task from ever running again, and a later clean run is '
+  `Nothing has touched this park in over ${Math.round(ABANDONED_PARK_MS / 86400e3)} days. Leaving it standing does not preserve the `
+  + 'report — nobody is going to read it now, and where the task declares `last-run-not-failed` it also keeps the task from '
+  + 'running again at all. A later clean run is '
   + `what would otherwise have closed this. Closing it \`${STATUS_REJECTED}\`: the next scheduled occurrence runs, and if the `
   + `fault is still there it parks again against a trace worth reading. If you were part-way through diagnosing it, re-queue it (${requeueHint}).`;
 
-// The declared frequency of a task at HEAD, for rule I's standing test — absent for a
+// Whether a task at HEAD is on the schedule, for rule I's standing test — null for a
 // task this repo no longer carries, which reads as not standing.
-export const frequencyForTasks = (tasks = []) => {
+export const scheduledForTasks = (tasks = []) => {
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
-  return (id) => byId.get(id)?.decl?.frequency ?? null;
+  return (id) => (byId.has(id) ? isScheduledTask(byId.get(id).decl) : null);
 };

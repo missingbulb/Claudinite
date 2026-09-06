@@ -46,7 +46,7 @@ have*, hour by hour.
 | **CI on main** | one word plus age | `ciStatus(runs, default_branch)` in [`fleet.mjs`](../fleet.mjs) | live runs | failing → critical (nothing the queue lands is safe) |
 | **Fold age** | `now − usage.generated` | the stamp | fold | > 6 h on a repo whose head moved → warning; no fold → *no fold*, and every fold-derived figure below reads *not recorded* |
 | **Drift** | `engine −1 · 2 packs`, the versions named | `mountState` | declaration stamp vs `canonRepo` | behind on the engine → serious; no canon configured → *unknown*, never *current* |
-| **Next wake** | `05:00 · 7 tasks · in 19 h`, then a 24 h tick strip, one tick per task anchor, hover naming the task | the roster's own `nextAsk.at` per row (`buildRoster` in [`model.mjs`](../model.mjs)) bucketed by hour | task declarations at head sha | a declaring repo with no anchor inside 24 h → serious (unwired); a task whose next ask is `held` is a critical tick at *now* |
+| **Next wake** | `05:00 · 7 tasks · in 19 h`, then a 24 h tick strip, one tick per task anchor, hover naming the task | the roster's own `nextAsk.at` per row (`buildRoster` in [`model.mjs`](../model.mjs)) bucketed by hour | task declarations at head sha | a declaring repo with no anchor inside 24 h → serious (unwired); a task whose next ask is `held` (a failure park on a declaration carrying `last-run-not-failed`) is a critical tick at *now* |
 
 **Expand →** the 48-hour table: hour, scheduler, executor, sessions, failed, tasks executed
 (from `hours[h].taskExec`).

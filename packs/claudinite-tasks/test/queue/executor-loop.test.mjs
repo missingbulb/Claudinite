@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runExecutor } from '../../queue/executor.mjs';
 import { parseWorkItemBody } from '../../queue/work-item.mjs';
+import { normalizeTaskDeclaration } from '../../task-contract.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const CONFIG = { taskScheduler: SCHEDULE, packConfig: {} };
@@ -93,7 +94,7 @@ const term = (holds) => new Map([['gate', { signals: [], holds }]]);
 const RUNS = term(() => ({ holds: true }));
 const task = (id, decl = {}, terms = RUNS) => ({
   pack: 'p', id, taskDir: process.cwd(), taskPath: `packs/p/tasks/${id}/task.md`,
-  decl: { id, frequency: 'daily', agent_model: 'sonnet', preconditions: ['gate'], expected_outcome: 'fresh_pr', ...decl },
+  decl: normalizeTaskDeclaration({ id, frequency: 'daily', agent_model: 'sonnet', preconditions: ['gate'], expected_outcome: 'fresh_pr', ...decl }),
   terms,
 });
 
@@ -399,13 +400,14 @@ test('a no-go verdict closes a scheduled item with the reason — the roll is go
   // decline the record says success: the executor asked, got a no, closed.
   const closeComment = issue.comments.find((c) => c.body.includes('declined'));
   assert.match(closeComment.body, /no work/);
-  assert.match(closeComment.body, /schedule board/);
+  assert.match(closeComment.body, /asked again at the next scheduler run/);
 });
 
 test('a no-go on an ad-hoc item closes it obsolete — there is no anchor to roll to (S17)', async () => {
-  // Ad-hoc by structure: a `manual` task has no calendar to roll to (§15.26).
-  const repo = fakeRepo([workItem(1, 'lever', ['task:status:waiting-for-executor'])]);
-  await drive(repo, [task('lever', { frequency: 'manual' }, term(() => ({ holds: false, reason: 'the world settled' })))]);
+  // Ad-hoc by structure: a task whose only condition reads the item is never on the
+  // schedule (§15.26), and its hand-created item wears the ad-hoc origin.
+  const repo = fakeRepo([workItem(1, 'lever', ['task:origin:ad-hoc', 'task:status:waiting-for-executor'])]);
+  await drive(repo, [task('lever', { preconditions: ['gate'] }, term(() => ({ holds: false, reason: 'the world settled' })))]);
   const issue = repo.find(1);
   assert.equal(issue.state, 'closed');
   assert.ok(issue.labels.includes('task:status:rejected'));

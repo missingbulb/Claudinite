@@ -76,7 +76,7 @@ test('S44 — the marked issue BECOMES the item, and any status holds the mark',
   assert.match(adopt.body, /^Do it\.\n/);
   assert.ok(machineBlockOf(adopt.body), 'the machine block is appended, never the whole body');
   assert.deepEqual(parseWorkItemBody(adopt.body), {
-    taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: null, merge: null, endsWhen: null,
+    taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: null, merge: null, endsWhen: null, woken: null,
     targetBranch: null, targetPr: null, supersedes: [],
   });
 
@@ -141,7 +141,7 @@ test('S47 — the body\'s Model reaches the item, an unknown family falls back, 
 // --- the `Task:` targeting field ----------------------------------------------
 
 test('a marked issue may name WHICH task it asks for, gated like every other parameter', async () => {
-  const other = { pack: 'p', id: 'chore', taskPath: 'packs/p/tasks/chore/task.md', decl: { id: 'chore', frequency: 'manual' } };
+  const other = { pack: 'p', id: 'chore', taskPath: 'packs/p/tasks/chore/task.md', decl: { id: 'chore', preconditions: [] } };
   const plan = (over) => ops({ tasks: [REQUEST_TASK, other], ...over });
 
   const [targeted] = (await plan({ requests: [marked(500, [ORIGIN_AD_HOC], 'Run it.\n\nTask: p/chore\n')] })).filter((o) => o.kind === 'adopt');
@@ -185,7 +185,7 @@ const req = (over = {}) => ({
 // discovery loads them: the security check is a task-local term now, and a test
 // that called it directly would not prove the declaration reaches it.
 const verdict = (signalRequest) =>
-  evaluatePrecondition({ decl: requestTask, terms: requestTerms }, { request: signalRequest }, {}, { request: 500 });
+  evaluatePrecondition({ decl: requestTask, terms: requestTerms }, { request: signalRequest }, {}, { request: 500, number: 1, woken: true });
 
 test('S45 — an issue nobody with push asked for is refused, as a plain no-go', () => {
   const v = verdict(req());
@@ -449,7 +449,8 @@ test('the precondition is handed THIS occurrence\'s own facts, not just the sign
   };
   await drive(repo, req({ authorPermission: 'admin' }), { tasks: [spy] });
 
-  assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet', merge: null, endsWhen: null, targetBranch: null, targetPr: null, supersedes: [] }]);
+  assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet', merge: null, endsWhen: null, targetBranch: null, targetPr: null, supersedes: [], woken: true, number: 1 }],
+    'the facts are the body\'s fields plus the number and whether somebody created it');
 });
 
 test('the built-in task id and the declaration it names agree', () => {

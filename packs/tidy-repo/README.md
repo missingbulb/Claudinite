@@ -22,11 +22,11 @@ One task per dimension. Each is triggered by the only thing that changes its ans
 exactly those objects, and reconciles **its own** standing tracker — so no task waits on another and
 a dimension with nothing to do stays silent:
 
-| Task | frequency | Runs when | Scope | Acts? | model |
+| Task | cadence term | Runs when | Scope | Acts? | model |
 |---|---|---|---|---|---|
-| `tidy-issues` | daily | an issue was touched in the window | the touched issues — **all** open ones when `main` also moved substantively | **yes** — close / label / comment | `sonnet` |
-| `tidy-prs` | weekly | an open PR was opened or updated in the window | every open PR (a full sweep) | no — recommends closes | `sonnet` |
-| `improve-comments` | weekly | a substantive commit landed in the window, and this pass's previous PR has been reviewed | the files those commits touched (capped, the rest next round) | **yes** — edits comments in the source, in a PR delivered to land | `opus` |
+| `tidy-issues` | `due:daily` | an issue was touched in the window | the touched issues — **all** open ones when `main` also moved substantively | **yes** — close / label / comment | `sonnet` |
+| `tidy-prs` | `due:weekly` | an open PR was opened or updated in the window | every open PR (a full sweep) | no — recommends closes | `sonnet` |
+| `improve-comments` | `due:weekly` | a substantive commit landed in the window, and this pass's previous PR has been reviewed | the files those commits touched (capped, the rest next round) | **yes** — edits comments in the source, in a PR delivered to land | `opus` |
 
 The two GitHub-object tasks apply their per-object skill (`single-issue-triage` / `single-pr-status`)
 across the targets the precondition hands them, then rewrite their tracker (`Claudinite tracker: Tidy Issues` / `Tidy PRs`) from
@@ -55,7 +55,7 @@ under any other title escapes.
 the rest — superseded-by, already-in-`main`, implemented-by-a-commit all need the others in view. So
 newness is the **gate** and the full set is the **scope**. For issues the widening to every open issue
 is signal-triggered on a substantive default-branch move, because that move is what can make an old
-issue implemented. For PRs "full" is the **frequency declaration** — weekly, and full whenever it
+issue implemented. For PRs "full" is the **cadence declaration** — `due:weekly`, and full whenever it
 runs. Never a `fullSweep` flag inside a daily task: weekly is a declaration, not a gate trick
 (per-project-scheduling DESIGN §3).
 

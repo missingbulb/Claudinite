@@ -6,7 +6,7 @@ import { DEFAULT_AGENT_MODEL } from '../../claudinite-tasks/task-contract.mjs';
 import rule, { runsAgent } from '../worldRules/task-md-only-when-agentic.mjs';
 
 const decl = (extra) => `${JSON.stringify({
-  id: 'usage-fold', frequency: 'daily', preconditions: ['none'], expected_outcome: 'fresh_pr', automerge: 'nothing', ...extra,
+  id: 'usage-fold', preconditions: ['due:daily'], expected_outcome: 'fresh_pr', automerge: 'nothing', ...extra,
 }, null, 2)}\n`;
 
 const AGENTIC = { agent_instructions: 'task.md', agent_execution_timeout: 1800 };

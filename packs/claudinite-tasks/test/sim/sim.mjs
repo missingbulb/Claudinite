@@ -1,24 +1,34 @@
 // A discrete-event simulator of the tasks-dispatch spec (DESIGN.md), so the
 // scenario play-throughs in the canon's SCENARIOS record are executable instead of prose-only.
 //
-// What it models faithfully: virtual time, the scheduler run's jobs (the
-// evaluate-at-anchor instantiation — precondition asked when the anchor comes,
-// an item filed only on a yes, a no recorded as a row on the schedule board,
-// fail-open on any read the scheduler cannot make — with both occurrence
-// guards and the first-item rule; readiness; adoption; the executing-leash
-// reclaim; the one-time sleeping-item migration), the schedule board as a
-// modeled ARTIFACT (rows the engine actually writes, a write log, and the
-// absent/corrupt degradations — never the rule's intent), the executor loop
-// (pick order, same-title mutex, the `schedule_after` yield, claim, validate, the
-// pick-time precondition re-evaluation whose no-go CLOSES the item — the roll
-// is gone — the work step/hand-off/converge as timed phases, heartbeat
-// comments during the work step so the leash measures executor death rather
-// than work duration), at-most-once invocation (one call per item, never
-// retried — the fired/refused/unanswered trichotomy of DESIGN §6.6), readiness
-// as the scheduler run's alone (F1, reopened 2026-08-15, then reversed 2026-08-26
-// / #1373), the janitor's stale-ready escalation, and the force lever (waking
-// where an item exists, minting where none does — the common case once
-// declines file nothing).
+// What it models faithfully: virtual time; the scheduler run as a STATELESS
+// loop (decision §15.33) — at every tick it asks every task ON THE SCHEDULE
+// (one stating a condition, none of which reads the item itself; a task stating
+// none runs only from an item somebody created, at whose pick an empty
+// expression holds), through the task's own preconditions: the run-history
+// terms first (`due:`, `last-run-over:`, `last-run-not-failed`), judged over
+// the task's own items in the issue store, then the scenario's precondition
+// function standing for every other condition; a yes files a READY item, a no
+// is a log line and nothing else, a read the scheduler cannot make fails OPEN —
+// and the engine's one invariant, ONE LIVE ITEM PER TASK, with the F16 dedupe
+// of live duplicates; readiness; adoption; the executing-leash reclaim), the
+// executor loop (pick order, same-title mutex, the `schedule_after` yield,
+// claim, validate, the pick-time re-evaluation over the item's OWN facts — a
+// woken item satisfies the cadence terms — whose no-go CLOSES the item, the
+// work step/hand-off/converge as timed phases, heartbeat comments during the
+// work step so the leash measures executor death rather than work duration),
+// at-most-once invocation (one call per item, never retried — the
+// fired/refused/unanswered trichotomy of DESIGN §6.6), readiness as the
+// scheduler run's alone (F1, reopened 2026-08-15, then reversed 2026-08-26 /
+// #1373), the janitor's stale-ready escalation, and the force lever (waking
+// where an item exists, minting where none does — both stamped `Woken`, which
+// is what the cadence terms read at pick).
+//
+// The engine keeps NO memory of an ask: there is no schedule board, no
+// watermark, no first-window booking and no migration here because there is
+// none in `queue/scheduler-run.mjs` — a decline is asked again at the next
+// tick, and the only record of one is the `ask` log entry this model writes for
+// the line the real run prints.
 //
 // What it deliberately does NOT model is inventoried in README.md's "The
 // unsimulated world" — one row per boundary (cron delivery, list freshness,
@@ -37,61 +47,213 @@ const DAY = 24 * HOUR;
 export const T = (iso) => Date.parse(iso.length === 17 ? iso.replace('Z', ':00Z') : iso);
 const iso = (t) => new Date(t).toISOString().slice(0, 16) + 'Z';
 
-// ---- frequency → anchors ----------------------------------------------------
-// daily-Nh anchors at N:00Z, plain daily at 04:00Z, hourly at :00, weekly at
-// Sunday 04:00Z. mostRecentAnchor is the latest anchor ≤ now; nextAnchor the
-// earliest one > now.
+// ---- the calendar (calendar.mjs, queue/anchors.mjs) --------------------------
+// The cadence vocabulary a task states INSIDE its preconditions, and the anchor
+// arithmetic a `due:` term measures the run history against. Daily anchors at
+// 04:00Z, weekly at Sunday 04:00Z, monthly on the 1st at 04:00Z — the schedule
+// defaults. mostRecentAnchor is the latest anchor ≤ now.
+export const CADENCES = ['daily', 'weekly', 'monthly'];
+export const DUE_TERM = 'due';
+export const ELAPSED_TERM = 'last-run-over';
+export const NOT_FAILED_TERM = 'last-run-not-failed';
+// The terms that read the item itself (precondition-policy.mjs `needsItem`):
+// only the request task's `request-eligible`. The scheduler's own ask has no
+// item to judge such a term against, so a task stating one is off the schedule.
+export const ITEM_TERMS = new Set(['request-eligible']);
+// How far back the run history reaches (signals/index.mjs RUN_HORIZON_DAYS): a
+// task with no run inside it reads as never having run.
+export const RUN_HORIZON_DAYS = 40;
 
-// daily-Nh / daily+Nh offset the schedule's daily hour (default 4), per the
-// engine's DAILY_OFFSETS: daily-2h → 02:00Z, daily-1h → 03:00Z, daily → 04:00Z.
-// THE DOOR (DESIGN §17.1), mirroring `packs/claudinite-tasks/calendar.mjs`: the retired spellings are
-// normalized where a declaration is LOADED, so nothing downstream — not the anchor, not the
-// period the janitor and the signal window count in — ever sees one.
-export const LEGACY_FREQUENCIES = {};
-export const normalizeFrequency = (f) => LEGACY_FREQUENCIES[f] ?? f;
+const ANCHOR_HOUR = 4;
 
-function anchorHour(frequency) {
-  if (frequency === 'daily' || frequency === 'weekly' || frequency === 'monthly') return 4;
-  throw new Error(`no anchor hour for ${frequency}`);
+export function periodMs(cadence) {
+  if (cadence === 'weekly') return 7 * DAY;
+  if (cadence === 'monthly') return 31 * DAY;
+  if (cadence === 'daily') return DAY;
+  throw new Error(`no period for ${cadence}`);
 }
 
-export function periodMs(frequency) {
-  const f = normalizeFrequency(frequency);
-  if (f === 'weekly') return 7 * DAY;
-  if (f === 'monthly') return 31 * DAY;
-  return DAY;
-}
-
-export function mostRecentAnchor(rawFrequency, now) {
-  const frequency = normalizeFrequency(rawFrequency);
-  if (frequency === 'manual') return null;
+export function mostRecentAnchor(cadence, now) {
+  if (!CADENCES.includes(cadence)) throw new Error(`no anchor for ${cadence}`);
   const d = new Date(now);
-  let a = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), anchorHour(frequency));
+  let a = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), ANCHOR_HOUR);
   if (a > now) a -= DAY;
-  if (frequency === 'weekly') {
+  if (cadence === 'weekly') {
     while (new Date(a).getUTCDay() !== 0 || a > now) a -= DAY;
   }
   // Monthly: day 1 at the anchor hour, walking back a month when this month's has not come.
-  if (frequency === 'monthly') {
+  if (cadence === 'monthly') {
     const d2 = new Date(a);
-    a = Date.UTC(d2.getUTCFullYear(), d2.getUTCMonth(), 1, anchorHour(frequency));
+    a = Date.UTC(d2.getUTCFullYear(), d2.getUTCMonth(), 1, ANCHOR_HOUR);
     if (a > now) {
       const back = new Date(a);
-      a = Date.UTC(back.getUTCFullYear(), back.getUTCMonth() - 1, 1, anchorHour(frequency));
+      a = Date.UTC(back.getUTCFullYear(), back.getUTCMonth() - 1, 1, ANCHOR_HOUR);
     }
   }
   return a;
 }
 
-export function nextAnchor(frequency, now) {
-  const from = mostRecentAnchor(frequency, now);
-  // Monthly anchors are not a fixed distance apart, so step UNDER a period and re-resolve —
-  // the engine's `queue/anchors.mjs` walks for the same reason.
-  const step = normalizeFrequency(frequency) === 'monthly' ? 28 * DAY : periodMs(frequency);
-  for (let t = from + step; ; t += step) {
-    const candidate = mostRecentAnchor(frequency, t);
-    if (candidate > from && candidate > now) return candidate;
+// `12h`, `1d`, `7d` — a whole number of hours or days, nothing else.
+export function parseDuration(text) {
+  const m = /^(\d+)(h|d)$/.exec(String(text ?? ''));
+  if (!m) return null;
+  const n = Number(m[1]);
+  return n > 0 ? n * (m[2] === 'h' ? HOUR : DAY) : null;
+}
+
+// The grammar precondition-policy.mjs parses: entries are conjuncts, `||`
+// separates alternatives inside one, the argument follows the first colon.
+const alternativesOf = (entry) => String(entry ?? '').split('||').map((t) => t.trim()).filter(Boolean)
+  .map((t) => { const c = t.indexOf(':'); return c === -1 ? { name: t, arg: null, text: t } : { name: t.slice(0, c).trim(), arg: t.slice(c + 1).trim(), text: t }; });
+const entriesOf = (preconditions) => (Array.isArray(preconditions) ? preconditions : []).map(alternativesOf);
+
+// The cadence a declaration states — the first cadence term wins; null for a
+// task with no cadence term (calendar.mjs cadenceOf).
+export function cadenceOf(preconditions) {
+  for (const ref of entriesOf(preconditions).flat()) {
+    if (ref.name === DUE_TERM && CADENCES.includes(ref.arg)) return { kind: 'due', cadence: ref.arg };
+    if (ref.name === ELAPSED_TERM) {
+      const ms = parseDuration(ref.arg);
+      if (ms) return { kind: 'elapsed', ms, text: ref.arg };
+    }
   }
+  return null;
+}
+
+// Whether the declaration states any condition at all (calendar.mjs
+// statesConditions). Not a scheduling answer on its own: it is what the door
+// below reads to derive a trigger for a declaration stating none.
+export const statesConditions = (preconditions) => entriesOf(preconditions).length > 0;
+
+export const TRIGGER_SCHEDULE = 'schedule';
+export const TRIGGER_REQUEST = 'request';
+
+// ON THE SCHEDULE (task-contract.mjs isScheduledTask): the declaration says so.
+// The sim models what the ENGINE WRITES, and what the engine now writes into a
+// planned item is decided by this field alone — with no terms to load and no
+// shape to interpret, which is the point of the field.
+export const isScheduled = (decl) => decl?.trigger === TRIGGER_SCHEDULE;
+
+// The period a TASK keeps (queue/anchors.mjs taskPeriodMs): its `due:` cadence's
+// period, its `last-run-over:` duration, null for a task with no cadence term.
+export const taskPeriodMs = (preconditions) => {
+  const cadence = cadenceOf(preconditions);
+  if (cadence?.kind === 'due') return periodMs(cadence.cadence);
+  if (cadence?.kind === 'elapsed') return cadence.ms;
+  return null;
+};
+
+// THE FREQUENCY DOOR (task-contract.mjs normalizeTaskDeclaration). `frequency`
+// is retired: a declaration still carrying it reads as the cadence term it
+// always meant, first in the expression, and a `none` beside it drops. A
+// retired spelling (`hourly`, `daily-2h`) is refused outright — the legacy map
+// is empty (#1234) — where the engine's declaration check would refuse it at
+// authoring time.
+export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'manual'];
+// What the field always meant, as the term that now says it — or null for
+// `manual`, which meant no schedule at all and so adds no term.
+export const cadenceTermFor = (frequency) => (frequency === 'manual' ? null : `${DUE_TERM}:${frequency}`);
+
+// The load point — the sim's equivalent of `normalizeTaskDeclaration` plus the
+// declaration check. The sim's `preconditions` carries the run-history terms it
+// evaluates itself, plus an item-reading term the scenario's `precondition`
+// function stands for; that function stands for every other condition the real
+// declaration would name too, so a term outside that vocabulary is a scenario
+// error here rather than a fail-open.
+export function loadDeclaration(decl) {
+  const out = { ...decl };
+  if (out.frequency !== undefined) {
+    if (!FREQUENCIES.includes(out.frequency)) {
+      throw new Error(`${out.id}: "${out.frequency}" is not a frequency the door accepts — a retired spelling is refused, not normalized`);
+    }
+    const stated = (Array.isArray(out.preconditions) ? out.preconditions : []).filter((e) => String(e).trim() !== 'none');
+    const term = cadenceTermFor(out.frequency);
+    out.preconditions = term === null || stated.some((e) => String(e).trim() === term) ? stated : [term, ...stated];
+    delete out.frequency;
+  }
+  // THE TRIGGER DOOR, as the contract runs it: stated wins, and a declaration
+  // stating none is read off the shape of its conditions — a term reading the item
+  // has nothing to judge at a tick, so it keeps the task off the schedule.
+  if (out.trigger === undefined) {
+    out.trigger = statesConditions(out.preconditions)
+      && !entriesOf(out.preconditions).flat().some((ref) => ITEM_TERMS.has(ref.name))
+      ? TRIGGER_SCHEDULE : TRIGGER_REQUEST;
+  } else if (![TRIGGER_SCHEDULE, TRIGGER_REQUEST].includes(out.trigger)) {
+    throw new Error(`${out.id}: "${out.trigger}" is not a trigger the contract accepts`);
+  }
+  // An absent `preconditions` stays absent, as through the engine's door; the
+  // grammar reads absent and empty alike as stating nothing.
+  for (const alts of entriesOf(out.preconditions)) {
+    for (const ref of alts) {
+      const legal = (ref.name === DUE_TERM && CADENCES.includes(ref.arg))
+        || (ref.name === ELAPSED_TERM && parseDuration(ref.arg) !== null)
+        || (ref.name === NOT_FAILED_TERM && ref.arg === null)
+        || (ITEM_TERMS.has(ref.name) && ref.arg === null);
+      if (!legal) {
+        throw new Error(`${out.id}: "${ref.text}" is not a term the simulator models (${DUE_TERM}:<${CADENCES.join('|')}>, ${ELAPSED_TERM}:<Nh|Nd>, ${NOT_FAILED_TERM}, ${[...ITEM_TERMS].join(', ')}) — a scenario's precondition function stands for every other condition`);
+      }
+    }
+    // An item-reading term is judged by the scenario's precondition function,
+    // which stands for the engine's term — as a whole conjunct only, or the
+    // alternative it sits in has no judge here.
+    if (alts.length > 1 && alts.some((ref) => ITEM_TERMS.has(ref.name))) {
+      throw new Error(`${out.id}: "${alts.map((r) => r.text).join(' || ')}" mixes an item-reading term into an alternative — the simulator judges such a term only as a whole conjunct`);
+    }
+  }
+  return out;
+}
+
+// ---- the run-history terms (precondition-policy.mjs BUILTIN_TERMS) -----------
+// Judged over `runs` — this task's own unqualified items, newest first, the item
+// under evaluation excluded — and the item's facts. A person's wake stands in
+// for the cadence: `due:` and `last-run-over:` hold on a woken item, and ONLY
+// those two — `last-run-not-failed` reads the newest run whatever woke this one.
+function termHolds(ref, runs, item, now) {
+  const woken = item?.woken === true;
+  const newest = runs[0] ?? null;
+  if (ref.name === DUE_TERM) {
+    if (woken) return { holds: true, reason: `#${item.number} was woken by hand — the wake stands in for the cadence` };
+    const anchor = mostRecentAnchor(ref.arg, now);
+    // Both halves of the old occurrence guard (F13): an item CREATED since the
+    // anchor is this period's, and so is one CLOSED since it.
+    const since = runs.find((r) => r.createdAt >= anchor || (r.closedAt ?? -Infinity) >= anchor);
+    return since
+      ? { holds: false, reason: `#${since.number} already ran since the ${ref.arg} anchor at ${iso(anchor)}` }
+      : { holds: true, reason: `no run since the ${ref.arg} anchor at ${iso(anchor)}` };
+  }
+  if (ref.name === ELAPSED_TERM) {
+    if (woken) return { holds: true, reason: `#${item.number} was woken by hand — the wake stands in for the cadence` };
+    if (!newest) return { holds: true, reason: `no run of this task in the last ${RUN_HORIZON_DAYS} days` };
+    return now - newest.createdAt > parseDuration(ref.arg)
+      ? { holds: true, reason: `the newest run, #${newest.number}, started over ${ref.arg} ago` }
+      : { holds: false, reason: `the newest run, #${newest.number}, started inside ${ref.arg}` };
+  }
+  if (ref.name === NOT_FAILED_TERM) {
+    if (!newest) return { holds: true, reason: 'no run of this task to have failed' };
+    return newest.park === 'failure'
+      ? { holds: false, reason: `the newest run, #${newest.number}, stands at a failure park — this task declares it does not run past its own failure` }
+      : { holds: true, reason: `the newest run, #${newest.number}, did not fail` };
+  }
+  throw new Error(`unknown run-history term "${ref.text}"`);
+}
+
+// The conjunction: every entry needs one holding alternative. The scenario's
+// precondition function is a further conjunct the caller judges after this one
+// says yes — exactly the engine's two-pass ask — and it is also what stands for
+// an item-reading term, so that conjunct is left to it. An empty expression
+// holds: the item itself is the ask.
+export function judgeHistory(preconditions, runs, item, now) {
+  const held = [];
+  let delegated = false;
+  for (const alts of entriesOf(preconditions)) {
+    if (alts.length === 1 && ITEM_TERMS.has(alts[0].name)) { delegated = true; continue; }
+    const outs = alts.map((ref) => termHolds(ref, runs, item, now));
+    const winner = outs.find((o) => o.holds);
+    if (!winner) return { run: false, reason: outs.map((o) => o.reason).join('; nor ') };
+    held.push(winner.reason);
+  }
+  if (held.length) return { run: true, reason: held.join('; ') };
+  return { run: true, reason: delegated ? '' : 'no conditions stated — the item itself is the ask' };
 }
 
 // ---- the simulator ----------------------------------------------------------
@@ -108,6 +270,9 @@ export const ORIGIN_PLANNED = 'task:origin:planned';
 export const ORIGIN_AD_HOC = 'task:origin:ad-hoc';
 export const ORIGIN_GITHUB = 'task:origin:github';
 const TRIAGE = ['action', 'decision', 'approval', 'failure'];
+// The four statuses an OPEN item may wear before it parks or converges — what
+// "one live item per task" counts (work-item.mjs LIVE_STATUSES).
+const LIVE_STATUSES = ['task:status:blocked', READY, 'task:status:running-executor', 'task:status:running-agent'];
 // Legacy flat spellings → canonical. The legacy two-label park pair is handled
 // in statusOf ahead of these (the sub-label decides; bare or unknown reads as
 // failure, the conservative lane), because an old park kept its pair beside
@@ -188,8 +353,10 @@ export function makeSim({
     }
   }
 
-  // The load point — the sim's equivalent of `normalizeTaskDeclaration`.
-  const registry = new Map(tasks.map((t) => [t.id, { ...t, frequency: normalizeFrequency(t.frequency) }]));
+  // The load point: every declaration passes the frequency door and the
+  // run-history vocabulary check once, so nothing downstream ever sees a
+  // `frequency` or an unmodeled term.
+  const registry = new Map(tasks.map((t) => { const d = loadDeclaration(t); return [d.id, d]; }));
   const permissionOf = (login) => collaborators[login] ?? 'none';
   // Ordinary issues somebody marked. Under the one-issue model the marked
   // issue BECOMES the work item at adoption — the item record shares the
@@ -202,18 +369,20 @@ export function makeSim({
   const titleOf = (id) => `[claudinite-work] ${id}`;
 
   // The built-in request task, always present wherever the queue runs (DESIGN
-  // §16.2): `manual`, so the scheduler run never puts it on a calendar — an item exists
-  // only because an issue was marked. Its precondition IS the security check, and
-  // it declares no code-work at all, so a request goes issue → item → agent with
-  // nothing in between to carry a payload.
+  // §16.2): its one condition, `request-eligible`, reads the item it is about, so
+  // the task is off the schedule — the scheduler run never asks it, and an item
+  // exists only because an issue was marked. That condition IS the security
+  // check, and the task declares no code-work at all, so a request goes issue →
+  // item → agent with nothing in between to carry a payload.
   registry.set(REQUEST_TASK, {
     id: REQUEST_TASK,
-    frequency: 'manual',
+    trigger: 'request',
+    preconditions: ['request-eligible'],
     agentMinutes: 45,
     ceiling: 'pr',
     deliversOpenPr: () => true,           // every successful run leaves a PR to review
-    // Evaluated at pickup like every other precondition, and — the one addition
-    // the contract needs — over THIS item, because which request it is about is a
+    // The judgment `request-eligible` makes, evaluated at pick like every other
+    // condition — over THIS item, because which request it is about is a
     // property of the item, not of the task.
     precondition: (_world, _now, item) => {
       const req = requestOf(item?.request);
@@ -244,49 +413,13 @@ export function makeSim({
       `heartbeat interval (${heartbeatMinutes}m) reaches the executing leash — F17 (reframed)`);
   }
 
-  const issues = []; // {number,title,taskId,labels:Set,state,createdAt,closedAt,readySince,lastActivity,notBefore,blockedBy:[],outcome,rolls:[],comments:[],escalated,sessions:[],quarantined}
+  const issues = []; // {number,title,taskId,qualifier,labels:Set,state,createdAt,closedAt,readySince,lastActivity,notBefore,blockedBy:[],outcome,woken,comments:[],escalated,sessions:[],quarantined}
   const log = []; // {t,kind,task,issue,...}
 
-  // ---- the schedule board (DESIGN §5, decision §15.28) ----------------------
-  // Modeled as what the engine WRITES: one issue (`[claudinite-schedule]`),
-  // whose body is a table of rows — one per scheduled task — parsed back on
-  // every scheduler run as the watermark. `exists`/`corrupt` model the two
-  // degradations the design must survive: a deleted board reads as absent, a
-  // mangled body degrades to absent per-row; both fail toward evaluating.
-  // A write REPLACES the body from the rows this run could parse plus the rows
-  // it changed — so a corrupt board's unparsable rows are genuinely lost on
-  // the next write, which is the artifact-level truth a rows-always-survive
-  // model would hide.
-  //
-  // `open` is the board's issue state (#1677). The engine states closed on
-  // every write, and a board found open is written even where no row moved —
-  // so an open board is a write the run OWES, which is what the model has to
-  // carry: a row-driven-writes-only model would show a board reopened on a
-  // quiet repo staying open forever.
-  const board = { exists: false, corrupt: false, open: false, rows: new Map() }; // taskId -> {frequency,lastAsked,verdict,reason}
-  const boardRow = (taskId) => (!board.exists || board.corrupt ? null : board.rows.get(taskId) ?? null);
-  // The change test compares the AUTHORITATIVE columns only (last asked,
-  // verdict, reason) — never the derived next-window column, which is
-  // recomputed at write time and would otherwise turn every scheduler run into a
-  // rewrite (F31, caught by S58 against a body-diff first cut).
-  function writeBoardRow(taskId, frequency, lastAsked, verdict, reason) {
-    const prev = boardRow(taskId);
-    if (prev && prev.lastAsked === lastAsked && prev.verdict === verdict && prev.reason === reason) return;
-    if (!board.exists) { board.exists = true; record('board-create', {}); }
-    if (board.corrupt) { board.rows.clear(); board.corrupt = false; } // rewrite replaces the mangled body
-    board.rows.set(taskId, { frequency, lastAsked, verdict, reason });
-    closeBoard();
-    record('board-write', { task: taskId, verdict, lastAsked: iso(lastAsked) });
-  }
-  // Every write states the state, so any write converges a board somebody
-  // reopened; a run that moved no row still owes this one where it is open.
-  function closeBoard() {
-    if (!board.open) return;
-    board.open = false;
-    record('board-close', {});
-  }
   // Which tasks the scheduler cannot collect signals for (a missing
-  // credential) — the fail-open lever the scenarios pull.
+  // credential) — the fail-open lever the scenarios pull. It bites only where
+  // the run-history terms did not already decide: those are judged first, off
+  // the issue store the run already holds, and cost no other read.
   const signalsUnavailable = new Set();
   // The issue-creation API refuses the next create for these tasks (a 4xx/5xx
   // on the POST) — the write-failure half of F31's scenario.
@@ -318,15 +451,15 @@ export function makeSim({
   // The ORIGIN LABEL is the authority on standing vs ad-hoc (DESIGN §3, owner
   // 2026-08-20, reversing 2026-08-19's marker-free rule): `task:origin:planned`
   // marks the task's calendar occurrence, everything else is ad-hoc. The
-  // structural read — bare unqualified title of a task with a frequency at
-  // HEAD — survives only as the decode fallback for items that predate the
-  // scheme and carry no origin at all.
+  // structural read — bare unqualified title of a scheduled task at HEAD —
+  // survives only as the decode fallback for items that predate the scheme and
+  // carry no origin at all.
   const family = (taskId) => issues.filter((i) => i.title === titleOf(taskId));
   const isStanding = (i) => {
     const o = originOf(i);
     if (o) return o === ORIGIN_PLANNED;
     const task = registry.get(i.taskId);
-    return !!task && task.frequency !== 'manual' && i.title === titleOf(i.taskId);
+    return !!task && isScheduled(task) && i.qualifier === null && i.title === titleOf(i.taskId);
   };
   const standingItem = (taskId) => family(taskId).find((i) => i.state === 'open');
 
@@ -341,23 +474,25 @@ export function makeSim({
   // re-queue lever then applies the ready status explicitly.
   const unpark = (it) => clearStatus(it);
   const isParked = (i) => (statusOf(i) ?? '').startsWith(NH(''));
-  // Only a fault park holds the task's lane — and the decode sends a bare
-  // legacy park and every unknown kind here, the direction that must be safe.
-  const blockingPark = (i) => statusOf(i) === NH('failure');
+  const parkKindOf = (i) => (isParked(i) ? statusOf(i).slice(NH('').length) : null);
+  const isLive = (i) => LIVE_STATUSES.some((s) => statusOf(i) === s);
 
-  function createIssue({ taskId, labels, notBefore = null, blockedBy = [], urgent = false, qualifier = null, request = null, model = null, origin = ORIGIN_PLANNED }) {
+  function createIssue({ taskId, labels, notBefore = null, blockedBy = [], urgent = false, qualifier = null, request = null, model = null, origin = ORIGIN_PLANNED, woken = null }) {
     const it = {
       request, model,
       number: issues.length + 900,
       title: titleOf(taskId) + (qualifier ? ` ${qualifier}` : ''),
-      taskId,
+      taskId, qualifier,
       labels: new Set(labels.concat(urgent ? ['task:urgent'] : []).concat(origin ? [origin] : [])),
       state: 'open',
       createdAt: now, closedAt: null,
       readySince: labels.includes('task:status:waiting-for-executor') ? now : null,
       lastActivity: now,
       notBefore, blockedBy,
-      outcome: null, rolls: [], comments: [], escalated: false,
+      // `Woken:` (DESIGN §5, §8): the instant a lever created or woke this item
+      // by hand — null on the scheduler's own item, which no lever touched.
+      woken,
+      outcome: null, comments: [], escalated: false,
       sessions: [], quarantined: false,
     };
     issues.push(it);
@@ -383,6 +518,77 @@ export function makeSim({
   const is = (i, status) => statusOf(i) === status;
   const originOf = (i) => [...i.labels].find((l) => l.startsWith('task:origin:')) ?? null;
 
+  // ---- the run history (signals/index.mjs `runs`; queue/signals.mjs) ---------
+  // This task's own unqualified items over the horizon, newest first, the item
+  // under evaluation excluded — what the cadence terms and the since-last-run
+  // window read. "Newest" is creation order, which is what GitHub's issue
+  // numbering guarantees and the sim's per-lever number ranges do not.
+  // A run begins at the pick: an item still wearing the status it waited in —
+  // open, or closed beside the terminal label (`closeUnpicked`) — was never
+  // picked, so it is not a run; else twins decline each other at pick and a
+  // deduped one spends the period on the survivor (F32).
+  const unpicked = (i) => i.labels.has('task:status:blocked') || i.labels.has(READY);
+  const runsOf = (taskId, exclude = null) => family(taskId)
+    .filter((i) => i.number !== exclude && !unpicked(i)
+      && Math.max(i.createdAt, i.closedAt ?? 0, i.lastActivity ?? 0) >= now - RUN_HORIZON_DAYS * DAY)
+    .map((i) => ({
+      number: i.number, createdAt: i.createdAt, closedAt: i.closedAt, state: i.state,
+      status: statusOf(i), park: parkKindOf(i), outcome: i.outcome, woken: i.woken != null,
+    }))
+    .sort((a, b) => b.createdAt - a.createdAt || b.number - a.number);
+  // The window every other collector reads over: since this task's newest run
+  // that actually ran STARTED — a `rejected` item declined at pick and did
+  // nothing, so it does not move the seam — falling back to the task's own
+  // cadence plus an hour of slack (a day for a task stating none).
+  const defaultWindowMs = (task) => (taskPeriodMs(task.preconditions) ?? DAY) + HOUR;
+  const windowOf = (task, exclude = null) => {
+    const last = runsOf(task.id, exclude).find((r) => r.outcome !== 'rejected');
+    const since = last ? last.createdAt : now - defaultWindowMs(task);
+    return { since, days: (now - since) / DAY };
+  };
+  // THE ITEM'S OWN FACTS (work-item.mjs itemFacts): `woken` is everything that is
+  // NOT the scheduler's own ask — stamped by a lever, born ad-hoc, a request, or
+  // any qualified item. The scheduler files only unqualified planned items.
+  const itemFacts = (it) => {
+    const schedulesOwn = it.request == null && it.qualifier === null && originOf(it) !== ORIGIN_AD_HOC;
+    return { number: it.number, request: it.request, woken: it.woken != null || !schedulesOwn };
+  };
+
+  // THE ASK, the scheduler's (queue/scheduler-run.mjs `evaluate`): the
+  // run-history terms alone first — a decline there costs no other read, and
+  // signals being unavailable cannot touch it — then the scenario's precondition
+  // function over the world. Any read the scheduler cannot make fails OPEN.
+  function askAtTick(task) {
+    const history = judgeHistory(task.preconditions, runsOf(task.id), null, now);
+    if (!history.run) return { verdict: 'no', reason: history.reason };
+    if (!task.precondition) return { verdict: 'go', reason: history.reason };
+    if (signalsUnavailable.has(task.id)) return { verdict: 'fail-open', reason: 'signals unavailable to the scheduler' };
+    let verdict;
+    try { verdict = task.precondition(world, now, null, windowOf(task)) ?? {}; }
+    catch (e) { verdict = { error: `precondition threw: ${e.message}` }; }
+    if (verdict.error) return { verdict: 'fail-open', reason: verdict.error };
+    if (verdict.run === false) return { verdict: 'no', reason: verdict.reason ?? 'no work' };
+    return { verdict: 'go', reason: [history.reason, verdict.reason].filter(Boolean).join('; ') };
+  }
+  // THE ASK, the executor's (DESIGN §6.4): the whole expression over the item's
+  // own facts and its own run history — excluding it — where a woken item
+  // satisfies the cadence terms and everything else still applies. A throw here
+  // is a DECLINE (the engine's evaluatePrecondition catches it) — one task's bad
+  // verdict is that item's problem, never the executor's; only the tick-side
+  // ask fails open.
+  function askAtPick(task, it) {
+    const history = judgeHistory(task.preconditions, runsOf(it.taskId, it.number), itemFacts(it), now);
+    if (!history.run) return history;
+    if (!task.precondition) return { run: true, reason: history.reason };
+    let verdict;
+    try { verdict = task.precondition(world, now, it, windowOf(task, it.number)) ?? {}; }
+    catch (e) { return { run: false, reason: `precondition threw: ${e.message}` }; }
+    // A go carries every held reason, joined as the engine's verdict joins them;
+    // a decline or an error is the precondition's own, untouched.
+    if (verdict.error || verdict.run === false) return verdict;
+    return { ...verdict, run: true, reason: [history.reason, verdict.reason].filter(Boolean).join('; ') };
+  }
+
   // F18/F24: the episode boundary is an ARTIFACT on the item, not a property of
   // the label transition. Modelling it as "every transition into ready opens a
   // new episode" is what made this simulator unable to reproduce F24: it encoded
@@ -398,7 +604,7 @@ export function makeSim({
 
   // `dispatchDrain: false` is for closes whose caller already has a drain
   // coming — the executor's own loop picks the next item in the same run, and
-  // the scheduler run's migration close is followed by that run's drain job —
+  // the scheduler run's dedupe close is followed by that run's drain job —
   // so only a close with no run behind it (an agent session's) dispatches one.
   // What still makes something newly pickable after such a close is the
   // `schedule_after` yield resolving (§9) — never a Blocked-by dependent, which
@@ -419,101 +625,58 @@ export function makeSim({
     }
   }
 
-  // ---- the scheduler run (DESIGN §5): decides at the anchor, files only work ----
+  // The scheduler run's own close of an item nobody picked (the F16 dedupe;
+  // scheduler-run.mjs's `dedupe`/`retire-orphan`/`superseded` ops): it ADDS the
+  // terminal label and closes, and the status the item waited in stays on — which
+  // is exactly what the run history reads to know the item never ran (F32).
+  function closeUnpicked(it) {
+    it.state = 'closed';
+    it.closedAt = now;
+    it.outcome = 'rejected';
+    it.labels.add('task:status:rejected');
+    record('close', { task: it.taskId, issue: it.number, outcome: 'rejected' });
+  }
+
+  // ---- the scheduler run (DESIGN §5, §15.33): a stateless loop --------------
   function schedulerRun() {
     if (suspendedAll) { record('suspended-skip', { workflow: 'scheduler-run' }); return; }
     record('scheduler-run', {});
-    // one-time migration (#1115): the sleeping standing items the roll model
-    // left behind — open, blocked, a FUTURE Not-before, no blockers, a roll on
-    // record — close with a comment, their last verdict seeded onto the board.
-    // Idempotent by construction: a closed item never matches again, and a
-    // seeded row is written only where none exists. Items waiting on a blocker
-    // or on a first-ever/adoption Not-before (no roll on record) are untouched.
-    for (const it of open().filter((i) => is(i, 'task:status:blocked'))) {
-      if (!isStanding(it) || it.blockedBy.length || it.rolls.length === 0) continue;
-      if (it.notBefore === null || it.notBefore <= now) continue;
-      const last = it.rolls.at(-1);
-      if (!boardRow(it.taskId)) {
-        writeBoardRow(it.taskId, registry.get(it.taskId)?.frequency ?? null, last.t, 'no', last.reason);
-      }
-      it.comments.push({ t: now, body: 'closing: declined occurrences now live on the schedule board, not as sleeping items' });
-      close(it, 'rejected', { dispatchDrain: false });
-      record('migrate-sleeping', { task: it.taskId, issue: it.number });
-    }
-    // job 1: instantiate — the precondition is asked WHEN THE ANCHOR COMES,
-    // and an item is filed only on a yes (owner, 2026-08-20, #1115). A no is a
-    // board row; a read the scheduler cannot make fails OPEN — the item is
-    // created exactly as the calendar-only model did, and the executor (which
-    // holds the credentials) decides at pick. Never fewer runs because a read
-    // failed.
+    // job 1: ASK every task on the schedule, at every tick. A yes files a READY
+    // item; a no is the `ask` log entry and nothing else — no board, no
+    // watermark, nothing durable can eat a run, and the next tick asks again; a
+    // read the scheduler cannot make fails OPEN and the executor decides at pick.
     for (const task of registry.values()) {
-      if (task.frequency === 'manual') continue;
-      const A = mostRecentAnchor(task.frequency, now);
-      const fam = family(task.id);
-      // F16 self-heal: if a stale issue list ever let a duplicate standing
-      // item through (nothing guarantees a REST list from another node sees a
-      // creation seconds old), close every open one but the oldest. The scheduler run
-      // is serialized (concurrency group), so this cannot race itself.
-      // A park that is somebody's inbox rather than a fault is neither the
-      // standing item nor a duplicate of one, so it leaves both tests and the
-      // schedule goes on around it (#1032: conflating them parked Shepherd's
-      // fleet-digest for two days behind one permission gap). It stays in `fam`
-      // for the occurrence guard below — it DID consume its own occurrence.
-      const openFam = fam.filter((i) => i.state === 'open')
-        .filter((i) => !isParked(i) || blockingPark(i))
+      // A task off the schedule — stating no condition, or one that reads the
+      // item itself — runs only from an item somebody created (DESIGN §5, §8):
+      // the schedule never asks it.
+      if (!isScheduled(task)) continue;
+      // ONE LIVE ITEM PER TASK, the engine's one invariant: an open item that is
+      // blocked, waiting or running is the task's current occurrence, and the
+      // task is not asked while it stands. A PARKED item is not live — it is a
+      // person's inbox or a fault on record — and whether it holds the task is
+      // the task's own declaration (`last-run-not-failed`), never the engine's:
+      // absent that term the next occurrence is filed beside the park, which the
+      // dedupe below must never mistake for a duplicate.
+      const live = family(task.id).filter((i) => i.state === 'open' && isLive(i))
         .sort((a, b) => a.number - b.number);
-      for (const dup of openFam.slice(1)) {
-        close(dup, 'rejected');
+      // F16 self-heal, FIRST: if a stale issue list ever let a duplicate
+      // standing item through (nothing guarantees a REST list from another node
+      // sees a creation seconds old), close every live one but the oldest. The
+      // scheduler run is serialized (concurrency group), so this cannot race itself.
+      for (const dup of live.slice(1)) {
+        closeUnpicked(dup);
         record('dedupe', { task: task.id, issue: dup.number });
       }
-      if (openFam.length > 0) continue; // standing item exists
-      // occurrence guard, both halves (F13): an item CREATED at-or-after A
-      // covers this occurrence — and so does an item CLOSED at-or-after A,
-      // because an item created for this occurrence that ran and closed today
-      // consumed it. Creation-time alone double-executes.
-      if (fam.some((i) => i.createdAt >= A || (i.closedAt ?? -Infinity) >= A)) continue;
-      // A brand-new task's FIRST item is created without an ask, born blocked
-      // until its next real anchor (S25) — adoption must not fire weekly or
-      // monthly work off-anchor.
-      if (fam.length === 0) {
-        createIssue({ taskId: task.id, labels: ['task:status:blocked'], notBefore: nextAnchor(task.frequency, now) });
-        continue;
-      }
-      // The board is the watermark: a row whose last-asked equals this anchor
-      // means this occurrence was already asked and DECLINED — do not re-ask.
-      // Scoped to declined rows only (F31): a go/fail-open verdict's cover is
-      // the item it created — its occurrence guard is above — and a go row
-      // honored as a gate would eat the occurrence whenever the item's own
-      // CREATE failed after the row landed. An absent or unparsable row fails
-      // toward evaluating (at most one redundant evaluation; the guards above
-      // still prevent a double run).
-      const row = boardRow(task.id);
-      if (row && row.verdict === 'no' && row.lastAsked === A) continue;
-      // Evaluate — the injectable seam in the engine; here, the task's own
-      // precondition over the scenario's world. A precondition that throws is
-      // fail-open too: at the anchor, an error is never a verdict.
-      let verdict;
-      if (signalsUnavailable.has(task.id)) verdict = { error: 'signals unavailable to the scheduler' };
-      else {
-        try { verdict = task.precondition ? task.precondition(world, now, null) ?? {} : { run: true }; }
-        catch (e) { verdict = { error: `precondition threw: ${e.message}` }; }
-      }
-      record('anchor-evaluate', { task: task.id, run: verdict.error ? null : verdict.run !== false });
-      if (verdict.run === false) {
-        writeBoardRow(task.id, task.frequency, A, 'no', verdict.reason ?? 'no work');
-        continue; // no work, no item
-      }
-      writeBoardRow(task.id, task.frequency, A, verdict.error ? 'fail-open' : 'go',
-        verdict.error ?? verdict.reason ?? '');
+      if (live.length > 0) continue; // the standing item already exists
+      const { verdict, reason } = askAtTick(task);
+      record('ask', { task: task.id, verdict, reason });
+      if (verdict === 'no') continue; // no work, no item, nothing written
       if (failNextCreateOf.delete(task.id)) {
         record('create-failed', { task: task.id });
-        continue; // the POST was refused; nothing exists for this occurrence
+        continue; // the POST was refused; nothing exists, and the next tick asks again
       }
       createIssue({ taskId: task.id, labels: ['task:status:waiting-for-executor'] });
     }
-    // The board write a settled repo still owes: nothing moved a row, but a
-    // board left open is a write in itself (#1677).
-    closeBoard();
     // job 2: ready whatever is due
     for (const it of open().filter((i) => is(i, 'task:status:blocked'))) {
       const blockersDone = it.blockedBy.every(
@@ -524,12 +687,9 @@ export function makeSim({
         record('ready', { task: it.taskId, issue: it.number });
       }
     }
-    // job 4: ADOPT a marked issue (DESIGN §16.3) — label mechanics like the other
-    // three: no precondition, no signal, no judgment about WHO marked it (that is
-    // the precondition's, at pickup). The mark is CONSUMED here — the request
-    // label becomes the queued one — so the gate clears by being acted on and a
-    // second scheduler run finds nothing to adopt. Re-requesting is re-applying the label.
     // ---- job 4: adopt the marked issues (DESIGN §16.3, one-issue) ----------
+    // Label mechanics like the other three: no precondition, no signal, no
+    // judgment about WHO marked it (that is the precondition's, at pickup).
     // The marked issue IS the work item. The exactly-once guard is the mark
     // with NO status: adoption writes the first status, and any status — live,
     // parked or terminal — blocks re-adoption until a person clears it, which
@@ -558,12 +718,12 @@ export function makeSim({
       const model = gatedModel(req, permissionOf);
       const it = {
         request: req.number, model,
-        number: req.number, title: `request #${req.number}`, taskId: REQUEST_TASK,
+        number: req.number, title: `request #${req.number}`, taskId: REQUEST_TASK, qualifier: null,
         labels: req.labels, // ONE issue: the item's labels ARE the issue's
         state: 'open', createdAt: now, closedAt: null,
         readySince: now, lastActivity: now,
-        notBefore: null, blockedBy: [],
-        outcome: null, rolls: [], comments: [], escalated: false,
+        notBefore: null, blockedBy: [], woken: null,
+        outcome: null, comments: [], escalated: false,
         sessions: [], quarantined: false,
       };
       issues.push(it);
@@ -620,7 +780,7 @@ export function makeSim({
         if (open().some((o) => o !== i && o.title === i.title &&
               (is(o, 'task:status:running-executor') || is(o, 'task:status:running-agent')))) return false;
         // the `schedule_after` yield: skip while the upstream's standing item is live
-        // this cycle (a rolled or needs-human upstream does not block — S23)
+        // this cycle (a declined or needs-human upstream does not block — S23)
         if (isStanding(i)) {
           const ups = registry.get(i.taskId)?.schedule_after ?? [];
           if (ups.some((up) => live(up))) return false;
@@ -727,8 +887,8 @@ export function makeSim({
   }
 
   // One claimed item through to its settle. `onSettled` is the RUN's
-  // continuation — called when the item stops occupying this executor (roll,
-  // close, hand-off, work failure), and deliberately NOT called when the
+  // continuation — called when the item stops occupying this executor (close,
+  // hand-off, work failure), and deliberately NOT called when the
   // runner itself dies (the run died with it; the leash is the recovery).
   // The hand-off settles the item for the run: the executor never waits for
   // the agent, which is why agent work parallelizes and executor work is the
@@ -745,16 +905,10 @@ export function makeSim({
     }
     // the pick-time precondition evaluation (DESIGN §6.4) — the executor
     // re-derives the verdict even where the scheduler run already asked at the
-    // anchor: a chained stage re-derives world state, and the board's row is a
-    // watermark, never a verdict carried forward.
-    // The precondition takes the ITEM as well as the signals (DESIGN §16.4): a
-    // request item's verdict is about the issue it names, which no signal bundle
-    // can single out on its own. A throw here is a DECLINE (the engine's
-    // evaluatePrecondition catches it) — one task's bad verdict is that item's
-    // problem, never the executor's; only the anchor-side ask fails open.
-    let verdict;
-    try { verdict = task.precondition ? task.precondition(world, now, it) ?? {} : { run: true }; }
-    catch (e) { verdict = { run: false, reason: `precondition threw: ${e.message}` }; }
+    // tick: nothing is carried forward from the tick's answer. Over the item's
+    // own facts and its own run history (excluding it), so a woken item passes
+    // the cadence terms and a request item's verdict is about the issue it names.
+    const verdict = askAtPick(task, it);
     // A precondition that CANNOT ANSWER is a run failure, not a verdict (F27):
     // the item parks in the failure lane, open and visible, and the re-queue
     // lever retries it — where a decline would converge on a guess.
@@ -765,13 +919,12 @@ export function makeSim({
       onSettled();
       return;
     }
-    record('evaluate', { task: it.taskId, issue: it.number, run: verdict.run !== false });
+    record('evaluate', { task: it.taskId, issue: it.number, run: verdict.run !== false, reason: verdict.reason ?? null });
     if (verdict.run === false) {
-      // The roll is gone (#1115): a decline CLOSES the item with the reason —
-      // standing and ad-hoc alike. For a standing item the next occurrence is
-      // the scheduler run's ask at the next anchor (the closed-at guard half keeps
-      // this period consumed); "asked and declined" lives on the board, not as
-      // an open sleeping issue.
+      // A decline CLOSES the item with the reason — standing and ad-hoc alike.
+      // For a standing item the next occurrence is the scheduler run's ask at
+      // the next tick, where the `due:` term's closed-at half keeps this period
+      // consumed; "asked and declined" lives nowhere but this record.
       // A declined request tells the ISSUE so and disarms it, in the same
       // convergence: nothing else would, and an un-disarmed issue would be
       // re-adopted and re-refused on every scheduler run forever. The terminal
@@ -941,9 +1094,10 @@ export function makeSim({
   function janitor() {
     if (suspendedAll) { record('suspended-skip', { workflow: 'janitor' }); return; }
     // rule A — stale-ready: an item no executor picked for ~2 periods comes
-    // out of the queue as a human's problem (S18's stuck member)
+    // out of the queue as a human's problem (S18's stuck member). The period is
+    // the task's own cadence term at HEAD; a day for a task keeping none.
     for (const it of open().filter((i) => is(i, 'task:status:waiting-for-executor') && !i.escalated)) {
-      const per = registry.has(it.taskId) ? periodMs(registry.get(it.taskId).frequency) : DAY;
+      const per = taskPeriodMs(registry.get(it.taskId)?.preconditions) ?? DAY;
       if (it.readySince !== null && now - it.readySince >= staleReadyPeriods * per) {
         it.escalated = true;
         park(it, 'task:status:waiting-for-executor', 'action'); // the lane is not draining; the fix is outside the item
@@ -965,7 +1119,7 @@ export function makeSim({
     // resolved for ~2 days is surfaced with an escalation COMMENT — labels
     // stay untouched, so the item still proceeds by itself the moment its
     // blockers resolve. Sleeping items (future Not-before, blockers closed)
-    // and rolling items (no blockers) never match.
+    // never match.
     for (const it of open().filter((i) => is(i, 'task:status:blocked') && !i.escalated)) {
       const blocked = it.blockedBy.some((n) => issues.find((x) => x.number === n)?.state !== 'closed');
       if (blocked && now - it.createdAt >= staleBlockedMs) {
@@ -978,10 +1132,13 @@ export function makeSim({
 
   // ---- the scenario DSL -----------------------------------------------------
   const droppedSchedulerRuns = [];
+  const IN_FLIGHT = ['task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent'];
   const sim = {
     issues, log, world, requests,
     requestItems: () => issues.filter((i) => i.request != null),
     requestIssue: (n) => requestOf(n),
+    // The declaration as loaded — what passed the door (S70).
+    task: (id) => registry.get(id),
 
     // ---- Action-executions accounting (#1212) ------------------------------
     // Every workflow RUN is a billed Actions invocation — each of its jobs'
@@ -1039,9 +1196,6 @@ export function makeSim({
     },
     // A transient API failure: the issue exists but cannot be read right now.
     setRequestUnreadable(number, on = true) { requestOf(number).unreadable = on; return sim; },
-    // Re-marking an issue — the phone-sized way to ask again; adoption
-    // supersedes a parked predecessor (F28), and the item-side re-queue lever
-    // (DESIGN §4) remains the other sanctioned retry.
     // The phone-sized re-ask: clear the status, leaving the bare mark — the
     // next scheduler run re-adopts the same record. One lever for park,
     // rejection and review alike.
@@ -1074,17 +1228,21 @@ export function makeSim({
     },
 
     // an established repo: every scheduled task already ran its previous
-    // occurrence (a closed done item), so the first-item rule doesn't apply
+    // occurrence (a closed done item) — at its cadence's most recent anchor, a
+    // `last-run-over:` duration ago, or a day ago for a task keeping no cadence
     seedSteadyState(asOfIso) {
       const t0 = T(asOfIso);
       for (const task of registry.values()) {
-        if (task.frequency === 'manual') continue;
-        const a = mostRecentAnchor(task.frequency, t0);
+        if (!isScheduled(task)) continue;
+        const cadence = cadenceOf(task.preconditions);
+        const a = cadence?.kind === 'due' ? mostRecentAnchor(cadence.cadence, t0)
+          : cadence?.kind === 'elapsed' ? t0 - cadence.ms
+            : t0 - DAY;
         issues.push({
-          number: issues.length + 800, title: titleOf(task.id), taskId: task.id,
+          number: issues.length + 800, title: titleOf(task.id), taskId: task.id, qualifier: null,
           labels: new Set(), state: 'closed',
           createdAt: a, closedAt: a + 30 * MIN, readySince: null, lastActivity: a,
-          notBefore: null, blockedBy: [], outcome: 'done', rolls: [], comments: [],
+          notBefore: null, blockedBy: [], woken: null, outcome: 'done', comments: [],
           escalated: false, seeded: true,
         });
       }
@@ -1094,14 +1252,22 @@ export function makeSim({
     // forcing a scheduled task = waking its standing item where one exists,
     // MINTING one where none does (DESIGN §8) — the common case once a decline
     // files nothing: for most of a quiet task's day there is no item to wake.
-    // A MANUAL task is never minted: the engine wakes the open items routed to
-    // it and reports nothing where there are none (#1721).
+    // Either way the item is stamped `Woken`, which is what lets the cadence
+    // terms hold at pick; an item already in flight is left alone (`already`),
+    // and an id no declared task owns wakes nothing (`unmatched`) — planWake's
+    // three answers. A task OFF THE SCHEDULE is never minted — a bare item of it
+    // carries nothing its worker can read: the engine wakes the open items
+    // routed to it, stamped `Woken`, and reports nothing where there are none
+    // (#1721).
     force(taskId, { urgent = true } = {}) {
-      if (registry.get(taskId)?.frequency === 'manual') {
+      const task = registry.get(taskId);
+      if (!task) { record('force', { task: taskId, issue: null, unmatched: true }); return null; }
+      if (!isScheduled(task)) {
         const routed = issues.filter((i) => i.taskId === taskId && i.state === 'open'
-          && !['task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent'].some((l) => is(i, l)));
+          && !IN_FLIGHT.some((l) => is(i, l)));
         for (const i of routed) {
           i.notBefore = null;
+          i.woken = now;
           if (is(i, 'task:status:blocked')) setStatus(i, READY);
           if (isParked(i)) { setStatus(i, READY); endEpisode(i); }
           record('force', { task: taskId, issue: i.number });
@@ -1112,12 +1278,14 @@ export function makeSim({
       }
       let it = standingItem(taskId);
       if (!it) {
-        it = createIssue({ taskId, labels: ['task:status:waiting-for-executor'], urgent });
+        it = createIssue({ taskId, labels: ['task:status:waiting-for-executor'], urgent, woken: now });
         record('force', { task: taskId, issue: it.number, minted: true });
         schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
         return it;
       }
+      if (IN_FLIGHT.some((l) => is(it, l))) { record('force', { task: taskId, issue: it.number, already: true }); return it; }
       it.notBefore = null;
+      it.woken = now;
       if (is(it, 'task:status:blocked')) setStatus(it, READY);
       // The hand-wake writes its own episode-marker comment (create-work-item),
       // unlike the bare human re-queue — so forcing ends the episode itself.
@@ -1132,14 +1300,17 @@ export function makeSim({
     // scheduled task names a qualifier (DESIGN §3): an UNQUALIFIED item of a
     // scheduled task is structurally its standing item, so creating one where
     // none is open is minting, and beside an open one it is a duplicate the
-    // scheduler run's self-heal closes.
+    // scheduler run's self-heal closes. Such an item is what a write-gated
+    // human makes through the issue UI: planned, and NOT stamped `Woken` — the
+    // engine's create lever refuses that shape, so nothing stamps it, and at
+    // pick the cadence terms judge it over the task's other runs. A qualified
+    // item, or one of a task off the schedule, is ad-hoc and woken by
+    // construction — and an empty expression holds at its pick regardless.
     // eventLost models a dropped `labeled` webhook (S16): no immediate
     // executor run fires; the next scheduler run's drain is the guarantee.
     createItem(taskId, { urgent = false, notBefore = null, blockedBy = [], qualifier = null, eventLost = false } = {}) {
       const born = notBefore !== null || blockedBy.length ? 'task:status:blocked' : 'task:status:waiting-for-executor';
-      // an unqualified item of a scheduled task IS its standing occurrence
-      // (minting), so it is planned; a qualifier or a manual task is ad-hoc
-      const adHoc = qualifier !== null || registry.get(taskId)?.frequency === 'manual';
+      const adHoc = qualifier !== null || !isScheduled(registry.get(taskId));
       const it = createIssue({ taskId, labels: [born], notBefore, blockedBy, urgent, qualifier,
         origin: adHoc ? ORIGIN_AD_HOC : ORIGIN_PLANNED });
       if (born === 'task:status:waiting-for-executor' && !eventLost) schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
@@ -1156,9 +1327,9 @@ export function makeSim({
     removeTask(taskId) { registry.delete(taskId); return sim; },
 
     // a declaration change lands at HEAD (S28): the very next scheduler run/pick reads
-    // the new frequency/after/precondition — items carry no schedule to migrate
+    // the new preconditions/after — items carry no schedule to migrate
     updateTask(taskId, patch) {
-      registry.set(taskId, { ...registry.get(taskId), ...patch });
+      registry.set(taskId, loadDeclaration({ ...registry.get(taskId), ...patch }));
       return sim;
     },
 
@@ -1169,10 +1340,10 @@ export function makeSim({
       const it = {
         number: issues.length + 600,
         title: titleOf(taskId) + (qualifier ? ` ${qualifier}` : ''),
-        taskId, labels: new Set(labels), state: 'open',
+        taskId, qualifier, labels: new Set(labels), state: 'open',
         createdAt: now, closedAt: null,
         readySince: labels.includes('task:ready') ? now : null, lastActivity: now,
-        notBefore: null, blockedBy: [], outcome: null, rolls: [], comments: [],
+        notBefore: null, blockedBy: [], woken: null, outcome: null, comments: [],
         escalated: false, sessions: [], quarantined: false,
       };
       issues.push(it);
@@ -1184,10 +1355,10 @@ export function makeSim({
     // outside the [claudinite-work] family — the scheduler run must never touch it
     foreignIssue(title) {
       const it = {
-        number: issues.length + 700, title, taskId: null,
+        number: issues.length + 700, title, taskId: null, qualifier: null,
         labels: new Set(['agent-dispatch']), state: 'open',
         createdAt: now, closedAt: null, readySince: null, lastActivity: now,
-        notBefore: null, blockedBy: [], outcome: null, rolls: [], comments: [],
+        notBefore: null, blockedBy: [], woken: null, outcome: null, comments: [],
         escalated: false, sessions: [],
         quarantined: false,
       };
@@ -1231,41 +1402,17 @@ export function makeSim({
       return createIssue({ taskId, labels: ['task:status:waiting-for-executor'] });
     },
 
-    // ---- the schedule board's levers (#1115) -------------------------------
-    board,
-    boardWrites: () => log.filter((e) => e.kind === 'board-write'),
-    // Somebody deletes the board issue: every row is gone, reads answer absent.
-    deleteBoard() { board.exists = false; board.corrupt = false; board.rows.clear(); record('board-delete', {}); return sim; },
-    // Somebody mangles the body: the issue exists but no row parses. The next
-    // write replaces the whole body, so the mangled rows are genuinely lost.
-    corruptBoard() { board.corrupt = true; record('board-corrupt', {}); return sim; },
-    // Somebody reopens the board, or it predates the closed rule: the next
-    // scheduler run closes it, row change or not.
-    reopenBoard() { board.open = true; record('board-reopen', {}); return sim; },
+    // ---- the scheduler's fail-open levers ----------------------------------
     // The scheduler run cannot collect this task's signals (a missing
-    // credential): its anchor-side ask fails OPEN — the item is created as the
-    // calendar-only model created it, and the executor decides at pick.
+    // credential): its ask fails OPEN — the item is created and the executor,
+    // which holds the credentials, decides at pick. Only on ticks where the
+    // run-history terms did not already decline: those need no signal.
     setSignalsUnavailable(taskId, on = true) {
       if (on) signalsUnavailable.add(taskId); else signalsUnavailable.delete(taskId);
       return sim;
     },
     // The next work-item POST for this task is refused (F31's write failure).
     failNextCreateOf(taskId) { failNextCreateOf.add(taskId); return sim; },
-    // An old-engine leftover for the migration scenarios: a standing item the
-    // roll model left sleeping — open, blocked, a future Not-before, the last
-    // decline in its rolls (the Last-verdict section, artifact-wise).
-    seedSleepingItem(taskId, { rolledAtIso, notBeforeIso, reason = 'no work', blockedBy = [] }) {
-      const it = {
-        number: issues.length + 850, title: titleOf(taskId), taskId,
-        labels: new Set(['task:status:blocked']), state: 'open',
-        createdAt: T(rolledAtIso) - 30 * MIN, closedAt: null, readySince: null,
-        lastActivity: T(rolledAtIso), notBefore: T(notBeforeIso), blockedBy,
-        outcome: null, rolls: [{ t: T(rolledAtIso), reason }], comments: [],
-        escalated: false, sessions: [], quarantined: false,
-      };
-      issues.push(it);
-      return it;
-    },
 
     // ---- platform failure injection (S9/S10) -------------------------------
     // refused: the endpoint answers with an error status — no session exists
@@ -1290,7 +1437,9 @@ export function makeSim({
     resumeAll() { suspendedAll = false; record('resume', {}); return sim; },
 
     // the sanctioned human re-queue (F7, DESIGN §4): strip needs-human,
-    // apply task:status:waiting-for-executor — the same lever forcing uses
+    // apply task:status:waiting-for-executor. A label edit and nothing else —
+    // it stamps no `Woken`, so at pick the cadence terms judge the item over
+    // the task's other runs, unlike the force lever above.
     requeue(number) {
       const it = issues.find((i) => i.number === number);
       unpark(it);

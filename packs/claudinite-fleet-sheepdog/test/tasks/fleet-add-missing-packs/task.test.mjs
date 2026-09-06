@@ -39,10 +39,15 @@ test('fleet-add-missing-packs: the declared code_work asks for the whole-fleet s
   assert.equal(p.forced, false, 'and reports itself as the sweep, not a force');
 });
 
-test('fleet-add-missing-packs: the precondition fires unconditionally and says why', () => {
+// The cadence term reads the task's own run history at a chosen instant: an empty
+// history holds, and the signal under test decides.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const AT = '2026-09-05T16:00:00Z';
+const NO_RUNS = { runs: { list: [] } };
+test('fleet-add-missing-packs: the precondition fires on its cadence alone and says why', () => {
   // Every input lives outside this repo, so no collector signal can predict the
   // answer; the honest declaration is "always run, and no-op cheaply".
-  const v = evaluatePrecondition({ decl }, {});
+  const v = evaluatePrecondition({ decl }, NO_RUNS, {}, null, AT, SCHEDULE);
   assert.equal(v.run, true);
   assert.match(v.reason, /\S/);
 });

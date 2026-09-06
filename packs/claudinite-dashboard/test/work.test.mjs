@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   workRows, rowsFor, viewCounts, defaultView, troubles, classify, attentionOf, VIEWS,
 } from '../work.mjs';
-import { describeItem, buildRoster } from '../model.mjs';
+import { describeItem, describeCadence, buildRoster } from '../model.mjs';
 import {
   WORK_PREFIX, STATUS_READY, STATUS_BLOCKED, STATUS_RUNNING_EXECUTOR, PARK_STATUSES, PARK_KINDS,
   NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
@@ -37,10 +37,9 @@ const taskRow = (task, over = {}) => ({
   key: `claudinite-growth/${task}`,
   pack: 'claudinite-growth',
   task,
-  declaration: { frequency: 'daily', agent_model: 'none', expected_outcome: 'fresh_pr', automerge: 'anything' },
-  frequency: 'daily',
+  declaration: { preconditions: ['due:daily'], agent_model: 'none', expected_outcome: 'fresh_pr', automerge: 'anything' },
+  ...describeCadence(['due:daily']),
   nextAsk: { kind: 'anchor', at: new Date('2026-08-22T04:00:00Z') },
-  anchorNote: null,
   current: null,
   openCount: 0,
   lastClosed: null,
@@ -57,7 +56,7 @@ test('a healthy task is neither stuck nor pending — it is simply waiting for i
 test('a parked item is stuck, at the severity its park kind earns', () => {
   const broken = taskRow('growth-extract', { current: described(issue(9, 'growth-extract', [NEEDS_HUMAN_FAILURE, parkStatus('failure')])) });
   assert.equal(classify(broken), 'stuck');
-  assert.equal(troubles(broken)[0].level, 'critical', 'a failure park holds the task\'s lane');
+  assert.equal(troubles(broken)[0].level, 'critical', 'a failure park is a broken run');
 
   const approval = taskRow('usage-fold', { current: described(issue(10, 'usage-fold', [NEEDS_HUMAN_APPROVAL, parkStatus('approval')])) });
   assert.equal(classify(approval), 'stuck');
@@ -145,7 +144,7 @@ test('workRows keeps a declared task that has never run', () => {
   // The row a list built from items alone would omit silently — and a task that never
   // fired looks identical to one with nothing to do until you can see it at all.
   const all = workRows(buildRoster({
-    tasks: [{ pack: 'claudinite-growth', task: 'never-ran', path: 'packs/claudinite-growth/tasks/never-ran/task.mjs', declaration: { frequency: 'weekly' } }],
+    tasks: [{ pack: 'claudinite-growth', task: 'never-ran', path: 'packs/claudinite-growth/tasks/never-ran/task.mjs', declaration: { preconditions: ['due:weekly'] } }],
     items: [],
     now: NOW,
     schedule: null,

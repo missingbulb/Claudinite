@@ -17,13 +17,18 @@ const S = (over = {}) => ({
   ...over,
 });
 
-const issuesVerdict = (signals) => evaluatePrecondition({ decl: tidyIssues }, signals);
-const prsVerdict = (signals) => evaluatePrecondition({ decl: tidyPrs }, signals);
+// The cadence term reads the task's own run history at a chosen instant: an empty
+// history holds, and the signal under test decides.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const AT = '2026-09-05T16:00:00Z';
+const NO_RUNS = { runs: { list: [] } };
+const issuesVerdict = (signals) => evaluatePrecondition({ decl: tidyIssues }, { ...NO_RUNS, ...signals }, {}, null, AT, SCHEDULE);
+const prsVerdict = (signals) => evaluatePrecondition({ decl: tidyPrs }, { ...NO_RUNS, ...signals }, {}, null, AT, SCHEDULE);
 
 // --- tidy-issues: the acting dimension, daily, narrow ------------------------
 
 test('tidy-issues: its signal is derived from its condition — the issues, nothing else', () => {
-  assert.deepEqual(preconditionSignals(tidyIssues.preconditions, new Map()), ['issues']);
+  assert.deepEqual(preconditionSignals(tidyIssues.preconditions, new Map()), ['runs', 'issues']);
 });
 
 test('tidy-issues: an issue moving is the trigger — a PR or branch moving is not its business', () => {
@@ -78,7 +83,7 @@ test('tidy-issues: silent on a quiet repo, and on a substantive move with no ope
 // --- tidy-prs: assess-only, weekly, full every run --------------------------
 
 test('tidy-prs: its signal is derived from its condition — the prs, nothing else', () => {
-  assert.deepEqual(preconditionSignals(tidyPrs.preconditions, new Map()), ['prs']);
+  assert.deepEqual(preconditionSignals(tidyPrs.preconditions, new Map()), ['runs', 'prs']);
 });
 
 test('tidy-prs: a touched open PR wakes the sweep, and the trigger names it', () => {

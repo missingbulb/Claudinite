@@ -11,7 +11,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateTaskDeclaration } from '../../claudinite-tasks/shared-code/task-contract.mjs';
 import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
-import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+import { normalizeTaskDeclaration, taskCadence } from '../../claudinite-tasks/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const promote = normalizeTaskDeclaration(promoteJson);
 const discover = normalizeTaskDeclaration(discoverJson);
@@ -32,7 +32,12 @@ const PACK_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 // declaration plus its own terms actually decide.
 
 const promoteTerms = await loadTaskTerms(join(PACK_DIR, 'tasks/growth-promote'));
-const promoteVerdict = (signals) => evaluatePrecondition({ decl: promote, terms: promoteTerms }, signals);
+// The cadence term reads the task's own run history at a chosen instant: an empty
+// history holds, and the signal under test decides.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const AT = '2026-09-05T16:00:00Z';
+const NO_RUNS = { runs: { list: [] } };
+const promoteVerdict = (signals) => evaluatePrecondition({ decl: promote, terms: promoteTerms }, { ...NO_RUNS, ...signals }, {}, null, AT, SCHEDULE);
 
 const member = (over = {}) => ({
   repo: 'acme/app', defaultBranch: 'main',
@@ -44,7 +49,7 @@ const member = (over = {}) => ({
 // --- growth-promote ----------------------------------------------------------
 
 test('growth-promote: its signal is derived from the one condition it states', () => {
-  assert.deepEqual(preconditionSignals(promote.preconditions, promoteTerms), ['fleet']);
+  assert.deepEqual(preconditionSignals(promote.preconditions, promoteTerms), ['runs', 'fleet']);
 });
 
 test('growth-promote: fires on participating members whose local packs changed', () => {
@@ -88,13 +93,13 @@ test('growth-promote: an unproven fleet state ERRORS — it never reads as "noth
 // authors a repo's own LOCAL packs. This one is the central canon-gap sweep.
 
 test('growth-discover-packs: its conditions derive no signal', () => {
-  assert.deepEqual(preconditionSignals(discover.preconditions, new Map()), []);
+  assert.deepEqual(preconditionSignals(discover.preconditions, new Map()), ['runs']);
 });
 
 test('growth-discover-packs: the weekly anchor IS the trigger — nothing repo-side gates it', () => {
   // The opportunity is standing, so there is nothing to observe in advance: the
   // sweep runs and no-ops cheaply when the shelf already homes what the fleet uses.
-  const v = evaluatePrecondition({ decl: discover }, {});
+  const v = evaluatePrecondition({ decl: discover }, NO_RUNS, {}, null, AT, SCHEDULE);
   assert.equal(v.run, true);
   assert.deepEqual(v.context, []);
 });
@@ -110,7 +115,7 @@ test('upstream-watch: the declaration satisfies the task contract', () => {
 test('upstream-watch: runs unconditionally', () => {
   // A shelf-side gate would only ask "is the shelf still the shelf?" — and which
   // packs opted in is standing instruction, so it lives in the work sections.
-  const v = evaluatePrecondition({ decl: upstream }, {});
+  const v = evaluatePrecondition({ decl: upstream }, NO_RUNS, {}, null, AT, SCHEDULE);
   assert.equal(v.run, true);
 });
 
@@ -124,8 +129,9 @@ test('pack-version-bump: a well-formed agentless daily declaration that opens no
   assert.equal(bump.expected_outcome, 'no_code_changes');   // it commits onto the base branch
   // The trigger is the merges the push workflow cannot see: shipping movement under
   // the shelf, read off the commits signal, which classifies the bump's own commits
-  // as machinery.
-  assert.deepEqual(preconditionSignals(bump.preconditions, new Map()), ['commits']);
+  // as machinery — behind the cadence's own run history.
+  assert.deepEqual(taskCadence(bump), { kind: 'due', cadence: 'daily' });
+  assert.deepEqual(preconditionSignals(bump.preconditions, new Map()), ['runs', 'commits']);
   // The canon's push-to-main workflow runs the very worker this declaration names.
   const workflow = readFileSync(join(PACK_DIR, '../../.github/workflows/pack-versions.yml'), 'utf8');
   assert.match(workflow, new RegExp(`run: node packs/claudinite-canon-curation/tasks/pack-version-bump/${bump.code_work.replace(/^node /, '')}$`, 'm'));
@@ -135,7 +141,8 @@ test('pack-version-history: agentless, weekly on shipping movement, landing itse
   assert.deepEqual(validateTaskDeclaration(history), []);
   assert.equal(history.agent_model, 'none');
   assert.equal(history.expected_outcome, 'amend_existing_or_create_new_pr');
-  assert.deepEqual(preconditionSignals(history.preconditions, new Map()), ['commits']);
+  assert.deepEqual(taskCadence(history), { kind: 'due', cadence: 'weekly' });
+  assert.deepEqual(preconditionSignals(history.preconditions, new Map()), ['runs', 'commits']);
   // The policy names the pack's own declared class, and that class covers exactly a
   // shelf pack's VERSIONS.md — a manifest or a rule in the same diff parks the run.
   const { rules, errors } = declaredMergeRules([{ id: 'claudinite-canon-curation', dir: PACK_DIR }], { packs: ['claudinite-canon-curation'] });

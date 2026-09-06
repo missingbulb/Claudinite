@@ -25,11 +25,16 @@ const S = (release = {}, commits = {}) => ({
 });
 
 const terms = await loadTaskTerms(TASK_DIR);
-const verdict = (signals) => evaluatePrecondition({ decl: storeRelease, terms }, signals);
+// The cadence term reads the task's own run history at a chosen instant: an empty
+// history holds, and the signal under test decides.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const AT = '2026-09-05T16:00:00Z';
+const NO_RUNS = { runs: { list: [] } };
+const verdict = (signals) => evaluatePrecondition({ decl: storeRelease, terms }, { ...NO_RUNS, ...signals }, {}, null, AT, SCHEDULE);
 
 test('store-release: its signals are derived from its conditions, and the worker it names exists', () => {
   // Derived from the two conditions, never declared beside them.
-  assert.deepEqual(preconditionSignals(storeRelease.preconditions, terms), ['release', 'commits']);
+  assert.deepEqual(preconditionSignals(storeRelease.preconditions, terms), ['runs', 'release', 'commits']);
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the preprocessing worker must exist');
 });
 

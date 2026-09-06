@@ -114,8 +114,8 @@ behalf, and exits non-zero. A non-zero preprocessing subprocess fails the task, 
 parks one open issue for it.
 
 **The two operator levers ride the work-item queue, not a workflow.** `fleet-baseline` is the first
-`manual`-frequency task: never instantiated on any cadence, it runs only from an item the owner
-creates by hand — `create-work-item claudinite-fleet-sheepdog/fleet-baseline`, with `REPOS=…`, `DRY_RUN=true`,
+task declaring `trigger: request`: not on the schedule, never asked at any tick, it runs only from
+an item the owner creates by hand — `create-work-item claudinite-fleet-sheepdog/fleet-baseline`, with `REPOS=…`, `DRY_RUN=true`,
 `INCLUDE_DORMANT=true`, `FOLLOW_MINUTES=…` as `--context` lines — which wakes every covered member's own
 standing `update` item so the fleet picks canon up now instead of over the next day. A forced
 fleet-add-missing-packs item is the second lever, same command, its own Context.
@@ -178,12 +178,12 @@ happens to scan every repo under the owner, but their declaration, scheduling an
 exactly those of any pack task. None declares the `fleet` signal: the cross-repo reach lives in the
 implementation, never in how a task is wired.
 
-| task | frequency | agent | outcome |
+| task | when it runs | agent | outcome |
 |---|---|---|---|
-| `fleet-roster` | daily | none | none |
-| `fleet-add-missing-packs` | weekly (forceable) | none | none |
-| `fleet-pack-seeds` | daily | none | none |
-| `fleet-baseline` | manual | none | none |
+| `fleet-roster` | `due:daily` | none | none |
+| `fleet-add-missing-packs` | `due:weekly` (forceable) | none | none |
+| `fleet-pack-seeds` | `due:daily` | none | none |
+| `fleet-baseline` | never — no `preconditions`; only from an item the owner creates | none | none |
 
 The cadences follow what each question can change on. Roster is daily on its coverage question, and
 its freshness half rides along rather than gating on a weekly clock it would have to compute; pack

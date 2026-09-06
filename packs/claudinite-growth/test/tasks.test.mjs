@@ -16,8 +16,13 @@ const revalidation = normalizeTaskDeclaration(revalidationJson);
 
 const PACK_DIR = new URL('..', import.meta.url).pathname;
 const logsPruneTerms = await loadTaskTerms(new URL('../tasks/logs-prune', import.meta.url).pathname);
+// The cadence term reads the task's own run history at a chosen instant: an empty
+// history holds, and the signal under test decides.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const AT = '2026-09-05T16:00:00Z';
+const NO_RUNS = { runs: { list: [] } };
 const verdictFor = async (task, signals, config, item) =>
-  evaluatePrecondition({ decl: task, terms: await loadTaskTerms(`${PACK_DIR}tasks/${task.id}`) }, signals, config, item);
+  evaluatePrecondition({ decl: task, terms: await loadTaskTerms(`${PACK_DIR}tasks/${task.id}`) }, { ...NO_RUNS, ...signals }, config, item, AT, SCHEDULE);
 
 // claudinite-growth per-repo task declarations + preconditions
 // (per-project-scheduling redesign: prose-to-checks is a local, per-repo
@@ -76,7 +81,7 @@ for (const [task, subject] of [[proseToChecks, PROSE_SUBJECT], [revalidation, RE
 test('growth-extract: its signal is derived from its one condition — activity, never the logs', () => {
   // The logs signal left with the retention prune (logs-prune owns it now): this
   // task's only reason to run is activity, so a quiet night costs no opus dispatch.
-  assert.deepEqual(preconditionSignals(extract.preconditions, new Map()), ['commits']);
+  assert.deepEqual(preconditionSignals(extract.preconditions, new Map()), ['runs', 'commits']);
 });
 
 test('growth-extract: a SUBSTANTIVE default-branch change fires it (a bot bump does not)', async () => {
@@ -111,7 +116,7 @@ test('growth-extract: a quiet repo never fires it, however old its logs are', as
 // --- growth-dedup (the pruning stage) ----------------------------------------
 
 test('growth-dedup: both signals are derived from its two conditions', () => {
-  assert.deepEqual(preconditionSignals(dedup.preconditions, new Map()), ['sharedMount', 'commits']);
+  assert.deepEqual(preconditionSignals(dedup.preconditions, new Map()), ['runs', 'sharedMount', 'commits']);
 });
 
 // Presence is not asked: adoption seeds the repo's own local pack and the nightly
@@ -137,7 +142,7 @@ test('growth-dedup: a declared pack moving in the mount fires it (and names the 
 // --- logs-prune (retention on the conversation-logs branch) ------------------
 
 test('logs-prune: its signal is derived from its condition', () => {
-  assert.deepEqual(preconditionSignals(logsPrune.preconditions, logsPruneTerms), ['conversationLogs']);
+  assert.deepEqual(preconditionSignals(logsPrune.preconditions, logsPruneTerms), ['runs', 'conversationLogs']);
 });
 
 test('logs-prune: fires on age alone, which is what makes it independent of activity', async () => {

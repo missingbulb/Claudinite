@@ -411,16 +411,19 @@ const active = (over = {}) => ({
   commits: { substantiveChange: true }, issues: { open: [], touched: [] },
   prs: { open: [], touched: [] }, conversationLogs: {}, ...over,
 });
-const verdict = (signals) => evaluatePrecondition({ decl: wikiGrowth }, signals);
+// The cadence term reads an empty run history at a chosen instant, so it holds and
+// the activity signals decide.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const verdict = (signals) => evaluatePrecondition({ decl: wikiGrowth }, { runs: { list: [] }, ...signals }, {}, null, '2026-09-05T16:00:00Z', SCHEDULE);
 
 // Only the claims that can actually come apart. The declaration's own values
-// (frequency, agent_model, expected_outcome…) are not asserted: re-stating a
+// (its cadence term, agent_model, expected_outcome…) are not asserted: re-stating a
 // literal from the file under test proves nothing and turns every deliberate
 // change into a two-file edit — see the writing-tests skill, "Never pin a
 // declaration to itself".
 test('wiki-growth task: the worker doc it names exists, and its signals are derived from its conditions', () => {
   assert.deepEqual(preconditionSignals(wikiGrowth.preconditions, new Map()).sort(),
-    ['commits', 'conversationLogs', 'issues', 'prs']);
+    ['commits', 'conversationLogs', 'issues', 'prs', 'runs']);
   assert.ok(existsSync(join(canonRoot, 'packs/product-wiki/tasks/wiki-growth', wikiGrowth.agent_instructions)),
     `worker doc missing: ${wikiGrowth.agent_instructions}`);
 });
