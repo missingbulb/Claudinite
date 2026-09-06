@@ -7,8 +7,8 @@
 //
 // Three refusals, each a plain no-go that converges the item to the rejected
 // terminal — a refusal is nobody's inbox, and an ad-hoc item has no anchor to
-// roll to. On a marked issue that terminal stands on the OPEN issue: the run's
-// verdict is not the issue's validity (§16.5).
+// roll to. The terminal closes the issue it stands on, marked or filed: nothing
+// ran and nothing will, so there is no question left open (§16.5).
 //
 // A READ FAILURE IS NOT A VERDICT (F27). The decline's write-back cannot reach an
 // issue it cannot read, so declining on a rate limit or a 500 would strand the

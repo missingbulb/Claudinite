@@ -1153,6 +1153,12 @@ enumerates executors, which is why adding one requires telling no one.
 
 ## 11. Recovery — what the janitor keeps, what dies
 
+**The janitor is a fallback** (owner, 2026-09-06, §15.34). Every rule below
+repairs something that already went wrong; no stage of a task's healthy flow runs
+here, and an item somebody closed — park label and all — is finished, not a state
+to repair. A new rule is therefore a claim that a failure mode exists and that
+nothing nearer to it can settle the item.
+
 | failure | today | proposed |
 |---|---|---|
 | scheduler/scheduler run miss or late fire | run-ledger catch-up math | the next tick asks every task, and a `due:` term reads the missed period as the current one — the most recent anchor only (§5) |
@@ -1164,7 +1170,7 @@ enumerates executors, which is why adding one requires telling no one.
 | agent session died mid-run | janitor: stale `agent-running` → `needs-human` after ~3h | same, on `task:status:running-agent` (a hand-off comment names the session, so the janitor can say *which* session died) — the park is a `needs-human-*` status |
 | CCR invocation lost | undetectable (label event fired into the void); surfaced only by re-arm/stale | **synchronous**: a refused call parks with the error at once; an unanswered call leaves the item with the agent and the agent leash settles it — one call per item, never retried (§6.6) |
 | item never picked up | stale dispatch escalation, period parsed from the slot id's leading char | same escalation, period read from the task's declared cadence term at HEAD (a day for a task stating none, or for an ad-hoc item) — no title parsing; the stale item converges `task:status:needs-human-action` — the lane is not being drained and the fix is outside the item — and leaves the queue |
-| a park's question is answered outside the queue | n/a (an approval park held an open PR forever, and rule E excludes `approval` because a later clean run does not answer it) | **`Ends-when: #<n> closed`**, stamped by the converge on any park given a `--pr`. The janitor reads the target's resolution: merged → the work landed, so the item closes `task:status:done`; closed unmerged → `task:status:rejected`. A condition it cannot evaluate reads as absent, never as met |
+| a park's question is answered outside the queue | n/a (an approval park held an open PR forever, and rule E excludes `approval` because a later clean run does not answer it) | **`Ends-when: #<n> closed`**, stamped by the converge on any park given a `--pr`. The janitor reads the target's resolution and closes the item either way: merged → the work landed, `task:status:done`; closed unmerged → the task was rejected, `task:status:rejected`. A condition it cannot evaluate reads as absent, never as met |
 | dependency never resolves | n/a | **the stale-ready rule cannot see it** — a blocked item is never ready (F14, caught by the simulator against S18's claim). The janitor gains a third rule: a blocked item whose blockers have not resolved for ~2 days gets an escalation *comment* — labels untouched, so the item still proceeds by itself the moment its blockers resolve; a human who decides it is dead closes it by hand |
 
 The janitor remains an ordinary daily task and shrinks twice over: re-arm and
@@ -1924,6 +1930,23 @@ deployment coupling did not:
       rather than an inferred one; the run-history term vocabulary; the
       door as the only reader of `frequency`.
 
+34. **The janitor is a fallback, and a terminal closes the issue it stands on**
+    (owner, 2026-09-06,
+    [#1835](https://github.com/missingbulb/Claudinite/issues/1835)) — *changed
+    the design*: §11 gains the charter, and §16.1/§16.5 lose "a rejected
+    terminal stands on the open issue" (decision 29's second half, #1489). Two
+    halves of one ruling. **The janitor is cleanup**: every rule it runs repairs
+    something that already went wrong, no stage of the healthy flow passes
+    through it, and an item somebody CLOSED — park label and all — is finished
+    rather than a state to repair. **And a terminal ends the item**, `done` and
+    `rejected` alike, marked or filed: a pull request closed unmerged says the
+    task was rejected, and the item says so and closes, exactly as the executor's
+    own decline does. The reasoning it replaces — "the run's verdict is not the
+    issue's validity", so the asker's issue stays open — asked a person who had
+    already answered by closing the pull request to come back and answer again,
+    while rule H (#1526) closed the item a day later anyway; the re-ask lever is
+    unchanged, and it is what it always was: clear the status.
+
 ---
 
 ## 16. Ad-hoc requests — an issue somebody marked (owner, 2026-08-18)
@@ -1961,21 +1984,21 @@ person is already looking. The request state IS the queue state:
 | + `task:status:waiting-for-executor` (or `blocked`) | adopted; a run is queued |
 | + `task:status:running-executor` / `running-agent` | the run owns it |
 | + `task:status:needs-human-approval` | a pull request is open, waiting on a person — the in-review state, with no separate label to mirror it |
-| + `task:status:rejected` | refused and **disarmed** — standing on the still-open issue, because the run's verdict is not the issue's validity (§16.5) |
-| + `task:status:done` | the work is finished and the issue is **closed** with it — the one terminal with nothing left to act on (§16.5) |
+| + `task:status:rejected` | refused and **disarmed**, and the issue is **closed** `not_planned` with it — nothing will happen here (§16.5) |
+| + `task:status:done` | the work is finished and the issue is **closed** with it — nothing is left to act on (§16.5) |
 
 The mark is a label rather than a body syntax or a command comment for one
 reason: it must be appliable from the issue page on a phone, and anything
 richer is a form nobody fills in twice. It is also **write-gated by the
 platform** — applying a label needs triage or write access — which is the
 first half of the security story and the reason the rest can stay this small.
-For an ad-hoc item a **park** stands on an **open** issue, and so does the
-rejected terminal: the run's verdict is about the run, not the issue's validity,
-so clearing it is the asker's lever. `task:status:done` is the exception, and
-closes the issue it stands on like any other item's — *amended 2026-08-31
-(#1489), reversing "a marked issue is never closed by its own run": `done` means
-nothing is left for anyone to act on, and an issue left open under it asks its
-author to come and agree with what the run already settled.*
+For an ad-hoc item a **park** stands on an **open** issue — a park is a question,
+and a question needs somewhere to be answered. A **terminal** closes the issue it
+stands on, `done` and `rejected` alike, exactly as it does on a filed item —
+*amended 2026-08-31 (#1489) for `done`, and widened to `rejected` on 2026-09-06
+(§15.34): neither terminal is a question, so neither leaves an issue open asking
+its author to come and agree with a verdict already reached. Re-asking is what it
+always was — clear the status.*
 
 *Alternative — the shadow-item model this replaces (the marked issue holds the
 conversation, a separate work item holds the state): two issues then tell one
@@ -2108,7 +2131,7 @@ Whoever converges the item owns the write-back for the end it converged:
 
 | end | the issue (= the item) | who | beyond the status |
 |---|---|---|---|
-| the precondition declined | `task:status:rejected` standing on the **open** issue — the disarm; it closes only if the issue was already closed or gone | the executor | one comment saying why |
+| the precondition declined | `task:status:rejected`, **closed** `not_planned` — the disarm; nothing ran and nothing will | the executor | one comment saying why |
 | a pull request is open | `task:status:needs-human-approval`, open — the in-review state itself | the session | nothing to mirror |
 | the run broke | `task:status:needs-human-failure`, open | either | **nothing** |
 | the run finished, with nothing left to act on | `task:status:done`, **closed** `completed` — marked or filed, the same ending | whoever converged it | one comment saying what it did |
@@ -2315,8 +2338,8 @@ Three rules, each the same one the other parameters carry:
   does not exist is not a failure to report, it is a mark whose target may yet
   arrive.
 - **It changes nothing else.** The item is still a marked issue: its status is the
-  request state, its terminal stands on the open issue, and clearing the status is
-  still the one re-ask.
+  request state, its terminal closes it, and clearing the status is still the one
+  re-ask.
 
 What it buys is the retirement of every bespoke "the fleet places work here and
 fires the scheduler" protocol: a work-list issue in a member becomes a marked

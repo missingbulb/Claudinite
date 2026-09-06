@@ -940,11 +940,10 @@ the mark that never comes off. A further day of scheduler runs adopts
 
 The same play with an issue opened by someone with no permission on the repo
 and blessed by nobody. The scheduler run adopts it (adoption forms no
-judgment), the precondition declines, and `task:status:rejected` lands **on
-the still-open issue** — a refusal is nobody's inbox and the run's verdict is
-not the issue's validity — with one comment saying why. The standing terminal
-status is the disarm: without it every scheduler run for the rest of time
-re-adopts and re-refuses the same issue.
+judgment), the precondition declines, and `task:status:rejected` lands on the
+issue and **closes** it — a refusal is nobody's inbox — with one comment saying
+why. The standing terminal status is the disarm: without it every scheduler run
+for the rest of time re-adopts and re-refuses the same issue.
 
 ### S46 — the approval path, judged by permission
 

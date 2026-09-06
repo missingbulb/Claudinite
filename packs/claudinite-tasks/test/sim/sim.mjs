@@ -614,6 +614,10 @@ export function makeSim({
     it.state = 'closed';
     it.closedAt = now;
     it.outcome = outcome;
+    // ONE ISSUE, ONE STATE. A marked issue IS its item, so a terminal that closes
+    // the item closes the issue it stands on — `done` and `rejected` alike (§16.5).
+    const req = it.request != null ? requestOf(it.request) : null;
+    if (req && req.state === 'open') req.state = 'closed';
     // the terminal status goes ON; urgency ends with the item; the ORIGIN stays
     // for life — the closed issue keeps saying where it came from
     clearStatus(it);
@@ -753,12 +757,11 @@ export function makeSim({
   // writes nothing and leaves the queued label standing — re-arming work that
   // writes code is a person's decision, and that standing label is also what stops
   // the scheduler run adopting the same request a second time.
-  // A refused request DISARMS on the issue itself (§16.5): the terminal
-  // status stands on the issue — which stays whatever open/closed state its
-  // author keeps it in, because the run's verdict is not the issue's validity —
-  // and blocks re-adoption until a person clears it (the re-ask lever). The
-  // one comment says why. There is no separate in-review write-back: the
-  // approval park IS the in-review state, on the same labels.
+  // A refused request DISARMS on the issue itself (§16.5): the terminal status
+  // lands on the issue and closes it, and blocks re-adoption until a person clears
+  // it (the re-ask lever). The one comment says why. There is no separate
+  // in-review write-back: the approval park IS the in-review state, on the same
+  // labels.
   function declineRequest(it, why) {
     const req = requestOf(it.request);
     if (!req) return;
@@ -928,21 +931,13 @@ export function makeSim({
       // A declined request tells the ISSUE so and disarms it, in the same
       // convergence: nothing else would, and an un-disarmed issue would be
       // re-adopted and re-refused on every scheduler run forever. The terminal
-      // status stands on the still-open issue (the issue's open/closed belongs
-      // to its author); a gone or already-closed issue closes the item too.
+      // closes it, marked or filed — a rejected run is not a question anybody has
+      // left to answer (§16.5).
       if (it.request != null) {
         declineRequest(it, verdict.reason ?? 'the precondition declined');
         endEpisode(it);
-        const req = requestOf(it.request);
-        if (req && req.state === 'open') {
-          setStatus(it, 'task:status:rejected');
-          it.outcome = 'rejected';
-        } else {
-          close(it, 'rejected', { dispatchDrain: false });
-        }
-      } else {
-        close(it, 'rejected', { dispatchDrain: false });
       }
+      close(it, 'rejected', { dispatchDrain: false });
       record('decline-close', { task: it.taskId, issue: it.number, reason: verdict.reason ?? 'no work' });
       onSettled();
       return;

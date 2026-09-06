@@ -1279,13 +1279,12 @@ test('S45 an unauthorized mark is refused once, disarmed, and never re-adopted',
   assert.equal(items.length, 1);
   assert.equal(items[0].outcome, 'rejected');         // declined: no anchor to roll to
   assert.equal(sim.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 0);
-  // A refusal is not a park: nothing here is anybody's inbox. The terminal
-  // status stands on the STILL-OPEN issue — the run's verdict is not the
-  // issue's validity — and that standing status is the disarm: a day of
-  // further scheduler runs adopts nothing. Without it this is an hourly
-  // refusal loop on somebody else's issue.
+  // A refusal is not a park: nothing here is anybody's inbox. The terminal lands
+  // on the issue and CLOSES it (§16.5) — nothing ran and nothing will — and that
+  // standing status is the disarm: a day of further scheduler runs adopts
+  // nothing. Without it this is an hourly refusal loop on somebody else's issue.
   assert.equal(isParked(items[0]), false);
-  assert.equal(req.state, 'open');
+  assert.equal(req.state, 'closed');
   assert.equal(sim.log.filter((e) => e.kind === 'request-declined').length, 1);
   assert.deepEqual([...req.labels].sort(), [ORIGIN_AD_HOC, 'task:status:rejected'].sort());
   assert.equal(adopts(sim).length, 1);

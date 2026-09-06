@@ -206,14 +206,15 @@ test('an ended park on a marked issue whose PR merged closes it done', async () 
   assert.deepEqual(patched, [{ issue: 34, state: 'closed', state_reason: 'completed' }]);
 });
 
-// The contrast: nothing landed, so the person's own issue keeps standing — the
-// rejected terminal on a marked issue is still theirs to close.
-test('an ended park on a marked issue whose PR was closed unmerged stays open', async () => {
+// AND SO DOES A REJECTED ONE (owner, 2026-09-06, #1835). A pull request closed
+// unmerged is the person's answer already given: the task was rejected, and the item
+// says so and closes, rather than sitting open for somebody to read and close by hand.
+test('an ended park on a marked issue whose PR was closed unmerged closes it rejected', async () => {
   const { gh, added, patched } = janitorGh([markedPark(35, 137)], {}, { 137: pr(137) });
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
   assert.deepEqual(out.ended, [35]);
   assert.deepEqual(labelsOn(added, 35), [TASK_OBSOLETE]);
-  assert.deepEqual(patched, [], 'nothing landed, so the issue is the author\'s to close');
+  assert.deepEqual(patched, [{ issue: 35, state: 'closed', state_reason: 'not_planned' }]);
 });
 
 // Rule H at the shell (#1526): the close, and nothing else — no label is written,

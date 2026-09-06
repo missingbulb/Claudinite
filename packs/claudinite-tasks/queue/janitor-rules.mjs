@@ -3,6 +3,18 @@
 // pure, returning the items it claims plus the comment it would post; the
 // janitor task's worker is the only I/O shell over them.
 //
+// THE JANITOR IS A FALLBACK (owner, 2026-09-06). Every rule below repairs something
+// that already went wrong — a label swap that tore, a session that died, a park
+// nobody answered, a terminal nobody closed — and the healthy flow of a task never
+// passes through here: an item the machinery handled correctly is settled by
+// whoever handled it, before any of this runs. So a new rule here is a claim that a
+// failure mode exists and that nothing nearer to it can close it out; the
+// alternative to writing one is usually fixing the flow that left the mess.
+//
+// AND IT ONLY EVER READS OPEN ITEMS. An item somebody closed is finished, park
+// label and all: a person ending a park by closing its issue is an answer, not a
+// state to repair, and nothing here reopens, re-labels or re-nags one.
+//
 // What is NOT here: the executing-leash reclaim, which rides the scheduler run (a
 // deterministic label rule, serialized and hourly, recovering a dead executor's
 // item in ~2h instead of ~25h). That amends the single-recovery-site split in
@@ -226,11 +238,15 @@ export const orphanedParkComment = (id, headPath = null) => (headPath
 // the resolution of that target is the verdict:
 //
 //   merged   → the work this park was holding LANDED, so the item is `done`
-//   closed   → it was abandoned, so the item is `rejected`
+//   closed   → the task was REJECTED, so the item is `rejected`
 //
 // The distinction is the whole point of reading merged-ness rather than state: a
 // park closed as `rejected` when its pull request in fact merged would report a
 // delivered run as one that never happened.
+//
+// EITHER OUTCOME ENDS THE ITEM, and the shell closes the issue on both. A person
+// who closed the pull request unmerged has already said what happens to this run;
+// an item left open under that verdict is the queue asking them to say it twice.
 //
 // `resolutionOf(n)` answers `'merged' | 'closed' | null` — null for open, unknown,
 // or unreadable, all of which mean the park stands. Only parked items: a live item

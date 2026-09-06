@@ -23,7 +23,7 @@ import {
   abandonedParkItems, abandonedParkComment, scheduledForTasks,
 } from '../../../claudinite-tasks/queue/janitor-rules.mjs';
 import {
-  QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE, TASK_DONE, IN_REVIEW_LABEL, isWorkItemTitle,
+  QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE, TASK_DONE, IN_REVIEW_LABEL,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_FAILURE,
   STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
   isStatus, isParked, statusOf,
@@ -185,12 +185,12 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
     await comment(gh, repo, item.number, endedParkComment(endsWhen, resolution));
     await clearStatus({ removeLabel }, gh, repo, item, statusOf(item));
     await addLabel(gh, repo, item.number, resolution === 'merged' ? TASK_DONE : TASK_OBSOLETE);
-    // THE RESOLUTION DECIDES, NOT THE SHAPE (#1489). A merged target is a `done`
-    // terminal, and a done terminal closes the issue it stands on, marked or filed.
-    // Unmerged, nothing landed: the rejected terminal stands on a marked issue and
-    // leaves it open, because the run's verdict is not the issue's validity.
-    if (resolution === 'merged') await closeIssue(gh, repo, item.number, 'completed');
-    else if (isWorkItemTitle(item.title ?? '')) await closeIssue(gh, repo, item.number, 'not_planned');
+    // THE RESOLUTION DECIDES THE OUTCOME; BOTH OUTCOMES CLOSE (#1489, widened by the
+    // owner on 2026-09-06). A merged target means the work landed and an unmerged one
+    // that it was rejected — and either way a terminal ends the item, marked or filed.
+    // A person who closed the pull request has already given their answer; leaving
+    // their issue open asks them to come back and say it a second time.
+    await closeIssue(gh, repo, item.number, resolution === 'merged' ? 'completed' : 'not_planned');
     // A LEGACY SHADOW ITEM told its request issue it was in review; nothing else
     // would ever take that back, and the review is over.
     const { request } = parseWorkItemBody(item.body);

@@ -243,3 +243,16 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   none — `repo-context.mjs:639` returns `[]` for any path not in `tracked`, and a deleted file is
   not tracked. Retire the rule if `removedLines` starts reporting deleted files.
 
+- **(RULES-76)** Owner ruling, 2026-09-06 (#1835): *"We need to establish something very
+  important on the janitor: it is a fallback. A Cleanup. A thing we use to fix things that went
+  wrong. It is not a part of a healthy flow of tasks."* Retire the rule if the janitor is ever
+  given a stage of the ordinary path — nothing in the current nine rules is one.
+
+- **(RULES-77)** Owner ruling, 2026-09-06 (#1835): *"A task that is closed with a label 'needs
+  human' is ok. It's closed. A task that has its PR closed and not merged, and the issue
+  remained open - should be closed by the janitor to say the task was rejected."* Widens #1489's
+  `done`-only close to both terminals and retires DESIGN §16.5's "a rejected terminal stands on
+  the open issue"; janitor rule H (#1526) was already closing such items a day later, so the old
+  decision only survived in the corpus. Retire the rule if a terminal ever gains a state a person
+  is expected to answer on the issue itself.
+
