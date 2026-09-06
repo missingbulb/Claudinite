@@ -43,13 +43,42 @@ export function band(label, question, body, { className = '', aria = null } = {}
 
 // The one object that sits ON the sheet, on warm paper, because it is the one thing
 // addressed to the person. Nothing in it clips: it wraps.
-export function slip({ headline, where, href, chip: chipText, more }) {
+//
+// `queue` is what is behind this one, as something to USE rather than a count to read:
+// the page cannot know the verdict the reader just reached on the candidate in front of
+// them, so the next one has to be reachable without acting on this one. `seeAll` is the
+// same queue as one link out — `queueUrl`'s.
+export function slip({ headline, where, href, chip: chipText, more, queue = null, seeAll = null }) {
+  const nav = queue && queue.total > 1
+    ? el('span', { className: 'nav' }, [
+      stepButton('‹', 'the one before this', queue, queue.index - 1),
+      el('span', { className: 'at', textContent: `${queue.index + 1} / ${queue.total}` }),
+      stepButton('›', 'the next one', queue, queue.index + 1),
+      seeAll ? el('a', {
+        className: 'see-all', href: seeAll, target: '_blank', rel: 'noopener',
+        textContent: `see all ${queue.total}`,
+      }) : null,
+    ])
+    : null;
   return el('div', { className: 'slip' }, [
     el('span', { className: 'hl', textContent: headline }),
     where ? el('a', { className: 'where', href: href ?? '#', target: '_blank', rel: 'noopener', textContent: where }) : null,
     chipText ? el('span', { className: 'chip', textContent: chipText }) : null,
     more ? el('span', { className: 'more', textContent: more }) : null,
+    nav,
   ]);
+}
+
+// One step of the queue. It names the candidate it wants rather than a direction, so
+// the page repaints from an index and holds no cursor of its own.
+function stepButton(glyph, label, queue, to) {
+  const button = el('button', {
+    className: 'step', type: 'button', textContent: glyph, title: label,
+    disabled: to < 0 || to >= queue.total,
+    onclick: () => queue.onStep(to),
+  });
+  button.setAttribute('aria-label', label);
+  return button;
 }
 
 // One of the machine's five cells: a status square, its label in condensed caps, the
