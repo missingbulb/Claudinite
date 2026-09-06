@@ -362,13 +362,13 @@ test('a marked issue is picked up as the item it is, and handed to a session at 
   assert.equal(body.split('<!-- claudinite-item -->')[0].trim(), 'Implement the thing.');
 });
 
-test('a declined marked issue wears the terminal status and stays OPEN — the run\'s verdict is not the issue\'s', async () => {
+test('a declined marked issue wears the terminal status and is closed with it', async () => {
   const repo = fakeRepo([adopted(500, 'task:status:waiting-for-executor')]);
   const done = await drive(repo, req());
 
   assert.deepEqual(done.map((d) => d.outcome), ['obsolete']);
   const issue = repo.find(500);
-  assert.equal(issue.state, 'open', 'the issue belongs to the person who opened it');
+  assert.equal(issue.state, 'closed', 'a terminal is not a question — nothing ran and nothing will');
   assert.ok(issue.labels.includes('task:status:rejected'), 'and carries the refusal as its status');
   assert.ok(issue.labels.includes(ORIGIN_AD_HOC), 'the mark never comes off — origins are for life');
   assert.match(issue.comments.at(-1).body, /neither opened nor approved/);

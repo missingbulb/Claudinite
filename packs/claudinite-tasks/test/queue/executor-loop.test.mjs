@@ -265,14 +265,15 @@ test('a marked issue whose code_work is done is closed, like any other done item
   assert.ok(issue.labels.includes('task:origin:ad-hoc'), 'the mark never comes off — origins are for life');
 });
 
-// The contrast, unchanged: a REJECTED terminal is the run's verdict, not the issue's
-// validity, so it stands on the marked issue and leaves it open (§16.5).
-test('a marked issue the precondition declined wears the refusal and stays open', async () => {
+// A REJECTED TERMINAL CLOSES THE ISSUE IT STANDS ON TOO (owner, 2026-09-06, #1835):
+// a terminal is the end of the item, and both terminals end it the same way. What
+// re-asks is what always re-asked — clearing the status.
+test('a marked issue the precondition declined wears the refusal and is closed', async () => {
   const repo = fakeRepo([markedItem(2, 'a', ['task:status:waiting-for-executor'])]);
   const done = await drive(repo, [task('a', {}, term(() => ({ holds: false, reason: 'nothing to do' })))]);
   assert.deepEqual(done, [{ issue: 2, outcome: 'obsolete' }]);
   const issue = repo.find(2);
-  assert.equal(issue.state, 'open');
+  assert.equal(issue.state, 'closed');
   assert.ok(issue.labels.includes('task:status:rejected'));
 });
 

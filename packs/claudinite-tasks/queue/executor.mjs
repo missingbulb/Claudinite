@@ -32,7 +32,7 @@ import {
   TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, QUEUED_LABEL, isStandingItem,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
-  parseWorkItemTitle, isWorkItemTitle, parseWorkItemBody, taskIdFromPath, parseContextLines, mergeContext, withNotBefore, withSection, editItemBody, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
+  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, parseContextLines, mergeContext, withNotBefore, withSection, editItemBody, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
   LAST_VERDICT_HEADING, lastVerdictLines,
   withTarget,
   itemFacts,
@@ -708,11 +708,11 @@ async function close(api, gh, repo, item, from, outcome, stateReason, body, stat
   await api.comment(gh, repo, item.number, body + recordFor(item, status));
   await clearStatus(api, gh, repo, item, from);
   await api.addLabel(gh, repo, item.number, outcome);
-  // A REJECTED TERMINAL IS NOT THE RUN'S TO CLOSE A MARKED ISSUE ON (§16.5): the
-  // run's verdict is about the run, not the issue's validity, so the status stands
-  // on the still-open issue and clearing it is the asker's lever. `done` is the
-  // other half and closes either shape (#1489) — nothing is left to act on.
-  if (outcome !== TASK_DONE && !isWorkItemTitle(item.title)) return;
+  // A TERMINAL CLOSES THE ISSUE IT STANDS ON, marked or filed, and both terminals do
+  // (§16.5, owner 2026-09-06). `done` means nothing is left to act on; `rejected`
+  // means nothing will happen. Neither is a question, so neither leaves an open issue
+  // behind asking a person to agree with a verdict already reached — and re-asking is
+  // what it always was, clearing the status.
   await api.closeIssue(gh, repo, item.number, stateReason);
 }
 

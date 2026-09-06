@@ -153,6 +153,7 @@ pinned; the reason is stated on each.
 | §15.31 convergence must not write to other work items — reversing §15.19 | `S33` |
 | §15.32 the task declares what its run does to pull requests; the executor resolves the target once (#1695) | **unit** — the sim models no pull request content: `test/queue/target.test.mjs` (the planner's matrix, the I/O shell), `test/queue/executor-loop.test.mjs` (handed to code-work, stamped at hand-off, superseding after a delivered pull request, a landed incumbent ending the occurrence) |
 | §15.33 scheduling as preconditions; the scheduler keeps no state — every tick asks, the cadence is a term over the task's own run history, a decline is a log line, a wake stands in for the cadence | `S74`, `S75`, `S76`, `S77`, `S78`, `S1'`, `S3'`, `S28` (a declaration change applies at the next tick), `S30` (F32, the open finding) |
+| §15.34 the janitor is a fallback; a terminal — `done` or `rejected` — closes the issue it stands on, marked or filed | `S45` (a refused request is disarmed and closed), `S18` (the janitor's rules over open items only) |
 | §17 the cron's cadence: a day's work completes on 4 billed runs, not 27 | `S67` |
 | §17 `schedule_after:` is what orders a chain — collapsing the anchor hours costs ordering nothing | `S67` |
 | §17 ad-hoc latency IS the wait for the next tick; the second tick roughly halves it | `S68` |

@@ -2,6 +2,11 @@ Below are rules on how to work on this repo.
 
 ## Standing owner decisions — settled, do not re-litigate
 
+- **Converging a work item to a terminal** — `task:status:done` and `task:status:rejected` both
+  CLOSE the issue they stand on, marked or filed; a terminal is not a question, so an open issue
+  wearing one is a torn write rather than a resting state, and the re-ask is clearing the
+  status. (77)
+
 - **Writing a `docs/<initiative>/DESIGN.md`** — the end state and its rationale only, with
   alternatives and their drawbacks. Never requests, prior-state narrative, or owner opinions.
 
@@ -302,6 +307,11 @@ Below are rules on how to work on this repo.
   reference the payload anaphorically ("that line"); recency is what resolves it. (47)
 
 ## Scheduled tasks
+
+- **Reaching for a janitor rule to make a flow work** — the janitor is the fallback lane, so
+  every rule there repairs something that already went wrong and no healthy path may depend on
+  one to complete; fix what leaves the mess, and never write a rule over closed items — a park
+  a person closed is answered. (76)
 
 - **Filing a verification for a change whose effect first shows in a repo that merely uses
   Claudinite** — a run here reads only this repository: its sessions carry no member's scope and
