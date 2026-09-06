@@ -123,6 +123,12 @@ goes through your GitHub tools.
    `needs-human` + `task:needs-human-decision` rather than pressing on."* Nothing enforces that bound but the subagent
    itself, so state it plainly.
 
+   **A fan-out inside the subagent does not extend that bound** — time it spends in children of its
+   own is time on the same clock, and a subagent that spends the whole budget fanning out returns
+   too late for step 4, leaving the issue claimed until the janitor parks it hours later as a
+   failure the run never had. Tell it that its bound covers everything it dispatches, and that a
+   partial result inside the bound beats a complete one outside it.
+
    **Beat while the work runs.** Code-work beat on this issue every 15 minutes; from the hand-off
    on nothing does, and an issue silent for 3h is read as a session that died and parked for a
    human. **A run longer than that must say so, or be declared dead** — so at every checkpoint the
