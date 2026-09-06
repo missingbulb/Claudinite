@@ -7,11 +7,10 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   ensureHooks, removeRetiredCorpusImport, convergeWiring, SETTINGS_PATH,
-  removeRetiredBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
-  BADGE_ROW_START, BADGE_ROW_END, README,
+  removeRetiredBadgeSetting,
   PRETOOLUSE_MATCHER,
-  ensureRulesIndexImport, ensureRulesIndexMergeAttribute, RULES_INDEX_MERGE_ATTR,
-  ensureMountVendoredAttribute, MOUNT_VENDORED_ATTR,
+  ensureRulesIndexImport,
+  ensureMountAttributes, removeRetiredRootAttributes, MOUNT_ATTRIBUTES_FILE,
   seedRepoLocalPack, packIdForRepo,
 } from '../engine/converge-wiring.mjs';
 import { RULES_INDEX_IMPORT } from '../engine/pack_loader/generate-rules-index.mjs';
@@ -127,39 +126,55 @@ test('ensureRulesIndexImport: an import documented in backticks does not count a
 });
 
 
-test('ensureRulesIndexMergeAttribute: declares merge=ours for the generated index, idempotently', () => {
+test('ensureMountAttributes: converges the attributes file the mount owns, idempotently', () => {
   const root = mkRepo();
-  writeFileSync(join(root, '.gitattributes'), 'usage.GENERATED.json merge=ours');
-  assert.equal(ensureRulesIndexMergeAttribute(root), true);
-  const text = readFileSync(join(root, '.gitattributes'), 'utf8');
-  assert.ok(text.includes('usage.GENERATED.json merge=ours'), 'the repo\'s existing entries survive');
-  assert.ok(text.split('\n').includes(RULES_INDEX_MERGE_ATTR));
-  assert.equal(ensureRulesIndexMergeAttribute(root), false);
+  writeFileSync(join(root, '.gitattributes'), 'my-own.GENERATED.json merge=ours\n');
+  assert.equal(ensureMountAttributes(root), true);
+  assert.ok(existsSync(join(root, MOUNT_ATTRIBUTES_FILE)));
+  assert.equal(readFileSync(join(root, '.gitattributes'), 'utf8'), 'my-own.GENERATED.json merge=ours\n',
+    "the repo's own root file is not touched");
+  assert.equal(ensureMountAttributes(root), false);
 });
 
 
-test('ensureMountVendoredAttribute: declares the shared mount vendored, idempotently', () => {
-  const root = mkRepo();
-  writeFileSync(join(root, '.gitattributes'), 'usage.GENERATED.json merge=ours');
-  assert.equal(ensureMountVendoredAttribute(root), true);
-  const text = readFileSync(join(root, '.gitattributes'), 'utf8');
-  assert.ok(text.includes('usage.GENERATED.json merge=ours'), "the repo's existing entries survive");
-  assert.ok(text.split('\n').includes(MOUNT_VENDORED_ATTR));
-  assert.equal(ensureMountVendoredAttribute(root), false);
-});
-
-
-test('MOUNT_VENDORED_ATTR: the pattern git is handed actually matches a mounted file', () => {
-  // The line is only worth carrying if git resolves it over a real mount path — a
+test('the mount attributes git resolves cover the files they are written for', () => {
+  // Patterns in a nested .gitattributes are relative to its own directory, and these
+  // are only worth carrying if git resolves them over the real mount paths — a
   // pattern that matches nothing reads as live and annotates nothing.
   const root = mkRepo();
   execFileSync('git', ['init', '-q'], { cwd: root });
   mkdirSync(join(root, '.claudinite', 'shared', 'engine', 'checks'), { recursive: true });
+  mkdirSync(join(root, '.claudinite', 'local'), { recursive: true });
   writeFileSync(join(root, '.claudinite', 'shared', 'engine', 'checks', 'check_the_world.mjs'), '// vendored\n');
-  assert.equal(ensureMountVendoredAttribute(root), true);
-  const out = execFileSync('git', ['check-attr', 'linguist-vendored', '--',
-    '.claudinite/shared/engine/checks/check_the_world.mjs'], { cwd: root, encoding: 'utf8' });
-  assert.match(out, /linguist-vendored: set/);
+  writeFileSync(join(root, '.claudinite', 'local', 'usage.GENERATED.json'), '{}\n');
+  writeFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'rules\n');
+  assert.equal(ensureMountAttributes(root), true);
+  const attr = (name, path) => execFileSync('git', ['check-attr', name, '--', path], { cwd: root, encoding: 'utf8' });
+  assert.match(attr('linguist-vendored', '.claudinite/shared/engine/checks/check_the_world.mjs'), /linguist-vendored: set/);
+  assert.match(attr('merge', '.claudinite/local/usage.GENERATED.json'), /merge: ours/);
+  assert.match(attr('merge', '.claudinite/claudinite-rules.GENERATED.md'), /merge: ours/);
+});
+
+
+test('removeRetiredRootAttributes: takes back the lines Claudinite planted in the root file', () => {
+  const root = mkRepo();
+  writeFileSync(join(root, '.gitattributes'),
+    '# the repo\'s own\nsnapshot.bin -diff\nclaudinite-rules.GENERATED.md merge=ours\n'
+    + 'claudinite-skills.GENERATED.md merge=ours\nusage.GENERATED.json merge=ours\n'
+    + '.claudinite/shared/** linguist-vendored\n');
+  assert.equal(removeRetiredRootAttributes(root), true);
+  assert.equal(readFileSync(join(root, '.gitattributes'), 'utf8'), '# the repo\'s own\nsnapshot.bin -diff\n');
+  assert.equal(removeRetiredRootAttributes(root), false);
+});
+
+
+test('removeRetiredRootAttributes: a root file that was only ever ours goes away', () => {
+  // A repo that never had a .gitattributes of its own got one solely because
+  // Claudinite needed a line in it; taking the lines back leaves the repo as it was.
+  const root = mkRepo();
+  writeFileSync(join(root, '.gitattributes'), 'usage.GENERATED.json merge=ours\n.claudinite/shared/** linguist-vendored\n');
+  assert.equal(removeRetiredRootAttributes(root), true);
+  assert.equal(existsSync(join(root, '.gitattributes')), false);
 });
 
 
@@ -177,8 +192,8 @@ test('convergeWiring: lands the index, its import and its merge attribute togeth
   const index = readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8');
   assert.match(index, /@shared\/packs\/basics\/RULES\.md/);
   assert.ok(readFileSync(join(root, 'CLAUDE.md'), 'utf8').includes(RULES_INDEX_IMPORT));
-  assert.ok(readFileSync(join(root, '.gitattributes'), 'utf8').includes(RULES_INDEX_MERGE_ATTR));
-  assert.ok(readFileSync(join(root, '.gitattributes'), 'utf8').includes(MOUNT_VENDORED_ATTR));
+  assert.ok(existsSync(join(root, MOUNT_ATTRIBUTES_FILE)));
+  assert.equal(existsSync(join(root, '.gitattributes')), false, 'nothing of ours lands in the root file');
 
   const second = await convergeWiring(root, REPO);
   assert.ok(!second.changed.some((c) => c.includes('claudinite-rules.GENERATED.md') || c.includes('rules-index')), second.changed.join(', '));
@@ -336,90 +351,16 @@ test('removeRetiredBadgeSetting: malformed settings are left untouched, never re
 });
 
 
-test('convergeBadgeRow: introduces the row under the title', () => {
-  const root = mkRepo();
-  writeFileSync(join(root, README), '# Project\n\nSome prose.\n');
-  assert.equal(convergeBadgeRow(root, ROW), true);
-  const text = readFileSync(join(root, README), 'utf8');
-  assert.equal(text.split('\n')[0], '# Project');
-  assert.ok(text.includes(renderBadgeRow(ROW)));
-  assert.ok(text.includes('Some prose.'), 'the README it found is not replaced');
-  assert.equal(convergeBadgeRow(root, ROW), false, 'idempotent');
-});
-
-
-test('convergeBadgeRow: a README with no heading takes the row at the top', () => {
-  const root = mkRepo();
-  writeFileSync(join(root, README), 'Just prose.\n');
-  convergeBadgeRow(root, ROW);
-  const lines = readFileSync(join(root, README), 'utf8').split('\n');
-  assert.equal(lines.slice(0, 2).join('\n'), renderBadgeRow(ROW));
-});
-
-
-// The whole point of the row is that it renders. A line that BEGINS with `<!--`
-// opens a CommonMark HTML block that runs through the line carrying `-->`, so
-// badges written after the opening marker on its line reach a README as the
-// literal text `![basics](…)` (#587). The opening marker therefore owns its line
-// and the badges start the next one — pinned here because nothing else would
-// notice the day someone "tidies" the row back onto one line.
-test('renderBadgeRow: the badges start their own line, so markdown parses them', () => {
-  const lines = renderBadgeRow(ROW).split('\n');
-  assert.equal(lines.length, 2);
-  assert.equal(lines[0], BADGE_ROW_START, 'the opening marker owns its line');
-  assert.ok(!lines[1].startsWith('<!--'), 'the badge line must not open an HTML block');
-  assert.ok(lines[1].startsWith('![basics]'));
-  assert.ok(lines[1].endsWith(BADGE_ROW_END), 'the closing marker stays inline, so a tagline can follow it');
-});
-
-
-test('convergeBadgeRow: re-converges in place, keeping what the repo wrote beside it', () => {
-  const root = mkRepo();
-  // The stale row is in the pre-#587 single-line form, so this also covers the
-  // migration a consumer's next nightly performs.
-  const stale = `# P\n\n${BADGE_ROW_START}![gone](packs/gone/badge.svg "gone")${BADGE_ROW_END} &nbsp;our own tagline\n`;
-  writeFileSync(join(root, README), stale);
-  assert.equal(convergeBadgeRow(root, ROW), true);
-  const text = readFileSync(join(root, README), 'utf8');
-  assert.ok(text.includes(renderBadgeRow(ROW)));
-  assert.ok(!text.includes('gone'), 'the stale row is replaced, not appended to');
-  assert.ok(text.includes(`${BADGE_ROW_END} &nbsp;our own tagline`),
-    'what the repo wrote after the closing marker stays on the badges line, where it renders');
-});
-
-
-test('convergeBadgeRow: no README, or nothing to show, writes nothing', () => {
-  const root = mkRepo();
-  assert.equal(convergeBadgeRow(root, ROW), false, 'never creates a README');
-  writeFileSync(join(root, README), '# P\n');
-  assert.equal(convergeBadgeRow(root, []), false);
-  assert.equal(readFileSync(join(root, README), 'utf8'), '# P\n', 'an empty row is not an empty block');
-});
-
-
-test('convergeWiring: leaves the README alone unless the caller asks for badges', async () => {
+test('convergeWiring: never touches the repo\'s README', async () => {
+  // Claudinite's own bookkeeping stays inside .claudinite/; a member's front page is
+  // the repo's (#1750). Nothing in the wiring derives, seeds or refreshes a line of it.
   const root = mkRepo();
   writeFileSync(join(root, CHECKS_PATH), '{\n  "packs": ["basics"]\n}\n');
-  writeFileSync(join(root, README), '# P\n\nprose\n');
-  // The nightly's call — no badges. A baselining run must never produce a
-  // README diff.
-  const nightly = await convergeWiring(root, REPO);
-  assert.ok(!nightly.changed.some((c) => c.includes(README)));
-  assert.equal(readFileSync(join(root, README), 'utf8'), '# P\n\nprose\n');
-  // Bootstrap's call — the row is seeded once.
-  const { changed } = await convergeWiring(root, REPO, { badges: true });
-  assert.ok(changed.some((c) => c.includes(README)));
-  assert.ok(readFileSync(join(root, README), 'utf8').includes(BADGE_ROW_START));
+  writeFileSync(join(root, 'README.md'), '# P\n\nprose\n');
+  const { changed } = await convergeWiring(root, REPO, { seedLocalPack: true });
+  assert.ok(!changed.some((c) => c.includes('README')), changed.join(', '));
+  assert.equal(readFileSync(join(root, 'README.md'), 'utf8'), '# P\n\nprose\n');
 });
-
-
-test('badgeRowEntries: skips a declared pack that carries no badge file', async () => {
-  const root = mkRepo();
-  const ids = (await badgeRowEntries(root, { packs: ['basics', 'nonexistent-pack'] })).map((e) => e.id);
-  assert.ok(ids.includes('basics'));
-  assert.ok(!ids.includes('nonexistent-pack'), 'an id naming no pack contributes nothing');
-});
-
 // --- the work-item queue's wiring (tasks-dispatch DESIGN §14) -----------------
 // The repo's one cron workflow keeps its path and changes its CONTENT with the
 // dispatch mode; the executor is a second workflow beside it, and it is the only

@@ -126,10 +126,9 @@ function vendoredSet(root, files) {
 // all UTC. Absence means the documented defaults, so an omitted key is not an
 // error; a present one is range-validated at load below. Its declaration is also
 // the per-repo cutover marker during the scheduling rollout (MIGRATION Phase 0.6).
-// A repo's README pack-badge row has no key here on purpose: the row is seeded at
-// adoption and owned by the repo after, so there is nothing for it to configure.
-// A member carrying a stale `badges` key therefore gets the unknown-setting error
-// below, and the wiring converge clears it.
+// Nothing writes into a member's README any more, so there is no `badges` key here:
+// a member carrying the stale one gets the unknown-setting error below, and the
+// wiring converge clears it.
 // `dormant` is the project's own declaration that it is out of the RECURRING work —
 // see isDormant below for exactly how much that covers.
 // `claudinite` and `maintenance` are the two retired blocks, tolerated on read so a

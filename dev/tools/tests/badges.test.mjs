@@ -14,10 +14,8 @@ import { parseBadge, renderBadge, shade, restyleAll, badgeFiles, idForBadge } fr
 // change (or hand-edited into a shape the tool can no longer read) fails here
 // rather than sitting in the set looking subtly wrong.
 //
-// The row a README shows is the wiring converge's, not this tool's — adoption
-// seeds it and nothing maintains it after (engine/converge-wiring.mjs).
-// What is checked here is that THIS repo's row says what that converge would
-// write, since no automation will notice on its own.
+// A badge is shown by the pack's own README and by the dashboard; nothing writes
+// one into a member's README (#1750).
 
 const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 
@@ -54,20 +52,6 @@ test('every badge is titled with the pack whose directory holds it', () => {
     .filter(({ rel, spec }) => spec.id !== idForBadge(rel))
     .map(({ rel, spec }) => `${rel} is titled "${spec.id}"`);
   assert.deepEqual(wrong, [], 'a badge titled with another pack shows the wrong name on hover and in a screen reader');
-});
-
-test("this repo's README row is what the wiring converge would write", async () => {
-  // A row is seeded at adoption and owned by the repo after, so this test is the
-  // canon's own guard against its row drifting from its declaration. Asserting
-  // against the converger rather than a regex of its own keeps the format in ONE
-  // place and proves the row a consumer gets is the row this repo shows. A repo
-  // whose declaration has moved on refreshes with
-  // `converge-wiring <owner/repo> --badges`.
-  const { badgeRowEntries, renderBadgeRow } = await import('../../../engine/converge-wiring.mjs');
-  const { loadConfig } = await import('../../../engine/checks/helpers/repo-context.mjs');
-  const row = renderBadgeRow(await badgeRowEntries(REPO, loadConfig(REPO)));
-  assert.ok(readFileSync(join(REPO, 'README.md'), 'utf8').includes(row),
-    'the README row and the pack declaration have drifted — run the wiring converge, or update the row to match');
 });
 
 // --- the renderer itself ----------------------------------------------------

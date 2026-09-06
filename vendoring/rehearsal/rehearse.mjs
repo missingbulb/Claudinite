@@ -6,7 +6,7 @@
 // nightly worker invokes, as subprocesses, in the same order:
 //
 //   vendoring/apply-vendor-set.mjs   the mount + stamp
-//   engine/converge-wiring.mjs              hooks, rules index, gitattributes, badge row
+//   engine/converge-wiring.mjs              hooks, rules index, mount gitattributes
 //   engine/migrations/apply.mjs      the mechanical notes
 //   vendoring/apply-vendor-set.mjs   again, when a note changed the DECLARATION (a
 //                                    seeded pack's content is not in the first pass's
