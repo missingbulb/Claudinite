@@ -33,8 +33,13 @@ test('fleet-roster: the declaration names its own directory and a worker that is
   assert.ok(existsSync(join(taskDir, script)), `code_work names ${script}, which is not beside the declaration`);
 });
 
-test('fleet-roster: fires unconditionally, with a reason', () => {
-  const v = evaluatePrecondition({ decl }, {});
+// The cadence term reads the task's own run history at a chosen instant: an empty
+// history holds, and the signal under test decides.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const AT = '2026-09-05T16:00:00Z';
+const NO_RUNS = { runs: { list: [] } };
+test('fleet-roster: fires on its cadence alone, with a reason', () => {
+  const v = evaluatePrecondition({ decl }, NO_RUNS, {}, null, AT, SCHEDULE);
   assert.equal(v.run, true);
   assert.match(v.reason, /\S/);
 });

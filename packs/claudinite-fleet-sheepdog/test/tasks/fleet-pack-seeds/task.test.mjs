@@ -40,8 +40,13 @@ test('fleet-pack-seeds: asks for the same fleet secret the roster sweep does —
   assert.deepEqual(decl.code_work_required_secrets, roster.code_work_required_secrets);
 });
 
-test('fleet-pack-seeds: fires unconditionally, with a reason', () => {
-  const v = evaluatePrecondition({ decl }, {});
+// The cadence term reads the task's own run history at a chosen instant: an empty
+// history holds, and the signal under test decides.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const AT = '2026-09-05T16:00:00Z';
+const NO_RUNS = { runs: { list: [] } };
+test('fleet-pack-seeds: fires on its cadence alone, with a reason', () => {
+  const v = evaluatePrecondition({ decl }, NO_RUNS, {}, null, AT, SCHEDULE);
   assert.equal(v.run, true);
   assert.match(v.reason, /\S/);
 });

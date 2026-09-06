@@ -27,12 +27,18 @@ test('update: the worker and the worker doc the declaration names exist', () => 
   assert.ok(existsSync(join(TASK_DIR, update.agent_instructions)), `worker doc missing: ${update.agent_instructions}`);
 });
 
+// The cadence term reads the task's own run history at a chosen instant: an empty
+// history holds, and the signal under test decides.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const AT = '2026-09-05T16:00:00Z';
+const NO_RUNS = { runs: { list: [] } };
+
 test('update: an unstamped repo is not declined — repo shape is settings, not a nightly question', () => {
   // "Has this repo a mount to update?" is a fact adoption settled, re-asked every
   // night for an answer that cannot change on its own. Repo shape is not a
   // precondition (task-preconditions DESIGN): such a repo names the task in its
   // `taskScheduler.disabledTasks` and the scheduler never instantiates it.
-  assert.equal(evaluatePrecondition({ decl: update }, S({ present: false, engineVersion: null })).run, true);
+  assert.equal(evaluatePrecondition({ decl: update }, { ...NO_RUNS, ...S({ present: false, engineVersion: null }) }, {}, null, AT, SCHEDULE).run, true);
 });
 
 // THE QUESTION THIS TASK EXISTS TO ASK — "am I behind the canon?" — CANNOT BE ASKED HERE.
@@ -58,7 +64,7 @@ test('update: no repo-side condition may gate it — the input is the CANON', ()
     S({ convergedInWindow: false }),
     {},
   ]) {
-    assert.equal(evaluatePrecondition({ decl: update }, signals).run, true);
+    assert.equal(evaluatePrecondition({ decl: update }, { ...NO_RUNS, ...signals }, {}, null, AT, SCHEDULE).run, true);
   }
 });
 

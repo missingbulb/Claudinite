@@ -15,14 +15,19 @@ const usageFold = normalizeTaskDeclaration(usageFoldJson);
 
 const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../tasks/usage-fold');
 const terms = await loadTaskTerms(TASK_DIR);
-const verdict = (signals) => evaluatePrecondition({ decl: usageFold, terms }, signals);
+// The cadence term reads the task's own run history at a chosen instant: an empty
+// history holds, and the signal under test decides.
+const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
+const AT = '2026-09-05T16:00:00Z';
+const NO_RUNS = { runs: { list: [] } };
+const verdict = (signals) => evaluatePrecondition({ decl: usageFold, terms }, { ...NO_RUNS, ...signals }, {}, null, AT, SCHEDULE);
 
 // --- usage-fold (the skill-usage aggregate) ----------------------------------
 
 test('usage-fold: the signals its gate reads are derived from its conditions', () => {
   // Derived, never declared: the conditions name what they read, and that is the
   // whole set the executor collects before asking.
-  assert.deepEqual(preconditionSignals(usageFold.preconditions, terms), ['commits', 'conversationLogs']);
+  assert.deepEqual(preconditionSignals(usageFold.preconditions, terms), ['runs', 'commits', 'conversationLogs']);
 });
 
 test('usage-fold: a commit or a captured session in the window is what runs it', () => {
