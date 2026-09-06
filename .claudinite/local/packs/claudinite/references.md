@@ -8,7 +8,9 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 
 - **(check:cross-repo-verify-line)** Three ad-hoc cross-repo `Verify:` items each parked on a scope denial minutes after
   being picked (#1349, #1351, #1396) — the executor provisions agent sessions with this repo's
-  scope only. Retire the rule only if executor sessions gain cross-repo scope.
+  scope only. The coded form has the same wall for anything but a public unauthenticated URL, which
+  #1790 crossed with an `api.github.com` probe (#1792), so the guard watches the probe lines too.
+  Retire the rule only if executor sessions gain cross-repo scope and probes gain a credential.
 - **(RULES-2)** Hand-fabricated queue transitions produced an item closed wearing a live status
   (#1220) and one labelled `done` but left open (#1265); `converge-item.mjs` printing the exact
   calls is what makes the sequence reproducible on any session. Retire the rule only if the
@@ -201,3 +203,11 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   a call no declaration named cost ~185 ms at PreToolUse and ~172 ms at PostToolUse before the
   runner and the cached context, ~88 ms and ~80 ms after. Retire the rule when the harness runs
   hooks in-process or the per-call hooks are gone.
+- **(RULES-71)** #1790 filed janitor rule I's verification against `missingbulb/TLDR#275` with a
+  coded probe on `api.github.com`: `verify-production`'s `fetchOnce` sends no credential, so that
+  read answers anonymously — rate-limited from an Actions runner, and 404 for anything not public —
+  and the item could only re-arm every 6 hours forever (#1792). The owner's ruling, 2026-09-06:
+  "You either find a similar issue locally, or create the test-in-prod issue on the target repo",
+  and it is this repo's rule rather than a canon one because other members' routines may hold
+  wider scope. Retire the rule if the executor's sessions and probes gain credentialed cross-repo
+  reads.

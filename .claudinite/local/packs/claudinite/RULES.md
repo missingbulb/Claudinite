@@ -286,6 +286,11 @@ Below are rules on how to work on this repo.
 
 ## Scheduled tasks
 
+- **Filing a verification for a change whose effect first shows in a repo that merely uses
+  Claudinite** — a run here reads only this repository: its sessions carry no member's scope and
+  its probes fetch with no credential, so a member's API or private file can never answer.
+  Reproduce the premise on an object this repo owns, or file the verification on that repo. (71)
+
 - **Filing an issue no person will ever act on** — a board, a watermark, the machine's own
   bookkeeping — file it CLOSED and labelled, state both on every write so a reopened or
   pre-rule one converges, and find it by that label rather than paging the repo's closed
