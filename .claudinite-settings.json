@@ -160,7 +160,7 @@
     },
     {
       "rule": "reference-integrity",
-      "path": "packs/claudinite-tasks/docs/per-project-scheduling/",
+      "path": "packs/claudinite-tasks/docs/per-project-scheduling/DESIGN.md",
       "reason": "the per-project-scheduling DESIGN is the historical record of migration #394 — it names the central routine and planner files this migration deleted precisely because deleting them is what it records; rewriting those names would falsify the record, so its inbound-reference dangling is deliberate and permanent"
     },
     {
