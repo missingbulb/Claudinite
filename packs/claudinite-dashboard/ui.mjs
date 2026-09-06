@@ -263,6 +263,23 @@ export const refNodes = (repo, text) => (repo
   ? splitRefs(text).map((part) => (isRef(part) ? issueLink(repo, part.slice(1)) : part))
   : [String(text ?? '')]);
 
+// The whole queue as ONE URL, so the reader can work it where they act on it rather
+// than a slip at a time. GitHub has no syntax for "these issue numbers", but a bare
+// number is a search term an issue's own number matches, which is what narrows the
+// listing to the set. Inside one repo that is the repo's own issues listing; across
+// members it is the cross-repository search, every member named. Null when nothing in
+// the queue carries a number — a repo-level fault has none.
+export const queueUrl = (candidates) => {
+  const numbered = (candidates ?? []).filter((c) => c?.number != null);
+  if (!numbered.length) return null;
+  const numbers = numbered.map((c) => String(c.number));
+  const repos = [...new Set(numbered.map((c) => c.repo))];
+  const q = (terms) => encodeURIComponent(terms.join(' ')).replace(/%20/g, '+');
+  return repos.length === 1
+    ? `https://github.com/${repos[0]}/issues?q=${q(['is:issue', 'state:open', ...numbers])}`
+    : `https://github.com/search?type=issues&q=${q(['is:issue', 'state:open', ...repos.map((r) => `repo:${r}`), ...numbers])}`;
+};
+
 export const repoLink = (repo) =>
   el('a', { href: `https://github.com/${repo}`, target: '_blank', rel: 'noopener', textContent: repo });
 

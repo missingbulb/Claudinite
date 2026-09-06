@@ -22,10 +22,11 @@ class FakeEl {
 let leadCard;
 let refNodes;
 let reasonNodes;
+let queueUrl;
 
 before(async () => {
   globalThis.document = { createElement: (tag) => new FakeEl(tag) };
-  ({ leadCard, refNodes, reasonNodes } = await import('../ui.mjs'));
+  ({ leadCard, refNodes, reasonNodes, queueUrl } = await import('../ui.mjs'));
 });
 
 const candidate = (over = {}) => ({
@@ -133,4 +134,30 @@ test('the fleet page passes no repo, and a number stays text rather than a link 
   const [span] = reasonNodes([{ level: 'critical', text: '2 items parked broken, #12 the worst' }]);
   assert.match(span.text, /2 items parked broken, #12 the worst/);
   assert.equal(span.children.filter((c) => typeof c !== 'string').length, 0);
+});
+
+// --- the queue as one URL ------------------------------------------------------------
+
+test('a queue inside one repo is that repo\'s open issues, narrowed to its numbers', () => {
+  const url = queueUrl([
+    { repo: 'an-owner/TicketWatch', number: 401 },
+    { repo: 'an-owner/TicketWatch', number: 275 },
+  ]);
+  assert.equal(url, 'https://github.com/an-owner/TicketWatch/issues?q=is%3Aissue+state%3Aopen+401+275');
+});
+
+test('a queue spanning members is one cross-repository search, naming every member', () => {
+  const url = queueUrl([
+    { repo: 'an-owner/TicketWatch', number: 401 },
+    { repo: 'an-owner/Shepherd', number: 12 },
+  ]);
+  assert.match(url, /^https:\/\/github\.com\/search\?type=issues&q=/);
+  assert.match(decodeURIComponent(url), /repo:an-owner\/TicketWatch\+repo:an-owner\/Shepherd/);
+  assert.match(decodeURIComponent(url), /401\+12/);
+});
+
+test('a candidate with no number of its own is not in the search, and a queue of none has no URL', () => {
+  assert.equal(queueUrl([{ repo: 'an-owner/TicketWatch', number: null }]), null);
+  assert.equal(queueUrl([]), null);
+  assert.match(queueUrl([{ repo: 'a/b', number: null }, { repo: 'a/b', number: 7 }]), /issues\?q=is%3Aissue\+state%3Aopen\+7$/);
 });

@@ -28,7 +28,7 @@ import { readUsage, growthSeries, queueSeries, hourSeries } from './usage.mjs';
 import { readContributions, liveSourcesNeeded } from './contributions.mjs';
 import { packCard } from './contrib-view.mjs';
 import {
-  $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, refNodes, segmentBar,
+  $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, refNodes, queueUrl, segmentBar,
   warnNodes, stackedColumns, chartLegend, dualAxisChart, flipRows,
   LEVEL_GLYPH, OUTCOME_COLOR,
 } from './ui.mjs';
@@ -188,21 +188,29 @@ const EMPTY = {
 // Exported so the sheet can be driven against a fixture — the layout and the gap
 // sentences are the parts a unit test cannot see.
 export function renderRepoSheet({ ledger, machine, candidates, strip, repo }) {
-  const top = candidates[0] ?? null;
-  const rest = Math.max(0, candidates.length - 1);
-
-  const startBody = top
-    ? slip({
-      headline: top.why,
-      where: `#${top.number ?? ''}`.replace('#', '') ? `#${top.number}` : repo,
-      href: top.url,
-      chip: parkChipFor(top),
-      more: [rest ? `${rest} more after this one` : null, top.title].filter(Boolean).join(' · '),
-    })
-    : el('div', { className: 'slip' }, [
-      el('span', { className: 'hl', textContent: 'Nothing is waiting on you' }),
-      el('span', { className: 'more', textContent: 'nothing here is parked, failing or off the state machine' }),
-    ]);
+  // The queue behind the prod is STEPPED rather than counted: this page cannot know
+  // the verdict the reader just reached on the candidate in front of them, so the next
+  // one is reachable without acting on this one. The index lives in the closure — the
+  // slip is redrawn from it, and nothing else on the block moves.
+  const startBody = el('div', { className: 'start' });
+  const paintStart = (index) => {
+    const at = candidates[index] ?? null;
+    startBody.replaceChildren(at
+      ? slip({
+        headline: at.why,
+        where: at.number != null ? `#${at.number}` : repo,
+        href: at.url,
+        chip: parkChipFor(at),
+        more: at.title ?? null,
+        queue: { index, total: candidates.length, onStep: paintStart },
+        seeAll: queueUrl(candidates),
+      })
+      : el('div', { className: 'slip' }, [
+        el('span', { className: 'hl', textContent: 'Nothing is waiting on you' }),
+        el('span', { className: 'more', textContent: 'nothing here is parked, failing or off the state machine' }),
+      ]));
+  };
+  paintStart(0);
 
   const m = machine;
   const machineBody = el('div', { className: 'machine repo' }, [

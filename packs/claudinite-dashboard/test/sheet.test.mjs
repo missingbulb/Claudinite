@@ -136,3 +136,40 @@ test('a sub-line naming an item links it, on the page of the repo it belongs to'
   // The fake DOM joins children with a space, so the prose is asserted piece by piece.
   assert.match(row.find('s')[0].text, /3 for you .+#88.+1 on the machine/);
 });
+
+// --- the slip's queue ----------------------------------------------------------------
+
+test('the queue behind the slip is steppable, and says how deep the reader is', () => {
+  const steps = [];
+  const node = sheet.slip({
+    headline: 'parked for a human', where: '#275', href: 'x',
+    queue: { index: 0, total: 4, onStep: (i) => steps.push(i) },
+  });
+  const [back, forward] = node.find('step');
+  assert.equal(back.disabled, true, 'the first candidate has nothing before it');
+  assert.match(node.find('at')[0].text, /1 \/ 4/);
+  forward.onclick();
+  assert.deepEqual(steps, [1], 'a step names the candidate it wants, and the page repaints');
+
+  const third = sheet.slip({ headline: 'x', queue: { index: 2, total: 4, onStep: (i) => steps.push(i) } });
+  third.find('step')[0].onclick();
+  assert.deepEqual(steps, [1, 1], 'and stepping back names the one before it');
+});
+
+test('the last candidate cannot step forward, and the first cannot step back', () => {
+  const last = sheet.slip({ headline: 'x', queue: { index: 3, total: 4, onStep: () => {} } });
+  const [back, forward] = last.find('step');
+  assert.equal(back.disabled, false);
+  assert.equal(forward.disabled, true);
+});
+
+test('one candidate is not a queue, and gets no stepper', () => {
+  assert.equal(sheet.slip({ headline: 'x', queue: { index: 0, total: 1, onStep: () => {} } }).find('step').length, 0);
+});
+
+test('see all opens the whole queue as one GitHub search', () => {
+  const node = sheet.slip({ headline: 'x', queue: { index: 0, total: 2, onStep: () => {} }, seeAll: 'https://github.com/q' });
+  const link = node.find('see-all')[0];
+  assert.equal(link.href, 'https://github.com/q');
+  assert.match(link.text, /see all/i);
+});
