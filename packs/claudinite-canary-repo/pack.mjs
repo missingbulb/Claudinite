@@ -42,7 +42,7 @@
 // `materialize` re-vendors the same path through the withhold lane.
 //
 // THE VERSIONS ARE THE SEQUENCE, not bookkeeping. An install stamps the newest version
-// and runs no records (`updates/install.mjs`), so a record shipped in the version a repo
+// and runs no records (the install runner), so a record shipped in the version a repo
 // adopts at is a record that repo can never reach: `migrationApplies` is `want > have`.
 // The probe is therefore adopted at version 1, which seeds the file and nothing else,
 // and the record lands at version 2 so the update flow really has a gap to close. It

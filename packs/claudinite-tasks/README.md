@@ -58,13 +58,6 @@ adoption, by the `adopt-pack` skill. They are static from then on: the per-repo 
 anchor hours are written once, secrets travel as one fixed line, and the `run:` lines name mount
 pack paths behind which everything converges nightly.
 
-## The legacy `engine/scheduler/` shims
-
-Until #1317's execution chain finishes, `engine/scheduler/*` still exists as one-line re-exports of
-this pack, for members whose vendored workers, workflow `run:` lines and stored routine prompts
-still name the old paths. They ship only into a mount that carries this pack, and they are deleted
-once no fielded member names one.
-
 ## Checks
 
 | Rule | Confidence | Dimension | Enforcement |

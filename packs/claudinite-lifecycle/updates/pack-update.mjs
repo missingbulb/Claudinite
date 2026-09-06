@@ -147,7 +147,7 @@ export function applyStageFor(specs, withheld = []) {
   // is staged and undelivered, and only the stage's credential can finish it.
   // The reason names the CONDITION and the ARTIFACTS BY IDENTITY, and stops there —
   // it becomes `reason.detail` on the work item, and the payload it rides in
-  // carries identifiers, never instructions (updates/terminals.mjs). So a record that
+  // carries identifiers, never instructions (./terminals.mjs). So a record that
   // asked for a session is named, not quoted: its `applyStage.instructions` are in
   // the mount the update just vendored, on the branch the session is given, and the
   // session reads them from there like any other fact about the repo.
