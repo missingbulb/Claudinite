@@ -37,12 +37,12 @@ export default {
   id: 'task-cadence-terms',
   landed: '2026-09-05',
   // The version is cut on main after the merge (#1726), so a record cannot name it
-  // exactly: this is the next number the bump would cut for the pack at 60906.7 —
+  // exactly: this is the next number the bump would cut for the pack at 60906.8 —
   // above every member's installed version, so the gap holds the record, and never
   // above the number cut, so a converged member does not re-apply it. RE-CHECK IT
   // AGAINST `pack.mjs` ON EVERY REBASE: main cuts versions while a branch waits, and
   // a record that falls at or below the installed version is silently already done.
-  version: '60906.8',
+  version: '60906.9',
   summary: 'a member\'s local-pack task.json declarations fold the retired `frequency` field into `preconditions` as the cadence term it meant, and state the `trigger` their conditions implied (#1725)',
 
   appliesTo: mountReadsBothFields,
