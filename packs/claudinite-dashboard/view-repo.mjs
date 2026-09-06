@@ -350,31 +350,49 @@ function perTaskTable(ledger) {
 // classification drawn in time, so the views cannot disagree about what is stuck.
 function renderWorkBoard(board, { repo, items, prs, rows, now, comments = new Map() }) {
   const node = $('work-board');
-  const explore = $('work-explore');
 
-  const open = (row) => {
-    const number = Number(String(row.gutter).match(/#(\d+)/)?.[1] ?? NaN);
+  // What a mark is worth knowing before it is clicked — `buildPanel`'s answer, which
+  // already differs by what the mark is: a scheduled task reads its last occurrences
+  // and its next anchor, a park reads the ask it is waiting on, a failed task reads
+  // what broke. The panels were written for the block that used to sit under the
+  // board; the reading is the same, it just arrives without a click now.
+  const tipFor = (subject) => {
+    const number = subject?.cell
+      ? (subject.cell.number ?? subject.cell.numbers?.[0] ?? NaN)
+      : Number(String(subject?.gutter).match(/#(\d+)/)?.[1] ?? NaN);
     const item = items.find((i) => i.number === number) ?? null;
     const parsed = item ? rows.find((r) => r.current?.number === number) : null;
     const siblings = parsed ? items.filter((i) => (i.title ?? '').includes(parsed.key)) : [];
-    const panel = buildPanel(row, {
+    return [tipNode(buildPanel(subject, {
       item, repo, items, prs, rows,
-      declaration: parsed?.declaration ?? row.row?.declaration ?? null,
+      declaration: parsed?.declaration ?? subject.row?.declaration ?? null,
       siblings,
       comments: comments.get(number) ?? null,
-      cost: ledgerCostFor(row),
+      cost: ledgerCostFor(subject),
       now,
-    });
-    explore.replaceChildren(el('div', { className: 'explore one' }, [panelNode(panel, repo)]));
+    }), repo)];
   };
 
-  node.replaceChildren(renderBoard(board, { onSelect: open, repo }), quietLine(board.quiet, { repo }));
-  // One panel is open at rest — the board's own worst finding written out, because a
-  // board whose finding is one click away is a board nobody clicks.
-  const worst = board.groups.flatMap((g) => (g.grid ? [] : g.shown)).find((r) => r.broken || r.parkKind === 'failure')
-    ?? board.groups[0]?.shown?.[0] ?? null;
-  if (worst) open(worst);
-  else explore.replaceChildren();
+  const tip = el('div', { className: 'board-tip', role: 'tooltip', hidden: true });
+  node.replaceChildren(renderBoard(board, { repo, tip, tipFor }), tip, quietLine(board.quiet, { repo }));
+}
+
+// The panel as a hover card: its title and its fields, and the FIRST LINE of its `do`.
+// The rest of a `do` is a command to paste, and a card that vanishes when the pointer
+// leaves it is not somewhere anything can be copied from — so the imperative stays and
+// the block under it does not.
+function tipNode(panel, repo) {
+  // The colon goes with the block it introduced: "converge it:" with nothing under it
+  // reads as a card that failed to finish drawing.
+  const say = String(panel.do ?? '').split('\n')[0].replace(/:$/, '');
+  return el('div', { className: 'panel-x' }, [
+    el('h4', {}, [panel.title]),
+    el('dl', {}, panel.fields.flatMap((f) => [
+      el('dt', { textContent: f.label }),
+      el('dd', { className: f.value === null ? 'gap' : '' }, refNodes(repo, f.value ?? f.note)),
+    ])),
+    say ? el('div', { className: 'do' }, [el('b', { textContent: 'do' }), ...refNodes(repo, say)]) : null,
+  ]);
 }
 
 const ledgerCostFor = () => null;
@@ -392,31 +410,11 @@ export function ciCell(ci, now) {
   };
 }
 
-function panelNode(panel, repo) {
-  // A panel is mostly numbers — what closes this, what it unblocks, who moves it — and
-  // every one of them is the reader's next click. The imperative's own command block
-  // stays literal: it is text to paste, not to follow a link out of.
-  return el('div', { className: 'panel-x' }, [
-    el('h4', {}, [panel.title]),
-    el('dl', {}, panel.fields.flatMap((f) => [
-      el('dt', { textContent: f.label }),
-      el('dd', { className: f.value === null ? 'gap' : '' }, refNodes(repo, f.value ?? f.note)),
-    ])),
-    el('div', { className: 'do' }, [
-      el('b', { textContent: 'do' }),
-      ...(panel.do.includes('\n')
-        ? [...refNodes(repo, panel.do.split('\n')[0]), el('pre', { textContent: panel.do.split('\n').slice(1).join('\n') })]
-        : refNodes(repo, panel.do)),
-    ]),
-  ]);
-}
-
 export function renderWork(all, repo, now, view, board = null, context = null) {
   const counts = viewCounts(all);
   const table = $('work');
   const boardView = view === 'board';
   $('work-board').hidden = !boardView;
-  $('work-explore').hidden = !boardView;
   $('work-table-wrap').hidden = boardView;
   if (boardView) {
     if (board) renderWorkBoard(board, context);

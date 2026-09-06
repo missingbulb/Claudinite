@@ -10,7 +10,7 @@
 // THE PAST IS WASHED, NOW IS SOLID, THE FUTURE IS HOLLOW — the same grammar the wake
 // strip and the pulse obey, so one reader learns it once.
 
-import { el, issueLink, issueUrl, splitRefs, isRef } from './ui.mjs';
+import { el, issueLink, issueUrl, searchUrl, splitRefs, isRef } from './ui.mjs';
 import { svgEl } from './sheet.mjs';
 
 const VIEW_W = 1000;
@@ -35,7 +35,76 @@ const scale = (axis) => (at) => {
   return Math.max(GUTTER, Math.min(VIEW_W, x));
 };
 
-export function renderBoard(board, { onSelect = () => {}, repo = null } = {}) {
+// WHERE A MARK GOES. A mark is a thing in GitHub, so clicking one opens that thing —
+// it does not fill a panel elsewhere on the page for the reader to read and then click
+// through anyway. What the mark is worth knowing BEFORE clicking is the hover's job.
+//
+// A grid cell is the only mark that can stand for more than one item. One is a link to
+// it; several have no single target, so they open the search naming exactly those
+// numbers — without `state:open`, since a cell of closed occurrences would match none.
+// A cell with no number at all is the future, and the future has nothing to open.
+function markHref(subject, repo) {
+  if (!repo) return null;
+  const cell = subject?.cell;
+  if (cell) {
+    const numbers = cell.number != null ? [cell.number] : (cell.numbers ?? []);
+    if (!numbers.length) return null;
+    return numbers.length === 1 ? issueUrl(repo, numbers[0]) : searchUrl(repo, numbers.map(String));
+  }
+  const number = String(subject?.gutter ?? '').match(/#(\d+)/)?.[1];
+  return number ? issueUrl(repo, number) : null;
+}
+
+// A mark, wired: named for a reader who cannot see it, wrapped in its link when it has
+// one, and told to fill the tip while the pointer is on it. `place` returns what should
+// go in the SVG, which is the anchor when there is one and the mark itself otherwise.
+function place(node, subject, ctx, label) {
+  node.setAttribute('aria-label', label);
+  // `aria-label` rather than a `<title>` child: a native tooltip on the same mark would
+  // race the hover card and win, being the browser's own.
+  if (ctx.tip) {
+    node.addEventListener('mouseenter', (ev) => showTip(ctx, subject, ev));
+    node.addEventListener('mousemove', (ev) => moveTip(ctx, ev));
+    node.addEventListener('mouseleave', () => hideTip(ctx));
+    node.addEventListener('focus', (ev) => showTip(ctx, subject, ev));
+    node.addEventListener('blur', () => hideTip(ctx));
+  }
+  const href = markHref(subject, ctx.repo);
+  if (!href) return node;
+  const a = svgEl('a', { href, target: '_blank', rel: 'noopener', class: 'mark-link' });
+  a.append(node);
+  return a;
+}
+
+function showTip(ctx, subject, ev) {
+  const content = ctx.tipFor(subject);
+  if (!content || (Array.isArray(content) && !content.length)) return hideTip(ctx);
+  ctx.tip.replaceChildren(...[].concat(content));
+  ctx.tip.hidden = false;
+  moveTip(ctx, ev);
+}
+
+// Follows the pointer rather than anchoring to the mark: a mark is five pixels wide and
+// a card anchored to one sits under the pointer as often as beside it.
+const TIP_GAP = 14;
+
+function moveTip(ctx, ev) {
+  if (ctx.tip.hidden || ev?.clientX == null || !ctx.tip.style) return;
+  // Flipped to the other side of the pointer rather than clamped to the edge: a card
+  // pinned against the right margin sits ON the marks it is describing.
+  const box = ctx.tip.getBoundingClientRect?.() ?? { width: 0, height: 0 };
+  const w = globalThis.innerWidth ?? 0;
+  const h = globalThis.innerHeight ?? 0;
+  const right = ev.clientX + TIP_GAP + box.width > w;
+  const below = ev.clientY + TIP_GAP + box.height > h;
+  ctx.tip.style.left = `${Math.max(TIP_GAP, right ? ev.clientX - TIP_GAP - box.width : ev.clientX + TIP_GAP)}px`;
+  ctx.tip.style.top = `${Math.max(TIP_GAP, below ? ev.clientY - TIP_GAP - box.height : ev.clientY + TIP_GAP)}px`;
+}
+
+const hideTip = (ctx) => { ctx.tip.hidden = true; ctx.tip.replaceChildren(); };
+
+export function renderBoard(board, { repo = null, tip = null, tipFor = () => null } = {}) {
+  const ctx = { repo, tip, tipFor };
   const { axis } = board;
   const x = scale(axis);
   const rows = board.groups.reduce((n, g) => n + HEADER_H + g.shown.length * ROW_H + (g.more ? 20 : 0), 0);
@@ -75,8 +144,8 @@ export function renderBoard(board, { onSelect = () => {}, repo = null } = {}) {
 
     for (const row of group.shown) {
       const mid = y + ROW_H / 2;
-      if (group.grid) drawGridRow(svg, row, axis, x, mid, onSelect);
-      else drawLaneRow(svg, row, axis, x, mid, onSelect, repo);
+      if (group.grid) drawGridRow(svg, row, axis, x, mid, ctx);
+      else drawLaneRow(svg, row, axis, x, mid, ctx);
       y += ROW_H;
     }
     if (group.more) {
@@ -112,26 +181,27 @@ function refText(px, py, content, cls, repo) {
 
 // A lane row: its gutter name, its marks, and — spent only on a FINDING — one line of
 // text in the serious tint. Every age, count and policy sentence is in the hover.
-function drawLaneRow(svg, row, axis, x, mid, onSelect, repo = null) {
-  svg.append(refText(6, mid + 4, row.gutter, 'gutter', repo));
+function drawLaneRow(svg, row, axis, x, mid, ctx) {
+  svg.append(refText(6, mid + 4, row.gutter, 'gutter', ctx.repo));
 
   for (const mark of row.marks) {
     if (mark.kind === 'bar') {
       const from = Math.max(mark.from, axis.from);
-      const bar = titled(svgEl('rect', {
+      const bar = svgEl('rect', {
         x: x(from), y: mid - 5, width: Math.max(3, x(mark.to) - x(from)), height: 10, rx: 2,
         fill: 'var(--machine-wash)', stroke: 'var(--machine)', 'stroke-width': 1, class: 'mark',
-      }), `${row.gutter} — ${row.title}\nopen since ${new Date(mark.from).toISOString().slice(0, 10)}\n${row.why}`);
-      bar.addEventListener('click', () => onSelect(row));
-      svg.append(bar);
+      });
+      svg.append(place(bar, row, ctx, `${row.gutter} — ${row.title}, open since ${new Date(mark.from).toISOString().slice(0, 10)}`));
       if (mark.from < axis.from) svg.append(text(GUTTER - 8, mid + 4, '◂', 'edge'));
       // The one warm thing on the board, and a separate mark rather than an end-cap so
       // it is findable from across the sheet.
       if (mark.flag) {
-        svg.append(titled(svgEl('polygon', {
+        // Wired like the bar it caps, not merely drawn: it sits ON the bar's end, so a
+        // flag the pointer can reach but the card cannot is a hole in the row's hover.
+        svg.append(place(svgEl('polygon', {
           points: `${x(mark.to)},${mid - 9} ${x(mark.to) - 5},${mid - 17} ${x(mark.to) + 5},${mid - 17}`,
           fill: 'var(--you)', class: 'mark',
-        }), `waits for a person — ${row.why}`));
+        }), row, ctx, `waits for a person — ${row.why}`));
       }
       continue;
     }
@@ -143,11 +213,10 @@ function drawLaneRow(svg, row, axis, x, mid, onSelect, repo = null) {
         stroke: row.broken ? 'var(--critical)' : 'var(--muted)', 'stroke-width': 1, 'stroke-dasharray': '4 3',
       }));
       svg.append(text(bx - 10, mid + 4, '»', row.broken ? 'break' : 'edge'));
-      const node = titled(svgEl('circle', {
+      const node = svgEl('circle', {
         cx: bx + 6, cy: mid, r: 5, fill: 'none', stroke: 'var(--ink-2)', 'stroke-dasharray': '2 2', class: 'mark',
-      }), `${row.gutter} — ${row.why}`);
-      node.addEventListener('click', () => onSelect(row));
-      svg.append(node);
+      });
+      svg.append(place(node, row, ctx, `${row.gutter} — ${row.why}`));
       continue;
     }
     const cx = x(mark.at);
@@ -159,12 +228,10 @@ function drawLaneRow(svg, row, axis, x, mid, onSelect, repo = null) {
     } else {
       node = svgEl('circle', { cx, cy: mid, r: 5, fill: 'none', stroke: 'var(--ink-2)', 'stroke-width': 1.4, class: 'mark' });
     }
-    titled(node, `${row.gutter} — ${row.title}\n${row.why}`);
-    node.addEventListener('click', () => onSelect(row));
-    svg.append(node);
+    svg.append(place(node, row, ctx, `${row.gutter} — ${row.title}. ${row.why}`));
   }
 
-  if (row.finding) svg.append(refText(GUTTER + 6, mid + 16, row.finding, 'finding', repo));
+  if (row.finding) svg.append(refText(GUTTER + 6, mid + 16, row.finding, 'finding', ctx.repo));
 }
 
 // A park's KIND is its glyph, so the four are told apart without colour.
@@ -193,16 +260,15 @@ function parkMark(cx, cy, kind) {
 const CELL_W = 18;
 const CELL_H = 12;
 
-function drawGridRow(svg, row, axis, x, mid, onSelect) {
+function drawGridRow(svg, row, axis, x, mid, ctx) {
   svg.append(text(6, mid + 4, row.task, 'gutter'));
   for (const cell of row.cells) {
     const day = axis.days.find((d) => d.day === cell.day);
     if (!day || cell.state === 'none') continue;
     const cx = x(day.anchorAt);
-    const node = gridCell(cell, cx, mid);
-    titled(node, `${row.task} · ${cell.day} · ${cell.state}${cell.count > 1 ? ` ×${cell.count}` : ''}`);
-    node.addEventListener('click', () => onSelect({ ...row, kind: 'task', cell }));
-    svg.append(node);
+    const subject = { ...row, kind: 'task', cell };
+    const label = `${row.task} · ${cell.day} · ${cell.state}${cell.count > 1 ? ` ×${cell.count}` : ''}`;
+    svg.append(place(gridCell(cell, cx, mid), subject, ctx, label));
     if (cell.count > 1) {
       const n = svgEl('text', {
         x: cx, y: mid + 3.5, class: 'cell-count', 'text-anchor': 'middle',
