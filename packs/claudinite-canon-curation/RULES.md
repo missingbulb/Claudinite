@@ -6,9 +6,8 @@
   `config.barriers`, extending the mechanism generically if a capability is missing. Never
   standalone segregation-checking code. (12)
 
-- **Naming a new canon pack** — kebab-case, named for the surface it serves rather than the first
-  feature you are building for it. The directory name is the public id every member declares, so
-  another casing costs a fleet-wide rename.
+- **Naming a new canon pack** — name it for the surface it serves rather than the first feature
+  you are building for it.
 
 - **Naming a pack whose subject is a Claudinite feature itself** — the `claudinite-` prefix
   (`claudinite-lifecycle`, `claudinite-dashboard`). `claudinite-growth` is grandfathered.
@@ -19,11 +18,8 @@
   declaration, so an unmounted skill says nothing about whether its procedure applies. (2)
 
 - **A canon pack's prose naming another pack by literal path** — check the name resolves inside
-  every consumer's vendored tree. `.claudinite/local/packs/<pack>/` exists only in the canon home,
-  so naming a home-only local pack dangles everywhere else it mounts.
+  every consumer's vendored tree.
 
-- **Wanting to state how many checks or rules the corpus has** — don't. `packs/README.md` states
-  how to count them instead of quoting a number. (3)
 
 ## Pack config and shared logic
 
@@ -46,10 +42,6 @@
   `pack.mjs` before activation is consulted, so a CLI entry point re-imports mid-evaluation and
   Node exits 13.
 
-- **A pack module consuming a brand-new engine helper export** — import the engine module as a
-  namespace and guard the call with a `typeof` capability check, never a named import: the pack and
-  engine lanes deliver on separate cadences, so a named import of an export the member's engine
-  hasn't reached yet is a link-time `SyntaxError` that faults the whole pack.
 
 - **A pack that fails to load** — it fails the mount's self-test, the converge refuses to land at
   all, and the member cannot receive the pack version that would have fixed it.
@@ -64,8 +56,6 @@
   follow the words, not the `severity` field. An advisory's remedies are act on it or leave it,
   never a config-acceptance escape.
 
-- **Wanting prose in a check declaration** — there is none. `packs/<pack>/declared-checks.json`
-  holds no `description` and no comment; the line the agent reads is `failureMessage`.
 
 - **Writing a check that reads the session transcript** — screen the harness's plain-text
   pseudo-turns, not only tag-wrapped ones. `humanText` in
