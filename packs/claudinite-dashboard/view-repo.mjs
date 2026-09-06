@@ -168,6 +168,16 @@ function rowCells(r, view, repo, now) {
   ];
 }
 
+// The header list per view, beside the `rowCells` that fills it: the two are one table
+// and a change to either has to be a change to both. Nothing enforces the pairing, and
+// what happens when they part is what put this comment here — the list was deleted with
+// both of its uses left standing, so every view but the board threw on paint.
+const COLUMNS = {
+  stuck: ['Task', 'What is wrong', 'Item', 'Stuck for', 'Waiting on'],
+  pending: ['Task', 'State', 'Item', 'Next ask', 'Idle'],
+  all: ['Task', 'Cadence', 'Now', 'Next ask', 'Last outcome', 'Outcomes seen'],
+};
+
 const EMPTY = {
   stuck: 'Nothing is stuck — every task is either moving or waiting for its turn.',
   pending: 'Nothing is in flight. Every declared task is waiting for its next anchor.',
