@@ -723,6 +723,13 @@ function sectionLines(body, heading) {
 
 export const parseContextLines = (body) => sectionLines(body, 'Context');
 
+// The item's own `### Progress` bullets — the running account a holder appends to
+// while it works. Read back so a beat can add a line without losing the ones before
+// it: nothing can edit a posted comment, so the body is the only surface a long run
+// has that grows in place instead of by repetition.
+export const PROGRESS_HEADING = 'Progress';
+export const parseProgressLines = (body) => sectionLines(body, PROGRESS_HEADING);
+
 // --- the roll's record ----------------------------------------------------------
 
 // The section a no-go roll keeps on the item: the last declined reason and the next

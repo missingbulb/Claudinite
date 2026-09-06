@@ -7,7 +7,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   HEARTBEAT_MARKER, heartbeatComment, lastLivenessAt, withHeartbeat,
+  agentBeatComment, withProgress,
 } from '../../queue/heartbeat.mjs';
+import { parseProgressLines, parseContextLines } from '../../queue/work-item.mjs';
 import { planSchedulerRun } from '../../queue/scheduler-run.mjs';
 import { CLAIM_MARKER, EPISODE_MARKER } from '../../queue/work-item.mjs';
 
@@ -125,4 +127,40 @@ test('the beat says who is working and how long they have been', () => {
   assert.ok(body.startsWith(HEARTBEAT_MARKER), 'machine-readable first');
   assert.match(body, /E1/);
   assert.match(body, /15 minute/);
+});
+
+// The agent phase's beat. What is pinned is the pair that can drift apart: the writer
+// (`agentBeatComment`) and the reader (`lastLivenessAt`) live in one file today, but the
+// leash counts a beat by its MARKER, so a beat given a marker of its own stops resetting
+// the leash with nothing going red — the case below is what notices. The session URL and
+// the note are asserted for the same reason: the no-progress park reads that note, so a
+// beat that drops it is a beat nothing downstream can judge.
+//
+// WHAT THESE CANNOT CATCH: that a session actually beats. That is prose in `executor.md`
+// and nothing enforces it — these prove only that a beat, once posted, counts and that
+// the progress it leaves behind accumulates.
+
+test('an agent beat is the holder\'s own signal, counted exactly as the executor\'s is', () => {
+  const beat = { created_at: '2026-08-20T06:00:00Z', body: agentBeatComment({ session: 'https://claude.ai/code/session_01AB', at: '2026-08-20T06:00:00Z', note: '3/15 groups triaged' }) };
+  assert.equal(lastLivenessAt([claim('2026-08-20T04:00:00Z'), beat]), '2026-08-20T06:00:00.000Z');
+  assert.match(beat.body, /session_01AB/);
+  assert.match(beat.body, /3\/15 groups triaged/);
+  // A session that does not know its own URL still beats, and still counts.
+  assert.equal(lastLivenessAt([{ created_at: '2026-08-20T07:00:00Z', body: agentBeatComment({ at: '2026-08-20T07:00:00Z', note: 'still going' }) }]),
+    '2026-08-20T07:00:00.000Z');
+});
+
+test('progress APPENDS to the item body and keeps every earlier line', () => {
+  let body = '### Context\n\n- triage the touched issues\n';
+  body = withProgress(body, '06:00 — 3/15 groups triaged');
+  body = withProgress(body, '06:45 — 9/15 triaged; #1234 filed');
+  body = withProgress(body, '07:30 — all 15 triaged; PR #1235 opened');
+  assert.deepEqual(parseProgressLines(body), [
+    '06:00 — 3/15 groups triaged',
+    '06:45 — 9/15 triaged; #1234 filed',
+    '07:30 — all 15 triaged; PR #1235 opened',
+  ]);
+  // One Progress section, and the Context it was born with is untouched.
+  assert.equal(body.match(/^### Progress$/gm).length, 1);
+  assert.deepEqual(parseContextLines(body), ['triage the touched issues']);
 });
