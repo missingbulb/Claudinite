@@ -29,7 +29,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Writing anything | low | complexity | prose: 18 words |
 | Auditing an artifact against its source | high | correctness | prose: 35 words |
 | Acting on an approval | high | correctness | prose: 69 words |
-| Calling Edit | low | complexity | prose: 39 words |
+| Calling Edit | low | complexity | prose: 55 words |
 | Polling with an until loop | high | correctness | prose: 57 words + check (`bare-wait-in-fresh-shell`) |
 | Handing the owner a terminal command | medium | correctness | prose: 48 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
