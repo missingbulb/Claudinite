@@ -23,10 +23,11 @@ let leadCard;
 let refNodes;
 let reasonNodes;
 let queueUrl;
+let attentionMark;
 
 before(async () => {
   globalThis.document = { createElement: (tag) => new FakeEl(tag) };
-  ({ leadCard, refNodes, reasonNodes, queueUrl } = await import('../ui.mjs'));
+  ({ leadCard, refNodes, reasonNodes, queueUrl, attentionMark } = await import('../ui.mjs'));
 });
 
 const candidate = (over = {}) => ({
@@ -160,4 +161,44 @@ test('a candidate with no number of its own is not in the search, and a queue of
   assert.equal(queueUrl([{ repo: 'an-owner/TicketWatch', number: null }]), null);
   assert.equal(queueUrl([]), null);
   assert.match(queueUrl([{ repo: 'a/b', number: null }, { repo: 'a/b', number: 7 }]), /issues\?q=is%3Aissue\+state%3Aopen\+7$/);
+});
+
+// --- the attention mark -----------------------------------------------------------
+
+// The grid's Waiting cell. Prose here cost the whole table its shape, so the sentences
+// move to the hover and the cell keeps a bar and one line.
+const needs = [
+  { kind: 'broken', level: 'critical', count: 2, short: 'broken', text: '2 tasks broken' },
+  { kind: 'decisions', level: 'serious', count: 4, short: 'decisions', text: '4 items needing a decision' },
+  { kind: 'actions', level: 'serious', count: 9, short: 'actions', text: '9 items needing something changed outside the code' },
+  { kind: 'approvals', level: 'warning', count: 1, short: 'approval', text: '1 item needing approval' },
+];
+
+test('the mark says how much of what on one line, not in a paragraph', () => {
+  const mark = attentionMark(needs);
+  assert.equal(mark.find('sub')[0].textContent, '2 broken · 4 decisions · 9 actions · 1 approval');
+});
+
+// A bar segment per LEVEL, not per kind: two serious kinds drawn as two adjacent
+// segments of the same colour is a boundary that means nothing. The line below names
+// the kinds, which is where that distinction actually survives.
+test('the bar weighs the levels, worst first, and merges the kinds inside one', () => {
+  const bars = attentionMark(needs).find('bar');
+  assert.equal(bars.length, 1);
+  assert.deepEqual(bars[0].children.map((i) => i.title), ['2 critical', '13 serious', '1 warning']);
+});
+
+// The sentences are not deleted, only moved. Losing them would leave the reader with
+// "9 actions" and nowhere to find out what an action is.
+test('the full sentences are on the mark itself, so nothing is lost to the fold', () => {
+  assert.equal(
+    attentionMark(needs).title,
+    '2 tasks broken\n4 items needing a decision\n9 items needing something changed outside the code\n1 item needing approval',
+  );
+});
+
+test('a member with nothing waiting says so, and draws no bar', () => {
+  const mark = attentionMark([]);
+  assert.equal(mark.find('bar').length, 0);
+  assert.match(mark.text, /nothing waiting/);
 });

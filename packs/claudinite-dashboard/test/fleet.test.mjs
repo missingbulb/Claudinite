@@ -640,3 +640,20 @@ test('every reason carries the kind that says where the row shows it', () => {
   assert.ok(s.reasons.some((r) => r.kind === 'mount'));
   assert.equal(s.level, 'serious', 'the level still weighs the reasons the row will not spell out');
 });
+
+// The breakdown is read two ways now: as sentences where there is room for them, and
+// as a mark where there is not. A mark cannot re-derive which kind a sentence is by
+// matching its words, so each row carries its kind and the pieces the short line is
+// built from.
+test('each breakdown row carries its kind and the count the short line reads', () => {
+  const rows = attentionBreakdown({ broken: 2, decisions: 1, approvals: 3 });
+  assert.deepEqual(rows.map((r) => [r.kind, r.count, r.short]), [
+    ['broken', 2, 'broken'],
+    ['decisions', 1, 'decision'],
+    ['approvals', 3, 'approvals'],
+  ]);
+  // And the sentence is still exactly what it was, because the tiles print it.
+  assert.deepEqual(rows.map((r) => r.text), [
+    '2 tasks broken', '1 item needing a decision', '3 items needing approval',
+  ]);
+});

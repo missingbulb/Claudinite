@@ -128,6 +128,35 @@ export function ciMark(ui, when) {
   ]);
 }
 
+// What is waiting on a person here, as a bar and one line. THE THIRD FOLD, and the
+// one the grid most needed: the sentences `attentionBreakdown` writes are the only
+// prose in a row of marks, so the column took every pixel the other nine could spare
+// and still wrapped each sentence to one word per line.
+//
+// The bar weighs LEVELS, not kinds. Two serious kinds drawn as two adjacent segments
+// of one colour is a boundary that means nothing, and severity is the one thing the
+// line below cannot show. Its hover names each level in words, because the palette
+// never carries meaning on its own.
+//
+// The kinds survive on that line — "9 actions" is not "9 items needing something
+// changed outside the code", which is why the sentences are on the mark's own hover
+// rather than deleted. A reader who cannot tell what an action is has somewhere to go.
+const ATTENTION_LEVELS = [
+  ['critical', 'var(--critical)'],
+  ['serious', 'var(--serious)'],
+  ['warning', 'var(--warning)'],
+];
+
+export function attentionMark(rows, { width = 92 } = {}) {
+  if (!rows.length) return el('div', {}, [el('span', { className: 'sub', textContent: 'nothing waiting' })]);
+  const weigh = (level) => rows.filter((r) => r.level === level).reduce((n, r) => n + r.count, 0);
+  const sentences = rows.map((r) => r.text).join('\n');
+  return el('div', { className: 'attn', title: sentences, 'aria-label': sentences }, [
+    segmentBar(ATTENTION_LEVELS.map(([level, color]) => [level, weigh(level), color]), { width }),
+    el('div', { className: 'sub', textContent: rows.map((r) => `${r.count} ${r.short}`).join(' \u00b7 ') }),
+  ]);
+}
+
 // The pack count, with the mount's verdict worn as a badge on it. Two facts that are
 // read together — how much Claudinite is declared here, and whether what is declared
 // is current — and almost always the badge says the same thing, so it earns a corner
@@ -462,10 +491,14 @@ export function tiles(node, rows) {
 // than as a wall of columns. `groups` is `[title, [col, …]]`; a group whose title is
 // empty spans its columns unlabelled, which is what the identity column at the left
 // edge wants — it belongs to no question.
+//
+// `group-band`, not `band`: the sheet's own band ([`sheet.mjs`](sheet.mjs)) is a grid
+// component, and a `<tr>` that matched it was laid out as a two-column grid — which
+// drops `colSpan` on the floor and stacks the titles on top of each other.
 export const groupedHead = (table, groups) => {
   table.replaceChildren();
   table.append(el('thead', {}, [
-    el('tr', { className: 'band' }, groups.map(([title, cols]) =>
+    el('tr', { className: 'group-band' }, groups.map(([title, cols]) =>
       el('th', { colSpan: cols.length, className: title ? 'group' : 'group blank', textContent: title }))),
     el('tr', {}, groups.flatMap(([, cols], gi) => cols.map((c, ci) =>
       el('th', { className: ci === 0 && gi > 0 ? 'group-start' : '', textContent: c })))),

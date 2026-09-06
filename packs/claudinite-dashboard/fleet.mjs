@@ -578,17 +578,30 @@ export const estimateNote = (counts) => {
 // used to throw it away and re-merge them into one word.
 //
 // Ordered worst first, and a kind nobody is waiting on is absent rather than zero.
+//
+// A row is read two ways. Where there is room for prose — the lead card, the fleet
+// tiles — `text` is printed as it stands. Where there is not, the member row's cell in
+// a ten-column grid, `ui.mjs`'s `attentionMark` draws the row instead, and it needs the
+// pieces rather than the sentence: `kind` to address a row without matching its words,
+// `count` and `short` to write a line narrow enough to fit. So the sentence is composed
+// here from the same two pieces the mark uses, and the two can never disagree.
 export function attentionBreakdown(counts) {
   const c = attentionCounts(counts);
-  const n = (count, one, many) => `${count} ${count === 1 ? one : many}`;
+  const row = (kind, level, count, [one, many], [shortOne, shortMany], say) => count && {
+    kind,
+    level,
+    count,
+    short: count === 1 ? shortOne : shortMany,
+    text: `${count} ${count === 1 ? one : many} ${say}`.trim(),
+  };
   return [
-    c.broken && { level: 'critical', text: `${n(c.broken, 'task', 'tasks')} broken` },
-    c.schedulersFailing && { level: 'critical', text: `${n(c.schedulersFailing, 'scheduler', 'schedulers')} failing` },
-    c.decisions && { level: 'serious', text: `${n(c.decisions, 'item', 'items')} needing a decision` },
-    c.actions && { level: 'serious', text: `${n(c.actions, 'item', 'items')} needing something changed outside the code` },
-    c.tripping && { level: 'serious', text: `${n(c.tripping, 'item', 'items')} tripping a recovery rule` },
-    c.approvals && { level: 'warning', text: `${n(c.approvals, 'item', 'items')} needing approval` },
-    c.schedulersNeverRan && { level: 'serious', text: `${n(c.schedulersNeverRan, 'scheduler', 'schedulers')} never ran` },
+    row('broken', 'critical', c.broken, ['task', 'tasks'], ['broken', 'broken'], 'broken'),
+    row('schedulersFailing', 'critical', c.schedulersFailing, ['scheduler', 'schedulers'], ['scheduler failing', 'schedulers failing'], 'failing'),
+    row('decisions', 'serious', c.decisions, ['item', 'items'], ['decision', 'decisions'], 'needing a decision'),
+    row('actions', 'serious', c.actions, ['item', 'items'], ['action', 'actions'], 'needing something changed outside the code'),
+    row('tripping', 'serious', c.tripping, ['item', 'items'], ['tripping', 'tripping'], 'tripping a recovery rule'),
+    row('approvals', 'warning', c.approvals, ['item', 'items'], ['approval', 'approvals'], 'needing approval'),
+    row('schedulersNeverRan', 'serious', c.schedulersNeverRan, ['scheduler', 'schedulers'], ['never ran', 'never ran'], 'never ran'),
   ].filter(Boolean);
 }
 
