@@ -312,3 +312,33 @@ test('task-declaration-shape: an empty task.mjs is still flagged', () => {
   const findings = run({ [MJS]: '// nothing here\n' });
   assert.match(findings.find((x) => x.severity === 'blocking').what, /does not default-export a declaration object/);
 });
+
+// --- the trigger (#1725) ---------------------------------------------------------
+
+test('task-declaration-shape: a stated trigger is checked; an unstated one is the advisory\'s', () => {
+  assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'schedule' }) }), []);
+  assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'request' }) }), []);
+  // Absent is legal here — the door derives it, and `legacy-task-fields` is what
+  // asks for it. This check must not double up on that as a blocking finding.
+  assert.deepEqual(run({ [TASK]: goodTask }), []);
+  assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'cron' }) }), /"trigger" is "cron", not a legal value/);
+  assert.match(whatsOf({ [TASK]: json({ ...good, trigger: true }) }), /"trigger" is true, not a legal value/);
+});
+
+test('task-declaration-shape: a scheduled task may not gate on a condition that reads the item', () => {
+  const terms = [
+    'export const terms = {',
+    '  "about-this-issue": {',
+    '    signals: [],',
+    '    needsItem: true,',
+    '    holds: () => ({ holds: true }),',
+    '  },',
+    '};',
+  ].join('\n');
+  const files = (trigger) => ({
+    [TASK]: json({ ...good, trigger, preconditions: ['about-this-issue'] }),
+    '.claudinite/local/packs/mypack/tasks/growth-extract/preconditions.mjs': terms,
+  });
+  assert.match(whatsOf(files('schedule')), /a "schedule" task states a condition that reads the item itself/);
+  assert.deepEqual(run(files('request')), [], 'the same expression is exactly right for a task nothing asks');
+});

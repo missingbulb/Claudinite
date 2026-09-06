@@ -4,8 +4,9 @@ import { ACCEPTED_FREQUENCIES, cadenceTermFor } from '../../claudinite-tasks/cal
 import { MODEL_FAMILIES } from '../../claudinite-tasks/model-map.mjs';
 import {
   OUTCOMES, LEGACY_OUTCOMES, LEGACY_CEILINGS, OUTCOME_NO_PR, DEFAULT_AGENT_MODEL, descriptionProblem, normalizeTaskDeclaration,
+  TRIGGERS, TRIGGER_SCHEDULE, TRIGGER_REQUEST,
 } from '../../claudinite-tasks/task-contract.mjs';
-import { validatePreconditions, termsMap } from '../../claudinite-tasks/precondition-policy.mjs';
+import { validatePreconditions, termsMap, preconditionNeedsItem } from '../../claudinite-tasks/precondition-policy.mjs';
 import {
   TASK_DECLARATION_PATH_RE, isLegacyTaskDeclarationPath, readDeclarationFields,
 } from '../../claudinite-tasks/task-declaration-text.mjs';
@@ -27,14 +28,23 @@ import {
 // task-local condition by the key that defines it. A term the file computes
 // rather than spells is not found, and its declaration reads as unknown — which
 // is the same "write it so a reader can see it" the literal rule above states.
+// Read as TEXT, never imported: a check must not execute a member's own module. So
+// each term is its name plus the one property of it a declaration can be wrong
+// about — `needsItem`, which decides whether the term can be judged at a tick at
+// all. Either quote style, because a member's file is its author's.
+const TERM_NAME = /^ {2}['"]([^'"]+)['"]:/gm;
 function siblingTerms(ctx, taskFile) {
   const text = ctx.read(taskFile.replace(/task\.(json|mjs)$/, 'preconditions.mjs'));
   if (text === null) return new Map();
   const body = stripComments(text);
   const start = body.indexOf('export const terms');
   if (start === -1) return new Map();
-  const names = [...body.slice(start).matchAll(/^  '([^']+)':/gm)].map((m) => m[1]);
-  return termsMap(Object.fromEntries(names.map((n) => [n, { signals: [] }])));
+  const section = body.slice(start);
+  const named = [...section.matchAll(TERM_NAME)];
+  return termsMap(Object.fromEntries(named.map((m, i) => {
+    const block = section.slice(m.index, named[i + 1]?.index ?? section.length);
+    return [m[1], { signals: [], needsItem: /\bneedsItem\s*:\s*true\b/.test(block) }];
+  })));
 }
 
 // A file that only re-exports another module declares nothing of its own — a
@@ -100,6 +110,26 @@ const rule = {
           ? 'drop the field, and a "none" beside it: "manual" meant no schedule, which a declaration says by stating no "preconditions" at all'
           : `write it as the first condition — "preconditions": [${JSON.stringify(term)}, …] — and drop a "none" beside it; the field reads as exactly that today`);
       }
+      // `trigger` says whether the scheduler asks this task at every tick, and is
+      // OPTIONAL for one convergence window (#1789) — absent, the door reads it off
+      // the shape of the conditions, and `legacy-task-fields` is what says so. What
+      // is checked here is a STATED one: the value, and the one pairing that cannot
+      // work. A `schedule` task whose expression reads the ITEM has nothing to be
+      // judged against at a tick — the scheduler's own ask carries no item — so the
+      // term errors on every tick and the task's lane fills with failed runs rather
+      // than ever declining.
+      if (decl.has('trigger')) {
+        const trigger = str('trigger');
+        if (trigger === null || !TRIGGERS.includes(trigger)) {
+          flag(`"trigger" is ${JSON.stringify(decl.scalar('trigger') ?? null)}, not a legal value`,
+            `use one of: ${TRIGGERS.join(', ')} — "${TRIGGER_SCHEDULE}" is asked by the scheduler at every tick, "${TRIGGER_REQUEST}" runs only from an item somebody creates`);
+        } else if (trigger === TRIGGER_SCHEDULE && decl.list('preconditions')
+          && preconditionNeedsItem(decl.list('preconditions'), siblingTerms(ctx, file))) {
+          flag('a "schedule" task states a condition that reads the item itself',
+            `write "trigger": "${TRIGGER_REQUEST}" — a condition about one item can only be judged once an item exists, and the scheduler's ask at a tick has none, so this task would fail every tick instead of declining`);
+        }
+      }
+
       // agent_model is OPTIONAL: absent means no agent (task-defaults.mjs), so the
       // checks below judge the model the task will actually run at.
       const declaredModel = str('agent_model');
