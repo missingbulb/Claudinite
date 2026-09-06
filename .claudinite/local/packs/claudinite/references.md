@@ -211,3 +211,13 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   and it is this repo's rule rather than a canon one because other members' routines may hold
   wider scope. Retire the rule if the executor's sessions and probes gain credentialed cross-repo
   reads.
+- **(RULES-72)** #1733: `preconditions`'s first shape was retired on review as cryptic —
+  `["none"]` and no key at all were a keystroke apart and meant opposite things, which made a
+  scheduling question need the task's own terms loaded just to answer it, and that is how one
+  call site answered it wrong.
+- **(RULES-73)** #1672's capture (2026-09-03T22:31–23:01): nine Bash commands refused by the
+  worktree-isolation guard over ~29 minutes, each retried as a different clever wrapper — a
+  `for` loop, two heredocs, and three shapes of computed substitution (`$(git ls-files ...)`,
+  `$(cat ...)`, `xargs -a`) — around the same git call the guard had already refused, before the
+  run gave up varying the wrapper and used a plain form. Retire the rule only if the guard starts
+  naming the literal form it would accept.
