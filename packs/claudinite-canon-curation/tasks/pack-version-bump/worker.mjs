@@ -42,7 +42,11 @@ export function fetchBase(git, remote, base) {
 // Commit `files` ({ path: content }) onto `baseSha` and push the result to `branch`
 // as a fast-forward. Returns the commit, or null when the remote refused the push
 // because the branch had moved — the caller replans from the new tip.
-export function pushOnto(git, { remote, baseSha, branch, files, message }) {
+//
+// `date` is the run's own clock, and the commit is stamped with it rather than with
+// git's: a version's DATE is read back off this commit (`bumpCommits`'s `%cs`), so a
+// second clock here lets a run cut a version numbered from one day and dated another.
+export function pushOnto(git, { remote, baseSha, branch, files, message, date = new Date() }) {
   const index = join(tmpdir(), `claudinite-bump-${process.pid}-${Date.now()}.index`);
   const plumb = (args, opts) => git(args, { ...opts, env: { ...process.env, GIT_INDEX_FILE: index } });
   try {
@@ -52,10 +56,11 @@ export function pushOnto(git, { remote, baseSha, branch, files, message }) {
       plumb(['update-index', '--add', '--cacheinfo', `100644,${blob},${path}`]);
     }
     const tree = plumb(['write-tree']).trim();
+    const stamp = date.toISOString();
     const commit = git([
       '-c', 'user.name=claudinite[bot]', '-c', 'user.email=claudinite@users.noreply.github.com',
       'commit-tree', tree, '-p', baseSha, '-m', message,
-    ]).trim();
+    ], { env: { ...process.env, GIT_AUTHOR_DATE: stamp, GIT_COMMITTER_DATE: stamp } }).trim();
     try {
       git(['push', '--quiet', remote, `${commit}:refs/heads/${branch}`]);
     } catch (e) {
@@ -80,7 +85,7 @@ export async function run({ root, remote, base, today = new Date(), attempts = 3
     }
     for (const b of bumps) say(`${b.id}: ${b.from} → ${b.to} (${b.changed.length} shipping file(s) changed since ${b.from})`);
     const files = Object.fromEntries(bumps.map((b) => [b.manifest, b.text]));
-    const commit = pushOnto(git, { remote, baseSha: tip, branch: base, files, message: withTaskTrailer(bumpSubject(bumps), BUMP_TASK) });
+    const commit = pushOnto(git, { remote, baseSha: tip, branch: base, files, message: withTaskTrailer(bumpSubject(bumps), BUMP_TASK), date: today });
     if (commit) {
       say(`pushed ${commit.slice(0, 10)} onto ${base}`);
       return { bumped: bumps.map((b) => ({ id: b.id, from: b.from, to: b.to })), commit };
