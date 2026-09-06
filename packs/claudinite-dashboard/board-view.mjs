@@ -10,7 +10,7 @@
 // THE PAST IS WASHED, NOW IS SOLID, THE FUTURE IS HOLLOW — the same grammar the wake
 // strip and the pulse obey, so one reader learns it once.
 
-import { el } from './ui.mjs';
+import { el, issueLink, issueUrl, splitRefs, isRef } from './ui.mjs';
 import { svgEl } from './sheet.mjs';
 
 const VIEW_W = 1000;
@@ -35,7 +35,7 @@ const scale = (axis) => (at) => {
   return Math.max(GUTTER, Math.min(VIEW_W, x));
 };
 
-export function renderBoard(board, { onSelect = () => {} } = {}) {
+export function renderBoard(board, { onSelect = () => {}, repo = null } = {}) {
   const { axis } = board;
   const x = scale(axis);
   const rows = board.groups.reduce((n, g) => n + HEADER_H + g.shown.length * ROW_H + (g.more ? 20 : 0), 0);
@@ -76,7 +76,7 @@ export function renderBoard(board, { onSelect = () => {} } = {}) {
     for (const row of group.shown) {
       const mid = y + ROW_H / 2;
       if (group.grid) drawGridRow(svg, row, axis, x, mid, onSelect);
-      else drawLaneRow(svg, row, axis, x, mid, onSelect);
+      else drawLaneRow(svg, row, axis, x, mid, onSelect, repo);
       y += ROW_H;
     }
     if (group.more) {
@@ -93,10 +93,27 @@ function text(px, py, content, cls) {
   return t;
 }
 
+// The SVG counterpart of `refNodes`: one text element whose `#N` runs are anchors, so
+// a gutter naming a PR and the issue it closes opens either one. With no repo to link
+// against — a board drawn outside a member — it is the plain text element above.
+function refText(px, py, content, cls, repo) {
+  if (!repo) return text(px, py, content, cls);
+  const t = svgEl('text', { x: px, y: py, class: cls });
+  for (const part of splitRefs(content)) {
+    const span = svgEl('tspan');
+    span.textContent = part;
+    if (!isRef(part)) { t.append(span); continue; }
+    const link = svgEl('a', { href: issueUrl(repo, part.slice(1)), target: '_blank', rel: 'noopener' });
+    link.append(span);
+    t.append(link);
+  }
+  return t;
+}
+
 // A lane row: its gutter name, its marks, and — spent only on a FINDING — one line of
 // text in the serious tint. Every age, count and policy sentence is in the hover.
-function drawLaneRow(svg, row, axis, x, mid, onSelect) {
-  svg.append(text(6, mid + 4, row.gutter, 'gutter'));
+function drawLaneRow(svg, row, axis, x, mid, onSelect, repo = null) {
+  svg.append(refText(6, mid + 4, row.gutter, 'gutter', repo));
 
   for (const mark of row.marks) {
     if (mark.kind === 'bar') {
@@ -147,7 +164,7 @@ function drawLaneRow(svg, row, axis, x, mid, onSelect) {
     svg.append(node);
   }
 
-  if (row.finding) svg.append(text(GUTTER + 6, mid + 16, row.finding, 'finding'));
+  if (row.finding) svg.append(refText(GUTTER + 6, mid + 16, row.finding, 'finding', repo));
 }
 
 // A park's KIND is its glyph, so the four are told apart without colour.
@@ -223,11 +240,13 @@ function gridCell(cell, cx, cy) {
 
 // The quiet tail: one ruled line, not a group, with the three counts that matter and a
 // disclosure naming the issues behind them.
-export function quietLine(quiet) {
+export function quietLine(quiet, { repo = null } = {}) {
+  const line = (i) => ` · ${i.title} — idle ${i.idleDays} d${i.quickWin ? ' · quick-win' : ''}${i.needsDecision ? ' · needs-decision (a decision park by another name)' : ''}`;
   const list = el('div', { className: 'detail quiet-list', hidden: true }, [
-    el('ul', {}, quiet.items.slice(0, 40).map((i) => el('li', {
-      textContent: `#${i.number} · ${i.title} — idle ${i.idleDays} d${i.quickWin ? ' · quick-win' : ''}${i.needsDecision ? ' · needs-decision (a decision park by another name)' : ''}`,
-    }))),
+    el('ul', {}, quiet.items.slice(0, 40).map((i) => el('li', {}, [
+      repo ? issueLink(repo, i.number) : `#${i.number}`,
+      line(i),
+    ]))),
   ]);
   const button = el('button', { className: 'expand', type: 'button', textContent: 'show ▾' });
   button.setAttribute('aria-expanded', 'false');

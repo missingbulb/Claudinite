@@ -128,3 +128,11 @@ test('a detail row can span the table to say a member is counted in nothing abov
   assert.equal(body.children[1].children[0].className, 'gap');
   assert.equal(body.children[0].children[1].className, 'num');
 });
+
+test('a sub-line naming an item links it, on the page of the repo it belongs to', () => {
+  const row = sheet.figureRow(fig({ sub: '3 for you · #88 · 1 on the machine' }), { repo: 'an-owner/TicketWatch' });
+  const link = row.find('s')[0].children.find((c) => typeof c !== 'string' && c.tagName === 'a');
+  assert.equal(link.href, 'https://github.com/an-owner/TicketWatch/issues/88');
+  // The fake DOM joins children with a space, so the prose is asserted piece by piece.
+  assert.match(row.find('s')[0].text, /3 for you .+#88.+1 on the machine/);
+});

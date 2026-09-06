@@ -79,11 +79,12 @@ export function chip(state) {
   return el('span', { className: `chip ${ui.cls}` }, [el('i', { className: 'dot' }), ui.label]);
 }
 
-export const reasonNodes = (reasons) =>
-  reasons.map((r) => el('span', {
-    className: `warn ${r.level}`,
-    textContent: `${LEVEL_GLYPH[r.level] ?? '▲'} ${r.text}`,
-  }));
+// A reason naming an item by number — "blocked on #12, #13" — is drawn on the page of
+// the repo that number belongs to, so it is given one to link against there. The fleet
+// page's reasons count members and name none, and pass no repo.
+export const reasonNodes = (reasons, repo = null) =>
+  reasons.map((r) => el('span', { className: `warn ${r.level}` },
+    refNodes(repo, `${LEVEL_GLYPH[r.level] ?? '▲'} ${r.text}`)));
 
 export const warnNodes = reasonNodes;
 
@@ -240,8 +241,27 @@ export const head = (table, cols) => {
 export const emptyRow = (span, text) =>
   el('tr', {}, [el('td', { colSpan: span, className: 'empty', textContent: text })]);
 
+// A number on this page is always something to OPEN, so every `#N` the page draws is
+// an anchor to it. GitHub's `/issues/<n>` redirects to the pull request when the
+// number is one, so a single form covers both and a sentence naming an issue and the
+// PR that closes it needs no telling apart.
+export const issueUrl = (repo, n) => `https://github.com/${repo}/issues/${n}`;
+
 export const issueLink = (repo, n) =>
-  el('a', { href: `https://github.com/${repo}/issues/${n}`, target: '_blank', rel: 'noopener', textContent: `#${n}` });
+  el('a', { href: issueUrl(repo, n), target: '_blank', rel: 'noopener', textContent: `#${n}` });
+
+// A sentence broken into its prose and its `#N` runs, in order — the one place the
+// page decides what counts as naming an issue. The board's SVG text splits with it too.
+export const splitRefs = (text) => String(text ?? '').split(/(#\d+)/).filter((part) => part !== '');
+export const isRef = (part) => /^#\d+$/.test(part);
+
+// A sentence that names issues or pull requests by number, as nodes — the prose
+// between the numbers unchanged, each number a link. Callers that would have passed a
+// string to `textContent` pass this as children instead. With no repo to link against
+// — the fleet page, where a number belongs to no one member — it is the sentence.
+export const refNodes = (repo, text) => (repo
+  ? splitRefs(text).map((part) => (isRef(part) ? issueLink(repo, part.slice(1)) : part))
+  : [String(text ?? '')]);
 
 export const repoLink = (repo) =>
   el('a', { href: `https://github.com/${repo}`, target: '_blank', rel: 'noopener', textContent: repo });
