@@ -11,8 +11,6 @@ A GitHub procedure the consuming repo's own docs set — its merge command, when
 
 To post a **status update** on an issue (the lifecycle's "update the issue's status" step), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
 
-The same tool's `labels` field carries the same trap: it **replaces the whole label set**, not just the ones you name. To add or remove one label, read the issue's current labels first, compute the full set with your one change applied, and write that back whole.
-
 ## An auto-merge refusal is not a verdict — read the PR's state, then act
 
 `enable_pr_auto_merge` only accepts a PR whose required checks are still **pending**, so its refusals answer *timing and configuration*, never the change. Take each at face value and stop:
@@ -146,10 +144,6 @@ A `push` or `workflow_dispatch` run isn't attached to a PR, so the PR-scoped che
 
 Resolve the wait through exactly one path — a `Monitor` until-loop, **or** direct polling of the check-run/job-log tools above — never both on the same signal. A background `sleep` timer left running beside a blocking poll reports back later as a stale notification that has to be recognized and discarded, and routinely costs extra round trips once the blocking poll hits its own timeout.
 
-## A green workflow run can still have skipped the job that mattered
-
-A workflow that short-circuits at an early gating job ("anything relevant changed?") concludes **success** even when the later publish/deploy job was skipped entirely; the run's conclusion says nothing about which jobs executed. When triaging whether a release or scheduled workflow did its real work, read that job's own conclusion, never the run's — and when the thing being triaged is a platform-side state outside the repo (a store listing stuck in review), the only closing evidence is a run that reaches that job and goes green, or the platform state itself changing.
-
 ## A run artifact resolves to a blob-storage URL a sandboxed session can't reach
 
 `download_workflow_run_artifact` hands back a `*.blob.core.windows.net`-style URL that a sandbox's egress proxy denies at CONNECT, so chasing it burns a call for nothing. Read `get_job_logs` with a generous `tail_lines` to learn which step or case failed, then reproduce it locally.
@@ -158,9 +152,9 @@ A workflow that short-circuits at an early gating job ("anything relevant change
 
 A workflow that regenerates and commits derived files and runs longer than a competing scheduled job's interval is not occasionally rejected on push — it is guaranteed to be, once the scheduled job lands first. Recovery has to **re-derive, not merge**: both sides are generator output whose only correct value is "whatever the generator computes now", so on a rejected push fetch the current base, regenerate from it plus this run's own non-generated input, and retry. Design the commit step for this from the start.
 
-## `list_pull_requests`'s `head` filter needs an owner-qualified branch, and its `merged` field can't be trusted
+## `list_pull_requests`'s `merged` field can't be trusted
 
-A bare branch name in `head` does not filter — it can hand back an unrelated PR as if it matched, with no error. Qualify it as `owner:branch-name`, or derive the answer from git (`merge-base`/`diff --stat` against the branch). The same tool's `merged`/`merged_at` fields can read `false`/empty for a PR that has genuinely landed by squash-merge, even with `fields` narrowed: confirm landed-ness by grepping the base branch's commit subjects for the squash's `(#N)`, or call `pull_request_read` `get` on the one PR you care about.
+Its `merged`/`merged_at` fields can read `false`/empty for a PR that has genuinely landed by squash-merge, even with `fields` narrowed. Confirm landed-ness by grepping the base branch's commit subjects for the squash's `(#N)`, or call `pull_request_read` `get` on the one PR you care about.
 
 ## `issue_read`'s `get_*` methods reject a PR number
 
@@ -203,13 +197,9 @@ In a GitHub-rendered Markdown file, cmark-gfm re-enters Markdown mode inside a r
 
 A broad call (e.g. `search_repositories` with `org:X`, or any list/search tool that takes no repo argument) returns every repo the token can see, not just an allowed subset — filtering the result afterward doesn't undo the fact that disallowed repos' data was already pulled into the call. When operating under a repo allowlist, scope every call explicitly instead: pass the specific `owner`/`repo` params, or anchor the query to `repo:owner/name`, one call per repo in the allowlist rather than one broad call filtered after the fact.
 
-## `search_code`'s index can lag — don't trust it alone to enumerate a population
+## Write access scoped to one repo doesn't license routing around it for a fix that belongs elsewhere
 
-Reconnaissance across many repos (which ones reference X) reaches for `search_code`, but its index can silently undercount with no error or partial-result flag: one fleet-wide sweep found 3 of 11 affected repos through it. Where you can enumerate the true candidate set directly — fetching each candidate's own file, walking a known roster — cross-check against that, and treat a search-only enumeration as a lower bound.
-
-## `codeload.github.com` can be blocked where `git clone` isn't
-
-A sandbox's egress is commonly allowlisted by host, and `curl … | tar -xz` of a repo tarball goes to `codeload.github.com` — a different host from `github.com`, and one that can 403 through the proxy while ordinary git operations work. When a tarball fetch is refused, `git clone --depth 1 https://github.com/<owner>/<repo>` yields the same tree through the allowed host.
+A session's push access is commonly scoped to a single repo even when it can *read* others. Finding a bug in a repo you can only read is not license to hunt for a way to push there: the scope is a policy boundary, not an oversight. Verify the fix in a scratch clone of the repo that owns it, then attach it as a patch to an issue in the repo you *can* write to, so a session with the right scope can `git apply` it — never edit a read-only mirror in place.
 
 ## Cap *and* qualify every list/search call — an unbounded one blows the tool-result limit
 

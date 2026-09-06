@@ -7,10 +7,6 @@
 - **A throwaway script that imports a project dependency can't live in an external scratchpad.** Node's module resolution walks up from the *script's own directory* looking for `node_modules`, which never reaches the project's tree when the script sits outside it — the import fails with `ERR_MODULE_NOT_FOUND` however correctly the dependency is installed, and `NODE_PATH` doesn't help (it has no effect on ESM resolution). Put such a script inside the project (a gitignored scratch directory works), not in the harness's separate scratchpad.
 - **Before relying on a version-gated Node runtime feature, check what version CI actually pins** — the workflow's `setup-node` step, not the Node installed in the sandbox you're working in. A session's own Node can be newer than CI's pin, so a local green run proves nothing about the version that will execute the code in CI.
 
-## Runtime behavior
-
-- **`btoa`/`atob` operate on Latin1 code units, not arbitrary Unicode text.** Calling either directly on a string with a character beyond U+00FF (Hebrew, Cyrillic, CJK, most emoji) throws or silently corrupts it, and a Latin-only test fixture never exercises the failure. Encode as UTF-8 bytes first — `Buffer.from(str, 'utf8').toString('base64')` / `Buffer.from(str, 'base64').toString('utf8')`, or a `TextEncoder`/`TextDecoder` bridge where `Buffer` isn't available.
-
 ## jsdom diverges from a real browser in ways a green test can hide
 
 - **`body.innerText` is null in jsdom.** Code reading `el.innerText || el.textContent` therefore falls through to `textContent` under test, which *includes* the `<script>` / `<style>` text, `<select>` / `<option>` text, and CSS-hidden text a real browser's `innerText` omits. Treat body-text results as jsdom-optimistic; never add a test that only passes because of it. (1)

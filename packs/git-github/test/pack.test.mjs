@@ -566,3 +566,46 @@ jobs:
     },
   },
 });
+
+// --- action guards, judged at Stop over a transcript: the offending calls
+// flag, the clean ones beside them do not.
+import { makeTranscript } from '../../../engine-tests/helpers.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
+
+const judge = (id, calls) => {
+  const rule = declaredCheck('packs/git-github', id);
+  const session = makeTranscript(calls.map(([name, input]) => ({ type: 'assistant', message: { content: [{ type: 'tool_use', name, input }] } })));
+  const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
+  try { return runRule(rule, buildContext({ root, mode: 'all', transcriptPath: session.path })).map((f) => f.what); }
+  finally { cleanup(root); session.cleanup(); }
+};
+
+test('issue-labels-overwrite: an issue_write carrying labels, whatever else it carries', () => {
+  assert.deepEqual(judge('issue-labels-overwrite', [
+    ['mcp__github__issue_write', { method: 'update', issue_number: 3, labels: ['done'] }],
+    ['mcp__github__issue_write', { method: 'update', issue_number: 3, body: 'labels: none' }],
+    ['mcp__github__add_issue_comment', { issue_number: 3, body: 'labels' }],
+  ]), ['an issue_write whose labels field replaces the issue\'s whole label set']);
+});
+
+test('pull-request-head-unqualified: a head filter with no owner: prefix', () => {
+  assert.deepEqual(judge('pull-request-head-unqualified', [
+    ['mcp__github__list_pull_requests', { owner: 'o', repo: 'r', head: 'feature/x', fields: ['number'] }],
+    ['mcp__github__list_pull_requests', { owner: 'o', repo: 'r', head: 'o:feature/x', fields: ['number'] }],
+    ['mcp__github__list_pull_requests', { owner: 'o', repo: 'r', fields: ['number'] }],
+  ]), ['a list_pull_requests whose head "feature/x" names no owner']);
+});
+
+test('codeload-tarball-fetch: a tarball fetch through the host a sandbox proxy denies', () => {
+  assert.deepEqual(judge('codeload-tarball-fetch', [
+    ['Bash', { command: 'curl -sL https://codeload.github.com/o/r/tar.gz/main | tar -xz' }],
+    ['Bash', { command: 'git clone --depth 1 https://github.com/o/r' }],
+  ]), ['a fetch from codeload.github.com']);
+});
+
+test('search-code-lower-bound: every code search, and nothing else', () => {
+  assert.deepEqual(judge('search-code-lower-bound', [
+    ['mcp__github__search_code', { query: 'claudinite-settings', fields: ['path'] }],
+    ['mcp__github__search_issues', { query: 'q', fields: ['number'] }],
+  ]), ['a code search whose result is read as a complete enumeration']);
+});

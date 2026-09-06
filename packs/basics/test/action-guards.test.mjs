@@ -61,3 +61,31 @@ test('pull-request-without-closing-line and github-list-without-fields', () => {
     ['mcp__github__get_me', {}],
   ]), ['a mcp__github__list_issues call with no fields']);
 });
+
+test('ask-user-question-already-decided biases every blocking question, and only that tool', () => {
+  assert.deepEqual(judge('ask-user-question-already-decided', [
+    ['AskUserQuestion', { questions: [{ question: 'Merge?', header: 'Merge', options: [{ label: 'a', description: 'b' }, { label: 'c', description: 'd' }], multiSelect: false }] }],
+    ['Bash', { command: 'echo AskUserQuestion' }],
+  ]), ['a blocking question to the owner']);
+});
+
+test('bare-wait-in-fresh-shell: a wait with no job launched in the same call', () => {
+  assert.deepEqual(judge('bare-wait-in-fresh-shell', [
+    ['Bash', { command: 'wait' }],
+    ['Bash', { command: 'sleep 30; wait $!' }],
+    ['Bash', { command: 'node build.mjs & wait' }],
+    ['Bash', { command: 'node build.mjs > out.txt 2>&1 &\nwait\ncat out.txt' }],
+    ['Bash', { command: 'git commit -m "wait for CI" && git push' }],
+    ['Bash', { command: 'awaited=1; echo $awaited' }],
+  ]), ['a "wait" in a shell that launched nothing', 'a "wait $!" in a shell that launched nothing']);
+});
+
+test('manufactured-no-op-call: a call whose only purpose is to occupy the turn', () => {
+  assert.deepEqual(judge('manufactured-no-op-call', [
+    ['Bash', { command: 'sleep 1; echo waiting' }],
+    ['Bash', { command: 'true' }],
+    ['Bash', { command: 'echo "still waiting for the subagent"' }],
+    ['Bash', { command: 'echo done > status.txt' }],
+    ['Bash', { command: 'sleep 5; cat out.txt' }],
+  ]), ['a no-op call ("sleep 1; echo waiting") made only to pass the turn', 'a no-op call ("true") made only to pass the turn', 'a no-op call ("echo "still waiting for the subagent"") made only to pass the turn']);
+});

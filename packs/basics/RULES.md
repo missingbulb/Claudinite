@@ -138,19 +138,10 @@
   list, never the lines you asked for, with no error to catch it. Pass `output_mode: "content"`
   in the same call as any context flag.
 
-- **Reaching for `AskUserQuestion`** — it blocks on a human, so first check whether the answer is
-  already decided: by an instruction in context, by state one read away, or by the recommended
-  option being the status quo. Batch every open decision into one call, and for anything
-  answerable from the instruction, the tree or a reversible default, act and say what you assumed.
-
-- **Waiting on a background command across two separate Bash calls** — each call is a fresh
-  shell, so a bare `wait` in a later call has no job to wait on and returns at once, looking like
-  a satisfied wait; the same blind sleep hides in an `until` loop whose condition is already true
-  on its first check. Consume the launching call's own result, or `run_in_background: true`.
-
-- **Waiting on a background subagent or task with nothing left to do** — say so in plain text
-  with no tool call: a manufactured no-op (`sleep 1; echo waiting`) can come back with no visible
-  text, which the harness then interrupts to ask for a real response.
+- **Polling with an `until` loop** — write a condition that names the state awaited (a file's
+  arrival, a run's status): one already true on its first check is a blind sleep wearing a loop,
+  as a bare `wait` in a later Bash call is — each call is a fresh shell, which is what
+  `bare-wait-in-fresh-shell` refuses.
 
 - **Handing the owner a command block to paste into their terminal** — carry no trailing
   `# comment` on any line: interactive zsh treats `#` as a comment only under

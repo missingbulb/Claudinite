@@ -32,9 +32,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Searching for a tool with ToolSearch | medium | complexity | prose: 86 words |
 | Calling Edit | low | complexity | prose: 39 words |
 | Calling Grep with a context flag | medium | complexity | prose: 51 words |
-| Reaching for AskUserQuestion | medium | complexity | prose: 64 words |
-| Waiting across two separate Bash calls | high | correctness | prose: 68 words |
-| Waiting idle between subagent notifications | low | complexity | prose: 48 words |
+| Polling with an until loop | high | correctness | prose: 57 words + check (`bare-wait-in-fresh-shell`) |
 | Handing the owner a terminal command | medium | correctness | prose: 48 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
@@ -105,6 +103,9 @@ The working-discipline rules with a deterministic signature. The world rules rea
 | `pkill-pattern-self-match` | low | correctness | guard: advisory |
 | `pull-request-without-closing-line` | medium | complexity | guard: advisory |
 | `github-list-without-fields` | low | complexity | guard: advisory |
+| `ask-user-question-already-decided` | medium | complexity | guard: advisory |
+| `bare-wait-in-fresh-shell` | high | correctness | guard: blocking |
+| `manufactured-no-op-call` | low | complexity | guard: advisory |
 
 `barrier` is the one check a project has to configure before it does anything: it enforces a
 **directed folder-access graph** the repo declares on this pack's entry as `config.barriers.rules`,
