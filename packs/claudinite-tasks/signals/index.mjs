@@ -38,8 +38,8 @@ const HOUSEKEEPING = /\[skip ci\]|(^|\n)\s*baselin(e|ing)\b|claudinite[ -](basel
 // …and a THIRD exclusion the message cannot express: a commit that touched
 // nothing outside `.claudinite/` moved the repo's own working rules, not the
 // project. Every consumer of `substantiveChange` means "genuine project work" by
-// it — an issue was implemented (tidy-issues), something shippable changed
-// (store-release), there is a lesson to extract (growth-extract) — and none of
+// it — something shippable changed (store-release), there is a lesson to extract
+// (growth-extract), a comment may have drifted (improve-comments) — and none of
 // those is true of a corpus edit. Message and author cannot catch it: a human
 // landing a lesson PR writes an ordinary message under their own login, so the
 // growth lifecycle's own landed output re-armed it the next night and a repo
@@ -174,8 +174,8 @@ const COLLECTORS = {
     // the review discussion and the "what changed and why" — usually the richest
     // lesson material in a window — and `state=open` alone made it unreachable to
     // any task bound to this signal. It is deliberately NOT folded into `open` or
-    // `touched`: those two are other tasks' target sets (the PR tidy sweep acts on
-    // `open`), and widening them here would silently widen what those tasks do.
+    // `touched`: those two are other tasks' target sets, and widening them here
+    // would silently widen what those tasks do.
     // The same exclusions the `commits` and `issues` collectors apply hold here, so
     // a growth task still cannot see its own merged output and re-trigger on it.
     const closed = await pagedWindow(
@@ -193,8 +193,8 @@ const COLLECTORS = {
     // neighbour with its own output.
     //
     // Scoped to the window's PRs, never the whole open set: `open` is other tasks'
-    // TARGET set (the PR tidy sweep acts on it, the pending-round conditions read
-    // its paths), and only MOVEMENT is what the trailer reclassifies.
+    // TARGET set (the pending-round conditions read its paths), and only MOVEMENT is
+    // what the trailer reclassifies.
     const inWindow = open.filter((p) => new Date(p.updated_at) >= since);
     const taskAuthored = new Map();
     for (const p of [...inWindow, ...mergedCandidates]) {
@@ -247,7 +247,7 @@ const COLLECTORS = {
     // Exclude PRs (the issues endpoint returns both) and the scheduler's own
     // work items, its schedule board, and standing trackers — invisible to
     // signals (DESIGN §3.3). The board especially: every rewrite would land in
-    // `issues.touched` and wake tidy-issues on the queue's own churn (F8).
+    // `issues.touched` and wake an issue-gated task on the queue's own churn (F8).
     const real = open.filter((i) => !i.pull_request
       && !/^\[claudinite-(task|work|schedule)\]/.test(i.title ?? '')
       && !/^(claudinite tracker:|\[claudinite\] ci performance$|auto-improvements tracker\b|repo tidy tracker$)/i.test((i.title ?? '').trim()));

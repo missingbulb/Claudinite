@@ -24,7 +24,7 @@ export default {
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'curating a canon\'s packs/ shelf — promoting member lessons, sweeping members for unhomed technologies, authoring and policing its packs',
-    excludes: 'a repo\'s rules for its own product — its local packs; authoring content — claudinite-growth; self-tidying — tidy-repo',
+    excludes: 'a repo\'s rules for its own product — its local packs; authoring content — claudinite-growth; housekeeping — basics',
   },
   // Not adoptable content: a canon home is a role somebody assigns, not a shape a
   // fingerprint can suspect, so the pack is withheld from the catalog a session

@@ -161,10 +161,10 @@ test('issues: dispatch issues and trackers are invisible; touched respects the w
       { number: 2, title: '[claudinite-task] p/t d2026-07-21', updated_at: '2026-07-21T12:00:00Z' },
       { number: 3, title: 'Claudinite tracker: Repo Tidy', updated_at: '2026-07-21T12:00:00Z' },
       // ci-performance's tracker predates the naming convention (#904), so the
-      // prefix alone does not hide it and tidy-issues triaged it as project work.
+      // prefix alone does not hide it and an issue-gated task took it as project work.
       { number: 8, title: '[claudinite] CI performance', updated_at: '2026-07-21T12:00:00Z' },
       // The schedule board (#1115): every rewrite bumps updated_at, so letting
-      // it through would wake tidy-issues on the queue's own churn (F8).
+      // it through would wake an issue-gated task on the queue's own churn (F8).
       { number: 6, title: '[claudinite-schedule] the schedule board', updated_at: '2026-07-21T12:00:00Z' },
       { number: 7, title: '[claudinite-work] p/t', updated_at: '2026-07-21T12:00:00Z' },
       { number: 4, title: 'old issue', updated_at: '2026-07-01T00:00:00Z', labels: [] },
@@ -288,7 +288,7 @@ test('a collector that throws is isolated under its key', async () => {
 
 // --- commits: Claudinite's own corpus is not project work --------------------
 // A commit touching nothing but `.claudinite/` moves the repo's working rules,
-// not the project. It implements no issue (tidy-issues), ships no user-visible
+// not the project. It implements no issue, ships no user-visible
 // change (store-release) and is not a lesson to extract (growth-extract) — yet a
 // human-authored one wearing an ordinary message passed every existing exclusion,
 // so the growth lifecycle's own landed output re-armed it the next night and a
@@ -372,14 +372,14 @@ test('commits: a task-authored commit is not substantive, and records which task
   const gh = fakeGh([
     [/\/commits\?sha=/, { status: 200, json: [
       { sha: 'p', commit: { message: 'Improve the parser\n\nRefs #12' }, author: { login: 'dev' } },
-      { sha: 't', commit: { message: 'Improve the parser\n\nClaudinite-Task: tidy-repo/improve-comments' }, author: { login: 'dev' } },
+      { sha: 't', commit: { message: 'Improve the parser\n\nClaudinite-Task: basics/improve-comments' }, author: { login: 'dev' } },
     ] }],
     [/\/commits\/[pt]$/, { status: 200, json: { files: [{ filename: 'src/app.mjs' }] } }],
   ]);
   const out = await collectSignals(gh, ctx(), ['commits']);
   // Two commits with the SAME subject and the same author, one of them machinery.
   assert.deepEqual(out.commits.list.map((c) => c.substantive), [true, false]);
-  assert.deepEqual(out.commits.list.map((c) => c.task), [null, 'tidy-repo/improve-comments']);
+  assert.deepEqual(out.commits.list.map((c) => c.task), [null, 'basics/improve-comments']);
 });
 
 test('commits: a task-authored commit alone leaves the window non-substantive', async () => {
@@ -406,7 +406,7 @@ const trailerPrs = (routes) => fakeGh([
 test('prs: a task-authored PR moving is not a touch, and its head read is what says so', async () => {
   const out = await collectSignals(trailerPrs([
     [/\/commits\/human$/, { status: 200, json: { commit: { message: 'Improve the parser' } } }],
-    [/\/commits\/robot$/, { status: 200, json: { commit: { message: 'Sweep\n\nClaudinite-Task: tidy-repo/improve-comments' } } }],
+    [/\/commits\/robot$/, { status: 200, json: { commit: { message: 'Sweep\n\nClaudinite-Task: basics/improve-comments' } } }],
     [/\/pulls\/\d+\/files/, { status: 200, json: [{ filename: 'src/app.mjs' }] }],
   ]), ctx(), ['prs']);
   assert.deepEqual(out.prs.touched, [7]);

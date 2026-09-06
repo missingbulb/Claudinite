@@ -553,7 +553,7 @@ test('a pre-rename member loads identically to a converged one', () => {
   try {
     writeFiles(root, {
       '.claudinite-checks.json': JSON.stringify({
-        packs: ['basics', { id: 'tidy-repo', config: { k: 1 } }],
+        packs: ['basics', { id: 'product-wiki', config: { k: 1 } }],
         maintenance: { delivery: 'review', mechanism: 'versioned' },
         claudinite: {
           updated: '2026-07-26T20:10:18.694Z',
@@ -568,11 +568,11 @@ test('a pre-rename member loads identically to a converged one', () => {
     });
     const cfg = loadConfig(root);
     assert.deepEqual(cfg.errors, [], 'the retired shape is legal to READ — only nothing writes it');
-    assert.deepEqual(cfg.packs, ['basics', 'tidy-repo']);
+    assert.deepEqual(cfg.packs, ['basics', 'product-wiki']);
     assert.equal(cfg.engineVersion, '60820.1');
     assert.deepEqual(cfg.packVersions, { basics: '60801.1', 'claudinite-lifecycle': '60802.1' });
     assert.equal(cfg.dailyClaudiniteUpdatesRequirePrReview, true, 'the retired delivery preference still speaks');
-    assert.deepEqual(cfg.packConfig['tidy-repo'], { k: 1 });
+    assert.deepEqual(cfg.packConfig['product-wiki'], { k: 1 });
   } finally { removeTree(root); }
 });
 
@@ -583,8 +583,8 @@ test('the current settings-file name wins over the retired one', () => {
   try {
     writeFiles(root, {
       '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) + '\n',
-      '.claudinite-settings.json': JSON.stringify({ packs: ['tidy-repo'] }) + '\n',
+      '.claudinite-settings.json': JSON.stringify({ packs: ['product-wiki'] }) + '\n',
     });
-    assert.deepEqual(loadConfig(root).packs, ['tidy-repo']);
+    assert.deepEqual(loadConfig(root).packs, ['product-wiki']);
   } finally { removeTree(root); }
 });

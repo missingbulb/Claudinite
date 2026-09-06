@@ -30,7 +30,7 @@ test('an adoption-shaped diff lands: declaration, re-vendored mount (its policy 
     { file: '.claudinite/shared/packs/jwt/pack.mjs', before: null, after: 'export default {};\n' },
     // The vendored tree carries canon-authored policy files — the exact case
     // coversMountPolicySources exists for.
-    { file: '.claudinite/shared/packs/tidy-repo/tasks/tidy-issues/task.json', before: null, after: '{}\n' },
+    { file: '.claudinite/shared/packs/basics/tasks/improve-comments/task.json', before: null, after: '{}\n' },
     { file: '.claudinite/shared/packs/claudinite-growth/merge-rules.json', before: '[]\n', after: '[{"name":"x"}]\n' },
     { file: '.claudinite/claudinite-rules.GENERATED.md', before: 'old\n', after: 'new\n' },
   ]);

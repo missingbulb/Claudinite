@@ -350,10 +350,10 @@ test('rollUp never counts an unreadable member as healthy', () => {
 
 test('packSpread ranks packs by how many members carry them', () => {
   const spread = packSpread([
-    { packs: ['claudinite-lifecycle', 'basics'] }, { packs: ['claudinite-lifecycle'] }, { packs: ['claudinite-lifecycle', 'tidy-repo'] },
+    { packs: ['claudinite-lifecycle', 'basics'] }, { packs: ['claudinite-lifecycle'] }, { packs: ['claudinite-lifecycle', 'product-wiki'] },
   ]);
   assert.deepEqual(spread[0], { pack: 'claudinite-lifecycle', members: 3 });
-  assert.deepEqual(spread.map((p) => p.pack), ['claudinite-lifecycle', 'basics', 'tidy-repo']);
+  assert.deepEqual(spread.map((p) => p.pack), ['claudinite-lifecycle', 'basics', 'product-wiki']);
 });
 
 // The fleet-only view: one task, everywhere it runs. A shared pack's task parked in

@@ -129,8 +129,8 @@ test('parseDeclaration reads an absent `preconditions` as the empty expression, 
 // read (a broken parse) comes back null, never a default — a confident wrong
 // cadence would put a wrong next-anchor on the roster.
 test('parseDeclaration reads a task.json, defaults filled', () => {
-  const d = parseDeclaration('{ "$schema": "x", "id": "tidy-prs", "preconditions": ["due:weekly", "substantive-change"], "expected_outcome": "no_code_changes" }');
-  assert.equal(d.id, 'tidy-prs');
+  const d = parseDeclaration('{ "$schema": "x", "id": "improve-comments", "preconditions": ["due:weekly", "substantive-change"], "expected_outcome": "no_code_changes" }');
+  assert.equal(d.id, 'improve-comments');
   assert.deepEqual(d.preconditions, ['due:weekly', 'substantive-change']);
   assert.equal(d.agent_model, 'none');
   assert.equal(d.agent_execution_timeout, null);

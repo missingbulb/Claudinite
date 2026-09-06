@@ -39,7 +39,7 @@ test('the title summarizes packs by count rather than naming every one', () => {
     { id: 'claudinite-lifecycle', from: 6, to: 8 },
     { id: 'git-github', from: 3, to: 4 },
     { id: 'claudinite-growth', from: 6, to: 7 },
-    { id: 'tidy-repo', from: 4, to: 5 },
+    { id: 'product-wiki', from: 4, to: 5 },
   ];
   const { title, body } = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 4, to: 5 }, packs: { plan } });
   assert.equal(title, 'Claudinite update: engine v4 → v5 and 5 packs upgraded');
@@ -49,7 +49,7 @@ test('the title summarizes packs by count rather than naming every one', () => {
 test('each half of the title appears only when that half moved', () => {
   const engineOnly = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 4, to: 5 }, packs: { plan: [{ id: 'basics', from: 2, to: 2 }] } });
   assert.equal(engineOnly.title, 'Claudinite update: engine v4 → v5');
-  const packsOnly = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 5, to: 5 }, packs: { plan: [{ id: 'basics', from: 1, to: 2 }, { id: 'tidy-repo', from: 4, to: 5 }] } });
+  const packsOnly = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 5, to: 5 }, packs: { plan: [{ id: 'basics', from: 1, to: 2 }, { id: 'product-wiki', from: 4, to: 5 }] } });
   assert.equal(packsOnly.title, 'Claudinite update: 2 packs upgraded');
 });
 

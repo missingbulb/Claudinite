@@ -190,7 +190,7 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   the worker doc points at. The exact-title lookup and the create-then-close pair are
   a library that code-work may call (`packs/claudinite-tasks/tracker.mjs`), never a phase:
   whether a run with nothing to say should mint a tracker at all is the task's own
-  judgment, and tidy-repo's three answer no.
+  judgment, and a task whose output is its PR answers no.
 
 `task-declaration-shape` and `task-md-only-when-agentic` are **relevance-first**:
 both key off a `tasks/<name>/task.json` existing, so on a repo that carries no tasks
