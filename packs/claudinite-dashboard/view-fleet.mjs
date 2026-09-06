@@ -18,6 +18,7 @@ import { fleetCandidates } from './next-work.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, leadCard, repoLink, tiles, segmentBar,
   reasonNodes, queueUrl, stackedColumns, chartLegend, windowFigure, ciMark, commitGraph, packMark,
+  attentionMark,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
 } from './ui.mjs';
 import { band, slip, machineCell, beats, wakeTicks, figureRow, pulseChart, detailTable, expander } from './sheet.mjs';
@@ -295,7 +296,9 @@ function memberRows(s, onOpen, now) {
 
   // The estimate, and immediately beside it what the estimate is made of. A number
   // with no breakdown is a number nobody can check; a breakdown with no total is a
-  // list nobody can prioritise between rows.
+  // list nobody can prioritise between rows. The breakdown is a mark rather than the
+  // sentences the tiles print — see `attentionMark`, and the width this column used to
+  // take from the other nine.
   const attention = memberAttention(s);
   const minutes = estimateMinutes(attention);
   const est = el('td', { className: 'num nw' }, [
@@ -303,11 +306,7 @@ function memberRows(s, onOpen, now) {
     el('div', { className: 'sub', textContent: minutes ? 'min' : '' }),
   ]);
 
-  const needs = attentionBreakdown(attention);
-  const what = el('td', {}, needs.length
-    ? [el('div', { className: 'needs' }, needs.map((r) =>
-      el('div', { className: `warn ${r.level}`, textContent: `${LEVEL_GLYPH[r.level]} ${r.text}` })))]
-    : [el('span', { className: 'sub', textContent: 'nothing waiting' })]);
+  const what = el('td', {}, [attentionMark(attentionBreakdown(attention))]);
 
   // --- Claudinite: what the machinery is doing here -------------------------------
 

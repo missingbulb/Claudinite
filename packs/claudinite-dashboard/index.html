@@ -119,13 +119,17 @@
   /* A band is a `<section>`, and the page's own section rule gives those a bottom
      margin — four of them put 104 px of air inside a block budgeted at 450. The sheet
      has no gaps between bands by construction: a rule separates them. */
-  .band { display: grid; grid-template-columns: 112px 1fr; border-top: 1px solid var(--rule); margin: 0; }
-  .band:first-child { border-top: 0; }
-  .band .stub { padding: 10px 12px 10px 14px; border-right: 1px solid var(--ledger); }
-  .band .stub .cap { display: block; line-height: 1.25; }
-  .band .stub .q { display: block; font-size: 11px; color: var(--muted); font-style: italic;
+  /* The sheet's band, and a `section` only — never a table row. A `<tr class="band">`
+     matched this and was laid out as a two-column grid, which drops `colSpan` and
+     stacks a grouped head's titles on top of each other; the grouped head is
+     `group-band` now, and this stays qualified so the collision cannot come back. */
+  section.band { display: grid; grid-template-columns: 112px 1fr; border-top: 1px solid var(--rule); margin: 0; }
+  section.band:first-child { border-top: 0; }
+  section.band .stub { padding: 10px 12px 10px 14px; border-right: 1px solid var(--ledger); }
+  section.band .stub .cap { display: block; line-height: 1.25; }
+  section.band .stub .q { display: block; font-size: 11px; color: var(--muted); font-style: italic;
                    margin-top: 3px; line-height: 1.3; }
-  .band .body { padding: 8px 16px 10px; min-width: 0; }
+  section.band .body { padding: 8px 16px 10px; min-width: 0; }
 
   /* start here: the one object that sits ON the sheet */
   .slip { background: var(--you-paper); border-radius: 2px; padding: 8px 14px 9px;
@@ -283,14 +287,14 @@
   .pulse svg { width: 100%; height: 28px; display: block; }
   .pulse .n { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
 
-  .band.next .body { color: var(--muted); font-size: 12px; padding-top: 10px; padding-bottom: 10px; }
+  section.band.next .body { color: var(--muted); font-size: 12px; padding-top: 10px; padding-bottom: 10px; }
 
   /* The repo sheet is budgeted at 450 px so the Work board — the page's core — begins
      above the fold. It buys that with tighter tracks rather than fewer facts: the
      figure and delta columns give their slack to the text column, which is what stops
      a two-word unit wrapping onto a second line and doubling a row. */
-  .page.compact .band .stub { padding-top: 7px; padding-bottom: 7px; }
-  .page.compact .band .body { padding-top: 5px; padding-bottom: 6px; }
+  .page.compact section.band .stub { padding-top: 7px; padding-bottom: 7px; }
+  .page.compact section.band .body { padding-top: 5px; padding-bottom: 6px; }
   .page.compact .fig { grid-template-columns: 58px minmax(0,1fr) 50px 40px; min-height: 30px; }
   .page.compact .fig .v { font-size: 16px; }
   .page.compact .fig .sp svg { width: 40px; height: 17px; }
@@ -300,8 +304,8 @@
   .page.compact .pulse svg { height: 20px; }
   .page.compact .machine .cell .v { margin-top: 2px; }
   @media (max-width: 900px) {
-    .band { grid-template-columns: 1fr; }
-    .band .stub { border-right: 0; padding-bottom: 0; }
+    section.band { grid-template-columns: 1fr; }
+    section.band .stub { border-right: 0; padding-bottom: 0; }
     .ledger, .totals, .machine { grid-template-columns: 1fr; }
     .ledger .col, .totals > div, .machine .cell { border-left: 0; padding-left: 0; }
   }
@@ -440,19 +444,26 @@
   /* A wide row is three questions, not twelve columns. The band names them and a
      single rule carries each group down the table — a heavier treatment (a wash, a
      border box) would fight the severity edge the rows already use. */
-  tr.band th { padding-bottom: 2px; border-bottom: 0; font-size: 10px;
-               color: var(--ink-2); letter-spacing: 0.08em; }
-  tr.band th.group { border-left: 1px solid var(--rule); padding-left: 12px; }
-  tr.band th.group.blank { border-left: 0; }
+  /* The titles wrap. They inherit the `th` rule's `nowrap`, which is right for a column
+     name — a one-word label the layout can widen the column to fit — and wrong for a
+     group title, a phrase sitting over however many columns its group happens to have:
+     widening a column to fit its group's title is the band deciding the grid's shape. */
+  tr.group-band th { padding-bottom: 2px; border-bottom: 0; font-size: 10px;
+                     color: var(--ink-2); letter-spacing: 0.08em; white-space: normal; }
+  tr.group-band th.group { border-left: 1px solid var(--rule); padding-left: 12px; }
+  tr.group-band th.group.blank { border-left: 0; }
   th.group-start, td.group-start { border-left: 1px solid var(--rule); }
   /* A grouped grid is wide by construction. Given the choice between squeezing every
      column until its text wraps to five lines and scrolling the panel, scroll: the
      groups exist so a reader can go to the one question they came for. */
   /* The grid's floor, and it is a floor rather than a fit: a table this wide would
      otherwise collapse its columns into unreadable slivers before the panel decides
-     to scroll. Folding Stars into the member cell, CI into a dot and the last-commit
-     date into a 90-day graph is what let this come down from 1500. */
-  #fleet { min-width: 1090px; }
+     to scroll. Folding Stars into the member cell, CI into a dot, the last-commit
+     date into a 90-day graph and the parks into a bar is what let this come down from
+     1500 — and the last of those is why no column here is prose any more, which is the
+     floor's real job: a floor only stops the slivers, it cannot stop one column that
+     wants four hundred pixels from taking them from the other nine. */
+  #fleet { min-width: 1040px; }
   #roster { min-width: 1080px; }
   /* Health is prose and needs room to be one line per reason; every other column is a
      number or a chip and can stay narrow. */
@@ -724,6 +735,10 @@
   /* The attention tile's itemisation — what kind of human attention, not how much. */
   .needs { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; }
   .needs .warn { font-size: 11.5px; }
+  /* The Waiting cell's mark. The line under the bar names every kind, so it is allowed
+     to wrap rather than ellipsise — losing "9 actions" off the end would leave the bar
+     showing a weight with nothing saying what it is made of. */
+  .attn .sub { white-space: normal; line-height: 1.35; }
   code { background: color-mix(in srgb, var(--ink) 7%, transparent);
          padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
 </style>
