@@ -107,7 +107,7 @@ test('a marked issue\'s own blockers are read, alongside a blocked item\'s', asy
 
   const items = [{
     number: 200, state: 'open', labels: [{ name: STATUS_BLOCKED }],
-    body: workItemBody({ taskPath: 't/task.mjs', blockedBy: [900] }),
+    body: workItemBody({ taskPath: 't/task.md', blockedBy: [900] }),
   }];
   const requests = [{ number: 201, body: 'Blocked-by: #901\n' }];
 

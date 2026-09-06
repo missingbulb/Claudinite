@@ -45,6 +45,6 @@ test('what an adoption does not write parks: repo source, workflows, repo-owned 
     { file: '.github/workflows/claudinite-scheduler.yml', before: null, after: 'name: x\n' },
   ]).mergeable, false, 'a scaffolded workflow is reviewed — fail-safe, and rare');
   assert.equal(verdict([
-    { file: 'packs/p/tasks/t/task.mjs', before: 'a\n', after: 'b\n' },
+    { file: 'packs/p/tasks/t/task.json', before: 'a\n', after: 'b\n' },
   ]).mergeable, false, 'a repo-owned task declaration is never coverable');
 });

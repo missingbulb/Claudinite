@@ -49,7 +49,7 @@ test('in-session-github-access: a run_daily/ path is no longer an in-session sur
   // arm went with it. Drift guard: if run_daily/ is ever re-added to IN_SESSION
   // without a planner to justify it, this fails.
   const root = makeRepo({ changed: {
-    '.claudinite/local/packs/x/run_daily/task.mjs': 'const t = process.env.GITHUB_TOKEN;\nexport const y = t;\n',
+    '.claudinite/local/packs/x/run_daily/worker.mjs': 'const t = process.env.GITHUB_TOKEN;\nexport const y = t;\n',
   } });
   try {
     assert.equal(run(root).length, 0);

@@ -50,7 +50,7 @@ const read = (over = {}) => ({
   declaration: decl(),
   items: [],
   runs: [],
-  paths: ['packs/basics/tasks/task-janitor/task.mjs'],
+  paths: ['packs/basics/tasks/task-janitor/task.json'],
   ...over,
 });
 
@@ -141,7 +141,7 @@ test('a single scheduler failure is serious and a streak is critical', () => {
 
 // The signal no per-repo page can show you: the scheduler was never wired up at all.
 test('declared tasks with no work item ever is surfaced', () => {
-  const s = summariseMember(read({ items: [], paths: ['packs/basics/tasks/task-janitor/task.mjs'] }), { now: NOW, canon: CANON });
+  const s = summariseMember(read({ items: [], paths: ['packs/basics/tasks/task-janitor/task.json'] }), { now: NOW, canon: CANON });
   assert.equal(s.level, 'serious');
   assert.match(s.reasons.find((r) => /no work item/.test(r.text)).text, /1 task declared/);
 });
@@ -438,7 +438,7 @@ test('a behind mount is a reason that names the packs, at routine severity', () 
 });
 
 test('one declared task is not "1 tasks"', () => {
-  const one = summariseMember(read({ items: [], paths: ['packs/basics/tasks/task-janitor/task.mjs'] }), { now: NOW, canon: CANON });
+  const one = summariseMember(read({ items: [], paths: ['packs/basics/tasks/task-janitor/task.json'] }), { now: NOW, canon: CANON });
   assert.match(one.reasons.find((r) => /no work item/.test(r.text)).text, /^1 task declared/);
 });
 

@@ -234,7 +234,7 @@ test('no granular policy covers a change to the policy sources, comment-only exc
   // 'anything' as an allow term beside a granular term keeps the policy granular,
   // so this is the widest coverage the guard must still beat.
   const widest = ['anything', 'reject:doc-changes'];
-  for (const file of ['packs/p/merge-rules.json', 'packs/p/tasks/t/task.mjs',
+  for (const file of ['packs/p/merge-rules.json', 'packs/p/tasks/t/task.json',
     'packs/claudinite-tasks/merge-policy.mjs', 'packs/claudinite-tasks/workRules/automerge-policy-scope.mjs']) {
     const v = policyVerdict({ policy: widest, entries: [edited(file, 'a', 'b')] });
     assert.equal(v.mergeable, false, `${file} must not be coverable`);
@@ -244,14 +244,14 @@ test('no granular policy covers a change to the policy sources, comment-only exc
   assert.equal(policyVerdict({
     policy: ['file-additions'], entries: [added('local/packs/x/merge-rules.json')],
   }).mergeable, false);
-  // A comment-only edit to a task declaration cannot change what it declares.
+  // A comment-only edit to a policy source cannot change what it declares.
   assert.equal(policyVerdict({
     policy: ['comment-only-changes'],
-    entries: [edited('packs/p/tasks/t/task.mjs', 'export default {}; // a\n', 'export default {}; // b\n')],
+    entries: [edited('packs/claudinite-tasks/merge-policy.mjs', 'x(); // a\n', 'x(); // b\n')],
   }).mergeable, true);
   // The plain 'anything' policy — the trusted converge lane — is exempt.
   assert.equal(policyVerdict({
-    policy: 'anything', entries: [edited('packs/p/tasks/t/task.mjs', 'a', 'b')],
+    policy: 'anything', entries: [edited('packs/p/tasks/t/task.json', 'a', 'b')],
   }).mergeable, true);
 });
 
@@ -358,7 +358,7 @@ test('coversMountPolicySources exempts vendored policy files only, and only for 
     coversMountPolicySources: true,
   }, 't');
   const declaredRules = new Map([[mountRule.name, mountRule]]);
-  const mountTask = edited('.claudinite/shared/packs/p/tasks/t/task.mjs', 'a\n', 'b\n');
+  const mountTask = edited('.claudinite/shared/packs/p/merge-policy.mjs', 'a\n', 'b\n');
 
   assert.equal(policyVerdict({ policy: ['mount-refresh'], entries: [mountTask], declaredRules }).mergeable, true);
   // Without the flag the same coverage is refused…
@@ -371,7 +371,7 @@ test('coversMountPolicySources exempts vendored policy files only, and only for 
   }).mergeable, false);
   // …a generic built-in never gets it…
   assert.equal(policyVerdict({
-    policy: ['file-additions'], entries: [added('.claudinite/shared/packs/p/tasks/t/task.mjs')],
+    policy: ['file-additions'], entries: [added('.claudinite/shared/packs/p/tasks/t/task.json')],
   }).mergeable, false);
   // …and a REPO-OWNED policy source stays absolute even for the flagged rule.
   const rootRule = compileDeclaredRule({
@@ -380,7 +380,7 @@ test('coversMountPolicySources exempts vendored policy files only, and only for 
     coversMountPolicySources: true,
   }, 't');
   assert.equal(policyVerdict({
-    policy: ['everything'], entries: [edited('packs/p/tasks/t/task.mjs', 'a\n', 'b\n')],
+    policy: ['everything'], entries: [edited('packs/p/tasks/t/task.json', 'a\n', 'b\n')],
     declaredRules: new Map([[rootRule.name, rootRule]]),
   }).mergeable, false);
   // A reject term still vetoes an exempted file — the exemption is coverage, not immunity.

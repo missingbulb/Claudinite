@@ -82,7 +82,7 @@ test('flags a code_work worker that logs a discretionary cycle skip (the baselin
   assert.match(findings[0].what, /discretionary cycle skip/);
 });
 
-test('never scans task.mjs itself — the precondition is where skip logic BELONGS', () => {
-  const findings = run({ 'packs/demo/tasks/demo-task/task.mjs': "// skip this cycle if nothing changed\nexport default { precondition() { return { run: false, reason: 'skipping this run' }; } };\n" });
+test('never scans task.json itself — the precondition is where skip logic BELONGS', () => {
+  const findings = run({ 'packs/demo/tasks/demo-task/task.json': '{\n  "id": "demo-task"\n  // skip this cycle if nothing changed\n}\n' });
   assert.deepEqual(findings, []);
 });

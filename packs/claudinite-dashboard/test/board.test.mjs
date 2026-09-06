@@ -16,7 +16,7 @@ const DAY = 86400e3;
 const SCHEDULE = { dailyHour: 5, weeklyDay: 'Sun', monthlyDay: 1 };
 const iso = (t) => new Date(t).toISOString();
 
-const body = (lines = []) => `${MACHINE_BLOCK_START}\npacks/p/tasks/t/task.mjs\n${lines.join('\n')}\n${MACHINE_BLOCK_END}`;
+const body = (lines = []) => `${MACHINE_BLOCK_START}\npacks/p/tasks/t/task.md\n${lines.join('\n')}\n${MACHINE_BLOCK_END}`;
 const item = (over = {}) => ({
   number: 10, title: `${WORK_PREFIX} p/t`, state: 'open', labels: [{ name: ORIGIN_AD_HOC }],
   body: body(), created_at: iso(NOW - 3 * DAY), updated_at: iso(NOW - 3 * DAY), ...over,

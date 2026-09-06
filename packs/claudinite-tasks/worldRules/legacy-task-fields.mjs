@@ -23,12 +23,10 @@ import * as declarationText from '../task-declaration-text.mjs';
 // door normalizes at load, which is what makes the tolerance invisible.
 // Matching is therefore textual and deliberately conservative — a top-level key
 // line in a task declaration — so the finding always points at a line an author
-// can edit. Both declaration forms are read, and one pattern covers both: the
-// key is bare in the module form and quoted in the JSON, and the value quote is
-// whichever that file uses.
+// can edit. The key is quoted and the value quote is whichever the file uses.
 //
 // ADVISORY: the old spelling works, and a task file is a member's own content.
-const TASK_FILE = /(^|\/)tasks\/[^/]+\/task\.(json|mjs)$/;
+const TASK_FILE = /(^|\/)tasks\/[^/]+\/task\.json$/;
 const isTaskFile = (path) =>
   (typeof declarationText.isTaskDeclarationPath === 'function'
     ? declarationText.isTaskDeclarationPath(path)

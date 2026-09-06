@@ -21,8 +21,8 @@ const SHELL = join(PACK, 'resolve-dispatch.mjs');
 
 const OK = 0, USAGE = 2, NO_TRIGGER = 12, SCOPE_MISMATCH = 15;
 
-const taskMjs = (id) => `export default {
-  id: ${JSON.stringify(id)},
+const taskJson = (id) => `${JSON.stringify({
+  id,
   frequency: 'daily',
   preconditions: ['none'],
   agent_model: 'sonnet',
@@ -30,8 +30,7 @@ const taskMjs = (id) => `export default {
   automerge: 'nothing',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
-};
-`;
+})}\n`;
 
 // A scratch checkout shaped like the real thing: a declared pack carrying a
 // well-formed task, plus an UNDECLARED pack carrying an equally well-formed one
@@ -41,9 +40,9 @@ function fixtureRepo() {
   writeFiles(root, {
     '.claudinite-settings.json': JSON.stringify({ packs: ['demo'] }),
     'packs/demo/tasks/demo-task/task.md': '# demo task\n',
-    'packs/demo/tasks/demo-task/task.mjs': taskMjs('demo-task'),
+    'packs/demo/tasks/demo-task/task.json': taskJson('demo-task'),
     'packs/undeclared/tasks/rogue-task/task.md': '# rogue task\n',
-    'packs/undeclared/tasks/rogue-task/task.mjs': taskMjs('rogue-task'),
+    'packs/undeclared/tasks/rogue-task/task.json': taskJson('rogue-task'),
   });
   return root;
 }
@@ -184,7 +183,7 @@ test('a task path escaping the packs shape is invalid (traversal, wrong file, tr
   try {
     for (const bad of [
       '../../../etc/passwd',
-      'packs/demo/tasks/demo-task/task.mjs',
+      'packs/demo/tasks/demo-task/worker.mjs',
       `${GOOD_PATH}?x=1`,
       'src/packs/demo/tasks/demo-task/task.md',
     ]) {
@@ -517,7 +516,7 @@ test('a consumer runs the VENDORED copy and resolves against its own root', () =
     writeFiles(root, {
       '.claudinite-settings.json': JSON.stringify({ packs: ['local/mine'] }), // the namespaced local form
       [taskPath]: '# demo task\n',
-      [taskPath.replace('task.md', 'task.mjs')]: taskMjs('demo-task'),
+      [taskPath.replace('task.md', 'task.json')]: taskJson('demo-task'),
       'event.json': JSON.stringify(labeled('ready-for-agent', { body: `${taskPath}\n` })),
     });
     const env = { ...process.env, GITHUB_EVENT_PATH: join(root, 'event.json') };

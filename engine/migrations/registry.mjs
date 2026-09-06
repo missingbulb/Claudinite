@@ -5,9 +5,7 @@ import { RENAMED_PACKS } from '../pack_loader/renamed-packs.mjs';
 import { SETTINGS_FILE, SETTINGS_FILES, LEGACY_SETTINGS_FILE } from '../settings-file.mjs';
 import { installedVersions, withInstalledVersions, LEGACY_STAMP_KEY } from '../installed-versions.mjs';
 import { ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from '../checks/helpers/repo-context.mjs';
-import {
-  LOCAL_PACK_ROOT, taskDirsWithModule, convertTaskDeclarations, taskDirsWithJson, updateTaskSchedulingFields,
-} from './task-declarations-to-json.mjs';
+import { LOCAL_PACK_ROOT, taskDirsWithJson, updateTaskSchedulingFields } from './task-declarations-to-json.mjs';
 
 // <corpus>/engine/migrations/ — records are addressed corpus-relative, because they
 // no longer share one directory with this module: an engine record sits beside it,
@@ -520,29 +518,11 @@ export async function applySettingsReshape(migration, { read, write, move, exist
 // go through this, so an op added to the vocabulary cannot reach one and miss the
 // other: that omission is silent (the record simply does nothing on that path) and
 // is exactly what a member would never notice.
-// Write side — "this repo's own task declarations are data": convert every local
-// pack's `tasks/<name>/task.mjs` to `task.json` and delete the module, so a member
-// never converts by hand. A NAMED CODEMOD like the declaration normalization
-// above: the decision needs the repo's own disk (which folders carry a module),
-// and the JSON is the module's evaluated export, which no rewrite can produce.
-// The record declares `taskDeclarationsToJson: true`; the converter ships with the
-// engine (task-declarations-to-json.mjs) and is the same one the CLI runs.
-//
-// Needs three capabilities beyond the classic io — a directory listing, a delete
-// and a module import. A caller that lacks them (an older vendored worker running
-// this registry) converts nothing rather than half-converting: the member keeps
-// its modules, which still load, until a worker that can do the whole step runs.
-export async function applyTaskDeclarationConversion(migration, io) {
-  if (!migration.taskDeclarationsToJson) return [];
-  if (['listDir', 'remove', 'importModule'].some((c) => typeof io[c] !== 'function')) return [];
-  if (migration.appliesTo && !(await migration.appliesTo(io.read))) return [];
-  return convertTaskDeclarations(taskDirsWithModule([LOCAL_PACK_ROOT], io), io);
-}
 
 // Write side — "a task's cadence is one of its own conditions" (tasks-dispatch
 // DESIGN §5, #1725): fold the retired `frequency` of every local pack's task.json
-// into its `preconditions`, as anchored text. A named codemod for the same reason
-// the conversion above is: which files carry the field is the repo's own disk.
+// into its `preconditions`, as anchored text. A NAMED CODEMOD like the declaration
+// normalization above: which files carry the field is the repo's own disk.
 // The record declares `updateTaskSchedulingFields: true`; the rewrite ships with the
 // engine (task-declarations-to-json.mjs) and is the same one the CLI runs.
 //
@@ -563,8 +543,6 @@ export async function applyMigration(migration, io) {
   applied.push(...(await applyRewrites(migration, io)));
   applied.push(...(await applyPackDeclarations(migration, io)));
   applied.push(...(await applyLocalDeclarationNormalization(migration, io)));
-  applied.push(...(await applyTaskDeclarationConversion(migration, io)));
-  // After the conversion: a module converted this very run is a task.json too.
   applied.push(...(await applyTaskSchedulingFields(migration, io)));
   applied.push(...(await applyPackRenames(migration, io)));
   // LAST: every op above writes to whichever name the member still carries, and this

@@ -51,13 +51,7 @@ export function taskDeclarationFiles(root, activePacks) {
     }
     for (const name of names) {
       const taskDir = join(pack.dir, name);
-      let file;
-      try {
-        file = findTaskDeclaration(taskDir);
-      } catch (e) {
-        errors.push({ pack: pack.id, task: name, what: e.message, fix: 'delete the task.mjs — task.json is the declaration' });
-        continue;
-      }
+      const file = findTaskDeclaration(taskDir);
       if (file === null) continue;
       found.push({ pack: pack.id, name, taskDir, file });
     }

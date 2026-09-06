@@ -1,30 +1,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { removeTree } from '../engine/remove-tree.mjs';
 import {
-  checkoutIo, convertTaskDeclarations, taskDirsWithModule, serializeTaskDeclaration, moduleComments, main,
+  checkoutIo, main,
   retireFrequencyText, stateTriggerText, updateTaskSchedulingFields, taskDirsWithJson,
-  LOCAL_PACK_ROOT, CANON_PACK_ROOT, SCHEMA_FILE,
+  LOCAL_PACK_ROOT, CANON_PACK_ROOT,
 } from '../engine/migrations/task-declarations-to-json.mjs';
-import { applyTaskDeclarationConversion, applyTaskSchedulingFields, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
+import { applyTaskSchedulingFields, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
 import { ACCEPTED_FREQUENCIES } from '../packs/claudinite-tasks/calendar.mjs';
 import { normalizeTaskDeclaration } from '../packs/claudinite-tasks/task-contract.mjs';
 import { parseTaskDeclaration } from '../packs/claudinite-tasks/task-declaration.mjs';
-
-const MODULE = `// header: why this task exists
-export default {
-  id: 'alpha',
-  frequency: 'weekly',            // the weekly anchor
-  preconditions: ['none'],
-  agent_model: 'none',
-  expected_outcome: 'no_code_changes',
-  code_work: 'node worker.mjs',
-  code_work_timeout: 60,
-};
-`;
 
 const repo = (files) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-task-json-'));
@@ -37,132 +25,8 @@ const repo = (files) => {
 
 const TASK = `${LOCAL_PACK_ROOT}/mypack/tasks/alpha`;
 
-test('convertTaskDeclarations: writes the JSON with $schema, deletes the module, reports the comments', async () => {
-  const root = repo({ [`${TASK}/task.mjs`]: MODULE, [`.claudinite/shared/${SCHEMA_FILE}`]: '{}' });
-  try {
-    const io = checkoutIo(root);
-    const dirs = taskDirsWithModule([LOCAL_PACK_ROOT], io);
-    assert.deepEqual(dirs, [TASK]);
-    const applied = await convertTaskDeclarations(dirs, io);
-    assert.equal(applied.length, 1);
-    assert.match(applied[0], /task\.mjs -> .*task\.json/);
-    assert.match(applied[0], /header: why this task exists/, 'the dropped header is in the report');
-    assert.match(applied[0], /the weekly anchor/, 'so is an inline comment');
-    assert.ok(!existsSync(join(root, TASK, 'task.mjs')), 'module deleted');
-    const readme = readFileSync(join(root, TASK, 'README.md'), 'utf8');
-    assert.match(readme, /^# alpha\n/, 'a README is created for the task');
-    assert.match(readme, /## Why the declaration reads as it does\n[^]*header: why this task exists\n[^]*the weekly anchor/, 'the comments live in the README now');
-    const json = JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8'));
-    assert.equal(json.$schema, `../../../../../shared/${SCHEMA_FILE}`, 'the schema pointer is relative to the task folder, into the mount');
-    assert.equal(json.id, 'alpha');
-    assert.equal(json.code_work_timeout, 60);
-    // Idempotent: nothing left to convert.
-    assert.deepEqual(await convertTaskDeclarations(taskDirsWithModule([LOCAL_PACK_ROOT], io), io), []);
-  } finally { removeTree(root); }
-});
-
-test('convertTaskDeclarations: an existing README gains the notes section below its own content', async () => {
-  const root = repo({ [`${TASK}/task.mjs`]: MODULE, [`${TASK}/README.md`]: '# alpha\n\nWhat the worker does.\n' });
-  try {
-    await convertTaskDeclarations([TASK], checkoutIo(root));
-    const readme = readFileSync(join(root, TASK, 'README.md'), 'utf8');
-    assert.ok(readme.startsWith('# alpha\n\nWhat the worker does.\n\n## Why the declaration reads as it does'), readme);
-  } finally { removeTree(root); }
-});
-
-test('convertTaskDeclarations: a folder already carrying task.json keeps it and only loses the module', async () => {
-  const root = repo({ [`${TASK}/task.mjs`]: MODULE, [`${TASK}/task.json`]: '{ "id": "alpha", "edited": true }\n' });
-  try {
-    const applied = await convertTaskDeclarations([TASK], checkoutIo(root));
-    assert.match(applied[0], /deleted — .*already exists/);
-    assert.equal(JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8')).edited, true);
-    assert.ok(!existsSync(join(root, TASK, 'task.mjs')));
-  } finally { removeTree(root); }
-});
-
-test('serializeTaskDeclaration: a function-valued field is dropped and named; the canon tree points at its own schema', () => {
-  const { text, dropped } = serializeTaskDeclaration({ id: 'x', precondition() { return 1; }, frequency: 'daily' }, '../../../claudinite-tasks/task.schema.json');
-  assert.deepEqual(dropped, ['precondition']);
-  assert.deepEqual(JSON.parse(text), { $schema: '../../../claudinite-tasks/task.schema.json', id: 'x', frequency: 'daily' });
-  // Keys land grouped — identity, when it runs, outcome, code work, agent — whatever order the
-  // module spelled them in; a key the order does not list (the retired `frequency`) keeps its
-  // place after the listed ones.
-  const shuffled = serializeTaskDeclaration({ agent_execution_timeout: 5, code_work: 'x', frequency: 'daily', agent_model: 'opus', description: 'd', preconditions: ['substantive-change'], code_work_timeout: 1, id: 'x', expected_outcome: 'no_code_changes' }, 's');
-  assert.deepEqual(Object.keys(JSON.parse(shuffled.text)), ['$schema', 'id', 'description', 'preconditions', 'expected_outcome', 'code_work', 'code_work_timeout', 'agent_model', 'agent_execution_timeout', 'frequency']);
-  assert.equal(moduleComments('// a\nexport default {\n  id: 1, // b\n  url: \'http://x\',\n};\n'), 'a\nb');
-});
-
-test('the CLI converts a checkout\'s canon and local packs, or the folders it is given', async () => {
-  const root = repo({
-    [`${CANON_PACK_ROOT}/p/tasks/one/task.mjs`]: MODULE.replace("'alpha'", "'one'"),
-    [`${LOCAL_PACK_ROOT}/q/tasks/two/task.mjs`]: MODULE.replace("'alpha'", "'two'"),
-    [`${CANON_PACK_ROOT}/p/queue/tasks/three/task.mjs`]: MODULE.replace("'alpha'", "'three'"),
-    [SCHEMA_FILE]: '{}',
-  });
-  try {
-    await main(['--root', root]);
-    assert.ok(existsSync(join(root, CANON_PACK_ROOT, 'p/tasks/one/task.json')));
-    assert.ok(existsSync(join(root, LOCAL_PACK_ROOT, 'q/tasks/two/task.json')));
-    assert.ok(existsSync(join(root, CANON_PACK_ROOT, 'p/queue/tasks/three/task.mjs')), 'a folder outside the pack roots is not scanned');
-    await main(['--root', root, `${CANON_PACK_ROOT}/p/queue/tasks/three`]);
-    const three = JSON.parse(readFileSync(join(root, CANON_PACK_ROOT, 'p/queue/tasks/three/task.json'), 'utf8'));
-    assert.equal(three.$schema, '../../../../claudinite-tasks/task.schema.json');
-  } finally { removeTree(root); }
-});
-
-// The migration op: gated on the record's probe, inert for a caller lacking the
-// capabilities, and one runner with every other op (applyMigration).
-test('applyTaskDeclarationConversion: converts local packs only, gated on appliesTo and on the io', async () => {
-  const root = repo({
-    [`${TASK}/task.mjs`]: MODULE,
-    [`${CANON_PACK_ROOT}/p/tasks/one/task.mjs`]: MODULE,
-    [`.claudinite/shared/${SCHEMA_FILE}`]: '{}',
-  });
-  try {
-    const io = { ...checkoutIo(root), move: () => {}, readTemplate: () => null };
-    const record = { id: 'r', taskDeclarationsToJson: true, appliesTo: async () => true };
-    assert.deepEqual(await applyTaskDeclarationConversion({ id: 'r' }, io), [], 'a record without the flag converts nothing');
-    assert.deepEqual(await applyTaskDeclarationConversion({ ...record, appliesTo: async () => false }, io), [], 'the probe gates it');
-    const { listDir, ...classic } = io;
-    assert.deepEqual(await applyTaskDeclarationConversion(record, classic), [], 'an older caller without the listing converts nothing');
-    const applied = await applyMigration(record, io);
-    assert.equal(applied.length, 1);
-    assert.ok(existsSync(join(root, TASK, 'task.json')));
-    assert.ok(existsSync(join(root, CANON_PACK_ROOT, 'p/tasks/one/task.mjs')), 'the shared/canon packs are the canon\'s to convert');
-  } finally { removeTree(root); }
-});
-
-test('task-declarations-json record: applies only where the mounted pack reads task.json, in either root', async () => {
-  const m = (await loadMigrations()).find((x) => x.id === 'task-declarations-json');
-  assert.ok(m, 'discovered');
-  const capable = "export const TASK_DECLARATION_FILE = 'task.json';\n";
-  assert.equal(await m.appliesTo(async (p) => (p.startsWith('.claudinite/shared/') ? capable : null)), true, 'a member\'s mount');
-  assert.equal(await m.appliesTo(async (p) => (p.startsWith('.claudinite/shared/') ? null : capable)), true, 'the canon\'s own tree');
-  assert.equal(await m.appliesTo(async () => "export const TASK_DECLARATION_FILE = 'task.mjs';\n"), false, 'an older pack');
-  assert.equal(await m.appliesTo(async () => null), false, 'an unreadable mount is not capable');
-  assert.equal(await m.legacyPresent(() => true, async () => 'x'), false);
-});
-
-test('task-declarations-json record: run through the one runner, it converts a member\'s local task module', async () => {
-  const m = (await loadMigrations()).find((x) => x.id === 'task-declarations-json');
-  const root = repo({
-    [`${TASK}/task.mjs`]: MODULE,
-    [`.claudinite/shared/${SCHEMA_FILE}`]: '{}',
-    // The mount the record probes: a tasks pack that already reads task.json.
-    '.claudinite/shared/packs/claudinite-tasks/task-declaration-text.mjs': "export const TASK_DECLARATION_FILE = 'task.json';\n",
-  });
-  try {
-    const io = { ...checkoutIo(root), move: () => {}, readTemplate: () => null };
-    const applied = await applyMigration(m, io);
-    assert.equal(applied.length, 1, applied.join(' | '));
-    assert.ok(existsSync(join(root, TASK, 'task.json')));
-    assert.ok(!existsSync(join(root, TASK, 'task.mjs')));
-  } finally { removeTree(root); }
-});
-
-// The canon's own declarations, converted: each loads through the door to a
-// complete declaration — pinned here so the conversion is not re-proven by hand
-// (the stripped defaults are what the door fills back in).
+// The canon's own declarations: each loads through the door to a complete
+// declaration (the stripped defaults are what the door fills back in).
 test('every canon task.json normalizes to a complete declaration', async () => {
   const { execSync } = await import('node:child_process');
   const files = execSync('git ls-files "packs/*/tasks/*/task.json" "packs/*/queue/tasks/*/task.json"', { cwd: join(import.meta.dirname, '..') }).toString().trim().split('\n');
@@ -178,26 +42,23 @@ test('every canon task.json normalizes to a complete declaration', async () => {
   }
 });
 
-// The conversion deletes task.mjs, so a sibling that imported it stops resolving —
-// and a task whose worker cannot load is a blocking park, not a degraded run
-// (Shepherd#449 froze its lane exactly this way). Converting the declaration and
-// leaving its importers behind is half a migration.
-test('convertTaskDeclarations: rewrites the siblings that imported the module', async () => {
+test('the CLI rewrites a checkout\'s canon and local packs, or the folders it is given', async () => {
   const root = repo({
-    [`${TASK}/task.mjs`]: MODULE,
-    [`${TASK}/worker.mjs`]: "import task from './task.mjs';\nconsole.log(task.id);\n",
-    [`${TASK}/task.test.mjs`]: 'import task from "./task.mjs";\n',
-    [`.claudinite/shared/${SCHEMA_FILE}`]: '{}',
+    [`${CANON_PACK_ROOT}/p/tasks/one/task.json`]: '{\n  "id": "one",\n  "frequency": "daily"\n}\n',
+    [`${LOCAL_PACK_ROOT}/q/tasks/two/task.json`]: '{\n  "id": "two",\n  "frequency": "weekly"\n}\n',
+    [`${CANON_PACK_ROOT}/p/queue/tasks/three/task.json`]: '{\n  "id": "three",\n  "frequency": "daily"\n}\n',
   });
   try {
-    await convertTaskDeclarations([TASK], checkoutIo(root));
-    const worker = readFileSync(join(root, TASK, 'worker.mjs'), 'utf8');
-    const spec = readFileSync(join(root, TASK, 'task.test.mjs'), 'utf8');
-    assert.match(worker, /import task from '\.\/task\.json' with \{ type: 'json' \};/);
-    assert.match(spec, /import task from "\.\/task\.json" with \{ type: "json" \};/);
-    for (const t of [worker, spec]) assert.doesNotMatch(t, /task\.mjs/, 'no dangling reference to the deleted module');
+    await main(['--root', root]);
+    const read = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
+    assert.deepEqual(read(`${CANON_PACK_ROOT}/p/tasks/one/task.json`).preconditions, ['due:daily']);
+    assert.deepEqual(read(`${LOCAL_PACK_ROOT}/q/tasks/two/task.json`).preconditions, ['due:weekly']);
+    assert.equal(read(`${CANON_PACK_ROOT}/p/queue/tasks/three/task.json`).frequency, 'daily', 'a folder outside the pack roots is not scanned');
+    await main(['--root', root, `${CANON_PACK_ROOT}/p/queue/tasks/three`]);
+    assert.deepEqual(read(`${CANON_PACK_ROOT}/p/queue/tasks/three/task.json`).preconditions, ['due:daily']);
   } finally { removeTree(root); }
 });
+
 // --- the retired `frequency` field, folded into the expression (tasks-dispatch DESIGN §5, #1725)
 // A member's own task.json is patched as ANCHORED TEXT — never re-serialized —
 // because a hand-written file's indentation, key order and comments-by-way-of-

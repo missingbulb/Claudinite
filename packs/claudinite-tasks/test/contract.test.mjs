@@ -304,23 +304,23 @@ test('DISPATCH_PATH_RE accepts shared/, local/, and the canon root packs/ forms 
   assert.ok(DISPATCH_PATH_RE.test('.claudinite/shared/packs/claudinite-lifecycle/tasks/update/task.md')); // consumer canon pack
   assert.ok(DISPATCH_PATH_RE.test(goodPath));                                                    // local pack
   assert.ok(DISPATCH_PATH_RE.test('packs/claudinite-growth/tasks/growth-extract/task.md'));   // the CANON's own root pack
-  assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.mjs')); // not task.md
+  assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.json')); // not task.md
   assert.ok(!DISPATCH_PATH_RE.test('src/packs/gcec/tasks/create-extractor/task.md'));            // prefix must be exactly a mount root or nothing
   assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.md#x')); // trailing junk
 });
 
 test('validateDispatchBody resolves pack/task from the canon root packs/ form', () => {
   const root = 'packs/claudinite-growth/tasks/growth-extract/task.md';
-  const mjs = root.replace('task.md', 'task.mjs');
-  const v = validateDispatchBody(`${root}\n`, caps({ existsPaths: [root, mjs], declared: ['claudinite-growth'] }));
+  const json = root.replace('task.md', 'task.json');
+  const v = validateDispatchBody(`${root}\n`, caps({ existsPaths: [root, json], declared: ['claudinite-growth'] }));
   assert.equal(v.ok, true);
   assert.equal(v.pack, 'claudinite-growth');
   assert.equal(v.task, 'growth-extract');
 });
 
 test('validateDispatchBody accepts a well-formed dispatch and resolves model + outcome', () => {
-  const mjs = goodPath.replace('task.md', 'task.mjs');
-  const v = validateDispatchBody(`${goodPath}\n\nExecute the task above.`, caps({ existsPaths: [goodPath, mjs] }));
+  const json = goodPath.replace('task.md', 'task.json');
+  const v = validateDispatchBody(`${goodPath}\n\nExecute the task above.`, caps({ existsPaths: [goodPath, json] }));
   assert.equal(v.ok, true);
   assert.equal(v.pack, 'gcec');
   assert.equal(v.task, 'create-extractor');
@@ -332,7 +332,7 @@ test('validateDispatchBody accepts a well-formed dispatch and resolves model + o
 });
 
 test('validateDispatchBody rejects a bad first line, a missing file, an undeclared pack, and a bad declaration', () => {
-  const mjs = goodPath.replace('task.md', 'task.mjs');
+  const json = goodPath.replace('task.md', 'task.json');
   // bad first line
   assert.match(validateDispatchBody('not a path\n', caps({ existsPaths: [] })).reason, /not a valid task path/);
   // task file missing at HEAD
@@ -340,36 +340,28 @@ test('validateDispatchBody rejects a bad first line, a missing file, an undeclar
   // declaration sibling missing
   assert.match(validateDispatchBody(goodPath, caps({ existsPaths: [goodPath] })).reason, /task\.json sibling.*missing/);
   // pack not declared
-  assert.match(validateDispatchBody(goodPath, caps({ existsPaths: [goodPath, mjs], declared: [] })).reason, /not declared/);
+  assert.match(validateDispatchBody(goodPath, caps({ existsPaths: [goodPath, json], declared: [] })).reason, /not declared/);
   // declaration invalid
   assert.match(
-    validateDispatchBody(goodPath, caps({ existsPaths: [goodPath, mjs], task: { ...validTask, frequency: 'nope' } })).reason,
+    validateDispatchBody(goodPath, caps({ existsPaths: [goodPath, json], task: { ...validTask, frequency: 'nope' } })).reason,
     /not a valid task declaration/,
   );
 });
 
-// The declaration sibling is task.json; the retired task.mjs still resolves, and a
-// folder carrying both is refused rather than guessed at (task-declaration.mjs).
-test('validateDispatchBody resolves the task.json sibling, or the retired task.mjs, never both', () => {
+test('validateDispatchBody resolves the task.json sibling', () => {
   const json = goodPath.replace('task.md', 'task.json');
-  const mjs = goodPath.replace('task.md', 'task.mjs');
   const loaded = [];
   const withLoad = (paths) => validateDispatchBody(goodPath, {
     exists: (p) => paths.includes(p), isPackDeclared: () => true, loadTask: (p) => { loaded.push(p); return validTask; },
   });
   assert.equal(withLoad([goodPath, json]).ok, true);
-  assert.equal(withLoad([goodPath, mjs]).ok, true);
-  assert.deepEqual(loaded, [json, mjs]);
-  const both = withLoad([goodPath, json, mjs]);
-  assert.equal(both.ok, false);
-  assert.equal(both.gone, undefined, 'two declarations is malformed, not a task the repo dropped');
-  assert.match(both.reason, /carries both a task\.json and a task\.mjs/);
+  assert.deepEqual(loaded, [json]);
 });
 
 test('validateDispatchBody surfaces a parse failure of the declaration', () => {
-  const mjs = goodPath.replace('task.md', 'task.mjs');
+  const json = goodPath.replace('task.md', 'task.json');
   const v = validateDispatchBody(goodPath, {
-    exists: (p) => [goodPath, mjs].includes(p),
+    exists: (p) => [goodPath, json].includes(p),
     isPackDeclared: () => true,
     loadTask: () => { throw new Error('SyntaxError: boom'); },
   });

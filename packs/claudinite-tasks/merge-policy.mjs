@@ -438,7 +438,7 @@ export const policyExpression = (policy) =>
 // it copies. The flag rides merge-rules.json, which is itself guarded and
 // owner-committed, so a run cannot grant it to itself; repo-owned policy
 // sources (everything outside the mount) stay absolute.
-const POLICY_SOURCES = /(^|\/)(merge-rules\.json|merge-policy\.mjs|workRules\/automerge-policy-scope\.mjs|tasks\/[^/]+\/task\.(json|mjs))$/;
+const POLICY_SOURCES = /(^|\/)(merge-rules\.json|merge-policy\.mjs|workRules\/automerge-policy-scope\.mjs|tasks\/[^/]+\/task\.json)$/;
 const VENDORED_MOUNT = /^\.claudinite\/shared\//;
 
 // The whole verdict over a diff. `entries` are `{ file, before, after }` (null

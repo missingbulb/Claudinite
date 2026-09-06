@@ -100,7 +100,7 @@ test('no growth policy can cover the repo-owned policy sources', () => {
       { file: '.claudinite/local/packs/x/merge-rules.json', before: null, after: '[]\n' },
     ]).mergeable, false);
     assert.equal(verdict(policy, [
-      { file: '.claudinite/local/packs/x/tasks/t/task.mjs', before: 'a\n', after: 'b\n' },
+      { file: '.claudinite/local/packs/x/tasks/t/task.json', before: 'a\n', after: 'b\n' },
     ]).mergeable, false);
   }
 });

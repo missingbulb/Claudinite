@@ -199,8 +199,7 @@ they are a no-op.
 ## The task folder
 
 One directory per task — `<pack>/tasks/<name>/` — holding **`task.json`** (the
-declaration, plain data; the retired `task.mjs` module form still loads until the
-nightly update converts it) beside its worker, plus any deterministic helpers and,
+declaration, plain data) beside its worker, plus any deterministic helpers and,
 where the task's gate is its own, a **`preconditions.mjs`** exporting its terms.
 The conditions that grant a run also contribute the run's `context` lines, which
 join the item's own Context as binding constraints the agent may not re-litigate.

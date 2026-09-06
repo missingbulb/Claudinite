@@ -9,13 +9,10 @@ const ctx = (files) => ({ files: Object.keys(files), read: (f) => files[f] ?? nu
 const TASK = 'packs/own/tasks/sweep/task.json';
 const run = (source, { path = TASK } = {}) => rule.run(ctx({ [path]: source }));
 
-// The JSON declaration is today's form; the module form is itself a tolerance the
-// door still accepts, so both are read and both are asserted below.
 // Every fixture states a trigger unless the trigger IS its subject: the absence is
 // itself reported, so a fixture silent on it would carry a second finding into every
 // other case here.
 const declaration = (body, { trigger = '  "trigger": "request",\n' } = {}) => `{\n  "id": "sweep",\n${trigger}${body}}\n`;
-const moduleDeclaration = (body, { trigger = "  trigger: 'request',\n" } = {}) => `export default {\n  id: 'sweep',\n${trigger}${body}};\n`;
 
 test('legacy-task-fields: silent on a declaration in the current vocabulary', () => {
   assert.deepEqual(run(declaration('  "code_work": "run.mjs",\n  "schedule_after": "other",\n  "expected_outcome": "fresh_pr"\n')), []);
@@ -38,17 +35,13 @@ test('legacy-task-fields: a declaration stating no trigger is reported at the li
   assert.match(bare[0].fix, /"trigger": "request"/);
   assert.equal(bare[0].line, 3);
 
-  // Both declaration forms, and no second finding once it is stated.
-  assert.equal(run(moduleDeclaration("  preconditions: ['due:daily'],\n", none)).length, 1);
-  assert.deepEqual(run(moduleDeclaration("  preconditions: ['due:daily'],\n")), []);
+  // No second finding once it is stated.
+  assert.deepEqual(run(declaration('  "preconditions": ["due:daily"],\n')), []);
 });
 
-test('legacy-task-fields: reads task declarations only, in either form', () => {
+test('legacy-task-fields: reads task declarations only', () => {
   const legacy = declaration('  "prework": "run.mjs"\n');
   assert.equal(run(legacy).length, 1);
-  // task.mjs is the retired declaration form, still accepted at the door — a
-  // declaration that never converted is exactly where an old field name survives.
-  assert.equal(run(moduleDeclaration("  prework: 'run.mjs',\n"), { path: 'packs/own/tasks/sweep/task.mjs' }).length, 1);
   assert.deepEqual(run(legacy, { path: 'packs/own/tasks/sweep/worker.mjs' }), []);
   assert.deepEqual(run(legacy, { path: 'packs/own/task.json' }), []);
 });
@@ -98,8 +91,7 @@ test('legacy-task-fields: the retired frequency field is reported with the condi
     assert.match(findings[0].fix, term === null ? /no schedule at all/ : /"trigger": "schedule"/, 'the pair the field always meant');
     assert.equal(findings[0].line, 4);
   }
-  // The module form too, and a value the door cannot read still names the shape.
-  assert.equal(run(moduleDeclaration("  frequency: 'daily',\n"), { path: 'packs/own/tasks/sweep/task.mjs' }).length, 1);
+  // A value the door cannot read still names the shape.
   assert.match(run(declaration('  "frequency": "hourly"\n'))[0].fix, /due:<daily\|weekly\|monthly>/);
 });
 
@@ -119,12 +111,12 @@ test('legacy-task-fields: never blocking', () => {
 });
 
 // A path pattern left behind by a layout change matches nothing, reads as live, and
-// a fixture spelling the same dead layout keeps proving the matching. #1636 moved
-// declarations from task.mjs to task.json under this rule's feet once already.
+// a fixture spelling the same dead layout keeps proving the matching. #1633 retired
+// the module declaration form entirely under this rule's feet once already.
 test('legacy-task-fields: its scope is non-empty over the real tree', () => {
   const root = fileURLToPath(new URL('../../..', import.meta.url));
   const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n');
-  const declarations = tracked.filter((f) => /(^|\/)tasks\/[^/]+\/task\.(json|mjs)$/.test(f));
+  const declarations = tracked.filter((f) => /(^|\/)tasks\/[^/]+\/task\.json$/.test(f));
   assert.ok(declarations.length > 5, `the rule scans ${declarations.length} real declarations`);
   assert.deepEqual(rule.run(ctx(Object.fromEntries(declarations.map((f) => [f, '{}'])))), []);
 });

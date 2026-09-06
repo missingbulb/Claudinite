@@ -144,7 +144,7 @@ test('workRows keeps a declared task that has never run', () => {
   // The row a list built from items alone would omit silently — and a task that never
   // fired looks identical to one with nothing to do until you can see it at all.
   const all = workRows(buildRoster({
-    tasks: [{ pack: 'claudinite-growth', task: 'never-ran', path: 'packs/claudinite-growth/tasks/never-ran/task.mjs', declaration: { preconditions: ['due:weekly'] } }],
+    tasks: [{ pack: 'claudinite-growth', task: 'never-ran', path: 'packs/claudinite-growth/tasks/never-ran/task.json', declaration: { preconditions: ['due:weekly'] } }],
     items: [],
     now: NOW,
     schedule: null,
