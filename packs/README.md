@@ -38,6 +38,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 7 (+ RELEASE contract; 1 skill: static-site-releases) |
 | <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 10 (+ 2 skills: flutter-golden-tests, flutter-pubspec) |
 | <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 5 + 3 skills: firestore-security-rules, firebase-functions, create-release-plan |
+| <img src="cloudflare-workers/badge.svg" width="18" height="18" alt=""> [cloudflare-workers](cloudflare-workers/README.md) | wrangler config near root | 0 | 11 |
 | <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/README.md) | `AndroidManifest.xml` | 0 | 0 (stub) |
 | <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/README.md) | `ios/Runner/Info.plist` | 0 | 2 |
 | <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 4 | 26 (+ 2 skills: macos-app-bundle, macos-entitlements-and-tcc) |
