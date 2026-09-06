@@ -18,8 +18,8 @@ acts. The only thing you write is this task's own tracker issue.
 and diff, never its title. **Work the open set in your own context**, and never a subagent per PR: each
 one re-reads the skill and re-derives the same picture of `main` to return one verdict. If the set is too
 large for one context, split it into a handful of groups and give each group to **one** subagent that
-assesses all of it — a few subagents holding many PRs each, never one holding one — and keep enough of
-the run bound for step 2 and the executor's converge, which the fan-out's time comes out of. Collect:
+assesses all of it — a few subagents holding many PRs each, never one holding one. **The run bound covers
+everything you dispatch**, so keep enough of it for step 2. Collect:
 
 - one line each for the PRs that should **stay open** (`#N — why it's live`);
 - the rest collapsed into one `Closeable: #a, #b — merged/superseded/stale` line.

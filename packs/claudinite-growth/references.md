@@ -31,3 +31,9 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(RULES-2)** #1696: `writing-tasks` named the schedule board's issue and its state, so a
   change to the queue's own bookkeeping (#1677) bumped this pack too — three files for a
   parenthetical a task author never needed. Reaffirm while packs are versioned separately.
+- **(unattended-agents-4)** #1739: `tidy-repo/tidy-issues` read "for each issue in scope, run
+  the single-issue-triage skill" as one subagent per issue; the children re-derived the same
+  view of `main` to return verdicts that were mostly `left`/`unchanged`, and the fan-out spent
+  the worker's whole run bound, so the dispatch issue was never converged and the janitor
+  parked it hours later. Reaffirm while fan-out is a subagent dispatch the parent's clock pays
+  for.

@@ -34,11 +34,10 @@ issue** — sort the scope into a handful of groups whose members share what the
 subagent that triages all of it and returns one line per issue: `#N — <action> — <note>`. A few
 subagents holding many issues each; never one holding one.
 
-**The triage is not the run.** Step 2 and the executor's own converge still have to happen inside the run
-bound you were given, and time spent in children is time on that clock. Budget for them before
-dispatching anything: a partial triage that is recorded and converged is a complete run, where a full
-triage returning past the bound leaves the run unconverged and an untriaged issue comes back tomorrow
-anyway.
+**The triage is not the run** — step 2 still has to happen, and **the run bound covers everything you
+dispatch**: time spent in children is time on the same clock. Budget for step 2 before dispatching
+anything. A partial triage that is recorded is a complete run; a full one that returns past the bound
+records nothing, and those issues come back tomorrow anyway.
 
 ## 2. Reconcile this task's tracker
 
