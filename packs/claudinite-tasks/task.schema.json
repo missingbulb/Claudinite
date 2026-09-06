@@ -33,7 +33,7 @@
         "manual"
       ],
       "deprecated": true,
-      "description": "The retired cadence field; read at the door as the first condition it always meant (`due:<cadence>`, or `woken` for `manual`). Write that condition instead."
+      "description": "The retired cadence field; read at the door as the first condition it always meant (`due:<cadence>`), and `manual` as no condition at all. Write that condition instead, or leave `preconditions` out."
     },
     "preconditions": {
       "type": "array",

@@ -15,10 +15,11 @@
 //   signal returns `{ error }`, a failed run in the queue's failure lane.
 //
 // THE EXPRESSION IS THE WHOLE OF "WHEN" (tasks-dispatch DESIGN §5). The engine
-// keeps no calendar: every scheduler tick asks every task, and the cadence a task
-// keeps is one of its own conditions, read off its own run history — `due:<cadence>`,
-// `last-run-over:<duration>`, `woken` — beside whatever else it requires. `none`
-// is therefore retired: a task with no condition at all would run at every tick.
+// keeps no calendar: every scheduler tick asks every task that states a condition,
+// and the cadence a task keeps is one of its own conditions, read off its own run
+// history — `due:<cadence>`, `last-run-over:<duration>` — beside whatever else it
+// requires. A task stating no condition is off the schedule and runs only from an
+// item somebody creates, so `none` is retired as a second spelling of absence.
 //
 // THE VOCABULARY HAS TWO HOMES. The built-ins below are the run-history, movement
 // and pending-PR conditions every repo shares. A task whose gate is its own ships a
