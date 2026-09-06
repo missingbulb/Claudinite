@@ -119,8 +119,23 @@ as always-on context. Three ways out, and this is a **product decision, not a pa
    import resolving outside the working directory triggers a one-time approval dialog — fine
    interactively, wrong for unattended runs.
 
-Option 2 is the one that preserves today's semantics; option 1 is the one that improves them.
-Both need the same install step.
+**Decided (owner, this session): option 2 — materialise into `.claude/rules/`.** It preserves
+today's always-injected semantics exactly, which is the property the corpus is built on, and the
+`paths:` frontmatter then earns back most of the session tax without changing what a rule
+guarantees. Option 1 stays available later as a per-rule judgment — the promotion ladder already
+decides which rung a rule belongs on — but it is not the packaging strategy.
+
+Two consequences the rest of this document now assumes:
+
+- **There is an install step, and it must run before the session starts** — not from a
+  `SessionStart` hook. Rules are read as the session's context is assembled, so a hook that writes
+  them is too late; and hook-injected context is the shape #807 measured silently truncating ~80 KB.
+  The install step is `claude plugin install` on a desktop, an `npx` line in the workflow for
+  Actions, and the seeded image or the environment setup script for web sessions.
+- **A missing mount must fail loudly.** Today an unconverged member is caught by
+  `rules-index-current`. Under the package model the failure mode is a gitignored directory that is
+  simply absent, and a session with no rules looks exactly like a session with nothing to say. The
+  equivalent gate has to exist before the first customer runs it.
 
 ---
 
@@ -203,7 +218,8 @@ One experienced engineer.
 | **Un-vendor: kill the `.claudinite/shared` assumption** | 3–5 wks | 105 files; checks, rules, tests, stubs. The single largest line, and it is not commercial work — it is the refactor the package model requires |
 | Engine as a private npm package (+ optional compiled binary) | 2–4 wks | Entry points for hooks and workflows; multi-platform if compiled; binaries in `scripts/`, never `bin/` |
 | Packs as plugins; marketplace repo and `marketplace.json` | 2–3 wks | Skills already fit the plugin shape almost exactly |
-| **Rules prose: skills, or `.claude/rules/` materialisation** | 3–6 wks | Content work, not packaging. Decide §2's fork first; path-scoping the corpus is the expensive half |
+| **Rules prose → `.claude/rules/` materialisation** (decided) | 3–5 wks | The writer and its gitignore are small; **path-scoping the 25 `RULES.md` files is the expensive half**, and it is content work, not packaging |
+| The absent-mount gate that replaces `rules-index-current` | 0.5–1 wk | A session with no rules must fail, not run quietly |
 | Licence service: token minting for `headersHelper`, entitlement store, private registry | 2–4 wks | Small, because the platform supplies the client side |
 | Actions side: stubs call `npx`, registry auth as a secret | 1–2 wks | Workflow files cannot converge, so this is a **fleet-wide PR** |
 | Migration for existing members: un-vendor, gitignore, install step, migration record | 2–3 wks | Must tolerate a member sitting on the old mount for one convergence window |
@@ -332,7 +348,7 @@ company — a SaaS with on-call and a compliance calendar.
 
 ## 9. The decisions this document deliberately does not make
 
-1. **Always-on prose, or skills?** — §2's fork. Consequential beyond packaging.
+1. ~~Always-on prose, or skills?~~ **Decided: materialise into `.claude/rules/`** (§2).
 2. **Does the engine ship as a compiled binary, or as readable JS in a private package?**
 3. **Storefront** — Claude Code plugin marketplace alone, plus a GitHub App for the fleet half, plus
    or minus Stripe (subject to §6's channel rules).
