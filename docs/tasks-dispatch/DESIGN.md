@@ -906,12 +906,13 @@ comes from a file under review.
   sees the variable and exits, and a live drain re-reads it between items
   (an API read — the env copy lands at run start only, §15.30) and stops
   picking. That live read is the one part of the hold whose *reach* depends on
-  a grant we have not confirmed: reading a repository variable is scoped to
-  the token's variables access, which the workflow `permissions:` block has no
-  key for. Where the token cannot make that read, the drain says so on every
-  boundary and falls back to the value its run started with — the hold then
-  parks *starts* exactly as it did before the drain batched, which is why
-  nothing here is load-bearing on the grant. Cancelling the run remains the
+  a grant the Actions token does not hold: reading a repository variable is scoped
+  to the token's variables access, which the workflow `permissions:` block has no
+  key for, so on the reference deployment the read is refused (#1791). A refused
+  read is said **once** and then not asked again for that run — a token's reach
+  cannot change mid-run — and the drain falls back to the value its run started
+  with; the hold then parks *starts* exactly as it did before the drain batched,
+  which is why nothing here is load-bearing on the grant. Cancelling the run remains the
   unconditional lever, and the hold is what stops its continuation resuming. Suspension never interrupts *running* work: the current item and
   agent sessions finish on their own — cancel those by hand if the
   hold is urgent — and items freeze exactly where they are, no labels
