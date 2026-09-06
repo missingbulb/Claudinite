@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  convergeSchedulerWorkflow, convergeWorkflows,
+  convergeSchedulerWorkflow, convergeWorkflows, secretNames, taskSecretNames,
   SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW,
 } from '../converge-workflows.mjs';
 import { hashedCron } from '../hash-minute.mjs';
@@ -151,4 +151,17 @@ test('the vendored stubs stamp what the readers in this pack actually read', () 
   for (const text of [schedulerRun, executor]) {
     assert.match(text, new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`));
   }
+});
+
+test('taskSecretNames is the tasks\' list alone; the stamp\'s adds the endpoint tokens', () => {
+  const decls = [
+    { code_work_required_secrets: ['B_KEY', 'A_KEY'] },
+    { code_work_required_secrets: ['A_KEY'] },
+    {},
+  ];
+  const config = { taskScheduler: { agenticTaskInvocationEndpoints: { default: { url: 'https://x.invalid', tokenSecret: 'CCR_ROUTINE_TOKEN' } } } };
+  // What `executor-workflow-secrets` holds a member to: deduped, sorted, no config.
+  assert.deepEqual(taskSecretNames(decls), ['A_KEY', 'B_KEY']);
+  // What the converge stamps: that list plus the endpoint tokens the config names.
+  assert.deepEqual(secretNames(decls, config), ['A_KEY', 'B_KEY', 'CCR_ROUTINE_TOKEN']);
 });

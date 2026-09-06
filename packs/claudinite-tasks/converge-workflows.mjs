@@ -36,13 +36,20 @@ export function endpointTokenSecrets(config) {
     .map((e) => e?.tokenSecret).filter((n) => typeof n === 'string' && n);
 }
 
-// The repo Actions secrets a set of task declarations and a config ask the executor
-// to carry, deduped and sorted. Sync and pure over declarations already in hand, so
-// a check — which runs synchronously and cannot await discovery — computes the same
-// expectation the converge writes rather than a second opinion of it.
+// The repo Actions secrets a set of task declarations ask the executor to carry,
+// deduped and sorted. Sync and pure over declarations already in hand, so a check —
+// which runs synchronously and cannot await discovery — computes the same expectation
+// the converge writes rather than a second opinion of it. This half is the one the
+// `executor-workflow-secrets` check holds a member to: the tasks its packs contribute
+// are what the owner's list is, and an endpoint's token is config rather than a task's
+// declaration (the invocation call names its own missing token, queue/invoke.mjs).
+export function taskSecretNames(taskDeclarations) {
+  return [...new Set(taskDeclarations.flatMap((decl) => decl?.code_work_required_secrets ?? []))].sort();
+}
+
+// That list plus the endpoint tokens the config names — everything the stamp writes.
 export function secretNames(taskDeclarations, config) {
-  const declared = taskDeclarations.flatMap((decl) => decl?.code_work_required_secrets ?? []);
-  return [...new Set([...declared, ...endpointTokenSecrets(config)])].sort();
+  return [...new Set([...taskSecretNames(taskDeclarations), ...endpointTokenSecrets(config)])].sort();
 }
 
 // The same list, discovered from the tree. Async because task discovery is.
