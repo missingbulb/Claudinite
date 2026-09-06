@@ -96,7 +96,7 @@
     "failureMessage": "without merge=ours a conflicting merge on a generated file gets hand-resolved and desyncs from its source",
     "requireIndexCoverage": [
       {
-        "eachScannedPathMatching": "/(?<base>[^/]*GENERATED[^/]*)$/",
+        "eachScannedPathMatching": "/^(?!\\.claudinite/)(?:.*/)?(?<base>[^/]*GENERATED[^/]*)$/",
         "includeVendored": true,
         "indexFile": ".gitattributes",
         "coveredByGlobLinesMatching": "/\\bmerge=ours\\b/",
@@ -104,6 +104,16 @@
         "anchorFindingsAt": "eachUncoveredPath",
         "what": "a GENERATED file with no merge=ours .gitattributes entry",
         "fix": "add `{base} merge=ours` to .gitattributes so a conflicting merge auto-resolves — the session-start hook already sets the `merge.ours.driver` config in the clone"
+      },
+      {
+        "eachScannedPathMatching": "/^\\.claudinite/(?:.*/)?(?<base>[^/]*GENERATED[^/]*)$/",
+        "includeVendored": true,
+        "indexFile": ".claudinite/.gitattributes",
+        "coveredByGlobLinesMatching": "/\\bmerge=ours\\b/",
+        "whenIndexFileAbsent": "assertNothing",
+        "anchorFindingsAt": "eachUncoveredPath",
+        "what": "a GENERATED file under .claudinite/ that .claudinite/.gitattributes does not cover",
+        "fix": "the engine converges that file — run `node .claudinite/shared/engine/converge-wiring.mjs <owner/repo>` (silent until an engine that writes it has arrived)"
       }
     ]
   },

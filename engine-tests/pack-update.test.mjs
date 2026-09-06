@@ -126,7 +126,7 @@ test('the pack flow converges the CLAUDE.md index, because it is what changed th
   // And the wiring that makes the file load for anyone.
   const claudeMd = readFileSync(join(root, 'CLAUDE.md'), 'utf8').split('\n');
   assert.ok(claudeMd.some((l) => !l.includes('`') && l.includes('@.claudinite/claudinite-rules.GENERATED.md')), claudeMd.join('\n'));
-  assert.match(readFileSync(join(root, '.gitattributes'), 'utf8'), /claudinite-rules\.GENERATED\.md merge=ours/);
+  assert.match(readFileSync(join(root, '.claudinite', '.gitattributes'), 'utf8'), /merge=ours/);
   removeTree(root);
 });
 

@@ -10,8 +10,8 @@ import {
   removeRetiredBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
   BADGE_ROW_START, BADGE_ROW_END, README,
   PRETOOLUSE_MATCHER,
-  ensureRulesIndexImport, ensureRulesIndexMergeAttribute, RULES_INDEX_MERGE_ATTR,
-  ensureMountVendoredAttribute, MOUNT_VENDORED_ATTR,
+  ensureRulesIndexImport,
+  ensureMountAttributes, removeRetiredRootAttributes, MOUNT_ATTRIBUTES_FILE, MOUNT_ATTRIBUTES,
   seedRepoLocalPack, packIdForRepo,
 } from '../engine/converge-wiring.mjs';
 import { RULES_INDEX_IMPORT } from '../engine/pack_loader/generate-rules-index.mjs';
@@ -127,39 +127,56 @@ test('ensureRulesIndexImport: an import documented in backticks does not count a
 });
 
 
-test('ensureRulesIndexMergeAttribute: declares merge=ours for the generated index, idempotently', () => {
+test('ensureMountAttributes: converges the attributes file the mount owns, idempotently', () => {
   const root = mkRepo();
-  writeFileSync(join(root, '.gitattributes'), 'usage.GENERATED.json merge=ours');
-  assert.equal(ensureRulesIndexMergeAttribute(root), true);
-  const text = readFileSync(join(root, '.gitattributes'), 'utf8');
-  assert.ok(text.includes('usage.GENERATED.json merge=ours'), 'the repo\'s existing entries survive');
-  assert.ok(text.split('\n').includes(RULES_INDEX_MERGE_ATTR));
-  assert.equal(ensureRulesIndexMergeAttribute(root), false);
+  writeFileSync(join(root, '.gitattributes'), 'my-own.GENERATED.json merge=ours\n');
+  assert.equal(ensureMountAttributes(root), true);
+  const text = readFileSync(join(root, MOUNT_ATTRIBUTES_FILE), 'utf8');
+  for (const line of MOUNT_ATTRIBUTES) assert.ok(text.split('\n').includes(line), line);
+  assert.equal(readFileSync(join(root, '.gitattributes'), 'utf8'), 'my-own.GENERATED.json merge=ours\n',
+    "the repo's own root file is not touched");
+  assert.equal(ensureMountAttributes(root), false);
 });
 
 
-test('ensureMountVendoredAttribute: declares the shared mount vendored, idempotently', () => {
-  const root = mkRepo();
-  writeFileSync(join(root, '.gitattributes'), 'usage.GENERATED.json merge=ours');
-  assert.equal(ensureMountVendoredAttribute(root), true);
-  const text = readFileSync(join(root, '.gitattributes'), 'utf8');
-  assert.ok(text.includes('usage.GENERATED.json merge=ours'), "the repo's existing entries survive");
-  assert.ok(text.split('\n').includes(MOUNT_VENDORED_ATTR));
-  assert.equal(ensureMountVendoredAttribute(root), false);
-});
-
-
-test('MOUNT_VENDORED_ATTR: the pattern git is handed actually matches a mounted file', () => {
-  // The line is only worth carrying if git resolves it over a real mount path — a
+test('the mount attributes git resolves cover the files they are written for', () => {
+  // Patterns in a nested .gitattributes are relative to its own directory, and these
+  // are only worth carrying if git resolves them over the real mount paths — a
   // pattern that matches nothing reads as live and annotates nothing.
   const root = mkRepo();
   execFileSync('git', ['init', '-q'], { cwd: root });
   mkdirSync(join(root, '.claudinite', 'shared', 'engine', 'checks'), { recursive: true });
+  mkdirSync(join(root, '.claudinite', 'local'), { recursive: true });
   writeFileSync(join(root, '.claudinite', 'shared', 'engine', 'checks', 'check_the_world.mjs'), '// vendored\n');
-  assert.equal(ensureMountVendoredAttribute(root), true);
-  const out = execFileSync('git', ['check-attr', 'linguist-vendored', '--',
-    '.claudinite/shared/engine/checks/check_the_world.mjs'], { cwd: root, encoding: 'utf8' });
-  assert.match(out, /linguist-vendored: set/);
+  writeFileSync(join(root, '.claudinite', 'local', 'usage.GENERATED.json'), '{}\n');
+  writeFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'rules\n');
+  assert.equal(ensureMountAttributes(root), true);
+  const attr = (name, path) => execFileSync('git', ['check-attr', name, '--', path], { cwd: root, encoding: 'utf8' });
+  assert.match(attr('linguist-vendored', '.claudinite/shared/engine/checks/check_the_world.mjs'), /linguist-vendored: set/);
+  assert.match(attr('merge', '.claudinite/local/usage.GENERATED.json'), /merge: ours/);
+  assert.match(attr('merge', '.claudinite/claudinite-rules.GENERATED.md'), /merge: ours/);
+});
+
+
+test('removeRetiredRootAttributes: takes back the lines Claudinite planted in the root file', () => {
+  const root = mkRepo();
+  writeFileSync(join(root, '.gitattributes'),
+    '# the repo\'s own\nsnapshot.bin -diff\nclaudinite-rules.GENERATED.md merge=ours\n'
+    + 'claudinite-skills.GENERATED.md merge=ours\nusage.GENERATED.json merge=ours\n'
+    + '.claudinite/shared/** linguist-vendored\n');
+  assert.equal(removeRetiredRootAttributes(root), true);
+  assert.equal(readFileSync(join(root, '.gitattributes'), 'utf8'), '# the repo\'s own\nsnapshot.bin -diff\n');
+  assert.equal(removeRetiredRootAttributes(root), false);
+});
+
+
+test('removeRetiredRootAttributes: a root file that was only ever ours goes away', () => {
+  // A repo that never had a .gitattributes of its own got one solely because
+  // Claudinite needed a line in it; taking the lines back leaves the repo as it was.
+  const root = mkRepo();
+  writeFileSync(join(root, '.gitattributes'), 'usage.GENERATED.json merge=ours\n.claudinite/shared/** linguist-vendored\n');
+  assert.equal(removeRetiredRootAttributes(root), true);
+  assert.equal(existsSync(join(root, '.gitattributes')), false);
 });
 
 
@@ -177,8 +194,9 @@ test('convergeWiring: lands the index, its import and its merge attribute togeth
   const index = readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8');
   assert.match(index, /@shared\/packs\/basics\/RULES\.md/);
   assert.ok(readFileSync(join(root, 'CLAUDE.md'), 'utf8').includes(RULES_INDEX_IMPORT));
-  assert.ok(readFileSync(join(root, '.gitattributes'), 'utf8').includes(RULES_INDEX_MERGE_ATTR));
-  assert.ok(readFileSync(join(root, '.gitattributes'), 'utf8').includes(MOUNT_VENDORED_ATTR));
+  const attributes = readFileSync(join(root, MOUNT_ATTRIBUTES_FILE), 'utf8');
+  for (const line of MOUNT_ATTRIBUTES) assert.ok(attributes.includes(line), line);
+  assert.equal(existsSync(join(root, '.gitattributes')), false, 'nothing of ours lands in the root file');
 
   const second = await convergeWiring(root, REPO);
   assert.ok(!second.changed.some((c) => c.includes('claudinite-rules.GENERATED.md') || c.includes('rules-index')), second.changed.join(', '));
