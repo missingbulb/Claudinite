@@ -1,6 +1,6 @@
 # Task dispatch without slots — the work-item queue
 
-The mechanism lives in [`packs/claudinite-tasks/queue/`](../../packs/claudinite-tasks/queue/),
+The mechanism lives in [`packs/claudinite-tasks/queue/`](../../../../packs/claudinite-tasks/queue/),
 behind `taskScheduler.dispatch`. A continuation of the owner's sketch (2026-08-12, reproduced in Appendix A), played against twenty timed
 scenarios ([SCENARIOS.md](SCENARIOS.md)) and the field's prior art
 ([RESEARCH.md](RESEARCH.md)), with the owner's eight decisions of 2026-08-13
@@ -901,7 +901,7 @@ reclaimed — and the session stops without touching the item. One comparison, n
 protocol, and it costs nothing when it passes.
 
 The session's instructions are themselves a tracked file
-([`packs/claudinite-tasks/queue/instructions.md`](../../packs/claudinite-tasks/queue/instructions.md))
+([`packs/claudinite-tasks/queue/instructions.md`](../../../../packs/claudinite-tasks/queue/instructions.md))
 that the routine's stored prompt does nothing but point at, so the issue-is-data
 posture holds at this hop too: the payload names an item, and every instruction
 comes from a file under review.
@@ -1264,7 +1264,7 @@ implementation, not assumed): firing a routine runs *its* saved prompt, and the
 `text` we send arrives wrapped in a block explicitly labelled untrusted, which a
 routine acts on only because its stored prompt says to. So the payload names the
 item and the nonce and instructs nothing, and the prompt is a tracked artifact —
-— [`packs/claudinite-tasks/queue/instructions.md`](../../packs/claudinite-tasks/queue/instructions.md),
+— [`packs/claudinite-tasks/queue/instructions.md`](../../../../packs/claudinite-tasks/queue/instructions.md),
 which the routine's stored prompt does nothing but point at, one line long. The issue-is-data posture arrives intact at one more
 hop: behavior comes from files under review, never from what an API caller sent.
 A routine's repository scope is then the whole meaning of an endpoint, which is
@@ -2129,7 +2129,7 @@ in the `failure` lane, as for every other task.
 
 ### 16.6 What the session's instructions gain
 
-[`packs/claudinite-tasks/queue/instructions.md`](../../packs/claudinite-tasks/queue/instructions.md)
+[`packs/claudinite-tasks/queue/instructions.md`](../../../../packs/claudinite-tasks/queue/instructions.md)
 grows one mode, not one procedure. Its validation step gains: *if the item carries
 `Request: #N`, assert that issue is open and still marked, or stop*. Its
 run step gains: *run at the item's `Model:` where the task takes one, and treat the
@@ -2209,13 +2209,13 @@ arbitrated and recovered by the same code as any other item, which is the point.
 8. `packs/claudinite-growth/skills/writing-tasks/SKILL.md` — the contract prose
    members read.
 
-Played through in the simulator as **S44–S51** ([sim](../../packs/claudinite-tasks/test/sim/), SCENARIOS §K); each was
+Played through in the simulator as **S44–S51** ([sim](../../../../packs/claudinite-tasks/test/sim/), SCENARIOS §K); each was
 watched failing against a deliberately broken mechanism before it was believed.
 
 Built in #1010, with one addition to the list above: the `request` signal collector
 (see §16.4's amendment), and its name in the contract's signal vocabulary. The
 engine tests mirroring S44–S51 live in
-[`packs/claudinite-tasks/test/queue/request-mode.test.mjs`](../../packs/claudinite-tasks/test/queue/request-mode.test.mjs)
+[`packs/claudinite-tasks/test/queue/request-mode.test.mjs`](../../../../packs/claudinite-tasks/test/queue/request-mode.test.mjs)
 and were each watched failing against a broken mechanism in turn.
 
 **Unverified at landing:** whether `GET /repos/{o}/{r}/collaborators/{u}/permission`

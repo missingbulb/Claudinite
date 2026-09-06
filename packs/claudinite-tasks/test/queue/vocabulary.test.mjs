@@ -363,12 +363,17 @@ test('the re-queue lever reaches the comment a parked person reads', () => {
 // a torn state the janitor then repairs. Scanned from the tracked tree rather than a
 // list, so a new brief is covered the moment it is added.
 //
-// Three exclusions, each because the legacy spelling is the point there:
+// Four exclusions, each because the legacy spelling is the point there:
 //   - `executor.md`, the RETIRED slot mechanism's instructions, frozen for routines
 //     nobody has repointed — its vocabulary is that scheme's, not this one's;
 //   - every `VERSIONS.md`, a historical record of what each version did;
-//   - the sim's scenario-coverage README, whose rows name DESIGN's legacy table.
-const PROSE_EXCLUDED = /(^|\/)(VERSIONS\.md$|executor\.md$|test\/sim\/README\.md$)/;
+//   - the sim's scenario-coverage README, whose rows name DESIGN's legacy table;
+//   - `packs/claudinite-tasks/docs/`, the task design records (moved here from the
+//     repo-level docs/ by #1755, never vendored) — each is a dated account of the
+//     vocabulary that existed at the decision it records, and rewriting a retired
+//     spelling out of one would make it describe a design that never happened, the
+//     same standing the reference-integrity waivers already give this content.
+const PROSE_EXCLUDED = /(^|\/)(VERSIONS\.md$|executor\.md$|test\/sim\/README\.md$)|^packs\/claudinite-tasks\/docs\//;
 const trackedProse = (pattern) => execFileSync('git', ['ls-files', pattern], { encoding: 'utf8' })
   .split('\n').filter((p) => p && !PROSE_EXCLUDED.test(p));
 

@@ -45,6 +45,15 @@ export const TEST_DIR = 'test';
 // the rule, so a helper the flows need stops shipping with them rather than being one
 // filename short of the exclusion.
 export const UPDATES_DIR = 'updates';
+
+// A pack's `docs/` is maintainer reference — design records and rationale a
+// contributor reads in the pack's own repo, cited by `§` name from code
+// comments (writing-pack-prose) rather than by path, the way `packs/claudinite-dashboard/`'s
+// module comments already do. No mount runtime reads a pack's docs/, so it never
+// vendors — the same "the name is the rule" posture as `test/` and `updates/`
+// above, generic across every pack rather than scoped to the one that first
+// needed it (#1755).
+export const DOCS_DIR = 'docs';
 const isTest = (name) => name.endsWith('.test.mjs');
 
 // A pack's rationale doc (the writing-pack-prose convention) records WHY each rule
@@ -113,7 +122,7 @@ function walk(relDir, files, errors, { engine = false, today, installed = null, 
   }
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (entry.isDirectory()) {
-      if (entry.name === TEST_DIR || entry.name === UPDATES_DIR) continue;
+      if (entry.name === TEST_DIR || entry.name === UPDATES_DIR || entry.name === DOCS_DIR) continue;
       if (!tasks && entry.name === TASKS_SUBDIR) continue;
       const rel = `${relDir}/${entry.name}`;
       if (isRecordOfFlow(relDir, entry.name) && !migrationApplies(rel, { installed, today })) continue;

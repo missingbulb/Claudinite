@@ -17,16 +17,16 @@ model repaired that the new model neither fixes nor escalates on.
 ## The two things the new model relies on
 
 1. **The four deterministic repairs** preprocessing runs
-   ([`worker.mjs`](../../packs/claudinite-lifecycle/tasks/update/worker.mjs)):
+   ([`worker.mjs`](../../../../packs/claudinite-lifecycle/tasks/update/worker.mjs)):
    - **converge** — rebuild `.claudinite/shared/` to the canon vendor set
-     ([`apply-vendor-set.mjs`](../../vendoring/apply-vendor-set.mjs)).
+     ([`apply-vendor-set.mjs`](../../../../vendoring/apply-vendor-set.mjs)).
    - **converge-wiring** — the scheduler workflow + hashed cron, the settings
      hooks, and the retired-import removal
-     ([`converge-wiring.mjs`](../../engine/converge-wiring.mjs), and the pack's
-     [`converge-workflows.mjs`](../../packs/claudinite-tasks/converge-workflows.mjs)).
+     ([`converge-wiring.mjs`](../../../../engine/converge-wiring.mjs), and the pack's
+     [`converge-workflows.mjs`](../../../../packs/claudinite-tasks/converge-workflows.mjs)).
    - **declaration-normalization** — the `local/<name>` pack token.
    - **mechanical migrations** — aliases / materialize / rewrite
-     ([`engine/migrations/apply.mjs`](../../engine/migrations/apply.mjs)).
+     ([`engine/migrations/apply.mjs`](../../../../engine/migrations/apply.mjs)).
 2. **The escalation gate** — preprocessing requests the agent iff a pending
    *agentic* migration note exists, **or** the converge changed something and
    `check_the_world` is **not green**.

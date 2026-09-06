@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const readme = readFileSync(here('README.md'), 'utf8');
-const design = readFileSync(here('../../../../docs/tasks-dispatch/DESIGN.md'), 'utf8');
+const design = readFileSync(here('../../docs/tasks-dispatch/DESIGN.md'), 'utf8');
 const suite = readFileSync(here('scenarios.test.mjs'), 'utf8');
 
 const mapSection = readme.split('## Coverage')[1]?.split('\n## ')[0];
