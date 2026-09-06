@@ -61,9 +61,19 @@ export const STATUS_LABELS = Object.freeze([
 // with the write-side flip.
 export const ORIGIN_PREFIX = 'task:origin:';
 export const ORIGIN_PLANNED = `${ORIGIN_PREFIX}planned`;
+// The two shapes a person's ask takes, which were one label until the trigger
+// field made them nameable apart (#1725). `manual` is an occurrence of a DECLARED
+// task somebody pulled the lever on — a wake, a hand-created item — so the queue
+// already knows what work it is. `ad-hoc` is somebody's own issue, adopted as
+// itself, which every time runs the same task (`implement-request`) over a
+// different subject.
+export const ORIGIN_MANUAL = `${ORIGIN_PREFIX}manual`;
 export const ORIGIN_AD_HOC = `${ORIGIN_PREFIX}ad-hoc`;
 export const ORIGIN_GITHUB = `${ORIGIN_PREFIX}github`;
-export const ORIGIN_LABELS = Object.freeze([ORIGIN_PLANNED, ORIGIN_AD_HOC, ORIGIN_GITHUB]);
+export const ORIGIN_LABELS = Object.freeze([ORIGIN_PLANNED, ORIGIN_MANUAL, ORIGIN_AD_HOC, ORIGIN_GITHUB]);
+// Every origin that is somebody asking. The scheduler files only ORIGIN_PLANNED,
+// so this is its complement among the origins a person's action produces.
+export const ASKED_FOR_ORIGINS = Object.freeze([ORIGIN_MANUAL, ORIGIN_AD_HOC]);
 
 // --- the write spellings ------------------------------------------------------
 // What this engine APPLIES — the canonical vocabulary above, since the write-side
@@ -332,7 +342,8 @@ export const QUEUE_LABELS = [
   { name: STATUS_DONE, color: '0e8a16', description: 'Claudinite queue: succeeded, nothing pending' },
   { name: STATUS_REJECTED, color: 'ededed', description: 'Claudinite queue: never ran — the precondition said no, or the task is gone' },
   { name: ORIGIN_PLANNED, color: 'c2e0c6', description: 'Claudinite queue: filed by the schedule — a task\'s own occurrence' },
-  { name: ORIGIN_AD_HOC, color: 'bfd4f2', description: 'Claudinite queue: asked for by a person — a one-issue request or a hand-created run' },
+  { name: ORIGIN_MANUAL, color: 'bfd4f2', description: 'Claudinite queue: pulled by a person — an occurrence of a declared task, woken or hand-created' },
+  { name: ORIGIN_AD_HOC, color: 'bfd4f2', description: 'Claudinite queue: asked for by a person — their own issue, adopted as the work item itself' },
   { name: ORIGIN_GITHUB, color: 'd4c5f9', description: 'Claudinite queue: filed by the platform itself — a workflow reporting its own failure' },
   // Legacy, kept alive for the items that wear them.
   { name: LEGACY_BLOCKED, color: 'c5def5', description: 'Claudinite queue (legacy): waiting on Blocked-by and/or Not-before' },
@@ -685,7 +696,7 @@ export function itemFacts(item) {
   if (!item) return null;
   const fields = parseWorkItemBody(item.body);
   const parsed = parseWorkItemTitle(item.title);
-  const schedulesOwn = !!parsed && parsed.qualifier === null && originOf(item) !== ORIGIN_AD_HOC;
+  const schedulesOwn = !!parsed && parsed.qualifier === null && !ASKED_FOR_ORIGINS.includes(originOf(item));
   return {
     ...fields,
     number: item.number ?? null,

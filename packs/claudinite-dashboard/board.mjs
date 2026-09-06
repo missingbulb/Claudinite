@@ -22,7 +22,15 @@ import {
   STATUS_RUNNING_AGENT, STATUS_RUNNING_EXECUTOR, STATUS_READY,
   PARK_PREFIX, PARK_KINDS, ORIGIN_AD_HOC,
 } from '../claudinite-tasks/shared-code/work-items.mjs';
+// Namespace-read for the one export that may be newer than the member's queue
+// module: the dashboard and claudinite-tasks converge on separate cadences, so a
+// named import of an export it has not reached yet is a link-time fault that takes
+// the whole page. Before `manual` arrives, `ad-hoc` alone is what this meant.
+import * as queueVocabulary from '../claudinite-tasks/shared-code/work-items.mjs';
 import { nextAnchor } from '../claudinite-tasks/shared-code/anchors.mjs';
+
+// Every origin a person's action produces, as against the schedule's own.
+const askedForOrigins = () => queueVocabulary.ASKED_FOR_ORIGINS ?? [ORIGIN_AD_HOC];
 
 const DAY = 86400e3;
 
@@ -340,11 +348,14 @@ export function buildBoard({ rows = [], items = [], prs = [], now, schedule = nu
     };
   }).sort((a, b) => (b.waits ? 1 : 0) - (a.waits ? 1 : 0) || a.openedAt - b.openedAt);
 
-  // FLOWS — ad-hoc items and the plain issues that block them, at their predicted time.
-  const adHoc = open.filter((i) => isQueueItem(i) && labelNames(i).includes(ORIGIN_AD_HOC));
-  const parkedOrRunning = open.filter((i) => isQueueItem(i) && !labelNames(i).includes(ORIGIN_AD_HOC)
+  // FLOWS — the items somebody asked for, and the plain issues that block them, at
+  // their predicted time.
+  const askedFor = askedForOrigins();
+  const wasAsked = (i) => labelNames(i).some((n) => askedFor.includes(n));
+  const asked = open.filter((i) => isQueueItem(i) && wasAsked(i));
+  const parkedOrRunning = open.filter((i) => isQueueItem(i) && !wasAsked(i)
     && (statusOf(i)?.startsWith(PARK_PREFIX) || [STATUS_RUNNING_AGENT, STATUS_RUNNING_EXECUTOR].includes(statusOf(i))));
-  const flowItems = [...adHoc, ...parkedOrRunning];
+  const flowItems = [...asked, ...parkedOrRunning];
   const flowRows = flowItems.map((item) => {
     const place = placeItem(item, { now, axis, byNumber, moversByNumber });
     const status = statusOf(item);
