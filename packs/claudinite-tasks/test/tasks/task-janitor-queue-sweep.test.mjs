@@ -247,7 +247,7 @@ test('a terminal that closed itself between the read and the write is left alone
 
 const HEAD_TASKS = [{ pack: 'p', id: 'a', taskPath: 'packs/p/tasks/a/task.md', decl: { frequency: 'daily' } }];
 
-test('a failure park nobody has answered in three weeks closes obsolete and releases the lane', async () => {
+test('a failure park nobody has answered past the bound closes obsolete and releases the lane', async () => {
   const { gh, added, patched } = janitorGh([
     workItem(41, ['needs-human', 'origin:schedule'], { created: '2026-07-01T00:00:00Z' }),
   ]);

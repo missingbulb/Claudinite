@@ -404,7 +404,7 @@ const headTasks = [
 const freq = frequencyForTasks(headTasks);
 const LATER = '2026-09-06T04:00:00Z'; // ~26 days past the fixtures' default touch
 
-test('a failure park nobody has touched for three weeks is closed', () => {
+test('a failure park nobody has touched past the bound is closed', () => {
   const item = parked({ kind: 'failure', updated_at: '2026-08-10T04:00:00Z' });
   assert.deepEqual(abandonedParkItems([item], LATER, { frequencyFor: freq }).map((i) => i.number), [item.number]);
   assert.match(abandonedParkComment(), /task:status:rejected/);

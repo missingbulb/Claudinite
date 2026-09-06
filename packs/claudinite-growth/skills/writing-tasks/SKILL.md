@@ -478,7 +478,7 @@ closing or running anything.
   the task being scheduled** — no further occurrence is filed until it is woken or
   closed. That is deliberate: a queue of items that will break the same way helps
   nobody, and the silence is the signal — bounded, though: the janitor closes a
-  standing failure park nobody has touched in three weeks, so a report no one read
+  standing failure park nobody has touched in ten days, so a report no one read
   never silences a task for good. The other three do **not** hold the lane —
   they are one person's inbox, not a fault in the task, so the schedule carries on
   around them.

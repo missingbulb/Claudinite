@@ -304,7 +304,7 @@ export const unclosedTerminalComment = (status) => (status === STATUS_DONE
 // is exactly what a qualified item, a `manual` task's item and an adopted issue are
 // not — each is somebody's own work, and no clock answers those. A task absent from
 // HEAD answers no frequency and so is not standing either; that item is rule F's.
-export const ABANDONED_PARK_MS = 21 * 86400e3;
+export const ABANDONED_PARK_MS = 10 * 86400e3;
 
 export function abandonedParkItems(open = [], now, { frequencyFor = () => null, boundMs = ABANDONED_PARK_MS } = {}) {
   return open.filter((item) => {
