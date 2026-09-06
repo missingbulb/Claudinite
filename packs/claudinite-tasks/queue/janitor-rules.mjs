@@ -13,7 +13,7 @@ import { periodMs } from './anchors.mjs';
 import {
   READY, AGENT, requeueHint,
   STATUS_READY, STATUS_RUNNING_AGENT, STATUS_BLOCKED, STATUS_DONE, STATUS_REJECTED, isStatus, statusOf,
-  isParked, parkKindOf, originOf, ORIGIN_AD_HOC,
+  isParked, parkKindOf, originOf, ORIGIN_AD_HOC, STATUS_NEEDS_HUMAN_FAILURE, isStandingItem,
   parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
 } from './work-item.mjs';
 
@@ -284,3 +284,47 @@ export const unclosedTerminalComment = (status) => (status === STATUS_DONE
     + 'so it has been sitting in the open queue looking like live work. Closing it, which is all the terminal was missing.'
   : `This item carries \`${STATUS_REJECTED}\` — it was taken out of the queue — but it was never closed, `
     + `so it has been sitting open looking like live work. Closing it; if the work is still wanted, re-queue it (${requeueHint}).`);
+
+// Rule I — THE ABANDONED FAILURE PARK (#1785). A `failure` park is the one kind that
+// HOLDS THE TASK'S LANE (`isBlockingPark`, honoured in `planSchedulerRun` job 1), and
+// that is what makes it the one kind with no terminating condition of its own. Rule E
+// answers a park with a later clean run of the same task — but while this park stands
+// no further occurrence is ever filed, so that answer can never arrive. The other
+// three kinds all have one: `action` does not hold the lane, so later runs happen and
+// rule E fires; `approval` ends when its pull request resolves (rule G); `decision` is
+// a choice a person owes. `failure` alone sits forever
+// (missingbulb/TLDR#275: parked by the agent leash, untouched for over three weeks).
+//
+// So the CLOCK is the answer here, and closing the item is the whole of it: the lane
+// is released, the scheduler files a fresh occurrence, and a fault that is still there
+// re-parks against a run from this week rather than leaving a month-old trace to read.
+//
+// STANDING ONLY, and structurally (`isStandingItem` against HEAD's declaration): the
+// warrant is that this item is a FUNGIBLE OCCURRENCE whose lane is being held, which
+// is exactly what a qualified item, a `manual` task's item and an adopted issue are
+// not — each is somebody's own work, and no clock answers those. A task absent from
+// HEAD answers no frequency and so is not standing either; that item is rule F's.
+export const ABANDONED_PARK_MS = 21 * 86400e3;
+
+export function abandonedParkItems(open = [], now, { frequencyFor = () => null, boundMs = ABANDONED_PARK_MS } = {}) {
+  return open.filter((item) => {
+    if (statusOf(item) !== STATUS_NEEDS_HUMAN_FAILURE) return false;
+    const p = parseWorkItemTitle(item.title);
+    if (!p) return false;
+    if (!isStandingItem(item, frequencyFor(`${p.pack}/${p.task}`))) return false;
+    return idle(item, now) >= boundMs;
+  });
+}
+
+export const abandonedParkComment = () =>
+  `Nothing has touched this park in over ${Math.round(ABANDONED_PARK_MS / 86400e3)} days. A \`failure\` park holds its task's lane, `
+  + 'so leaving it standing does not preserve the report — it keeps the task from ever running again, and a later clean run is '
+  + `what would otherwise have closed this. Closing it \`${STATUS_REJECTED}\`: the next scheduled occurrence runs, and if the `
+  + `fault is still there it parks again against a trace worth reading. If you were part-way through diagnosing it, re-queue it (${requeueHint}).`;
+
+// The declared frequency of a task at HEAD, for rule I's standing test — absent for a
+// task this repo no longer carries, which reads as not standing.
+export const frequencyForTasks = (tasks = []) => {
+  const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
+  return (id) => byId.get(id)?.decl?.frequency ?? null;
+};

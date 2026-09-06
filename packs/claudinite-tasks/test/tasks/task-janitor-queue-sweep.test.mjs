@@ -242,3 +242,41 @@ test('a terminal that closed itself between the read and the write is left alone
   assert.deepEqual(out.unclosed, []);
   assert.deepEqual(patched.filter((p) => p.issue === 83), []);
 });
+
+// --- rule I, the abandoned failure park (#1785) -------------------------------
+
+const HEAD_TASKS = [{ pack: 'p', id: 'a', taskPath: 'packs/p/tasks/a/task.md', decl: { frequency: 'daily' } }];
+
+test('a failure park nobody has answered in three weeks closes obsolete and releases the lane', async () => {
+  const { gh, added, patched } = janitorGh([
+    workItem(41, ['needs-human', 'origin:schedule'], { created: '2026-07-01T00:00:00Z' }),
+  ]);
+  const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-08-01T00:00:00Z'), { tasks: HEAD_TASKS }));
+  assert.deepEqual(out.abandoned, [41]);
+  assert.deepEqual(labelsOn(added, 41), [TASK_OBSOLETE]);
+  assert.deepEqual(patched.filter((p) => p.issue === 41).map((p) => p.state_reason), ['not_planned']);
+});
+
+// The park a person is still working through: their touch resets the bound, and the
+// second read is what sees it.
+test('a park touched between the sweep\'s read and its write is left standing', async () => {
+  const item = workItem(42, [NEEDS_HUMAN_FAILURE], { created: '2026-07-01T00:00:00Z' });
+  const { gh, patched } = janitorGh([item], {}, { 42: { ...item, updated_at: '2026-07-31T00:00:00Z' } });
+  const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-08-01T00:00:00Z'), { tasks: HEAD_TASKS }));
+  assert.deepEqual(out.abandoned, []);
+  assert.deepEqual(patched.filter((p) => p.issue === 42), []);
+});
+
+// Rule E names the run that answered the park, which says more than the clock does.
+test('a superseded park is closed as superseded, not as abandoned', async () => {
+  const { gh } = janitorGh([workItem(43, [NEEDS_HUMAN_FAILURE], { created: '2026-07-01T00:00:00Z' })]);
+  const withDone = async (path, opts = {}) => {
+    if (opts.method === undefined && path.startsWith('/repos/o/r/issues?state=closed') && path.includes('page=1')) {
+      return { status: 200, json: [{ ...workItem(99, [TASK_DONE]), state: 'closed', closed_at: '2026-07-20T00:00:00Z', updated_at: '2026-07-20T00:00:00Z' }] };
+    }
+    return gh(path, opts);
+  };
+  const out = await quiet(() => sweepQueue(withDone, 'o/r', at('2026-08-01T00:00:00Z'), { tasks: HEAD_TASKS }));
+  assert.deepEqual(out.superseded, [43]);
+  assert.deepEqual(out.abandoned, []);
+});
