@@ -142,6 +142,25 @@ test('collectFor reads the history first, sets the window from it, and can stop 
   assert.match(decodeURIComponent(commitsRead), /since=2026-09-03T04:05:00.000Z/, 'over the window the history decided');
 });
 
+// At the executor the history is a paged read of every issue in the horizon. A task
+// that reads nothing but the item it was created for — the request implementer's
+// `request` signal — has no term and no window to spend it on, so it is not read.
+test('collectFor reads the history only where a term or a windowed collector reads it', async () => {
+  const paths = [];
+  const gh = async (path) => { paths.push(path); return { status: 200, json: [] }; };
+  const collect = collectSignalsForTask({ gh, repo: 'o/r', root: process.cwd(), config: { packs: [] }, defaultBranch: 'main', items: null });
+  const aboutItem = { ...task(['about-the-item']), terms: new Map([['about-the-item', { signals: ['request'], needsItem: true, holds: () => ({ holds: true }) }]]) };
+  const marked = { number: 3, title: 'A thing to do', labels: ['task:origin:ad-hoc'], body: workItemBody({ taskPath: 'packs/p/tasks/t/task.md', request: 500, woken: NOW }) };
+  const out = await collect(aboutItem, NOW, marked);
+  assert.deepEqual(Object.keys(out), ['request']);
+  assert.ok(!paths.some((p) => /\/issues\?state=all/.test(p)), `no issue list was paged: ${paths.join(', ')}`);
+  assert.ok(paths.some((p) => /\/issues\/500$/.test(p)), 'the named request was read');
+
+  paths.length = 0;
+  await collect(task(['due:daily']), NOW, null);
+  assert.ok(paths.some((p) => /\/issues\?state=all/.test(p)), 'a run-history term reads the queue');
+});
+
 test('collectFor hands the item\'s facts to the collectors, the runs history excluding it', async () => {
   const items = [item(9), item(11, { state: 'open', labels: ['task:status:running-executor', 'task:origin:planned'], created_at: '2026-09-05T15:00:00Z', closed_at: null })];
   const collect = collectSignalsForTask({ gh: noGh, repo: 'o/r', root: process.cwd(), config: { packs: [] }, defaultBranch: 'main', items });

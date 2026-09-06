@@ -64,13 +64,18 @@ export function collectSignalsForTask({ gh, repo, root, config, defaultBranch, i
     const facts = itemFacts(item);
     const taskRef = { pack: task.pack, id: task.id };
 
-    // The history first, on its own: it needs no window and decides the window.
+    const rest = (only ? names.filter((n) => only.includes(n)) : names).filter((n) => n !== 'runs');
+    // The history first, on its own: it needs no window and decides the window. It
+    // is read only where something reads it — a run-history term, or a collector
+    // that windows on it. A task reading nothing but the item it was created for
+    // (the request implementer) pages no issue list at every pick.
+    const windowless = new Set(['request']);
+    const needsHistory = names.includes('runs') || rest.some((n) => !windowless.has(n));
+    if (!needsHistory) return rest.length ? await collectSignals(gh, buildSignalContext({ root, repo, defaultBranch, now: nowIso, sinceIso: null, config, packConfigFor, item: facts, task: taskRef, items }), rest) : {};
     const history = buildSignalContext({ root, repo, defaultBranch, now: nowIso, sinceIso: null, config, packConfigFor, item: facts, task: taskRef, items });
     const { runs } = await collectSignals(gh, history, ['runs']);
     const window = windowFromRuns(task, runs?.error ? null : runs, now);
     const out = { runs: { ...runs, window } };
-
-    const rest = (only ? names.filter((n) => only.includes(n)) : names).filter((n) => n !== 'runs');
     if (!rest.length) return out;
 
     // The fleet aggregate is a full enumeration over a wider credential, so it is
