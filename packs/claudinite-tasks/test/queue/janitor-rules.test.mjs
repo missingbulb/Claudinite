@@ -52,6 +52,35 @@ test('the agent leash converges a session that went silent, and spares a live on
   assert.deepEqual(deadAgentItems([dead, live], NOW).map((i) => i.number), [dead.number]);
 });
 
+// A BEATING SESSION IS JUDGED ON ITS PROGRESS, NOT ITS PUNCTUALITY. The beat resets
+// the issue clock by existing, so once the agent phase beats, the clock alone would
+// make every beating session immortal — including one that wedged an hour in. These
+// two cases are the pair that separates them, and both are invisible to `updated_at`:
+// the first has a stale clock and live work, the second a live clock and dead work.
+test('a beating session that is still getting somewhere is spared, however stale its issue clock', () => {
+  const working = it({ labels: ['task:agent'], updated_at: '2026-08-13T12:00:00Z' });
+  const progressAt = () => '2026-08-14T03:50:00Z';
+  assert.deepEqual(deadAgentItems([working], NOW, { progressAt }), []);
+});
+
+test('a session that keeps beating the same note is reclaimed on the same leash as one that went silent', () => {
+  const wedged = it({ labels: ['task:agent'], updated_at: '2026-08-14T03:59:00Z' });
+  // Punctual to the minute, and stuck since 00:30 — the clock says alive, the notes say no.
+  const progressAt = () => '2026-08-14T00:30:00Z';
+  assert.deepEqual(deadAgentItems([wedged], NOW, { progressAt }).map((i) => i.number), [wedged.number]);
+  // Without the progress reader it is the fresh clock that answers, and nothing is reclaimed.
+  assert.deepEqual(deadAgentItems([wedged], NOW), []);
+});
+
+// Every item filed before the beat existed answers null, and must be judged exactly
+// as it was — this rule ships to a fleet whose sessions do not beat yet.
+test('an item with no beats at all is judged off the issue clock, as before', () => {
+  const dead = it({ labels: ['task:agent'], updated_at: '2026-08-14T00:00:00Z' });
+  const live = it({ labels: ['task:agent'], updated_at: '2026-08-14T03:30:00Z' });
+  const progressAt = () => null;
+  assert.deepEqual(deadAgentItems([dead, live], NOW, { progressAt }).map((i) => i.number), [dead.number]);
+});
+
 // F14 — the stale-ready rule cannot see this at all: a blocked item is never
 // ready, so a dependency that never resolves had no rule watching it.
 test('a blocked item whose blockers never resolve is surfaced; a sleeping one is not (F14)', () => {

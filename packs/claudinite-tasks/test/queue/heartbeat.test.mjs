@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   HEARTBEAT_MARKER, heartbeatComment, lastLivenessAt, withHeartbeat,
-  agentBeatComment, withProgress,
+  agentBeatComment, withProgress, lastProgressAt,
 } from '../../queue/heartbeat.mjs';
 import { parseProgressLines, parseContextLines } from '../../queue/work-item.mjs';
 import { planSchedulerRun } from '../../queue/scheduler-run.mjs';
@@ -163,4 +163,23 @@ test('progress APPENDS to the item body and keeps every earlier line', () => {
   // One Progress section, and the Context it was born with is untouched.
   assert.equal(body.match(/^### Progress$/gm).length, 1);
   assert.deepEqual(parseContextLines(body), ['triage the touched issues']);
+});
+
+// `lastProgressAt` is what separates a working run from a punctual one. The note has
+// to survive the round trip through a rendered comment body, so it is read back off
+// `agentBeatComment`'s own output rather than from a value kept beside it.
+test('progress is when the beat note last CHANGED, not when the last beat landed', () => {
+  const b = (at, note) => ({ created_at: at, body: agentBeatComment({ session: 's', at, note }) });
+  const moving = [b('2026-08-20T04:00:00Z', '1/9'), b('2026-08-20T05:00:00Z', '4/9'), b('2026-08-20T06:00:00Z', '7/9')];
+  assert.equal(lastProgressAt(moving), '2026-08-20T06:00:00.000Z');
+  // Three punctual beats, one note: progress stopped at the first of them.
+  const wedged = [b('2026-08-20T04:00:00Z', '1/9'), b('2026-08-20T05:00:00Z', '1/9'), b('2026-08-20T06:00:00Z', '1/9')];
+  assert.equal(lastProgressAt(wedged), '2026-08-20T04:00:00.000Z');
+  // Moved, then stopped: the leash runs from the move, not from the run's start.
+  const stalled = [b('2026-08-20T04:00:00Z', '1/9'), b('2026-08-20T05:00:00Z', '4/9'), b('2026-08-20T06:00:00Z', '4/9')];
+  assert.equal(lastProgressAt(stalled), '2026-08-20T05:00:00.000Z');
+  // No beats is not "no progress" — it is "judge this the old way".
+  assert.equal(lastProgressAt([claim('2026-08-20T04:00:00Z')]), null);
+  // A struck beat is not a signal, for the reason the claims are not.
+  assert.equal(lastProgressAt([{ created_at: '2026-08-20T04:00:00Z', body: `${EPISODE_MARKER}\n${HEARTBEAT_MARKER}\nStill working: s — 1/9, at x.` }]), null);
 });

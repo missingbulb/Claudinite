@@ -93,3 +93,35 @@ export const agentBeatComment = ({ session, at, note }) =>
 // split the standing trackers use, arrived at from the opposite direction.
 export const withProgress = (body, line) =>
   withSection(body, PROGRESS_HEADING, [...parseProgressLines(body), line]);
+
+// WHEN THE WORK LAST MOVED, as distinct from when the holder last spoke.
+//
+// A beat resets the leash, so a session that beats punctually while wedged would
+// never be reclaimed — the signal degrades from "work is happening" to "a process is
+// alive", which is the failure the leash exists to catch. The beat already carries
+// what separates them: its note is the progress (`9/15 groups triaged`), so a run of
+// beats all saying the same thing is a wedged run, however punctual.
+//
+// Returns when the note last CHANGED — the oldest beat of the trailing run that all
+// carry the newest one's note — or null when the item has no beats at all, which is
+// the caller's signal to judge it the old way rather than to call it dead.
+export function lastProgressAt(comments = []) {
+  const beats = comments
+    .filter((c) => (c.body ?? '').includes(HEARTBEAT_MARKER) && !(c.body ?? '').includes(EPISODE_MARKER))
+    .map((c) => ({ at: new Date(c.created_at ?? 0).getTime(), note: beatNote(c.body ?? '') }))
+    .filter((b) => b.at > 0)
+    .sort((a, b) => a.at - b.at);
+  if (!beats.length) return null;
+  const newest = beats[beats.length - 1].note;
+  let i = beats.length - 1;
+  while (i > 0 && beats[i - 1].note === newest) i -= 1;
+  return new Date(beats[i].at).toISOString();
+}
+
+// The part of a beat that says where the work got to. Read off the comment rather
+// than kept beside it: the beat a session posts through its own GitHub tools is the
+// only copy, so the note has to survive the round trip through the rendered body.
+const beatNote = (body) => {
+  const line = body.split('\n').find((l) => l.startsWith('Still working')) ?? '';
+  return (line.match(/ — (.*), at [^,]*\.$/)?.[1] ?? line).trim();
+};
