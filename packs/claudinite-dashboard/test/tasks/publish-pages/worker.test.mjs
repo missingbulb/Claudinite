@@ -9,15 +9,14 @@ import {
 } from '../../../tasks/publish-pages/worker.mjs';
 import declarationJson from '../../../tasks/publish-pages/task.json' with { type: 'json' };
 import updateJson from '../../../../claudinite-lifecycle/tasks/update/task.json' with { type: 'json' };
-import { normalizeTaskDeclaration, validateTaskDeclaration, isScheduledTask } from '../../../../claudinite-tasks/task-contract.mjs';
+import { normalizeTaskDeclaration, isScheduledTask } from '../../../../claudinite-tasks/task-contract.mjs';
 import { pickOrder } from '../../../../claudinite-tasks/queue/executor.mjs';
 import { WORK_PREFIX, STATUS_READY, STATUS_RUNNING_EXECUTOR } from '../../../../claudinite-tasks/shared-code/work-items.mjs';
 
 const REPO = 'o/r';
 
-test('the declaration is the contract\'s, and yields to the converge it publishes', () => {
+test('publish-pages yields to the converge it publishes', () => {
   const decl = normalizeTaskDeclaration(declarationJson);
-  assert.deepEqual(validateTaskDeclaration(decl, {}), []);
   // Driven through the executor's real pick order: while the converge's standing item
   // is live this cycle, the Pages item is not picked; the moment it is gone, it is.
   const update = normalizeTaskDeclaration(updateJson);

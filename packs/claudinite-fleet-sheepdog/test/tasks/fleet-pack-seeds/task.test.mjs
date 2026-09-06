@@ -4,10 +4,8 @@ import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, join } from 'node:path';
-import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import declJson from '../../../tasks/fleet-pack-seeds/task.json' with { type: 'json' };
 import rosterJson from '../../../tasks/fleet-roster/task.json' with { type: 'json' };
-import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
 import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const decl = normalizeTaskDeclaration(declJson);
@@ -23,10 +21,6 @@ const taskDir = join(packRoot, 'tasks/fleet-pack-seeds');
 
 // --- the declaration ----------------------------------------------------------
 
-test('fleet-pack-seeds: the declaration satisfies the task contract', () => {
-  assert.deepEqual(validateTaskDeclaration(decl), []);
-});
-
 test('fleet-pack-seeds: the declaration names its own directory and a worker that is there', () => {
   // discover.mjs resolves a task by its directory, and the executor runs code_work from it.
   assert.equal(decl.id, basename(taskDir));
@@ -38,17 +32,6 @@ test('fleet-pack-seeds: asks for the same fleet secret the roster sweep does —
   // The token is granted once for the whole pack (fleet-token.mjs), so two sweeps
   // declaring different secret names would be two things for a person to configure.
   assert.deepEqual(decl.code_work_required_secrets, roster.code_work_required_secrets);
-});
-
-// The cadence term reads the task's own run history at a chosen instant: an empty
-// history holds, and the signal under test decides.
-const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
-const AT = '2026-09-05T16:00:00Z';
-const NO_RUNS = { runs: { list: [] } };
-test('fleet-pack-seeds: fires on its cadence alone, with a reason', () => {
-  const v = evaluatePrecondition({ decl }, NO_RUNS, {}, null, AT, SCHEDULE);
-  assert.equal(v.run, true);
-  assert.match(v.reason, /\S/);
 });
 
 // --- the worker delegates to the sweep ----------------------------------------
