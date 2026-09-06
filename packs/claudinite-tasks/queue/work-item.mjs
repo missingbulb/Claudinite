@@ -403,8 +403,8 @@ export function taskIdFromPath(path) {
 
 // STANDING OR AD-HOC, DERIVED (DESIGN §15.26). A task's standing item is the one
 // the scheduler files when the task says yes: its title names the task and nothing
-// else, and the task it names is on the schedule. Everything else is ad-hoc — a
-// woken-gated task's item (the scheduler never asks it) and every qualified item
+// else, and the task it names is on the schedule. Everything else is ad-hoc — an
+// unscheduled task's item (the scheduler never asks it) and every qualified item
 // (a fan-out target, a request naming its issue), each of which may legitimately
 // run beside the occurrence rather than being it.
 //
@@ -465,9 +465,9 @@ export const SUPERSEDES_FIELD = 'Supersedes';
 
 // WOKEN (DESIGN §5, §8) — the instant somebody created this item by hand or woke
 // it: a hand-created item, a forced mint, a `--wake`. The cadence terms hold on a
-// woken item (a person's wake stands in for the cadence) and the `woken` term holds
-// only on one, so an item the scheduler filed on its own never carries the field.
-// Stamped by the lever that woke it, never inferred from a comment.
+// woken item (a person's wake stands in for the cadence), so an item the scheduler
+// filed on its own never carries the field. Stamped by the lever that woke it,
+// never inferred from a comment.
 export const WOKEN_FIELD = 'Woken';
 
 // The three fields a REQUEST item carries (DESIGN §16.3, §16.11). `Request` is the issue this
@@ -679,8 +679,8 @@ export function parseWorkItemBody(body) {
 // NOT the scheduler's own ask: an item stamped by a lever, one born ad-hoc (a
 // marked issue, a chain link), and any qualified item (a fan-out target, a request
 // naming its issue) — the scheduler files only unqualified planned items, so an
-// item of any other shape exists because somebody asked, which is what the `woken`
-// term and the cadence terms need to know.
+// item of any other shape exists because somebody asked, which is what the cadence
+// terms need to know.
 export function itemFacts(item) {
   if (!item) return null;
   const fields = parseWorkItemBody(item.body);

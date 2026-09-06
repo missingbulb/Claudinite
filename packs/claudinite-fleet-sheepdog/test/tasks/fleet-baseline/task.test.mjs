@@ -6,8 +6,7 @@ import { basename, dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import declJson from '../../../tasks/fleet-baseline/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
-import { mostRecentAnchor, nextAnchor } from '../../../../claudinite-tasks/queue/anchors.mjs';
-import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+import { isScheduledTask, normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const decl = normalizeTaskDeclaration(declJson);
 
@@ -30,14 +29,11 @@ test('fleet-baseline: the declaration names its own directory and a worker that 
   assert.ok(existsSync(join(taskDir, script)), `code_work names ${script}, which is not beside the declaration`);
 });
 
-test('fleet-baseline: the calendar never offers it an occurrence — only a hand-made item runs it', () => {
-  // Driven through the queue's own anchor arithmetic with a real schedule: the
-  // scheduler run instantiates a standing item at `mostRecentAnchor` and rolls it to
-  // `nextAnchor`, and this declaration gives it neither.
-  const schedule = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
-  const now = new Date('2026-09-05T12:00:00Z');
-  assert.equal(mostRecentAnchor(decl.frequency, schedule, now), null);
-  assert.equal(nextAnchor(decl.frequency, schedule, now), null);
+test('fleet-baseline: the scheduler never asks it — only a hand-made item runs it', () => {
+  // The declaration states no condition, which is how a task says it has no
+  // schedule: the scheduler run's ask skips it, and an item exists only because
+  // the enforcer or a person created one.
+  assert.equal(isScheduledTask(decl), false);
 });
 
 test('fleet-baseline: its precondition admits its own forced item', () => {

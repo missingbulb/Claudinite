@@ -95,8 +95,10 @@ const rule = {
       // that states no "when" at all.
       const legacyFrequency = str('frequency');
       if (decl.has('frequency')) {
-        advise('declares the retired field "frequency"',
-          `write it as the first condition — "preconditions": [${JSON.stringify(ACCEPTED_FREQUENCIES.includes(legacyFrequency) ? cadenceTermFor(legacyFrequency) : 'due:<daily|weekly|monthly>')}, …] — and drop a "none" beside it; the field reads as exactly that today`);
+        const term = ACCEPTED_FREQUENCIES.includes(legacyFrequency) ? cadenceTermFor(legacyFrequency) : 'due:<daily|weekly|monthly>';
+        advise('declares the retired field "frequency"', term === null
+          ? 'drop the field, and a "none" beside it: "manual" meant no schedule, which a declaration says by stating no "preconditions" at all'
+          : `write it as the first condition — "preconditions": [${JSON.stringify(term)}, …] — and drop a "none" beside it; the field reads as exactly that today`);
       }
       // agent_model is OPTIONAL: absent means no agent (task-defaults.mjs), so the
       // checks below judge the model the task will actually run at.
@@ -157,12 +159,11 @@ const rule = {
       if (decl.has('precondition_signals')) {
         flag('declares "precondition_signals", which is retired', 'drop it — the signal union is derived from the conditions, each of which names what it reads');
       }
-      // The expression is the whole of when the task runs, so it is REQUIRED — a
-      // retired `frequency` stands in for it exactly as the door reads it, cadence
-      // term first and a `none` beside it dropped — and judged term by term.
-      if (!decl.has('preconditions') && !decl.has('frequency')) {
-        flag('declares no "preconditions"', 'add "preconditions": a cadence first where the task keeps one ("due:daily", "due:weekly", "last-run-over:7d"), "woken" for a task run only from an item somebody created, then what it waits for — e.g. ["due:daily", "substantive-change"]');
-      } else {
+      // The expression is the whole of when the task runs, and OPTIONAL: a declaration
+      // stating none is off the schedule and runs only from an item somebody creates.
+      // A retired `frequency` reads exactly as the door reads it, cadence term first
+      // and a `none` beside it dropped — and the expression is judged term by term.
+      if (decl.has('preconditions') || decl.has('frequency')) {
         // Deliberately strict: a declaration whose trigger is computed cannot be
         // audited by anyone reading it, which is the whole reason the field is data.
         const stated = decl.has('preconditions') ? decl.list('preconditions') : [];

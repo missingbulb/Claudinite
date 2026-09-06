@@ -143,8 +143,10 @@ export function anchorInstant(frequency, schedule, now) {
 //   due:<daily|weekly|monthly>   no run since that cadence's most recent anchor on
 //                                this repo's schedule — fixed hours, no drift
 //   last-run-over:<12h|1d|7d>    the newest run started more than that long ago
-//   woken                        only from an item somebody created — the spelling
-//                                of the retired `frequency: manual`
+//
+// A declaration with NO conditions is not on the schedule at all: nothing in the
+// world or its history triggers it, so the scheduler never asks it, and it runs
+// only from an item somebody created (the retired `frequency: manual`).
 //
 // The parse lives here, beside the frequency vocabulary it replaces, and imports
 // nothing: the dashboard's browser bundle reads a cadence the way the scheduler does.
@@ -152,7 +154,6 @@ export const CADENCES = ['daily', 'weekly', 'monthly'];
 export const DUE_TERM = 'due';
 export const ELAPSED_TERM = 'last-run-over';
 export const NOT_FAILED_TERM = 'last-run-not-failed';
-export const WOKEN_TERM = 'woken';
 
 // `12h`, `1d`, `7d` — a whole number of hours or days, nothing else.
 const DURATION_RE = /^(\d+)(h|d)$/;
@@ -172,9 +173,9 @@ const alternativesOf = (entry) => String(entry ?? '').split('||').map((t) => t.t
 const entriesOf = (preconditions) => (Array.isArray(preconditions) ? preconditions : []).map(alternativesOf);
 
 // The cadence a declaration states — `{ kind: 'due', cadence }`, `{ kind:
-// 'elapsed', ms, text }`, `{ kind: 'woken' }`, or null for a task with no cadence
-// term at all (asked at every tick, it runs whenever its other conditions hold).
-// The first cadence term wins; `woken` only counts where it gates.
+// 'elapsed', ms, text }`, or null for a task with no cadence term (asked at every
+// tick while it states any condition, it runs whenever those hold). The first
+// cadence term wins.
 export function cadenceOf(preconditions) {
   for (const ref of entriesOf(preconditions).flat()) {
     if (ref.name === DUE_TERM && CADENCES.includes(ref.arg)) return { kind: 'due', cadence: ref.arg };
@@ -183,21 +184,24 @@ export function cadenceOf(preconditions) {
       if (ms) return { kind: 'elapsed', ms, text: ref.arg };
     }
   }
-  return isWokenGated(preconditions) ? { kind: 'woken' } : null;
+  return null;
 }
 
-// A term gates when it is a whole conjunct of the expression — `['woken', …]`
-// gates, `['due:daily || woken']` merely widens.
+// Whether the declaration states any condition at all. Absent or empty, the task
+// is off the schedule: the scheduler never asks it, and it runs only from an item
+// somebody created — at whose pick an empty expression holds.
+export const statesConditions = (preconditions) => entriesOf(preconditions).some((alts) => alts.length > 0);
+
+// A term gates when it is a whole conjunct of the expression — `['x', …]` gates,
+// `['due:daily || x']` merely widens.
 const gatesOn = (preconditions, term) =>
   entriesOf(preconditions).some((alts) => alts.length === 1 && alts[0].name === term && alts[0].arg === null);
-
-// A task runs only when somebody asks when `woken` gates it.
-export const isWokenGated = (preconditions) => gatesOn(preconditions, WOKEN_TERM);
 
 // A task stops past its own failure park only when it says so: nothing holds a
 // task's lane but its own `last-run-not-failed`.
 export const holdsOnFailure = (preconditions) => gatesOn(preconditions, NOT_FAILED_TERM);
 
-// What the retired `frequency` field always meant, as the term that now says it.
+// What the retired `frequency` field always meant, as the term that now says it —
+// or null for `manual`, which meant no schedule at all and so adds no term.
 export const cadenceTermFor = (frequency) =>
-  (normalizeFrequency(frequency) === 'manual' ? WOKEN_TERM : `${DUE_TERM}:${normalizeFrequency(frequency)}`);
+  (normalizeFrequency(frequency) === 'manual' ? null : `${DUE_TERM}:${normalizeFrequency(frequency)}`);

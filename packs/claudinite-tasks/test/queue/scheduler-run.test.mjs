@@ -7,7 +7,7 @@ import { parseWorkItemBody } from '../../queue/work-item.mjs';
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 
 // A task's "when" is its own expression (DESIGN §5): `['due:daily']` is a task on
-// the schedule, `['woken']` one that runs only when somebody asks.
+// the schedule, `[]` one that runs only when somebody asks.
 const task = (id, preconditions, extra = {}) => ({
   pack: 'p', id, taskPath: `packs/p/tasks/${id}/task.md`,
   decl: { id, preconditions, ...extra },
@@ -83,13 +83,14 @@ test('an ask the scheduler cannot decide fails OPEN: the item is filed and the e
   assert.deepEqual(asked, [{ task: 'p/daily1', verdict: 'fail-open', reason: 'FLEET_GITHUB_TOKEN is not available here' }]);
 });
 
-test('every task on the schedule is asked, in declaration order, and a woken-gated task never is', async () => {
+test('every task on the schedule is asked, in declaration order; one stating no condition, or one reading the item, never is', async () => {
   const { seen, evaluate } = askedIds();
+  const aboutItem = { ...task('request', ['about-the-item']), terms: new Map([['about-the-item', { signals: [], needsItem: true, holds: () => ({ holds: true }) }]]) };
   const { ops } = await planSchedulerRun({
-    tasks: [task('daily1', ['due:daily']), task('lever', ['woken']), task('mover', ['substantive-change']), task('weekly1', ['due:weekly', 'repo-active'])],
+    tasks: [task('daily1', ['due:daily']), task('lever', []), task('mover', ['substantive-change']), aboutItem, task('weekly1', ['due:weekly', 'repo-active'])],
     items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, evaluate,
   });
-  assert.deepEqual(seen, ['daily1', 'mover', 'weekly1'], 'the woken-gated task runs only from an item somebody created');
+  assert.deepEqual(seen, ['daily1', 'mover', 'weekly1'], 'an unscheduled task runs only from an item somebody created');
   assert.deepEqual(kinds(ops, 'create').map((o) => o.task), ['daily1', 'mover', 'weekly1']);
 });
 
@@ -101,7 +102,7 @@ test('a brand-new task is asked at the first run like any other — there is no 
 test('a run with a task to ask and no seam is a fixture that has not said what the task answers', async () => {
   await assert.rejects(planSchedulerRun({ tasks: [task('daily1', ['due:daily'])], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE }), /no evaluate seam/);
   // …while a run with nothing to ask needs none.
-  const { ops } = await planSchedulerRun({ tasks: [task('lever', ['woken'])], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+  const { ops } = await planSchedulerRun({ tasks: [task('lever', [])], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.deepEqual(ops, []);
 });
 
@@ -150,17 +151,17 @@ test('a duplicate live standing item is closed obsolete, oldest kept (F16)', asy
 
 test('ad-hoc items neither suppress nor consume a scheduled occurrence (§3)', async () => {
   // Ad-hoc is STRUCTURAL (§15.26), so both of its shapes are asserted: a qualified
-  // item for a scheduled task, and a woken-gated task's item. Neither is in the
+  // item for a scheduled task, and an unscheduled task's item. Neither is in the
   // daily family, so the task is asked and its occurrence filed.
   const fanOut = item({ task: 'daily1', qualifier: 'member-x', labels: ['task:status:waiting-for-executor'], created_at: '2026-08-14T09:00:00Z' });
   const lever = item({ task: 'lever', labels: ['task:status:waiting-for-executor'], created_at: '2026-08-14T09:00:00Z' });
   const { ops } = await planSchedulerRun({
-    tasks: [task('daily1', ['due:daily']), task('lever', ['woken'])],
+    tasks: [task('daily1', ['due:daily']), task('lever', [])],
     items: [fanOut, lever], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, evaluate: yes,
   });
   const creates = kinds(ops, 'create');
   assert.equal(creates.length, 1);
-  assert.equal(creates[0].task, 'daily1', 'the woken-gated task is never asked at all');
+  assert.equal(creates[0].task, 'daily1', 'the unscheduled task is never asked at all');
 });
 
 test('an unqualified live item for a scheduled task IS that task\'s standing item, marker or no marker', async () => {
@@ -258,7 +259,7 @@ test('a dead claim on an ad-hoc item honours the request task\'s on_interrupt', 
   );
   stuck.updated_at = '2026-08-14T04:15:00Z';
   const { ops } = await planSchedulerRun({
-    tasks: [{ pack: 'engine', id: 'implement-request', taskPath: 'packs/claudinite-tasks/queue/tasks/implement-request/task.md', decl: { id: 'implement-request', preconditions: ['woken', 'request-eligible'], on_interrupt: 'needs-human' } }],
+    tasks: [{ pack: 'engine', id: 'implement-request', taskPath: 'packs/claudinite-tasks/queue/tasks/implement-request/task.md', decl: { id: 'implement-request', preconditions: ['request-eligible'], on_interrupt: 'needs-human' }, terms: new Map([['request-eligible', { signals: ['request'], needsItem: true, holds: () => ({ holds: true }) }]]) }],
     items: [stuck], now: '2026-08-14T09:30:00Z', schedule: SCHEDULE,
   });
   assert.deepEqual(kinds(ops, 'reclaim').map((o) => o.to), ['task:status:needs-human-decision']);
@@ -315,16 +316,16 @@ test('a task that has never had an item at all is also minted, not refused', () 
   assert.equal(create.length, 1);
 });
 
-test('a WOKEN-GATED task is never minted by a force — it wakes the items routed to it, or reports nothing', () => {
-  // A woken-gated task has no standing item to stand in for: an item exists only
+test('an UNSCHEDULED task is never minted by a force — it wakes the items routed to it, or reports nothing', () => {
+  // An unscheduled task has no standing item to stand in for: an item exists only
   // because an issue named the task, and a bare one carries nothing its worker can
   // read (#1721).
-  const lever = task('lever', ['woken']);
+  const lever = task('lever', []);
   const none = planWake('lever', [...wakeTasks, lever], []);
   assert.deepEqual(none.create, []);
   assert.deepEqual(none.wake, []);
   assert.equal(none.unmatched.length, 1);
-  assert.match(none.unmatched[0].why, /runs only when woken/);
+  assert.match(none.unmatched[0].why, /not on the schedule/);
   // An adopted issue routed to the task keeps its own title, so the force reaches it
   // by the task path in its machine block — and leaves one in flight alone.
   const routed = (number, status) => ({

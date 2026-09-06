@@ -2,9 +2,11 @@
 // scenario play-throughs in the canon's SCENARIOS record are executable instead of prose-only.
 //
 // What it models faithfully: virtual time; the scheduler run as a STATELESS
-// loop (decision §15.33) — at every tick it asks every task that is not
-// woken-gated, through the task's own preconditions: the run-history terms
-// first (`due:`, `last-run-over:`, `last-run-not-failed`, `woken`), judged over
+// loop (decision §15.33) — at every tick it asks every task ON THE SCHEDULE
+// (one stating a condition, none of which reads the item itself; a task stating
+// none runs only from an item somebody created, at whose pick an empty
+// expression holds), through the task's own preconditions: the run-history
+// terms first (`due:`, `last-run-over:`, `last-run-not-failed`), judged over
 // the task's own items in the issue store, then the scenario's precondition
 // function standing for every other condition; a yes files a READY item, a no
 // is a log line and nothing else, a read the scheduler cannot make fails OPEN —
@@ -54,7 +56,10 @@ export const CADENCES = ['daily', 'weekly', 'monthly'];
 export const DUE_TERM = 'due';
 export const ELAPSED_TERM = 'last-run-over';
 export const NOT_FAILED_TERM = 'last-run-not-failed';
-export const WOKEN_TERM = 'woken';
+// The terms that read the item itself (precondition-policy.mjs `needsItem`):
+// only the request task's `request-eligible`. The scheduler's own ask has no
+// item to judge such a term against, so a task stating one is off the schedule.
+export const ITEM_TERMS = new Set(['request-eligible']);
 // How far back the run history reaches (signals/index.mjs RUN_HORIZON_DAYS): a
 // task with no run inside it reads as never having run.
 export const RUN_HORIZON_DAYS = 40;
@@ -102,8 +107,8 @@ const alternativesOf = (entry) => String(entry ?? '').split('||').map((t) => t.t
   .map((t) => { const c = t.indexOf(':'); return c === -1 ? { name: t, arg: null, text: t } : { name: t.slice(0, c).trim(), arg: t.slice(c + 1).trim(), text: t }; });
 const entriesOf = (preconditions) => (Array.isArray(preconditions) ? preconditions : []).map(alternativesOf);
 
-// The cadence a declaration states — the first cadence term wins; `woken` counts
-// only where it gates (calendar.mjs cadenceOf).
+// The cadence a declaration states — the first cadence term wins; null for a
+// task with no cadence term (calendar.mjs cadenceOf).
 export function cadenceOf(preconditions) {
   for (const ref of entriesOf(preconditions).flat()) {
     if (ref.name === DUE_TERM && CADENCES.includes(ref.arg)) return { kind: 'due', cadence: ref.arg };
@@ -112,13 +117,20 @@ export function cadenceOf(preconditions) {
       if (ms) return { kind: 'elapsed', ms, text: ref.arg };
     }
   }
-  return isWokenGated(preconditions) ? { kind: 'woken' } : null;
+  return null;
 }
 
-// A task runs only when somebody asks when `woken` is a whole conjunct of its
-// expression — `['woken', …]` gates, `['due:daily || woken']` merely widens.
-export const isWokenGated = (preconditions) =>
-  entriesOf(preconditions).some((alts) => alts.length === 1 && alts[0].name === WOKEN_TERM && alts[0].arg === null);
+// Whether the declaration states any condition at all (calendar.mjs
+// statesConditions): absent or empty, the task is off the schedule — the
+// scheduler never asks it, and it runs only from an item somebody created, at
+// whose pick an empty expression holds.
+export const statesConditions = (preconditions) => entriesOf(preconditions).length > 0;
+
+// ON THE SCHEDULE (task-contract.mjs isScheduledTask): the task states a
+// condition, and none of them reads the item itself — there is no item at the
+// scheduler's own ask to judge such a term against.
+export const isScheduled = (preconditions) =>
+  statesConditions(preconditions) && !entriesOf(preconditions).flat().some((ref) => ITEM_TERMS.has(ref.name));
 
 // The period a TASK keeps (queue/anchors.mjs taskPeriodMs): its `due:` cadence's
 // period, its `last-run-over:` duration, null for a task with no cadence term.
@@ -136,13 +148,16 @@ export const taskPeriodMs = (preconditions) => {
 // is empty (#1234) — where the engine's declaration check would refuse it at
 // authoring time.
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'manual'];
-export const cadenceTermFor = (frequency) => (frequency === 'manual' ? WOKEN_TERM : `${DUE_TERM}:${frequency}`);
+// What the field always meant, as the term that now says it — or null for
+// `manual`, which meant no schedule at all and so adds no term.
+export const cadenceTermFor = (frequency) => (frequency === 'manual' ? null : `${DUE_TERM}:${frequency}`);
 
 // The load point — the sim's equivalent of `normalizeTaskDeclaration` plus the
-// declaration check. The sim's `preconditions` carries ONLY the run-history terms
-// it evaluates itself; a scenario's `precondition` function stands for every
-// other condition the real declaration would name, so a term outside that
-// vocabulary is a scenario error here rather than a fail-open.
+// declaration check. The sim's `preconditions` carries the run-history terms it
+// evaluates itself, plus an item-reading term the scenario's `precondition`
+// function stands for; that function stands for every other condition the real
+// declaration would name too, so a term outside that vocabulary is a scenario
+// error here rather than a fail-open.
 export function loadDeclaration(decl) {
   const out = { ...decl };
   if (out.frequency !== undefined) {
@@ -151,17 +166,26 @@ export function loadDeclaration(decl) {
     }
     const stated = (Array.isArray(out.preconditions) ? out.preconditions : []).filter((e) => String(e).trim() !== 'none');
     const term = cadenceTermFor(out.frequency);
-    out.preconditions = stated.some((e) => String(e).trim() === term) ? stated : [term, ...stated];
+    out.preconditions = term === null || stated.some((e) => String(e).trim() === term) ? stated : [term, ...stated];
     delete out.frequency;
   }
-  out.preconditions = Array.isArray(out.preconditions) ? out.preconditions : [];
-  for (const ref of entriesOf(out.preconditions).flat()) {
-    const legal = (ref.name === DUE_TERM && CADENCES.includes(ref.arg))
-      || (ref.name === ELAPSED_TERM && parseDuration(ref.arg) !== null)
-      || (ref.name === NOT_FAILED_TERM && ref.arg === null)
-      || (ref.name === WOKEN_TERM && ref.arg === null);
-    if (!legal) {
-      throw new Error(`${out.id}: "${ref.text}" is not a run-history term the simulator models (${DUE_TERM}:<${CADENCES.join('|')}>, ${ELAPSED_TERM}:<Nh|Nd>, ${NOT_FAILED_TERM}, ${WOKEN_TERM}) — a scenario's precondition function stands for every other condition`);
+  // An absent `preconditions` stays absent, as through the engine's door; the
+  // grammar reads absent and empty alike as stating nothing.
+  for (const alts of entriesOf(out.preconditions)) {
+    for (const ref of alts) {
+      const legal = (ref.name === DUE_TERM && CADENCES.includes(ref.arg))
+        || (ref.name === ELAPSED_TERM && parseDuration(ref.arg) !== null)
+        || (ref.name === NOT_FAILED_TERM && ref.arg === null)
+        || (ITEM_TERMS.has(ref.name) && ref.arg === null);
+      if (!legal) {
+        throw new Error(`${out.id}: "${ref.text}" is not a term the simulator models (${DUE_TERM}:<${CADENCES.join('|')}>, ${ELAPSED_TERM}:<Nh|Nd>, ${NOT_FAILED_TERM}, ${[...ITEM_TERMS].join(', ')}) — a scenario's precondition function stands for every other condition`);
+      }
+    }
+    // An item-reading term is judged by the scenario's precondition function,
+    // which stands for the engine's term — as a whole conjunct only, or the
+    // alternative it sits in has no judge here.
+    if (alts.length > 1 && alts.some((ref) => ITEM_TERMS.has(ref.name))) {
+      throw new Error(`${out.id}: "${alts.map((r) => r.text).join(' || ')}" mixes an item-reading term into an alternative — the simulator judges such a term only as a whole conjunct`);
     }
   }
   return out;
@@ -198,26 +222,26 @@ function termHolds(ref, runs, item, now) {
       ? { holds: false, reason: `the newest run, #${newest.number}, stands at a failure park — this task declares it does not run past its own failure` }
       : { holds: true, reason: `the newest run, #${newest.number}, did not fail` };
   }
-  if (ref.name === WOKEN_TERM) {
-    return woken
-      ? { holds: true, reason: `#${item.number} was created or woken by hand` }
-      : { holds: false, reason: 'the scheduler\'s own ask — this task runs only from an item somebody created' };
-  }
   throw new Error(`unknown run-history term "${ref.text}"`);
 }
 
 // The conjunction: every entry needs one holding alternative. The scenario's
 // precondition function is a further conjunct the caller judges after this one
-// says yes — exactly the engine's two-pass ask.
+// says yes — exactly the engine's two-pass ask — and it is also what stands for
+// an item-reading term, so that conjunct is left to it. An empty expression
+// holds: the item itself is the ask.
 export function judgeHistory(preconditions, runs, item, now) {
   const held = [];
+  let delegated = false;
   for (const alts of entriesOf(preconditions)) {
+    if (alts.length === 1 && ITEM_TERMS.has(alts[0].name)) { delegated = true; continue; }
     const outs = alts.map((ref) => termHolds(ref, runs, item, now));
     const winner = outs.find((o) => o.holds);
     if (!winner) return { run: false, reason: outs.map((o) => o.reason).join('; nor ') };
     held.push(winner.reason);
   }
-  return { run: true, reason: held.join('; ') };
+  if (held.length) return { run: true, reason: held.join('; ') };
+  return { run: true, reason: delegated ? '' : 'no conditions stated — the item itself is the ask' };
 }
 
 // ---- the simulator ----------------------------------------------------------
@@ -333,18 +357,19 @@ export function makeSim({
   const titleOf = (id) => `[claudinite-work] ${id}`;
 
   // The built-in request task, always present wherever the queue runs (DESIGN
-  // §16.2): woken-gated, so the scheduler run never asks it — an item exists
-  // only because an issue was marked. Its precondition IS the security check, and
-  // it declares no code-work at all, so a request goes issue → item → agent with
-  // nothing in between to carry a payload.
+  // §16.2): its one condition, `request-eligible`, reads the item it is about, so
+  // the task is off the schedule — the scheduler run never asks it, and an item
+  // exists only because an issue was marked. That condition IS the security
+  // check, and the task declares no code-work at all, so a request goes issue →
+  // item → agent with nothing in between to carry a payload.
   registry.set(REQUEST_TASK, {
     id: REQUEST_TASK,
-    preconditions: [WOKEN_TERM],
+    preconditions: ['request-eligible'],
     agentMinutes: 45,
     ceiling: 'pr',
     deliversOpenPr: () => true,           // every successful run leaves a PR to review
-    // Evaluated at pickup like every other precondition, and — the one addition
-    // the contract needs — over THIS item, because which request it is about is a
+    // The judgment `request-eligible` makes, evaluated at pick like every other
+    // condition — over THIS item, because which request it is about is a
     // property of the item, not of the task.
     precondition: (_world, _now, item) => {
       const req = requestOf(item?.request);
@@ -421,7 +446,7 @@ export function makeSim({
     const o = originOf(i);
     if (o) return o === ORIGIN_PLANNED;
     const task = registry.get(i.taskId);
-    return !!task && !isWokenGated(task.preconditions) && i.qualifier === null && i.title === titleOf(i.taskId);
+    return !!task && isScheduled(task.preconditions) && i.qualifier === null && i.title === titleOf(i.taskId);
   };
   const standingItem = (taskId) => family(taskId).find((i) => i.state === 'open');
 
@@ -608,9 +633,10 @@ export function makeSim({
     // watermark, nothing durable can eat a run, and the next tick asks again; a
     // read the scheduler cannot make fails OPEN and the executor decides at pick.
     for (const task of registry.values()) {
-      // A woken-gated task runs only from an item somebody created (DESIGN §5,
-      // §8): the schedule never asks it.
-      if (isWokenGated(task.preconditions)) continue;
+      // A task off the schedule — stating no condition, or one that reads the
+      // item itself — runs only from an item somebody created (DESIGN §5, §8):
+      // the schedule never asks it.
+      if (!isScheduled(task.preconditions)) continue;
       // ONE LIVE ITEM PER TASK, the engine's one invariant: an open item that is
       // blocked, waiting or running is the task's current occurrence, and the
       // task is not asked while it stands. A PARKED item is not live — it is a
@@ -1194,7 +1220,7 @@ export function makeSim({
     seedSteadyState(asOfIso) {
       const t0 = T(asOfIso);
       for (const task of registry.values()) {
-        if (isWokenGated(task.preconditions)) continue;
+        if (!isScheduled(task.preconditions)) continue;
         const cadence = cadenceOf(task.preconditions);
         const a = cadence?.kind === 'due' ? mostRecentAnchor(cadence.cadence, t0)
           : cadence?.kind === 'elapsed' ? t0 - cadence.ms
@@ -1216,12 +1242,14 @@ export function makeSim({
     // Either way the item is stamped `Woken`, which is what lets the cadence
     // terms hold at pick; an item already in flight is left alone (`already`),
     // and an id no declared task owns wakes nothing (`unmatched`) — planWake's
-    // three answers. A WOKEN-GATED task is never minted: the engine wakes the
-    // open items routed to it and reports nothing where there are none (#1721).
+    // three answers. A task OFF THE SCHEDULE is never minted — a bare item of it
+    // carries nothing its worker can read: the engine wakes the open items
+    // routed to it, stamped `Woken`, and reports nothing where there are none
+    // (#1721).
     force(taskId, { urgent = true } = {}) {
       const task = registry.get(taskId);
       if (!task) { record('force', { task: taskId, issue: null, unmatched: true }); return null; }
-      if (isWokenGated(task.preconditions)) {
+      if (!isScheduled(task.preconditions)) {
         const routed = issues.filter((i) => i.taskId === taskId && i.state === 'open'
           && !IN_FLIGHT.some((l) => is(i, l)));
         for (const i of routed) {
@@ -1263,12 +1291,13 @@ export function makeSim({
     // human makes through the issue UI: planned, and NOT stamped `Woken` — the
     // engine's create lever refuses that shape, so nothing stamps it, and at
     // pick the cadence terms judge it over the task's other runs. A qualified
-    // item, or one of a woken-gated task, is ad-hoc and woken by construction.
+    // item, or one of a task off the schedule, is ad-hoc and woken by
+    // construction — and an empty expression holds at its pick regardless.
     // eventLost models a dropped `labeled` webhook (S16): no immediate
     // executor run fires; the next scheduler run's drain is the guarantee.
     createItem(taskId, { urgent = false, notBefore = null, blockedBy = [], qualifier = null, eventLost = false } = {}) {
       const born = notBefore !== null || blockedBy.length ? 'task:status:blocked' : 'task:status:waiting-for-executor';
-      const adHoc = qualifier !== null || isWokenGated(registry.get(taskId)?.preconditions);
+      const adHoc = qualifier !== null || !isScheduled(registry.get(taskId)?.preconditions);
       const it = createIssue({ taskId, labels: [born], notBefore, blockedBy, urgent, qualifier,
         origin: adHoc ? ORIGIN_AD_HOC : ORIGIN_PLANNED });
       if (born === 'task:status:waiting-for-executor' && !eventLost) schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));

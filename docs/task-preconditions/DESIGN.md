@@ -45,13 +45,18 @@ preconditions: ['mount-moved || local-packs-changed']
   the two was considered and rejected: each field would then read against its
   own English, and a requirements list parsed as a union is exactly the shape
   that made the earlier veto grammar read as a contradiction.
-- **There is no empty precondition.** `none` is retired: every scheduler tick
-  asks every task through this expression, so a task with no condition at all
-  would run at every tick (tasks-dispatch DESIGN §5, decision §15.33). A task
-  states *when* it runs as its first condition — a cadence term, or `woken`
-  for one that runs only from an item somebody created — and what it waits
+- **`preconditions` is optional, and absence means "not on the schedule".**
+  A task with no expression, or an empty one, is never asked by the scheduler
+  and runs only from an item somebody created, at whose pick the empty
+  expression holds; a non-empty expression puts the task on the schedule. A
+  precondition states what must be true of the world or of the task's own run
+  history — never that somebody asked, which is true of every run
+  (tasks-dispatch DESIGN §5, decision §15.33). `none` is retired: an explicit
+  empty marker is a second spelling of absence. A task on the schedule states
+  *when* it runs as its first condition — a cadence term — and what it waits
   for after that. The retired `frequency` field is read at one door and
-  becomes that first condition; nothing else reads it.
+  becomes that first condition (`manual` becomes no expression); nothing else
+  reads it.
 - **Parameterized terms** carry their argument inline after a colon:
   `no-open-pr-touching:product-wiki/`, `paths-touched-outside:.claudinite/`.
 - Conditions are **positively named** — what must be true, never "run always,
@@ -110,7 +115,6 @@ declines costs no read at all (tasks-dispatch DESIGN §5 owns the model):
 | `due:<daily\|weekly\|monthly>` | no run of this task started or ended since that cadence's most recent anchor on the repo's `taskScheduler` schedule — fixed hours, no drift | `runs` |
 | `last-run-over:<12h\|1d\|7d>` | the newest run started more than that long ago, or there is no run in the horizon — elapsed, so the hour drifts by up to a tick's gap each period | `runs` |
 | `last-run-not-failed` | the newest run does not stand at a `needs-human-failure` park; only the newest speaks. Declared by a task that must not run past its own failure — never an engine default | `runs` |
-| `woken` | this item was created or woken by somebody (the `Woken:` field, or any shape the scheduler does not file itself); never at the scheduler's own ask. As a whole entry it takes the task off the schedule | — |
 
 `due:` and `last-run-over:` hold on a woken item without reading the history —
 the wake stands in for the cadence — while every other condition still applies.
@@ -144,7 +148,10 @@ declaration and reading the gate are one `cd` apart. Current task-local terms:
 `log-past-retention` (logs-prune), `manifest-ahead` (store-release),
 `fleet-local-packs-changed` (growth-promote), and `request-eligible`
 (implement-request — the push-permission security check, unchanged in
-substance, relocated beside its declaration).
+substance, relocated beside its declaration). A term that reads the item it is
+handed declares `needsItem`; the scheduler's tick has no item to judge it
+against, so a task whose expression carries one is not on the schedule
+(`isScheduledTask`) — `request-eligible` is the one such term.
 
 `preconditions` is the only gate a task declares. A task-local term expresses
 everything the retired `precondition` function did while staying pure over its
@@ -199,8 +206,8 @@ The gate needs no operator of its own, because the vocabulary carries it:
   on a repo nobody works in, and the first active window resumes them.
 - **A task whose trigger is not repo movement states its cadence term and
   nothing about the repo**, and that absence of any movement term is visible
-  in the declaration: the levers (`['woken']` — the item somebody created is
-  the mandate), the fleet sweeps (`['due:daily']`, `['due:weekly']` — the
+  in the declaration: the levers (no `preconditions` — the item somebody
+  created is the mandate), the fleet sweeps (`['due:daily']`, `['due:weekly']` — the
   fleet is the subject, not this repo), `update` (`['due:daily']` — the input
   is the canon, which moves when this repo does not), `upstream-watch`
   (`['due:monthly']` — the canon home curates its shelf on the world's
@@ -231,7 +238,8 @@ classified correctly on its first run with nothing to remember.
 
 ## The declarations
 
-Every canon task's expression begins with its cadence term or `woken`
+Every canon task on the schedule begins its expression with its cadence term;
+a task that runs only from an item somebody created declares no expression
 (`packs/*/tasks/*/task.json` and the built-in under
 `packs/claudinite-tasks/queue/tasks/`):
 
@@ -241,11 +249,11 @@ store-release:           ['due:daily', 'manifest-ahead || substantive-change']
 growth-discover-packs:   ['due:weekly']
 growth-promote:          ['due:daily', 'fleet-local-packs-changed']
 upstream-watch:          ['due:monthly']
-deploy-oauth-exchange:   ['woken']
+deploy-oauth-exchange:   (no preconditions — not on the schedule)
 publish-pages:           ['due:daily', 'mount-moved || commits-under:.claudinite-settings.json
                                        || commits-under:.claudinite-checks.json']
 fleet-add-missing-packs: ['due:weekly']
-fleet-baseline:          ['woken']
+fleet-baseline:          (no preconditions — not on the schedule)
 fleet-pack-seeds:        ['due:daily']
 fleet-roster:            ['due:daily']
 growth-dedup:            ['due:weekly', 'mount-moved || commits-under:.claudinite/local']
@@ -253,24 +261,25 @@ growth-extract:          ['due:daily', 'substantive-change']
 logs-prune:              ['due:daily', 'log-past-retention']
 prose-to-checks-sweep:   ['due:weekly', 'repo-active']
 rule-revalidation:       ['due:weekly', 'repo-active']
-adopt-requested-packs:   ['woken']
+adopt-requested-packs:   (no preconditions — not on the schedule)
 update:                  ['due:daily']
 task-janitor:            ['due:daily']
 usage-fold:              ['due:daily', 'any-commit || session-captured']
-verify-production:       ['woken']
+verify-production:       (no preconditions — not on the schedule)
 wiki-growth:             ['due:weekly', 'repo-active']
 improve-comments:        ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/']
 tidy-issues:             ['due:daily', 'issues-touched']
 tidy-prs:                ['due:weekly', 'prs-touched']
-implement-request:       ['woken', 'request-eligible']
+implement-request:       ['request-eligible']   (reads the item — not on the schedule)
 ```
 
 A declaration that still carries `frequency` enters by one door,
 `normalizeTaskDeclaration` in `packs/claudinite-tasks/task-contract.mjs`: the
-field becomes the cadence term it always meant (`due:<cadence>`, `woken` for
-`manual`), first in the expression, a `none` beside it is dropped, and the
-field is deleted, so nothing downstream reads it. `legacy-task-fields` advises
-the holder; the tolerance retires one convergence window after #1725 ships.
+field becomes the cadence term it always meant (`due:<cadence>`; `manual`
+drops the field and adds no term), first in the expression, a `none` beside it
+is dropped, and the field is deleted, so nothing downstream reads it.
+`legacy-task-fields` advises the holder; the tolerance retires one convergence
+window after #1725 ships.
 
 ## Alternatives
 

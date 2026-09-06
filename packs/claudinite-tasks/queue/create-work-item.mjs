@@ -15,15 +15,15 @@
 // bag, the forced-verdict path, the `~f` slot marker and the watermark exclusion —
 // reduced to these two levers and was deleted (#974).
 //
-// FORCING AD-HOC WORK IS CREATING AN ITEM — a parameterized run, a woken-gated
-// task's run, a fan-out target. Ad-hoc is STRUCTURAL (DESIGN §15.26): a woken-gated
+// FORCING AD-HOC WORK IS CREATING AN ITEM — a parameterized run, an unscheduled
+// task's run, a fan-out target. Ad-hoc is STRUCTURAL (DESIGN §15.26): an unscheduled
 // task is never asked by the scheduler, and a qualified title is a different title
 // from the standing one — so such an item is invisible to the scheduler run's
 // guards in both directions, neither suppressing the next occurrence nor consuming
 // it. Which is why an UNQUALIFIED item for a scheduled task is refused below: it
 // would BE that task's standing item, and the scheduler run's dedupe would close
 // one of the two. Every item made here is stamped `Woken:` — it exists because
-// somebody asked, which is what the `woken` term and the cadence terms read.
+// somebody asked, which is what the cadence terms read.
 
 import { pathToFileURL } from 'node:url';
 import {
@@ -111,7 +111,7 @@ export async function createWorkItem(gh, repo, { pack, task, taskPath, scheduled
       notBefore: opts.notBefore,
       blockedBy: opts.blockedBy,
       context: opts.context.length ? opts.context : [FORCED_CONTEXT],
-      // Created by hand: the `woken` term holds on it, and so do the cadence terms.
+      // Created by hand: the cadence terms hold on it.
       woken: new Date().toISOString(),
     }),
     // A hand-created item is `ad-hoc` by construction — nobody's schedule asked for

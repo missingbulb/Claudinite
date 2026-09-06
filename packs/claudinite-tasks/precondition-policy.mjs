@@ -29,7 +29,7 @@
 // Import-light and pure over the signals: no I/O, so the same evaluation runs at
 // the scheduler's tick and at the executor's pick.
 
-import { anchorInstant, CADENCES, DUE_TERM, ELAPSED_TERM, NOT_FAILED_TERM, WOKEN_TERM, parseDuration } from './calendar.mjs';
+import { anchorInstant, CADENCES, DUE_TERM, ELAPSED_TERM, NOT_FAILED_TERM, parseDuration } from './calendar.mjs';
 
 // The retired empty precondition. The contract's door still strips it from a
 // declaration that carries a `frequency` (the cadence term takes its place); on
@@ -62,8 +62,8 @@ function parseTerm(text) {
 // evaluator each supply.
 export function parsePreconditions(preconditions) {
   const invalid = (reason) => ({ kind: 'invalid', reason });
-  if (!Array.isArray(preconditions) || preconditions.length === 0) {
-    return invalid('it is not a non-empty array of condition strings');
+  if (!Array.isArray(preconditions)) {
+    return invalid('it is not an array of condition strings');
   }
   if (!preconditions.every((e) => typeof e === 'string' && e.trim() !== '')) {
     return invalid('every entry must be a non-empty string');
@@ -73,7 +73,7 @@ export function parsePreconditions(preconditions) {
     return invalid(`an alternative around "${ALTERNATIVE}" is empty`);
   }
   if (conditions.flat().some((t) => t.name === NONE)) {
-    return invalid(`"${NONE}" is retired — a task with no condition would run at every scheduler tick. State when it runs: a cadence (\`${DUE_TERM}:daily\`, \`${ELAPSED_TERM}:7d\`), \`${WOKEN_TERM}\` for a task that runs only when somebody asks, or the movement it waits for`);
+    return invalid(`"${NONE}" is retired — a task with no condition states none: leave "preconditions" out, and the task runs only from an item somebody creates. Otherwise state when it runs: a cadence (\`${DUE_TERM}:daily\`, \`${ELAPSED_TERM}:7d\`) or the movement it waits for`);
   }
   return { kind: 'conditions', conditions };
 }
@@ -105,6 +105,16 @@ export function preconditionSignals(preconditions, taskTerms) {
   return [...out];
 }
 
+// Whether the expression reads the item itself — a term declaring `needsItem`
+// (the request implementer's `request-eligible`, about one named issue). The
+// scheduler's own ask has no item, so there is nothing to judge such a task
+// against at a tick: it runs only from an item somebody created.
+export function preconditionNeedsItem(preconditions, taskTerms) {
+  const parsed = parsePreconditions(preconditions);
+  if (parsed.kind !== 'conditions') return false;
+  return parsed.conditions.flat().some((ref) => resolveTerm(ref.name, taskTerms)?.needsItem === true);
+}
+
 // --- static validation --------------------------------------------------------
 
 // Everything about a declaration that is decidable without signals: the grammar,
@@ -122,7 +132,7 @@ export function validatePreconditions(preconditions, taskTerms = new Map()) {
   const parsed = parsePreconditions(preconditions);
   if (parsed.kind === 'invalid') {
     bad(`"preconditions" is not a legal expression: ${parsed.reason}`,
-      `write a list of conditions, all of which must hold — a cadence first where the task keeps one ("${DUE_TERM}:<daily|weekly|monthly>" or "${ELAPSED_TERM}:<12h|1d|7d>"), "${WOKEN_TERM}" for a task run only from an item somebody created, then what it waits for, e.g. ["${DUE_TERM}:weekly", "substantive-change", "no-open-pr-titled:My sweep"]`);
+      `write a list of conditions, all of which must hold — a cadence first where the task keeps one ("${DUE_TERM}:<daily|weekly|monthly>" or "${ELAPSED_TERM}:<12h|1d|7d>"), then what it waits for, e.g. ["${DUE_TERM}:weekly", "substantive-change", "no-open-pr-titled:My sweep"]; a task that runs only from an item somebody creates states no "preconditions" at all`);
     return problems;
   }
   for (const ref of parsed.conditions.flat()) {
@@ -294,18 +304,6 @@ const BUILTIN_TERMS = new Map(Object.entries({
       return newest.park === 'failure'
         ? { holds: false, reason: `the newest run, #${newest.number}, stands at a failure park — this task declares it does not run past its own failure` }
         : { holds: true, reason: `the newest run, #${newest.number}, did not fail` };
-    },
-  },
-
-  // Only from an item somebody created — a mark, a hand-created item, a wake, a
-  // forced mint. The scheduler's own ask has no item, so it never holds there,
-  // which is what keeps such a task off the schedule without any field saying so.
-  [WOKEN_TERM]: {
-    signals: [],
-    holds(_s, { item }) {
-      return item?.woken === true
-        ? { holds: true, reason: `#${item.number ?? '?'} was created or woken by hand` }
-        : { holds: false, reason: 'the scheduler\'s own ask — this task runs only from an item somebody created' };
     },
   },
 
@@ -521,5 +519,5 @@ export function evaluatePreconditions({
   }
   if (declined !== null) return { run: false, reason: declined };
   if (undecided) return { run: null, undecided: true, missing: [...missing] };
-  return { run: true, reason: held.join('; '), context };
+  return { run: true, reason: held.length ? held.join('; ') : 'no conditions stated — the item itself is the ask', context };
 }

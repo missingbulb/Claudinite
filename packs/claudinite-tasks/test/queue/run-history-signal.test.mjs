@@ -113,7 +113,7 @@ test('with no run in the horizon the window is the task\'s own cadence plus slac
   assert.equal(defaultWindowMs(task(['due:monthly'])), 31 * DAY + 3600e3);
   assert.equal(defaultWindowMs(task(['last-run-over:3d'])), 3 * DAY + 3600e3);
   assert.equal(defaultWindowMs(task(['substantive-change'])), DAY + 3600e3);
-  assert.equal(defaultWindowMs(task(['woken'])), DAY + 3600e3);
+  assert.equal(defaultWindowMs(task([])), DAY + 3600e3);
   const w = windowFromRuns(task(['due:weekly']), { list: [] }, NOW);
   assert.equal(w.sinceIso, new Date(Date.parse(NOW) - 7 * DAY - 3600e3).toISOString());
   assert.equal(windowFromRuns(task(['due:weekly']), null, NOW).sinceIso, w.sinceIso, 'an unreadable history reads the default');

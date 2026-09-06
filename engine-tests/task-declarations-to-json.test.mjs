@@ -215,7 +215,13 @@ test('retireFrequencyText: the field becomes the first condition; a none beside 
   assert.match(retireFrequencyText(stated).text, /\n    "due:daily",\n    "substantive-change",\n/, 'the array keeps its own indentation');
 
   const inline = '{ "id": "x", "frequency": "manual", "preconditions": ["request-eligible"] }\n';
-  assert.equal(retireFrequencyText(inline).text, '{ "id": "x", "preconditions": ["woken", "request-eligible"] }\n');
+  assert.equal(retireFrequencyText(inline).text, '{ "id": "x", "preconditions": ["request-eligible"] }\n');
+  // `manual` meant no schedule: the field goes, and a list it leaves empty goes with it.
+  const manual = '{\n  "id": "lever",\n  "frequency": "manual",\n  "preconditions": [\n    "none"\n  ],\n  "expected_outcome": "no_code_changes"\n}\n';
+  const dropped = retireFrequencyText(manual);
+  assert.equal(dropped.term, null);
+  assert.equal(dropped.text, '{\n  "id": "lever",\n  "expected_outcome": "no_code_changes"\n}\n');
+  assert.equal(retireFrequencyText('{ "id": "x", "frequency": "manual" }\n').text, '{ "id": "x" }\n');
 });
 
 test('retireFrequencyText: with no preconditions the field\'s own line becomes the list, comma and indent kept', () => {
@@ -252,7 +258,7 @@ test('retireFrequencyText agrees with the contract\'s door on every accepted val
 test('retireTaskFrequency rewrites every local task.json carrying the field, and reports each', async () => {
   const root = repo({
     [`${TASK}/task.json`]: '{\n  "id": "alpha",\n  "frequency": "daily",\n  "preconditions": ["none"]\n}\n',
-    [`${LOCAL_PACK_ROOT}/mypack/tasks/beta/task.json`]: '{\n  "id": "beta",\n  "preconditions": ["woken"]\n}\n',
+    [`${LOCAL_PACK_ROOT}/mypack/tasks/beta/task.json`]: '{\n  "id": "beta",\n  "expected_outcome": "no_code_changes"\n}\n',
     [`${CANON_PACK_ROOT}/p/tasks/one/task.json`]: '{\n  "id": "one",\n  "frequency": "daily"\n}\n',
   });
   try {

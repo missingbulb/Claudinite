@@ -104,7 +104,8 @@ test('parseDeclaration lifts the declarative preconditions; a cadence term and `
   assert.deepEqual(cadenceOnly.preconditions, ['due:daily']);
   assert.equal(cadenceOnly.has_precondition, false);
   assert.equal(parseDeclaration("export default { id: 'x', preconditions: ['none'] };").has_precondition, false);
-  assert.equal(parseDeclaration("export default { id: 'x', preconditions: ['woken'] };").has_precondition, false);
+  assert.equal(parseDeclaration("export default { id: 'x', preconditions: [] };").has_precondition, false);
+  assert.equal(parseDeclaration("export default { id: 'x' };").has_precondition, false, 'no conditions at all is no gate');
   assert.equal(parseDeclaration("export default { id: 'x', preconditions: ['last-run-over:7d', 'last-run-not-failed'] };").has_precondition, true,
     'a run-history gate is a gate; only the cadence term is exempt');
 });
@@ -138,6 +139,14 @@ test('parseDeclaration reports an unreadable field as null, never a default', ()
   assert.equal(d.agent_model, null);
 });
 
+// An ABSENT `preconditions` is another fact from an unreadable one: the declaration
+// states the empty expression, which is what its author wrote — a task off the
+// schedule. Only text that is no declaration at all has said nothing.
+test('parseDeclaration reads an absent `preconditions` as the empty expression, and text that is no declaration as unknown', () => {
+  assert.deepEqual(parseDeclaration("export default { id: 'lever' };").preconditions, []);
+  assert.equal(parseDeclaration('<!doctype html><title>Not Found</title>').preconditions, null, 'not a declaration at all — nothing was read');
+});
+
 // The JSON form parses whole, and an omitted agentic field takes the contract's
 // default — the loader's door, not a guess of this page's.
 test('parseDeclaration reads a task.json, defaults filled', () => {
@@ -148,8 +157,10 @@ test('parseDeclaration reads a task.json, defaults filled', () => {
   assert.equal(d.agent_execution_timeout, null);
   assert.equal(d.has_precondition, true);
   const unsaid = parseDeclaration('{ "id": "x", "expected_outcome": "no_code_changes" }', 'p/tasks/x/task.json');
-  assert.equal(unsaid.preconditions, null, 'a declaration that states no conditions has not said — nothing is defaulted');
+  assert.deepEqual(unsaid.preconditions, [], 'no `preconditions` key is the empty expression — off the schedule, not unknown');
   assert.equal(unsaid.has_precondition, false);
+  const unreadable = parseDeclaration('{ "id": "x", "preconditions": "due:daily" }', 'p/tasks/x/task.json');
+  assert.equal(unreadable.preconditions, null, 'a field that is present but not a list of strings was not read');
   const broken = parseDeclaration('{ "id": ', 'packs/tidy-repo/tasks/tidy-prs/task.json');
   assert.equal(broken.preconditions, null);
 });
@@ -168,6 +179,8 @@ test('the page\'s frequency door agrees with the contract\'s on every legacy sha
     { id: 'f', frequency: 'hourly' },
     { id: 'g', preconditions: ['due:daily', 'none'] },
     { id: 'h', preconditions: ['last-run-over:3d'] },
+    { id: 'i' },
+    { id: 'j', frequency: 'manual' },
   ];
   for (const decl of vectors) {
     const contract = normalizeTaskDeclaration({ ...decl, expected_outcome: 'no_code_changes' });
@@ -190,7 +203,8 @@ test('parseDeclaration survives a missing file', () => {
 
 // The four shapes a declaration's cadence takes, kept apart from each other and from an
 // unreadable one: only a `due:` cadence is on the calendar, an elapsed one keeps a
-// period but no anchor, and `woken` and no-cadence keep neither.
+// period but no anchor, no-cadence keeps neither, and NO CONDITIONS is off the
+// schedule altogether.
 test('describeCadence reads each cadence shape off the preconditions', () => {
   const DAY = 86400e3;
   const due = describeCadence(['due:weekly', 'substantive-change']);
@@ -206,11 +220,12 @@ test('describeCadence reads each cadence shape off the preconditions', () => {
   assert.equal(elapsed.scheduled, true);
   assert.match(elapsed.anchorNote, /newest run/);
 
-  const woken = describeCadence(['woken', 'substantive-change']);
-  assert.equal(woken.frequency, 'woken');
-  assert.equal(woken.periodMs, null);
-  assert.equal(woken.scheduled, false);
-  assert.match(woken.anchorNote, /somebody created/);
+  const unscheduled = describeCadence([]);
+  assert.equal(unscheduled.frequency, 'unscheduled');
+  assert.equal(unscheduled.cadence, null);
+  assert.equal(unscheduled.periodMs, null);
+  assert.equal(unscheduled.scheduled, false);
+  assert.match(unscheduled.anchorNote, /somebody creates/);
 
   const movement = describeCadence(['substantive-change']);
   assert.equal(movement.frequency, 'on movement');
@@ -219,8 +234,8 @@ test('describeCadence reads each cadence shape off the preconditions', () => {
   assert.equal(movement.scheduled, true);
   assert.match(movement.anchorNote, /every tick/);
 
-  // `woken` as one ALTERNATIVE widens a cadence rather than gating the task.
-  const widened = describeCadence(['due:daily || woken']);
+  // A movement term as one ALTERNATIVE widens a cadence rather than replacing it.
+  const widened = describeCadence(['due:daily || substantive-change']);
   assert.equal(widened.frequency, 'daily');
   assert.equal(widened.scheduled, true);
 
@@ -231,11 +246,13 @@ test('describeCadence reads each cadence shape off the preconditions', () => {
   assert.equal(describeCadence(null).holdsOnFailure, null);
 });
 
-test('describeCadence keeps an unreadable declaration apart from one with no cadence term', () => {
+test('describeCadence keeps an unreadable declaration apart from one with no cadence term and from one with no conditions', () => {
   const unread = describeCadence(null);
   assert.equal(unread.frequency, null);
   assert.equal(unread.scheduled, null, 'unknown, not "not scheduled"');
   assert.match(unread.anchorNote, /unknown/);
+  assert.equal(describeCadence([]).scheduled, false, 'no conditions — not on the schedule');
+  assert.equal(describeCadence(['substantive-change']).scheduled, true, 'a condition — asked at every tick');
 });
 
 // --- items ---------------------------------------------------------------------
@@ -385,35 +402,40 @@ test('a row picks up its open item and its closed history', () => {
   assert.equal(rows.find((r) => r.task === 'update').history.length, 1, 'items route by title, not by order');
 });
 
-// A woken task has no anchor and an unreadable declaration has no anchor, and they are
-// different facts — a roster that showed both as "—" would hide a parse failure.
-test('woken and unknown cadences are distinguished, and neither invents an anchor', () => {
+// A task with no conditions has no anchor and an unreadable declaration has no anchor,
+// and they are different facts — a roster that showed both as "—" would hide a parse
+// failure. The key ABSENT from a declaration that was read is the first; a field that
+// could not be read, or a declaration that could not be read at all, is the second.
+test('unscheduled and unknown cadences are distinguished, and neither invents an anchor', () => {
   const rows = buildRoster({
     tasks: [
-      { pack: 'p', task: 'lever', declaration: { preconditions: ['woken'] } },
+      { pack: 'p', task: 'lever', declaration: { id: 'lever' } },
       { pack: 'p', task: 'unreadable', declaration: { preconditions: null } },
+      { pack: 'p', task: 'unread', declaration: null },
     ],
     items: [], now: NOW, schedule: SCHEDULE,
   });
   assert.equal(rows[0].nextAnchor, null);
-  assert.equal(rows[0].frequency, 'woken');
+  assert.equal(rows[0].frequency, 'unscheduled');
   assert.equal(rows[0].scheduled, false);
-  assert.match(rows[0].anchorNote, /woken/);
-  assert.equal(rows[1].nextAnchor, null);
-  assert.equal(rows[1].frequency, null);
-  assert.equal(rows[1].scheduled, null);
-  assert.match(rows[1].anchorNote, /unknown/);
+  assert.match(rows[0].anchorNote, /somebody creates/);
+  for (const row of rows.slice(1)) {
+    assert.equal(row.nextAnchor, null);
+    assert.equal(row.frequency, null);
+    assert.equal(row.scheduled, null);
+    assert.match(row.anchorNote, /unknown/);
+  }
 });
 
-// An older repo's declaration still says `manual`; it reads as `woken` through the
-// door and the roster writes nothing in the old vocabulary.
-test('a legacy `manual` declaration reads as a woken task', () => {
+// An older repo's declaration still says `manual`; it meant no schedule, and reads as
+// exactly that through the door — the roster writes nothing in the old vocabulary.
+test('a legacy `manual` declaration reads as an unscheduled task', () => {
   const declaration = parseDeclaration('{ "id": "lever", "frequency": "manual", "expected_outcome": "no_code_changes" }', 'p/tasks/lever/task.json');
   const [row] = buildRoster({ tasks: [{ pack: 'p', task: 'lever', declaration }], items: [], now: NOW, schedule: SCHEDULE });
-  assert.equal(row.frequency, 'woken');
+  assert.equal(row.frequency, 'unscheduled');
   assert.equal(row.scheduled, false);
   assert.equal(row.nextAsk.kind, 'note');
-  assert.doesNotMatch(JSON.stringify(row), /manual/);
+  assert.doesNotMatch(JSON.stringify(row), /manual|woken/);
 });
 
 // An elapsed cadence keeps a period — the stale-ready rule counts in it — but no
@@ -509,17 +531,17 @@ test('ready and running items are their own answer', () => {
   assert.equal(buildRoster({ tasks, items: [item({ labels: [AGENT] })], now: NOW, schedule: SCHEDULE })[0].nextAsk.kind, 'running');
 });
 
-test('with no open item the calendar answers, and a woken task has only its note', () => {
+test('with no open item the calendar answers, and an unscheduled task has only its note', () => {
   const [ci] = buildRoster({ tasks, items: [], now: NOW, schedule: SCHEDULE });
   assert.equal(ci.nextAsk.kind, 'anchor');
   assert.equal(ci.nextAsk.at.getTime(), ci.nextAnchor.getTime());
 
-  const [woken] = buildRoster({
-    tasks: [{ pack: 'p', task: 'lever', declaration: { preconditions: ['woken'] } }],
+  const [unscheduled] = buildRoster({
+    tasks: [{ pack: 'p', task: 'lever', declaration: { preconditions: [] } }],
     items: [], now: NOW, schedule: SCHEDULE,
   });
-  assert.equal(woken.nextAsk.kind, 'note');
-  assert.match(woken.nextAsk.note, /woken/);
+  assert.equal(unscheduled.nextAsk.kind, 'note');
+  assert.match(unscheduled.nextAsk.note, /somebody creates/);
 });
 
 test('commentKind names the protocol beat a comment carries', () => {
@@ -559,7 +581,7 @@ test('an ask that names no moment, or one past the strip, lands in no hour', () 
     { key: 'a/ready', nextAsk: { kind: 'ready' } },
     { key: 'a/running', nextAsk: { kind: 'running', phase: 'agent' } },
     { key: 'a/deps', nextAsk: { kind: 'deps', on: [3] } },
-    { key: 'a/note', nextAsk: { kind: 'note', note: 'woken — only an item somebody created' } },
+    { key: 'a/note', nextAsk: { kind: 'note', note: 'no conditions — runs only from an item somebody creates' } },
     { key: 'a/weekly', nextAsk: { kind: 'anchor', at: new Date('2026-09-09T12:00:00Z') } },
   ], now);
   assert.equal(strip.peak, 0, 'these are happening, or waiting on something other than the clock');

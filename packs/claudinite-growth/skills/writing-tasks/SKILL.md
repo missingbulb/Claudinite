@@ -14,12 +14,12 @@ are its state — so write the task against that queue, never a runner of its ow
 **A cadence is one of a task's conditions, not what a task is.** A task is a unit
 of the repo's own work with preconditions, a code-work phase and optionally an
 agentic-work phase; its `preconditions` say when the queue runs it — a cadence term
-(`due:daily`, `last-run-over:7d`) beside whatever else must hold, or `woken` for
-work that runs only from an item somebody created. Work that fires on an event, on
-a condition, or on a force is a task in exactly the same sense as work that fires
-nightly, and reads the same contract. Anything reachable from the executor belongs
-here rather than in a workflow of its own; see the cron rule below for the narrow
-case that genuinely cannot be.
+(`due:daily`, `last-run-over:7d`) beside whatever else must hold — or no
+`preconditions` at all, for work that runs only from an item somebody created. Work
+that fires on an event, on a condition, or on a force is a task in exactly the same
+sense as work that fires nightly, and reads the same contract. Anything reachable
+from the executor belongs here rather than in a workflow of its own; see the cron
+rule below for the narrow case that genuinely cannot be.
 
 Three responsibilities, strictly separated (owner, 2026-08-06):
 
@@ -63,8 +63,9 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   is the repo's **only** cron; the executor's workflow beside it carries none. Work
   that had its own cron'd workflow becomes a **task**, and that workflow is deleted
   — its steps move into the task's worker. So does work with no cron at all: an
-  event-driven or condition-gated job becomes a woken-gated task
-  (`"preconditions": ["woken"]`), woken by whatever knows the event happened.
+  event-driven or condition-gated job becomes a task with no `preconditions` (a
+  declaration with none is not on the schedule), woken by whatever knows the
+  event happened.
   Don't keep either as a dispatch-only workflow for the task to fire: that is two files and two edit sites for one job, and a
   workflow whose only caller is the thing that replaced it. (The exception is narrow,
   and it is **not** about privilege. An Actions-only secret is reachable from
@@ -91,7 +92,8 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   (one JSON object, `"$schema"` pointing at `packs/claudinite-tasks/task.schema.json`
   so an editor validates it; keys grouped as identity, preconditions, outcome, then the
   `code_*` fields, then the `agent_*` fields) declares `id` (matching its directory), `description`
-  (below), `preconditions` (when it runs — **required**, no default; its first
+  (below), `preconditions` (when it runs — optional: absent, the task is not on
+  the schedule and runs only from an item somebody created; present, its first
   entry is normally the cadence term, below), `expected_outcome` — what the run does to
   pull requests, resolved once by the executor before code-work and handed to both
   phases: `no_code_changes` (opens none), `fresh_pr` (one on a freshly minted
@@ -274,12 +276,16 @@ an `automerge` list, which is a union — one field grants, the other requires.
 "preconditions": ["due:weekly", "substantive-change", "commits-outside:.claudinite/"]
 ```
 
-**The first condition says when.** Every scheduler tick asks every task, so the
-expression is the whole of a task's schedule and there is no empty precondition —
-`none` is retired, because a task with no condition would run at every tick. Four
-built-ins read the task's own run history (its unqualified `[claudinite-work]`
-items over the last 40 days), and they are judged before anything else is
-collected, so a task whose cadence declines costs no read:
+**The first condition says when.** Every scheduler tick asks every task that has
+an expression, so the expression is the whole of a task's schedule — and a task
+with no `preconditions` has no schedule: the scheduler never asks it, and it runs
+only from a hand-created item, a mark, a `--wake` or a chain link, where the empty
+expression holds at pick (what the retired `frequency: manual` meant). Write no
+term for "somebody created my item": that is true of every run, so it states
+nothing; and `none` is retired, an explicit empty marker being a second spelling
+of absence. Three built-ins read the task's own run history (its
+unqualified `[claudinite-work]` items over the last 40 days), and they are judged
+before anything else is collected, so a task whose cadence declines costs no read:
 
 - `due:<daily|weekly|monthly>` — no run since that cadence's most recent anchor on
   the repo's `taskScheduler` schedule; fixed hours, so the hour never drifts.
@@ -288,16 +294,16 @@ collected, so a task whose cadence declines costs no read:
 - `last-run-not-failed` — the newest run does not stand at a failure park.
   Declare it where a run past the task's own failure would repeat the fault;
   absent it, the next occurrence is filed beside the park.
-- `woken` — this item was created or woken by somebody. As a whole entry it takes
-  the task off the schedule: the scheduler never asks it, and it runs only from a
-  hand-created item, a mark or a chain link (the spelling of the retired
-  `frequency: manual`).
 
 A `due:` or `last-run-over:` term holds on a woken item — the wake stands in for
 the cadence — while every other condition still applies. A task with a movement
 condition and no cadence term is legal and runs whenever the movement is there, at
-most once per tick. A declaration still carrying `frequency` is rewritten into its
-cadence term at the door and reported by `legacy-task-fields`: write the term.
+most once per tick. One more shape has no schedule, structurally: a term that reads
+the item itself (`needsItem`, which only the built-in request implementer's
+`request-eligible` declares) has nothing to be judged against at a tick, so
+`isScheduledTask` leaves that task to its items too. A declaration still carrying
+`frequency` is rewritten into its cadence term at the door (`manual` drops to no
+expression) and reported by `legacy-task-fields`: write the term.
 
 **`preconditions` is the only gate there is.** The `precondition` function and its
 `precondition_signals` companion are retired: both are rejected by name, and the
@@ -339,8 +345,9 @@ The vocabulary carries the gate; no operator or marker states it:
   `repo-active`** beside its cadence, the positive umbrella over all four
   activity dimensions.
 - **A task whose trigger is not repo movement states its cadence term and
-  nothing about the repo** (`["due:daily"]`, `["due:monthly"]`, `["woken"]`),
-  and that absence is visible where a reader audits the trigger.
+  nothing about the repo** (`["due:daily"]`, `["due:monthly"]`, or no
+  `preconditions` at all), and that absence is visible where a reader audits
+  the trigger.
 
 ### When no built-in condition fits
 
@@ -445,7 +452,7 @@ or `outcome:delivered`, which nothing writes any more; every reader accepts them
 
 Whether an item is a task's **standing occurrence** or an **ad-hoc run** is not a
 label but a property of the item: the standing one is titled with the task and
-nothing else, and its task is on the schedule (not woken-gated). A woken-gated
+nothing else, and its task is on the schedule (`isScheduledTask`). An unscheduled
 task's item and every qualified one — a fan-out target, a request naming its issue
 — are ad-hoc, which is what lets them run beside the schedule rather than consuming
 it; the run-history terms read every one of them as woken.

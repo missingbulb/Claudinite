@@ -192,12 +192,12 @@ test('everything on a longer cadence is one row — the question is whether it f
 
 // The scheduler asks a task with no cadence term at every tick, so it earns a row of
 // its own — but nothing on the calendar says when it will next run, so its future
-// cells are empty rather than predicted. A woken-gated task is never asked and is off
-// the grid, and so is a declaration whose cadence could not be read.
-test('no cadence term is a row with no prediction; woken and unreadable tasks are off the grid', () => {
+// cells are empty rather than predicted. A task with no conditions is never asked and
+// is off the grid, and so is a declaration whose cadence could not be read.
+test('no cadence term is a row with no prediction; unscheduled and unreadable tasks are off the grid', () => {
   const axis = axisOf(NOW, SCHEDULE);
   const grid = scheduleGrid([
-    taskRow({ key: 'p/lever', task: 'lever', ...cadenced(['woken']), nextAsk: { kind: 'note', note: 'x' } }),
+    taskRow({ key: 'p/lever', task: 'lever', ...cadenced([]), nextAsk: { kind: 'note', note: 'x' } }),
     taskRow({ key: 'p/move', task: 'move', ...cadenced(['substantive-change']), nextAsk: { kind: 'note', note: 'x' } }),
     taskRow({ key: 'p/unread', task: 'unread', ...cadenced(null), nextAsk: { kind: 'note', note: 'x' } }),
   ], [], axis, { now: NOW, schedule: SCHEDULE });
@@ -218,17 +218,17 @@ test('tomorrow\'s workload is the declarations read against the schedule, never 
   assert.doesNotMatch(line, /quiet/, 'a task that lands its own PR adds nothing to your day');
 });
 
-test('the workload line counts a task with no cadence term apart, and a woken one not at all', () => {
+test('the workload line counts a task with no cadence term apart, and an unscheduled one not at all', () => {
   const line = workloadLine(0, [
     taskRow({ key: 'p/move', task: 'move', ...cadenced(['substantive-change'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
-    taskRow({ key: 'p/lever', task: 'lever', ...cadenced(['woken'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
+    taskRow({ key: 'p/lever', task: 'lever', ...cadenced([], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
     taskRow({ key: 'p/slow', task: 'slow', ...cadenced(['last-run-over:7d'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
   ], { schedule: SCHEDULE, now: NOW });
   assert.match(line, /nothing waits for a person/);
   assert.match(line, /1 more on movement/, '"a day" is a promise a task with no cadence term never made');
   assert.match(line, /1 more on longer cadences/);
   assert.doesNotMatch(line, /a day from/);
-  assert.doesNotMatch(line, /lever/, 'a woken task is not on the schedule at all');
+  assert.doesNotMatch(line, /lever/, 'a task with no conditions is not on the schedule at all');
 });
 
 // --- the quiet tail --------------------------------------------------------------------------

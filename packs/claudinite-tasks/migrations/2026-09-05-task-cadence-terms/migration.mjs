@@ -1,8 +1,9 @@
 // A member's own task declarations state their cadence as a precondition term
 // (tasks-dispatch DESIGN §5, #1725): every `.claudinite/local/packs/<pack>/tasks/
 // <name>/task.json` still carrying the retired `frequency` field has it folded
-// into `preconditions` — `due:<cadence>` first in the list, `woken` for `manual`,
-// a `none` beside it dropped — as anchored text, so the file's own layout survives.
+// into `preconditions` — `due:<cadence>` first in the list, a `none` beside it
+// dropped, and `manual` (no schedule) folded into no list at all — as anchored
+// text, so the file's own layout survives.
 //
 // THE WRITE IS THE ENGINE'S. `retireTaskFrequency: true` names the registry's named
 // codemod (engine/migrations/registry.mjs, `applyTaskFrequencyRetirement`), which

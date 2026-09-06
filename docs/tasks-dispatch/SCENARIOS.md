@@ -1159,16 +1159,19 @@ the retired shape the same day cost 48.
 The engine keeps no calendar and no memory of an ask: every tick asks every
 scheduled task, and a task's cadence is a term in its own `preconditions`,
 read off its run history — `due:<daily|weekly|monthly>`, `last-run-over:<Nh|Nd>`,
-`last-run-not-failed`, `woken`. The run-history terms are judged first, off the
-queue the run already holds; the other signals are collected only where they
-did not decide. A yes files a READY item, a no is a log line, a read the
-scheduler cannot make fails open. The one engine invariant is ONE LIVE ITEM
-PER TASK — a park is not live. At pick the same expression is judged over the
-item's own facts and its own run history excluding it, and a `Woken`-stamped
-item (a force mint, a `--wake`, anything not the scheduler's own) satisfies the
-cadence terms. These play the terms one at a time, from the side the board
-used to hide. `S65`'s bill is unchanged: the quiet ticks are asked and cost
-nothing beyond the run.
+`last-run-not-failed`. A task stating no condition — the retired `frequency:
+manual` — is off the schedule, and so is one whose condition reads the item
+itself (the request task's `request-eligible`): never asked, run only from an
+item somebody created, at whose pick an empty expression holds. The run-history
+terms are judged first, off the queue the run already holds; the other signals
+are collected only where they did not decide. A yes files a READY item, a no is
+a log line, a read the scheduler cannot make fails open. The one engine
+invariant is ONE LIVE ITEM PER TASK — a park is not live. At pick the same
+expression is judged over the item's own facts and its own run history
+excluding it, and a `Woken`-stamped item (a force mint, a `--wake`, anything
+not the scheduler's own) satisfies the cadence terms. These play the terms one
+at a time, from the side the board used to hide. `S65`'s bill is unchanged: the
+quiet ticks are asked and cost nothing beyond the run.
 
 ### S74 — `due:daily` under the twice-daily cron
 
@@ -1183,12 +1186,14 @@ run's START. With no history at all the task runs at the very first tick
 ("no run in the horizon"), then one tick later each day — the tick exactly 24h
 after the last start is inside the duration, the one after it is over.
 
-### S76 — `woken` gates as a whole conjunct, widens inside an alternative
+### S76 — a task stating no condition is off the schedule
 
-`['woken']` is never asked at any tick; its item exists only because somebody
-created one, and that item is woken by construction. `['due:daily || woken']`
-is on the schedule like any other task — asked at every tick, run on its
-cadence — and the scheduler's own ask never satisfies the `woken` half.
+A declaration with no `preconditions` (or an empty list) is never asked at any
+tick; its item exists only because somebody created one, and at that item's
+pick the empty expression holds — it runs. The force lever reaches such a task
+only through its open items: it wakes them, stamped `Woken`, and mints nothing
+where none is open — a bare item of it would carry nothing its worker can read
+(#1721).
 
 ### S77 — a forced mint satisfies the cadence at pick
 

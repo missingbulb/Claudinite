@@ -62,7 +62,9 @@ export function orderTaskKeys(decl) {
 // that could not be carried (functions, undefined) so the caller can say so.
 export function serializeTaskDeclaration(decl, schemaRelative) {
   const dropped = Object.keys(decl).filter((k) => typeof decl[k] === 'function' || decl[k] === undefined);
-  const data = Object.fromEntries(Object.entries(decl).filter(([k]) => !dropped.includes(k)));
+  // An empty expression is spelled by absence: a task with no conditions states none.
+  const data = Object.fromEntries(Object.entries(decl)
+    .filter(([k, v]) => !dropped.includes(k) && !(k === 'preconditions' && Array.isArray(v) && v.length === 0)));
   return { text: `${JSON.stringify(orderTaskKeys({ $schema: schemaRelative, ...data }), null, 2)}\n`, dropped };
 }
 
@@ -184,17 +186,20 @@ export function checkoutIo(root) {
 
 // --- the retired `frequency` field --------------------------------------------
 
-// What the field always meant, as the condition that now says it. The one mapping
-// the contract's door reads (`cadenceTermFor` in packs/claudinite-tasks/calendar.mjs),
+// What the field always meant, as the condition that now says it — or null for
+// `manual`, which meant no schedule and adds no term. The one mapping the
+// contract's door reads (`cadenceTermFor` in packs/claudinite-tasks/calendar.mjs),
 // spelled again here because the engine imports no pack; the engine test pins the
 // two to each other over every accepted value.
-const cadenceTermFor = (frequency) => (frequency === 'manual' ? 'woken' : `due:${frequency}`);
+const cadenceTermFor = (frequency) => (frequency === 'manual' ? null : `due:${frequency}`);
 
 // The field wherever it sits: on a line of its own (the converter's layout, and
 // nearly every hand-written one) or inline in a one-line object. The commas
 // around it are captured so the patch keeps exactly the separators the file needs.
 const FREQUENCY_FIELD = /(,[ \t]*)?"frequency"[ \t]*:[ \t]*"([^"]*)"([ \t]*,)?/;
 const PRECONDITIONS_ARRAY = /"preconditions"[ \t]*:[ \t]*\[([^\]]*)\]/;
+// The same field with its separators, for dropping it whole (`withoutField`).
+const PRECONDITIONS_FIELD = /(,[ \t]*)?"preconditions"[ \t]*:[ \t]*(\[[^\]]*\])([ \t]*,)?/;
 
 // Patch one task.json's text: the field goes, the cadence term leads the
 // `preconditions` list (created in the field's own place where the file stated
@@ -216,7 +221,14 @@ export function retireFrequencyText(source) {
     try { stated = JSON.parse(`[${array[1]}]`); } catch { return null; }
     if (!stated.every((e) => typeof e === 'string')) return null;
     const kept = stated.filter((e) => e.trim() !== 'none');
-    const terms = kept.includes(term) ? kept : [term, ...kept];
+    const terms = term === null || kept.includes(term) ? kept : [term, ...kept];
+    if (terms.length === 0) {
+      // `manual` with nothing beside it: no schedule, which a declaration says by
+      // stating no "preconditions" at all — both fields go.
+      out = withoutField(withoutField(text, PRECONDITIONS_FIELD), FREQUENCY_FIELD);
+      try { JSON.parse(out); } catch { return null; }
+      return { text: out, term, frequency };
+    }
     const multiline = array[1].includes('\n');
     const itemIndent = multiline ? (/\n([ \t]*)"/.exec(array[1])?.[1] ?? '    ') : null;
     const closeIndent = multiline ? (/\n([ \t]*)$/.exec(array[1])?.[1] ?? '  ') : null;
@@ -224,7 +236,10 @@ export function retireFrequencyText(source) {
       ? `"preconditions": [\n${terms.map((t) => `${itemIndent}${JSON.stringify(t)}`).join(',\n')}\n${closeIndent}]`
       : `"preconditions": [${terms.map((t) => JSON.stringify(t)).join(', ')}]`;
     out = text.replace(PRECONDITIONS_ARRAY, rendered);
-    out = withoutField(out);
+    out = withoutField(out, FREQUENCY_FIELD);
+  } else if (term === null) {
+    // `manual` and no list: the field alone goes, and the declaration states nothing.
+    out = withoutField(text, FREQUENCY_FIELD);
   } else {
     // The field's own place becomes the list, its separators kept: a one-entry
     // list on its own lines where the field had a line, inline where it was inline.
@@ -241,11 +256,12 @@ export function retireFrequencyText(source) {
   return { text: out, term, frequency };
 }
 
-// Remove the field from text that already carries the list. A field alone on its
-// line takes the line with it — and, where it was the object's last key, the comma
-// the key before it carried; an inline field leaves exactly one separator behind.
-function withoutField(text) {
-  const f = FREQUENCY_FIELD.exec(text);
+// Remove a field (matched with its separators, groups 1 and 3) from the text. A
+// field alone on its line takes the line with it — and, where it was the object's
+// last key, the comma the key before it carried; an inline field leaves exactly one
+// separator behind.
+function withoutField(text, re) {
+  const f = re.exec(text);
   const [whole, leading, , trailing] = f;
   const start = f.index;
   const end = start + whole.length;
@@ -259,7 +275,10 @@ function withoutField(text) {
     return before + text.slice(lineEnd + 1);
   }
   const separator = leading && trailing ? ',' : '';
-  return text.slice(0, start) + separator + text.slice(end).replace(/^[ \t]+(?=\S)/, leading && trailing ? ' ' : '');
+  const rest = text.slice(end);
+  // A key follows: its spacing is the removed field's to give back. None follows
+  // (the object's last inline key): the closing brace keeps the space it had.
+  return text.slice(0, start) + separator + (trailing ? rest.replace(/^[ \t]+(?=\S)/, leading ? ' ' : '') : rest);
 }
 
 // Every `<root>/<pack>/tasks/<task>/` directory under the given pack roots that
@@ -292,7 +311,9 @@ export async function retireTaskFrequency(taskDirs, io) {
       continue;
     }
     io.write(json, patched.text);
-    applied.push(`${json}: frequency "${patched.frequency}" → "${patched.term}", first in preconditions`);
+    applied.push(patched.term === null
+      ? `${json}: frequency "${patched.frequency}" dropped — no schedule, so no preconditions`
+      : `${json}: frequency "${patched.frequency}" → "${patched.term}", first in preconditions`);
   }
   return applied;
 }

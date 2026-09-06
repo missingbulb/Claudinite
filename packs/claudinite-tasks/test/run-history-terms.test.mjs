@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluatePreconditions, parsePreconditions, validatePreconditions, preconditionSignals } from '../precondition-policy.mjs';
-import { cadenceOf, isWokenGated, holdsOnFailure, cadenceTermFor, parseDuration } from '../calendar.mjs';
+import { cadenceOf, statesConditions, holdsOnFailure, cadenceTermFor, parseDuration } from '../calendar.mjs';
 
 // The run-history terms (tasks-dispatch DESIGN §5): a task's cadence, its view of
 // its own last failure, and whether it runs only when somebody asks — every one a
@@ -119,29 +119,31 @@ test('last-run-not-failed declines exactly while the newest run stands or ended 
   assert.equal(evaluate(['last-run-not-failed'], runs(run({ number: 13, createdAt: '2026-09-09T05:00:00Z' }), failed)).run, true);
 });
 
-// --- woken --------------------------------------------------------------------
+// --- the empty expression -----------------------------------------------------
+// A task stating no condition is not on the schedule; at the pick of an item
+// somebody created for it, the empty expression holds.
 
-test('woken holds only for an item somebody created, never at the scheduler\'s own ask', () => {
-  assert.equal(evaluate(['woken'], {}).run, false, 'no item: the schedule asking');
-  assert.match(evaluate(['woken'], {}).reason, /only from an item somebody created/);
-  assert.equal(evaluate(['woken'], {}, { item: { number: 5, woken: false } }).run, false, 'a scheduled item');
-  assert.equal(evaluate(['woken'], {}, { item: { number: 5, woken: true } }).run, true);
+test('the empty expression holds at a pick and reads no signal', () => {
+  const v = evaluate([], {}, { item: { number: 5, woken: true } });
+  assert.equal(v.run, true);
+  assert.match(v.reason, /no conditions stated/);
+  assert.deepEqual(preconditionSignals([], new Map()), []);
+  assert.deepEqual(validatePreconditions([], new Map()), []);
 });
 
-test('the run-history terms read the runs signal, and woken reads nothing', () => {
+test('the run-history terms read the runs signal', () => {
   assert.deepEqual(preconditionSignals(['due:daily'], new Map()), ['runs']);
   assert.deepEqual(preconditionSignals(['last-run-over:1d', 'last-run-not-failed'], new Map()), ['runs']);
-  assert.deepEqual(preconditionSignals(['woken'], new Map()), []);
-  assert.deepEqual(preconditionSignals(['woken', 'request-eligible'], new Map([['request-eligible', { signals: ['request'] }]])), ['request']);
+  assert.deepEqual(preconditionSignals(['request-eligible'], new Map([['request-eligible', { signals: ['request'] }]])), ['request']);
 });
 
 // --- none is retired ----------------------------------------------------------
 
-test('`none` is retired: a task with no condition would run at every tick', () => {
+test('`none` is retired: absence is how a task states no condition', () => {
   const parsed = parsePreconditions(['none']);
   assert.equal(parsed.kind, 'invalid');
-  assert.match(parsed.reason, /every scheduler tick/);
-  assert.match(evaluate(['none'], {}).error, /due:daily|woken/);
+  assert.match(parsed.reason, /leave "preconditions" out/);
+  assert.match(evaluate(['none'], {}).error, /due:daily/);
   assert.equal(validatePreconditions(['none']).length, 1);
   assert.match(validatePreconditions(['none'])[0].fix, /due:<daily\|weekly\|monthly>/);
 });
@@ -186,32 +188,36 @@ test('an unreadable runs signal errors, as every unreadable signal does', () => 
 
 // --- the calendar\'s reading of a declaration ---------------------------------
 
-test('cadenceOf reads the first cadence term, and woken when that is all there is', () => {
+test('cadenceOf reads the first cadence term, and nothing where there is none', () => {
   assert.deepEqual(cadenceOf(['due:weekly', 'repo-active']), { kind: 'due', cadence: 'weekly' });
   assert.deepEqual(cadenceOf(['substantive-change', 'last-run-over:3d']), { kind: 'elapsed', ms: 3 * 86400e3, text: '3d' });
-  assert.deepEqual(cadenceOf(['woken', 'request-eligible']), { kind: 'woken' });
+  assert.equal(cadenceOf(['request-eligible']), null);
   assert.equal(cadenceOf(['substantive-change']), null, 'movement alone: asked at every tick, runs on movement');
   assert.equal(cadenceOf(undefined), null);
+  assert.equal(cadenceOf([]), null);
 });
 
-test('woken gates only as a whole conjunct', () => {
-  assert.equal(isWokenGated(['woken']), true);
-  assert.equal(isWokenGated(['woken', 'request-eligible']), true);
-  assert.equal(isWokenGated(['due:daily || woken']), false);
-  assert.equal(isWokenGated(['due:daily']), false);
+// A declaration states conditions or it does not: absent and empty read the same,
+// and a blank entry states nothing.
+test('statesConditions is the one read of whether a task has a schedule at all', () => {
+  assert.equal(statesConditions(['due:daily']), true);
+  assert.equal(statesConditions(['request-eligible']), true);
+  assert.equal(statesConditions([]), false);
+  assert.equal(statesConditions(undefined), false);
+  assert.equal(statesConditions(['']), false);
 });
 
 // Nothing holds a task's lane past a failure park but the task's own word, and only
 // as a whole conjunct: an alternative beside it means the task still runs some way.
 test('a declaration holds its lane on a failure only when last-run-not-failed gates it', () => {
   assert.equal(holdsOnFailure(['due:daily', 'last-run-not-failed']), true);
-  assert.equal(holdsOnFailure(['due:daily', 'last-run-not-failed || woken']), false);
+  assert.equal(holdsOnFailure(['due:daily', 'last-run-not-failed || repo-active']), false);
   assert.equal(holdsOnFailure(['due:daily']), false);
   assert.equal(holdsOnFailure(undefined), false);
 });
 
-test('the retired frequency spells as the cadence term it always meant', () => {
+test('the retired frequency spells as the cadence term it always meant, and manual as no term', () => {
   assert.equal(cadenceTermFor('daily'), 'due:daily');
   assert.equal(cadenceTermFor('monthly'), 'due:monthly');
-  assert.equal(cadenceTermFor('manual'), 'woken');
+  assert.equal(cadenceTermFor('manual'), null);
 });

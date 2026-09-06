@@ -7,7 +7,6 @@
   "required": [
     "id",
     "description",
-    "preconditions",
     "expected_outcome"
   ],
   "additionalProperties": false,
@@ -38,12 +37,11 @@
     },
     "preconditions": {
       "type": "array",
-      "minItems": 1,
       "items": {
         "type": "string",
         "minLength": 1
       },
-      "description": "When the task runs — every listed condition must hold, `||` between alternatives. A cadence first where the task keeps one (`due:daily|weekly|monthly` on the repo's schedule, or `last-run-over:<12h|1d|7d>`), `woken` for a task run only from an item somebody created, `last-run-not-failed` to stop past the task's own failure park, then the built-in movement terms (e.g. \"substantive-change\", \"commits-under:<dir>\") or terms the task's own preconditions.mjs exports. Every scheduler tick asks every task; a task with no cadence term runs whenever its other conditions hold."
+      "description": "When the task runs — every listed condition must hold, `||` between alternatives. A cadence first where the task keeps one (`due:daily|weekly|monthly` on the repo's schedule, or `last-run-over:<12h|1d|7d>`), `last-run-not-failed` to stop past the task's own failure park, then the built-in movement terms (e.g. \"substantive-change\", \"commits-under:<dir>\") or terms the task's own preconditions.mjs exports. Every scheduler tick asks every task that states a condition; a task with no cadence term runs whenever its other conditions hold. Leave the field out for a task that runs only from an item somebody creates: it is not on the schedule."
     },
     "expected_outcome": {
       "type": "string",

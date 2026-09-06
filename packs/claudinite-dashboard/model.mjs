@@ -21,8 +21,8 @@
 import { stripComments } from '../../engine/checks/helpers/code-scanning.mjs';
 import { parseTaskDeclaration, applyTaskDefaults } from '../claudinite-tasks/shared-code/task-declaration.mjs';
 import {
-  mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, holdsOnFailure,
-  DUE_TERM, ELAPSED_TERM, WOKEN_TERM,
+  mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, holdsOnFailure, statesConditions,
+  DUE_TERM, ELAPSED_TERM,
 } from '../claudinite-tasks/shared-code/anchors.mjs';
 import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
@@ -109,7 +109,9 @@ export function taskDeclarationPaths(paths, config) {
 // A field this cannot read comes back NULL and renders as "unknown". It is never
 // defaulted: a task whose declaration this misreads must look unreadable, because a
 // plausible wrong cadence would silently move a next-anchor the whole roster is
-// read for.
+// read for. An ABSENT `preconditions` is not an unread one: a declaration that was
+// read and carries no key states the empty expression — a task off the schedule,
+// exactly as its author wrote it — and reads as `[]`.
 // The key must open the line or follow a `{` / `,` — anchoring on the line start
 // alone would miss a declaration written on one line, and anchoring on nothing
 // would let `code_work` be found inside `agent_code_work`. The value may close on a
@@ -125,11 +127,18 @@ const scalar = (src, field) => {
   return m[1] ?? m[2];
 };
 
+// A literal list of strings: `undefined` where the field is absent, `null` where it
+// is present but not one a reader can see through (a computed expression).
 const stringArray = (src, field) => {
+  if (!new RegExp(at(field), 'm').test(src)) return undefined;
   const m = new RegExp(`${at(field)}\\[([^\\]]*)\\]`, 'm').exec(src);
   if (!m) return null;
   return [...m[1].matchAll(/'([^']*)'|"([^"]*)"/g)].map((x) => x[1] ?? x[2]);
 };
+
+// The module form is a default-exported object literal; text without that shape is
+// no declaration at all, so an absent field on it is unread rather than unstated.
+const MODULE_DECLARATION_RE = /\bexport\s+default\s*\{/;
 
 // THE FREQUENCY DOOR, as the page runs it (#1725). `frequency` is retired: a task's
 // cadence is a term in its own `preconditions`. A declaration still carrying the
@@ -139,21 +148,22 @@ const stringArray = (src, field) => {
 // contract's own rule (`normalizeTaskDeclaration` in `task-contract.mjs`), spelled
 // again through the same `cadenceTermFor` because that module reaches into `node:`
 // builtins the page cannot load; `model.test.mjs` runs both over one vector set so
-// the two cannot drift apart unseen. `manual` reads as `woken`; nothing here writes
-// either word.
+// the two cannot drift apart unseen. `manual` meant no schedule and adds no term
+// (`cadenceTermFor` answers null for it), so what stood beside it is the whole
+// expression; nothing here writes the old word.
 const NONE = 'none';
 function withCadenceTerm(frequency, preconditions) {
   if (frequency == null) return preconditions;
   const term = cadenceTermFor(frequency);
   const stated = (preconditions ?? []).filter((c) => String(c).trim() !== NONE);
-  return stated.some((c) => String(c).trim() === term) ? stated : [term, ...stated];
+  return term === null || stated.some((c) => String(c).trim() === term) ? stated : [term, ...stated];
 }
 
 // A task may decline to run; whether it CAN is the difference between "did not run"
 // being routine and being a fault, so the roster shows it. The cadence terms say WHEN
 // a task runs, not whether, and `none` is the EMPTY precondition — so neither is a
 // gate, and a task carrying only those answers no here, exactly as it should.
-const CADENCE_TERM_NAMES = [DUE_TERM, ELAPSED_TERM, WOKEN_TERM];
+const CADENCE_TERM_NAMES = [DUE_TERM, ELAPSED_TERM];
 const termName = (t) => t.split(':')[0].trim();
 const isGate = (entry) => String(entry ?? '').split('||')
   .some((t) => termName(t) !== NONE && !CADENCE_TERM_NAMES.includes(termName(t)));
@@ -163,10 +173,12 @@ export function parseDeclaration(text, path = '') {
   if (path.endsWith('.json') || /^\s*\{/.test(String(text ?? ''))) return parseJsonDeclaration(text);
   const src = stripComments(String(text ?? ''));
   // The conditions a task declares. One form, and only one (#1617): the
-  // `preconditions` expression. A member still stamping the retired
-  // `precondition_signals` reads as no conditions here, which is what it is —
-  // a declaration the current engine does not accept.
-  const preconditions = withCadenceTerm(scalar(src, 'frequency'), stringArray(src, 'preconditions'));
+  // `preconditions` expression — absent, the empty one, a task off the schedule.
+  // A member still stamping the retired `precondition_signals` reads as exactly
+  // that here, which is what it is — a declaration the current engine does not
+  // accept states no condition it reads.
+  const stated = MODULE_DECLARATION_RE.test(src) ? stringArray(src, 'preconditions') : null;
+  const preconditions = withCadenceTerm(scalar(src, 'frequency'), stated === undefined ? [] : stated);
   return {
     id: scalar(src, 'id'),
     agent_model: scalar(src, 'agent_model'),
@@ -186,13 +198,18 @@ function parseJsonDeclaration(text) {
   let decl;
   try {
     decl = parseTaskDeclaration(String(text ?? ''));
-    if (decl !== null && typeof decl === 'object' && !Array.isArray(decl)) applyTaskDefaults(decl);
   } catch {
     decl = null;
   }
-  if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) decl = {};
+  const read = decl !== null && typeof decl === 'object' && !Array.isArray(decl);
+  if (read) applyTaskDefaults(decl); else decl = {};
   const scalarOf = (v) => (['string', 'number', 'boolean'].includes(typeof v) ? v : null);
-  const stated = Array.isArray(decl.preconditions) && decl.preconditions.every((c) => typeof c === 'string') ? decl.preconditions : null;
+  // On a declaration that parsed, an absent `preconditions` is the empty expression;
+  // one present but not a list of strings was not read, and neither was anything on
+  // text that did not parse.
+  const stated = !read ? null
+    : decl.preconditions === undefined ? []
+      : Array.isArray(decl.preconditions) && decl.preconditions.every((c) => typeof c === 'string') ? decl.preconditions : null;
   const preconditions = withCadenceTerm(scalarOf(decl.frequency), stated);
   return {
     id: scalarOf(decl.id),
@@ -209,15 +226,18 @@ function parseJsonDeclaration(text) {
 // --- a task's cadence ------------------------------------------------------------
 
 // What a declaration says about WHEN its task runs, read off its `preconditions` the
-// way the scheduler reads it (`cadenceOf`), in the roster's terms: one display word,
-// the period the task keeps, and whether the scheduler asks it at all. Three answers
-// stay apart — a cadence; NO cadence term, a task asked at every tick that runs on
-// its other conditions; and UNREADABLE, conditions this could not lift — because a
-// parse failure shown as "on movement" would hide behind a legitimate answer.
+// way the scheduler reads it (`statesConditions`, `cadenceOf`), in the roster's terms:
+// one display word, the period the task keeps, and whether the scheduler asks it at
+// all. Four answers stay apart — a cadence; NO cadence term, a task asked at every
+// tick that runs on its other conditions; NO CONDITIONS, a task the scheduler never
+// asks, which runs only from an item somebody creates (a mark, a wake, a chain link);
+// and UNREADABLE, conditions this could not lift — because a parse failure shown as
+// "on movement" would hide behind a legitimate answer, and an absent key shown as
+// unknown would hide a task that reads exactly as its author wrote it.
 //
 // Only a `due:` cadence is on the calendar, so only it can have a next anchor: an
-// elapsed cadence counts from the task's newest run, and `woken` and no-cadence have
-// no next instant at all. `scheduled` is null, not false, where nothing was read.
+// elapsed cadence counts from the task's newest run, and no-cadence and no-conditions
+// have no next instant at all. `scheduled` is null, not false, where nothing was read.
 //
 // `holdsOnFailure` is the same read for the one other thing a declaration says about
 // its own lane: whether a failure park stops the task (`last-run-not-failed`). No
@@ -227,12 +247,12 @@ export function describeCadence(preconditions) {
   if (!Array.isArray(preconditions)) {
     return { frequency: null, cadence: null, periodMs: null, scheduled: null, holdsOnFailure: null, anchorNote: 'cadence unknown' };
   }
+  const holds = holdsOnFailure(preconditions);
+  if (!statesConditions(preconditions)) {
+    return { frequency: 'unscheduled', cadence: null, periodMs: null, scheduled: false, holdsOnFailure: holds, anchorNote: 'no conditions — runs only from an item somebody creates' };
+  }
   const cadence = cadenceOf(preconditions);
   const period = taskPeriodMs({ preconditions });
-  const holds = holdsOnFailure(preconditions);
-  if (cadence?.kind === 'woken') {
-    return { frequency: WOKEN_TERM, cadence, periodMs: period, scheduled: false, holdsOnFailure: holds, anchorNote: 'woken — only an item somebody created' };
-  }
   if (cadence === null) {
     return { frequency: 'on movement', cadence, periodMs: period, scheduled: true, holdsOnFailure: holds, anchorNote: 'no cadence term — asked at every tick' };
   }
@@ -397,6 +417,17 @@ export function describeItem(item, now, opts = {}) {
 
 // --- the roster ----------------------------------------------------------------
 
+// The conditions a roster entry's declaration states. A declaration that was read
+// (`parseDeclaration`'s object) carries `preconditions` as the list it states, `[]`
+// for an absent key, or null for a field it could not read; an entry that never got
+// a declaration (null — an orphan, a file the API did not return) is unknown whole.
+// The key absent on a declaration object is the empty expression here too, so a
+// caller building the object by hand reads the same way: only null means "not read".
+const statedPreconditions = (declaration) => {
+  if (declaration === null || typeof declaration !== 'object') return null;
+  return declaration.preconditions === undefined ? [] : declaration.preconditions;
+};
+
 // One row per DECLARED task, whether or not it has ever run — a task that has never
 // produced an item is exactly the interesting case, and an issue-derived list would
 // omit it entirely.
@@ -416,7 +447,7 @@ export function buildRoster({ tasks = [], items = [], now, schedule, isOpen }) {
       .sort((a, b) => ms(b.created_at) - ms(a.created_at));
     const open = mine.filter((i) => i.state === 'open');
     const closed = mine.filter((i) => i.state === 'closed');
-    const read = describeCadence(t.declaration?.preconditions);
+    const read = describeCadence(statedPreconditions(t.declaration));
 
     // The calendar answers only a `due:` cadence, and only where the repo has a
     // schedule to anchor it on; every other reading carries its own note instead, so

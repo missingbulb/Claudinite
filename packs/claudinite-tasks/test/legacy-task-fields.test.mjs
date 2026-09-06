@@ -65,11 +65,11 @@ test('legacy-task-fields: a two-word ceiling is reported as the word it became',
 // The advisory exists because the tolerance is invisible downstream: by the time
 // anything holds a declaration, the door has already renamed the field away.
 test('legacy-task-fields: the retired frequency field is reported with the condition it reads as', () => {
-  for (const [field, term] of [['daily', 'due:daily'], ['weekly', 'due:weekly'], ['monthly', 'due:monthly'], ['manual', 'woken']]) {
+  for (const [field, term] of [['daily', 'due:daily'], ['weekly', 'due:weekly'], ['monthly', 'due:monthly'], ['manual', null]]) {
     const findings = run(declaration(`  "frequency": "${field}"\n`));
     assert.equal(findings.length, 1, field);
     assert.match(findings[0].what, /retired field `frequency`/);
-    assert.match(findings[0].fix, new RegExp(`"preconditions": \\["${term}", …\\]`));
+    assert.match(findings[0].fix, term === null ? /no `"preconditions"` at all/ : new RegExp(`"preconditions": \\["${term}", …\\]`));
     assert.equal(findings[0].line, 3);
   }
   // The module form too, and a value the door cannot read still names the shape.

@@ -4,11 +4,11 @@
 // `validate-dispatch` validate against this one function, so the accepted shape
 // can never drift between the two surfaces.
 
-import { ACCEPTED_FREQUENCIES, cadenceTermFor, cadenceOf, isWokenGated, DUE_TERM } from './calendar.mjs';
+import { ACCEPTED_FREQUENCIES, cadenceTermFor, cadenceOf, statesConditions, DUE_TERM } from './calendar.mjs';
 import { MODEL_FAMILIES } from './model-map.mjs';
 import { EXECUTING_LEASH_MS } from './queue/leases.mjs';
 import { normalizePolicy } from './merge-policy.mjs';
-import { validatePreconditions, preconditionSignals, NONE } from './precondition-policy.mjs';
+import { validatePreconditions, preconditionSignals, preconditionNeedsItem, NONE } from './precondition-policy.mjs';
 import { applyTaskDefaults } from './task-defaults.mjs';
 
 // A declared timeout is always a whole number of seconds, > 0.
@@ -51,11 +51,14 @@ export const LEGACY_FIELDS = {
 export { DEFAULT_AUTOMERGE, DEFAULT_AGENT_MODEL } from './task-defaults.mjs';
 
 // WHEN a task runs, read off its declaration (tasks-dispatch DESIGN §5): the
-// cadence term it states, and whether it is on the schedule at all. A task is
-// SCHEDULED unless `woken` gates it — the scheduler asks every scheduled task at
-// every tick, and a woken-gated one only ever runs from an item somebody created.
+// cadence term it states, and whether it is on the schedule at all. The scheduler
+// asks every scheduled task at every tick. A task is OFF the schedule when it
+// states no condition (nothing triggers it) or when a condition it states reads
+// the item itself (nothing to judge at a tick) — either way it runs only from an
+// item somebody created, at whose pick its expression is judged.
 export const taskCadence = (decl) => cadenceOf(decl?.preconditions);
-export const isScheduledTask = (decl) => !!decl && !isWokenGated(decl.preconditions);
+export const isScheduledTask = (decl, terms = new Map()) =>
+  !!decl && statesConditions(decl.preconditions) && !preconditionNeedsItem(decl.preconditions, terms);
 
 // Return the declaration with canonical field names and the defaults filled in.
 // Non-objects pass through untouched so validateTaskDeclaration still reports
@@ -76,8 +79,9 @@ export function normalizeTaskDeclaration(decl) {
   // cadence is one of its own preconditions, read off its run history. A declaration
   // still carrying the field reads exactly as it always did — the field becomes the
   // cadence term it always meant, first in the expression, and a `none` beside it
-  // (the empty precondition it used to need) drops. The field itself does not
-  // survive the door: nothing downstream reads it.
+  // (the empty precondition it used to need) drops; `manual` meant no schedule and
+  // adds no term. The field itself does not survive the door: nothing downstream
+  // reads it.
   //
   // Scaffolding, not a second vocabulary: `legacy-task-fields` reports the field,
   // and the nightly update rewrites a member's own task files (the
@@ -88,13 +92,16 @@ export function normalizeTaskDeclaration(decl) {
     const stated = Array.isArray(out.preconditions) ? out.preconditions.filter((e) => String(e).trim() !== NONE) : [];
     if (ACCEPTED_FREQUENCIES.includes(out.frequency)) {
       const term = cadenceTermFor(out.frequency);
-      out.preconditions = stated.some((e) => String(e).trim() === term) ? stated : [term, ...stated];
+      out.preconditions = term === null || stated.some((e) => String(e).trim() === term) ? stated : [term, ...stated];
     } else {
       // An illegal frequency is still reported, as the illegal condition it becomes.
       out.preconditions = [`${DUE_TERM}:${out.frequency}`, ...stated];
     }
     delete out.frequency;
   }
+  // A declaration stating no conditions carries the empty expression from here on,
+  // so every reader judges one array: at a pick it holds, at a tick it is never asked.
+  if (out.preconditions === undefined) out.preconditions = [];
   // The retired outcome ceilings become the outcome/policy pair. An explicit
   // `automerge` beside a legacy spelling wins: a half-migrated declaration
   // keeps the narrower intent it states.
@@ -202,7 +209,7 @@ export function descriptionProblem(description) {
 export function validateTaskDeclaration(raw, terms = new Map()) {
   const decl = normalizeTaskDeclaration(raw);
   if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) {
-    return [{ what: 'task.json is not a declaration object', fix: 'write one JSON object: { "id", "description", "preconditions", "expected_outcome", … }' }];
+    return [{ what: 'task.json is not a declaration object', fix: 'write one JSON object: { "id", "description", "expected_outcome", … }' }];
   }
   const problems = [];
   const bad = (what, fix) => problems.push({ what, fix });
@@ -269,12 +276,11 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   if (decl.precondition !== undefined) {
     bad('the task declares a "precondition" function, which is retired', 'move the gate into "preconditions" — a built-in condition, or a term this task\'s preconditions.mjs exports');
   }
-  // REQUIRED, with no default (DESIGN §5): the expression is the whole of when the
-  // task runs, so a declaration without one has not said. A retired `frequency`
-  // arrives here already turned into its cadence term by the door.
-  if (decl.preconditions === undefined) {
-    bad('the task declares no "preconditions"', 'add "preconditions": a list of named conditions, all of which must hold — a cadence first where the task keeps one ("due:daily", "due:weekly", "last-run-over:7d"), "woken" for a task run only from an item somebody created, then what it waits for (e.g. ["due:daily", "substantive-change"])');
-  } else {
+  // OPTIONAL (DESIGN §5): the expression is the whole of when the task runs, and a
+  // declaration stating none is not on the schedule — it runs only from an item
+  // somebody creates. A retired `frequency` arrives here already turned into its
+  // cadence term by the door.
+  if (decl.preconditions !== undefined) {
     for (const problem of validatePreconditions(decl.preconditions, terms)) bad(problem.what, problem.fix);
   }
 

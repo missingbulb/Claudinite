@@ -134,7 +134,7 @@ test('the member-side scheduler run resolves the very id this lever sends', asyn
   const { normalizeTaskDeclaration } = await import('../../../../claudinite-tasks/task-contract.mjs');
   const { readFileSync } = await import('node:fs');
   // The member's real declaration: a bare wake mints or wakes a SCHEDULED task's
-  // standing item, where a woken-gated one has nothing standing to reach.
+  // standing item, where an unscheduled one has nothing standing to reach.
   const decl = normalizeTaskDeclaration(JSON.parse(readFileSync(join(ROOT, 'packs/claudinite-lifecycle/tasks/update/task.json'), 'utf8')));
   const tasks = [{ pack: 'claudinite-lifecycle', id: FORCED_TASK, decl }];
   const items = [{

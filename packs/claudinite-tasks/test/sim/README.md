@@ -14,9 +14,11 @@ argument for its existence.
 - [`sim.mjs`](sim.mjs) — the model: a virtual clock and an ordered event
   queue (no threads, no waits, no wall clock), an in-memory issue store, and
   the mechanism as DESIGN.md specifies it — the scheduler run as a STATELESS
-  loop (§15.33): at every tick it asks every task that is not woken-gated,
-  through the task's own preconditions — the run-history terms (`due:`,
-  `last-run-over:`, `last-run-not-failed`, `woken`) judged first over the
+  loop (§15.33): at every tick it asks every task on the schedule — one
+  stating a condition, none of which reads the item itself; a task stating
+  none runs only from an item somebody created, at whose pick the empty
+  expression holds — through the task's own preconditions — the run-history
+  terms (`due:`, `last-run-over:`, `last-run-not-failed`) judged first over the
   task's own items in the issue store, then the scenario's precondition
   function standing for every other condition, over the since-last-run window
   the engine collects movement over — files a READY item on a yes, writes a log
@@ -80,7 +82,7 @@ pinned; the reason is stated on each.
 | §5 `due:` both halves (F13): created since the anchor, or closed since it | `S74` (the second tick declines), `S26b` (the closed-at half), `S59` (a rejected run still covers the period), `S6` |
 | §5 `last-run-over:` measures strictly from the newest start; no run in the horizon holds | `S75` |
 | §5 `last-run-not-failed` — a failure park holds the lane only where the task declares it | `backlog` (both sides), `S41b`, `S62b`, `S63` |
-| §5 `woken` gates as a whole conjunct, widens inside an alternative; the scheduler's own ask never satisfies it | `S76`, `S1'`, `S44` (the request task is never asked) |
+| §5 a task stating no condition, or one whose condition reads the item itself, is off the schedule: never asked, run only from an item somebody created, an empty expression holding at pick | `S76`, `S1'`, `S70` (`manual` adds no term), `S44` (the request task reads its item, so it is never asked) |
 | §5 one live item per task — the engine's one invariant; a park is not live | `S57`, `S6`, `S11`, `S42` |
 | §5 a pick-time no-go CLOSES (the roll is gone) | `S13'`, `S14'`, `S59`, `S12'` |
 | §5 first-item adoption rule | **retired** — the scheduler keeps no state (§15.33): a new task is asked at its first tick like any other, `S78` |
@@ -97,7 +99,7 @@ pinned; the reason is stated on each.
 | §6.5 durable record: the terminal comment carries the exec record + artifacts | **prose** — comment content, not label mechanics |
 | §6.6 at-most-once invocation: refused → needs-human; unanswered → stays with the agent, the leash decides | `S9a`, `S10a`, `S10b` |
 | §7 the agent checks, not claims — no lease, no second session to arbitrate | `S10a` (exactly one session); the nonce check **prose** |
-| §8 force = waking the standing item, minting one where none exists — stamped `Woken` either way; an unknown task wakes nothing | `S14'`, `S16'`, `S19`, `S77`, `S20` (unmatched) |
+| §8 force = waking the standing item, minting one where none exists — stamped `Woken` either way; an unknown task wakes nothing; a task off the schedule is woken through its open items, never minted | `S14'`, `S16'`, `S19`, `S77`, `S20` (unmatched), `S76` (woken, not minted) |
 | §8 ad-hoc work = creating an item; obsolete on no-go | `S13'`, `S15`, `S16` |
 | §9 follow-ups: Blocked-by + Not-before, verdict at wake | `S17`, `S17b` |
 | §9 fan-out/fan-in | `S18` |

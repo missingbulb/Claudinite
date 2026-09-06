@@ -82,12 +82,13 @@ test('task-declaration-shape: flags illegal enum values', () => {
 // and the nightly update rewrites it — so this finding names the edit and its CI stays green.
 test('task-declaration-shape: the retired frequency field is an advisory rename to its cadence term', () => {
   const { preconditions, ...bare } = good;
-  for (const [field, term] of [['daily', 'due:daily'], ['weekly', 'due:weekly'], ['monthly', 'due:monthly'], ['manual', 'woken']]) {
+  for (const [field, term] of [['daily', 'due:daily'], ['weekly', 'due:weekly'], ['monthly', 'due:monthly'], ['manual', null]]) {
     const findings = run({ [TASK]: json({ ...bare, frequency: field, preconditions: ['none'] }) });
     assert.equal(findings.length, 1, `${field}: the field is the one finding — the none beside it is what the door strips`);
     assert.equal(findings[0].severity, 'advisory');
     assert.match(findings[0].what, /retired field "frequency"/);
-    assert.match(findings[0].fix, new RegExp(`\\["${term}", …\\]`));
+    // `manual` meant no schedule, which a declaration says by stating nothing.
+    assert.match(findings[0].fix, term === null ? /no "preconditions" at all/ : new RegExp(`\\["${term}", …\\]`));
   }
   // A field the door cannot read is still reported as the illegal condition it becomes.
   const findings = run({ [TASK]: json({ ...bare, frequency: 'hourly' }) });
@@ -163,9 +164,9 @@ test('task-declaration-shape: the canonical `schedule_after` is clean', () => {
 test('task-declaration-shape: flags missing required fields', () => {
   const whats = whatsOf({ [TASK]: json({ agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 5 }) });
   assert.match(whats, /declares no string "id"/);
-  assert.match(whats, /declares no "preconditions"/, 'a task that has not said when it runs');
+  assert.doesNotMatch(whats, /"preconditions"/, 'no expression is a task off the schedule, not a missing field');
   assert.match(whats, /declares no "expected_outcome"/);
-  // `none` alone is "at every tick", which no task declares; it blocks by name.
+  // `none` is a second spelling of that absence, which is what retires it; it blocks by name.
   assert.match(whatsOf({ [TASK]: json({ ...good, preconditions: ['none'] }) }), /"none" is retired/);
 });
 

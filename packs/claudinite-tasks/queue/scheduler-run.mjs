@@ -128,9 +128,10 @@ export async function planSchedulerRun({
   // ---- job 1: ask every task on the schedule; a yes files the item ----------
   const live = (i) => LIVE_STATUSES.some((s) => isStatus(i, s));
   for (const task of tasks) {
-    // A woken-gated task runs only from an item somebody created (DESIGN §5, §8):
-    // the schedule never asks it, and its items keep their own titles.
-    if (!isScheduledTask(task.decl)) continue;
+    // A task off the schedule — one stating no condition, or one whose condition
+    // reads the item itself — runs only from an item somebody created (DESIGN §5,
+    // §8): the schedule never asks it, and its items keep their own titles.
+    if (!isScheduledTask(task.decl, task.terms)) continue;
     const key = `${task.pack}/${task.id}`;
     if (disabled.has(key)) continue;
     const title = workItemTitle({ pack: task.pack, task: task.id });
@@ -351,14 +352,14 @@ export function planWake(spec, tasks = [], items = []) {
     }
     const owner = owners[0];
     const { pack, id: task } = owner;
-    if (!isScheduledTask(owner.decl)) {
+    if (!isScheduledTask(owner.decl, owner.terms)) {
       const routed = items.filter((i) => {
         if (i.state !== 'open') return false;
         const byPath = taskIdFromPath(parseWorkItemBody(i.body).taskPath);
         return !!byPath && byPath.pack === pack && byPath.task === task;
       });
       if (!routed.length) {
-        unmatched.push({ id, why: `"${pack}/${task}" runs only when woken and has no open item — nothing stands for it to mint, so an item exists only where an issue names the task` });
+        unmatched.push({ id, why: `"${pack}/${task}" is not on the schedule and has no open item — nothing stands for it to mint, so an item exists only where an issue names the task` });
         continue;
       }
       for (const item of routed) {
@@ -785,7 +786,7 @@ async function announcePickable(gh, repo, tasks, readiedThisRun = new Set()) {
   const byPath = new Map(tasks.map((t) => [t.taskPath, `${t.pack}/${t.id}`]));
   const pickable = pickableCount(await listOpenWorkItems(gh, repo), readiedThisRun, {
     taskAfter: (id) => byId.get(id)?.decl?.schedule_after ?? [],
-    scheduledOf: (id) => (byId.has(id) ? isScheduledTask(byId.get(id).decl) : null),
+    scheduledOf: (id) => (byId.has(id) ? isScheduledTask(byId.get(id).decl, byId.get(id).terms) : null),
     pathTo: (p) => byPath.get(p) ?? null,
   });
   console.log(pickable

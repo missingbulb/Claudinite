@@ -177,8 +177,8 @@ this section carried until the vocabulary migration): `task:origin:planned` |
 the item is born and never removed — the closed issue keeps saying where it
 came from. The scheduler run writes `planned` when a task says yes (and §8's force lever
 writes it when minting the standing item, the same act); a person's ask wears
-`ad-hoc` (the request mark, §16.1, and every woken-gated task's or qualified item);
-GitHub-side infrastructure writes `github` (a workflow-failure report, which
+`ad-hoc` (the request mark, §16.1, every item of a task with no schedule, and
+every qualified item); GitHub-side infrastructure writes `github` (a workflow-failure report, which
 is a park — `task:status:needs-human-failure` — and not a parseable work item,
 a shape every reader of parks must tolerate). The occurrence guards (§5) key
 on `planned`. *Alternative — the structural derivation this reverses (bare
@@ -353,7 +353,7 @@ therefore not something the engine guarantees, exactly-once or at-least-once.
 A task is asked; it decides; and "once a day" is a property of the task's own
 expression judged against the queue, not of a scheduler that counts.
 
-**The run-history terms.** Four built-ins read the task's own history
+**The run-history terms.** Three built-ins read the task's own history
 (`precondition-policy.mjs`, beside the movement terms of the
 [task-preconditions design](../task-preconditions/DESIGN.md)). By convention
 the cadence a task keeps is the first entry of its expression, so a reader sees
@@ -364,25 +364,35 @@ the cadence a task keeps is the first entry of its expression, so a reader sees
 | `due:<daily\|weekly\|monthly>` | no run of the task started **or ended** since that cadence's most recent anchor on the repo's `taskScheduler` schedule (`dailyHour`, `weeklyDay`, `monthlyDay` — `anchorInstant` in `calendar.mjs`). Fixed hours, no drift, so the cross-repo ordering `dailyHour` carries (§17.4) survives | `runs` |
 | `last-run-over:<12h\|1d\|7d>` | the newest run **started** more than that long ago; no run in the horizon holds. Elapsed, not anchored: the hour walks by up to a tick's gap each period, which is accepted | `runs` |
 | `last-run-not-failed` | the newest run does not stand at a `needs-human-failure` park. Only the newest speaks — a failure behind a later clean run is history | `runs` |
-| `woken` | this item was created or woken by somebody (§8). At the scheduler's own ask it never holds, which is what keeps such a task off the schedule with no field saying so | — |
 
 `due:` and `last-run-over:` hold on a **woken** item without reading the
 history — a person's wake stands in for the cadence — while every other
 condition the task states still applies, so a force that finds no work still
-says so (§8). `woken` as a whole conjunct (`['woken', …]`) **gates**: the task
-is not on the schedule (`isScheduledTask`) and the scheduler never asks it. As
-an alternative (`['due:daily || woken']`) it merely widens.
+says so (§8).
 
-Two consequences of the expression being the whole of "when". There is **no
-empty precondition**: `none` is retired, because a task with no condition
-would run at every tick. And `preconditions` is **required**, with no default;
-its first entry is normally the cadence term, but a task with a movement
-condition and no cadence (`['substantive-change']`) is legal and simply runs
-whenever the movement is there, at most once per tick. The `frequency` field
-is retired into the term it always meant, and one door still reads it:
-`normalizeTaskDeclaration` rewrites a declaration carrying the field into
-`due:<cadence>` (`woken` for `manual`) first in the expression, drops a `none`
-beside it and deletes the field, so nothing downstream ever sees it.
+**Whether a task is on the schedule at all is read off the expression, never
+declared.** `preconditions` is optional. Absent or empty, the task is **not on
+the schedule**: the scheduler never asks it, and it runs only from an item
+somebody created — a mark, a hand-created item, a `--wake`, a chain link, a
+fan-out target — at whose pick the empty expression holds. A non-empty
+expression puts the task on the schedule and is asked at every tick, with one
+structural exception: a term that reads the item itself (one declaring
+`needsItem`, which only the built-in request implementer's `request-eligible`
+does) has nothing to be judged against at a tick, so a task whose expression
+carries one is not asked either. `isScheduledTask(decl, terms)` decides both.
+No term says "somebody created my item": a precondition states what must be
+true of the world or of the task's run history, and "somebody created my item"
+is true of every run, so it would say nothing. Nor is there an explicit empty marker — `none` is
+retired, because it is a second spelling of absence.
+
+A task on the schedule normally states its cadence first, but a task with a
+movement condition and no cadence (`['substantive-change']`) is legal and
+simply runs whenever the movement is there, at most once per tick. The
+`frequency` field is retired into the term it always meant, and one door still
+reads it: `normalizeTaskDeclaration` rewrites a declaration carrying the field
+into `due:<cadence>` first in the expression, drops a `none` beside it and
+deletes the field — `manual` drops the field and adds no term, which reads as
+exactly "not on the schedule" — so nothing downstream ever sees it.
 `legacy-task-fields` advises the holder, the nightly update rewrites members'
 own task files, and the tolerance retires one convergence window after #1725
 ships.
@@ -456,8 +466,7 @@ all write `Woken: <instant>` into the item's machine block (`WOKEN_FIELD`), and
 `itemFacts` treats any item that is not the scheduler's own unqualified planned
 item — a marked issue, a chain link, a qualified item — as woken too. That is
 what the history terms read at pick: the cadence terms hold on a woken item,
-the `woken` term holds only on one, and an item the scheduler filed on its own
-never carries the field (§8).
+and an item the scheduler filed on its own never carries the field (§8).
 
 **There is no first-sight rule.** A task the repo has just adopted, or that was
 just declared, is asked at the first tick like any other; a `due:` task with no
@@ -485,7 +494,7 @@ scheduler run(now):
 
   # ---- job 1: ask every task on the schedule --------------------------------
   for task in discoverTasks():
-    if not isScheduledTask(task) or task in disabled: continue   # woken-gated
+    if not isScheduledTask(task) or task in disabled: continue   # no schedule
     family = [i for i in items if i.title == "[claudinite-work] <pack>/<task>"]
     live = [i for i in family if i.open and i.status in LIVE]   # a park is not live
     if len(live) > 1: closeAllButOldest(live)                    # F16
@@ -930,8 +939,8 @@ comes from a file under review.
   never consults the task"; its motivating case — the slot gate running
   before preconditions made mid-day forcing unreachable — does not exist
   here: nothing runs before the pick.)*
-- **Forcing ad-hoc work is creating an item**: parameterized runs, woken-gated
-  tasks, fan-out targets. The CLI/composite (`create-work-item <pack>/<task>
+- **Forcing ad-hoc work is creating an item**: parameterized runs, tasks with
+  no schedule, fan-out targets. The CLI/composite (`create-work-item <pack>/<task>
   [--urgent] [--context …] [--supersedes #N]`) stamps `Woken:` and writes the
   generic "forced by hand — no precondition asserts there is work" Context; `--supersedes`
   additionally closes a named errored item as superseded by this retry. The
@@ -977,10 +986,10 @@ comes from a file under review.
   **scheduler** workflow by hand — the scheduler run-plus-drain pair, *not* the bare
   executor, whose run would drain ready items but skip the reclaim/ready
   half that makes resume complete. (S38.)
-- **Woken-gated tasks** (`preconditions: ['woken', …]`, the spelling of the
-  retired `frequency: manual`) are simply tasks the scheduler run never asks:
-  their items are only ever created by hand or by other tasks, and the `woken`
-  term holds on exactly those items (§5). A force never mints one — there is
+- **Tasks with no schedule** (no `preconditions`, which is what the retired
+  `frequency: manual` meant) are simply tasks the scheduler run never asks:
+  their items are only ever created by hand or by other tasks, and at their
+  pick the empty expression holds (§5). A force never mints one — there is
   no standing item to stand in for — it wakes the open items routed to the
   task by path, or reports that there is nothing to wake (#1721).
 - **Fan-out across repos** is the enforcer creating one item per member repo
@@ -1802,17 +1811,18 @@ deployment coupling did not:
     the afternoon tick, it checks its conditions and decides. The engine keeps
     exactly one invariant (one live item per task) and no memory; a task may
     miss an occurrence because of an issue rename, and that is the task's
-    local problem, never the scheduler's. The four terms:
+    local problem, never the scheduler's. The three terms:
 
     | term | what it says |
     |---|---|
     | `due:<daily\|weekly\|monthly>` | calendar-anchored on the repo's `taskScheduler` schedule — fixed hours, so the cross-repo `dailyHour` ordering survives |
     | `last-run-over:<duration>` | elapsed since the newest run started — drifts across ticks, accepted |
     | `last-run-not-failed` | the task's own choice to stop past its failure park — never an engine default |
-    | `woken` | the spelling of the retired `frequency: manual`; holds only on an item somebody created or woke |
 
-    `none` is retired (a task with no condition would run at every tick);
-    `frequency` is retired into the term, at the door; the first-sight rule is
+    `preconditions` is optional, and a task with none is not on the schedule
+    (§5); `none` is retired (an explicit empty marker is a second spelling of
+    absence); `frequency` is retired into the term, at the door, `manual`
+    dropping to no expression; the first-sight rule is
     dropped outright, a task wanting to run the moment it is introduced saying
     so itself; the schedule board is deleted and a decline is a log line. The
     alternatives, and why each lost:
@@ -1843,6 +1853,17 @@ deployment coupling did not:
       carries across repos (§17.4); calendar-only (`due:`) cannot say "not
       more often than every 12h" for work that has no anchor. Both are
       offered, and a task picks the shape its ordering needs.
+    - *A `woken` term* (owner, 2026-09-06, retired on the review of #1733).
+      The first cut spelled `frequency: manual` as a fourth run-history term,
+      `woken`, holding only on an item somebody created or woke, so a task
+      carrying it as a whole conjunct read as off the schedule. The owner
+      ruled it is not a precondition at all — it means "run when I run", and
+      since every run of every task begins with somebody's item, the term
+      said nothing. It lost to structure: `preconditions` is optional, an
+      absent or empty expression *is* "not on the schedule", and
+      `isScheduledTask` reads that off the declaration with no term to carry
+      it. The `Woken:` stamp, and the cadence terms holding on a woken item,
+      are untouched — those state a fact about one item, not a tautology.
 
     **The retrospective brief** — per the `production-retrospective` skill,
     filed at the merge that completes #1725 and reading the canon's own record
@@ -1870,9 +1891,9 @@ deployment coupling did not:
     - *Misuse.* A task stuck asking twice a day and declining forever with a
       reason nobody reads — the same `no` line for one task on every tick of
       the week, which is a cadence or a movement condition written wrong, or
-      a task that should be woken-gated. A `none`, a `frequency`, or a
-      hand-stamped `Woken:` on a scheduler-filed item. A member whose signal
-      reads at every tick cost more than the board did — a task with no
+      a task that should carry no schedule. A `none`, a `woken`, a
+      `frequency`, or a hand-stamped `Woken:` on a scheduler-filed item. A
+      member whose signal reads at every tick cost more than the board did — a task with no
       cadence term whose collection runs at both ticks every day (a
       movement reason on every one of its `asked` lines).
     - *Overuse, or a wrong decision.* A drift that broke the
@@ -1955,8 +1976,9 @@ collapse of the two retry levers into one (§16.3).*
 ### 16.2 A built-in task, so a request is an ordinary run
 
 The engine ships **one** task, `engine/implement-request`, wherever the queue runs
-— `preconditions: ['woken', 'request-eligible']` (woken-gated, so the scheduler run never asks it; an item exists only
-because an issue was marked), `expected_outcome: 'pr'`, `automerge: 'anything'` (a ceiling, not an
+— `preconditions: ['request-eligible']` (a term that reads the item itself, so the task is not on
+the schedule and the scheduler run never asks it; an item exists only because an issue was
+marked), `expected_outcome: 'pr'`, `automerge: 'anything'` (a ceiling, not an
 instruction: it opens a pull request for review, and lands one only in the single
 authorized case §16.11 defines), no `schedule_after`, and **no code-work phase at all**.
 
@@ -2007,10 +2029,11 @@ sits outside every scheduled family (§3).
 ### 16.4 The precondition is the security check — and there is no code-work
 
 The verdict happens where every request verdict happens: **at pickup, on the
-executor** (§6.4 — the request task is woken-gated, so the scheduler run's
-own ask never applies to it). The built-in task's precondition refuses
-three ways, each a plain no-go that converges the item `task:status:rejected` (a
-refusal is nobody's inbox — it closes rather than joining a triage
+executor** (§6.4 — the request task's one term reads the item, so it is not
+on the schedule and the scheduler run's own ask never applies to it). The
+built-in task's precondition refuses three ways, each a plain no-go that
+converges the item `task:status:rejected` (a refusal is nobody's inbox — it
+closes rather than joining a triage
 lane):
 
 - the issue is closed, or no longer carries the `task:origin:ad-hoc` mark —
@@ -2317,11 +2340,12 @@ and each such task would run at the tick after its anchor — hours late, foreve
 
 A task's cadence is the first term of its own `preconditions` (§5): `due:daily`, `due:weekly`,
 `due:monthly` — the three calendar cadences, anchored on `dailyHour` — `last-run-over:<duration>`
-for an elapsed one, and `woken` for a task that runs only when somebody asks. The `frequency`
-field is retired into that term. **One door, at declaration load**, still reads it:
+for an elapsed one — and no `preconditions` at all for a task that runs only when somebody asks.
+The `frequency` field is retired into that term. **One door, at declaration load**, still reads it:
 `normalizeTaskDeclaration` turns a declaration carrying `frequency` into the term it always
-meant (`due:<cadence>`; `woken` for `manual`), first in the expression, drops a `none` beside
-it, and deletes the field — so `periodMs`, which feeds the janitor's stale-ready bound
+meant (`due:<cadence>`; `manual` drops the field and adds no term), first in the expression,
+drops a `none` beside it, and deletes the field — so `periodMs`, which feeds the janitor's
+stale-ready bound
 (`queue/janitor-rules.mjs`) and the signal window's fallback (`queue/signals.mjs`), reads the
 cadence term like everything else, and nothing downstream can see the field. A member's
 declaration is member-owned data, so the door is what lets it converge on its own schedule:

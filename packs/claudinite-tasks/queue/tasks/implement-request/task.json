@@ -3,7 +3,6 @@
   "id": "implement-request",
   "description": "The engine's built-in request implementer: a person marks an ordinary issue for the queue and this task implements it, that issue being the work item. The one task that may run at the model the item names.",
   "preconditions": [
-    "woken",
     "request-eligible"
   ],
   "expected_outcome": "fresh_pr",

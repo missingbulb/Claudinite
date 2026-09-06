@@ -213,7 +213,10 @@ test('validateTaskDeclaration reads the expression statically: unknown terms and
   // carries one), and inside an alternative it is the retired word itself.
   assert.match(whatOf(['substantive-change || none']), /"none" is retired/);
   const { frequency, ...noField } = base;
-  assert.match(validateTaskDeclaration({ ...noField, preconditions: [] }).map((p) => p.what).join(' | '), /not a non-empty array/);
+  // The empty expression is legal — a task stating no condition is off the schedule —
+  // and a non-array is still the shape error it always was.
+  assert.deepEqual(validateTaskDeclaration({ ...noField, preconditions: [] }), []);
+  assert.match(validateTaskDeclaration({ ...noField, preconditions: 'due:daily' }).map((p) => p.what).join(' | '), /not an array/);
 
   // A task-local term resolves after the built-ins, in one flat namespace…
   const own = new Map([['my-gate', { signals: ['stamp'], holds: () => ({ holds: true }) }]]);
@@ -518,17 +521,21 @@ test('every task this repo carries declares a code_work bound under the leash', 
 test('the retired frequency field reads as the cadence term it meant, first in the expression', () => {
   for (const f of FREQUENCIES) {
     const filled = normalizeTaskDeclaration({ frequency: f });
-    assert.deepEqual(filled.preconditions, [cadenceTermFor(f)], f);
+    // `manual` meant no schedule, which the door spells as the empty expression.
+    assert.deepEqual(filled.preconditions, f === 'manual' ? [] : [cadenceTermFor(f)], f);
     assert.equal(filled.frequency, undefined);
   }
   assert.deepEqual(normalizeTaskDeclaration({ frequency: 'weekly', preconditions: ['repo-active'] }).preconditions, ['due:weekly', 'repo-active']);
-  assert.deepEqual(normalizeTaskDeclaration({ frequency: 'manual', preconditions: ['request-eligible'] }).preconditions, ['woken', 'request-eligible']);
+  assert.deepEqual(normalizeTaskDeclaration({ frequency: 'manual', preconditions: ['request-eligible'] }).preconditions, ['request-eligible']);
+  assert.deepEqual(normalizeTaskDeclaration({ frequency: 'manual', preconditions: ['none'] }).preconditions, []);
+  // No field and no expression: the empty expression, so every reader judges one array.
+  assert.deepEqual(normalizeTaskDeclaration({ id: 'x' }).preconditions, []);
   // The empty precondition the field used to need drops with it.
   assert.deepEqual(normalizeTaskDeclaration({ frequency: 'daily', preconditions: ['none'] }).preconditions, ['due:daily']);
   // A declaration already stating the term is not given it twice.
   assert.deepEqual(normalizeTaskDeclaration({ frequency: 'daily', preconditions: ['due:daily', 'any-commit'] }).preconditions, ['due:daily', 'any-commit']);
   // No field, no rewrite: the expression is the author's.
-  assert.equal(normalizeTaskDeclaration({}).preconditions, undefined);
+  assert.deepEqual(normalizeTaskDeclaration({ preconditions: ['substantive-change'] }).preconditions, ['substantive-change']);
   assert.equal(normalizeFrequency('nonsense'), 'nonsense', 'an unknown token is left for the validator');
   for (const legacy of Object.keys(LEGACY_FREQUENCIES)) assert.ok(ACCEPTED_FREQUENCIES.includes(legacy), `${legacy} still reads`);
 });
@@ -543,13 +550,11 @@ test('a declaration carrying an unknown frequency is reported as the illegal con
   assert.match(findings[0].what, /"due" takes one of daily, weekly, monthly, not "hourly"/);
 });
 
-test('a declaration with no frequency and no preconditions has not said when it runs', () => {
+test('a declaration with no frequency and no preconditions is off the schedule, and says so by absence', () => {
   const { frequency, preconditions, ...silent } = validTask;
-  const findings = validateTaskDeclaration(silent);
-  assert.equal(findings.length, 1);
-  assert.match(findings[0].what, /declares no "preconditions"/);
-  assert.match(findings[0].fix, /due:daily/);
-  // …and `none` alone says "at every tick", which is not a cadence anyone declares.
+  assert.deepEqual(validateTaskDeclaration(silent), []);
+  assert.equal(isScheduledTask(normalizeTaskDeclaration(silent)), false);
+  // …and `none` is a second spelling of that absence, which is what retires it.
   assert.match(validateTaskDeclaration({ ...silent, preconditions: ['none'] })[0].what, /"none" is retired/);
 });
 
@@ -559,5 +564,10 @@ test('taskCadence and isScheduledTask read a declaration the way the scheduler d
   assert.equal(isScheduledTask({ preconditions: ['due:daily'] }), true);
   assert.equal(isScheduledTask({ preconditions: ['substantive-change'] }), true, 'no cadence term: asked every tick, runs on movement');
   assert.equal(isScheduledTask(normalizeTaskDeclaration({ frequency: 'manual' })), false);
+  assert.equal(isScheduledTask({ preconditions: [] }), false, 'no condition: nothing triggers it');
+  // A term about the item itself has nothing to be judged against at a tick.
+  const aboutItem = new Map([['about-the-item', { signals: [], needsItem: true, holds: () => ({ holds: true }) }]]);
+  assert.equal(isScheduledTask({ preconditions: ['about-the-item'] }, aboutItem), false);
+  assert.equal(isScheduledTask({ preconditions: ['due:daily', 'about-the-item'] }, aboutItem), false);
   assert.equal(isScheduledTask(null), false);
 });

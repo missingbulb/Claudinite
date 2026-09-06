@@ -403,10 +403,10 @@ test('a no-go verdict closes a scheduled item with the reason — the roll is go
 });
 
 test('a no-go on an ad-hoc item closes it obsolete — there is no anchor to roll to (S17)', async () => {
-  // Ad-hoc by structure: a woken-gated task is never on the schedule (§15.26), and
-  // its hand-created item wears the ad-hoc origin.
+  // Ad-hoc by structure: a task whose only condition reads the item is never on the
+  // schedule (§15.26), and its hand-created item wears the ad-hoc origin.
   const repo = fakeRepo([workItem(1, 'lever', ['task:origin:ad-hoc', 'task:status:waiting-for-executor'])]);
-  await drive(repo, [task('lever', { preconditions: ['woken', 'gate'] }, term(() => ({ holds: false, reason: 'the world settled' })))]);
+  await drive(repo, [task('lever', { preconditions: ['gate'] }, term(() => ({ holds: false, reason: 'the world settled' })))]);
   const issue = repo.find(1);
   assert.equal(issue.state, 'closed');
   assert.ok(issue.labels.includes('task:status:rejected'));

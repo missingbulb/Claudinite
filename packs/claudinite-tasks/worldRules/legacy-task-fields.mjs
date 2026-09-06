@@ -67,11 +67,14 @@ const rule = {
         const frequency = frequencyRe?.exec(text_line);
         if (frequency) {
           const term = (calendar.ACCEPTED_FREQUENCIES ?? []).includes(frequency[1]) ? calendar.cadenceTermFor(frequency[1]) : 'due:<daily|weekly|monthly>';
+          const fix = term === null
+            ? 'drop the field, and a `"none"` beside it: `"manual"` meant no schedule, which a declaration says by stating no `"preconditions"` at all; the nightly update rewrites a member\'s own task files'
+            : `write it as the first condition — \`"preconditions": ["${term}", …]\` — and drop a \`"none"\` beside it; the field reads as exactly that today, and the nightly update rewrites a member's own task files`;
           out.push(finding(rule, {
             file,
             line: i + 1,
             what: 'declares the retired field `frequency`',
-            fix: `write it as the first condition — \`"preconditions": ["${term}", …]\` — and drop a \`"none"\` beside it; the field reads as exactly that today, and the nightly update rewrites a member's own task files`,
+            fix,
           }));
         }
         const outcome = outcomeRe.exec(text_line);

@@ -2,9 +2,6 @@
   "$schema": "../../../claudinite-tasks/task.schema.json",
   "id": "fleet-baseline",
   "description": "The operator's lever to force every member, or a named few, to baseline against the canon now rather than on its own nightly schedule.",
-  "preconditions": [
-    "woken"
-  ],
   "expected_outcome": "no_code_changes",
   "code_work": "node worker.mjs",
   "code_work_timeout": 1800,

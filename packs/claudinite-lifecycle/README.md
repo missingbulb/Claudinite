@@ -92,7 +92,7 @@ against each declared pack's questions:
 | Task | when it runs | Runs when |
 |---|---|---|
 | `update` | `due:daily` | the mount is behind the canon, or a declared pack moved |
-| `adopt-requested-packs` | `woken` | the repo carries an open pack-adoption request |
+| `adopt-requested-packs` | never — no `preconditions`; only from the item the fleet places | the repo carries an open pack-adoption request |
 
 `update` is the per-repo self-refresh — the task that converges a member's mount and stamps it. It
 is why `claudinite-lifecycle-declared` is blocking: a member runs `update` from its **vendored** copy, and

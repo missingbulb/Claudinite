@@ -11,7 +11,7 @@ let seq = 900;
 // Standing or ad-hoc is STRUCTURAL now (§15.26), so every rule that turns on it is
 // driven the way production drives it: whether the task is on the schedule, read off
 // the declaration at HEAD. Every task these fixtures name is, except the lever,
-// which runs only when woken.
+// which states no condition.
 const scheduledOf = (id) => id !== 'p/lever';
 
 const it = ({ task = 'a', labels = ['task:status:waiting-for-executor'], created_at = '2026-08-14T04:00:00Z', qualifier = null }) => ({
@@ -87,7 +87,7 @@ test('an ad-hoc item never yields — `after` is a scheduled-chain property', ()
   const taskAfter = () => ['p/up'];
   const up = it({ task: 'up', labels: ['task:status:running-executor'] });
   // Both structural shapes of ad-hoc: a qualified item for a scheduled task, and a
-  // woken-gated task's item. Neither yields, and neither is yielded to.
+  // unscheduled task's item. Neither yields, and neither is yielded to.
   const qualified = it({ task: 'down', qualifier: '#42', labels: ['task:status:waiting-for-executor'] });
   const lever = it({ task: 'lever', labels: ['task:status:waiting-for-executor'] });
   assert.deepEqual(pickOrder([up, qualified, lever], { taskAfter, scheduledOf }).map((i) => i.number).sort(),
@@ -177,7 +177,7 @@ test('every no-go CLOSES; only the wording still knows standing from ad-hoc (#11
   const qualified = it({ task: 'a', qualifier: '#42', labels: ['task:status:running-executor'] });
   assert.equal(noGoPlan(qualified, task, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'settled on its own').standing, false);
   const lever = it({ task: 'lever', labels: ['task:status:running-executor'] });
-  assert.equal(noGoPlan(lever, { decl: { preconditions: ['woken'] } }, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'nothing asked').standing, false);
+  assert.equal(noGoPlan(lever, { decl: { preconditions: [] } }, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'nothing asked').standing, false);
 });
 
 // The writer is @deprecated (nothing rolls any more) but bodies the fielded
