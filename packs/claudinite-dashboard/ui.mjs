@@ -298,6 +298,11 @@ export const refNodes = (repo, text) => (repo
 // listing to the set. Inside one repo that is the repo's own issues listing; across
 // members it is the cross-repository search, every member named. Null when nothing in
 // the queue carries a number — a repo-level fault has none.
+// A GitHub issue search on one repo, from its terms. One encoder, because the board's
+// cell links and the queue's `see all` are the same URL with different terms in it.
+export const searchUrl = (repo, terms) =>
+  `https://github.com/${repo}/issues?q=${encodeURIComponent(terms.join(' ')).replace(/%20/g, '+')}`;
+
 export const queueUrl = (candidates) => {
   const numbered = (candidates ?? []).filter((c) => c?.number != null);
   if (!numbered.length) return null;
@@ -305,7 +310,7 @@ export const queueUrl = (candidates) => {
   const repos = [...new Set(numbered.map((c) => c.repo))];
   const q = (terms) => encodeURIComponent(terms.join(' ')).replace(/%20/g, '+');
   return repos.length === 1
-    ? `https://github.com/${repos[0]}/issues?q=${q(['is:issue', 'state:open', ...numbers])}`
+    ? searchUrl(repos[0], ['is:issue', 'state:open', ...numbers])
     : `https://github.com/search?type=issues&q=${q(['is:issue', 'state:open', ...repos.map((r) => `repo:${r}`), ...numbers])}`;
 };
 
