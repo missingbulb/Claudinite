@@ -233,6 +233,10 @@
   svg.board .cell-count { font-family: var(--mono); font-size: 9.5px; }
   svg.board .mark { cursor: pointer; }
   svg.board .mark:hover { opacity: 0.82; }
+  /* A number on the board opens it. The link keeps its row's own ink at rest — the
+     board's colours all mean something — and declares itself under the cursor. */
+  svg.board a { cursor: pointer; }
+  svg.board a:hover tspan { fill: var(--machine); text-decoration: underline; }
 
   .quiet { border-top: 1px solid var(--ledger); margin-top: 8px; padding-top: 6px; }
   .quiet-head { display: flex; gap: 14px; align-items: baseline; font-size: 11.5px; color: var(--ink-2); flex-wrap: wrap; }

@@ -11,7 +11,7 @@
 // [`fleet-ledger.mjs`](fleet-ledger.mjs) and [`fleet.mjs`](fleet.mjs). This file turns
 // those into nodes.
 
-import { el } from './ui.mjs';
+import { el, refNodes } from './ui.mjs';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -110,7 +110,7 @@ export function wakeTicks(strip, { width = 240, height = 30 } = {}) {
 
 // A ledger row: figure · text · delta · spark, on the fixed tracks that make the three
 // columns line up down the whole sheet. The alignment IS the design.
-export function figureRow(fig, { format = String } = {}) {
+export function figureRow(fig, { format = String, repo = null } = {}) {
   const value = fig.value === null
     ? el('div', { className: 'v gap', textContent: '—' })
     : el('div', { className: 'v', textContent: format(fig.value) });
@@ -125,7 +125,7 @@ export function figureRow(fig, { format = String } = {}) {
       // lining up.
       fig.gap
         ? el('span', { className: 's gap', textContent: fig.gap })
-        : (fig.sub ? el('span', { className: 's', textContent: fig.sub }) : null),
+        : (fig.sub ? el('span', { className: 's' }, refNodes(repo, fig.sub)) : null),
     ]),
     deltaCell(fig, format),
     el('div', { className: 'sp' }, fig.spark ? [sparkline(fig.spark)] : []),

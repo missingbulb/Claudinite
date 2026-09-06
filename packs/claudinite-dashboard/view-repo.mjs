@@ -28,7 +28,7 @@ import { readUsage, growthSeries, queueSeries, hourSeries } from './usage.mjs';
 import { readContributions, liveSourcesNeeded } from './contributions.mjs';
 import { packCard } from './contrib-view.mjs';
 import {
-  $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, segmentBar,
+  $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, refNodes, segmentBar,
   warnNodes, stackedColumns, chartLegend, dualAxisChart, flipRows,
   LEVEL_GLYPH, OUTCOME_COLOR,
 } from './ui.mjs';
@@ -73,7 +73,7 @@ const taskCell = (r) => el('td', {}, [
 // What will actually happen to this task next, and — where the standing item rolled —
 // why the last ask declined. The lever each state answers to is one line, because the
 // reader's next question is always "so what do I do".
-function nextAskCell(r, now) {
+function nextAskCell(r, repo, now) {
   const ask = r.nextAsk ?? { kind: 'note', note: r.anchorNote };
   const sub = (text) => el('div', { className: 'sub', textContent: text });
   const declined = r.current?.lastVerdict
@@ -93,7 +93,7 @@ function nextAskCell(r, now) {
         sub('no next run until the park is cleared or re-queued'),
       ]);
     case 'deps':
-      return el('td', {}, [el('div', { textContent: `after ${ask.on.map((n) => `#${n}`).join(', ')}` })]);
+      return el('td', {}, [el('div', {}, refNodes(repo, `after ${ask.on.map((n) => `#${n}`).join(', ')}`))]);
     case 'ready-soon':
       return el('td', {}, [el('div', { textContent: 'due — the next scheduler run readies it' })]);
     case 'off-machine':
@@ -111,13 +111,13 @@ const itemCell = (r, repo) => (r.current
   ])
   : el('td', {}, [el('span', { className: 'sub', textContent: 'no open item' })]));
 
-function waitingCell(r) {
+function waitingCell(r, repo) {
   const i = r.current;
   const waiting = [];
   if (i?.blockedBy?.length) waiting.push(`blocked by ${i.blockedBy.map((n) => `#${n}`).join(', ')}`);
   if (i?.notBefore) waiting.push(`wakes ${stamp(i.notBefore)}`);
   return el('td', { className: 'sub' }, [
-    el('div', { textContent: waiting.join(' · ') || '—' }),
+    el('div', {}, refNodes(repo, waiting.join(' · ') || '—')),
     i?.lastVerdict ? el('div', { className: 'sub', textContent: `declined: ${i.lastVerdict.reason}` }) : null,
   ]);
 }
@@ -131,15 +131,15 @@ function rowCells(r, view, repo, now) {
         : [el('span', { className: 'warn serious', textContent: `${LEVEL_GLYPH.serious} no declared task — nothing will pick this up` })]),
       itemCell(r, repo),
       el('td', { className: 'num', textContent: r.current ? duration(r.current.idleMs) : '—' }),
-      waitingCell(r),
+      waitingCell(r, repo),
     ];
   }
   if (view === 'pending') {
     return [
       taskCell(r),
-      el('td', {}, r.current ? [chip(r.current.state), ...warnNodes(r.current.warnings)] : []),
+      el('td', {}, r.current ? [chip(r.current.state), ...warnNodes(r.current.warnings, repo)] : []),
       itemCell(r, repo),
-      nextAskCell(r, now),
+      nextAskCell(r, repo, now),
       el('td', { className: 'num', textContent: r.current ? duration(r.current.idleMs) : '—' }),
     ];
   }
@@ -153,10 +153,10 @@ function rowCells(r, view, repo, now) {
       el('div', { className: 'sub', textContent: d.agent_model ? `${d.agent_model} · ${d.expected_outcome ?? '—'}` : '—' }),
     ]),
     el('td', {}, r.current
-      ? [chip(r.current.state), ...warnNodes(r.current.warnings),
+      ? [chip(r.current.state), ...warnNodes(r.current.warnings, repo),
         el('div', { className: 'sub' }, [issueLink(repo, r.current.number), ` · ${duration(r.current.idleMs)} idle`])]
       : [el('span', { className: 'sub', textContent: 'no open item' })]),
-    nextAskCell(r, now),
+    nextAskCell(r, repo, now),
     el('td', {}, r.lastClosed
       ? [el('div', { textContent: r.lastClosed.outcome ?? 'none' }),
         el('div', { className: 'sub', textContent: ago(r.lastClosed.closedAt, now) })]
@@ -247,7 +247,7 @@ export function renderRepoSheet({ ledger, machine, candidates, strip, repo }) {
       el('span', { className: 'cap', textContent: name }),
       el('span', { className: 'q', textContent: question }),
     ]),
-    ...figs.map((f, i) => figureRow(f, { format: formats[i] })),
+    ...figs.map((f, i) => figureRow(f, { format: formats[i], repo })),
     // The tail line: one fact that is nowhere else on the block, in the muted step
     // under its column rather than spending a whole row on it.
     el('div', { className: 'tailrow', textContent: tail }),
@@ -347,10 +347,10 @@ function renderWorkBoard(board, { repo, items, prs, rows, now, comments = new Ma
       cost: ledgerCostFor(row),
       now,
     });
-    explore.replaceChildren(el('div', { className: 'explore one' }, [panelNode(panel)]));
+    explore.replaceChildren(el('div', { className: 'explore one' }, [panelNode(panel, repo)]));
   };
 
-  node.replaceChildren(renderBoard(board, { onSelect: open }), quietLine(board.quiet));
+  node.replaceChildren(renderBoard(board, { onSelect: open, repo }), quietLine(board.quiet, { repo }));
   // One panel is open at rest — the board's own worst finding written out, because a
   // board whose finding is one click away is a board nobody clicks.
   const worst = board.groups.flatMap((g) => (g.grid ? [] : g.shown)).find((r) => r.broken || r.parkKind === 'failure')
@@ -374,18 +374,21 @@ export function ciCell(ci, now) {
   };
 }
 
-function panelNode(panel) {
+function panelNode(panel, repo) {
+  // A panel is mostly numbers — what closes this, what it unblocks, who moves it — and
+  // every one of them is the reader's next click. The imperative's own command block
+  // stays literal: it is text to paste, not to follow a link out of.
   return el('div', { className: 'panel-x' }, [
     el('h4', {}, [panel.title]),
     el('dl', {}, panel.fields.flatMap((f) => [
       el('dt', { textContent: f.label }),
-      el('dd', { className: f.value === null ? 'gap' : '', textContent: f.value ?? f.note }),
+      el('dd', { className: f.value === null ? 'gap' : '' }, refNodes(repo, f.value ?? f.note)),
     ])),
     el('div', { className: 'do' }, [
       el('b', { textContent: 'do' }),
       ...(panel.do.includes('\n')
-        ? [panel.do.split('\n')[0], el('pre', { textContent: panel.do.split('\n').slice(1).join('\n') })]
-        : [panel.do]),
+        ? [...refNodes(repo, panel.do.split('\n')[0]), el('pre', { textContent: panel.do.split('\n').slice(1).join('\n') })]
+        : refNodes(repo, panel.do)),
     ]),
   ]);
 }

@@ -20,10 +20,12 @@ class FakeEl {
 }
 
 let leadCard;
+let refNodes;
+let reasonNodes;
 
 before(async () => {
   globalThis.document = { createElement: (tag) => new FakeEl(tag) };
-  ({ leadCard } = await import('../ui.mjs'));
+  ({ leadCard, refNodes, reasonNodes } = await import('../ui.mjs'));
 });
 
 const candidate = (over = {}) => ({
@@ -90,4 +92,45 @@ test('nothing to prod about is its own card, and it is not coloured as a fault',
   const card = leadCard(null);
   assert.match(card.className, /lvl-ok/);
   assert.match(card.text, /Nothing is waiting on you/);
+});
+
+// --- the linkifier -----------------------------------------------------------------
+
+test('every #N in a sentence comes back as an anchor, and the prose between them survives', () => {
+  const nodes = refNodes('an-owner/TicketWatch', 'blocked by #12, #13');
+  assert.deepEqual(nodes.filter((n) => typeof n === 'string'), ['blocked by ', ', ']);
+  const links = nodes.filter((n) => typeof n !== 'string');
+  assert.deepEqual(links.map((a) => a.textContent), ['#12', '#13']);
+  assert.deepEqual(links.map((a) => a.href), [
+    'https://github.com/an-owner/TicketWatch/issues/12',
+    'https://github.com/an-owner/TicketWatch/issues/13',
+  ]);
+});
+
+test('a pull request number takes the same URL as an issue — GitHub redirects it', () => {
+  const [link] = refNodes('an-owner/TicketWatch', '#42 lands when you merge PR #43');
+  assert.equal(link.href, 'https://github.com/an-owner/TicketWatch/issues/42');
+  const pr = refNodes('an-owner/TicketWatch', 'PR #43').at(-1);
+  assert.equal(pr.href, 'https://github.com/an-owner/TicketWatch/issues/43');
+});
+
+test('text naming no number comes back as itself, so a caller can hand anything to it', () => {
+  assert.deepEqual(refNodes('an-owner/TicketWatch', 'not read'), ['not read']);
+});
+
+test('a warning that names the items holding a task links each of them', () => {
+  const [span] = reasonNodes([{ level: 'warning', text: 'blocked on #12, #13 for over 2 days' }], 'an-owner/TicketWatch');
+  assert.equal(span.className, 'warn warning');
+  assert.match(span.text, /▲ blocked on #12, #13 for over 2 days/);
+  const links = span.children.filter((c) => typeof c !== 'string');
+  assert.deepEqual(links.map((a) => a.href), [
+    'https://github.com/an-owner/TicketWatch/issues/12',
+    'https://github.com/an-owner/TicketWatch/issues/13',
+  ]);
+});
+
+test('the fleet page passes no repo, and a number stays text rather than a link to nowhere', () => {
+  const [span] = reasonNodes([{ level: 'critical', text: '2 items parked broken, #12 the worst' }]);
+  assert.match(span.text, /2 items parked broken, #12 the worst/);
+  assert.equal(span.children.filter((c) => typeof c !== 'string').length, 0);
 });
