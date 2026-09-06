@@ -5,6 +5,7 @@
   "schedule_after": [
     "claudinite-lifecycle/update"
   ],
+  "trigger": "schedule",
   "preconditions": [
     "due:daily",
     "mount-moved || commits-under:.claudinite-settings.json || commits-under:.claudinite-checks.json"

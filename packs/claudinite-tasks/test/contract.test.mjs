@@ -558,16 +558,13 @@ test('a declaration with no frequency and no preconditions is off the schedule, 
   assert.match(validateTaskDeclaration({ ...silent, preconditions: ['none'] })[0].what, /"none" is retired/);
 });
 
-test('taskCadence and isScheduledTask read a declaration the way the scheduler does', () => {
+// Which task is ASKED is `trigger`'s answer, pinned in task-trigger.test.mjs. This
+// is the other half of "when": the rate a task keeps, once it is being asked.
+test('taskCadence reads the cadence term a declaration states, in either shape', () => {
   assert.deepEqual(taskCadence(normalizeTaskDeclaration({ frequency: 'weekly' })), { kind: 'due', cadence: 'weekly' });
   assert.deepEqual(taskCadence({ preconditions: ['last-run-over:2d'] }), { kind: 'elapsed', ms: 2 * 86400e3, text: '2d' });
-  assert.equal(isScheduledTask({ preconditions: ['due:daily'] }), true);
-  assert.equal(isScheduledTask({ preconditions: ['substantive-change'] }), true, 'no cadence term: asked every tick, runs on movement');
-  assert.equal(isScheduledTask(normalizeTaskDeclaration({ frequency: 'manual' })), false);
-  assert.equal(isScheduledTask({ preconditions: [] }), false, 'no condition: nothing triggers it');
-  // A term about the item itself has nothing to be judged against at a tick.
-  const aboutItem = new Map([['about-the-item', { signals: [], needsItem: true, holds: () => ({ holds: true }) }]]);
-  assert.equal(isScheduledTask({ preconditions: ['about-the-item'] }, aboutItem), false);
-  assert.equal(isScheduledTask({ preconditions: ['due:daily', 'about-the-item'] }, aboutItem), false);
+  assert.equal(taskCadence({ preconditions: ['substantive-change'] }), null, 'no cadence term: asked every tick, runs on movement');
+  assert.equal(taskCadence(normalizeTaskDeclaration({ frequency: 'manual' })), null);
+  assert.equal(taskCadence(null), null);
   assert.equal(isScheduledTask(null), false);
 });

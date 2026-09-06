@@ -165,7 +165,7 @@ test('an upstream that claimed earlier forces its dependent to revert (F15)', ()
 // --- the no-go close (the roll is gone, #1115) ---------------------------------
 
 test('every no-go CLOSES; only the wording still knows standing from ad-hoc (#1115)', () => {
-  const task = { decl: { preconditions: ['due:daily'] } };
+  const task = { decl: { trigger: 'schedule', preconditions: ['due:daily'] } };
   const scheduled = it({ task: 'a', labels: ['task:status:running-executor'] });
   const plan = noGoPlan(scheduled, task, SCHEDULE, new Date('2026-08-14T04:20:00Z'), 'nothing to do');
   assert.equal(plan.kind, 'close');

@@ -131,7 +131,7 @@ export async function planSchedulerRun({
     // A task off the schedule — one stating no condition, or one whose condition
     // reads the item itself — runs only from an item somebody created (DESIGN §5,
     // §8): the schedule never asks it, and its items keep their own titles.
-    if (!isScheduledTask(task.decl, task.terms)) continue;
+    if (!isScheduledTask(task.decl)) continue;
     const key = `${task.pack}/${task.id}`;
     if (disabled.has(key)) continue;
     const title = workItemTitle({ pack: task.pack, task: task.id });
@@ -352,7 +352,7 @@ export function planWake(spec, tasks = [], items = []) {
     }
     const owner = owners[0];
     const { pack, id: task } = owner;
-    if (!isScheduledTask(owner.decl, owner.terms)) {
+    if (!isScheduledTask(owner.decl)) {
       const routed = items.filter((i) => {
         if (i.state !== 'open') return false;
         const byPath = taskIdFromPath(parseWorkItemBody(i.body).taskPath);
@@ -786,7 +786,7 @@ async function announcePickable(gh, repo, tasks, readiedThisRun = new Set()) {
   const byPath = new Map(tasks.map((t) => [t.taskPath, `${t.pack}/${t.id}`]));
   const pickable = pickableCount(await listOpenWorkItems(gh, repo), readiedThisRun, {
     taskAfter: (id) => byId.get(id)?.decl?.schedule_after ?? [],
-    scheduledOf: (id) => (byId.has(id) ? isScheduledTask(byId.get(id).decl, byId.get(id).terms) : null),
+    scheduledOf: (id) => (byId.has(id) ? isScheduledTask(byId.get(id).decl) : null),
     pathTo: (p) => byPath.get(p) ?? null,
   });
   console.log(pickable

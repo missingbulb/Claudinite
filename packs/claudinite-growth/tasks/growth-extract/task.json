@@ -5,6 +5,7 @@
   "schedule_after": [
     "claudinite-lifecycle/update"
   ],
+  "trigger": "schedule",
   "preconditions": [
     "due:daily",
     "substantive-change"

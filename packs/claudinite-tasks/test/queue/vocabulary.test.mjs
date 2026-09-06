@@ -327,8 +327,8 @@ test('the engine writes canonical spellings, and only canonical spellings', asyn
   // and every label a convergence adds is a canonical status or origin.
   const written = [];
   const { ops } = await planSchedulerRun({
-    tasks: [{ pack: 'p', id: 'daily1', taskPath: 'packs/p/tasks/daily1/task.md', decl: { id: 'daily1', preconditions: ['due:daily'] } },
-      { pack: 'p', id: 'weekly1', taskPath: 'packs/p/tasks/weekly1/task.md', decl: { id: 'weekly1', preconditions: ['due:weekly'] } }],
+    tasks: [{ pack: 'p', id: 'daily1', taskPath: 'packs/p/tasks/daily1/task.md', decl: { id: 'daily1', trigger: 'schedule', preconditions: ['due:daily'] } },
+      { pack: 'p', id: 'weekly1', taskPath: 'packs/p/tasks/weekly1/task.md', decl: { id: 'weekly1', trigger: 'schedule', preconditions: ['due:weekly'] } }],
     items: [], now: '2026-08-14T10:00:00Z', schedule: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
     evaluate: async () => ({ run: true, reason: 'work exists' }),
   });

@@ -162,7 +162,7 @@ export function noGoPlan(item, task, schedule, now, reason) {
     outcome: TASK_OBSOLETE,
     stateReason: 'not_planned',
     reason,
-    standing: isStandingItem(item, task?.decl ? isScheduledTask(task.decl, task.terms) : null),
+    standing: isStandingItem(item, task?.decl ? isScheduledTask(task.decl) : null),
   };
 }
 
@@ -211,7 +211,7 @@ export async function runExecutor({
   const schedule = config.taskScheduler;
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
   const taskAfter = (id) => byId.get(id)?.decl?.schedule_after ?? [];
-  const scheduledOf = (id) => (byId.has(id) ? isScheduledTask(byId.get(id).decl, byId.get(id).terms) : null);
+  const scheduledOf = (id) => (byId.has(id) ? isScheduledTask(byId.get(id).decl) : null);
   // A marked issue names its task by worker path, so the run needs the inverse of
   // the id map — built from the same task set, so a path this repo does not carry
   // resolves to nothing and the item is malformed rather than guessed at.

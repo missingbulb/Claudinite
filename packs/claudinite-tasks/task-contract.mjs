@@ -50,21 +50,25 @@ export const LEGACY_FIELDS = {
 // dashboard's browser bundle can fill them the way the loader does.
 export { DEFAULT_AUTOMERGE, DEFAULT_AGENT_MODEL } from './task-defaults.mjs';
 
-// WHEN a task runs, read off its declaration (tasks-dispatch DESIGN §5): the
-// cadence term it states, and whether it is on the schedule at all. The scheduler
-// asks every scheduled task at every tick. A task is OFF the schedule when it
-// states no condition (nothing triggers it) or when a condition it states reads
-// the item itself (nothing to judge at a tick) — either way it runs only from an
-// item somebody created, at whose pick its expression is judged.
+// WHO MINTS AN OCCURRENCE, and WHAT MUST HOLD once one exists (tasks-dispatch
+// DESIGN §5). Two fields, one sentence: `trigger` says whether the scheduler asks
+// this task at every tick, `preconditions` says what has to be true for the run to
+// go ahead — judged identically at a tick and at a pick. A `request` task is asked
+// by nobody and runs from an item somebody created: a marked issue, a wake, a chain
+// link, a fan-out target.
+export const TRIGGER_SCHEDULE = 'schedule';
+export const TRIGGER_REQUEST = 'request';
+export const TRIGGERS = Object.freeze([TRIGGER_SCHEDULE, TRIGGER_REQUEST]);
+
+// The cadence a task keeps, as the term it states — `null` where it states none.
 export const taskCadence = (decl) => cadenceOf(decl?.preconditions);
-export const isScheduledTask = (decl, terms = new Map()) =>
-  !!decl && statesConditions(decl.preconditions) && !preconditionNeedsItem(decl.preconditions, terms);
+export const isScheduledTask = (decl) => decl?.trigger === TRIGGER_SCHEDULE;
 
 // Return the declaration with canonical field names and the defaults filled in.
 // Non-objects pass through untouched so validateTaskDeclaration still reports
 // them. Loaders (discover, resolve-dispatch) normalize once; everything
 // downstream sees only `code_work` and never an absent defaulted field.
-export function normalizeTaskDeclaration(decl) {
+export function normalizeTaskDeclaration(decl, terms = new Map()) {
   if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) return decl;
   const out = { ...decl };
   // The editor's schema pointer, when a caller hands over a parsed task.json whole.
@@ -102,6 +106,22 @@ export function normalizeTaskDeclaration(decl) {
   // A declaration stating no conditions carries the empty expression from here on,
   // so every reader judges one array: at a pick it holds, at a tick it is never asked.
   if (out.preconditions === undefined) out.preconditions = [];
+  // THE TRIGGER DOOR. A declaration written before the field existed is read the way
+  // the schedule was read then — off the SHAPE of the expression: conditions the
+  // scheduler can judge put the task on the schedule; no conditions, or one that
+  // reads the item itself, keep it off. Derived, never defaulted: the answer that
+  // declaration already gives, so nothing changes behaviour by passing through here.
+  //
+  // Scaffolding, not a second vocabulary: `legacy-task-fields` reports a declaration
+  // stating no trigger, and the nightly update writes the derived value into a
+  // member's own task files (the `task-cadence-terms` record), so the derivation ends
+  // one convergence window after that advisory ships (#1789).
+  // @legacy-tolerance advisory:legacy-task-fields retire:#1789
+  if (out.trigger === undefined) {
+    out.trigger = statesConditions(out.preconditions) && !preconditionNeedsItem(out.preconditions, terms)
+      ? TRIGGER_SCHEDULE
+      : TRIGGER_REQUEST;
+  }
   // The retired outcome ceilings become the outcome/policy pair. An explicit
   // `automerge` beside a legacy spelling wins: a half-migrated declaration
   // keeps the narrower intent it states.
@@ -207,7 +227,7 @@ export function descriptionProblem(description) {
 // empty means the declaration is well-formed. Pure: no I/O, no imports of the
 // task itself; the caller supplies the already-loaded default export.
 export function validateTaskDeclaration(raw, terms = new Map()) {
-  const decl = normalizeTaskDeclaration(raw);
+  const decl = normalizeTaskDeclaration(raw, terms);
   if (decl === null || typeof decl !== 'object' || Array.isArray(decl)) {
     return [{ what: 'task.json is not a declaration object', fix: 'write one JSON object: { "id", "description", "expected_outcome", … }' }];
   }
@@ -262,6 +282,13 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   if (decl.agent_model !== 'none' && (typeof decl.agent_instructions !== 'string' || decl.agent_instructions.trim() === '')) {
     bad('an agentic task (agent_model !== "none") declares no string "agent_instructions"', 'point "agent_instructions" at the worker file beside task.json (e.g. "task.md")');
   }
+  // The trigger is always present by the time anything holds a declaration — stated,
+  // or derived at the door — so what is validated is the value, not its presence.
+  if (!TRIGGERS.includes(decl.trigger)) {
+    bad(`"${decl.trigger}" is not a legal trigger`,
+      `write one of: ${TRIGGERS.map((t) => `"${t}"`).join(', ')} — "${TRIGGER_SCHEDULE}" is asked by the scheduler at every tick, "${TRIGGER_REQUEST}" runs only from an item somebody creates`);
+  }
+
   // ONE MECHANISM (#1617). `preconditions` — a list of named conditions, all of
   // which must hold — is the only gate a task declares. The `precondition`
   // function it replaced is retired rather than tolerated: two forms meant every

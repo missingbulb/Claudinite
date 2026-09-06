@@ -81,24 +81,26 @@ export async function discoverTasks(root, config) {
 
   const tasks = [];
   for (const { pack, name, taskDir, file } of found) {
-    let decl;
-    try {
-      // Canonical field names and the defaults from here on (legacy code-work
-      // names accepted at the door, never re-checked downstream).
-      decl = normalizeTaskDeclaration(await loadTaskDeclaration(file));
-    } catch (e) {
-      errors.push({ pack, task: name, what: `${relative(root, file)} failed to load: ${e.message}`, fix: 'fix or remove the task' });
-      continue;
-    }
-    // The task's own precondition terms, loaded BEFORE validation: a
+    // The task's own precondition terms, loaded BEFORE the declaration: a
     // declaration naming one is well-formed only against the file that defines
     // it, so a terms file that will not import fails the task rather than
-    // making its own conditions look like typos.
+    // making its own conditions look like typos — and the door itself reads
+    // them, to know whether a legacy declaration's conditions are ones the
+    // scheduler could judge.
     let terms;
     try {
       terms = await loadTaskTerms(taskDir);
     } catch (e) {
       errors.push({ pack, task: name, what: `${relative(root, join(taskDir, 'preconditions.mjs'))} failed to import: ${e.message}`, fix: 'fix or remove the task\'s precondition terms' });
+      continue;
+    }
+    let decl;
+    try {
+      // Canonical field names and the defaults from here on (legacy code-work
+      // names accepted at the door, never re-checked downstream).
+      decl = normalizeTaskDeclaration(await loadTaskDeclaration(file), terms);
+    } catch (e) {
+      errors.push({ pack, task: name, what: `${relative(root, file)} failed to load: ${e.message}`, fix: 'fix or remove the task' });
       continue;
     }
     const problems = validateTaskDeclaration(decl, terms);

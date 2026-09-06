@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runExecutor } from '../../queue/executor.mjs';
 import { parseWorkItemBody } from '../../queue/work-item.mjs';
+import { normalizeTaskDeclaration } from '../../task-contract.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const CONFIG = { taskScheduler: SCHEDULE, packConfig: {} };
@@ -93,7 +94,7 @@ const term = (holds) => new Map([['gate', { signals: [], holds }]]);
 const RUNS = term(() => ({ holds: true }));
 const task = (id, decl = {}, terms = RUNS) => ({
   pack: 'p', id, taskDir: process.cwd(), taskPath: `packs/p/tasks/${id}/task.md`,
-  decl: { id, frequency: 'daily', agent_model: 'sonnet', preconditions: ['gate'], expected_outcome: 'fresh_pr', ...decl },
+  decl: normalizeTaskDeclaration({ id, frequency: 'daily', agent_model: 'sonnet', preconditions: ['gate'], expected_outcome: 'fresh_pr', ...decl }),
   terms,
 });
 

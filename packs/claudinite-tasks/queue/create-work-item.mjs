@@ -82,8 +82,8 @@ export async function wakeItem(gh, repo, number, { urgent = false } = {}) {
   return { ok: true, number };
 }
 
-// `scheduled` is whether the task is asked by the scheduler (`isScheduledTask`),
-// null where the caller does not know.
+// `scheduled` is whether the task is asked by the scheduler (its declared
+// `trigger`), null where the caller does not know.
 export async function createWorkItem(gh, repo, { pack, task, taskPath, scheduled = null, opts, log = console.log }) {
   const api = await import('../github.mjs');
   const { listOpenWorkItems } = await import('./read.mjs');
@@ -154,7 +154,7 @@ async function main() {
   const found = tasks.find((t) => t.pack === pack && t.id === task);
   if (!found) { console.error(`no task "${opts.target}" in this repo's declared packs`); process.exit(1); }
 
-  const res = await createWorkItem(gh, repo, { pack, task, taskPath: found.taskPath, scheduled: isScheduledTask(found.decl, found.terms), opts });
+  const res = await createWorkItem(gh, repo, { pack, task, taskPath: found.taskPath, scheduled: isScheduledTask(found.decl), opts });
   if (!res.ok) { console.error(res.error); process.exit(1); }
   console.log(`created #${res.number} ${opts.target}${opts.urgent ? ' (urgent)' : ''}`);
 }

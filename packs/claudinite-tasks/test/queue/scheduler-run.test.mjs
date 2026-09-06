@@ -3,14 +3,20 @@ import assert from 'node:assert/strict';
 import { planSchedulerRun, planWake } from '../../queue/scheduler-run.mjs';
 import { mostRecentAnchor, nextAnchor, periodMs } from '../../queue/anchors.mjs';
 import { parseWorkItemBody } from '../../queue/work-item.mjs';
+import { normalizeTaskDeclaration } from '../../task-contract.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 
 // A task's "when" is its own expression (DESIGN §5): `['due:daily']` is a task on
 // the schedule, `[]` one that runs only when somebody asks.
-const task = (id, preconditions, extra = {}) => ({
+// Through the door, the way a declaration reaches the scheduler in production: the
+// loader normalizes at discovery, and `trigger` is derived there for a fixture that
+// states none — so a fixture assembling a raw declaration would be testing a shape
+// the scheduler is never handed.
+const task = (id, preconditions, extra = {}, terms = new Map()) => ({
   pack: 'p', id, taskPath: `packs/p/tasks/${id}/task.md`,
-  decl: { id, preconditions, ...extra },
+  decl: normalizeTaskDeclaration({ id, preconditions, ...extra }, terms),
+  terms,
 });
 // The ask, as a fixture answers it. `planSchedulerRun` never decides for a task:
 // what the task says is the seam's, and a run with a task to ask needs one.
@@ -85,7 +91,7 @@ test('an ask the scheduler cannot decide fails OPEN: the item is filed and the e
 
 test('every task on the schedule is asked, in declaration order; one stating no condition, or one reading the item, never is', async () => {
   const { seen, evaluate } = askedIds();
-  const aboutItem = { ...task('request', ['about-the-item']), terms: new Map([['about-the-item', { signals: [], needsItem: true, holds: () => ({ holds: true }) }]]) };
+  const aboutItem = task('request', ['about-the-item'], {}, new Map([['about-the-item', { signals: [], needsItem: true, holds: () => ({ holds: true }) }]]));
   const { ops } = await planSchedulerRun({
     tasks: [task('daily1', ['due:daily']), task('lever', []), task('mover', ['substantive-change']), aboutItem, task('weekly1', ['due:weekly', 'repo-active'])],
     items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, evaluate,

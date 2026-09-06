@@ -5,6 +5,7 @@
   "schedule_after": [
     "claudinite-growth/growth-extract"
   ],
+  "trigger": "schedule",
   "preconditions": [
     "due:daily",
     "fleet-local-packs-changed"

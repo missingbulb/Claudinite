@@ -2,6 +2,7 @@
   "$schema": "../../../claudinite-tasks/task.schema.json",
   "id": "upstream-watch",
   "description": "Keeps the shelf current with the technologies its packs teach: reads each pack's declared upstream sources, changes pack content that has been dated, and advances the reconciliation anchors through an owner-approved pull request.",
+  "trigger": "schedule",
   "preconditions": [
     "due:monthly"
   ],
