@@ -1549,6 +1549,19 @@ fi
       'test/smoke.test.mjs': "import { test } from 'node:test';\ntest('fixture', () => {});\n",
     },
   },
+  {
+    name: 'mount-with-local-override',
+    why: 'a member keeping its own difference in .claudinite/local/packs/, beside the mount rather than inside it — proving the vendored shared-tree-immutable rule (blocking, work scope) loads and leaves the world sweep green; the rehearsal never runs check_the_work, so it does not prove the rule fires',
+    files: {
+      'README.md': '# fixture-mount-with-local-override\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'claudinite-lifecycle', 'local/fixture-local']),
+      '.claudinite/local/packs/fixture-local/pack.mjs': PACK_LOCAL_RULES,
+      '.claudinite/local/packs/fixture-local/demo-rule.mjs': DEMO_RULE,
+      '.claudinite/local/packs/fixture-local/RULES.md': '# fixture-local\n\nNo standing rules.\n',
+      '.claudinite/local/packs/fixture-local/skills/fixture-skill/SKILL.md':
+        '---\nname: fixture-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
+    },
+  },
 ];
 
 // The two MODES, stated as what the fixture has INSTALLED. `stale` is the half that

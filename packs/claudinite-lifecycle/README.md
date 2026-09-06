@@ -12,7 +12,7 @@ reports it.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Reading a rule that arrived from Claudinite | high | correctness | prose: 43 words + check (`claudinite-isolation`) |
+| Reading a rule that arrived from Claudinite | high | correctness | prose: 43 words + checks (`shared-tree-edit-guard`, `shared-tree-immutable`, `claudinite-isolation`) |
 | Finding a mounted skill's real path | medium | complexity | prose: 81 words |
 | Wanting a pack's rules to apply here | high | correctness | prose: 47 words + check (`claudinite-lifecycle-declared`) |
 | Renaming or removing a pack's declaration | medium | correctness | prose: 44 words |
@@ -37,6 +37,8 @@ not prose: the session that has lost its rules is the session least able to noti
 | `claudinite-lifecycle-declared` | critical | correctness | check: blocking |
 | `rules-index-current` | critical | correctness | check: blocking |
 | `claudinite-isolation` | high | complexity | check: blocking |
+| `shared-tree-edit-guard` | high | correctness | check: blocking |
+| `shared-tree-immutable` | high | correctness | check: blocking |
 | `conformance-workflow` | high | correctness | check: advisory |
 | `conformance-work-scope` | high | correctness | check: advisory |
 | `scheduler-workflow-shape` | high | correctness | check: blocking |
