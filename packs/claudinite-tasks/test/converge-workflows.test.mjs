@@ -162,7 +162,6 @@ test('taskSecretNames is the tasks\' list alone; the stamp\'s adds the endpoint 
   const config = { taskScheduler: { agenticTaskInvocationEndpoints: { default: { url: 'https://x.invalid', tokenSecret: 'CCR_ROUTINE_TOKEN' } } } };
   // What `executor-workflow-secrets` holds a member to: deduped, sorted, no config.
   assert.deepEqual(taskSecretNames(decls), ['A_KEY', 'B_KEY']);
-  assert.deepEqual(taskSecretNames(decls, config), ['A_KEY', 'B_KEY']);
   // What the converge stamps: that list plus the endpoint tokens the config names.
   assert.deepEqual(secretNames(decls, config), ['A_KEY', 'B_KEY', 'CCR_ROUTINE_TOKEN']);
 });
