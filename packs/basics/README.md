@@ -18,6 +18,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Finishing a change | high | correctness | prose: 33 words |
 | Changing scheduled or unattended machinery | high | correctness | prose: 36 words |
 | Planning a migration | medium | complexity | prose: 99 words + skill (`writing-migration-plans`) |
+| Filing a plan's issues | high | correctness | prose: 65 words + skill (`writing-migration-plans`) |
 | Adding a legacy tolerance | high | complexity | prose: 59 words |
 | Choosing an automerge policy | high | correctness | prose: 65 words |
 | Predicting an irreversible change | critical | correctness | prose: 42 words |
