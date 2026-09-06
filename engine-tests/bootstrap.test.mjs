@@ -166,3 +166,25 @@ test('a repo without the tasks pack gets no scheduler workflows, and still gets 
   assert.ok(existsSync(join(root, '.github/workflows/claudinite-ci.yml')), 'the sweep is seeded either way');
   assert.match(at(root, '.github/workflows/claudinite-ci.yml'), /check_the_world\.mjs/);
 });
+
+// The three repository settings an owner must flip by hand. They are not scriptable
+// from anywhere the fleet holds a credential (#590: both endpoints need admin and
+// FLEET_GITHUB_TOKEN deliberately does not), so the hand-over block is the only place
+// they can reach the person adopting — and until #1799 it named none of them, which is
+// how a member was adopted with delivery that could never open a PR.
+test('the report hands over the repo settings delivery depends on, only where scheduled work runs', () => {
+  const out = run(freshRepo());
+  const steps = out.slice(out.indexOf('\nHANDOVER'), out.indexOf('\nNEXT:'));
+  assert.match(steps, /Allow GitHub Actions to create and approve pull requests/);
+  assert.match(steps, /Allow auto-merge/);
+  assert.match(steps, /Automatically delete head branches/);
+
+  // A repo that declares no tasks pack runs no scheduled work, so no Action ever
+  // opens, arms or merges a PR there and all three steps would be no-ops.
+  const bare = freshRepo();
+  writeFileSync(join(bare, '.claudinite-settings.json'), JSON.stringify({ packs: ['basics'] }, null, 2) + '\n');
+  const bareOut = run(bare);
+  const bareSteps = bareOut.slice(bareOut.indexOf('\nHANDOVER'), bareOut.indexOf('\nNEXT:'));
+  assert.doesNotMatch(bareSteps, /Allow auto-merge/);
+  assert.doesNotMatch(bareSteps, /create and approve pull requests/);
+});

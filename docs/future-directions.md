@@ -34,6 +34,8 @@ admin on the member, and this pack's PAT deliberately carries only Metadata + Co
 Issues read/write — widening it to admin-on-every-repo to fix a two-field settings drift is a
 poor trade.
 
-So the settings stay an owner action, and the sweeps report the *symptom* — a member stuck
-`behind` — never the cause. Revisit if a narrower administration scope appears, or if the fleet
-grows past the point where setting them by hand at adoption is reliable.
+So the settings stay an owner action: adoption's hand-over block asks for them by name (with
+*Automatically delete head branches*, which no credential problem blocks — it simply had nowhere
+to be asked either), and the sweeps report the *symptom* — a member stuck `behind` — never the
+cause. Revisit if a narrower administration scope appears, or if the fleet grows past the point
+where setting them by hand at adoption is reliable.

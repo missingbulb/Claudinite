@@ -209,7 +209,29 @@ const CORE_HANDOVER = [{
   breaks: 'every agentful work item converges to needs-human with a hand-off naming the unset secret; agentless tasks keep running',
   done: 'a scheduler run dispatches an agentful item and a session starts for it',
 }];
-const handover = [...CORE_HANDOVER, ...decl.packs.flatMap((e) => (byId.get(packEntryId(e))?.adoptionHandover ?? []).map((s) => ({ pack: packEntryId(e), ...s })))];
+// The repository settings every delivery depends on, which no credential the fleet
+// holds can set: both write endpoints need admin on the member and FLEET_GITHUB_TOKEN
+// deliberately carries far less, so no sweep can converge them and no member can
+// self-heal (#590, docs/future-directions.md). That leaves the hand-over block as the
+// only place they reach a person. Gated on the tasks pack, because a repo running no
+// scheduled work has no Action-authored pull request for any of the three to affect.
+const DELIVERY_SETTINGS_HANDOVER = !declaresTasks ? [] : [{
+  pack: 'core',
+  step: 'Turn on Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests".',
+  breaks: 'every delivery pushes its branch and then 403s opening the pull request, so nothing ever lands and abandoned branches accumulate nightly',
+  done: 'a scheduler run reports a PR number rather than the Actions-permission remedy',
+}, {
+  pack: 'core',
+  step: 'Turn on Settings → General → Pull Requests → "Allow auto-merge".',
+  breaks: 'the auto-merge arm is rejected every cycle, so each delivery falls back to polling its own checks in-cycle and gives up on any PR whose CI outlasts that wait',
+  done: 'a delivered PR shows auto-merge armed instead of a "could not arm auto-merge" line in the run log',
+}, {
+  pack: 'core',
+  step: 'Turn on Settings → General → Pull Requests → "Automatically delete head branches".',
+  breaks: 'a PR that GitHub auto-merges is merged outside the code that deletes the branch on the paths it merges itself, so those head branches are never cleaned up',
+  done: 'the branch of an auto-merged delivery is gone once the PR merges',
+}];
+const handover = [...CORE_HANDOVER, ...DELIVERY_SETTINGS_HANDOVER, ...decl.packs.flatMap((e) => (byId.get(packEntryId(e))?.adoptionHandover ?? []).map((s) => ({ pack: packEntryId(e), ...s })))];
 if (handover.length) {
   console.log(`\nHANDOVER — ${handover.length} step(s) only a human can do; file them as ONE issue, a checkbox each, never a note in the PR body:`);
   for (const h of handover) {
