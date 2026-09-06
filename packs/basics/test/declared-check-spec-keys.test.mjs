@@ -86,3 +86,14 @@ test('the engine dependency is fail-soft: an engine without the export makes the
   assert.deepEqual(unplacedKeysWith({ somethingElse: 1 }, spec), []);
   assert.deepEqual(unplacedKeysWith(patternRules, spec).map((u) => u.key), ['scanFile']);
 });
+
+// The claim that lets the "no prose in a declaration" rule leave RULES.md: a
+// description key is one the vocabulary cannot place, so the rule reports it.
+test('declared-check-spec-keys: a description key is prose the vocabulary has no place for', () => {
+  const root = makeRepo({ changed: { 'packs/demo/declared-checks.json': declaration({ description: 'why this rule exists' }) } });
+  try {
+    const findings = run(root);
+    assert.equal(findings.length, 1, JSON.stringify(findings));
+    assert.match(findings[0].what, /"fx-keys" carries "description"/);
+  } finally { cleanup(root); }
+});

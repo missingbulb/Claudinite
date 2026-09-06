@@ -316,5 +316,25 @@
         "fix": "say in plain text that you are waiting, with no tool call"
       }
     ]
+  },
+  {
+    "id": "sub-issue-without-parent",
+    "severity": "advisory",
+    "scope": "action",
+    "since": "2026-09-06",
+    "failureMessage": "a child issue linked only by a number in its body leaves the parent blind to what is still open under it",
+    "guardToolCalls": [
+      {
+        "tool": "mcp__github__issue_write",
+        "inputField": "body",
+        "match": "/\\b(phase|slice|step|follow-up|verification|retrospective|sub-issue)( \\w+)? (of|to|for) #\\d+|^(Original-issue|Blocked-by): #\\d+/im",
+        "inputMatches": "/\"method\":\"create\"/",
+        "inputFieldAbsent": [
+          "parent_issue_number"
+        ],
+        "what": "an issue filed under another (\"{match}\") with no parent_issue_number",
+        "fix": "pass parent_issue_number on the create, or attach it afterwards with sub_issue_write (method add, sub_issue_id the id the create returned, not its number)"
+      }
+    ]
   }
 ]

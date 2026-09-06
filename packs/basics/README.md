@@ -29,12 +29,9 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Writing anything | low | complexity | prose: 18 words |
 | Auditing an artifact against its source | high | correctness | prose: 35 words |
 | Acting on an approval | high | correctness | prose: 69 words |
-| Searching for a tool with ToolSearch | medium | complexity | prose: 86 words |
 | Calling Edit | low | complexity | prose: 39 words |
-| Calling Grep with a context flag | medium | complexity | prose: 51 words |
 | Polling with an until loop | high | correctness | prose: 57 words + check (`bare-wait-in-fresh-shell`) |
 | Handing the owner a terminal command | medium | correctness | prose: 48 words |
-| Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
 | Waiving a finding on text | low | complexity | prose: 26 words |
@@ -42,7 +39,6 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Deferring a warning you can't fix now | medium | complexity | prose: 255 words |
 | Spotting a change that should wait | medium | complexity | prose: 46 words + skill (`do-later`) |
 | Filing anything into the ad-hoc queue | high | correctness | prose: 125 words |
-| Filing an issue under another | medium | complexity | prose: 69 words |
 | Handing over a human-only step | high | complexity | prose: 96 words + skill (`writing-handover-issues`) |
 | Naming a file, module, or symbol | low | complexity | prose: 22 words |
 | Referring to a value from two places | high | correctness | prose: 117 words + check (`shared-constants`) |
@@ -59,8 +55,6 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Driving an external runtime repeatedly | low | complexity | prose: 51 words |
 | Automating something that needs live conversation context | medium | complexity | prose: 46 words |
 | Writing a pipeline step's exit path | medium | correctness | prose: 26 words |
-| Piping a long command through tail | medium | correctness | prose: 87 words |
-| Killing a process by pattern | high | correctness | prose: 34 words |
 | Working in a fresh checkout or sandbox | low | complexity | prose: 54 words |
 | Deciding where a config value lives | medium | complexity | prose: 69 words |
 | Handling a value that can be unknown | high | correctness | prose: 103 words |
@@ -69,7 +63,10 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 Two rules are skills the guard forces for the files they concern: writing a check that scans the
 repo ([`writing-repo-scanning-checks`](skills/writing-repo-scanning-checks/SKILL.md), for any coded
 or declared check) and editing a `GENERATED` file
-([`working-with-generated-files`](skills/working-with-generated-files/SKILL.md)).
+([`working-with-generated-files`](skills/working-with-generated-files/SKILL.md)). Three more load on
+a tool call or its result rather than a path: [`committing`](skills/committing/SKILL.md),
+[`fetching-from-the-web`](skills/fetching-from-the-web/SKILL.md) and
+[`searching-for-a-tool`](skills/searching-for-a-tool/SKILL.md).
 
 ## Checks
 
@@ -81,6 +78,7 @@ The working-discipline rules with a deterministic signature. The world rules rea
 | `declared-check-messages` | medium | complexity | check: blocking |
 | `declared-check-since` | medium | correctness | check: blocking |
 | `declared-check-spec-keys` | medium | correctness | check: advisory |
+| `sub-issue-without-parent` | medium | complexity | check: advisory |
 | `file-placement` | medium | complexity | check: advisory |
 | `shared-constants` | high | correctness | check: blocking |
 | `warning-suppression` | medium | complexity | check: blocking |

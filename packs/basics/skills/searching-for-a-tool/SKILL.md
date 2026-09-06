@@ -14,3 +14,5 @@ metadata:
   short name returns "no matching tools", which reads exactly like absence.
 - **Search the fully-qualified name** — `select:mcp__<server>__<tool>`, copied off the
   deferred-tools listing — and try the tool before telling the owner a step is theirs.
+- **A server whose whole roster the deferred-tools listing already names** is the one exception: one
+  miss there is the answer, so read the roster rather than rephrase the query.
