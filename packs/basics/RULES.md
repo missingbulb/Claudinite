@@ -123,9 +123,10 @@
 ## Harness-tool contracts
 
 
-- **Calling `Edit`** — the file must have been read *with the read tool*; `cat`/`grep`/`sed` don't
-  count. The moment shell output tells you which file you're about to change, read that exact path;
-  a narrow offset window satisfies it.
+- **Calling `Edit`** — the file's content must be current in the session, which a read *or* a
+  write in this session gives it. When neither has happened, read that exact path first; a narrow
+  offset window satisfies it. Read it anyway whenever you need to see it — Edit's tracking shows
+  you nothing. (3)
 
 
 - **Polling with an `until` loop** — write a condition that names the state awaited (a file's

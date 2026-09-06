@@ -49,8 +49,13 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   alone does more than leave a straggler behind. Retire the rule only if a rejected stamp stops
   meaning "uninstalled".
 - **(check:github-api-via-shell)** #880: `Monitor` and shell poll loops reported "still running" until they timed
-  out, ~26 minutes lost across two PRs that were already green. Retire the rule only if this
-  sandbox stops proxy-blocking `api.github.com`.
+  out, ~26 minutes lost across two PRs that were already green. The cause is authorization, not
+  egress: probed 2026-09-06, `api.github.com` resolves and `/rate_limit` answers 200, while every
+  repo-scoped path — this repo's own, and a public one — 403s with "GitHub access is not enabled
+  for this session". That asymmetry is why a reachability probe reassures while the real call
+  still fails. The guard's other arm holds for a different reason — `gh` is simply absent from
+  `PATH` — so the message names both. Retire the rule only if repo-scoped calls start answering
+  from the shell and a `gh` CLI is installed.
 - **(RULES-14)** #952: bootstrap Part 9's hand-written vendored path named a directory that is
   never created, and Part 9 is the one step a session hands a person to go open — so the wrong
   path survived the session that wrote it into the handover. A link redirects where a spelled-
@@ -163,6 +168,11 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(running-the-suite-3)** Measured across three sessions' tool wall-clock: #993's spent 18 full-suite
   runs (18 min) and 22 world sweeps (7 min) of 26 min, #941's 22 (22 min) and 27 (12 min) of 33
   min, #992's 7 and 8 of 14 min.
+- **(running-the-suite-4)** Probed 2026-09-06 on node v22.22.2: `node --test <dir>` exits 1 with
+  `Error: Cannot find module <dir>` — it treats the path as an entry module rather than silently
+  under-running. The rule previously grouped it with the bash glob as an equally silent trap,
+  which understates the glob: only the glob produces a green run over a subset. Retire the
+  distinction if `node --test <dir>` starts recursing, or starts failing quietly.
 - **(RULES-62)** Three misses in one window, one of each shape: `CLAUDINITE_TASKS_SUSPEND_ALL`
   documented as live and never built, beside `exclusive` which had retired with its mechanism
   (#975); `session_scope`, a writer with no reader left and nothing saying so (#993); and the

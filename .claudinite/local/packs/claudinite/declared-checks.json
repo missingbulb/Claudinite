@@ -97,7 +97,7 @@
     "severity": "blocking",
     "since": "2026-09-06",
     "scope": "action",
-    "failureMessage": "this sandbox proxy-blocks api.github.com, so a shell poll reports \"still running\" until it times out",
+    "failureMessage": "there is no gh CLI here, and every repo-scoped api.github.com call 403s (\"GitHub access is not enabled for this session\"), so a shell poll reports \"still running\" until it times out",
     "guardToolCalls": [
       {
         "tool": "Bash",
@@ -134,7 +134,7 @@
     "id": "test-suite-command-form",
     "severity": "advisory",
     "scope": "action",
-    "failureMessage": "node --test does not recurse and a bash glob without globstar reached 37 of 65 files, so every hand-written form under-runs the suite silently",
+    "failureMessage": "a bash glob without globstar reached 37 of 65 files and said nothing; node --test <dir> at least fails outright with Cannot find module",
     "fix": "node --test $(git ls-files '*.test.mjs')",
     "guardToolCalls": [
       {

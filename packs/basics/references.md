@@ -85,3 +85,14 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(writing-migration-plans-1)** Same decision as RULES-1: the sizing questions and the
   breakage cases were the ones the owner asked while planning #1602, and asked to have made
   into the planning skill "highlighting the importance of continuation".
+- **(RULES-3)** Probed 2026-09-06: a scratchpad file OUTSIDE the working directory, created by a
+  Bash `printf` and never opened with the read tool, edited successfully, and the result line
+  read "file state is current in your context". The rule previously said only the read tool
+  counts, which is what a reader would apply — sending them back to re-read a file they had just
+  written. Retire the wording if Edit stops accepting a session write as making a file current.
+- **(searching-for-a-tool-1)** Probed 2026-09-06 in a Claude Code on the web session:
+  `select:get_teams` returned "No matching deferred tools found" while `get_teams` alone returned
+  the tool's full schema, with `mcp__github__get_teams` in the deferred listing throughout. The
+  skill previously named the bare short name as the form that fails, sending a session that has a
+  name but not a server to the one query shape that cannot work. Retire the split if `select:`
+  starts resolving short names, or if keyword search stops resolving them.

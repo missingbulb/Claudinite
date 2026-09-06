@@ -9,8 +9,9 @@ metadata:
 # Running the suite
 
 - **The whole suite is one command** — `node --test $(git ls-files '*.test.mjs')`. There is no test
-  script, `node --test <dir>` does not recurse, and a bash glob without `globstar` reached 37 of 65
-  files; `ci.yml`'s array is not authoritative.
+  script; `ci.yml`'s array is not authoritative. A bash glob without `globstar` is the dangerous
+  substitute — it reached 37 of 65 files and reported nothing wrong — while `node --test <dir>`
+  fails outright, so only the glob leaves you believing a green run. (4)
 - **Read a run's output from a file** — redirect one run and grep that file for the slice you need;
   never re-run the ~55s suite to re-slice unchanged output. (1)
 - **`git add` a new test file before certifying a run green** — `git ls-files` excludes an unstaged
