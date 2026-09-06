@@ -161,8 +161,12 @@ export const BUILTIN_MERGE_RULES = new Map([
   ['comment-only-changes', {
     appliesTo: isCommentOnlyChange,
   }],
+  // Every change kind, a deletion included: a policy naming this class predicted
+  // the test tree as the change's shape, and a test file removed or renamed
+  // inside that tree is that same shape — a rename lands as a delete beside an
+  // add, and parking it asked a reviewer for a decision nobody made.
   ['test-changes', {
-    appliesTo: (e) => changeKindOf(e) !== 'deleted' && classifyPath(e.file) === 'test',
+    appliesTo: (e) => classifyPath(e.file) === 'test',
   }],
   ['markdown-line-removals', {
     appliesTo: (e) => e.file.toLowerCase().endsWith('.md')
@@ -205,8 +209,8 @@ export const BUILTIN_MERGE_RULES = new Map([
 
 // Composites expand into their member allow terms — `narrow-diff` is the queue's
 // historical `Merge: if-narrow` shape. Slightly stricter than the retired
-// narrowVerdict on purpose: a DELETED doc or test file is no longer silently
-// allowed (deciding a document should not exist is a reviewed change — the
+// narrowVerdict on purpose: a DELETED doc is no longer silently allowed
+// (deciding a document should not exist is a reviewed change — the
 // improve-comments-scope lesson), which fails toward a parked PR, never a merge.
 export const COMPOSITE_POLICIES = new Map([
   ['narrow-diff', ['doc-changes', 'test-changes', 'comment-only-changes', 'single-folder-code-changes']],

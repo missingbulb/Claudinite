@@ -186,6 +186,25 @@ test('single-file-code-changes bounds the diff to one real code file', () => {
   }).mergeable, false);
 });
 
+test('test-changes covers a test file at every change kind, a deletion included', () => {
+  const policy = ['test-changes'];
+  assert.equal(policyVerdict({
+    policy, entries: [deleted('packs/p/test/x.test.mjs')],
+  }).mergeable, true, 'a test file may be removed as well as written');
+  assert.equal(policyVerdict({
+    policy, entries: [
+      deleted('packs/p/test/old-name.test.mjs'),
+      added('packs/p/test/new-name.test.mjs'),
+    ],
+  }).mergeable, true, 'a rename is a delete beside an add');
+  assert.equal(policyVerdict({
+    policy, entries: [deleted('src/a.mjs')],
+  }).mergeable, false, 'the rule is about tests, not code');
+  assert.equal(policyVerdict({
+    policy, entries: [deleted('docs/DESIGN.md')],
+  }).mergeable, false, 'and it does not reach a doc');
+});
+
 test('narrow-diff composes the historical narrow shape', () => {
   const v = policyVerdict({
     policy: 'narrow-diff',
