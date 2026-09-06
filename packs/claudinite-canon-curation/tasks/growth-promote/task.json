@@ -11,6 +11,7 @@
     "fleet-local-packs-changed"
   ],
   "expected_outcome": "amend_existing_or_create_new_pr",
+  "automerge": "nothing",
   "invocation_endpoint": "fleet",
   "agent_model": "opus",
   "agent_instructions": "task.md",
