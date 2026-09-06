@@ -228,44 +228,13 @@ node dev/tools/badges/render.mjs restyle
 
 It lives in `dev/tools/`, not in the engine: nothing at session time reads a badge, and the engine is
 what runs pack content and what every consumer vendors. The badge FILES do ship — a pack's badge
-rides its directory into a consumer's vendor set exactly like its prose and skills, so a repo's row
-points at its own `.claudinite/shared/packs/<id>/badge.svg` with no network dependency on this repo.
-
-**Getting the row into a README is not a maintainer's job — keeping it current is.** Adoption writes
-it, once, through the wiring converge
-([`../engine/converge-wiring.mjs`](../engine/converge-wiring.mjs) run with
-`--badges`, bootstrap Part 6): a one-line row of the declared packs' badges, under the title, between
-`<!-- claudinite:packs -->` markers — so it lands where a reader looks first, and anything the repo
-writes after the closing marker on that line is its own. The opening marker sits
-on its own line above the badges and must stay there: a line that *begins* with `<!--` opens a
-CommonMark HTML block, and badges written after it on the same line render as literal `![…](…)`
-text rather than images.
-
-**The nightly does not touch it.** Baselining runs the same converge without `--badges`, so a
-member's README is never rewritten by a run it didn't ask for — a re-derived row would put a README
-diff in every vendoring commit that followed a declaration change. The row is a seed, not maintained
-state: once written, it belongs to the repo — edit it, move it, or delete it.
-
-**The declaration is what makes a row wrong, so the row is refreshed where the declaration changes:**
-adopting a pack re-runs the converge with `--badges`
-([`claudinite-lifecycle/skills/adopt-pack/SKILL.md`](claudinite-lifecycle/skills/adopt-pack/SKILL.md), step 3),
-which rewrites the row in place. Nothing else derives it — a repo that edits its declaration by hand
-runs `converge-wiring <owner/repo> --badges` itself, or lives with a stale row.
-
-The converge also materializes the repo's say into `.claudinite-settings.json`, so the knob sits where
-anyone would look for it rather than being inferred from absence:
-
-```json
-"badges": { "readme": "auto" }
-```
-
-Set `"off"` and the nightly neither updates the row nor re-adds one the repo has deleted.
+rides its directory into a consumer's vendor set exactly like its prose and skills, so anything
+showing one points at `.claudinite/shared/packs/<id>/badge.svg` with no network dependency on this
+repo. Nothing writes a badge into a member's own README: a repo's front page is the repo's (#1750).
 
 [`../dev/tools/tests/badges.test.mjs`](../dev/tools/tests/badges.test.mjs) guards the artwork side —
 every pack declares a badge that exists and is tracked, every badge is current with the template and
-titled with the pack whose directory holds it — and holds this repo's own row (the one member no
-nightly maintains, since the canon has no vendored mount to refresh) to what that converge would
-write.
+titled with the pack whose directory holds it.
 
 ## Environment requirements (`env`)
 

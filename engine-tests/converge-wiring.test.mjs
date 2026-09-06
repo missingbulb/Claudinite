@@ -7,8 +7,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   ensureHooks, removeRetiredCorpusImport, convergeWiring, SETTINGS_PATH,
-  removeRetiredBadgeSetting, convergeBadgeRow, renderBadgeRow, badgeRowEntries,
-  BADGE_ROW_START, BADGE_ROW_END, README,
+  removeRetiredBadgeSetting,
   PRETOOLUSE_MATCHER,
   ensureRulesIndexImport,
   ensureMountAttributes, removeRetiredRootAttributes, MOUNT_ATTRIBUTES_FILE, MOUNT_ATTRIBUTES,
@@ -354,90 +353,16 @@ test('removeRetiredBadgeSetting: malformed settings are left untouched, never re
 });
 
 
-test('convergeBadgeRow: introduces the row under the title', () => {
-  const root = mkRepo();
-  writeFileSync(join(root, README), '# Project\n\nSome prose.\n');
-  assert.equal(convergeBadgeRow(root, ROW), true);
-  const text = readFileSync(join(root, README), 'utf8');
-  assert.equal(text.split('\n')[0], '# Project');
-  assert.ok(text.includes(renderBadgeRow(ROW)));
-  assert.ok(text.includes('Some prose.'), 'the README it found is not replaced');
-  assert.equal(convergeBadgeRow(root, ROW), false, 'idempotent');
-});
-
-
-test('convergeBadgeRow: a README with no heading takes the row at the top', () => {
-  const root = mkRepo();
-  writeFileSync(join(root, README), 'Just prose.\n');
-  convergeBadgeRow(root, ROW);
-  const lines = readFileSync(join(root, README), 'utf8').split('\n');
-  assert.equal(lines.slice(0, 2).join('\n'), renderBadgeRow(ROW));
-});
-
-
-// The whole point of the row is that it renders. A line that BEGINS with `<!--`
-// opens a CommonMark HTML block that runs through the line carrying `-->`, so
-// badges written after the opening marker on its line reach a README as the
-// literal text `![basics](…)` (#587). The opening marker therefore owns its line
-// and the badges start the next one — pinned here because nothing else would
-// notice the day someone "tidies" the row back onto one line.
-test('renderBadgeRow: the badges start their own line, so markdown parses them', () => {
-  const lines = renderBadgeRow(ROW).split('\n');
-  assert.equal(lines.length, 2);
-  assert.equal(lines[0], BADGE_ROW_START, 'the opening marker owns its line');
-  assert.ok(!lines[1].startsWith('<!--'), 'the badge line must not open an HTML block');
-  assert.ok(lines[1].startsWith('![basics]'));
-  assert.ok(lines[1].endsWith(BADGE_ROW_END), 'the closing marker stays inline, so a tagline can follow it');
-});
-
-
-test('convergeBadgeRow: re-converges in place, keeping what the repo wrote beside it', () => {
-  const root = mkRepo();
-  // The stale row is in the pre-#587 single-line form, so this also covers the
-  // migration a consumer's next nightly performs.
-  const stale = `# P\n\n${BADGE_ROW_START}![gone](packs/gone/badge.svg "gone")${BADGE_ROW_END} &nbsp;our own tagline\n`;
-  writeFileSync(join(root, README), stale);
-  assert.equal(convergeBadgeRow(root, ROW), true);
-  const text = readFileSync(join(root, README), 'utf8');
-  assert.ok(text.includes(renderBadgeRow(ROW)));
-  assert.ok(!text.includes('gone'), 'the stale row is replaced, not appended to');
-  assert.ok(text.includes(`${BADGE_ROW_END} &nbsp;our own tagline`),
-    'what the repo wrote after the closing marker stays on the badges line, where it renders');
-});
-
-
-test('convergeBadgeRow: no README, or nothing to show, writes nothing', () => {
-  const root = mkRepo();
-  assert.equal(convergeBadgeRow(root, ROW), false, 'never creates a README');
-  writeFileSync(join(root, README), '# P\n');
-  assert.equal(convergeBadgeRow(root, []), false);
-  assert.equal(readFileSync(join(root, README), 'utf8'), '# P\n', 'an empty row is not an empty block');
-});
-
-
-test('convergeWiring: leaves the README alone unless the caller asks for badges', async () => {
+test('convergeWiring: never touches the repo\'s README', async () => {
+  // Claudinite's own bookkeeping stays inside .claudinite/; a member's front page is
+  // the repo's (#1750). Nothing in the wiring derives, seeds or refreshes a line of it.
   const root = mkRepo();
   writeFileSync(join(root, CHECKS_PATH), '{\n  "packs": ["basics"]\n}\n');
-  writeFileSync(join(root, README), '# P\n\nprose\n');
-  // The nightly's call — no badges. A baselining run must never produce a
-  // README diff.
-  const nightly = await convergeWiring(root, REPO);
-  assert.ok(!nightly.changed.some((c) => c.includes(README)));
-  assert.equal(readFileSync(join(root, README), 'utf8'), '# P\n\nprose\n');
-  // Bootstrap's call — the row is seeded once.
-  const { changed } = await convergeWiring(root, REPO, { badges: true });
-  assert.ok(changed.some((c) => c.includes(README)));
-  assert.ok(readFileSync(join(root, README), 'utf8').includes(BADGE_ROW_START));
+  writeFileSync(join(root, 'README.md'), '# P\n\nprose\n');
+  const { changed } = await convergeWiring(root, REPO, { seedLocalPack: true });
+  assert.ok(!changed.some((c) => c.includes('README')), changed.join(', '));
+  assert.equal(readFileSync(join(root, 'README.md'), 'utf8'), '# P\n\nprose\n');
 });
-
-
-test('badgeRowEntries: skips a declared pack that carries no badge file', async () => {
-  const root = mkRepo();
-  const ids = (await badgeRowEntries(root, { packs: ['basics', 'nonexistent-pack'] })).map((e) => e.id);
-  assert.ok(ids.includes('basics'));
-  assert.ok(!ids.includes('nonexistent-pack'), 'an id naming no pack contributes nothing');
-});
-
 // --- the work-item queue's wiring (tasks-dispatch DESIGN §14) -----------------
 // The repo's one cron workflow keeps its path and changes its CONTENT with the
 // dispatch mode; the executor is a second workflow beside it, and it is the only

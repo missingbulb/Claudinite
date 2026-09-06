@@ -65,7 +65,7 @@ test('bootstrap converges a fresh repo in one invocation', () => {
 
   // The wiring: hooks, ignore lines, both workflows (scheduler at the repo's
   // hashed minute), the rules index and its CLAUDE.md import, the seeded local
-  // pack, the README badge row.
+  // pack.
   const settings = at(root, '.claude/settings.json');
   for (const hook of ['session-start-command.sh', 'stop-command.mjs', 'pretooluse-command.mjs', 'session-end-command.mjs']) {
     assert.ok(settings.includes(hook), `${hook} registered`);
@@ -77,7 +77,8 @@ test('bootstrap converges a fresh repo in one invocation', () => {
   assert.ok(existsSync(join(root, '.claudinite/claudinite-rules.GENERATED.md')));
   assert.ok(at(root, 'CLAUDE.md').includes('claudinite-rules.GENERATED.md'));
   assert.ok(existsSync(join(root, `.claudinite/local/packs/${LOCAL_PACK_ID}/pack.mjs`)));
-  assert.ok(at(root, 'README.md').includes('<!-- claudinite:packs -->'));
+  assert.equal(at(root, 'README.md'), '# WidgetWorks\n\nA fixture.\n',
+    "the repo's README is not bootstrap's to write");
 
   // A repo with no CI gets the minimal sweeps workflow.
   const ci = at(root, '.github/workflows/claudinite-ci.yml');

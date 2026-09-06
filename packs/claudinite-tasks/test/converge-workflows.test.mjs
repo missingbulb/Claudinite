@@ -101,12 +101,6 @@ test("the canon's own executor workflow has not drifted from the stub it ships",
   assert.deepEqual(structure(mine), structure(stub));
 });
 
-// --- the README pack-badge row ---------------------------------------------
-// Adoption seeds the row into a repo's README and nothing maintains it after, so
-// a README is never rewritten by a run the repo didn't ask for it. Both halves
-// matter: `--badges` writes a correct row, and a converge without it leaves the
-// README untouched.
-
 // A workflow is a pure function of its stub now. That is the point of #1301: while
 // its content tracked the task set, every new secret needed a human-merged PR in
 // every member, and a member that needed one to start its agent could never get it.

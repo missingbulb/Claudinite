@@ -3,7 +3,7 @@
 // fetched canon tree AGAINST a consumer checkout, that performs every mechanical
 // part of adoption — seed the declaration, declare the requested packs and record
 // their interview answers, vendor the snapshot, track it, converge the wiring
-// (hooks, workflows, rules index, seed local pack, badge row), anchor the
+// (hooks, workflows, rules index, seed local pack), anchor the
 // scheduler, seed a minimal sweeps CI where none exists — then self-test, sweep,
 // and report what is left for the session: the pending interview questions
 // (batched, for ONE AskUserQuestion pass) and the steps only a human can take.
@@ -95,10 +95,10 @@ if (missing.length) {
 }
 
 // 4. Converge the DISTRIBUTION wiring — hooks, the rules index and its CLAUDE.md
-// import, the .gitattributes entries, the badge row and the repo's own local pack
-// (the two one-time seeds only bootstrap passes). Every member carries this set.
+// import, the mount's git attributes and the repo's own local pack (the one-time seed
+// only bootstrap passes). Every member carries this set.
 const config = loadConfig(target);
-const wiring = await convergeWiring(target, fullName, { badges: true, seedLocalPack: true });
+const wiring = await convergeWiring(target, fullName, { seedLocalPack: true });
 if (wiring.error) fail(wiring.error);
 console.log(wiring.changed.length ? `bootstrap: wiring — ${wiring.changed.join(', ')}` : 'bootstrap: wiring: already converged');
 

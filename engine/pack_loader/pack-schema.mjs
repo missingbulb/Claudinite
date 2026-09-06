@@ -49,8 +49,8 @@ const isRuleArray = (v) => Array.isArray(v) && v.every((x) => isPlainObject(x) &
 
 // A seed op names a template in the pack and where a fresh install puts it. SEEDED,
 // NOT CONVERGED: the file becomes the repo's from that moment, and no update ever
-// rewrites it — the README pack-badge row is the precedent, seeded at adoption
-// precisely so later runs cannot rewrite a member's README (DESIGN §4).
+// rewrites it — the repo's own local pack is the precedent, seeded empty at adoption
+// precisely so later runs cannot rewrite what the repo has since put in it (DESIGN §4).
 //
 // The run-once guarantee is STRUCTURAL, not a flag anyone must remember to set: only
 // the install flow reads this field, so an update has nothing to re-run. That is why

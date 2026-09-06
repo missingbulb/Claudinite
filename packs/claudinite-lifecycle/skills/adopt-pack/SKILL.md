@@ -86,19 +86,6 @@ self-test. It exits non-zero on a refusal or an unanswered interview — a pack 
 **refused**, because reinstalling would restamp the repo to the newest version while skipping every
 record in between.
 
-Then **refresh the README pack-badge row**, from the mount you just rebuilt:
-
-```
-node .claudinite/shared/engine/converge-wiring.mjs <owner/repo> --badges
-```
-
-Declaring a pack is what makes that row wrong, and adoption is the only moment anything derives it —
-the nightly deliberately leaves a repo's README alone, so a row not refreshed here stays stale until
-someone notices by eye. The converge rewrites the row in place between its
-`<!-- claudinite:packs -->` markers, keeping whatever the repo wrote after the closing one, and is a
-no-op when the row is already right. A repo that has deleted its row keeps it deleted only if you
-skip this — dropping the row is a real choice, so don't re-seed one the repo removed on purpose.
-
 **Adopting `claudinite-tasks` also scaffolds the two workflow files** — the scheduler run with
 its drain, and the label-event executor:
 

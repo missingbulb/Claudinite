@@ -1,8 +1,5 @@
 # Claudinite
 
-<!-- claudinite:packs -->
-![claudinite-lifecycle](packs/claudinite-lifecycle/badge.svg "claudinite-lifecycle") ![claudinite-tasks](packs/claudinite-tasks/badge.svg "claudinite-tasks") ![basics](packs/basics/badge.svg "basics") ![git-github](packs/git-github/badge.svg "git-github") ![claudinite-growth](packs/claudinite-growth/badge.svg "claudinite-growth") ![tidy-repo](packs/tidy-repo/badge.svg "tidy-repo") ![claudinite](.claudinite/local/packs/claudinite/badge.svg "claudinite") ![claudinite-canon-curation](packs/claudinite-canon-curation/badge.svg "claudinite-canon-curation") ![claude-code-web-users-support](packs/claude-code-web-users-support/badge.svg "claude-code-web-users-support")<!-- /claudinite:packs --> &nbsp;the packs this repo runs
-
 Portable Claude instructions/rules shared across projects — the **project-agnostic** maintainer guidelines, maintained **once** here and mounted into each consuming repo so they don't have to be copy-pasted per project. Project-*specific* rules stay in the consuming repo's own docs.
 
 **Just adding Claudinite?** Tell the agent on the consuming repo:

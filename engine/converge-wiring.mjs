@@ -6,7 +6,7 @@
 //
 // DISTRIBUTION WIRING ONLY. What a member needs in order to receive and load pack
 // content — the settings hooks, the rules index and the CLAUDE.md import that loads it,
-// the .gitattributes entries, the badge row, the repo's own local pack. Scheduling
+// the mount's git attributes, the repo's own local pack. Scheduling
 // wiring is not here: the two workflow files belong to the mechanism that runs them and
 // are scaffolded at adoption by the tasks pack (#1317), so a member without that pack
 // converges exactly this and nothing about a queue it does not have.
@@ -56,31 +56,6 @@ export const REQUIRED_HOOKS = [
 
 export const SETTINGS_PATH = '.claude/settings.json';
 export const CLAUDE_MD = 'CLAUDE.md';
-export const README = 'README.md';
-
-// The pack-badge row: the marks of the packs this repo declares, on a single
-// line of its README. Adoption seeds it and the repo owns it from there — which
-// is why the row is gated behind `{ badges: true }` (the CLI's `--badges`, passed
-// by bootstrap alone) rather than converged like the surfaces around it. A
-// README belongs to its repo: a nightly that re-derived this row would rewrite a
-// member's README every time its declaration moved, so the nightly stays out and
-// a stale row is the repo's to fix (re-run the converge with `--badges`).
-//
-// Delimited by HTML comments rather than located by position, so the row can be
-// re-converged in place wherever the repo has moved it, and so anything the repo
-// writes AFTER the closing marker on the same line (a tagline, a build badge) is
-// its own and survives untouched — which is why the CLOSING marker stays inline,
-// at the end of the badges' own line.
-//
-// The OPENING marker gets a line to itself, and that newline is load-bearing: a
-// line that BEGINS with `<!--` opens a CommonMark HTML block, and every character
-// through the line carrying `-->` is then emitted as raw HTML. Put the badges
-// after the opening marker on one line and a README renders the literal text
-// `![basics](…)` instead of the images (#587). Breaking the line ends the HTML
-// block at the marker, so the badges start a paragraph and parse as markdown.
-export const BADGE_ROW_START = '<!-- claudinite:packs -->';
-export const BADGE_ROW_END = '<!-- /claudinite:packs -->';
-const BADGE_ROW_RE = new RegExp(`${BADGE_ROW_START}[\\s\\S]*?${BADGE_ROW_END}`);
 
 // The retired corpus-index import (#385): a line importing `.claudinite/shared/CLAUDE.md`.
 // The whole line (and its trailing newline) is removed wherever it appears.
@@ -167,9 +142,8 @@ export function removeRetiredCorpusImport(root) {
 // consumer's own declaration. The two coexist deliberately: a member converging today
 // loses the old shape and gains the new one in the same pass.
 //
-// The import goes after the first `# ` heading when the repo has one (the badge row's
-// placement rule, for the same reason — a repo's title stays its first line), and at
-// the very top otherwise. A repo with no CLAUDE.md at all gets one: without it the
+// The import goes after the first `# ` heading when the repo has one — a repo's title
+// stays its first line — and at the very top otherwise. A repo with no CLAUDE.md at all gets one: without it the
 // index is a file nothing loads.
 const RULES_INDEX_IMPORT_RE = new RegExp(`^\\s*${RULES_INDEX_IMPORT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');
 
@@ -276,8 +250,7 @@ export function removeRetiredRootAttributes(root) {
 // So adoption seeds the home empty, named for the repo, declared and imported like any
 // other pack.
 //
-// BOOTSTRAP ONLY, and gated like the badge row for the same reason: this is a one-time
-// seed of a file the repo then OWNS. A nightly that re-created it would resurrect a
+// BOOTSTRAP ONLY: this is a one-time seed of a file the repo then OWNS. A nightly that re-created it would resurrect a
 // pack the owner deliberately deleted, and a nightly that rewrote it would overwrite
 // the rules it exists to hold.
 
@@ -357,7 +330,8 @@ export function seedRepoLocalPack(root, fullName) {
   return id;
 }
 
-// Strip the retired `badges` setting from the settings file. `badges` is
+// Strip the retired `badges` setting from the settings file — it configured a README
+// row nothing writes any more (#1750). `badges` is
 // not in CONFIG_KEYS, so a member still carrying it gets an unknown-setting error
 // until the key goes; doing it here — beside the retired corpus import, for the
 // same reason — means the converge that already runs on every member clears it,
@@ -392,66 +366,18 @@ const parses = (text, raw) => {
   catch { return false; }
 };
 
-// The row's entries: each declared pack (the `requires` closure included, in
-// declaration order) that has a badge on disk, as { id, path } with the path
-// relative to the repo root. Derived from the pack's own `dir`, so it resolves to
-// `packs/<id>/…` in the canon home and `.claudinite/shared/packs/<id>/…` in a
-// consumer with no branch on which repo this is. A pack whose badge is missing is
-// skipped rather than reported: a repo's own local pack need not have one.
-export async function badgeRowEntries(root, config) {
-  const { loadPacks, resolveDeclaredPacks, packEntryId } = await import('./pack_loader/pack-registry.mjs');
-  const packs = await loadPacks({ localRoot: root });
-  const byId = new Map(packs.map((p) => [p.id, p]));
-  const entries = [];
-  for (const entry of resolveDeclaredPacks(config.packs ?? [], packs)) {
-    const pack = byId.get(packEntryId(entry));
-    if (!pack || typeof pack.badge !== 'string' || !pack.badge) continue;
-    const path = relative(root, join(pack.dir, pack.badge)).split('\\').join('/');
-    if (existsSync(join(root, path))) entries.push({ id: pack.id, path });
-  }
-  return entries;
-}
-
-export const renderBadgeRow = (entries) =>
-  `${BADGE_ROW_START}\n${entries.map((e) => `![${e.id}](${e.path} "${e.id}")`).join(' ')}${BADGE_ROW_END}`;
-
-// Write the row into the repo's README: replacing the delimited block where one
-// exists, otherwise introducing it just under the title (a README's badges belong
-// where a reader looks first) or at the very top when there is no heading.
-// Returns true when the file was written. No README, or nothing to show, means
-// nothing to do — this converge never creates a README.
-export function convergeBadgeRow(root, entries) {
-  const path = join(root, README);
-  if (!existsSync(path) || !entries.length) return false;
-  const text = readFileSync(path, 'utf8');
-  const row = renderBadgeRow(entries);
-  if (BADGE_ROW_RE.test(text)) {
-    const next = text.replace(BADGE_ROW_RE, row);
-    if (next === text) return false;
-    writeFileSync(path, next);
-    return true;
-  }
-  const lines = text.split('\n');
-  const title = lines.findIndex((l) => l.startsWith('# '));
-  const at = title === -1 ? 0 : title + 1;
-  lines.splice(at, 0, ...(at === 0 ? [row, ''] : ['', row]));
-  writeFileSync(path, lines.join('\n'));
-  return true;
-}
-
 // Converge every wiring surface, returning a flat summary of what changed (empty
 // when the repo was already converged). `stubText` is the vendored scheduler stub.
 //
-// `badges` defaults off, and that default is the point: the nightly takes this
-// call as it stands and only bootstrap opts the README row in.
 // `workflows: false` converges everything EXCEPT `.github/workflows/`. The engine
 // update flow passes it: the scheduler workflow's content is a function of the
 // task set, so pack changes are what rewrite it, and only the pack flow carries a
 // credential that can land a workflow file at all (DESIGN §2.4, §3.7). A flow that
 // wrote one it cannot deliver would fail its whole push, not just that file.
-// `seedLocalPack` defaults off for the same reason `badges` does: both are one-time
-// seeds of files the repo then owns, and only bootstrap passes them.
-export async function convergeWiring(root, fullName, { badges = false, seedLocalPack = false } = {}) {
+// `seedLocalPack` defaults off: it is a one-time seed of a file the repo then owns,
+// and only bootstrap passes it — a nightly that re-created it would resurrect a pack
+// the owner deliberately deleted.
+export async function convergeWiring(root, fullName, { seedLocalPack = false } = {}) {
   const changed = [];
   const hooks = ensureHooks(root);
   for (const h of hooks.added) changed.push(`hook:${h}`);
@@ -471,27 +397,24 @@ export async function convergeWiring(root, fullName, { badges = false, seedLocal
   if (ensureRulesIndexImport(root)) changed.push(`${CLAUDE_MD} rules-index import`);
   if (ensureMountAttributes(root)) changed.push(MOUNT_ATTRIBUTES_FILE);
   if (removeRetiredRootAttributes(root)) changed.push('removed retired root .gitattributes entries');
-  if (badges && convergeBadgeRow(root, await badgeRowEntries(root, await repoConfig(root)))) changed.push(`${README} pack row`);
   return { changed, ...(hooks.error ? { error: hooks.error } : {}) };
 }
 
-// CLI: `node converge-wiring.mjs [owner/repo] [--badges] [--seed-local-pack]` —
+// CLI: `node converge-wiring.mjs [owner/repo] [--seed-local-pack]` —
 // converge THIS repo's distribution wiring. The full name comes from argv or
 // GITHUB_REPOSITORY/CLAUDINITE_REPO. This is the single surface bootstrap (Part 5) and
-// the update flows both invoke, so the wiring set is defined once, here — and the two
-// flags are the whole difference between them. Both are ONE-TIME SEEDS of files the repo
-// then owns (the README badge row, the repo's own local pack), which is exactly why the
-// nightly must not pass them: it would rewrite a row the owner moved, or resurrect a
-// pack they deleted. The two workflow files are the tasks pack's to scaffold, and its
+// the update flows both invoke, so the wiring set is defined once, here — and the flag
+// is the whole difference between them: seeding the repo's own local pack is a ONE-TIME
+// seed of a file the repo then owns, which is exactly why the nightly must not pass it
+// — it would resurrect a pack the owner deliberately deleted. The two workflow files are the tasks pack's to scaffold, and its
 // own converge-workflows.mjs is the command that does it.
 async function main() {
   const argv = process.argv.slice(2);
-  const badges = argv.includes('--badges');
   const seedLocalPack = argv.includes('--seed-local-pack');
   const fullName = argv.find((a) => !a.startsWith('--')) || process.env.GITHUB_REPOSITORY || process.env.CLAUDINITE_REPO;
   if (!fullName) { console.error('converge-wiring: need owner/repo (argv or GITHUB_REPOSITORY)'); process.exit(1); }
   const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
-  const { changed, error } = await convergeWiring(root, fullName, { badges, seedLocalPack });
+  const { changed, error } = await convergeWiring(root, fullName, { seedLocalPack });
   if (error) console.log(`! ${error}`);
   console.log(changed.length ? `converge-wiring: ${changed.join(', ')}` : 'converge-wiring: already converged');
 }
