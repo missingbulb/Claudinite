@@ -101,8 +101,8 @@
             },
             {
               "siblings": "packs",
-              "to": "docs",
-              "reason": "docs/ is outside the vendor set, so a pack file's reference to it resolves to nothing in every consumer (#424) — cite the doc from the issue or PR instead; a pack's updates/ is carved out because no vendor set carries that either, so the premise cannot arise there (#1317)",
+              "to": ["docs", "packs/claudinite-tasks/docs"],
+              "reason": "docs/ is outside the vendor set, so a pack file's reference to it resolves to nothing in every consumer (#424) — cite the doc from the issue or PR instead; a pack's updates/ is carved out because no vendor set carries that either, so the premise cannot arise there (#1317). packs/claudinite-tasks/docs/ joined it on the same footing (#1755): a pack's own docs/ is maintainer reference cited by § from code comments, never vendored, so another pack's file referencing it by path is exactly the same dangling crossing",
               "except": [
                 "packs/claudinite-lifecycle/updates"
               ]
@@ -150,7 +150,7 @@
     },
     {
       "rule": "reference-integrity",
-      "path": "docs/task-code-work/",
+      "path": "packs/claudinite-tasks/docs/task-code-work/",
       "reason": "the task-code-work DESIGN is the dated record of migration #405 \u2014 it names the slot scheduler's entry point as the staging it was changing, and #974 has since deleted that module. The reference is dangling because the record is true of the moment it describes; repointing it at the queue's executor would make the document describe a design that never happened. Same standing as the per-project-scheduling entry below"
     },
     {
@@ -160,7 +160,7 @@
     },
     {
       "rule": "reference-integrity",
-      "path": "docs/per-project-scheduling/",
+      "path": "packs/claudinite-tasks/docs/per-project-scheduling/",
       "reason": "the per-project-scheduling DESIGN/MIGRATION pair is the historical record of migration #394 — it names the central routine and planner files this migration deleted precisely because deleting them is what it records; rewriting those names would falsify the record, so its inbound-reference dangling is deliberate and permanent"
     },
     {

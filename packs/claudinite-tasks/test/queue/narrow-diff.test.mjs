@@ -14,7 +14,7 @@ import {
 
 test('classifyPath names docs, tests and code', () => {
   assert.equal(classifyPath('README.md'), 'doc');
-  assert.equal(classifyPath('docs/tasks-dispatch/DESIGN.md'), 'doc');
+  assert.equal(classifyPath('packs/claudinite-tasks/docs/tasks-dispatch/DESIGN.md'), 'doc');
   assert.equal(classifyPath('packs/claudinite-tasks/test/scheduler-run.test.mjs'), 'test');
   assert.equal(classifyPath('packs/basics/tests/fixture.json'), 'test');
   assert.equal(classifyPath('packs/basics/test/pack.test.mjs'), 'test');

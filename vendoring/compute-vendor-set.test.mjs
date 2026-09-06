@@ -469,6 +469,44 @@ test('a pack\'s references.md stays canon-side — over the real corpus, not a f
   assert.ok(docs.length > 5, `only ${docs.length} pack references docs tracked — this assertion has lost its subject`);
 });
 
+// A pack's `docs/` is maintainer reference, like its `test/` and `updates/`: design
+// records cited by `§` name from code comments, never read by a mount's runtime, so
+// it never vendors — generic across every pack rather than scoped to one (#1755).
+test("a pack's docs/ never vendors — an operational sibling directory of the same pack still does", async () => {
+  const root = makeCanon({
+    packs: [{ id: 'delta', extraFiles: [
+      'RULES.md',
+      'docs/DESIGN.md',
+      'docs/mocks/fixture.html',
+      'queue/worker.mjs',
+    ] }],
+  });
+  const { files, errors } = await vendorAt(root, ['delta']);
+  assert.deepEqual(errors, []);
+  assert.ok(files.includes('packs/delta/RULES.md'));
+  assert.ok(files.includes('packs/delta/queue/worker.mjs'), 'an operational sibling directory of the same pack still vendors');
+  assert.deepEqual(files.filter((f) => f.startsWith('packs/delta/docs/')), []);
+});
+
+// The same exclusion, asked of the REAL corpus rather than a fixture. A fixture
+// spelling the rule cannot notice the day it stops selecting the real tree. Both
+// halves are load-bearing: the second asserts the scope is non-empty, and the third
+// that the packs which own a docs/ still ship their operational content.
+test("no canon pack ships its docs/ — over the real corpus, not a fixture", async () => {
+  const { computeVendorSet } = await import(pathToFileURL(join(MOUNT_DIR, 'compute-vendor-set.mjs')));
+  const { loadPacks } = await import(pathToFileURL(join(REPO_ROOT, 'engine/pack_loader/pack-registry.mjs')));
+  const ids = (await loadPacks()).map((p) => p.id);
+  const { files, errors } = await computeVendorSet(ids, { today: '2026-01-01' });
+  assert.deepEqual(errors, []);
+  assert.deepEqual(files.filter((f) => f.split('/').includes('docs')), []);
+  assert.ok(files.includes('packs/claudinite-tasks/queue/instructions.md'), 'claudinite-tasks still ships its operational tree');
+  assert.ok(files.includes('packs/claudinite-dashboard/pack.mjs'), 'claudinite-dashboard still ships');
+
+  const docsFiles = execFileSync('git', ['ls-files', ':(glob)packs/*/docs/**'], { cwd: REPO_ROOT, encoding: 'utf8' })
+    .split('\n').filter(Boolean);
+  assert.ok(docsFiles.length > 5, `only ${docsFiles.length} pack docs files tracked — this assertion has lost its subject`);
+});
+
 // The exclusion is the convention's location, not the name anywhere: a skill is
 // free to ship a payload doc of that name, and it rides the pack walk like every
 // other skill file.

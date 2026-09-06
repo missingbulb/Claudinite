@@ -71,6 +71,18 @@ test('runnable-doc-commands: the vendored mount is not scanned', () => {
   } finally { cleanup(root); }
 });
 
+// A pack's own docs/ never vendors (compute-vendor-set.mjs), so no agent in a
+// member's mount ever runs a command out of it — the same reason the vendored
+// mount below is out of scope.
+test('runnable-doc-commands: a pack\'s own docs/ is not scanned', () => {
+  const root = makeRepo({ changed: {
+    'packs/demo/docs/DESIGN.md': 'Run `node .claudinite/shared/engine/gone/handler.mjs`.\n',
+  } });
+  try {
+    assert.deepEqual(run(root), []);
+  } finally { cleanup(root); }
+});
+
 // A fixture spelling the rule back at itself proves only the matching. The corpus
 // is the tree this rule exists to keep honest, and it is the one that can disagree.
 test('runnable-doc-commands: the canon\'s own pack docs are clean', () => {
