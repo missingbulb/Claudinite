@@ -158,9 +158,9 @@ exclusively for repos that were installed at an older one. Two
 install-specific provisions:
 
 - **One-shot seed ops.** Some install effects are seeded once and owned by
-  the repo thereafter (the repo's own local pack is the
-  existing precedent: seeded at adoption, never re-converged, precisely so
-  updates cannot rewrite what the repo has since put in it). The install carries an
+  the repo thereafter (the repo's own local pack is the existing precedent:
+  seeded at adoption, never re-converged, precisely so updates cannot rewrite
+  what the repo has since put in it). The install carries an
   **initial migration** — ordinary code the runner executes, not a "real"
   migration — and the mechanism marks these ops *run-once-at-install*.
   The updater must never re-run them; the distinction between *seeded*
