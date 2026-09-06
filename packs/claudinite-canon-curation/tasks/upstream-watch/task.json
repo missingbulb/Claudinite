@@ -7,6 +7,9 @@
     "due:monthly"
   ],
   "expected_outcome": "fresh_pr",
+  "automerge": [
+    "under:packs && doc-changes"
+  ],
   "agent_model": "opus",
   "agent_instructions": "task.md",
   "agent_execution_timeout": 2700
