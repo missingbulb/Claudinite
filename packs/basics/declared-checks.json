@@ -163,6 +163,7 @@
   {
     "id": "grep-context-without-content",
     "severity": "blocking",
+    "since": "2026-09-06",
     "scope": "action",
     "failureMessage": "under the default files_with_matches mode a context flag is silently ignored, so the call answers a file list and never the lines it asked for",
     "guardToolCalls": [
@@ -178,6 +179,7 @@
   {
     "id": "generated-file-hand-edit",
     "severity": "blocking",
+    "since": "2026-09-06",
     "scope": "action",
     "failureMessage": "a GENERATED file is written by its generator, and a hand edit is overwritten by the next run while its merge conflicts are resolved by neither side",
     "guardToolCalls": [
@@ -192,6 +194,7 @@
   {
     "id": "wakeup-without-prompt",
     "severity": "blocking",
+    "since": "2026-09-06",
     "scope": "action",
     "failureMessage": "the harness rejects a wake-up that carries no prompt, and a rejection leaves no fallback armed",
     "guardToolCalls": [

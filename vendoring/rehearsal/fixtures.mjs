@@ -1347,7 +1347,7 @@ fi
   },
   {
     name: 'local-declared-checks',
-    why: 'a local pack carrying its own declared-checks.json — in a LEGACY spelling (checkParsedFile) and with in-cap messages: proves a member\'s declarations keep loading across vocabulary merges and stay green under declared-check-messages',
+    why: 'a local pack carrying its own declared-checks.json — in a LEGACY spelling (checkParsedFile) and with in-cap messages: proves a member\'s declarations keep loading across vocabulary merges and stay green under declared-check-messages and declared-check-since',
     files: {
       'README.md': '# fixture-declared\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics', 'local/fixture-declared']),
@@ -1362,6 +1362,23 @@ fi
             file: 'package.json',
             whenFieldPresent: 'never.present',
             requireField: 'never.required',
+            what: 'never fires',
+            fix: 'nothing to do',
+          }],
+        },
+        // A member's own blocking ACTION check, dated: the shape `declared-check-since`
+        // judges. A member that keeps local checks writes these, so the rule's accept
+        // case has to hold on a real converge rather than only in the canon's tree.
+        {
+          id: 'fixture-declared-action',
+          severity: 'blocking',
+          since: '2026-09-06',
+          scope: 'action',
+          failureMessage: 'a fixture declaration that guards a tool call it never sees',
+          guardToolCalls: [{
+            tool: 'Bash',
+            inputField: 'command',
+            match: '/never-matches-anything-xyzzy/',
             what: 'never fires',
             fix: 'nothing to do',
           }],
