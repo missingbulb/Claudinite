@@ -4,7 +4,7 @@ Status: **agreed** (owner decisions recorded in §11; revised per owner review o
 PR #391). Supersedes, once migrated, the central fleet routine
 ([`routines/auto-all-repos-maintenance.md`](../../../../routines/auto-all-repos-maintenance.md)
 and its external CCR trigger) and the two out-of-band GCEC CCR triggers.
-The phased rollout lives in [MIGRATION.md](MIGRATION.md). Refs #390.
+The phased rollout was tracked in #394. Refs #390.
 
 The shape: every repo schedules **itself** — a vendored hourly **scheduler Action**
 evaluates task preconditions and dispatches agent work as `ready-for-agent` issues;
