@@ -2020,6 +2020,18 @@ test('an action rule at Stop judges every recorded call, anchored by tool and or
   } finally { cleanup(root); session.cleanup(); }
 });
 
+test('forbidTrackedPathsMatching: one finding per tracked path the pattern names, excludeFiles honoured', () => {
+  const rule = patternRule({
+    ...meta('fx-forbid-path'), excludeFiles: /^keep\//,
+    forbidTrackedPathsMatching: [{ match: /(^|\/)MIGRATION\.md$/, what: 'a plan file: {path}', fix: 'the issue' }],
+  });
+  const root = makeRepo({ changed: { 'docs/x/MIGRATION.md': 'p\n', 'keep/MIGRATION.md': 'p\n', 'docs/x/DESIGN.md': 'd\n' } });
+  try {
+    assert.deepEqual(runRule(rule, ctxOf(root)).map((f) => [f.file, f.what]), [['docs/x/MIGRATION.md', 'a plan file: docs/x/MIGRATION.md']]);
+  } finally { cleanup(root); }
+  assert.throws(() => patternRule({ ...meta('fx-fp2'), forbidTrackedPathsMatching: [{ what: 'w', fix: 'f' }] }), /needs "match"/);
+});
+
 test('every guard finding is advisory at Stop — denied or ran, no block is left to clear', () => {
   const rule = patternRule({
     ...meta('fx-guard-denied'), scope: 'action',
