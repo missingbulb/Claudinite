@@ -232,6 +232,12 @@ per link, at plan time, and record the answers in the tracking issue:
   test would hold the other hostage. One PR for everything spends one approval but stalls on any
   red; a PR per division buys exit conditions at the cost of a rebase each. The count is what
   remains after both are refused.
+- **What each split has to buy.** A link exists to be **validated on its own** — its own
+  automerge policy, its own exit condition, its own production check. Two links landing in the
+  same files, under the same policy, proven by the same test have none of that: they are one link
+  written twice, and the second one's issue, brief, rebase and converge are pure toil. Split where
+  the halves sit in different parts of the system and can be judged apart; keep them together
+  where the only difference between them is how much work each is. (3)
 - **What the diff will touch.** Name the folders and kinds, and the size. Then the policy is
   that prediction, written narrow (basics' *Choosing an automerge policy*): `under:<folder>`
   intersected with the kind where the kind is known, the same folder's `test-changes` and
@@ -323,3 +329,5 @@ Run the same sort over it. The findings worth raising, in order of what they cos
 7. A destructive step scheduled before the replacement has been observed working.
 8. A phase with no stated exit condition, or one only a person can judge.
 9. A step handed to a human that the agent could have performed itself.
+10. Links split with no checkpoint between them — same files, same policy, same test — buying
+    the plan an issue, a brief and a rebase and nothing else.
