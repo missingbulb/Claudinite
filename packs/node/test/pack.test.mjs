@@ -77,3 +77,29 @@ test('earn-each-dependency: a deep nested/fixture package.json never counts', ()
     assert.equal(run(earnEachDependency, root).length, 0);
   } finally { cleanup(root); }
 });
+
+// --- node/btoa-atob-on-text: a base64 call on text, in code and not in a comment.
+import { declaredCheck } from '../../../engine-tests/helpers.mjs';
+const btoaOnText = declaredCheck('packs/node', 'node/btoa-atob-on-text');
+
+test('btoa-atob-on-text: flags a btoa or atob call in source, in any script extension', () => {
+  const root = makeRepo({ changed: {
+    'src/token.mjs': 'export const t = (s) => btoa(s);\n',
+    'lib/decode.ts': 'export const d = (s: string) => atob(s);\n',
+  } });
+  try {
+    const findings = run(btoaOnText, root, 'all');
+    assert.deepEqual(findings.map((f) => f.file).sort(), ['lib/decode.ts', 'src/token.mjs']);
+    assert.match(findings[0].fix, /utf8/);
+  } finally { cleanup(root); }
+});
+
+test('btoa-atob-on-text: silent on a Buffer bridge, a comment naming the call, and prose', () => {
+  const root = makeRepo({ changed: {
+    'src/token.mjs': "// never btoa(s) here\nexport const t = (s) => Buffer.from(s, 'utf8').toString('base64');\n",
+    'README.md': 'Do not call btoa(text).\n',
+  } });
+  try {
+    assert.equal(run(btoaOnText, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});

@@ -80,6 +80,11 @@
   folders moved to judge whether the change made sense, and a wide diff for a small ask is the
   growth lesson review is for, not a defect. (1)
 
+- **Retiring a system by folding its function into another** — audit that the live generator
+  moved, not only its past output: a copied directory of old artifacts hides the generator's
+  absence, and a stateless recompute over inputs kept for a bounded window starts the series
+  shorter than the file it replaced.
+
 - **When verifying now is genuinely impossible** (an external release window, an upstream fix in
   flight, an effect that only appears once the change is deployed, converged or loaded by a later
   session) — the follow-up is a mechanism that comes to you, never a human's memory and never an
@@ -120,7 +125,9 @@
 - **Searching for a tool with `ToolSearch`** — a search that finds nothing is evidence about your
   query, not about the environment. Search the fully-qualified name (`select:mcp__<server>__<tool>`,
   copied off the deferred-tools listing) and try the tool before telling the owner a step is theirs;
-  the bare short name returns "no matching tools", which reads exactly like absence.
+  the bare short name returns "no matching tools", which reads exactly like absence. The one
+  exception is a server whose whole roster the deferred-tools listing already names: one miss there
+  is the answer, so read the roster rather than rephrase the query.
 
 - **Calling `Edit`** — the file must have been read *with the read tool*; `cat`/`grep`/`sed` don't
   count. The moment shell output tells you which file you're about to change, read that exact path;
@@ -130,6 +137,16 @@
   default `output_mode: "files_with_matches"`, so the call answers only a match count or file
   list, never the lines you asked for, with no error to catch it. Pass `output_mode: "content"`
   in the same call as any context flag.
+
+- **Polling with an `until` loop** — write a condition that names the state awaited (a file's
+  arrival, a run's status): one already true on its first check is a blind sleep wearing a loop,
+  as a bare `wait` in a later Bash call is — each call is a fresh shell, which is what
+  `bare-wait-in-fresh-shell` refuses.
+
+- **Handing the owner a command block to paste into their terminal** — carry no trailing
+  `# comment` on any line: interactive zsh treats `#` as a comment only under
+  `interactive_comments`, off by default, so the pasted line fails. Put the explanation in the
+  prose around the block.
 
 - **Scheduling a wake-up with the harness** — pass `prompt`, the instruction the woken turn is to
   act on, on any call that isn't `stop: true`; a no-op flag and a stated `reason` do not exempt it,
@@ -258,6 +275,11 @@ For every new task:
   field: decide it explicitly and rewrite the disclosure before the code. Expect the claim in more
   than one place — grep the whole surface for the standing absolutes it touches ("no tracking",
   "no cookies", "no external assets") and reconcile every hit.
+
+- **Changing an observable behavior your own docs make a claim about** — not only privacy: when
+  a site deploys, a job's cadence, which targets are supported. Grep the doc surface for what the
+  change falsifies and correct it in the same commit, or the doc goes on describing behavior the
+  code no longer has.
 
 - **Driving an external runtime more than once in a session** — a headless browser, a device, a
   REPL, a deploy target — write one parameterised driver into the scratchpad, taking the target,

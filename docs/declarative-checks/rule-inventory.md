@@ -33,7 +33,7 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 
 | Pack | rows | A | B | C | D | E | F | G | H | X |
 |---|---|---|---|---|---|---|---|---|---|---|
-| basics | 64 | 3 | 0 | 3 | 11 | 3 | 17 | 19 | 0 | 8 |
+| basics | 67 | 3 | 0 | 3 | 11 | 4 | 17 | 20 | 0 | 9 |
 | local/claudinite | 166 | 18 | 8 | 4 | 16 | 4 | 16 | 89 | 0 | 11 |
 | research-project | 56 | 19 | 10 | 9 | 1 | 6 | 6 | 5 | 0 | 0 |
 | web-scraping | 27 | 13 | 6 | 3 | 1 | 1 | 1 | 2 | 0 | 0 |
@@ -153,6 +153,9 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 62 | Unknown is a state | G | — | — |
 | 63 | Writing a repo-scanning check — `git ls-files`, strip comments | A/F | rule module under `*Rules/` using `readdirSync`/`walk` or a fresh comment-stripper | `matchLines` (advisory) + path-scoped skill |
 | 64 | Writing a comment — why, not the edit | G | `improve-comments` covers the sweep | — |
+| 65 | Retiring a system into another — audit the generator moved | G | — | — |
+| 66 | Polling with an `until` loop — a condition that names the state | X | the `wait` half is `bare-wait-in-fresh-shell`; a tautological `until` condition has no static tell | none |
+| 67 | Handing the owner a pasteable command block — no trailing `#` | E (weak) | a fenced `bash`/`sh` block in the reply with a line ending ` # …` — but an explanatory block is not a pasteable one | transcript assertion over reply fences |
 
 ## local/claudinite — `.claudinite/local/packs/claudinite/RULES.md`
 

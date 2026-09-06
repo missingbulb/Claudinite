@@ -22,15 +22,18 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Choosing an automerge policy | high | correctness | prose: 65 words |
 | Predicting an irreversible change | critical | correctness | prose: 42 words |
 | Handing over a wider diff than asked | medium | complexity | prose: 63 words |
+| Retiring a system into another | high | correctness | prose: 52 words |
 | When verifying now is genuinely impossible | high | correctness | prose: 138 words + skill (`verify-in-production`) |
 | Finishing a larger element | medium | correctness | prose: 94 words + skill (`production-retrospective`) |
 | Receiving feedback that flags a misunderstanding | medium | complexity | prose: 29 words |
 | Writing anything | low | complexity | prose: 18 words |
 | Auditing an artifact against its source | high | correctness | prose: 35 words |
 | Acting on an approval | high | correctness | prose: 69 words |
-| Searching for a tool with ToolSearch | medium | complexity | prose: 57 words |
+| Searching for a tool with ToolSearch | medium | complexity | prose: 86 words |
 | Calling Edit | low | complexity | prose: 39 words |
 | Calling Grep with a context flag | medium | complexity | prose: 51 words |
+| Polling with an until loop | high | correctness | prose: 57 words + check (`bare-wait-in-fresh-shell`) |
+| Handing the owner a terminal command | medium | correctness | prose: 48 words |
 | Scheduling a wake-up with the harness | high | correctness | prose: 60 words |
 | Seeing a build, test or CI warning | medium | correctness | prose: 28 words |
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
@@ -52,6 +55,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Writing code that can silently do nothing | high | correctness | prose: 76 words |
 | Persisting anything on a user's machine | medium | correctness | prose: 43 words |
 | Changing what you do with user data | critical | legal | prose: 90 words |
+| Changing a behavior your docs claim | medium | correctness | prose: 55 words |
 | Driving an external runtime repeatedly | low | complexity | prose: 51 words |
 | Automating something that needs live conversation context | medium | complexity | prose: 46 words |
 | Writing a pipeline step's exit path | medium | correctness | prose: 26 words |
@@ -79,10 +83,12 @@ The working-discipline rules with a deterministic signature. The world rules rea
 | `file-placement` | medium | complexity | check: advisory |
 | `shared-constants` | high | correctness | check: blocking |
 | `warning-suppression` | medium | complexity | check: blocking |
+| `no-conflict-markers` | high | correctness | check: blocking |
 | `rules-line-length` | low | complexity | check: advisory |
 | `claude-md-length` | medium | performance | check: advisory |
 | `generated-merge-driver` | medium | correctness | check: advisory |
 | `catalog-completeness` | medium | complexity | check: blocking |
+| `comment-classification-form` | medium | complexity | check: advisory |
 | `reference-integrity` | medium | correctness | check: blocking |
 | `runnable-doc-commands` | high | correctness | check: blocking |
 | `task-lifecycle` | medium | complexity | check: blocking |
@@ -97,6 +103,9 @@ The working-discipline rules with a deterministic signature. The world rules rea
 | `pkill-pattern-self-match` | low | correctness | guard: advisory |
 | `pull-request-without-closing-line` | medium | complexity | guard: advisory |
 | `github-list-without-fields` | low | complexity | guard: advisory |
+| `ask-user-question-already-decided` | medium | complexity | guard: advisory |
+| `bare-wait-in-fresh-shell` | high | correctness | guard: blocking |
+| `manufactured-no-op-call` | low | complexity | guard: advisory |
 
 `barrier` is the one check a project has to configure before it does anything: it enforces a
 **directed folder-access graph** the repo declares on this pack's entry as `config.barriers.rules`,

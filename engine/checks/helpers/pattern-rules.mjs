@@ -1673,9 +1673,13 @@ export function guardFindings(rule, call, priorCalls = [], at = '(tool call)') {
 
 // The Stop-time backstop: every call the transcript records, judged in order,
 // each anchored by its tool and ordinal so a finding names the call it means.
-// A call this rule already denied at the hook never ran, so there is nothing
-// left to fix: it is recorded advisory — the firing the usage fold counts,
-// without a block that no edit could clear.
+// Every finding here is ADVISORY, whatever the rule's severity: the transcript
+// is append-only, so a call that ran cannot be un-run and a call the hook
+// denied never ran at all — either way no edit could clear a block, and a
+// block nothing can clear spends every remaining Stop of the session (a call
+// from days before the guard existed blocked one for good). The hook is the
+// blocking moment; Stop is the record — the firing the usage fold counts, and
+// the diagnosis for a member whose hook never fired.
 function actionFindings(rule, work) {
   const calls = work.toolCalls();
   const counts = new Map();
@@ -1685,7 +1689,7 @@ function actionFindings(rule, work) {
     counts.set(call.name, n);
     const found = guardFindings(rule, call, calls.slice(0, i), `(session) ${call.name} call #${n}`);
     const denied = (call.deniedBy ?? []).includes(rule.id);
-    out.push(...found.map((f) => (denied ? { ...f, severity: 'advisory', what: `${f.what} (denied at the hook)` } : f)));
+    out.push(...found.map((f) => ({ ...f, severity: 'advisory', what: denied ? `${f.what} (denied at the hook)` : f.what })));
   });
   return out;
 }
