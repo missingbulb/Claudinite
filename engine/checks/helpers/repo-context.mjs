@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
-import { parseEntries } from './session-transcript.mjs';
+import { parseEntries, sessionTranscriptPaths } from './session-transcript.mjs';
 import { SHARED_SUBDIR, packEntryId } from '../../pack_loader/pack-registry.mjs';
 import { canonicalPackVersions } from '../../pack_loader/renamed-packs.mjs';
 import { SETTINGS_FILE, LEGACY_SETTINGS_FILE, settingsPath } from '../../settings-file.mjs';
@@ -570,6 +570,7 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
   // every other surface (CI, a manual run) has none, and conversation rules must
   // return [] when this is null. Parsed lazily and cached — most sweeps never ask.
   let conversationCache;
+  let sessionEntriesCache;
 
   // Checks are read-only over an immutable snapshot of the tree, so file and
   // base-blob reads are cached for the sweep: many rules re-read the same files,
@@ -656,6 +657,22 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
       try { conversationCache = parseEntries(readFileSync(transcriptPath, 'utf8')); }
       catch { conversationCache = null; }
       return conversationCache;
+    },
+
+    // Every entry the session wrote — the transcript above plus each subagent
+    // stream beside it — for the rules that judge what the session DID: the
+    // skills it loaded, the calls it made. `conversation()` stays the session
+    // file alone, since that is where the owner's turns are. Empty on a surface
+    // with no transcript, which `conversation()` is what distinguishes from a
+    // session that did nothing.
+    sessionEntries() {
+      if (sessionEntriesCache === undefined) {
+        sessionEntriesCache = sessionTranscriptPaths(transcriptPath).flatMap((path) => {
+          // A stream unreadable mid-write costs its own entries, never the others'.
+          try { return parseEntries(readFileSync(path, 'utf8')); } catch { return []; }
+        });
+      }
+      return sessionEntriesCache;
     },
 
     // The branch's own commits since the merge-base, oldest first, each with its

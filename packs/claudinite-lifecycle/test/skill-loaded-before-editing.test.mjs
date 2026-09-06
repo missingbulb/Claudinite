@@ -21,9 +21,9 @@ const packsIn = (root) => [
 const skillLoad = (skill) => ({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Skill', input: { skill } }] } });
 const ownerTurn = { type: 'user', message: { content: 'edit the wiki' } };
 
-function run({ changed, entries }) {
+function run({ changed, entries, subagents }) {
   const root = makeRepo({ base: SETTINGS, changed });
-  const t = entries ? makeTranscript(entries) : null;
+  const t = entries ? makeTranscript(entries, subagents ?? {}) : null;
   try {
     const ctx = buildContext({ root, mode: 'changed', transcriptPath: t?.path ?? null });
     ctx.packs = packsIn(root);
@@ -46,6 +46,21 @@ test('skill-loaded-before-editing: silent once the session loaded the skill — 
   for (const load of [skillLoad('writing-wiki-pages'), { ...skillLoad('writing-wiki-pages'), isSidechain: true }]) {
     assert.deepEqual(run({ changed: { 'product-wiki/Market/README.md': '# Market\n' }, entries: [ownerTurn, load] }), []);
   }
+});
+
+test('skill-loaded-before-editing: silent when the load is in a subagent\'s own stream', () => {
+  // A delegated edit loads the skill in the subagent's transcript, which the
+  // session file never carries (#1735) — the diff is the same either way.
+  assert.deepEqual(run({
+    changed: { 'product-wiki/Market/README.md': '# Market\n' },
+    entries: [ownerTurn],
+    subagents: { abc123: [skillLoad('writing-wiki-pages')] },
+  }), []);
+  assert.equal(run({
+    changed: { 'product-wiki/Market/README.md': '# Market\n' },
+    entries: [ownerTurn],
+    subagents: { abc123: [skillLoad('some-other-skill')] },
+  }).length, 1);
 });
 
 test('skill-loaded-before-editing: a file outside every pattern, and a pattern of an undeclared pack, bind nothing', () => {

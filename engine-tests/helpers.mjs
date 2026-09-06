@@ -91,11 +91,21 @@ export function deletePath(root, path, commitMsg = 'delete Refs #1') {
 /**
  * Scratch session transcript (Claude Code JSONL) for conversation-surface
  * rules. Lives outside any scratch repo so it never appears in ctx.files.
+ *
+ * `subagents` maps an agent id to that subagent's own entries, laid out where
+ * Claude Code puts them — `<session>/subagents/agent-<id>.jsonl` beside the
+ * session file — so a test can exercise a reader over the whole session.
  */
-export function makeTranscript(entries) {
+export function makeTranscript(entries, subagents = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'claudinite-transcript-'));
   const path = join(dir, 'session.jsonl');
-  writeFileSync(path, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
+  const jsonl = (es) => es.map((e) => JSON.stringify(e)).join('\n') + '\n';
+  writeFileSync(path, jsonl(entries));
+  const agentDir = join(dir, 'session', 'subagents');
+  for (const [id, agentEntries] of Object.entries(subagents)) {
+    mkdirSync(agentDir, { recursive: true });
+    writeFileSync(join(agentDir, `agent-${id}.jsonl`), jsonl(agentEntries));
+  }
   return { path, cleanup: () => removeTree(dir) };
 }
 
