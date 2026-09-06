@@ -149,6 +149,10 @@ Below are rules on how to work on this repo.
 
 - **Creating the artifact a check will demand** — create it before the action it gates, not after.
 
+- **Writing a check that fires on a removed line** (`forbidRemovedLinesMatching`) — it cannot see a
+  deleted file: `removedLines` returns nothing for a path git no longer tracks, so removing one
+  export fires and deleting the whole module is silent. Guard the deletion separately. (75)
+
 - **Changing a per-call hook** (`engine/hooks/*-judge.mjs`, the runner) — you are a guest in the
   harness: a judge returns a verdict and `hook-runner.mjs` alone exits, 0 or a deliberate 2;
   measure before and after with `node dev/tools/hook-latency.mjs` and record the numbers in the
@@ -224,6 +228,10 @@ Below are rules on how to work on this repo.
 
 - **Judging whether fleet delivery worked** — members' stamps, never run conclusions. The stamp is
   the only artifact that moves.
+
+- **Judging whether a migration chain's link is still outstanding** — read the world its exit
+  condition names, never the link's own issue: the fleet converged L1–L3 unattended and the code
+  landed the destructive L4 while all six issues still read `blocked` thirteen days later. (74)
 
 - **A single timeout bound covering two different waits** ("has this started" vs "is something
   already running about to finish") — split it, sized from each phase's own declared budget rather
