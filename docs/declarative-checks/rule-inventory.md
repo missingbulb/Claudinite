@@ -53,7 +53,7 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | python | 3 | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 |
 | aws-sam | 13 | 4 | 1 | 1 | 1 | 1 | 0 | 2 | 1 | 2 |
 | claudinite-fleet-sheepdog | 12 | 0 | 0 | 0 | 0 | 2 | 8 | 0 | 1 | 1 |
-| claudinite-lifecycle | 8 | 0 | 0 | 0 | 2 | 1 | 2 | 1 | 0 | 2 |
+| claudinite-lifecycle | 8 | 0 | 0 | 0 | 1 | 1 | 2 | 1 | 0 | 3 |
 | claudinite-growth | 2 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
 | claude-code-web-users-support | 3 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 2 |
 | **all** | **557** | **187** | **51** | **26** | **38** | **23** | **61** | **131** | **6** | **34** |
@@ -218,7 +218,7 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 55 | Transcript checks screen pseudo-turns | G | — | — |
 | 56 | Fixturing a Stop-hook check | F | Edit of a work-rule test | path-scoped guidance |
 | 57 | Doc reached only via a `RULES.md` link → skill | B | links out of `RULES.md` → each target is a `SKILL.md`/README | derive links → assert path shape — logged 2026-09-06: whether a linked doc is an authoring-time how-to is judgment (G) |
-| 58 | Moving a file a `doc:` points at | X | `reference-integrity` | none |
+| 58 | Moving a file a `doc:` points at | X | `doc-pointers-resolve` (blocking, since 2026-09-04) — corrected 2026-09-06: `reference-integrity` never read the field | none |
 | 59 | Missing-thing check gated on its own signal | G | — | — |
 | 60 | Whether an enforced check earns its keep | G | usage metrics | — |
 | 61 | Procedure re-derived every run → script | G | — | — |
@@ -768,7 +768,7 @@ Scan scope for every A row is structural, expressible today: harness files are t
 
 | # | Rule | Class | Signature / trigger / derived set | Needs |
 |---|------|-------|-----------------------------------|-------|
-| 1 | Never edit under .claudinite/shared/ | D | Edit/Write/NotebookEdit path `^\.claudinite/shared/` → block; Bash `sed -i`/redirect to it → block; C backstop: changed files there on a non-`claudinite/` branch | declared PreToolUse path guard (block) + work `forbidChangedFilesMatching` |
+| 1 | Never edit under .claudinite/shared/ | X | — | `shared-tree-edit-guard` (declared action guard) + `shared-tree-immutable` (coded work backstop) — converted 2026-09-06; the C half is NOT declarable: `repo-context.mjs` filters the mount out of the scanned set, so `changedFiles` never carries a path under it and every path-matching work key is blind there by construction. The prose stays: it also says where a vendored rule lives, which a guard that speaks only once an edit is aimed at the tree never carries. |
 | 2 | Mounted skill links resolve against canon path | D | Read of `.claude/skills/<name>/<not SKILL.md>` → warn naming `.claudinite/shared/packs/<pack>/skills/<name>/` | PreToolUse Read-path guard with rewrite hint |
 | 3 | Rules apply only by declaration | G | knowledge; the act is adopt-pack's (X) | none |
 | 4 | Adding a pack — run adopt-pack | X | hand-copy tail D: Bash `cp .*\.claudinite/shared/packs/` → block | `adopt-pack` skill (description trigger) |
