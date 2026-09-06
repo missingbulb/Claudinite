@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60906.3 | 2026-09-06 | Read the whole session's transcripts when a skill load gates an edit (#1757) |
+| 60906.2 | 2026-09-06 | Group the tidy sweeps' fan-out, and keep the run bound covering it (#1740) |
+| 60906.1 | 2026-09-06 | Declared checks at every moment: schema rung, work and action scopes, skill triggers, and the creation path (#1711) |
 | 60905.2 | 2026-09-05 | Pack versions are cut on main by automation, never in the pull request (#1726) |
 | 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr` — except that `prose-to-checks-sweep` and `growth-extract` declare `amend_existing_or_create_new_pr` and `rule-revalidation` and `growth-dedup` declare `supersede_existing_pr` (owner, 2026-09-04), and their `task.md` files deliver on the branch and pull request the item names instead of searching for a standing pull request themselves. |
 | 60904.4 | 2026-09-04 | `writing-tasks` stops naming the schedule board's issue and state — a task author needs that a decline files no item, not where the record lives. A rule says so for any pack's prose (#1696). |
