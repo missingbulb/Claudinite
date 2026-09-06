@@ -129,9 +129,16 @@ test('the beat says who is working and how long they have been', () => {
   assert.match(body, /15 minute/);
 });
 
-// The agent phase's beat. What is pinned: it is the SAME liveness signal as the
-// executor's, so the leash needs no phase-awareness to read it; and the progress it
-// carries goes to the item BODY, appended, because nothing can edit a posted comment.
+// The agent phase's beat. What is pinned is the pair that can drift apart: the writer
+// (`agentBeatComment`) and the reader (`lastLivenessAt`) live in one file today, but the
+// leash counts a beat by its MARKER, so a beat given a marker of its own stops resetting
+// the leash with nothing going red — the case below is what notices. The session URL and
+// the note are asserted for the same reason: the no-progress park reads that note, so a
+// beat that drops it is a beat nothing downstream can judge.
+//
+// WHAT THESE CANNOT CATCH: that a session actually beats. That is prose in `executor.md`
+// and nothing enforces it — these prove only that a beat, once posted, counts and that
+// the progress it leaves behind accumulates.
 
 test('an agent beat is the holder\'s own signal, counted exactly as the executor\'s is', () => {
   const beat = { created_at: '2026-08-20T06:00:00Z', body: agentBeatComment({ session: 'https://claude.ai/code/session_01AB', at: '2026-08-20T06:00:00Z', note: '3/15 groups triaged' }) };
