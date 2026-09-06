@@ -122,21 +122,11 @@
 
 ## Harness-tool contracts
 
-- **Searching for a tool with `ToolSearch`** — a search that finds nothing is evidence about your
-  query, not about the environment. Search the fully-qualified name (`select:mcp__<server>__<tool>`,
-  copied off the deferred-tools listing) and try the tool before telling the owner a step is theirs;
-  the bare short name returns "no matching tools", which reads exactly like absence. The one
-  exception is a server whose whole roster the deferred-tools listing already names: one miss there
-  is the answer, so read the roster rather than rephrase the query.
 
 - **Calling `Edit`** — the file must have been read *with the read tool*; `cat`/`grep`/`sed` don't
   count. The moment shell output tells you which file you're about to change, read that exact path;
   a narrow offset window satisfies it.
 
-- **Calling `Grep` with a context flag** (`-n`/`-A`/`-B`/`-C`) — it's silently ignored under the
-  default `output_mode: "files_with_matches"`, so the call answers only a match count or file
-  list, never the lines you asked for, with no error to catch it. Pass `output_mode: "content"`
-  in the same call as any context flag.
 
 - **Polling with an `until` loop** — write a condition that names the state awaited (a file's
   arrival, a run's status): one already true on its first check is a blind sleep wearing a loop,
@@ -148,10 +138,6 @@
   `interactive_comments`, off by default, so the pasted line fails. Put the explanation in the
   prose around the block.
 
-- **Scheduling a wake-up with the harness** — pass `prompt`, the instruction the woken turn is to
-  act on, on any call that isn't `stop: true`; a no-op flag and a stated `reason` do not exempt it,
-  and the call is rejected without it. A rejection leaves no fallback armed, which is what the
-  `unattended-agents` skill's re-issue rule is for.
 
 ## Warnings and findings
 
@@ -205,11 +191,6 @@ For every new task:
   Where the work is out of reach, do it now, hand it to a routine that has the reach, or do
   not file it — and say which.
 
-- **Filing an issue that belongs under another** — a phase of a plan, a verification of a change,
-  a follow-up its parent tracks — attach it as a **sub-issue** (`mcp__github__sub_issue_write`,
-  method `add`, `sub_issue_id` the **id** the create call returned, not its number), never only a
-  number named in the body. The parent then carries what is still open under it, in the place a
-  reader is already looking.
 
 - **Handing over a step only a human can perform** (flipping a repository or console setting,
   granting a permission, adding a secret) — first confirm you genuinely can't do it yourself, then
@@ -294,16 +275,7 @@ For every new task:
 - **Writing the exit path of a pipeline or CI step** — an expected, handled outcome exits clean
   with a comment. Reserve non-zero for genuine breakage.
 
-- **Piping a long command's output through `tail` (or `head`) to keep it readable** — it discards
-  the pipeline's real exit code (`$?` becomes the trailing command's, not the one you're
-  checking), so a mid-chain failure goes unnoticed, and any earlier summary lines the truncation
-  cut are gone right when you need them. Redirect to a file (or `tee`) instead, read `$?` from
-  that same invocation, and grep the file afterward for whatever slice you actually need — never
-  re-run the whole thing to re-slice its output.
 
-- **Killing a process by pattern** — `pkill -f` matches the invoking shell's own command line too,
-  so never chain it, and bracket one character of the pattern (`[h]ttp.server 8099`) to break the
-  self-match.
 
 - **Working in a fresh checkout or sandbox** — a setup script may start in the repo's parent
   rather than the checkout, so `cd` in before running anything. A `Cannot find module` there is

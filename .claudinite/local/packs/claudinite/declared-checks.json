@@ -102,9 +102,16 @@
       {
         "tool": "Bash",
         "inputField": "command",
-        "match": "/(^|[;&|]\\s*|\\n\\s*)((curl|wget)\\b[^;&|\\n]*api\\.github\\.com|gh\\s)/",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)((do|then|else)\\s+)?((curl|wget)\\b[^;&|\\n]*api\\.github\\.com|gh\\s)/",
         "what": "a GitHub read through the shell: \"{match}\"",
         "fix": "read the head sha's check runs with the GitHub MCP tools (pull_request_read get_check_runs, get_check_run)"
+      },
+      {
+        "tool": "Monitor",
+        "inputField": "command",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)((do|then|else)\\s+)?((curl|wget)\\b[^;&|\\n]*api\\.github\\.com|gh\\s)/",
+        "what": "a Monitor polling GitHub through the shell: \"{match}\"",
+        "fix": "read the head sha's check runs with the GitHub MCP tools on a rolling backoff; a shell poll here never sees the run finish"
       }
     ]
   },
@@ -186,6 +193,147 @@
       {
         "match": "/\\bprocess\\.(exit|stdout|stderr|stdin)\\b/",
         "what": "a judge touching the process itself: {match}"
+      }
+    ]
+  },
+  {
+    "id": "migration-record-in-docs",
+    "severity": "blocking",
+    "since": "2026-09-06",
+    "failureMessage": "a migration's plan, status and remaining work live in its tracking issue, never a MIGRATION.md beside the design",
+    "forbidTrackedPathsMatching": [
+      {
+        "match": "/(^|\\/)docs\\/.*MIGRATION\\.md$/",
+        "what": "a MIGRATION.md beside a design: {path}",
+        "fix": "move what is still live into the tracking issue (writing-migration-plans) and delete the file"
+      }
+    ]
+  },
+  {
+    "id": "cross-repo-verify-line",
+    "severity": "advisory",
+    "scope": "action",
+    "since": "2026-09-06",
+    "failureMessage": "the executor's sessions are scoped to this repository, so a cross-repo Verify: parks on a scope denial minutes after being picked",
+    "guardToolCalls": [
+      {
+        "tool": "mcp__github__issue_write",
+        "inputField": "body",
+        "match": "/^(Verify|In-production-when):[^\\n]*\\bmissingbulb\\/(?!Claudinite\\b)[\\w.-]+/m",
+        "what": "a verification line reading another repository: \"{match}\"",
+        "fix": "a public URL goes through the coded form's probes; otherwise do the read now or hand it to a Shepherd fleet task"
+      }
+    ]
+  },
+  {
+    "id": "add-repo-for-a-public-clone",
+    "severity": "advisory",
+    "scope": "action",
+    "since": "2026-09-06",
+    "failureMessage": "add_repo attaches nothing the git proxy does not already serve for a public repository",
+    "guardToolCalls": [
+      {
+        "tool": "mcp__Claude_Code_Remote__add_repo",
+        "inputField": "repo",
+        "match": "/./",
+        "what": "an add_repo for \"{field}\"",
+        "fix": "for a public repository's files, git clone --depth 1 (about two seconds); add_repo only for a private one, or for its issues and pull requests"
+      }
+    ]
+  },
+  {
+    "id": "scratch-screenshot-caption",
+    "severity": "advisory",
+    "scope": "action",
+    "since": "2026-09-06",
+    "failureMessage": "an image rendered from a scratch harness reads as the product unless its caption says otherwise",
+    "guardToolCalls": [
+      {
+        "tool": "SendUserFile",
+        "inputMatches": "/scratchpad[^\"]*\\.(png|jpe?g|gif|webp|svg)\\b/i",
+        "unlessInputMatches": "/\"caption\":\"[^\"]*(harness|scratch)/i",
+        "what": "a screenshot from the scratchpad sent without saying it came from a scratch harness",
+        "fix": "say in the caption that it is rendered from a scratch test harness, not just what the widget shows"
+      }
+    ]
+  },
+  {
+    "id": "author-association-as-permission",
+    "severity": "blocking",
+    "since": "2026-09-06",
+    "failureMessage": "MEMBER covers any org member and COLLABORATOR includes read-only ones, both broader than push access",
+    "scanFiles": "/\\.mjs$/",
+    "excludeFiles": "/(^|\\/)(test|tests|fixtures|engine-tests)\\/|\\.test\\.mjs$/",
+    "scanIgnoringComments": true,
+    "matchLines": [
+      {
+        "match": "/\\bauthor_association\\b/",
+        "what": "reads author_association: {match}",
+        "fix": "read the collaborators permission endpoint (GET /repos/../collaborators/../permission) for the actor instead"
+      }
+    ]
+  },
+  {
+    "id": "updates-export-removed",
+    "severity": "blocking",
+    "scope": "work",
+    "since": "2026-09-06",
+    "failureMessage": "fielded workers are stale callers of an instantly-current flow module, so a removed export wedges every member on its next run",
+    "forbidRemovedLinesMatching": [
+      {
+        "inFilesMatching": "/^(updates|packs\\/claudinite-lifecycle\\/updates)\\/[^/]+\\.mjs$/",
+        "match": "/^export\\s+(async\\s+)?(function|const|let|class)\\s+\\w+|^export\\s*\\{|^export\\s+\\*/",
+        "unlessMatchRemainsInFile": true,
+        "what": "removes an export from a fielded flow module: {match}",
+        "fix": "empty the export instead, and say at its definition why it stays"
+      }
+    ]
+  },
+  {
+    "id": "year-last-digit-rollover",
+    "severity": "blocking",
+    "since": "2026-09-06",
+    "failureMessage": "a year's last digit wraps to 0 in 2030, so an identifier anchored on it collides four years out",
+    "scanFiles": "/\\.mjs$/",
+    "excludeFiles": "/(^|\\/)(test|tests|fixtures|engine-tests)\\/|\\.test\\.mjs$/",
+    "scanIgnoringComments": true,
+    "matchLines": [
+      {
+        "match": "/\\b\\w*[yY]ear\\w*\\s*%\\s*10\\b/",
+        "what": "anchors a year on its last digit: {match}",
+        "fix": "subtract an epoch (year - 2020) so the encoding survives the decade boundary"
+      }
+    ]
+  },
+  {
+    "id": "checkout-restores-index",
+    "severity": "advisory",
+    "scope": "action",
+    "since": "2026-09-06",
+    "failureMessage": "git checkout -- restores from the index, destroying uncommitted work as thoroughly as the mutation it undoes",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)git\\s+(checkout\\s+--|restore\\s|stash\\b)/",
+        "what": "a working-tree restore: \"{match}\"",
+        "fix": "commit or stage the real edit first, and only mutate a file whose current state you are ready to throw away"
+      }
+    ]
+  },
+  {
+    "id": "settings-json-reserialized",
+    "severity": "advisory",
+    "scope": "action",
+    "since": "2026-09-06",
+    "failureMessage": "a JSON round trip rewrites indent, key order and escapes while nothing fails and tests stay green",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/JSON\\.stringify\\([^\\n]*\\.claudinite-settings\\.json|\\.claudinite-settings\\.json[^\\n]*JSON\\.stringify|json\\.dump\\([^\\n]*settings|settings[^\\n]*json\\.dump\\(/",
+        "what": "a settings file rewritten by re-serialising it: \"{match}\"",
+        "fix": "patch the file as anchored text instead"
       }
     ]
   }

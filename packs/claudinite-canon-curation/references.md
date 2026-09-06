@@ -24,7 +24,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(RULES-2)** Mounting filters on the literal declaration and the home does not declare
   `git-github`, so that pack's skills are absent from this repo's `.claude/skills/` while their
   procedure still applies here.
-- **(RULES-3)** `packs/README.md` was rewritten to state how to count instead of quoting a
+- **(check:corpus-count-in-prose)** `packs/README.md` was rewritten to state how to count instead of quoting a
   total, so that every pack change stopped having to edit it; a transcribed total is stale at
   the next pack change.
 - **(RULES-4)** #919 deleted the `configSchema` manifest seam and both coded per-pack

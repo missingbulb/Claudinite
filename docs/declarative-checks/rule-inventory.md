@@ -93,30 +93,30 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 2 | Replying to an owner comment (classification line) | E | reply after each owner turn carries `Comment class:` line | transcript assertion `eachOwnerTurnReplyMatches` |
 | 3 | Acting on a correction | F | reply classified `correction` | class-triggered guidance (transcript) |
 | 4 | Acting on a feature (requirements doc, failing test first) | X | `feature-requirements-first` where executable-requirements is active | none |
-| 5 | Acting on a process change (land as local-pack rules) | C | reply classified `process-change` and diff touches no `.claudinite/local/packs/**` | work: `whenReplyClassIncludes` + `requireChangedFileMatching` |
+| 5 | Acting on a process change (land as local-pack rules) | C | reply classified `process-change` and diff touches no `.claudinite/local/packs/**` | work: `whenReplyClassIncludes` + `requireChangedFileMatching` — logged 2026-09-06: the reply-class gate exists, but the prose carries the ladder itself, so the check would add a finding without retiring a token |
 | 6 | Choosing what goes on the ladder | F | editing `RULES.md`/`declared-checks.json` (path-scoped `writing-pack-prose`) | none |
-| 7 | Landing a rule on the ladder (assurance first, see it fail) | C | diff adds a check (declared entry or rule module) and touches no test file | work: `whenAddedLinesMatch` in file set → `requireChangedFileMatching` (co-change) |
+| 7 | Landing a rule on the ladder (assurance first, see it fail) | C | diff adds a check (declared entry or rule module) and touches no test file | work: `whenAddedLinesMatch` in file set → `requireChangedFileMatching` (co-change) — logged 2026-09-06: the co-change half is growth's `check-ships-with-test`; the see-it-fail half is in-flight process (G) |
 | 8 | Building a mechanism (verify not already provided) | G | — | — |
 | 9 | Building release/deploy/CI plumbing | F | Edit/Write under `.github/workflows/**`, `dev/**` release scripts | path-scoped skill |
 | 10 | Finishing a change — watch it work now | G | — | — |
 | 11 | Changing scheduled or unattended machinery — force a run | F | Edit of `tasks/*/task.json`, `worker.mjs`, `.github/workflows/*.yml` | path-scoped skill (writing-tasks widened) |
 | 12 | Planning a migration | F | Write of `docs/*/DESIGN.md` (writing-migration-plans) | path-scoped force-load |
-| 13 | Adding a legacy tolerance — advisory + removal link | A | `@legacy-tolerance advisory:<id> retire:#<n>` line above the declaration (local rule 68 carries the marker) | none in canon (home check exists) |
+| 13 | Adding a legacy tolerance — advisory + removal link | A | `@legacy-tolerance advisory:<id> retire:#<n>` line above the declaration (local rule 68 carries the marker) | none in canon (home check exists) — logged 2026-09-06: the marker and its check are the home pack's; basics carries the portable principle (G) |
 | 14 | Choosing an automerge policy | X | `automerge-policy-scope` | none |
 | 15 | Predicting a data-deleting change — policy `nothing` | G | — | — |
-| 16 | Handing over a wide diff — say so | D | `mcp__github__create_pull_request` whose branch diff spans > N top-level folders and body names none | action guard with a computed diff fact |
+| 16 | Handing over a wide diff — say so | D | `mcp__github__create_pull_request` whose branch diff spans > N top-level folders and body names none | action guard with a computed diff fact — logged 2026-09-06: needs the request's implied folders, which no input carries — reclassified G |
 | 17 | Verifying now is impossible — verify-in-production | F | after `merge_pull_request` (merge-to-main already steps into it) | none |
 | 18 | Finishing a larger element — retrospective | F | merge of a PR touching `docs/*/DESIGN.md` | tool-call-triggered skill |
 | 19 | Feedback flagging a misunderstanding | G | — | — |
 | 20 | Writing anything — size to its idea | G | — | — |
 | 21 | Correcting an artifact against a source | G | — | — |
 | 22 | Acting on an approval — backward only | E | owner turn `LGTM` followed by later edits then a merge with no second approval | transcript sequence assertion (hard) |
-| 23 | `ToolSearch` with a bare name | D | `ToolSearch` query not in `select:` form naming a known MCP short name | action guard on tool input |
+| 23 | `ToolSearch` with a bare name | D | `ToolSearch` query not in `select:` form naming a known MCP short name | action guard on tool input — → the `searching-for-a-tool` skill, loaded on any ToolSearch and on an empty result (2026-09-06) |
 | 24 | `Edit` without a prior `Read` | X | the harness rejects it | none |
-| 25 | `Grep` context flag without `output_mode: content` | D | `Grep` input has `-A/-B/-C` and no `output_mode` | action guard |
+| 25 | `Grep` context flag without `output_mode: content` | D | `Grep` input has `-A/-B/-C` and no `output_mode` | action guard — → `grep-context-without-content` (#1711) |
 | 26 | Exact text from the web — curl into scratchpad | F | `WebFetch` call | tool-call-triggered guidance |
 | 27 | Sandbox/proxy denial is a policy boundary | F | tool result containing `403`/`EGRESS_BLOCKED` | PostToolUse-triggered guidance |
-| 28 | Scheduling a wake-up — pass `prompt` | D | `ScheduleWakeup` input without `prompt` and not `stop` | action guard |
+| 28 | Scheduling a wake-up — pass `prompt` | D | `ScheduleWakeup` input without `prompt` and not `stop` | action guard — → `wakeup-without-prompt` (#1711) |
 | 29 | Seeing a warning — fix it | F | Bash result matching `warning` | PostToolUse-triggered guidance |
 | 30 | Suppressing a warning — reason at site | X | `warning-suppression` | none |
 | 31 | Waiving a finding on text | F | Edit of `.claudinite-settings.json` `accept` | path-scoped guidance |
@@ -124,30 +124,30 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 33 | Deferring a warning — dedicated issue, search by identifier | F | `mcp__github__issue_write` create | tool-call-triggered skill |
 | 34 | Create an issue before work | X | `task-lifecycle` | none |
 | 35 | Branch + issue in commits | X | `task-lifecycle` | none |
-| 36 | PR body `Closes #N` on its own line | D | `mcp__github__create_pull_request` body lacks `^Closes #\d+$` | action guard (block) + transcript backstop |
+| 36 | PR body `Closes #N` on its own line | D | `mcp__github__create_pull_request` body lacks `^Closes #\d+$` | action guard (block) + transcript backstop — → `pull-request-without-closing-line` (#1711) |
 | 37 | Update the issue as work progresses | G | — | — |
 | 38 | Spotting a change that should wait — do-later | F | prompt phrase `/do-later`, `after this lands` | prompt-triggered skill |
-| 39 | Filing into the ad-hoc queue — only doable work | D | `issue_write` body with the queue marker naming another repo or a console | action guard (advisory) |
-| 40 | Filing an issue under another — sub-issue | D | `issue_write` create body says `phase of #N`/`follow-up` with no `parent_issue_number` | action guard (advisory) |
+| 39 | Filing into the ad-hoc queue — only doable work | D | `issue_write` body with the queue marker naming another repo or a console | action guard (advisory) — logged 2026-09-06: "another repository" is not knowable in a portable pack; the home pack carries `cross-repo-verify-line` |
+| 40 | Filing an issue under another — sub-issue | D | `issue_write` create body says `phase of #N`/`follow-up` with no `parent_issue_number` | action guard (advisory) — → `sub-issue-without-parent` (2026-09-06) |
 | 41 | Handing over a human-only step — own issue | F | `issue_write` body containing `- [ ]` | tool-arg-triggered skill (writing-handover-issues) |
 | 42 | Naming for scope, not technology | G | — | — |
 | 43 | Shared constant + drift guard | X | `shared-constants` (partial) | none |
 | 44 | A says what it needs from B, not how | G | — | — |
-| 45 | One concern per commit | D | Bash `git commit` message with numbered items | action guard (advisory) |
-| 46 | GENERATED file — never hand-edit | D | Edit/Write on a `*GENERATED*` path | action guard (block); `generated-merge-driver` covers the merge half |
+| 45 | One concern per commit | D | Bash `git commit` message with numbered items | action guard (advisory) — logged 2026-09-06: the `committing` skill carries it at the commit call; a numbered-items proxy would misfire on real lists |
+| 46 | GENERATED file — never hand-edit | D | Edit/Write on a `*GENERATED*` path | action guard (block); `generated-merge-driver` covers the merge half — → `generated-file-hand-edit` (#1711) |
 | 47 | Verify platform behaviour against a real run | G | — | — |
 | 48 | Optimising — prove behaviour preserved | G | — | — |
 | 49 | Earn each dependency | X/C | `node/earn-each-dependency` (node only); generic: added manifest dependency line | work: `forbidAddedLinesMatching` per manifest class |
 | 50 | Edge case a review raised — regression test | G | — | — |
 | 51 | Documenting a procedure — only what docs lack | G | — | — |
-| 52 | Code that can silently do nothing | A | `catch {}` / `catch (e) {}` with an empty body and no comment | `matchLines` + `unlessIndentedBlockBelowMatches` (advisory) |
+| 52 | Code that can silently do nothing | A | `catch {}` / `catch (e) {}` with an empty body and no comment | `matchLines` + `unlessIndentedBlockBelowMatches` (advisory) — logged 2026-09-06: an empty-catch literal would fire advisory across every member's existing code; the rule's broader half is judgment (G) |
 | 53 | Persisting on a user's machine | G | — | — |
-| 54 | Changing what software does with user data — disclosure in the same commit | C | added lines matching permission/listener/fetch tokens and no change to `PRIVACY*`/policy files | work co-change assertion |
+| 54 | Changing what software does with user data — disclosure in the same commit | C | added lines matching permission/listener/fetch tokens and no change to `PRIVACY*`/policy files | work co-change assertion — logged 2026-09-06: the manifest-permission co-change belongs to the chrome-extension pack's sweep, not basics |
 | 55 | Driving an external runtime more than once — one driver | E | > N Bash calls with inline `node -e`/`python -c` against one target | transcript count assertion |
 | 56 | Automating what needs conversation context | G | — | — |
 | 57 | Exit path of a pipeline step | G | — | — |
-| 58 | Piping through `tail`/`head` | D | Bash command ending in `\| (tail\|head)` | action guard (advisory) |
-| 59 | `pkill -f` pattern | D | Bash `pkill -f` with an unbracketed pattern | action guard |
+| 58 | Piping through `tail`/`head` | D | Bash command ending in `\| (tail\|head)` | action guard (advisory) — → `pipe-tail-hides-exit` (#1711) |
+| 59 | `pkill -f` pattern | D | Bash `pkill -f` with an unbracketed pattern | action guard — → `pkill-pattern-self-match` (#1711) |
 | 60 | Fresh checkout — `cd` in; install first | F | Bash result `Cannot find module` | PostToolUse-triggered guidance |
 | 61 | Config value — no default | G | — | — |
 | 62 | Unknown is a state | G | — | — |
@@ -163,12 +163,12 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 |---|---|---|---|---|
 | 1 | Rule about what `packs/` may reference → barriers | G | — | — |
 | 2 | Writing `docs/<initiative>/DESIGN.md` — end state only | A/F | headings like `## Migration`/`## Status`/`## Request` in `docs/*/DESIGN.md`; Write of that path | `matchLines` (advisory) + path-scoped force-load |
-| 3 | Migration plan is the issue, never `MIGRATION.md` | A | a tracked `docs/**/MIGRATION.md` | `forbidPaths` (path-only forbid) |
+| 3 | Migration plan is the issue, never `MIGRATION.md` | A | a tracked `docs/**/MIGRATION.md` | `forbidPaths` (path-only forbid) — → `migration-record-in-docs` (2026-09-06; the one standing hit is #1775) |
 | 4 | Built design doc — delete whole | F | merge completing a design-doc'd element | tool-call-triggered skill |
-| 5 | Sweeping a deleted doc's `§` pointers | B | set of `§N` pointers naming a doc → each resolves | derive captures → assert resolves |
+| 5 | Sweeping a deleted doc's `§` pointers | B | set of `§N` pointers naming a doc → each resolves | derive captures → assert resolves — logged 2026-09-06: which doc a § pointer names is not derivable (G) |
 | 6 | Ending a session on unfinished work — issue, no hand-off prompt | E | Stop with an open branch and no `issue_write`/`add_issue_comment` in the session | transcript tool-call assertion |
-| 7 | Cross-repo `Verify:` parks | D | `issue_write` body `Verify:` naming another repo | action guard (advisory) |
-| 8 | No repo list in canon code | A | literal `missingbulb/<name>` in `engine/**`, `packs/**` code | `matchLines` with excludes |
+| 7 | Cross-repo `Verify:` parks | D | `issue_write` body `Verify:` naming another repo | action guard (advisory) — → `cross-repo-verify-line` (2026-09-06) |
+| 8 | No repo list in canon code | A | literal `missingbulb/<name>` in `engine/**`, `packs/**` code | `matchLines` with excludes — logged 2026-09-06: a literal `missingbulb/` ban has five legitimate hits (the canon URL, a migration record's config, comments citing Shepherd issues) |
 | 9 | Derived fleet artifact — PR not commit | G | — | — |
 | 10 | Value right for nearly every project — no adoption question | F | Edit of `pack.mjs` `questions` | path-scoped guidance |
 | 11 | Member platform setting — last resort | G | — | — |
@@ -184,64 +184,64 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 21 | Classifying by derivation from live state | G | — | — |
 | 22 | Scheduling a tolerance's removal — convergence window | G | — | — |
 | 23 | "why did it fail?" — lead with `file:line` | E | owner turn matching `why did .* fail` whose reply carries no `\S+\.\w+:\d+` | transcript pair assertion |
-| 24 | Reaching for `AskUserQuestion` | D | `AskUserQuestion` call | action guard (advisory, injects the cost) |
+| 24 | Reaching for `AskUserQuestion` | D | `AskUserQuestion` call | action guard (advisory, injects the cost) — → `ask-user-question-cost` (#1711) |
 | 25 | Re-posting a declined question | E | two `AskUserQuestion` calls with overlapping text | transcript count assertion |
 | 26 | Vague destructive instruction — scope the noun | G | — | — |
 | 27 | Asked to generalise/review — land the conversions | G | — | — |
 | 28 | `Claude_Code_Remote` — one call per intent | D/E | second `mcp__Claude_Code_Remote__*` call with identical input | action guard (transcript-aware) |
-| 29 | Public sibling repo — `git clone` | D | `add_repo` for a public repo | action guard (advisory) |
+| 29 | Public sibling repo — `git clone` | D | `add_repo` for a public repo | action guard (advisory) — → `add-repo-for-a-public-clone` (2026-09-06) |
 | 30 | Issues across repos — `add_repo` | G | — | — |
-| 31 | Waiting — guard names the condition; no padded sleep | D | Bash `sleep N` standalone or trailing `; sleep` | action guard |
-| 32 | Waiting on CI — MCP check runs; sandbox blocks `api.github.com` | D | Bash `curl .*api.github.com`, `gh ` | action guard (block) |
-| 33 | `mcp__github__*` list/search without `fields`/`per_page` | D | `mcp__github__(list\|search)_*` input lacking both | action guard |
+| 31 | Waiting — guard names the condition; no padded sleep | D | Bash `sleep N` standalone or trailing `; sleep` | action guard — → `bare-sleep-wait` (#1711) |
+| 32 | Waiting on CI — MCP check runs; sandbox blocks `api.github.com` | D | Bash `curl .*api.github.com`, `gh ` | action guard (block) — → `github-api-via-shell` (#1711; widened to Monitor polls and loop keywords 2026-09-06) |
+| 33 | `mcp__github__*` list/search without `fields`/`per_page` | D | `mcp__github__(list\|search)_*` input lacking both | action guard — → basics' `github-list-without-fields` (#1711) |
 | 34 | Re-waiting on a signal that failed | G | — | — |
 | 35 | Human step in an issue — deepest URL | F | `issue_write` body with `- [ ]` | tool-arg-triggered skill |
 | 36 | Reply to a multi-claim comment | G | — | — |
 | 37 | Repeating a design doc's rationale | G | — | — |
 | 38 | Owner reversing a standing decision | G | — | — |
-| 39 | Screenshot from a scratch harness — say so | D | `SendUserFile` with an image under the scratchpad | action guard (advisory) |
+| 39 | Screenshot from a scratch harness — say so | D | `SendUserFile` with an image under the scratchpad | action guard (advisory) — → `scratch-screenshot-caption` (2026-09-06) |
 | 40 | Bash `cd` outside the project root | X | the harness reports the reset | none |
 | 41 | Asserting why a system behaved — primary evidence | G | — | — |
-| 42 | `RULES.md` that describes rather than instructs | A | top-level bullet not in `**trigger** —` form | `matchLines` form check (advisory) |
+| 42 | `RULES.md` that describes rather than instructs | A | top-level bullet not in `**trigger** —` form | `matchLines` form check (advisory) — logged 2026-09-06: the form proxy (a bullet without a bold trigger) misfires on the numbered lifecycle list and lead-in paragraphs; describes-vs-instructs is judgment (G) |
 | 43 | Whether a line earns its place | G | — | — |
 | 44 | Deferred direction → `docs/` | G | — | — |
-| 45 | Naming a canon pack — kebab-case | A | a `packs/<dir>` whose name is not `^[a-z0-9-]+$` | `forbidPaths`/path-name assertion |
+| 45 | Naming a canon pack — kebab-case | A | a `packs/<dir>` whose name is not `^[a-z0-9-]+$` | `forbidPaths`/path-name assertion — → curation's `pack-directory-kebab-case` (2026-09-06); the surface-naming half stays prose |
 | 46 | `claudinite-` prefix for Claudinite-feature packs | G | subject is a judgment | — |
 | 47 | New Claudinite-facing capability — pick the distribution model | F | Write of a new file under `engine/` or a new `packs/<dir>/` | path-scoped (new-file) guidance |
 | 48 | Skill not mounted — read it from the tree | G | — | — |
 | 49 | Adding/changing a check — catalog row; re-run against main | X/C | `catalog-completeness`; the re-run is merge-to-main's | none |
-| 50 | Never state how many checks/rules | A | `\b\d+ (checks\|rules)\b` in `*.md` outside GENERATED/VERSIONS | `matchLines` (advisory) |
-| 51 | A check's `fix` text matches its severity | A | advisory entries whose `fix` says `accept`/`config` | `checkParsedFiles` over a root array |
+| 50 | Never state how many checks/rules | A | `\b\d+ (checks\|rules)\b` in `*.md` outside GENERATED/VERSIONS | `matchLines` (advisory) — → curation's `corpus-count-in-prose` (2026-09-06) |
+| 51 | A check's `fix` text matches its severity | A | advisory entries whose `fix` says `accept`/`config` | `checkParsedFiles` over a root array — logged 2026-09-06: the advisory-fix vocabulary needs a negative field assertion over nested entries the parsed-file keys do not have |
 | 52 | Naming a spec key | G | — | — |
 | 53 | Legacy tolerance marker | X | home rule 68 | none |
-| 54 | No prose in a declaration | A | `description`/comment key in a `declared-checks.json` entry | `checkParsedFiles` over a root array (`forbidField`) |
+| 54 | No prose in a declaration | A | `description`/comment key in a `declared-checks.json` entry | `checkParsedFiles` over a root array (`forbidField`) — covered by basics' `declared-check-spec-keys` (tested 2026-09-06); prose deleted |
 | 55 | Transcript checks screen pseudo-turns | G | — | — |
 | 56 | Fixturing a Stop-hook check | F | Edit of a work-rule test | path-scoped guidance |
-| 57 | Doc reached only via a `RULES.md` link → skill | B | links out of `RULES.md` → each target is a `SKILL.md`/README | derive links → assert path shape |
+| 57 | Doc reached only via a `RULES.md` link → skill | B | links out of `RULES.md` → each target is a `SKILL.md`/README | derive links → assert path shape — logged 2026-09-06: whether a linked doc is an authoring-time how-to is judgment (G) |
 | 58 | Moving a file a `doc:` points at | X | `reference-integrity` | none |
 | 59 | Missing-thing check gated on its own signal | G | — | — |
 | 60 | Whether an enforced check earns its keep | G | usage metrics | — |
 | 61 | Procedure re-derived every run → script | G | — | — |
 | 62 | Create the artifact a check demands first | G | — | — |
-| 63 | Canon prose naming a home-only local pack path | A | `.claudinite/local/packs/` in `packs/**/*.md` | `matchLines` |
+| 63 | Canon prose naming a home-only local pack path | A | `.claudinite/local/packs/` in `packs/**/*.md` | `matchLines` — → curation's `home-only-path-in-canon-prose` (2026-09-06); the general resolve-everywhere half stays prose |
 | 64 | Editing scheduler/executor yml — thin | X | `scheduler-workflow-shape` | none |
-| 65 | Moving a scheduler program out — both copies same commit | B | pair (stub in `.github/workflows/`, canon copy) → equal | `requireEqualFiles` (join by basename) |
-| 66 | Path/regex against the mount — two-root form | A | literal `.claudinite/shared/` outside an optional group | `matchLines` (advisory) |
+| 65 | Moving a scheduler program out — both copies same commit | B | pair (stub in `.github/workflows/`, canon copy) → equal | `requireEqualFiles` (join by basename) — logged 2026-09-06: the stub and the canon copy differ by design (mount prefix, cron); converge-wiring's drift tests already hold them |
+| 66 | Path/regex against the mount — two-root form | A | literal `.claudinite/shared/` outside an optional group | `matchLines` (advisory) — logged 2026-09-06: an optional-group regex shape and a fallback probe are not one signature (G) |
 | 67 | Module under `packs/` — no top-level await | X | `pack-discovery-entry-await` | none |
 | 68 | Tightening a member-file contract | G | — | — |
 | 69 | Adding a `SPEC_KEYS` key | F | Edit of `pattern-rules.mjs` | path-scoped guidance |
 | 70 | Stale member declaration — fail the run | G | — | — |
 | 71 | Renaming a pack whose config members write | F | Edit of `renamed-packs.mjs` | path-scoped guidance |
-| 72 | `author_association` never | A | `author_association` in code | `matchLines` |
+| 72 | `author_association` never | A | `author_association` in code | `matchLines` — → `author-association-as-permission` (2026-09-06) |
 | 73 | Extending a copied stub's reads | F | Edit of `.github/workflows/claudinite-*.yml` | path-scoped guidance |
 | 74 | Migration record needing newer engine | F | Write under `engine/migrations/<new>/` | path-scoped guidance |
-| 75 | `updates/*` export — empty, never remove | C | a removed `export` line in `updates/*.mjs` | work: `forbidRemovedLinesMatching` |
+| 75 | `updates/*` export — empty, never remove | C | a removed `export` line in `updates/*.mjs` | work: `forbidRemovedLinesMatching` — → `updates-export-removed` (2026-09-06) |
 | 76 | Retiring an emptied export | G | — | — |
 | 77 | Renaming an `engine/` module `packs/` imports — shim | X/C | `reference-integrity` | none |
-| 78 | Pack consuming a brand-new engine export — namespace import | C | set of exports added to `engine/**` in this diff → no added named import of them under `packs/` | work two-pass: derive from added lines, assert over added lines |
+| 78 | Pack consuming a brand-new engine export — namespace import | C | set of exports added to `engine/**` in this diff → no added named import of them under `packs/` | work two-pass: derive from added lines, assert over added lines — → curation's `named-import-of-new-engine-export` (2026-09-06) |
 | 79 | A pack that fails to load | G | — | — |
 | 80 | Which imported symbols are fielded | G | — | — |
-| 81 | Changing a vendored stub — canon's copy in the same commit | B | pairs by basename (`vendoring/**/x.yml`, `.github/workflows/x.yml`) → equal | `requireEqualFiles` |
+| 81 | Changing a vendored stub — canon's copy in the same commit | B | pairs by basename (`vendoring/**/x.yml`, `.github/workflows/x.yml`) → equal | `requireEqualFiles` — logged 2026-09-06: same as row 65 — covered by a test, not a check |
 | 82 | Excluding files from the vendor set | F | Edit under `vendoring/` | path-scoped guidance |
 | 83 | Testing an operational file vendors | G | — | — |
 | 84 | Retiring a protocol — sweep outside | G | — | — |
@@ -254,7 +254,7 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 91 | Preflighting a grant | G | — | — |
 | 92 | Finer classification of a catch-all | G | — | — |
 | 93 | Adding a fleet task — fail loudly | F | Write of a new `tasks/<name>/` in the fleet pack | path-scoped guidance |
-| 94 | Spawning a child process — explicit `cwd` | A | `spawn(Sync)?\(` under `tasks/**` with no `cwd` in its block | `matchLines` + `unlessIndentedBlockBelowMatches` |
+| 94 | Spawning a child process — explicit `cwd` | A | `spawn(Sync)?\(` under `tasks/**` with no `cwd` in its block | `matchLines` + `unlessIndentedBlockBelowMatches` — logged 2026-09-06: a spawn call's options object spans lines the block relations cannot bind to the call |
 | 95 | Worker crash vs nothing-to-run | G | — | — |
 | 96 | Member maintenance PR won't land | G | — | — |
 | 97 | Uniform fleet signal — rate limit first | G | — | — |
@@ -264,22 +264,22 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 101 | Workflow referencing a renamed entry point | X | `reference-integrity` | none |
 | 102 | Script written for one context | G | — | — |
 | 103 | Check watching one of two surfaces | G | — | — |
-| 104 | Date-encoded identifier rollover | A | `% 10` on a year expression | `matchLines` |
-| 105 | Dotted version stays a string | A | `parseFloat(`/`Number(` applied to a `version` | `matchLines` (advisory) |
+| 104 | Date-encoded identifier rollover | A | `% 10` on a year expression | `matchLines` — → `year-last-digit-rollover` (2026-09-06) |
+| 105 | Dotted version stays a string | A | `parseFloat(`/`Number(` applied to a `version` | `matchLines` (advisory) — logged 2026-09-06: `Number(doc.version)` on an integer document version is legitimate; a literal ban cannot tell it from a dotted identifier |
 | 106 | Text instructing a model to echo | G | — | — |
 | 107 | Stacked-PR bump verification | G | — | — |
-| 108 | Queue item's PR — never `Closes #<own issue>` | D | `create_pull_request` body `Closes #N` where N is the item's issue (branch-derived) | action guard with a computed fact |
+| 108 | Queue item's PR — never `Closes #<own issue>` | D | `create_pull_request` body `Closes #N` where N is the item's issue (branch-derived) | action guard with a computed fact — logged 2026-09-06: the queue branch (`claudinite/<pack>/<task>/…`) does not carry the item's issue number, so the input holds no fact to compare |
 | 109 | Task cadence | G | — | — |
 | 110 | Nightly-firing precondition | G | — | — |
 | 111 | After a scheduler flip — re-audit | G | — | — |
 | 112 | Precondition gates on movement | X/F | `writing-tasks` force-loads on `task.json` | none |
 | 113 | Signal true most days — widen only | G | — | — |
 | 114 | Verdict relative to a set | G | — | — |
-| 115 | Regenerated-file task lands via `deliver-generated.mjs` | A | worker naming `GENERATED` with no `deliver-generated` import | `checkEachFile` |
-| 116 | Worker leaving a checkout behind | A | `git checkout`/`git switch` in a worker | `matchLines` (advisory) |
+| 115 | Regenerated-file task lands via `deliver-generated.mjs` | A | worker naming `GENERATED` with no `deliver-generated` import | `checkEachFile` — logged 2026-09-06: `checkEachFile` can require the import, but the one sanctioned exception (`basics/baselining`) would need a silent excludeFiles |
+| 116 | Worker leaving a checkout behind | A | `git checkout`/`git switch` in a worker | `matchLines` (advisory) — logged 2026-09-06: the lifecycle update worker is the sanctioned holdout and a declaration cannot say why it is excluded |
 | 117 | Exercising a task Action-side | G | — | — |
 | 118 | Converging a run — next action | G | — | — |
-| 119 | `outcome:done` while a PR is live | D | `issue_write` adding `outcome:done` with an open PR this session | action guard (transcript-aware) |
+| 119 | `outcome:done` while a PR is live | D | `issue_write` adding `outcome:done` with an open PR this session | action guard (transcript-aware) — logged 2026-09-06: "an open PR this session" is transcript state the guard vocabulary does not read (E) |
 | 120 | Decomposing a pipeline | G | — | — |
 | 121 | `on_interrupt: needs-human` | G | — | — |
 | 122 | Verdict out of a killable subprocess | G | — | — |
@@ -289,38 +289,38 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 126 | Converging a work item — `converge-item.mjs` | F | `issue_write` with an `outcome:` label | tool-arg-triggered guidance |
 | 127 | Testing a task's triggering | F | Edit of `task.json` `frequency` | path-scoped guidance |
 | 128 | Testing a fail-soft step | G | — | — |
-| 129 | Path-pattern check whose scope is empty | B | set of every declared `scanFiles` regex → some tracked path matches each | derive from parsed JSON → assert over tracked paths (meta-check) |
-| 130 | Directory named in a finding/remedy — exists | B | path-like tokens in `what`/`fix`/`failureMessage` → each resolves | derive captures → assert path exists |
+| 129 | Path-pattern check whose scope is empty | B | set of every declared `scanFiles` regex → some tracked path matches each | derive from parsed JSON → assert over tracked paths (meta-check) — logged 2026-09-06: a canon-side meta-check would fail on every pattern aimed at member files; the fixture assertion stays the carrier |
+| 130 | Directory named in a finding/remedy — exists | B | path-like tokens in `what`/`fix`/`failureMessage` → each resolves | derive captures → assert path exists — logged 2026-09-06: path-like tokens in prose are not derivable with confidence (G) |
 | 131 | Helper reapplied twice | G | — | — |
 | 132 | Identity-arbitrated mechanism | G | — | — |
 | 133 | Simulator models writes | G | — | — |
 | 134 | Mid-run invariant | G | — | — |
-| 135 | Policy test asserting a literal sentence | A | long quoted prose inside an `assert` in a test | `matchLines` (advisory) |
-| 136 | History-walking test guards shallow clones | A | test file with `git log`/`rev-list` and no shallow guard | `checkEachFile` |
+| 135 | Policy test asserting a literal sentence | A | long quoted prose inside an `assert` in a test | `matchLines` (advisory) — logged 2026-09-06: "a literal sentence" has no static signature (G) |
+| 136 | History-walking test guards shallow clones | A | test file with `git log`/`rev-list` and no shallow guard | `checkEachFile` — attempted 2026-09-06: `history-test-shallow-guard` fired on six tests walking fixture repos they created — fixture history cannot be told from the real repo's — withdrawn; stays prose |
 | 137 | Restoring after a see-it-fail mutation | G | — | — |
-| 138 | Mutating with uncommitted work | D | Bash `git checkout --` with a dirty tree | action guard (advisory) |
-| 139 | Running the suite — the one command | D | Bash `node --test` not in the `git ls-files` form | action guard (advisory, carries the command) |
+| 138 | Mutating with uncommitted work | D | Bash `git checkout --` with a dirty tree | action guard (advisory) — → `checkout-restores-index` (2026-09-06) |
+| 139 | Running the suite — the one command | D | Bash `node --test` not in the `git ls-files` form | action guard (advisory, carries the command) — → `test-suite-command-form` (#1711) |
 | 140 | Re-slicing a suite run | E | repeated `node --test` calls | transcript count assertion |
-| 141 | Green run covering an untracked test | C | untracked `*.test.mjs` at Stop | work: `untracked` file set |
+| 141 | Green run covering an untracked test | C | untracked `*.test.mjs` at Stop | work: `untracked` file set — → basics' `untracked-test-file` (#1711) |
 | 142 | Iterating on a sweep — touched tests only | G | — | — |
 | 143 | Surveying by reading | G | — | — |
-| 144 | Named knob — code reads and writes it | B | backticked `SCREAMING_CASE` names in prose → each appears in code | derive captures → assert `someTrackedFileContains {value}` |
+| 144 | Named knob — code reads and writes it | B | backticked `SCREAMING_CASE` names in prose → each appears in code | derive captures → assert `someTrackedFileContains {value}` — logged 2026-09-06: the corpus names knobs that are historical, harness-owned or env-only (DRY_RUN, EGRESS_BLOCKED); the derived set has too many legitimate misses |
 | 145 | Deleting a writer | G | — | — |
 | 146 | Renaming an entity | X | `reference-integrity` | none |
-| 147 | Retired constant reinvented mid-migration | B | retired names from migration records → absent in code | derive from parsed/markdown → assert absent |
+| 147 | Retired constant reinvented mid-migration | B | retired names from migration records → absent in code | derive from parsed/markdown → assert absent — logged 2026-09-06: the retired names live in prose, not a parseable record (G) |
 | 148 | Renaming stored data — decode side | G | — | — |
 | 149 | Second rename — straight map | G | — | — |
 | 150 | Coverage marker after the effect | G | — | — |
 | 151 | Bulk move preserved content | G | — | — |
-| 152 | Probe commit — `git commit -am` | D | Bash `git commit -a` | action guard (advisory) |
-| 153 | Editing JSON config as anchored text | D | Bash/`node -e` that `JSON.stringify`s back into a settings file | action guard (advisory) |
+| 152 | Probe commit — `git commit -am` | D | Bash `git commit -a` | action guard (advisory) — → `commit-all-sweeps-edits` (#1711) |
+| 153 | Editing JSON config as anchored text | D | Bash/`node -e` that `JSON.stringify`s back into a settings file | action guard (advisory) — → `settings-json-reserialized` (2026-09-06) |
 | 154 | JSON target inside an array | G | — | — |
 | 155 | Returning to a branch that waited | G | — | — |
-| 156 | Re-verify on moved main — rebase never merge | D | Bash `git merge origin/main` | action guard (block); `squash-merge-history` is the backstop |
+| 156 | Re-verify on moved main — rebase never merge | D | Bash `git merge origin/main` | action guard (block); `squash-merge-history` is the backstop — → `merge-main-into-branch` (#1711) |
 | 157 | Merging a long-open PR — `mergeable_state` | F | `merge_pull_request` | tool-call-triggered (merge-to-main) |
 | 158 | After squash-merge — prune | G | — | — |
-| 159 | `RULES.md` is append-only | C | removed lines in a `RULES.md` | work: `forbidRemovedLinesIn` |
-| 160 | Syncing local main — fetch + reset | D | Bash `git pull` | action guard (block) |
+| 159 | `RULES.md` is append-only | C | removed lines in a `RULES.md` | work: `forbidRemovedLinesIn` — → `rules-append-only` (#1711) |
+| 160 | Syncing local main — fetch + reset | D | Bash `git pull` | action guard (block) — → `git-pull-on-shallow-clone` (#1711) |
 | 161 | Merge skill by target repo | G | — | — |
 | 162 | Work completing an open PR — its branch | G | — | — |
 | 163 | Combining two PRs | G | — | — |

@@ -61,20 +61,17 @@ What a canon session follows when it names, configures, writes or polices a pack
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | Segregation rules go through barriers | medium | complexity | prose: 31 words |
-| Name a pack for its surface | high | correctness | prose: 41 words |
+| Name a pack for its surface | high | correctness | prose: 24 words |
 | Claudinite-feature packs take the prefix | medium | complexity | prose: 24 words |
 | Read an unmounted skill from the tree | medium | correctness | prose: 37 words |
-| Cross-pack paths must resolve everywhere | high | correctness | prose: 39 words |
-| Never quote a corpus total | low | complexity | prose: 26 words |
+| Cross-pack paths must resolve everywhere | high | correctness | prose: 21 words |
 | Universal values live in pack code | medium | complexity | prose: 36 words |
 | Config validation is a JSON Schema | medium | complexity | prose: 33 words |
 | No shared code between sibling packs | high | correctness | prose: 36 words |
 | Pack modules stay import-light, no top-level await | critical | correctness | prose: 41 words |
-| Guard a new engine export by capability | critical | correctness | prose: 62 words |
 | A failed pack load strands members | critical | correctness | prose: 33 words |
 | A check change re-runs against main | high | correctness | prose: 35 words |
 | Fix text matches the severity | medium | correctness | prose: 36 words |
-| No prose in a check declaration | low | complexity | prose: 25 words |
 | Transcript checks screen plain-text pseudo-turns | high | correctness | prose: 46 words |
 | Stop-hook fixtures carry an interruption marker | medium | correctness | prose: 35 words |
 | An authoring-time how-to becomes a skill | low | complexity | prose: 35 words |
@@ -95,6 +92,10 @@ What a canon session follows when it names, configures, writes or polices a pack
 | `pack-discovery-entry-await` | critical | correctness | check: blocking |
 | `skill-no-enforcement-narration` | medium | complexity | check: blocking |
 | `pack-independence` | high | correctness | declared check: blocking |
+| `pack-directory-kebab-case` | high | correctness | declared check: blocking |
+| `corpus-count-in-prose` | low | complexity | declared check: advisory |
+| `home-only-path-in-canon-prose` | high | correctness | declared check: blocking |
+| `named-import-of-new-engine-export` | critical | correctness | declared check: blocking |
 
 `pack-independence` is barrier **data**, not code: a `forbidReferences` entry in
 [declared-checks.json](declared-checks.json), compiled by the engine's reference scanning. The

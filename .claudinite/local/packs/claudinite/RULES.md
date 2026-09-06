@@ -5,8 +5,6 @@ Below are rules on how to work on this repo.
 - **Writing a `docs/<initiative>/DESIGN.md`** — the end state and its rationale only, with
   alternatives and their drawbacks. Never requests, prior-state narrative, or owner opinions.
 
-- **Recording a migration's plan, status or remaining work** — the tracking issue, never a
-  `MIGRATION.md` beside the design (`writing-migration-plans`).
 
 - **A `docs/<initiative>/DESIGN.md` whose system is now built** — delete it whole rather than trim
   it. Verify each section already lives in a module header or pack `README.md` first, and move an
@@ -21,9 +19,6 @@ Below are rules on how to work on this repo.
 - **Ending a session on unfinished work** — write the state into the tracking issue; the owner's
   opener is `continue work on #<n>`. Never compose a hand-off prompt.
 
-- **Wanting to verify or read something across members** — the executor's agent sessions are
-  scoped to this repo alone, so a cross-repo `Verify:` parks on a scope denial minutes after
-  being picked. The fleet half is a Shepherd fleet task, never an ad-hoc item here. (1)
 
 - **Designing anything that spans repos** — split it: a self-contained per-repo half in the canon,
   the aggregation half as a Shepherd fleet task. No repo list lives in canon code. (5)
@@ -72,9 +67,6 @@ Below are rules on how to work on this repo.
 - **Answering "why did it fail?"** — lead with the throwing call site: `file:line`, the function,
   and which side enforced it. A narrative that never names the line reads as unanswered.
 
-- **Reaching for `AskUserQuestion`** — it blocks ~170s, so spend it only on a fork you cannot take
-  back. Anything answerable from the instruction, the tree, or a reversible default: answer it,
-  act, and say what you assumed.
 
 - **Wanting to re-post a question the owner declined** — don't. Take its recommended default, or
   open the question up.
@@ -91,23 +83,14 @@ Below are rules on how to work on this repo.
   and a call that returns nothing has not failed; the retry has run to 81% of a session's tool
   wall-clock.
 
-- **Wanting to read a public sibling repo** — `git clone --depth 1` (~2s). `add_repo` attaches
-  nothing the git proxy does not already serve.
 
 - **Needing a session to read issues or PRs across several repos in one pass** — `add_repo`
   widens this session's own GitHub scope; unlike file content, issues aren't git refs, so there is
   no `git clone` substitute for reaching them.
 
-- **Waiting for something to happen** — the guard must name the condition awaited: a run's status,
-  a file's arrival, a deadline. No trailing padded `sleep`. A guard you wouldn't write as the
-  *whole* test means you are sleeping and calling it polling.
 
-- **Waiting on GitHub CI or PR check status** — read the head sha's check runs with the GitHub MCP
-  tool, on a rolling backoff. This sandbox proxy-blocks `api.github.com`, so `Monitor` and shell
-  poll loops report "still running" until they time out. (13)
 
-- **A `mcp__github__*` list/search/read call with no narrow `fields`/`per_page`** — risks a
-  >25k-token single-line dump. The saved tool-result file is one unbroken line, so `Read`'s
+- **Reading a tool result the harness saved to a file** — it is one unbroken line, so `Read`'s
   `offset`/`limit` won't shrink it; parse it with `python3 -c 'json.load(...)'` or `jq` instead.
 
 - **Re-waiting on a signal that already failed to move** — read the code that governs when it
@@ -128,8 +111,6 @@ Below are rules on how to work on this repo.
   old decision (docs, comments, code defaults) and record the new one where a future session reads
   it. Answering the prompting question alone is not the fix. (17)
 
-- **Sending a screenshot rendered from a scratch test harness** — say so in the caption, not just
-  what the widget shows.
 
 - **Running a Bash command with a `cd` outside the project root** — the *next* Bash call silently
   resets cwd back to the root ("Shell cwd was reset to …"), whether the first command succeeded or
@@ -192,9 +173,6 @@ Below are rules on how to work on this repo.
   resolves the new key and every legacy spelling, permanently. The rename map fixes code-side ids
   only; rewriting the write side reaches just the data the engine owns. (27)
 
-- **Checking whether an actor may trigger a privileged action off an issue/PR payload** — read
-  `GET /repos/{o}/{r}/collaborators/{u}/permission`, never `author_association`: `MEMBER` covers
-  any org member and `COLLABORATOR` includes read-only ones, both broader than push access. (28)
 
 - **Extending what a copied stub reads** — make the new config key optional, fail the run when it
   is declared-but-unset, and let declaring it trigger a staleness check. Stubs are copied once and
@@ -205,9 +183,6 @@ Below are rules on how to work on this repo.
   an unreadable mount reads as "not capable". The executing worker is the member's vendored
   one. (30)
 
-- **Changing an export in `updates/*`** — empty it, never remove it, and say at its definition
-  why. Fielded workers are stale callers of instantly-current flow modules, so a removal wedges
-  every member permanently on its next run.
 
 - **Retiring an emptied `updates/*` export** — read the field: the condition is that no member's
   *vendored* worker calls it. Pin the surface with a test carrying an expiry; the canary rehearsal
@@ -301,9 +276,6 @@ Below are rules on how to work on this repo.
   real `GITHUB_TOKEN`, `gh`/`curl` reachability) whenever its caller's context changes. Every
   script built against the old assumption fails identically, not just the one that broke first.
 
-- **Picking a compact date-encoded identifier** — check the encoding's rollover boundary years
-  ahead, not just today's decode. Anchoring a year on its last digit wraps to 0 in 2030; use
-  `year - 2020`, not `year % 10`. (45)
 
 - **Carrying a dotted version identifier** — keep it string-typed everywhere. `'60820.10'` and
   `'60820.1'` are different versions and the same float. (46)
@@ -423,13 +395,11 @@ Below are rules on how to work on this repo.
   clone and fail loudly. It otherwise passes vacuously exactly when the real answer needs history
   it doesn't have. (56)
 
+
 - **Restoring source after a deliberate see-it-fail mutation** — `git checkout -- <file>` at the
   moment of mutating, never a `.bak` taken earlier, which predates whatever else you edited in
   between. (57)
 
-- **Mutating a file to see a check fail** — commit or stage the real edit first, and only mutate a
-  file whose current state you are ready to throw away. `git checkout --` restores from the index,
-  destroying uncommitted work just as thoroughly. (58)
 
 - **Surveying whether something exists in the tree** — a code-search hit is evidence; a miss is
   not. Survey by reading each file.
@@ -465,13 +435,7 @@ Below are rules on how to work on this repo.
 
 ## Editing, branching and merging here
 
-- **Making a throwaway probe commit on a scratch branch** — `git commit -am` stages every modified
-  file, and a later `git branch -D` discards the real in-progress edits it swept up. Isolate
-  pending edits first.
 
-- **Editing a repo's JSON config** — patch it as anchored text; never re-serialize. A round-trip
-  rewrites indent, key order and escapes while nothing fails and tests stay green. (portable →
-  `repo-text-sweeps`)
 
 - **A JSON target nested inside an array within an entry object** — parse and rewrite
   structurally, preserving key order and `via`/`config`/answers by hand. An anchored regex cannot
@@ -481,8 +445,6 @@ Below are rules on how to work on this repo.
   whether the problem is still there and what survives. This repo auto-merges its own PRs on top of
   migrations that retire whole directories.
 
-- **Re-verifying a branch against a `main` that has moved** — `git rebase origin/main`, never
-  `git merge origin/main`. A merge commit trips the blocking squash-merge-history check. (66)
 
 - **Merging a PR that has sat open across many `main` commits** — check its current
   `mergeable_state`, not an old green CI run. A structural change on `main` since (a directory
@@ -492,14 +454,7 @@ Below are rules on how to work on this repo.
   again. GitHub deletes the head ref here, so a stale tracking ref makes the next push reject and
   the stop hook report phantom local work. (67)
 
-- **Re-applying your edit onto a moved `main`** — re-read the fetched file, apply the same
-  anchored edit, and confirm the stat shows insertions only. A pack's `RULES.md` is append-only
-  and written several times a day, so a whole-file copy deletes those lessons and nothing goes
-  red.
 
-- **Syncing local `main`** — `git fetch origin main && git reset --hard origin/main`,
-  unconditionally. The clones are shallow, so `git pull` finds no common ancestor; nothing of value
-  is ever on this repo's local `main`. (portable → `git-github`)
 
 - **Merging in a session that also has a consumer repo in its sources** — resolve the merge skill
   by *target repo*, not by which matched first. The consumer's wins on name, silently skipping the

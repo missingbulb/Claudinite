@@ -89,3 +89,12 @@ test('manufactured-no-op-call: a call whose only purpose is to occupy the turn',
     ['Bash', { command: 'sleep 5; cat out.txt' }],
   ]), ['a no-op call ("sleep 1; echo waiting") made only to pass the turn', 'a no-op call ("true") made only to pass the turn', 'a no-op call ("echo "still waiting for the subagent"") made only to pass the turn']);
 });
+
+test('sub-issue-without-parent: a body naming its parent needs the parent on the create', () => {
+  assert.deepEqual(judge('sub-issue-without-parent', [
+    ['mcp__github__issue_write', { method: 'create', title: 'v', body: 'Original-issue: #12\nVerify: it works' }],
+    ['mcp__github__issue_write', { method: 'create', title: 'p', body: 'Phase 2 of #12, the cutover.', parent_issue_number: 12 }],
+    ['mcp__github__issue_write', { method: 'update', issue_number: 5, body: 'follow-up to #12' }],
+    ['mcp__github__issue_write', { method: 'create', title: 'x', body: 'a plain issue mentioning #12 in passing' }],
+  ]), ['an issue filed under another ("Original-issue: #12") with no parent_issue_number']);
+});
