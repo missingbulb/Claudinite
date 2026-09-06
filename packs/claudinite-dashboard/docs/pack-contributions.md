@@ -272,9 +272,9 @@ or `ios` — so they carry no descriptor and their repos never render the region
 abstain deliberately: `claudinite-dashboard` would be reporting on itself, and
 `claudinite-lifecycle`'s mount freshness is already a core panel on both views.
 
-Of the rest, the split that matters is whether a writer exists. Eight contribute from
+Of the rest, the split that matters is whether a writer exists. Seven contribute from
 machinery already running — the release packs off `latest-release` and `git-github` off
-`repo-stars`, neither needing a line of code, and `tidy-repo`, `claudinite-growth`,
+`repo-stars`, neither needing a line of code, and `claudinite-growth`,
 `product-wiki`, `jwt`, `basics` and `claudinite-fleet-sheepdog` from tasks they already
 own. The remaining six —
 `executable-requirements`, `spec-driven-product`, `research-project`, `barriers`,

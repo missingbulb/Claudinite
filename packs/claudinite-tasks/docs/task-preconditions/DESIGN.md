@@ -268,8 +268,6 @@ usage-fold:              ['due:daily', 'any-commit || session-captured']
 verify-production:       trigger: request        (no conditions either)
 wiki-growth:             ['due:weekly', 'repo-active']
 improve-comments:        ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/']
-tidy-issues:             ['due:daily', 'issues-touched']
-tidy-prs:                ['due:weekly', 'prs-touched']
 implement-request:       ['request-eligible']   trigger: request (the term reads the item)
 ```
 

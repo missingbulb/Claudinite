@@ -187,13 +187,13 @@ test('applyPackDeclarations: declares an absent pack, never overrides what the r
 
   // A pack declared as a bare string, with no config, is the one entry still owed
   // something: it gets the config, in place, without losing its position.
-  const bare = new Map([['.claudinite-settings.json', decl({ packs: ['basics', 'NewPack', 'tidy-repo'] })]]);
+  const bare = new Map([['.claudinite-settings.json', decl({ packs: ['basics', 'NewPack', 'product-wiki'] })]]);
   assert.deepEqual(
     await applyPackDeclarations(m, { read: (p) => bare.get(p) ?? null, write: (p, c) => bare.set(p, c) }),
     ['.claudinite-settings.json: configured NewPack'],
   );
   assert.deepEqual(JSON.parse(bare.get('.claudinite-settings.json')).packs,
-    ['basics', { id: 'NewPack', config: { repo: 'o/store' } }, 'tidy-repo']);
+    ['basics', { id: 'NewPack', config: { repo: 'o/store' } }, 'product-wiki']);
 
   // appliesTo:false skips, and a non-member / unparsable declaration is left alone
   // (the world runner owns that finding; a migration must not guess at a repair).
@@ -389,16 +389,6 @@ test('pack-entry-config migration: legacyPresent reads the declaration (true iff
   assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), false, 'no params at all -> done');
   assert.equal(await m.legacyPresent(() => false, async () => null), false, 'no declaration -> not held');
   assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
-});
-
-test('tidy-repo-seed migration: legacyPresent reads the declaration (true iff tidy-repo absent)', async () => {
-  const seed = (await loadMigrations()).find((m) => m.id === 'tidy-repo-seed');
-  assert.ok(seed, 'tidy-repo-seed migration is discovered');
-  const read = (packs) => async () => JSON.stringify({ packs });
-  assert.equal(await seed.legacyPresent(() => false, read(['basics'])), true, 'lacks tidy-repo -> legacy');
-  assert.equal(await seed.legacyPresent(() => false, read(['basics', 'tidy-repo'])), false, 'has it -> done');
-  assert.equal(await seed.legacyPresent(() => false, async () => null), false, 'no declaration -> not held');
-  assert.equal(await seed.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
 });
 
 test('local-pack-namespace migration: legacyPresent = a bare declared id whose pack lives in the member\'s local_packs', async () => {
@@ -616,17 +606,17 @@ test('applyPackRenames: converges a real member declaration, entry objects and a
     read: async (f) => (f === '.claudinite-settings.json' ? before : null),
     write: async (_f, c) => { written = c; },
   });
-  assert.equal(done.length, 5, `expected every rename this map carries, got ${JSON.stringify(done)}`);
+  assert.equal(done.length, 7, `expected every rename this map carries, plus a merge line per absorbed entry, got ${JSON.stringify(done)}`);
   const after = JSON.parse(written);
-  // `barriers` was absorbed into `basics`, which this declaration already carries,
-  // so its entry merges into that one — and the `via: ['basics']` it was pulled in
-  // by names the survivor itself, so it goes rather than leaving basics required by
-  // basics. What remains is the bare string a plainly-declared pack has.
+  // `barriers` and `tidy-repo` were both absorbed into `basics`, which this
+  // declaration already carries, so their entries merge into that one — and the
+  // `via: ['basics']` barriers was pulled in by names the survivor itself, so it goes
+  // rather than leaving basics required by basics. What remains is the bare string a
+  // plainly-declared pack has.
   assert.deepEqual(after.packs, [
     'basics',
     { id: 'git-github', via: ['basics'] },
     'claudinite-growth',
-    'tidy-repo',
     'local/canary',
     { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } },
     'claudinite-canary-repo',

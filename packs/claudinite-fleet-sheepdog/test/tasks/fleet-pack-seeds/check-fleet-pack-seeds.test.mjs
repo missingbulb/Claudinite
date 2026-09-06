@@ -65,7 +65,7 @@ test('withSeeds: declares the pack, keeps everything else, writes canonical sett
 });
 
 test('withSeeds: completes an existing entry in place, and never touches a config the repo set', () => {
-  const before = decl({ packs: ['basics', { id: SEED.id, answers: { store: 'n/a' } }, 'tidy-repo'] });
+  const before = decl({ packs: ['basics', { id: SEED.id, answers: { store: 'n/a' } }, 'product-wiki'] });
   const parsed = JSON.parse(withSeeds(before, [SEED]));
   assert.equal(parsed.packs.length, 3, 'the entry is completed, never duplicated');
   assert.deepEqual(parsed.packs[1], { id: SEED.id, config: { repo: 'o/store' }, answers: { store: 'n/a' } },

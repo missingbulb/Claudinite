@@ -71,8 +71,8 @@ test('a tracker is found in ANY state', async () => {
 });
 
 test('findTracker CREATES nothing — a task decides whether a run deserves a tracker', async () => {
-  // tidy-repo's three tasks must leave no tracker behind on a run with nothing to
-  // record, so looking must never be what mints one.
+  // A task must leave no tracker behind on a run with nothing to record, so looking
+  // must never be what mints one.
   const { gh, state } = fakeGh();
   assert.equal(await findTracker(gh, 'o/r', 'Claudinite tracker: Tidy PRs'), null);
   assert.deepEqual(state.issues, []);

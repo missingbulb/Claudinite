@@ -276,9 +276,9 @@ test('a dead claim on an ad-hoc item honours the request task\'s on_interrupt', 
 
 const wakeItems = [
   item({ task: 'update', labels: ['task:status:blocked', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
-  item({ task: 'tidy-prs', labels: ['task:status:running-executor', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
+  item({ task: 'improve-comments', labels: ['task:status:running-executor', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
 ];
-const wakeTasks = [task('update', ['due:daily']), task('tidy-prs', ['due:daily'])];
+const wakeTasks = [task('update', ['due:daily']), task('improve-comments', ['due:daily'])];
 
 test('a bare task id resolves against the repo\'s own declared packs', () => {
   const { wake, unmatched } = planWake('update', wakeTasks, wakeItems);
@@ -289,7 +289,7 @@ test('a bare task id resolves against the repo\'s own declared packs', () => {
 test('a pack-qualified id and several ids at once both resolve', () => {
   const { wake } = planWake('p/update', wakeTasks, wakeItems);
   assert.deepEqual(wake, [{ id: 'p/update', issue: wakeItems[0].number }]);
-  const both = planWake('update tidy-prs', wakeTasks, wakeItems);
+  const both = planWake('update improve-comments', wakeTasks, wakeItems);
   assert.equal(both.wake.length + both.already.length, 2);
 });
 

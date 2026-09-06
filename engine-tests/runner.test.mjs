@@ -271,13 +271,13 @@ test('--init writes the pack declaration once and is idempotent', () => {
     assert.ok(existsSync(join(root, '.claudinite-settings.json')));
     const first = readFileSync(join(root, '.claudinite-settings.json'), 'utf8');
     // No pack is active by default, so --init materializes the seeded-by-default
-    // declared packs: basics and core plus claudinite-growth, tidy-repo and
+    // declared packs: basics and core plus claudinite-growth and
     // claude-code-web-users-support (each opt-out by removal) — and the requires
     // closure: basics pulls core and git-github in, each materialized with its
     // provenance (`via`). core is seeded AND required, so it appears once, in the
     // seeded order, with no `via`.
     assert.deepEqual(JSON.parse(first).packs,
-      ['basics', 'claudinite-lifecycle', { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'claudinite-tasks', 'tidy-repo']);
+      ['basics', 'claudinite-lifecycle', { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'claudinite-tasks']);
     // The declaration is the ONLY key seeded. The delivery preference used to be
     // materialized here too, but every project made the same selection, so the line
     // said nothing — it is an override now, written only by the project that wants

@@ -24,8 +24,8 @@
 //
 // SEEDED AT `--init`, NEVER FINGERPRINTED. A new repo gets scheduled work by default —
 // the update task is what keeps its Claudinite current, so a member without a queue is
-// one nobody is maintaining — and removing the declaration is a durable opt-out, like
-// tidy-repo's. Nothing in a repo's SHAPE implies wanting a queue, so there is no
+// one nobody is maintaining — and removing the declaration is a durable opt-out.
+// Nothing in a repo's SHAPE implies wanting a queue, so there is no
 // fingerprint: a scan that suspected one would suspect it everywhere.
 //
 // Adoption is still a moment a person is present, because it wires two workflow files

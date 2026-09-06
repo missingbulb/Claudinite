@@ -1238,11 +1238,11 @@ module.exports = { issue, check };
     },
   },
   {
-    name: 'tidy-repo-member',
-    why: 'a member declaring tidy-repo, whose improve-comments skill ships a BLOCKING gate over the repo\'s own source — the gate is silent unless a branch carries the pass\'s pinned commit subject, and this proves an ordinary member converges green rather than going red overnight on a rule nobody there asked for',
+    name: 'improve-comments-member',
+    why: 'a member whose baseline ships the improve-comments skill and its BLOCKING gate over the repo\'s own source — the gate is silent unless a branch carries the pass\'s pinned commit subject, and this proves an ordinary member converges green rather than going red overnight on a rule nobody there asked for',
     files: {
-      'README.md': '# fixture-tidy-repo-member\n\nA rehearsal fixture.\n',
-      '.claudinite-settings.json': checks(['basics', 'tidy-repo']),
+      'README.md': '# fixture-improve-comments-member\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics']),
       // Ordinary source with ordinary comments: the shape the gate must stay inert
       // on. A member converges on its default branch and never writes the pass's
       // commit subject, so nothing here should engage the rule — which is exactly

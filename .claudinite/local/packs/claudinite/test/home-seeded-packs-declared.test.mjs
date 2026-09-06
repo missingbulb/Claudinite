@@ -21,9 +21,9 @@ test('home-seeded-packs-declared: silent when every seeded pack is declared', ()
   const root = makeRepo({
     base: {
       'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
-      'packs/tidy-repo/pack.mjs': packModule('tidy-repo', { seeded: true }),
+      'packs/product-wiki/pack.mjs': packModule('product-wiki', { seeded: true }),
       'packs/leaflet/pack.mjs': packModule('leaflet'),
-      '.claudinite-settings.json': settings(['basics', 'tidy-repo', 'local/claudinite']),
+      '.claudinite-settings.json': settings(['basics', 'product-wiki', 'local/claudinite']),
     },
   });
   try {
@@ -39,7 +39,7 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
       'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
       // Newly seeded upstream; baselining is gated !isHome, so they never arrive here.
       'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth', { seeded: true }),
-      'packs/tidy-repo/pack.mjs': packModule('tidy-repo', { seeded: true }),
+      'packs/product-wiki/pack.mjs': packModule('product-wiki', { seeded: true }),
       '.claudinite-settings.json': settings(['basics']),
     },
   });
@@ -48,7 +48,7 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
     assert.equal(findings.length, 2);
     const ids = findings.map((f) => f.what).join(' ');
     assert.match(ids, /claudinite-growth/);
-    assert.match(ids, /tidy-repo/);
+    assert.match(ids, /product-wiki/);
     for (const finding of findings) {
       assert.equal(finding.rule, 'home-seeded-packs-declared');
       assert.equal(finding.file, '.claudinite-settings.json');
