@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60906.3 | 2026-09-06 | Keep Claudinite's own bookkeeping inside .claudinite/: mount attributes, no README row (#1754) |
+| 60906.2 | 2026-09-06 | Declared checks at every moment: schema rung, work and action scopes, skill triggers, and the creation path (#1711) |
+| 60906.1 | 2026-09-06 | Remove tests that only assert a declared value is set; widen the writing-tests rule (#1734) |
 | 60905.2 | 2026-09-05 | Pack versions are cut on main by automation, never in the pull request (#1726) |
 | 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr` — except that `ci-performance` declares `amend_existing_or_create_new_pr` (owner, 2026-09-04), its `task.md` delivering on the branch and pull request the item names. |
 | 60904.3 | 2026-09-04 | Two rules become skills the guard forces for their files: `writing-repo-scanning-checks` (coded and declared checks) and `working-with-generated-files` (`**/*GENERATED*`) (#1662). |

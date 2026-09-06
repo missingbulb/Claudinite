@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60906.3 | 2026-09-06 | Read the whole session's transcripts when a skill load gates an edit (#1757) |
+| 60906.2 | 2026-09-06 | Keep Claudinite's own bookkeeping inside .claudinite/: mount attributes, no README row (#1754) |
+| 60906.1 | 2026-09-06 | Declared checks at every moment: schema rung, work and action scopes, skill triggers, and the creation path (#1711) |
 | 60905.3 | 2026-09-05 | Pack versions are cut on main by automation, never in the pull request (#1726) |
 | 60905.2 | 2026-09-05 | The `barriers-absorbed` record says what actually satisfies its mount gate: a converge replaces the engine subtree from canon HEAD whatever `ENGINE_VERSION` says, and the engine flow runs before the pack flow — so the op is present on the same converge that delivers the record, which is the only cycle it gets before the stamp puts it out of range (#1681). |
 | 60905.1 | 2026-09-05 | `update` declares `supersede_existing_pr`, and its worker pushes to the branch the executor hands in as `CLAUDINITE_TARGET_BRANCH` — the incumbent's disposal is the executor's target resolution now (#1695). The worker's own disposal and branch minting stand only under an executor that hands no target in, until #1698. |

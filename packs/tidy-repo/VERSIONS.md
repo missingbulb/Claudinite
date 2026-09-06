@@ -7,6 +7,7 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60906.1 | 2026-09-06 | Group the tidy sweeps' fan-out, and keep the run bound covering it (#1740) |
 | 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr` — except that `improve-comments` declares `amend_existing_or_create_new_pr` (owner, 2026-09-04), its `task.md` delivering on the branch and pull request the item names instead of searching for a standing pull request itself. |
 | 60903.3 | 2026-09-03 | A task's `task.md` opens on what the run does: the stage-labelling framing, the why-it-runs-centrally rationale and the skill procedure it already points at are gone. |
 | 60903.2 | 2026-09-02 | Task declarations converted to `task.json`; the declaration's comments moved into each task's README (#1633). |
