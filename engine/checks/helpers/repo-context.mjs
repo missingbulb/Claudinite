@@ -632,8 +632,6 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
       return added;
     },
 
-    // Parsed transcript entries of the session driving this run, or null when no
-    // transcript is available (see conversationCache above).
     // The lines the change REMOVES from a tracked file, numbered as the base
     // had them — the diff's "-" side, the mirror of addedLines. A file the
     // base did not hold removed nothing.
@@ -651,6 +649,8 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
       return removed;
     },
 
+    // Parsed transcript entries of the session driving this run, or null when no
+    // transcript is available (see conversationCache above).
     conversation() {
       if (conversationCache !== undefined) return conversationCache;
       if (!transcriptPath || !existsSync(transcriptPath)) return (conversationCache = null);

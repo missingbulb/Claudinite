@@ -66,24 +66,6 @@ const CORPUS_IMPORT_RE = /^.*@\.claudinite\/shared\/CLAUDE\.md.*\n?/m;
 // so the cross-tree import stays a single, reviewable edge.
 const repoConfig = async (root) => (await import('./checks/helpers/repo-context.mjs')).loadConfig(root);
 
-// Re-converge the scheduler workflow to the vendored stub, with the cron minute set
-// to this repo's stable hashed value (never guessed — hash-minute.mjs, a pure
-// function of the full name, so re-vendors and this convergence agree) and the
-// `stubText` is the vendored stub's content (the caller reads it from the mount).
-// Returns true when the file was written (absent, or drifted from the target).
-// What this repo's scheduler workflow SHOULD contain — the stub with its cron
-// resolved, as text, touching no disk.
-//
-// A workflow is now a pure function of its stub. Secrets used to be stamped in here
-// by name, which made these files a function of the TASK SET and is what wedged a
-// member in #1296. They are stamped by the tasks pack's converge-workflows.mjs, at
-// the `# claudinite:secrets` marker in its executor stub (#1336).
-//
-// Split out from the converge below because the pack update flow needs the answer
-// without the side effect: it cannot write this file (its caller pushes with the
-// Action's GITHUB_TOKEN, which GitHub never lets near `.github/workflows/`), so it
-// WITHHOLDS the content and hands it to a lane that can. A flow that had to write
-// the file in order to learn what it should say could not do that.
 // Ensure the required settings hooks are present (add-if-missing, never clobber).
 // Returns { added: [labels], error? }. A malformed settings file is reported, never
 // overwritten (the transactional stance — surface it, don't destroy hand config).
