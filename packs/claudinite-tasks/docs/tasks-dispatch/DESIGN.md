@@ -1920,9 +1920,9 @@ deployment coupling did not:
       writing-tasks skill.
     - *Cheap to re-examine:* the 40-day horizon; the window fallback (period
       + 1h); the two-tick cadence (§17); offering both cadence shapes.
-      *Load-bearing:* no engine state; the four-term vocabulary and
-      `preconditions` as the whole of "when"; the door as the only reader of
-      `frequency`.
+      *Load-bearing:* no engine state; `trigger` as the declared answer
+      rather than an inferred one; the run-history term vocabulary; the
+      door as the only reader of `frequency`.
 
 ---
 
