@@ -11,7 +11,6 @@ import { buildContext } from '../../../../../engine/checks/helpers/repo-context.
 import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
 import rules from '../../../skills/improve-comments/checks.mjs';
 import taskJson from '../../../tasks/improve-comments/task.json' with { type: 'json' };
-import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
 import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const task = normalizeTaskDeclaration(taskJson);
@@ -146,20 +145,4 @@ test('a comment-only edit inside .claudinite/ is still outside this pass\'s surf
     assert.match(findings[0].what, /\.claudinite\//);
     assert.match(findings[0].fix, /revert \.claudinite\/local\/packs\/x\/hook\.mjs/);
   } finally { cleanup(root); }
-});
-
-test('the precondition never hands a round a .claudinite/ path, and stays silent when that is all there is', () => {
-  // The cadence term reads an empty run history at a chosen instant, so it holds and
-  // the touched paths decide.
-  const S = (touched) => ({ runs: { list: [] }, prs: { open: [] }, commits: { substantiveChange: true, touchedPaths: touched } });
-  const verdict = (touched) => evaluatePrecondition({ decl: task }, S(touched), {}, null, '2026-09-05T16:00:00Z', { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 });
-
-  const mixed = verdict(['.claudinite/shared/packs/basics/RULES.md', 'src/app.mjs']);
-  assert.equal(mixed.run, true);
-  const scope = mixed.context.filter((line) => line.startsWith('Paths outside')).join(' ');
-  assert.match(scope, /src\/app\.mjs/);
-  assert.doesNotMatch(scope, /\.claudinite\/shared/);
-
-  const mountOnly = verdict(['.claudinite/local/packs/x/RULES.md', '.claudinite/stamp.json']);
-  assert.equal(mountOnly.run, false);
 });

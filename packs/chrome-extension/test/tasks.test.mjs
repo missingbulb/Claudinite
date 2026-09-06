@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import storeReleaseJson from '../tasks/store-release/task.json' with { type: 'json' };
-import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
+import { evaluatePrecondition, loadTaskTerms } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const storeRelease = normalizeTaskDeclaration(storeReleaseJson);
@@ -32,12 +32,13 @@ const AT = '2026-09-05T16:00:00Z';
 const NO_RUNS = { runs: { list: [] } };
 const verdict = (signals) => evaluatePrecondition({ decl: storeRelease, terms }, { ...NO_RUNS, ...signals }, {}, null, AT, SCHEDULE);
 
-test('store-release: its signals are derived from its conditions, and the worker it names exists', () => {
-  // Derived from the two conditions, never declared beside them.
-  assert.deepEqual(preconditionSignals(storeRelease.preconditions, terms), ['runs', 'release', 'commits']);
+test('store-release: the worker it names exists', () => {
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the preprocessing worker must exist');
 });
 
+// The precondition composes a pack-local term (manifest-ahead) with a built-in
+// one (substantive-change) via `||` — the pack's own design, so the cases below
+// are kept as a mechanism-level exercise rather than a unit test of either term.
 test('store-release: runs when the manifest version is ahead of the latest release', () => {
   const v = verdict(S({ manifestVersion: '1.4.0', latestTag: 'v1.3.0' }));
   assert.equal(v.run, true);

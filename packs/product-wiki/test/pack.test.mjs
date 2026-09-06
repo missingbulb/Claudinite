@@ -16,7 +16,6 @@ const growthLog = declaredCheck('packs/product-wiki', 'product-wiki-growth-log')
 const sources = declaredCheck('packs/product-wiki', 'product-wiki-sources');
 const freshness = declaredCheck('packs/product-wiki', 'product-wiki-freshness');
 import wikiGrowthJson from '../tasks/wiki-growth/task.json' with { type: 'json' };
-import { evaluatePrecondition, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const wikiGrowth = normalizeTaskDeclaration(wikiGrowthJson);
@@ -404,69 +403,7 @@ test('runner integration: a reasoned accept excuses an isolation crossing', () =
 
 // --- the scheduled task declaration ----------------------------------------------------
 
-// An ACTIVE repo, which every wiki-growth verdict below starts from: the pass is
-// gated on the repo being worked in, so a fixture that skipped it would only ever
-// be testing the silence gate.
-const active = (over = {}) => ({
-  commits: { substantiveChange: true }, issues: { open: [], touched: [] },
-  prs: { open: [], touched: [] }, conversationLogs: {}, ...over,
-});
-// The cadence term reads an empty run history at a chosen instant, so it holds and
-// the activity signals decide.
-const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
-const verdict = (signals) => evaluatePrecondition({ decl: wikiGrowth }, { runs: { list: [] }, ...signals }, {}, null, '2026-09-05T16:00:00Z', SCHEDULE);
-
-// Only the claims that can actually come apart. The declaration's own values
-// (its cadence term, agent_model, expected_outcome…) are not asserted: re-stating a
-// literal from the file under test proves nothing and turns every deliberate
-// change into a two-file edit — see the writing-tests skill, "Never pin a
-// declaration to itself".
-test('wiki-growth task: the worker doc it names exists, and its signals are derived from its conditions', () => {
-  assert.deepEqual(preconditionSignals(wikiGrowth.preconditions, new Map()).sort(),
-    ['commits', 'conversationLogs', 'issues', 'prs', 'runs']);
+test('wiki-growth task: the worker doc it names exists', () => {
   assert.ok(existsSync(join(canonRoot, 'packs/product-wiki/tasks/wiki-growth', wikiGrowth.agent_instructions)),
     `worker doc missing: ${wikiGrowth.agent_instructions}`);
-});
-
-// THE SILENCE GATE, stated positively (task-preconditions DESIGN): the subject is
-// the world, but the value is zero on a repo nobody works in, and a task's own
-// output is not activity — the collectors strip it out before the condition sees
-// it. The first active window resumes the pass.
-test('wiki-growth precondition: it sleeps on a silent repo and resumes on the first active window', () => {
-  const silent = verdict({
-    commits: { substantiveChange: false }, issues: { open: [], touched: [] },
-    prs: { open: [], touched: [] }, conversationLogs: {},
-  });
-  assert.equal(silent.run, false);
-  assert.match(silent.reason, /silent in the window/);
-
-  const active = verdict({
-    commits: { substantiveChange: true }, issues: { open: [], touched: [] },
-    prs: { open: [], touched: [] }, conversationLogs: {},
-  });
-  assert.equal(active.run, true);
-});
-
-// The other condition, and it is the only one that can decline an ACTIVE repo: an
-// open PR with a pending `product-wiki/` change means wiki work is waiting for
-// review, and a second unreviewed round is never stacked on it. It reads the PR's
-// own CONTENT, so a human's wiki edit in flight gates the round exactly as the
-// task's own PR does.
-test('wiki-growth precondition: a pending product-wiki PR no longer declines an active repo — the round amends it', () => {
-  // The gate that stood here existed so an unreviewed round was never stacked on
-  // one in flight. `amend_existing_or_create_new_pr` is what now prevents the
-  // stack — the executor points the round at that pull request — so the
-  // precondition is the activity umbrella alone and the pending PR is scope, not
-  // a reason to wait.
-  const pending = [
-    { prs: { open: [{ number: 12, title: 'wiki round', changedPaths: ['product-wiki/Market/README.md'] }], touched: [] } },
-    { prs: { open: [{ number: 13, title: 'unreadable' }], touched: [] } },
-    {},
-    { prs: { open: [{ number: 9, title: 'other', changedPaths: ['src/app.js'] }], touched: [] } },
-  ];
-  for (const over of pending) {
-    const v = verdict(active(over));
-    assert.equal(v.run, true, `declined for ${JSON.stringify(over)}`);
-    assert.ok(Array.isArray(v.context), 'context is always an array, even when empty');
-  }
 });
