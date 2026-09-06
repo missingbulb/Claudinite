@@ -63,6 +63,7 @@
   {
     "id": "git-pull-on-shallow-clone",
     "severity": "blocking",
+    "since": "2026-09-06",
     "scope": "action",
     "failureMessage": "the clones here are shallow, so git pull finds no common ancestor, and nothing of value is ever on this repo's local main",
     "guardToolCalls": [
@@ -78,6 +79,7 @@
   {
     "id": "merge-main-into-branch",
     "severity": "blocking",
+    "since": "2026-09-06",
     "scope": "action",
     "failureMessage": "a merge commit trips the blocking squash-merge-history check; the branch re-verifies against a moved main by rebasing",
     "guardToolCalls": [
@@ -93,6 +95,7 @@
   {
     "id": "github-api-via-shell",
     "severity": "blocking",
+    "since": "2026-09-06",
     "scope": "action",
     "failureMessage": "this sandbox proxy-blocks api.github.com, so a shell poll reports \"still running\" until it times out",
     "guardToolCalls": [
