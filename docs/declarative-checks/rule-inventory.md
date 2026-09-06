@@ -25,6 +25,10 @@ A row's class is a first reading by a session, not a verdict: "(weak)" marks a s
 needs a false-positive pass against real trees before it ships, and a row a sweep finds to be
 mis-read is corrected here, dated, rather than argued with. Counts are of numbered rows.
 
+An **A** row whose signature is a parsed document's shape — a required field, a closed value set, a type —
+converts to a property of the schema that document points at with `$schema` before any check is written;
+the `checkParsedFiles` keys a row names carry only what a schema cannot state.
+
 ## Totals
 
 | Pack | rows | A | B | C | D | E | F | G | H | X |

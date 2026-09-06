@@ -44,5 +44,146 @@
         "fix": "write it as `// @legacy-tolerance advisory:<rule-id|none> retire:#<issue>` with nothing after — a grep for this token is the register, and an unparseable form is not in it"
       }
     ]
+  },
+  {
+    "id": "rules-append-only",
+    "severity": "advisory",
+    "scope": "work",
+    "failureMessage": "a pack's RULES.md is written several times a day, and a whole-file re-apply onto a moved main deletes lessons with nothing going red",
+    "forbidRemovedLinesMatching": [
+      {
+        "inFilesMatching": "/(^|\\/)packs\\/[^/]+\\/RULES\\.md$/",
+        "match": "/^- \\*\\*(?<title>[^*]+)\\*\\*/",
+        "unlessMatchRemainsInFile": true,
+        "what": "removes the rule \"{title}\"",
+        "fix": "re-apply your edit onto the fetched file as an insertion, and say in the PR when a rule is deliberately retired"
+      }
+    ]
+  },
+  {
+    "id": "git-pull-on-shallow-clone",
+    "severity": "blocking",
+    "scope": "action",
+    "failureMessage": "the clones here are shallow, so git pull finds no common ancestor, and nothing of value is ever on this repo's local main",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)git\\s+pull\\b/",
+        "what": "a git pull",
+        "fix": "git fetch origin main && git reset --hard origin/main"
+      }
+    ]
+  },
+  {
+    "id": "merge-main-into-branch",
+    "severity": "blocking",
+    "scope": "action",
+    "failureMessage": "a merge commit trips the blocking squash-merge-history check; the branch re-verifies against a moved main by rebasing",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)git\\s+merge\\s+(origin\\/)?(main|master)\\b/",
+        "what": "a merge of main into the branch",
+        "fix": "git rebase origin/main"
+      }
+    ]
+  },
+  {
+    "id": "github-api-via-shell",
+    "severity": "blocking",
+    "scope": "action",
+    "failureMessage": "this sandbox proxy-blocks api.github.com, so a shell poll reports \"still running\" until it times out",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)((curl|wget)\\b[^;&|\\n]*api\\.github\\.com|gh\\s)/",
+        "what": "a GitHub read through the shell: \"{match}\"",
+        "fix": "read the head sha's check runs with the GitHub MCP tools (pull_request_read get_check_runs, get_check_run)"
+      }
+    ]
+  },
+  {
+    "id": "bare-sleep-wait",
+    "severity": "advisory",
+    "scope": "action",
+    "failureMessage": "a padded sleep waits on nothing nameable; a guard that would not stand as the whole test is sleeping and calling it polling",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(^|[;&|]\\s*)sleep\\s+\\d+\\s*($|[;&|])/",
+        "what": "a bare \"{match}\"",
+        "fix": "name the condition awaited — a run's status, a file's arrival, a deadline — and wait on that"
+      }
+    ]
+  },
+  {
+    "id": "test-suite-command-form",
+    "severity": "advisory",
+    "scope": "action",
+    "failureMessage": "node --test does not recurse and a bash glob without globstar reached 37 of 65 files, so every hand-written form under-runs the suite silently",
+    "fix": "node --test $(git ls-files '*.test.mjs')",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/\\bnode\\s+--test\\s+[^\\s;&|]*\\*/",
+        "unlessMatches": "/git ls-files/",
+        "what": "the suite run through a glob: \"{match}\""
+      },
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/\\bnode\\s+--test\\s*($|[;&|>])/",
+        "what": "node --test with no files named"
+      }
+    ]
+  },
+  {
+    "id": "commit-all-sweeps-edits",
+    "severity": "advisory",
+    "scope": "action",
+    "failureMessage": "git commit -a stages every modified file, and a later branch -D discards the in-progress edits it swept up",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)git\\s+commit\\b[^;&|\\n]*\\s-a(m)?\\b/",
+        "what": "a commit with -a",
+        "fix": "stage the files this commit is about by name; isolate pending edits first"
+      }
+    ]
+  },
+  {
+    "id": "ask-user-question-cost",
+    "severity": "advisory",
+    "scope": "action",
+    "failureMessage": "AskUserQuestion blocks about 170 seconds, so it is spent only on a fork that cannot be taken back",
+    "guardToolCalls": [
+      {
+        "tool": "AskUserQuestion",
+        "inputMatches": "/./",
+        "what": "an AskUserQuestion about to block the session",
+        "fix": "if the instruction, the tree or a reversible default answers it, act and say what you assumed instead"
+      }
+    ]
+  },
+  {
+    "id": "hook-judges-never-exit",
+    "severity": "blocking",
+    "since": "2026-09-05",
+    "failureMessage": "a hook is a guest in the harness: the runner alone exits or writes, and a judge that does prints an error on every call",
+    "fix": "return the verdict — { block, reason } or { context } — and let hook-runner.mjs write it",
+    "scanFiles": "/^engine\\/hooks\\/[^/]+-judge\\.mjs$/",
+    "scanIgnoringComments": true,
+    "matchLines": [
+      {
+        "match": "/\\bprocess\\.(exit|stdout|stderr|stdin)\\b/",
+        "what": "a judge touching the process itself: {match}"
+      }
+    ]
   }
 ]

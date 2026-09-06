@@ -154,11 +154,11 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   restoring from it silently destroyed that work.
 - **(RULES-58)** #1010: `git checkout --` restores from the index, so it destroys uncommitted
   work in the same file just as thoroughly as the `.bak` above.
-- **(RULES-59)** #930/#931: five reruns of the ~55s suite cost 4.5 minutes to serve five
+- **(running-the-suite-1)** #930/#931: five reruns of the ~55s suite cost 4.5 minutes to serve five
   different greps of the same unchanged output.
-- **(RULES-60)** #1274: `git ls-files` excludes a test file created and not staged, so the run
+- **(running-the-suite-2)** #1274: `git ls-files` excludes a test file created and not staged, so the run
   that certified green may never have executed it.
-- **(RULES-61)** Measured across three sessions' tool wall-clock: #993's spent 18 full-suite
+- **(running-the-suite-3)** Measured across three sessions' tool wall-clock: #993's spent 18 full-suite
   runs (18 min) and 22 world sweeps (7 min) of 26 min, #941's 22 (22 min) and 27 (12 min) of 33
   min, #992's 7 and 8 of 14 min.
 - **(RULES-62)** Three misses in one window, one of each shape: `CLAUDINITE_TASKS_SUSPEND_ALL`
@@ -194,3 +194,10 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   forever — a member's rows can stay settled for days, so nothing else brings a write. The
   closed half of a long-lived repo is thousands of issues, which is what the label buys.
   Reaffirm while the queue keeps any machine-maintained issue.
+- **(RULES-70)** #1711: the per-call hooks run on every tool call, prompt and result, and the
+  harness reads exit 2 as the one block while any other exit code, a timeout or non-JSON stdout is
+  an error printed beside that call — a judge module missing for a few minutes printed "Cannot
+  find module" on every call until it existed. Measured 2026-09-05 (`dev/tools/hook-latency.mjs`):
+  a call no declaration named cost ~185 ms at PreToolUse and ~172 ms at PostToolUse before the
+  runner and the cached context, ~88 ms and ~80 ms after. Retire the rule when the harness runs
+  hooks in-process or the per-call hooks are gone.

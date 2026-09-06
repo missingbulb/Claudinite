@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo, cleanup, writeFiles, git, ruleTester } from './helpers.mjs';
+import { makeRepo, cleanup, writeFiles, git, ruleTester, makeTranscript } from './helpers.mjs';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { patternRule, loadDeclaredChecks, unplacedSpecKeys } from '../engine/checks/helpers/pattern-rules.mjs';
+import { patternRule, loadDeclaredChecks, unplacedSpecKeys, guardFindings } from '../engine/checks/helpers/pattern-rules.mjs';
 import { runRule } from '../engine/checks/helpers/work.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 
@@ -1869,4 +1869,190 @@ test('two-pass keys: the authoring errors', () => {
   assert.throws(() => patternRule({
     ...meta('fx-e10'), requireIdenticalFiles: [{ everyFileMatching: /x/, twinAt: 'y', whenTwinAbsent: 'ignore', what: 'w', fix: 'f' }],
   }), /whenTwinAbsent/);
+});
+
+// --- work scope: the change's own lines, co-changes, untracked files, reply classes ---
+
+const workMeta = (id) => ({ ...meta(id), scope: 'work' });
+
+test('forbidAddedLinesMatching: every added line the pattern hits, in changed files the path pattern selects', () => {
+  const rule = patternRule({
+    ...workMeta('fx-added-lines'),
+    forbidAddedLinesMatching: [{ inFilesMatching: /\.md$/, match: /TODO (?<who>\w+)/, unlessLineMatches: /allowed/, what: '{who} left "{match}"', fix: 'f' }],
+  });
+  const root = makeRepo({
+    base: { 'a.md': 'old\nTODO base\n', 'c.mjs': 'x\n' },
+    changed: { 'a.md': 'old\nTODO base\nTODO ann\nTODO bob allowed\n', 'b.md': 'TODO cid\n', 'c.mjs': 'TODO dan\n' },
+  });
+  try {
+    assert.deepEqual(runRule(rule, ctxOf(root)).map((f) => [f.file, f.line, f.what]), [
+      ['a.md', 3, 'ann left "TODO ann"'],
+      ['b.md', 1, 'cid left "TODO cid"'],
+    ]);
+  } finally { cleanup(root); }
+});
+
+test('forbidRemovedLinesMatching: a removed line flags where the base held it', () => {
+  const rule = patternRule({
+    ...workMeta('fx-removed-lines'),
+    forbidRemovedLinesMatching: [{ inFilesMatching: /RULES\.md$/, match: /^- \*\*(?<title>[^*]+)\*\*/, what: 'removed the rule "{title}"', fix: 'f' }],
+  });
+  const root = makeRepo({
+    base: { 'RULES.md': '- **Keep** — x\n- **Gone** — y\n  continued\n- **Stay** — z\n' },
+    changed: { 'RULES.md': '- **Keep** — x\n- **Stay** — z\n- **New** — w\n' },
+  });
+  try {
+    assert.deepEqual(runRule(rule, ctxOf(root)).map((f) => [f.file, f.line, f.what]), [['RULES.md', 2, 'removed the rule "Gone"']]);
+  } finally { cleanup(root); }
+});
+
+// A change to one thing requires a change to another, triggered by a changed
+// path or by an added line.
+ruleTester(patternRule({
+  ...workMeta('fx-co-change'),
+  requireCoChange: [
+    { whenChangedFileMatches: /^src\//, requireChangedFileMatching: /\.test\.mjs$/, what: '{path} changed without a test', fix: 'f' },
+    { whenAddedLineMatches: { inFilesMatching: /checks\.json$/, match: /"id"\s*:/ }, requireChangedFileMatching: /(^|\/)test\//, what: '{path} declares a check without a fixture', fix: 'f' },
+  ],
+}), {
+  clean: {
+    'the required sibling changed too': { base: { 'src/a.mjs': '1\n', 'a.test.mjs': 't\n' }, files: { 'src/a.mjs': '2\n', 'a.test.mjs': 't2\n' } },
+    'nothing triggering changed': { base: { 'src/a.mjs': '1\n' }, files: { 'README.md': 'x\n' } },
+    'an edit to a declaration that adds no id needs no fixture': { base: { 'checks.json': '[{\n  "id": "a",\n  "what": "w"\n}]\n' }, files: { 'checks.json': '[{\n  "id": "a",\n  "what": "reworded"\n}]\n' } },
+  },
+  flagged: {
+    'each triggering file flags once when the sibling is absent': {
+      base: { 'src/a.mjs': '1\n', 'src/b.mjs': '1\n' },
+      files: { 'src/a.mjs': '2\n', 'src/b.mjs': '2\n', 'checks.json': '[{"id":"new","what":"w"}]\n' },
+      at: [
+        { file: 'src/a.mjs', what: /changed without a test/ },
+        { file: 'src/b.mjs', what: /changed without a test/ },
+        { file: 'checks.json', what: /declares a check without a fixture/ },
+      ],
+    },
+  },
+});
+
+test('flagUntrackedFilesMatching: a file git does not track, and nothing else', () => {
+  const rule = patternRule({
+    ...workMeta('fx-untracked'),
+    flagUntrackedFilesMatching: [{ match: /\.test\.mjs$/, what: '{path} is untracked', fix: 'git add it' }],
+  });
+  const root = makeRepo({ changed: { 'a.test.mjs': 't\n' }, uncommitted: { 'b.test.mjs': 't\n', 'notes.md': 'n\n' } });
+  try {
+    assert.deepEqual(runRule(rule, ctxOf(root)).map((f) => [f.file, f.what]), [['b.test.mjs', 'b.test.mjs is untracked']]);
+  } finally { cleanup(root); }
+});
+
+test('whenReplyClassIncludes: the rule asserts only when a reply declared one of the classes', () => {
+  const rule = patternRule({
+    ...workMeta('fx-reply-gate'),
+    whenReplyClassIncludes: 'process-change',
+    requireCoChange: [{ whenChangedFileMatches: /./, requireChangedFileMatching: /^\.claudinite\/local\/packs\//, what: 'a process change that reached no local pack', fix: 'f' }],
+  });
+  const session = (cls) => makeTranscript([
+    { type: 'user', timestamp: '2026-09-04T10:00:00Z', message: { content: 'please change how we work' } },
+    { type: 'assistant', message: { content: [{ type: 'text', text: `Comment class: ${cls}\nDoing it.` }] } },
+  ]);
+  const root = makeRepo({ changed: { 'src/a.mjs': 'x\n' } });
+  const gated = session('process-change');
+  const other = session('other');
+  try {
+    const run = (transcriptPath) => runRule(rule, buildContext({ root, mode: 'all', transcriptPath }));
+    assert.equal(run(gated.path).length, 1);
+    assert.deepEqual(run(other.path), []);
+    assert.deepEqual(run(null), []);
+  } finally { cleanup(root); gated.cleanup(); other.cleanup(); }
+});
+
+test('work keys: the authoring errors', () => {
+  assert.throws(() => patternRule({ ...meta('fx-w1'), forbidAddedLinesMatching: [{ inFilesMatching: /a/, match: /b/, what: 'w', fix: 'f' }] }), /scope: "work"/);
+  assert.throws(() => patternRule({ ...workMeta('fx-w2'), forbidRemovedLinesMatching: [{ match: /b/, what: 'w', fix: 'f' }] }), /needs "inFilesMatching"/);
+  assert.throws(() => patternRule({ ...workMeta('fx-w3'), requireCoChange: [{ whenChangedFileMatches: /a/, whenAddedLineMatches: { inFilesMatching: /a/, match: /b/ }, requireChangedFileMatching: /c/, what: 'w', fix: 'f' }] }), /exactly one of/);
+  assert.throws(() => patternRule({ ...workMeta('fx-w4'), requireCoChange: [{ whenChangedFileMatches: /a/, what: 'w', fix: 'f' }] }), /requireChangedFileMatching/);
+  assert.throws(() => patternRule({ ...workMeta('fx-w5'), whenReplyClassIncludes: 'bogus', flagUntrackedFilesMatching: [{ match: /x/, what: 'w', fix: 'f' }] }), /comment classes/);
+});
+
+// --- action scope: guards on tool calls ---
+
+test('guardToolCalls: each condition and unless clause, against one call', () => {
+  const rule = patternRule({
+    ...meta('fx-guards'), scope: 'action',
+    guardToolCalls: [
+      { tool: 'Bash', inputField: 'command', match: /\bgit\s+pull\b/, unlessMatches: /--ff-only/, what: 'pull: {match}', fix: 'f' },
+      { tool: 'mcp__github__create_pull_request', inputField: 'body', requireMatch: /^Closes #\d+$/m, what: 'no closing line', fix: 'f' },
+      { tool: /^mcp__github__(list|search)_/, inputFieldAbsent: ['fields'], what: '{tool} without fields', fix: 'f' },
+      { tool: 'Grep', inputMatches: /"-A":/, unlessInputMatches: /"output_mode":"content"/, what: 'context flag', fix: 'f' },
+      { tool: 'AskUserQuestion', atMostPerSession: 1, what: 'a second question', fix: 'f' },
+    ],
+  });
+  const call = (name, input) => ({ name, input });
+  const whats = (c, prior = []) => guardFindings(rule, c, prior).map((f) => f.what);
+  assert.deepEqual(whats(call('Bash', { command: 'git pull origin main' })), ['pull: git pull']);
+  assert.deepEqual(whats(call('Bash', { command: 'git pull --ff-only' })), []);
+  assert.deepEqual(whats(call('Bash', { command: 'git fetch' })), []);
+  assert.deepEqual(whats(call('mcp__github__create_pull_request', { body: 'Refs #1\n' })), ['no closing line']);
+  assert.deepEqual(whats(call('mcp__github__create_pull_request', { body: 'x\nCloses #12\n' })), []);
+  assert.deepEqual(whats(call('mcp__github__list_issues', { owner: 'o' })), ['mcp__github__list_issues without fields']);
+  assert.deepEqual(whats(call('mcp__github__list_issues', { fields: ['number'] })), []);
+  assert.deepEqual(whats(call('Grep', { pattern: 'x', '-A': 2 })), ['context flag']);
+  assert.deepEqual(whats(call('Grep', { pattern: 'x', '-A': 2, output_mode: 'content' })), []);
+  assert.deepEqual(whats(call('AskUserQuestion', { questions: [] })), []);
+  assert.deepEqual(whats(call('AskUserQuestion', { questions: [] }), [call('AskUserQuestion', { questions: [] })]), ['a second question']);
+  assert.deepEqual(whats(call('Read', { file_path: 'x' })), []);
+});
+
+test('an action rule at Stop judges every recorded call, anchored by tool and ordinal', () => {
+  const rule = patternRule({
+    ...meta('fx-guard-backstop'), scope: 'action',
+    guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: /sleep \d+/, what: '{match}', fix: 'f' }],
+  });
+  const session = makeTranscript([
+    { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'ls' } }] } },
+    { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'sleep 5' } }, { type: 'tool_use', name: 'Read', input: { file_path: 'a' } }] } },
+    { type: 'assistant', isSidechain: true, message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: 'sleep 9' } }] } },
+  ]);
+  const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
+  try {
+    const findings = runRule(rule, buildContext({ root, mode: 'all', transcriptPath: session.path }));
+    assert.deepEqual(findings.map((f) => [f.file, f.what]), [['(session) Bash call #2', 'sleep 5'], ['(session) Bash call #3', 'sleep 9']]);
+    assert.deepEqual(runRule(rule, ctxOf(root)), []);
+  } finally { cleanup(root); session.cleanup(); }
+});
+
+test('a call the hook denied is recorded advisory at Stop — the firing counted, no block left to clear', () => {
+  const rule = patternRule({
+    ...meta('fx-guard-denied'), scope: 'action',
+    guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: /sleep \d+/, what: '{match}', fix: 'f' }],
+  });
+  // The harness records a denial as the call's error result carrying the hook's
+  // stderr, with the judge's `Blocked by <rule>:` line; another rule's denial, or
+  // a result that is not an error, leaves the call as one that ran.
+  const denied = (id, text) => ({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: id, is_error: true, content: text }] } });
+  const session = makeTranscript([
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'sleep 5' } }] } },
+    denied('t1', 'PreToolUse:Bash hook error: [node x]: log line\nBlocked by fx-guard-denied: sleep 5. why. Fix: f'),
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't2', name: 'Bash', input: { command: 'sleep 6' } }] } },
+    denied('t2', 'Blocked by some-other-rule: no'),
+    { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't3', name: 'Bash', input: { command: 'sleep 7' } }] } },
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't3', is_error: false, content: 'Blocked by fx-guard-denied: printed by the command itself' }] } },
+  ]);
+  const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
+  try {
+    const findings = runRule(rule, buildContext({ root, mode: 'all', transcriptPath: session.path }));
+    assert.deepEqual(findings.map((f) => [f.file, f.severity, f.what]), [
+      ['(session) Bash call #1', 'advisory', 'sleep 5 (denied at the hook)'],
+      ['(session) Bash call #2', 'blocking', 'sleep 6'],
+      ['(session) Bash call #3', 'blocking', 'sleep 7'],
+    ]);
+  } finally { cleanup(root); session.cleanup(); }
+});
+
+test('action scope: the authoring errors', () => {
+  assert.throws(() => patternRule({ ...meta('fx-a1'), guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: /x/, what: 'w', fix: 'f' }] }), /scope: "action"/);
+  assert.throws(() => patternRule({ ...meta('fx-a2'), scope: 'action' }), /asserts nothing/);
+  assert.throws(() => patternRule({ ...meta('fx-a3'), scope: 'action', guardToolCalls: [{ inputField: 'command', match: /x/, what: 'w', fix: 'f' }] }), /needs "tool"/);
+  assert.throws(() => patternRule({ ...meta('fx-a4'), scope: 'action', guardToolCalls: [{ tool: 'Bash', what: 'w', fix: 'f' }] }), /names a condition/);
+  assert.throws(() => patternRule({ ...meta('fx-a5'), scope: 'action', guardToolCalls: [{ tool: 'Bash', match: /x/, what: 'w', fix: 'f' }] }), /name the field/);
+  assert.throws(() => patternRule({ ...meta('fx-a6'), scope: 'action', guardToolCalls: [{ tool: 'Bash', atMostPerSession: 0, what: 'w', fix: 'f' }] }), /positive whole number/);
 });

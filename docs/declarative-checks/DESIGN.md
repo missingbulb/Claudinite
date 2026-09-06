@@ -34,6 +34,13 @@ them (#707, #789, #799).
 
 ## World scope: two passes
 
+A rule about a document's shape reaches neither pass. A required field, a closed value set, a type, a key
+set nothing may extend is a property of the JSON Schema the document points at with `$schema`, enforced
+for every such document by the engine's `schema-conformance` check and shown by an editor while the
+document is written; the declared assertions over parsed fields carry only what a schema cannot state — a
+relation between documents, a value that depends on the tree. Anything a schema can enforce is handled
+there, and a declared assertion that restates a schema property is one more place for the contract to drift.
+
 Most world rules are "these patterns over these files" — one pass, one file at a time. The rules
 the single pass cannot carry share one shape: **something read in one place must agree with, exist
 in, or be absent from another place** — a name in prose must be read by code, a path named in a
@@ -135,13 +142,25 @@ advisory one lets the call through and injects the finding as context, so the ag
 bias at the moment it applies. **`check_the_work`** evaluates it again over the transcript's
 tool-call blocks at Stop, one finding per offending call: the backstop for a member whose hook
 did not fire, and the count the usage fold reads to say whether the guard is earning its place.
+A call the hook denied never ran, so at Stop it is recorded advisory — the firing counted, with
+no block left for the session to clear.
 The severity vocabulary is the check's: a guard that blocks is `blocking`; a bias that should be
 heard and may be overruled is `advisory`.
 
-The hook already loads the active packs to resolve path-scoped skills; action declarations ride
-the same load, and the per-repo `rules` and `accept` overrides apply to them as to any rule. A
-guard whose evaluation fails lets the call through and logs — a broken declaration is the mount
-self-test's finding, never a session wedged on every tool call.
+Every per-call hook is a guest in the harness, which reads exit 2 as the one block and prints
+any other failure — another exit code, a timeout, stdout that is not JSON — beside the call it
+happened on. So the three entries hand one runner (`engine/hooks/hook-runner.mjs`) their event
+and a judge; the judge returns a verdict, and the runner alone exits: 0 with one JSON context or
+nothing, 2 only for a block on an event that can block. A payload that is not JSON, an engine
+module that fails to load, a registry that throws or whose import never settles, a closed
+stdout — each ends in exit 0 and a hook-log line, never an error on the call. The advisory
+context carries no `permissionDecision`: `allow` would skip the permission prompt for the call,
+and an advisory has no business approving anything. What the judges read — the active packs'
+triggers and action declarations, with the per-repo `rules` overrides — is derived once and
+cached under the OS temp dir behind a stat fingerprint of everything it came from
+(`hookContext` in `engine/hooks/hook-context.mjs`), and the transcript is parsed only once a
+trigger names the call, so a call no declaration names costs the node start and a cache read.
+`dev/tools/hook-latency.mjs` measures each path; the brief below carries the budget.
 
 ## Trigger scope: skills that load at a deterministic moment
 
@@ -219,6 +238,9 @@ defines, once it has lived a week in production. The expectations the review rea
   the mechanism lands converts rules from the A, B, C and D classes rather than logging them as
   un-checkable — expected at least three conversions per sweep for the first month, measured by
   the sweep PRs' declared-check diffs.
+- **Schema rung in use.** No `checkParsedFiles` entry added after the mechanism lands restates a
+  property a schema could carry; measured by reading each sweep PR's added entries against the schemas
+  the same documents point at.
 - **Two-pass rules in use.** At least five declarations carry `checkSetValues`, `checkSetPairs`
   or `requireIdenticalFiles` a month in, at least one of them in a member's local pack; measured
   by grepping the mounts' `declared-checks.json` files.
@@ -232,6 +254,18 @@ defines, once it has lived a week in production. The expectations the review rea
   file-wide `requireSomeFileMatching` on a large repo shows up as the slowest declared rule in the
   run's timing; a guard declared `blocking` for a bias rather than a defect shows up as repeated
   overrules in the transcript.
+- **Hook cost.** Each per-call hook on a call no declaration names, measured by
+  `node dev/tools/hook-latency.mjs` at HEAD on the runner class the recorded table came from (this
+  sandbox, 2026-09-05: PreToolUse ~88 ms, PostToolUse ~80 ms, UserPromptSubmit ~80 ms; a guarded
+  call parsing a 5 MB transcript ~165 ms; before the runner and the cache, ~185 ms, ~172 ms and
+  ~172 ms, and ~250 ms with that transcript): expected within a quarter of the recorded figures,
+  and a registry miss (`registry-loaded` in the hook log) once per session rather than per call —
+  a hook that keeps re-deriving means the fingerprint reads something that moves on every call.
+- **Hook health.** Zero `hook_non_blocking_error` attachments naming a Claudinite hook and no
+  exit code but 0 and 2 for one, across the window's captured transcripts on `conversation-logs`
+  (the hook log is per machine, so the transcripts are the durable record); where a session's
+  own `.claudinite-hooks.log` is at hand, its `done exit=0 deadline` and `hook-failed` lines name
+  what failed open and how often.
 - **Cheap to re-examine:** the once-per-session trigger semantics, the advisory-vs-blocking
   default for guards, which operation skills exist. **Expensive:** the four-moment split itself
   and the named-set vocabulary, which member declarations will carry.

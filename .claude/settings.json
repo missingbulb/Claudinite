@@ -12,7 +12,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Edit|Write|NotebookEdit",
+        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -27,6 +27,27 @@
           {
             "type": "command",
             "command": "node $CLAUDE_PROJECT_DIR/engine/hooks/stop-command.mjs"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/engine/hooks/user-prompt-submit-command.mjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/engine/hooks/post-tool-use-command.mjs"
           }
         ]
       }

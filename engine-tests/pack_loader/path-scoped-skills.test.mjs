@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { globToRegExp, expandBraces, pathScopedSkills, missingSkillsFor } from '../../engine/pack_loader/path-scoped-skills.mjs';
-import { parseFrontmatter, skillMetadata, forceLoadPathsOf } from '../../engine/pack_loader/skill-frontmatter.mjs';
+import { globToRegExp, expandBraces, pathScopedSkills, missingSkillsFor, triggeredSkills, missingSkillsForCall, missingSkillsForPrompt, missingSkillsForResult } from '../../engine/pack_loader/path-scoped-skills.mjs';
+import { parseFrontmatter, skillMetadata, forceLoadPathsOf, parseToolTrigger } from '../../engine/pack_loader/skill-frontmatter.mjs';
 import { skillLoads } from '../../engine/checks/helpers/session-transcript.mjs';
+import { commandName } from '../../packs/claudinite-tasks/tasks/usage-fold/fold-usage.mjs';
 import { removeTree } from '../../engine/remove-tree.mjs';
 
 test('globToRegExp: ** spans directories, * and ? stay inside a segment, braces expand, the rest is literal', () => {
@@ -45,7 +46,7 @@ test('pathScopedSkills reads each active pack\'s bundled skills\' forced scope; 
     skill('a', 's1', '---\nname: s1\ndescription: d\nmetadata:\n  force-load-on-file-edits-paths: wiki/**, wiki/*.md\n---\n');
     skill('a', 'plain', '---\nname: plain\ndescription: unscoped\n---\n');
     skill('b', 's2', '---\nname: s2\ndescription: d\nmetadata:\n  force-load-on-file-edits-paths:\n    - wiki/**\n---\n');
-    assert.deepEqual(skillMetadata(join(root, 'a', 'skills', 's1')), { name: 's1', description: 'd', forceLoadPaths: ['wiki/**', 'wiki/*.md'] });
+    assert.deepEqual(skillMetadata(join(root, 'a', 'skills', 's1')), { name: 's1', description: 'd', forceLoadPaths: ['wiki/**', 'wiki/*.md'], toolCallTriggers: [], promptTriggers: [], toolResultTriggers: [] });
     const decls = pathScopedSkills([
       { id: 'a', dir: join(root, 'a'), skills: ['s1', 'plain'] },
       { id: 'b', dir: join(root, 'b'), skills: ['s2'] },
@@ -70,4 +71,78 @@ test('skillLoads reads every Skill tool_use on assistant entries, sidechain incl
   ];
   assert.deepEqual(skillLoads(entries), ['a', 'b', 'c']);
   assert.deepEqual(skillLoads(null), []);
+});
+
+test('skillLoads reads a slash command the owner typed: the <command-name> block the harness records, no tool call', () => {
+  const entries = [
+    { type: 'user', message: { content: '<command-message>e is running…</command-message>\n<command-name>/e</command-name>\n<command-args>now</command-args>' } },
+    { type: 'user', message: { content: [{ type: 'text', text: '<command-name>f</command-name>' }] } },
+    { type: 'user', message: { content: '<command-name>/plugin:g</command-name>' } },
+    // A tool result that happens to carry the literal tag is output, not a command.
+    { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't', content: 'grep hit: <command-name>/h</command-name>' }] } },
+    { type: 'user', message: { content: 'please run /i for me' } },
+  ];
+  assert.deepEqual(skillLoads(entries), ['e', 'f', 'plugin:g']);
+});
+
+// Drift guard: the usage fold spells the same block grammar in its own
+// `commandName` (a pack cannot import a fresh engine export), so the two are
+// run over one vector set in both directions — every name one reads, the other
+// reads, and every entry one ignores, the other ignores.
+test('skillLoads and the usage fold agree on what a typed slash command is', () => {
+  const vectors = [
+    '<command-message>x is running…</command-message>\n<command-name>/x</command-name>',
+    '<command-name>y</command-name>',
+    '<command-name>/plugin:z</command-name>\n<command-args>a b</command-args>',
+    '<command-name>  /spaced  </command-name>',
+    'please run /x for me',
+    '<command-name></command-name>',
+    '<command-name>/bad name</command-name>',
+    'hi',
+  ];
+  for (const content of vectors) {
+    const entry = { type: 'user', message: { content } };
+    const fold = commandName(entry);
+    assert.deepEqual(skillLoads([entry]), fold === null ? [] : [fold], JSON.stringify(content));
+  }
+});
+
+test('parseToolTrigger: a name, a name with a field, a regex over names, each with an optional regex; malformed drops', () => {
+  assert.deepEqual(parseToolTrigger('mcp__github__create_pull_request'), { tool: 'mcp__github__create_pull_request', field: null, pattern: null, source: 'mcp__github__create_pull_request' });
+  const scoped = parseToolTrigger('Bash.command /\\bgit\\s+commit\\b/');
+  assert.equal(scoped.tool, 'Bash');
+  assert.equal(scoped.field, 'command');
+  assert.ok(scoped.pattern.test('git commit -m x'));
+  const byRegex = parseToolTrigger('/^mcp__github__(list|search)_/ /"fields"/');
+  assert.ok(byRegex.tool instanceof RegExp && byRegex.tool.test('mcp__github__list_issues'));
+  assert.equal(byRegex.field, null);
+  assert.equal(parseToolTrigger('Bash /unterminated'), null);
+  assert.equal(parseToolTrigger('/[unclosed/ '), null);
+});
+
+test('triggeredSkills reads the three trigger kinds off a pack\'s skills, and each resolver hits by its kind', () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-triggers-'));
+  try {
+    mkdirSync(join(root, 'skills', 'op'), { recursive: true });
+    writeFileSync(join(root, 'skills', 'op', 'SKILL.md'), [
+      '---', 'name: op', 'description: fixture', 'metadata:',
+      '  force-load-on-tool-calls:', "    - 'Bash.command /\\bgit\\s+commit\\b/'", "    - 'mcp__github__merge_pull_request'",
+      '  force-load-on-prompts-matching:', "    - '/\\bLGTM\\b/'",
+      '  force-load-on-tool-results-matching:', "    - 'WebFetch /\\b403\\b/'",
+      '---', '# op', '',
+    ].join('\n'));
+    const decl = triggeredSkills([{ id: 'p', dir: root, skills: ['op'] }]);
+    assert.deepEqual(decl.map((d) => d.kind), ['toolCall', 'toolCall', 'prompt', 'toolResult']);
+    const names = (list) => list.map((d) => d.skill);
+    assert.deepEqual(names(missingSkillsForCall({ name: 'Bash', input: { command: 'git commit -m x' } }, decl, [])), ['op']);
+    assert.deepEqual(names(missingSkillsForCall({ name: 'Bash', input: { command: 'echo "git commit" > note' } }, decl, [])), ['op'], 'the field regex reads the command text');
+    assert.deepEqual(names(missingSkillsForCall({ name: 'Bash', input: { command: 'ls' } }, decl, [])), []);
+    assert.deepEqual(names(missingSkillsForCall({ name: 'mcp__github__merge_pull_request', input: {} }, decl, [])), ['op']);
+    assert.deepEqual(names(missingSkillsForCall({ name: 'Bash', input: { command: 'git commit' } }, decl, ['op'])), [], 'a loaded skill is never demanded again');
+    assert.deepEqual(names(missingSkillsForPrompt('LGTM, ship it', decl, [])), ['op']);
+    assert.deepEqual(names(missingSkillsForPrompt('looks fine', decl, [])), []);
+    assert.deepEqual(names(missingSkillsForResult({ name: 'WebFetch', input: {} }, 'HTTP 403 Forbidden', decl, [])), ['op']);
+    assert.deepEqual(names(missingSkillsForResult({ name: 'WebFetch', input: {} }, { status: 200 }, decl, [])), []);
+    assert.deepEqual(names(missingSkillsForResult({ name: 'Bash', input: {} }, '403', decl, [])), [], 'a result trigger names its tool');
+  } finally { removeTree(root); }
 });

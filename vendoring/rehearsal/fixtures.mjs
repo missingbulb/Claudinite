@@ -842,7 +842,56 @@ const VARS_BAG_EXECUTOR_WORKFLOW = STAMPING_EXECUTOR_WORKFLOW
 const CANONICAL_READY_EXECUTOR_WORKFLOW = THIN_EXECUTOR_WORKFLOW
   .replace("      || github.event.label.name == 'task:ready'\n", '');
 
+// A member's own schema-pointed document: the member ships a JSON Schema and a
+// config that points at it through `$schema`, the shape `schema-conformance`
+// (blocking, basics) validates — so the fixture is what says a conforming member
+// stays green, and a member that never wrote a schema is untouched.
+const PACK_SCHEMA = `export default {
+  id: 'fixture-schema',
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own conventions, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+  worldRules: [],
+  workRules: [],
+};
+`;
+const LOCAL_SCHEMA = `{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "fixture release config",
+  "type": "object",
+  "required": ["channel"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "channel": { "enum": ["stable", "beta"] },
+    "notes": { "type": "string", "maxLength": 200 }
+  }
+}
+`;
+const LOCAL_SCHEMA_DOC = `{
+  "$schema": "./release.schema.json",
+  "channel": "stable",
+  "notes": "a rehearsal fixture"
+}
+`;
+
 export const FIXTURES = [
+  {
+    name: 'schema-pointed',
+    why: 'a member document pointing at the member\'s own JSON Schema through `$schema` — the shape the blocking `schema-conformance` (basics) validates, so a conforming member stays green',
+    files: {
+      'README.md': '# fixture-schema\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-schema']),
+      '.claudinite/local/packs/fixture-schema/pack.mjs': PACK_SCHEMA,
+      '.claudinite/local/packs/fixture-schema/RULES.md': '# fixture-schema\n\nNo standing rules.\n',
+      'config/release.schema.json': LOCAL_SCHEMA,
+      'config/release.json': LOCAL_SCHEMA_DOC,
+    },
+  },
   {
     name: 'local-rules',
     why: 'a local pack with scoped rules and a bundled skill — the #555 shape',
