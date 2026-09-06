@@ -1,320 +1,362 @@
 # Selling Claudinite: what closing the source would take
 
 Research for #1814. **This is an options paper, not a plan and not a design.** It states what the
-product technically is today, what each commercial shape would cost to build from here, and what
-GitHub's marketplace actually permits. It picks nothing: every business-model and technical fork is
-left as a stated option with its consequences.
+product technically is, what a packaged (non-vendored) distribution would cost to build from here,
+what the platforms permit, and what an organisational tier needs. It picks nothing.
 
-Facts fetched from GitHub's own documentation are cited. Comparable pricing comes from search
-snippets and is attributed rather than asserted. One thing could not be verified from this session
-and is marked where it appears.
+Facts fetched from GitHub's and Claude Code's own documentation are cited. Comparable pricing comes
+from search snippets and is attributed rather than asserted. Anything unverifiable from this session
+is marked where it appears.
 
 ---
 
-## 1. What the product is today
+## 1. The delivery model is a choice, not a property
 
-The shape matters more than the feature list, because it is what a paid model breaks.
+Claudinite today commits ~6.3 MB of corpus into the customer's repository at `.claudinite/shared/`
+and refreshes it nightly from a public clone. That is an implementation decision — made for
+reliability, recorded in [vendoring/DESIGN.md](../../vendoring/DESIGN.md) — and it can be replaced.
 
-| Property | Today |
+**The target model is the package-manager model.** The engine is the CLI; each pack is a package;
+both are fetched at install time into a machine-local cache, used, and never committed. Nothing in
+cleartext in the customer's repository except **their own local packs** and a small amount of
+configuration. The rest of this document assumes that target.
+
+### What the package model does and does not buy
+
+It is worth being exact, because the npm metaphor is precise in a way that cuts both ways.
+
+**It buys, genuinely:**
+
+- **Nothing of ours is redistributed.** The corpus is not in their repo, not in their git history,
+  not in a fork of their repo, not in a tarball their customer receives. This is the difference
+  between "our IP is in a thousand repositories" and "our IP is on a thousand machines".
+- **The stream is gated at the door.** Install and update are authenticated events. Entitlement,
+  revocation, version pinning, per-pack SKUs and metering all become natural instead of bolted on.
+- **Versioning becomes real.** A lockfile and a resolver replace "whatever last night's converge
+  wrote", which is a better engineering story independent of the commercial question.
+
+**It does not buy secrecy at the moment of use.** `node_modules` is cleartext JavaScript; the
+plugin cache is cleartext Markdown. Two components behave differently:
+
+| Component | Can it ship opaque? |
 |---|---|
-| **Payload** | ~6.3 MB of `packs/` — 35 packs, ~22,000 words of `RULES.md` prose, 58 skills, 58 check modules, 28 scheduled tasks — plus a 0.6 MB `engine/` |
-| **Delivery** | Committed **plaintext** into the customer's own repo at `.claudinite/shared/`, a declaration-derived subset (`vendoring/compute-vendor-set.mjs`) |
-| **Adoption** | One network moment: public `codeload` tarball → `bootstrap.mjs` run against the checkout |
-| **Updates** | The nightly `update` task clones `https://github.com/missingbulb/Claudinite.git` `--depth 1`, **public, no token** (`packs/claudinite-lifecycle/tasks/update/worker.mjs`), applies migrations, converges the vendor set, lands one commit on `claudinite/maintenance` |
-| **Runtime** | Fully offline. Rules reach a session through `.claudinite/claudinite-rules.GENERATED.md`, `@`-imported by the repo's `CLAUDE.md`. No call home, ever |
-| **Compute** | The customer's own GitHub Actions minutes (scheduler + executor workflows) |
-| **Inference** | The customer's own Claude account (`CCR_ROUTINE_TOKEN`). **Our COGS today is zero** |
-| **Fleet** | One "enforcer" repo declaring `claudinite-fleet-sheepdog`, driven by a human-issued fine-grained PAT (`FLEET_GITHUB_TOKEN`) over one `owner`'s repos |
-| **Accounts** | None. No server, no user records, no telemetry |
-| **Licence** | **There is no `LICENSE` file.** A public repo with no licence is already all-rights-reserved |
-| **Hosted precedent** | One: the dashboard's OAuth `exchangeUrl`, a small serverless token exchange |
+| Engine, checks, task workers, fleet sweeps (our Node code) | **Yes** — a genuine compiled binary (Node SEA, `bun build --compile`) or at minimum a minified bundle. Multi-platform builds required |
+| Skills (`SKILL.md`) and rules prose | **No.** Claude Code reads them as Markdown from disk. A binary can hold them encrypted and materialise them at install time, which raises copying from `git clone` to `cat` — a speed bump, not a wall |
 
-### The one fact that governs every option
-
-**The payload must be present, in cleartext, in the customer's repository for the product to
-work.** Every session reads it from their own checkout with no network in the hot path. There is
-nothing to withhold at runtime, no binary to obfuscate, no server call to refuse. Copy protection
-is therefore not achievable at any effort level short of moving execution off the customer's
-machine (Option D).
-
-What *is* sellable is not the snapshot but the **stream**: continuous curation — the growth
-lifecycle, promotion, dedup, migrations that keep a member's mount converging — plus the fleet
-services and support. A customer who copies today's corpus has a file that starts decaying that
-night. This reframing is the load-bearing one; most of the options below are variations on how
-tightly the stream is gated.
-
-A second consequence: **closing the repo binds nobody retroactively.** Everything already fetched
-stays fetched, and existing forks keep their copy. *(Fork and star counts could not be read this
-session — `api.github.com` is proxy-blocked in this environment. Worth a human check before any
-announcement.)*
+So the honest framing stays the one from §2 of the first draft, sharpened: **the moat is the
+stream, and the package model is what makes the stream chargeable.** A customer who copies the
+materialised corpus holds a snapshot that starts decaying that night, and has broken a licence to
+get it. That is the same protection npm's paid registries have, and it is sufficient.
 
 ---
 
-## 2. What GitHub Marketplace actually permits
+## 2. Claude Code already ships the mechanism
 
-All from GitHub's published docs, verbatim source pulled this session.
+This is the finding that most changes the effort estimate. Claude Code's **plugin and marketplace
+system** is the npm-shaped distribution channel, first-party, and it does what the target model
+needs.
 
-**Paid listings are for *apps*, not Actions.** Every Marketplace selling page carries the note
-*"This article applies to publishing apps in GitHub Marketplace only"*, pointing Actions at a
-separate publish path with no billing. **Claudinite today is neither** — it is vendored files plus
-workflows in the customer's repo. Selling through Marketplace therefore requires building a GitHub
-App that does not exist yet, and that App becomes the entitlement surface.
+**Packaging.** A plugin bundles skills, agents, hooks, MCP servers, commands, LSP servers,
+background monitors, themes and `settings.json` configuration. Plugins install into
+`~/.claude/plugins/cache` — **on the machine, not in the repository** — and Claude Code installs a
+plugin's eligible Node.js package dependencies into the cached copy.
 
-**Gates on a paid listing:**
+**Sources** — a marketplace entry names where each plugin comes from:
 
-- The app must be **owned by an organization that is a verified publisher**. A personal-account app
-  must be transferred to an org first.
-- **GitHub Apps need ≥ 100 installations**; OAuth apps ≥ 200 users. Free first, paid later — a
-  chicken-and-egg the free tier has to solve.
-- The app must handle `marketplace_purchase` webhooks for purchases, upgrades, downgrades,
-  cancellations and trials.
-- Financial onboarding and acceptance of the Marketplace Developer Agreement.
-
-**Plan mechanics:**
-
-- Plans are free, **flat rate**, or **per-unit**. Per-unit is defined as *"a set fee … for each
-  user in an organization"* — **there is no per-repository unit**. A per-repo price has to be
-  expressed as flat-rate bands, or billed outside Marketplace.
-- Every plan needs **both a monthly and an annual price**. USD only. Up to 10 plans.
-- Free trials are **fixed at 14 days**, auto-enrol at the end, and GitHub expects private customer
-  data deleted within 30 days of a cancelled trial.
-- **No metered/usage billing exists.** Usage pricing means Stripe.
-- GitHub retains **5%** of transaction income (post-2021). Payout once monthly revenue reaches
-  **$500**, at the end of the following month.
-
-**Two rules that constrain a hybrid channel** — these bite directly on "free single repo, paid
-fleet":
-
-- *"You can't list your app with a free pricing plan if you offer a paid service outside of GitHub
-  Marketplace."*
-- *"If you list a paid version of your app outside GitHub Marketplace then, after a free listing
-  meets the requirements for paid apps, you must offer at least one paid plan for the app in GitHub
-  Marketplace."*
-
-So: selling the fleet tier on Stripe **and** running a free Marketplace listing is not a
-combination GitHub's terms allow indefinitely. Either the paid plan also lives in Marketplace, or
-the free tier is distributed some other way (a public repo, a CLI, an unlisted App).
-
----
-
-## 3. Distribution options, costed
-
-Each is a way of answering "how does the corpus reach a paying customer and stop reaching a
-non-paying one".
-
-### Option A — Licence only; delivery unchanged
-
-Add a proprietary `LICENSE` and terms; keep the fetch public; record a licence key on the
-declaration; ship an advisory check that names an unlicensed paid pack. Enforcement is contractual,
-audited by nothing.
-
-- **Changes:** `LICENSE`, terms/privacy pages, one optional config key, one advisory check.
-- **Effort:** ~0.5–1 week, mostly not engineering.
-- **Leakage:** total. Anyone can clone.
-- **Sells to:** companies that pay because their legal department requires a licence, and because
-  they want the update stream and support. That is a real market and a bad one to be *only* in.
-
-### Option B — Private canon, credential-gated fetch
-
-The canon repo goes private. Fetching it requires a credential.
-
-- **B1 — per-customer PAT / deploy key.** A repo secret in each member. Cheap to build, but the
-  credential clones the whole canon, so leakage is unchanged after the first fetch, and rotation,
-  revocation and support fall on us.
-- **B2 — GitHub App installation token.** The customer installs an App; the update task exchanges
-  the installation for a short-lived token and clones the private canon with it. No human PAT,
-  revocable per customer (uninstall or entitlement lapse stops the stream at the next converge), and
-  it is the **same App the Marketplace listing sells**.
-- **Changes:** the clone auth in the update worker; `bootstrap.mjs`'s one network moment becomes
-  authenticated; the canary/rehearsal flows re-point; App + a small token-minting endpoint (or the
-  installation-token flow run inside the member's own Action).
-- **Effort:** ~2–3 weeks for the fetch path, on top of the App itself (§5).
-- **Leakage:** the snapshot still lands in cleartext in the customer's repo. What is gated is the
-  **stream**, which per §1 is the actual product.
-
-### Option C — Entitlement service and served bundles
-
-Replace "clone the canon" with "download the vendor set this account is entitled to". The service
-takes the customer's declaration, computes the vendor set server-side, returns a tarball, and
-records what was served.
-
-- **Buys:** per-pack SKUs, a kill switch, precise metering, the free/paid line enforced at the door,
-  and a delivery receipt (which the vendoring design explicitly notes it lacks today).
-- **Costs:** a real service with auth, entitlement, bundle build and a CDN; `compute-vendor-set`
-  either moves server-side or is duplicated with a drift guard; every fetch path re-points; the
-  offline guarantee survives (sessions still read from the checkout) but adoption and nightly
-  converge now depend on our uptime.
-- **Effort:** ~4–7 weeks on top of the App.
-
-### Option D — Hosted execution (a real "app you buy")
-
-Move the scheduler, executor and fleet sweeps off the customer's Actions onto our infrastructure,
-driven by the App. The corpus never lands in the customer's repo, or lands as a thin stub.
-
-- **Only option where the IP genuinely does not ship.**
-- **Inverts the product's core design**: offline operation, customer-owned compute, customer's own
-  Claude account. If we also run the agent, we acquire inference COGS where today we have none, and
-  the margin story changes completely.
-- **Effort:** a SaaS build — 3+ months before parity, plus on-call.
-- **D′ — hosted control plane only.** Entitlement, fleet aggregation, user management and dashboard
-  are hosted; *execution stays on the customer's runners and their Claude account*. This keeps
-  zero-COGS and the offline session, and is the pragmatic shape for the enterprise tier (§6).
-
-### Option E — Open core
-
-Keep `engine/`, `basics` and the technology packs open under a real OSS licence. Close the value
-packs. Free tier = the open subset on a single repo; paid = the closed packs delivered through B2
-or C.
-
-**The SKU boundary already exists in the pack shelf**, which is the strongest structural argument in
-this document:
-
-| Naturally free | Naturally paid |
+| Source | Relevance here |
 |---|---|
-| `engine/`, `basics`, `claudinite-lifecycle` | `claudinite-fleet-sheepdog` (the fleet itself) |
-| Technology packs (`node`, `python`, `ios`, `android`, `flutter`, `firebase`, …) | `claudinite-growth` + `claudinite-canon-curation` (the growth lifecycle) |
-| `claudinite-tasks` (the queue) — arguable either way | `claudinite-dashboard` in **fleet** mode |
-| `claudinite-dashboard` in **repo** mode | An org's private canon shelf (§6) |
+| `npm` (with a private `registry`) | Literally the owner's metaphor, supported natively |
+| `archive` (zip over HTTPS) | Any artifact server or S3 bucket; no git or npm needed on the customer's machine |
+| `github` / `url` / `git-subdir` | Git, with `ref` and a 40-char `sha` pin |
+| `command` | A local tool prints the plugin directory |
 
-Note this splits cleanly along the same line as enforceability: everything in the free column works
-with no further contact from us, and everything in the paid column *needs cross-repo credentials or
-aggregation* — which is exactly what an App installation can scope and an entitlement service can
-refuse.
+**Authentication and entitlement.** An `archive` source takes `headers`, or a **`headersHelper`** —
+"a command that prints the HTTP headers for this entry's archive download as one JSON object, for a
+credential that expires". Claude Code runs it before each fetch and reuses the output for up to 60
+seconds. That is a licence check at every install and update, built into the platform. (Requires
+Claude Code v2.1.238+; before that, headers were not sent and installs 401'd.)
+
+**Team wiring without asking anyone to do anything.** A repo's `.claude/settings.json` can carry
+`extraKnownMarketplaces` and `enabledPlugins`, so the marketplace registers and the plugins enable
+when a teammate trusts the project folder.
+
+**Ephemeral containers and CI — the hard case, already solved.** `CLAUDE_CODE_PLUGIN_SEED_DIR`
+points at a pre-populated plugins directory baked at image build time, so Claude Code starts with
+marketplaces and plugins available "without cloning anything at runtime". It is read-only, works in
+`-p` non-interactive mode, and composes with `extraKnownMarketplaces`. This removes the objection
+that a fetch-at-start model is fragile in exactly the environment where it would be most fragile.
+
+**Enterprise distribution.** Team and Enterprise plans distribute plugins through
+**Organization settings > Plugins**, syncing a private marketplace repository through the Claude
+GitHub App. Constraints worth knowing now: sources must be `github`, `url`, `git-subdir` or a `./`
+relative path; private plugin sources work only when they share the marketplace repo's owner; and
+**a plugin with a top-level `bin/` directory is rejected** — compiled binaries must live in
+`scripts/` and be referenced as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>`.
+
+**Cost transparency.** The `/plugin` view reports each plugin's always-on token cost. Relevant
+because Claudinite currently spends ~13,000 always-on rule tokens per session.
+
+### The one thing plugins cannot carry
+
+> "A `CLAUDE.md` file at the plugin root is not loaded as project context. Plugins contribute
+> context through skills, agents, and hooks rather than CLAUDE.md. To ship instructions that load
+> into Claude's context, put them in a skill."
+
+Claudinite's ~22,000 words of always-on `RULES.md` prose is exactly the thing a plugin cannot ship
+as always-on context. Three ways out, and this is a **product decision, not a packaging one**:
+
+1. **Convert rules to skills.** On-demand rather than always-on. Drops the 13,000-token session
+   tax to near zero, at the cost of the always-injected guarantee the corpus is built on. The
+   corpus already has the machinery to judge this — the prose-to-checks ladder says prose is the
+   *last* rung.
+2. **Materialise into `.claude/rules/`.** Claude Code loads `.claude/rules/**/*.md` at launch with
+   the same priority as `.claude/CLAUDE.md`, discovered recursively — and rules support a `paths:`
+   frontmatter that scopes them to file globs, loading only when Claude touches matching files. An
+   install step writes the entitled packs' rules there; the directory is gitignored, so nothing is
+   committed. **Path-scoping is a genuine upgrade**, not a workaround: most of the corpus is
+   technology- or activity-specific and has no business being in every session.
+3. **Import from the plugin cache.** A repo `CLAUDE.md` can `@`-import an absolute path, but an
+   import resolving outside the working directory triggers a one-time approval dialog — fine
+   interactively, wrong for unattended runs.
+
+Option 2 is the one that preserves today's semantics; option 1 is the one that improves them.
+Both need the same install step.
 
 ---
 
-## 4. Pricing model options, and what each one forces technically
+## 3. What the architecture becomes
 
-| Model | Marketplace-expressible? | What it forces |
+```
+Customer repo (committed, cleartext)      Machine / runner (fetched, gitignored)
+├── .claudinite-settings.json  declaration  ~/.claude/plugins/cache/…   packs
+├── claudinite-lock.json       pins+hashes  node_modules/@claudinite/…  engine
+├── .claudinite/local/packs/   THEIRS       .claude/rules/**           materialised prose
+├── .claude/settings.json      marketplace + hook entry points
+└── .github/workflows/*.yml    two thin stubs calling npx
+```
+
+Three delivery contexts, each with its own install moment — and this is the structural point the
+vendored model was hiding:
+
+| Context | Install moment | Notes |
 |---|---|---|
-| **Flat rate per org, banded by fleet size** | Yes (flat rate ×N plans) | Someone must count repos and enforce the band — the fleet sweep already enumerates them; band overage is an advisory, not a hard stop |
-| **Per seat** | Yes (per-unit = per user in an org) | A definition of "user" the customer accepts. Claudinite has no users — its sessions are agents. Candidate proxies: org members who commit to member repos, or people whose sessions load the mount (needs telemetry we do not have) |
-| **Per repo** | **No** — per-unit is per-user only | Bands (above), or bill on Stripe outside Marketplace, subject to the two channel rules in §2 |
-| **Usage / per task-run** | **No** — Marketplace has no metered billing | Stripe, plus real metering. Partial signals exist: the `usage-fold` task and the dashboard's token/cost fold |
-| **Free single repo, paid fleet** | Yes as *plans*, awkward as *channels* | The line is a **capability** line, not a repo count: fleet packs simply do not activate without an entitled installation. Cleanest to build and cleanest to explain |
+| **Interactive desktop / CLI** | `claude plugin install`, cached per machine | Warm after first fetch; `headersHelper` re-validates the licence on update |
+| **GitHub Actions (scheduler, executor, fleet)** | `npx @claudinite/engine` in the workflow step, npm cache | Pure npm — the cleanest of the three. Private registry auth via a repo secret |
+| **Ephemeral containers / Claude Code on the web** | seeded image (`CLAUDE_CODE_PLUGIN_SEED_DIR`) or the environment setup script | The reliability risk concentrates here; the seed mechanism is the mitigation |
 
-**On the free tier the owner described:** "one repo, no fleet-wide growth, free" is the right thing
-to give away precisely because it costs us nothing to serve — after the first fetch it needs no
-credential, no server and no support, and it is what generates the 100 installations a paid
-Marketplace listing requires.
+**What this costs that the vendored model does not:** availability. Adoption today is one network
+moment and every session after is offline. Under the package model, install and update depend on
+our registry being up and reachable, and on the customer's network policy allowing it. The seed
+directory and the machine cache reduce that from per-session to per-version — which is exactly
+npm's answer, and it is a good one — but the dependency is real and new.
 
-**Comparables** (search snippets, attributed rather than asserted, September 2026): CodeRabbit ~$24
-per user/month annual; Greptile free for one active developer, Pro ~$30 per seat/month with 50
-review credits and $1 per extra; Graphite roughly $24–$40 per user/month. The band a per-seat
-Claudinite would land in is visible there; a per-org flat tier has fewer public comparables.
+**The sleeper migration cost:** **105 files** across `packs/`, `engine/`, `vendoring/` and
+`.github/` name the path `.claudinite/shared`. The two-root mount assumption
+(`.claudinite/(shared|local)/`) is written into checks, rules, tests and workflow stubs. Un-vendoring
+is not a delivery change; it is a sweep across the corpus.
 
 ---
 
-## 5. Engineering effort — converting today's feature set
+## 4. Distribution options, re-costed
 
-Ranges are for one experienced engineer, and assume Option B2 + E (private canon behind a GitHub
-App, open-core shelf split) — the middle path. Option C adds its own line; Option D is a different
-project.
+Options A and D from the first draft survive; B, C and E are absorbed by §2.
+
+### Option 1 — Licence only, delivery unchanged
+
+Add a `LICENSE` (there is none today — the public repo is already all-rights-reserved) and terms;
+keep the public clone. Enforcement is contractual. **0.5–1 week**, mostly not engineering. Sells to
+buyers who pay for a licence, updates and support; nothing stops anyone else.
+
+### Option 2 — Package the product (the target model)
+
+Engine as a private npm package, packs as plugins in a private marketplace, licence enforced by
+`headersHelper` at install and update, nothing committed. §5 costs it.
+
+- **Leakage:** the materialised corpus is readable on the machine. The *stream* is gated.
+- **Storefront:** the plugin marketplace is the delivery channel; billing is a separate question
+  (§6).
+- **Side benefits worth counting:** real versioning and a lockfile; path-scoped rules instead of a
+  13,000-token session tax; the engine stops being 105 files' worth of path assumptions.
+
+### Option 3 — Packaged, plus a hosted control plane (Option 2 + D′)
+
+Everything in Option 2, plus a service that holds entitlements, aggregates the fleet, and serves the
+dashboard — while **execution stays on the customer's runners and their Claude account**, so
+inference COGS stays at zero. This is the shape the enterprise tier wants (§7).
+
+### Option 4 — Hosted execution
+
+Move the scheduler, executor and fleet sweeps onto our infrastructure. The only shape where the
+corpus never lands on a customer machine at all, and the only one that acquires inference COGS. A
+SaaS build, 3+ months to parity, plus on-call. Under Option 2 the marginal IP protection it buys is
+small; its real argument is a different product (zero-setup, cross-org intelligence), not secrecy.
+
+---
+
+## 5. Engineering effort — converting today's feature set to Option 2
+
+One experienced engineer.
 
 | Workstream | Effort | Notes |
 |---|---|---|
-| Licence, terms, privacy policy, repo visibility flip | 0.5–1 wk | Mostly legal, not code. The repo's own rules require the privacy/disclosure surface to change **in the same commit** as any behaviour that adds an outbound connection |
-| Shelf split into free/paid SKUs; declaration reads entitlement | 1–2 wks | Structural, and the shelf already suggests the line (§3E) |
-| Authenticated canon fetch — bootstrap, update worker, canary/rehearsal, tests | 2–3 wks | Touches the one path where a canon regression is *not* self-healing; the vendoring tests must grow with it |
-| The GitHub App: creation, install flow, installation-token minting, webhook receiver, `marketplace_purchase` handling, entitlement store | 3–5 wks | This is the piece that does not exist in any form today |
-| Marketplace listing: verified publisher, org transfer, financial onboarding, listing copy and assets | 1–2 wks of work, weeks of elapsed | Blocked behind **100 installations** for a paid plan |
-| Stripe billing, if any plan lives outside Marketplace | 2–3 wks | Plus the §2 channel-rule question |
-| Replace `FLEET_GITHUB_TOKEN` with App installation tokens | 1–2 wks | Removes the worst adoption step (a hand-issued fine-grained PAT); a strict improvement regardless of the commercial question |
-| Metering/telemetry with explicit opt-in and disclosure | 1–2 wks | Changes the product's current "nothing leaves your repo" promise; treat as a product decision first |
-| Marketing site, docs, onboarding, support intake | 2–4 wks | |
-| **Total to a credible paid launch of today's features** | **~3–4 months**, roughly a third of it not code | |
-| *Add for Option C (served bundles instead of a private clone)* | +4–7 wks | |
+| Licence, terms, privacy policy, visibility decision | 0.5–1 wk | Mostly legal. Any new outbound connection changes the privacy claim, and this repo's own rules require the disclosure to move in the same commit |
+| **Un-vendor: kill the `.claudinite/shared` assumption** | 3–5 wks | 105 files; checks, rules, tests, stubs. The single largest line, and it is not commercial work — it is the refactor the package model requires |
+| Engine as a private npm package (+ optional compiled binary) | 2–4 wks | Entry points for hooks and workflows; multi-platform if compiled; binaries in `scripts/`, never `bin/` |
+| Packs as plugins; marketplace repo and `marketplace.json` | 2–3 wks | Skills already fit the plugin shape almost exactly |
+| **Rules prose: skills, or `.claude/rules/` materialisation** | 3–6 wks | Content work, not packaging. Decide §2's fork first; path-scoping the corpus is the expensive half |
+| Licence service: token minting for `headersHelper`, entitlement store, private registry | 2–4 wks | Small, because the platform supplies the client side |
+| Actions side: stubs call `npx`, registry auth as a secret | 1–2 wks | Workflow files cannot converge, so this is a **fleet-wide PR** |
+| Migration for existing members: un-vendor, gitignore, install step, migration record | 2–3 wks | Must tolerate a member sitting on the old mount for one convergence window |
+| Container/web seeding and its docs | 1–2 wks | `CLAUDE_CODE_PLUGIN_SEED_DIR`; the environment setup script for web sessions |
+| Metering with explicit opt-in and disclosure | 1–2 wks | Product decision before engineering |
+| Site, docs, onboarding, support intake | 2–4 wks | |
+| **Total** | **~4–6 months**, roughly a fifth of it not code | |
 
-Two things are *not* in that total and are worth stating: the 100-install threshold is a calendar
-dependency nobody can compress, and support load starts on day one of a paid tier.
+Two observations on that table. First, **more than half of it is work the project would want
+anyway** — un-vendoring, real versioning, and taking the rules out of every session's context are
+engineering improvements that happen to also be the commercial prerequisite. Second, the DRM
+component is nearly absent: the platform's `headersHelper` is the enforcement point, and it is a
+shell script that prints a bearer token.
 
 ---
 
-## 6. What an organisational Shepherd needs — enterprise adoption
+## 6. Storefront and pricing
 
-Today's fleet is one repo, one PAT, one owner, one shelf. Enterprise is a different object. In
-rough order of build cost:
+**The GitHub Marketplace question changes shape.** Under Option 2, the desktop and session half is
+delivered through Claude Code's plugin channel, not GitHub's. GitHub Marketplace stays relevant only
+for the **fleet/Actions half**, where a GitHub App is genuinely the right cross-repo credential —
+and it would replace today's hand-issued `FLEET_GITHUB_TOKEN`, which is a strict improvement
+regardless. Its constraints, verified:
 
-1. **Multi-tenant fleet control plane.** Tenancy records; roster derived from the App's
-   *installation repositories* rather than `/user/repos`; per-tenant scheduling, failure reporting
-   and rate-limit isolation. Today's sweeps assume one fleet per process. **6–10 wks**
-2. **Private org canon.** Each tenant gets its own versioned shelf of packs — what `.claudinite/local/packs/`
-   is today, promoted to a hosted, versioned, access-controlled registry, with promotion from the
-   shared canon into the org's shelf. This is the **biggest differentiator and the biggest build**;
-   it is also what makes the product sticky, because the customer's own accumulated rules live in
-   it. **6–10 wks**
-3. **Identity, roles and user management.** GitHub identity via the App; roles (owner / admin /
-   maintainer / viewer); mapping to GitHub teams; SSO and SCIM for anything above mid-market.
-   **4–8 wks**
-4. **Approvals and policy.** Today a rule enters the canon when the owner merges a PR. An
-   organisation wants: who may approve a rule into the org shelf, which repos a rule applies to,
-   staged rollout, waivers with expiry, and an audit trail of every rule that ever governed a repo.
-   Note the corpus already has the raw material — severities, advisories, migration records — but
-   nothing that answers *"who decided this, and when"*. **4–6 wks**
+- Paid listings are for **apps, not Actions**; the app must be owned by an organization that is a
+  **verified publisher**, with **≥100 installations** for a GitHub App.
+- Plans are free, flat rate, or per-unit, where per-unit means **per user in an organization —
+  there is no per-repo unit**, and **no metered billing**.
+- Every plan needs a monthly and an annual price; USD only; ≤10 plans; free trials fixed at 14 days.
+- GitHub retains **5%**; payout once monthly revenue reaches **$500**.
+- Two channel rules bite on a free/paid split: you cannot list a free plan in Marketplace while
+  selling the same thing outside it, and once a free listing qualifies for paid you must offer a
+  paid plan in Marketplace.
+
+**The free/paid line is now cleaner than it was**, because packaging makes it a resolver decision:
+the licence token entitles a set of packs, and an unentitled pack simply does not install.
+
+| Naturally free | Naturally paid |
+|---|---|
+| Engine, `basics`, `claudinite-lifecycle` | `claudinite-fleet-sheepdog` — the fleet itself |
+| Technology packs (`node`, `python`, `ios`, `android`, `flutter`, …) | `claudinite-growth` + `claudinite-canon-curation` — the growth lifecycle |
+| `claudinite-dashboard` in **repo** mode | `claudinite-dashboard` in **fleet** mode |
+| `claudinite-tasks` — arguable either way | A hosted private org canon (§7) |
+
+The line coincides with enforceability: everything free works with no further contact from us,
+and everything paid needs cross-repo credentials or aggregation — which an App installation scopes
+and an entitlement service refuses.
+
+**Pricing models against what each forces technically:**
+
+| Model | Expressible in GitHub Marketplace? | What it forces |
+|---|---|---|
+| Flat rate per org, banded by fleet size | Yes | Someone counts repos; the fleet sweep already enumerates them |
+| Per seat | Yes (per-unit) | A definition of "user" — Claudinite's actors are agents, not people. Proxies: org members committing to member repos, or licence-token activations |
+| Per repo | **No** | Bands, or bill outside Marketplace subject to the channel rules |
+| Usage / per task-run | **No** | Stripe plus real metering; partial signals exist in the `usage-fold` task and the dashboard's token fold |
+| Free single repo, paid fleet | Yes as plans | A **capability** line, not a repo count: fleet packs do not install without an entitled licence. Cleanest to build and to explain |
+
+The free single-repo tier remains the right giveaway: it costs nothing to serve after the install,
+and it is what produces the 100 installations a paid GitHub App listing needs.
+
+**Comparables** (search snippets, September 2026, attributed not asserted): CodeRabbit ~$24 per
+user/month annual; Greptile free for one active developer, Pro ~$30 per seat/month with 50 credits
+and $1 per extra; Graphite roughly $24–$40 per user/month.
+
+---
+
+## 7. Organisational Shepherd — enterprise adoption
+
+Packaging removes one of the nine items outright and shrinks another. Today's fleet is one repo, one
+PAT, one owner, one shelf.
+
+1. **Multi-tenant fleet control plane.** Tenancy records; roster from the App's installation
+   repositories rather than `/user/repos`; per-tenant scheduling, failure reporting and rate-limit
+   isolation. **6–10 wks**
+2. **Private org canon.** Each tenant's own versioned shelf — what `.claudinite/local/packs/` is
+   today, promoted to a hosted, access-controlled registry. Under Option 2 this is *the same
+   registry the product already ships from*, which is a large saving over building it twice.
+   Biggest differentiator and the stickiest asset. **4–8 wks**
+3. **Identity, roles, user management.** GitHub identity via the App; owner/admin/maintainer/viewer;
+   GitHub team mapping; SSO and SCIM above mid-market. **4–8 wks**
+4. **Approvals and policy.** Who may approve a rule into the org shelf, which repos it applies to,
+   staged rollout, waivers with expiry, and an audit trail. The corpus has severities, advisories
+   and migration records but nothing that answers *"who decided this, and when"*. **4–6 wks**
 5. **Hosted fleet reporting.** The dashboard's fleet mode exists but publishes to the customer's own
-   Pages and signs in with a pasted token. Enterprise wants it hosted, authenticated, retained and
-   exportable. **3–5 wks**
-6. **Compliance and trust.** SOC 2 (Type I first), DPA, sub-processor list, pen test, and a clear
-   answer to *"what leaves our repositories"*. Today the honest answer is "nothing", which is a
-   genuine selling point that any control plane erodes — so the disclosure and the architecture
-   should be decided together. **3–6 months elapsed, part-time, plus real money**
-7. **Enterprise billing.** POs, invoicing, annual contracts, seat reconciliation. **Marketplace
-   cannot do any of this** — enterprise sales means direct billing regardless of what the
-   self-serve tier uses.
-8. **Support and SLA.** Staffing, not engineering.
-9. **GHES / self-hosted runners.** If it comes up in enterprise deals, every network assumption in
-   the fetch path has to be re-examined.
+   Pages and signs in with a pasted token. **3–5 wks**
+6. **Distribution to the org** — **largely solved.** Organization settings > Plugins syncs a private
+   marketplace through the Claude GitHub App, with admin control over what is enabled. What remains
+   is conforming to its source rules and keeping binaries out of `bin/`. **1–2 wks**
+7. **Compliance.** SOC 2 (Type I first), DPA, sub-processors, pen test. Note packaging *helps* the
+   trust story — nothing of ours enters their repository — while any control plane erodes it.
+   **3–6 months elapsed, part-time, plus real money**
+8. **Enterprise billing.** POs, invoicing, annual contracts, seat reconciliation. **Marketplace
+   cannot do any of this**; enterprise means direct billing whatever the self-serve tier uses.
+9. **Support, SLA, GHES/self-hosted runners.** Staffing, plus a re-examination of every network
+   assumption in the install path.
 
-**Total: 6–12 months**, and it changes the shape of the company — a SaaS with on-call and a
-compliance calendar, rather than a corpus with a nightly job. The D′ variant (hosted control plane,
-customer-side execution) is the version that keeps zero inference COGS and the offline session while
-still selling something an organisation can buy.
+**Total: 5–10 months**, down from the first draft's estimate, and it still changes the shape of the
+company — a SaaS with on-call and a compliance calendar.
 
 ---
 
-## 7. Risks and open questions
+## 8. Risks and open questions
 
-- **Text IP cannot be protected.** Sell the stream, not the snapshot. Any plan whose revenue
-  depends on customers being unable to copy the corpus is built on sand.
-- **The corpus is already public.** Closing it binds nobody retroactively; existing copies and forks
-  keep working. *(Fork count unverified from this session — `api.github.com` is proxy-blocked here;
-  needs a human or an unblocked environment.)*
-- **Trust inversion.** The current product's strongest property is that nothing leaves the
-  customer's repo. Entitlement checks, metering and a control plane each spend some of that.
-- **Marketplace chicken-and-egg.** 100 installations before a GitHub App can carry a paid plan.
-- **Channel rules.** Free-in-Marketplace plus paid-outside is not a combination GitHub's terms
-  support indefinitely (§2).
-- **Platform risk.** Claude Code's own skills/plugins ecosystem plausibly absorbs the single-repo
-  value over time. The fleet, the org canon and the approvals layer are the defensible parts — which
-  argues for giving the single repo away regardless of the pricing model chosen.
-- **Support cost of a gated fetch inside customer CI:** token expiry, orgs that block third-party
-  Apps by policy, GHES, air-gapped runners. Every one of these is a ticket the current public clone
-  never generates.
-- **Preserve the zero-COGS property if possible.** Execution on the customer's Actions and
-  inference on the customer's Claude account is an unusually good margin structure; Option D is the
-  only one that gives it up, and it should be given up deliberately or not at all.
+- **Availability replaces offline.** The current product cannot fail because we are down. The
+  packaged one can. The machine cache and the seed directory bound the exposure to per-version, not
+  per-session; that is npm's bargain and it should be taken knowingly.
+- **Version skew becomes a support surface.** `headersHelper` needs Claude Code v2.1.238+; `archive`
+  needs v2.1.224+; `command` sources v2.1.229+. A customer on an older CLI fails in ways the
+  documentation describes precisely and users will not.
+- **The corpus is already public and unlicensed.** Closing it binds nobody retroactively; existing
+  copies and forks keep working. *(Fork count unverified — `api.github.com` is proxy-blocked in this
+  environment; needs a human or an unblocked environment.)*
+- **Rules-as-skills is a behaviour change, not a repackaging.** The corpus's whole premise is that
+  its rules arrive whether or not the agent went looking. Converting them to on-demand skills is the
+  single most consequential decision in this document, and it is disguised as a packaging detail.
+- **Trust inversion is smaller but real.** Nothing of ours in their repo is a *better* story than
+  today's. But install-time licence checks and any metering are new outbound connections.
+- **Platform risk cuts both ways.** Building on Claude Code's plugin channel means inheriting its
+  roadmap; it also means Anthropic maintains the distribution mechanism we would otherwise fund.
+- **Preserve zero COGS.** Execution on the customer's Actions and inference on their Claude account
+  is an unusually good margin structure. Only Option 4 gives it up, and it should be given up
+  deliberately or not at all.
 
 ---
 
-## 8. The decisions this document deliberately does not make
+## 9. The decisions this document deliberately does not make
 
-1. **Bytes or stream** — is the paid thing the corpus, or continuous curation and fleet services?
-2. **Storefront** — Marketplace as the channel, Stripe with a free Marketplace listing, or both
-   (subject to §2)?
-3. **Where the free/paid line runs** — the pack shelf split (§3E), a repo count, or a capability
-   line?
-4. **Does anything ever leave the customer's repository?** This one decision constrains options C,
-   D and most of §6.
-5. **Is the enterprise product hosted by us, or a self-hosted Shepherd behind a licence key?**
+1. **Always-on prose, or skills?** — §2's fork. Consequential beyond packaging.
+2. **Does the engine ship as a compiled binary, or as readable JS in a private package?**
+3. **Storefront** — Claude Code plugin marketplace alone, plus a GitHub App for the fleet half, plus
+   or minus Stripe (subject to §6's channel rules).
+4. **Where the free/paid line runs** — the pack split in §6, a repo count, or a capability line.
+5. **Does anything ever leave the customer's repository?** — constrains Options 3 and 4 and most
+   of §7.
+6. **Is the enterprise product hosted by us, or a self-hosted Shepherd behind a licence key?**
 
 ---
 
 ## Sources
 
+**Claude Code**
+- [Plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces) — sources, `headersHelper`, org distribution, `CLAUDE_CODE_PLUGIN_SEED_DIR`
+- [Plugins reference](https://code.claude.com/docs/en/plugins-reference) — components, the CLAUDE.md exclusion, token accounting
+- [Discover and install plugins](https://code.claude.com/docs/en/discover-plugins)
+- [Memory](https://code.claude.com/docs/en/memory) — `.claude/rules/`, path-scoped rules, `@`-import rules
+- [Settings reference](https://code.claude.com/docs/en/settings-reference) — `extraKnownMarketplaces`, `enabledPlugins`
+
+**GitHub**
 - [Requirements for listing an app](https://docs.github.com/en/apps/github-marketplace/creating-apps-for-github-marketplace/requirements-for-listing-an-app)
 - [Pricing plans for GitHub Marketplace apps](https://docs.github.com/en/apps/github-marketplace/selling-your-app-on-github-marketplace/pricing-plans-for-github-marketplace-apps)
 - [Billing customers](https://docs.github.com/en/apps/github-marketplace/selling-your-app-on-github-marketplace/billing-customers)
 - [Receiving payment for app purchases](https://docs.github.com/en/apps/github-marketplace/selling-your-app-on-github-marketplace/receiving-payment-for-app-purchases)
-- [Handling new purchases and free trials](https://docs.github.com/en/apps/github-marketplace/using-the-github-marketplace-api-in-your-app/handling-new-purchases-and-free-trials)
-- [GitHub Marketplace Developer Agreement](https://docs.github.com/en/site-policy/github-terms/github-marketplace-developer-agreement)
-- Pricing comparables, via search snippets: [Greptile](https://www.greptile.com/content-library/best-ai-code-review-tools), [tech-insider](https://tech-insider.org/coderabbit-vs-greptile-vs-qodo-2026/), [Developers Digest](https://www.developersdigest.tech/blog/best-ai-code-review-tools-2026)
+
+**Pricing comparables (search snippets)**
+- [Greptile](https://www.greptile.com/content-library/best-ai-code-review-tools) · [tech-insider](https://tech-insider.org/coderabbit-vs-greptile-vs-qodo-2026/) · [Developers Digest](https://www.developersdigest.tech/blog/best-ai-code-review-tools-2026)
