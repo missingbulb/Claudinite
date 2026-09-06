@@ -86,6 +86,17 @@ function fixture() {
 const TODAY = new Date('2026-09-05T15:00:00Z');
 const quiet = () => {};
 
+// `versionHistory` dates a row by the bump COMMIT's committer date, which the worker
+// takes from the wall clock — so a fixture that lets it commit unpinned asserts the
+// day the suite happens to run on, and every date expectation below goes red at the
+// next UTC midnight. Hand `run` a git that commits at TODAY, the day those versions
+// are cut on.
+const gitAtToday = (root) => {
+  const git = makeGit(root);
+  const env = { ...GIT_ENV, GIT_AUTHOR_DATE: TODAY.toISOString(), GIT_COMMITTER_DATE: TODAY.toISOString() };
+  return (args, opts = {}) => git(args, { env, ...opts });
+};
+
 test('isShippingFile: pack content ships; tests, the record and a repo\'s own packs do not', () => {
   assert.equal(isShippingFile('packs/alpha/RULES.md'), true);
   assert.equal(isShippingFile('packs/alpha/pack.mjs'), true);
@@ -222,7 +233,7 @@ test('a push the branch moved under is refused, never forced, and run replans fr
 test('versionHistory attributes each version the pull requests landed since the previous bump, minus tests and the bump commits', async () => {
   const { dir, origin, work } = fixture();
   try {
-    await run({ root: work, remote: origin, base: 'main', today: TODAY, log: quiet });
+    await run({ root: work, remote: origin, base: 'main', today: TODAY, log: quiet, git: gitAtToday(work) });
     sh(work, 'pull', '--quiet', 'origin', 'main');
     const git = makeGit(work);
     const alpha = versionHistory(git, 'HEAD', 'alpha');
@@ -266,7 +277,7 @@ test('renderHistory adds only the rows a record lacks, keeps hand-written rows v
 test('planHistory returns only the records that would change, and nothing once they have landed', async () => {
   const { dir, origin, work } = fixture();
   try {
-    await run({ root: work, remote: origin, base: 'main', today: TODAY, log: quiet });
+    await run({ root: work, remote: origin, base: 'main', today: TODAY, log: quiet, git: gitAtToday(work) });
     sh(work, 'pull', '--quiet', 'origin', 'main');
     const git = makeGit(work);
     const files = planHistory(git, 'HEAD');
