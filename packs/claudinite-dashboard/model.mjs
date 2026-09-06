@@ -152,6 +152,20 @@ const MODULE_DECLARATION_RE = /\bexport\s+default\s*\{/;
 // (`cadenceTermFor` answers null for it), so what stood beside it is the whole
 // expression; nothing here writes the old word.
 const NONE = 'none';
+// THE TRIGGER DOOR, as the page runs it (#1725). `trigger` says whether the
+// scheduler asks a task; a declaration written before the field is read off the
+// shape of its conditions, exactly as the contract's door reads it. The one thing
+// the page cannot do is resolve a task's OWN terms, so a legacy declaration whose
+// condition reads the item itself is read here as scheduled — the engine's own door
+// is handed those terms and is not; no canon declaration is in that state, and one
+// stating its trigger never reaches this branch at all.
+export const TRIGGER_SCHEDULE = 'schedule';
+export const TRIGGER_REQUEST = 'request';
+const withTrigger = (trigger, preconditions) => {
+  if (trigger === TRIGGER_SCHEDULE || trigger === TRIGGER_REQUEST) return trigger;
+  if (!Array.isArray(preconditions)) return null;
+  return statesConditions(preconditions) ? TRIGGER_SCHEDULE : TRIGGER_REQUEST;
+};
 function withCadenceTerm(frequency, preconditions) {
   if (frequency == null) return preconditions;
   const term = cadenceTermFor(frequency);
@@ -181,6 +195,7 @@ export function parseDeclaration(text, path = '') {
   const preconditions = withCadenceTerm(scalar(src, 'frequency'), stated === undefined ? [] : stated);
   return {
     id: scalar(src, 'id'),
+    trigger: withTrigger(scalar(src, 'trigger'), preconditions),
     agent_model: scalar(src, 'agent_model'),
     expected_outcome: scalar(src, 'expected_outcome'),
     interrupt_policy: scalar(src, 'interrupt_policy'),
@@ -213,6 +228,7 @@ function parseJsonDeclaration(text) {
   const preconditions = withCadenceTerm(scalarOf(decl.frequency), stated);
   return {
     id: scalarOf(decl.id),
+    trigger: withTrigger(scalarOf(decl.trigger), preconditions),
     agent_model: scalarOf(decl.agent_model),
     expected_outcome: scalarOf(decl.expected_outcome),
     interrupt_policy: scalarOf(decl.interrupt_policy),
@@ -225,31 +241,34 @@ function parseJsonDeclaration(text) {
 
 // --- a task's cadence ------------------------------------------------------------
 
-// What a declaration says about WHEN its task runs, read off its `preconditions` the
-// way the scheduler reads it (`statesConditions`, `cadenceOf`), in the roster's terms:
-// one display word, the period the task keeps, and whether the scheduler asks it at
-// all. Four answers stay apart — a cadence; NO cadence term, a task asked at every
-// tick that runs on its other conditions; NO CONDITIONS, a task the scheduler never
-// asks, which runs only from an item somebody creates (a mark, a wake, a chain link);
-// and UNREADABLE, conditions this could not lift — because a parse failure shown as
-// "on movement" would hide behind a legitimate answer, and an absent key shown as
-// unknown would hide a task that reads exactly as its author wrote it.
+// What a declaration says about WHEN its task runs, in the roster's terms: one
+// display word, the period the task keeps, and whether the scheduler asks it at all.
+// Two fields answer that, as they do for the scheduler — `trigger` says whether the
+// task is asked, `cadenceOf` says how often it may then say yes — and four answers
+// stay apart: a cadence; NO cadence term, a task asked at every tick that runs on
+// its other conditions; a REQUEST task, which the scheduler never asks and which
+// runs only from an item somebody creates (a mark, a wake, a chain link); and
+// UNREADABLE, a declaration this could not lift — because a parse failure shown as
+// "on movement" would hide behind a legitimate answer, and a task that reads exactly
+// as its author wrote it must not show as unknown.
 //
 // Only a `due:` cadence is on the calendar, so only it can have a next anchor: an
-// elapsed cadence counts from the task's newest run, and no-cadence and no-conditions
+// elapsed cadence counts from the task's newest run, and no-cadence and off-schedule
 // have no next instant at all. `scheduled` is null, not false, where nothing was read.
 //
 // `holdsOnFailure` is the same read for the one other thing a declaration says about
 // its own lane: whether a failure park stops the task (`last-run-not-failed`). No
 // park holds a lane by itself, so a failure the declaration does not name is a break
 // to diagnose beside a task still being asked on schedule.
-export function describeCadence(preconditions) {
+export function describeCadence(preconditions, trigger) {
   if (!Array.isArray(preconditions)) {
     return { frequency: null, cadence: null, periodMs: null, scheduled: null, holdsOnFailure: null, anchorNote: 'cadence unknown' };
   }
   const holds = holdsOnFailure(preconditions);
-  if (!statesConditions(preconditions)) {
-    return { frequency: 'unscheduled', cadence: null, periodMs: null, scheduled: false, holdsOnFailure: holds, anchorNote: 'no conditions — runs only from an item somebody creates' };
+  // The door once more, so a caller handing over only the conditions — a fixture, a
+  // declaration written before the field — reads exactly as the roster's own entry does.
+  if (withTrigger(trigger, preconditions) !== TRIGGER_SCHEDULE) {
+    return { frequency: 'unscheduled', cadence: null, periodMs: null, scheduled: false, holdsOnFailure: holds, anchorNote: 'not on the schedule — runs only from an item somebody creates' };
   }
   const cadence = cadenceOf(preconditions);
   const period = taskPeriodMs({ preconditions });
@@ -428,6 +447,13 @@ const statedPreconditions = (declaration) => {
   return declaration.preconditions === undefined ? [] : declaration.preconditions;
 };
 
+// The trigger the same entry states. A caller building the object by hand may state
+// only the conditions, so the door runs here too and the two reads stay one rule.
+const statedTrigger = (declaration) => {
+  if (declaration === null || typeof declaration !== 'object') return null;
+  return withTrigger(declaration.trigger, statedPreconditions(declaration));
+};
+
 // One row per DECLARED task, whether or not it has ever run — a task that has never
 // produced an item is exactly the interesting case, and an issue-derived list would
 // omit it entirely.
@@ -447,7 +473,7 @@ export function buildRoster({ tasks = [], items = [], now, schedule, isOpen }) {
       .sort((a, b) => ms(b.created_at) - ms(a.created_at));
     const open = mine.filter((i) => i.state === 'open');
     const closed = mine.filter((i) => i.state === 'closed');
-    const read = describeCadence(statedPreconditions(t.declaration));
+    const read = describeCadence(statedPreconditions(t.declaration), statedTrigger(t.declaration));
 
     // The calendar answers only a `due:` cadence, and only where the repo has a
     // schedule to anchor it on; every other reading carries its own note instead, so

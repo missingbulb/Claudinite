@@ -169,7 +169,7 @@ test('parseDeclaration reads a task.json, defaults filled', () => {
 // it spells the one rule of it the roster needs. Both run over one vector set here —
 // every shape the legacy field can arrive in — so the copy cannot drift from the
 // contract without this going red.
-test('the page\'s frequency door agrees with the contract\'s on every legacy shape', () => {
+test('the page\'s frequency and trigger doors agree with the contract\'s on every shape', () => {
   const vectors = [
     { id: 'a', frequency: 'daily' },
     { id: 'b', frequency: 'weekly', preconditions: ['none'] },
@@ -181,13 +181,30 @@ test('the page\'s frequency door agrees with the contract\'s on every legacy sha
     { id: 'h', preconditions: ['last-run-over:3d'] },
     { id: 'i' },
     { id: 'j', frequency: 'manual' },
+    // Stated, in both directions and against the shape the door would have read.
+    { id: 'k', trigger: 'schedule', preconditions: ['due:daily'] },
+    { id: 'l', trigger: 'request', preconditions: [] },
+    { id: 'm', trigger: 'request', preconditions: ['due:weekly', 'substantive-change'] },
+    { id: 'n', trigger: 'schedule', preconditions: [] },
   ];
   for (const decl of vectors) {
     const contract = normalizeTaskDeclaration({ ...decl, expected_outcome: 'no_code_changes' });
     const page = parseDeclaration(JSON.stringify({ ...decl, expected_outcome: 'no_code_changes' }), 'p/tasks/x/task.json');
     assert.deepEqual(page.preconditions, contract.preconditions, `vector ${decl.id}`);
+    assert.equal(page.trigger, contract.trigger, `vector ${decl.id}: the two doors read one trigger`);
     assert.equal(page.frequency, contract.frequency, `vector ${decl.id}: neither side keeps the field`);
   }
+});
+
+// The roster's own read of the field, which the shape can no longer answer for it.
+test('describeCadence follows a stated trigger against what the conditions look like', () => {
+  const off = describeCadence(['due:weekly', 'substantive-change'], 'request');
+  assert.equal(off.scheduled, false);
+  assert.equal(off.frequency, 'unscheduled');
+  assert.equal(off.cadence, null, 'a task nothing asks keeps no cadence to show');
+  const on = describeCadence([], 'schedule');
+  assert.equal(on.scheduled, true);
+  assert.equal(on.frequency, 'on movement', 'asked at every tick, and nothing narrows it');
 });
 
 test('taskDeclarationPaths selects a task.json and a task.mjs alike', () => {
