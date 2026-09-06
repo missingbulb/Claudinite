@@ -165,4 +165,24 @@ test('a repo without the tasks pack gets no scheduler workflows, and still gets 
 
   assert.ok(existsSync(join(root, '.github/workflows/claudinite-ci.yml')), 'the sweep is seeded either way');
   assert.match(at(root, '.github/workflows/claudinite-ci.yml'), /check_the_world\.mjs/);
+
+  // Nothing here ever opens, arms or merges a pull request, so the three delivery
+  // settings the case below hands over would each be a no-op box — and a box that is
+  // usually a no-op teaches the reader to skim the list that exists to stop them.
+  const steps = out.slice(out.indexOf('\nHANDOVER'), out.indexOf('\nNEXT:'));
+  assert.doesNotMatch(steps, /Allow auto-merge/);
+  assert.doesNotMatch(steps, /create and approve pull requests/);
+});
+
+// The three repository settings an owner must flip by hand. They are not scriptable
+// from anywhere the fleet holds a credential (#590: both endpoints need admin and
+// FLEET_GITHUB_TOKEN deliberately does not), so the hand-over block is the only place
+// they can reach the person adopting — and until #1799 it named none of them, which is
+// how a member was adopted with delivery that could never open a PR.
+test('the report hands over the repo settings delivery depends on', () => {
+  const out = run(freshRepo());
+  const steps = out.slice(out.indexOf('\nHANDOVER'), out.indexOf('\nNEXT:'));
+  assert.match(steps, /Allow GitHub Actions to create and approve pull requests/);
+  assert.match(steps, /Allow auto-merge/);
+  assert.match(steps, /Automatically delete head branches/);
 });
