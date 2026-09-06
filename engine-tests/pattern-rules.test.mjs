@@ -2020,7 +2020,7 @@ test('an action rule at Stop judges every recorded call, anchored by tool and or
   } finally { cleanup(root); session.cleanup(); }
 });
 
-test('a call the hook denied is recorded advisory at Stop — the firing counted, no block left to clear', () => {
+test('every guard finding is advisory at Stop — denied or ran, no block is left to clear', () => {
   const rule = patternRule({
     ...meta('fx-guard-denied'), scope: 'action',
     guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: /sleep \d+/, what: '{match}', fix: 'f' }],
@@ -2042,8 +2042,8 @@ test('a call the hook denied is recorded advisory at Stop — the firing counted
     const findings = runRule(rule, buildContext({ root, mode: 'all', transcriptPath: session.path }));
     assert.deepEqual(findings.map((f) => [f.file, f.severity, f.what]), [
       ['(session) Bash call #1', 'advisory', 'sleep 5 (denied at the hook)'],
-      ['(session) Bash call #2', 'blocking', 'sleep 6'],
-      ['(session) Bash call #3', 'blocking', 'sleep 7'],
+      ['(session) Bash call #2', 'advisory', 'sleep 6'],
+      ['(session) Bash call #3', 'advisory', 'sleep 7'],
     ]);
   } finally { cleanup(root); session.cleanup(); }
 });

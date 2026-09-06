@@ -140,12 +140,15 @@ The same entry is evaluated at two moments. The **PreToolUse hook** evaluates it
 about to run: a blocking finding denies the call and hands the agent the finding text; an
 advisory one lets the call through and injects the finding as context, so the agent hears the
 bias at the moment it applies. **`check_the_work`** evaluates it again over the transcript's
-tool-call blocks at Stop, one finding per offending call: the backstop for a member whose hook
+tool-call blocks at Stop, one finding per offending call: the record for a member whose hook
 did not fire, and the count the usage fold reads to say whether the guard is earning its place.
-A call the hook denied never ran, so at Stop it is recorded advisory — the firing counted, with
-no block left for the session to clear.
-The severity vocabulary is the check's: a guard that blocks is `blocking`; a bias that should be
-heard and may be overruled is `advisory`.
+Every Stop-time finding is recorded advisory, whatever the rule's severity: a call the hook
+denied never ran, and a call that ran cannot be un-run, so in neither case is there a block an
+edit could clear — and a block nothing can clear spends every remaining Stop of the session (a
+hand edit from days before the guard existed blocked a long-lived session for good). The hook is
+the blocking moment; Stop is the diagnosis.
+The severity vocabulary is the check's: a guard that blocks is `blocking` at the hook; a bias that
+should be heard and may be overruled is `advisory`.
 
 Every per-call hook is a guest in the harness, which reads exit 2 as the one block and prints
 any other failure — another exit code, a timeout, stdout that is not JSON — beside the call it

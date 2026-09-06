@@ -145,8 +145,8 @@ the change in front of the session, one about the repo as a whole:
   `scope: "action"` (`guardToolCalls`) is judged by [../hooks/pretooluse-command.mjs](../hooks/pretooluse-command.mjs)
   against the call about to run — a blocking finding denies it and hands the agent the text, an
   advisory one lets it run and injects the text as context — and by `check_the_work` over the
-  transcript's recorded calls at Stop, one finding per offending call: the backstop for a hook that
-  never fired, and the count the usage fold reads. The hook is registered on every tool
+  transcript's recorded calls at Stop, one finding per offending call, always advisory (a call that
+  ran cannot be un-run): the record for a hook that never fired, and the count the usage fold reads. The hook is registered on every tool
   (`PRETOOLUSE_MATCHER`) and says nothing on a call no declaration names. What it reads is cached
   per project ([../hooks/hook-context.mjs](../hooks/hook-context.mjs)), and every per-call entry
   exits only through [../hooks/hook-runner.mjs](../hooks/hook-runner.mjs) — 0, or 2 for a block —
