@@ -613,7 +613,7 @@ export function assertNoAgenticNote(m) {
 //
 //   - `why` (required, non-empty string) — what the session is for, in the PR and in
 //     the log. The terminal vocabulary insists every non-green end be explainable
-//     (updates/terminals.mjs), and this is the sentence for this one.
+//     (the update flows' terminal vocabulary), and this is the sentence for this one.
 //   - `instructions` (optional string) — appended to the standing brief. The standing
 //     brief is policy that holds for every apply stage; this is what only this record
 //     knows, and without it the declaration would be a bare boolean that tells the

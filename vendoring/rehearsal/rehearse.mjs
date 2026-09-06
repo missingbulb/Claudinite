@@ -114,7 +114,8 @@ export function rehearse(fixture, mode) {
         steps.push(step('re-converge', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
       }
       // AFTER the migrations, which is the order the real flow runs in
-      // (updates/engine-update.mjs: replace the engine, apply the records, THEN
+      // (packs/claudinite-lifecycle/updates/engine-update.mjs: replace the engine, apply
+      // the records, THEN
       // converge the wiring). Anything the wiring converge derives from the
       // declaration — the rules index above all — is wrong if a record moved the
       // declaration after it ran, and the rehearsal is where that shows up.

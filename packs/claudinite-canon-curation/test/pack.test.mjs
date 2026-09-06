@@ -99,10 +99,12 @@ test('pack-independence: a cross-pack import fires; own files, the engine surfac
 test('pack-independence: an import outside the engine surface fires; inert without a packs/ tree', () => {
   const crossing = makeRepo({ changed: {
     // A canon-internal tree that is never vendored — the crossing this rule exists
-    // to catch. It was migrations/ until #768 Phase 5 deleted that tree; updates/ is
-    // the same shape of target, and equally outside the engine surface a pack may import.
-    'packs/a/mod.mjs': "import reg from '../../updates/pack-update.mjs';\n",
-    'updates/pack-update.mjs': 'export default 1;\n',
+    // to catch. The path is synthetic and this fixture writes it: it was migrations/
+    // until #768 Phase 5 deleted that tree, then updates/ until #1328 deleted that one.
+    // vendoring/ is the same shape and still exists: canon-only, never vendored, and
+    // outside the engine surface a pack's own code may import.
+    'packs/a/mod.mjs': "import reg from '../../vendoring/compute-vendor-set.mjs';\n",
+    'vendoring/compute-vendor-set.mjs': 'export default 1;\n',
   } });
   const consumer = makeRepo({ changed: {
     'src/app.mjs': "import x from './lib.mjs';\n",
@@ -111,7 +113,7 @@ test('pack-independence: an import outside the engine surface fires; inert witho
   try {
     const f = packIndependence.run(buildContext({ root: crossing, mode: 'all' }));
     assert.equal(f.length, 1);
-    assert.match(f[0].what, /updates\/pack-update\.mjs/);
+    assert.match(f[0].what, /vendoring\/compute-vendor-set\.mjs/);
     assert.equal(packIndependence.run(buildContext({ root: consumer, mode: 'all' })).length, 0);
   } finally { cleanup(crossing); cleanup(consumer); }
 });

@@ -8,7 +8,7 @@
 //
 // WHY IT NEEDS NO CAPABILITY PROBE. The usual hazard — a record that needs engine
 // behaviour newer than the member's vendored worker — does not apply: the update
-// worker loads `updates/engine-update.mjs` out of the FRESH canon clone, and the
+// worker loads the engine-update flow out of the FRESH canon clone, and the
 // reshape op runs from that same clone. The member's own copy of the worker is only
 // asked to read its declaration before the converge, which it does under the old name
 // because that is still the name at that moment.
