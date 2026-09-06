@@ -1,5 +1,5 @@
 import { dirname, join, normalize } from 'node:path';
-import { humanTurns, assistantTextAfter, classificationLine, classesIn, toolCalls } from './session-transcript.mjs';
+import { humanTurns, assistantTextAfter, classificationLine, classesIn, skillLoads, toolCalls } from './session-transcript.mjs';
 import { addedLines } from './line-scanning.mjs';
 import { extractLinks } from './markdown.mjs';
 
@@ -89,7 +89,14 @@ class Work {
   packConfig(id) { return this.ctx.config?.packConfig?.[id]; }
 
   conversation() { return new Conversation(this.ctx.conversation()); }
-  toolCalls() { return this.conversation().toolCalls(); }
+
+  // What the session DID, read across every stream it wrote — a subagent's
+  // calls and loads land only in its own transcript (ctx.sessionEntries), which
+  // `conversation()` (the owner's turns) is not. Empty on an engine that
+  // predates the accessor, whose ctx answers with the session file alone.
+  sessionEntries() { return this.ctx.sessionEntries?.() ?? this.ctx.conversation() ?? []; }
+  toolCalls() { return toolCalls(this.sessionEntries()); }
+  skillLoads() { return skillLoads(this.sessionEntries()); }
 
   addedLines(files) { return addedLines(this.ctx, files ?? this.ctx.changedFiles); }
 

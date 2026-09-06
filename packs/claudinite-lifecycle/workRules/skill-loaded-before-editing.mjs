@@ -24,7 +24,9 @@ const rule = {
     if (!entries || !entries.length) return []; // CI and manual runs carry no transcript
     const active = work.packs.filter((p) => isActive(p, work.config));
     const declarations = scoped.pathScopedSkills(active);
-    const loaded = transcript.skillLoads(entries);
+    // Session-wide where the engine offers it — a subagent's load lands only in
+    // its own transcript — the session file alone on an engine that predates it.
+    const loaded = typeof work.skillLoads === 'function' ? work.skillLoads() : transcript.skillLoads(entries);
     const out = [];
     for (const file of declarations.length ? work.changedFiles : []) {
       for (const d of scoped.missingSkillsFor(file, declarations, loaded)) {
@@ -40,10 +42,10 @@ const rule = {
     // half — the PreToolUse guard holds the call until the load, and what is left
     // for Stop is the session that loaded it never; a load now, with the re-read
     // the fix asks for, is what converges the finding.
-    if (typeof scoped.triggeredSkills === 'function' && typeof transcript.toolCalls === 'function') {
+    if (typeof scoped.triggeredSkills === 'function' && typeof work.toolCalls === 'function') {
       const triggers = scoped.triggeredSkills(active).filter((d) => d.kind === 'toolCall');
       const reported = new Set();
-      for (const call of triggers.length ? transcript.toolCalls(entries) : []) {
+      for (const call of triggers.length ? work.toolCalls() : []) {
         for (const d of scoped.missingSkillsForCall(call, triggers, loaded)) {
           if (reported.has(d.skill)) continue;
           reported.add(d.skill);

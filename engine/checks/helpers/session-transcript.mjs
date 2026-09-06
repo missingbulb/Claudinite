@@ -1,3 +1,6 @@
+import { existsSync, readdirSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
+
 // Session-transcript parsing for conversation-surface rules (Stop hook only —
 // CI has no transcript, so rules must return [] when ctx.conversation() is null).
 // A Claude Code transcript is JSONL; the shapes this reads were verified against
@@ -160,4 +163,24 @@ export function skillLoads(entries) {
     }
   }
   return names;
+}
+
+// Every transcript file one session writes: the `<session-id>.jsonl` every hook
+// payload and the Stop hook name, plus each subagent's own stream at
+// `<session-id>/subagents/agent-<agent-id>.jsonl` beside it. A subagent's tool
+// calls go only to its own file, and no payload before SubagentStop names the
+// calling agent, so what the SESSION did — the skills it loaded, the calls it
+// made — is read across the whole set, never the session file alone (#1735).
+// Owner turns are the exception and stay with that file: the harness writes a
+// subagent's prompt as a user entry too, and it is not the owner speaking.
+export function sessionTranscriptPaths(transcriptPath) {
+  if (!transcriptPath) return [];
+  const paths = existsSync(transcriptPath) ? [transcriptPath] : [];
+  const subagents = join(dirname(transcriptPath), basename(transcriptPath).replace(/\.jsonl$/, ''), 'subagents');
+  let names;
+  try { names = readdirSync(subagents); } catch { return paths; } // no delegated work this session
+  for (const name of names.sort()) {
+    if (name.startsWith('agent-') && name.endsWith('.jsonl')) paths.push(join(subagents, name));
+  }
+  return paths;
 }

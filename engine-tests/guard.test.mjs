@@ -90,6 +90,28 @@ test('a file tool on a scoped path is blocked until the skill is loaded, then al
   }
 });
 
+test('a subagent that loaded the skill in its own stream is not blocked', () => {
+  const root = scopedRepo();
+  // The payload names the session file whatever agent is calling (#1735), so a
+  // load a subagent made is visible only in its own `subagents/` stream.
+  const delegated = makeTranscript(
+    [{ type: 'user', message: { content: 'go' } }],
+    { abc123: [skillLoad('writing-wiki-pages')] },
+  );
+  const unrelated = makeTranscript(
+    [{ type: 'user', message: { content: 'go' } }],
+    { abc123: [skillLoad('some-other-skill')] },
+  );
+  try {
+    const allowed = runGuard(edit(root, 'product-wiki/Market/README.md', delegated.path), { CLAUDE_PROJECT_DIR: root });
+    assert.equal(allowed.status, 0, allowed.stderr);
+    const blocked = runGuard(edit(root, 'product-wiki/Market/README.md', unrelated.path), { CLAUDE_PROJECT_DIR: root });
+    assert.equal(blocked.status, 2, 'a subagent stream that loaded some other skill still blocks');
+  } finally {
+    delegated.cleanup(); unrelated.cleanup(); removeTree(root);
+  }
+});
+
 test('a project declaring no scoped skill, or one with no transcript, lets every edit through', () => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-guard-'));
   try {

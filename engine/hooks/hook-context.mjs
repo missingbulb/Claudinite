@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hooklog } from '../checks/helpers/hook-log.mjs';
-import { parseEntries, skillLoads, toolCalls } from '../checks/helpers/session-transcript.mjs';
+import { parseEntries, sessionTranscriptPaths, skillLoads, toolCalls } from '../checks/helpers/session-transcript.mjs';
 import { settingsPath } from '../settings-file.mjs';
 
 // This module lives at <corpus>/engine/hooks/ — the same root the mount hook
@@ -43,7 +43,14 @@ export function transcriptEntries(transcriptPath) {
   try { return parseEntries(readFileSync(transcriptPath, 'utf8')); } catch { return []; }
 }
 
-export const loadedSkills = (transcriptPath) => skillLoads(transcriptEntries(transcriptPath));
+export const loadedSkills = (transcriptPath) => skillLoads(sessionEntries(transcriptPath));
+
+// Every entry the session wrote, its subagents' streams included — a payload
+// names the session file whichever agent is calling, so a guard reading that
+// file alone sees neither a subagent's load nor its calls (session-transcript.mjs
+// states the layout).
+export const sessionEntries = (transcriptPath) =>
+  sessionTranscriptPaths(transcriptPath).flatMap(transcriptEntries);
 
 // The session transcript, read at most once per hook run and only on demand:
 // `loaded()` is the skill names the session has loaded, `calls()` its recorded
@@ -52,7 +59,7 @@ export const loadedSkills = (transcriptPath) => skillLoads(transcriptEntries(tra
 // parse is the largest single cost a hook has.
 export function sessionReader(transcriptPath) {
   let entries = null;
-  const read = () => (entries ??= transcriptEntries(transcriptPath));
+  const read = () => (entries ??= sessionEntries(transcriptPath));
   return { loaded: () => skillLoads(read()), calls: () => toolCalls(read()) };
 }
 
