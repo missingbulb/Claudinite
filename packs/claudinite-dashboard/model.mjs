@@ -110,8 +110,9 @@ export function taskDeclarationPaths(paths, config) {
 // defaulted: a task whose declaration this misreads must look unreadable, because a
 // plausible wrong cadence would silently move a next-anchor the whole roster is
 // read for. An ABSENT `preconditions` is not an unread one: a declaration that was
-// read and carries no key states the empty expression — a task off the schedule,
-// exactly as its author wrote it — and reads as `[]`.
+// read and carries no key requires nothing, exactly as its author wrote it, and
+// reads as `[]`. An absent `trigger` is not unread either — it is derived, as the
+// contract's own door derives it.
 // The key must open the line or follow a `{` / `,` — anchoring on the line start
 // alone would miss a declaration written on one line, and anchoring on nothing
 // would let `code_work` be found inside `agent_code_work`. The value may close on a
@@ -187,10 +188,9 @@ export function parseDeclaration(text, path = '') {
   if (path.endsWith('.json') || /^\s*\{/.test(String(text ?? ''))) return parseJsonDeclaration(text);
   const src = stripComments(String(text ?? ''));
   // The conditions a task declares. One form, and only one (#1617): the
-  // `preconditions` expression — absent, the empty one, a task off the schedule.
-  // A member still stamping the retired `precondition_signals` reads as exactly
-  // that here, which is what it is — a declaration the current engine does not
-  // accept states no condition it reads.
+  // `preconditions` expression — absent, the empty one. A member still stamping the
+  // retired `precondition_signals` reads as exactly that here, which is what it is —
+  // a declaration the current engine does not accept states no condition it reads.
   const stated = MODULE_DECLARATION_RE.test(src) ? stringArray(src, 'preconditions') : null;
   const preconditions = withCadenceTerm(scalar(src, 'frequency'), stated === undefined ? [] : stated);
   return {

@@ -144,9 +144,9 @@ export function anchorInstant(frequency, schedule, now) {
 //                                this repo's schedule — fixed hours, no drift
 //   last-run-over:<12h|1d|7d>    the newest run started more than that long ago
 //
-// A declaration with NO conditions is not on the schedule at all: nothing in the
-// world or its history triggers it, so the scheduler never asks it, and it runs
-// only from an item somebody created (the retired `frequency: manual`).
+// Whether a task is asked at all is its `trigger`, not the shape of this list: a
+// task nothing asks may still state conditions, which are judged when somebody
+// creates an item for it (the retired `frequency: manual` is `trigger: 'request'`).
 //
 // The parse lives here, beside the frequency vocabulary it replaces, and imports
 // nothing: the dashboard's browser bundle reads a cadence the way the scheduler does.
@@ -187,9 +187,10 @@ export function cadenceOf(preconditions) {
   return null;
 }
 
-// Whether the declaration states any condition at all. Absent or empty, the task
-// is off the schedule: the scheduler never asks it, and it runs only from an item
-// somebody created — at whose pick an empty expression holds.
+// Whether the declaration states any condition at all. Not a scheduling answer on
+// its own — `trigger` is that — but what the contract's door reads to derive one
+// for a declaration written before the field existed (#1789). An entry carrying
+// only separators states nothing, which is why this is not a length test.
 export const statesConditions = (preconditions) => entriesOf(preconditions).some((alts) => alts.length > 0);
 
 // A term gates when it is a whole conjunct of the expression — `['x', …]` gates,

@@ -14,12 +14,14 @@
 //   stops running — so an unknown term, a malformed argument or an unreadable
 //   signal returns `{ error }`, a failed run in the queue's failure lane.
 //
-// THE EXPRESSION IS THE WHOLE OF "WHEN" (tasks-dispatch DESIGN §5). The engine
-// keeps no calendar: every scheduler tick asks every task that states a condition,
-// and the cadence a task keeps is one of its own conditions, read off its own run
-// history — `due:<cadence>`, `last-run-over:<duration>` — beside whatever else it
-// requires. A task stating no condition is off the schedule and runs only from an
-// item somebody creates, so `none` is retired as a second spelling of absence.
+// THE EXPRESSION IS WHAT MUST HOLD, NEVER WHO ASKS (tasks-dispatch DESIGN §5). The
+// engine keeps no calendar: every scheduler tick asks every task whose declaration
+// says `trigger: 'schedule'`, and the cadence such a task keeps is one of its own
+// conditions, read off its own run history — `due:<cadence>`,
+// `last-run-over:<duration>` — beside whatever else it requires. The same
+// conditions are judged, identically, at the pick of an item somebody created, so
+// this module never asks which of the two happened. `none` is retired: a task with
+// nothing to require states no condition, and the empty expression holds.
 //
 // THE VOCABULARY HAS TWO HOMES. The built-ins below are the run-history, movement
 // and pending-PR conditions every repo shares. A task whose gate is its own ships a

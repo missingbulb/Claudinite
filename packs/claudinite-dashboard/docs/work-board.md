@@ -79,7 +79,7 @@ rows are placed. Scheduled's header names the anchor.
 | ad-hoc item, blocked on a date | hollow circle at its `Not-before` | body line, absolute form only |
 | ad-hoc item, blocked on an issue | hollow circle **after** the blocker's predicted time; a PR blocker puts it at *now* + "when you merge"; a plain-issue blocker nothing is scheduled to close gives it **no time — the lane is drawn broken** | `Blocked-by: #n` and the blocker's own placement |
 | ad-hoc item, ready | hollow circle at the next scheduler tick — the daily anchor, or the drain tick (its hour not read here) | `task:status:waiting-for-executor` |
-| item on no mark | dashed hollow circle, `unmarked` beside it | a `Blocked-by` chain with no `task:origin:ad-hoc` on the link |
+| item on no mark | dashed hollow circle, `unmarked` beside it | a `Blocked-by` chain with no `task:origin:*` on the link |
 | park | square at *now*, the kind as the glyph inside: `×` action, `–` approval, `?` decision, hatch failure | `task:status:needs-human-<kind>` |
 | running | filled circle at *now* | `task:status:running-agent` / `running-executor` |
 | plain issue | diamond at the *head* of the edge it blocks: hollow ink = plain; filled good = `quick-win`; dotted outline = rotting (`updated_at` ≥ 14 d ago); ghost in the past wash = a ladder phase with no time | labels, `updated_at`, reverse `Blocked-by` |

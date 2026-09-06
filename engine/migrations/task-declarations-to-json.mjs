@@ -62,7 +62,8 @@ export function orderTaskKeys(decl) {
 // that could not be carried (functions, undefined) so the caller can say so.
 export function serializeTaskDeclaration(decl, schemaRelative) {
   const dropped = Object.keys(decl).filter((k) => typeof decl[k] === 'function' || decl[k] === undefined);
-  // An empty expression is spelled by absence: a task with no conditions states none.
+  // An empty expression is spelled by absence: a task requiring nothing states no
+  // conditions. Whether anything asks it is `trigger`, which is written either way.
   const data = Object.fromEntries(Object.entries(decl)
     .filter(([k, v]) => !dropped.includes(k) && !(k === 'preconditions' && Array.isArray(v) && v.length === 0)));
   return { text: `${JSON.stringify(orderTaskKeys({ $schema: schemaRelative, ...data }), null, 2)}\n`, dropped };

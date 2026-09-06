@@ -303,9 +303,9 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   if (decl.precondition !== undefined) {
     bad('the task declares a "precondition" function, which is retired', 'move the gate into "preconditions" — a built-in condition, or a term this task\'s preconditions.mjs exports');
   }
-  // OPTIONAL (DESIGN §5): the expression is the whole of when the task runs, and a
-  // declaration stating none is not on the schedule — it runs only from an item
-  // somebody creates. A retired `frequency` arrives here already turned into its
+  // OPTIONAL (DESIGN §5): a task may require nothing, and then every occurrence of
+  // it runs. What is NOT read off this list is whether the scheduler asks the task —
+  // `trigger` says that. A retired `frequency` arrives here already turned into its
   // cadence term by the door.
   if (decl.preconditions !== undefined) {
     for (const problem of validatePreconditions(decl.preconditions, terms)) bad(problem.what, problem.fix);

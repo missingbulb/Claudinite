@@ -388,14 +388,15 @@ retired, because it is a second spelling of absence.
 A task on the schedule normally states its cadence first, but a task with a
 movement condition and no cadence (`['substantive-change']`) is legal and
 simply runs whenever the movement is there, at most once per tick. The
-`frequency` field is retired into the term it always meant, and one door still
-reads it: `normalizeTaskDeclaration` rewrites a declaration carrying the field
-into `due:<cadence>` first in the expression, drops a `none` beside it and
-deletes the field — `manual` drops the field and adds no term, which reads as
-exactly "not on the schedule" — so nothing downstream ever sees it.
-`legacy-task-fields` advises the holder, the nightly update rewrites members'
-own task files, and the tolerance retires one convergence window after #1725
-ships.
+`frequency` field is retired into the two fields it always meant, and one door
+still reads it: `normalizeTaskDeclaration` rewrites a declaration carrying the
+field into `due:<cadence>` first in the expression with `trigger: schedule`
+beside it, drops a `none` and deletes the field — `manual` becoming
+`trigger: request` and no term at all — so nothing downstream ever sees it. The
+same door derives `trigger` for a declaration stating none, off the shape of its
+conditions. `legacy-task-fields` advises the holder of either, the nightly update
+rewrites members' own task files, and the two tolerances retire one convergence
+window after #1725 ships (#1732, #1789).
 
 **A run.** To the history terms a run of task T is an **unqualified** item
 titled `[claudinite-work] <pack>/<task>` that an executor **picked** — whatever
@@ -1819,10 +1820,11 @@ deployment coupling did not:
     | `last-run-over:<duration>` | elapsed since the newest run started — drifts across ticks, accepted |
     | `last-run-not-failed` | the task's own choice to stop past its failure park — never an engine default |
 
-    `preconditions` is optional, and a task with none is not on the schedule
-    (§5); `none` is retired (an explicit empty marker is a second spelling of
-    absence); `frequency` is retired into the term, at the door, `manual`
-    dropping to no expression; the first-sight rule is
+    `trigger` (`schedule | request`) says whether the scheduler asks the task at
+    all, and `preconditions` is optional and says only what must then hold (§5);
+    `none` is retired (an explicit empty marker is a second spelling of an empty
+    list); `frequency` is retired into the pair, at the door, `manual` becoming
+    `trigger: request`; the first-sight rule is
     dropped outright, a task wanting to run the moment it is introduced saying
     so itself; the schedule board is deleted and a decline is a log line. The
     alternatives, and why each lost:
@@ -1859,11 +1861,22 @@ deployment coupling did not:
       carrying it as a whole conjunct read as off the schedule. The owner
       ruled it is not a precondition at all — it means "run when I run", and
       since every run of every task begins with somebody's item, the term
-      said nothing. It lost to structure: `preconditions` is optional, an
-      absent or empty expression *is* "not on the schedule", and
-      `isScheduledTask` reads that off the declaration with no term to carry
-      it. The `Woken:` stamp, and the cadence terms holding on a woken item,
-      are untouched — those state a fact about one item, not a tautology.
+      said nothing. The `Woken:` stamp, and the cadence terms holding on a
+      woken item, are untouched — those state a fact about one item, not a
+      tautology.
+    - *The shape of `preconditions` as the signal* (owner, 2026-09-06, the
+      same review). Retiring `woken` left absence carrying the meaning: a
+      declaration stating no condition, or one whose condition read the item,
+      was off the schedule. It read as cryptic — `"preconditions": ["none"]`
+      and no `preconditions` at all were a keystroke apart and meant opposite
+      things — and it made a scheduling question need the task's own terms
+      loaded to answer, which is how one call site came to answer it wrong.
+      Two fields, orthogonal, replace it: `trigger` for who asks,
+      `preconditions` for what must hold, judged identically whichever asked.
+      A structural classifier was weighed against it — "on the schedule iff
+      the expression carries a cadence term" — and lost on the same ground
+      the owner raised: the answer would still be inferred rather than
+      declared, and inferred from an absence.
 
     **The retrospective brief** — per the `production-retrospective` skill,
     filed at the merge that completes #1725 and reading the canon's own record

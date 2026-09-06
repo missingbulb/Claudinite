@@ -48,11 +48,11 @@ Carried over from the declaration's comments when it became `task.json`.
 claudinite-dashboard task: deploy-oauth-exchange — put the dashboard's sign-in
 endpoint live, and prove the deployed URL answers.
 
-No `preconditions` — nothing recurring is being asked. The endpoint changes
+`trigger: request` — nothing recurring is being asked. The endpoint changes
 when its source changes, when the app's client secret is rotated, or when the set
 of page origins allowed to call it changes; none of those is a cadence or a
-condition the scheduler could read, so the task is not on the schedule and the
-only way it runs is a work item created by hand:
+condition the scheduler could read, so the only way it runs is a work item created
+by hand:
 
   create-work-item claudinite-dashboard/deploy-oauth-exchange
 

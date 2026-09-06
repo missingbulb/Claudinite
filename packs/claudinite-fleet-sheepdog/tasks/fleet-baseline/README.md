@@ -1,6 +1,6 @@
 # Fleet baseline — force every member to baseline now
 
-**This task runs no agent, and no schedule.** It declares no `preconditions`, with `agent_model: none`: it is not on the schedule, so the scheduler run never asks it, and the whole pass is the deterministic [`worker.mjs`](worker.mjs) → [`force-fleet-baseline.mjs`](force-fleet-baseline.mjs) the executor runs as code-work when — and only when — a human creates an item for it. This file is the human-facing record of what that is; there is no agent phase.
+**This task runs no agent, and no schedule.** It declares `trigger: request`, with `agent_model: none`: the scheduler run never asks it, and the whole pass is the deterministic [`worker.mjs`](worker.mjs) → [`force-fleet-baseline.mjs`](force-fleet-baseline.mjs) the executor runs as code-work when — and only when — a human creates an item for it. This file is the human-facing record of what that is; there is no agent phase.
 
 ## How to pull the lever
 
@@ -68,10 +68,9 @@ Carried over from the declaration's comments when it became `task.json`.
 claudinite-fleet-sheepdog task: fleet-baseline — the enforcer's MANUAL lever: force every covered
 member (or the ones named) to baseline NOW instead of at its next occurrence.
 
-No `preconditions` — the first task off the schedule (#749). It answers no recurring
-question, so it states no condition and the scheduler run never asks it; the ONLY way
-it runs is a work item created by hand, optionally carrying its parameters as Context
-lines:
+`trigger: request` — the first task off the schedule (#749). It answers no recurring
+question, so nothing asks it; the ONLY way it runs is a work item created by hand,
+optionally carrying its parameters as Context lines:
 
   create-work-item claudinite-fleet-sheepdog/fleet-baseline
   --context "REPOS=Alpha Beta"        (optional — omit for every covered member; space-separated)

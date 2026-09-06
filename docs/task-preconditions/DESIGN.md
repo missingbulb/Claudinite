@@ -45,10 +45,10 @@ preconditions: ['mount-moved || local-packs-changed']
   the two was considered and rejected: each field would then read against its
   own English, and a requirements list parsed as a union is exactly the shape
   that made the earlier veto grammar read as a contradiction.
-- **`preconditions` is optional, and absence means "not on the schedule".**
-  A task with no expression, or an empty one, is never asked by the scheduler
-  and runs only from an item somebody created, at whose pick the empty
-  expression holds; a non-empty expression puts the task on the schedule. A
+- **`preconditions` is optional, and says nothing about whether the task is
+  asked.** That is `trigger`'s answer: a `schedule` task is asked at every tick,
+  a `request` task only from an item somebody created. Either way the expression
+  is judged at the occurrence, and an empty one holds. A
   precondition states what must be true of the world or of the task's own run
   history — never that somebody asked, which is true of every run
   (tasks-dispatch DESIGN §5, decision §15.33). `none` is retired: an explicit
@@ -150,8 +150,8 @@ declaration and reading the gate are one `cd` apart. Current task-local terms:
 (implement-request — the push-permission security check, unchanged in
 substance, relocated beside its declaration). A term that reads the item it is
 handed declares `needsItem`; the scheduler's tick has no item to judge it
-against, so a task whose expression carries one is not on the schedule
-(`isScheduledTask`) — `request-eligible` is the one such term.
+against, so a task whose expression carries one must declare `trigger: request`,
+which `task-declaration-shape` enforces — `request-eligible` is the one such term.
 
 `preconditions` is the only gate a task declares. A task-local term expresses
 everything the retired `precondition` function did while staying pure over its
@@ -249,11 +249,11 @@ store-release:           ['due:daily', 'manifest-ahead || substantive-change']
 growth-discover-packs:   ['due:weekly']
 growth-promote:          ['due:daily', 'fleet-local-packs-changed']
 upstream-watch:          ['due:monthly']
-deploy-oauth-exchange:   (no preconditions — not on the schedule)
+deploy-oauth-exchange:   trigger: request        (no conditions either)
 publish-pages:           ['due:daily', 'mount-moved || commits-under:.claudinite-settings.json
                                        || commits-under:.claudinite-checks.json']
 fleet-add-missing-packs: ['due:weekly']
-fleet-baseline:          (no preconditions — not on the schedule)
+fleet-baseline:          trigger: request        (no conditions either)
 fleet-pack-seeds:        ['due:daily']
 fleet-roster:            ['due:daily']
 growth-dedup:            ['due:weekly', 'mount-moved || commits-under:.claudinite/local']
@@ -261,16 +261,16 @@ growth-extract:          ['due:daily', 'substantive-change']
 logs-prune:              ['due:daily', 'log-past-retention']
 prose-to-checks-sweep:   ['due:weekly', 'repo-active']
 rule-revalidation:       ['due:weekly', 'repo-active']
-adopt-requested-packs:   (no preconditions — not on the schedule)
+adopt-requested-packs:   trigger: request        (no conditions either)
 update:                  ['due:daily']
 task-janitor:            ['due:daily']
 usage-fold:              ['due:daily', 'any-commit || session-captured']
-verify-production:       (no preconditions — not on the schedule)
+verify-production:       trigger: request        (no conditions either)
 wiki-growth:             ['due:weekly', 'repo-active']
 improve-comments:        ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/']
 tidy-issues:             ['due:daily', 'issues-touched']
 tidy-prs:                ['due:weekly', 'prs-touched']
-implement-request:       ['request-eligible']   (reads the item — not on the schedule)
+implement-request:       ['request-eligible']   trigger: request (the term reads the item)
 ```
 
 A declaration that still carries `frequency` enters by one door,

@@ -189,10 +189,10 @@ const rule = {
       if (decl.has('precondition_signals')) {
         flag('declares "precondition_signals", which is retired', 'drop it — the signal union is derived from the conditions, each of which names what it reads');
       }
-      // The expression is the whole of when the task runs, and OPTIONAL: a declaration
-      // stating none is off the schedule and runs only from an item somebody creates.
-      // A retired `frequency` reads exactly as the door reads it, cadence term first
-      // and a `none` beside it dropped — and the expression is judged term by term.
+      // What must hold for a run, and OPTIONAL: a declaration stating none requires
+      // nothing, and every occurrence of it runs. A retired `frequency` reads exactly
+      // as the door reads it, cadence term first and a `none` beside it dropped — and
+      // the expression is judged term by term.
       if (decl.has('preconditions') || decl.has('frequency')) {
         // Deliberately strict: a declaration whose trigger is computed cannot be
         // audited by anyone reading it, which is the whole reason the field is data.

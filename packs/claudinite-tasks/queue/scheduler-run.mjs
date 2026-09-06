@@ -128,9 +128,9 @@ export async function planSchedulerRun({
   // ---- job 1: ask every task on the schedule; a yes files the item ----------
   const live = (i) => LIVE_STATUSES.some((s) => isStatus(i, s));
   for (const task of tasks) {
-    // A task off the schedule — one stating no condition, or one whose condition
-    // reads the item itself — runs only from an item somebody created (DESIGN §5,
-    // §8): the schedule never asks it, and its items keep their own titles.
+    // A task whose declaration says `trigger: 'request'` runs only from an item
+    // somebody created (DESIGN §5, §8): the schedule never asks it, and its items
+    // keep their own titles.
     if (!isScheduledTask(task.decl)) continue;
     const key = `${task.pack}/${task.id}`;
     if (disabled.has(key)) continue;

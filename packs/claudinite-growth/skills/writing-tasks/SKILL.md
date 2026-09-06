@@ -63,9 +63,8 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   is the repo's **only** cron; the executor's workflow beside it carries none. Work
   that had its own cron'd workflow becomes a **task**, and that workflow is deleted
   — its steps move into the task's worker. So does work with no cron at all: an
-  event-driven or condition-gated job becomes a task with no `preconditions` (a
-  declaration with none is not on the schedule), woken by whatever knows the
-  event happened.
+  event-driven or condition-gated job becomes a task declaring `trigger: 'request'`,
+  woken by whatever knows the event happened.
   Don't keep either as a dispatch-only workflow for the task to fire: that is two files and two edit sites for one job, and a
   workflow whose only caller is the thing that replaced it. (The exception is narrow,
   and it is **not** about privilege. An Actions-only secret is reachable from
@@ -90,11 +89,11 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
 
 - **Every task declaration carries the full contract.** A `tasks/<name>/task.json`
   (one JSON object, `"$schema"` pointing at `packs/claudinite-tasks/task.schema.json`
-  so an editor validates it; keys grouped as identity, preconditions, outcome, then the
+  so an editor validates it; keys grouped as identity, scheduling, outcome, then the
   `code_*` fields, then the `agent_*` fields) declares `id` (matching its directory), `description`
-  (below), `preconditions` (when it runs — optional: absent, the task is not on
-  the schedule and runs only from an item somebody created; present, its first
-  entry is normally the cadence term, below), `expected_outcome` — what the run does to
+  (below), `trigger` (`schedule | request` — who mints an occurrence, below),
+  `preconditions` (what must then hold — optional, and absent means nothing does; its
+  first entry is normally the cadence term, below), `expected_outcome` — what the run does to
   pull requests, resolved once by the executor before code-work and handed to both
   phases: `no_code_changes` (opens none), `fresh_pr` (one on a freshly minted
   branch; the task's earlier pull requests are left alone),
@@ -276,16 +275,20 @@ an `automerge` list, which is a union — one field grants, the other requires.
 "preconditions": ["due:weekly", "substantive-change", "commits-outside:.claudinite/"]
 ```
 
-**The first condition says when.** Every scheduler tick asks every task that has
-an expression, so the expression is the whole of a task's schedule — and a task
-with no `preconditions` has no schedule: the scheduler never asks it, and it runs
-only from a hand-created item, a mark, a `--wake` or a chain link, where the empty
-expression holds at pick (what the retired `frequency: manual` meant). Write no
-term for "somebody created my item": that is true of every run, so it states
-nothing; and `none` is retired, an explicit empty marker being a second spelling
-of absence. Three built-ins read the task's own run history (its
-unqualified `[claudinite-work]` items over the last 40 days), and they are judged
-before anything else is collected, so a task whose cadence declines costs no read:
+**`trigger` says who asks; `preconditions` says what must hold.** Every scheduler
+tick asks every task declaring `trigger: 'schedule'`; a `trigger: 'request'` task is
+asked by nobody and runs only from an item somebody creates — a hand-created item, a
+mark, a `--wake`, a chain link (what the retired `frequency: manual` meant). The
+conditions are then judged the same way whichever of the two produced the
+occurrence, so write no term for "somebody created my item": that is true of every
+run, so it states nothing; and `none` is retired, an explicit empty marker being a
+second spelling of an empty list. A `request` task may still state conditions, and
+they hold it back exactly as they would a scheduled one.
+
+**The first condition says how often.** Three built-ins read the task's own run
+history (its unqualified `[claudinite-work]` items over the last 40 days), and they
+are judged before anything else is collected, so a task whose cadence declines costs
+no read:
 
 - `due:<daily|weekly|monthly>` — no run since that cadence's most recent anchor on
   the repo's `taskScheduler` schedule; fixed hours, so the hour never drifts.
@@ -296,14 +299,19 @@ before anything else is collected, so a task whose cadence declines costs no rea
   absent it, the next occurrence is filed beside the park.
 
 A `due:` or `last-run-over:` term holds on a woken item — the wake stands in for
-the cadence — while every other condition still applies. A task with a movement
-condition and no cadence term is legal and runs whenever the movement is there, at
-most once per tick. One more shape has no schedule, structurally: a term that reads
-the item itself (`needsItem`, which only the built-in request implementer's
-`request-eligible` declares) has nothing to be judged against at a tick, so
-`isScheduledTask` leaves that task to its items too. A declaration still carrying
-`frequency` is rewritten into its cadence term at the door (`manual` drops to no
-expression) and reported by `legacy-task-fields`: write the term.
+the cadence — while every other condition still applies. A scheduled task with a
+movement condition and no cadence term is legal and runs whenever the movement is
+there, at most once per tick. One pairing is rejected outright: a `schedule` task
+whose expression names a term reading the item itself (`needsItem`, which only the
+built-in request implementer's `request-eligible` declares) has nothing to be judged
+against at a tick, so it would fail every hour rather than decline — such a task is
+`trigger: 'request'`.
+
+A declaration still carrying `frequency` is rewritten at the door into its cadence
+term plus `trigger: 'schedule'` (`manual` into `trigger: 'request'` and no
+expression), and one stating no `trigger` has it derived from the shape of its
+conditions; both are reported by `legacy-task-fields`, and the nightly update writes
+them into a member's own task files. Write both fields.
 
 **`preconditions` is the only gate there is.** The `precondition` function and its
 `precondition_signals` companion are retired: both are rejected by name, and the

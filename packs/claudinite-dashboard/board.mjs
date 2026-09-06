@@ -203,7 +203,7 @@ const OUTCOME_CELL = { done: 'ran', delivered: 'ran', obsolete: 'declined' };
 const onOwnRow = (row) => row.periodMs === null || row.periodMs <= DAY;
 
 export function scheduleGrid(rows, items, axis, { now, schedule }) {
-  // A task with no conditions is never on the schedule (`scheduled: false`), and a
+  // A `request` task is never on the schedule (`scheduled: false`), and a
   // declaration this could not read (`scheduled: null`) is not put on it either — a
   // row there would be a claim about a future nothing was read for.
   const scheduled = rows.filter((r) => r.scheduled);

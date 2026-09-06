@@ -1156,13 +1156,13 @@ the retired shape the same day cost 48.
 
 ## O. The stateless scheduler (owner, 2026-09-05, #1725 — DESIGN §15.33)
 
-The engine keeps no calendar and no memory of an ask: every tick asks every
-scheduled task, and a task's cadence is a term in its own `preconditions`,
-read off its run history — `due:<daily|weekly|monthly>`, `last-run-over:<Nh|Nd>`,
-`last-run-not-failed`. A task stating no condition — the retired `frequency:
-manual` — is off the schedule, and so is one whose condition reads the item
-itself (the request task's `request-eligible`): never asked, run only from an
-item somebody created, at whose pick an empty expression holds. The run-history
+The engine keeps no calendar and no memory of an ask: every tick asks every task
+declaring `trigger: schedule`, and such a task's cadence is a term in its own
+`preconditions`, read off its run history — `due:<daily|weekly|monthly>`,
+`last-run-over:<Nh|Nd>`, `last-run-not-failed`. A `trigger: request` task — the
+retired `frequency: manual`, and the request task whose `request-eligible` reads
+the item — is never asked: it runs only from an item somebody created, at whose
+pick its conditions are judged exactly as a scheduled task's are. The run-history
 terms are judged first, off the queue the run already holds; the other signals
 are collected only where they did not decide. A yes files a READY item, a no is
 a log line, a read the scheduler cannot make fails open. The one engine
@@ -1186,11 +1186,12 @@ run's START. With no history at all the task runs at the very first tick
 ("no run in the horizon"), then one tick later each day — the tick exactly 24h
 after the last start is inside the duration, the one after it is over.
 
-### S76 — a task stating no condition is off the schedule
+### S76 — a `request` task is off the schedule
 
-A declaration with no `preconditions` (or an empty list) is never asked at any
-tick; its item exists only because somebody created one, and at that item's
-pick the empty expression holds — it runs. The force lever reaches such a task
+A declaration saying `trigger: request` is never asked at any tick, whatever its
+conditions say; its item exists only because somebody created one, and at that
+item's pick those conditions are judged — an empty expression holds, so a task
+requiring nothing runs. The force lever reaches such a task
 only through its open items: it wakes them, stamped `Woken`, and mints nothing
 where none is open — a bare item of it would carry nothing its worker can read
 (#1721).

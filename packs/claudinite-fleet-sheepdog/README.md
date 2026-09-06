@@ -114,7 +114,7 @@ behalf, and exits non-zero. A non-zero preprocessing subprocess fails the task, 
 parks one open issue for it.
 
 **The two operator levers ride the work-item queue, not a workflow.** `fleet-baseline` is the first
-task with no `preconditions` at all: not on the schedule, never asked at any tick, it runs only from
+task declaring `trigger: request`: not on the schedule, never asked at any tick, it runs only from
 an item the owner creates by hand — `create-work-item claudinite-fleet-sheepdog/fleet-baseline`, with `REPOS=…`, `DRY_RUN=true`,
 `INCLUDE_DORMANT=true`, `FOLLOW_MINUTES=…` as `--context` lines — which wakes every covered member's own
 standing `update` item so the fleet picks canon up now instead of over the next day. A forced
