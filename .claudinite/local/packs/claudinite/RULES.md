@@ -117,6 +117,11 @@ Below are rules on how to work on this repo.
   failed. Prefix every command touching that directory with its own `cd`; a prior one never carries
   forward.
 
+- **A Bash command refused as naming git (or a computed argument) "too complex to verify"
+  inside a worktree-isolated agent** — drop straight to the plain, literal, unsubstituted form.
+  The guard reads syntax, not intent, so a loop, a heredoc, or `$(...)` around the same call
+  keeps failing exactly the same way. (73)
+
 - **Asserting why a system behaved a certain way** (a park correctly closed, a routing mechanism's
   logic) — read the primary evidence, the issue's own body/comments or the enforcing source line,
   first. A verdict inferred from structure or memory alone has shipped as a wrongly-merged fix for a
@@ -132,6 +137,10 @@ Below are rules on how to work on this repo.
 - **Declaring a check, or adding a key to the vocabulary** — name the key so the declaration reads
   alone (`scanFiles`, `matchLines`, `relevantWhen`). If it needs a comment to be read, it needs a
   better name.
+
+- **Choosing how a declared field spells two opposite states** — never let them differ by one
+  keystroke (`["none"]` vs. no key at all); a reader who hasn't loaded the schema must still be
+  able to tell them apart correctly. (72)
 
 - **Adding a legacy tolerance to `engine/` or `packs/`** — file the issue that removes it first,
   then put `// @legacy-tolerance advisory:<rule-id|none> retire:#<issue>` on the line directly
