@@ -4,6 +4,7 @@ import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
 import earnEachDependency from '../workRules/earn-each-dependency.mjs';
+import testDiscoveryResolves, { resolvesToFiles, judgeCommand } from '../worldRules/test-discovery-resolves.mjs';
 
 function run(rule, root, mode = 'changed') {
   return runRule(rule, buildContext({ root, mode }));
@@ -101,5 +102,67 @@ test('btoa-atob-on-text: silent on a Buffer bridge, a comment naming the call, a
   } });
   try {
     assert.equal(run(btoaOnText, root, 'all').length, 0);
+  } finally { cleanup(root); }
+});
+
+test('resolvesToFiles: exact path, glob, and directory prefix all resolve; a stale one does not', () => {
+  const paths = ['test/foo.test.mjs', 'dev/requirements/a.test.mjs'];
+  assert.equal(resolvesToFiles('test/foo.test.mjs', paths), true);
+  assert.equal(resolvesToFiles('test/**/*.test.mjs', paths), true);
+  assert.equal(resolvesToFiles('dev/requirements', paths), true);
+  assert.equal(resolvesToFiles('test/gone.test.mjs', paths), false);
+  assert.equal(resolvesToFiles('', paths), false);
+});
+
+test('judgeCommand: null on a non-node-test command, and on shell interpolation', () => {
+  const paths = ['test/foo.test.mjs'];
+  assert.equal(judgeCommand('npm ci', paths), null);
+  assert.equal(judgeCommand('node --test $GLOB', paths), null);
+  assert.equal(judgeCommand('node --test `echo test`', paths), null);
+});
+
+test('test-discovery-resolves: flags a package.json test script whose argument resolves to nothing', () => {
+  const root = makeRepo({
+    changed: { 'package.json': pkg({ scripts: { test: 'node --test .hidden/**/*.test.mjs' } }) },
+  });
+  try {
+    const findings = run(testDiscoveryResolves, root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'package.json');
+    assert.match(findings[0].what, /discovers nothing/);
+  } finally { cleanup(root); }
+});
+
+test('test-discovery-resolves: silent when the script argument resolves to a tracked file', () => {
+  const root = makeRepo({
+    changed: {
+      'package.json': pkg({ scripts: { test: 'node --test test/**/*.test.mjs' } }),
+      'test/a.test.mjs': '',
+    },
+  });
+  try {
+    assert.equal(run(testDiscoveryResolves, root).length, 0);
+  } finally { cleanup(root); }
+});
+
+test('test-discovery-resolves: flags a `node --test` step in a workflow whose glob resolves to nothing', () => {
+  const root = makeRepo({
+    changed: {
+      '.github/workflows/ci.yml': "on: push\njobs:\n  test:\n    steps:\n      - run: node --test .gone/**/*.test.mjs\n",
+    },
+  });
+  try {
+    const findings = run(testDiscoveryResolves, root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, '.github/workflows/ci.yml');
+  } finally { cleanup(root); }
+});
+
+test('test-discovery-resolves: a bare `node --test` with no path is flagged too', () => {
+  const root = makeRepo({
+    changed: { 'package.json': pkg({ scripts: { test: 'node --test' } }) },
+  });
+  try {
+    assert.equal(run(testDiscoveryResolves, root).length, 1);
   } finally { cleanup(root); }
 });

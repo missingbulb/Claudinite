@@ -110,6 +110,11 @@
 - **Writing anything** — size it to its idea: "open one issue" takes a sentence, not three
   paragraphs.
 
+- **The primary source for a fact about a named, real person is blocked** (a profile behind a
+  `403` or a paywall) — never substitute a data-broker or aggregator listing, and never publish
+  the substitute under a caveat. Ask whoever is present instead: one question costs less than
+  correcting a wrong public claim about someone.
+
 - **Correcting or auditing an artifact against an authoritative source** — derive the corrected
   version from the *source* before reading the existing draft, then diff against the old draft to
   surface what was actually wrong.
@@ -159,11 +164,14 @@
 
 - **Deferring a warning you can't fix now with a small cause-addressing change** (it waits on an
   upstream release, or the real fix is a larger refactor) — open a dedicated issue unless one is
-  already open, then move on. Search for that open one by the **invariant identifier** the finding
-  names — the symbol, path or id it is *about* — never the sentence it arrived in: every filer
-  paraphrases the message and prefixes its own stage's name, so the wording is the one part that
-  differs across filings, and a new branch, PR number or run is not a new finding. Resolving it, by
-  real fix or a consciously-chosen suppression, happens in that issue's own change.
+  already open, then move on. Resolving it, by real fix or a consciously-chosen suppression,
+  happens in that issue's own change.
+
+- **Searching for the issue a finding was already filed under** — search the **invariant
+  identifier** the finding names, the symbol, path or id it is *about*, never the sentence it
+  arrived in: every filer paraphrases the message and prefixes its own stage's name, so the
+  wording is the one part that differs across filings, and a new branch, PR number or run is not
+  a new finding.
 
 # The task lifecycle
 
@@ -185,12 +193,13 @@ For every new task:
 
 - **Filing anything into the ad-hoc queue** (a deferral, a verification, any marked issue) — it
   asks an unattended session **on this repository** to do the work, so only file what such a
-  session can actually do here. A read of another repository or a console is not work it can
-  do: that item parks minutes after it is picked, and a park is a person's problem filed under
-  a mechanism's name. A public URL is the one exception, and only through the coded
-  verification form (`verify-in-production`'s probes) — never by asking a session to fetch it.
-  Where the work is out of reach, do it now, hand it to a routine that has the reach, or do
-  not file it — and say which.
+  session can actually do here. A read of another repository or a console is not work it can do:
+  that item parks minutes after it is picked, and a park is a person's problem filed under a
+  mechanism's name. A public URL is the one exception, through the coded verification form
+  (`verify-in-production`'s probes) and never by asking a session to fetch it.
+
+- **Finding the queue cannot reach the work you were about to file** — do it now, hand it to a
+  routine that has the reach, or do not file it — and say which of the three you chose.
 
 
 - **Handing over a step only a human can perform** (flipping a repository or console setting,
@@ -209,10 +218,16 @@ For every new task:
 - **Referring to a value from more than one place** — prefer a shared constant or a reference over
   copying it, and generate derived data rather than hand-maintaining it. If you can't, add a drift
   guard: the generic `sharedConstants` check for a plain value, or one that runs the real logic
-  against the copy in both directions when the duplicate mirrors matcher or predicate logic. Keep
-  the guarded literal itself unbroken, since a value split across a line break is invisible to the
-  guard and to a `grep`/`sed` rename alike. Have the guard's own text name the places it watches and
-  why the split is forced, and don't also comment the duplication — the guard covers it.
+  against the copy in both directions when the duplicate mirrors matcher or predicate logic.
+
+- **Writing that drift guard** — keep the guarded literal unbroken, since a value split across a
+  line break is invisible to the guard and to a `grep`/`sed` rename alike. Have the guard's own
+  text name the places it watches and why the split is forced, and don't also comment the
+  duplication — the guard covers it.
+
+- **Guarding two copies written in different languages** — pair them by name, applying the known
+  casing transform to derive one identifier from the other, rather than by literal value: one
+  value can be a numeric substring of another. (4)
 
 - **Writing file A so it depends on file B** — say what A needs from B, or that it delegates, and
   don't re-spell how B does its job. If you're about to paraphrase B's procedure, point at B

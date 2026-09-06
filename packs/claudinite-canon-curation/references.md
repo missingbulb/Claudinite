@@ -65,3 +65,8 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   shape, so naming that pack is its purpose rather than a coupling — and records accumulate as
   dated folders, one per change, which no path-keyed exception list should have to chase.
   Reaffirm while a canon distributes discovered content its engine must not name.
+- **(RULES-13)** Reproduced 2026-09-06: a file whose only occurrence of a command is inside a
+  labeling helper's quoted argument (`step "Normalizer self-test — some-cmd --flag"`) answers a
+  plain token grep with one hit while the command runs zero times — the check reports the wiring
+  intact after the invocation was deleted. Retire the rule if checks stop being written as token
+  greps over script text.

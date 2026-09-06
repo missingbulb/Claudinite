@@ -179,6 +179,16 @@ const checks = (packs, extra = {}) => JSON.stringify({
   ...extra,
 }, null, 2) + '\n';
 
+const RESTORING_WORKER = `#!/usr/bin/env bash
+# A local task worker in the shape task-worker-restores-main scans: the scheduler
+# drains several items from ONE checkout, so a worker that writes returns the tree
+# to main before it does.
+set -euo pipefail
+git checkout main
+git commit -m "fixture: nothing to see here"
+git push origin HEAD:main
+`;
+
 const PACK_LOCAL_RULES = `import demo from './demo-rule.mjs';
 
 export default {
@@ -1534,6 +1544,17 @@ fi
       '.claudinite/local/packs/fixture-local/RULES.md': '# fixture-local\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-local/skills/fixture-skill/SKILL.md':
         '---\nname: fixture-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
+      '.claudinite/local/packs/fixture-local/tasks/fixture-task/worker.sh': RESTORING_WORKER,
+    },
+  },
+  {
+    name: 'node-consumer',
+    why: 'a member declaring node, whose package.json test script names a glob resolving to a tracked file — proving the vendored test-discovery-resolves rule (blocking, world scope) rides the mount and the member still converges green',
+    files: {
+      'README.md': '# fixture-node-consumer\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'node']),
+      'package.json': '{\n  "name": "fixture-node-consumer",\n  "type": "module",\n  "scripts": { "test": "node --test test/*.test.mjs" }\n}\n',
+      'test/smoke.test.mjs': "import { test } from 'node:test';\ntest('fixture', () => {});\n",
     },
   },
 ];
