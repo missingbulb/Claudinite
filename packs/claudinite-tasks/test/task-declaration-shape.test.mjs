@@ -317,12 +317,24 @@ test('task-declaration-shape: an empty task.mjs is still flagged', () => {
 
 test('task-declaration-shape: a stated trigger is checked; an unstated one is the advisory\'s', () => {
   assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'schedule' }) }), []);
-  assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'request' }) }), []);
+  assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['substantive-change'] }) }), []);
   // Absent is legal here — the door derives it, and `legacy-task-fields` is what
   // asks for it. This check must not double up on that as a blocking finding.
   assert.deepEqual(run({ [TASK]: goodTask }), []);
   assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'cron' }) }), /"trigger" is "cron", not a legal value/);
   assert.match(whatsOf({ [TASK]: json({ ...good, trigger: true }) }), /"trigger" is true, not a legal value/);
+});
+
+// The sim's S79 is what establishes this: a wake stands in for the cadence, and
+// every occurrence of a request task is a wake, so the term declines nothing ever.
+test('task-declaration-shape: a request task may not state a cadence it can never be held by', () => {
+  assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['due:daily'] }) }),
+    /a "request" task states a cadence term/);
+  assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['last-run-over:7d'] }) }),
+    /a "request" task states a cadence term/);
+  // Its other conditions are judged at pick like anyone's, so they are fine.
+  assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['substantive-change'] }) }), []);
+  assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'schedule', preconditions: ['due:daily'] }) }), []);
 });
 
 test('task-declaration-shape: a scheduled task may not gate on a condition that reads the item', () => {

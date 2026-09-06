@@ -1209,6 +1209,15 @@ No first-window booking, no born-blocked item (S25, retired). A weekly task
 with no history and work waiting runs mid-week at the first tick — "no run
 since the anchor" is simply true — and its next run is the following Sunday's.
 
+### S79 — the two fields say different things
+
+A `schedule` task carrying no conditions at all is asked at every tick and runs
+at every one, because nothing narrows it. And a cadence on a `request` task is
+**inert**: every occurrence of such a task is one somebody created, every such
+item carries `Woken:`, and the wake stands in for the cadence — so the term
+cannot decline a single run. It reads like a rate limit on the lever and is
+not one, which is why `task-declaration-shape` rejects the pairing.
+
 ### S30, replayed — F32, found by this port
 
 The F16 self-heal closes every live duplicate but the oldest; the survivor is

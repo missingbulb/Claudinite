@@ -2162,6 +2162,34 @@ test('S77 a forced mint passes the cadence at pick by its Woken stamp; an unstam
     /already ran since the daily anchor/);
 });
 
+// ---- S79 — the two fields say different things, on the two shapes an expression
+// could not state before. A `schedule` task may require nothing: asked at every
+// tick, and nothing narrows it, so it runs at every one. And a cadence on a
+// `request` task is INERT, not a rate limit on the lever: every occurrence of such
+// a task is one somebody created, every such item is stamped `Woken`, and the wake
+// stands in for the cadence — so the term cannot decline a single run. That is why
+// the declaration check rejects the pairing outright rather than advising on it.
+test('S79 a cadence cannot hold back a request task; a schedule task requiring nothing runs every tick', () => {
+  const tasks = [
+    { id: 'x/lever', trigger: 'request', preconditions: ['due:daily'], outcome: 'done', codeWorkMinutes: 1 },
+    { id: 'x/always', trigger: 'schedule', preconditions: [], outcome: 'done', codeWorkMinutes: 1 },
+  ];
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
+  let first; let second;
+  sim.at('2026-08-12T09:00Z', (s) => { first = s.createItem('x/lever'); });
+  sim.at('2026-08-12T11:00Z', (s) => { second = s.createItem('x/lever', { qualifier: '#2' }); });
+  sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
+
+  assert.equal(asks(sim, 'x/lever').length, 0, 'a request task is never asked, cadence or no cadence');
+  assert.equal(first.outcome, 'done', 'the first hand-created item runs');
+  assert.equal(second.outcome, 'done', 'and so does the second, the same day: the wake stands in for `due:daily`');
+
+  const asked = asks(sim, 'x/always');
+  assert.equal(asked.length, 24, 'asked at every tick of the day');
+  assert.equal(goes(sim, 'x/always').length, 24, 'and nothing narrows it, so every ask is a yes');
+  assert.equal(sim.family('x/always').filter((i) => i.outcome === 'done').length, 25, 'one run per tick, plus the seed');
+});
+
 // ---- S78 — a brand-new task is asked at its first tick like any other: no
 // first-window booking, no born-blocked item (the retired S25). A weekly task
 // with no history and work waiting runs mid-week at the first tick — "no run

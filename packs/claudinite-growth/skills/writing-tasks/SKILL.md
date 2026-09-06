@@ -283,7 +283,10 @@ conditions are then judged the same way whichever of the two produced the
 occurrence, so write no term for "somebody created my item": that is true of every
 run, so it states nothing; and `none` is retired, an explicit empty marker being a
 second spelling of an empty list. A `request` task may still state conditions, and
-they hold it back exactly as they would a scheduled one.
+they hold it back exactly as they would a scheduled one — except a **cadence term**,
+which on a `request` task is inert and is rejected: every item of such a task is one
+somebody created, every such item carries `Woken:`, and a wake stands in for the
+cadence, so the term can never decline a run.
 
 **The first condition says how often.** Three built-ins read the task's own run
 history (its unqualified `[claudinite-work]` items over the last 40 days), and they

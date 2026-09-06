@@ -1,6 +1,6 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { ACCEPTED_FREQUENCIES, cadenceTermFor } from '../../claudinite-tasks/calendar.mjs';
+import { ACCEPTED_FREQUENCIES, cadenceTermFor, cadenceOf } from '../../claudinite-tasks/calendar.mjs';
 import { MODEL_FAMILIES } from '../../claudinite-tasks/model-map.mjs';
 import {
   OUTCOMES, LEGACY_OUTCOMES, LEGACY_CEILINGS, OUTCOME_NO_PR, DEFAULT_AGENT_MODEL, descriptionProblem, normalizeTaskDeclaration,
@@ -127,6 +127,13 @@ const rule = {
           && preconditionNeedsItem(decl.list('preconditions'), siblingTerms(ctx, file))) {
           flag('a "schedule" task states a condition that reads the item itself',
             `write "trigger": "${TRIGGER_REQUEST}" — a condition about one item can only be judged once an item exists, and the scheduler's ask at a tick has none, so this task would fail every tick instead of declining`);
+        } else if (trigger === TRIGGER_REQUEST && cadenceOf(decl.list('preconditions'))) {
+          // Inert, not merely redundant, which is why this blocks: nothing asks a
+          // request task, so every occurrence of it is an item somebody created,
+          // every such item carries `Woken:`, and a wake stands in for the cadence.
+          // The term cannot decline a single run, and reads as though it could.
+          flag('a "request" task states a cadence term',
+            'drop the term — nothing asks this task, so every item of it is one somebody created and carries `Woken:`, which satisfies a cadence; the term can never decline a run, it only reads as though it limits the lever');
         }
       }
 

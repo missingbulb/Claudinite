@@ -121,16 +121,18 @@ export function cadenceOf(preconditions) {
 }
 
 // Whether the declaration states any condition at all (calendar.mjs
-// statesConditions): absent or empty, the task is off the schedule — the
-// scheduler never asks it, and it runs only from an item somebody created, at
-// whose pick an empty expression holds.
+// statesConditions). Not a scheduling answer on its own: it is what the door
+// below reads to derive a trigger for a declaration stating none.
 export const statesConditions = (preconditions) => entriesOf(preconditions).length > 0;
 
-// ON THE SCHEDULE (task-contract.mjs isScheduledTask): the task states a
-// condition, and none of them reads the item itself — there is no item at the
-// scheduler's own ask to judge such a term against.
-export const isScheduled = (preconditions) =>
-  statesConditions(preconditions) && !entriesOf(preconditions).flat().some((ref) => ITEM_TERMS.has(ref.name));
+export const TRIGGER_SCHEDULE = 'schedule';
+export const TRIGGER_REQUEST = 'request';
+
+// ON THE SCHEDULE (task-contract.mjs isScheduledTask): the declaration says so.
+// The sim models what the ENGINE WRITES, and what the engine now writes into a
+// planned item is decided by this field alone — with no terms to load and no
+// shape to interpret, which is the point of the field.
+export const isScheduled = (decl) => decl?.trigger === TRIGGER_SCHEDULE;
 
 // The period a TASK keeps (queue/anchors.mjs taskPeriodMs): its `due:` cadence's
 // period, its `last-run-over:` duration, null for a task with no cadence term.
@@ -168,6 +170,16 @@ export function loadDeclaration(decl) {
     const term = cadenceTermFor(out.frequency);
     out.preconditions = term === null || stated.some((e) => String(e).trim() === term) ? stated : [term, ...stated];
     delete out.frequency;
+  }
+  // THE TRIGGER DOOR, as the contract runs it: stated wins, and a declaration
+  // stating none is read off the shape of its conditions — a term reading the item
+  // has nothing to judge at a tick, so it keeps the task off the schedule.
+  if (out.trigger === undefined) {
+    out.trigger = statesConditions(out.preconditions)
+      && !entriesOf(out.preconditions).flat().some((ref) => ITEM_TERMS.has(ref.name))
+      ? TRIGGER_SCHEDULE : TRIGGER_REQUEST;
+  } else if (![TRIGGER_SCHEDULE, TRIGGER_REQUEST].includes(out.trigger)) {
+    throw new Error(`${out.id}: "${out.trigger}" is not a trigger the contract accepts`);
   }
   // An absent `preconditions` stays absent, as through the engine's door; the
   // grammar reads absent and empty alike as stating nothing.
@@ -364,6 +376,7 @@ export function makeSim({
   // item → agent with nothing in between to carry a payload.
   registry.set(REQUEST_TASK, {
     id: REQUEST_TASK,
+    trigger: 'request',
     preconditions: ['request-eligible'],
     agentMinutes: 45,
     ceiling: 'pr',
@@ -446,7 +459,7 @@ export function makeSim({
     const o = originOf(i);
     if (o) return o === ORIGIN_PLANNED;
     const task = registry.get(i.taskId);
-    return !!task && isScheduled(task.preconditions) && i.qualifier === null && i.title === titleOf(i.taskId);
+    return !!task && isScheduled(task) && i.qualifier === null && i.title === titleOf(i.taskId);
   };
   const standingItem = (taskId) => family(taskId).find((i) => i.state === 'open');
 
@@ -636,7 +649,7 @@ export function makeSim({
       // A task off the schedule — stating no condition, or one that reads the
       // item itself — runs only from an item somebody created (DESIGN §5, §8):
       // the schedule never asks it.
-      if (!isScheduled(task.preconditions)) continue;
+      if (!isScheduled(task)) continue;
       // ONE LIVE ITEM PER TASK, the engine's one invariant: an open item that is
       // blocked, waiting or running is the task's current occurrence, and the
       // task is not asked while it stands. A PARKED item is not live — it is a
@@ -1220,7 +1233,7 @@ export function makeSim({
     seedSteadyState(asOfIso) {
       const t0 = T(asOfIso);
       for (const task of registry.values()) {
-        if (!isScheduled(task.preconditions)) continue;
+        if (!isScheduled(task)) continue;
         const cadence = cadenceOf(task.preconditions);
         const a = cadence?.kind === 'due' ? mostRecentAnchor(cadence.cadence, t0)
           : cadence?.kind === 'elapsed' ? t0 - cadence.ms
@@ -1249,7 +1262,7 @@ export function makeSim({
     force(taskId, { urgent = true } = {}) {
       const task = registry.get(taskId);
       if (!task) { record('force', { task: taskId, issue: null, unmatched: true }); return null; }
-      if (!isScheduled(task.preconditions)) {
+      if (!isScheduled(task)) {
         const routed = issues.filter((i) => i.taskId === taskId && i.state === 'open'
           && !IN_FLIGHT.some((l) => is(i, l)));
         for (const i of routed) {
@@ -1297,7 +1310,7 @@ export function makeSim({
     // executor run fires; the next scheduler run's drain is the guarantee.
     createItem(taskId, { urgent = false, notBefore = null, blockedBy = [], qualifier = null, eventLost = false } = {}) {
       const born = notBefore !== null || blockedBy.length ? 'task:status:blocked' : 'task:status:waiting-for-executor';
-      const adHoc = qualifier !== null || !isScheduled(registry.get(taskId)?.preconditions);
+      const adHoc = qualifier !== null || !isScheduled(registry.get(taskId));
       const it = createIssue({ taskId, labels: [born], notBefore, blockedBy, urgent, qualifier,
         origin: adHoc ? ORIGIN_AD_HOC : ORIGIN_PLANNED });
       if (born === 'task:status:waiting-for-executor' && !eventLost) schedule(now + 1 * MIN, () => executorRun('E1', 'label-event'));
