@@ -1180,7 +1180,10 @@ module.exports = { issue, check };
       'packs/fixture-shelf/pack.mjs': PACK_SHELF,
       'packs/fixture-shelf/publish.mjs': SHELF_CLI,
       'packs/fixture-shelf/RULES.md': '# fixture-shelf\n\n- **Publishing a shelf pack** — say what it is for in one line.\n',
-      'packs/fixture-shelf/VERSIONS.md': '# Version history\n\n| Version | Date | What changed |\n|---|---|---|\n| 60831.1 | 2026-08-31 | First version. |\n',
+      // Two rows, newest first — exercises pack-version-log-ordered's positive path
+      // (a real ordering comparison, not a single-row log trivially "in order").
+      'packs/fixture-shelf/VERSIONS.md': '# Version history\n\n| Version | Date | What changed |\n|---|---|---|\n'
+        + '| 60831.1 | 2026-08-31 | Second version. |\n| 60830.1 | 2026-08-30 | First version. |\n',
       'packs/fixture-shelf/README.md': '# fixture-shelf\n\nA rehearsal fixture pack on a fixture canon\'s shelf.\n',
     },
   },

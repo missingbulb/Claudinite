@@ -91,6 +91,7 @@ What a canon session follows when it names, configures, writes or polices a pack
 |---|---|---|---|
 | `pack-no-enforcement-narration` | medium | complexity | check: blocking |
 | `pack-discovery-entry-await` | critical | correctness | check: blocking |
+| `pack-version-log-ordered` | high | correctness | check: blocking |
 | `skill-no-enforcement-narration` | medium | complexity | check: blocking |
 | `pack-independence` | high | correctness | declared check: blocking |
 | `pack-directory-kebab-case` | high | correctness | declared check: blocking |
