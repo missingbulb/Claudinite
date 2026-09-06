@@ -2,7 +2,7 @@
 
 Active when a browser speech API — `webkitSpeechRecognition` / `SpeechRecognition`, `speechSynthesis` / `SpeechSynthesisUtterance`, or `chrome.tts` — is referenced in JS/TS source. Portable runtime gotchas for browser voice I/O (speech-to-text and text-to-speech).
 
-Most gotchas are runtime browser behaviours with no repo-state signature a static check could read, so they live as prose (`RULES.md`). The two that **do** have a file-scoped signature are the [`web-speech-io`](skills/web-speech-io/SKILL.md) skill's check-the-work rules, which run at every Stop and in CI — each failure message is the rule.
+Most gotchas are runtime browser behaviours with no repo-state signature a static check could read, so they live as prose (`RULES.md`). Nine call-site contracts **do** have a file-scoped signature — three in the [`web-speech-io`](skills/web-speech-io/SKILL.md) skill's bundle and six pack-level — and run as checks at every Stop and in CI; each failure message is the rule.
 
 Some of these APIs are extension-only, and where a rule touches MV3 service-worker or content-script mechanics this pack owns the speech-API facet of it specifically — never the general extension gotcha underneath.
 
@@ -12,12 +12,11 @@ Some of these APIs are extension-only, and where a rule touches MV3 service-work
 |---|---|---|---|
 | The recognizer owns its microphone capture | high | correctness | prose: 99 words + skill check (`web-speech-capture-released-on-pagehide`) |
 | Read the whole n-best list | medium | correctness | prose: 34 words |
-| Settle the listen cycle exactly once | high | correctness | prose: 47 words + check (`stt-terminal-handlers`) |
+| Settle the listen cycle exactly once | high | correctness | prose: 42 words + check (`stt-terminal-handlers`) |
 | A missing isFinal means final | high | correctness | prose: 35 words |
 | Classic recognition streams to the cloud | critical | legal | prose: 74 words |
 | Biasing works only on-device | medium | correctness | prose: 71 words |
 | Map error names to a small taxonomy | medium | complexity | prose: 48 words + check (`stt-error-map-has-default`) |
-| Interim results are a signal, not input | high | correctness | prose: 71 words + check (`stt-interim-results-gated`) |
 | Guard your own spoken output | high | correctness | prose: 66 words + check (`mic-constraints-not-screen-capture`) |
 | A missed endpoint needs a pause watchdog | high | correctness | prose: 82 words |
 | Mic permission is per-origin | high | correctness | prose: 120 words + check (`mic-capture-released`) |
@@ -25,7 +24,7 @@ Some of these APIs are extension-only, and where a rule touches MV3 service-work
 | Relay chrome.tts from a content script | high | correctness | prose: 66 words + skill check (`web-speech-no-window-api-in-service-worker`) |
 | An empty getVoices() means not-ready | high | correctness | prose: 44 words |
 | Don't trust the default voice | low | correctness | prose: 74 words |
-| Resolve speak() on any terminal event | high | correctness | prose: 60 words + check (`tts-speak-settles`) |
+| Never reject a speak() promise | high | correctness | prose: 46 words + check (`tts-speak-settles`) |
 | Neither engine reliably supports SSML | low | correctness | prose: 37 words |
 
 ## Provenance

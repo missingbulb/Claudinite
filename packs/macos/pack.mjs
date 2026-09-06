@@ -23,13 +23,14 @@ export default {
   },
   marker: 'Package.swift (at the repo root or one directory down)',
   detect: (ctx) => hasMarkerNearRoot(ctx, 'Package.swift'),
-  // Three checks, each on a rule whose static signature is false-positive-free
+  // Four checks, each on a rule whose static signature is false-positive-free
   // *because the rule is itself conditional*: each fires only where the tree
   // already shows the posture the rule is about — terminate-time teardown, an
-  // AppKit app that installs a capture tap, or a plist and a package manifest
-  // that both state an OS floor. sudden-termination-vs-teardown lives in
-  // declared-checks.json beside this file; the other two stay coded, for an
-  // ordered-occurrence arm and a cross-file comparison respectively.
+  // AppKit app that installs a capture tap, a plist and a package manifest that
+  // both state an OS floor, or a shell/workflow script probing for a Swift
+  // toolchain. sudden-termination-vs-teardown lives in declared-checks.json
+  // beside this file; the other three stay coded — an ordered-occurrence arm, a
+  // cross-file comparison, and a same-or-earlier line-order scan respectively.
   // Everything else stays prose — runtime device behaviour, a CI
   // lane's shape, or a plist/entitlement judgment call, none of which a scan can
   // separate from a healthy repo.

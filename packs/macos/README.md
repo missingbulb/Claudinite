@@ -24,8 +24,7 @@ mechanics for the CI that runs the lane).
 | A drag-install DMG is a staged folder | medium | complexity | prose: 55 words |
 | Write the Gatekeeper bypass users actually have | medium | correctness | prose: 51 words |
 | Diagnostics belong inside the shipped app | medium | complexity | prose: 33 words |
-| command -v swift doesn't test the toolchain | medium | correctness | prose: 62 words + check (`swift-toolchain-gate`) |
-| NSApplication installs no signal handlers. | high | correctness | prose: 75 words + check (`signal-teardown-routing`) |
+| NSApplication installs no signal handlers | high | correctness | prose: 50 words + check (`signal-teardown-routing`) |
 | An uncaught Objective-C exception is an exit | high | correctness | prose: 63 words |
 | There is no wake notification | high | correctness | prose: 57 words |
 | Coalesce with an id, not a boolean. | high | correctness | prose: 50 words |
