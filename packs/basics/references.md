@@ -96,3 +96,8 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   skill previously named the bare short name as the form that fails, sending a session that has a
   name but not a server to the one query shape that cannot work. Retire the split if `select:`
   starts resolving short names, or if keyword search stops resolving them.
+- **(RULES-4)** From `missingbulb/MissingBulbWebsite` via #1303: two copies of one constant table in
+  different languages could not be paired by literal value because `"150"` is a substring of
+  `"1500"`, so a value-matching guard mispaired rows silently. Pairing by name through the casing
+  transform needs no per-value upkeep. Retire the clause if the guard helper gains value-boundary
+  matching.

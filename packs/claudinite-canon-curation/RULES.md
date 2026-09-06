@@ -79,6 +79,11 @@
 - **Finding a check that watches only one of two structurally-identical surfaces** — widen it to
   the sibling in the same change rather than filing it separately. (9)
 
+- **Writing a check that a command is still wired into a script or CI step** — match the
+  invocation line, never a step's display label. A plain token grep passes on the label alone
+  (`step "Normalizer self-test — some-cmd --flag"`) after the real command line is deleted, so
+  strip a labeling helper's quoted argument before searching for a surviving invocation. (13)
+
 - **Writing a check that selects inputs by path pattern** — assert over the real tree that its
   scope is non-empty. A pattern left behind by a layout change matches nothing, reads as live, and
   fixtures spelling the same dead layout keep proving the matching.

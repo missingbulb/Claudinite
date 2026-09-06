@@ -78,6 +78,7 @@ What a canon session follows when it names, configures, writes or polices a pack
 | Re-verify doc pointers after a move | medium | correctness | prose: 36 words |
 | Two signals for a missing-or-misnamed check | high | correctness | prose: 40 words |
 | Widen a check to its sibling surface | medium | correctness | prose: 28 words |
+| Check a command is still wired in | medium | correctness | prose: 62 words |
 | Assert a path-pattern scope is non-empty | high | correctness | prose: 45 words |
 | Grep a named directory before shipping | medium | correctness | prose: 21 words |
 | Measure whether a check earns its keep | low | performance | prose: 43 words |

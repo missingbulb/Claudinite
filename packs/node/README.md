@@ -28,3 +28,4 @@ skill, forced for `.github/workflows/**` and `package.json`.
 |---|---|---|---|
 | `node/earn-each-dependency` | medium | complexity | check: advisory |
 | `node/btoa-atob-on-text` | high | correctness | check: advisory |
+| `node/test-discovery-resolves` | high | correctness | check: blocking |

@@ -61,6 +61,11 @@
   [writing-migration-plans](skills/writing-migration-plans/SKILL.md) owns that ordering and the
   chain's mechanics.
 
+- **Declaring a repo the new home of a role a retiring predecessor filled** (a shared
+  preferences or config store, any adopted role) — copy the predecessor's content in the same
+  change as the declaration. A declaration alone leaves the role announced and unserved, and a
+  gap your own tooling already printed is not self-resolving.
+
 - **Adding a legacy tolerance** (a dual read, an accepted old spelling, a shim) — it is
   scaffolding, not a feature: ship it with an advisory that fires where the old shape is still in
   use, and with its removal already a link in the migration's chain, due one stated convergence
@@ -109,6 +114,11 @@
 
 - **Writing anything** — size it to its idea: "open one issue" takes a sentence, not three
   paragraphs.
+
+- **The primary source for a fact about a named, real person is blocked** (a profile behind a
+  `403` or a paywall) — never substitute a data-broker or aggregator listing, and never publish
+  the substitute under a caveat. Ask whoever is present instead: one question costs less than
+  correcting a wrong public claim about someone.
 
 - **Correcting or auditing an artifact against an authoritative source** — derive the corrected
   version from the *source* before reading the existing draft, then diff against the old draft to
@@ -212,7 +222,10 @@ For every new task:
   against the copy in both directions when the duplicate mirrors matcher or predicate logic. Keep
   the guarded literal itself unbroken, since a value split across a line break is invisible to the
   guard and to a `grep`/`sed` rename alike. Have the guard's own text name the places it watches and
-  why the split is forced, and don't also comment the duplication — the guard covers it.
+  why the split is forced, and don't also comment the duplication — the guard covers it. Where
+  the two copies are in different languages with different naming conventions, pair them by
+  name — apply the known casing transform to derive one identifier from the other — rather
+  than by literal value, since one value can be a numeric substring of another. (4)
 
 - **Writing file A so it depends on file B** — say what A needs from B, or that it delegates, and
   don't re-spell how B does its job. If you're about to paraphrase B's procedure, point at B

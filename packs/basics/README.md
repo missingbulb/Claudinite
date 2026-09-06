@@ -18,6 +18,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Finishing a change | high | correctness | prose: 33 words |
 | Changing scheduled or unattended machinery | high | correctness | prose: 36 words |
 | Planning a migration | medium | complexity | prose: 99 words + skill (`writing-migration-plans`) |
+| Taking over a retiring repo's role | high | correctness | prose: 55 words |
 | Adding a legacy tolerance | high | complexity | prose: 59 words |
 | Choosing an automerge policy | high | correctness | prose: 65 words |
 | Predicting an irreversible change | critical | correctness | prose: 42 words |
@@ -27,6 +28,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Finishing a larger element | medium | correctness | prose: 94 words + skill (`production-retrospective`) |
 | Receiving feedback that flags a misunderstanding | medium | complexity | prose: 29 words |
 | Writing anything | low | complexity | prose: 18 words |
+| A blocked source about a person | high | correctness | prose: 55 words |
 | Auditing an artifact against its source | high | correctness | prose: 35 words |
 | Acting on an approval | high | correctness | prose: 69 words |
 | Calling Edit | low | complexity | prose: 55 words |
@@ -41,7 +43,7 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Filing anything into the ad-hoc queue | high | correctness | prose: 125 words |
 | Handing over a human-only step | high | complexity | prose: 96 words + skill (`writing-handover-issues`) |
 | Naming a file, module, or symbol | low | complexity | prose: 22 words |
-| Referring to a value from two places | high | correctness | prose: 117 words + check (`shared-constants`) |
+| Referring to a value from two places | high | correctness | prose: 163 words + check (`shared-constants`) |
 | Writing a file that depends on another | medium | complexity | prose: 97 words |
 | Depending on platform or runtime behaviour | high | correctness | prose: 31 words |
 | Optimising | high | correctness | prose: 53 words |

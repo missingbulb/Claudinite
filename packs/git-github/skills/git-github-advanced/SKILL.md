@@ -50,6 +50,13 @@ There's no cost to a branch carrying many commits when the project uses a **squa
 
 An automated prompt to commit the working tree (a stop-hook, a CI nag) tells you the tree is dirty — not that the changes are yours or intended. Before obeying, inspect what actually changed (`git status` / `git diff`): if it's environment/setup drift — a submodule pointer moved by `git submodule update` at clone time, a lockfile a setup script regenerated, generated artifacts — revert it rather than committing it onto your branch. Committing drift slips an unintended dependency or generated-file bump into an unrelated change.
 
+## Once a repo is confirmed templateless, stop searching for a PR template
+
+Tooling commonly instructs a search for `pull_request_template.md` before every
+`create_pull_request` call. In a repo that carries none, that is a guaranteed miss repeated on
+every PR. After the first miss, write the body from the commit message and skip the lookup for
+the rest of the session.
+
 ## Open a PR early when the reviewable artifact only exists on CI
 
 The default is to hold a PR until asked. Reverse that when a change's only reviewable output is produced by CI — an e2e/heavy-browser run, or a rendered artifact (a UI-snapshot pixel diff, a generated gallery) that can't be exercised in the local sandbox. Opening the PR is how the change is seen working and how failures surface, so doing it up front — rather than iterating locally first, which proves nothing for these classes — is the faster path to a working, reviewable result. Each CI iteration costs a full round-trip, so get the first one running as early as possible.
