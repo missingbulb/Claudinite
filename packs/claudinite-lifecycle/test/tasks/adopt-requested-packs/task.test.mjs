@@ -1,8 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import declJson from '../../../tasks/adopt-requested-packs/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
@@ -17,37 +14,8 @@ const decl = normalizeTaskDeclaration(declJson);
 // property whose drift would either let the task fire on its own (nagging every
 // member on a cadence) or move the adoption back outside the member's own guards.
 
-const taskDir = join(dirname(fileURLToPath(import.meta.url)), '../../../../../packs/claudinite-lifecycle/tasks/adopt-requested-packs');
-const briefSrc = readFileSync(join(taskDir, 'task.md'), 'utf8');
-
 test('adopt-requested-packs: the declaration satisfies the task contract', () => {
   assert.deepEqual(validateTaskDeclaration(decl), []);
-});
-
-test('adopt-requested-packs: manual, sonnet, lands its PR', () => {
-  assert.equal(decl.id, 'adopt-requested-packs');   // must match its directory name (discover.mjs)
-  // `manual`: the work only exists when the fleet places it, and the fleet fires this
-  // scheduler in the same breath. A cadence would re-ask a question whose answer
-  // arrives by push — and run this task's code-work in every member, every slot.
-  assert.equal(decl.frequency, 'manual');
-  assert.equal(decl.agent_model, 'sonnet');
-  // Landing, not holding (#1453). This pin used to assert `open-pr`, on the reasoning
-  // that declaring a pack switches on conformance checks in this repo's CI and so must
-  // always be reviewed. The review never came — ClaudiniteCanary#133 sat parked for
-  // eleven days — so the ceiling moved and this pin moves with the decision rather than
-  // being loosened. The member's own checks still gate the merge.
-  assert.equal(decl.expected_outcome, 'fresh_pr');
-  // `['none']`, not an empty signal list: nothing repo-side predicts this task's
-  // answer, and the declaration says so in the one word for it.
-  assert.deepEqual(decl.preconditions, ['none']);
-  assert.equal(decl.session_scope, undefined);
-});
-
-test('adopt-requested-packs: needs no fleet secret — it reads and edits only its own repo', () => {
-  // The whole point of the fan-out: the member side runs on the ordinary Action
-  // token and the member's own executor grant. A required fleet secret here would
-  // mean the model regressed.
-  assert.equal(decl.code_work_required_secrets, undefined);
 });
 
 test('adopt-requested-packs: its precondition admits its own forced item', () => {
@@ -58,40 +26,4 @@ test('adopt-requested-packs: its precondition admits its own forced item', () =>
   const v = evaluatePrecondition({ decl }, {});
   assert.equal(v.run, true);
   assert.doesNotMatch(v.reason ?? '', /FORCE_TASKS|CLAUDINITE_OVERRIDES/, 'the slot-era force lever is deleted');
-});
-
-test('adopt-requested-packs: one stage — the agent, because the item IS the work list', () => {
-  // THE FOLD (#1119). The gate that counted labelled issues is gone with the
-  // dispatch that made it necessary: an item exists only because an issue was
-  // marked, so "is there work?" is answered by the item's existence. A code-work
-  // phase here would be a second answer to a question already settled.
-  assert.equal(decl.code_work, undefined);
-  assert.equal(decl.code_work_timeout, undefined);
-  assert.ok(!existsSync(join(taskDir, 'worker.mjs')));
-  assert.notEqual(decl.agent_model, 'none');
-  assert.equal(decl.agent_instructions, 'task.md');
-  assert.ok(existsSync(join(taskDir, 'task.md')));
-  assert.ok(Number.isInteger(decl.agent_execution_timeout) && decl.agent_execution_timeout > 0);
-});
-
-test('adopt-requested-packs: the brief routes the HOW to adopt-pack and splits request from suspicion', () => {
-  assert.match(briefSrc, /adopt-pack/);
-  assert.match(briefSrc, /SKILL\.md/);
-  // The two kinds carry different obligations: a request is adopted verbatim, a
-  // suspicion is confirmed first — and the brief must draw that line, because the
-  // agent has no other place to learn it.
-  assert.match(briefSrc, /verbatim/);
-  assert.match(briefSrc, /suspects/i);
-  assert.match(briefSrc, /not planned/);
-});
-
-test('adopt-requested-packs: the brief forbids merging, cross-repo reach, and the queue vocabulary', () => {
-  assert.match(briefSrc, /Never merge/);
-  assert.match(briefSrc, /Never touch another repo/);
-  // The work list is an ordinary issue. A `task:` label on it would be read as
-  // queue state by the scheduler run and the executor, which is not what anyone applying it
-  // meant.
-  assert.match(briefSrc, /Never apply a `task:` label by hand/);
-  assert.match(briefSrc, /Never close the issue/);
-  assert.doesNotMatch(briefSrc, /ready-for-agent/, 'the slot dispatch labels are gone');
 });

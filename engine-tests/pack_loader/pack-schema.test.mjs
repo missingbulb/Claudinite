@@ -89,8 +89,7 @@ test('normalizeManifest flattens the two scoped lists and stamps each rule', () 
   assert.deepEqual(normalizeManifest(valid).rules, []);
 });
 
-test('the scope vocabulary is exactly the two manifest lists', () => {
-  assert.deepEqual(RULE_SCOPES, { worldRules: 'world', workRules: 'work' });
+test('every scoped rule list is a field the manifest spec knows', () => {
   for (const key of Object.keys(RULE_SCOPES)) assert.ok(PACK_FIELDS[key], `${key} is not in the spec`);
 });
 

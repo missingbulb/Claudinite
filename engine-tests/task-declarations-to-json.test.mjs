@@ -131,17 +131,29 @@ test('applyTaskDeclarationConversion: converts local packs only, gated on applie
 test('task-declarations-json record: applies only where the mounted pack reads task.json, in either root', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'task-declarations-json');
   assert.ok(m, 'discovered');
-  assert.equal(m.taskDeclarationsToJson, true);
   const capable = "export const TASK_DECLARATION_FILE = 'task.json';\n";
   assert.equal(await m.appliesTo(async (p) => (p.startsWith('.claudinite/shared/') ? capable : null)), true, 'a member\'s mount');
   assert.equal(await m.appliesTo(async (p) => (p.startsWith('.claudinite/shared/') ? null : capable)), true, 'the canon\'s own tree');
   assert.equal(await m.appliesTo(async () => "export const TASK_DECLARATION_FILE = 'task.mjs';\n"), false, 'an older pack');
   assert.equal(await m.appliesTo(async () => null), false, 'an unreadable mount is not capable');
   assert.equal(await m.legacyPresent(() => true, async () => 'x'), false);
-  // The descriptions are the apply stage's: judgment, briefed to the session.
-  assert.match(m.applyStage.why, /description/);
-  assert.match(m.applyStage.instructions, /no `description`/);
-  assert.match(m.applyStage.instructions, /fifty words/);
+});
+
+test('task-declarations-json record: run through the one runner, it converts a member\'s local task module', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'task-declarations-json');
+  const root = repo({
+    [`${TASK}/task.mjs`]: MODULE,
+    [`.claudinite/shared/${SCHEMA_FILE}`]: '{}',
+    // The mount the record probes: a tasks pack that already reads task.json.
+    '.claudinite/shared/packs/claudinite-tasks/task-declaration-text.mjs': "export const TASK_DECLARATION_FILE = 'task.json';\n",
+  });
+  try {
+    const io = { ...checkoutIo(root), move: () => {}, readTemplate: () => null };
+    const applied = await applyMigration(m, io);
+    assert.equal(applied.length, 1, applied.join(' | '));
+    assert.ok(existsSync(join(root, TASK, 'task.json')));
+    assert.ok(!existsSync(join(root, TASK, 'task.mjs')));
+  } finally { removeTree(root); }
 });
 
 // The canon's own declarations, converted: each loads through the door to a

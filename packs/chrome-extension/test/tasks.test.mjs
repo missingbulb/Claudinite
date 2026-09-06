@@ -1,9 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pack from '../pack.mjs';
 import storeReleaseJson from '../tasks/store-release/task.json' with { type: 'json' };
 import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
@@ -28,21 +27,9 @@ const S = (release = {}, commits = {}) => ({
 const terms = await loadTaskTerms(TASK_DIR);
 const verdict = (signals) => evaluatePrecondition({ decl: storeRelease, terms }, signals);
 
-test('chrome-extension contributes store-release as a structural task, not a pack.mjs slot', () => {
-  // The task moved out of the manifest: the repo's scheduler finds
-  // tasks/<name>/task.json structurally (#394).
-  assert.equal(pack.run_daily, undefined);
-  assert.equal(storeRelease.id, 'store-release');
-});
-
-test('store-release: agentless (model none) — the preprocessing worker IS the task', () => {
-  assert.equal(storeRelease.agent_model, 'none'); // the whole decision is code; no agent phase
-  assert.equal(storeRelease.frequency, 'daily');
-  assert.equal(storeRelease.expected_outcome, 'no_code_changes'); // it only triggers the gated publish workflow
-  assert.deepEqual(storeRelease.preconditions, ['manifest-ahead || substantive-change']);
-  // Derived from those two conditions, never declared beside them.
+test('store-release: its signals are derived from its conditions, and the worker it names exists', () => {
+  // Derived from the two conditions, never declared beside them.
   assert.deepEqual(preconditionSignals(storeRelease.preconditions, terms), ['release', 'commits']);
-  assert.equal(storeRelease.code_work, 'node worker.mjs');
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the preprocessing worker must exist');
 });
 
@@ -73,17 +60,4 @@ test('store-release: a substantive default-branch move fires it even at the rele
   const v = verdict(S({ manifestVersion: '2.0.0', latestTag: 'v2.0.0' }, { substantiveChange: true }));
   assert.equal(v.run, true);
   assert.match(v.reason, /substantive/);
-});
-
-// --- the shipping gate (#1057) ----------------------------------------------
-// The pack is fingerprinted on the manifest, so this task is discovered on every
-// extension repo — including the ones that only CODE an extension. The daily leg
-// it fires is a workflow such a repo does not have. That is a fact adoption
-// settled, not a question worth re-asking nightly, so it stopped being a
-// precondition: such a repo names the task in `taskScheduler.disabledTasks` and
-// the scheduler never instantiates it.
-test('store-release: whether the repo publishes at all is settings, not a condition', () => {
-  assert.ok(!storeRelease.preconditions.join(' ').includes('ships'));
-  const readMe = readFileSync(join(TASK_DIR, 'README.md'), 'utf8');
-  assert.match(readMe, /taskScheduler\.disabledTasks/, 'the task\'s notes say where that answer lives now');
 });

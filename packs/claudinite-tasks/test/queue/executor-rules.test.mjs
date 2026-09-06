@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   pickOrder, claimWinner, conflictsWithEarlierClaim, noGoPlan, rollBody, claimComment,
 } from '../../queue/executor.mjs';
-import { CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER, parseWorkItemBody } from '../../queue/work-item.mjs';
+import { CLAIM_MARKER, EPISODE_MARKER, parseWorkItemBody } from '../../queue/work-item.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 
@@ -195,11 +195,7 @@ test('the roll stamps the wake and keeps ONE verdict — the item is a status li
   assert.equal(parseWorkItemBody(second).notBefore, '2026-08-16T04:00:00.000Z');
 });
 
-test('a claim comment names its executor, and the markers are the item\'s vocabulary', () => {
+test('a claim comment carries the claim marker and names its executor', () => {
   assert.ok(claimComment({ executor: 'E1', runUrl: 'http://x', at: 'now' }).includes(CLAIM_MARKER));
   assert.ok(claimComment({ executor: 'E1', runUrl: 'http://x', at: 'now' }).includes('E1'));
-  // The hand-off marker survives the retry's deletion: the janitor still reads it
-  // to name which session went silent, and the session reads its nonce to prove
-  // the fire it arrived on is this item's current hand-off.
-  assert.equal(typeof HANDOFF_MARKER, 'string');
 });

@@ -60,6 +60,9 @@ test('an unfiltered conformance workflow satisfies the rule', () => {
 test('a path-filtered sweep is flagged, naming the file', () => {
   const out = rule.run(ctx({ [MOUNT]: '', '.github/workflows/test-extension.yml': pathFiltered }));
   assert.equal(out.length, 1);
+  // Advisory on purpose: blocking would red every member lacking the workflow on
+  // its next baselining — the #555 failure mode this rule guards against.
+  assert.equal(out[0].severity, 'advisory');
   assert.match(out[0].what, /behind a path filter/);
   assert.match(out[0].what, /test-extension\.yml/);
 });
@@ -90,10 +93,4 @@ test('pull_request workflows that never run the sweep are flagged as an ungated 
   }));
   assert.equal(out.length, 1);
   assert.match(out[0].what, /none of them runs the world sweep/);
-});
-
-// Advisory on purpose: shipping it blocking would red every member lacking the
-// workflow on its next baselining — the #555 failure mode this rule guards against.
-test('the rule is advisory until the fleet carries the workflow', () => {
-  assert.equal(rule.severity, 'advisory');
 });

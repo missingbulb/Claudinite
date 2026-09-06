@@ -154,9 +154,3 @@ test('a refusal is still a refusal: an item not with an agent exits non-zero', a
   assert.notEqual(code, 0);
   assert.match(err, /does not hold it|not with an agent/);
 });
-
-test('the module exports no REST executor — every line here is the session\'s', async () => {
-  const mod = await import('../../queue/converge-item.mjs');
-  assert.equal(mod.convergeItem, undefined);
-  assert.equal(mod.canReachRepo, undefined);
-});

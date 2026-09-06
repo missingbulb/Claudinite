@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   sumKnown, quantile, fleetDays, windowsOf, mergedPrsIn, stuckItems, closedItems,
   figure, totalsOf, pulseOf, memberWindow, machinePanel, hourKeysSince, fmtAge, fmtTokens,
-  fleetLedger, SCHEDULER_CADENCE_MS, STUCK_DAYS,
+  fleetLedger, SCHEDULER_CADENCE_MS,
 } from '../fleet-ledger.mjs';
 import { WORK_PREFIX, OUTCOME_DONE, NEEDS_HUMAN_APPROVAL } from '../../claudinite-tasks/shared-code/work-items.mjs';
 
@@ -118,7 +118,6 @@ test('stuck items are split by WHO clears them', () => {
   assert.deepEqual(out.forYou.map((i) => i.number), [1]);
   assert.deepEqual(out.onMachine.map((i) => i.number), [2]);
   assert.equal(out.total, 2);
-  assert.equal(STUCK_DAYS, 3);
 });
 
 test('closed items count what completed, and what completed untouched', () => {

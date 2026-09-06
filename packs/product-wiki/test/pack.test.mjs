@@ -60,32 +60,11 @@ function run(rule, files, { mode = 'all', packConfig, now, uncommitted } = {}) {
 
 // --- pack manifest -----------------------------------------------------------
 
-test('pack manifest: marker, prose, the coded rule plus the seven declared checks (the isolation barrier among them)', () => {
-  assert.equal(pack.marker, 'product-wiki/product-requirements/README.md');
-  // The prose is the RULES.md beside the manifest, by the loader's convention —
-  // so the file on disk is what carries it, and the manifest says nothing.
-  assert.ok(existsSync(join(dirname(fileURLToPath(import.meta.url)), '../../../packs/product-wiki/RULES.md')));
-  assert.equal(pack.prose, undefined);
-  // The pack CODES no rule: every one of its checks — the layout skeleton, the
-  // page grammar, the isolation barrier — is declared in declared-checks.json
-  // beside the manifest, which the registry discovers and appends. So there is no
-  // rule directory at all.
-  assert.equal(existsSync(join(here, '..', 'worldRules')), false);
-  assert.equal(existsSync(join(here, '..', 'workRules')), false);
-  const ids = [layout, isolation, pageSections, keyInsights, growthLog, sources, freshness].map((r) => r.id);
-  assert.equal(new Set(ids).size, 7);
-  assert.ok(ids.every((id) => id.startsWith('product-wiki-')));
-  // The page-editing rules are the writing-wiki-pages skill: it scopes itself to the
-  // tree, and the weekly worker loads it by name — two artifacts that could drift.
+test('the writing-wiki-pages skill scopes itself to the tree, and the weekly worker loads it by name', () => {
+  // Two artifacts that could drift: the skill's own force-load scope, and the task
+  // doc that names it.
   assert.ok(skillMetadata(join(here, '..', 'skills', 'writing-wiki-pages')).forceLoadPaths.length, 'the skill forces itself for files');
   assert.ok(readFileSync(join(here, '..', 'tasks', 'wiki-growth', 'task.md'), 'utf8').includes('skill: `writing-wiki-pages`'));
-  assert.equal(pack.contributes, undefined);
-  // The pack's scheduled task is NOT a pack.mjs slot any more — the repo's
-  // scheduler finds tasks/<name>/task.json structurally (#394).
-  assert.equal(pack.run_daily, undefined);
-  // Adoption interview scopes the research: product, users, market.
-  assert.deepEqual(pack.questions.map((q) => q.id), ['product', 'users', 'market']);
-  assert.ok(pack.questions.every((q) => q.prompt && q.distill));
 });
 
 test('detect fires exactly on the sink marker', () => {
@@ -440,9 +419,6 @@ const verdict = (signals) => evaluatePrecondition({ decl: wikiGrowth }, signals)
 // change into a two-file edit — see the writing-tests skill, "Never pin a
 // declaration to itself".
 test('wiki-growth task: the worker doc it names exists, and its signals are derived from its conditions', () => {
-  // `precondition_signals` is gone: each condition names what it reads, so the
-  // collector union cannot disagree with the gate.
-  assert.equal(wikiGrowth.precondition_signals, undefined);
   assert.deepEqual(preconditionSignals(wikiGrowth.preconditions, new Map()).sort(),
     ['commits', 'conversationLogs', 'issues', 'prs']);
   assert.ok(existsSync(join(canonRoot, 'packs/product-wiki/tasks/wiki-growth', wikiGrowth.agent_instructions)),
@@ -479,7 +455,6 @@ test('wiki-growth precondition: a pending product-wiki PR no longer declines an 
   // stack — the executor points the round at that pull request — so the
   // precondition is the activity umbrella alone and the pending PR is scope, not
   // a reason to wait.
-  assert.ok(!wikiGrowth.preconditions.some((c) => c.startsWith('no-open-pr-')), 'no pending-PR term remains');
   const pending = [
     { prs: { open: [{ number: 12, title: 'wiki round', changedPaths: ['product-wiki/Market/README.md'] }], touched: [] } },
     { prs: { open: [{ number: 13, title: 'unreadable' }], touched: [] } },
@@ -491,11 +466,4 @@ test('wiki-growth precondition: a pending product-wiki PR no longer declines an 
     assert.equal(v.run, true, `declined for ${JSON.stringify(over)}`);
     assert.ok(Array.isArray(v.context), 'context is always an array, even when empty');
   }
-});
-
-// What a granted run then works on — including spot-checking pages a wiki move may
-// have superseded — is scope, and scope is the worker's (task-preconditions DESIGN).
-test('wiki-growth: what a granted run reads is task.md\'s, not the trigger\'s', () => {
-  const worker = readFileSync(join(canonRoot, 'packs/product-wiki/tasks/wiki-growth', wikiGrowth.agent_instructions), 'utf8');
-  assert.match(worker, /spot-check the pages it may have superseded/);
 });

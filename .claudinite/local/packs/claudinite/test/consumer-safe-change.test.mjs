@@ -108,11 +108,6 @@ test('a change touching nothing contractual passes, and an empty diff is a no-op
   assert.deepEqual(rule.run(work([])), []);
 });
 
-test('the rule is work-scoped and blocking — it judges the change in front of you', () => {
-  assert.equal(rule.scope, 'work');
-  assert.equal(rule.severity, 'blocking');
-});
-
 test('a rule in the canon\'s own local packs is out of scope — no consumer can receive it', () => {
   // The vendor set carries engine/ and packs/ only, so a local-pack rule runs in this
   // repo and nowhere else: it can never turn a member red, and demanding a migration

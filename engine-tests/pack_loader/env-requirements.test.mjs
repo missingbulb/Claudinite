@@ -13,14 +13,10 @@ test('evaluate: reports each requirement whose probe is false, nothing when all 
   assert.deepEqual(evaluate([], () => false), []);
 });
 
-test('activeEnvs resolves the flutter (string) env when declared', async () => {
+test('activeEnvs activates a pack\'s string-form env when the pack is declared', async () => {
   const root = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['flutter'] }) } });
   try {
-    const f = (await activeEnvs(root)).find((e) => e.id === 'flutter');
-    assert.ok(f, 'flutter env active when declared');
-    assert.equal(f.label, 'Flutter SDK');
-    assert.match(f.setup, /flutter\/flutter\.git/);
-    assert.match(f.probe, /command -v flutter/);
+    assert.ok((await activeEnvs(root)).find((e) => e.id === 'flutter'), 'flutter env active when declared');
   } finally { cleanup(root); }
 });
 

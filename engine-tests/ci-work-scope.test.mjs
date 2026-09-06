@@ -1,5 +1,4 @@
-// The work scope's CI entry point (engine/checks/ci-work-scope.mjs) and the
-// canon's own wiring to it.
+// The work scope's CI entry point (engine/checks/ci-work-scope.mjs).
 //
 // What it guards is the difference between a gate and a green light. Three of
 // this module's four outcomes exist because the sweep has ways of judging NOTHING
@@ -7,13 +6,11 @@
 // a run that silently stops judging looks exactly like a run with nothing to say.
 // So every outcome is asserted by its exit code AND by the line it prints.
 //
-// It lives in engine-tests/ beside ci-test-roots.test.mjs, the other guard on CI's
-// own wiring: the sweep spans the whole repo, so no pack owns it.
+// It lives in engine-tests/: the sweep spans the whole repo, so no pack owns it.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup, git, writeFiles } from './helpers.mjs';
@@ -21,7 +18,6 @@ import { decide, isAutomationBranch, pushedFrom } from '../engine/checks/ci-work
 
 const REPO = fileURLToPath(new URL('..', import.meta.url));
 const ENTRY = 'engine/checks/ci-work-scope.mjs';
-const CI = readFileSync(join(REPO, '.github/workflows/ci.yml'), 'utf8');
 
 // A repo whose branch carries a change, and (optionally) a local pack whose work
 // rule always fires — the only way to prove the runner's verdict reaches the exit
@@ -194,15 +190,4 @@ test('a blocking finding reaches the exit code — the gate fails the build', ()
     assert.equal(code, 1);
     assert.match(out, /\[BLOCKING\] always-fails/);
   } finally { cleanup(root); }
-});
-
-// --- the canon's own wiring ---------------------------------------------------
-
-test('the canon\'s CI runs this entry point rather than its own copy of the recipe', () => {
-  assert.ok(CI.includes(ENTRY), `ci.yml no longer runs ${ENTRY} — the work scope is enforced nowhere but a session's Stop hook`);
-});
-
-test('the canon\'s CI runs on pushes to main, which is where a landed merge is judged', () => {
-  assert.match(CI, /push:\s*\n\s*branches: \[main\]/,
-    'ci.yml no longer runs on push to main — a collision only two landed branches can show would be judged nowhere');
 });

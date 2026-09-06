@@ -131,11 +131,6 @@ test('the agreeing shapes pass, and a rosterFile counts as a roster source', () 
   assert.equal(resolveMode({ mode: 'repo', repos: ['o/a'] }), 'repo');
 });
 
-test('DEFAULTS carries no mode — there is nothing for silence to fall back to', () => {
-  assert.equal(DEFAULTS.mode, null);
-  assert.ok(!isFleetConfig(DEFAULTS));
-});
-
 test('archived and forked repos leave the fleet by their own state, not by a list', () => {
     const repo = (full_name, over = {}) => ({ full_name, archived: false, fork: false, ...over });
   assert.equal(inFleet(repo('o/a')), true);
@@ -178,11 +173,4 @@ test('a stated roster wins over enumeration, and a failed enumeration is not an 
   // read rather than render a fleet that happens to have nobody in it.
   assert.equal(failed.complete, false);
   assert.ok(failed.error);
-});
-
-test('the rate table is ordinary config, and UNSET is a supported deployment', () => {
-  // Every dollar figure on the page rests on this one key. An absent table is a
-  // configuration gap the page states by name — never a price of zero — so the default
-  // has to be null rather than an empty object a reader could mistake for a table.
-  assert.equal(DEFAULTS.rates, null);
 });

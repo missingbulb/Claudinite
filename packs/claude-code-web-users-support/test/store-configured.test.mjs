@@ -14,6 +14,8 @@ test('a resolvable store is the healthy case and says nothing', () => {
 test('a declared pack with no store is reported, with the fix in the finding', () => {
   const [f] = rule.run(ctx({}));
   assert.equal(f.rule, 'preferences-store-configured');
+  // A project mid-adoption sits here legitimately for a while; blocking would make that a build break.
+  assert.equal(f.severity, 'advisory');
   assert.equal(f.file, '.claudinite-settings.json');
   assert.match(f.what, /declared but names no store/);
   assert.match(f.fix, /"repo": "owner\/name"/);
@@ -25,10 +27,4 @@ test('a store that does not resolve is reported as such — not as "none"', () =
   const [f] = rule.run(ctx({ 'claude-code-web-users-support': { repo: 'ownername' } }));
   assert.match(f.what, /does not resolve/);
   assert.match(f.what, /ownername/);
-});
-
-test('advisory, because the failure is a lost nicety and never a broken repo', () => {
-  // A project mid-adoption — declared, interview unanswered — sits here legitimately
-  // for a while; blocking would make that state a build break.
-  assert.equal(rule.severity, 'advisory');
 });

@@ -80,10 +80,6 @@ test('S44 — the marked issue BECOMES the item, and any status holds the mark',
     targetBranch: null, targetPr: null, supersedes: [],
   });
 
-  // The item is structurally ad-hoc — a `manual` task, and a title that names no
-  // task — so it sits outside every scheduled family (§3).
-  assert.equal(requestTask.frequency, 'manual');
-
   // ONE LEVER (§16.3): every status blocks re-adoption, live, parked and terminal
   // alike, and clearing it is the only re-ask. Nothing is superseded, because there
   // is no second object to supersede.
@@ -456,16 +452,10 @@ test('the precondition is handed THIS occurrence\'s own facts, not just the sign
   assert.deepEqual(seen, [{ taskPath: TASK_PATH, notBefore: null, blockedBy: [], request: 500, model: 'sonnet', merge: null, endsWhen: null, targetBranch: null, targetPr: null, supersedes: [] }]);
 });
 
-test('the request task is the one task allowed to read its item\'s model', () => {
-  assert.equal(REQUEST_TASK_ID, 'engine/implement-request');
+test('the built-in task id and the declaration it names agree', () => {
   // The declaration spells its id literally (the shape check parses this file
   // statically), so the two have to be held together from outside.
   assert.equal(`engine/${requestTask.id}`, REQUEST_TASK_ID);
-  assert.equal(requestTask.model_from_request, true);
-  // The ceiling PERMITS a merge (§16.11) — what decides whether one happens is the
-  // item's `Merge:` field, asserted below, and the policy engine the worker runs.
-  assert.equal(requestTask.expected_outcome, 'fresh_pr');
-  assert.equal(requestTask.code_work, undefined, 'and has no code-work phase to carry a payload');
 });
 
 // --- §16.11: a deferred request — blocked, chained, and its merge authorization --

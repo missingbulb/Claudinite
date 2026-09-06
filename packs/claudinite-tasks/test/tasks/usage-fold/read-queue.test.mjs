@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  makeReader, readQueueOutcomes, recordFor, taskOf, lookbackFrom, FIRST_READ_LOOKBACK_DAYS,
+  makeReader, readQueueOutcomes, recordFor, taskOf, lookbackFrom,
   parkKindOf, readParks,
 } from '../../../tasks/usage-fold/read-queue.mjs';
 import {
@@ -119,7 +119,6 @@ test('an unreadable listing costs the queue rows and leaves the mark alone', asy
 });
 
 test('the first read covers the day tier\'s whole width, so one fold fills it', async () => {
-  assert.equal(FIRST_READ_LOOKBACK_DAYS, 30);
   assert.equal(lookbackFrom('2026-08-21T11:00:00Z').slice(0, 10), '2026-07-22');
   const { reader, calls } = fakeGh([[]]);
   await readQueueOutcomes({ reader, repo: 'o/r', since: null, now: '2026-08-21T11:00:00Z' });

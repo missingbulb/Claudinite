@@ -10,41 +10,21 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SUSPEND_ALL_VAR, suspendedNotice } from '../../queue/suspend.mjs';
 
-const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
-const read = (p) => readFileSync(join(CANON, p), 'utf8');
+const QUEUE = join(dirname(fileURLToPath(import.meta.url)), '../../queue');
 
-test('the retired `tick.mjs` name still starts a scheduler run', async () => {
-  const shim = read('packs/claudinite-tasks/queue/tick.mjs');
-  assert.match(shim, /runSchedulerRun/, 'the shim must START the run, not merely re-export it');
-  // Importing the module it delegates to is the real assertion: a shim pointing at
-  // a module that has moved again would read fine and fail only in production.
-  const mod = await import('../../queue/scheduler-run.mjs');
-  assert.equal(typeof mod.runSchedulerRun, 'function');
-});
-
-test('the shim says which name was used, so a stale workflow is visible in its own log', () => {
-  assert.match(read('packs/claudinite-tasks/queue/tick.mjs'), /console\.log\(/);
-});
-
-// Both spellings are legal for exactly as long as both are fielded. A check that
-// demanded the new one would turn every member's window into a blocking finding on
-// a file that member cannot converge.
-test('the workflow-shape check accepts either entry point', () => {
-  const declared = JSON.parse(read('packs/claudinite-lifecycle/declared-checks.json'));
-  const rule = JSON.stringify(declared).match(/queue\\+\/\(([^)]+)\)\\+\.mjs/);
-  assert.ok(rule, 'the scheduler-workflow-shape entry-point rule is no longer an alternation');
-  assert.deepEqual(rule[1].split('|').sort(), ['scheduler-run', 'tick']);
-});
-
-// …and the canon's own two copies name the CURRENT one, so the shim is a
-// compatibility path rather than the live wiring.
-test('canon runs the current entry point in both its workflow and the stub it ships', () => {
-  for (const wf of ['.github/workflows/claudinite-scheduler.yml', 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml']) {
-    assert.match(read(wf), /queue\/scheduler-run\.mjs/, wf);
-    assert.doesNotMatch(read(wf), /queue\/tick\.mjs/, wf);
-  }
+// Driven under the operator hold, which is the scheduler run's first act: a run that
+// gets that far has been STARTED by the shim, and the hold stops it before it needs a
+// token or a repo — so this proves the delegation without a GitHub in the loop.
+test('the retired `tick.mjs` name still starts a scheduler run, and says which name was used', () => {
+  const r = spawnSync(process.execPath, [join(QUEUE, 'tick.mjs')], {
+    encoding: 'utf8', env: { ...process.env, [SUSPEND_ALL_VAR]: 'true', GITHUB_TOKEN: '' },
+  });
+  assert.equal(r.status, 0, `${r.stdout}${r.stderr}`);
+  assert.match(r.stdout, /tick\.mjs/, 'a stale workflow is visible in its own log');
+  assert.ok(r.stdout.includes(suspendedNotice()), 'the scheduler run itself ran, as far as its first act');
 });

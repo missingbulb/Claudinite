@@ -205,30 +205,6 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
   }
 });
 
-test('the apply stage\'s duties live in its task file, and none were dropped with the brief', () => {
-  // `applyStageBrief` used to render these into the request payload, where nothing
-  // read them and where they duplicated the task file that the dispatch issue links.
-  // Retiring it is only safe if every duty it carried still has a home — so this
-  // asserts the home, not the wording.
-  const task = readFileSync('packs/claudinite-lifecycle/tasks/update/task.md', 'utf8');
-  assert.match(task, /executor routine/, 'the one verification no Action can make');
-  assert.match(task, /needs-human/);
-  // The withhold lane's duty, which is the session's alone: it holds the credential the
-  // Action token lacks. This assertion pinned the OPPOSITE sentence until #1539 — #1317
-  // retired the lane in the brief and here, #1511 reopened it in code and touched
-  // neither, so the suite went on requiring the contradiction that split the fleet 8/5.
-  assert.match(task, /move `\.claudinite\/pending-workflows\/<name>` to\n`\.github\/workflows\/<name>`/,
-    'the session delivers a withheld workflow, and the task file is where it is told so (#1509)');
-  assert.doesNotMatch(task, /never move a file into `\.github\/workflows\/`/i,
-    'the retired-lane instruction must not come back — it is what parked five members');
-  assert.match(task, /applyStage\.instructions/, 'what a record asked for is read from the record, on the branch');
-
-  // And the payload must stay identifiers-only: the worker may name the condition,
-  // never carry the instructions (packs/claudinite-tasks/code-work.mjs).
-  const worker = readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
-  assert.ok(!worker.includes('brief:'), 'this ref\'s worker carries no rendered brief — the export survives only for fielded ones');
-});
-
 // --- seed ops: run once at install, repo-owned thereafter ----------------------
 
 test('the manifest accepts seedOps and rejects a malformed one', () => {

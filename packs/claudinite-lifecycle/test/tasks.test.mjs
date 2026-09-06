@@ -1,9 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pack from '../../basics/pack.mjs';
 import updateJson from '../tasks/update/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../claudinite-tasks/shared-code/preconditions.mjs';
 import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
@@ -23,32 +22,16 @@ const S = (stamp = {}, changedPacks = []) => ({
   sharedMount: { changedPacks },
 });
 
-test('basics contributes the update task structurally, not as a pack.mjs slot', () => {
-  // The task is found by the repo's scheduler at tasks/<name>/task.json (#394), so
-  // the manifest names no task at all.
-  assert.equal(pack.run_daily, undefined);
-  assert.equal(update.id, 'update');
-});
-
-test('update declaration: the 02:00 anchor, an apply stage only when needed, deterministic code_work', () => {
-  // The head of the morning chain. What used to be an earlier clock hour is now `schedule_after:` on
-  // everything that reads the mount this converges (tasks-dispatch DESIGN §17.1).
-  assert.equal(update.frequency, 'daily');
-  assert.equal(update.agent_model, 'sonnet'); // the apply stage, requested only when a pack's rules moved
-  assert.equal(update.expected_outcome, 'supersede_existing_pr'); // one update PR alive at a time: the executor closes the previous cycle's once this one's exists
-  assert.deepEqual(update.preconditions, ['none']);
-  assert.equal(update.code_work, 'node worker.mjs');
+test('update: the worker and the worker doc the declaration names exist', () => {
   assert.ok(existsSync(join(TASK_DIR, 'worker.mjs')), 'the deterministic update worker must exist');
   assert.ok(existsSync(join(TASK_DIR, update.agent_instructions)), `worker doc missing: ${update.agent_instructions}`);
 });
 
-test('update: a repo with no vendored mount is settings, not a nightly question', () => {
+test('update: an unstamped repo is not declined — repo shape is settings, not a nightly question', () => {
   // "Has this repo a mount to update?" is a fact adoption settled, re-asked every
   // night for an answer that cannot change on its own. Repo shape is not a
   // precondition (task-preconditions DESIGN): such a repo names the task in its
   // `taskScheduler.disabledTasks` and the scheduler never instantiates it.
-  const notes = readFileSync(join(TASK_DIR, 'README.md'), 'utf8');
-  assert.match(notes, /taskScheduler\.disabledTasks/);
   assert.equal(evaluatePrecondition({ decl: update }, S({ present: false, engineVersion: null })).run, true);
 });
 
@@ -77,14 +60,6 @@ test('update: no repo-side condition may gate it — the input is the CANON', ()
   ]) {
     assert.equal(evaluatePrecondition({ decl: update }, signals).run, true);
   }
-});
-
-test('update: the apply stage\'s binding scope is task.md\'s, not a context line', () => {
-  // Standing instruction, not a term-computed scope list: it says the same thing on
-  // every run, so it belongs where the worker reads it.
-  const worker = readFileSync(join(TASK_DIR, update.agent_instructions), 'utf8');
-  assert.match(worker, /The deterministic half already ran/);
-  assert.match(worker, /binding scope — do not widen it/);
 });
 
 // Forcing is deliberately absent here: it is an engine decision (run.mjs

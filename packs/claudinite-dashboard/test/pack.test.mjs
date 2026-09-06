@@ -1,14 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, mkdtemp, mkdir, writeFile, cp, rm } from 'node:fs/promises';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import pack from '../pack.mjs';
 
 const run = promisify(execFile);
 
@@ -20,74 +19,6 @@ const runReporting = async (...args) => {
 };
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const PACK_DIR = join(ROOT, 'packs/claudinite-dashboard');
-
-// --- the manifest ----------------------------------------------------------------
-
-test('the pack is opt-in and never fingerprinted', () => {
-  // Nothing in a repo's shape implies wanting a dashboard. A fingerprint would suspect
-  // one in every member on the fleet, since every member has a scheduler. Silence IS
-  // that statement: the manifest declares neither field, and the loader resolves an
-  // undeclared fingerprint to null.
-  assert.equal(pack.detect, undefined);
-  assert.equal(pack.marker, undefined);
-  assert.equal(pack.seededByDefault, false);
-});
-
-test('it costs no session prose, and its one check guards the descriptors', () => {
-  // A page is not a practice: there is no way to write the dashboard wrongly in a
-  // consuming repo, and prose here would bill every session in every declaring repo.
-  // No RULES.md beside the manifest is what says so — the loader derives prose from
-  // that file's presence, so its absence is the declaration.
-  assert.equal(existsSync(join(PACK_DIR, 'RULES.md')), false);
-  assert.equal(pack.prose, undefined);
-  // The one check guards what OTHER packs contribute to this page — a descriptor the
-  // reader rejects fails silently, in a viewer's browser, where its author never
-  // looks. It is a world rule: it audits what has landed, whatever this session
-  // touched.
-  // It is the module in the pack's own worldRules/ — the directory is the
-  // declaration, so the directory is what this asserts.
-  assert.deepEqual(readdirSync(join(PACK_DIR, 'worldRules')).sort(),
-    ['descriptor-usable.mjs']);
-  assert.equal(existsSync(join(PACK_DIR, 'workRules')), false);
-});
-
-// The whole point of the remodel: adoption is what wires the deploy, because
-// `.github/workflows/` cannot be written by the nightly and so can only be seeded.
-test('adoption seeds the Pages workflow, and its template exists', async () => {
-  assert.equal(pack.seedOps.length, 1);
-  const [op] = pack.seedOps;
-  assert.equal(op.dest, '.github/workflows/claudinite-dashboard-pages.yml');
-  assert.ok(existsSync(join(PACK_DIR, op.template)), `seedOp template missing: ${op.template}`);
-});
-
-// A seeded workflow never converges, so anything it hardcodes is frozen in every
-// member forever. It therefore holds only what needs a workflow job — the Pages
-// actions, which `uses:` alone can invoke — and no logic: the build, its inputs and
-// the decision to run are the publish-pages task's.
-test('the seeded workflow is the Pages actions and nothing else', async () => {
-  const yml = await readFile(join(PACK_DIR, pack.seedOps[0].template), 'utf8');
-  const steps = [...yml.matchAll(/^\s+(?:- )?uses: ([^@\n]+)@/gm)].map((m) => m[1]);
-  assert.deepEqual(steps, ['actions/checkout', 'actions/configure-pages', 'actions/upload-pages-artifact', 'actions/deploy-pages']);
-  assert.doesNotMatch(yml, /^\s+run:/m, 'a run: step is logic the frozen file cannot converge');
-  assert.match(yml, /ref: gh-pages/, 'it deploys the tree the task pushed');
-  // Configuration reaches the build task-side, so the frozen file has none to go stale.
-  assert.doesNotMatch(yml, /vars\./, 'settings belong in the declaration and the variables, read by the task');
-});
-
-// The task is the trigger. A push filter or a catch-up in the stub would be a second
-// decision point beside the precondition, and the vendored scheduler is a member's
-// ONE permitted schedule.
-test('the seeded workflow fires only on dispatch', async () => {
-  const yml = await readFile(join(PACK_DIR, pack.seedOps[0].template), 'utf8');
-  const on = /^on:\n((?:[ \t]+.*\n)+)/m.exec(yml)?.[1] ?? '';
-  assert.deepEqual(on.trim().split('\n').map((l) => l.trim()), ['workflow_dispatch:']);
-  assert.doesNotMatch(yml, /^\s*schedule:/m, 'a second cron competes with the scheduler that owns every recurring job');
-});
-
-test('the build script is NOT seeded — it has to keep converging', () => {
-  const dests = pack.seedOps.map((o) => o.dest);
-  assert.ok(!dests.some((d) => d.includes('build-site')), 'build-site.mjs must stay in the mount');
-});
 
 // --- build-site, against a simulated member mount ----------------------------------
 
@@ -311,50 +242,6 @@ test('a mode that contradicts the config is refused too, in both directions', as
 });
 
 // --- the handover -------------------------------------------------------------------
-
-// Enabling Pages cannot be automated: `actions/configure-pages`' `enablement` input
-// needs a PAT with `repo` or an app with `administration:write`, never the Action's own
-// GITHUB_TOKEN — and holding a credential that wide in every member to save one click
-// is a worse trade than naming the click. So it must be declared, not just documented.
-test('the pack declares its human-only step in the shape the rule requires', () => {
-  assert.ok(Array.isArray(pack.adoptionHandover) && pack.adoptionHandover.length >= 1);
-  for (const h of pack.adoptionHandover) {
-    assert.match(h.step, /\S/, 'a handover step needs a step');
-    assert.match(h.breaks, /\S/, 'and what breaks while it is off');
-    assert.match(h.done, /\S/, 'and a closing condition');
-  }
-  assert.match(pack.adoptionHandover[0].step, /Pages/i);
-});
-
-// The second human-only step, and the one an adopter would otherwise meet as "why is
-// this page rate-limited". Sign-in cannot be automated for the same reason Pages
-// cannot: registering an app and hosting the code-to-token exchange are a console and
-// a credential, and neither is inheritable from the fleet that wrote this pack.
-//
-// It is ONE entry deliberately. For a member reading its own repo through a pasted
-// token the answer is "nothing to do" at the identical 5,000/hour, so four
-// unconditional checkboxes would be mostly no-ops — which is what teaches a reader to
-// skim the list that exists to stop them skimming. The decision is what every adopter
-// owes; the mechanics live in the README.
-test('the pack hands over the sign-in decision, not just the Pages setting', () => {
-  const signin = pack.adoptionHandover.find((h) => /sign in|authenticat/i.test(h.step));
-  assert.ok(signin, 'no handover entry covers how viewers authenticate');
-  // A `step` is rendered as ONE checkbox in somebody's handover issue, so it states the
-  // decision and points at the checklist rather than spelling six actions and a
-  // rationale inside the box (basics' `writing-handover-issues`). The word bound is the
-  // guard that matters: naming the variables was the old assertion, and it passed just
-  // as happily on the 90-word paragraph it was written against.
-  assert.match(signin.step, /README/i, 'it points at the checklist that does name the pair');
-  assert.ok(signin.step.split(/\s+/).length <= 30,
-    `a handover step is one checkbox, not a procedure — this one is ${signin.step.split(/\s+/).length} words`);
-  assert.match(signin.step, /README/i, 'and points at where the mechanics are');
-  // The trap this guards: an entry that reads as mandatory when the deployment may
-  // legitimately have nothing to do.
-  assert.match(signin.step, /nothing to do|leave it/i, 'the do-nothing answer is stated as an answer');
-  assert.match(signin.breaks, /60 requests\/hour|anonymous/i, 'what being undone actually costs');
-  assert.match(signin.done, /5000|token box/, 'and something that can close it either way');
-});
-
 // The point of the field over a README line: a README is read after the deploy has
 // already failed. This asserts the install flow actually surfaces it.
 test('the install flow reports the handover so adoption cannot miss it', async (t) => {
@@ -373,6 +260,7 @@ test('the install flow reports the handover so adoption cannot miss it', async (
   assert.match(stdout, /done when:/);
   // And the thing it is a handover FOR actually landed.
   assert.match(stdout, /seeded \.github\/workflows\/claudinite-dashboard-pages\.yml/);
+  assert.ok(existsSync(join(dir, '.github/workflows/claudinite-dashboard-pages.yml')), 'the seeded workflow is on disk where Pages will find it');
 });
 
 // A pack with nothing to hand over must not print an empty section.

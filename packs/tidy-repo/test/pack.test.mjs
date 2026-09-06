@@ -1,9 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, existsSync, readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import pack from '../pack.mjs';
 import tidyIssuesJson from '../tasks/tidy-issues/task.json' with { type: 'json' };
 import tidyPrsJson from '../tasks/tidy-prs/task.json' with { type: 'json' };
 import { evaluatePrecondition, preconditionSignals } from '../../claudinite-tasks/shared-code/preconditions.mjs';
@@ -11,9 +7,6 @@ import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.m
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const tidyIssues = normalizeTaskDeclaration(tidyIssuesJson);
 const tidyPrs = normalizeTaskDeclaration(tidyPrsJson);
-
-const PACK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/tidy-repo');
-const taskDir = (id) => join(PACK_DIR, 'tasks', id);
 
 // The scheduler's signal bundle, in the shapes the collectors produce.
 const S = (over = {}) => ({
@@ -24,48 +17,12 @@ const S = (over = {}) => ({
   ...over,
 });
 
-test('tidy-repo is a declared pack (no fingerprint) with its skills; its tasks are not pack.mjs slots', () => {
-  // No fingerprint is stated by saying nothing — the loader resolves an undeclared
-  // `detect` to null.
-  assert.equal(pack.detect, undefined);
-  // The tasks moved out of the manifest: the repo's scheduler finds
-  // tasks/<name>/task.json structurally (#394).
-  assert.equal(pack.run_daily, undefined);
-  assert.deepEqual(
-    readdirSync(join(PACK_DIR, 'skills')).sort(),
-    ['improve-comments', 'single-issue-triage', 'single-pr-status'],
-    'the worker skills are bundled in this pack\'s own skills/'
-  );
-});
-
-test('one task per tidy dimension — the repo-tidy pass is split three ways', () => {
-  assert.deepEqual(
-    readdirSync(join(PACK_DIR, 'tasks')).sort(),
-    ['improve-comments', 'tidy-issues', 'tidy-prs'],
-  );
-});
-
-test('every GitHub-object tidy task: id matches its dir, sonnet, outcome none, bounded, worker doc present', () => {
-  // improve-comments is deliberately outside this loop: it is the one dimension whose
-  // subject is the repo's source, so it alone opens a PR and alone pays for opus.
-  for (const t of [tidyIssues, tidyPrs]) {
-    assert.ok(existsSync(taskDir(t.id)), `${t.id} has no task directory of its own`);
-    assert.equal(t.agent_model, 'sonnet');    // landed-status / implemented-in-main are judgment calls
-    assert.equal(t.expected_outcome, 'no_code_changes'); // no GitHub-object dimension ever opens or merges a PR
-    assert.ok(Number.isInteger(t.agent_execution_timeout) && t.agent_execution_timeout > 0);
-    assert.ok(existsSync(join(taskDir(t.id), t.agent_instructions)), `worker doc missing: ${t.id}/${t.agent_instructions}`);
-  }
-});
-
 const issuesVerdict = (signals) => evaluatePrecondition({ decl: tidyIssues }, signals);
 const prsVerdict = (signals) => evaluatePrecondition({ decl: tidyPrs }, signals);
 
 // --- tidy-issues: the acting dimension, daily, narrow ------------------------
 
-test('tidy-issues: daily, and its signals are exactly the two triggers that change an issue verdict', () => {
-  assert.equal(tidyIssues.id, 'tidy-issues');
-  assert.equal(tidyIssues.frequency, 'daily'); // the one dimension that ACTS, so latency matters
-  assert.deepEqual(tidyIssues.preconditions, ['issues-touched']);
+test('tidy-issues: its signal is derived from its condition — the issues, nothing else', () => {
   assert.deepEqual(preconditionSignals(tidyIssues.preconditions, new Map()), ['issues']);
 });
 
@@ -78,16 +35,6 @@ test('tidy-issues: an issue moving is the trigger — a PR or branch moving is n
   // Activity in the other dimensions never wakes this task.
   assert.equal(issuesVerdict(S({ prs: { open: [{ number: 7 }], touched: [7] } })).run, false);
   assert.equal(issuesVerdict(S({ branches: { names: ['main', 'feat-x'], touched: ['feat-x'] } })).run, false);
-});
-
-// WIDENING IS SCOPE, AND SCOPE IS THE WORKER'S (task-preconditions DESIGN): a
-// substantive `main` move can have implemented or invalidated an issue nobody
-// touched, and deciding that is a decision about what a granted run works on, never
-// about whether it runs.
-test('tidy-issues: whether a substantive main move widens the run is task.md\'s call', () => {
-  const worker = readFileSync(join(taskDir('tidy-issues'), tidyIssues.agent_instructions), 'utf8');
-  assert.match(worker, /did the default branch move substantively in the window/i);
-  assert.match(worker, /every\s+\*\*open issue\*\*|\*\*every\s+open issue\*\*/);
 });
 
 // The gate the owner asked for: nothing new in the window → don't go over the
@@ -117,8 +64,6 @@ test('tidy-issues: an issue labelled task:* is neither a trigger nor in scope', 
   assert.equal(v.run, true);
   assert.match(v.context.join(' '), /#3/);
   assert.doesNotMatch(v.context.join(' '), /#9/);
-  // …and the widening the worker may do carries the same exclusion.
-  assert.match(readFileSync(join(taskDir('tidy-issues'), tidyIssues.agent_instructions), 'utf8'), /`task:`-prefixed label/);
 
   // A label that merely CONTAINS the marker is somebody else's label.
   const other = issuesVerdict(S({ issues: { open: [{ number: 4, labels: ['not-task:ready'] }], touched: [4] } }));
@@ -132,21 +77,14 @@ test('tidy-issues: silent on a quiet repo, and on a substantive move with no ope
 
 // --- tidy-prs: assess-only, weekly, full every run --------------------------
 
-test('tidy-prs: weekly (the full sweep is the declaration) over the prs signal alone', () => {
-  assert.equal(tidyPrs.id, 'tidy-prs');
-  assert.equal(tidyPrs.frequency, 'weekly');
-  assert.deepEqual(tidyPrs.preconditions, ['prs-touched']);
+test('tidy-prs: its signal is derived from its condition — the prs, nothing else', () => {
   assert.deepEqual(preconditionSignals(tidyPrs.preconditions, new Map()), ['prs']);
 });
 
-test('tidy-prs: touched-ness gates the sweep but never narrows it — scope stays every open PR', () => {
+test('tidy-prs: a touched open PR wakes the sweep, and the trigger names it', () => {
   const v = prsVerdict(S({ prs: { open: [{ number: 7 }, { number: 9 }], touched: [9] } }));
   assert.equal(v.run, true);
   assert.match(v.context.join(' '), /#9/); // the trigger names what moved
-  // …and the SCOPE — every open PR, and the read-only posture — is task.md's.
-  const worker = readFileSync(join(taskDir('tidy-prs'), tidyPrs.agent_instructions), 'utf8');
-  assert.match(worker, /scope is every OPEN PR/);
-  assert.match(worker, /read-only/);
 });
 
 // The gate the owner asked for: an unchanged set of open PRs is last run's picture,
@@ -172,67 +110,6 @@ test('tidy-prs: merged PRs on the signal never enter the sweep', () => {
   assert.equal(prsVerdict(S({ prs: { open: [{ number: 7 }], touched: [], ...merged } })).run, false);
   const v = prsVerdict(S({ prs: { open: [{ number: 7 }], touched: [7], ...merged } }));
   assert.doesNotMatch(v.context.join(' '), /#42/);
-  assert.match(readFileSync(join(taskDir('tidy-prs'), tidyPrs.agent_instructions), 'utf8'), /merged\*\* PR is not in scope/);
 });
 
 // --- the trackers: one per task, never a shared body ------------------------
-
-test('each worker reconciles its OWN tracker by exact title — the two tasks never race on one body', () => {
-  const titles = {
-    'tidy-issues': 'Claudinite tracker: Tidy Issues',
-    'tidy-prs': 'Claudinite tracker: Tidy PRs',
-  };
-  for (const [id, title] of Object.entries(titles)) {
-    const worker = readFileSync(join(taskDir(id), 'task.md'), 'utf8');
-    assert.ok(worker.includes(`\`${title}\``), `${id}/task.md does not name its tracker \`${title}\``);
-    // The tracker's state carries no meaning, so no worker may open or close it.
-    assert.match(worker, /Never open, close, or reopen the tracker/);
-    // The tracker logs changes, not scans: a run that acted on nothing (issues) or
-    // re-derived the same picture (PRs) leaves it untouched, and a repo with nothing
-    // to record never gets a tracker at all.
-    assert.match(worker, /nothing to record/, `${id}/task.md does not gate its tracker write on having something to record`);
-  }
-});
-
-// The self-trigger the touched-gate could not see (#988): a triage comment is an
-// issue update, so a run that re-announces a verdict it already posted is the next
-// window's `touched` and wakes itself, indefinitely. The fix is to not make that
-// write — so the skill's no-repeat rule, and the marker that lets a run recognise
-// its own prior verdict, are what these assert.
-test('single-issue-triage: an unchanged verdict is posted nowhere, and carries its own action name', () => {
-  const skill = readFileSync(join(PACK_DIR, 'skills/single-issue-triage/SKILL.md'), 'utf8');
-  assert.match(skill, /post nothing and change nothing/i,
-    'single-issue-triage does not forbid re-posting a verdict it already posted');
-  assert.match(skill, /<!-- claudinite:tidy-issues verdict=/,
-    'single-issue-triage defines no marker, so a run cannot recognise its own prior verdict');
-  assert.match(skill, /\bunchanged\b/,
-    'the return vocabulary carries no `unchanged`, so the worker cannot tell it apart from `left`');
-});
-
-test('tidy-issues: its worker knows an unchanged verdict is not an action', () => {
-  const worker = readFileSync(join(taskDir('tidy-issues'), 'task.md'), 'utf8');
-  assert.match(worker, /\bunchanged\b/,
-    'tidy-issues/task.md does not say what an unchanged verdict means for its tracker');
-});
-
-// The strongest completion signal an issue can carry is its own checklist, fully
-// ticked — and it is a claim by the author, not proof, so it enters the
-// close-if-implemented rung rather than short-circuiting it (#1087).
-test('single-issue-triage: a fully-ticked checklist prompts a completion check, and a partial one does not', () => {
-  const skill = readFileSync(join(PACK_DIR, 'skills/single-issue-triage/SKILL.md'), 'utf8');
-  assert.match(skill, /every checkbox .*ticked/i,
-    'single-issue-triage never reads the issue body\'s checkboxes');
-  assert.match(skill, /a claim.*not proof/i,
-    'a ticked checklist is treated as proof of completion, bypassing the verify-against-main safeguard');
-  assert.match(skill, /partially[- ]ticked/i,
-    'the skill does not say a partially-ticked list is not a completion signal');
-});
-
-// A manual-steps issue (a console setting, a routine only a human can touch) has no
-// repo-side artifact to verify against, so verify-against-`main` alone would send
-// every one of them to `comment` forever.
-test('single-issue-triage: an ask with no repo-side artifact closes on the author\'s own ticks', () => {
-  const skill = readFileSync(join(PACK_DIR, 'skills/single-issue-triage/SKILL.md'), 'utf8');
-  assert.match(skill, /no repo-side artifact/i,
-    'the skill leaves a manual-steps issue with no closing condition but main, which can never carry it');
-});

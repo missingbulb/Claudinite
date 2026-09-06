@@ -88,10 +88,17 @@ test('an alternative that errors takes the whole verdict with it, even beside on
 
 // --- the built-in vocabulary --------------------------------------------------
 
-test('every built-in term is named in the check\'s remedy vocabulary', () => {
-  // The list a declaration's author is shown when they name something unknown.
-  assert.ok(BUILTIN_TERM_NAMES.includes('repo-active'));
-  assert.deepEqual([...new Set(BUILTIN_TERM_NAMES)], BUILTIN_TERM_NAMES, 'no duplicate term names');
+test('every built-in term the remedy vocabulary names is one the evaluator resolves', () => {
+  // The list a declaration's author is shown when they name something unknown must
+  // be exactly the names that would not be unknown: a term listed but unresolvable
+  // sends an author to a spelling that fails, one resolvable but unlisted is
+  // invisible to them. An argument-taking term still resolves — its complaint is
+  // about the argument, never about the name.
+  for (const name of BUILTIN_TERM_NAMES) {
+    const v = evaluate([name], {});
+    assert.doesNotMatch(v.error ?? '', /unknown precondition/, name);
+  }
+  assert.match(evaluate(['no-such-thing'], {}).error, /unknown precondition/);
 });
 
 test('repo-active is the positive umbrella over all four activity dimensions', () => {

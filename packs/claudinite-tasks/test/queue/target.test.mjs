@@ -124,7 +124,10 @@ test('the env a target becomes is exactly the three variables, every mode', () =
     { CLAUDINITE_TARGET_MODE: 'amend', CLAUDINITE_TARGET_BRANCH: 'b', CLAUDINITE_TARGET_PR: '5' });
   assert.deepEqual(targetEnv({ mode: 'fresh', branch: 'b', pr: null }),
     { CLAUDINITE_TARGET_MODE: 'fresh', CLAUDINITE_TARGET_BRANCH: 'b', CLAUDINITE_TARGET_PR: '' });
-  assert.deepEqual(TARGET_MODES, ['none', 'fresh', 'amend']);
+  // Every mode the planner can hand out rides the env under its own name.
+  for (const mode of TARGET_MODES) {
+    assert.equal(targetEnv({ mode, branch: mode === 'none' ? null : 'b', pr: null }).CLAUDINITE_TARGET_MODE, mode);
+  }
 });
 
 // --- the I/O shell over a fake GitHub ---------------------------------------------

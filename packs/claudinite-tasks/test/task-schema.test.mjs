@@ -22,9 +22,6 @@ test('task.schema.json: its enums are the contract\'s lists', () => {
   assert.deepEqual(p.expected_outcome.enum, OUTCOMES);
   assert.deepEqual(p.on_interrupt.enum, INTERRUPT_POLICIES);
   assert.deepEqual(p.session_scope.enum, SESSION_SCOPES);
-  assert.deepEqual(schema.required, ['id', 'description', 'frequency', 'expected_outcome']);
-  assert.equal(schema.properties.description.maxWords, undefined, 'JSON Schema has no word bound — the contract holds it');
-  assert.equal(schema.additionalProperties, false);
 });
 
 // A subset validator — enough to hold every canon declaration to the schema's

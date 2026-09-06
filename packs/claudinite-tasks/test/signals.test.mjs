@@ -10,11 +10,12 @@ const fakeGh = (routes) => async (path) => {
 };
 const ctx = (over = {}) => ({ repo: 'o/r', defaultBranch: 'main', sinceIso: '2026-07-21T00:00:00Z', now: '2026-07-22T00:00:00Z', ...over });
 
-test('the collector set is the DESIGN §3.3 vocabulary', () => {
-  assert.deepEqual(SIGNAL_COLLECTORS.sort(), [
-    'branches', 'commits', 'conversationLogs', 'fleet', 'issues',
-    'localPacks', 'prs', 'release', 'request', 'sharedMount', 'stamp',
-  ].sort());
+test('every name in the collector set is one collectSignals answers under', async () => {
+  // Against a gh that answers nothing: each collector still reports under its own
+  // key (a value, or its error), so a name listed with no collector behind it, or a
+  // collector that files under another name, shows up as a missing key.
+  const out = await collectSignals(fakeGh([]), ctx(), SIGNAL_COLLECTORS);
+  assert.deepEqual(Object.keys(out).sort(), [...SIGNAL_COLLECTORS].sort());
 });
 
 test('collectSignals gathers only the requested names', async () => {

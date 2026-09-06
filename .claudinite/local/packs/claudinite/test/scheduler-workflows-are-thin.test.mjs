@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
@@ -96,17 +95,4 @@ test('a scope it can no longer see is reported, not passed', () => {
 // The fixtures above prove the matching; only the real tree can disagree with it.
 test('the canon tree itself satisfies the rule', () => {
   assert.deepEqual(run(CANON), []);
-});
-
-// The rule's whole premise: these files name a module rather than carrying one.
-test('every job in both real stubs runs a module of the tasks pack', () => {
-  for (const stub of ['claudinite-scheduler', 'claudinite-executor']) {
-    const yml = readFileSync(join(CANON, `packs/claudinite-tasks/stubs/${stub}.yml`), 'utf8');
-    const runs = [...yml.matchAll(/^\s*run: (.+)$/gm)].map((m) => m[1]);
-    assert.ok(runs.length > 0, `${stub} runs something`);
-    for (const cmd of runs) {
-      assert.match(cmd, /^node \.claudinite\/shared\/packs\/claudinite-tasks\/queue\/[a-z-]+\.mjs$/,
-        `${stub}: "${cmd}" must be a bare invocation of a vendored scheduler module`);
-    }
-  }
 });

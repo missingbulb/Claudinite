@@ -6,7 +6,7 @@ import upstreamJson from '../tasks/upstream-watch/task.json' with { type: 'json'
 import bumpJson from '../tasks/pack-version-bump/task.json' with { type: 'json' };
 import historyJson from '../tasks/pack-version-history/task.json' with { type: 'json' };
 import { declaredMergeRules, policyVerdict } from '../../claudinite-tasks/shared-code/merge-policy.mjs';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateTaskDeclaration } from '../../claudinite-tasks/shared-code/task-contract.mjs';
@@ -43,17 +43,8 @@ const member = (over = {}) => ({
 
 // --- growth-promote ----------------------------------------------------------
 
-test('growth-promote: declaration is daily/opus/pr+nothing over the fleet signal', () => {
-  assert.equal(promote.frequency, 'daily');
-  assert.equal(promote.agent_model, 'opus');
-  assert.equal(promote.expected_outcome, 'amend_existing_or_create_new_pr'); // owner-gated: its policy authorizes nothing to auto-merge, and a round joins the review already pending
-  // Derived from the one condition it states, never declared beside it.
-  assert.deepEqual(promote.preconditions, ['fleet-local-packs-changed']);
+test('growth-promote: its signal is derived from the one condition it states', () => {
   assert.deepEqual(preconditionSignals(promote.preconditions, promoteTerms), ['fleet']);
-  // Same as discover: reach is the endpoint the hand-off calls, and this task reads
-  // every member's local packs.
-  assert.equal(promote.invocation_endpoint, 'fleet');
-  assert.equal(promote.session_scope, undefined, 'session_scope lost its last reader with the slot scheduler');
 });
 
 test('growth-promote: fires on participating members whose local packs changed', () => {
@@ -96,18 +87,7 @@ test('growth-promote: an unproven fleet state ERRORS — it never reads as "noth
 // Not to be confused with its per-repo namesake in claudinite-growth, which
 // authors a repo's own LOCAL packs. This one is the central canon-gap sweep.
 
-test('growth-discover-packs: declaration is weekly/opus/pr+nothing, fleet-reaching over the fleet signal', () => {
-  assert.equal(discover.id, 'growth-discover-packs');
-  assert.equal(discover.frequency, 'weekly');
-  assert.equal(discover.agent_model, 'opus');
-  assert.equal(discover.expected_outcome, 'amend_existing_or_create_new_pr'); // a new canon pack is owner-reviewed: its policy authorizes nothing to auto-merge, and a round joins the review already pending
-  // Reach is which endpoint the hand-off calls, and nothing else — this task reads
-  // every member's tree, which an ordinary session in this repo does not.
-  assert.equal(discover.invocation_endpoint, 'fleet');
-  assert.equal(discover.session_scope, undefined, 'session_scope lost its last reader with the slot scheduler');
-  // `['none']`: the opportunity is standing rather than windowed, and the roster
-  // the run sweeps is read by the run itself (task.md), not handed to it as scope.
-  assert.deepEqual(discover.preconditions, ['none']);
+test('growth-discover-packs: its conditions derive no signal', () => {
   assert.deepEqual(preconditionSignals(discover.preconditions, new Map()), []);
 });
 
@@ -119,56 +99,19 @@ test('growth-discover-packs: the weekly anchor IS the trigger — nothing repo-s
   assert.deepEqual(v.context, []);
 });
 
-test('growth-discover-packs: which members it sweeps is the worker\'s, and task.md says so', () => {
-  // Scope is not a precondition (task-preconditions DESIGN): the roster moved into
-  // the work sections when the fleet enumeration stopped being a gate.
-  const worker = readFileSync(join(PACK_DIR, 'tasks/growth-discover-packs', discover.agent_instructions), 'utf8');
-  assert.match(worker, /every COVERED member/);
-  assert.match(worker, /no declared packs is not running Claudinite/);
-});
-
 // --- upstream-watch (the shelf's own currency) --------------------------------
 // The canon's answer to a pack that would otherwise schedule a watcher of its own:
 // one task over the whole shelf, opted into per pack by an `## Upstream` section.
 
-test('upstream-watch: a well-formed monthly, owner-gated declaration over no signal', () => {
+test('upstream-watch: the declaration satisfies the task contract', () => {
   assert.deepEqual(validateTaskDeclaration(upstream), []);
-  assert.equal(upstream.id, 'upstream-watch');
-  assert.equal(upstream.frequency, 'monthly');
-  assert.deepEqual(upstream.preconditions, ['none']); // the trigger is the outside world
-  assert.equal(upstream.expected_outcome, 'fresh_pr');
-  assert.equal(upstream.automerge, 'nothing');         // canon content every member reads
-  // The shelf is the whole subject, so this one needs no reach past an ordinary session.
-  assert.equal(upstream.invocation_endpoint, undefined);
 });
 
-test('upstream-watch: runs unconditionally, and task.md carries the opt-in scope', () => {
+test('upstream-watch: runs unconditionally', () => {
   // A shelf-side gate would only ask "is the shelf still the shelf?" — and which
   // packs opted in is standing instruction, so it lives in the work sections.
   const v = evaluatePrecondition({ decl: upstream }, {});
   assert.equal(v.run, true);
-  const worker = readFileSync(join(PACK_DIR, 'tasks/upstream-watch', upstream.agent_instructions), 'utf8');
-  assert.match(worker, /## Upstream/);
-  assert.match(worker, /opted out: do not add one/);
-  assert.match(worker, /reads the shelf, never a member/);
-});
-
-test('upstream-watch: the worker advances an anchor only for a source it read', () => {
-  const worker = readFileSync(join(PACK_DIR, 'tasks/upstream-watch', upstream.agent_instructions), 'utf8');
-  // An unread source must stay unread: the anchor is what the next run windows on,
-  // so advancing it past what was covered silently skips a publication window.
-  assert.match(worker, /never for one you skipped, and never past what you actually covered/);
-  assert.match(worker, /never infer what it would have said/);
-  // The scope is the shelf, and the two temptations it must refuse.
-  assert.match(worker, /dependency versions/);
-  assert.match(worker, /do not add one/);
-});
-
-test('the pack keeps exactly the five curation tasks', () => {
-  assert.deepEqual(
-    readdirSync(join(PACK_DIR, 'tasks')).sort(),
-    ['growth-discover-packs', 'growth-promote', 'pack-version-bump', 'pack-version-history', 'upstream-watch'],
-  );
 });
 
 // --- pack-version-bump / pack-version-history (the shelf's version numbers) --

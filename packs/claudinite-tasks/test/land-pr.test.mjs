@@ -34,7 +34,6 @@ test('normalizeDelivery maps the accepted values and legacy aliases, rejecting t
 test('resolveDelivery materializes the default for a missing key rather than failing the run', () => {
   assert.deepEqual(resolveDelivery(undefined), { delivery: DEFAULT_DELIVERY, materialize: true });
   assert.deepEqual(resolveDelivery(null), { delivery: DEFAULT_DELIVERY, materialize: true });
-  assert.equal(DEFAULT_DELIVERY, 'auto-merge');
 });
 
 test('resolveDelivery treats a content-free value as absent, not as a typo', () => {

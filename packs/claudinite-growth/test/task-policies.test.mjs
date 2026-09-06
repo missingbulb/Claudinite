@@ -32,9 +32,6 @@ const RULES_MD = '.claudinite/local/packs/claudinite/RULES.md';
 
 test('the pack\'s merge-rules.json compiles cleanly', () => {
   assert.deepEqual(errors, []);
-  for (const name of ['claudinite-local-pack-md-changes', 'claudinite-local-pack-check-changes']) {
-    assert.ok(rules.has(name), name);
-  }
 });
 
 test('growth-extract may land local-pack prose and checks, nothing outside the local packs', () => {

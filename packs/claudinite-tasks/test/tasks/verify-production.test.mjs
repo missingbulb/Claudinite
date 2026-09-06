@@ -14,22 +14,25 @@ import { runVerification } from '../../tasks/verify-production/worker.mjs';
 import declarationJson from '../../tasks/verify-production/task.json' with { type: 'json' };
 import { validateTaskDeclaration } from '../../task-contract.mjs';
 import { evaluatePrecondition } from '../../shared-code/preconditions.mjs';
+import { planSchedulerRun } from '../../queue/scheduler-run.mjs';
 import { normalizeTaskDeclaration } from '../../task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const declaration = normalizeTaskDeclaration(declarationJson);
 
 // --- the declaration -----------------------------------------------------------
 
-test('the declaration is a valid manual agentless code-work task', () => {
+test('the declaration validates, and the scheduler never files an item for it on its own', async () => {
   assert.deepEqual(validateTaskDeclaration(declaration), []);
-  assert.equal(declaration.id, 'verify-production');
-  assert.equal(declaration.frequency, 'manual', 'items exist only because a verification was filed');
-  assert.equal(declaration.agent_model, 'none', 'the whole point: no session, so no egress wall');
-  assert.equal(declaration.expected_outcome, 'no_code_changes', 'a verification has nothing to merge');
+  // Items exist only because a verification was filed: across a full day of anchors
+  // the scheduler run instantiates nothing for this task.
+  const { ops } = await planSchedulerRun({
+    tasks: [{ pack: 'claudinite-tasks', id: declaration.id, taskPath: 'packs/claudinite-tasks/tasks/verify-production/task.md', decl: declaration }],
+    items: [], now: '2026-08-14T10:00:00Z', schedule: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
+  });
+  assert.deepEqual(ops.filter((o) => o.kind === 'create'), []);
 });
 
 test('the precondition always runs — a filed verification is its own mandate', () => {
-  assert.deepEqual(declaration.preconditions, ['none']);
   assert.equal(evaluatePrecondition({ decl: declaration }, {}, {}, { number: 1 }).run, true);
 });
 

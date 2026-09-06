@@ -58,7 +58,6 @@ test('an ageing entry expires at its ttl and not before', async () => {
   c.ageing.set('h', [1, 2, 3]);
   assert.deepEqual(c.ageing.get('h', 1000), [1, 2, 3]);
   assert.equal(c.ageing.get('h', 0), undefined, 'a zero ttl is always expired');
-  assert.equal(c.DAY_MS, 24 * 3600e3);
 });
 
 test('a full quota degrades to a miss instead of throwing', async () => {

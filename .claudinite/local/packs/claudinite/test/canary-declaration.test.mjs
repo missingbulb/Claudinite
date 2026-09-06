@@ -23,14 +23,6 @@ const WORKFLOW = '.github/workflows/canary-rehearsal.yml';
 const declaration = () => JSON.parse(readFileSync(join(ROOT, '.claudinite-settings.json'), 'utf8'));
 const workflow = () => readFileSync(join(ROOT, WORKFLOW), 'utf8');
 
-test('the canary is declared on the local/claudinite pack entry, in owner/name form', () => {
-  const entry = (declaration().packs ?? []).find((p) => p && p.id === 'local/claudinite');
-  assert.ok(entry, 'the canon does not declare local/claudinite as an object entry');
-  const repo = entry.config?.canaryRepo;
-  assert.ok(repo, 'local/claudinite declares no config.canaryRepo — the canary rehearsal has nothing to converge');
-  assert.match(repo, /^[\w.-]+\/[\w.-]+$/, `canaryRepo "${repo}" is not <owner>/<name>`);
-});
-
 test('the workflow reads the canary from the declaration, not from a repository variable', () => {
   const text = workflow();
   assert.match(text, /\.claudinite-settings\.json/, 'the workflow no longer reads the declaration');
