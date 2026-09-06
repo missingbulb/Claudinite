@@ -111,4 +111,12 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(writing-migration-plans-2)** Same owner statement as RULES-5; this entry carries the three
   required contents of the submission (step lines, dependency graph, per-link automerge policy with
   its predicted diff) and the placement of the gate before any issue is filed.
+- **(writing-migration-plans-3)** Owner, on the plan-approval change: "the point of separating
+  detailed plans to many tasks is to have validatable checkpoints. If you have 2 big tasks on
+  totally different parts of the system - it makes sense to split them to tasks, with different
+  automerge rules, independent completion and production validations, etc. But if you have a large
+  task and you just split it in two tasks that do work in the same place - there's no need for
+  that, and it's only adding toil." The sizing section sorted steps into phases and divisions but
+  never named the test a split must pass, so more links read as always the safer choice. Retire if
+  a per-link cost ever drops to where splitting is free.
 
