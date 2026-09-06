@@ -6,7 +6,7 @@ retire — it. Entry keys are file-scoped stable identifiers (gaps allowed, neve
 end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 `<skill-name>-n`, and `check:` entries cover checks. No session loads this file for daily work.
 
-- **(RULES-1)** Three ad-hoc cross-repo `Verify:` items each parked on a scope denial minutes after
+- **(check:cross-repo-verify-line)** Three ad-hoc cross-repo `Verify:` items each parked on a scope denial minutes after
   being picked (#1349, #1351, #1396) — the executor provisions agent sessions with this repo's
   scope only. Retire the rule only if executor sessions gain cross-repo scope.
 - **(RULES-2)** Hand-fabricated queue transitions produced an item closed wearing a live status
@@ -46,7 +46,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   which re-applies every migration record in the corpus — so retiring the tolerance on a date
   alone does more than leave a straggler behind. Retire the rule only if a rejected stamp stops
   meaning "uninstalled".
-- **(RULES-13)** #880: `Monitor` and shell poll loops reported "still running" until they timed
+- **(check:github-api-via-shell)** #880: `Monitor` and shell poll loops reported "still running" until they timed
   out, ~26 minutes lost across two PRs that were already green. Retire the rule only if this
   sandbox stops proxy-blocking `api.github.com`.
 - **(RULES-14)** #952: bootstrap Part 9's hand-written vendored path named a directory that is
@@ -73,7 +73,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(RULES-27)** #1081: the rename map fixes code-side id resolution but cannot rewrite a
   member's own already-committed config, which converges on its own schedule or never;
   rewriting the write side reaches only data the engine itself owns.
-- **(RULES-28)** #1067: `MEMBER` covers any org member regardless of repo permission and
+- **(check:author-association-as-permission)** #1067: `MEMBER` covers any org member regardless of repo permission and
   `COLLABORATOR` includes read-only collaborators, so both are broader than push access. Retire
   the rule only if GitHub narrows what `author_association` means.
 - **(RULES-29)** Learned on `build_vars` / `release-workflows`: a stub is copied into a
@@ -119,7 +119,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   pushes.
 - **(RULES-43)** #1108: the same platform fact makes `.github/workflows/` the one path a
   converge cannot push into, so a member's copy moves only when a human merges a PR.
-- **(RULES-45)** #1105: a year anchored on its last digit wraps to 0 in 2030 and sorts a decade
+- **(check:year-last-digit-rollover)** #1105: a year anchored on its last digit wraps to 0 in 2030 and sorts a decade
   of releases underneath every 2029 one.
 - **(RULES-46)** #1105: `'60820.10'` and `'60820.1'` are different versions and the same float,
   so nothing in the corpus may parse one as a number.
@@ -152,7 +152,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   the history it lacks.
 - **(RULES-57)** #922: a `.bak` taken earlier predates whatever else was edited in between, so
   restoring from it silently destroyed that work.
-- **(RULES-58)** #1010: `git checkout --` restores from the index, so it destroys uncommitted
+- **(check:checkout-restores-index)** #1010: `git checkout --` restores from the index, so it destroys uncommitted
   work in the same file just as thoroughly as the `.bak` above.
 - **(running-the-suite-1)** #930/#931: five reruns of the ~55s suite cost 4.5 minutes to serve five
   different greps of the same unchanged output.
@@ -174,7 +174,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(RULES-65)** #1042: an anchored regex cannot cross the nested closing bracket, so every
   element after it goes silently unreached — and a fixture built without that nesting spells
   the same gap the pattern has, proving nothing.
-- **(RULES-66)** #880: a merge commit trips the blocking squash-merge-history check and costs a
+- **(check:merge-main-into-branch)** #880: a merge commit trips the blocking squash-merge-history check and costs a
   full rebase, a discarded CI run and a fresh wait — paid twice in one evening.
 - **(RULES-67)** #922: a stale tracking ref makes git count the pre-squash commits as unpushed,
   so the next push is rejected and the stop hook reports local work that does not exist.
