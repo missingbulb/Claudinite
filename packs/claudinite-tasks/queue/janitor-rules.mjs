@@ -10,6 +10,7 @@
 // in code, and never as a sweep inside a session that is executing something.
 
 import { taskPeriodMs } from './anchors.mjs';
+import { isScheduledTask } from '../task-contract.mjs';
 import {
   READY, AGENT, requeueHint,
   STATUS_READY, STATUS_RUNNING_AGENT, STATUS_BLOCKED, STATUS_DONE, STATUS_REJECTED, isStatus, statusOf,
@@ -304,31 +305,32 @@ export const unclosedTerminalComment = (status) => (status === STATUS_DONE
 // re-parks against a run from this week rather than leaving a month-old trace to read.
 //
 // STANDING ONLY, and structurally (`isStandingItem` against HEAD's declaration): the
-// warrant is that this item is a FUNGIBLE OCCURRENCE whose lane is being held, which
-// is exactly what a qualified item, a `manual` task's item and an adopted issue are
-// not — each is somebody's own work, and no clock answers those. A task absent from
-// HEAD answers no frequency and so is not standing either; that item is rule F's.
+// warrant is that this item is a FUNGIBLE OCCURRENCE, which is exactly what a
+// qualified item, a `request` task's item and an adopted issue are not — each is
+// somebody's own work, and no clock answers those. A task absent from HEAD states no
+// trigger and so is not standing either; that item is rule F's.
 export const ABANDONED_PARK_MS = 10 * 86400e3;
 
-export function abandonedParkItems(open = [], now, { frequencyFor = () => null, boundMs = ABANDONED_PARK_MS } = {}) {
+export function abandonedParkItems(open = [], now, { scheduledFor = () => null, boundMs = ABANDONED_PARK_MS } = {}) {
   return open.filter((item) => {
     if (statusOf(item) !== STATUS_NEEDS_HUMAN_FAILURE) return false;
     const p = parseWorkItemTitle(item.title);
     if (!p) return false;
-    if (!isStandingItem(item, frequencyFor(`${p.pack}/${p.task}`))) return false;
+    if (!isStandingItem(item, scheduledFor(`${p.pack}/${p.task}`))) return false;
     return idle(item, now) >= boundMs;
   });
 }
 
 export const abandonedParkComment = () =>
-  `Nothing has touched this park in over ${Math.round(ABANDONED_PARK_MS / 86400e3)} days. A \`failure\` park holds its task's lane, `
-  + 'so leaving it standing does not preserve the report — it keeps the task from ever running again, and a later clean run is '
+  `Nothing has touched this park in over ${Math.round(ABANDONED_PARK_MS / 86400e3)} days. Leaving it standing does not preserve the `
+  + 'report — nobody is going to read it now, and where the task declares `last-run-not-failed` it also keeps the task from '
+  + 'running again at all. A later clean run is '
   + `what would otherwise have closed this. Closing it \`${STATUS_REJECTED}\`: the next scheduled occurrence runs, and if the `
   + `fault is still there it parks again against a trace worth reading. If you were part-way through diagnosing it, re-queue it (${requeueHint}).`;
 
-// The declared frequency of a task at HEAD, for rule I's standing test — absent for a
+// Whether a task at HEAD is on the schedule, for rule I's standing test — null for a
 // task this repo no longer carries, which reads as not standing.
-export const frequencyForTasks = (tasks = []) => {
+export const scheduledForTasks = (tasks = []) => {
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
-  return (id) => byId.get(id)?.decl?.frequency ?? null;
+  return (id) => (byId.has(id) ? isScheduledTask(byId.get(id).decl) : null);
 };

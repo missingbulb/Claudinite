@@ -20,7 +20,7 @@ import {
   stuckBlockedItems, stuckBlockedComment, statelessItems, statelessComment,
   supersededItems, supersededComment, orphanedParkItems, orphanedParkComment, taskPathIndex,
   endedParkItems, endedParkComment, unclosedTerminalItems, unclosedTerminalComment, periodForTasks,
-  abandonedParkItems, abandonedParkComment, frequencyForTasks,
+  abandonedParkItems, abandonedParkComment, scheduledForTasks,
 } from '../../../claudinite-tasks/queue/janitor-rules.mjs';
 import {
   QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE, TASK_DONE, IN_REVIEW_LABEL, isWorkItemTitle,
@@ -81,7 +81,7 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
   }
   const resolutionOf = (n) => resolutions.get(n) ?? null;
   const ended = endedParkItems(open, { resolutionOf });
-  const abandoned = abandonedParkItems(open, now, { frequencyFor: frequencyForTasks(tasks) });
+  const abandoned = abandonedParkItems(open, now, { scheduledFor: scheduledForTasks(tasks) });
   const unclosed = unclosedTerminalItems(open, now);
 
   if (stale.length || deadAgents.length || stateless.length) await ensureLabels(gh, repo, QUEUE_LABELS);
@@ -206,7 +206,7 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
   for (const item of abandoned) {
     if (result.superseded.includes(item.number) || result.orphaned.includes(item.number) || result.ended.includes(item.number)) continue;
     const fresh = await readIssue(gh, repo, item.number);
-    if (!fresh || fresh.state !== 'open' || abandonedParkItems([fresh], now, { frequencyFor: frequencyForTasks(tasks) }).length === 0) {
+    if (!fresh || fresh.state !== 'open' || abandonedParkItems([fresh], now, { scheduledFor: scheduledForTasks(tasks) }).length === 0) {
       log(`- #${item.number} was touched between this sweep's read and its write — left alone`);
       continue;
     }

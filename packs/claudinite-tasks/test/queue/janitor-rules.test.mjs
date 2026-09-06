@@ -4,7 +4,7 @@ import {
   staleReadyItems, deadAgentItems, stuckBlockedItems, statelessItems, periodForTasks,
   supersededItems, supersededComment, orphanedParkItems, orphanedParkComment,
   endedParkItems, endedParkComment, unclosedTerminalItems, unclosedTerminalComment,
-  abandonedParkItems, abandonedParkComment, frequencyForTasks,
+  abandonedParkItems, abandonedParkComment, scheduledForTasks,
 } from '../../queue/janitor-rules.mjs';
 import { periodMs } from '../../queue/anchors.mjs';
 import { isParked } from '../../queue/work-item.mjs';
@@ -399,15 +399,15 @@ test('an item wearing an older engine\'s spelling of done is closed too', () => 
 // Rule I — the abandoned failure park (#1785).
 
 const headTasks = [
-  { pack: 'p', id: 'a', decl: { frequency: 'daily' } },
-  { pack: 'p', id: 'manualish', decl: { frequency: 'manual' } },
+  { pack: 'p', id: 'a', decl: { trigger: 'schedule', preconditions: ['due:daily'] } },
+  { pack: 'p', id: 'manualish', decl: { trigger: 'request' } },
 ];
-const freq = frequencyForTasks(headTasks);
+const onSchedule = scheduledForTasks(headTasks);
 const LATER = '2026-09-06T04:00:00Z'; // ~26 days past the fixtures' default touch
 
 test('a failure park nobody has touched past the bound is closed', () => {
   const item = parked({ kind: 'failure', updated_at: '2026-08-10T04:00:00Z' });
-  assert.deepEqual(abandonedParkItems([item], LATER, { frequencyFor: freq }).map((i) => i.number), [item.number]);
+  assert.deepEqual(abandonedParkItems([item], LATER, { scheduledFor: onSchedule }).map((i) => i.number), [item.number]);
   assert.match(abandonedParkComment(), /task:status:rejected/);
 });
 
@@ -415,7 +415,7 @@ test('a failure park nobody has touched past the bound is closed', () => {
 // is ever going to: inside it the park is doing its job.
 test('a failure park inside the bound is left standing', () => {
   const fresh = parked({ kind: 'failure', updated_at: '2026-09-01T04:00:00Z' });
-  assert.deepEqual(abandonedParkItems([fresh], LATER, { frequencyFor: freq }), []);
+  assert.deepEqual(abandonedParkItems([fresh], LATER, { scheduledFor: onSchedule }), []);
 });
 
 // The three parks that are a person's INBOX rather than a fault report: nothing here
@@ -423,7 +423,7 @@ test('a failure park inside the bound is left standing', () => {
 test('only the failure park is abandoned by the clock', () => {
   for (const kind of ['action', 'decision', 'approval']) {
     const item = parked({ kind, updated_at: '2026-08-10T04:00:00Z' });
-    assert.deepEqual(abandonedParkItems([item], LATER, { frequencyFor: freq }), [], kind);
+    assert.deepEqual(abandonedParkItems([item], LATER, { scheduledFor: onSchedule }), [], kind);
   }
 });
 
@@ -431,7 +431,7 @@ test('only the failure park is abandoned by the clock', () => {
 // an older engine parked that have been sitting longest (missingbulb/TLDR#275).
 test('an older engine\'s bare park decodes to failure and is claimed', () => {
   const legacy = it({ labels: ['needs-human', 'origin:schedule'], updated_at: '2026-08-10T04:00:00Z' });
-  assert.deepEqual(abandonedParkItems([legacy], LATER, { frequencyFor: freq }).map((i) => i.number), [legacy.number]);
+  assert.deepEqual(abandonedParkItems([legacy], LATER, { scheduledFor: onSchedule }).map((i) => i.number), [legacy.number]);
 });
 
 // STANDING ONLY, structurally: the rule's warrant is that the item is a fungible
@@ -441,12 +441,12 @@ test('only a standing occurrence is abandoned', () => {
   const qualified = { ...parked({ updated_at: '2026-08-10T04:00:00Z' }), title: '[claudinite-work] p/a for #12' };
   const manual = parked({ task: 'manualish', updated_at: '2026-08-10T04:00:00Z' });
   const adHoc = { ...parked({ updated_at: '2026-08-10T04:00:00Z' }), title: 'Please fix the thing' };
-  assert.deepEqual(abandonedParkItems([qualified, manual, adHoc], LATER, { frequencyFor: freq }), []);
+  assert.deepEqual(abandonedParkItems([qualified, manual, adHoc], LATER, { scheduledFor: onSchedule }), []);
 });
 
 // EMPTY MEANS UNKNOWN, as everywhere the janitor reads HEAD: a discovery that
 // returned nothing must not read as "every task retired" and close the whole queue.
 test('an unreadable task set claims nothing', () => {
   const item = parked({ kind: 'failure', updated_at: '2026-08-10T04:00:00Z' });
-  assert.deepEqual(abandonedParkItems([item], LATER, { frequencyFor: frequencyForTasks([]) }), []);
+  assert.deepEqual(abandonedParkItems([item], LATER, { scheduledFor: scheduledForTasks([]) }), []);
 });
