@@ -67,8 +67,14 @@ test('the filing guards: a cross-repo Verify line, an add_repo, a scratch screen
   assert.deepEqual(judgeCalls('cross-repo-verify-line', [
     ['mcp__github__issue_write', { method: 'create', body: 'Original-issue: #1\nVerify: missingbulb/Shepherd stamps engineVersion 3' }],
     ['mcp__github__issue_write', { method: 'create', body: 'Verify: missingbulb/Claudinite issue #1 is closed' }],
+    // A member's PUBLIC raw URL is readable anonymously, so the coded form may probe it.
     ['mcp__github__issue_write', { method: 'create', body: 'Live-probe: https://raw.githubusercontent.com/missingbulb/Shepherd/main/x :: status 200' }],
-  ]), ['a verification line reading another repository: "Verify: missingbulb/Shepherd"']);
+    // The API is not: probe fetches carry no credential (#1792).
+    ['mcp__github__issue_write', { method: 'create', body: 'Verify-probe: https://api.github.com/repos/missingbulb/Shepherd/issues/9 :: json state == closed' }],
+  ]), [
+    'a verification line reading another repository: "Verify: missingbulb/Shepherd"',
+    'a probe fetching the GitHub API: "Verify-probe: https://api.github.com"',
+  ]);
   assert.deepEqual(judgeCalls('add-repo-for-a-public-clone', [
     ['mcp__Claude_Code_Remote__add_repo', { owner: 'missingbulb', repo: 'Shepherd' }],
     ['mcp__Claude_Code_Remote__list_repos', { query: 'shep' }],

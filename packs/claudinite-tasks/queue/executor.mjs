@@ -17,7 +17,7 @@
 
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { isSuspended, readSuspendedNow, suspendedNotice, SUSPEND_ALL_VAR } from './suspend.mjs';
+import { isSuspended, liveSuspendReader, suspendedNotice, SUSPEND_ALL_VAR } from './suspend.mjs';
 import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from './heartbeat.mjs';
 import { renderTaskExec } from '../run-record.mjs';
 import { evaluatePreconditions } from '../precondition-policy.mjs';
@@ -749,7 +749,7 @@ async function main() {
     collectSignalsFor: collectSignalsForTask({ gh, repo, root, config, defaultBranch }),
     runTaskCodeWork: codeWorkRunner({ root, repo, defaultBranch }),
     invokeAgent: agentInvoker({ repo, config }),
-    heldNow: () => readSuspendedNow(gh, repo, { log: console.log }),
+    heldNow: liveSuspendReader(gh, repo, { log: console.log }),
   });
 
   console.log(done.length

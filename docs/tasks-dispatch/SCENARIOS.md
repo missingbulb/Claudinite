@@ -804,7 +804,8 @@ workflow checks as its first act, exiting cleanly having fired nothing.
   pick, no evaluation happens after the hold — but the in-flight drain
   finishes its *current* item (suspension never interrupts running work) and
   parks between items, re-reading the variable at each pick (§15.30 — the
-  env copy lands at run start only, so this is an API read), every later
+  env copy lands at run start only, so this is an API read, made for as long
+  as this run's token is allowed to make it), every later
   cron fire exits as a recorded `suspended-skip`, and every never-picked item
   freezes as `task:status:waiting-for-executor`, untouched — the hold is stateless.
 - **S38 (cancel + suspend, then resume)**: the user cancels a stalled run
