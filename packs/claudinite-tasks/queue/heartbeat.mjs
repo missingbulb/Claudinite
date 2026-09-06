@@ -15,7 +15,9 @@
 // race leaves behind carry the episode marker, and are excluded here for exactly
 // that reason.
 
-import { CLAIM_MARKER, EPISODE_MARKER } from './work-item.mjs';
+import {
+  CLAIM_MARKER, EPISODE_MARKER, PROGRESS_HEADING, parseProgressLines, withSection,
+} from './work-item.mjs';
 
 export const HEARTBEAT_MARKER = '<!-- claudinite-heartbeat -->';
 
@@ -63,3 +65,31 @@ export async function withHeartbeat(work, { beat, intervalMs = HEARTBEAT_MS, log
     if (beats) log(`- work step ran ${minutes} minute(s) and beat ${beats} time(s)`);
   }
 }
+
+// --- the agent phase's beat -----------------------------------------------------
+
+// The executor's beat above stops at the hand-off: its process exits, and an agent
+// session then holds the item for as long as its own work takes. Nothing beat there,
+// so the agent leash had only the issue's `updated_at` to read — the very clock this
+// file exists to stop trusting.
+//
+// The session cannot beat the way the executor does. It has no process of its own to
+// hang a timer on, and a scheduled wake reaches it between tool results rather than
+// during one, so a beat that must fire inside a long call cannot be promised. What it
+// can promise is a beat at each checkpoint its own work already has. Hence the
+// interval below is a CEILING the session is asked to stay under, not a timer.
+export const AGENT_BEAT_MS = 45 * 60e3;
+
+// Carries the same marker as the executor's beat, so `lastLivenessAt` counts an agent
+// beat as the holder's own signal without knowing which phase wrote it.
+export const agentBeatComment = ({ session, at, note }) =>
+  `${HEARTBEAT_MARKER}\nStill working${session ? `: ${session}` : ''} — ${note}, at ${at}.`;
+
+// One progress line, appended to the item body's own `### Progress` section.
+//
+// APPENDED, not replaced: the body is the only surface a run can grow in place,
+// because the GitHub toolset a session has offers comment creation and no comment
+// edit. So the body carries the account and the beats carry the trail — the same
+// split the standing trackers use, arrived at from the opposite direction.
+export const withProgress = (body, line) =>
+  withSection(body, PROGRESS_HEADING, [...parseProgressLines(body), line]);
