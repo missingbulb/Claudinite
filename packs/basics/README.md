@@ -18,7 +18,6 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Finishing a change | high | correctness | prose: 33 words |
 | Changing scheduled or unattended machinery | high | correctness | prose: 36 words |
 | Planning a migration | medium | complexity | prose: 99 words + skill (`writing-migration-plans`) |
-| Taking over a retiring repo's role | high | correctness | prose: 55 words |
 | Adding a legacy tolerance | high | complexity | prose: 59 words |
 | Choosing an automerge policy | high | correctness | prose: 65 words |
 | Predicting an irreversible change | critical | correctness | prose: 42 words |
@@ -38,12 +37,16 @@ The baseline pack — the `RULES.md` prose every session loads (injected by the 
 | Suppressing a warning | medium | complexity | prose: 74 words + check (`warning-suppression`) |
 | Waiving a finding on text | low | complexity | prose: 26 words |
 | Working around a vendored check's finding | medium | complexity | prose: 29 words |
-| Deferring a warning you can't fix now | medium | complexity | prose: 255 words |
+| Deferring a warning you can't fix now | medium | complexity | prose: 55 words |
+| Finding a finding's existing issue | medium | complexity | prose: 205 words |
 | Spotting a change that should wait | medium | complexity | prose: 46 words + skill (`do-later`) |
-| Filing anything into the ad-hoc queue | high | correctness | prose: 125 words |
+| Filing anything into the ad-hoc queue | high | correctness | prose: 95 words |
+| The queue cannot reach the work | high | correctness | prose: 40 words |
 | Handing over a human-only step | high | complexity | prose: 96 words + skill (`writing-handover-issues`) |
 | Naming a file, module, or symbol | low | complexity | prose: 22 words |
-| Referring to a value from two places | high | correctness | prose: 163 words + check (`shared-constants`) |
+| Referring to a value from two places | high | correctness | prose: 65 words + check (`shared-constants`) |
+| Writing that drift guard | high | correctness | prose: 57 words |
+| Guarding copies in two languages | high | correctness | prose: 40 words |
 | Writing a file that depends on another | medium | complexity | prose: 97 words |
 | Depending on platform or runtime behaviour | high | correctness | prose: 31 words |
 | Optimising | high | correctness | prose: 53 words |
