@@ -20,6 +20,7 @@ import {
   stuckBlockedItems, stuckBlockedComment, statelessItems, statelessComment,
   supersededItems, supersededComment, orphanedParkItems, orphanedParkComment, taskPathIndex,
   endedParkItems, endedParkComment, unclosedTerminalItems, unclosedTerminalComment, periodForTasks,
+  abandonedParkItems, abandonedParkComment, frequencyForTasks,
 } from '../../../claudinite-tasks/queue/janitor-rules.mjs';
 import {
   QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE, TASK_DONE, IN_REVIEW_LABEL, isWorkItemTitle,
@@ -35,7 +36,7 @@ import { clearStatus } from '../../../claudinite-tasks/queue/apply-status.mjs';
 
 export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log } = {}) {
   const open = await listOpenWorkItems(gh, repo);
-  const result = { open: open.length, staleReady: [], deadAgents: [], stuck: [], stateless: [], superseded: [], orphaned: [], ended: [], unclosed: [] };
+  const result = { open: open.length, staleReady: [], deadAgents: [], stuck: [], stateless: [], superseded: [], orphaned: [], ended: [], abandoned: [], unclosed: [] };
 
   // A `Blocked-by` target need not be a work item, so its state is read directly.
   const known = new Map(open.map((i) => [i.number, i.state]));
@@ -80,6 +81,7 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
   }
   const resolutionOf = (n) => resolutions.get(n) ?? null;
   const ended = endedParkItems(open, { resolutionOf });
+  const abandoned = abandonedParkItems(open, now, { frequencyFor: frequencyForTasks(tasks) });
   const unclosed = unclosedTerminalItems(open, now);
 
   if (stale.length || deadAgents.length || stateless.length) await ensureLabels(gh, repo, QUEUE_LABELS);
@@ -197,12 +199,29 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
     result.ended.push(item.number);
   }
 
+  // Rule I — the park the clock answers, which is why it is the only closing rule here
+  // that reads a fresh copy first: a person who is part-way through diagnosing the fault
+  // may have touched the item since this sweep's read, and their touch is the answer the
+  // three-week bound was waiting for.
+  for (const item of abandoned) {
+    if (result.superseded.includes(item.number) || result.orphaned.includes(item.number) || result.ended.includes(item.number)) continue;
+    const fresh = await readIssue(gh, repo, item.number);
+    if (!fresh || fresh.state !== 'open' || abandonedParkItems([fresh], now, { frequencyFor: frequencyForTasks(tasks) }).length === 0) {
+      log(`- #${item.number} was touched between this sweep's read and its write — left alone`);
+      continue;
+    }
+    await retire(item, abandonedParkComment());
+    log(`abandoned park #${item.number} — untouched past the bound → ${TASK_OBSOLETE}`);
+    result.abandoned.push(item.number);
+  }
+
   // Rule H — the close a torn transition never made. It writes no label: the status
   // is already the right one, and the outcome comes from it. Confirmed against a
   // fresh read like the stateless repair, and for the same reason — a converge that
   // reached its close between this sweep's read and its write needs no help.
   for (const item of unclosed) {
-    if (result.superseded.includes(item.number) || result.orphaned.includes(item.number) || result.ended.includes(item.number)) continue;
+    if (result.superseded.includes(item.number) || result.orphaned.includes(item.number)
+      || result.ended.includes(item.number) || result.abandoned.includes(item.number)) continue;
     const fresh = await readIssue(gh, repo, item.number);
     if (!fresh || fresh.state !== 'open' || unclosedTerminalItems([fresh], now).length === 0) {
       log(`- #${item.number} settled between this sweep's read and its write — left alone`);
@@ -216,15 +235,16 @@ export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log 
   }
 
   // The health review — the queue as its subject, computable entirely from issues.
-  const converged = new Set([...result.staleReady, ...result.deadAgents, ...result.stateless, ...result.superseded, ...result.orphaned, ...result.ended, ...result.unclosed]);
+  const converged = new Set([...result.staleReady, ...result.deadAgents, ...result.stateless, ...result.superseded, ...result.orphaned, ...result.ended, ...result.abandoned, ...result.unclosed]);
   const count = (status) => open.filter((i) => isStatus(i, status) && !converged.has(i.number)).length;
   log(`health: ${result.open} open work item(s) — ${count(STATUS_BLOCKED)} blocked, ${count(STATUS_READY)} ready, `
     + `${count(STATUS_RUNNING_EXECUTOR)} executing, ${count(STATUS_RUNNING_AGENT)} with an agent, `
     + `${open.filter(isParked).length + converged.size} parked; `
     + `this run escalated ${result.staleReady.length} stale, reclaimed ${result.deadAgents.length} dead agent claim(s), `
     + `surfaced ${result.stuck.length} stuck dependency(ies), repaired ${result.stateless.length} stateless item(s), `
-    + `closed ${result.superseded.length} superseded, ${result.orphaned.length} orphaned `
-    + `and ${result.ended.length} ended park(s), and closed ${result.unclosed.length} terminal(s) nothing had closed`);
+    + `closed ${result.superseded.length} superseded, ${result.orphaned.length} orphaned, `
+    + `${result.ended.length} ended and ${result.abandoned.length} abandoned park(s), `
+    + `and closed ${result.unclosed.length} terminal(s) nothing had closed`);
   return result;
 }
 

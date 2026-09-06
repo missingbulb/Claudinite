@@ -4,6 +4,7 @@ import {
   staleReadyItems, deadAgentItems, stuckBlockedItems, statelessItems, periodForTasks,
   supersededItems, supersededComment, orphanedParkItems, orphanedParkComment,
   endedParkItems, endedParkComment, unclosedTerminalItems, unclosedTerminalComment,
+  abandonedParkItems, abandonedParkComment, frequencyForTasks,
 } from '../../queue/janitor-rules.mjs';
 import { periodMs } from '../../queue/anchors.mjs';
 import { isParked } from '../../queue/work-item.mjs';
@@ -391,4 +392,60 @@ test('a terminal written moments ago is a converge in flight, not a torn one', (
 test('an item wearing an older engine\'s spelling of done is closed too', () => {
   const legacy = it({ labels: ['task:done'], updated_at: '2026-08-13T04:00:00Z' });
   assert.deepEqual(unclosedTerminalItems([legacy], NOW).map((i) => i.number), [legacy.number]);
+});
+
+// ---------------------------------------------------------------------------
+// Rule I — the abandoned failure park (#1785).
+
+const headTasks = [
+  { pack: 'p', id: 'a', decl: { frequency: 'daily' } },
+  { pack: 'p', id: 'manualish', decl: { frequency: 'manual' } },
+];
+const freq = frequencyForTasks(headTasks);
+const LATER = '2026-09-06T04:00:00Z'; // ~26 days past the fixtures' default touch
+
+test('a failure park nobody has touched past the bound is closed', () => {
+  const item = parked({ kind: 'failure', updated_at: '2026-08-10T04:00:00Z' });
+  assert.deepEqual(abandonedParkItems([item], LATER, { frequencyFor: freq }).map((i) => i.number), [item.number]);
+  assert.match(abandonedParkComment(), /task:status:rejected/);
+});
+
+// The bound is what separates a fault a person has not got to yet from one nobody
+// is ever going to: inside it the park is doing its job.
+test('a failure park inside the bound is left standing', () => {
+  const fresh = parked({ kind: 'failure', updated_at: '2026-09-01T04:00:00Z' });
+  assert.deepEqual(abandonedParkItems([fresh], LATER, { frequencyFor: freq }), []);
+});
+
+// The three parks that are a person's INBOX rather than a fault report: nothing here
+// answers them, and age is not an answer either.
+test('only the failure park is abandoned by the clock', () => {
+  for (const kind of ['action', 'decision', 'approval']) {
+    const item = parked({ kind, updated_at: '2026-08-10T04:00:00Z' });
+    assert.deepEqual(abandonedParkItems([item], LATER, { frequencyFor: freq }), [], kind);
+  }
+});
+
+// A bare legacy `needs-human` decodes to `failure` — and it is precisely the items
+// an older engine parked that have been sitting longest (missingbulb/TLDR#275).
+test('an older engine\'s bare park decodes to failure and is claimed', () => {
+  const legacy = it({ labels: ['needs-human', 'origin:schedule'], updated_at: '2026-08-10T04:00:00Z' });
+  assert.deepEqual(abandonedParkItems([legacy], LATER, { frequencyFor: freq }).map((i) => i.number), [legacy.number]);
+});
+
+// STANDING ONLY, structurally: the rule's warrant is that the item is a fungible
+// occurrence whose lane the park is holding. A qualified item, a `manual` task's item
+// and an adopted issue are each somebody's own work, and no clock answers those.
+test('only a standing occurrence is abandoned', () => {
+  const qualified = { ...parked({ updated_at: '2026-08-10T04:00:00Z' }), title: '[claudinite-work] p/a for #12' };
+  const manual = parked({ task: 'manualish', updated_at: '2026-08-10T04:00:00Z' });
+  const adHoc = { ...parked({ updated_at: '2026-08-10T04:00:00Z' }), title: 'Please fix the thing' };
+  assert.deepEqual(abandonedParkItems([qualified, manual, adHoc], LATER, { frequencyFor: freq }), []);
+});
+
+// EMPTY MEANS UNKNOWN, as everywhere the janitor reads HEAD: a discovery that
+// returned nothing must not read as "every task retired" and close the whole queue.
+test('an unreadable task set claims nothing', () => {
+  const item = parked({ kind: 'failure', updated_at: '2026-08-10T04:00:00Z' });
+  assert.deepEqual(abandonedParkItems([item], LATER, { frequencyFor: frequencyForTasks([]) }), []);
 });
