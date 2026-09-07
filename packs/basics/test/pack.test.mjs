@@ -73,6 +73,25 @@ test('reference-integrity: the vendored shared mount is never a finding source f
   } finally { cleanup(root); }
 });
 
+test('reference-integrity: a migration record already in the tree governs the path it names', () => {
+  // The record declares the legacy shape; whether THIS branch edits the record
+  // says nothing about which paths it governs. The record also lives under the
+  // pack that owns it, never at a top-level migrations/.
+  const root = makeRepo({
+    base: {
+      '.github/workflows/legacy-release.yml': 'name: legacy\n',
+      'packs/demo/migrations/2026-01-01-vendoring/migration.mjs':
+        "export default { id: 'vendoring', materialize: [{ dest: '.github/workflows/legacy-release.yml' }] };\n",
+      'packs/demo/notes.md': 'the consumer hosts `.github/workflows/legacy-release.yml`\n',
+    },
+    changed: {},
+  });
+  try {
+    deletePath(root, '.github/workflows/legacy-release.yml');
+    assert.deepEqual(run(referenceIntegrity, root), []);
+  } finally { cleanup(root); }
+});
+
 test('reference-integrity: does not flag a renamed file whose new path shares the old basename', () => {
   const root = makeRepo({
     base: { 'old.sh': 'x\n', 'mount/old.sh': 'y\n', 'doc.md': 'see mount/old.sh\n' },
