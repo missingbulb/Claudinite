@@ -16,6 +16,12 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   (#366), `docs/claude/auto-branch-report.md` (#399).
 - **(writing-tasks-1)** The bound and its best-effort enforcement are the task-code-work
   design's §2 and §6 — see issue #394.
+- **(writing-tasks-2)** Owner correction on #1843: "Don't discuss how the PRs land in the task
+  description. This should have been instructed in the skill on writing tasks." The rule against
+  repeating a declaration in `task.md` already existed but listed field names, so the two worker
+  docs that spelled the behaviour out without naming `expected_outcome` — `rule-revalidation` and
+  `growth-dedup` — passed it, and `rule-revalidation`'s sentence was still describing a policy the
+  declaration had moved off. Retire it if the landing story stops living in the declaration.
 - **(writing-pack-prose-1)** Measured on two adjacent instructions in one spec: the one naming a
   file was got right first try 0 runs in 5, the one shipping a fenced command 5 in 5.
 - **(check:task-md-only-when-agentic)** `task.md` is defined as the spec an agentic session
