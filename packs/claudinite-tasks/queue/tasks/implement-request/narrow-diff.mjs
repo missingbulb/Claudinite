@@ -20,7 +20,7 @@
 import path from 'node:path';
 import {
   COMMENT_CHECKABLE, commentOnly, classifyPath, diffEntries,
-} from '../../../merge-policy.mjs';
+} from '../../../src/contract/merge-policy.mjs';
 
 // Re-exported so a caller that asked this module keeps getting the same answers
 // the policy engine gives.

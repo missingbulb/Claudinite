@@ -71,7 +71,7 @@ test('the staged tree mirrors the mount, with the root a redirect', async (t) =>
     '_site/index.html',
     '_site/packs/claudinite-dashboard/index.html',
     '_site/packs/claudinite-dashboard/model.mjs',
-    '_site/packs/claudinite-tasks/queue/work-item.mjs',
+    '_site/packs/claudinite-tasks/src/items/work-item.mjs',
     '_site/engine/checks/helpers/code-scanning.mjs',
     '_site/.nojekyll',
   ]) assert.ok(existsSync(join(dir, p)), `missing from the staged site: ${p}`);

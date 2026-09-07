@@ -97,36 +97,21 @@ test('every engine module a fielded pack version imports still resolves, with th
   assert.deepEqual(missing, [], `a fielded pack version imports these and would break mid-converge:\n  ${missing.join('\n  ')}`);
 });
 
-test('the shims re-export rather than re-declare, so they cannot drift from the real home', async () => {
-  const [slots, calendar, run, github] = await Promise.all([
-    import(join(ROOT, 'packs/claudinite-tasks/slots.mjs')),
-    import(join(ROOT, 'packs/claudinite-tasks/calendar.mjs')),
-    import(join(ROOT, 'packs/claudinite-tasks/run.mjs')),
-    import(join(ROOT, 'packs/claudinite-tasks/github.mjs')),
+test('the frozen queue entry points re-export rather than re-declare, so they cannot drift', async () => {
+  // `queue/` is workflow and routine ABI: a member's workflow names those paths
+  // literally and moves only through a PR somebody merges, while the mount beside
+  // it refreshes nightly. A shim that re-DECLARED anything would be a second copy
+  // of the mechanism, delivered on the frozen path's cycle rather than the code's.
+  const [shim, home] = await Promise.all([
+    import(join(ROOT, 'packs/claudinite-tasks/queue/executor.mjs')),
+    import(join(ROOT, 'packs/claudinite-tasks/src/execute/loop.mjs')),
   ]);
-  assert.equal(slots.FREQUENCIES, calendar.FREQUENCIES, 'same object, not a copy');
-  assert.equal(run.ensureLabels, github.ensureLabels, 'same function, not a copy');
-});
+  assert.equal(shim.runExecutor, home.runExecutor, 'same function, not a copy');
+  assert.equal(shim.runExecutorJob, home.runExecutorJob, 'the entry point the workflow runs is the real one');
 
-test('the one duplicated body agrees with the pack that owns it now', async () => {
-  // `parseOverrides` cannot re-export: its home is claudinite-fleet-sheepdog's param-bag.mjs, and the
-  // engine may not import a pack. So it is duplicated, and this is the drift guard —
-  // run against the real logic in both directions, not a string compare.
-  const { parseOverrides } = await import(join(ROOT, 'packs/claudinite-tasks/run.mjs'));
-  const { parseParamBag } = await import(join(ROOT, 'packs/claudinite-fleet-sheepdog/param-bag.mjs'));
-  for (const raw of [
-    'DIGEST_BACKFILL_DAYS=7',
-    'A=1,B=2',
-    'REPOS=Alpha Beta\nDRY_RUN=true',
-    'INCLUDE_DORMANT',
-    '',
-  ]) {
-    assert.deepEqual(parseOverrides(raw), parseParamBag(raw), `disagreed on ${JSON.stringify(raw)}`);
-  }
-  // Where they legitimately differ, say so rather than pretend: the pack's parser
-  // ignores non-SHOUTING tokens because a work item's Context is prose first. The
-  // shim keeps the old permissive shape, because a fielded worker feeds it the old
-  // channel, which never carried prose.
-  assert.deepEqual(parseParamBag('some prose here'), {});
-  assert.deepEqual(parseOverrides('some prose here'), { 'some prose here': 'true' });
+  const [schedShim, schedHome] = await Promise.all([
+    import(join(ROOT, 'packs/claudinite-tasks/queue/scheduler-run.mjs')),
+    import(join(ROOT, 'packs/claudinite-tasks/src/schedule/run.mjs')),
+  ]);
+  assert.equal(schedShim.runSchedulerRun, schedHome.runSchedulerRun, 'same function, not a copy');
 });

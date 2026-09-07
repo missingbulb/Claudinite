@@ -3,7 +3,7 @@
 // spelling included), lease state, and the dispatch vocabulary items are minted from.
 // Re-exported rather than reimplemented so a consumer and the queue can never disagree
 // about what a title means.
-export * from '../queue/work-item.mjs';
-export { isQueueItem } from '../queue/read.mjs';
-export * from '../queue/leases.mjs';
-export * from '../dispatch.mjs';
+export * from '../src/items/work-item.mjs';
+export { isQueueItem } from '../src/items/work-item.mjs';
+export * from '../src/items/leases.mjs';
+export * from '../src/session/dispatch.mjs';

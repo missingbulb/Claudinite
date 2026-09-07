@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, pendingExecutorWorkflow, PENDING_DIR } from '../packs/claudinite-lifecycle/updates/pack-update.mjs';
 import { terminalFor } from '../packs/claudinite-lifecycle/updates/terminals.mjs';
-import { SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW } from '../packs/claudinite-tasks/converge-workflows.mjs';
+import { SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW } from '../packs/claudinite-tasks/src/adopt/converge-workflows.mjs';
 import { NEEDS_HUMAN } from '../packs/claudinite-lifecycle/updates/engine-update.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';

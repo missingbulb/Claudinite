@@ -21,18 +21,18 @@ import {
   supersededItems, supersededComment, orphanedParkItems, orphanedParkComment, taskPathIndex,
   endedParkItems, endedParkComment, unclosedTerminalItems, unclosedTerminalComment, periodForTasks,
   abandonedParkItems, abandonedParkComment, scheduledForTasks,
-} from '../../../claudinite-tasks/queue/janitor-rules.mjs';
+} from '../../src/recover/janitor-rules.mjs';
 import {
   QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE, TASK_DONE, IN_REVIEW_LABEL,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_FAILURE,
   STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
   isStatus, isParked, statusOf,
   parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
-} from '../../../claudinite-tasks/queue/work-item.mjs';
-import { listOpenWorkItems, listDoneWorkItems } from '../../../claudinite-tasks/queue/read.mjs';
-import { lastProgressAt } from '../../../claudinite-tasks/queue/heartbeat.mjs';
-import { ensureLabels, addLabel, removeLabel, comment, listComments, readIssue, closeIssue } from '../../../claudinite-tasks/github.mjs';
-import { clearStatus } from '../../../claudinite-tasks/queue/apply-status.mjs';
+} from '../../src/items/work-item.mjs';
+import { listOpenWorkItems, listDoneWorkItems } from '../../src/items/read.mjs';
+import { lastProgressAt } from '../../src/execute/heartbeat.mjs';
+import { ensureLabels, addLabel, removeLabel, comment, listComments, readIssue, closeIssue } from '../../src/world/github.mjs';
+import { clearStatus } from '../../src/items/apply-status.mjs';
 
 export async function sweepQueue(gh, repo, now, { tasks = [], log = console.log } = {}) {
   const open = await listOpenWorkItems(gh, repo);

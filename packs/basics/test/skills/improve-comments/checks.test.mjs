@@ -11,7 +11,7 @@ import { buildContext } from '../../../../../engine/checks/helpers/repo-context.
 import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
 import rules from '../../../skills/improve-comments/checks.mjs';
 import taskJson from '../../../tasks/improve-comments/task.json' with { type: 'json' };
-import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/src/contract/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const task = normalizeTaskDeclaration(taskJson);
 

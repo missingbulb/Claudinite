@@ -14,7 +14,7 @@ import dedupJson from '../tasks/growth-dedup/task.json' with { type: 'json' };
 import extractJson from '../tasks/growth-extract/task.json' with { type: 'json' };
 import revalidationJson from '../tasks/rule-revalidation/task.json' with { type: 'json' };
 import sweepJson from '../tasks/prose-to-checks-sweep/task.json' with { type: 'json' };
-import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/src/contract/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const dedup = normalizeTaskDeclaration(dedupJson);
 const extract = normalizeTaskDeclaration(extractJson);

@@ -5,7 +5,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import storeReleaseJson from '../tasks/store-release/task.json' with { type: 'json' };
 import { evaluatePrecondition, loadTaskTerms } from '../../claudinite-tasks/shared-code/preconditions.mjs';
-import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/src/contract/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const storeRelease = normalizeTaskDeclaration(storeReleaseJson);
 

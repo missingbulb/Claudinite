@@ -4,8 +4,8 @@ import { sweepQueue } from '../../tasks/task-janitor/queue-sweep.mjs';
 import {
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE, HANDOFF_MARKER, TASK_DONE, TASK_OBSOLETE,
   parkKindOf,
-} from '../../queue/work-item.mjs';
-import { SUPERSEDABLE_PARKS } from '../../queue/janitor-rules.mjs';
+} from '../../src/items/work-item.mjs';
+import { SUPERSEDABLE_PARKS } from '../../src/recover/janitor-rules.mjs';
 
 // A fake GitHub that answers the two reads the sweep makes and records the writes.
 // `labelsAdded` is what the assertions turn on: a park is TWO writes now — the

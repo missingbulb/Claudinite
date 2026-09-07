@@ -169,7 +169,7 @@ test('rehearsal mode announces that it converged, and the gate greps for it', as
   // the constant, the worker line that prints it, and the workflow step that fails
   // without it. Any of the three drifting alone puts the gate back to vacuous.
   const fs = await import('node:fs');
-  const { REHEARSAL_MARKER } = await import('../../../packs/claudinite-lifecycle/tasks/update/worker.mjs');
+  const { REHEARSAL_MARKER } = await import('../tasks/update/worker.mjs');
   const worker = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
   const workflow = fs.readFileSync('.github/workflows/canary-rehearsal.yml', 'utf8');
 
@@ -204,11 +204,11 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
   // MCP-only and carries no repo token, so there is no code path here to assert instead.
   const fs = await import('node:fs');
   const brief = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/task.md', 'utf8');
-  const decl = (await import('../../../packs/claudinite-lifecycle/tasks/update/task.json', { with: { type: 'json' } })).default;
+  const decl = (await import('../tasks/update/task.json', { with: { type: 'json' } })).default;
 
   // Merging must be within the ceiling, or the instruction below tells the session to
   // violate its own contract — verify-outcome.mjs would then fail every apply stage.
-  const { canonicalOutcome, opensPullRequest } = await import('../../claudinite-tasks/task-contract.mjs');
+  const { canonicalOutcome, opensPullRequest } = await import('../../claudinite-tasks/src/contract/task-contract.mjs');
   assert.ok(opensPullRequest(canonicalOutcome(decl.expected_outcome)), 'the declared outcome must let the run open a pull request');
 
   const land = brief.slice(brief.indexOf('## 5.'));

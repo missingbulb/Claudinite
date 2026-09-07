@@ -10,9 +10,9 @@ import {
   LOCAL_PACK_ROOT, CANON_PACK_ROOT,
 } from '../engine/migrations/task-declarations-to-json.mjs';
 import { applyTaskSchedulingFields, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
-import { ACCEPTED_FREQUENCIES } from '../packs/claudinite-tasks/calendar.mjs';
-import { normalizeTaskDeclaration } from '../packs/claudinite-tasks/task-contract.mjs';
-import { parseTaskDeclaration } from '../packs/claudinite-tasks/task-declaration.mjs';
+import { ACCEPTED_FREQUENCIES } from '../packs/claudinite-tasks/src/contract/calendar.mjs';
+import { normalizeTaskDeclaration } from '../packs/claudinite-tasks/src/contract/task-contract.mjs';
+import { parseTaskDeclaration } from '../packs/claudinite-tasks/src/contract/task-declaration.mjs';
 
 const repo = (files) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-task-json-'));
