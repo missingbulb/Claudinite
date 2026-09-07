@@ -725,7 +725,8 @@ async function main() {
   if (isSuspended()) { console.log('## Claudinite executor\n'); console.log(suspendedNotice()); return; }
   const { makeGh, actionRepoContext } = await import('../signals/gh.mjs');
   const { discoverTasks } = await import('../discover.mjs');
-  const { loadConfig, isDormant } = await import('../../../engine/checks/helpers/repo-context.mjs');
+  const { loadConfig } = await import('../../../engine/checks/helpers/repo-context.mjs');
+  const { isDormant, dormancyErrors } = await import('../dormancy.mjs');
   const { ensureLabels } = await import('../github.mjs');
   const { collectSignalsForTask } = await import('./signals.mjs');
   const { codeWorkRunner } = await import('./code-work-run.mjs');
@@ -737,8 +738,9 @@ async function main() {
   const config = loadConfig(root);
 
   console.log('## Claudinite executor\n');
+  for (const e of dormancyErrors(config)) console.log(`! ${e.what} — ${e.fix}`);
   if (isDormant(config)) {
-    console.log('- this project declares itself dormant — nothing is picked up');
+    console.log('- this project declares its scheduler dormant — nothing is picked up');
     return;
   }
 

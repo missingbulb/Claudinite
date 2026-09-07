@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isCovered, readFile, readDeclaration, putFile, isDormant, DECLARATION,
 } from '../fleet-api.mjs';
-import { isDormant as engineIsDormant } from '../../../engine/checks/helpers/repo-context.mjs';
+import { isDormant as schedulerIsDormant } from '../../claudinite-tasks/shared-code/dormancy.mjs';
 
 // The pack's shared cross-repo REST layer. Membership is the tracked declaration
 // file, the ONE probe every member carries whatever its mount shape
@@ -67,11 +67,16 @@ test('putFile: the ONE write, sha-guarded — a 403/404 names the missing scope,
   await assert.rejects(() => putFile(responder(500), 'o/m', { path: 'p', text: 'x', message: 'm' }), /returned 500/);
 });
 
-test('the sweeps decide dormancy with the ENGINE\'s predicate, not a private copy', async () => {
+test('the sweeps decide dormancy with the SCHEDULER\'s predicate, not a private copy', async () => {
   // A sweep with its own notion of dormancy would nag exactly the repos that had
-  // already opted out — the member's own scheduler and the enforcer must agree on
-  // the one test, so the pack re-exports it rather than re-implementing it.
-  assert.equal(isDormant, engineIsDormant);
-  assert.equal(isDormant(await readDeclaration(ghServing('{"dormant":true}'), 'o/asleep')), true);
-  assert.equal(isDormant(await readDeclaration(ghServing('{"packs":[]}'), 'o/awake')), false);
+  // already opted out — the member's own scheduler and the enforcer must agree on the
+  // one test, so the pack re-exports the predicate published by the pack that owns the
+  // scheduler rather than re-implementing it.
+  assert.equal(isDormant, schedulerIsDormant);
+  const asleep = '{"packs":[{"id":"claudinite-tasks","config":{"dormant":true}}]}';
+  assert.equal(isDormant(await readDeclaration(ghServing(asleep), 'o/asleep')), true);
+  assert.equal(isDormant(await readDeclaration(ghServing('{"packs":["claudinite-tasks"]}'), 'o/awake')), false);
+  // A member the migration record has not reached still answers, so the sweep does not
+  // spend a convergence window waking every repo that had asked to sleep.
+  assert.equal(isDormant(await readDeclaration(ghServing('{"dormant":true}'), 'o/stale-spelling')), true);
 });

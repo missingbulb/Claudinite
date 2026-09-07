@@ -538,7 +538,8 @@ async function main() {
   if (isSuspended()) { console.log('## Claudinite scheduler run\n'); console.log(suspendedNotice()); return; }
   const { makeGh, actionRepoContext } = await import('../signals/gh.mjs');
   const { discoverTasks } = await import('../discover.mjs');
-  const { loadConfig, isDormant } = await import('../../../engine/checks/helpers/repo-context.mjs');
+  const { loadConfig } = await import('../../../engine/checks/helpers/repo-context.mjs');
+  const { isDormant, dormancyErrors } = await import('../dormancy.mjs');
   const { ensureLabels, addLabel, removeLabel, comment, closeIssue, createIssue, listComments } = await import('../github.mjs');
 
   const root = process.cwd();
@@ -547,8 +548,12 @@ async function main() {
   const config = loadConfig(root);
 
   console.log('## Claudinite scheduler run\n');
+  // Reported before the gate, never after: a mis-typed value reads as AWAKE, so a
+  // project that believes it is asleep would otherwise watch a full run go by with
+  // nothing saying why.
+  for (const e of dormancyErrors(config)) console.log(`! ${e.what} — ${e.fix}`);
   if (isDormant(config)) {
-    console.log('- this project declares itself dormant — no items instantiated, readied or reclaimed');
+    console.log('- this project declares its scheduler dormant — no items instantiated, readied or reclaimed');
     return;
   }
 

@@ -13,7 +13,7 @@
 // Keeping the write to a single named function is deliberate: "what can this module
 // change in someone else's repo" then has exactly one answer to read.
 
-import { isDormant } from '../../engine/checks/helpers/repo-context.mjs';
+import { isDormant } from '../claudinite-tasks/shared-code/dormancy.mjs';
 import { forbiddenHint } from './fleet-token.mjs';
 import { SETTINGS_FILE, SETTINGS_FILES } from '../../engine/settings-file.mjs';
 
@@ -26,11 +26,13 @@ const API = 'https://api.github.com';
 // order and a member that has not run the record yet still answers.
 export const DECLARATION = SETTINGS_FILE;
 
-// Dormancy, re-exported from the engine rather than re-tested here. A member declares
-// itself dormant in its OWN declaration, and the test has to be the same one that
-// member's scheduler used to stop itself — a sweep with its own private notion of
-// dormancy would nag exactly the repos that had already opted out, which is the whole
-// failure this exists to prevent.
+// Dormancy, re-exported from the tasks pack's published surface rather than re-tested
+// here. It is a property of a member's SCHEDULER, and the test has to be the same one
+// that scheduler used to stop itself — a sweep with its own private notion of dormancy
+// would nag exactly the repos that had already opted out, which is the whole failure
+// this exists to prevent. What it licenses is narrow: a stopped scheduler is not a sick
+// member, and nothing more. Every other question a sweep asks — is the mount current,
+// is the declaration readable — is asked of a dormant member exactly as of any other.
 export { isDormant };
 
 

@@ -95,3 +95,24 @@ test('the switcher offers the three table views even with no board', () => {
   const labels = nodes.get('work-views').children.map((b) => b.textContent);
   assert.deepEqual(labels, ['stuck · 1', 'pending · 1', 'all · 3']);
 });
+
+// A dormant scheduler mints nothing and picks nothing up. Every task row is then a task
+// that cannot run and every item a thing nothing will move — drawn as usual they read as
+// a badly stuck repo, which is the one impression this block exists to give truthfully.
+test('a dormant scheduler hides the work block\'s tasks elements', () => {
+  renderWork(ALL, REPO, NOW, 'all', null, null, true);
+  assert.equal(nodes.get('work-views').hidden, true, 'no view switcher — there is nothing to switch between');
+  assert.equal(nodes.get('work-table-wrap').hidden, true);
+  assert.equal(nodes.get('work-board').hidden, true);
+  assert.equal(nodes.get('work-dormant').hidden, false, 'and the block says why it is empty');
+});
+
+test('an awake scheduler draws the tables and leaves the dormant note hidden', () => {
+  // The contrast case: without it the assertions above pass on a renderWork that hides
+  // the block unconditionally.
+  renderWork(ALL, REPO, NOW, 'all');
+  assert.equal(nodes.get('work-dormant').hidden, true);
+  assert.equal(nodes.get('work-views').hidden, false);
+  assert.equal(nodes.get('work-table-wrap').hidden, false);
+  assert.ok(nodes.get('work').children.find((c) => c.tagName === 'tbody').children.length, 'rows drawn');
+});

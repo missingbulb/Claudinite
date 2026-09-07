@@ -946,6 +946,13 @@
       person; a repo with nothing live opens on <em>all</em>, since an empty board teaches its reader
       the page is broken.
     </p>
+    <p class="panel gap" id="work-dormant" hidden>
+      This repo declares its <strong>scheduler dormant</strong>, so nothing is instantiated, readied or
+      picked up. Its declared tasks and any open work items are not drawn here, because none of them
+      can move — the rest of the page is still live, and a mount that has fallen behind canon is still
+      reported as behind. Clear <code>dormant</code> on the <code>claudinite-tasks</code> pack entry to
+      wake it; a dormant spell is not replayed, so it simply starts scheduling again from now.
+    </p>
     <div class="views" id="work-views"></div>
     <div class="page board-sheet" id="work-board" hidden></div>
     <div class="panel scroll" id="work-table-wrap"><table id="work"></table></div>

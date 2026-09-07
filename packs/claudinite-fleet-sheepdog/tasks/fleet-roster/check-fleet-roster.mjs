@@ -103,15 +103,17 @@ export async function buildRoster(gh, repos, {
     if (entry.declaration === null) continue;   // uncovered — the coverage half's subject
     entry.dormant = isDormant(entry.declaration);
 
-    // Which members the freshness half measures: covered, awake, in scope, and neither
-    // the enforcer nor canon. A DORMANT member stops here — its scheduler stops before
-    // it evaluates anything, so its mount falls behind BY DESIGN, and every freshness
-    // state would report a repo for obeying its own declaration.
-    if (entry.dormant || entry.isCanon || entry.excluded) continue;
+    // Which members the freshness half measures: covered, in scope, and neither the
+    // enforcer nor canon. A DORMANT member is measured like any other — dormancy stops
+    // its scheduler, not its clock, and a mount three engine versions behind is behind
+    // whether or not anything there is still running. What its declaration does buy it
+    // is narrower and is applied inside the classification: a stopped scheduler is not
+    // counted against it.
+    if (entry.isCanon || entry.excluded) continue;
 
     try {
       const mount = await drift.probeMount(gh, r.full_name, entry.declaration, { canon: canonVersions });
-      entry.freshness = drift.classifyFreshness(mount);
+      entry.freshness = drift.classifyFreshness({ ...mount, dormant: entry.dormant });
     } catch (e) {
       entry.freshnessError = e.message;
     }
@@ -141,8 +143,12 @@ export function coverageView(roster) {
 
 // The freshness question's buckets. `gone` is names only — what convergeDrift closes as
 // out-of-fleet; `outOfScope` carries the same repos WITH their reasons, for the report.
-// Dormant members are counted separately from `gone` so the summary says how much of the
-// fleet is asleep rather than hiding it inside "out of scope".
+//
+// `dormant` is a LABEL here, not an exit: a dormant member is bucketed as fresh or
+// unhealthy like any other, and named in `dormant` as well so the summary can say which
+// of the members it just reported will not repair themselves. It used to be an exit, and
+// the cost was that a dormant member's mount could fall arbitrarily far behind canon with
+// the roster saying nothing at all about it.
 export function freshnessView(roster) {
   const fresh = []; const unhealthy = []; const dormant = []; const outOfScope = []; const unknown = []; const gone = [];
   for (const e of roster) {
@@ -151,10 +157,10 @@ export function freshnessView(roster) {
     if (e.excluded) { outOfScope.push(`${e.displayName} (excluded)`); gone.push(e.fullName); continue; }
     if (e.declarationError) { unknown.push(`${e.displayName} — ${e.declarationError}`); continue; }
     if (e.declaration === null) { outOfScope.push(`${e.displayName} (uncovered — the adoption half's subject)`); gone.push(e.fullName); continue; }
-    if (e.dormant) { dormant.push(e.fullName); continue; }
+    if (e.dormant) dormant.push(e.fullName);
     if (e.freshnessError) { unknown.push(`${e.displayName} — ${e.freshnessError}`); continue; }
     if (e.freshness.state === drift.FRESH) fresh.push({ fullName: e.fullName, detail: e.freshness.detail });
-    else unhealthy.push({ fullName: e.fullName, ...e.freshness });
+    else unhealthy.push({ fullName: e.fullName, dormant: e.dormant, ...e.freshness });
   }
   return { fresh, unhealthy, dormant, outOfScope, unknown, gone };
 }
@@ -216,7 +222,6 @@ export async function main() {
     unhealthy: freshness.unhealthy,
     healthySet: new Set(freshness.fresh.map((f) => f.fullName)),
     goneSet: new Set(freshness.gone),
-    dormantSet: new Set(freshness.dormant),
   });
 
   // Two sections, one report: the questions are separate and read separately, but a

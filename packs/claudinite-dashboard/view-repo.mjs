@@ -40,6 +40,9 @@ import { renderBoard, quietLine } from './board-view.mjs';
 import { buildPanel } from './explore.mjs';
 import { wakeStrip } from './model.mjs';
 import { settingsTextAtSha, SETTINGS_FILE } from './settings-read.mjs';
+// The scheduler's own predicate, over the declaration this view already parsed — so the
+// page's idea of dormant and the member's own can never differ.
+import { isDormant } from '../claudinite-tasks/shared-code/dormancy.mjs';
 
 // How far each past-data panel looks back. The month is the growth panel's, because a
 // fortnight of a corpus's own numbers is noise; the fortnight is the queue's, because
@@ -410,9 +413,23 @@ export function ciCell(ci, now) {
   };
 }
 
-export function renderWork(all, repo, now, view, board = null, context = null) {
+export function renderWork(all, repo, now, view, board = null, context = null, dormant = false) {
   const counts = viewCounts(all);
   const table = $('work');
+  // A DORMANT scheduler mints no item and picks none up, so every task row is a task
+  // that cannot run and every item one nothing will move. Drawn as usual, the block
+  // reads as a badly stuck repo — the single impression it exists to give accurately —
+  // and every remedy it offers is one the declaration has already refused. So the
+  // tasks elements come out and the block says what is actually true. Nothing else on
+  // the page changes: the mount, the ledger and the contributions are all still facts
+  // about a dormant repo.
+  $('work-dormant').hidden = !dormant;
+  $('work-views').hidden = dormant;
+  if (dormant) {
+    $('work-board').hidden = true;
+    $('work-table-wrap').hidden = true;
+    return;
+  }
   const boardView = view === 'board';
   $('work-board').hidden = !boardView;
   $('work-table-wrap').hidden = boardView;
@@ -697,7 +714,8 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   const board = buildBoard({ rows, items: issuePage.issues, prs: issuePage.prs, now, schedule });
   const boardContext = { repo, items: issuePage.issues, prs: issuePage.prs, rows: all, now };
   const anythingLive = counts.stuck || counts.pending;
-  renderWork(all, repo, now, anythingLive ? 'board' : defaultView(counts), board, boardContext);
+  renderWork(all, repo, now, anythingLive ? 'board' : defaultView(counts), board, boardContext,
+    isDormant(declaration));
   renderContributions(contributions, now);
   // Today's closes come from the issue page already fetched — the fold's own read is
   // watermarked and hourly, so the last hour or two is exactly what it has not seen.

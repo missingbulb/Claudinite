@@ -976,9 +976,9 @@ comes from a file under review.
   agent sessions finish on their own — cancel those by hand if the
   hold is urgent — and items freeze exactly where they are, no labels
   touched, which is what makes the hold stateless. This is not dormancy:
-  `dormant` is a *declared standing state* in tracked config, a commit,
-  read by the same gates; the suspend variable is the instant, out-of-band
-  operational hold. (S37.)
+  `dormant` is a *declared standing state* in tracked config, a commit, on
+  this pack's own entry and read by the same gates; the suspend variable is
+  the instant, out-of-band operational hold. (S37.)
 - **Resuming is clearing the variable — recovery needs no lever of its own.**
   The next cron scheduler run performs the entire self-heal unaided: its reclaim job
   frees the claims of runs killed during the hold (their heartbeats long
