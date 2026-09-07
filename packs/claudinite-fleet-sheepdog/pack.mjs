@@ -79,6 +79,12 @@ export default {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, standardized packs',
     excludes: 'anything a member does to itself — its comments are basics, lessons are claudinite-growth; the fleet brief is claudinite-dashboard',
   },
+  // Every sweep here runs as a task on the enforcer's own queue, and each one asks
+  // whether a member's SCHEDULER is dormant — a question the tasks pack owns and
+  // publishes (shared-code/dormancy.mjs). Declared so the vendor set carries the code
+  // this pack imports: an enforcer that mounted the sweeps without it would fail its
+  // own converge on a dangling import.
+  requires: ['claudinite-tasks'],
   // Audits the enforcer's config as it stands, whatever this session touched: a seed
   // that drifted in an earlier commit is just as silent as one that drifted in this one.
 

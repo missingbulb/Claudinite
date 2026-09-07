@@ -496,38 +496,42 @@ test('every key in CONFIG_KEYS survives loadConfig — declarable implies readab
   } finally { removeTree(root); }
 });
 
-// ── dormant: the project's own declaration that it is out of the recurring work ──
-test('dormant loads as a boolean — declared true, and false when absent or false', () => {
+// ── dormant belongs to the scheduler's pack, and the engine only tolerates it ──
+test('a top-level dormant is accepted but not interpreted', () => {
+  // The engine stopped owning this key: dormancy is a property of the work-item queue,
+  // so the pack that owns the queue validates it and answers for it
+  // (packs/claudinite-tasks/dormancy.mjs, whose own suite covers the predicate).
+  // What must still hold here is that a member declaring the retired spelling is not
+  // told its settings are wrong while the migration record reaches it.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-dormant-'));
   try {
     writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], dormant: true }) + '\n' });
-    const on = loadConfig(root);
-    assert.deepEqual(on.errors, [], 'declaring dormancy is a legal settings file');
-    assert.equal(on.dormant, true);
-    assert.equal(isDormant(on), true, 'the predicate reads the loaded config…');
-    assert.equal(isDormant({ packs: [], dormant: true }), true, '…and a raw declaration, which is how the fleet sweeps read another repo');
-
-    // Opt-in: absence is active, and so is an explicit false. This is the shape every
-    // repo in the fleet has, so it must never drift toward dormant.
-    writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' });
-    assert.equal(loadConfig(root).dormant, false);
-    writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], dormant: false }) + '\n' });
-    assert.equal(loadConfig(root).dormant, false);
+    const cfg = loadConfig(root);
+    assert.deepEqual(cfg.errors, [], 'the retired key is tolerated, not reported as unknown');
+    assert.equal(cfg.dormant, undefined, 'and it is not normalized into a field the engine would be answering with');
+    // The raw declaration survives the load, which is how a pack-owned reader reaches
+    // a key the engine deliberately does not fold.
+    assert.equal(cfg.raw.dormant, true);
   } finally { removeTree(root); }
 });
 
-test('a non-boolean dormant is a settings error, not a truthy value', () => {
-  // `"dormant": "yes"` or `{ "since": … }` reads as dormant to any truthiness test
-  // and as active to this one, and the difference is a whole repo's scheduled work.
-  // Fail at load rather than silently pick one.
+test('a non-boolean dormant is no longer the engine\'s error to raise', () => {
+  // It is still an error — the tasks pack raises it, over the same value. What changed
+  // is who says so, and the engine must not report a second, differently-worded one.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-dormant-bad-'));
   try {
     writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], dormant: 'yes' }) + '\n' });
-    const cfg = loadConfig(root);
-    assert.equal(cfg.errors.length, 1);
-    assert.match(cfg.errors[0].what, /"dormant" must be true or false/);
-    assert.equal(cfg.dormant, false, 'an invalid declaration is not a dormancy declaration');
+    assert.deepEqual(loadConfig(root).errors, []);
   } finally { removeTree(root); }
+});
+
+test('the retired isDormant shim reads the old spelling and nothing else', () => {
+  // Kept for the pack-lane window only: a member holds this engine beside a pack
+  // version that still imports it, and a missing export there crashes the converge
+  // that would have delivered the fix.
+  assert.equal(isDormant({ dormant: true }), true);
+  assert.equal(isDormant({ packs: [{ id: 'claudinite-tasks', config: { dormant: true } }] }), false,
+    'the current spelling is deliberately NOT resolved here — that is the pack\'s predicate, and this one answers only what its old callers can ask');
 });
 
 test('an unversioned repo loads as null and {}, never as a zero', () => {

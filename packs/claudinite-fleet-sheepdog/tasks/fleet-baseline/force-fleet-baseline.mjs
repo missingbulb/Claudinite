@@ -160,10 +160,19 @@ export async function main() {
       continue;
     }
     if (isDormant(decl) && !includeDormant) {
-      // A dormant member stopped its own scheduler; a forced dispatch on it either does
-      // nothing (the run stops before evaluating anything) or wakes a repo that asked to
-      // sleep. Reported, not silently dropped, so a fleet-wide force is never mistaken
-      // for fleet-wide coverage.
+      // NOT a second authority on dormancy — `isDormant` here IS the member's own
+      // scheduler's predicate, re-exported (fleet-api.mjs), so this gate and the gate
+      // that member's run would apply cannot disagree. What it saves is the dispatch:
+      // fired anyway, the run would start, read its own declaration, decline and cost
+      // an Actions minute on a repo that asked for none — the recurring work dormancy
+      // exists to stop, spent to learn what the declaration in hand already said.
+      //
+      // It is also what keeps INCLUDE_DORMANT meaningful. The member's own gate stops a
+      // woken run too, so an operator override CANNOT be expressed downstream of it:
+      // without this filter, INCLUDE_DORMANT=true would dispatch to every dormant member
+      // and every one of those runs would self-skip, reporting `fired` for work that
+      // never happened. Reported rather than silently dropped, so a fleet-wide force is
+      // never mistaken for fleet-wide coverage.
       skipped.push({ fullName, state: 'dormant', detail: 'self-declared dormant — pass INCLUDE_DORMANT=true to force it anyway' });
       continue;
     }

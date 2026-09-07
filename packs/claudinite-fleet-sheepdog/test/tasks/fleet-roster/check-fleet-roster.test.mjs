@@ -64,6 +64,13 @@ const declOf = (over = {}, { engineVersion = 4, basics = 7 } = {}) => ({
   ...over,
 });
 
+// A member whose SCHEDULER is dormant. The declaration says so where the scheduler's
+// parameters live — on the tasks pack entry — which is the shape every reader resolves.
+const dormantDeclOf = (versions = {}) => {
+  const d = declOf({}, versions);
+  return { ...d, packs: [...d.packs, { id: 'claudinite-tasks', config: { dormant: true } }] };
+};
+
 // --- the walk reads each repo once --------------------------------------------
 
 test('buildRoster: the declaration is read once per repo, and both questions use that one read', async () => {
@@ -106,17 +113,18 @@ test('buildRoster: the enforcer, archived repos and forks are never read at all'
   assert.equal(roster.find((e) => e.fullName === 'o/enforcer').isHome, true);
 });
 
-test('buildRoster: canon, excluded, dormant and uncovered repos are read but never probed', async () => {
+test('buildRoster: canon, excluded and uncovered repos are read but never probed', async () => {
   // Each is covered-or-not by the coverage question and out of the freshness one, so
-  // the two extra reads would be spent on an answer nothing consumes.
+  // the two extra reads would be spent on an answer nothing consumes. A DORMANT member
+  // is deliberately not in this group: its scheduler is stopped, but its mount can
+  // still have fallen behind, and that is measured.
   const { gh, seen } = fakeGh({
     declarations: {
       'o/Claudinite': declOf(),
       'o/left-out': declOf(),
-      'o/asleep': declOf({ dormant: true }),
     },
   });
-  await walk(gh, [repo('Claudinite'), repo('left-out'), repo('asleep'), repo('naked')], {
+  await walk(gh, [repo('Claudinite'), repo('left-out'), repo('naked')], {
     exclude: new Set(['o/left-out']),
   });
   // `o/naked` is a repo with no declaration at all, so it is read under BOTH
@@ -124,7 +132,7 @@ test('buildRoster: canon, excluded, dormant and uncovered repos are read but nev
   // the alternative is calling a pre-rename member un-adopted.
   assert.deepEqual(seen.filter((p) => !/\.claudinite-(settings|checks)\.json$/.test(p)), [],
     'no scheduler read for any repo the freshness question does not measure');
-  assert.equal(seen.length, 5);
+  assert.equal(seen.length, 4);
 });
 
 // --- the two views disagree, on purpose ---------------------------------------
@@ -159,13 +167,44 @@ test('canon is an ordinary covered member to coverage, and never measured by fre
     'canon has no vendored mount to be stale — it is named in the summary, not bucketed');
 });
 
-test('a dormant member is covered, counted dormant by both, and never probed', async () => {
-  const { gh, seen } = fakeGh({ declarations: { 'o/asleep': declOf({ dormant: true }) } });
+test('a dormant member is covered and counted dormant by both views', async () => {
+  const { gh } = fakeGh({ declarations: { 'o/asleep': dormantDeclOf() }, schedulers: ['o/asleep'] });
   const roster = await walk(gh, [repo('asleep')]);
   assert.deepEqual(coverageView(roster).dormant, ['o/asleep']);
   assert.deepEqual(coverageView(roster).covered, []);
   assert.deepEqual(freshnessView(roster).dormant, ['o/asleep']);
-  assert.equal(seen.length, 1, 'the deliberately stale stamp is not even looked up against canon');
+});
+
+test('a dormant member whose mount is behind canon is still reported behind', async () => {
+  // Dormancy stops the SCHEDULER, not the clock. The member's mount is as far behind
+  // as it is, and saying nothing about it is how a repo sits several engine versions
+  // back while the roster reports a clean fleet.
+  const { gh } = fakeGh({
+    declarations: { 'o/asleep': dormantDeclOf({ engineVersion: 2, basics: 3 }) },
+    schedulers: ['o/asleep'],
+  });
+  const f = freshnessView(await walk(gh, [repo('asleep')]));
+  assert.deepEqual(f.unhealthy.map((u) => [u.fullName, u.state]), [['o/asleep', 'behind']]);
+  assert.deepEqual(f.dormant, ['o/asleep'], 'still named asleep, so the reader knows it will not self-heal');
+});
+
+test('a dormant member at canon versions is fresh, not merely unmeasured', async () => {
+  const { gh } = fakeGh({ declarations: { 'o/asleep': dormantDeclOf() }, schedulers: ['o/asleep'] });
+  const f = freshnessView(await walk(gh, [repo('asleep')]));
+  assert.deepEqual(f.unhealthy, []);
+  assert.deepEqual(f.fresh.map((x) => x.fullName), ['o/asleep']);
+});
+
+test('a dormant member with no scheduler workflow is not reported for that', async () => {
+  // The one thing dormancy licenses: a stopped scheduler is obedience, not drift.
+  const { gh } = fakeGh({ declarations: { 'o/asleep': dormantDeclOf() }, schedulers: [] });
+  const asleep = freshnessView(await walk(gh, [repo('asleep')]));
+  assert.deepEqual(asleep.unhealthy, [], 'no cron is what a dormant member is supposed to look like');
+
+  const { gh: gh2 } = fakeGh({ declarations: { 'o/awake': declOf() }, schedulers: [] });
+  const awake = freshnessView(await walk(gh2, [repo('awake')]));
+  assert.deepEqual(awake.unhealthy.map((u) => u.state), ['no-scheduler'],
+    'the contrast case: the same absence on an awake member is still the finding');
 });
 
 test('an uncovered repo is the coverage question\'s subject and out of scope for freshness', async () => {

@@ -218,15 +218,37 @@ test('convergeDrift: closes on recovery and on leaving the fleet, with distinct 
   assert.equal(left.calls.at(-1).body.state_reason, 'not_planned');
 });
 
-test('convergeDrift: a member that goes dormant has its open drift issue closed as not planned', async () => {
-  // Not `completed`: nobody repaired the drift, the repo left the race. And not
-  // left open either — an issue nagging a repo for obeying its own declaration is
-  // exactly the ceremony dormancy exists to stop.
+test('convergeDrift: a dormant member behind canon keeps its drift issue open', async () => {
+  // Dormancy stops the member's scheduler, not the measurement. Its mount is behind,
+  // nothing there will converge it, and closing the issue would retire the only record
+  // of that — the owner's call is whether to wake the repo, not the sweep's to forget it.
   const { gh, calls } = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
-  const actions = await convergeDrift(gh, 'o/home', { ...empty, dormantSet: new Set(['o/a']) });
-  assert.equal(actions.length, 1);
-  assert.match(actions[0], /^closed #7 \(o\/a: has declared itself dormant/);
-  assert.equal(calls.at(-1).body.state_reason, 'not_planned');
+  assert.deepEqual(
+    await convergeDrift(gh, 'o/home', { ...empty, unhealthy: [{ ...verdict('o/a', 'behind'), dormant: true }] }),
+    [], 'same story as yesterday — the issue stands and nothing is said',
+  );
+  assert.deepEqual(calls, []);
+});
+
+test('convergeDrift: a dormant member that reaches canon versions closes completed', async () => {
+  // The one road back that does not need a person: a deliberate baseline landed on it.
+  const { gh, calls } = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
+  assert.deepEqual(await convergeDrift(gh, 'o/home', { ...empty, healthySet: new Set(['o/a']) }),
+    ['closed #7 (o/a: is up to date with canon again)']);
+  assert.equal(calls.at(-1).body.state_reason, 'completed');
+});
+
+test('a dormant member\'s drift issue says the gap will not close on its own', async () => {
+  // The standing fix text all reads "something that should be running is not". On a
+  // member whose scheduler is stopped on purpose, following it is a wasted hour.
+  const { gh, calls } = fakeGh([]);
+  await convergeDrift(gh, 'o/home', { ...empty, unhealthy: [{ ...verdict('o/a', 'behind'), dormant: true }] });
+  assert.match(calls.at(-1).body.body, /dormant/i);
+  assert.match(calls.at(-1).body.body, /will converge this on its own/);
+
+  const awake = fakeGh([]);
+  await convergeDrift(awake.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] });
+  assert.doesNotMatch(awake.calls.at(-1).body.body, /This member is dormant/);
 });
 
 test('convergeDrift: an UNKNOWN member holds its issue open — absence of a verdict is not recovery', async () => {

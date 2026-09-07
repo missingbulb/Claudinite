@@ -929,3 +929,93 @@ test('executor-vars-bag inserts exactly what the executor stub carries', async (
     assert.ok(stub.includes(literal), `stub is missing the record's line: ${literal.trim()}`);
   }
 });
+
+// --- movePackOwnedSettings: a top-level key lands on the pack that owns it ------
+
+const DORMANT_RECORD = '../packs/claudinite-tasks/migrations/2026-09-07-dormant-is-a-scheduler-setting/migration.mjs';
+
+// The op is driven through the real record, so what is proved is the move this fleet
+// will actually run rather than a shape invented for the test.
+const moveDormant = async (declaration) => {
+  const { applyPackOwnedSettingMoves } = await import('../engine/migrations/registry.mjs');
+  const rec = (await import(DORMANT_RECORD)).default;
+  let written = null;
+  const done = await applyPackOwnedSettingMoves(rec, {
+    read: async (f) => (f === '.claudinite-settings.json' ? JSON.stringify(declaration, null, 2) : null),
+    write: async (_f, c) => { written = c; },
+  });
+  return { done, after: written === null ? null : JSON.parse(written), text: written };
+};
+
+test('movePackOwnedSettings: dormant lands on the tasks pack entry and leaves the top level', async () => {
+  const { done, after } = await moveDormant({
+    packs: ['basics', { id: 'claudinite-tasks', config: { other: 1 } }],
+    dormant: true,
+    rules: { 'some-rule': 'blocking' },
+  });
+  assert.equal(done.length, 1);
+  assert.equal(after.dormant, undefined, 'the retired spelling is gone');
+  assert.deepEqual(after.packs[1], { id: 'claudinite-tasks', config: { other: 1, dormant: true } },
+    'the entry keeps the parameters it already had');
+  assert.deepEqual(after.rules, { 'some-rule': 'blocking' }, 'nothing else the member wrote is touched');
+});
+
+test('movePackOwnedSettings: a bare string entry is promoted to carry the parameter', async () => {
+  const { after } = await moveDormant({ packs: ['basics', 'claudinite-tasks'], dormant: true });
+  assert.deepEqual(after.packs, ['basics', { id: 'claudinite-tasks', config: { dormant: true } }]);
+});
+
+test('movePackOwnedSettings: false moves too — it is an answer, not an absence', async () => {
+  // Dropping it as "falsy, so it says nothing" loses a project's explicit statement that
+  // it is awake, which is a different thing from never having been asked.
+  const { after } = await moveDormant({ packs: ['claudinite-tasks'], dormant: false });
+  assert.deepEqual(after.packs, [{ id: 'claudinite-tasks', config: { dormant: false } }]);
+});
+
+test('movePackOwnedSettings: the key is dropped where the pack is not declared', async () => {
+  // It governed nothing there, and leaving it keeps an unknown-setting error alive for
+  // a repo that has no scheduler to stop. Inventing an entry would be worse still: it
+  // would activate a pack nobody asked for.
+  const { done, after } = await moveDormant({ packs: ['basics'], dormant: true });
+  assert.equal(after.dormant, undefined);
+  assert.deepEqual(after.packs, ['basics'], 'no entry conjured to hold it');
+  assert.match(done[0], /not declared here/);
+});
+
+test('movePackOwnedSettings: an entry that already answers is not overruled', async () => {
+  const { done, after } = await moveDormant({
+    packs: [{ id: 'claudinite-tasks', config: { dormant: false } }],
+    dormant: true,
+  });
+  assert.equal(after.packs[0].config.dormant, false, 'the current spelling stands');
+  assert.equal(after.dormant, undefined, 'and the stale one still goes');
+  assert.match(done[0], /already declares it/);
+});
+
+test('movePackOwnedSettings: idempotent, and silent on a declaration without the key', async () => {
+  const once = await moveDormant({ packs: ['claudinite-tasks'], dormant: true });
+  const twice = await moveDormant(once.after);
+  assert.deepEqual(twice.done, [], 'a converged member is a no-op');
+  assert.equal(twice.after, null, 'and nothing is rewritten');
+});
+
+test('movePackOwnedSettings: packs keeps its position in the file', async () => {
+  // The declaration is a file people read, and a rewrite that shuffles `packs` to the
+  // bottom makes every future diff of it unreadable.
+  const { text } = await moveDormant({
+    packs: ['claudinite-tasks'], dormant: true, rules: {}, accept: [],
+  });
+  assert.deepEqual(Object.keys(JSON.parse(text)), ['packs', 'rules', 'accept']);
+});
+
+test('movePackOwnedSettings: a malformed declaration is left for the settings gate', async () => {
+  const { applyPackOwnedSettingMoves } = await import('../engine/migrations/registry.mjs');
+  const rec = (await import(DORMANT_RECORD)).default;
+  let wrote = false;
+  const done = await applyPackOwnedSettingMoves(rec, {
+    read: async () => '{ not json',
+    write: async () => { wrote = true; },
+  });
+  assert.deepEqual(done, []);
+  assert.equal(wrote, false, 'a migration is not the place to guess at a repair');
+});

@@ -73,7 +73,7 @@ const MARKER_RE = /<!-- fleet-freshness: ([a-z-]+) -->/;
 // The precedence is about ROOT CAUSE, not the order the facts arrive in: a member with
 // no scheduler is ALSO behind, and reporting "behind" would send the reader chasing a
 // symptom of the missing cron.
-export function classifyFreshness({ hasScheduler, installed, canon }) {
+export function classifyFreshness({ hasScheduler, installed, canon, dormant = false }) {
   // Neither number means the mount has never been written by an engine that stamps —
   // which is every engine there has been since the versioned flows landed. A repo
   // whose declaration names packs whose versions it cannot state has not been
@@ -82,7 +82,11 @@ export function classifyFreshness({ hasScheduler, installed, canon }) {
   if (installed.engineVersion === null && packIds.length === 0) {
     return { state: 'no-stamp', detail: `${DECLARATION} carries no engineVersion and no pack versions — the repo declares packs but has never been vendored` };
   }
-  if (!hasScheduler) {
+  // A DORMANT member's scheduler is stopped by its own declaration, so its absence is
+  // obedience rather than drift, and this is the ONE state dormancy suppresses. The
+  // version comparison below still runs: what the declaration bought was quiet about
+  // the scheduler, not exemption from being measured.
+  if (!hasScheduler && !dormant) {
     return { state: 'no-scheduler', detail: `no ${SCHEDULER} — the repo has no cron, so nothing there will ever converge it` };
   }
   // An absent canon number is not a zero: a pack retired from canon has no manifest
@@ -221,13 +225,27 @@ const FIXES = {
   ],
 };
 
-function driftBody(fullName, { state, detail }) {
+// What a DORMANT member's drift means, which is a different thing from an awake one's.
+// The standing fixes all read "something that should be running is not"; on a member
+// whose scheduler is stopped by its own declaration, nothing is meant to be running, so
+// the gap is permanent until a person decides otherwise. Said plainly, because the
+// alternative is a reader following the `behind` advice into a repo that is behaving
+// exactly as asked.
+const DORMANT_NOTE = [
+  '**This member is dormant.** Its scheduler is stopped by its own declaration, so nothing',
+  'in the repo will converge this on its own and the fleet fan-out leaves it alone. The gap',
+  'is reported because a mount this far behind is worth knowing about, not because anything',
+  'is failing: it closes when someone wakes the repo, baselines it deliberately, or retires it.',
+];
+
+function driftBody(fullName, { state, detail, dormant = false }) {
   return [
     marker(state),
     `\`${fullName}\` is covered — it carries a tracked \`${DECLARATION}\` — but it is not keeping up with canon.`,
     '',
     `**What the sweep found (${state}):** ${detail}`,
     '',
+    ...(dormant ? [...DORMANT_NOTE, ''] : []),
     '**What to do**',
     '',
     ...FIXES[state],
@@ -247,7 +265,12 @@ function driftBody(fullName, { state, detail }) {
 // actually changed, because a sweep over a fleet that is slow to heal would otherwise
 // turn every thread into a wall of identical notes. That restraint is what lets this
 // half ride the daily cadence rather than the weekly one it used to have.
-export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, dormantSet = new Set() }) {
+// A DORMANT member is not a closing reason here, and used to be. Its drift issue now
+// stands exactly as any other member's: it opens when the mount is behind and closes
+// `completed` when the mount is current again. What changed with it is only the
+// prognosis, which `driftBody` states — nothing there will converge it on its own, so
+// the issue is a standing note for the owner rather than a fault waiting on a repair.
+export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet }) {
   const actions = [];
   const { open: openIssues, closed } = await labeledIssues(gh, home, LABEL);
   const open = new Map(openIssues.map((i) => [i.title, i]));
@@ -297,11 +320,6 @@ export async function convergeDrift(gh, home, { unhealthy, healthySet, goneSet, 
     let reason = null; let note = null;
     if (healthySet.has(fullName)) {
       reason = 'completed'; note = 'is up to date with canon again';
-    } else if (dormantSet.has(fullName)) {
-      // `not planned`, not `completed`: the drift was never fixed, the repo was
-      // taken out of the race. Closing it `completed` would claim a repair nobody
-      // made, and leaving it open would be the nagging dormancy exists to stop.
-      reason = 'not_planned'; note = 'has declared itself dormant — it is out of the recurring work, so the sweep no longer measures it';
     } else if (goneSet.has(fullName)) {
       reason = 'not_planned'; note = 'is no longer a covered member of the fleet (excluded, deleted, archived, or uncovered)';
     }
@@ -347,7 +365,7 @@ export function renderFreshnessSummary({
     fresh.length
       ? `**Fresh:**\n${fresh.map((f) => `- \`${f.fullName}\` — ${f.detail}`).join('\n')}`
       : '**Fresh:** none',
-    dormant.length ? `**Dormant (self-declared, not measured):** ${dormant.join(', ')}` : '',
+    dormant.length ? `**Dormant (scheduler stopped by declaration — measured like any other member, but will not self-heal):** ${dormant.join(', ')}` : '',
     outOfScope.length ? `**Out of scope (not covered members):** ${outOfScope.join(', ')}` : '',
     unknown.length ? `**UNKNOWN (probe errored — fix the token/scope):** ${unknown.join('; ')}` : '',
     `**Not measured:** ${notMeasured.join('; ')}`,
