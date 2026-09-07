@@ -103,6 +103,9 @@ export const setIssueTitle = (gh, repo, number, title) =>
 export const patchIssue = (gh, repo, number, body) =>
   gh(`/repos/${repo}/issues/${number}`, { method: 'PATCH', body });
 
+export const reopenIssue = (gh, repo, number) =>
+  gh(`/repos/${repo}/issues/${number}`, { method: 'PATCH', body: { state: 'open' } });
+
 export const postIssue = (gh, repo, body) =>
   gh(`/repos/${repo}/issues`, { method: 'POST', body });
 
