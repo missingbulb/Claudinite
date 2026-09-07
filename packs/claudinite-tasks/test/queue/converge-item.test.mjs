@@ -1,6 +1,6 @@
 // The terminal transition performed in code (#892). What this pins is the part a
 // session used to do from prose: five ordered side effects, in order, exactly
-// once, on the item held and nothing else (§15.19, reversed by §15.31 / #1373)
+// once, on the item held and nothing else (docs/PRINCIPLES.md; #1373 reversed an earlier attempt)
 // — and the two ways it went wrong on live traffic (an item closed still wearing
 // `task:agent`, an item closed with no execution record at all) failing loudly
 // here instead.
@@ -97,7 +97,7 @@ test('the command refuses a plan it cannot perform rather than guessing', () => 
 test('an item this session does not hold is refused, not converged', () => {
   assert.match(refusal(null, 7), /could not be read/);
   // Membership is naming a task, not carrying the title: a marked issue keeps its
-  // own human title and is its own item (DESIGN §16.1).
+  // own human title and is its own item (PRINCIPLES.md).
   assert.match(refusal(item({ title: 'just an issue', body: 'please do the thing\n' }), 7),
     /not a Claudinite work item/);
   assert.equal(refusal(item({
@@ -175,7 +175,7 @@ test('a park leaves the item open wearing the one park label', async () => {
   assert.deepEqual(issue.labels.sort(), ['task:status:needs-human-failure']);
 });
 
-// --- superseding (DESIGN §6.4b) --------------------------------------------------
+// --- superseding (PRINCIPLES.md) --------------------------------------------------
 
 // A `supersede_existing_pr` task's earlier pull requests close once THIS run's own
 // exists — never before, so a run that delivers nothing leaves a review member's
@@ -278,7 +278,7 @@ test('a failure park leaves the request armed and says nothing to it', async () 
   assert.equal(repo.state.comments.some((c) => c.issue === 42), false);
 });
 
-// --- a converge writes only to the item it holds (§15.19, reversed by §15.31 / #1373) ---
+// --- a converge writes only to the item it holds (docs/PRINCIPLES.md; #1373 reversed an earlier attempt) ---
 
 const blocked = (number, blockedBy, over = {}) => ({
   number, title: `[claudinite-work] p/b${number}`, state: 'open', labels: ['task:blocked'],

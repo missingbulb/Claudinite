@@ -1,5 +1,5 @@
-// MARKING A MEMBER'S WORK-LIST ISSUE (protocol.mjs's `MARK`, tasks-dispatch DESIGN
-// §16.12). The enforcer's two halves — the weekly scan and the hand-forced request
+// MARKING A MEMBER'S WORK-LIST ISSUE (protocol.mjs's `MARK`).
+// The enforcer's two halves — the weekly scan and the hand-forced request
 // — each converge one issue per member, and both hand it here: the issue carries
 // the mark, its body names the member task in a `Task:` field, and the member's own
 // hourly scheduler run adopts it. Nothing dispatches a wake for it any more.
@@ -14,7 +14,7 @@
 //    the member has adopted the issue, part of that body is the machine's (the
 //    block adoption appended). Rewriting the human half and re-attaching the block
 //    is what keeps a re-forced ask from erasing the item it is asking for.
-//  - A CHANGED ASK RE-ASKS. Clearing the status is the one re-ask lever (§16.3), so
+//  - A CHANGED ASK RE-ASKS. Clearing the status is the one re-ask lever, so
 //    a body that actually changed clears whatever status stands — a parked or
 //    finished run of the OLD list must not be what silences the new one.
 import { ensureLabel } from '../../fleet-api.mjs';

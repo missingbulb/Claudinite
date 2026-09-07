@@ -88,7 +88,7 @@ test('a healthy adopted member has no reasons and reads ok', () => {
 
 // --- attention is earned ---------------------------------------------------------
 
-// The triage split (tasks-dispatch DESIGN §4): only a failure park — or one an older
+// The triage split: only a failure park — or one an older
 // engine left unclassified — is a broken run. The other three are a person's inbox,
 // and a fleet view that alarms identically on all four teaches the reader to ignore
 // the alarm.

@@ -16,8 +16,7 @@ const history = normalizeTaskDeclaration(historyJson);
 
 const PACK_DIR = dirname(dirname(fileURLToPath(import.meta.url)));
 
-// growth-promote's own precondition term (per-project-scheduling DESIGN §6 table
-// 2) reads which members changed their local packs. Each verdict goes through
+// growth-promote's own precondition term reads which members changed their local packs. Each verdict goes through
 // `evaluatePrecondition` — the seam the executor calls at pick — over a
 // fabricated `fleet` signal, so what is asserted is the term's own decision.
 
@@ -64,7 +63,7 @@ test('growth-promote: skips a member not declaring the growth pack', () => {
 });
 
 test('growth-promote: an unproven fleet state ERRORS — it never reads as "nothing to promote"', () => {
-  // The fail direction (task-preconditions DESIGN): a decline here is permanent,
+  // The fail direction: a decline here is permanent,
   // silent staleness — a missing credential and a converged fleet would look
   // identical forever, and nothing in the repo goes red over it. An error parks the
   // item where the re-queue lever retries it.

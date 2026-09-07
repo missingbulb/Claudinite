@@ -36,7 +36,7 @@ test('convergeSchedulerWorkflow: writes the stub with the repo-hashed cron, and 
 });
 
 
-// The repo's own anchor hour picks BOTH cron hours (DESIGN §17). The rehearsal's
+// The repo's own anchor hour picks BOTH cron hours (PRINCIPLES.md). The rehearsal's
 // `custom-anchor-hour` fixture proves such a member converges green; this proves the value that
 // lands is its own — a converge that stamped the default instead would fire every task before its
 // anchor and land it a day late, and nothing would go red.
@@ -68,7 +68,7 @@ test("the canon's own scheduler run workflow has not drifted from the stub it sh
   // task modules at the repo root, carries its own resolved cron, and names its own
   // secrets where a member's converge would stamp them. The WHOLE cron expression is
   // repo-resolved now — the minute is hashed from the name and both hours come from the repo's
-  // `taskScheduler.dailyHour` (DESIGN §17) — so structure-compare masks all of it, and the
+  // `taskScheduler.dailyHour` (PRINCIPLES.md) — so structure-compare masks all of it, and the
   // assertion below pins the canon's own value to what the engine would compute.
   const structure = (text) => text
     .split('\n')

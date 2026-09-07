@@ -77,7 +77,7 @@ test('task-declaration-shape: flags illegal enum values', () => {
   assert.match(whats, /"expected_outcome" is "push", not a legal value/);
 });
 
-// The retired cadence field (tasks-dispatch DESIGN §5). ADVISORY, like every rename here: the
+// The retired cadence field (docs/PRINCIPLES.md). ADVISORY, like every rename here: the
 // runtime reads the field as the cadence term it meant, a member's task file is its own data,
 // and the nightly update rewrites it — so this finding names the edit and its CI stays green.
 test('task-declaration-shape: the retired frequency field is an advisory rename to its cadence term', () => {

@@ -328,7 +328,7 @@ test('stale ready counts in the task\'s own periods', () => {
   assert.equal(warningsFor(readyItem, NOW, { periodFor: () => 3600e3 }).length, 1);
 });
 
-// The standing-item model (tasks-dispatch DESIGN §5): a blocked item waiting out its
+// The standing-item model: a blocked item waiting out its
 // `Not-before` is every quiet task's HEALTHY state — a weekly task's item sits so for
 // a week — and flagging it taught the reader to ignore the queue's warnings.
 test('an item waiting out a future Not-before is healthy, however long it has sat', () => {
@@ -490,8 +490,8 @@ test('outcomeTally counts by the canonical words, and a closed item with no outc
 
 // What will actually happen next, derived from the standing item where one exists —
 // the calendar answers only when no item does. The stamped Not-before is the ONE
-// scheduling fact an item carries and it wins over the computed anchor (DESIGN §14,
-// S28: a cadence change takes effect at the wake already stamped).
+// scheduling fact an item carries and it wins over the computed anchor
+// (S28: a cadence change takes effect at the wake already stamped).
 test('a rolled item\'s stamped wake outranks the computed anchor', () => {
   const rolled = item({ labels: [BLOCKED], body: 'p/t\n\nNot-before: 2026-08-20T09:30:00Z\n' });
   const [ci] = buildRoster({ tasks, items: [rolled], now: NOW, schedule: SCHEDULE });
@@ -499,7 +499,7 @@ test('a rolled item\'s stamped wake outranks the computed anchor', () => {
   assert.equal(ci.nextAsk.at.toISOString(), '2026-08-20T09:30:00.000Z');
 });
 
-// No park holds a task's lane by itself (DESIGN §5): a failure park stops the task
+// No park holds a task's lane by itself: a failure park stops the task
 // only where its declaration says so with `last-run-not-failed`, and there the roster
 // must say the schedule is STOPPED rather than show an anchor at which the task
 // declines. Anywhere else the scheduler files the next run around the park, so the

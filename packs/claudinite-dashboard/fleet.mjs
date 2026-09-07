@@ -166,7 +166,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
   }
 
   const parked = described.filter((d) => d.state === PARKED);
-  // The triage split (tasks-dispatch DESIGN §4): a failure park — or one an older
+  // The triage split: a failure park — or one an older
   // engine left unclassified — is a broken run to diagnose (whether it also holds
   // the task's lane is the declaration's word, which this summary does not read);
   // an action or decision park is a person's inbox; an approval park is a run that

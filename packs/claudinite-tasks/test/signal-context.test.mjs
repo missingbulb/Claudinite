@@ -107,7 +107,7 @@ const COLLECTORS_SRC = readFileSync(
 // the reason it is exempt — an unexplained addition here is the smell.
 const NOT_FROM_CONSTRUCTION = {
   commits: 'derived inside collectSignals itself — the one shared window read the commit-derived collectors reuse',
-  canonHead: 'deliberately absent: the scheduler Action no longer reads canon, so baselining falls back to stamp age (DESIGN §3.3 / basics/tasks/baselining)',
+  canonHead: 'deliberately absent: the scheduler Action no longer reads canon, so baselining falls back to stamp age (PRINCIPLES.md / basics/tasks/baselining)',
 };
 
 test('every ctx key the collectors read is populated by the real construction', () => {

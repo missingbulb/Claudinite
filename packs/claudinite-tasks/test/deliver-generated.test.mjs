@@ -110,7 +110,7 @@ test('the throwaway index is cleaned up even when the push fails', () => {
   } finally { removeTree(dir); }
 });
 
-// --- which branch and pull request the regenerate lands on (DESIGN §6.4b) ---------
+// --- which branch and pull request the regenerate lands on (PRINCIPLES.md) ---------
 // The executor resolved the target and handed it in; the lane takes it as given.
 // Without one — an executor that predates the hand-off — the prefix discovery it
 // used to do on its own stands, for the window #1698 closes.

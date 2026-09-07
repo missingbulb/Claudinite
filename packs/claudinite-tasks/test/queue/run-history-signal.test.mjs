@@ -4,7 +4,7 @@ import { collectSignals, SIGNAL_COLLECTORS, RUN_HORIZON_DAYS } from '../../signa
 import { collectSignalsForTask, windowFromRuns, defaultWindowMs, windowDaysOf } from '../../queue/signals.mjs';
 import { workItemBody } from '../../queue/work-item.mjs';
 
-// The `runs` signal (tasks-dispatch DESIGN §5) — a task's own run history, read
+// The `runs` signal (docs/PRINCIPLES.md) — a task's own run history, read
 // off the queue — and the window every other signal is then collected over. The
 // scheduler run hands the collector the queue it fetched; the executor lets it
 // read for itself.

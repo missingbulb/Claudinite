@@ -1,4 +1,4 @@
-// THE DRAIN GATE (tasks-dispatch DESIGN §15.30). Every workflow run is a billed
+// THE DRAIN GATE (docs/PRINCIPLES.md). Every workflow run is a billed
 // Actions invocation whatever it finds — each job's minutes rounded UP — so the
 // hourly drain, dispatched into an empty queue, cost a full invocation to find
 // nothing: 24 of them a day on a quiet repo. What is pinned here is the verdict

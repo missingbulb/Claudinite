@@ -230,7 +230,7 @@ export function describeCadence(preconditions, trigger) {
 
 // An item is a filed `[claudinite-work]` issue OR an adopted marked issue — the
 // one-issue request model's other shape, which keeps the person's own title
-// (tasks-dispatch DESIGN §16.1). One definition, shared with the queue's own reader.
+// One definition, shared with the queue's own reader.
 export { isQueueItem as isWorkItem } from '../claudinite-tasks/shared-code/work-items.mjs';
 
 // THE PAGE'S FIVE STATE KEYS. Four are the engine's own status labels; the fifth is
@@ -456,10 +456,10 @@ export function buildRoster({ tasks = [], items = [], now, schedule, isOpen }) {
 // What will actually happen to this task next, derived from the standing item where
 // one exists — the calendar answers only when no item does (the next instantiation).
 // This is where the standing-item model's facts become the roster's advice:
-//   - the stamped Not-before IS the schedule (DESIGN §14, S28), so it wins over the
+//   - the stamped Not-before IS the schedule (S28), so it wins over the
 //     computed anchor;
 //   - a failure park holds the task's lane only where the declaration says so with
-//     `last-run-not-failed` (§5) — showing an anchor there would promise a run the
+//     `last-run-not-failed` — showing an anchor there would promise a run the
 //     task itself declines, and showing `held` anywhere else would hide a run the
 //     scheduler files on schedule around the park;
 //   - every other park consumed its occurrence and leaves the lane open, so the

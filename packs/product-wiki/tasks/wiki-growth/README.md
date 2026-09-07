@@ -5,7 +5,7 @@
 Carried over from the declaration's comments when it became `task.json`.
 
 product-wiki task: wiki-growth — one research-and-refine pass over the repo's
-product wikis (per-project-scheduling DESIGN §6). Worker: task.md.
+product wikis. Worker: task.md.
 
 WEEKLY, not daily and not commit-gated: research arrives on the world's clock,
 not the repo's, and a nightly high-model pass economically pressures
@@ -13,7 +13,7 @@ fabrication (the Karpathy LLM-wiki cadence). The `commits` signal is declared
 only so the precondition can note recent product-relevant movement in context;
 the run itself is scheduled by its `due:weekly` term, not triggered by a commit.
 
-The pending-wiki-change gate lives HERE, in the precondition (DESIGN §12: the
+The pending-wiki-change gate lives HERE, in the precondition (the
 precondition is the ONLY decision point — it used to be a task.md preflight,
 which was the agentic phase deciding to skip a run its precondition had
 already granted). It is not subsumed by the queue: the queue guards at most one

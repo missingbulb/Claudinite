@@ -59,7 +59,7 @@ test('the CLI rewrites a checkout\'s canon and local packs, or the folders it is
   } finally { removeTree(root); }
 });
 
-// --- the retired `frequency` field, folded into the expression (tasks-dispatch DESIGN §5, #1725)
+// --- the retired `frequency` field, folded into the expression (docs/PRINCIPLES.md, #1725)
 // A member's own task.json is patched as ANCHORED TEXT — never re-serialized —
 // because a hand-written file's indentation, key order and comments-by-way-of-
 // layout are its author's, and a round-trip would rewrite them while nothing failed.

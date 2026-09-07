@@ -98,7 +98,7 @@ test('a rolling item is never stuck — waiting for its own next anchor is the m
   assert.deepEqual(stuckBlockedItems([rolling], NOW), []);
 });
 
-// §6.2 — a torn label swap leaves an open item outside the state machine, and
+// PRINCIPLES.md — a torn label swap leaves an open item outside the state machine, and
 // every rule that filters by state is blind to it.
 test('an open item wearing no state label at all is repaired to triage', () => {
   const torn = it({ labels: ['origin:schedule'] });

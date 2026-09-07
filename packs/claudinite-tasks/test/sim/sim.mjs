@@ -2,7 +2,7 @@
 // scenario play-throughs in the canon's SCENARIOS record are executable instead of prose-only.
 //
 // What it models faithfully: virtual time; the scheduler run as a STATELESS
-// loop (decision §15.33) — at every tick it asks every task ON THE SCHEDULE
+// loop (docs/PRINCIPLES.md) — at every tick it asks every task ON THE SCHEDULE
 // (one stating a condition, none of which reads the item itself; a task stating
 // none runs only from an item somebody created, at whose pick an empty
 // expression holds), through the task's own preconditions: the run-history
@@ -18,7 +18,7 @@
 // work step/hand-off/converge as timed phases, heartbeat comments during the
 // work step so the leash measures executor death rather than work duration),
 // at-most-once invocation (one call per item, never retried — the
-// fired/refused/unanswered trichotomy of DESIGN §6.6), readiness as the
+// fired/refused/unanswered trichotomy, docs/PRINCIPLES.md), readiness as the
 // scheduler run's alone (F1, reopened 2026-08-15, then reversed 2026-08-26 /
 // #1373), the janitor's stale-ready escalation, and the force lever (waking
 // where an item exists, minting where none does — both stamped `Woken`, which
@@ -258,7 +258,7 @@ export function judgeHistory(preconditions, runs, item, now) {
 
 // ---- the simulator ----------------------------------------------------------
 
-// ---- the label vocabulary (DESIGN §4; the vocabulary migration, #1119) ------
+// ---- the label vocabulary (PRINCIPLES.md; the vocabulary migration, #1119) ------
 // The sim WRITES canonical spellings only and DECODES every spelling ever
 // written: open items created by a fielded engine wear the old labels, and the
 // mechanism must react to them exactly as to its own. statusOf is that decode —
@@ -368,8 +368,8 @@ export function makeSim({
   const requestOf = (n) => requests.find((r) => r.number === n && r.state !== 'gone') ?? null;
   const titleOf = (id) => `[claudinite-work] ${id}`;
 
-  // The built-in request task, always present wherever the queue runs (DESIGN
-  // §16.2): its one condition, `request-eligible`, reads the item it is about, so
+  // The built-in request task, always present wherever the queue runs
+  // (docs/PRINCIPLES.md): its one condition, `request-eligible`, reads the item it is about, so
   // the task is off the schedule — the scheduler run never asks it, and an item
   // exists only because an issue was marked. That condition IS the security
   // check, and the task declares no code-work at all, so a request goes issue →
@@ -448,7 +448,7 @@ export function makeSim({
 
   const open = () => issues.filter((i) => i.state === 'open');
   const has = (i, l) => i.labels.has(l);
-  // The ORIGIN LABEL is the authority on standing vs ad-hoc (DESIGN §3, owner
+  // The ORIGIN LABEL is the authority on standing vs ad-hoc (PRINCIPLES.md, owner
   // 2026-08-20, reversing 2026-08-19's marker-free rule): `task:origin:planned`
   // marks the task's calendar occurrence, everything else is ad-hoc. The
   // structural read — bare unqualified title of a scheduled task at HEAD —
@@ -463,7 +463,7 @@ export function makeSim({
   };
   const standingItem = (taskId) => family(taskId).find((i) => i.state === 'open');
 
-  // A park is ONE label (DESIGN §4, the vocabulary migration): the machine
+  // A park is ONE label (PRINCIPLES.md, the vocabulary migration): the machine
   // filters on the `task:status:needs-human-` prefix and a person reads the
   // kind off the same label's tail. The legacy two-label pair decodes through
   // statusOf, modeled there because that is what old items actually wear —
@@ -489,7 +489,7 @@ export function makeSim({
       readySince: labels.includes('task:status:waiting-for-executor') ? now : null,
       lastActivity: now,
       notBefore, blockedBy,
-      // `Woken:` (DESIGN §5, §8): the instant a lever created or woke this item
+      // `Woken:` (docs/PRINCIPLES.md): the instant a lever created or woke this item
       // by hand — null on the scheduler's own item, which no lever touched.
       woken,
       outcome: null, comments: [], escalated: false,
@@ -570,7 +570,7 @@ export function makeSim({
     if (verdict.run === false) return { verdict: 'no', reason: verdict.reason ?? 'no work' };
     return { verdict: 'go', reason: [history.reason, verdict.reason].filter(Boolean).join('; ') };
   }
-  // THE ASK, the executor's (DESIGN §6.4): the whole expression over the item's
+  // THE ASK, the executor's (PRINCIPLES.md): the whole expression over the item's
   // own facts and its own run history — excluding it — where a woken item
   // satisfies the cadence terms and everything else still applies. A throw here
   // is a DECLINE (the engine's evaluatePrecondition catches it) — one task's bad
@@ -595,7 +595,7 @@ export function makeSim({
   // the rule's intent, so the paths that end an episode without writing anything
   // looked correct here and livelocked in production. So the epoch advances
   // exactly where the engine leaves a mark — the scheduler run's reclaim, the F15 revert,
-  // and the departing executor's strike on a roll or a park (DESIGN §6.2).
+  // and the departing executor's strike on a roll or a park (PRINCIPLES.md).
   //
   // A human re-queue deliberately does NOT advance it: a human editing labels
   // writes no comment, which is precisely why the strike has to have happened
@@ -607,15 +607,15 @@ export function makeSim({
   // the scheduler run's dedupe close is followed by that run's drain job —
   // so only a close with no run behind it (an agent session's) dispatches one.
   // What still makes something newly pickable after such a close is the
-  // `schedule_after` yield resolving (§9) — never a Blocked-by dependent, which
-  // a close no longer touches at all (§15.19, reversed by §15.31 / #1373): that
+  // `schedule_after` yield resolving — never a Blocked-by dependent, which
+  // a close no longer touches at all (docs/PRINCIPLES.md; #1373 reversed an earlier attempt): that
   // release is the scheduler run's readiness job alone, on its own hourly pass.
   function close(it, outcome, { dispatchDrain = true } = {}) {
     it.state = 'closed';
     it.closedAt = now;
     it.outcome = outcome;
     // ONE ISSUE, ONE STATE. A marked issue IS its item, so a terminal that closes
-    // the item closes the issue it stands on — `done` and `rejected` alike (§16.5).
+    // the item closes the issue it stands on — `done` and `rejected` alike (PRINCIPLES.md).
     const req = it.request != null ? requestOf(it.request) : null;
     if (req && req.state === 'open') req.state = 'closed';
     // the terminal status goes ON; urgency ends with the item; the ORIGIN stays
@@ -641,7 +641,7 @@ export function makeSim({
     record('close', { task: it.taskId, issue: it.number, outcome: 'rejected' });
   }
 
-  // ---- the scheduler run (DESIGN §5, §15.33): a stateless loop --------------
+  // ---- the scheduler run (docs/PRINCIPLES.md): a stateless loop --------------
   function schedulerRun() {
     if (suspendedAll) { record('suspended-skip', { workflow: 'scheduler-run' }); return; }
     record('scheduler-run', {});
@@ -651,7 +651,7 @@ export function makeSim({
     // read the scheduler cannot make fails OPEN and the executor decides at pick.
     for (const task of registry.values()) {
       // A task off the schedule — stating no condition, or one that reads the
-      // item itself — runs only from an item somebody created (DESIGN §5, §8):
+      // item itself — runs only from an item somebody created (docs/PRINCIPLES.md):
       // the schedule never asks it.
       if (!isScheduled(task)) continue;
       // ONE LIVE ITEM PER TASK, the engine's one invariant: an open item that is
@@ -691,14 +691,14 @@ export function makeSim({
         record('ready', { task: it.taskId, issue: it.number });
       }
     }
-    // ---- job 4: adopt the marked issues (DESIGN §16.3, one-issue) ----------
+    // ---- job 4: adopt the marked issues (PRINCIPLES.md, one-issue) ----------
     // Label mechanics like the other three: no precondition, no signal, no
     // judgment about WHO marked it (that is the precondition's, at pickup).
     // The marked issue IS the work item. The exactly-once guard is the mark
     // with NO status: adoption writes the first status, and any status — live,
     // parked or terminal — blocks re-adoption until a person clears it, which
-    // makes clearing the status the ONE re-ask lever (§4's re-queue and §16.3's
-    // re-mark used to be two; the one-issue shape collapses them).
+    // makes clearing the status the ONE re-ask lever (docs/PRINCIPLES.md) — the
+    // old re-queue and re-mark levers used to be two; the one-issue shape collapses them.
     for (const req of requests.filter((r) => r.state === 'open'
         && r.labels.has(ORIGIN_AD_HOC) && statusOf(r) === null)) {
       const prior = issues.find((i) => i.request === req.number);
@@ -717,7 +717,7 @@ export function makeSim({
       }
       // The machine block, appended at adoption: the task path and the gated
       // parameters. The model is honored only when the AUTHOR holds push
-      // access (§16.7) — the body is author-editable where a label was
+      // access (PRINCIPLES.md) — the body is author-editable where a label was
       // write-gated, so an ungated ask still runs, at the default.
       const model = gatedModel(req, permissionOf);
       const it = {
@@ -751,13 +751,13 @@ export function makeSim({
     else record('drain-skipped', {});
   }
 
-  // The two write-backs onto the request issue (DESIGN §16.5). Whoever converges
+  // The two write-backs onto the request issue (PRINCIPLES.md). Whoever converges
   // the item owns the write-back for the end it converged: the executor for a
   // declined request, the session for a run that left a PR. A run that FAILED
   // writes nothing and leaves the queued label standing — re-arming work that
   // writes code is a person's decision, and that standing label is also what stops
   // the scheduler run adopting the same request a second time.
-  // A refused request DISARMS on the issue itself (§16.5): the terminal status
+  // A refused request DISARMS on the issue itself (PRINCIPLES.md): the terminal status
   // lands on the issue and closes it, and blocks re-adoption until a person clears
   // it (the re-ask lever). The one comment says why. There is no separate
   // in-review write-back: the approval park IS the in-review state, on the same
@@ -769,7 +769,7 @@ export function makeSim({
     record('request-declined', { issue: req.number, why });
   }
 
-  // ---- the executor (DESIGN §6) ---------------------------------------------
+  // ---- the executor (PRINCIPLES.md) ---------------------------------------------
   function pickable() {
     const ready = open().filter((i) => is(i, 'task:status:waiting-for-executor'));
     const live = (taskId) => {
@@ -801,7 +801,7 @@ export function makeSim({
       .map(({ i }) => i);
   }
 
-  // The claim is the verified lease (DESIGN §6.2): swap, post a claim
+  // The claim is the verified lease (PRINCIPLES.md): swap, post a claim
   // comment, re-read — earliest comment wins, the loser reverts nothing and
   // moves on. `preRead` is the label state the executor saw when it read the
   // item; a racing executor's stale read is modeled by passing the snapshot
@@ -820,7 +820,7 @@ export function makeSim({
     return won; // loser reverts nothing — the winner's labels already stand
   }
 
-  // Hand-off + invocation (DESIGN §6.6, as amended 2026-08-15): swap to
+  // Hand-off + invocation (PRINCIPLES.md, as amended 2026-08-15): swap to
   // task:status:running-agent, then fire the endpoint EXACTLY ONCE — never retried, because a
   // retry is only safe when the first call is known to have done nothing, and
   // the unanswered case is exactly where nothing can be known. Three outcomes:
@@ -831,7 +831,7 @@ export function makeSim({
   //  - unanswered → the session may or may not exist and nothing may guess:
   //                 the item STAYS task:status:running-agent with the outcome-unknown comment;
   //                 a session that started converges it, one that never did
-  //                 leaves it silent until the janitor's agent leash (§11)
+  //                 leaves it silent until the janitor's agent leash (PRINCIPLES.md)
   // At-most-once invocation is what deleted the agent-side claim lease: two
   // sessions can never arrive at one item, so there is nothing to arbitrate.
   function handOff(it, task) {
@@ -860,7 +860,7 @@ export function makeSim({
 
   function startAgentSession(s, it, task) {
     if (it.state !== 'open' || !is(it, 'task:status:running-agent')) return;
-    // No agent-side claim (DESIGN §7, amended 2026-08-15): the session checks,
+    // No agent-side claim (PRINCIPLES.md, amended 2026-08-15): the session checks,
     // not claims — the item wears task:status:running-agent and the fire's nonce matches the
     // newest hand-off, both modeled by the guard above.
     it.lastActivity = now;
@@ -895,7 +895,7 @@ export function makeSim({
   // runner itself dies (the run died with it; the leash is the recovery).
   // The hand-off settles the item for the run: the executor never waits for
   // the agent, which is why agent work parallelizes and executor work is the
-  // occupancy (DESIGN §10).
+  // occupancy (PRINCIPLES.md).
   function executeClaimed(it, task, onSettled = () => {}) {
     if (crashNextOf.delete(it.taskId)) {
       record('executor-crash', { task: it.taskId, issue: it.number });
@@ -906,7 +906,7 @@ export function makeSim({
       schedule(now + 1 * MIN, () => executorRun('E-failover', 'failure-redispatch'));
       return; // died mid-claim: labels stay, the leash reclaim recovers (S8)
     }
-    // the pick-time precondition evaluation (DESIGN §6.4) — the executor
+    // the pick-time precondition evaluation (PRINCIPLES.md) — the executor
     // re-derives the verdict even where the scheduler run already asked at the
     // tick: nothing is carried forward from the tick's answer. Over the item's
     // own facts and its own run history (excluding it), so a woken item passes
@@ -932,7 +932,7 @@ export function makeSim({
       // convergence: nothing else would, and an un-disarmed issue would be
       // re-adopted and re-refused on every scheduler run forever. The terminal
       // closes it, marked or filed — a rejected run is not a question anybody has
-      // left to answer (§16.5).
+      // left to answer (PRINCIPLES.md).
       if (it.request != null) {
         declineRequest(it, verdict.reason ?? 'the precondition declined');
         endEpisode(it);
@@ -1047,8 +1047,8 @@ export function makeSim({
   }
 
   // One executor RUN — a workflow run in the real deployment — drains the
-  // queue until nothing is pickable (#1212, the owner reversing §15.22's
-  // one-item runs: Actions bills each job's minutes rounded UP, so a day's
+  // queue until nothing is pickable (#1212, the owner reversing one-item-per-run,
+  // docs/PRINCIPLES.md): Actions bills each job's minutes rounded UP, so a day's
   // cost is the RUN count, and a run that performs one item pays a whole
   // invocation — checkout, setup, rounding — per item). The run claims an
   // item, sees it through to its settle (close, hand-off, park), then picks
@@ -1085,7 +1085,7 @@ export function makeSim({
     step();
   }
 
-  // ---- the janitor (DESIGN §11): the judgment-and-long-horizon sweeps -------
+  // ---- the janitor (PRINCIPLES.md): the judgment-and-long-horizon sweeps -------
   function janitor() {
     if (suspendedAll) { record('suspended-skip', { workflow: 'janitor' }); return; }
     // rule A — stale-ready: an item no executor picked for ~2 periods comes
@@ -1143,7 +1143,7 @@ export function makeSim({
     // START still counts — the run starts, reads the hold and exits, and the
     // platform bills it — where the between-items hold stop (`midRun`)
     // happens inside a run already counted. The janitor is an ordinary daily
-    // task (§11), not a workflow: its rules spend no invocation of their own.
+    // task (PRINCIPLES.md), not a workflow: its rules spend no invocation of their own.
     actionExecutions() {
       let scheduler = 0;
       const executorByTrigger = {};
@@ -1159,7 +1159,7 @@ export function makeSim({
       return { scheduler, executor, executorByTrigger, total: scheduler + executor };
     },
 
-    // A person marks an ordinary issue (DESIGN §16.1). `author` is the issue
+    // A person marks an ordinary issue (PRINCIPLES.md). `author` is the issue
     // author's login — the precondition judges its repo permission — and `model`
     // the optional family label. No latency sugar: adoption is the scheduler run's job,
     // so a mark waits for the next one.
@@ -1245,7 +1245,7 @@ export function makeSim({
     },
 
     // forcing a scheduled task = waking its standing item where one exists,
-    // MINTING one where none does (DESIGN §8) — the common case once a decline
+    // MINTING one where none does (PRINCIPLES.md) — the common case once a decline
     // files nothing: for most of a quiet task's day there is no item to wake.
     // Either way the item is stamped `Woken`, which is what lets the cadence
     // terms hold at pick; an item already in flight is left alone (`already`),
@@ -1291,8 +1291,8 @@ export function makeSim({
       return it;
     },
 
-    // ad-hoc work is creating an item (DESIGN §8). Deliberate concurrency for a
-    // scheduled task names a qualifier (DESIGN §3): an UNQUALIFIED item of a
+    // ad-hoc work is creating an item (PRINCIPLES.md). Deliberate concurrency for a
+    // scheduled task names a qualifier (PRINCIPLES.md): an UNQUALIFIED item of a
     // scheduled task is structurally its standing item, so creating one where
     // none is open is minting, and beside an open one it is a duplicate the
     // scheduler run's self-heal closes. Such an item is what a write-gated
@@ -1365,7 +1365,7 @@ export function makeSim({
     // Two executors read the SAME snapshot of the ready list, so both pick
     // the same first item; both swap and post claim comments; the earliest
     // comment wins and the loser moves on to the next item read from LIVE
-    // state — the verified lease, stale-read and all (DESIGN §6.2).
+    // state — the verified lease, stale-read and all (PRINCIPLES.md).
     // spread: false (default) — both executors pick the SAME first item (S7's
     // one-item race). spread: true — executor i picks snapshot[i]: different
     // items, claimed simultaneously from the same stale read, which is how a
@@ -1425,13 +1425,13 @@ export function makeSim({
       record('close', { task: it.taskId, issue: it.number, outcome, by: 'hand' });
       return sim;
     },
-    // the operator hold (DESIGN §8): set/clear the suspend-all variable. Resume
+    // the operator hold (PRINCIPLES.md): set/clear the suspend-all variable. Resume
     // needs no dispatch of its own — the next cron scheduler run self-heals — but the
     // impatient path is a hand-dispatched scheduler run (schedulerRunAt models it).
     suspendAll() { suspendedAll = true; record('suspend', {}); return sim; },
     resumeAll() { suspendedAll = false; record('resume', {}); return sim; },
 
-    // the sanctioned human re-queue (F7, DESIGN §4): strip needs-human,
+    // the sanctioned human re-queue (F7, PRINCIPLES.md): strip needs-human,
     // apply task:status:waiting-for-executor. A label edit and nothing else —
     // it stamps no `Woken`, so at pick the cadence terms judge the item over
     // the task's other runs, unlike the force lever above.

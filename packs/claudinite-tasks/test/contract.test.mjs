@@ -69,7 +69,7 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
 // to its task and the door fills the rest — automerge is nothing, agent_model is
 // none. The timeouts have no default: an agent or a code-work subprocess always
 // carries its own bound, and an agent its worker file. Nor has `preconditions`
-// (DESIGN §5): the expression is the whole of when a task runs, and the retired
+// (PRINCIPLES.md): the expression is the whole of when a task runs, and the retired
 // `frequency` here arrives as the cadence term it meant.
 test('normalizeTaskDeclaration fills the defaults, and only where absent', () => {
   const minimal = { id: 't', frequency: 'daily', expected_outcome: 'pr' };
@@ -185,7 +185,7 @@ test('validateTaskDeclaration flags every malformed field', () => {
   assert.match(whats, /"precondition_signals" is retired/);
 });
 
-// ONE FORM, and the derivation that comes with it (task-preconditions DESIGN,
+// ONE FORM, and the derivation that comes with it (docs/PRINCIPLES.md,
 // #1617). The signal union has a single source — the terms the expression names —
 // so the collector cannot disagree with what the gate consults.
 test('validateTaskDeclaration accepts the one precondition form, and derives its signals', () => {
@@ -328,7 +328,7 @@ test('validateDispatchBody accepts a well-formed dispatch and resolves model + o
   assert.equal(v.resolvedModel, 'opus');
   assert.equal(v.outcome, 'fresh_pr');
   assert.equal(v.automerge, 'anything');
-  assert.equal(v.executionTimeout, 1800); // surfaced for the executor's best-effort bound (§6)
+  assert.equal(v.executionTimeout, 1800); // surfaced for the executor's best-effort bound (docs/PRINCIPLES.md)
 });
 
 test('validateDispatchBody rejects a bad first line, a missing file, an undeclared pack, and a bad declaration', () => {
@@ -434,7 +434,7 @@ test('a legacy-named agentless declaration validates clean — the rename is not
 });
 
 // --- the work-item queue's three optional declarations ------------------------
-// All three are ADDITIVE (tasks-dispatch DESIGN §14): a declaration that names
+// All three are ADDITIVE (docs/PRINCIPLES.md): a declaration that names
 // none of them stays valid, which is what lets the mechanism ship to a fleet whose
 // local packs nothing migrates.
 
@@ -504,7 +504,7 @@ test('every task this repo carries declares a code_work bound under the leash', 
 });
 
 
-// --- the frequency door (tasks-dispatch DESIGN §5) ----------------------------
+// --- the frequency door (docs/PRINCIPLES.md) ----------------------------
 //
 // A task declaration is member-owned data that no vendoring pass rewrites, so a member can carry
 // the retired `frequency` field indefinitely. It is read where the declaration LOADS — once, here

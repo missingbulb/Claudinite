@@ -216,7 +216,7 @@ export async function isCovered(gh, fullName) {
 export const SCHEDULER = 'claudinite-scheduler.yml';
 
 // Fire one member's scheduler at ONE task id. Under the work-item queue, forcing a
-// scheduled task is WAKING ITS STANDING ITEM (tasks-dispatch DESIGN §8) — an issue
+// scheduled task is WAKING ITS STANDING ITEM — an issue
 // edit, not an override bag — and the `wake` input is how this repo asks for that
 // without touching the member's issues itself: the member's own scheduler run does the wake,
 // with the member's own token, and the drain that follows runs it. Keeping the write

@@ -191,7 +191,7 @@ test('loadConfig: a valid schedule anchor is a known setting and passes through 
   } finally { cleanup(full); cleanup(partial); cleanup(none); }
 });
 
-// REPO SHAPE IS NOT A PRECONDITION (task-preconditions DESIGN): a repo that carries
+// REPO SHAPE IS NOT A PRECONDITION (docs/PRINCIPLES.md): a repo that carries
 // a pack but not one task's subject names that task here, and the scheduler reads it
 // before instantiating anything. Whether the named task EXISTS is deliberately not
 // checked — a member may disable a task in a pack it has not adopted yet, and the
@@ -235,8 +235,8 @@ test('loadConfig: out-of-range and misshaped schedule values are settings errors
   } finally { cleanup(ranges); cleanup(notObject); }
 });
 
-// The queue's per-repo cutover key and its endpoint map (tasks-dispatch DESIGN
-// §12, §14). `dispatch` now names one mechanism, so anything else — a typo, or the
+// The queue's per-repo cutover key and its endpoint map (docs/PRINCIPLES.md).
+// `dispatch` now names one mechanism, so anything else — a typo, or the
 // deleted `"slots"` — must be a settings error rather than a silent fall-back.
 test('loadConfig: taskScheduler.dispatch and the endpoint map are validated', () => {
   const good = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({

@@ -34,7 +34,7 @@ test('absence stays absence — no placeholder for what was not created', () => 
   }
 });
 
-// THE TARGET RIDES THE ENV (DESIGN §6.4b): the executor resolved which branch and
+// THE TARGET RIDES THE ENV (PRINCIPLES.md): the executor resolved which branch and
 // pull request this run works on, and code-work reads it here rather than looking
 // for one itself. Three variables, present in every mode — an absent one would be
 // indistinguishable from a worker running under an older executor.
@@ -58,7 +58,7 @@ test('a declared secret that is unset is named; a set-but-empty one is the repo\
 
 // #1301. Before the bag, the child inherited the executor's whole environment, so
 // every code-work task saw every secret the workflow stamped though only a few
-// declared one. The selection is what makes DESIGN §14.4 true rather than aspirational.
+// declared one. The selection is what makes that claim (docs/PRINCIPLES.md) true rather than aspirational.
 test('code-work is handed the secrets it declared, and none of the others', async () => {
   const { codeWorkRunner } = await import('../../queue/code-work-run.mjs');
   const { SECRETS_BAG_ENV } = await import('../../queue/secrets-bag.mjs');
