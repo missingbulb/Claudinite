@@ -168,3 +168,82 @@ test('a `#` inside a YAML value is not a comment — changing it is a real chang
   const after = "jobs:\n  execute:\n    run: echo 'a # c'\n";
   assert.equal(contractChanges([STUB], () => after, () => before).length, 1);
 });
+
+// --- a removed export: the #1750 shape --------------------------------------
+
+const WIRING = 'engine/converge-wiring.mjs';
+const PACK_MODULE = 'packs/claudinite-tasks/queue/schedule-board.mjs';
+
+test('an export dropped from an engine module is a contract surface — #1750\'s exact shape', () => {
+  const before = "export const BADGE_ROW_END = '<!-- /claudinite:packs -->';\nexport function ensureHooks() {}\n";
+  const after = 'export function ensureHooks() {}\n';
+  const out = contractChanges([WIRING], () => after, () => before);
+  assert.equal(out.length, 1);
+  assert.match(out[0].what, /BADGE_ROW_END/);
+});
+
+test('a re-export shim discharges it — the answer #1750 gave three of its nine names', () => {
+  const before = 'export function ensureRulesIndexMergeAttribute() {}\n';
+  const after = 'export function ensureMountAttributes() {}\n'
+    + 'export const ensureRulesIndexMergeAttribute = ensureMountAttributes;\n';
+  assert.deepEqual(contractChanges([WIRING], () => after, () => before), []);
+});
+
+test('deleting the module outright is a removal of every name it exported', () => {
+  const before = 'export const A = 1;\nexport function b() {}\n';
+  const out = contractChanges([WIRING], () => null, () => before);
+  assert.equal(out.length, 1);
+  assert.match(out[0].what, /A/);
+  assert.match(out[0].what, /b/);
+});
+
+test('a pack module is the structurally identical sibling — a member local pack imports both', () => {
+  const before = 'export const SCHEDULE_PREFIX = 1;\n';
+  assert.equal(contractChanges([PACK_MODULE], () => '', () => before).length, 1);
+});
+
+test('adding an export is not a removal, and a renamed export counts as one', () => {
+  assert.deepEqual(contractChanges([WIRING], () => 'export const A = 1;\nexport const B = 2;\n', () => 'export const A = 1;\n'), []);
+  assert.equal(contractChanges([WIRING], () => 'export const Bee = 2;\n', () => 'export const B = 2;\n').length, 1);
+});
+
+test('every export form is read — declarations, an export list, and `as` renames', () => {
+  const before = 'export async function f() {}\nexport class K {}\nconst x = 1, y = 2;\nexport { x, y as z };\n';
+  const after = 'const x = 1;\nexport { x };\n';
+  const out = contractChanges([WIRING], () => after, () => before);
+  assert.equal(out.length, 1);
+  for (const gone of ['f', 'K', 'z']) assert.match(out[0].what, new RegExp(gone));
+  // `y` was exported as `z`, so the local name never was a contract surface.
+  assert.doesNotMatch(out[0].what, /\by\b/);
+});
+
+test('an export that only ever appeared in a comment is not a removal', () => {
+  const before = "// export const GHOST = 1;\nexport const A = 1;\n";
+  assert.deepEqual(contractChanges([WIRING], () => 'export const A = 1;\n', () => before), []);
+});
+
+test('a removed export outside the vendor set, or in a test, is not a surface', () => {
+  const before = 'export const A = 1;\n';
+  // .claudinite/local/ reaches no member, and a dated migration record is a
+  // one-shot the fleet runs and forgets — neither is imported by anybody's pack.
+  for (const f of ['.claudinite/local/packs/claudinite/x.mjs', 'engine/migrations/2026-08-01-thing/migration.mjs',
+    'engine/x.test.mjs', 'engine-tests/x.mjs', 'bootstrap.mjs']) {
+    assert.deepEqual(contractChanges([f], () => '', () => before), [], f);
+  }
+});
+
+test('a removed export WITH a migration record or a fixture passes', () => {
+  const before = 'export const A = 1;\n';
+  const files = { [WIRING]: '' };
+  assert.equal(rule.run(work([WIRING], files, { [WIRING]: before })).length, 1);
+  assert.deepEqual(rule.run(work([WIRING, RECORD], files, { [WIRING]: before })), []);
+  assert.deepEqual(rule.run(work([WIRING, FIXTURES], files, { [WIRING]: before })), []);
+});
+
+test('a file already reported under another surface is not reported twice for its exports', () => {
+  // Deleting pack-schema.mjs is the manifest vocabulary going away AND every name it
+  // exported going away; the author owes one record or fixture either way.
+  const out = contractChanges([SCHEMA], () => null, () => "export const FIELDS = ['id'];\n");
+  assert.equal(out.length, 1);
+  assert.match(out[0].what, /manifest vocabulary/);
+});
