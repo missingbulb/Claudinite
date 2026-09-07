@@ -470,7 +470,7 @@ const level = (...verdicts) => ['critical', 'serious', 'you', 'machine', 'good']
 // than a few stragglers: the square root of its size (owner, 2026-09-07). It scales the
 // way an alarm should — three of thirteen is a bad night, eight of thirteen is
 // Claudinite itself not landing anywhere, and the two must not read alike.
-export const fleetWideBound = (total) => Math.sqrt(Math.max(0, total ?? 0));
+const fleetWideBound = (total) => Math.sqrt(Math.max(0, total ?? 0));
 
 // A mount the nightly update has not landed on. `behind` and `behind-engine` are a
 // converge that stopped moving; `unversioned` and `none` are one that never arrived at

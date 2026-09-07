@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   sumKnown, quantile, fleetDays, windowsOf, mergedPrsIn, stuckItems, closedItems,
   figure, totalsOf, pulseOf, memberWindow, machinePanel, hourKeysSince, fmtAge, fmtTokens,
-  fleetLedger, SCHEDULER_CADENCE_MS, fleetWideBound,
+  fleetLedger, SCHEDULER_CADENCE_MS,
 } from '../fleet-ledger.mjs';
 import { WORK_PREFIX, OUTCOME_DONE, NEEDS_HUMAN_APPROVAL } from '../../claudinite-tasks/shared-code/work-items.mjs';
 
@@ -233,11 +233,12 @@ const fleet = (total, stale) => Array.from({ length: total }, (_, i) =>
   summary(`o/m${i}`, { everRan: true, lastAt: NOW, inFlight: 0 },
     { mount: { state: i < stale ? 'behind' : 'current', behindPacks: [{ pack: 'basics' }] } }));
 
-test('the fleet-wide bound is the square root of the fleet size', () => {
-  // Owner, 2026-09-07: past sqrt(members) stale, the nightly update has stopped landing
-  // fleet-wide rather than on a few stragglers.
-  assert.equal(fleetWideBound(13), Math.sqrt(13));
-  assert.equal(fleetWideBound(0), 0);
+test('the bound SCALES with the fleet — the same count is fleet-wide on a small one', () => {
+  // Owner, 2026-09-07: past sqrt(members) stale it is the fleet that has stopped
+  // updating. Four members is the whole story on a fleet of thirteen and a bad night on
+  // a fleet of twenty-five, so the pair is what a fixed threshold cannot satisfy.
+  assert.equal(machinePanel(fleet(13, 4), [], { now: NOW, canon: CANON }).updates.fleetWide, true);
+  assert.equal(machinePanel(fleet(25, 4), [], { now: NOW, canon: CANON }).updates.fleetWide, false);
 });
 
 test('a handful of stale mounts is the cell\'s own amber count, not an alarm', () => {
