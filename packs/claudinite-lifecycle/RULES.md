@@ -15,13 +15,10 @@
   activates by being mounted, fingerprinted or present on disk, so a pack whose files you can see
   but whose id is undeclared contributes no prose, no checks, no skills and no tasks.
 
-- **Renaming or removing a pack's declaration outside the `adopt-pack` skill** — re-run the badge
-  row in the same change, since the update flow never re-derives it and the stale row surfaces
-  later as a blocking `reference-integrity` finding:
-
-  ```
-  node .claudinite/shared/engine/converge-wiring.mjs <owner/repo> --badges
-  ```
+- **Removing or renaming a pack's declaration** — if the repo's README still carries a legacy
+  pack-badge row, delete that pack's badge from it by hand in the same change. Nothing writes or
+  re-derives the row any more, so a badge left behind points at a `badge.svg` the mount no longer
+  holds, which `reference-integrity` reports as blocking.
 
 - **Adding a pack** — run the `adopt-pack` skill, which declares it, asks its adoption questions,
   re-vendors and scaffolds. Never hand-copy a pack's content into the repo.
