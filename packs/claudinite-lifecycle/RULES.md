@@ -49,6 +49,12 @@
   `; echo "EXIT:$?"` if in doubt, rather than a second pass of `--help`/`head`/`tail` hunting for
   confirmation that silence is safe. (2)
 
+- **A green `check_the_world.mjs` is not evidence the Stop hook will stay quiet** — the two
+  runners cover disjoint rule scopes, not the same rules on different triggers: the world runner
+  only sees `scope !== 'work'` rules and is wired to CI, while the Stop hook runs
+  `check_the_work.mjs` against the diff-plus-transcript `scope: 'work'` rules. Verify "will Stop
+  block me" with `check_the_work.mjs`, never by declaring the world runner clean.
+
 - **Pushing a change that touches `.github/workflows/`, `.claudinite-checks.json` or pack config**
   — the world sweep runs in CI, not the Stop hook, so run it locally first rather than spend a
   push → CI → fix round trip on a finding it reports in seconds:
