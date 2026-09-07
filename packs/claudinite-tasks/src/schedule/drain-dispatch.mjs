@@ -21,15 +21,23 @@ import { makeGh } from '../world/github.mjs';
 import { actionRepoContext, EXECUTOR_WORKFLOW_FILE } from '../world/actions.mjs';
 import { dispatchWorkflow } from '../world/github.mjs';
 
+// The dispatch itself, separated from the shell so it runs against a fake `gh`.
+// Judged by status, never by the body: a token without `actions: write` 403s this
+// POST with a plausible JSON body, and a run that logged `ok` for it would leave the
+// queue undrained with nothing saying so.
+export async function dispatchDrain(gh, repo, defaultBranch, log = console.log) {
+  const { ok, status } = await dispatchWorkflow(gh, repo, EXECUTOR_WORKFLOW_FILE, defaultBranch);
+  if (!ok) throw new Error(`could not dispatch ${EXECUTOR_WORKFLOW_FILE} on ${defaultBranch}: ${status}`);
+  log(`- dispatched the executor on ${defaultBranch} to drain whatever this scheduler run created`);
+  return { dispatched: EXECUTOR_WORKFLOW_FILE, ref: defaultBranch };
+}
+
+// The shell the frozen entry point runs: it builds the real world and hands it to
+// the decision above.
 export async function runDrainDispatch() {
   const { repo, defaultBranch } = actionRepoContext();
   if (!repo) throw new Error('GITHUB_REPOSITORY is not set');
-  const { ok, status } = await dispatchWorkflow(makeGh(), repo, EXECUTOR_WORKFLOW_FILE, defaultBranch);
-  // Judged by status, never by the body: a token without `actions: write` 403s
-  // this POST with a plausible JSON body, and a run that logged `ok` for it would
-  // leave the queue undrained with nothing saying so.
-  if (!ok) throw new Error(`could not dispatch ${EXECUTOR_WORKFLOW_FILE} on ${defaultBranch}: ${status}`);
-  console.log(`- dispatched the executor on ${defaultBranch} to drain whatever this scheduler run created`);
+  return dispatchDrain(makeGh(), repo, defaultBranch);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -98,10 +98,18 @@ What a canon session follows when it names, configures, writes or polices a pack
 | `corpus-count-in-prose` | low | complexity | declared check: advisory |
 | `home-only-path-in-canon-prose` | high | correctness | declared check: blocking |
 | `named-import-of-new-engine-export` | critical | correctness | declared check: blocking |
+| `tasks-stage-barriers` | high | complexity | declared check: blocking |
+| `tasks-world-edges-live-in-world` | high | complexity | declared check: blocking |
 
-`pack-independence` is barrier **data**, not code: a `forbidReferences` entry in
-[declared-checks.json](declared-checks.json), compiled by the engine's reference scanning. The
-[barrier guide](../basics/barriers.md) documents the edge vocabulary.
+`pack-independence` and `tasks-stage-barriers` are barrier **data**, not code: `forbidReferences`
+entries in [declared-checks.json](declared-checks.json), compiled by the engine's reference
+scanning. The [barrier guide](../basics/barriers.md) documents the edge vocabulary.
+
+- `tasks-stage-barriers` holds the tasks pack's role graph one-directional — `contract/` and
+  `items/` name no stage, `world/` carries no stage's policy, and a stage imports only what sits
+  below it. `tasks-world-edges-live-in-world` is its other half: GitHub, the environment,
+  subprocesses and the clock are reached through that pack's `src/world/` and nowhere else, so a
+  run can be driven at a chosen instant against a fake world.
 
 - **[tasks/growth-promote/](tasks/growth-promote/task.md)** — the growth lifecycle's central stage:
   read the changed members' local packs, **generalize** the portable lessons, route each to the
