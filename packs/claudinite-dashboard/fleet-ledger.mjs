@@ -466,9 +466,25 @@ export const SCHEDULER_CADENCE_MS = 3600e3;
 
 const level = (...verdicts) => ['critical', 'serious', 'you', 'machine', 'good'].find((l) => verdicts.includes(l)) ?? 'none';
 
+// How many members can be stale before it is the FLEET that has stopped updating rather
+// than a few stragglers: the square root of its size (owner, 2026-09-07). It scales the
+// way an alarm should — three of thirteen is a bad night, eight of thirteen is
+// Claudinite itself not landing anywhere, and the two must not read alike.
+export const fleetWideBound = (total) => Math.sqrt(Math.max(0, total ?? 0));
+
+// A mount the nightly update has not landed on. `behind` and `behind-engine` are a
+// converge that stopped moving; `unversioned` and `none` are one that never arrived at
+// all, which is the worse case rather than an unreadable one.
+const STALE_MOUNT = new Set(['behind', 'behind-engine', 'unversioned', 'none']);
+
+// Which stale member to name when only a few are: the one whose mount is furthest from
+// the canon, since that is the one whose failure explains the rest.
+const STALE_RANK = { none: 0, unversioned: 1, 'behind-engine': 2, behind: 3 };
+
 // The five cells, each already carrying its verdict and the one line naming the worst
 // member — a name is what the reader acts on, where a count is something to go and
-// look up.
+// look up. Except when the fault is the fleet's: past `fleetWideBound` the line names
+// the count instead, because no single member is the thing to go and look at.
 export function machinePanel(summaries, reads, { now, canon = null, strip = null } = {}) {
   const adopted = (summaries ?? []).filter((s) => s?.status === 'adopted');
 
@@ -533,16 +549,24 @@ export function machinePanel(summaries, reads, { now, canon = null, strip = null
     worst: oldest?.repo ?? null,
   };
 
-  // DRIFT — members behind the canon, worst by how far. Unknown with no canon
-  // configured, and unknown is said rather than read as current.
-  const behind = adopted.filter((s) => s.mount?.state === 'behind' || s.mount?.state === 'behind-engine');
-  const drift = {
-    level: canon ? level(behind.some((s) => s.mount.state === 'behind-engine') || behind.length >= 3 ? 'you' : null,
-      behind.length ? 'machine' : null, 'good') : 'none',
-    behind: canon ? behind.length : null,
-    note: canon
-      ? (behind.length ? `${shortRepo(behind[0].repo)} worst` : 'every mount current')
-      : 'unknown — no canonRepo configured',
+  // UPDATES — the members Claudinite's own nightly update did not land on, and the
+  // band's TOP SIGNAL (owner, 2026-09-07): a fleet whose mounts have stopped moving is
+  // the whole machine failing, where a late scheduler or a failed executor run is one
+  // member having a bad hour. Judged on the outcome — the stamp — whatever stopped it,
+  // since the stamp is what every member reports and it cannot report a landing that
+  // did not happen. Unknown with no canon configured, and unknown is SAID rather than
+  // read as current.
+  const stale = [...adopted.filter((s) => STALE_MOUNT.has(s.mount?.state))]
+    .sort((a, b) => STALE_RANK[a.mount.state] - STALE_RANK[b.mount.state]);
+  const fleetWide = Boolean(canon) && stale.length > fleetWideBound(adopted.length);
+  const updates = {
+    level: canon ? level(fleetWide ? 'critical' : null, stale.length ? 'you' : null, 'good') : 'none',
+    stale: canon ? stale.length : null,
+    total: adopted.length,
+    fleetWide,
+    note: !canon ? 'unknown — no canonRepo configured'
+      : fleetWide ? `${stale.length} of ${adopted.length} members are not on the current mount`
+        : stale.length ? `${shortRepo(stale[0].repo)} worst` : 'every mount current',
   };
 
   // NEXT WAKE — when the fleet next acts, and the 24-hour strip behind it.
@@ -574,7 +598,7 @@ export function machinePanel(summaries, reads, { now, canon = null, strip = null
         : `${strip.hours.reduce((n, h) => n + h.tasks.length, 0)} wakes in 24 h`,
     };
 
-  return { heartbeat, executor, foldAge, drift, wake };
+  return { updates, heartbeat, executor, foldAge, wake };
 }
 
 // The last N whole UTC hours, as the fold's own hour keys.

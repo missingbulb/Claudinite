@@ -21,7 +21,7 @@ one for the days it reaches and the fold for the rest, as `queueSeries` and `hou
 | Executor failed / total, 24 h; in flight | both | fold `hours[h].executor`, `failed`; live runs `status` | `hourSeries`, `ciStatus` |
 | CI on main | repo | live runs | `ciStatus` |
 | Fold age, members folding | both | fold `generated` | `readUsage` |
-| Drift | both | declaration stamp vs `canonRepo` | `mountState` |
+| Updates (fleet) / Drift (repo) | both | declaration stamp vs `canonRepo` | `mountState` |
 | Next wake, 24 h strip | both | declaration anchors, `nextAsk.at` per roster row | `buildRoster`; page bucketing (§3) |
 | Merged PRs; nobody in the loop | both | live issues page with merged PRs kept (§3); fold `prs` | `projectPull` (§3) |
 | Caught before merge | both | fold `checks.work` (`failures`, `ciFailures`, `runs`, `errors`) | `growthSeries` |

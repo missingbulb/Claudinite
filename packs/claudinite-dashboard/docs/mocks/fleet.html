@@ -88,6 +88,8 @@
   .cell .v { font-family: var(--mono); font-size: 21px; font-weight: 500; line-height: 1.15; margin-top: 4px; display: flex; align-items: baseline; gap: 7px; }
   .cell .v .u { font-family: var(--sans); font-size: 11.5px; font-weight: 400; color: var(--ink-2); }
   .cell .n { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .cell.alarm .v, .cell.alarm .n { color: var(--critical-text); }
+  .cell.alarm .v { font-weight: 700; }
   .beat { display: flex; gap: 2px; margin-top: 6px; }
   .beat i { width: 10px; height: 10px; display: block; background: var(--good); }
   .beat i.you { background: var(--you); } .beat i.critical { background: var(--critical); } .beat i.none { background: none; border: 1px solid var(--rule); }
@@ -168,8 +170,13 @@
   </section>
 
   <section class="band" aria-label="The machine">
-    <div class="stub"><span class="cap">The machine</span><span class="q">is it running, right now, on every member</span></div>
-    <div class="body machine" style="grid-template-columns: 1.7fr 1fr 0.9fr 0.9fr 1.6fr">
+    <div class="stub"><span class="cap">The machine</span><span class="q">is the update landing, and is it running, on every member</span></div>
+    <div class="body machine" style="grid-template-columns: 0.95fr 1.7fr 1fr 0.9fr 1.6fr">
+      <div class="cell alarm">
+        <div class="k"><i class="sq critical"></i><span class="cap">Updates</span></div>
+        <div class="v">8<span class="u">of 12 behind the canon</span></div>
+        <div class="n">8 of 12 members are not on the current mount</div>
+      </div>
       <div class="cell">
         <div class="k"><i class="sq you"></i><span class="cap">Scheduler</span></div>
         <div class="v">10<span class="u">of 12 ran on time</span></div>
@@ -188,11 +195,6 @@
         <div class="k"><i class="sq good"></i><span class="cap">Fold age</span></div>
         <div class="v">41m<span class="u">oldest</span></div>
         <div class="n">9 of 12 fold</div>
-      </div>
-      <div class="cell">
-        <div class="k"><i class="sq machine"></i><span class="cap">Drift</span></div>
-        <div class="v">3<span class="u">behind</span></div>
-        <div class="n">lab worst</div>
       </div>
       <div class="cell">
         <div class="k"><i class="sq good"></i><span class="cap">Next wake</span></div>

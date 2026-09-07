@@ -38,18 +38,25 @@ square in the heartbeat below.
 
 ## The machine
 
-**Question.** Is the infrastructure that runs the fleet actually running, right now, on
-every member — and when does it next act?
+**Question.** Is Claudinite's own update landing on every member — and is the
+infrastructure that runs the fleet actually running, right now, and when does it next act?
 
 Five cells in one row, each `status square + label` in condensed caps, the figure in mono,
 and one line naming the worst member, since a name is what the reader acts on.
 
+**Updates leads the row.** A fleet whose mounts have stopped moving is the whole machine
+failing, where a late scheduler or a failed executor run is one member having a bad hour;
+the cell that answers the first is first, and past `fleetWideBound` — more than
+`sqrt(members)` of them stale — its figure and its line are set in the critical colour and
+in bold, and the line names the count rather than a worst member, because at that point no
+single member is the thing to go and look at.
+
 | Cell | Figure | Derived | Source | Bad when |
 |---|---|---|---|---|
+| **Updates** | members Claudinite's nightly update did not land on — behind the canon, behind on the engine, never converged, or carrying no stamp | `mountState` in [`fleet.mjs`](../fleet.mjs), counted over the adopted members | declaration stamp vs `canonRepo` | ≥ 1 stale → warning; more than `sqrt(members)` stale → critical, set in red and bold; no `canonRepo` → *unknown*, never *current* |
 | **Scheduler heartbeat** | one 10 px square per member, ordered as the grid below; colour = hours since its last completed scheduler run against its cadence; sub-line names the off-cadence members | per member, `now − latest hour with hours[h].scheduler > 0` in its fold, topped up from the live runs page for hours past `runsFoldedThrough`; cadence from the stub (hourly) | fold `hours` + live runs | any member > 2× cadence → serious; never ran → critical |
 | **Executor failures, 24 h** | failed / total executor runs, fleet-wide, worst member named | `hours[*].failed` summed over 24 h, topped up from the live runs page | fold `hours` + live runs | > 0 failed in 24 h → warning; ≥ 3 → serious |
 | **Fold age** | age of the *oldest* member's `usage.generated`; how many fold at all (`9 of 12 fold`) | `now − usage.generated`, max over folding members | fold stamp, read at head sha | oldest > 6 h on a member whose head moved → warning; a member that moved and has no fold → named |
-| **Drift** | members behind the canon engine or any pack, worst by how many versions | `mountState` in [`fleet.mjs`](../fleet.mjs) | declaration stamp vs `canonRepo` | ≥ 1 behind → info; engine or ≥ 3 packs behind → warning; no `canonRepo` → *unknown*, never *current* |
 | **Next wake** | the next anchor across the fleet — `14:00 · 3 members · 5 tasks` — then a 24 h tick strip, one tick per anchor, hover naming member and task | each member's declared tasks' `nextAsk.at` (`buildRoster` in [`model.mjs`](../model.mjs)), collected fleet-wide and bucketed by hour | task declarations at head sha | no anchor inside 24 h on a member that declares tasks → serious (it is unwired) |
 
 The heartbeat reads the fold's hour tier rather than the live runs listing, because one page
