@@ -4,15 +4,22 @@
     "severity": "blocking",
     "failureMessage": "the vendor set ships a pack only when declared, so a cross-pack import crashes every consumer that vendors one pack without the other",
     "fix": "declare the dependency (requires) and pass configuration, move the shared helper into engine/checks/helpers, or accept the import with a reason in .claudinite-settings.json",
-    "relevantWhen": { "pathExists": "packs" },
+    "relevantWhen": {
+      "pathExists": "packs"
+    },
     "forbidReferences": [
       {
         "siblings": "packs",
         "to": "*",
         "scope": "imports",
-        "allow": ["engine", "packs/claudinite-tasks/shared-code"],
+        "allow": [
+          "engine",
+          "packs/claudinite-tasks/shared-code"
+        ],
         "reason": "a pack imports only its own files, the engine surface, and the tasks pack's published shared-code/ — abilities otherwise cross pack boundaries through declaration and configuration, never imports; a pack's updates/ is carved out because no vendor set carries it, so an import there cannot crash a consumer (#1317)",
-    "except": ["packs/claudinite-lifecycle/updates"]
+        "except": [
+          "packs/claudinite-lifecycle/updates"
+        ]
       }
     ]
   },
@@ -85,7 +92,7 @@
         "fix": "import the engine module as a namespace and guard the call with a typeof capability check"
       }
     ]
-  }  ,
+  },
   {
     "id": "tasks-stage-barriers",
     "severity": "blocking",
@@ -97,18 +104,25 @@
     },
     "forbidReferences": [
       {
-        "from": [
-          "packs/claudinite-tasks/src/contract",
+        "from": "packs/claudinite-tasks/src/contract",
+        "to": "*",
+        "scope": "imports",
+        "allow": [
+          "engine",
           "packs/claudinite-tasks/src/items"
         ],
+        "reason": "what a task DECLARES is what every stage agrees on, so the contract names no stage and no port — a contract that read the world would make the thing being agreed on depend on who was asking, which is why the automerge verdict's git-reading command sits in src/session/ and the policy engine here decides"
+      },
+      {
+        "from": "packs/claudinite-tasks/src/items",
         "to": "*",
         "scope": "imports",
         "allow": [
           "engine",
           "packs/claudinite-tasks/src/contract",
-          "packs/claudinite-tasks/src/items"
+          "packs/claudinite-tasks/src/world"
         ],
-        "reason": "what a task declares and what a work item IS are what every stage agrees on, so they name no stage and no outward edge — a contract that reached the world would make the thing being agreed on depend on who was asking"
+        "reason": "the work item as data, and the reads that fetch it: items names no stage, but the queue listing IS a GitHub read and a lease IS a clock read, so it reaches those through the ports like everything else"
       },
       {
         "from": "packs/claudinite-tasks/src/world",

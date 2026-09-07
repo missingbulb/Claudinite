@@ -19,7 +19,7 @@
 // code before acting (PRINCIPLES.md).
 
 import { ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from '../../../../engine/checks/helpers/repo-context.mjs';
-import { secretValue } from '../execute/secrets-bag.mjs';
+import { secretValue } from './secrets-bag.mjs';
 
 export const DEFAULT_ENDPOINT = 'default';
 

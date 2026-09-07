@@ -23,7 +23,7 @@
 // the canon cannot take that count.
 
 import { parseBag } from './env-bag.mjs';
-import { actionsEnv } from '../world/actions.mjs';
+import { actionsEnv } from './actions.mjs';
 
 export const SECRETS_BAG_ENV = 'CLAUDINITE_SECRETS';
 

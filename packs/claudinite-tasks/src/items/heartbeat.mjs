@@ -19,7 +19,7 @@ import { nowMs } from '../world/clock.mjs';
 
 import {
   CLAIM_MARKER, EPISODE_MARKER, PROGRESS_HEADING, parseProgressLines, withSection,
-} from '../items/work-item.mjs';
+} from './work-item.mjs';
 
 export const HEARTBEAT_MARKER = '<!-- claudinite-heartbeat -->';
 

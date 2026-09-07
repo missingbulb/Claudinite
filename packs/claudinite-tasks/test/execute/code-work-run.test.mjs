@@ -9,8 +9,8 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { deliveredLines, missingSecrets, taskEnv, codeWorkEnv, CODE_WORK_ENV_VARS } from '../../src/execute/code-work-run.mjs';
-import { SECRETS_BAG_ENV } from '../../src/execute/secrets-bag.mjs';
-import { VARS_BAG_ENV } from '../../src/execute/vars-bag.mjs';
+import { SECRETS_BAG_ENV } from '../../src/world/secrets-bag.mjs';
+import { VARS_BAG_ENV } from '../../src/world/vars-bag.mjs';
 
 test('an artifact code_work created is named by identity', () => {
   assert.deepEqual(deliveredLines({ pr: 7, branch: 'claudinite/x' }), [
@@ -61,7 +61,7 @@ test('a declared secret that is unset is named; a set-but-empty one is the repo\
 // declared one. The selection is what makes that claim (docs/PRINCIPLES.md) true rather than aspirational.
 test('code-work is handed the secrets it declared, and none of the others', async () => {
   const { codeWorkRunner } = await import('../../src/execute/code-work-run.mjs');
-  const { SECRETS_BAG_ENV } = await import('../../src/execute/secrets-bag.mjs');
+  const { SECRETS_BAG_ENV } = await import('../../src/world/secrets-bag.mjs');
   const out = join(mkdtempSync(join(tmpdir(), 'code-work-env-')), 'env.json');
   const env = {
     PATH: process.env.PATH,
@@ -92,7 +92,7 @@ test('a legacy stamping workflow still reaches its declared secret', async () =>
 
 test('the bag is what decides a declared secret is missing, not the plain environment', async () => {
   const { missingSecrets } = await import('../../src/execute/code-work-run.mjs');
-  const { SECRETS_BAG_ENV } = await import('../../src/execute/secrets-bag.mjs');
+  const { SECRETS_BAG_ENV } = await import('../../src/world/secrets-bag.mjs');
   const env = { [SECRETS_BAG_ENV]: JSON.stringify({ A: '', B: 'v' }) };
   assert.deepEqual(missingSecrets(['A', 'B', 'C'], env), ['C']);
 });

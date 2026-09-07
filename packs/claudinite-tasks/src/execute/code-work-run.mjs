@@ -19,8 +19,8 @@
 //    triage naming exactly which one is missing.
 
 import { runCodeWork, codeWorkFailure, agentRequestPath, clearAgentRequest, agentRequested, readAgentRequest, readTriageMarker, readRequeueMarker } from './code-work.mjs';
-import { SECRETS_BAG_ENV, secretsBag, secretValue, secretsFor } from './secrets-bag.mjs';
-import { VARS_BAG_ENV, varsEnv } from './vars-bag.mjs';
+import { SECRETS_BAG_ENV, secretsBag, secretValue, secretsFor } from '../world/secrets-bag.mjs';
+import { VARS_BAG_ENV, varsEnv } from '../world/vars-bag.mjs';
 import { targetEnv } from './target.mjs';
 import { actionsEnv } from '../world/actions.mjs';
 

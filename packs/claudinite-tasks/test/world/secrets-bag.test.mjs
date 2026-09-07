@@ -4,7 +4,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { secretsBag, secretValue, secretsFor, SECRETS_BAG_ENV } from '../../src/execute/secrets-bag.mjs';
+import { secretsBag, secretValue, secretsFor, SECRETS_BAG_ENV } from '../../src/world/secrets-bag.mjs';
 
 const bagEnv = (obj, rest = {}) => ({ ...rest, [SECRETS_BAG_ENV]: JSON.stringify(obj) });
 

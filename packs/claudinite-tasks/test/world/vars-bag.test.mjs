@@ -5,7 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { varsBag, varsEnv, VARS_BAG_ENV } from '../../src/execute/vars-bag.mjs';
+import { varsBag, varsEnv, VARS_BAG_ENV } from '../../src/world/vars-bag.mjs';
 
 const bagEnv = (obj, rest = {}) => ({ ...rest, [VARS_BAG_ENV]: JSON.stringify(obj) });
 
