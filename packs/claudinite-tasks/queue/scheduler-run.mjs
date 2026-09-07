@@ -18,6 +18,14 @@ import { pathToFileURL } from 'node:url';
 import { runSchedulerRun } from '../src/schedule/run.mjs';
 
 export * from '../src/schedule/run.mjs';
+// The surface this path published, named rather than left to the star: a member's
+// own local pack may import it, and `export *` says nothing a reader — or the
+// consumer-safe-change check — can see.
+export {
+  runSchedulerRun, planSchedulerRun, planWake, pickableCount, listWorkItems,
+  listMarkedIssues, blockersToResolve, parseWorkItemTitle, EXECUTING_LEASH_MS,
+  FORCED_WAKE_CONTEXT,
+} from '../src/schedule/run.mjs';
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runSchedulerRun().catch((e) => { console.error(e.message ?? e); process.exit(1); });
