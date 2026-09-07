@@ -17,7 +17,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   yes files a `task:origin:planned`, ready item, and a no writes nothing but
   one log line — no board, no watermark, no memory of the ask.
   `S1'`, `S21`, `S22`, `S3'`, `S74`,
-  `test/queue/scheduler-run.test.mjs: a yes files a ready planned item; a no files nothing and is only asked again next run`
+  `test/schedule/run.test.mjs: a yes files a ready planned item; a no files nothing and is only asked again next run`
   - Rejected: a decline watermark (a `[claudinite-schedule]` board row) — the
     history terms below get the same property (never re-asking a declined
     occurrence) for free, off the queue the run already holds.
@@ -25,7 +25,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   (`request-eligible`), is off the schedule: never asked, and it runs only
   from an item somebody created.
   `S76`, `S1'`, `S70`, `S44`,
-  `test/queue/scheduler-run.test.mjs: every task on the schedule is asked, in declaration order; one stating no condition, or one reading the item, never is`
+  `test/schedule/run.test.mjs: every task on the schedule is asked, in declaration order; one stating no condition, or one reading the item, never is`
 - `trigger`, not the presence of a cadence term, decides whether the
   scheduler asks a task at all: a `request` task's precondition cannot hold
   it back onto the schedule, and a `schedule` task with no `preconditions`
@@ -45,19 +45,19 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   other condition the task states still applies. `S77`
 - A task is asked at its very first tick like any other; there is no gentler
   first-sight rule and no booked first window.
-  `S78`, `test/queue/scheduler-run.test.mjs: a brand-new task is asked at the first run like any other — there is no first-window booking`
+  `S78`, `test/schedule/run.test.mjs: a brand-new task is asked at the first run like any other — there is no first-window booking`
 - One live item per task is the engine's one invariant: while an unqualified
   item is open in a live status, the task is not asked, and the item is its
   current occurrence; a parked item is not live, so the task is asked beside
   it. `S57`, `S6`, `S11`, `S42`,
-  `test/queue/scheduler-run.test.mjs: a live standing item suppresses the ask however long it has stood, in every live status`,
-  `test/queue/scheduler-run.test.mjs: a parked item is not live: the task is asked beside it, whatever the park's kind`
+  `test/schedule/run.test.mjs: a live standing item suppresses the ask however long it has stood, in every live status`,
+  `test/schedule/run.test.mjs: a parked item is not live: the task is asked beside it, whatever the park's kind`
 - A second live unqualified item of one task, however it arose, is closed
   obsolete, oldest kept. `S30`,
-  `test/queue/scheduler-run.test.mjs: a duplicate live standing item is closed obsolete, oldest kept (F16)`
+  `test/schedule/run.test.mjs: a duplicate live standing item is closed obsolete, oldest kept (F16)`
 - Ad-hoc work — a qualified item, a mark, a chain link — never suppresses a
   scheduled occurrence and is never suppressed by one.
-  `test/queue/scheduler-run.test.mjs: ad-hoc items neither suppress nor consume a scheduled occurrence (§3)`
+  `test/schedule/run.test.mjs: ad-hoc items neither suppress nor consume a scheduled occurrence (§3)`
 - A pick-time no-go closes the item, `task:status:rejected`, with the reason
   in the comment — there is no roll to a later anchor. `S13'`, `S14'`, `S59`,
   `S12'`
@@ -94,12 +94,12 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   one stamped `Woken` if none is — the ordinary case, since most of a quiet
   task's day has nothing standing to wake. `S14'`, `S16'`, `S19`, `S77`, `S20`,
   `S76`,
-  `test/queue/scheduler-run.test.mjs: a task whose standing item is CLOSED is forced by minting a new one`,
-  `test/queue/scheduler-run.test.mjs: a task that has never had an item at all is also minted, not refused`
+  `test/schedule/run.test.mjs: a task whose standing item is CLOSED is forced by minting a new one`,
+  `test/schedule/run.test.mjs: a task that has never had an item at all is also minted, not refused`
 - Forcing an unscheduled task never mints an item — there is no standing item
   to stand in for — it wakes the open items already routed to it by path, or
   reports there is nothing to wake.
-  `test/queue/scheduler-run.test.mjs: an UNSCHEDULED task is never minted by a force — it wakes the items routed to it, or reports nothing`
+  `test/schedule/run.test.mjs: an UNSCHEDULED task is never minted by a force — it wakes the items routed to it, or reports nothing`
 - Forcing ad-hoc work is creating an item, stamped `Woken`, with a generic
   Context saying no precondition asserted there was work. `S13'`, `S15`, `S16`
 - A dropped or late scheduler-run fire costs latency only, never the
@@ -134,13 +134,13 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - The executor resolves which pull request a run works on exactly once,
   between the go verdict and the work step, from the task's declared
   `expected_outcome`, and hands the same answer to both phases.
-  `test/queue/target.test.mjs: the env a target becomes is exactly the three variables, every mode`,
-  `test/queue/executor-loop.test.mjs: code-work is handed the target the executor resolved, minted under the task's prefix`,
-  `test/queue/executor-loop.test.mjs: the hand-off stamps the target on the item, where the agent reads it`
+  `test/execute/target.test.mjs: the env a target becomes is exactly the three variables, every mode`,
+  `test/execute/loop.test.mjs: code-work is handed the target the executor resolved, minted under the task's prefix`,
+  `test/execute/loop.test.mjs: the hand-off stamps the target on the item, where the agent reads it`
 - A target the resolver could not answer — an unreadable pull-request list —
   is a run failure, never a guessed "nothing to amend."
-  `test/queue/target.test.mjs: an unreadable pull request list is an error, not an empty one`,
-  `test/queue/executor-loop.test.mjs: a target that could not be resolved parks the run, and nothing runs`
+  `test/execute/target.test.mjs: an unreadable pull request list is an error, not an empty one`,
+  `test/execute/loop.test.mjs: a target that could not be resolved parks the run, and nothing runs`
 - The executor comments a heartbeat on the item every ~15 minutes during the
   work step; a live run is never reclaimed however long it runs, and a dead
   one is reclaimed within ~the leash of its last heartbeat. `S31c`, `S31d`
@@ -162,15 +162,15 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - An executor run drains the queue until nothing is pickable, settling items
   serially — never two at once — and a platform kill loses at most the
   current item's progress. `S34`,
-  `test/queue/executor-loop.test.mjs: a run drains every pickable item, one at a time`,
-  `test/queue/executor-loop.test.mjs: a drained run never runs two items' work at once`
+  `test/execute/loop.test.mjs: a run drains every pickable item, one at a time`,
+  `test/execute/loop.test.mjs: a drained run never runs two items' work at once`
 - A dead run mid-queue is picked back up by the failure-continuation job on a
   fresh runner within about a minute; the dead item itself still waits for
   the leash. `S36`
 - `CLAUDINITE_TASKS_SUSPEND_ALL` makes every workflow exit at its first act,
   having fired nothing; a live drain re-reads the variable between items over
   the API, so suspension still parks the train at most one item later.
-  `S37`, `test/queue/executor-loop.test.mjs: a hold arriving mid-drain stops the next pick and leaves the queue untouched`
+  `S37`, `test/execute/loop.test.mjs: a hold arriving mid-drain stops the next pick and leaves the queue untouched`
 - Clearing the suspend variable needs no lever of its own: the next scheduler
   run's reclaim, readiness and drain jobs perform the entire self-heal
   unaided; a hand-dispatched **scheduler** run (not the bare executor) does it
@@ -190,16 +190,16 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - Invocation is one CCR API call per item, fired exactly once, ever: the
   executor never retries a timed-out or dropped call, so no two sessions can
   ever arrive at one item and there is nothing for a lease to arbitrate.
-  `test/queue/executor-loop.test.mjs: a hand-off swaps to task:status:running-agent and invokes exactly one session`
+  `test/execute/loop.test.mjs: a hand-off swaps to task:status:running-agent and invokes exactly one session`
 - A refused invocation — a status came back — converges the item to
   `task:status:needs-human-action` at once, naming the cause; no retry can
   fix a bad token, URL or routine. `S9a`,
-  `test/queue/executor-loop.test.mjs: a refused invocation converges to triage: no session exists and a retry cannot help`
+  `test/execute/loop.test.mjs: a refused invocation converges to triage: no session exists and a retry cannot help`
 - An unanswered invocation — a timeout or dropped connection — leaves the
   item `running-agent` with a comment that the outcome is unknown: a session
   that did start converges the item itself, and one that never did is left
   for the agent leash to bring to triage. `S10a`, `S10b`,
-  `test/queue/executor-loop.test.mjs: an unanswered invocation leaves the item with the agent and says the outcome is unknown`
+  `test/execute/loop.test.mjs: an unanswered invocation leaves the item with the agent and says the outcome is unknown`
 - The session does not claim, it checks: before touching anything it
   confirms in code that the item still carries `task:status:running-agent`
   and that its newest hand-off comment carries the nonce this fire named — a
@@ -217,43 +217,43 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   requests, never an instruction — `no_code_changes`, `fresh_pr`,
   `amend_existing_or_create_new_pr`, `supersede_existing_pr` — and the
   legacy two-word ceilings normalize to one of these at the door.
-  `test/queue/target.test.mjs: the legacy ceilings plan as the values they normalize to`
+  `test/execute/target.test.mjs: the legacy ceilings plan as the values they normalize to`
 - `no_code_changes` gets no branch and no pull request; `fresh_pr` gets a
   freshly minted branch under the task's own prefix and leaves the task's
   earlier pull requests alone.
-  `test/queue/target.test.mjs: no_code_changes gets no branch and no pull request`,
-  `test/queue/target.test.mjs: fresh_pr gets the minted branch and leaves the task's earlier pull requests alone`
+  `test/execute/target.test.mjs: no_code_changes gets no branch and no pull request`,
+  `test/execute/target.test.mjs: fresh_pr gets the minted branch and leaves the task's earlier pull requests alone`
 - `amend_existing_or_create_new_pr` targets the task's newest open pull
   request — found by branch prefix or by the `Claudinite-Task:` trailer on
   its head commit — while it has no conflicts with its base; a conflicted or
   unreadable incumbent gets a fresh branch instead of a guess.
-  `test/queue/target.test.mjs: amend_existing_or_create_new_pr amends the newest open pull request when it has no conflicts`,
-  `test/queue/target.test.mjs: amend falls back to a fresh branch on a conflicted incumbent, and on one whose mergeability could not be read`
+  `test/execute/target.test.mjs: amend_existing_or_create_new_pr amends the newest open pull request when it has no conflicts`,
+  `test/execute/target.test.mjs: amend falls back to a fresh branch on a conflicted incumbent, and on one whose mergeability could not be read`
 - `supersede_existing_pr` mints a fresh branch and closes every earlier open
   pull request of the task once its own exists; a green, already-mergeable
   incumbent is landed instead of re-cut, and that landing ends the occurrence
   on the spot.
-  `test/queue/target.test.mjs: supersede_existing_pr gets a fresh branch and names every open pull request of the task to close once its own exists`,
-  `test/queue/target.test.mjs: supersede lands a green incumbent instead of re-cutting it, and the occurrence ends`,
-  `test/queue/executor-loop.test.mjs: a landed incumbent ends the occurrence without running the work`,
-  `test/queue/executor-loop.test.mjs: a supersede run closes the pull requests it was told to, once its own exists`
+  `test/execute/target.test.mjs: supersede_existing_pr gets a fresh branch and names every open pull request of the task to close once its own exists`,
+  `test/execute/target.test.mjs: supersede lands a green incumbent instead of re-cutting it, and the occurrence ends`,
+  `test/execute/loop.test.mjs: a landed incumbent ends the occurrence without running the work`,
+  `test/execute/loop.test.mjs: a supersede run closes the pull requests it was told to, once its own exists`
 - A supersede run that delivered no pull request of its own leaves the
   incumbents exactly where they were.
-  `test/queue/executor-loop.test.mjs: a supersede run that delivered no pull request leaves the incumbents where they were`
+  `test/execute/loop.test.mjs: a supersede run that delivered no pull request leaves the incumbents where they were`
 - Code-work communicates with the agent only through the repository — commits
   and files — with one named exception: the identifiers of what this run
   created (a branch, a PR number), rendered into the item's own
   `### Delivered by code-work` section; if the item names no artifact, none
-  exists. `test/queue/executor-loop.test.mjs: the hand-off stamps the target on the item, where the agent reads it`
+  exists. `test/execute/loop.test.mjs: the hand-off stamps the target on the item, where the agent reads it`
 - A task's `automerge` ceiling and a marked issue's `Merge:` field are one
   policy vocabulary: `anything`, a `a;b;reject:c` diff-class list, or
   `if-narrow` — the same engine either compiles to.
-  `test/queue/request-mode.test.mjs: the Merge field is fenced by policy shape`,
-  `test/queue/request-mode.test.mjs: the Merge fence and normalizePolicy agree on what is a policy expression`
+  `test/schedule/request-mode.test.mjs: the Merge field is fenced by policy shape`,
+  `test/schedule/request-mode.test.mjs: the Merge fence and normalizePolicy agree on what is a policy expression`
 - A request's `Merge:` authorization is honored only when the issue's
   **author** holds push access, re-read and re-gated at every adoption so a
   stale value can never outrank a new ask.
-  `test/queue/request-mode.test.mjs: the body's Automerge: becomes the item's Merge field, and only for a gated author`
+  `test/schedule/request-mode.test.mjs: the body's Automerge: becomes the item's Merge field, and only for a gated author`
 
 ## Recover
 
@@ -310,7 +310,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - One label, `task:origin:ad-hoc`, applied to an ordinary issue, makes that
   issue the work item — no shadow `[claudinite-work]` issue is filed, and the
   whole status lifecycle plays out where the person is already looking.
-  `S44`, `test/queue/request-mode.test.mjs: S44 — the marked issue BECOMES the item, and any status holds the mark`
+  `S44`, `test/schedule/request-mode.test.mjs: S44 — the marked issue BECOMES the item, and any status holds the mark`
 - The scheduler run's fourth job, adopt, appends the machine block and the
   first status to every open issue wearing the mark with no status at all —
   that combination is the whole of the exactly-once adoption guard, and the
@@ -328,7 +328,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - Push access is read from the collaborators-permission API, never inferred
   from `author_association` alone, because `MEMBER`/`COLLABORATOR` are both
   broader than the push access the ask demands.
-  `test/queue/request-mode.test.mjs: S46 — the verdict is the PERMISSION, not the association (F30)`
+  `test/schedule/request-mode.test.mjs: S46 — the verdict is the PERMISSION, not the association (F30)`
 - A read failure that is not a definitive "gone" is not a verdict: it fails
   the run into `task:status:needs-human-failure` rather than stranding or
   silently eating the request. `S50`
@@ -338,7 +338,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - The precondition is handed this occurrence's own facts — its item, its
   `Request:` field — because a request's verdict is about the specific issue
   it names, not a fact any signal bundle could carry on its own.
-  `test/queue/request-mode.test.mjs: the precondition is handed THIS occurrence's own facts, not just the signals`
+  `test/schedule/request-mode.test.mjs: the precondition is handed THIS occurrence's own facts, not just the signals`
 - A request that leaves a pull request open parks at
   `task:status:needs-human-approval` — the in-review state itself, with
   nothing further to mirror; a refusal closes the issue with it; a break
@@ -351,21 +351,21 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   scheduler run's own job releases it — a blocker already closed at adoption
   is dropped rather than born and instantly readied, and an unreadable
   blocker delays rather than releases.
-  `test/queue/request-mode.test.mjs: a marked issue that names open blockers is adopted BLOCKED, and released when they close`,
-  `test/queue/request-mode.test.mjs: a marked issue with a future Not-before is adopted BLOCKED until that moment`,
-  `test/queue/request-mode.test.mjs: an unreadable blocker delays the request rather than releasing it`
+  `test/schedule/request-mode.test.mjs: a marked issue that names open blockers is adopted BLOCKED, and released when they close`,
+  `test/schedule/request-mode.test.mjs: a marked issue with a future Not-before is adopted BLOCKED until that moment`,
+  `test/schedule/request-mode.test.mjs: an unreadable blocker delays the request rather than releasing it`
 - A mark's body may widen the default implementer with `Task: <pack>/<task>`,
   author-gated like every other body parameter; an id the repo does not
   carry is not adopted at all — the mark simply waits.
-  `test/queue/request-mode.test.mjs: a marked issue may name WHICH task it asks for, gated like every other parameter`
+  `test/schedule/request-mode.test.mjs: a marked issue may name WHICH task it asks for, gated like every other parameter`
 - The model a request runs at rides the body's `Model:` field, honored only
   when the issue's **author** holds push access, re-read and re-gated at
   every adoption; an invalid value falls back to the task's default rather
   than failing. `S47`,
-  `test/queue/request-mode.test.mjs: S47 — the body's Model reaches the item, an unknown family falls back, and an ungated one is ignored`
+  `test/schedule/request-mode.test.mjs: S47 — the body's Model reaches the item, an unknown family falls back, and an ungated one is ignored`
 - A repo whose engine carries no request task adopts nothing — the marks
   simply wait for an engine that does.
-  `test/queue/request-mode.test.mjs: a repo whose engine has no request task adopts nothing — the marks simply wait`
+  `test/schedule/request-mode.test.mjs: a repo whose engine has no request task adopts nothing — the marks simply wait`
 
 ## Cost
 
@@ -375,7 +375,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - An executor run drains until nothing is pickable rather than settling one
   item per run, because a chain of one-item runs pays a whole invocation —
   checkout, setup, rounding — per item. `S34`,
-  `test/queue/executor-loop.test.mjs: a run drains every pickable item, one at a time`
+  `test/execute/loop.test.mjs: a run drains every pickable item, one at a time`
 - The scheduler's drain job dispatches only when the scheduler run's own
   parting look at the queue found something pickable, so an idle hour costs
   exactly the cron's one run.
@@ -397,22 +397,22 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - The operator hold is re-read between items over the API, since the
   workflow's env copy of the variable is delivered at run start only, so
   suspension parks a batched drain at most one item later. `S37`,
-  `test/queue/executor-loop.test.mjs: a run that drained the queue asks the hold once per settle, not once more`
+  `test/execute/loop.test.mjs: a run that drained the queue asks the hold once per settle, not once more`
 
 ## Contract
 
 - A work item is a GitHub issue titled `[claudinite-work] <pack>/<task>`,
   plus an optional free-form qualifier; the issue number is the whole
   identity — there is no slot id.
-  `test/queue/work-item.test.mjs: a work-item title round-trips, with and without a qualifier`
+  `test/items/work-item.test.mjs: a work-item title round-trips, with and without a qualifier`
 - The slot mechanism's `[claudinite-task]` titles are a disjoint family,
   invisible to the queue's own reads. `S29`,
-  `test/queue/work-item.test.mjs: the slot mechanism's titles are invisible here — the two families are disjoint (S29)`
+  `test/items/work-item.test.mjs: the slot mechanism's titles are invisible here — the two families are disjoint (S29)`
 - Every label the machinery writes is exactly one of three things: the
   item's single mutually-exclusive **status**, its lifelong **origin**, or
   the **urgent** flag — all in the `task:` namespace.
-  `test/queue/work-item.test.mjs: only a fault park holds the task's lane`,
-  `test/queue/work-item.test.mjs: every label the scheduler run and a convergence apply is one the queue ensures`
+  `test/items/work-item.test.mjs: only a fault park holds the task's lane`,
+  `test/items/work-item.test.mjs: every label the scheduler run and a convergence apply is one the queue ensures`
 - `task:origin:*` is applied once, at birth, and never removed — a closed
   issue keeps saying where its work came from — and it is the single
   authority on standing versus ad-hoc; the structural read (an unqualified
@@ -421,36 +421,36 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - A park whose kind cannot be decoded reads as `needs-human-failure` — every
   bare legacy park and every unknown newer kind word reads as a fault rather
   than as somebody's inbox the schedule carries on around.
-  `test/queue/work-item.test.mjs: a kind word maps to its label, and anything unrecognised to failure`
+  `test/items/work-item.test.mjs: a kind word maps to its label, and anything unrecognised to failure`
 - Every legacy label and field spelling decodes forever, in one pass, straight
   to its current canonical form — never chained through an intermediate
   spelling — because closed issues keep the labels they were written with.
   `S62`, `S62b`, `S63`,
-  `test/queue/work-item.test.mjs: outcomeOf maps every spelling, legacy and current, to the canonical word`,
-  `test/legacy-task-fields.test.mjs: legacy-task-fields: every retired field name is reported at its own line, with its replacement`
+  `test/items/work-item.test.mjs: outcomeOf maps every spelling, legacy and current, to the canonical word`,
+  `test/rules/legacy-task-fields.test.mjs: legacy-task-fields: every retired field name is reported at its own line, with its replacement`
 - A hand-created item, a forced mint, and a `--wake` all stamp `Woken:` into
   the item's machine block; any item that is not the scheduler's own
   unqualified planned item is treated as woken too.
-  `test/queue/work-item.test.mjs: Woken is stamped by the lever, replaced on a second wake, and read as the item's facts`
+  `test/items/work-item.test.mjs: Woken is stamped by the lever, replaced on a second wake, and read as the item's facts`
 - `Ends-when: #<n> closed` is stamped at most once, under the task path, by
   the converge that plans a park given a `--pr`.
-  `test/queue/work-item.test.mjs: withEndsWhen stamps a park's end condition once, under the task path`
+  `test/items/work-item.test.mjs: withEndsWhen stamps a park's end condition once, under the task path`
 - The target fields a run resolves (`Target-branch:`, `Target-pr:`,
   `Supersedes:`) land in a marked issue's own machine block, never in its
   prose, so the author-gate on the rest of the body is never crossed by the
   machinery's own writes.
-  `test/queue/work-item.test.mjs: the target fields land in a marked issue's machine block, never its prose`
+  `test/items/work-item.test.mjs: the target fields land in a marked issue's machine block, never its prose`
 - `preconditions` is the only gate a task declares; the retired
   `precondition`/`precondition_signals` function forms are rejected by name,
   not silently ignored, so an old declaration is told what replaced it.
-  `test/legacy-precondition-retired.test.mjs: a declaration carrying only the retired function is rejected by name`,
-  `test/legacy-precondition-retired.test.mjs: the executor seam never calls a precondition function`
+  `test/contract/legacy-precondition-retired.test.mjs: a declaration carrying only the retired function is rejected by name`,
+  `test/contract/legacy-precondition-retired.test.mjs: the executor seam never calls a precondition function`
 - The retired `frequency` field is read at exactly one door,
   `normalizeTaskDeclaration`: it becomes the cadence term it always meant
   first in the expression (`manual` becomes `trigger: request` and no term at
   all), and nothing downstream ever sees the field again.
-  `test/legacy-task-fields.test.mjs: legacy-task-fields: the retired frequency field is reported with the condition it reads as`,
-  `test/legacy-task-fields.test.mjs: legacy-task-fields: what it reports is exactly what the door normalizes away`
+  `test/rules/legacy-task-fields.test.mjs: legacy-task-fields: the retired frequency field is reported with the condition it reads as`,
+  `test/rules/legacy-task-fields.test.mjs: legacy-task-fields: what it reports is exactly what the door normalizes away`
 - Bootstrap's whole wiring is idempotent and durable-state-free: labels
   created if missing, the two vendored workflows, and `taskScheduler` config
   — no seed items, no ledger, no board; the first scheduler run after wiring
@@ -464,17 +464,17 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - A task with `required_secrets` unconfigured parks the affected item at
   `task:status:needs-human-action`, naming the missing secret, rather than
   failing silently or blocking every other task.
-  `test/queue/executor-loop.test.mjs: an unconfigured declared secret parks at action`,
-  `test/queue/executor-loop.test.mjs: a declared-but-unconfigured secret names itself on the item`
+  `test/execute/loop.test.mjs: an unconfigured declared secret parks at action`,
+  `test/execute/loop.test.mjs: a declared-but-unconfigured secret names itself on the item`
 - A work item whose task the repo no longer carries at HEAD closes obsolete —
   the same exit whether the task's whole pack was dropped or just renamed
   out from under an in-flight item.
-  `test/queue/executor-loop.test.mjs: an item whose task the repo no longer carries closes obsolete, like exit-14 did`,
-  `test/queue/executor-loop.test.mjs: a task deleted from the checkout mid-run closes obsolete rather than failing to a human`
+  `test/execute/loop.test.mjs: an item whose task the repo no longer carries closes obsolete, like exit-14 did`,
+  `test/execute/loop.test.mjs: a task deleted from the checkout mid-run closes obsolete rather than failing to a human`
 - A malformed item — a body that cannot be the machinery's own writing — goes
   to a human rather than being executed: possible forgery is exactly the case
   nothing may guess past.
-  `test/queue/executor-loop.test.mjs: a malformed item goes to a human — a forged body is never executed`
+  `test/execute/loop.test.mjs: a malformed item goes to a human — a forged body is never executed`
 
 ## Not yet verifiable
 

@@ -65,6 +65,6 @@ test('the canon home passes its own claudinite-lifecycle-declared check — base
 });
 
 test('the core-seed record never outruns the version this manifest ships', async () => {
-  const { default: record } = await import('../../../packs/claudinite-lifecycle/migrations/2026-08-14-core-seed/migration.mjs');
+  const { default: record } = await import('../migrations/2026-08-14-core-seed/migration.mjs');
   assert.ok(record.version <= corePack.version, `the record declares version ${record.version}; the pack ships ${corePack.version} — a record above its pack's version re-applies every cycle forever`);
 });

@@ -29,9 +29,9 @@ import {
   staleDispatchIssues, staleEscalationComment, staleClaimedDispatchIssues, staleClaimComment,
   rearmDispatchIssues, readyLabelOn, DISPATCH_PREFIX, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
   SCHEDULER_LABELS,
-} from '../../../claudinite-tasks/dispatch.mjs';
-import { makeGh } from '../../../claudinite-tasks/signals/gh.mjs';
-import { ensureLabels } from '../../../claudinite-tasks/github.mjs';
+} from '../../src/session/dispatch.mjs';
+import { makeGh } from '../../src/world/github.mjs';
+import { ensureLabels } from '../../src/world/github.mjs';
 
 const item = process.env.CLAUDINITE_ITEM || '';
 const log = (s) => console.log(`task-janitor${item ? ` [#${item}]` : ''}: ${s}`);
@@ -116,7 +116,7 @@ export async function main() {
   const { loadConfig } = await import('../../../../engine/checks/helpers/repo-context.mjs');
   const config = loadConfig(root);
   const { sweepQueue } = await import('./queue-sweep.mjs');
-  const { discoverTasks } = await import('../../../claudinite-tasks/discover.mjs');
+  const { discoverTasks } = await import('../../src/contract/discover.mjs');
   const { tasks } = await discoverTasks(root, config);
   await sweepQueue(makeGh(), repo, new Date(), { tasks, log });
   // The slot dispatch-issue sweep still runs BESIDE the queue's: the slot scheduler

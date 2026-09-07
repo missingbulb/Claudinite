@@ -104,7 +104,7 @@ instructions.
    save it as JSON — `issue_read`, method `get` — then:
 
    ```bash
-   node <here>/converge-item.mjs --issue <n> \
+   node <here>/../src/session/converge-item.mjs --issue <n> \
      --outcome done|approval|action|decision|failure \
      --summary '<what happened>' [--pr <n>] \
      --repo <owner/name> --item-file <path to that JSON>

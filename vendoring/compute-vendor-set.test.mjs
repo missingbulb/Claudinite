@@ -193,7 +193,7 @@ test('regression (fleet executor-broken): the REAL canon tree vendors the tasks 
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
   const { files, errors } = await computeVendorSet(['basics', 'claudinite-tasks']);
   assert.deepEqual(errors, []);
-  for (const doc of ['executor.md', 'deliver-pr.md', 'queue/instructions.md']) {
+  for (const doc of ['executor.md', 'src/deliver/deliver-pr.md', 'queue/instructions.md']) {
     assert.ok(files.includes(`packs/claudinite-tasks/${doc}`),
       `the live ${doc} must be in the vendor set — a member's routine reads it from its own mount`);
   }

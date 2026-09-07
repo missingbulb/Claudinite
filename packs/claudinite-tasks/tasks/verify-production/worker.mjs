@@ -15,7 +15,7 @@
 //              the item, and exit clean.
 
 import { pathToFileURL } from 'node:url';
-import { humanTextOf } from '../../queue/work-item.mjs';
+import { humanTextOf } from '../../src/items/work-item.mjs';
 import { parseVerificationSpec, runProbes, renderResult } from './probes.mjs';
 
 const FETCH_TIMEOUT_MS = 30_000;
@@ -87,7 +87,7 @@ export async function main() {
   const itemNumber = Number(process.env.CLAUDINITE_ITEM);
   if (!repo || !itemNumber) throw new Error('CLAUDINITE_REPO / CLAUDINITE_ITEM not set — not running under the executor');
   if (!process.env.GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is not set — the verification cannot read its item');
-  const { makeGh } = await import('../../signals/gh.mjs');
+  const { makeGh } = await import('../../src/world/github.mjs');
   const verdict = await runVerification({ gh: makeGh(), repo, itemNumber, fetchUrl: fetchOnce });
 
   if (verdict.outcome === 'invalid') {

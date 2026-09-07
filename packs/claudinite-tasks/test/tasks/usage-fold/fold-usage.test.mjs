@@ -11,10 +11,10 @@ import {
 } from '../../../tasks/usage-fold/fold-usage.mjs';
 import {
   USAGE_FIELDS, USAGE_VERSION, QUEUE_OUTCOMES, COUNTER_GROUPS, renderUsageFile,
-} from '../../../tasks/usage-fold/usage-format.mjs';
+} from '../../../src/items/usage-format.mjs';
 import {
   outcomeOf, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-} from '../../../../claudinite-tasks/queue/work-item.mjs';
+} from '../../../src/items/work-item.mjs';
 import { LEGACY_EXECUTOR_DOC } from '../../legacy-protocol.mjs';
 
 // A day row as `foldDays` builds an empty one: the capture-derived scalars zeroed and

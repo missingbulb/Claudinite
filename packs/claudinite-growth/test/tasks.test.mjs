@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import dedupJson from '../tasks/growth-dedup/task.json' with { type: 'json' };
 import logsPruneJson from '../tasks/logs-prune/task.json' with { type: 'json' };
 import { evaluatePrecondition, loadTaskTerms } from '../../claudinite-tasks/shared-code/preconditions.mjs';
-import { normalizeTaskDeclaration } from '../../claudinite-tasks/task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/src/contract/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const dedup = normalizeTaskDeclaration(dedupJson);
 const logsPrune = normalizeTaskDeclaration(logsPruneJson);
