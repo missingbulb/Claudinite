@@ -9,8 +9,8 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SUSPEND_ALL_VAR, isSuspended, liveSuspendReader, suspendedNotice } from '../../src/execute/suspend.mjs';
-import { HEARTBEAT_MS } from '../../src/execute/heartbeat.mjs';
+import { SUSPEND_ALL_VAR, isSuspended, liveSuspendReader, suspendedNotice } from '../../src/world/hold.mjs';
+import { HEARTBEAT_MS } from '../../src/items/heartbeat.mjs';
 import { EXECUTING_LEASH_MS } from '../../src/items/leases.mjs';
 
 const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../../..');

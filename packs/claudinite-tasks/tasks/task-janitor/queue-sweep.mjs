@@ -30,7 +30,7 @@ import {
   parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
 } from '../../src/items/work-item.mjs';
 import { listOpenWorkItems, listDoneWorkItems } from '../../src/items/read.mjs';
-import { lastProgressAt } from '../../src/execute/heartbeat.mjs';
+import { lastProgressAt } from '../../src/items/heartbeat.mjs';
 import { ensureLabels, addLabel, removeLabel, comment, listComments, readIssue, closeIssue } from '../../src/world/github.mjs';
 import { clearStatus } from '../../src/items/apply-status.mjs';
 import { getIssue } from '../../src/world/github.mjs';

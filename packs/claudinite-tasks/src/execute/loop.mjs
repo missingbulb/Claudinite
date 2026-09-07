@@ -17,8 +17,8 @@
 
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { isSuspended, liveSuspendReader, suspendedNotice, SUSPEND_ALL_VAR } from './suspend.mjs';
-import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from './heartbeat.mjs';
+import { isSuspended, liveSuspendReader, suspendedNotice, SUSPEND_ALL_VAR } from '../world/hold.mjs';
+import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from '../items/heartbeat.mjs';
 import { renderTaskExec } from '../items/run-record.mjs';
 import { evaluatePrecondition } from '../contract/precondition.mjs';
 import { isScheduledTask } from '../contract/task-contract.mjs';

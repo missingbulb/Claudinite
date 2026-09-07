@@ -9,8 +9,8 @@ import {
   SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW,
 } from '../../src/adopt/converge-workflows.mjs';
 import { hashedCron } from '../../src/adopt/hash-minute.mjs';
-import { VARS_BAG_ENV } from '../../src/execute/vars-bag.mjs';
-import { SUSPEND_ALL_VAR } from '../../src/execute/suspend.mjs';
+import { VARS_BAG_ENV } from '../../src/world/vars-bag.mjs';
+import { SUSPEND_ALL_VAR } from '../../src/world/hold.mjs';
 
 const mkRepo = () => mkdtempSync(join(tmpdir(), 'claudinite-workflows-'));
 const CANON_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');

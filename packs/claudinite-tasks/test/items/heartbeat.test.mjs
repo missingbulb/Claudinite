@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {
   HEARTBEAT_MARKER, heartbeatComment, lastLivenessAt, withHeartbeat,
   agentBeatComment, withProgress, lastProgressAt,
-} from '../../src/execute/heartbeat.mjs';
+} from '../../src/items/heartbeat.mjs';
 import { parseProgressLines, parseContextLines } from '../../src/items/work-item.mjs';
 import { planSchedulerRun } from '../../src/schedule/run.mjs';
 import { CLAIM_MARKER, EPISODE_MARKER } from '../../src/items/work-item.mjs';

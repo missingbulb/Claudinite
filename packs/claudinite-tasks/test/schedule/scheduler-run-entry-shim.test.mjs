@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SUSPEND_ALL_VAR, suspendedNotice } from '../../src/execute/suspend.mjs';
+import { SUSPEND_ALL_VAR, suspendedNotice } from '../../src/world/hold.mjs';
 
 const QUEUE = join(dirname(fileURLToPath(import.meta.url)), '../../queue');
 

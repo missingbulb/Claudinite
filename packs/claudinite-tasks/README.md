@@ -21,11 +21,11 @@ and `tasks-world-edges-live-in-world` checks are what hold the shape.
 |---|---|
 | `src/contract/` | what a task DECLARES and what its declaration means: the declaration's shape and defaults, the term vocabulary and the precondition seam every caller asks through, cadence and anchor arithmetic, the auto-merge policy engine, the commit trailer, task discovery, dormancy |
 | `src/items/` | the work item as DATA: the title grammar that is its identity, the outcome/status decode over its labels, lease state, the queue listings, the run record, the pick order over the open queue, the tracker issue |
-| `src/world/` | the only outward edges, each a named port — `github.mjs` (every REST path this pack calls, as a named operation), `actions.mjs` (the runner's environment), `sessions.mjs` (the routine fire that starts an agent), `git.mjs`, `processes.mjs`, `clock.mjs` |
+| `src/world/` | the only outward edges, each a named port — `github.mjs` (every REST path this pack calls, as a named operation), `actions.mjs` (the runner's environment) with `hold.mjs` and the three env bags beside it, `sessions.mjs` (the routine fire that starts an agent), `git.mjs`, `processes.mjs`, `clock.mjs` |
 | `src/signals/` | the collectors a precondition is handed, read through the ports and described in the contract's terms |
 | `src/schedule/` | the tick: which declared tasks have a window open, and the items filed for them |
 | `src/execute/` | the executor: claiming a ready item, running its code-work, handing it to an agent session |
-| `src/session/` | what runs INSIDE a work-item session: converging the item, verifying its outcome, the exec record, dispatch resolution |
+| `src/session/` | what runs INSIDE a work-item session: converging the item, verifying its outcome, the exec record, dispatch resolution, and the automerge verdict as a command |
 | `src/deliver/` | turning a run's output into a landed pull request or a regenerated file |
 | `src/recover/` | repair: the janitor's rules, workflow-failure escalation, the dead-run continuation |
 | `src/adopt/` | what an adopting repo receives: the workflows converged from the stubs, the per-repo cron minute |

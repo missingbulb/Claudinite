@@ -54,9 +54,9 @@ Whichever source it came from:
   `['under:product-wiki && doc-changes']`) — the task may
   land its PR only when the diff sits inside the policy, and the policy engine decides
   that, never your reading of the diff. Before step 2, run it from the repository root —
-  `src/contract/merge-policy.mjs` in the claudinite-tasks pack (probe
-  `.claudinite/shared/packs/claudinite-tasks/src/contract/merge-policy.mjs`, falling back to
-  `packs/claudinite-tasks/src/contract/merge-policy.mjs` in the canon):
+  `src/session/merge-policy-run.mjs` in the claudinite-tasks pack (probe
+  `.claudinite/shared/packs/claudinite-tasks/src/session/merge-policy-run.mjs`, falling back to
+  `packs/claudinite-tasks/src/session/merge-policy-run.mjs` in the canon):
 
   ```
   node <that file> --base <the PR's base branch> --policy '<the terms, ;-joined>'

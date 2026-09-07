@@ -20,7 +20,7 @@
 // like an idle queue.
 
 import { parseBag } from './env-bag.mjs';
-import { actionsEnv } from '../world/actions.mjs';
+import { actionsEnv } from './actions.mjs';
 
 export const VARS_BAG_ENV = 'CLAUDINITE_VARS';
 

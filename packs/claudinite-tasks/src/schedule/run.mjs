@@ -24,13 +24,13 @@
 // CLI shell below wires the GitHub reads, the signal-collection seam, and applies the ops.
 
 import { pathToFileURL } from 'node:url';
-import { isSuspended, suspendedNotice } from '../execute/suspend.mjs';
+import { isSuspended, suspendedNotice } from '../world/hold.mjs';
 import { EXECUTING_LEASH_MS } from '../items/leases.mjs';
 import { swapStatus } from '../items/apply-status.mjs';
 import { isReleasable } from './readiness.mjs';
 import { isQueueItem } from '../items/read.mjs';
 import { pickOrder } from '../items/pick-order.mjs';
-import { lastLivenessAt } from '../execute/heartbeat.mjs';
+import { lastLivenessAt } from '../items/heartbeat.mjs';
 import {
   WORK_PREFIX, BLOCKED, READY, TASK_OBSOLETE,
   NEEDS_HUMAN_DECISION, LIVE_STATUSES,

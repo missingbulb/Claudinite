@@ -19,8 +19,8 @@
 // drains on its own. The impatient path is dispatching the SCHEDULER workflow, not
 // the bare executor — the scheduler run is what re-derives the world.
 
-import { actionsEnv } from '../world/actions.mjs';
-import { readRepoVariable } from '../world/github.mjs';
+import { actionsEnv } from './actions.mjs';
+import { readRepoVariable } from './github.mjs';
 
 export const SUSPEND_ALL_VAR = 'CLAUDINITE_TASKS_SUSPEND_ALL';
 
