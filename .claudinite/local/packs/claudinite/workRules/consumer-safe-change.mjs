@@ -32,6 +32,7 @@ import { stripComments } from '../../../../../engine/checks/helpers/code-scannin
 //   pack-schema.mjs        the manifest vocabulary — #555's exact surface
 //   a rule's `severity`    advisory -> blocking turns a member red overnight
 //   either workflow stub   every member vendors it verbatim
+//   a removed export       a member's local pack imports the mount by name (#1848)
 //
 // It does NOT fire on ordinary pack or engine edits. A rule that cried wolf on
 // every canon commit would be turned off within a week, and then it would be
@@ -52,6 +53,65 @@ const MIGRATIONS = '<engine|packs/*>/migrations/<date>-<name>/';
 const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
 // The canon's own local packs — repo-only content, outside every vendor set.
 const LOCAL_PACKS = '.claudinite/local/packs';
+
+// The fourth surface (#1848). A member's own local packs import out of the mount —
+// `.claudinite/shared/engine/checks/helpers/findings.mjs` is how a local rule builds a
+// finding at all — so every name `engine/**` and `packs/**` export is a contract the
+// canon has never seen the other side of. The engine root vendors WHOLESALE, so a
+// dropped name does not degrade a member: the importing module throws at load, its
+// pack fails to load, and the converge's self-test refuses the whole tree.
+//
+// Neither rehearsal can see it. The canary's local pack imports nothing out of
+// `.claudinite/shared/` (a stated design property of its rules), and no fixture local
+// pack does either — so both converge green whatever this surface does. #1750 dropped
+// nine names from converge-wiring.mjs and left missingbulb/Shepherd#477 parked.
+//
+// A RE-EXPORT SHIM IS THE DISCHARGE, and it needs no mechanism of its own: a name
+// still exported is not a removal. #1750 already gave three of its nine names exactly
+// that. The other two answers stay available for a name that genuinely must go.
+//
+// Measured before widening, over the 60 most recent first-parent commits on main:
+// 4 commits would have fired (1 engine, 3 packs). `packs/**` is in because the surface
+// is structurally identical — Shepherd's fleet-issues-snapshot worker reaches four
+// modules under `shared/packs/`.
+const VENDORED_MODULE = /^(engine|packs)\//;
+
+// The names a module exports, by every form the corpus writes: a declaration
+// (`export const|let|var|function|async function|class NAME`) and an export list
+// (`export { a, b as c }`, where the exported name is what an importer must write).
+// `export default` is out: a default is imported by position, not by name.
+//
+// Comments are stripped first — a commented-out export is not a contract, and the
+// engine's own string-aware remover is what tells a `//` inside a string from one that
+// opens a comment.
+const EXPORT_DECL = /^\s*export\s+(?:async\s+)?(?:function\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)/gm;
+const EXPORT_LIST = /^\s*export\s*\{([^}]*)\}/gm;
+export function exportedNames(text) {
+  const names = new Set();
+  if (typeof text !== 'string') return names;
+  const src = stripComments(text);
+  for (const m of src.matchAll(EXPORT_DECL)) names.add(m[1]);
+  for (const m of src.matchAll(EXPORT_LIST)) {
+    for (const part of m[1].split(',')) {
+      const spec = part.trim();
+      if (!spec) continue;
+      const renamed = /\bas\s+([A-Za-z_$][\w$]*)$/.exec(spec);
+      names.add(renamed ? renamed[1] : spec.split(/\s+/)[0]);
+    }
+  }
+  return names;
+}
+
+// Present in the base, absent from the head. A head that cannot be read is the file
+// deleted — every name it exported is gone, which is the shape a whole-module removal
+// takes and the one a diff-line rule cannot see. A base that cannot be read is a file
+// this change ADDED, and an addition removes nothing.
+export function removedExports(file, head, base) {
+  if (!VENDORED_MODULE.test(file) || MIGRATION_RECORD.test(file)) return [];
+  if (typeof base !== 'string') return [];
+  const now = exportedNames(head);
+  return [...exportedNames(base)].filter((name) => !now.has(name));
+}
 
 // A comment is inert on every surface this rule watches: a member vendors the bytes
 // verbatim and nothing reads the prose in them, so rewriting one carries nobody
@@ -118,6 +178,17 @@ export function contractChanges(changed, read, readBase = () => null) {
     if (isBlockingRule(read(file)) && !isBlockingRule(readBase(file))) {
       out.push({ file, what: 'a rule that became blocking — a severity a member did not ask for turns it red overnight' });
     }
+    // One file, one reason: a module reported already — the schema, a stub, a rule
+    // that just became blocking — asks the author for the same record or fixture, and
+    // a second entry for it would only crowd the one this rule reports.
+    if (out.some((entry) => entry.file === file)) continue;
+    const gone = removedExports(file, read(file), readBase(file));
+    if (gone.length) {
+      out.push({
+        file,
+        what: `an export a member's local pack may import — ${gone.join(', ')} — that this change removes`,
+      });
+    }
   }
   return out;
 }
@@ -152,7 +223,8 @@ const rule = {
       what: `this change touches ${first.what}, but carries no migration record and no rehearsal fixture`,
       fix: `add a record under ${MIGRATIONS} that moves members across, OR a shape in ${FIXTURES} that proves a consumer `
         + 'still converges green — then say in the PR which one you chose and why. If the change is genuinely additive, '
-        + 'the fixture is the honest answer; if it renames or requires something, only a record will move the fleet.',
+        + 'the fixture is the honest answer; if it renames or requires something, only a record will move the fleet. '
+        + 'For a removed export, a re-export shim at the old name is the third and usually the right one.',
     })];
   },
 };

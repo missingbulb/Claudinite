@@ -15,7 +15,6 @@ reports it.
 | Reading a rule that arrived from Claudinite | high | correctness | prose: 43 words + checks (`shared-tree-edit-guard`, `shared-tree-immutable`, `claudinite-isolation`) |
 | Finding a mounted skill's real path | medium | complexity | prose: 81 words |
 | Wanting a pack's rules to apply here | high | correctness | prose: 47 words + check (`claudinite-lifecycle-declared`) |
-| Renaming or removing a pack's declaration | medium | correctness | prose: 44 words |
 | Adding a pack | medium | complexity | prose: 27 words |
 | Setting a project up on Claudinite | medium | complexity | prose: 15 words |
 | Deciding which pack owns a lesson | medium | complexity | prose: 59 words |
