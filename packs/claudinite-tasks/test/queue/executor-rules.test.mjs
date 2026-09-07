@@ -37,7 +37,7 @@ test('urgent first, always — whatever the draw says', () => {
 // pinned one order would pass on a comparator that never shuffles, so this one
 // asserts the property instead — every ready item reaches the head over enough
 // draws, which a deterministic order can never do.
-test('among the ready, the head varies across runs (PRINCIPLES.md)', () => {
+test('among the ready, the head varies across runs (§15.20)', () => {
   const items = ['a', 'b', 'c'].map((t, n) => it({ task: t, created_at: `2026-08-14T0${n + 1}:00:00Z` }));
   const heads = new Set();
   for (let n = 0; n < 200; n += 1) heads.add(pickOrder(items)[0].number);

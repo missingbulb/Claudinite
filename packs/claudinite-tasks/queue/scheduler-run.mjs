@@ -191,9 +191,9 @@ export async function planSchedulerRun({
   }
 
   // ---- job 2: ready whatever is due (any origin) --------------------------
-  // The only site that ever releases a blocked item (PRINCIPLES.md, reversed by
-  // PRINCIPLES.md / #1373): a converge writes only to the item it holds, so nothing
-  // else asks this question.
+  // The only site that ever releases a blocked item (docs/PRINCIPLES.md; #1373
+  // reversed an earlier attempt to release one at close instead): a converge
+  // writes only to the item it holds, so nothing else asks this question.
   for (const item of items) {
     if (closedByThisRun.has(item.number)) continue;
     if (isReleasable(item, { stateOf, nowMs })) ops.push({ kind: 'ready', issue: item.number });

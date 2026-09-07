@@ -18,7 +18,7 @@
 // work step/hand-off/converge as timed phases, heartbeat comments during the
 // work step so the leash measures executor death rather than work duration),
 // at-most-once invocation (one call per item, never retried — the
-// fired/refused/unanswered trichotomy of PRINCIPLES.md), readiness as the
+// fired/refused/unanswered trichotomy, docs/PRINCIPLES.md), readiness as the
 // scheduler run's alone (F1, reopened 2026-08-15, then reversed 2026-08-26 /
 // #1373), the janitor's stale-ready escalation, and the force lever (waking
 // where an item exists, minting where none does — both stamped `Woken`, which
@@ -607,8 +607,8 @@ export function makeSim({
   // the scheduler run's dedupe close is followed by that run's drain job —
   // so only a close with no run behind it (an agent session's) dispatches one.
   // What still makes something newly pickable after such a close is the
-  // `schedule_after` yield resolving (PRINCIPLES.md) — never a Blocked-by dependent, which
-  // a close no longer touches at all (PRINCIPLES.md, reversed by PRINCIPLES.md / #1373): that
+  // `schedule_after` yield resolving — never a Blocked-by dependent, which
+  // a close no longer touches at all (docs/PRINCIPLES.md; #1373 reversed an earlier attempt): that
   // release is the scheduler run's readiness job alone, on its own hourly pass.
   function close(it, outcome, { dispatchDrain = true } = {}) {
     it.state = 'closed';
@@ -697,8 +697,8 @@ export function makeSim({
     // The marked issue IS the work item. The exactly-once guard is the mark
     // with NO status: adoption writes the first status, and any status — live,
     // parked or terminal — blocks re-adoption until a person clears it, which
-    // makes clearing the status the ONE re-ask lever (PRINCIPLES.md's re-queue and PRINCIPLES.md's
-    // re-mark used to be two; the one-issue shape collapses them).
+    // makes clearing the status the ONE re-ask lever (docs/PRINCIPLES.md) — the
+    // old re-queue and re-mark levers used to be two; the one-issue shape collapses them.
     for (const req of requests.filter((r) => r.state === 'open'
         && r.labels.has(ORIGIN_AD_HOC) && statusOf(r) === null)) {
       const prior = issues.find((i) => i.request === req.number);
@@ -1047,8 +1047,8 @@ export function makeSim({
   }
 
   // One executor RUN — a workflow run in the real deployment — drains the
-  // queue until nothing is pickable (#1212, the owner reversing PRINCIPLES.md's
-  // one-item runs: Actions bills each job's minutes rounded UP, so a day's
+  // queue until nothing is pickable (#1212, the owner reversing one-item-per-run,
+  // docs/PRINCIPLES.md): Actions bills each job's minutes rounded UP, so a day's
   // cost is the RUN count, and a run that performs one item pays a whole
   // invocation — checkout, setup, rounding — per item). The run claims an
   // item, sees it through to its settle (close, hand-off, park), then picks

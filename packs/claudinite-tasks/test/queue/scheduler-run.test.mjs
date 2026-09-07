@@ -155,7 +155,7 @@ test('a duplicate live standing item is closed obsolete, oldest kept (F16)', asy
   assert.equal(kinds(ops, 'create').length, 0, 'the surviving standing item still suppresses the ask');
 });
 
-test('ad-hoc items neither suppress nor consume a scheduled occurrence (PRINCIPLES.md)', async () => {
+test('ad-hoc items neither suppress nor consume a scheduled occurrence (§3)', async () => {
   // Ad-hoc is STRUCTURAL (PRINCIPLES.md), so both of its shapes are asserted: a qualified
   // item for a scheduled task, and an unscheduled task's item. Neither is in the
   // daily family, so the task is asked and its occurrence filed.

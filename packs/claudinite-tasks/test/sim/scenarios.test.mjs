@@ -735,8 +735,8 @@ test('S33 fan-in waits for the scheduler run to ready it, not the closing side',
   assert.equal(fanIn.outcome, 'done');
 });
 
-// ---- S34 — the batched drain (#1212, the owner reversing PRINCIPLES.md's one-item
-// runs): Actions bills each job's minutes rounded up, so a day's cost is the
+// ---- S34 — the batched drain (#1212, the owner reversing one-item-per-run,
+// docs/PRINCIPLES.md): Actions bills each job's minutes rounded up, so a day's cost is the
 // RUN count — a busy morning with several tasks' work drains in the scheduler
 // run's own drain run, items settled serially in the SAME run, and what
 // caused each run is still on the record.

@@ -3,7 +3,7 @@
 // with their callers; these are here so the slot machinery and the work-item queue
 // share one implementation of each, rather than two that drift.
 //
-// LABEL WRITES ARE GRANULAR, ALWAYS (tasks-dispatch PRINCIPLES.md, RESEARCH PRINCIPLES.md): add
+// LABEL WRITES ARE GRANULAR, ALWAYS (docs/PRINCIPLES.md): add
 // and remove NAMED labels (POST/DELETE), never write the label SET (PUT). A
 // set-write replaces from a stale snapshot and clobbers concurrent transitions —
 // a bug class GitHub's own CLI shipped (cli/cli#4861) — and with a scheduler run and
@@ -59,7 +59,7 @@ export const comment = (gh, repo, number, body) =>
 
 // The ONE sanctioned edit to a comment, and the reason the arbitration record is
 // no longer strictly append-only: an executor striking its OWN claim on the way
-// out (tasks-dispatch PRINCIPLES.md). Only a claim's author ever edits it, so a
+// out (docs/PRINCIPLES.md). Only a claim's author ever edits it, so a
 // claim can be withdrawn but never forged earlier, and comment ids still give the
 // total order arbitration reads.
 export const editComment = (gh, repo, commentId, body) =>

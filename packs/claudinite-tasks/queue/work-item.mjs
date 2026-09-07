@@ -56,7 +56,7 @@ export const STATUS_LABELS = Object.freeze([
   ...LIVE_STATUSES, ...PARK_STATUSES, STATUS_DONE, STATUS_REJECTED,
 ]);
 
-// THE ORIGIN (PRINCIPLES.md, docs/PRINCIPLES.md) — who asked for this item, worn for the
+// THE ORIGIN (docs/PRINCIPLES.md) — who asked for this item, worn for the
 // item's whole life beside whatever status it holds. Read here; the writers arrive
 // with the write-side flip.
 export const ORIGIN_PREFIX = 'task:origin:';
@@ -288,7 +288,7 @@ export function outcomeOf(issue) {
   return hasLabel(issue, OUTCOME_DELIVERED) ? 'delivered' : null;
 }
 
-// --- the request vocabulary, retired (PRINCIPLES.md's legacy table, PRINCIPLES.md) --------
+// --- the request vocabulary, retired (docs/PRINCIPLES.md's legacy table) --------
 // @deprecated The three labels the SHADOW-ITEM request model used. The mark is
 // `task:origin:ad-hoc` now and the marked issue is the item itself, so nothing here
 // applies these — but they are read forever: `claude-task` is still accepted as a

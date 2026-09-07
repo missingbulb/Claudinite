@@ -102,8 +102,9 @@
 //                 workflow change spends an unbounded window with members running
 //                 the old copy against the new engine. This shape is what says that
 //                 window is harmless rather than assumed to be: it carries the
-//                 pre-PRINCIPLES.md workflow (whose drain RAN an executor inside the
-//                 scheduler's concurrency group, with task secrets stamped into it)
+//                 workflow shape from before the drain moved outside the scheduler's
+//                 concurrency group (docs/PRINCIPLES.md) — whose drain RAN an executor
+//                 inside that group, with task secrets stamped into it —
 //                 beside a current mount — and, since #877, one that still names
 //                 the retired `tick.mjs` entry point the rename left a shim at.
 //                 Its executor copy is the pre-#1119 one, triggering on the legacy

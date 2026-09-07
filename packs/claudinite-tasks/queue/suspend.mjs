@@ -1,4 +1,4 @@
-// THE OPERATOR HOLD (docs/PRINCIPLES.md, docs/PRINCIPLES.md). One repository
+// THE OPERATOR HOLD (docs/PRINCIPLES.md). One repository
 // Actions variable stops the whole queue: every Claudinite workflow stamps it
 // into its env, and every engine entry point checks it as its FIRST act — before
 // any read, like the dormancy gate beside it — and exits cleanly having fired

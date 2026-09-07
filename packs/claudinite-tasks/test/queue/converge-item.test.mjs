@@ -1,6 +1,6 @@
 // The terminal transition performed in code (#892). What this pins is the part a
 // session used to do from prose: five ordered side effects, in order, exactly
-// once, on the item held and nothing else (PRINCIPLES.md, reversed by PRINCIPLES.md / #1373)
+// once, on the item held and nothing else (docs/PRINCIPLES.md; #1373 reversed an earlier attempt)
 // — and the two ways it went wrong on live traffic (an item closed still wearing
 // `task:agent`, an item closed with no execution record at all) failing loudly
 // here instead.
@@ -278,7 +278,7 @@ test('a failure park leaves the request armed and says nothing to it', async () 
   assert.equal(repo.state.comments.some((c) => c.issue === 42), false);
 });
 
-// --- a converge writes only to the item it holds (PRINCIPLES.md, reversed by PRINCIPLES.md / #1373) ---
+// --- a converge writes only to the item it holds (docs/PRINCIPLES.md; #1373 reversed an earlier attempt) ---
 
 const blocked = (number, blockedBy, over = {}) => ({
   number, title: `[claudinite-work] p/b${number}`, state: 'open', labels: ['task:blocked'],

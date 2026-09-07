@@ -2,8 +2,8 @@
 // A work-item session ends by performing five ordered side effects — comment,
 // drop `task:agent`, add the outcome label, carry the execution record, close
 // with the right state reason — on the item it holds, and nothing else: a
-// converge never writes to another work item (PRINCIPLES.md, reversed by PRINCIPLES.md /
-// #1373). Releasing a dependent a close may have freed is the scheduler run's
+// converge never writes to another work item (docs/PRINCIPLES.md; #1373 reversed
+// an earlier attempt). Releasing a dependent a close may have freed is the scheduler run's
 // job alone. Asking a session to perform these effects from prose is asking for
 // it at the moment its context is fullest and the remaining work looks like
 // formality; both of the first two live agentic runs got part of it wrong,

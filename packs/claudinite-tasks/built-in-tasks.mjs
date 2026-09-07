@@ -1,4 +1,4 @@
-// The tasks the ENGINE itself ships (tasks-dispatch PRINCIPLES.md), as opposed to
+// The tasks the ENGINE itself ships (docs/PRINCIPLES.md), as opposed to
 // the ones a declared pack contributes. There is exactly one: `implement-request`,
 // the task a marked issue's work item names.
 //

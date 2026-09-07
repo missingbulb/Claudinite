@@ -57,7 +57,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   `test/queue/scheduler-run.test.mjs: a duplicate live standing item is closed obsolete, oldest kept (F16)`
 - Ad-hoc work — a qualified item, a mark, a chain link — never suppresses a
   scheduled occurrence and is never suppressed by one.
-  `test/queue/scheduler-run.test.mjs: ad-hoc items neither suppress nor consume a scheduled occurrence (PRINCIPLES.md)`
+  `test/queue/scheduler-run.test.mjs: ad-hoc items neither suppress nor consume a scheduled occurrence (§3)`
 - A pick-time no-go closes the item, `task:status:rejected`, with the reason
   in the comment — there is no roll to a later anchor. `S13'`, `S14'`, `S59`,
   `S12'`

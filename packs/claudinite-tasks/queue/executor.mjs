@@ -170,15 +170,15 @@ export function noGoPlan(item, task, schedule, now, reason) {
 
 const nowIso = () => new Date().toISOString();
 
-// ONE EXECUTOR RUN DRAINS THE QUEUE (docs/PRINCIPLES.md, docs/PRINCIPLES.md, reversing
-// PRINCIPLES.md's one-item run). Actions bills each job's runtime rounded UP to the next
+// ONE EXECUTOR RUN DRAINS THE QUEUE (docs/PRINCIPLES.md, reversing
+// one-item-per-run). Actions bills each job's runtime rounded UP to the next
 // minute, so a day's cost is the RUN count: a run that performed one item paid a
 // whole invocation — checkout, setup, rounding — per item. So a run claims an
 // item, sees it to its settle, then picks the next, and ends when nothing is
 // pickable. Items still settle ONE AT A TIME: this moved the run boundary, not
 // the occupancy model, and capacity is still executor width.
 //
-// What still starts a run is the enumerable list of PRINCIPLES.md, each cause on the
+// What still starts a run is the enumerable list docs/PRINCIPLES.md names, each cause on the
 // record: the scheduler run's drain job (dispatched only when that run leaves
 // something pickable), a label event, an agent session's close-time drain, and
 // the workflow's failure-continuation job when a run dies mid-drain. Self-
@@ -701,8 +701,8 @@ async function converge(api, gh, repo, item, from, park, claim, body, status = '
   await swapStatus(api, gh, repo, item, from, park);
 }
 
-// A close writes only to the item it holds (PRINCIPLES.md, reversed by PRINCIPLES.md /
-// #1373): a dependent this close may make due is released solely by the
+// A close writes only to the item it holds (docs/PRINCIPLES.md; #1373 reversed
+// an earlier attempt): a dependent this close may make due is released solely by the
 // scheduler run's own readiness job, on its next hourly pass, never here.
 async function close(api, gh, repo, item, from, outcome, stateReason, body, status) {
   await api.comment(gh, repo, item.number, body + recordFor(item, status));

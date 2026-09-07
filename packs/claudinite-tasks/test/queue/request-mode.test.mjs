@@ -1,4 +1,4 @@
-// The ad-hoc request mode (tasks-dispatch PRINCIPLES.md), against the real modules.
+// The ad-hoc request mode (docs/PRINCIPLES.md), against the real modules.
 // The simulator plays S44–S51 over a model of the design; these assert the same
 // properties of the code that ships — adoption's label mechanics in `planSchedulerRun`, the
 // read in the `request` collector, the verdict in the built-in task's precondition,
@@ -459,7 +459,7 @@ test('the built-in task id and the declaration it names agree', () => {
   assert.equal(`engine/${requestTask.id}`, REQUEST_TASK_ID);
 });
 
-// --- PRINCIPLES.md: a deferred request — blocked, chained, and its merge authorization --
+// --- a deferred request (docs/PRINCIPLES.md) — blocked, chained, and its merge authorization --
 
 test('a marked issue that names open blockers is adopted BLOCKED, and released when they close', async () => {
   const request = marked(500, [ORIGIN_AD_HOC], 'Do the rename after the current work.\n\nBlocked-by: #480, #481\n');

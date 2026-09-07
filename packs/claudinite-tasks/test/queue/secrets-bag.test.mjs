@@ -35,7 +35,7 @@ test('an unknown name is undefined under either shape', () => {
   assert.equal(secretValue('NOPE', {}), undefined);
 });
 
-// The tightening PRINCIPLES.md always claimed: a task sees what it declared, and the
+// The secrets tightening docs/PRINCIPLES.md claims: a task sees what it declared, and the
 // other secrets this job happens to carry are not its business.
 test('secretsFor selects only the declared names', () => {
   const env = bagEnv({ A: '1', B: '2', C: '3' });

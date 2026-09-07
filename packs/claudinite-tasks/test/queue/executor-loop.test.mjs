@@ -588,7 +588,7 @@ test('an executor that loses the lease leaves that item to its winner and drains
 
 // --- one run drains the queue (docs/PRINCIPLES.md, S34/S65) -------------------
 //
-// The reversal of PRINCIPLES.md, and the reason is the bill: Actions rounds each job's
+// The reversal of one-item-per-run (docs/PRINCIPLES.md), and the reason is the bill: Actions rounds each job's
 // minutes up, so a run per item bought a whole invocation — checkout, setup,
 // rounding — for each. A run now settles what is pickable, one item at a time.
 
@@ -813,7 +813,7 @@ test('an approval park writes no record at all', async () => {
   assert.doesNotMatch(repo.find(1).comments.at(-1).body, /claudinite-task-exec/);
 });
 
-// A close writes only to the item it holds (PRINCIPLES.md, reversed by PRINCIPLES.md / #1373):
+// A close writes only to the item it holds (docs/PRINCIPLES.md; #1373 reversed an earlier attempt):
 // releasing a dependent is the scheduler run's readiness job alone, never a
 // close's.
 test('an executor close leaves the dependent it was holding still blocked', async () => {

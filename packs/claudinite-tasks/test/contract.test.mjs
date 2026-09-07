@@ -132,7 +132,7 @@ test('validateTaskDeclaration validates code_work + its required timeout and con
   );
 });
 
-test('validateTaskDeclaration accepts code_work_required_secrets as a plain list of names (PRINCIPLES.md)', () => {
+test('validateTaskDeclaration accepts code_work_required_secrets as a plain list of names (DESIGN §9)', () => {
   // Declarative, not a permission list: the only rule is "a list of names". Where
   // it is declared, and whether the repo has them, are deliberately NOT its business.
   assert.deepEqual(validateTaskDeclaration({ ...validTask, code_work_required_secrets: ['SOME_API_KEY'] }), []);

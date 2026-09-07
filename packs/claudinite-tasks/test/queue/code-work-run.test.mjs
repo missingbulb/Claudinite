@@ -58,7 +58,7 @@ test('a declared secret that is unset is named; a set-but-empty one is the repo\
 
 // #1301. Before the bag, the child inherited the executor's whole environment, so
 // every code-work task saw every secret the workflow stamped though only a few
-// declared one. The selection is what makes PRINCIPLES.md true rather than aspirational.
+// declared one. The selection is what makes that claim (docs/PRINCIPLES.md) true rather than aspirational.
 test('code-work is handed the secrets it declared, and none of the others', async () => {
   const { codeWorkRunner } = await import('../../queue/code-work-run.mjs');
   const { SECRETS_BAG_ENV } = await import('../../queue/secrets-bag.mjs');

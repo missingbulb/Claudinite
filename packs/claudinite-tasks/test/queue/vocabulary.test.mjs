@@ -1,4 +1,4 @@
-// THE LABEL VOCABULARY'S DECODE (tasks-dispatch PRINCIPLES.md; the migration of #1119).
+// THE LABEL VOCABULARY'S DECODE (docs/PRINCIPLES.md; the migration of #1119).
 // Labels are stored data: an open item wears whatever the engine that filed it
 // wrote, and a member converges on its own schedule. So every reader decodes, and
 // what these tests pin is that ONE pass maps every spelling ever written straight

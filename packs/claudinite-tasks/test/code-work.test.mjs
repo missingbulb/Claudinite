@@ -140,7 +140,7 @@ test('the request signal round-trips: written → requested, cleared → not (cl
 });
 
 // --- the request PAYLOAD (#664) ---
-// The PRINCIPLES.md exception: identity of what the run created, and the NAME of the condition
+// The one named exception (docs/PRINCIPLES.md): identity of what the run created, and the NAME of the condition
 // that woke the agent. Every key is optional, and a key the worker did not write must
 // read back as absent rather than as something invented.
 

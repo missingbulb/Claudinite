@@ -22,7 +22,7 @@
 //      of the above can answer — commits, lines and releases;
 //   6. fold: hour rows over the last three days, day rows recomputed from scratch,
 //      appended rows past their watermarks, week rows advanced past `foldedThrough`
-//      (skill-usage-metrics PRINCIPLES.md);
+//      (skill-usage-metrics DESIGN §5);
 //   7. deliver the regenerated `.claudinite/local/usage.GENERATED.json` on a PR
 //      that lands itself where this repo's delivery settings allow (the shared
 //      landing helper owns those nuances — packs/claudinite-tasks/land-pr.mjs) — and

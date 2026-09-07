@@ -1,5 +1,5 @@
-// THE TARGET — which pull request a run works on (tasks-dispatch PRINCIPLES.md,
-// docs/PRINCIPLES.md). The executor resolves it once, after the precondition's go and
+// THE TARGET — which pull request a run works on (docs/PRINCIPLES.md). The
+// executor resolves it once, after the precondition's go and
 // before code-work, and hands it to both phases; neither phase discovers, chooses
 // or disposes of a pull request on its own. What this pins is the planner's matrix
 // over the four outcomes, how a task's open pull requests are recognised, and the
