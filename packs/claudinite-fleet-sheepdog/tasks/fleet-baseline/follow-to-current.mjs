@@ -30,7 +30,7 @@
 // words rather than letting "current" imply more than it checked.
 
 import { SCHEDULER } from '../../fleet-api.mjs';
-import { canonVersions, classifyFreshness, probeMount, FRESH } from '../fleet-roster/drift-issues.mjs';
+import { canonVersions, classifyFreshness, probeMount, FRESH } from '../fleet-roster/freshness.mjs';
 
 export { canonVersions };
 

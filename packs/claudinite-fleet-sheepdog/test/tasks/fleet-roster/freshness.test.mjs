@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  classifyFreshness, convergeDrift, probeMount, canonVersions, renderFreshnessSummary, FRESH,
-} from '../../../tasks/fleet-roster/drift-issues.mjs';
+  classifyFreshness, probeMount, canonVersions, renderFreshnessSummary, FRESH,
+} from '../../../tasks/fleet-roster/freshness.mjs';
 
 // The freshness question's whole judgement is `classifyFreshness` — pure, so every
 // branch is exercised here without a network. The precedence between states is the
@@ -149,125 +149,6 @@ test('probeMount: a member with no versions is never compared against canon', as
   assert.equal(seen.length, 1, 'there is nothing to measure, so nothing but the scheduler is read');
 });
 
-// --- convergence --------------------------------------------------------------
-
-// A fake gh that records writes. Only the calls convergeDrift makes are modelled.
-function fakeGh(issues) {
-  const calls = [];
-  return {
-    calls,
-    gh: async (path, { method = 'GET', body } = {}) => {
-      if (method === 'GET') return { status: 200, json: issues };
-      calls.push({ path, method, body });
-      if (path.endsWith('/issues')) return { status: 201, json: { number: 99 } };
-      return { status: 200, json: {} };
-    },
-  };
-}
-const issue = (n, fullName, state, bodyState) => ({
-  number: n, state, title: `Claudinite mount has fallen behind on ${fullName}`,
-  body: bodyState ? `<!-- fleet-freshness: ${bodyState} -->\nbody` : 'body',
-  closed_at: '2026-07-01T00:00:00Z',
-});
-const verdict = (fullName, state) => ({ fullName, state, detail: 'because' });
-const empty = { unhealthy: [], healthySet: new Set(), goneSet: new Set() };
-
-test('convergeDrift: the body marker still spells the retired task name', async () => {
-  // Every drift issue open in the enforcer right now carries `fleet-freshness` in its
-  // marker. Renaming it to match the merged task would read all of them as
-  // `unrecorded` and comment a spurious verdict change on the first run after the
-  // merge — so the marker is frozen, and this is the test that keeps it frozen.
-  const { gh, calls } = fakeGh([]);
-  await convergeDrift(gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] });
-  assert.match(calls[0].body.body, /<!-- fleet-freshness: behind -->/);
-
-  const migrated = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
-  assert.deepEqual(await convergeDrift(migrated.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] }), [],
-    'an issue written by the old fleet-freshness task is read, not re-opened as unrecorded');
-});
-
-test('convergeDrift: opens one issue per newly-unhealthy member', async () => {
-  const { gh, calls } = fakeGh([]);
-  const actions = await convergeDrift(gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] });
-  assert.deepEqual(actions, ['opened #99 (o/a: behind)']);
-  assert.equal(calls[0].body.labels[0], 'fleet-drift');
-});
-
-test('convergeDrift: an unchanged verdict is silent; a changed one updates and comments once', async () => {
-  // The silence is what lets the merged task carry this question daily rather than
-  // weekly: a fleet slow to heal would otherwise get an identical note every morning.
-  const same = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
-  assert.deepEqual(await convergeDrift(same.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] }), []);
-  assert.deepEqual(same.calls, [], 'a daily sweep must not re-comment the same story');
-
-  const moved = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
-  const actions = await convergeDrift(moved.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'no-scheduler')] });
-  assert.deepEqual(actions, ['updated #7 (o/a: behind → no-scheduler)']);
-  assert.equal(moved.calls.filter((c) => c.path.endsWith('/comments')).length, 1);
-  assert.match(moved.calls.find((c) => !c.path.endsWith('/comments')).body.body, /no-scheduler/);
-});
-
-test('convergeDrift: closes on recovery and on leaving the fleet, with distinct reasons', async () => {
-  const well = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
-  assert.deepEqual(await convergeDrift(well.gh, 'o/home', { ...empty, healthySet: new Set(['o/a']) }),
-    ['closed #7 (o/a: is up to date with canon again)']);
-  assert.equal(well.calls.at(-1).body.state_reason, 'completed');
-
-  const left = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
-  await convergeDrift(left.gh, 'o/home', { ...empty, goneSet: new Set(['o/a']) });
-  assert.equal(left.calls.at(-1).body.state_reason, 'not_planned');
-});
-
-test('convergeDrift: a dormant member behind canon keeps its drift issue open', async () => {
-  // Dormancy stops the member's scheduler, not the measurement. Its mount is behind,
-  // nothing there will converge it, and closing the issue would retire the only record
-  // of that — the owner's call is whether to wake the repo, not the sweep's to forget it.
-  const { gh, calls } = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
-  assert.deepEqual(
-    await convergeDrift(gh, 'o/home', { ...empty, unhealthy: [{ ...verdict('o/a', 'behind'), dormant: true }] }),
-    [], 'same story as yesterday — the issue stands and nothing is said',
-  );
-  assert.deepEqual(calls, []);
-});
-
-test('convergeDrift: a dormant member that reaches canon versions closes completed', async () => {
-  // The one road back that does not need a person: a deliberate baseline landed on it.
-  const { gh, calls } = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
-  assert.deepEqual(await convergeDrift(gh, 'o/home', { ...empty, healthySet: new Set(['o/a']) }),
-    ['closed #7 (o/a: is up to date with canon again)']);
-  assert.equal(calls.at(-1).body.state_reason, 'completed');
-});
-
-test('a dormant member\'s drift issue says the gap will not close on its own', async () => {
-  // The standing fix text all reads "something that should be running is not". On a
-  // member whose scheduler is stopped on purpose, following it is a wasted hour.
-  const { gh, calls } = fakeGh([]);
-  await convergeDrift(gh, 'o/home', { ...empty, unhealthy: [{ ...verdict('o/a', 'behind'), dormant: true }] });
-  assert.match(calls.at(-1).body.body, /dormant/i);
-  assert.match(calls.at(-1).body.body, /will converge this on its own/);
-
-  const awake = fakeGh([]);
-  await convergeDrift(awake.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] });
-  assert.doesNotMatch(awake.calls.at(-1).body.body, /This member is dormant/);
-});
-
-test('convergeDrift: an UNKNOWN member holds its issue open — absence of a verdict is not recovery', async () => {
-  // o/a is in neither unhealthy, healthySet nor goneSet: its probe errored this run.
-  const { gh, calls } = fakeGh([issue(7, 'o/a', 'open', 'behind')]);
-  assert.deepEqual(await convergeDrift(gh, 'o/home', empty), []);
-  assert.deepEqual(calls, []);
-});
-
-test('convergeDrift: reopens a regression, but honours a deliberate not-planned close', async () => {
-  const back = fakeGh([{ ...issue(7, 'o/a', 'closed', 'behind'), state_reason: 'completed' }]);
-  assert.deepEqual(await convergeDrift(back.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] }),
-    ['reopened #7 (o/a: behind)']);
-
-  const declined = fakeGh([{ ...issue(7, 'o/a', 'closed', 'behind'), state_reason: 'not_planned' }]);
-  assert.deepEqual(await convergeDrift(declined.gh, 'o/home', { ...empty, unhealthy: [verdict('o/a', 'behind')] }), []);
-  assert.deepEqual(declined.calls, []);
-});
-
 // --- the run summary ----------------------------------------------------------
 // The freshness section is a FULL-fleet roster: fresh members are named with how
 // fresh, out-of-scope repos with why, and the two repos it never measures (the
@@ -284,7 +165,6 @@ const summaryInput = {
   dormant: ['o/asleep'],
   outOfScope: ['o/attic (archived)', 'o/naked (uncovered — the adoption half\'s subject)', 'o/left-out (excluded)'],
   unknown: ['o/flaky — probe returned 500'],
-  actions: [],
 };
 
 test('freshness summary: every repo appears by name, whatever its state', () => {
@@ -314,4 +194,41 @@ test('freshness summary: empty states say none rather than vanishing', () => {
   const out = renderFreshnessSummary({ ...summaryInput, fresh: [], unhealthy: [] });
   assert.match(out, /\*\*Fresh:\*\* none/);
   assert.match(out, /\*\*Every covered member is up to date 🎉\*\*/);
+});
+
+// --- the freshness question answers on the report, not in an issue ---------------
+// The dashboard's Drift tile reads each member's declaration against canon, the same
+// source this module measures, and recomputes on load — so a per-member issue family
+// was a second surface for one question, and a staler one: it is only ever as current
+// as the last daily sweep (#1854). What has to survive removing it is the REPORT: drop
+// the issues and lose the behind list too, and the sweep can no longer say what it
+// found.
+
+test('freshness summary: a behind member is named on the report, with no issue to chase', () => {
+  const out = renderFreshnessSummary(summaryInput);
+  assert.match(out, /\*\*Behind:\*\*/);
+  assert.match(out, /`o\/late` — \*\*behind\*\*: engine v3 → v4/);
+  assert.doesNotMatch(out, /drift issue/i, 'the report must not send the reader to an issue that is no longer filed');
+  assert.doesNotMatch(out, /Issue actions/, 'freshness files no issues, so it has no issue actions to report');
+});
+
+// The prognosis #1851 put in a dormant member's issue body has to land somewhere now
+// that there is no body: without it a reader follows the `behind` remedy into a repo
+// that is behaving exactly as its own declaration asks.
+test('freshness summary: a dormant member behind canon is marked as one that will not self-heal', () => {
+  const out = renderFreshnessSummary({
+    ...summaryInput,
+    unhealthy: [{ fullName: 'o/late', state: 'behind', detail: 'engine v3 → v4', dormant: true }],
+  });
+  assert.match(out, /`o\/late` — \*\*behind\*\*: engine v3 → v4 — dormant/);
+  assert.doesNotMatch(renderFreshnessSummary(summaryInput), /`o\/late`.*dormant/,
+    'an awake member carries no such note');
+});
+
+test('the freshness module offers no way to file an issue', async () => {
+  const mod = await import('../../../tasks/fleet-roster/freshness.mjs');
+  for (const name of Object.keys(mod)) {
+    assert.doesNotMatch(name, /converge|Issue|LABEL/,
+      `freshness answers on the report only, so it exports no issue machinery — found ${name}`);
+  }
 });

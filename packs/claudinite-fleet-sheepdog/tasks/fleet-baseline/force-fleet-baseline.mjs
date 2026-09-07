@@ -45,7 +45,7 @@ import {
 } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 import { missingFleetTokenError } from '../../fleet-token.mjs';
-import { classifyFreshness, probeMount, FRESH } from '../fleet-roster/drift-issues.mjs';
+import { classifyFreshness, probeMount, FRESH } from '../fleet-roster/freshness.mjs';
 import {
   canonVersions, followToCurrent, isSuccess,
   ALREADY_CURRENT, CONVERGED, NEVER_STARTED, DID_NOT_CONVERGE, UNKNOWN,
