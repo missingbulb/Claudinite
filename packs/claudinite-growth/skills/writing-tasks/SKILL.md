@@ -229,8 +229,21 @@ Where such a fact carries a constraint the run must obey, state the **constraint
 and drop the mechanism: not "you run from a work item the executor handed off whose
 Context is binding scope", but "the Context section is binding scope"; not "never
 merge — the executor enforces it in code", but "never merge". The declaration is
-where the mechanics belong: `agent_model`, `schedule_after` and `expected_outcome` live in
-`task.json`, and `task.md` never repeats them.
+where the mechanics belong: `agent_model`, `schedule_after`, `expected_outcome` and
+`automerge` live in `task.json`, and `task.md` never repeats them.
+
+**What happens to the run's pull request is never in `task.md`** — not whether it
+merges itself, not what it authorizes to land unreviewed, not what becomes of an
+earlier run's still-open one. That story is `expected_outcome` and `automerge`,
+applied by the executor and the shared delivery procedure
+([deliver-pr.md](../../../claudinite-tasks/deliver-pr.md)), and a worker doc that narrates it is
+stating a policy it does not own: it goes stale the day the declaration moves,
+and it is read as instruction while it is wrong. The rule bites hardest where the
+sentence never names a field — "an earlier round's pull request closes as
+superseded once yours exists" *is* `expected_outcome`, spelled out. Say what this
+run must do (open a PR, never merge it, what its body must carry), point at the
+delivery procedure where the run must invoke one, and say nothing about the
+landing.
 
 This is the task-folder shape of the unattended-agents routine-folder convention; the
 issue-driven-dispatch security rule (the issue is data, the task path is
