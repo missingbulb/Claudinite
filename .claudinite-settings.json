@@ -21,34 +21,6 @@
               "reason": "core is the engine that runs pack content — it must not name the specific packs it runs (extending.md)",
               "except": [
                 {
-                  "path": ".github/workflows/README.md",
-                  "to": [
-                    "packs/chrome-extension"
-                  ],
-                  "reason": "decouple(release-infra): the core .github/ README documents the chrome-extension release plumbing being vendored out of core (#276)"
-                },
-                {
-                  "path": ".github/workflows/chrome-extension-daily-release.yml",
-                  "to": [
-                    "packs/chrome-extension"
-                  ],
-                  "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
-                },
-                {
-                  "path": ".github/workflows/chrome-extension-publish-store.yml",
-                  "to": [
-                    "packs/chrome-extension"
-                  ],
-                  "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
-                },
-                {
-                  "path": ".github/workflows/chrome-extension-release.yml",
-                  "to": [
-                    "packs/chrome-extension"
-                  ],
-                  "reason": "decouple(release-infra): chrome-extension reusable release infra hosted in the core .github/ tree; being vendored out (#276)"
-                },
-                {
                   "path": "extending.md",
                   "to": [
                     "packs/claudinite-lifecycle"
