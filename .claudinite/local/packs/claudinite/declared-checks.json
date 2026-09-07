@@ -120,13 +120,19 @@
     "severity": "advisory",
     "scope": "action",
     "failureMessage": "a padded sleep waits on nothing nameable; a guard that would not stand as the whole test is sleeping and calling it polling",
+    "fix": "name the condition awaited — a run's status, a file's arrival, a deadline — and wait on that",
     "guardToolCalls": [
       {
         "tool": "Bash",
         "inputField": "command",
         "match": "/(^|[;&|]\\s*)sleep\\s+\\d+\\s*($|[;&|])/",
-        "what": "a bare \"{match}\"",
-        "fix": "name the condition awaited — a run's status, a file's arrival, a deadline — and wait on that"
+        "what": "a bare \"{match}\""
+      },
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/\\bfor\\b[^;\\n]*;\\s*do\\s+sleep\\s+\\d+\\s*;\\s*done\\b/",
+        "what": "a counted loop with nothing but a sleep in its body: \"{match}\""
       }
     ]
   },

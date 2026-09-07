@@ -36,6 +36,12 @@ test('the git guards: pull, merge of main, GitHub through the shell', () => {
 
 test('the waiting and suite guards', () => {
   assert.deepEqual(judge('bare-sleep-wait', ['sleep 30', 'ls; sleep 5', 'until test -f out; do sleep 1; done']), ['a bare "sleep 30"', 'a bare "; sleep 5"']);
+  // A fixed-count loop around a bare sleep is the same wait spelled to dodge the
+  // regex above — bounded polling (until/while) must stay clean.
+  assert.deepEqual(judge('bare-sleep-wait', [
+    'for i in 1..3; do sleep 20; done; echo waited',
+    'while ! curl -sf http://x; do sleep 5; done',
+  ]), ['a counted loop with nothing but a sleep in its body: "for i in 1..3; do sleep 20; done"']);
   assert.deepEqual(judge('test-suite-command-form', [
     'node --test engine-tests/*.test.mjs',
     'node --test',

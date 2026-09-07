@@ -80,6 +80,10 @@ Below are rules on how to work on this repo.
   scope the question to the boundary of the vague noun itself, not the consequences of one reading
   of it.
 
+- **Writing an `AskUserQuestion`** — phrase it and its options in the requirement's own plain
+  terms, not internal jargon, and give an axis the owner treats as independent (e.g. whether to
+  fix vs. which PR) its own option rather than folding it into another. (79)
+
 - **Being asked to generalise something, or to review it** — land the conversions or action points
   it unlocks in the same change. A capability ships with its first caller, an analysis with its
   first recommendation applied.
@@ -126,6 +130,10 @@ Below are rules on how to work on this repo.
   inside a worktree-isolated agent** — drop straight to the plain, literal, unsubstituted form.
   The guard reads syntax, not intent, so a loop, a heredoc, or `$(...)` around the same call
   keeps failing exactly the same way. (73)
+
+- **Calling `EnterWorktree` in an unattended queue session** — nobody is present to approve it,
+  so it is denied after about a minute; go straight to `git worktree add`/`git checkout -b`
+  instead. (78)
 
 - **Asserting why a system behaved a certain way** (a park correctly closed, a routing mechanism's
   logic) — read the primary evidence, the issue's own body/comments or the enforcing source line,

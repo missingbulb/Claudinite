@@ -256,3 +256,27 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   decision only survived in the corpus. Retire the rule if a terminal ever gains a state a person
   is expected to answer on the issue itself.
 
+- **(RULES-78)** Growth-extract over a captured session, issue #1672, 2026-09-06 (#1863):
+  `EnterWorktree` blocked ~68.3s inside a worktree-isolated agent before returning "Denied by
+  user," which forced a manual `git worktree`/`git checkout -b` fallback — a wall every
+  unattended session hits, since nobody is present to answer the confirmation it waits on.
+  Retire the rule if `EnterWorktree` stops requiring interactive confirmation, or an unattended
+  session gains a way to answer it.
+
+- **(RULES-79)** Growth-extract over two independent captured sessions, 2026-09-06 (#1863):
+  issue #1736's `AskUserQuestion` offered fix-in-this-PR / report-only / fix-plus-clear-#449 and
+  missed the axis the owner actually wanted — *"different PR. I don't want to merge the triage
+  summary"* — a 168s round-trip that would have shipped the wrong PR shape unanswered; issue
+  #1831's question was phrased in internal jargon ("sourcing the expectation from every pack's
+  tasks... should the repo's own endpoint tokenSecret names still be part of it?") and the owner
+  had to restate the concrete requirement in plain terms before it could be answered. Retire the
+  rule if a future session finds it already phrasing questions this way as a matter of course.
+
+- **(check:bare-sleep-wait)** Growth-extract over captured sessions from 2026-09-06 (#1863): a
+  `for i in 1..N; do sleep 20; done` loop blocked one session foreground for ~630s across four
+  occurrences in one run, and the guard's own regex — anchored on `sleep` bounded by
+  `;`/`&`/`|`/start/end — never fires on it, since the token before `sleep` there is `do `. A
+  second `guardToolCalls` entry catches a `for` loop whose body is nothing but the sleep; a
+  `while`/`until` loop stays clean, since that shape names a real condition. Retire the entry only
+  if `bare-sleep-wait`'s first regex is rewritten to subsume both shapes.
+
