@@ -85,6 +85,15 @@ test('the machine cell shows a dash and no unit noise where the figure is unknow
   assert.equal(cell.find('sq')[0].className, 'sq none');
 });
 
+test('a fleet-wide fault sets its figure apart from the row\'s other verdicts', () => {
+  // The row's whole point is that one cell can be the top signal; the alarm is what
+  // says so, and it is the CALLER's judgement, not the worst level in the row.
+  const alarmed = sheet.machineCell({ level: 'critical', label: 'Updates', value: 8, unit: 'of 13 behind the canon', note: '8 of 13', alarm: true });
+  assert.match(alarmed.className, /\balarm\b/);
+  const quiet = sheet.machineCell({ level: 'critical', label: 'Scheduler', value: 1, unit: 'of 13 ran on time', note: 'lab never' });
+  assert.doesNotMatch(quiet.className, /alarm/);
+});
+
 test('a sparkline draws nothing at all for a day nobody folded', () => {
   const svg = sheet.sparkline([
     { day: '2026-08-27', value: 3 }, { day: '2026-08-28', value: null }, { day: '2026-08-29', value: 5 },

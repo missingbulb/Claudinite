@@ -84,8 +84,12 @@ function stepButton(glyph, label, queue, to) {
 // One of the machine's five cells: a status square, its label in condensed caps, the
 // figure in mono with its unit in the text column, and one line naming the worst
 // member — a name is what the reader acts on.
-export function machineCell({ level, label, value, unit, note, extra = null }) {
-  return el('div', { className: 'cell' }, [
+//
+// `alarm` sets the figure in the critical colour and in bold. It is for a fault the
+// caller has already judged FLEET-WIDE, never for a cell that merely reached its worst
+// verdict: a row where every cell can shout has no top signal left.
+export function machineCell({ level, label, value, unit, note, extra = null, alarm = false }) {
+  return el('div', { className: alarm ? 'cell alarm' : 'cell' }, [
     el('div', { className: 'k' }, [
       el('i', { className: `sq ${level ?? 'none'}` }),
       el('span', { className: 'cap', textContent: label }),

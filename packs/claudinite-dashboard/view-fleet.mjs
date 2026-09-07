@@ -731,6 +731,13 @@ export function renderSheet({ ledger, machine, candidates, sweeping, progress, s
   const m = machine;
   const machineBody = el('div', { className: 'machine' }, [
     machineCell({
+      level: m.updates.level, label: 'Updates',
+      value: m.updates.stale,
+      unit: m.updates.stale === null ? 'not judged' : `of ${m.updates.total} behind the canon`,
+      note: m.updates.note,
+      alarm: m.updates.fleetWide,
+    }),
+    machineCell({
       level: m.heartbeat.level, label: 'Scheduler',
       value: m.heartbeat.total ? m.heartbeat.onTime : null,
       unit: m.heartbeat.total ? `of ${m.heartbeat.total} ran on time` : 'no member read',
@@ -747,10 +754,6 @@ export function renderSheet({ ledger, machine, candidates, sweeping, progress, s
       level: m.foldAge.level, label: 'Fold age',
       value: m.foldAge.age === null ? null : fmtAge(m.foldAge.age),
       unit: 'oldest', note: m.foldAge.note,
-    }),
-    machineCell({
-      level: m.drift.level, label: 'Drift',
-      value: m.drift.behind, unit: 'behind', note: m.drift.note,
     }),
     machineCell({
       level: m.wake.level, label: 'Next wake',
@@ -834,7 +837,7 @@ export function renderSheet({ ledger, machine, candidates, sweeping, progress, s
 
   page.replaceChildren(
     band('Start here', 'worst thing needing a person', startBody, { aria: 'Start here' }),
-    band('The machine', 'is it running, right now, on every member', machineBody, { aria: 'The machine' }),
+    band('The machine', 'is the update landing, and is it running, on every member', machineBody, { aria: 'The machine' }),
     band('This week', `against last · ${ledger.window.from} – ${ledger.window.to} vs ${ledger.window.prevFrom} – ${ledger.window.prevTo} · ${ledger.window.folding} folding members`,
       weekBody, { aria: 'This week against last' }),
     band('Pulse', 'sessions / day, 14 days',

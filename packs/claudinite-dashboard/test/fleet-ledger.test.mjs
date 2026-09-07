@@ -219,10 +219,62 @@ test('a strip that IS read, with nothing in it, is the serious verdict', () => {
   assert.match(m.wake.note, /nothing wakes/);
 });
 
-test('drift is UNKNOWN with no canon, and never read as current', () => {
+test('updates are UNKNOWN with no canon, and never read as current', () => {
   const m = machinePanel([summary('o/a', { everRan: true, lastAt: NOW, inFlight: 0 })], [], { now: NOW, canon: null });
-  assert.equal(m.drift.behind, null);
-  assert.match(m.drift.note, /unknown/);
+  assert.equal(m.updates.stale, null);
+  assert.equal(m.updates.level, 'none');
+  assert.match(m.updates.note, /unknown/);
+});
+
+// --- the updates cell: the machine's top signal ---------------------------------------
+
+const CANON = { engineVersion: '60907.1', packVersions: {} };
+const fleet = (total, stale) => Array.from({ length: total }, (_, i) =>
+  summary(`o/m${i}`, { everRan: true, lastAt: NOW, inFlight: 0 },
+    { mount: { state: i < stale ? 'behind' : 'current', behindPacks: [{ pack: 'basics' }] } }));
+
+test('the bound SCALES with the fleet — the same count is fleet-wide on a small one', () => {
+  // Owner, 2026-09-07: past sqrt(members) stale it is the fleet that has stopped
+  // updating. Four members is the whole story on a fleet of thirteen and a bad night on
+  // a fleet of twenty-five, so the pair is what a fixed threshold cannot satisfy.
+  assert.equal(machinePanel(fleet(13, 4), [], { now: NOW, canon: CANON }).updates.fleetWide, true);
+  assert.equal(machinePanel(fleet(25, 4), [], { now: NOW, canon: CANON }).updates.fleetWide, false);
+});
+
+test('a handful of stale mounts is the cell\'s own amber count, not an alarm', () => {
+  const m = machinePanel(fleet(13, 3), [], { now: NOW, canon: CANON });
+  assert.equal(m.updates.stale, 3);
+  assert.equal(m.updates.total, 13);
+  assert.equal(m.updates.fleetWide, false, '3 of 13 is under sqrt(13)');
+  assert.equal(m.updates.level, 'you');
+});
+
+test('past the bound the updates cell is CRITICAL and says the fleet, not a member', () => {
+  const m = machinePanel(fleet(13, 8), [], { now: NOW, canon: CANON });
+  assert.equal(m.updates.stale, 8);
+  assert.equal(m.updates.fleetWide, true);
+  assert.equal(m.updates.level, 'critical');
+  assert.match(m.updates.note, /8 of 13/);
+});
+
+test('a mount that never converged counts as an update that did not land', () => {
+  // `unversioned` and `none` are not "behind by a version" — they are a member the
+  // update has never reached, which is the worse case, not an unreadable one.
+  const summaries = [
+    summary('o/a', { everRan: true, lastAt: NOW, inFlight: 0 }, { mount: { state: 'unversioned' } }),
+    summary('o/b', { everRan: true, lastAt: NOW, inFlight: 0 }, { mount: { state: 'none' } }),
+    summary('o/c', { everRan: true, lastAt: NOW, inFlight: 0 }, { mount: { state: 'current' } }),
+  ];
+  const m = machinePanel(summaries, [], { now: NOW, canon: CANON });
+  assert.equal(m.updates.stale, 2);
+  assert.equal(m.updates.fleetWide, true, '2 of 3 is past sqrt(3)');
+});
+
+test('every mount current is the good verdict with nothing to name', () => {
+  const m = machinePanel(fleet(13, 0), [], { now: NOW, canon: CANON });
+  assert.equal(m.updates.stale, 0);
+  assert.equal(m.updates.level, 'good');
+  assert.equal(m.updates.fleetWide, false);
 });
 
 test('the executor cell reads the fold\'s own hour tier over the last 24', () => {
