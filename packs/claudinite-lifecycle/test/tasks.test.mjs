@@ -14,8 +14,8 @@ const TASK_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/c
 // #768 Phase 5 retired it; `update` is the successor in the same slot.
 //
 // The precondition itself — daily, with no repo-side gate, because the input this
-// task asks about is the CANON, never local movement (task-preconditions DESIGN,
-// #1344) — is a plain built-in declaration with no task-local term, so its
+// task asks about is the CANON, never local movement
+// (#1344) — is a plain built-in declaration with no task-local term, so its
 // mechanism is the scheduler's own suite to prove, not this pack's.
 
 test('update: the worker and the worker doc the declaration names exist', () => {

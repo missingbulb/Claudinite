@@ -47,7 +47,7 @@ test('scheduler-workflow-shape: flags an off-band cron minute', () => {
   assert.match(f[0].what, /cron: '5 4,16 \* \* \*' is not two daily ticks/);
 });
 
-// The two-tick form (DESIGN §17) is what the converge writes now; a single daily hour is neither
+// The two-tick form is what the converge writes now; a single daily hour is neither
 // that nor the legacy hourly line, so it is still a drifted cron.
 test('scheduler-workflow-shape: accepts two daily ticks, and flags a single daily hour', () => {
   assert.deepEqual(run({ [WF]: goodWorkflow.replace("'25 4,16 * * *'", "'25 4,16 * * *'") }), []);

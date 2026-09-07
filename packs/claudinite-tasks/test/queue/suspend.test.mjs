@@ -1,4 +1,4 @@
-// The operator hold (DESIGN §8, §15.24) and the two bounds the heartbeat left
+// The operator hold (docs/PRINCIPLES.md) and the two bounds the heartbeat left
 // behind. What is pinned here is the part that has bitten this repo before: a
 // safety knob whose producer and consumer stopped agreeing, and a parameter that
 // defaults to the operation's most dangerous mode when it stops being read.
@@ -60,7 +60,7 @@ test('every workflow stamps the hold, and every entry point exits on it before r
   }
 });
 
-// --- the between-items read (§15.30) -----------------------------------------
+// --- the between-items read (PRINCIPLES.md) -----------------------------------------
 //
 // A batched drain outlives the env copy it started with, so the hold it must obey
 // is the one the API reports NOW. Each branch below is a different way of being
@@ -130,7 +130,7 @@ test('a transient failure keeps asking, and is still said only once', async () =
   assert.equal(lines.length, 1, lines.join('\n'));
 });
 
-// --- the bounds the heartbeat reframed (§15.15) --------------------------------
+// --- the bounds the heartbeat reframed (PRINCIPLES.md) --------------------------------
 
 // F17, restated: what must hold is that a LIVE holder is never reclaimed. The old
 // form of this — a run cap ≤ the leash — is what the heartbeat replaced.

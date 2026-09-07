@@ -102,7 +102,7 @@
 //                 workflow change spends an unbounded window with members running
 //                 the old copy against the new engine. This shape is what says that
 //                 window is harmless rather than assumed to be: it carries the
-//                 pre-§15.16 workflow (whose drain RAN an executor inside the
+//                 pre-PRINCIPLES.md workflow (whose drain RAN an executor inside the
 //                 scheduler's concurrency group, with task secrets stamped into it)
 //                 beside a current mount — and, since #877, one that still names
 //                 the retired `tick.mjs` entry point the rename left a shim at.
@@ -124,9 +124,9 @@
 //                 that quietly stops draining rather than anything that goes red.
 //   ungated-drain a member holding the workflow shape the fleet is ON today, which
 //                 is a different question from `old-workflows`' museum piece: its
-//                 scheduler DISPATCHES the executor (post-§15.16) but does so
+//                 scheduler DISPATCHES the executor (per docs/PRINCIPLES.md) but does so
 //                 unconditionally, mapping no job output, because the drain gate
-//                 (§15.30) arrived after its copy did. The engine it converges to
+//                 (docs/PRINCIPLES.md) arrived after its copy did. The engine it converges to
 //                 writes a `pickable` output nothing there reads and drains the
 //                 queue in one run — so what this shape says is that the gate's
 //                 producer is inert where its consumer is missing, and such a
@@ -134,7 +134,7 @@
 //                 rather than losing its drain to an `if` it does not have.
 //   custom-anchor-hour
 //                 a member that moved `taskScheduler.dailyHour` off the default. Both
-//                 of the cron's hours are derived from it now (DESIGN §17), so this
+//                 of the cron's hours are derived from it now (docs/PRINCIPLES.md), so this
 //                 is the shape that says the converge reads the repo's own schedule
 //                 rather than stamping a constant. Getting it wrong is silent: the
 //                 workflow parses, the runs happen, and every task simply fires
@@ -656,7 +656,7 @@ jobs:
 `;
 
 // The scheduler workflow as it stands on a member that has the DISPATCHING drain
-// (§15.16) but not the gate (§15.30). Its drain job has no
+// but not the gate (docs/PRINCIPLES.md). Its drain job has no
 // `if` and its scheduler job maps no `outputs`, which is exactly the combination
 // the gate's engine half must stay inert against.
 const UNGATED_SCHEDULER_WORKFLOW = `name: Claudinite scheduler
@@ -1442,7 +1442,7 @@ fi
   },
   {
     name: 'custom-anchor-hour',
-    why: "a member that moved its `taskScheduler.dailyHour` off the default — both cron hours are a function of that value now (DESIGN §17), so a converge that ignored it would fire this repo's scheduler at hours no anchor lands on and run every task a day late, forever, with nothing going red",
+    why: "a member that moved its `taskScheduler.dailyHour` off the default — both cron hours are a function of that value now (docs/PRINCIPLES.md), so a converge that ignored it would fire this repo's scheduler at hours no anchor lands on and run every task a day late, forever, with nothing going red",
     files: {
       'README.md': '# fixture-custom-anchor-hour\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics'], {
@@ -1511,7 +1511,7 @@ fi
   },
   {
     name: 'ungated-drain',
-    why: 'the workflow shape the fleet is on TODAY: a dispatching drain with no gate and no job output — the window the drain gate (§15.30) opens, where the engine writes a verdict the member\'s own copy cannot read',
+    why: 'the workflow shape the fleet is on TODAY: a dispatching drain with no gate and no job output — the window the drain gate (docs/PRINCIPLES.md) opens, where the engine writes a verdict the member\'s own copy cannot read',
     files: {
       'README.md': '# fixture-ungated-drain\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics']),

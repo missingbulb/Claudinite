@@ -7,7 +7,7 @@ import { normalizeTaskDeclaration } from '../../task-contract.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 
-// A task's "when" is its own expression (DESIGN §5): `['due:daily']` is a task on
+// A task's "when" is its own expression (PRINCIPLES.md): `['due:daily']` is a task on
 // the schedule, `[]` one that runs only when somebody asks.
 // Through the door, the way a declaration reaches the scheduler in production: the
 // loader normalizes at discovery, and `trigger` is derived there for a fixture that
@@ -155,8 +155,8 @@ test('a duplicate live standing item is closed obsolete, oldest kept (F16)', asy
   assert.equal(kinds(ops, 'create').length, 0, 'the surviving standing item still suppresses the ask');
 });
 
-test('ad-hoc items neither suppress nor consume a scheduled occurrence (§3)', async () => {
-  // Ad-hoc is STRUCTURAL (§15.26), so both of its shapes are asserted: a qualified
+test('ad-hoc items neither suppress nor consume a scheduled occurrence (PRINCIPLES.md)', async () => {
+  // Ad-hoc is STRUCTURAL (PRINCIPLES.md), so both of its shapes are asserted: a qualified
   // item for a scheduled task, and an unscheduled task's item. Neither is in the
   // daily family, so the task is asked and its occurrence filed.
   const fanOut = item({ task: 'daily1', qualifier: 'member-x', labels: ['task:status:waiting-for-executor'], created_at: '2026-08-14T09:00:00Z' });
@@ -271,7 +271,7 @@ test('a dead claim on an ad-hoc item honours the request task\'s on_interrupt', 
   assert.deepEqual(kinds(ops, 'reclaim').map((o) => o.to), ['task:status:needs-human-decision']);
 });
 
-// --- the forced wake (DESIGN §8, #929) ----------------------------------------
+// --- the forced wake (PRINCIPLES.md, #929) ----------------------------------------
 // Forcing across repos: the enforcer dispatches, the member wakes its own item.
 
 const wakeItems = [
@@ -438,7 +438,7 @@ test('an unreadable task list reaps nothing, and neither status nor qualifier is
 });
 
 // --- settings-level disablement ------------------------------------------------
-// REPO SHAPE IS NOT A PRECONDITION (task-preconditions DESIGN). "This repo ships
+// REPO SHAPE IS NOT A PRECONDITION (docs/PRINCIPLES.md). "This repo ships
 // the store pipeline", "this repo has a vendored mount" are facts adoption
 // settled, not questions worth re-asking every night — so a repo that carries a
 // pack but not one task's subject names that task in

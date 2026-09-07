@@ -22,7 +22,7 @@
 //      of the above can answer — commits, lines and releases;
 //   6. fold: hour rows over the last three days, day rows recomputed from scratch,
 //      appended rows past their watermarks, week rows advanced past `foldedThrough`
-//      (skill-usage-metrics DESIGN §5);
+//      (skill-usage-metrics PRINCIPLES.md);
 //   7. deliver the regenerated `.claudinite/local/usage.GENERATED.json` on a PR
 //      that lands itself where this repo's delivery settings allow (the shared
 //      landing helper owns those nuances — packs/claudinite-tasks/land-pr.mjs) — and
@@ -319,7 +319,7 @@ export async function main() {
   const pr = await deliverGenerated({
     root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX, log,
     // Which branch and pull request this fold lands on is the executor's decision
-    // (DESIGN §6.4b), handed in as environment; the prefix and stamp beside it are
+    // (PRINCIPLES.md), handed in as environment; the prefix and stamp beside it are
     // the lane's own fallback for an executor that predates the hand-off.
     branch: process.env.CLAUDINITE_TARGET_BRANCH || null,
     pr: process.env.CLAUDINITE_TARGET_PR ? Number(process.env.CLAUDINITE_TARGET_PR) : null,

@@ -1,5 +1,6 @@
-// The diff classifier behind the request mode's merge authorization (DESIGN
-// §16.11): what counts as narrow, and what a real branch reads as.
+// The diff classifier behind the request mode's merge authorization
+// (docs/PRINCIPLES.md, "Deliver"): what counts as narrow, and what a real
+// branch reads as.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +15,7 @@ import {
 
 test('classifyPath names docs, tests and code', () => {
   assert.equal(classifyPath('README.md'), 'doc');
-  assert.equal(classifyPath('packs/claudinite-tasks/docs/tasks-dispatch/DESIGN.md'), 'doc');
+  assert.equal(classifyPath('packs/claudinite-tasks/docs/PRINCIPLES.md'), 'doc');
   assert.equal(classifyPath('packs/claudinite-tasks/test/scheduler-run.test.mjs'), 'test');
   assert.equal(classifyPath('packs/basics/tests/fixture.json'), 'test');
   assert.equal(classifyPath('packs/basics/test/pack.test.mjs'), 'test');

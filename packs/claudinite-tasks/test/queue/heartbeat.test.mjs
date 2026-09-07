@@ -1,4 +1,4 @@
-// The holder's sign of life (DESIGN §15.15) and the reclaim clock it corrects
+// The holder's sign of life (PRINCIPLES.md) and the reclaim clock it corrects
 // (#924). Two things are pinned here that no single-call test could see: that the
 // beat happens WHILE work is in flight, and that a comment written by an executor
 // which let the item go does not read as that item being worked on.

@@ -99,7 +99,7 @@ const task = (id, decl = {}, terms = RUNS) => ({
 });
 
 // `random` is pinned ascending so a fixture with several pickable items picks the
-// FIRST one it lists — production's draw is random (§15.20) and a test that let it
+// FIRST one it lists — production's draw is random (PRINCIPLES.md) and a test that let it
 // vary would be a coin flip, not a test.
 const ascendingDraw = () => { let n = 0; return () => (n += 1) / 1000; };
 
@@ -113,7 +113,7 @@ const drive = (repo, tasks, over = {}) => runExecutor({
   ...over,
 });
 
-// --- the target (DESIGN §6.4b) ---------------------------------------------------
+// --- the target (PRINCIPLES.md) ---------------------------------------------------
 // The executor decides which branch and pull request the run works on ONCE, after
 // the precondition's go and before code-work, and both phases are handed the
 // answer: code-work as environment, the agent as item fields.
@@ -406,7 +406,7 @@ test('a no-go verdict closes a scheduled item with the reason — the roll is go
 
 test('a no-go on an ad-hoc item closes it obsolete — there is no anchor to roll to (S17)', async () => {
   // Ad-hoc by structure: a task whose only condition reads the item is never on the
-  // schedule (§15.26), and its hand-created item wears the ad-hoc origin.
+  // schedule (PRINCIPLES.md), and its hand-created item wears the ad-hoc origin.
   const repo = fakeRepo([workItem(1, 'lever', ['task:origin:ad-hoc', 'task:status:waiting-for-executor'])]);
   await drive(repo, [task('lever', { preconditions: ['gate'] }, term(() => ({ holds: false, reason: 'the world settled' })))]);
   const issue = repo.find(1);
@@ -494,7 +494,7 @@ test('failed code_work converges to triage and never hands off', async () => {
   assert.equal(repo.find(1).state, 'open');
 });
 
-// §14.7 — nothing fails silently; the task just doesn't work yet, and the item
+// PRINCIPLES.md — nothing fails silently; the task just doesn't work yet, and the item
 // names exactly which secret to set.
 test('a declared-but-unconfigured secret names itself on the item', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
@@ -586,9 +586,9 @@ test('an executor that loses the lease leaves that item to its winner and drains
   assert.equal(repo.find(2).state, 'closed');
 });
 
-// --- one run drains the queue (DESIGN §10, §15.30, S34/S65) -------------------
+// --- one run drains the queue (docs/PRINCIPLES.md, S34/S65) -------------------
 //
-// The reversal of §15.22, and the reason is the bill: Actions rounds each job's
+// The reversal of PRINCIPLES.md, and the reason is the bill: Actions rounds each job's
 // minutes up, so a run per item bought a whole invocation — checkout, setup,
 // rounding — for each. A run now settles what is pickable, one item at a time.
 
@@ -607,7 +607,7 @@ test('a run drains every pickable item, one at a time', async () => {
 });
 
 // Serial, not concurrent: the run boundary moved, the occupancy model did not
-// (§15.30). Each item's work step completes before the next item is claimed —
+// (PRINCIPLES.md). Each item's work step completes before the next item is claimed —
 // so a code-work that observed an overlap would be the regression.
 test('a drained run never runs two items\' work at once', async () => {
   const repo = fakeRepo([workItem(1, 'a', ['task:ready']), workItem(2, 'b', ['task:ready'])]);
@@ -625,7 +625,7 @@ test('a drained run never runs two items\' work at once', async () => {
   assert.equal(overlapped, false);
 });
 
-// A handed-off item leaves the executor's occupancy at the hand-off (§10) — so
+// A handed-off item leaves the executor's occupancy at the hand-off (PRINCIPLES.md) — so
 // the run goes straight on to the next item rather than waiting for a session
 // it will never hear from.
 test('a hand-off ends that item\'s occupancy and the run keeps draining', async () => {
@@ -675,7 +675,7 @@ test('an item this run reverted is never re-picked by it (F15 under the drain)',
   assert.deepEqual(done, [{ issue: 2, outcome: 'task:status:done' }]);
 });
 
-// --- the operator hold, between items (§15.30, S37) ---------------------------
+// --- the operator hold, between items (PRINCIPLES.md, S37) ---------------------------
 //
 // `vars.*` reaches the env at run START only, so a drain that outlives the hold's
 // arrival can see it only by asking. It stops PICKING; the item it holds finishes.
@@ -784,7 +784,7 @@ test('dispatchWorkflow judges the POST by status, never by its body', async () =
     { ok: false, status: 403 });
 });
 
-// --- the durable record, and the release a close performs (§15.18, §15.19) -----
+// --- the durable record, and the release a close performs (docs/PRINCIPLES.md) -----
 //
 // The executor converges the agentless majority itself, and for those runs the
 // item is the only trace that outlives the Actions log.
@@ -813,7 +813,7 @@ test('an approval park writes no record at all', async () => {
   assert.doesNotMatch(repo.find(1).comments.at(-1).body, /claudinite-task-exec/);
 });
 
-// A close writes only to the item it holds (§15.19, reversed by §15.31 / #1373):
+// A close writes only to the item it holds (PRINCIPLES.md, reversed by PRINCIPLES.md / #1373):
 // releasing a dependent is the scheduler run's readiness job alone, never a
 // close's.
 test('an executor close leaves the dependent it was holding still blocked', async () => {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { TASK_TRAILER, taskTrailer, withTaskTrailer, taskFromMessage } from '../task-trailer.mjs';
 
 // The trailer every delivery lane stamps, and the reader the movement signals
-// classify by (task-preconditions DESIGN, "Classifying task output structurally").
+// classify by (docs/PRINCIPLES.md).
 
 test('the trailer round-trips: what a lane stamps is what a collector reads back', () => {
   const stamped = withTaskTrailer('Regenerate the aggregate\n\nRefs #12', 'claudinite-tasks/usage-fold');

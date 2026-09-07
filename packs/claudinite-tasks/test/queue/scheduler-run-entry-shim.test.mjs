@@ -1,4 +1,4 @@
-// The entry point the #877 rename left behind (tasks-dispatch DESIGN decision 27).
+// The entry point the #877 rename left behind (docs/PRINCIPLES.md).
 //
 // A member's `.github/workflows/claudinite-scheduler.yml` names the module it runs
 // as a literal path, and that file is the one path a converge cannot push — it is

@@ -1,4 +1,4 @@
-// The ad-hoc request mode (tasks-dispatch DESIGN §16), against the real modules.
+// The ad-hoc request mode (tasks-dispatch PRINCIPLES.md), against the real modules.
 // The simulator plays S44–S51 over a model of the design; these assert the same
 // properties of the code that ships — adoption's label mechanics in `planSchedulerRun`, the
 // read in the `request` collector, the verdict in the built-in task's precondition,
@@ -38,8 +38,8 @@ const REQUEST_TASK = {
 };
 
 // A MARKED ISSUE — an ordinary issue wearing the origin and no status, which is the
-// whole of the exactly-once guard (§16.3). `authorHasPush` is what the shell read
-// from the permission API, and it gates the body's parameters (§16.7).
+// whole of the exactly-once guard (PRINCIPLES.md). `authorHasPush` is what the shell read
+// from the permission API, and it gates the body's parameters (PRINCIPLES.md).
 const marked = (number, labels = [ORIGIN_AD_HOC], body = '', over = {}) =>
   ({ number, title: 'A thing to do', body, state: 'open', labels, author: 'dev', authorHasPush: true, ...over });
 
@@ -80,7 +80,7 @@ test('S44 — the marked issue BECOMES the item, and any status holds the mark',
     targetBranch: null, targetPr: null, supersedes: [],
   });
 
-  // ONE LEVER (§16.3): every status blocks re-adoption, live, parked and terminal
+  // ONE LEVER (PRINCIPLES.md): every status blocks re-adoption, live, parked and terminal
   // alike, and clearing it is the only re-ask. Nothing is superseded, because there
   // is no second object to supersede.
   for (const status of ['task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent',
@@ -116,7 +116,7 @@ test('S47 — the body\'s Model reaches the item, an unknown family falls back, 
   const [unknown] = (await ops({ requests: [marked(500, [ORIGIN_AD_HOC], 'Do it.\n\nModel: gpt-9\n')] })).filter((o) => o.kind === 'adopt');
   assert.equal(parseWorkItemBody(unknown.body).model, null);
 
-  // THE AUTHOR GATE (§16.7). A body is editable by whoever opened the issue where a
+  // THE AUTHOR GATE (PRINCIPLES.md). A body is editable by whoever opened the issue where a
   // label was platform-write-gated, so a drive-by author gets the defaults — and is
   // told so rather than left wondering.
   const [ungated] = (await ops({
@@ -426,12 +426,12 @@ test('an eligible request is handed to a session, at the model its item names', 
   assert.equal(parseWorkItemBody(invoked[0].item.body).model, 'haiku');
   assert.ok(repo.find(1).labels.includes('task:status:running-agent'));
   // The session owns the rest: the issue keeps `claude-queued` until it swaps it for
-  // `claude-in-review` at the approval park (§16.5).
+  // `claude-in-review` at the approval park (PRINCIPLES.md).
   assert.deepEqual(repo.find(500).labels, ['claude-queued']);
 });
 
 test('the precondition is handed THIS occurrence\'s own facts, not just the signals', async () => {
-  // A term is handed THIS occurrence's own facts (§16.4), which is what lets a
+  // A term is handed THIS occurrence's own facts (PRINCIPLES.md), which is what lets a
   // verdict be about one target. Nothing else in this file would notice it going
   // missing: the request term reads its issue out of the signal the collector
   // filled from that same field.
@@ -459,7 +459,7 @@ test('the built-in task id and the declaration it names agree', () => {
   assert.equal(`engine/${requestTask.id}`, REQUEST_TASK_ID);
 });
 
-// --- §16.11: a deferred request — blocked, chained, and its merge authorization --
+// --- PRINCIPLES.md: a deferred request — blocked, chained, and its merge authorization --
 
 test('a marked issue that names open blockers is adopted BLOCKED, and released when they close', async () => {
   const request = marked(500, [ORIGIN_AD_HOC], 'Do the rename after the current work.\n\nBlocked-by: #480, #481\n');

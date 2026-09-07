@@ -87,7 +87,7 @@ ceremony around a mechanical edit. Hence `expected_outcome: 'no_code_changes'`: 
 OTHER repos, not this one, and the outcome ceiling describes what a task may do to its
 OWN repo — this task opens no PR here at all.
 
-CLASSIFICATION (per-project-scheduling DESIGN §6, the same note the other sweeps
+CLASSIFICATION (the same note the other sweeps
 carry): an ORDINARY PACK TASK, not a fleet mechanism. Its *implementation* reaches
 every repo under the owner over a PAT, but its declaration, scheduling and lifecycle
 are exactly those of any pack task — it is active because this repo declares the

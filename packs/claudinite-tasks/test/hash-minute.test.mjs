@@ -43,7 +43,7 @@ test('the band is well-spread — a realistic fleet covers the whole window', ()
 
 test('hashedCron is the full two-tick line the workflow holds', () => {
   assert.equal(hashedCron('missingbulb/GoogleCalendarEventCreator', 4), '24 4,16 * * *');
-  // "<minute> <anchor>,<drain> * * *" — two ticks a day, twelve hours apart (DESIGN §17).
+  // "<minute> <anchor>,<drain> * * *" — two ticks a day, twelve hours apart (PRINCIPLES.md).
   assert.match(hashedCron('missingbulb/anything', 4), /^([1-9]\d?) \d{1,2},\d{1,2} \* \* \*$/);
 });
 

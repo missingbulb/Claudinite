@@ -126,7 +126,7 @@ what you need. The `claudinite-isolation` check enforces this outside the wiring
 
 ## Part 6 — schedule the repo (it schedules itself)
 
-A consuming project schedules **itself** (per-project-scheduling DESIGN §9). The script converges
+A consuming project schedules **itself** (docs/PRINCIPLES.md). The script converges
 the mechanical half: the `claudinite-scheduler.yml` workflow at the repo's stable hashed cron
 minute (computed, never guessed — `hash-minute.mjs`, a pure function of the full name), the
 executor workflow, the `taskScheduler` anchors

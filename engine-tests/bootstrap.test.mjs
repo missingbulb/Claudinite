@@ -150,7 +150,7 @@ test('the report hands over the executor secret in every adoption, and the web S
 });
 
 // A repo that declares no tasks pack runs no scheduled work — a supported state, not a
-// degraded one (tasks-dispatch DESIGN §18) — so bootstrap scaffolds neither workflow for
+// degraded one (the pack README (packs/claudinite-tasks/README.md)) — so bootstrap scaffolds neither workflow for
 // it. The CI sweep is a separate concern and still lands, which is what makes this worth
 // its own test: it is the first file to reach `.github/workflows/`, and on a repo with no
 // scheduler beside it the directory does not exist yet.

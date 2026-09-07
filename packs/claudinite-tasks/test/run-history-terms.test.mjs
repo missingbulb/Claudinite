@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { evaluatePreconditions, parsePreconditions, validatePreconditions, preconditionSignals } from '../precondition-policy.mjs';
 import { cadenceOf, statesConditions, holdsOnFailure, cadenceTermFor, parseDuration } from '../calendar.mjs';
 
-// The run-history terms (tasks-dispatch DESIGN §5): a task's cadence, its view of
+// The run-history terms (docs/PRINCIPLES.md): a task's cadence, its view of
 // its own last failure, and whether it runs only when somebody asks — every one a
 // condition over the `runs` signal, the task's own unqualified work items newest
 // first, read at every scheduler tick. Pure over that bundle, so each case here is

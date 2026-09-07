@@ -22,7 +22,7 @@ test('discoverTasks finds a declared local pack\'s tasks with the repo-relative 
     assert.equal(byId.alpha.pack, 'mypack');
     assert.equal(byId.alpha.taskPath, '.claudinite/local/packs/mypack/tasks/alpha/task.md');
     // The door: the retired `frequency` field is read where the declaration is LOADED as the
-    // cadence term it meant, and nothing downstream ever sees the field (DESIGN §5).
+    // cadence term it meant, and nothing downstream ever sees the field (PRINCIPLES.md).
     assert.deepEqual(byId.alpha.decl.preconditions, ['due:daily']);
     assert.deepEqual(byId.beta.decl.preconditions, ['due:weekly']);
     assert.equal(byId.alpha.decl.frequency, undefined);

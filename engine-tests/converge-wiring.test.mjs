@@ -361,7 +361,7 @@ test('convergeWiring: never touches the repo\'s README', async () => {
   assert.ok(!changed.some((c) => c.includes('README')), changed.join(', '));
   assert.equal(readFileSync(join(root, 'README.md'), 'utf8'), '# P\n\nprose\n');
 });
-// --- the work-item queue's wiring (tasks-dispatch DESIGN §14) -----------------
+// --- the work-item queue's wiring (docs/PRINCIPLES.md) -----------------
 // The repo's one cron workflow keeps its path and changes its CONTENT with the
 // dispatch mode; the executor is a second workflow beside it, and it is the only
 // place a secret ever reaches at all (#1301).

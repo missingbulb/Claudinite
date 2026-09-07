@@ -5,7 +5,7 @@ import {
   preconditionSignals, BUILTIN_TERM_NAMES, MAX_CONTEXT_ITEMS, termsMap,
 } from '../precondition-policy.mjs';
 
-// The precondition engine (task-preconditions DESIGN). Pure over the signals, so
+// The precondition engine (docs/PRINCIPLES.md). Pure over the signals, so
 // every case here is the real evaluator against a hand-built bundle.
 
 const evaluate = (preconditions, signals = {}, over = {}) =>

@@ -8,7 +8,7 @@ import { CLAIM_MARKER, EPISODE_MARKER, parseWorkItemBody } from '../../queue/wor
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 
 let seq = 900;
-// Standing or ad-hoc is STRUCTURAL now (§15.26), so every rule that turns on it is
+// Standing or ad-hoc is STRUCTURAL now (PRINCIPLES.md), so every rule that turns on it is
 // driven the way production drives it: whether the task is on the schedule, read off
 // the declaration at HEAD. Every task these fixtures name is, except the lever,
 // which states no condition.
@@ -33,11 +33,11 @@ test('urgent first, always — whatever the draw says', () => {
   assert.equal(pickOrder([b, a, urgent], { random: () => seq[n++] })[0].number, urgent.number);
 });
 
-// §15.20: the order among the ready is RANDOM, not oldest-first. A test that
+// PRINCIPLES.md: the order among the ready is RANDOM, not oldest-first. A test that
 // pinned one order would pass on a comparator that never shuffles, so this one
 // asserts the property instead — every ready item reaches the head over enough
 // draws, which a deterministic order can never do.
-test('among the ready, the head varies across runs (§15.20)', () => {
+test('among the ready, the head varies across runs (PRINCIPLES.md)', () => {
   const items = ['a', 'b', 'c'].map((t, n) => it({ task: t, created_at: `2026-08-14T0${n + 1}:00:00Z` }));
   const heads = new Set();
   for (let n = 0; n < 200; n += 1) heads.add(pickOrder(items)[0].number);

@@ -1,5 +1,5 @@
 // A member's own task declarations state their scheduling in the current vocabulary
-// (tasks-dispatch DESIGN §5, #1725). Two rewrites over every
+// (docs/PRINCIPLES.md, #1725). Two rewrites over every
 // `.claudinite/local/packs/<pack>/tasks/<name>/task.json`: the retired `frequency`
 // field folded into `preconditions` — `due:<cadence>` first in the list, a `none`
 // beside it dropped, and `manual` (no schedule) folded into no list at all — and

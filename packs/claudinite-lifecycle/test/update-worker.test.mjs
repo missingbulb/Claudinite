@@ -139,7 +139,7 @@ test('the runner finds its incumbent by the same prefix it delivers on', async (
     'the delivered branch and the searched prefix are the same family');
 });
 
-// THE TARGET (tasks-dispatch DESIGN §6.4b). The executor resolves which branch this
+// THE TARGET. The executor resolves which branch this
 // run pushes to and which incumbents it supersedes, and hands the branch in as
 // `CLAUDINITE_TARGET_BRANCH`. Given one, the runner disposes of nothing and mints
 // nothing: that was the second decision site #1695 removed. The old path stands

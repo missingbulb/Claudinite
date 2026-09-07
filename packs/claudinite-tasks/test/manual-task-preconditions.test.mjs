@@ -18,15 +18,15 @@ import { normalizeTaskDeclaration, isScheduledTask } from '../task-contract.mjs'
 // in the queue: the scheduler run asks nothing of it, so an item exists only
 // because someone asked for this task to run.
 //
-// The executor evaluates the expression at pick regardless (tasks-dispatch DESIGN
-// §6.4/§8 — "even forced work is admitted by code"), and a no-go takes
+// The executor evaluates the expression at pick regardless (docs/PRINCIPLES.md
+// docs/PRINCIPLES.md — "even forced work is admitted by code"), and a no-go takes
 // `noGoPlan`'s close branch: the item is CLOSED `task:status:rejected` without
 // ever running. A lever whose conditions cannot hold on a bare hand-created item
 // is therefore a lever that cannot be pulled at all.
 test('every task off the schedule admits its own hand-created item', async () => {
   // `:(glob)` so `*` stops at a path separator: the subject is the `tasks/` slot a pack
   // CONTRIBUTES, not a built-in the queue ships under its own `queue/tasks/`, whose
-  // precondition answers about the request issue its item names (tasks-dispatch DESIGN §16).
+  // precondition answers about the request issue its item names (docs/PRINCIPLES.md).
   const files = execFileSync('git', ['ls-files', ':(glob)packs/*/tasks/*/task.json'], { encoding: 'utf8' })
     .split('\n').filter(Boolean);
   assert.ok(files.length, 'the task glob matched nothing — a layout change would make this test vacuous');

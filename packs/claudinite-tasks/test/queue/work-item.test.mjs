@@ -55,7 +55,7 @@ test('the body carries the task path first and the two scheduling fields', () =>
   assert.match(body, /### Context\n- only the mount\n- nothing else/);
 });
 
-// WOKEN (DESIGN §5, §8): the lever's own stamp, and the one fact the cadence terms
+// WOKEN (docs/PRINCIPLES.md): the lever's own stamp, and the one fact the cadence terms
 // read off an item beside its origin and its title's shape.
 test('Woken is stamped by the lever, replaced on a second wake, and read as the item\'s facts', () => {
   const body = workItemBody({ taskPath: 'packs/x/tasks/y/task.md', woken: '2026-09-05T10:00:00Z' });
@@ -119,7 +119,7 @@ test('withEndsWhen stamps a park\'s end condition once, under the task path', ()
   assert.equal((again.match(/^Ends-when:/gm) ?? []).length, 1);
 });
 
-// THE TARGET (DESIGN §6.4b): the executor decides which branch and pull request a
+// THE TARGET (PRINCIPLES.md): the executor decides which branch and pull request a
 // run works on and stamps it on the item at hand-off, so the agent reads it where
 // it reads everything else and never chooses its own. Same text surgery as the
 // other fields — the Context and the Delivered section belong to whoever wrote them.
@@ -290,7 +290,7 @@ test('every triage label is one the executor guarantees before applying', () => 
 // --- outcome decoding ------------------------------------------------------------
 
 // The stored-data rename rule, decode side: `task:done`/`task:obsolete` are today's
-// spellings (DESIGN §4, §15.25) and every legacy spelling maps STRAIGHT to them —
+// spellings (docs/PRINCIPLES.md) and every legacy spelling maps STRAIGHT to them —
 // including `outcome:delivered`, which nothing writes any more but closed issues
 // carry forever.
 test('outcomeOf maps every spelling, legacy and current, to the canonical word', () => {

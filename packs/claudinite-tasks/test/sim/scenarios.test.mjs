@@ -1,14 +1,14 @@
-// SCENARIOS.md, executable. Each test is a timed play-through against the
+// The mechanism, executable. Each test is a timed play-through against the
 // simulator in sim.mjs: "at time X, Y happens", then run the virtual clock and
-// assert on the issue store and the event log. Scenario numbers match the
-// prose document (§H's standing-item replay + the stable earlier scenarios);
-// a test here going red means the DESIGN.md mechanism, as modeled, breaks.
+// assert on the issue store and the event log. A test here going red means the
+// mechanism, as modeled, breaks — and docs/PRINCIPLES.md's claims cite these
+// tests by name, so a renamed or deleted one needs its citing claim updated too.
 //
-// The cast mirrors SCENARIOS.md's "Cast and constants" table. A task's
-// `preconditions` carries its run-history terms — the cadence it keeps — and
-// its `precondition` function stands for every other condition, reading
-// `world`, the scenario-owned signal state, and `window`, the since-last-run
-// window the engine collects every movement signal over (DESIGN §5, §6.4).
+// A task's `preconditions` carries its run-history terms — the cadence it
+// keeps — and its `precondition` function stands for every other condition,
+// reading `world`, the scenario-owned signal state, and `window`, the
+// since-last-run window the engine collects every movement signal over
+// (docs/PRINCIPLES.md, "Schedule").
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -92,7 +92,7 @@ const REGENERATE = {
 };
 
 const evals = (sim, task) => sim.log.filter((e) => e.kind === 'evaluate' && e.task === task);
-// The scheduler's ask (DESIGN §5, §15.33): one `ask` entry per tick per task
+// The scheduler's ask (docs/PRINCIPLES.md): one `ask` entry per tick per task
 // asked, `verdict` go | no | fail-open — distinct from `evals`, the executor's
 // pick-time re-evaluation. A decline is this entry and nothing else.
 const asks = (sim, task) => sim.log.filter((e) => e.kind === 'ask' && e.task === task);
@@ -146,7 +146,7 @@ test('S2 happy path: touched issues -> item runs, closes done', () => {
 });
 
 // ---- S3' — work appears mid-window: the NEXT TICK finds it, not the next
-// anchor. The scheduler keeps no memory of the morning's decline (§15.33), so
+// anchor. The scheduler keeps no memory of the morning's decline (PRINCIPLES.md), so
 // every tick asks again; `due:daily` still holds — nothing ran since 04:00 —
 // and the window, since the last run, contains the touch.
 test("S3' mid-window work runs at the next tick, not the next anchor", () => {
@@ -216,7 +216,7 @@ test('S5 three-day outage: the first tick back finds the work once, no backfill'
   assert.ok(a.filter((e) => e.t >= T('2026-08-15T04:00Z')).every((e) => e.verdict === 'no'));
 });
 
-// ---- S13' — an ad-hoc item's no-go closes it. Ad-hoc is STRUCTURAL (DESIGN §3):
+// ---- S13' — an ad-hoc item's no-go closes it. Ad-hoc is STRUCTURAL (PRINCIPLES.md):
 // a qualifier is what makes this item ad-hoc — an unqualified item of a
 // scheduled task would BE the standing item.
 test("S13' ad-hoc no-go closes obsolete; the scheduled family is undisturbed", () => {
@@ -366,7 +366,7 @@ test('S24 three quiet-upstream days: the yield never holds the dependent', () =>
     'the quiet upstream filed nothing all week');
 });
 
-// ---- S25 — RETIRED (§15.33): the first-window booking is gone with the
+// ---- S25 — RETIRED (PRINCIPLES.md): the first-window booking is gone with the
 // board. A brand-new task is asked at its first tick like any other — S78.
 
 // ---- S8-flavored — a dead executor's claim is reclaimed by the scheduler run's leash
@@ -460,7 +460,7 @@ test('S7 executor race: earliest claim wins, loser takes the next item', () => {
     2, 'both items converged — the loser moved on, capacity added not lost');
 });
 
-// ---- S9 — invocation is at-most-once (DESIGN §6.6 as amended 2026-08-15):
+// ---- S9 — invocation is at-most-once (PRINCIPLES.md as amended 2026-08-15):
 // one call per item, never retried. A REFUSED call (a status came back — no
 // session exists and none will) converges needs-human immediately: the cause
 // is a token, URL or routine, which no retry fixes.
@@ -522,7 +522,7 @@ test('S11 dead agent: janitor leash converges needs-human, names the session', (
   assert.ok(isParked(it));
   // A dead session is a `decision` park — whether the interrupted run left
   // anything behind is the choice being handed over — and a park is not LIVE:
-  // nothing in the engine holds a lane on its own (§15.33), so the next day's
+  // nothing in the engine holds a lane on its own (PRINCIPLES.md), so the next day's
   // occurrence is asked and filed beside it (the #1032 delta — before the split
   // a park froze the task's schedule outright, and a permission gap parked
   // Shepherd's fleet-digest for two days on exactly that).
@@ -567,7 +567,7 @@ test("S12' re-queue after work landed: the re-ask closes with the reason", () =>
 
 // ---- S15 — a same-title twin while the scheduled item is mid-execution: the
 // same-title mutex makes it wait, not run beside it. Under the structural rule
-// (DESIGN §3) an unqualified duplicate is an unsanctioned creation — the wake
+// (PRINCIPLES.md) an unqualified duplicate is an unsanctioned creation — the wake
 // lever is the sanctioned impatience — but a write-gated human can always make
 // one, and the mutex must still serialize it.
 test('S15 force-while-executing: the mutex queues the twin', () => {
@@ -704,8 +704,8 @@ test('S19 re-queue after a fix: needs-human -> ready -> normal run', () => {
   assert.equal(sim.family('basics/baselining').filter((i) => !i.seeded).length, 1);
 });
 
-// ---- S33 — a converge writes only to the item it holds (§15.19, reversed by
-// §15.31 / #1373): resolving the fan-in's last Blocked-by edge is not the
+// ---- S33 — a converge writes only to the item it holds (PRINCIPLES.md, reversed by
+// PRINCIPLES.md / #1373): resolving the fan-in's last Blocked-by edge is not the
 // closing side's business. The scheduler run's own readiness job (job 2) is the
 // only thing that ever readies it, at its next hourly pass — never sooner, and
 // never a HAND close's business either (S18 already covers that path).
@@ -735,7 +735,7 @@ test('S33 fan-in waits for the scheduler run to ready it, not the closing side',
   assert.equal(fanIn.outcome, 'done');
 });
 
-// ---- S34 — the batched drain (#1212, the owner reversing §15.22's one-item
+// ---- S34 — the batched drain (#1212, the owner reversing PRINCIPLES.md's one-item
 // runs): Actions bills each job's minutes rounded up, so a day's cost is the
 // RUN count — a busy morning with several tasks' work drains in the scheduler
 // run's own drain run, items settled serially in the SAME run, and what
@@ -752,7 +752,7 @@ test('S34 busy morning: one drain run settles all its hour\'s items; every run\'
   sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
   // ONE drain all morning. The staggered anchor hours retired with the twice-daily cron
-  // (DESIGN §17.1), so extract no longer has an 03:00 hour of its own — the whole morning is one
+  // (PRINCIPLES.md), so extract no longer has an 03:00 hour of its own — the whole morning is one
   // 04:17 batch, which is the cadence change paying for itself in a scenario that predates it.
   const runs = sim.log.filter((e) => e.kind === 'executor-run');
   assert.equal(runs.length, 1, 'exactly one executor invocation all morning');
@@ -927,7 +927,7 @@ test("S26b the closed-at half covers the rest of the day; the next anchor is ask
 
 // ---- S28 — the mechanism (or a task) changes mid-flight: nothing durable
 // carries a schedule (a declined task holds no item, and the scheduler
-// remembers nothing — §15.33), so a declaration change applies at the very
+// remembers nothing — PRINCIPLES.md), so a declaration change applies at the very
 // next tick with no migration and no relabeling.
 test('S28 declaration change mid-flight: the next tick follows HEAD', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
@@ -990,7 +990,7 @@ test('S29 old-vocabulary issues are invisible to the new mechanism', () => {
 test('S30 duplicate standing item: the next scheduler run self-heals (F16)', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   // The one open unqualified item a stale list lets through is now simply the
-  // minted standing item (§8) — F16's fault needs TWO open ones, so inject two.
+  // minted standing item (PRINCIPLES.md) — F16's fault needs TWO open ones, so inject two.
   // Work appears AFTER the 04:17 tick declined, so nothing else runs today: the
   // survivor's own precondition passes at pick and the only thing that could
   // decline it is its run history.
@@ -1139,7 +1139,7 @@ test('S39b a parked item a human re-queues is claimable by another executor at o
 // ---- S41 — the worker's own triage verdict routes the park ------------------
 // The executor sees an exit code and nothing more, so it cannot tell a token
 // missing a scope from a bug in the worker. A worker that knows says so, and the
-// park lands in the lane whose remedy actually matches (DESIGN §4, §6.5).
+// park lands in the lane whose remedy actually matches (docs/PRINCIPLES.md).
 test('S41 a worker that names its failure class parks there, not at failure', () => {
   const sim = makeSim({ tasks: [SEEDS] });
   sim.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
@@ -1227,7 +1227,7 @@ test('S43 the human re-queue leaves no triage label behind', () => {
   assert.ok(after.includes('task:status:waiting-for-executor'), 'and it went back into the queue');
 });
 
-// ---- K. Ad-hoc requests (DESIGN §16, owner 2026-08-18) --------------------
+// ---- K. Ad-hoc requests (PRINCIPLES.md, owner 2026-08-18) --------------------
 // "A way to mark an issue as 'let claude do this task', and the next executor
 // run picks it up." The mark is a label on an ORDINARY issue; the scheduler run adopts it
 // into a work item; the built-in request task's precondition is the security
@@ -1280,7 +1280,7 @@ test('S45 an unauthorized mark is refused once, disarmed, and never re-adopted',
   assert.equal(items[0].outcome, 'rejected');         // declined: no anchor to roll to
   assert.equal(sim.log.filter((e) => e.kind === 'handoff' && e.task === REQ).length, 0);
   // A refusal is not a park: nothing here is anybody's inbox. The terminal lands
-  // on the issue and CLOSES it (§16.5) — nothing ran and nothing will — and that
+  // on the issue and CLOSES it (PRINCIPLES.md) — nothing ran and nothing will — and that
   // standing status is the disarm: a day of further scheduler runs adopts
   // nothing. Without it this is an hourly refusal loop on somebody else's issue.
   assert.equal(isParked(items[0]), false);
@@ -1461,14 +1461,14 @@ test('S51 an impatient re-ask mid-run changes nothing; after the park it re-runs
 });
 
 // ---- L. No work, no item — the stateless ask (owner, 2026-08-20, #1115;
-// stateless since #1725, DESIGN §15.33) -------------------------------------
+// stateless since #1725, PRINCIPLES.md) -------------------------------------
 // The scheduler run asks every task at every tick and files a work item only
 // on a yes. There is no board and no watermark: a no is a log line, the next
 // tick asks again, and the cadence a task keeps is one of its own conditions,
 // read off its run history. The executor still re-evaluates at pick — nothing
 // is carried forward from the tick's answer.
 //
-// RETIRED with the board (§15.33): S52 (the board created lazily by a decline),
+// RETIRED with the board (PRINCIPLES.md): S52 (the board created lazily by a decline),
 // S53 (the watermark between anchors — S74 is its replacement), S54/S54b (a
 // deleted or corrupt board), S56 (the sleeping-item migration), S58 (write only
 // the rows that changed) and the board-closing S61. Their intent, where it
@@ -1504,7 +1504,7 @@ test('S55 signals unavailable for one task: fail-open item, executor decides; th
 });
 
 // ---- S57 — a hand-created item racing the tick. An open unqualified item
-// IS the standing item (§3) and it is LIVE, so the tick does not ask — the
+// IS the standing item (PRINCIPLES.md) and it is LIVE, so the tick does not ask — the
 // scheduler neither files a second item beside it nor dedupes it.
 test('S57 a hand-minted item preempts the tick\'s ask; no duplicate, no dedupe', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
@@ -1693,7 +1693,7 @@ test('S64 the request labels: bare mark, adopted, running, in review — one iss
 // hour that had work — each settling its whole hour in one invocation — the
 // close-drain that chains the tail of the morning, and one label event. Every
 // quiet hour skips its drain and costs the cron's one run alone. Under the
-// stateless ask (§15.33) the quiet hours are still ASKED — 24 asks per task —
+// stateless ask (PRINCIPLES.md) the quiet hours are still ASKED — 24 asks per task —
 // and cost nothing beyond that run: a decline files nothing.
 test('S65 a working day: 7 pieces of work cost 28 invocations, and each is accounted', () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
@@ -1726,7 +1726,7 @@ test('S65 a working day: 7 pieces of work cost 28 invocations, and each is accou
   assert.equal(acct.scheduler, 24, 'the hourly cron is the floor');
   // Two drains, not four: the morning chain's three tasks all anchor at 04:00, so one drain
   // takes what it can and the close that releases the next one chains a close-drain rather than
-  // waiting for a fresh hour's tick (DESIGN §17.1, §17.3).
+  // waiting for a fresh hour's tick (docs/PRINCIPLES.md).
   assert.deepEqual(acct.executorByTrigger,
     { 'scheduler-run-drain': 2, 'close-drain': 1, 'label-event': 1 });
   assert.equal(acct.total, 28, 'the whole day, accounted');
@@ -1760,7 +1760,7 @@ test('S66 a quiet day costs the cron floor alone: 24 invocations, zero executor 
   assert.equal(sim.log.filter((e) => e.kind === 'executor-run').length, 0);
 });
 
-// ---- S67-S70 — the cron's CADENCE (DESIGN §17). Actions bills each job's
+// ---- S67-S70 — the cron's CADENCE (PRINCIPLES.md). Actions bills each job's
 // minutes rounded up, so a day's cost is the RUN COUNT and an idle hourly tick
 // costs a full billed minute to find nothing. These four ask what a twice-daily
 // cron — the 04:xx anchor tick plus a 16:xx tick — actually trades away.
@@ -2048,7 +2048,7 @@ test('S73 a weekly task fires exactly once a week, even when no tick lands on it
   assert.deepEqual(createdHours(offAnchor), ['06:17', '06:17']);
 });
 
-// ---- O. The stateless scheduler (owner, 2026-09-05, #1725 — DESIGN §15.33) --
+// ---- O. The stateless scheduler (owner, 2026-09-05, #1725 — PRINCIPLES.md) --
 // The engine keeps no calendar and no memory of an ask: every tick asks every
 // scheduled task, and a task's cadence is a term in its own preconditions, read
 // off its run history. These pin the terms one at a time, from the side the

@@ -111,7 +111,7 @@ not an API-call saving and is not claimed as one — what it buys is one roster 
 of two that can disagree. The freshness verdict refreshing within a day rather than a
 week is the side benefit.
 
-CLASSIFICATION (per-project-scheduling DESIGN §6, the same note RULES.md carries):
+CLASSIFICATION (the same note RULES.md carries):
 this is an ORDINARY PACK TASK, not a fleet mechanism. Its *implementation* happens to
 scan every repo under the owner over a PAT, but its declaration, scheduling and
 lifecycle are exactly those of any pack task — it is active because this repo declares

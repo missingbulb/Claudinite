@@ -1,4 +1,4 @@
-// The 2026-08-06 phase-language rename (per-project-scheduling DESIGN §12):
+// The 2026-08-06 phase-language rename (docs/PRINCIPLES.md):
 // task execution is two similar, consecutive phases — deterministic PREWORK,
 // then AGENTIC WORK — and the contract fields say so instead of framing the
 // code phase as preparation for the agent: `agent_preprocessing` → `prework`,
