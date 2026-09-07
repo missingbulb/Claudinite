@@ -9,7 +9,7 @@
   ],
   "expected_outcome": "supersede_existing_pr",
   "automerge": [
-    "claudinite-local-pack-md-changes"
+    "under:.claudinite/local/packs"
   ],
   "agent_model": "opus",
   "agent_instructions": "task.md",

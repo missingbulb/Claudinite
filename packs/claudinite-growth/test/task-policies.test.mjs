@@ -50,13 +50,29 @@ test('growth-extract may land local-pack prose and checks, nothing outside the l
   ]).mergeable, false);
 });
 
-test('rule-revalidation may land local-pack prose rewrites only', () => {
+test('rule-revalidation may land any local-pack correction, never a canon one', () => {
+  // The task's write surface is the whole local-pack tree, not just its prose:
+  // a probe that disproves a check's premise corrects the check and its fixture,
+  // and a claim whose surface is gone takes its file with it.
   assert.equal(verdict(revalidation.automerge, [
     { file: RULES_MD, before: '- the old wording\n', after: '- the revalidated wording\n' },
+    { file: '.claudinite/local/packs/claudinite/workRules/stale-premise.mjs', before: 'a\n', after: 'b\n' },
+    { file: '.claudinite/local/packs/claudinite/test/stale-premise.test.mjs', before: 'a\n', after: 'b\n' },
+    { file: '.claudinite/local/packs/claudinite/skills/gone/SKILL.md', before: '- a\n', after: null },
   ]).mergeable, true);
+
+  // The canon shelf is the owner's review, whatever the file: a rule this repo
+  // publishes to every member is not a correction one run lands on its own.
+  for (const file of ['packs/basics/RULES.md', 'packs/basics/workRules/some-rule.mjs']) {
+    assert.equal(verdict(revalidation.automerge, [
+      { file, before: '- a\n', after: '- b\n' },
+    ]).mergeable, false, file);
+  }
+  // …and a run that reached both surfaces parks whole, on the canon half.
   assert.equal(verdict(revalidation.automerge, [
+    { file: RULES_MD, before: '- a\n', after: '- b\n' },
     { file: 'packs/basics/RULES.md', before: '- a\n', after: '- b\n' },
-  ]).mergeable, false, 'canon prose parks for the owner');
+  ]).mergeable, false);
 });
 
 test('growth-dedup may land Markdown removals and in-line trims, never growth', () => {
