@@ -218,7 +218,10 @@ test('every export form is read — declarations, an export list, and `as` renam
 });
 
 test('an export that only ever appeared in a comment is not a removal', () => {
-  const before = "// export const GHOST = 1;\nexport const A = 1;\n";
+  // Line-start is what the matcher keys on, so a `//` prefix could never have
+  // reached it; only a block comment puts a fake export where stripping is what
+  // rules it out.
+  const before = '/*\nexport const GHOST = 1;\n*/\nexport const A = 1;\n';
   assert.deepEqual(contractChanges([WIRING], () => 'export const A = 1;\n', () => before), []);
 });
 

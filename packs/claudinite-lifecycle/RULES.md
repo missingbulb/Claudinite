@@ -15,11 +15,6 @@
   activates by being mounted, fingerprinted or present on disk, so a pack whose files you can see
   but whose id is undeclared contributes no prose, no checks, no skills and no tasks.
 
-- **Removing or renaming a pack's declaration** — if the repo's README still carries a legacy
-  pack-badge row, delete that pack's badge from it by hand in the same change. Nothing writes or
-  re-derives the row any more, so a badge left behind points at a `badge.svg` the mount no longer
-  holds, which `reference-integrity` reports as blocking.
-
 - **Adding a pack** — run the `adopt-pack` skill, which declares it, asks its adoption questions,
   re-vendors and scaffolds. Never hand-copy a pack's content into the repo.
 
