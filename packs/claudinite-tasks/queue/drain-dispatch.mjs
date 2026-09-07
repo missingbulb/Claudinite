@@ -18,6 +18,12 @@ import { pathToFileURL } from 'node:url';
 import { runDrainDispatch } from '../src/schedule/drain-dispatch.mjs';
 
 export * from '../src/schedule/drain-dispatch.mjs';
+// The surface this path published, named rather than left to the star: a member's
+// own local pack may import it, and `export *` says nothing a reader — or the
+// consumer-safe-change check — can see.
+export {
+  runDrainDispatch, dispatchDrain,
+} from '../src/schedule/drain-dispatch.mjs';
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runDrainDispatch().catch((e) => { console.error(e.message ?? e); process.exit(1); });
