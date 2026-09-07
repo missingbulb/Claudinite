@@ -4,7 +4,7 @@
 //
 //   is this repo a MEMBER?           → `fleet-adoption` issues   (adoption-issues.mjs)
 //   is that membership still MEANING anything?
-//                                    → `fleet-drift` issues      (drift-issues.mjs)
+//                                    → the report's freshness section (freshness.mjs)
 //
 // Run by this pack's `fleet-roster` scheduled task, whose worker calls `main()` below
 // as the task's `code_work` — Action-side inside the enforcer repo's scheduler workflow,
@@ -23,10 +23,11 @@
 // The roster is now built ONCE and both halves consume it, so a repo has one
 // membership verdict and the report has one failure boundary.
 //
-// WHAT IS STILL SEPARATE, deliberately: the two ISSUE FAMILIES. Coverage and drift
-// close on unrelated conditions and carry unrelated remedies, so each keeps its own
-// label, its own convergence policy and its own section of the report, in its own
-// module. This file owns the walk and nothing else.
+// WHAT IS STILL SEPARATE, deliberately: the two QUESTIONS. Coverage answers in an issue
+// family of its own; freshness answers on the report and files nothing, because the
+// dashboard already carries that fact from the same source (#1854). Each keeps its own
+// remedies and its own section of the report, in its own module. This file owns the walk
+// and nothing else.
 //
 // UNKNOWN IS PER-QUESTION, which is the one behaviour the merge changes. A declaration
 // that cannot be read or parsed is unknown to BOTH halves — it is the input they share.
@@ -51,7 +52,7 @@ import { makeGh, paged, readDeclaration, isDormant, ensureLabel, DECLARATION } f
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 import { missingFleetTokenError } from '../../fleet-token.mjs';
 import * as adoption from './adoption-issues.mjs';
-import * as drift from './drift-issues.mjs';
+import * as freshness from './freshness.mjs';
 
 // --- the roster walk ----------------------------------------------------------
 
@@ -112,8 +113,8 @@ export async function buildRoster(gh, repos, {
     if (entry.isCanon || entry.excluded) continue;
 
     try {
-      const mount = await drift.probeMount(gh, r.full_name, entry.declaration, { canon: canonVersions });
-      entry.freshness = drift.classifyFreshness({ ...mount, dormant: entry.dormant });
+      const mount = await freshness.probeMount(gh, r.full_name, entry.declaration, { canon: canonVersions });
+      entry.freshness = freshness.classifyFreshness({ ...mount, dormant: entry.dormant });
     } catch (e) {
       entry.freshnessError = e.message;
     }
@@ -141,8 +142,9 @@ export function coverageView(roster) {
   return { covered, dormant, uncovered, optedOut, skipped, unknown };
 }
 
-// The freshness question's buckets. `gone` is names only — what convergeDrift closes as
-// out-of-fleet; `outOfScope` carries the same repos WITH their reasons, for the report.
+// The freshness question's buckets. `outOfScope` carries the repos this half does not
+// measure WITH their reasons, since the report names every repo rather than only the
+// failures.
 //
 // `dormant` is a LABEL here, not an exit: a dormant member is bucketed as fresh or
 // unhealthy like any other, and named in `dormant` as well so the summary can say which
@@ -150,19 +152,19 @@ export function coverageView(roster) {
 // the cost was that a dormant member's mount could fall arbitrarily far behind canon with
 // the roster saying nothing at all about it.
 export function freshnessView(roster) {
-  const fresh = []; const unhealthy = []; const dormant = []; const outOfScope = []; const unknown = []; const gone = [];
+  const fresh = []; const unhealthy = []; const dormant = []; const outOfScope = []; const unknown = [];
   for (const e of roster) {
     if (e.isHome || e.isCanon) continue;          // named in the summary, never measured
-    if (e.archived || e.fork) { outOfScope.push(`${e.displayName} (${e.archived ? 'archived' : 'fork'})`); gone.push(e.fullName); continue; }
-    if (e.excluded) { outOfScope.push(`${e.displayName} (excluded)`); gone.push(e.fullName); continue; }
+    if (e.archived || e.fork) { outOfScope.push(`${e.displayName} (${e.archived ? 'archived' : 'fork'})`); continue; }
+    if (e.excluded) { outOfScope.push(`${e.displayName} (excluded)`); continue; }
     if (e.declarationError) { unknown.push(`${e.displayName} — ${e.declarationError}`); continue; }
-    if (e.declaration === null) { outOfScope.push(`${e.displayName} (uncovered — the adoption half's subject)`); gone.push(e.fullName); continue; }
+    if (e.declaration === null) { outOfScope.push(`${e.displayName} (uncovered — the adoption half's subject)`); continue; }
     if (e.dormant) dormant.push(e.fullName);
     if (e.freshnessError) { unknown.push(`${e.displayName} — ${e.freshnessError}`); continue; }
-    if (e.freshness.state === drift.FRESH) fresh.push({ fullName: e.fullName, detail: e.freshness.detail });
+    if (e.freshness.state === freshness.FRESH) fresh.push({ fullName: e.fullName, detail: e.freshness.detail });
     else unhealthy.push({ fullName: e.fullName, dormant: e.dormant, ...e.freshness });
   }
-  return { fresh, unhealthy, dormant, outOfScope, unknown, gone };
+  return { fresh, unhealthy, dormant, outOfScope, unknown };
 }
 
 // --- main --------------------------------------------------------------------
@@ -201,14 +203,14 @@ export async function main() {
     .filter((r) => r.owner.login.toLowerCase() === owner);
   if (mine.length === 0) {
     throw new Error(`enumeration returned no repos owned by ${owner} — wrong token user or scope; `
-      + 'refusing to run a sweep that would close every adoption and drift issue as stale');
+      + 'refusing to run a sweep that would close every adoption issue as stale');
   }
 
   const roster = await buildRoster(gh, mine, {
-    home, canonRepo, canonBranch, exclude, canonVersions: drift.canonVersions(gh, canonRepo),
+    home, canonRepo, canonBranch, exclude, canonVersions: freshness.canonVersions(gh, canonRepo),
   });
   const coverage = coverageView(roster);
-  const freshness = freshnessView(roster);
+  const freshnessRoster = freshnessView(roster);
 
   await ensureLabel(gh, home, adoption.LABEL, adoption.LABEL_SPEC);
   const coverageActions = await adoption.convergeAdoption(gh, home, {
@@ -217,19 +219,12 @@ export async function main() {
     optedOutSet: new Set(coverage.optedOut),
   });
 
-  await ensureLabel(gh, home, drift.LABEL, drift.LABEL_SPEC);
-  const driftActions = await drift.convergeDrift(gh, home, {
-    unhealthy: freshness.unhealthy,
-    healthySet: new Set(freshness.fresh.map((f) => f.fullName)),
-    goneSet: new Set(freshness.gone),
-  });
-
   // Two sections, one report: the questions are separate and read separately, but a
   // reader now gets both from one run rather than correlating two.
   const summary = [
     adoption.renderCoverageSummary({ owner, home, ...coverage, actions: coverageActions }),
-    drift.renderFreshnessSummary({
-      owner, home, canonRepo, canonBranch, ...freshness, actions: driftActions,
+    freshness.renderFreshnessSummary({
+      owner, home, canonRepo, canonBranch, ...freshnessRoster,
     }),
   ].join('\n\n');
 
@@ -238,7 +233,7 @@ export async function main() {
 
   // Either half's unknowns fail the run. Reported together so one escalation names
   // everything indeterminate rather than whichever half happened to run first.
-  const unknown = [...coverage.unknown, ...freshness.unknown];
+  const unknown = [...coverage.unknown, ...freshnessRoster.unknown];
   if (unknown.length) {
     throw new Error(`${unknown.length} repo classification(s) could not be made — unknown is neither `
       + 'uncovered nor behind, no issues were opened for them, and this run fails so the cause is escalated');

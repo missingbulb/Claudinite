@@ -13,7 +13,7 @@ member executes:
 
 | sweep | task | asks |
 |---|---|---|
-| [check-fleet-roster.mjs](tasks/fleet-roster/check-fleet-roster.mjs) → [adoption-issues.mjs](tasks/fleet-roster/adoption-issues.mjs) + [drift-issues.mjs](tasks/fleet-roster/drift-issues.mjs) | [fleet-roster](tasks/fleet-roster/README.md) (daily) | is this repo a **member**, and is that membership still **meaning** anything? → adoption issues + drift issues |
+| [check-fleet-roster.mjs](tasks/fleet-roster/check-fleet-roster.mjs) → [adoption-issues.mjs](tasks/fleet-roster/adoption-issues.mjs) + [freshness.mjs](tasks/fleet-roster/freshness.mjs) | [fleet-roster](tasks/fleet-roster/README.md) (daily) | is this repo a **member**, and is that membership still **meaning** anything? → adoption issues + the run report's freshness section |
 | [scan-for-needed-packs.mjs](tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs) + [force-add-packs.mjs](tasks/fleet-add-missing-packs/force-add-packs.mjs) | [fleet-add-missing-packs](tasks/fleet-add-missing-packs/README.md) (weekly, and forceable) | which packs is a member missing — the ones its **shape** suspects, or the ones the owner named? → a work-list issue *in* each member + that member's scheduler fired; the member's own agent adopts |
 | [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/README.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
 | [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/README.md) (`manual` — forced runs only) | make every member baseline **now**, then follow each to canon's published versions → an outcome table, not a dispatch count |
@@ -89,8 +89,8 @@ mount several engine versions behind canon is behind whether or not anything the
 so it is measured and reported like any other member, and named as dormant beside the verdict so the
 reader knows it will not repair itself. The single thing the declaration buys it is quiet about the
 scheduler: a member with no scheduler workflow at all is the `no-scheduler` finding when it is awake
-and nothing at all when it is dormant. The fan-out still leaves it alone, so the drift it reports is
-advisory — it closes when someone wakes the repo or baselines it deliberately.
+and nothing at all when it is dormant. The fan-out still leaves it alone, so the gap it reports is
+advisory — it clears when someone wakes the repo or baselines it deliberately.
 
 **Every report enumerates the full fleet.** Whatever a repo's state — covered, dormant, uncovered,
 excluded, archived, a fork, inactive today, or simply not measured by that sweep — each sweep's

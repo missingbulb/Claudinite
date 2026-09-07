@@ -10,7 +10,7 @@
 // code_work_required_secrets is what asks the repo for FLEET_GITHUB_TOKEN):
 //
 //   tasks/fleet-roster/check-fleet-roster.mjs          is a repo a MEMBER, and is that
-//     adoption-issues.mjs + drift-issues.mjs           membership still MEANING anything?
+//     adoption-issues.mjs + freshness.mjs               membership still MEANING anything?
 //                                                      (one walk, two issue families)
 //   tasks/fleet-add-missing-packs/                     which packs is a member MISSING — the
 //     scan-for-needed-packs.mjs + force-add-packs.mjs  ones its SHAPE suspects, or the ones
@@ -30,10 +30,11 @@
 // repos from the same walk (#788): coverage, and — because per-project scheduling made
 // every member maintain itself and in doing so removed the last thing that looked at a
 // member from the OUTSIDE — whether that coverage still means anything. Self-maintenance
-// cannot detect its own absence. Two issue families, one enumeration, one declaration
-// read per repo; the split that remains is between the FAMILIES (adoption-issues.mjs,
-// drift-issues.mjs), which close on unrelated conditions, and not between two walks that
-// could classify the same repo differently.
+// cannot detect its own absence. One enumeration, one declaration read per repo; the
+// split that remains is between the QUESTIONS (adoption-issues.mjs, freshness.mjs),
+// which answer on unrelated conditions, and not between two walks that could classify
+// the same repo differently. Only coverage files issues — freshness answers on the run
+// report, because the dashboard already carries that fact from the same source (#1854).
 //
 // ADD-MISSING-PACKS exists because a pack's `detect` fingerprint is consulted ONCE, at
 // bootstrap's --init: baselining backfills the seeded packs and each declared pack's
@@ -73,7 +74,7 @@
 import { fleetTokenHandoverStep } from './fleet-token.mjs';
 
 export default {
-  version: '60907.1',
+  version: '60907.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'fleet-enforcer duties for the repo watching every other repo — coverage, freshness, standardized packs',

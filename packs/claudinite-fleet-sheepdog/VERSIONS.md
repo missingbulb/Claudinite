@@ -7,6 +7,7 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60907.2 | 2026-09-07 | The freshness question answers on the run report only: the `fleet-drift` issue family is gone and `drift-issues.mjs` is now `freshness.mjs`, the classification and report it always mostly was (#1854). |
 | 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr`. |
 | 60903.2 | 2026-09-03 | The config rules (`exclude`, `packSeeds`, seeds-agree) move out of `RULES.md` into the `configuring-the-fleet` skill, forced for `.claudinite-settings.json` (#1662). |
 | 60903.1 | 2026-09-02 | Task declarations converted to `task.json`; the declaration's comments moved into each task's README (#1633). |

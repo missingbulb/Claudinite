@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildRoster, coverageView, freshnessView,
 } from '../../../tasks/fleet-roster/check-fleet-roster.mjs';
-import { canonVersions } from '../../../tasks/fleet-roster/drift-issues.mjs';
+import { canonVersions } from '../../../tasks/fleet-roster/freshness.mjs';
 
 // The merged walk (#788). What is worth locking down is not that the two questions
 // still get answered — their own modules' tests cover that — but that the walk reads
@@ -148,7 +148,6 @@ test('an excluded repo that still carries a declaration is covered, and out of s
   assert.deepEqual(coverageView(roster).optedOut, []);
   const f = freshnessView(roster);
   assert.deepEqual(f.outOfScope, ['o/left-out (excluded)']);
-  assert.deepEqual(f.gone, ['o/left-out']);
 });
 
 test('an excluded repo with no declaration is opted out, not merely uncovered', async () => {
@@ -223,7 +222,7 @@ test('an unreadable declaration is unknown to BOTH questions — it is the input
   assert.match(freshnessView(roster).unknown[0], /^o\/flaky — unparsable/);
   // and it is in no other bucket of either view
   assert.deepEqual(coverageView(roster).covered, []);
-  assert.deepEqual(freshnessView(roster).gone, []);
+  assert.deepEqual(freshnessView(roster).outOfScope, []);
 });
 
 test('a failed mount probe is unknown to freshness ALONE — coverage keeps its verdict', async () => {

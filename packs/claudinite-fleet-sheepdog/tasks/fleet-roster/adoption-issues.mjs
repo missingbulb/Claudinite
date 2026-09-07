@@ -5,7 +5,7 @@
 // halves, by its sibling check-fleet-roster.mjs, and this module is handed the finished
 // buckets. What lives here is everything that is specific to the coverage QUESTION:
 // what an adoption issue says, when one opens, closes or reopens, and how the coverage
-// roster reads. Its counterpart is drift-issues.mjs, which owns the same three things
+// roster reads. Its counterpart is freshness.mjs, which owns the classification and report
 // for the freshness question; the two never import each other.
 //
 // Read-only toward every repo it names: the only writes are the enforcer repo's own
