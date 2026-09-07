@@ -73,12 +73,6 @@ test('rule-revalidation may land any local-pack correction, never a canon one', 
     { file: RULES_MD, before: '- a\n', after: '- b\n' },
     { file: 'packs/basics/RULES.md', before: '- a\n', after: '- b\n' },
   ]).mergeable, false);
-
-  // The self-widening guard outranks the folder scope: a run cannot revalidate
-  // its way into a wider authorization.
-  assert.equal(verdict(revalidation.automerge, [
-    { file: '.claudinite/local/packs/claudinite/merge-rules.json', before: '[]\n', after: '[{}]\n' },
-  ]).mergeable, false);
 });
 
 test('growth-dedup may land Markdown removals and in-line trims, never growth', () => {

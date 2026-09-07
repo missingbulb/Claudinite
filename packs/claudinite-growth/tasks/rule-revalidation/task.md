@@ -7,7 +7,7 @@ the prose stays green and the cost lands on a session spent on a route that clos
 
 The run's **Context section is binding scope**: it names the **pack paths** to revalidate and the two probe rules below. Work those paths — a consuming repo's own local packs by default; Claudinite also its core `packs/`. A canon pack a repo only mounts is revalidated in the repo that owns it, on this same task.
 
-Open a PR. A run whose corrections all sit inside the repo's **own local packs** lands itself once CI is green; a run that reached a **canon pack** — a shelf this repo publishes to other repositories — goes in front of the owner whole, that half being a rewrite of rules every member obeys. A later round's evidence replaces an earlier round's still waiting: the pull request an earlier run left open closes as superseded once yours exists, which your converge performs when handed `--pr`.
+Open a PR, and never merge it yourself. This task rewrites the rules sessions obey, on evidence a reviewer cannot re-derive from the diff, so the body carries that evidence in full whether or not anyone reads it. A later round's evidence replaces an earlier round's still waiting: the pull request an earlier run left open closes as superseded once yours exists, which your converge performs when handed `--pr`.
 
 ## What counts as a revalidatable claim
 
