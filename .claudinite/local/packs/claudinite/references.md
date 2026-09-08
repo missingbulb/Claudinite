@@ -279,4 +279,18 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   second `guardToolCalls` entry catches a `for` loop whose body is nothing but the sleep; a
   `while`/`until` loop stays clean, since that shape names a real condition. Retire the entry only
   if `bare-sleep-wait`'s first regex is rewritten to subsume both shapes.
-
+- **(RULES-80)** #1888/#1889: `reference-integrity`'s migration exemption had never fired since it
+  was written. It filtered for a top-level `migrations/<slug>/migration.mjs` (every record lives
+  under the pack or engine that owns it) and read only the records the branch itself edits — and a
+  branch deleting a vendored-out path is exactly the branch that leaves the record describing that
+  vendoring alone. The exemption selected nothing on every run, so deleting four dead workflows
+  raised 51 blocking findings of which 7 were real, and the sweep read as impossible across six
+  triage runs. Retire the rule only if a work-scope exemption gains a way to name the tree it must
+  read that a diff-scoped one cannot get wrong.
+- **(RULES-81)** #1887's citation sweep (session 1ee51249, 2026-09-07): the link's declared exit
+  criterion was a grep for the retired `DESIGN §n` / `SCENARIOS.md` / `RESEARCH.md` tokens, and it
+  read clean. An independent subagent review then found ~20 sites where the substitution left a
+  stranded prefix word (`"tasks-dispatch PRINCIPLES.md"`) or cited the doc twice in one
+  parenthetical, one citation repointed to a live document it never referenced, and one
+  semantically broken substitution — none of which carry a retired token, so none could trip that
+  grep. Retire the rule only if a mechanism can judge a rewritten citation's replacement text.
