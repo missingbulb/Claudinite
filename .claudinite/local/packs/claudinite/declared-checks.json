@@ -349,5 +349,20 @@
         "fix": "patch the file as anchored text instead"
       }
     ]
+  },
+  {
+    "id": "design-doc-status-banner",
+    "severity": "advisory",
+    "since": "2026-09-08",
+    "failureMessage": "an initiative's DESIGN.md reads as a description of how the system works; without a status on its first screen a reader takes an unbuilt proposal for the current state",
+    "scanFiles": "/(^|\\/)docs\\/[^/]+\\/DESIGN\\.md$/",
+    "scanTracked": true,
+    "checkEachFile": [
+      {
+        "require": "/^(?:.*\\n){0,6}> \\*\\*Status: (?:not implemented|in flight)\\.\\*\\* /",
+        "what": "carries no status banner in its first seven lines",
+        "fix": "open it with `> **Status: not implemented.** \u2026` or `> **Status: in flight.** \u2026`; a built system's design doc has no third status \u2014 delete it whole instead"
+      }
+    ]
   }
 ]

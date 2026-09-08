@@ -1,5 +1,9 @@
 # Claudinite as a licensed, installed product — end state
 
+> **Status: not implemented.** A work in progress, and not a mature one — the ideas below are
+> unbuilt, unproven and still moving. Nothing here describes how Claudinite works today; read it as
+> a proposal under discussion, never as documentation of the repository as it stands.
+
 Claudinite is adopted by a **repository**. The repository declares its packs, runs its own scheduled
 tasks in its own Actions, validates its own state through its own checks, and carries its own local
 packs. Everyone and everything working on that repository gets the same corpus because the

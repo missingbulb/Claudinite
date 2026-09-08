@@ -1,5 +1,8 @@
 # Selling Claudinite: storefront, licensing channel and pricing
 
+> **Status: not implemented.** Exploratory, unfinished, and describing nothing that exists. Every
+> option below is open and none has been chosen.
+
 The mechanism — how a repository installs, licenses, updates and governs Claudinite — is
 [DESIGN.md](DESIGN.md). This paper covers only what that design does not decide: where the product
 is sold, what each channel permits, and which pricing shapes the design can express. It presents
