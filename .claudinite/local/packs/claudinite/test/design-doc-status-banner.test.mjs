@@ -55,9 +55,11 @@ test('design-doc-status-banner: scope is the initiative shape, under a pack too'
   } finally { cleanup(root); }
 });
 
-// A pattern left behind by a layout change matches nothing and still reads as live.
+// A pattern left behind by a layout change matches nothing and still reads as live,
+// so the scope is measured over the real tree — with the declaration's own regex,
+// never a second copy of it here, which would go on passing after the real one moved.
 test('design-doc-status-banner: the scope is non-empty against the real tree', () => {
   const root = fileURLToPath(new URL('../../../../..', import.meta.url));
   const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' }).split('\n');
-  assert.ok(tracked.filter((p) => /(^|\/)docs\/[^/]+\/DESIGN\.md$/.test(p)).length >= 4);
+  assert.ok(tracked.filter((p) => rule.spec.scanFiles.test(p)).length >= 4);
 });
