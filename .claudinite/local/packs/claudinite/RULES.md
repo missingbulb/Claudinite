@@ -285,8 +285,10 @@ Below are rules on how to work on this repo.
 - **A worker crash sharing a benign outcome code** — keep "could not run" distinguishable from
   "had nothing to run", or it is unobservable.
 
-- **Diagnosing a member's maintenance PR that won't land** — `unstable` beside a green sweep is a
-  parked `action_required` run, not a missing repo setting.
+- **Diagnosing a member's maintenance PR whose checks look wrong** — CI apparently never started,
+  or `unstable` beside a green sweep — read the runs on its head sha: the queue dispatches its
+  own, so a lone `action_required` beside one is a gated phantom that never executed, and costs a
+  cycle rather than the merge. (82)
 
 - **Reading a uniform signal across every fleet member** — check for a rate-limit signal before
   trusting a uniform empty sweep, and check whether each member's own convergence window has passed
