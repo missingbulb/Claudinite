@@ -153,7 +153,7 @@ Resolve the wait through exactly one path — a `Monitor` until-loop, **or** dir
 
 ## A run artifact resolves to a blob-storage URL a sandboxed session can't reach
 
-`download_workflow_run_artifact` hands back a `*.blob.core.windows.net`-style URL that a sandbox's egress proxy denies at CONNECT, so chasing it burns a call for nothing. Read `get_job_logs` with a generous `tail_lines` to learn which step or case failed, then reproduce it locally.
+`download_workflow_run_artifact` hands back a `*.blob.core.windows.net`-style URL that a sandbox's egress proxy denies at CONNECT, so chasing it burns a call for nothing. Read `get_job_logs` to learn which step or case failed, then reproduce it locally — but don't guess a large `tail_lines` to land the window inline: a big guess can itself exceed the tool's own token limit (`tail_lines: 2406` → `exceeds maximum allowed tokens`). Make a small call to get the log's saved-to-disk path, then `grep` that file locally for the failure marker (`not ok`, `FAIL`), the same way an oversized list/search result gets read.
 
 ## A long-running workflow that commits generated files will race a more-frequent scheduled writer
 
