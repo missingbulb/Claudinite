@@ -162,6 +162,11 @@ Below are rules on how to work on this repo.
 
 - **Creating the artifact a check will demand** — create it before the action it gates, not after.
 
+- **Writing the exemption branch of a check** — read its evidence from the tracked tree, never the
+  change's own files: the change an exemption spares is usually the one that never touches the file
+  carrying that evidence, so a diff-scoped exemption selects nothing on every run and reads as
+  strictness. (80)
+
 - **Writing a check that fires on a removed line** (`forbidRemovedLinesMatching`) — it cannot see a
   deleted file: `removedLines` returns nothing for a path git no longer tracks, so removing one
   export fires and deleting the whole module is silent. Guard the deletion separately. (75)
@@ -519,6 +524,11 @@ Below are rules on how to work on this repo.
 - **Writing a regex import-path rewriter for a bulk file-move** — anchor to real import/export
   syntax (line-start, or after a specific separator), never a bare `from '...'` searched across the
   whole text. A fixture embedding import syntax as string data matches identically and is corrupted.
+
+- **Verifying a sweep that rewrote citations** — read every rewritten site, not just the exit
+  grep: it proves the old token gone, never that the replacement reads right, and a stranded
+  prefix word, a doubled citation or one repointed at an unrelated live doc carries no old
+  token. (81)
 
 - **Running the prose-to-checks sweep here** — the worklist is
   `docs/declarative-checks/rule-inventory.md`, every rule classified by the moment that could
