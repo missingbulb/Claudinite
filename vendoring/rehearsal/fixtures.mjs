@@ -1353,7 +1353,7 @@ fi
   },
   {
     name: 'local-declared-checks',
-    why: 'a local pack carrying its own declared-checks.json — in a LEGACY spelling (checkParsedFile) and with in-cap messages: proves a member\'s declarations keep loading across vocabulary merges and stay green under declared-check-messages and declared-check-since',
+    why: 'a local pack carrying its own declared-checks.json, with in-cap messages: proves a member\'s own declarations load on a real converge and stay green under declared-check-messages and declared-check-since',
     files: {
       'README.md': '# fixture-declared\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics', 'local/fixture-declared']),
@@ -1363,8 +1363,8 @@ fi
         {
           id: 'fixture-declared-manifest',
           severity: 'advisory',
-          failureMessage: 'a fixture declaration in the legacy checkParsedFile spelling',
-          checkParsedFile: [{
+          failureMessage: 'a fixture declaration a member wrote for itself',
+          checkParsedFiles: [{
             file: 'package.json',
             whenFieldPresent: 'never.present',
             requireField: 'never.required',

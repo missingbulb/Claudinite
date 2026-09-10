@@ -208,13 +208,15 @@ test('requirePaths: each declared path must exist, with {path} interpolation', (
   } finally { cleanup(absent); cleanup(present); }
 });
 
-test('listedInFile: every captured tree name must appear in the list file as the asText token, sorted, deduped', () => {
+test('requireIndexCoverage: every captured tree name must appear in the index as the coveredByText token, sorted, deduped', () => {
   const rule = patternRule({
     ...meta('fx-listed'),
-    listedInFile: [{
+    requireIndexCoverage: [{
       eachTrackedPathMatching: /^mods\/(?<name>[^/]+)\/mod\.mjs$/,
-      listFile: 'mods/INDEX.md',
-      asText: '[{name}]',
+      indexFile: 'mods/INDEX.md',
+      coveredByText: '[{name}]',
+      whenIndexFileAbsent: 'assertNothing',
+      anchorFindingsAt: 'indexFile',
       what: 'mod "{name}" is not listed',
       fix: 'list [{name}] in the index',
     }],
@@ -234,13 +236,15 @@ test('listedInFile: every captured tree name must appear in the list file as the
   } finally { cleanup(root); cleanup(noIndex); }
 });
 
-test('coveredByGlobLine: a matching path needs a covering glob (full path or basename) on a filtered line', () => {
+test('requireIndexCoverage: a matching path needs a covering glob (full path or basename) on a filtered line', () => {
   const rule = patternRule({
     ...meta('fx-glob'),
-    coveredByGlobLine: [{
-      eachPathMatching: /(?<base>[^/]*GENERATED[^/]*)$/,
-      globFile: '.gitattributes',
-      globLineMatching: /\bmerge=ours\b/,
+    requireIndexCoverage: [{
+      eachScannedPathMatching: /(?<base>[^/]*GENERATED[^/]*)$/,
+      indexFile: '.gitattributes',
+      coveredByGlobLinesMatching: /\bmerge=ours\b/,
+      whenIndexFileAbsent: 'flagEveryPath',
+      anchorFindingsAt: 'eachUncoveredPath',
       what: 'no merge=ours entry',
       fix: 'add `{base} merge=ours`',
     }],
@@ -317,10 +321,10 @@ test('a fresh context is a fresh scan — the cache never bleeds between repos',
   } finally { cleanup(dirty); cleanup(clean); }
 });
 
-test('checkParsedFile: whenFieldPresent + requireField / forbidField over the parsed document', () => {
+test('checkParsedFiles: whenFieldPresent + requireField / forbidField over the parsed document', () => {
   const rule = patternRule({
     ...meta('fx-parsed-file'),
-    checkParsedFile: [{
+    checkParsedFiles: [{
       file: 'package.json',
       whenFieldPresent: 'devDependencies.esbuild',
       requireField: 'dependencies.esbuild',
@@ -339,14 +343,17 @@ test('checkParsedFile: whenFieldPresent + requireField / forbidField over the pa
   } finally { cleanup(bad); cleanup(good); cleanup(inert); cleanup(broken); }
 });
 
-test('equalParsedValues: first file found by path+content probe; missing second and mismatch each fire their message', () => {
+test('requireEqualFields: the file found by path+content probe; missing twin and mismatch each fire their message', () => {
   const rule = patternRule({
     ...meta('fx-equal-values'),
-    equalParsedValues: [{
-      first: { filesMatching: /manifest\.json$/, whereFileContains: /"manifest_version"/, field: 'version' },
-      second: { file: 'package.json', field: 'version' },
-      whenSecondMissing: { what: 'no package.json', fix: 'add it' },
-      whenUnequal: { what: 'versions differ: {first} vs {second}', fix: 'align them' },
+    checkParsedFiles: [{
+      filesMatching: /manifest\.json$/,
+      whereFileContains: /"manifest_version"/,
+      requireEqualFields: {
+        field: 'version', inFile: 'package.json', atField: 'version',
+        whenFileMissing: { what: 'no package.json', fix: 'add it' },
+        whenUnequal: { what: 'versions differ: {first} vs {second}', fix: 'align them' },
+      },
     }],
   });
   const mismatched = makeRepo({ changed: {
@@ -369,13 +376,13 @@ test('equalParsedValues: first file found by path+content probe; missing second 
   } finally { cleanup(mismatched); cleanup(missing); cleanup(equal); cleanup(noManifest); }
 });
 
-test('forEachParsedEntry: YAML entries filtered by field equality; array containment case-insensitive; {entry} interpolates', () => {
+test('forEachEntryAtField: YAML entries filtered by field equality; array containment case-insensitive; {entry} interpolates', () => {
   const rule = patternRule({
     ...meta('fx-parsed-entry'),
-    forEachParsedEntry: [{
-      inFilesMatching: /(^|\/)template\.ya?ml$/,
-      entriesAtField: 'Resources',
-      whereFieldEquals: { field: 'Type', equals: 'Custom::Policy' },
+    checkParsedFiles: [{
+      filesMatching: /(^|\/)template\.ya?ml$/,
+      forEachEntryAtField: 'Resources',
+      whereEntryFieldEquals: { field: 'Type', equals: 'Custom::Policy' },
       forbidValueInArray: { atField: 'Properties.Headers', value: 'authorization', ignoreCase: true },
       what: '{entry} forwards Authorization', fix: 'drop it',
     }],
@@ -442,7 +449,7 @@ test('relevantWhen: someTrackedFileContains and exactlyOneTrackedFileMatches gat
       someTrackedFileContains: { pathMatching: /\.yaml$/, text: /BuildMethod: esbuild/ },
       exactlyOneTrackedFileMatches: /(^|\/)package\.json$/,
     },
-    checkParsedFile: [{
+    checkParsedFiles: [{
       file: 'package.json', whenFieldPresent: 'devDependencies.esbuild',
       requireField: 'dependencies.esbuild', what: 'w', fix: 'f',
     }],
@@ -467,11 +474,11 @@ test('relevantWhen: someTrackedFileContains and exactlyOneTrackedFileMatches gat
 test('parsed documents are parsed once per scan across the rule family', () => {
   const a = patternRule({
     ...meta('fx-parse-once-a'),
-    checkParsedFile: [{ file: 'shared.json', requireField: 'alpha', what: 'a', fix: 'f' }],
+    checkParsedFiles: [{ file: 'shared.json', requireField: 'alpha', what: 'a', fix: 'f' }],
   });
   const b = patternRule({
     ...meta('fx-parse-once-b'),
-    checkParsedFile: [{ file: 'shared.json', requireField: 'beta', what: 'b', fix: 'f' }],
+    checkParsedFiles: [{ file: 'shared.json', requireField: 'beta', what: 'b', fix: 'f' }],
   });
   const root = makeRepo({ changed: { 'shared.json': '{"alpha":1}' } });
   try {
@@ -1551,23 +1558,21 @@ ruleTester(patternRule({
   },
 });
 
-// The pre-#895 inline spelling of the value-set quantifier, still fielded in
-// every member's vendored packs. It is reachable — and load-bearing — because a
-// member's packs are delivered on a pack VERSION BUMP while the engine that
-// validates them is delivered on its own, so the rename reached no member while
-// the engine that rejected the old spelling reached all of them. The mixed tree
-// then failed the self-test, which parked the update PR that would have carried
-// the new spelling: a self-sustaining fleet-wide freeze (every member sat on
-// 2026-08-12's ref for five days). Translated, not merely tolerated — the old
-// form INLINED the extraction the new one names.
+// The value-set quantifier over a parsed array: the extraction is a NAMED set and
+// the coverage assertion refers to it, which is what lets one extraction serve
+// several assertions (#895; the pre-merge spelling that inlined it retired in
+// #1643).
 ruleTester(patternRule({
-  ...meta('fx-legacy-inline-value-set'),
+  ...meta('fx-parsed-value-set'),
+  extractValueSets: [{
+    setName: 'manifestPermissions',
+    fromParsedFilesMatching: /(^|\/)manifest\.json$/,
+    whereFileContains: /"manifest_version"/,
+    valuesOfArraysAtFields: ['permissions'],
+    whenSetEmpty: 'assertNothing',
+  }],
   requireIndexCoverage: [{
-    eachValueInParsedArray: {
-      filesMatching: /(^|\/)manifest\.json$/,
-      whereFileContains: /"manifest_version"/,
-      atField: 'permissions',
-    },
+    eachValueOfSet: 'manifestPermissions',
     indexFile: 'PRIVACY.md',
     coveredByText: '{value}',
     whenIndexFileAbsent: 'assertNothing',
@@ -1576,17 +1581,17 @@ ruleTester(patternRule({
   }],
 }), {
   clean: {
-    'the inline extraction still quantifies, and a covered value passes': { files: {
+    'a covered value passes': { files: {
       'app/manifest.json': '{"manifest_version":3,"permissions":["storage"]}',
       'PRIVACY.md': 'We use storage for your settings.\n',
     } },
-    'the inline whereFileContains probe still excludes a decoy': { files: {
+    'the whereFileContains probe excludes a decoy': { files: {
       'decoy/manifest.json': '{"permissions":["cookies"]}',
       'PRIVACY.md': 'Nothing to disclose.\n',
     } },
   },
   flagged: {
-    'an undisclosed value is still flagged through the legacy spelling': {
+    'an undisclosed value is flagged at the index file': {
       files: {
         'app/manifest.json': '{"manifest_version":3,"permissions":["tabs"]}',
         'PRIVACY.md': 'We disclose nothing.\n',
