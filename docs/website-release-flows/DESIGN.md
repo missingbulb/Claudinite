@@ -1,5 +1,8 @@
 # Website release flows — alignment design
 
+> **Status: not implemented.** Proposed, owner review pending — a design under discussion, not a
+> description of how the release flows work today.
+
 Status: **proposed** (owner review pending). Refs #722.
 Inputs: [COMPARISON.md](COMPARISON.md) (the fleet evidence), [SOUNDNESS.md](SOUNDNESS.md)
 (the independent soundness analysis). The subject is the `static-website` pack — merged in
