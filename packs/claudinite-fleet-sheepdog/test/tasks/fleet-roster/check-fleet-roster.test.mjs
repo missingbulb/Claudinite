@@ -24,10 +24,10 @@ const repo = (name, over = {}) => ({ name, full_name: `o/${name}`, archived: fal
 // A fake API over declarations, scheduler-workflow presence and canon's own version
 // numbers. Records every path so "read once" is an assertion rather than a claim.
 //
-// It serves the CURRENT settings-file name only: every member here has run the
-// rename record, and a read of the retired name 404s exactly as it would in the
-// fleet. `legacyDeclarations` is the other side, for the members that have not.
-function fakeGh({ declarations = {}, legacyDeclarations = {}, schedulers = [], errors = {} } = {}) {
+// It serves the settings file under its one name — the retired one is read by
+// nothing since #1640, so a member still carrying that is a repo with no
+// declaration at all, which is how the sweep sees it too.
+function fakeGh({ declarations = {}, schedulers = [], errors = {} } = {}) {
   const seen = [];
   const gh = async (path) => {
     seen.push(path);
@@ -36,8 +36,6 @@ function fakeGh({ declarations = {}, legacyDeclarations = {}, schedulers = [], e
     const served = (decl) => ({ status: 200, json: { content: Buffer.from(typeof decl === 'string' ? decl : JSON.stringify(decl)).toString('base64'), sha: 'sha' } });
     let m = /^\/repos\/(.+)\/contents\/\.claudinite-settings\.json$/.exec(path);
     if (m) return declarations[m[1]] === undefined ? { status: 404, json: null } : served(declarations[m[1]]);
-    m = /^\/repos\/(.+)\/contents\/\.claudinite-checks\.json$/.exec(path);
-    if (m) return legacyDeclarations[m[1]] === undefined ? { status: 404, json: null } : served(legacyDeclarations[m[1]]);
 
     m = /^\/repos\/(.+)\/contents\/\.github\/workflows\/claudinite-scheduler\.yml$/.exec(path);
     if (m) return { status: schedulers.includes(m[1]) ? 200 : 404, json: { content: '' } };
@@ -87,20 +85,15 @@ test('buildRoster: the declaration is read once per repo, and both questions use
   assert.equal(seen.length, 4, 'declaration + scheduler workflow + canon engine + canon basics');
 });
 
-// THE RENAME'S WINDOW (#1252). A member is a member under either settings-file name
-// until its own converge runs the record — and this sweep is what tells the fleet
-// which repos are covered. Read only the current name and every un-converged member
-// drops out as uncovered, which reads as a fleet losing adoption overnight.
-test('buildRoster: a member still carrying the retired settings-file name is measured normally', async () => {
-  const { gh } = fakeGh({
-    legacyDeclarations: {
-      'o/old-name': { packs: [{ id: 'basics' }], claudinite: { engineVersion: 4, packVersions: { basics: 7 } } },
-    },
-    schedulers: ['o/old-name'],
-  });
+// THE RENAME IS FINISHED (#1640). The retired settings-file name is read by nothing,
+// so a member that never ran the #1252 record has no declaration this sweep can see
+// and drops out as uncovered — which is the removal's stated cost, and what the
+// roster's adoption issue then reports.
+test('buildRoster: a member still carrying the retired settings-file name reads as uncovered', async () => {
+  const { gh } = fakeGh({ schedulers: ['o/old-name'] });
   const roster = await walk(gh, [repo('old-name')]);
-  assert.deepEqual(coverageView(roster).covered, ['o/old-name']);
-  assert.deepEqual(freshnessView(roster).fresh.map((f) => f.fullName), ['o/old-name']);
+  assert.deepEqual(coverageView(roster).covered, []);
+  assert.deepEqual(freshnessView(roster).fresh.map((f) => f.fullName), []);
 });
 
 test('buildRoster: the enforcer, archived repos and forks are never read at all', async () => {
@@ -127,12 +120,9 @@ test('buildRoster: canon, excluded and uncovered repos are read but never probed
   await walk(gh, [repo('Claudinite'), repo('left-out'), repo('naked')], {
     exclude: new Set(['o/left-out']),
   });
-  // `o/naked` is a repo with no declaration at all, so it is read under BOTH
-  // settings-file names before it can be called uncovered — the rename's cost, and
-  // the alternative is calling a pre-rename member un-adopted.
-  assert.deepEqual(seen.filter((p) => !/\.claudinite-(settings|checks)\.json$/.test(p)), [],
+  assert.deepEqual(seen.filter((p) => !/\.claudinite-settings\.json$/.test(p)), [],
     'no scheduler read for any repo the freshness question does not measure');
-  assert.equal(seen.length, 4);
+  assert.equal(seen.length, 3);
 });
 
 // --- the two views disagree, on purpose ---------------------------------------

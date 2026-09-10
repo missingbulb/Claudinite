@@ -1,23 +1,15 @@
 // READING A MEMBER'S SETTINGS FROM THE PAGE — one helper, because the page reads
 // that file from three places (the repo view, the fleet view, the contributions
-// panel) and the rename (#1252) gave it two names to try instead of one.
+// panel). A repo that is not a member answers with nothing, which is what the
+// caller reports as "does not run Claudinite".
 //
-// The page has no disk to probe, so "which name does this member carry" is a read
-// per candidate, in SETTINGS_FILES order: a member that has run the rename record
-// answers on the first, one that has not answers on the second, and a repo that is
-// not a member answers on neither and gets null — which is what the caller reports
-// as "does not run Claudinite".
-// The names come from the engine's browser-pure half: `settings-file.mjs` itself probes
+// The name comes from the engine's browser-pure half: `settings-file.mjs` itself probes
 // the disk, and a `node:` import anywhere in the page's graph blocks its first module
 // load in the browser (#1286).
-import { SETTINGS_FILES, SETTINGS_FILE } from '../../engine/settings-file-names.mjs';
+import { SETTINGS_FILE } from '../../engine/settings-file-names.mjs';
 
 export { SETTINGS_FILE };
 
 export async function settingsTextAtSha(gh, repo, sha, token) {
-  for (const name of SETTINGS_FILES) {
-    const text = await gh.getTextAtSha(repo, sha, name, token);
-    if (text) return text;
-  }
-  return null;
+  return (await gh.getTextAtSha(repo, sha, SETTINGS_FILE, token)) || null;
 }

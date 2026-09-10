@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FIXTURES, MODES } from './fixtures.mjs';
 import { rehearse, formatResult } from './rehearse.mjs';
-import { SETTINGS_FILES, LEGACY_SETTINGS_FILE } from '../../engine/settings-file.mjs';
+import { SETTINGS_FILE } from '../../engine/settings-file.mjs';
 
 // THE GATE (#593 phase 2). Every fixture consumer, in both modes, converged with
 // the REAL scripts against this working tree. A canon change that would break a
@@ -40,16 +40,11 @@ test('the stale mode really pins the fixture below the corpus before converging'
     'the engine version was never advanced — apply-vendor-set did not run');
 });
 
-// A fixture is a MEMBER, which since #1252 is a repo carrying either settings-file
-// name — and one fixture deliberately carries the retired one, because that is the
-// shape every member is in until its own converge runs the rename record.
-test('every fixture is a member under exactly one settings-file name, and one models the retired name', () => {
-  const carriesLegacyName = [];
+// A fixture is a MEMBER, which is a repo carrying the settings file. The retired
+// name it was also read under until #1640 is read by nothing now, so a fixture
+// carrying it would model a repo the engine cannot see rather than a member.
+test('every fixture is a member — it carries the settings file', () => {
   for (const f of FIXTURES) {
-    const names = Object.keys(f.files).filter((n) => SETTINGS_FILES.includes(n));
-    assert.equal(names.length, 1, `${f.name} is not a member (or carries both settings-file names)`);
-    if (names[0] === LEGACY_SETTINGS_FILE) carriesLegacyName.push(f.name);
+    assert.ok(Object.hasOwn(f.files, SETTINGS_FILE), `${f.name} carries no ${SETTINGS_FILE} — it is not a member`);
   }
-  assert.deepEqual(carriesLegacyName, ['legacy-settings-name'],
-    'exactly one fixture must model the pre-rename shape — with none, the two-name tolerance every member depends on is untested');
 });

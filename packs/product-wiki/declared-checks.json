@@ -20,7 +20,7 @@
         "to": "product-wiki/*",
         "allow": ["product-wiki/product-requirements"],
         "matchUniqueFilenames": false,
-        "except": ["product-wiki", ".claudinite-settings.json", ".claudinite-checks.json"],
+        "except": ["product-wiki", ".claudinite-settings.json"],
         "reason": "the self-growing product wikis and their sample data are autonomous research the repo must not depend on; product-wiki/product-requirements is the one reviewed crossing point"
       }
     ]

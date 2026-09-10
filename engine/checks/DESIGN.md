@@ -163,7 +163,7 @@ own entry for the ones that pack's declaration motivates (see engine/checks/READ
 A declared id may name a **canon** pack or one of the repo's **own local packs**
 (`.claudinite/local/packs/<id>/` — the project's tracked, project-specific packs, discovered from
 the repo's own tree alongside the mounted canon; canonically declared by the namespaced token
-`local/<id>`, the pre-rename `local_packs/<id>` and the bare id permanently accepted — see engine/checks/README.md). Both
+`local/<id>`, with the bare id permanently accepted — see engine/checks/README.md). Both
 are the same closed-declared-set execution;
 `knownIds` spans both, so a local id is valid, not an unknown-pack error, while a broken or
 id-colliding local `pack.mjs` is surfaced as a blocking `config` finding rather than silently

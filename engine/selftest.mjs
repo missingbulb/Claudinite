@@ -34,7 +34,7 @@
 import { existsSync, readFileSync, readdirSync, lstatSync, realpathSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { SETTINGS_FILE, SETTINGS_FILES } from './settings-file.mjs';
+import { SETTINGS_FILE } from './settings-file.mjs';
 import { hasInstalledMount } from './installed-versions.mjs';
 
 export const MOUNT = '.claudinite/shared';
@@ -86,12 +86,11 @@ export function probeMount(io) {
 }
 
 export function probeStamp(io) {
-  const name = SETTINGS_FILES.find((f) => io.read(f) !== null) ?? CHECKS;
-  const raw = io.read(name);
+  const raw = io.read(CHECKS);
   if (raw === null) return fail('stamp', `${CHECKS} is missing`, 'run bootstrap --init to write the declaration');
   let cfg;
   try { cfg = JSON.parse(raw); } catch (e) {
-    return fail('stamp', `${name} is not valid JSON: ${e.message}`, 'fix the JSON syntax — nothing can read the declaration until it parses');
+    return fail('stamp', `${CHECKS} is not valid JSON: ${e.message}`, 'fix the JSON syntax — nothing can read the declaration until it parses');
   }
   if (!io.exists(MOUNT)) return skip('stamp', 'no vendored mount to stamp');
   // The VERSIONS, not a datetime. The `claudinite.updated` this probed until #1252

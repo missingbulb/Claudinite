@@ -32,7 +32,6 @@ import { LOCAL_PACKS_SUBDIR, LOCAL_DECL_PREFIX, SHARED_SUBDIR } from './pack_loa
 const MOUNT_ROOT = dirname(SHARED_SUBDIR).split(sep).join('/');
 const SHARED_NAME = SHARED_SUBDIR.split(sep).pop();
 import { settingsPath } from './settings-file.mjs';
-import { ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from './checks/helpers/repo-context.mjs';
 
 // The settings-hook registrations a scheduled repo carries (bootstrap Part 5).
 // Ensured present without clobbering — a set-union keyed on the command string, so
