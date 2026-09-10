@@ -327,8 +327,10 @@ test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on not
   // Both declaration forms, since both are legal.
   assert.equal(await m.appliesTo(read(JSON.stringify({ packs: [{ id: 'claudinite-fleet-sheepdog', config: {} }] }))), true);
   assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['claudinite-fleet-sheepdog'] }))), true);
-  // And under the spelling an enforcer's declaration carried when the record landed.
-  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['sheepdog'] }))), true);
+  // Not under the spelling an enforcer's declaration carried when the record landed:
+  // that tolerance came out with the rest of the 2026-08-19 renames (#1641), and an
+  // enforcer still declaring it has no pack for this record to apply to.
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['sheepdog'] }))), false);
   assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['basics'] }))), false);
   assert.equal(await m.appliesTo(read('not json')), false);
   assert.equal(await m.appliesTo(read(null)), false);   // canon itself
@@ -606,21 +608,28 @@ test('applyPackRenames: converges a real member declaration, entry objects and a
     read: async (f) => (f === '.claudinite-settings.json' ? before : null),
     write: async (_f, c) => { written = c; },
   });
-  assert.equal(done.length, 7, `expected every rename this map carries, plus a merge line per absorbed entry, got ${JSON.stringify(done)}`);
+  assert.equal(done.length, 4, `expected every rename this map carries, plus a merge line per absorbed entry, got ${JSON.stringify(done)}`);
   const after = JSON.parse(written);
   // `barriers` and `tidy-repo` were both absorbed into `basics`, which this
   // declaration already carries, so their entries merge into that one — and the
   // `via: ['basics']` barriers was pulled in by names the survivor itself, so it goes
   // rather than leaving basics required by basics. What remains is the bare string a
   // plainly-declared pack has.
+  //
+  // THE 2026-08-19 SPELLINGS PASS STRAIGHT THROUGH, which is what retiring their map
+  // entries means in the field (#1641). This capture predates that rename, so a repo
+  // still frozen at it keeps a declaration naming ids nothing resolves and activates no
+  // packs at all — the cost the removal's convergence window was priced against, not a
+  // regression. The op reads its ids from the live map, so the record driving it here
+  // converges only what the map still carries.
   assert.deepEqual(after.packs, [
     'basics',
     { id: 'git-github', via: ['basics'] },
-    'claudinite-growth',
+    'grow_with_claudinite',
     'local/canary',
     { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } },
-    'claudinite-canary-repo',
-    'claudinite-lifecycle',
+    'canary-probe',
+    'core',
   ], 'ids move; config, via and order do not');
 });
 
@@ -634,29 +643,28 @@ test('applyPackRenames: idempotent, and blind to everything outside the packs ar
     });
     return { done, written };
   };
-  // A member whose own source tree has a core/ directory under a barrier rule, and
-  // a local pack that happens to share a renamed pack's old name.
+  // A member whose own source tree has a barriers/ directory under a barrier rule, and
+  // a local pack that happens to share a retired pack's old name.
   const declaration = JSON.stringify({
-    packs: ['core', 'local/core'],
-    config: { rules: [{ from: 'core', to: 'ui/*' }] },
+    packs: ['barriers', 'local/barriers'],
+    config: { rules: [{ from: 'barriers', to: 'ui/*' }] },
   }, null, 2);
   const first = await run(declaration);
   const parsed = JSON.parse(first.written);
-  assert.deepEqual(parsed.packs, ['claudinite-lifecycle', 'local/core']);
-  assert.equal(parsed.config.rules[0].from, 'core', "a member's own core/ directory is untouched");
+  assert.deepEqual(parsed.packs, ['basics', 'local/barriers']);
+  assert.equal(parsed.config.rules[0].from, 'barriers', "a member's own barriers/ directory is untouched");
 
   const second = await run(first.written);
   assert.deepEqual(second.done, [], 'a converged declaration is a no-op');
   assert.equal(second.written, null, 'and is not rewritten at all');
 });
 
-// --- an ABSORBED pack: two declared ids that become one (#1057) --------------
-// The chrome-extension-release collapse is the first rename whose target is a pack
-// the member ALREADY declares — chrome-extension was the absorbed pack's `requires`,
-// so every member carrying one carried both. The op therefore has to merge, and what
-// it merges is the member's own writing: the config it answered at adoption, the
-// severities it chose, the acceptances standing against findings that would
-// otherwise come straight back.
+// --- an ABSORBED pack: two declared ids that become one -----------------------
+// An absorption's target is a pack the member ALREADY declares — the absorbed pack's
+// content moved into one the member was carrying anyway, usually its own `requires` —
+// so the op has to merge rather than rename, and what it merges is the member's own
+// writing: the config it answered at adoption, the severities it chose, the
+// acceptances standing against findings that would otherwise come straight back.
 // The absorption the plain merge gets WRONG on its own. Two flat `config` objects
 // spread over each other, so the absorbed pack's parameters land under the
 // survivor's own key namespace — and an answer recorded against a question the
@@ -710,12 +718,14 @@ test('the barriers-absorbed record stands down on a mount whose engine lacks the
 
 test('applyPackRenames: an absorbed pack merges into the entry that already exists', async () => {
   const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/chrome-extension/migrations/2026-08-19-chrome-release-collapse/migration.mjs')).default;
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-06-tidy-repo-absorbed/migration.mjs')).default;
+  // The absorbed entry carries a `config` the record does not nest, which is the plain
+  // spread this case is about — `absorbedPackConfig`'s nesting is the two cases above.
   const declaration = JSON.stringify({
     packs: [
-      'basics',
-      { id: 'chrome-extension', accept: [{ rule: 'ce/content-script-module-syntax', path: 'src/', reason: 'bundled' }] },
-      { id: 'chrome-extension-release', config: { store_id: 'abc' }, accept: [{ rule: 'cer/readme-sections', path: 'README.md', reason: 'template lands later' }] },
+      'claudinite-lifecycle',
+      { id: 'basics', accept: [{ rule: 'improve-comments-scope', path: 'src/', reason: 'generated' }] },
+      { id: 'tidy-repo', config: { comment_pass: 'src/' }, accept: [{ rule: 'tr/readme-sections', path: 'README.md', reason: 'template lands later' }] },
     ],
   }, null, 2);
   let written = null;
@@ -725,14 +735,14 @@ test('applyPackRenames: an absorbed pack merges into the entry that already exis
   assert.equal(done.length, 2, `expected the rename and the merge, got ${JSON.stringify(done)}`);
   const packs = JSON.parse(written).packs;
   assert.deepEqual(packs, [
-    'basics',
+    'claudinite-lifecycle',
     {
-      id: 'chrome-extension',
+      id: 'basics',
       accept: [
-        { rule: 'ce/content-script-module-syntax', path: 'src/', reason: 'bundled' },
-        { rule: 'cer/readme-sections', path: 'README.md', reason: 'template lands later' },
+        { rule: 'improve-comments-scope', path: 'src/', reason: 'generated' },
+        { rule: 'tr/readme-sections', path: 'README.md', reason: 'template lands later' },
       ],
-      config: { store_id: 'abc' },
+      config: { comment_pass: 'src/' },
     },
   ], 'one entry, in the surviving id\'s original position, carrying both sides');
 
@@ -744,15 +754,15 @@ test('applyPackRenames: an absorbed pack merges into the entry that already exis
 
 test('applyPackRenames: a string entry absorbing an object keeps the object side', async () => {
   const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/chrome-extension/migrations/2026-08-19-chrome-release-collapse/migration.mjs')).default;
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-06-tidy-repo-absorbed/migration.mjs')).default;
   let written = null;
   await applyPackRenames(rec, {
     read: async () => JSON.stringify({
-      packs: ['chrome-extension', { id: 'chrome-extension-release', config: { store_id: 'abc' } }],
+      packs: ['basics', { id: 'tidy-repo', config: { comment_pass: 'src/' } }],
     }, null, 2),
     write: async (_f, c) => { written = c; },
   });
-  assert.deepEqual(JSON.parse(written).packs, [{ id: 'chrome-extension', config: { store_id: 'abc' } }],
+  assert.deepEqual(JSON.parse(written).packs, [{ id: 'basics', config: { comment_pass: 'src/' } }],
     'the survivor is promoted to an object rather than dropping the absorbed config');
 });
 

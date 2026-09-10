@@ -11,14 +11,15 @@
 // today's spelling first, and the pack flow then reads it and vendors the renamed
 // trees under their new names in the same run.
 //
-// WHAT THIS RECORD IS NOT is the thing that makes the rename safe. Activation
-// matches a declared id literally, so any window in which a member's declaration
-// and its mount disagree is a window with NO pack — and for the pack carrying the
-// `update` task that is unrecoverable, because the machinery that would deliver the
-// repair is the machinery that went missing. The tolerance that closes every such
-// window is `engine/pack_loader/renamed-packs.mjs`, which resolves both spellings
-// at the loader. This record only converges the file so the tolerance can one day
-// be retired; nothing depends on it having run.
+// WHAT THIS RECORD WAS NOT, while the tolerance stood, is the thing that makes the
+// rename safe. Activation matches a declared id literally, so any window in which a
+// member's declaration and its mount disagree is a window with NO pack — and for the
+// pack carrying the `update` task that is unrecoverable, because the machinery that
+// would deliver the repair is the machinery that went missing. What closed every such
+// window was `engine/pack_loader/renamed-packs.mjs` resolving both spellings at the
+// loader, and this record converged the file so that tolerance could be retired. It
+// has been (#1641): a member that never ran this record now declares two ids nothing
+// resolves, and activates neither pack.
 //
 // The mount directory is moved rather than left behind. The pack flow replaces a
 // declared pack's tree wholesale but never removes a tree that has stopped being
