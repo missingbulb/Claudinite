@@ -34,8 +34,6 @@
 // enforcer pack IS the adoption here, so the first cycle after the declaration installs
 // the workflow, with no separate bootstrap step. Claudinite itself does not declare
 // sheepdog, so the canon never self-applies.
-import { canonicalPackId } from '../../../../engine/pack_loader/renamed-packs.mjs';
-
 // BOTH settings-file names (#1252). This record is gated on a PACK's version, so it
 // can still be in a member's gap long after that member renamed its settings file —
 // and a read that only knew the name in use when this landed would find nothing and
@@ -74,7 +72,7 @@ export default {
     let cfg;
     try { cfg = JSON.parse(text); } catch { return false; }
     return (Array.isArray(cfg?.packs) ? cfg.packs : [])
-      .some((e) => canonicalPackId(typeof e === 'string' ? e : e?.id) === PACK);
+      .some((e) => (typeof e === 'string' ? e : e?.id) === PACK);
   },
 
   materialize: [

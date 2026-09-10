@@ -139,8 +139,8 @@ test('an item still stateless on the second read is repaired', async () => {
 test('a park naming its task at a path it has moved off closes obsolete, naming the new path', async () => {
   const moved = {
     ...workItem(31, ['task:status:needs-human-failure']),
-    body: 'packs/grow_with_claudinite/tasks/a/task.md\n',
-    title: '[claudinite-work] grow_with_claudinite/a',
+    body: 'packs/tidy-repo/tasks/a/task.md\n',
+    title: '[claudinite-work] tidy-repo/a',
   };
   const { gh, added } = janitorGh([moved]);
   const posted = [];
@@ -149,10 +149,10 @@ test('a park naming its task at a path it has moved off closes obsolete, naming 
     return gh(path, opts);
   };
   const out = await quiet(() => sweepQueue(spy, 'o/r', at('2026-07-10T00:00:00Z'), {
-    tasks: [{ pack: 'claudinite-growth', id: 'a', taskPath: 'packs/claudinite-growth/tasks/a/task.md' }],
+    tasks: [{ pack: 'basics', id: 'a', taskPath: 'packs/basics/tasks/a/task.md' }],
   }));
   assert.deepEqual(out.orphaned, [31]);
-  assert.ok(posted.some((b) => b.includes('packs/claudinite-growth/tasks/a/task.md')), posted.join('|'));
+  assert.ok(posted.some((b) => b.includes('packs/basics/tasks/a/task.md')), posted.join('|'));
   assert.deepEqual(labelsOn(added, 31), ['task:status:rejected']);
 });
 

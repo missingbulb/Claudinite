@@ -292,16 +292,16 @@ test('a park wearing only the two-label era sub-label is seen — the rule reads
 test('a pre-rename pack id in the title resolves to today\'s spelling before the lookup', () => {
   const preRename = {
     number: 115,
-    title: '[claudinite-work] grow_with_claudinite/logs-prune',
+    title: '[claudinite-work] tidy-repo/logs-prune',
     labels: ['needs-human', 'origin:schedule', 'task:needs-human-failure'],
     state: 'open',
-    body: '.claudinite/shared/packs/claudinite-growth/tasks/logs-prune/task.md\n',
+    body: '.claudinite/shared/packs/basics/tasks/logs-prune/task.md\n',
     created_at: '2026-08-10T04:00:00Z',
     updated_at: '2026-08-10T04:00:00Z',
   };
   assert.ok(isParked(preRename));
   assert.deepEqual(orphanedParkItems([preRename], {
-    tasks: [{ pack: 'claudinite-growth', id: 'logs-prune', taskPath: '.claudinite/shared/packs/claudinite-growth/tasks/logs-prune/task.md' }],
+    tasks: [{ pack: 'basics', id: 'logs-prune', taskPath: '.claudinite/shared/packs/basics/tasks/logs-prune/task.md' }],
   }), []);
 });
 

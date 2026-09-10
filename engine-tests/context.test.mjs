@@ -563,9 +563,9 @@ test('a pre-rename member loads identically to a converged one', () => {
           updated: '2026-07-26T20:10:18.694Z',
           ref: 'deadbeef',
           engineVersion: '60820.1',
-          // `core` is `claudinite-lifecycle`'s old spelling: a version stamped under a
+          // `tidy-repo` is a spelling `basics` absorbed: a version stamped under a
           // renamed pack's id must still price that pack, not read as never-installed.
-          packVersions: { basics: '60801.1', core: '60802.1' },
+          packVersions: { 'git-github': '60801.1', 'tidy-repo': '60802.1' },
         },
         taskScheduler: { endpoints: { default: { url: 'u', tokenSecret: 'S' } }, dailyHour: 4 },
       }, null, 2) + '\n',
@@ -574,7 +574,7 @@ test('a pre-rename member loads identically to a converged one', () => {
     assert.deepEqual(cfg.errors, [], 'the retired shape is legal to READ — only nothing writes it');
     assert.deepEqual(cfg.packs, ['basics', 'product-wiki']);
     assert.equal(cfg.engineVersion, '60820.1');
-    assert.deepEqual(cfg.packVersions, { basics: '60801.1', 'claudinite-lifecycle': '60802.1' });
+    assert.deepEqual(cfg.packVersions, { 'git-github': '60801.1', basics: '60802.1' });
     assert.equal(cfg.dailyClaudiniteUpdatesRequirePrReview, true, 'the retired delivery preference still speaks');
     assert.deepEqual(cfg.packConfig['product-wiki'], { k: 1 });
   } finally { removeTree(root); }
