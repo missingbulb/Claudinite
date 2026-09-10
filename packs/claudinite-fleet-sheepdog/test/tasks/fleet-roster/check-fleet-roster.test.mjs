@@ -24,10 +24,10 @@ const repo = (name, over = {}) => ({ name, full_name: `o/${name}`, archived: fal
 // A fake API over declarations, scheduler-workflow presence and canon's own version
 // numbers. Records every path so "read once" is an assertion rather than a claim.
 //
-// It serves the CURRENT settings-file name only: every member here has run the
-// rename record, and a read of the retired name 404s exactly as it would in the
-// fleet. `legacyDeclarations` is the other side, for the members that have not.
-function fakeGh({ declarations = {}, legacyDeclarations = {}, schedulers = [], errors = {} } = {}) {
+// It serves the settings file under its one name — the retired one is read by
+// nothing since #1640, so a member still carrying that is a repo with no
+// declaration at all, which is how the sweep sees it too.
+function fakeGh({ declarations = {}, schedulers = [], errors = {} } = {}) {
   const seen = [];
   const gh = async (path) => {
     seen.push(path);
@@ -36,8 +36,6 @@ function fakeGh({ declarations = {}, legacyDeclarations = {}, schedulers = [], e
     const served = (decl) => ({ status: 200, json: { content: Buffer.from(typeof decl === 'string' ? decl : JSON.stringify(decl)).toString('base64'), sha: 'sha' } });
     let m = /^\/repos\/(.+)\/contents\/\.claudinite-settings\.json$/.exec(path);
     if (m) return declarations[m[1]] === undefined ? { status: 404, json: null } : served(declarations[m[1]]);
-    m = /^\/repos\/(.+)\/contents\/\.claudinite-checks\.json$/.exec(path);
-    if (m) return legacyDeclarations[m[1]] === undefined ? { status: 404, json: null } : served(legacyDeclarations[m[1]]);
 
     m = /^\/repos\/(.+)\/contents\/\.github\/workflows\/claudinite-scheduler\.yml$/.exec(path);
     if (m) return { status: schedulers.includes(m[1]) ? 200 : 404, json: { content: '' } };
@@ -99,8 +97,8 @@ test('buildRoster: a member still carrying the retired settings-file name is mea
     schedulers: ['o/old-name'],
   });
   const roster = await walk(gh, [repo('old-name')]);
-  assert.deepEqual(coverageView(roster).covered, ['o/old-name']);
-  assert.deepEqual(freshnessView(roster).fresh.map((f) => f.fullName), ['o/old-name']);
+  assert.deepEqual(coverageView(roster).covered, []);
+  assert.deepEqual(freshnessView(roster).fresh.map((f) => f.fullName), []);
 });
 
 test('buildRoster: the enforcer, archived repos and forks are never read at all', async () => {
@@ -118,12 +116,12 @@ test('buildRoster: canon and uncovered repos are read but never probed', async (
   // the two extra reads would be spent on an answer nothing consumes.
   const { gh, seen } = fakeGh({ declarations: { 'o/Claudinite': declOf() } });
   await walk(gh, [repo('Claudinite'), repo('naked')]);
-  // `o/naked` is a repo with no declaration at all, so it is read under BOTH
-  // settings-file names before it can be called uncovered — the rename's cost, and
-  // the alternative is calling a pre-rename member un-adopted.
-  assert.deepEqual(seen.filter((p) => !/\.claudinite-(settings|checks)\.json$/.test(p)), [],
+  // `o/naked` is a repo with no declaration at all, and since #1640 there is one
+  // settings-file name to look under, so one read answers it. The second read the
+  // rename used to cost — under the retired name — is gone with the tolerance.
+  assert.deepEqual(seen.filter((p) => !/\.claudinite-settings\.json$/.test(p)), [],
     'no scheduler read for any repo the freshness question does not measure');
-  assert.equal(seen.length, 3);
+  assert.equal(seen.length, 2);
 });
 
 test('buildRoster: an ignored repo is not read at all', async () => {

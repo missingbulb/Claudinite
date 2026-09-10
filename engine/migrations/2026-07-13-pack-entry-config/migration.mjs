@@ -5,21 +5,18 @@
 // declaration and reports it still on the old shape while a top-level `packConfig`
 // key remains.
 //
-// The read-side tolerance lives INLINE, not resolver-driven: loadConfig still
-// accepts the key (CONFIG_KEYS) and overlays it under the entry view
-// (engine/checks/helpers/repo-context.mjs), and the fleet census's config reader
-// falls back to it. When the whole fleet is off the old shape, drop that
-// tolerance in one deliberate change: bootstrap step 4d, 'packConfig' from
-// CONFIG_KEYS + the overlay (a straggler then gets the blocking unknown-setting
-// error, the settings-validity gate becoming the enforcement), and the census
-// fallback — the record itself stays, as history.
+// The read-side tolerance is GONE (#1640): `loadConfig` no longer accepts the key
+// or overlays it under the entry view (engine/checks/helpers/repo-context.mjs), so
+// a straggler gets the blocking unknown-setting error and the settings-validity
+// gate is the enforcement. The record stays, as history and as the telemetry that
+// says who is still holding the old shape.
 export default {
   id: 'pack-entry-config',
   landed: '2026-07-13',
   version: 1,
-  summary: "per-pack parameters moved from the top-level packConfig key onto each pack's packs entry as config (one-time fold; key stays readable until retirement)",
+  summary: "per-pack parameters moved from the top-level packConfig key onto each pack's packs entry as config (one-time fold; the key stopped being read on #1640)",
   legacyPresent: async (exists, read) => {
-    const raw = (await read('.claudinite-settings.json')) ?? await read('.claudinite-checks.json');
+    const raw = await read('.claudinite-settings.json');
     if (raw == null) return false; // no declaration to read — not a member, not held
     try {
       const parsed = JSON.parse(raw);

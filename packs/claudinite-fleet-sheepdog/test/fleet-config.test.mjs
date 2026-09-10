@@ -5,9 +5,9 @@ import { parseSheepdogConfig } from '../fleet-config.mjs';
 // The pack's ONE reader of the enforcer repo's claudinite-fleet-sheepdog pack entry — shared by both
 // sweeps, which is why it sits at the pack root rather than inside either task. Its
 // tests are here for the same reason: they cover the shared module, not a task.
-// (Legacy top-level packConfig.claudinite-fleet-sheepdog stays readable until the pack-entry-config
-// baseline migration retires. The pack's own pre-rename `sheepdog` id does not — that
-// tolerance came out with the rest of the 2026-08-19 renames, #1641.)
+// (Neither of the two shapes it used to accept survives: the top-level packConfig key
+// stopped being a legal setting on #1640, and the pack's own pre-rename `sheepdog` id
+// came out with the rest of the 2026-08-19 renames, #1641.)
 
 test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home owner; throws when absent', () => {
   const cfg = { packs: [{ id: 'claudinite-fleet-sheepdog', config: { owner: 'MissingBulb', exclude: ['Owner/Repo-A', 'owner/repo-b'] } }] };
@@ -16,8 +16,10 @@ test('parseSheepdogConfig: reads owner + exclude; defaults owner to the home own
   assert.ok(exclude.has('owner/repo-a') && exclude.has('owner/repo-b'));
   // owner defaults to the home repo's owner
   assert.equal(parseSheepdogConfig({ packs: [{ id: 'claudinite-fleet-sheepdog', config: {} }] }, 'acme/fleet').owner, 'acme');
-  // the legacy top-level packConfig key stays readable, under today's id
-  assert.equal(parseSheepdogConfig({ packConfig: { 'claudinite-fleet-sheepdog': { owner: 'Legacy' } } }, 'acme/fleet').owner, 'legacy');
+  // the retired top-level packConfig key does NOT: it is an unknown setting now (#1640),
+  // so an enforcer declaring its parameters there has no config for this reader to find
+  assert.throws(() => parseSheepdogConfig({ packConfig: { 'claudinite-fleet-sheepdog': { owner: 'Legacy' } } }, 'acme/fleet'),
+    /declares no claudinite-fleet-sheepdog config/);
   // the pre-rename entry does NOT: that tolerance's window closed (#1641), and an
   // enforcer still declaring `sheepdog` activates no pack for this reader to serve
   assert.throws(() => parseSheepdogConfig({ packs: [{ id: 'sheepdog', config: { owner: 'Old' } }] }, 'acme/fleet'),

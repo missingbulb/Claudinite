@@ -175,11 +175,13 @@ test('freshness is judged on versions, and stray provenance keys change nothing'
   assert.equal(mountState(stamp, CANON).state, 'current');
 });
 
-// The rename's window: a member carries the retired block until its own converge runs
-// the record, and reading past it would call a current mount unversioned.
-test('a pre-rename member is judged from the retired block', () => {
+// The rename's window has closed (#1640): nothing reads the retired block any more,
+// so a member still carrying one reads as having no versions at all rather than being
+// judged from it. That is the stated cost — the member is visibly unversioned rather
+// than quietly reported current from a shape nothing writes.
+test('a member still stamped in the retired block reads as unversioned', () => {
   const legacy = { claudinite: { engineVersion: 4, packVersions: { 'acme-pack-b': 3, 'acme-pack': 5 } } };
-  assert.equal(mountState(legacy, CANON).state, 'current');
+  assert.equal(mountState(legacy, CANON).state, 'unversioned');
 });
 
 test('an older engine version outranks pack lag', () => {
@@ -202,7 +204,7 @@ test('a pack behind canon reads behind and names the pack', () => {
 // so it needs its own canon reference keyed under today's ids.
 test('a renamed pack\'s stamped spelling still compares against canon', () => {
   const canon = { ...CANON, packVersions: { basics: 5 } }; // @real-entity the rename map under test renames to this id
-  const s = mountState({ claudinite: { engineVersion: 4, packVersions: { 'tidy-repo': 2 } } }, canon); // @real-entity the retired spelling the map still resolves
+  const s = mountState(member(4, { 'tidy-repo': 2 }), canon); // @real-entity the retired spelling the map still resolves
   assert.equal(s.state, 'behind');
   assert.deepEqual(s.behindPacks, [{ pack: 'basics', version: 2, canonVersion: 5 }]); // @real-entity the id the map renames to
 });

@@ -438,14 +438,14 @@ test('a declared local pack is valid and its check runs when active', async () =
   } finally { cleanup(clean); cleanup(dirty); }
 });
 
-test('a local pack declared by its namespaced token local_packs/<name> validates and runs', async () => {
+test('a local pack declared by its namespaced token local/<name> validates and runs', async () => {
   const clean = makeRepo({ changed: {
     '.claudinite/local/packs/proj/pack.mjs': LOCAL_PACK,
-    '.claudinite-settings.json': JSON.stringify({ packs: ['local_packs/proj'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['local/proj'] }),
   } });
   const dirty = makeRepo({ changed: {
     '.claudinite/local/packs/proj/pack.mjs': LOCAL_PACK,
-    '.claudinite-settings.json': JSON.stringify({ packs: ['local_packs/proj'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['local/proj'] }),
     'src/TODO_MARKER': 'x\n',
   } });
   try {

@@ -36,8 +36,17 @@ test("activeEnvs resolves the node env from the pack entry's config.dirs (functi
   } finally { cleanup(root); }
 });
 
-test('activeEnvs still resolves per-repo params from the legacy top-level packConfig', async () => {
-  const root = makeRepo({
+// The retired top-level `packConfig` stopped being read on #1640: a repo still
+// declaring its parameters there gets the pack's own defaults, not its answers.
+test('activeEnvs reads per-repo params off the pack entry, never the retired top-level packConfig', async () => {
+  const entry = makeRepo({
+    base: {
+      '.claudinite-settings.json': JSON.stringify({
+        packs: [{ id: 'node', config: { dirs: ['acme/functions'] } }],
+      }),
+    },
+  });
+  const retired = makeRepo({
     base: {
       '.claudinite-settings.json': JSON.stringify({
         packs: ['node'],
@@ -46,10 +55,14 @@ test('activeEnvs still resolves per-repo params from the legacy top-level packCo
     },
   });
   try {
-    const n = (await activeEnvs(root)).find((e) => e.id === 'node');
-    assert.ok(n);
-    assert.match(n.setup, /cd "api\/functions" && npm ci/);
-  } finally { cleanup(root); }
+    const fromEntry = (await activeEnvs(entry)).find((e) => e.id === 'node');
+    assert.ok(fromEntry);
+    assert.match(fromEntry.setup, /cd "acme\/functions" && npm ci/);
+    // The retired key governs nothing: the pack falls back to its own default.
+    const fromRetired = (await activeEnvs(retired)).find((e) => e.id === 'node');
+    assert.ok(fromRetired);
+    assert.match(fromRetired.setup, /cd "\." && npm ci/);
+  } finally { cleanup(entry); cleanup(retired); }
 });
 
 test('node env defaults to the repo root when no config is given', async () => {

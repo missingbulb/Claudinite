@@ -8,7 +8,7 @@ import { buildContext, loadConfig, CONFIG_KEYS, isDormant } from '../engine/chec
 import { removeTree } from '../engine/remove-tree.mjs';
 
 test('loadConfig: clean settings validate with no errors; a missing file is empty and error-free', () => {
-  const ok = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'], rules: {}, maintenance: { delivery: 'auto' } }) } });
+  const ok = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'], rules: {} }) } });
   const none = makeRepo({ changed: {} });
   try {
     assert.deepEqual(loadConfig(ok).errors, []);
@@ -50,14 +50,13 @@ test('loadConfig: a pack entry object normalizes — id into packs, config into 
 });
 
 test('loadConfig: a namespaced local-pack declaration normalizes to the bare id everywhere', () => {
-  // local_packs/proj is the pre-rename declaration form for a local pack; the
-  // normalized view is bare ids, so packEntries lookups (interview answers) and
+  // The normalized view is bare ids, so packEntries lookups (interview answers) and
   // the packConfig view key by the pack's own id whichever form the file used.
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: [
       'acme-pack',
-      { id: 'local_packs/proj', config: { knob: 1 }, answers: { q: 'a' } },
-      'local_packs/other',
+      { id: 'local/proj', config: { knob: 1 }, answers: { q: 'a' } },
+      'local/other',
     ],
   }) } });
   try {
@@ -69,16 +68,17 @@ test('loadConfig: a namespaced local-pack declaration normalizes to the bare id 
   } finally { cleanup(root); }
 });
 
-test('loadConfig: entry config overlays the legacy top-level packConfig, which stays readable', () => {
+test('loadConfig: the retired top-level packConfig is no longer read — it is an unknown setting', () => {
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: ['acme-pack-c', { id: 'acme-pack-b', config: { rules: [] } }],
-    packConfig: { node: { dirs: ['fn'] }, 'acme-pack-b': { rules: [{ from: 'x', to: 'y' }] } },
+    packConfig: { 'acme-pack-c': { dirs: ['fn'] } },
   }) } });
   try {
     const cfg = loadConfig(root);
-    assert.deepEqual(cfg.errors, []);
-    assert.deepEqual(cfg.packConfig.node, { dirs: ['fn'] }); // legacy still read
-    assert.deepEqual(cfg.packConfig['acme-pack-b'], { rules: [] }); // the entry wins
+    assert.equal(cfg.errors.length, 1);
+    assert.match(cfg.errors[0].what, /unknown setting "packConfig"/);
+    assert.equal(cfg.packConfig['acme-pack-c'], undefined);            // the retired key governs nothing
+    assert.deepEqual(cfg.packConfig['acme-pack-b'], { rules: [] }); // the entry is the home
   } finally { cleanup(root); }
 });
 
@@ -166,12 +166,15 @@ test('engine: ctx.files excludes vendored/generated files; ctx.allFiles keeps th
   } finally { cleanup(root); }
 });
 
-test('loadConfig: the claudinite vendored-mount stamp is a known setting', () => {
+test('loadConfig: the retired claudinite stamp block is no longer a known setting', () => {
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: ['acme-pack'], claudinite: { updated: '2026-07-17', ref: 'abc123' },
   }) } });
   try {
-    assert.deepEqual(loadConfig(root).errors, []);
+    const cfg = loadConfig(root);
+    assert.equal(cfg.errors.length, 1);
+    assert.match(cfg.errors[0].what, /unknown setting "claudinite"/);
+    assert.equal(cfg.engineVersion, null, 'the retired block prices nothing');
   } finally { cleanup(root); }
 });
 
@@ -242,17 +245,17 @@ test('loadConfig: an unknown schedule key is an error; the retired anchor keys a
 test('loadConfig: taskScheduler.dispatch and the endpoint map are validated', () => {
   const good = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: ['acme-pack'],
-    taskScheduler: { dispatch: 'queue', endpoints: { default: { url: 'https://x.invalid/s', tokenSecret: 'CCR_TOKEN' } } },
+    taskScheduler: { dispatch: 'queue', agenticTaskInvocationEndpoints: { default: { url: 'https://x.invalid/s', tokenSecret: 'CCR_TOKEN' } } },
   }) } });
   const bad = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: ['acme-pack'],
-    taskScheduler: { dispatch: 'queues', endpoints: { default: { url: 'https://x.invalid/s' } } },
+    taskScheduler: { dispatch: 'queues', agenticTaskInvocationEndpoints: { default: { url: 'https://x.invalid/s' } } },
   }) } });
   try {
     const cfg = loadConfig(good);
     assert.deepEqual(cfg.errors, []);
     assert.equal(cfg.taskScheduler.dispatch, 'queue');
-    assert.equal(cfg.taskScheduler.endpoints.default.tokenSecret, 'CCR_TOKEN');
+    assert.equal(cfg.taskScheduler.agenticTaskInvocationEndpoints.default.tokenSecret, 'CCR_TOKEN');
 
     // `slots` is not merely unknown, it is RETIRED: a member still declaring it must
     // hear so rather than get the queue under a declaration that says otherwise.
@@ -549,42 +552,30 @@ test('an unversioned repo loads as null and {}, never as a zero', () => {
   } finally { removeTree(root); }
 });
 
-// THE RENAME'S WHOLE WINDOW (#1252): between the engine landing and a member's own
-// converge running the record, a member carries the retired name AND the retired
-// blocks. Read wrong, it reads as a repo that declares no packs and has never been
-// vendored — an un-adoption, silently, with a green run to show for it.
-test('a pre-rename member loads identically to a converged one', () => {
+// THE RENAME IS FINISHED (#1640). A member that never ran the #1252 record still
+// carries `.claudinite-checks.json`, and nothing reads that name any more: it loads
+// as a repo with no declaration at all, which is the stated cost of the removal and
+// what the settings-validity gate then reports.
+test('a member still on the retired settings-file name reads as no declaration', () => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-config-legacy-'));
   try {
     writeFiles(root, {
       '.claudinite-checks.json': JSON.stringify({
         packs: ['acme-pack', { id: 'acme-pack-b', config: { k: 1 } }],
-        maintenance: { delivery: 'review', mechanism: 'versioned' },
-        claudinite: {
-          updated: '2026-07-26T20:10:18.694Z',
-          ref: 'deadbeef',
-          engineVersion: '60820.1',
-          // `tidy-repo` is a spelling `basics` absorbed: a version stamped under a
-          // renamed pack's id must still price that pack, not read as never-installed.
-          packVersions: { 'git-github': '60801.1', 'tidy-repo': '60802.1' }, // @real-entity the rename map under test carries these ids
-        },
-        taskScheduler: { endpoints: { default: { url: 'u', tokenSecret: 'S' } }, dailyHour: 4 },
+        engineVersion: '60820.1',
       }, null, 2) + '\n',
     });
     const cfg = loadConfig(root);
-    assert.deepEqual(cfg.errors, [], 'the retired shape is legal to READ — only nothing writes it');
-    assert.deepEqual(cfg.packs, ['acme-pack', 'acme-pack-b']);
-    assert.equal(cfg.engineVersion, '60820.1');
-    assert.deepEqual(cfg.packVersions, { 'git-github': '60801.1', basics: '60802.1' }); // @real-entity the rename map under test carries these ids
-    assert.equal(cfg.dailyClaudiniteUpdatesRequirePrReview, true, 'the retired delivery preference still speaks');
-    assert.deepEqual(cfg.packConfig['acme-pack-b'], { k: 1 });
+    assert.deepEqual(cfg.packs, []);
+    assert.equal(cfg.engineVersion, null);
+    assert.equal(cfg.raw, null);
   } finally { removeTree(root); }
 });
 
-// The new name wins when both are present, so a member mid-record is read from the
-// file the record wrote rather than the one it is replacing.
-test('the current settings-file name wins over the retired one', () => {
-  const root = mkdtempSync(join(tmpdir(), 'claudinite-config-both-'));
+// The retired blocks are read by nothing: a member carrying them collects the
+// unknown-setting error, and neither the stamp nor the delivery preference speaks.
+test('the retired claudinite and maintenance blocks are errors, not a second spelling', () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-config-blocks-'));
   try {
     writeFiles(root, {
       '.claudinite-checks.json': JSON.stringify({ packs: ['acme-pack'] }) + '\n',

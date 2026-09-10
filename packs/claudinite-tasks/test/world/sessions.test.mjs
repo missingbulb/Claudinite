@@ -27,18 +27,18 @@ test('a task needing wider reach names a different endpoint, and nothing else ch
   assert.equal(e.tokenEnv, 'CCR_FLEET_TOKEN');
 });
 
-// The rename's window: a member writes its own settings, so the retired spelling is
-// live until that member's own converge rewrites it, and a resolver that only knew
-// the current one would fail every hand-off on every repo that has not converged.
-test('the retired "endpoints" spelling still resolves', () => {
+// The retired `endpoints` spelling stopped being read on #1640: a member still
+// writing it declares no endpoints at all, and the hand-off says so rather than
+// resolving one it was not given.
+test('the retired "endpoints" spelling resolves nothing', () => {
   const legacy = { taskScheduler: { endpoints: CONFIG.taskScheduler.agenticTaskInvocationEndpoints } };
-  assert.equal(resolveEndpoint(legacy, task('fleet')).url, 'https://example.invalid/routines/trig_2/fire');
+  assert.match(resolveEndpoint(legacy, task('fleet')).error, /declare no invocation endpoint "fleet"/);
 });
 
 test('an unconfigured endpoint is reported, never thrown or guessed at', () => {
   assert.match(resolveEndpoint(CONFIG, task('nowhere')).error, /declare no invocation endpoint "nowhere"/);
   assert.match(resolveEndpoint({}, task(null)).error, /declare no invocation endpoint "default"/);
-  assert.match(resolveEndpoint({ taskScheduler: { endpoints: { default: { url: 'u' } } } }, task(null)).error, /tokenSecret/);
+  assert.match(resolveEndpoint({ taskScheduler: { agenticTaskInvocationEndpoints: { default: { url: 'u' } } } }, task(null)).error, /tokenSecret/);
 });
 
 // The payload names an item and proves the call is the one the hand-off recorded
@@ -81,7 +81,7 @@ test('a fired routine returns its session id, and the beta header rides the call
 // versions working, so rotating it must be a config edit on one repo — never an
 // engine release the whole fleet waits for.
 test('an endpoint may override the dated beta header without an engine change', async () => {
-  const config = { taskScheduler: { endpoints: { default: {
+  const config = { taskScheduler: { agenticTaskInvocationEndpoints: { default: {
     url: 'https://example.invalid/routines/trig_1/fire', tokenSecret: 'CCR_TOKEN',
     headers: { 'anthropic-beta': 'experimental-cc-routine-2027-01-01' },
   } } } };
