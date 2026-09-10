@@ -2,6 +2,11 @@ Below are rules on how to work on this repo.
 
 ## Standing owner decisions — settled, do not re-litigate
 
+- **Designing or describing what Claudinite is** — its unit of adoption is the *repository*, which
+  declares packs, runs its own tasks and validates its own state; a per-user, per-machine framing
+  (a Claude Code plugin, a developer's install) is a category error that invents costs the real
+  shape does not have. (83)
+
 - **Converging a work item to a terminal** — `task:status:done` and `task:status:rejected` both
   CLOSE the issue they stand on, marked or filed; a terminal is not a question, so an open issue
   wearing one is a torn write rather than a resting state, and the re-ask is clearing the
@@ -496,6 +501,11 @@ Below are rules on how to work on this repo.
 - **Merging a PR that has sat open across many `main` commits** — check its current
   `mergeable_state`, not an old green CI run. A structural change on `main` since (a directory
   move, a renamed path) can turn a once-clean branch conflicted without a new run ever failing.
+
+- **Resolving a conflict in a `declared-checks.json`** — take the base branch's whole file and
+  re-append your one entry rather than hand-merging the markers, since the collision is a
+  neighbouring entry another run appended; under `rebase` that base side is `--ours`, not
+  `--theirs`. (84)
 
 - **After a PR lands by squash-merge** — `git remote prune origin` before touching that branch
   again. GitHub deletes the head ref here, so a stale tracking ref makes the next push reject and

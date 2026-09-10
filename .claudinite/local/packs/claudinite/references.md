@@ -306,3 +306,22 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   the gate delays by one cycle without losing a merge — missingbulb/GoogleCalendarEventCreator#1160
   had a green dispatch run beside a gated phantom and merged on the next cycle. Retire the rule if
   that setting stops gating same-repo bot PRs, or if the queue stops dispatching its own runs.
+- **(RULES-83)** Owner, 2026-09-06 (#1814, session cd625226): "The whole point of Claudenite is to
+  install on the repo. Claude code plugins help users. Claudinite helps repositories. Repos run
+  their own tasks, repos implemet using their skills and rules. Repos validate state based on
+  checks. The direction is not Claude Plugins." The commercialization draft had been built around
+  Claude Code's plugin/marketplace system and costed an un-vendoring refactor that exists only
+  under a per-user framing; the correction forced a second whole-document rework in one session.
+  `docs/commercialization/DESIGN.md` states the same premise but carries a "not implemented"
+  banner disclaiming itself as a description of the repository, so nothing a session reads by
+  default carried it. Retire the rule if Claudinite ever ships a per-user or per-machine install
+  path alongside the repository one.
+- **(RULES-84)** Merging #1815, 2026-09-10 (session cd625226): the branch had sat open since
+  2026-09-06, 68 commits behind, and `merge_pull_request` returned `405 Pull Request has merge
+  conflicts`. Both `git merge origin/main` and `git rebase origin/main` conflicted in exactly one
+  file — `.claudinite/local/packs/claudinite/declared-checks.json` — where `main` had edited a
+  neighbouring entry after the branch appended its own, so the whole-file JSON rewrite collided
+  with a change the branch had no opinion about. Taking the base file with `git checkout --ours`
+  and re-appending the single entry resolved it in one pass; the detour cost ~90s and a merge
+  abort. Several auto-merging runs a day append to this file, so the collision is structural.
+  Retire the rule if the file stops being appended by more than one run at a time.
