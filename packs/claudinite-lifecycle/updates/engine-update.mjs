@@ -51,15 +51,22 @@ const canonRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)
 // The engine half of a vendor set: the engine tree itself, plus the pack catalog,
 // which is not any one pack's — it ships with every mount whatever the declaration,
 // so nothing in the pack flow owns it.
-// MIGRATION TOLERANCE (#1317): the tasks pack rides the ENGINE lane while the legacy
-// `engine/scheduler/` shims exist. The shims re-export that pack, and the two lanes
-// deliver on separate cycles — so shipping them apart hands every member a window in
-// which its new engine names a pack its mount does not carry yet. That is not a stale
-// import a version gate can cover: the old pack version the member still holds imports
-// `engine/scheduler/*` by name, the shim there resolves to nothing, the pack fails to
-// load, and the self-test gate below refuses to land the converge at all — which also
-// means the member cannot receive the pack that would have fixed it. A shim and its
-// target are one unit; the lane that ships one ships the other. Removed with the shims.
+// MIGRATION TOLERANCE (#1317): the tasks pack rides the ENGINE lane. It began as the
+// rule that a shim and its target are one unit — the canon's `engine/scheduler/`
+// shims re-exported this pack, and shipping the two on separate cycles handed every
+// member a window in which its new engine named a pack its mount did not carry yet.
+// That is not a stale import a version gate can cover: the old pack version the
+// member still holds imports `engine/scheduler/*` by name, the shim there resolves to
+// nothing, the pack fails to load, and the self-test gate below refuses to land the
+// converge at all — which also means the member cannot receive the pack that would
+// have fixed it.
+//
+// Those shims are gone from the canon, so what holds this line now is the lane
+// itself: a member that never declared claudinite-tasks carries the pack only because
+// this puts it on the engine lane, and the pack lane would silently stop delivering
+// it. That is a read of the members' own mounts, which no convergence window answers
+// — the expiry register in engine-tests/install.test.mjs is what brings the question
+// back (#1643).
 // @legacy-tolerance advisory:none retire:#1643
 const LEGACY_SHIM_TARGET = 'packs/claudinite-tasks/';
 export const isEngineFile = (rel) => rel.startsWith('engine/') || rel.startsWith(LEGACY_SHIM_TARGET) || rel === PACK_DIRECTORY_FILE;
