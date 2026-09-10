@@ -110,3 +110,14 @@
   properties of a term a declaration can be wrong about. Still read as text and never imported,
   since a check must not execute a member's own module.
 - **Landed:** #2214
+
+## 2026-09-22 · severity-changed · a retired outcome ceiling is illegal, not a rename (#1920)
+- **Reason:** the door that mapped `open-pr`, `merged-pr`, `pr` and `none` onto today's ceilings is
+  gone, so the author-time surface has to say the same thing the runtime now does. An advisory
+  rename would tell an author the value still works, which is the failure mode a retirement exists
+  to prevent: a word nobody reads must not be a word that silently works.
+- **Mechanism:** the three advisory-rename branches collapse into one blocking finding naming the
+  ceiling as illegal.
+- **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
+- **Model:** claude-opus-5
+- **Landed:** #1920

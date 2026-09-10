@@ -558,7 +558,7 @@ async function handOff({ api, gh, repo, item, task, id, context, result, target 
     // pushes to, the pull request it amends, the ones its converge supersedes.
     if (target) out = withTarget(out, target);
     if (context.length) out = withSection(out, 'Context', context);
-    if (result.delivered?.length) out = withSection(out, DELIVERED_HEADING, result.delivered, LEGACY_DELIVERED_HEADINGS);
+    if (result.delivered?.length) out = withSection(out, DELIVERED_HEADING, result.delivered);
     if (result.reason) out = withSection(out, 'Why the agent is here', [result.reason]);
     return out;
   });

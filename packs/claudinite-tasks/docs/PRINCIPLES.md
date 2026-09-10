@@ -228,9 +228,10 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 
 - A task's `expected_outcome` is a ceiling on what its run may do to pull
   requests, never an instruction — `no_code_changes`, `fresh_pr`,
-  `amend_existing_or_create_new_pr`, `supersede_existing_pr` — and the
-  legacy two-word ceilings normalize to one of these at the door.
-  `test/execute/target.test.mjs: the legacy ceilings plan as the values they normalize to`
+  `amend_existing_or_create_new_pr`, `supersede_existing_pr`. The retired
+  two-word ceilings no longer normalize at the door: a declaration still
+  naming one is not stating a legal value.
+  `test/rules/task-declaration-shape.test.mjs: task-declaration-shape: a retired outcome ceiling is no longer a rename, it is illegal`
 - `no_code_changes` gets no branch and no pull request; `fresh_pr` gets a
   freshly minted branch under the task's own prefix and leaves the task's
   earlier pull requests alone.
@@ -456,8 +457,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   to its current canonical form — never chained through an intermediate
   spelling — because closed issues keep the labels they were written with.
   `S62`, `S62b`, `S63`,
-  `test/items/work-item.test.mjs: outcomeOf maps every spelling, legacy and current, to the canonical word`,
-  `test/rules/legacy-task-fields.test.mjs: legacy-task-fields: every retired field name is reported at its own line, with its replacement`
+  `test/items/work-item.test.mjs: outcomeOf maps every spelling, legacy and current, to the canonical word`
 - A hand-created item, a forced mint, and a `--wake` all stamp `Woken:` into
   the item's machine block; any item that is not the scheduler's own
   unqualified planned item is treated as woken too.
@@ -492,7 +492,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - A task declaration a member's own engine cannot read is skipped by
   discovery with a recorded error, never allowed to fail the whole mount —
   an invalid local task file stops running with something red to say so.
-- A task with `required_secrets` unconfigured parks the affected item at
+- A task with `code_work_required_secrets` unconfigured parks the affected item at
   `task:status:needs-human-action`, naming the missing secret, rather than
   failing silently or blocking every other task.
   `test/execute/loop.test.mjs: an unconfigured declared secret parks at action`,

@@ -40,3 +40,14 @@
 - **Actor:** the `engine/implement-request` run on work item missingbulb/Claudinite#1789.
 - **Model:** claude-opus-5
 - **Landed:** #1789
+
+## 2026-09-22 · reworded · the skill stops describing retired mechanisms (#1920)
+- **Reason:** three passages named shapes the contract no longer accepts. The ceiling list loses its
+  "the retired spellings still normalize" clause and the secrets field its parenthetical, both now
+  false. The `session_scope` entry is deleted outright rather than corrected: `writing-pack-prose`
+  says to cut a rule whose mechanism has been retired, since one naming code that no longer exists
+  teaches a world the reader will not find. Its live half - that a task declares no scope, and reach
+  is `invocation_endpoint` - moves up into the contract bullet that already pointed there.
+- **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
+- **Model:** claude-opus-5
+- **Landed:** #1920

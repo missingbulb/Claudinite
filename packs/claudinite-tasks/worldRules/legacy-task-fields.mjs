@@ -39,14 +39,6 @@ const rule = {
   why: 'the contract accepts two retired generations of field names, two retired generations of outcome ceilings and the retired frequency field for one convergence window after this advisory ships (#1642, #1725) — nothing counts who is still on them, so a declaration not brought up to the vocabulary inside that window simply stops being read',
 
   run(ctx) {
-    const fields = contract.LEGACY_FIELDS ?? {};
-    const outcomes = contract.LEGACY_OUTCOMES ?? {};
-    const ceilings = contract.LEGACY_CEILINGS ?? {};
-    const names = Object.keys(fields);
-    if (names.length === 0 && Object.keys(outcomes).length === 0 && Object.keys(ceilings).length === 0) return [];
-
-    const fieldRe = names.length ? new RegExp(`^\\s*"?(${names.join('|')})"?\\s*:`) : null;
-    const outcomeRe = /^\s*"?expected_outcome"?\s*:\s*['"]([^'"]+)['"]/;
     // The cadence field, retired into the expression. Guarded on the engine
     // exporting the term spelling: beside an older calendar the field is not a
     // tolerance yet, and reporting it would ask for an edit that engine rejects.
@@ -57,18 +49,9 @@ const rule = {
       const text = ctx.read(file);
       if (text === null) continue;
       text.split('\n').forEach((text_line, i) => {
-        const field = fieldRe?.exec(text_line);
-        if (field) {
-          out.push(finding(rule, {
-            file,
-            line: i + 1,
-            what: `declares the retired field \`${field[1]}\``,
-            fix: `rename it to \`${fields[field[1]]}\` — the contract maps every retired spelling straight to today's name, so this is a one-line edit with no behaviour change`,
-          }));
-        }
         const frequency = frequencyRe?.exec(text_line);
         if (frequency) {
-          const term = (calendar.ACCEPTED_FREQUENCIES ?? []).includes(frequency[1]) ? calendar.cadenceTermFor(frequency[1]) : 'due:<daily|weekly|monthly>';
+          const term = (calendar.FREQUENCIES ?? []).includes(frequency[1]) ? calendar.cadenceTermFor(frequency[1]) : 'due:<daily|weekly|monthly>';
           const fix = term === null
             ? 'write `"trigger": "request"` and drop the field, and a `"none"` beside it: `"manual"` meant no schedule at all, which a declaration now says outright; the nightly update rewrites a member\'s own task files'
             : `write it as the first condition — \`"preconditions": ["${term}", …]\` — with \`"trigger": "schedule"\` beside it, and drop a \`"none"\`; the field reads as exactly that today, and the nightly update rewrites a member's own task files`;
@@ -77,22 +60,6 @@ const rule = {
             line: i + 1,
             what: 'declares the retired field `frequency`',
             fix,
-          }));
-        }
-        const outcome = outcomeRe.exec(text_line);
-        if (outcome && Object.hasOwn(outcomes, outcome[1])) {
-          out.push(finding(rule, {
-            file,
-            line: i + 1,
-            what: `declares the retired outcome ceiling \`${outcome[1]}\``,
-            fix: `write \`expected_outcome: 'fresh_pr'\` with \`automerge: '${outcomes[outcome[1]]}'\` beside it — the one word always meant that pair, and spelling it out is what lets the policy be narrowed later`,
-          }));
-        } else if (outcome && Object.hasOwn(ceilings, outcome[1])) {
-          out.push(finding(rule, {
-            file,
-            line: i + 1,
-            what: `declares the retired outcome ceiling \`${outcome[1]}\``,
-            fix: `write \`expected_outcome: '${ceilings[outcome[1]]}'\` — the word it became, in the vocabulary that also says amend_existing_or_create_new_pr and supersede_existing_pr`,
           }));
         }
       });

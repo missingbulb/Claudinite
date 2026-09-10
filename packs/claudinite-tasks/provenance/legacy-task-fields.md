@@ -39,3 +39,15 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude, per the commit trailer.
 - **Landed:** #1795 (Refs #1656, #1633) · pack version 60906.15.
+
+## 2026-09-22 · severity-changed · the retired field names and outcome ceilings leave this advisory (#1920)
+- **Reason:** the contract no longer renames them at the door, so there is nothing invisible left
+  for the advisory to surface: a declaration naming `prework`, `after` or `required_secrets` is
+  simply missing what it meant to declare, and a retired ceiling is not a legal value. Asking for an
+  optional rename would understate both. The frequency branch is untouched and is all this rule
+  still reports.
+- **Mechanism:** the field-rename branch is deleted from the rule, and its `why` no longer claims
+  the two generations it has stopped covering.
+- **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
+- **Model:** claude-opus-5
+- **Landed:** #1920

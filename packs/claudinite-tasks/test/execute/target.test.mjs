@@ -110,11 +110,13 @@ test('supersede lands a green incumbent instead of re-cutting it, and the occurr
   assert.deepEqual(t.supersedes, [3], 'the older ones close as superseded by the landed one');
 });
 
-test('the legacy ceilings plan as the values they normalize to', () => {
-  assert.equal(planTarget({ outcome: 'none', incumbents: [], branch }).mode, 'none');
-  assert.equal(planTarget({ outcome: 'pr', incumbents: [], branch }).mode, 'fresh');
-  assert.equal(planTarget({ outcome: 'open-pr', incumbents: [], branch }).mode, 'fresh');
-  assert.throws(() => planTarget({ outcome: 'push', incumbents: [], branch }), /not a legal outcome/);
+// A retired ceiling is an unknown ceiling now (#1642), and an unknown one throws
+// rather than planning something: the executor resolves the target BEFORE code-work,
+// so a word it cannot read must stop the run rather than pick a mode for it.
+test('a ceiling the contract does not know throws rather than planning a mode', () => {
+  for (const unknown of ['none', 'pr', 'open-pr', 'merged-pr', 'push']) {
+    assert.throws(() => planTarget({ outcome: unknown, incumbents: [], branch }), /not a legal outcome/, unknown);
+  }
 });
 
 test('the env a target becomes is exactly the three variables, every mode', () => {

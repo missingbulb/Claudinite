@@ -36,9 +36,7 @@ says it in the commit.
 
 ## The task sets the ceiling; the repo decides the rest
 
-Your task's declared `automerge` is a **ceiling, not a plan** (the legacy
-`expected_outcome: 'open-pr'` reads as `fresh_pr` with `nothing`, `'merged-pr'` as
-`fresh_pr` with `anything`; `none` and `pr` read as `no_code_changes` and `fresh_pr`).
+Your task's declared `automerge` is a **ceiling, not a plan**.
 On a request item the authorization is the item's **`Merge:` field** instead,
 read within that ceiling: absent means `nothing`, `if-narrow` means the
 `narrow-diff` composite, and any other value is the policy expression itself.
