@@ -139,7 +139,7 @@ test('the member-side scheduler run resolves the very id this lever sends', asyn
   const tasks = [{ pack: 'claudinite-lifecycle', id: FORCED_TASK, decl }];
   const items = [{
     number: 1, state: 'open', labels: ['task:blocked'],
-    title: `[claudinite-work] core/${FORCED_TASK}`,
+    title: `[claudinite-work] claudinite-lifecycle/${FORCED_TASK}`,
   }];
   const { wake, unmatched } = planWake(FORCED_TASK, tasks, items);
   assert.deepEqual(unmatched, [], `the scheduler run must resolve "${FORCED_TASK}" — this is the exact string fleet-baseline dispatches`);

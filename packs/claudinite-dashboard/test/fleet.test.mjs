@@ -198,9 +198,9 @@ test('a pack behind canon reads behind and names the pack', () => {
 // still keys the version under the old spelling, and must compare — not read as an
 // unknown pack.
 test('a renamed pack\'s stamped spelling still compares against canon', () => {
-  const s = mountState({ claudinite: { engineVersion: 4, packVersions: { core: 2, basics: 5 } } }, CANON);
+  const s = mountState({ claudinite: { engineVersion: 4, packVersions: { 'tidy-repo': 2, 'claudinite-lifecycle': 3 } } }, CANON);
   assert.equal(s.state, 'behind');
-  assert.deepEqual(s.behindPacks, [{ pack: 'claudinite-lifecycle', version: 2, canonVersion: 3 }]);
+  assert.deepEqual(s.behindPacks, [{ pack: 'basics', version: 2, canonVersion: 5 }]);
 });
 
 // A pack the canon reference cannot price (the read failed, or it is a local pack)

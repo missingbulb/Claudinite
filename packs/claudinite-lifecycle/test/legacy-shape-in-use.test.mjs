@@ -89,7 +89,7 @@ test('legacy-shape-in-use: the retired servedBy alias is reported, the current o
 // Every finding is advisory: the old shape works, so this may not stop a member's
 // build over something that is not broken.
 test('legacy-shape-in-use: never blocking', () => {
-  const findings = run({ packs: ['core'], packConfig: {}, engineVersion: 6 });
+  const findings = run({ packs: [Object.keys(RENAMED_PACKS)[0]], packConfig: {}, engineVersion: 6 });
   assert.ok(findings.length >= 3);
   assert.ok(findings.every((f) => f.severity === 'advisory'));
 });

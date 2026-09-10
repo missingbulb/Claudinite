@@ -10,8 +10,6 @@
 // nearest common ancestor: distance 2 from each task instead of one task reaching
 // into the other's folder.
 
-import { canonicalPackId } from '../../engine/pack_loader/renamed-packs.mjs';
-
 // The enforcer repo's .claudinite-settings.json carries, on this pack's entry:
 //   { "id": "claudinite-fleet-sheepdog", "config": { owner: "missingbulb", kind: "user", exclude: ["owner/repo", ...],
 //                                   canonRepo: "missingbulb/Claudinite",
@@ -22,20 +20,20 @@ import { canonicalPackId } from '../../engine/pack_loader/renamed-packs.mjs';
 // default, so an existing config keeps working untouched. Callers read the
 // home repo's file raw (fetched over the API, no
 // engine on hand), so this resolves the entry itself — legacy top-level
-// packConfig.sheepdog stays readable underneath until the `pack-entry-config` baseline
+// packConfig stays readable underneath until the `pack-entry-config` baseline
 // migration retires (drop the fallback then). A missing config is an unreadable
 // config: throw — absence is not consent to cover everything.
 //
-// BOTH SPELLINGS OF THE ID RESOLVE. The declaration this reads is the enforcer's own
-// file as it stands on disk, which converges onto today's id on its own schedule; the
-// legacy `packConfig` key is a member-written key that never converges at all. An
-// enforcer whose declaration has not caught up must still cover its fleet, so the
-// entry is matched through the engine's rename map and the old `packConfig` key is
-// read as it was written.
+// ONE SPELLING OF THE ID, today's. The pack's old `sheepdog` id was resolved here
+// through the engine's rename map until that tolerance's convergence window closed
+// (#1641); an enforcer still declaring it does not activate this pack at all, so
+// there is nothing left for a second spelling to rescue. The legacy `packConfig`
+// key is a different tolerance — a member-written key that never converges — and it
+// is read under today's id, as it was written.
 export function parseSheepdogConfig(cfg, home) {
   const entry = (Array.isArray(cfg?.packs) ? cfg.packs : [])
-    .find((e) => typeof e?.id === 'string' && canonicalPackId(e.id) === 'claudinite-fleet-sheepdog');
-  const sd = entry?.config ?? cfg?.packConfig?.['claudinite-fleet-sheepdog'] ?? cfg?.packConfig?.sheepdog;
+    .find((e) => e?.id === 'claudinite-fleet-sheepdog');
+  const sd = entry?.config ?? cfg?.packConfig?.['claudinite-fleet-sheepdog'];
   if (!sd || typeof sd !== 'object') {
     throw new Error(`the fleet-enforcer repo ${home} declares no claudinite-fleet-sheepdog config { owner, exclude } (on the pack entry or legacy packConfig) — nothing to cover`);
   }

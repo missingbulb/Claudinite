@@ -294,32 +294,31 @@ test('loadPacks: thin array wrapper over discoverPacks', async () => {
 // ones — that leaves the test asserting today's id maps to itself, which is green
 // and vacuous.
 test('packEntryId: a renamed pack resolves to its current id from either spelling', () => {
-  assert.equal(packEntryId('core'), 'claudinite-lifecycle');
-  assert.equal(packEntryId({ id: 'grow_with_claudinite', config: {} }), 'claudinite-growth');
-  assert.equal(packEntryId('claudinite-lifecycle'), 'claudinite-lifecycle');
+  assert.equal(packEntryId('tidy-repo'), 'basics');
+  assert.equal(packEntryId({ id: 'barriers', config: {} }), 'basics');
+  assert.equal(packEntryId('basics'), 'basics');
 });
 
 test('packEntryId: a local pack keeps its own namespace', () => {
-  assert.equal(packEntryId(`${LOCAL_DECL_PREFIX}core`), 'core');
+  assert.equal(packEntryId(`${LOCAL_DECL_PREFIX}barriers`), 'barriers');
 });
 
 test('isActive: a declaration still carrying the old spelling activates the renamed pack', () => {
-  const config = { packs: ['core', { id: 'grow_with_claudinite' }] };
-  assert.equal(isActive({ id: 'claudinite-lifecycle' }, config), true);
-  assert.equal(isActive({ id: 'claudinite-growth' }, config), true);
+  assert.equal(isActive({ id: 'basics' }, { packs: ['tidy-repo'] }), true);
+  assert.equal(isActive({ id: 'basics' }, { packs: [{ id: 'barriers' }] }), true);
 });
 
 test('resolveDeclaredPacks: the old spelling pulls in the renamed pack requires', () => {
-  const packs = [{ id: 'claudinite-lifecycle', requires: ['product-wiki'] }, { id: 'product-wiki' }];
-  const ids = resolveDeclaredPacks(['core'], packs).map(packEntryId);
-  assert.deepEqual(ids, ['claudinite-lifecycle', 'product-wiki']);
+  const packs = [{ id: 'basics', requires: ['product-wiki'] }, { id: 'product-wiki' }];
+  const ids = resolveDeclaredPacks(['tidy-repo'], packs).map(packEntryId);
+  assert.deepEqual(ids, ['basics', 'product-wiki']);
 });
 
 test('canonicalPackVersions: a version stamped under the old key is not read as absent', () => {
-  assert.deepEqual(canonicalPackVersions({ core: 6, basics: 3 }), { 'claudinite-lifecycle': 6, basics: 3 });
+  assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 6, 'git-github': 3 }), { basics: 6, 'git-github': 3 });
   // Mid-converge a declaration can carry both; today's spelling is the one the
   // flows wrote, so it wins rather than being clobbered by the residue.
-  assert.deepEqual(canonicalPackVersions({ core: 5, 'claudinite-lifecycle': 6 }), { 'claudinite-lifecycle': 6 });
+  assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 5, basics: 6 }), { basics: 6 });
 });
 
 // Every legacy spelling maps STRAIGHT to a live pack id, never to another legacy
@@ -345,15 +344,15 @@ test('discoverPacks: a mounted pack still announcing its old id activates under 
     cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   // Where a member's settings live: the loader resolves the declaration through it.
   for (const f of ['settings-file.mjs', 'settings-file-names.mjs']) cpSync(join(REPO_ROOT, 'engine', f), join(root, 'engine', f));
-    mkdirSync(join(root, 'packs', 'claudinite-lifecycle'), { recursive: true });
-    writeFileSync(join(root, 'packs', 'claudinite-lifecycle', 'pack.mjs'),
-      "export default { id: 'core', detect: null, worldRules: [], ruleRoutingGuidance: { belongs: 'x', excludes: 'y' } };\n");
+    mkdirSync(join(root, 'packs', 'basics'), { recursive: true });
+    writeFileSync(join(root, 'packs', 'basics', 'pack.mjs'),
+      "export default { id: 'tidy-repo', detect: null, worldRules: [], ruleRoutingGuidance: { belongs: 'x', excludes: 'y' } };\n");
     const registry = await import(pathToFileURL(join(root, 'engine', 'pack_loader', 'pack-registry.mjs')).href);
     const { packs } = await registry.discoverPacks({});
-    assert.deepEqual(packs.map((p) => p.id), ['claudinite-lifecycle'],
+    assert.deepEqual(packs.map((p) => p.id), ['basics'],
       'the stale id resolves to the pack it has become');
-    assert.equal(registry.isActive(packs[0], { packs: ['claudinite-lifecycle'] }), true);
-    assert.equal(registry.isActive(packs[0], { packs: ['core'] }), true,
+    assert.equal(registry.isActive(packs[0], { packs: ['basics'] }), true);
+    assert.equal(registry.isActive(packs[0], { packs: ['tidy-repo'] }), true,
       'and a declaration not yet converged still activates it');
   } finally { removeTree(root); }
 });

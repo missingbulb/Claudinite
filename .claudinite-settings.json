@@ -50,18 +50,6 @@
                 },
                 "engine/migrations",
                 {
-                  "path": "engine/pack_loader/renamed-packs.mjs",
-                  "to": [
-                    "packs/claudinite-lifecycle",
-                    "packs/claudinite-growth",
-                    "packs/chrome-extension",
-                    "packs/git-github",
-                    "packs/claudinite-canary-repo",
-                    "packs/claudinite-fleet-sheepdog"
-                  ],
-                  "reason": "inherent(#1022): a map from a pack's old id to its current one IS a list of pack names — there is nothing else for it to be made of, and the loader must hold it so a member declaring either spelling keeps its packs"
-                },
-                {
                   "path": "engine/RELEASES.md",
                   "to": [
                     "packs/claudinite-lifecycle",

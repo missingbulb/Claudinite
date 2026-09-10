@@ -376,7 +376,7 @@ export const declTokenFor = (pack) =>
 // A declaration written before a canon pack was renamed resolves to the pack's
 // CURRENT id here (renamed-packs.mjs), so activation, config lookup and the vendor
 // set all agree on one spelling no matter which one the member wrote. A LOCAL pack
-// is exempt: its namespace belongs to the repo, so `local/core` stays `core`.
+// is exempt: its namespace belongs to the repo, so `local/barriers` stays `barriers`.
 // A local pack declared BARE cannot be told apart from a canon one at this seam and
 // is canonicalized with the rest — which is harmless while the shadow guard in
 // discoverPacks keeps a local id from claiming a canon one.

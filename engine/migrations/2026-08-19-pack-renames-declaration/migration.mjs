@@ -15,10 +15,12 @@
 // already stamped 5, so the 5 record can never run there again — and a member that
 // converged is exactly the member whose declaration still needs moving.
 //
-// NOTHING DEPENDS ON THIS HAVING RUN, as with its predecessor: the loader resolves
-// both spellings, so a member reads correctly whether or not its declaration has
-// been converged. What this buys is the day `renamed-packs.mjs` can be retired,
-// which is the only reason to converge a declaration nobody has to read.
+// NOTHING DEPENDED ON THIS HAVING RUN while the tolerance stood, as with its
+// predecessor: the loader resolved both spellings, so a member read correctly whether
+// or not its declaration had been converged. What it bought was the day
+// `renamed-packs.mjs` could be retired for these ids, which is the only reason to
+// converge a declaration nobody has to read — and that day came (#1641), so a member
+// that never ran this record now activates nothing under either old spelling.
 export default {
   id: 'pack-renames-declaration',
   landed: '2026-08-19',

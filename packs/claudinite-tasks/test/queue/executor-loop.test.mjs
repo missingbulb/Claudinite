@@ -537,15 +537,15 @@ test('a task deleted from the checkout mid-run closes obsolete rather than faili
 test('an item naming its own task at its pre-rename path closes obsolete, not to a human', async () => {
   const renamed = {
     ...workItem(1, 'logs-prune', ['task:status:waiting-for-executor'],
-      'packs/grow_with_claudinite/tasks/logs-prune/task.md\n\nExecute the Claudinite task above.\n'),
-    title: '[claudinite-work] grow_with_claudinite/logs-prune',
+      'packs/tidy-repo/tasks/logs-prune/task.md\n\nExecute the Claudinite task above.\n'),
+    title: '[claudinite-work] tidy-repo/logs-prune',
   };
   const repo = fakeRepo([renamed]);
-  const moved = { ...task('logs-prune'), pack: 'claudinite-growth', taskPath: 'packs/claudinite-growth/tasks/logs-prune/task.md' };
+  const moved = { ...task('logs-prune'), pack: 'basics', taskPath: 'packs/basics/tasks/logs-prune/task.md' };
   const done = await drive(repo, [moved]);
   assert.deepEqual(done, [{ issue: 1, outcome: 'obsolete' }]);
   assert.equal(repo.find(1).state, 'closed');
-  assert.ok(repo.find(1).comments.some((c) => c.body.includes('packs/claudinite-growth/tasks/logs-prune/task.md')));
+  assert.ok(repo.find(1).comments.some((c) => c.body.includes('packs/basics/tasks/logs-prune/task.md')));
 });
 
 // …and the shape the guard actually exists for still parks. A path naming a DIFFERENT
