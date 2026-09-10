@@ -40,16 +40,16 @@ test('isActive: activation matches both entry forms', () => {
 });
 
 test('packEntryId/isActive: a local-pack declaration may be namespaced local/<name>', () => {
-  // The namespaced `local/` form is the canonical way to declare a local pack;
-  // the pre-rename `local_packs/` form and the bare id stay accepted permanently
-  // (all three resolve to the bare id) — a declaration is text a member wrote
-  // once, and no convergence pass rewrites every one of them.
+  // The namespaced `local/` form is the canonical way to declare a local pack, and
+  // the bare id stays accepted — a declaration is text a member wrote once. The
+  // pre-rename `local_packs/` token stopped resolving on #1640, so it now names a
+  // pack nothing has.
   assert.equal(packEntryId('local/proj'), 'proj');
   assert.equal(packEntryId({ id: 'local/proj', config: {} }), 'proj');
-  assert.equal(packEntryId('local_packs/proj'), 'proj'); // legacy form still resolves
+  assert.equal(packEntryId('local_packs/proj'), 'local_packs/proj'); // retired token: no longer stripped
   assert.ok(isActive({ id: 'proj', local: true }, { packs: ['local/proj'] }));
   assert.ok(isActive({ id: 'proj', local: true }, { packs: [{ id: 'local/proj', config: {} }] }));
-  assert.ok(isActive({ id: 'proj', local: true }, { packs: ['local_packs/proj'] })); // pre-rename token
+  assert.ok(!isActive({ id: 'proj', local: true }, { packs: ['local_packs/proj'] })); // retired token
   assert.ok(isActive({ id: 'proj', local: true }, { packs: ['proj'] })); // bare id
   assert.ok(!isActive({ id: 'other' }, { packs: ['local/proj'] }));
 });

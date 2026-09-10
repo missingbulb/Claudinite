@@ -12,7 +12,7 @@
 // Unset is the ordinary case, not a misconfiguration: a canon whose corpus is its
 // packs shelf and nothing else needs no entry at all.
 import { canonicalPackId } from '../../engine/pack_loader/renamed-packs.mjs';
-import { SETTINGS_FILES } from '../../engine/settings-file-names.mjs';
+import { SETTINGS_FILE } from '../../engine/settings-file-names.mjs';
 
 export const PACK_ID = 'claudinite-canon-curation';
 
@@ -34,13 +34,8 @@ export function corpusRoots(settingsText) {
   return [...new Set([CANON_SHELF, ...extra])].map((p) => `${p}/`);
 }
 
-// The settings file as it is named in this repo, read through whatever surface the
-// caller has (a check context, a plain readFileSync). Both names resolve while the
-// rename window is open.
+// The settings file, read through whatever surface the caller has (a check context,
+// a plain readFileSync).
 export function readCorpusRoots(read) {
-  for (const name of SETTINGS_FILES) {
-    const text = read(name);
-    if (text != null) return corpusRoots(text);
-  }
-  return corpusRoots(null);
+  return corpusRoots(read(SETTINGS_FILE) ?? null);
 }

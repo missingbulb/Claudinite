@@ -1,6 +1,6 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { parseSheepdogConfig } from '../fleet-config.mjs';
-import { SETTINGS_FILE, SETTINGS_FILES } from '../../../engine/settings-file.mjs';
+import { SETTINGS_FILE } from '../../../engine/settings-file.mjs';
 
 // The enforcer states a seeded pack's config TWICE, for two different audiences, in one
 // file:
@@ -60,8 +60,8 @@ const rule = {
     // fleet-config's one parser — so the seeds judged here are exactly the seeds that
     // would be written (it drops the malformed ones), and so a finding can point at a
     // line. `home` only feeds the owner default and the throw message; neither is used.
-    const text = SETTINGS_FILES.map((f) => ctx.read(f)).find((t) => t != null);
-    if (text === null) return [];
+    const text = ctx.read(SETTINGS_FILE);
+    if (text == null) return [];
     let seeds;
     try {
       seeds = parseSheepdogConfig(JSON.parse(text), 'this repo').packSeeds;

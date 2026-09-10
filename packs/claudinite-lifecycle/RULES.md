@@ -49,7 +49,7 @@
   `; echo "EXIT:$?"` if in doubt, rather than a second pass of `--help`/`head`/`tail` hunting for
   confirmation that silence is safe. (2)
 
-- **Pushing a change that touches `.github/workflows/`, `.claudinite-checks.json` or pack config**
+- **Pushing a change that touches `.github/workflows/`, `.claudinite-settings.json` or pack config**
   — the world sweep runs in CI, not the Stop hook, so run it locally first rather than spend a
   push → CI → fix round trip on a finding it reports in seconds:
 

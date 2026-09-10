@@ -175,11 +175,12 @@ test('freshness is judged on versions, and stray provenance keys change nothing'
   assert.equal(mountState(stamp, CANON).state, 'current');
 });
 
-// The rename's window: a member carries the retired block until its own converge runs
-// the record, and reading past it would call a current mount unversioned.
-test('a pre-rename member is judged from the retired block', () => {
+// The retired block is read by nothing since #1640: a member that never ran the
+// #1252 record records its versions where the mount cannot see them, which is the
+// stated cost of the removal.
+test('a member still stamped in the retired block reads as unversioned', () => {
   const legacy = { claudinite: { engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 } } };
-  assert.equal(mountState(legacy, CANON).state, 'current');
+  assert.equal(mountState(legacy, CANON).state, 'unversioned');
 });
 
 test('an older engine version outranks pack lag', () => {
@@ -198,7 +199,7 @@ test('a pack behind canon reads behind and names the pack', () => {
 // still keys the version under the old spelling, and must compare — not read as an
 // unknown pack.
 test('a renamed pack\'s stamped spelling still compares against canon', () => {
-  const s = mountState({ claudinite: { engineVersion: 4, packVersions: { core: 2, basics: 5 } } }, CANON);
+  const s = mountState(member(4, { core: 2, basics: 5 }), CANON);
   assert.equal(s.state, 'behind');
   assert.deepEqual(s.behindPacks, [{ pack: 'claudinite-lifecycle', version: 2, canonVersion: 3 }]);
 });

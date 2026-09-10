@@ -1424,14 +1424,6 @@ fi
     },
   },
   {
-    name: 'legacy-settings-name',
-    why: 'a member still carrying `.claudinite-checks.json` — the shape EVERY member is in between the #1252 engine landing and its own converge running the rename record. Nothing but the engine reads that name, so if any reader lost the tolerance, this member reads as un-adopted: no packs, no tasks, no delivery preference, and a green run to show for it',
-    files: {
-      'README.md': '# fixture-legacy-settings-name\n\nA rehearsal fixture.\n',
-      '.claudinite-checks.json': checks(['basics']),
-    },
-  },
-  {
     name: 'old-workflows',
     why: 'a member still holding the previous workflow STRUCTURE — a non-dispatching drain, no gate — the window every workflow change opens, since `.github/workflows/` is the one path a converge cannot push',
     files: {
@@ -1460,7 +1452,7 @@ fi
     files: {
       'README.md': '# fixture-bag-executor\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics'], {
-        taskScheduler: { endpoints: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } } },
+        taskScheduler: { agenticTaskInvocationEndpoints: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } } },
       }),
       '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
       '.github/workflows/claudinite-executor.yml': BAG_EXECUTOR_WORKFLOW,
@@ -1472,7 +1464,7 @@ fi
     files: {
       'README.md': '# fixture-stamping-executor\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics'], {
-        taskScheduler: { endpoints: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } } },
+        taskScheduler: { agenticTaskInvocationEndpoints: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } } },
       }),
       '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
       '.github/workflows/claudinite-executor.yml': STAMPING_EXECUTOR_WORKFLOW,
@@ -1484,7 +1476,7 @@ fi
     files: {
       'README.md': '# fixture-vars-bag-executor\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics'], {
-        taskScheduler: { endpoints: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } } },
+        taskScheduler: { agenticTaskInvocationEndpoints: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } } },
       }),
       '.github/workflows/claudinite-scheduler.yml': THIN_SCHEDULER_WORKFLOW,
       '.github/workflows/claudinite-executor.yml': VARS_BAG_EXECUTOR_WORKFLOW,

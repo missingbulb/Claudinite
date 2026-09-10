@@ -60,8 +60,8 @@ bundled skills resolve off it) and a `local` flag. A local pack:
 
 - is **declared by hand** in `.claudinite-settings.json` like any pack — never fingerprinted or seeded
   (`detect`/`marker` null) — by its **namespaced token `local/<name>`** (the canonical form;
-  the engine's [`packEntryId`](../engine/pack_loader/pack-registry.mjs) resolves it, the pre-rename `local_packs/<name>` and the
-  bare id alike to the bare pack id, and it keeps resolving all three permanently), and its id must
+  the engine's [`packEntryId`](../engine/pack_loader/pack-registry.mjs) resolves it and the bare id
+  alike to the bare pack id, and it keeps resolving both permanently), and its id must
   be unique (it may not shadow a canon id — the collision is a blocking `config` finding);
 - **bundles its skills** at `<pack>/skills/<skill>/` (mounted from the tracked pack dir — the
   same one shape canon packs use); a bundled skill may carry `checks.mjs`, run when the pack is

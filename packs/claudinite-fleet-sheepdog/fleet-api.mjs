@@ -15,15 +15,13 @@
 
 import { isDormant } from '../claudinite-tasks/shared-code/dormancy.mjs';
 import { forbiddenHint } from './fleet-token.mjs';
-import { SETTINGS_FILE, SETTINGS_FILES } from '../../engine/settings-file.mjs';
+import { SETTINGS_FILE } from '../../engine/settings-file.mjs';
 
 const API = 'https://api.github.com';
 
 // The tracked declaration every member carries — the file the sweeps read a member's
 // membership, versions and dormancy out of. Named once here because all three sweeps
-// name it, and re-exported from the engine so the rename (#1252) has one home: over
-// the API there is no disk to probe, so a read tries both names in SETTINGS_FILES
-// order and a member that has not run the record yet still answers.
+// name it, and re-exported from the engine so the name has one home.
 export const DECLARATION = SETTINGS_FILE;
 
 // Dormancy, re-exported from the tasks pack's published surface rather than re-tested
@@ -148,13 +146,8 @@ export async function readFile(gh, fullName, path) {
 // exact bytes, and the write precondition, all from the ONE response, for a sweep that
 // goes on to write the file back: a second read could see a different commit.
 export async function readDeclaration(gh, fullName, path = null, { withFile = false } = {}) {
-  // No explicit path: try each settings-file name in turn, so a member the rename
-  // record has not reached is read from the name it still carries.
-  let file = null;
-  for (const candidate of path ? [path] : SETTINGS_FILES) {
-    file = await readFile(gh, fullName, candidate);
-    if (file !== null) { path = candidate; break; }
-  }
+  path ??= SETTINGS_FILE;
+  const file = await readFile(gh, fullName, path);
   if (file === null) return null;
   let config;
   try {
@@ -196,10 +189,7 @@ export async function isCovered(gh, fullName) {
   // declaration is a half-adoption that must classify as uncovered — the roster
   // then opens an adoption issue and it heals loudly, instead of rotting as a
   // "covered" repo no task ever runs on. (vendoring/DESIGN.md)
-  for (const name of SETTINGS_FILES) {
-    if (await fileExists(gh, fullName, name)) return true;
-  }
-  return false;
+  return fileExists(gh, fullName, SETTINGS_FILE);
 }
 
 // --- firing a member's own scheduler -------------------------------------------

@@ -19,7 +19,7 @@ import { join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { hashedCron } from './hash-minute.mjs';
 import { DEFAULT_SCHEDULE } from './calendar.mjs';
-import { loadConfig, ENDPOINTS_KEY, LEGACY_ENDPOINTS_KEY } from '../../engine/checks/helpers/repo-context.mjs';
+import { loadConfig, ENDPOINTS_KEY } from '../../engine/checks/helpers/repo-context.mjs';
 
 export const SCHEDULER_WORKFLOW = '.github/workflows/claudinite-scheduler.yml';
 // The queue's second workflow (docs/PRINCIPLES.md). The first one keeps the
@@ -32,7 +32,7 @@ export const EXECUTOR_WORKFLOW = '.github/workflows/claudinite-executor.yml';
 // exactly as a `code_work_required_secrets` entry. The executor reads it only at the
 // moment of the invocation call; nothing else in a task's life ever sees it.
 export function endpointTokenSecrets(config) {
-  return Object.values(config?.taskScheduler?.[ENDPOINTS_KEY] ?? config?.taskScheduler?.[LEGACY_ENDPOINTS_KEY] ?? {})
+  return Object.values(config?.taskScheduler?.[ENDPOINTS_KEY] ?? {})
     .map((e) => e?.tokenSecret).filter((n) => typeof n === 'string' && n);
 }
 

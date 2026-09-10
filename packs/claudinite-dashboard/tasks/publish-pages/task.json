@@ -8,7 +8,7 @@
   "trigger": "schedule",
   "preconditions": [
     "due:daily",
-    "mount-moved || commits-under:.claudinite-settings.json || commits-under:.claudinite-checks.json"
+    "mount-moved || commits-under:.claudinite-settings.json"
   ],
   "expected_outcome": "no_code_changes",
   "code_work": "node worker.mjs",

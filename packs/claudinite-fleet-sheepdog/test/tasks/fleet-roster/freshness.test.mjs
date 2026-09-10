@@ -133,13 +133,13 @@ test('probeMount: reads the scheduler and canon\'s versions, never the declarati
   assert.equal(seen.filter((s) => s.includes('.claudinite-settings.json')).length, 0);
 });
 
-// A member the rename record has not reached yet still records its versions, in the
-// retired block — read past it and a current mount reads as never vendored.
-test('probeMount: a pre-rename member is measured identically', async () => {
+// The retired block is read by nothing since #1640, so a member that never ran the
+// #1252 record measures as never vendored rather than as current.
+test('probeMount: a member still stamped in the retired block has no versions', async () => {
   const { gh } = textGh(CANON_FILES);
   const decl = { claudinite: { updated: 'x', ref: 'abc', engineVersion: 3, packVersions: { basics: 7 } } };
   const p = await probeMount(gh, 'o/awake', decl, probeOpts(gh));
-  assert.deepEqual(p.installed, { engineVersion: 3, packVersions: { basics: 7 } });
+  assert.deepEqual(p.installed, { engineVersion: null, packVersions: {} });
 });
 
 test('probeMount: a member with no versions is never compared against canon', async () => {

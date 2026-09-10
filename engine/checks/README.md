@@ -89,11 +89,10 @@ carrying that pack's own settings — its parameters, and the overrides/exemptio
   always declared by hand). An entry object carries:
   - **id** — the pack name (required; a bare string entry is shorthand for `{ "id": ... }`).
   - **config** — the pack's parameters (e.g. the dirs a technology pack's `npm ci` runs in, an
-    edge-graph pack's edge list). This is the home of what a legacy top-level `packConfig` key
-    used to hold — the engine still reads that key, but baselining folds it into the entries
-    and nothing should keep authoring it. The `pack-entry-config` baseline migration
-    ([engine/migrations/](../migrations/README.md)) documents the fold; once the fleet is off the
-    old shape, the key stops being a valid setting.
+    edge-graph pack's edge list). This is the home of what a retired top-level `packConfig` key
+    used to hold; the `pack-entry-config` baseline migration
+    ([engine/migrations/](../migrations/README.md)) folded it, and the key stopped being a valid
+    setting on #1640 — a repo still carrying one now collects the unknown-setting error.
   - **answers** — the pack's adoption-interview answers, **verbatim**, keyed by question id
     (`{ "<question-id>": "<answer>" }`). A pack declares its questions on its `pack.mjs`; the
     unanswered gap surfaces only as a mild SessionStart note (strict solely inside the bootstrap
