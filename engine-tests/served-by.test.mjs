@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   servedBy, servedByUpdates, servedByBaselining, withMechanism,
-  MECHANISMS, DEFAULT_MECHANISM, RETIRED_MECHANISM, LEGACY_MECHANISM, VERSIONED_MECHANISM, MAINTENANCE, MECHANISM_KEY,
+  MECHANISMS, DEFAULT_MECHANISM, RETIRED_MECHANISM, VERSIONED_MECHANISM, MAINTENANCE, MECHANISM_KEY,
 } from '../engine/served-by.mjs';
 
 // The skew guard (#768's first risk), now the record of a finished rollout. It kept
@@ -16,20 +16,23 @@ test('a repo that says nothing gets the only mechanism there is, by its current 
   }
 });
 
-test('the renamed mechanism answers to BOTH spellings while the record drains', () => {
-  // A member reads its own declaration with the engine it currently has, which is one
-  // cycle behind the record that renames it. If the old spelling stopped parsing the
-  // moment the record landed, a correctly-declared repo would read as `invalid` — and
-  // `invalid` means "undeclared, with the offending value attached", so a repo that
-  // did nothing wrong would be reported as misdeclared for exactly one cycle.
+test('the pre-rename spelling is out of the vocabulary, and the repo carrying it is still served', () => {
+  // The alias retired with #1643, a convergence window after the `basics` record took
+  // the old spelling out of declarations. The repo that somehow still says it is not
+  // WEDGED by that: `updates` reads as invalid, invalid resolves to the default, and
+  // the default is `versioned` — the mechanism that repo meant all along. What it
+  // loses is `declared`, which is the honest report of a value nothing recognises.
   const declaring = (m) => ({ [MAINTENANCE]: { [MECHANISM_KEY]: m } });
-  for (const m of [LEGACY_MECHANISM, VERSIONED_MECHANISM]) {
-    assert.deepEqual(servedBy(declaring(m)), { mechanism: m, declared: true },
-      `${m} must parse as itself, not be normalised away`);
-    assert.equal(servedByUpdates(declaring(m)), true, `${m} is served by the update flows`);
-    assert.equal(servedByBaselining(declaring(m)), false);
-  }
-  // Distinct from RETIRED: the legacy name is fully SERVED, just spelled the old way.
+  const stale = servedBy(declaring('updates'));
+  assert.equal(stale.declared, false);
+  assert.equal(stale.invalid, 'updates');
+  assert.equal(stale.mechanism, VERSIONED_MECHANISM);
+  assert.equal(servedByUpdates(declaring('updates')), true, 'and the update flows still run there');
+
+  assert.deepEqual(servedBy(declaring(VERSIONED_MECHANISM)), { mechanism: VERSIONED_MECHANISM, declared: true });
+  assert.equal(servedByUpdates(declaring(VERSIONED_MECHANISM)), true);
+  assert.equal(servedByBaselining(declaring(VERSIONED_MECHANISM)), false);
+  // Distinct from RETIRED, which parses and is deliberately NOT served.
   assert.equal(servedByUpdates(declaring(RETIRED_MECHANISM)), false, 'retired is not merely a spelling');
 });
 
@@ -78,15 +81,15 @@ test('exactly one mechanism serves a repo, whatever the declaration says', () =>
 
 test('the flip writes the mechanism explicitly and touches nothing else', () => {
   const before = { packs: ['basics'], [MAINTENANCE]: { delivery: 'auto-merge' }, claudinite: { engineVersion: 2 } };
-  const after = withMechanism(before, 'updates');
-  assert.equal(after[MAINTENANCE][MECHANISM_KEY], 'updates');
+  const after = withMechanism(before, VERSIONED_MECHANISM);
+  assert.equal(after[MAINTENANCE][MECHANISM_KEY], VERSIONED_MECHANISM);
   assert.equal(after[MAINTENANCE].delivery, 'auto-merge', 'the sibling setting survives');
   assert.deepEqual(after.packs, ['basics']);
   assert.deepEqual(after.claudinite, { engineVersion: 2 });
   assert.equal(before[MAINTENANCE][MECHANISM_KEY], undefined, 'and the input is not mutated');
   // Declared, and now readable as such — which is what makes the inferred case above
   // a piece of drift an update can repair rather than a state code interprets forever.
-  assert.deepEqual(servedBy(after), { mechanism: 'updates', declared: true });
+  assert.deepEqual(servedBy(after), { mechanism: VERSIONED_MECHANISM, declared: true });
 });
 
 test('the flip refuses a mechanism that does not exist', () => {
