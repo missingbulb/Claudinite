@@ -68,8 +68,9 @@ promote stage reads it:
   around it. The working-discipline rule holds: copying a mechanic from a sibling repo is the
   tell that it belongs centrally, so report the gap instead of authoring a third copy.
 
-A technology never mints a local pack of its own — [extracting-lessons.md](../../extracting-lessons.md)
-owns that bar and the ladder the lesson descends. (2)
+A technology never mints a local pack of its own —
+[extracting-lessons.md](../../extracting-lessons.md) owns that bar and the ladder the lesson
+descends. (2)
 
 ## 3. Research: live documentation, exact bytes, a real run
 

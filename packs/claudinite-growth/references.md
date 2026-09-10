@@ -46,9 +46,9 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(learning-a-technology-1)** The session that wrote the skill probed `developers.cloudflare.com`
   from a Claude Code web sandbox and got `CONNECT tunnel failed, response 403` — the environment's
   network policy, which the `fetching-from-the-web` skill says no alternate source and no later pass
-  crosses. Neither of the two asks it was written from (missingbulb/ClaudiniteWebsite#454) could tell
-  whether its research had reached the vendor's documentation at all, and nothing in either result
-  recorded which. Retire only once every session's environment is known to allow
+  crosses. Neither of the two asks it was written from (missingbulb/ClaudiniteWebsite#454) could
+  tell whether its research had reached the vendor's documentation at all, and nothing in either
+  result recorded which. Retire only once every session's environment is known to allow
   vendor-documentation egress, or the `## Verified` record is checked by machine against a real
   fetch log.
 - **(learning-a-technology-2)** Owner request on missingbulb/ClaudiniteWebsite#454: "consider the
@@ -63,15 +63,15 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   place breaks at that removal, with nothing red naming the cause. Retire only if the engine
   resolves a skill's code by skill name rather than by path.
 - **(check:technology-skill-cites-dated-sources)** Every session that loads a technology skill reads
-  its procedure as verified, and the two shapes that are not — one written from search snippets, one
-  written from memory behind an egress block — leave no other mark in the tree. The dated URL and the
-  `## Verified` section are the only signatures a scan can see. Retire only if a skill's provenance
-  is recorded somewhere a check can read it.
+  its procedure as verified, and the two shapes that are not — one written from search snippets,
+  one written from memory behind an egress block — leave no other mark in the tree. The dated URL
+  and the `## Verified` section are the only signatures a scan can see. Retire only if a skill's
+  provenance is recorded somewhere a check can read it.
 - **(check:technology-skill-links-inside-its-folder)** The basics rule against re-spelling how one
   file's dependency works already covers the ordinary case; the residue here is that a technology
-  skill is promoted by *moving its folder*, so a link out of it dangles at the landing — the failure
-  `references-integrity` catches for rationale markers and nothing catches for links. Retire only if
-  promotion rewrites relative links.
+  skill is promoted by *moving its folder*, so a link out of it dangles at the landing — the
+  failure `references-integrity` catches for rationale markers and nothing catches for links.
+  Retire only if promotion rewrites relative links.
 - **(check:technology-skill-code-imports-inside-its-folder)** The same lifting failure for code: an
   outward import resolves in the pack it was written in and throws `ERR_MODULE_NOT_FOUND` wherever
   the folder lands, and the session writing this skill hit exactly that on its own fixture's first
