@@ -17,9 +17,9 @@
 //                    .github/workflows/ references Claudinite's core release
 //                    workflows @main.
 //
-// The check-layer tolerance is driven by migrationActive('chrome-release-vendoring')
-// (registry.mjs), which ends on its own once this record ages out of the recency
-// window. The canon's now-unused core release plumbing (the four workflows + two
+// The check layer no longer tolerates the pre-vendoring shape (#1643): a repo still
+// calling the core workflows @main is flagged for the local reusables it does not
+// call. The canon's now-unused core release plumbing (the four workflows + two
 // composite actions this record vendored into the consumers — NOT report-failure,
 // which is shared canon infrastructure that non-chrome workflows call @main
 // directly) stays in the canon until someone sweeps it by hand, together with the
