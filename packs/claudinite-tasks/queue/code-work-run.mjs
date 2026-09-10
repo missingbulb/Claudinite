@@ -24,8 +24,7 @@ import { VARS_BAG_ENV, varsEnv } from './vars-bag.mjs';
 import { targetEnv } from './target.mjs';
 
 // The declared secrets this environment does not carry. Absent is missing; a
-// set-but-empty one is the repo's own choice and is passed through. Read through
-// the bag, which also answers for a legacy workflow that still stamps by name.
+// set-but-empty one is the repo's own choice and is passed through.
 export const missingSecrets = (names = [], env = process.env) =>
   names.filter((n) => secretValue(n, env) === undefined);
 
@@ -38,9 +37,9 @@ export const missingSecrets = (names = [], env = process.env) =>
 // no blast radius to narrow and a declaration would buy nothing but a second place to
 // keep in sync. vars-bag.mjs states why they are additive rather than overriding.
 //
-// Under a workflow that names its secrets there is no bag to subtract, so the stamped
-// names stay inherited until that member's own executor workflow lands; the fallback in
-// secrets-bag.mjs states the retirement condition. Neither raw blob is ever handed on.
+// Under a workflow that names its secrets — which is every one today — there is no
+// bag to subtract, so the stamped names stay inherited; secrets-bag.mjs states when
+// the bag reader comes out. Neither raw blob is ever handed on.
 export function taskEnv(names = [], env = process.env) {
   const out = { ...env };
   delete out[SECRETS_BAG_ENV];

@@ -97,50 +97,34 @@ test('task-declaration-shape: the retired frequency field is an advisory rename 
   assert.deepEqual(run({ [TASK]: json({ ...bare, frequency: 'daily', preconditions: ['due:daily', 'substantive-change'] }) }).map((f) => f.severity), ['advisory']);
 });
 
-// The ordering field's rename. ADVISORY, not blocking: the runtime normalizes `after` at the
-// door forever, so a member's own task file keeps its ordering and its CI must not go red over a
-// declaration nobody has edited. The finding is what drives the fleet to the canonical spelling.
-test('task-declaration-shape: the legacy `after` ordering field is an advisory rename', () => {
-  const f = run({ [TASK]: json({ ...good, after: ['claudinite-lifecycle/update'] }) });
-  assert.equal(f.length, 1);
-  assert.equal(f[0].severity, 'advisory', 'never blocking — the runtime still honours it');
-  assert.match(f[0].what, /legacy name "after"/);
-  assert.match(f[0].fix, /rename "after" to "schedule_after"/);
-});
-
-// The outcome-ceiling rename boundary: a member's file still declaring the
-// one-word ceilings keeps validating (the runtime normalizes them), and earns
-// exactly one advisory naming the ceiling/policy pair to write instead.
-test('task-declaration-shape: the legacy `required_secrets` is an advisory rename', () => {
-  const f = run({ [TASK]: json({ ...good, required_secrets: ['X'] }) });
-  assert.equal(f.length, 1);
-  assert.equal(f[0].severity, 'advisory');
-  assert.match(f[0].fix, /rename "required_secrets" to "code_work_required_secrets"/);
-  assert.deepEqual(run({ [TASK]: json({ ...good, code_work_required_secrets: ['X'] }) }), []);
-});
-
-test('task-declaration-shape: the legacy outcome ceilings are an advisory rename', () => {
-  for (const [legacy, policy] of [['open-pr', 'nothing'], ['merged-pr', 'anything']]) {
+// The field and ceiling renames came out on #1642's window. A declaration still
+// on one of them now BLOCKS — as an unknown key the schema forbids, or as a
+// ceiling that is not a legal value — rather than earning an advisory nudge.
+test('task-declaration-shape: a retired outcome ceiling is no longer a rename, it is illegal', () => {
+  for (const retired of ['open-pr', 'merged-pr', 'none', 'pr']) {
     const { automerge, ...rest } = good;
-    const f = run({ [TASK]: json({ ...rest, expected_outcome: legacy }) });
+    const f = run({ [TASK]: json({ ...rest, expected_outcome: retired }) });
     assert.equal(f.length, 1, JSON.stringify(f));
-    assert.equal(f[0].severity, 'advisory', `${legacy} never blocks`);
-    assert.match(f[0].what, new RegExp(`legacy outcome ceiling "${legacy}"`));
-    assert.match(f[0].fix, new RegExp(`"automerge": "${policy}"`));
-  }
-  // The two-word generation renames the same way: an advisory naming the word it
-  // became, never a block on a declaration nobody edited.
-  for (const [legacy, today] of [['none', 'no_code_changes'], ['pr', 'fresh_pr']]) {
-    const { automerge, ...rest } = good;
-    const f = run({ [TASK]: json({ ...rest, expected_outcome: legacy }) });
-    assert.equal(f.length, 1, JSON.stringify(f));
-    assert.equal(f[0].severity, 'advisory', `${legacy} never blocks`);
-    assert.match(f[0].what, new RegExp(`legacy outcome ceiling "${legacy}"`));
-    assert.match(f[0].fix, new RegExp(`"expected_outcome": "${today}"`));
+    assert.equal(f[0].severity, 'blocking', `${retired} blocks`);
+    assert.match(f[0].what, new RegExp(`"expected_outcome" is "${retired}", not a legal value`));
   }
   for (const outcome of ['amend_existing_or_create_new_pr', 'supersede_existing_pr']) {
     assert.deepEqual(run({ [TASK]: json({ ...good, expected_outcome: outcome }) }), [], outcome);
   }
+});
+
+// The retired field names have no reader left, so the check has nothing to say
+// about them: what it reports is what the declaration is now MISSING.
+test('task-declaration-shape: a retired code-work field name declares no code_work', () => {
+  const { code_work, code_work_timeout, ...rest } = noneTask;
+  for (const [field, timeout] of [['agent_preprocessing', 'agent_preprocessing_timeout'], ['prework', 'prework_timeout']]) {
+    const whats = whatsOf({ [TASK]: json({ ...rest, [field]: 'node worker.mjs', [timeout]: 120 }) });
+    assert.match(whats, /declares no "code_work"/, field);
+  }
+  // The other two renames simply go unread — nothing here is wrong with the file.
+  assert.deepEqual(run({ [TASK]: json({ ...good, after: ['claudinite-lifecycle/update'] }) }), []);
+  assert.deepEqual(run({ [TASK]: json({ ...good, required_secrets: ['X'] }) }), []);
+  assert.deepEqual(run({ [TASK]: json({ ...good, code_work_required_secrets: ['X'] }) }), []);
 });
 
 const noneTask = {
@@ -152,8 +136,6 @@ test('task-declaration-shape: a pr task without automerge lands nothing, and a n
   const { automerge, ...missing } = good;
   assert.deepEqual(run({ [TASK]: json(missing) }), []);
   assert.match(whatsOf({ [TASK]: json({ ...noneTask, automerge: 'anything' }) }), /a "no_code_changes" task declares "automerge"/);
-  // The retired word is judged as the one it became, beside its rename advisory.
-  assert.match(whatsOf({ [TASK]: json({ ...noneTask, expected_outcome: 'none', automerge: 'anything' }) }), /a "no_code_changes" task declares "automerge"/);
 });
 
 test('task-declaration-shape: the canonical `schedule_after` is clean', () => {
@@ -224,7 +206,7 @@ test('task-declaration-shape: a none task needs no execution bound but flags cod
 });
 
 test('task-declaration-shape: flags an agentless (none) task that declares no code_work', () => {
-  assert.match(whatsOf({ [TASK]: json({ id: 'x', preconditions: ['due:daily'], agent_model: 'none', expected_outcome: 'none' }) }), /declares no "code_work"/);
+  assert.match(whatsOf({ [TASK]: json({ id: 'x', preconditions: ['due:daily'], agent_model: 'none', expected_outcome: 'no_code_changes' }) }), /declares no "code_work"/);
 });
 
 test('task-declaration-shape: a none task with no agent_instructions is clean — the field is not applicable', () => {
@@ -237,20 +219,6 @@ test('task-declaration-shape: flags a code_work command that escapes the task di
 
 test('task-declaration-shape: a well-formed task with code_work + both timeouts is clean', () => {
   assert.deepEqual(run({ [TASK]: json({ ...good, code_work: 'node prepare.mjs', code_work_timeout: 300 }) }), []);
-});
-
-// The 2026-08-06 rename boundary: a member's local pack still declaring the
-// legacy code-work names must keep working — the loader normalizes them — and the
-// vendor refresh must not turn its CI red over files nothing has renamed yet.
-// So the legacy declaration is contract-complete (no missing-code-work, no
-// missing-timeout findings) and earns exactly one ADVISORY rename nudge.
-test('task-declaration-shape: legacy agent_preprocessing names satisfy the contract, advisory rename only', () => {
-  const { code_work, code_work_timeout, ...rest } = noneTask;
-  const findings = run({ [TASK]: json({ ...rest, agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120 }) });
-  assert.equal(findings.length, 1, JSON.stringify(findings));
-  assert.equal(findings[0].severity, 'advisory');
-  assert.match(findings[0].what, /legacy name/);
-  assert.match(findings[0].fix, /"agent_preprocessing" → "code_work"/);
 });
 
 // --- the trigger (#1725) ---------------------------------------------------------

@@ -15,12 +15,12 @@
 // jobs until a person clicked Approve, silently, fleet-wide. The owner took the
 // trade back — a rare human-merged PR beats a permanent human click on every run.
 //
-// So the workflow names its secrets again and NOTHING SETS THE BAG. The reader stays
-// because members carry the bag-setting workflow until their own PR lands, and reading
-// it where present is what makes that window uneventful; `secretValue`'s fallback to
-// the plain environment is what makes the reverse window uneventful too. The reader
-// comes out on #1642's window rather than on a count of who still stamps a bag —
-// the canon cannot take that count.
+// So the workflow names its secrets again and NOTHING SETS THE BAG. The plain
+// environment is therefore the LIVE source, and the bag READER is the tolerance: it
+// stays because a member whose live executor still stamps one moves off it only
+// through a human-merged PR of its own, and dropping the reader early would hand
+// that member's code-work the whole blob, since the scrub in code-work-run.mjs goes
+// with it. Its retirement is a fleet read rather than a canon release (#1914).
 
 import { parseBag } from './env-bag.mjs';
 
@@ -31,15 +31,9 @@ export const SECRETS_BAG_ENV = 'CLAUDINITE_SECRETS';
 // is a better answer than a crash inside a JSON parse.
 export const secretsBag = (env = process.env) => parseBag(env[SECRETS_BAG_ENV]);
 
-// One secret's value, or undefined.
-//
-// LEGACY EXECUTOR WORKFLOWS ARE READ AT THE DOOR. A member's live
-// `claudinite-executor.yml` moves only through a human-merged PR, so every member
-// spends a window running this engine against a workflow that still stamps names
-// directly and sets no bag. Reading `env[name]` when the bag does not carry it is
-// what makes that window uneventful. The fallback comes out on #1642's window: a
-// member's live workflow moves only through a human-merged PR, so the window is what
-// that PR is given, and no census of who has merged it is available here.
+// One secret's value, or undefined — the plain environment, which is what every
+// executor workflow stamps today, with the retired bag read first where a member's
+// job still carries one (#1914).
 export function secretValue(name, env = process.env, bag = secretsBag(env)) {
   // The bag holds every secret the repository has, so its own variable is not a
   // secret anyone may ask for by name — otherwise one declaration re-exports all of

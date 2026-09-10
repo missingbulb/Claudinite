@@ -32,7 +32,7 @@ import {
   TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, QUEUED_LABEL, isStandingItem,
   NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
   CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
-  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, parseContextLines, mergeContext, withNotBefore, withSection, editItemBody, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
+  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, parseContextLines, mergeContext, withNotBefore, withSection, editItemBody, hasLabel, DELIVERED_HEADING,
   LAST_VERDICT_HEADING, lastVerdictLines,
   withTarget,
   itemFacts,
@@ -604,7 +604,7 @@ async function handOff({ api, gh, repo, item, task, id, context, result, target 
     // pushes to, the pull request it amends, the ones its converge supersedes.
     if (target) out = withTarget(out, target);
     if (context.length) out = withSection(out, 'Context', context);
-    if (result.delivered?.length) out = withSection(out, DELIVERED_HEADING, result.delivered, LEGACY_DELIVERED_HEADINGS);
+    if (result.delivered?.length) out = withSection(out, DELIVERED_HEADING, result.delivered);
     if (result.reason) out = withSection(out, 'Why the agent is here', [result.reason]);
     return out;
   });

@@ -92,8 +92,8 @@ carry): an ORDINARY PACK TASK, not a fleet mechanism. Its *implementation* reach
 every repo under the owner over a PAT, but its declaration, scheduling and lifecycle
 are exactly those of any pack task — it is active because this repo declares the
 claudinite-fleet-sheepdog pack, and it runs however this repo's tasks run. Hence no
-`session_scope: 'fleet'` and no `fleet` signal: those describe how a task is WIRED,
-and nothing about this task's wiring is fleet-shaped.
+`fleet` signal: that describes how a task is WIRED, and nothing about this task's
+wiring is fleet-shaped.
 
 A daily sweep with nothing repo-side to gate on: what it converges is other
 repos' declarations, and it no-ops on a fleet already converged.

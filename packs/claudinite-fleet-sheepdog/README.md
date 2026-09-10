@@ -75,7 +75,7 @@ CI from the moment they land, and gate the merge.
 implementation detail ([#749](https://github.com/missingbulb/Claudinite/issues/749)). The first
 missing-packs design ended in an enforcer-side agent stage, and its very first production run parked because the enforcer's executor is — correctly — scoped to the enforcer repo alone.
 What crosses a repo boundary is an issue and a `workflow_dispatch`, both over `FLEET_GITHUB_TOKEN`;
-the deprecated task-level `session_scope` ([the writing-tasks skill](../claudinite-growth/skills/writing-tasks/SKILL.md)) has no
+a task-level scope word ([the writing-tasks skill](../claudinite-growth/skills/writing-tasks/SKILL.md)) has no
 place here.
 
 A member whose **scheduler is dormant** (`dormant` on its own `claudinite-tasks` pack entry) is out of

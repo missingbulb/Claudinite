@@ -5,9 +5,7 @@ import {
   validateTaskDeclaration, normalizeTaskDeclaration, taskSignalNames, OUTCOMES, SIGNAL_NAMES,
   DEFAULT_AGENT_MODEL, DEFAULT_AUTOMERGE, DESCRIPTION_MAX_WORDS, taskCadence, isScheduledTask,
 } from '../task-contract.mjs';
-import {
-  FREQUENCIES, ACCEPTED_FREQUENCIES, LEGACY_FREQUENCIES, normalizeFrequency, cadenceTermFor,
-} from '../calendar.mjs';
+import { FREQUENCIES, cadenceTermFor } from '../calendar.mjs';
 import { validateDispatchBody, dispatchFirstLine, DISPATCH_PATH_RE } from '../validate-dispatch.mjs';
 import { verifyOutcome } from '../verify-outcome.mjs';
 import { SIGNAL_COLLECTORS } from '../signals/index.mjs';
@@ -37,13 +35,6 @@ test('validateTaskDeclaration accepts a well-formed declaration', () => {
   assert.deepEqual(validateTaskDeclaration(validTask), []);
 });
 
-test('validateTaskDeclaration: session_scope is optional, defaults valid, and rejects a bad value', () => {
-  assert.deepEqual(validateTaskDeclaration(validTask), []);                                  // omitted → fine (defaults to self)
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, session_scope: 'self' }), []);
-  assert.deepEqual(validateTaskDeclaration({ ...validTask, session_scope: 'fleet' }), []);
-  assert.match(validateTaskDeclaration({ ...validTask, session_scope: 'global' })[0].what, /not a legal session scope/);
-});
-
 test('validateTaskDeclaration requires agent_execution_timeout on an agentic task — no default', () => {
   const { agent_execution_timeout, ...noBound } = validTask;
   assert.match(validateTaskDeclaration(noBound)[0].what, /no positive-integer "agent_execution_timeout"/);
@@ -53,7 +44,7 @@ test('validateTaskDeclaration requires agent_execution_timeout on an agentic tas
 });
 
 test('validateTaskDeclaration: an agentless (none) task needs preprocessing but no execution bound', () => {
-  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'no_code_changes' };
   delete none.agent_execution_timeout;
   delete none.automerge;
   // a bare none task with no preprocessing does nothing → flagged
@@ -72,7 +63,7 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
 // (PRINCIPLES.md): the expression is the whole of when a task runs, and the retired
 // `frequency` here arrives as the cadence term it meant.
 test('normalizeTaskDeclaration fills the defaults, and only where absent', () => {
-  const minimal = { id: 't', frequency: 'daily', expected_outcome: 'pr' };
+  const minimal = { id: 't', frequency: 'daily', expected_outcome: 'fresh_pr' };
   const filled = normalizeTaskDeclaration(minimal);
   assert.deepEqual(filled.preconditions, ['due:daily']);
   assert.equal(filled.frequency, undefined, 'the field does not survive the door');
@@ -88,7 +79,7 @@ test('normalizeTaskDeclaration fills the defaults, and only where absent', () =>
   assert.equal(normalizeTaskDeclaration({ ...minimal, agent_model: 'opus' }).agent_model, 'opus');
   assert.deepEqual(normalizeTaskDeclaration({ ...minimal, preconditions: ['substantive-change'] }).preconditions, ['due:daily', 'substantive-change']);
   assert.equal(normalizeTaskDeclaration({ ...minimal, automerge: 'anything' }).automerge, 'anything');
-  assert.equal(normalizeTaskDeclaration({ ...minimal, expected_outcome: 'none' }).automerge, undefined);
+  assert.equal(normalizeTaskDeclaration({ ...minimal, expected_outcome: 'no_code_changes' }).automerge, undefined);
   // The editor's pointer leaves at the door.
   assert.equal(normalizeTaskDeclaration({ ...minimal, $schema: 'x' }).$schema, undefined);
 });
@@ -96,7 +87,7 @@ test('normalizeTaskDeclaration fills the defaults, and only where absent', () =>
 test('validateTaskDeclaration: agent_instructions is required for an agentic task but not applicable to none', () => {
   // a none task with NO agent_instructions at all is clean — the field is not
   // applicable when there is no agent.
-  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', code_work: 'node worker.mjs', code_work_timeout: 120 };
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'no_code_changes', code_work: 'node worker.mjs', code_work_timeout: 120 };
   delete none.agent_execution_timeout;
   delete none.agent_instructions;
   delete none.automerge;
@@ -108,7 +99,7 @@ test('validateTaskDeclaration: agent_instructions is required for an agentic tas
 });
 
 test('validateTaskDeclaration validates code_work + its required timeout and containment', () => {
-  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'no_code_changes' };
   delete none.agent_execution_timeout;
   delete none.automerge;
   // preprocessing without a timeout is rejected
@@ -240,29 +231,21 @@ test('every signal the contract lets a term name has a collector', () => {
 
 // --- expected_outcome × automerge -----------------------------------------
 
-test('normalizeTaskDeclaration maps the legacy outcome ceilings onto the outcome/policy pair', () => {
+// The retired ceilings (#1642): `open-pr`/`merged-pr` and the two-word
+// `none`/`pr` no longer resolve. A declaration still naming one FAILS rather than
+// quietly resolving to something, which is the whole point of the retirement — a
+// word nobody reads must not be a word that silently works.
+test('a retired outcome ceiling no longer normalizes, and fails validation', () => {
   const { automerge, ...baseTask } = validTask;
-  const open = normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'open-pr' });
-  assert.equal(open.expected_outcome, 'fresh_pr');
-  assert.equal(open.automerge, 'nothing');
-  const merged = normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'merged-pr' });
-  assert.equal(merged.expected_outcome, 'fresh_pr');
-  assert.equal(merged.automerge, 'anything');
-  // The two-word generation: `none` never opened one, `pr` opened a fresh one and
-  // left the task's earlier pull requests alone — which is what the words now say.
-  assert.equal(normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'none' }).expected_outcome, 'no_code_changes');
-  const pr = normalizeTaskDeclaration({ ...baseTask, expected_outcome: 'pr' });
-  assert.equal(pr.expected_outcome, 'fresh_pr');
-  assert.equal(pr.automerge, 'nothing');
+  for (const retired of ['open-pr', 'merged-pr', 'none', 'pr']) {
+    const decl = normalizeTaskDeclaration({ ...baseTask, expected_outcome: retired });
+    assert.equal(decl.expected_outcome, retired, `${retired} passes through unchanged`);
+    assert.match(validateTaskDeclaration({ ...baseTask, expected_outcome: retired })[0].what,
+      /is not a legal outcome ceiling/, `${retired} is reported`);
+  }
   for (const outcome of OUTCOMES) {
     assert.equal(normalizeTaskDeclaration({ ...baseTask, expected_outcome: outcome }).expected_outcome, outcome, `${outcome} is already canonical`);
   }
-  // An explicit policy beside a legacy spelling wins — a half-migrated declaration
-  // keeps the narrower intent it states.
-  const explicit = normalizeTaskDeclaration({
-    ...baseTask, expected_outcome: 'merged-pr', automerge: ['doc-changes'],
-  });
-  assert.deepEqual(explicit.automerge, ['doc-changes']);
 });
 
 test('validateTaskDeclaration: a pr task that says nothing about automerge lands nothing', () => {
@@ -288,7 +271,7 @@ test('validateTaskDeclaration: malformed policies and a policy on a none task ar
     assert.deepEqual(validateTaskDeclaration({ ...validTask, expected_outcome: outcome }), [], outcome);
     assert.equal(normalizeTaskDeclaration({ ...validTask, expected_outcome: outcome, automerge: undefined }).automerge, 'nothing', outcome);
   }
-  assert.match(validateTaskDeclaration({ ...none, expected_outcome: 'none' })[0].what, /"no_code_changes" task declares "automerge"/);
+  assert.match(validateTaskDeclaration({ ...none, expected_outcome: 'no_code_changes' })[0].what, /"no_code_changes" task declares "automerge"/);
   assert.match(validateTaskDeclaration({ ...validTask, expected_outcome: 'push' })[0].what, /not a legal outcome ceiling/);
 });
 
@@ -377,15 +360,13 @@ test('verifyOutcome enforces each ceiling and always allows no-change', () => {
   // no-change is always legal
   for (const outcome of OUTCOMES) assert.deepEqual(verifyOutcome({ outcome }), { ok: true, violation: null });
 
-  // no_code_changes must not open or merge — under today's word and the retired one
-  for (const outcome of ['no_code_changes', 'none']) {
-    assert.equal(verifyOutcome({ outcome, openedPr: true }).ok, false);
-    assert.equal(verifyOutcome({ outcome, mergedPr: true }).ok, false);
-  }
+  // no_code_changes must not open or merge
+  assert.equal(verifyOutcome({ outcome: 'no_code_changes', openedPr: true }).ok, false);
+  assert.equal(verifyOutcome({ outcome: 'no_code_changes', mergedPr: true }).ok, false);
 
   // every outcome that opens a pull request, with nothing authorized (explicitly, or
   // by omission), may open but not merge
-  for (const outcome of ['fresh_pr', 'amend_existing_or_create_new_pr', 'supersede_existing_pr', 'pr']) {
+  for (const outcome of ['fresh_pr', 'amend_existing_or_create_new_pr', 'supersede_existing_pr']) {
     assert.equal(verifyOutcome({ outcome, openedPr: true }).ok, true, outcome);
     assert.equal(verifyOutcome({ outcome, automerge: 'nothing', mergedPr: true }).ok, false, outcome);
     assert.equal(verifyOutcome({ outcome, mergedPr: true }).ok, false, outcome);
@@ -396,41 +377,27 @@ test('verifyOutcome enforces each ceiling and always allows no-change', () => {
   assert.equal(verifyOutcome({ outcome: 'fresh_pr', automerge: 'anything', mergedPr: true }).ok, true);
   assert.equal(verifyOutcome({ outcome: 'amend_existing_or_create_new_pr', automerge: ['comment-only-changes'], mergedPr: true }).ok, true);
 
-  // the legacy spellings keep their meaning — a fielded caller passing a raw
-  // declaration's value is judged, never rejected as unknown
-  assert.equal(verifyOutcome({ outcome: 'open-pr', openedPr: true }).ok, true);
-  assert.equal(verifyOutcome({ outcome: 'open-pr', mergedPr: true }).ok, false);
-  assert.equal(verifyOutcome({ outcome: 'merged-pr', mergedPr: true }).ok, true);
-
-  // unknown ceiling fails closed
-  assert.equal(verifyOutcome({ outcome: 'push', openedPr: true }).ok, false);
+  // a retired spelling is now an unknown ceiling, and every unknown fails closed
+  for (const outcome of ['open-pr', 'merged-pr', 'none', 'pr', 'push']) {
+    assert.equal(verifyOutcome({ outcome, openedPr: true }).ok, false, outcome);
+  }
 });
 
-// --- the 2026-08-06 rename boundary ------------------------------------------
-// Consumer local packs rename on their own clock, so the LEGACY field names must
-// stay a valid way to declare code_work: normalized at the door (discover,
-// resolve-dispatch), canonical everywhere downstream.
-test('normalizeTaskDeclaration maps legacy agent_preprocessing names to code_work, canonical winning on conflict', async () => {
-  const { normalizeTaskDeclaration } = await import('../task-contract.mjs');
+// --- the retired field names (#1642) -----------------------------------------
+// The door renamed `agent_preprocessing*`/`prework*`, `after` and
+// `required_secrets` for one convergence window past `legacy-task-fields`. It no
+// longer does: a declaration still on one of them is a declaration that says
+// nothing, which is what the validator now reports.
+test('a retired field name is no longer renamed at the door, and the declaration it leaves is reported', () => {
   const n = normalizeTaskDeclaration({ agent_preprocessing: 'node w.mjs', agent_preprocessing_timeout: 60, agent_model: 'none' });
-  assert.equal(n.code_work, 'node w.mjs');
-  assert.equal(n.code_work_timeout, 60);
-  assert.equal(n.agent_preprocessing, undefined);
-  assert.equal(n.agent_preprocessing_timeout, undefined);
-  // Both present → canonical wins; nothing is destroyed silently elsewhere.
-  assert.equal(normalizeTaskDeclaration({ code_work: 'node a.mjs', agent_preprocessing: 'node b.mjs' }).code_work, 'node a.mjs');
+  assert.equal(n.code_work, undefined, 'nothing is renamed into code_work');
+  assert.equal(n.agent_preprocessing, 'node w.mjs', 'the unread field is left where the author wrote it');
+  assert.match(validateTaskDeclaration({
+    id: 't', preconditions: [], agent_model: 'none', expected_outcome: 'no_code_changes',
+    prework: 'node worker.mjs', prework_timeout: 120,
+  })[0].what, /declares no "code_work"/);
   // Non-objects pass through for validate to report.
   assert.equal(normalizeTaskDeclaration(null), null);
-});
-
-test('a legacy-named agentless declaration validates clean — the rename is not a breaking change', async () => {
-  const { validateTaskDeclaration } = await import('../task-contract.mjs');
-  const problems = validateTaskDeclaration({
-    id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
-    expected_outcome: 'none',
-    agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120,
-  });
-  assert.deepEqual(problems, []);
 });
 
 // --- the work-item queue's three optional declarations ------------------------
@@ -442,21 +409,15 @@ test('schedule_after / on_interrupt / invocation_endpoint are optional and valid
   const { validateTaskDeclaration } = await import('../task-contract.mjs');
   const base = {
     id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
-    expected_outcome: 'none',
+    expected_outcome: 'no_code_changes',
     code_work: 'node w.mjs', code_work_timeout: 60,
   };
   assert.deepEqual(validateTaskDeclaration(base), [], 'declaring none of them is legal');
   assert.deepEqual(validateTaskDeclaration({ ...base, schedule_after: ['claudinite-lifecycle/update'], on_interrupt: 'needs-human', invocation_endpoint: 'fleet' }), []);
-  // The legacy spelling still validates — the door renames it at load, so a member's own task
-  // file keeps its ordering rather than silently losing it.
-  assert.deepEqual(validateTaskDeclaration({ ...base, after: ['claudinite-lifecycle/update'] }), []);
-  // The secrets field's rename normalizes the same way.
-  const secrets = normalizeTaskDeclaration({ required_secrets: ['X'] });
-  assert.deepEqual(secrets.code_work_required_secrets, ['X']);
-  assert.equal(secrets.required_secrets, undefined);
-  const renamed = normalizeTaskDeclaration({ after: ['a/b'] });
-  assert.deepEqual(renamed.schedule_after, ['a/b']);
-  assert.equal(renamed.after, undefined);
+  // The retired spellings are no longer renamed at the door (#1642): what a
+  // declaration still carrying one declares is nothing.
+  assert.equal(normalizeTaskDeclaration({ required_secrets: ['X'] }).code_work_required_secrets, undefined);
+  assert.equal(normalizeTaskDeclaration({ after: ['a/b'] }).schedule_after, undefined);
 
   const bad = (patch, re) => {
     const problems = validateTaskDeclaration({ ...base, ...patch });
@@ -465,7 +426,6 @@ test('schedule_after / on_interrupt / invocation_endpoint are optional and valid
   };
   bad({ schedule_after: 'claudinite-lifecycle/update' }, /"schedule_after" is not an array/);
   bad({ schedule_after: ['update'] }, /"schedule_after" is not an array/);   // a bare id names no pack
-  bad({ after: ['update'] }, /"schedule_after" is not an array/);            // reported post-rename
   bad({ on_interrupt: 'retry' }, /"on_interrupt"/);
   bad({ invocation_endpoint: 'https://example.invalid/x' }, /kebab-case endpoint name/);
 });
@@ -478,7 +438,7 @@ test('a code_work_timeout reaching the executing leash is rejected at author tim
   const { EXECUTING_LEASH_MS } = await import('../queue/leases.mjs');
   const base = {
     id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
-    expected_outcome: 'none', code_work: 'node w.mjs',
+    expected_outcome: 'no_code_changes', code_work: 'node w.mjs',
   };
   const seconds = EXECUTING_LEASH_MS / 1000;
   assert.deepEqual(validateTaskDeclaration({ ...base, code_work_timeout: seconds - 1 }), []);
@@ -528,14 +488,12 @@ test('the retired frequency field reads as the cadence term it meant, first in t
   assert.deepEqual(normalizeTaskDeclaration({ frequency: 'daily', preconditions: ['due:daily', 'any-commit'] }).preconditions, ['due:daily', 'any-commit']);
   // No field, no rewrite: the expression is the author's.
   assert.deepEqual(normalizeTaskDeclaration({ preconditions: ['substantive-change'] }).preconditions, ['substantive-change']);
-  assert.equal(normalizeFrequency('nonsense'), 'nonsense', 'an unknown token is left for the validator');
-  for (const legacy of Object.keys(LEGACY_FREQUENCIES)) assert.ok(ACCEPTED_FREQUENCIES.includes(legacy), `${legacy} still reads`);
 });
 
 test('a declaration carrying an unknown frequency is reported as the illegal condition it becomes', () => {
   const decl = {
     id: 'legacy', frequency: 'hourly', agent_model: 'sonnet', agent_instructions: 'task.md',
-    expected_outcome: 'none', preconditions: ['none'], agent_execution_timeout: 600,
+    expected_outcome: 'no_code_changes', preconditions: ['none'], agent_execution_timeout: 600,
   };
   const findings = validateTaskDeclaration(decl);
   assert.equal(findings.length, 1, 'the dead vocabulary is no longer accepted at the door');

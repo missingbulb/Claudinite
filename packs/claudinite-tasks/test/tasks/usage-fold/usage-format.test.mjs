@@ -138,21 +138,16 @@ test('an empty row map is written inline, not as an empty block', () => {
 // of that, the very next encode writes it against today's vocabulary, which has no
 // such key, and the count reaches disk as null. It is a rename, not a retirement — the
 // runs happened — so the count has to arrive under the new word.
-test('a counter renamed since the row was written survives the round trip', () => {
-  for (const legacy of ['prework', 'preprocess']) {
-    const header = ['agent', legacy, 'skipped', 'failed', 'deferred'];
-    const decoded = decodeRow({ totals: [], tasks: { 'p/t': [3, 7, 1, 0, 0] } }, USAGE_FIELDS.day, { tasks: header });
-    assert.equal(decoded.tasks['p/t']['code-work'], 7, `${legacy} should decode under the canonical word`);
-    assert.equal(decoded.tasks['p/t'][legacy], undefined, `${legacy} should not survive under its own name`);
-    // Re-encoded against TODAY's vocabulary, the count is still on disk.
-    const slot = USAGE_FIELDS.tasks.indexOf('code-work');
-    assert.equal(encodeRow(decoded, USAGE_FIELDS.day).tasks['p/t'][slot], 7);
-  }
-});
-
-// A row last written mid-rename can carry both spellings; they count the same thing.
-test('both spellings in one row are summed, not overwritten', () => {
-  const header = ['agent', 'prework', 'code-work', 'skipped', 'failed', 'deferred'];
-  const decoded = decodeRow({ totals: [], tasks: { 'p/t': [0, 4, 5, 0, 0, 0] } }, USAGE_FIELDS.day, { tasks: header });
-  assert.equal(decoded.tasks['p/t']['code-work'], 9);
+// The counter rename came out on #1642's window, once the folded file's own header
+// carried no retired word and every row inside the retention window had been
+// recomputed under the canonical one. A row still spelling one now decodes under
+// the word its header names, which is what "against the FILE's own vocabulary"
+// has always meant for every other retired field.
+test('a counter the vocabulary no longer spells decodes under the name its header gave it', () => {
+  const header = ['agent', 'prework', 'skipped', 'failed', 'deferred'];
+  const decoded = decodeRow({ totals: [], tasks: { 'p/t': [3, 7, 1, 0, 0] } }, USAGE_FIELDS.day, { tasks: header });
+  assert.equal(decoded.tasks['p/t'].prework, 7);
+  assert.equal(decoded.tasks['p/t']['code-work'], undefined);
+  // …and drops on the next encode, like any other counter today's vocabulary has no slot for.
+  assert.equal(encodeRow(decoded, USAGE_FIELDS.day).tasks['p/t'][USAGE_FIELDS.tasks.indexOf('code-work')], null);
 });

@@ -4,7 +4,7 @@
 // `validate-dispatch` validate against this one function, so the accepted shape
 // can never drift between the two surfaces.
 
-import { ACCEPTED_FREQUENCIES, cadenceTermFor, cadenceOf, statesConditions, DUE_TERM } from './calendar.mjs';
+import { FREQUENCIES, cadenceTermFor, cadenceOf, statesConditions, DUE_TERM } from './calendar.mjs';
 import { MODEL_FAMILIES } from './model-map.mjs';
 import { EXECUTING_LEASH_MS } from './queue/leases.mjs';
 import { normalizePolicy } from './merge-policy.mjs';
@@ -23,28 +23,6 @@ const escapesTaskDir = (cmd) => /(^|\s)\//.test(cmd) || cmd.includes('..');
 // then AGENTIC WORK — and the field names say so. Neither phase is named for
 // the other: the code phase is not preparation for the agent, it is the first
 // of two peers, and a task may declare only it.
-//
-// Two renames have reached these fields (2026-08-06 agent_preprocessing →
-// prework, 2026-08-18 prework → code-work). Every legacy key maps straight to
-// today's canonical name rather than to its immediate successor, so a declaration
-// written for the oldest vocabulary normalizes in one pass, and a canonical name
-// wins where both are present.
-//
-// Scaffolding, not a second vocabulary the contract keeps: `legacy-task-fields`
-// reports a declaration still on an old spelling, and the acceptance ends one
-// convergence window after that advisory ships (#1642). Not "once nobody declares
-// them" — nothing here can count that.
-// @legacy-tolerance advisory:legacy-task-fields retire:#1642
-export const LEGACY_FIELDS = {
-  agent_preprocessing: 'code_work',
-  agent_preprocessing_timeout: 'code_work_timeout',
-  prework: 'code_work',
-  prework_timeout: 'code_work_timeout',
-  after: 'schedule_after',
-  // 2026-09-03: the secrets a task needs are the CODE-WORK phase's (that is the
-  // only phase that runs Action-side, where a secret exists), and the name says so.
-  required_secrets: 'code_work_required_secrets',
-};
 
 // The defaults live in task-defaults.mjs — a module with no imports, so the
 // dashboard's browser bundle can fill them the way the loader does.
@@ -73,12 +51,6 @@ export function normalizeTaskDeclaration(decl, terms = new Map()) {
   const out = { ...decl };
   // The editor's schema pointer, when a caller hands over a parsed task.json whole.
   delete out.$schema;
-  for (const [legacy, canonical] of Object.entries(LEGACY_FIELDS)) {
-    if (out[legacy] !== undefined) {
-      if (out[canonical] === undefined) out[canonical] = out[legacy];
-      delete out[legacy];
-    }
-  }
   // THE FREQUENCY DOOR (docs/PRINCIPLES.md). `frequency` is retired: a task's
   // cadence is one of its own preconditions, read off its run history. A declaration
   // still carrying the field reads exactly as it always did — the field becomes the
@@ -94,7 +66,7 @@ export function normalizeTaskDeclaration(decl, terms = new Map()) {
   // @legacy-tolerance advisory:legacy-task-fields retire:#1732
   if (out.frequency !== undefined) {
     const stated = Array.isArray(out.preconditions) ? out.preconditions.filter((e) => String(e).trim() !== NONE) : [];
-    if (ACCEPTED_FREQUENCIES.includes(out.frequency)) {
+    if (FREQUENCIES.includes(out.frequency)) {
       const term = cadenceTermFor(out.frequency);
       out.preconditions = term === null || stated.some((e) => String(e).trim() === term) ? stated : [term, ...stated];
     } else {
@@ -122,14 +94,6 @@ export function normalizeTaskDeclaration(decl, terms = new Map()) {
       ? TRIGGER_SCHEDULE
       : TRIGGER_REQUEST;
   }
-  // The retired outcome ceilings become the outcome/policy pair. An explicit
-  // `automerge` beside a legacy spelling wins: a half-migrated declaration
-  // keeps the narrower intent it states.
-  if (LEGACY_OUTCOMES[out.expected_outcome] !== undefined) {
-    if (out.automerge === undefined) out.automerge = LEGACY_OUTCOMES[out.expected_outcome];
-    out.expected_outcome = 'fresh_pr';
-  }
-  if (LEGACY_CEILINGS[out.expected_outcome] !== undefined) out.expected_outcome = LEGACY_CEILINGS[out.expected_outcome];
   return applyTaskDefaults(out);
 }
 
@@ -157,41 +121,10 @@ export const OUTCOME_NO_PR = 'no_code_changes';
 // half of the contract `automerge` hangs off.
 export const opensPullRequest = (outcome) => outcome !== OUTCOME_NO_PR;
 
-// The retired one-word ceilings, each carrying the policy it always meant, and
-// normalizing at the door like the code-work renames above: `open-pr` is a fresh-pr
-// task that merges nothing, `merged-pr` one authorized for anything. Accepted on
-// the same terms as the renames above — one convergence window past the advisory,
-// and no longer (#1642).
-// @legacy-tolerance advisory:legacy-task-fields retire:#1642
-export const LEGACY_OUTCOMES = { 'open-pr': 'nothing', 'merged-pr': 'anything' };
-
-// The retired two-word generation, each the word it became: `none` never opened a
-// pull request, `pr` opened a fresh one and left the task's earlier ones alone.
-// Same terms as the pair above (#1642).
-// @legacy-tolerance advisory:legacy-task-fields retire:#1642
-export const LEGACY_CEILINGS = { none: 'no_code_changes', pr: 'fresh_pr' };
-
-// Today's word for any spelling the door accepts, or null for one it does not.
-export function canonicalOutcome(outcome) {
-  if (LEGACY_OUTCOMES[outcome] !== undefined) return 'fresh_pr';
-  if (LEGACY_CEILINGS[outcome] !== undefined) return LEGACY_CEILINGS[outcome];
-  return OUTCOMES.includes(outcome) ? outcome : null;
-}
-
-
-// The retired scope vocabulary. It routed a slot dispatch to one of two labels, and
-// its last reader went with the slot scheduler (#974): reach is now a property of
-// which endpoint the hand-off calls (`invocation_endpoint`), so nothing anywhere
-// asks a task what its scope is.
-//
-// The values stay so a declaration still carrying the field VALIDATES rather than
-// failing — nothing converges a member's task files, so a member cannot be moved
-// off it by a release; `task-declaration-shape` raises it as an advisory rename
-// instead, and the field is dropped as each declaration is next edited.
-// @deprecated Declares nothing. Name an `invocation_endpoint` if the task needed
-//   reach an ordinary session in its repo does not have.
-// @legacy-tolerance advisory:task-declaration-shape retire:#1642
-export const SESSION_SCOPES = ['self', 'fleet'];
+// The declared ceiling, or null for a word that is not one. Callers hold raw
+// declarations as often as normalized ones, so the question "is this a ceiling, and
+// which" has one answer here rather than an `OUTCOMES.includes` at each site.
+export const canonicalOutcome = (outcome) => (OUTCOMES.includes(outcome) ? outcome : null);
 
 // What must happen to a task's work item when a recovery path would re-execute it
 // (docs/PRINCIPLES.md). `requeue` is the safe-side default for sweep-shaped
@@ -257,9 +190,7 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   if (!OUTCOMES.includes(decl.expected_outcome)) {
     bad(`"expected_outcome" ${JSON.stringify(decl.expected_outcome)} is not a legal outcome ceiling`, `set one of: ${OUTCOMES.join(', ')}`);
   }
-  // automerge — defaulted to `nothing` beside `pr` at the door (the legacy
-  // ceilings arrive here already carrying theirs), and validated as a policy
-  // SHAPE only: whether every named
+  // automerge — validated as a policy SHAPE only: whether every named
   // rule resolves is the policy engine's question, answered where the diff is
   // judged, and it fails closed there — never at author time, where the rule set
   // depends on which packs are active.
@@ -324,19 +255,6 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
       'drop the field — only the engine\'s built-in request task reads a model off its item, and every other task names its own agent_model');
   }
 
-  /**
-   * session_scope — OPTIONAL, and READ BY NOTHING. Kept validated rather than
-   * rejected outright so a lingering declaration still loads: nothing carries a
-   * task-file change across the fleet, so a member cannot be migrated off the field
-   * by a release, and rejecting it would stop that member's task running over a word
-   * that no longer does anything.
-   * @deprecated Declares nothing since #974. Drop it; if the task needed reach an
-   *   ordinary session in its repo does not have, name an `invocation_endpoint`.
-   */
-  if (decl.session_scope !== undefined && !SESSION_SCOPES.includes(decl.session_scope)) {
-    bad(`"session_scope" ${JSON.stringify(decl.session_scope)} is not a legal session scope`, `drop it — the field is read by nothing; name an "invocation_endpoint" if the task needs wider reach`);
-  }
-
   // Code-work (docs/PRINCIPLES.md) — OPTIONAL. The deterministic first phase
   // of task execution, a command the scheduler runs as a subprocess. When present
   // it must be a non-empty, task-local command AND carry a positive-integer
@@ -387,8 +305,8 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   // `invocation_endpoint` — a NAME, never a URL (PRINCIPLES.md). The repo's config
   // maps the name to the URL and to the name of the Actions secret holding its
   // token, so no vendored pack file carries deployment detail or anything adjacent
-  // to a credential. This is also what replaces session_scope: reach is a property
-  // of which endpoint a task names.
+  // to a credential. Reach is a property of which endpoint a task names, and of
+  // nothing the task says about itself.
   if (decl.invocation_endpoint !== undefined
       && !(typeof decl.invocation_endpoint === 'string' && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(decl.invocation_endpoint))) {
     bad('"invocation_endpoint" is not a kebab-case endpoint name', 'name a key from the repo\'s taskScheduler.agenticTaskInvocationEndpoints map, e.g. "fleet" — never a URL');

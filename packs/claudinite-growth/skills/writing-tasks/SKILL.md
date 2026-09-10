@@ -101,8 +101,7 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   request while it has no conflicts, a fresh branch otherwise), or
   `supersede_existing_pr` (a fresh branch, and the task's earlier pull requests
   close once its own exists; a green, unlanded one on an auto-merge repo is landed
-  instead). The retired `none`/`pr` normalize to the first two, and
-  `open-pr`/`merged-pr` to `fresh_pr` with a policy of `nothing`/`anything`.
+  instead). Any other word is rejected outright, retired spellings included.
   Everything else has a default or is conditional: `agent_model`
   (`opus | sonnet | haiku | none`) is `none`, no agent; `code_work` is no code work.
   The two timeouts have **no default**: an agent declares `agent_execution_timeout`
@@ -135,8 +134,9 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   item — so an illegal or missing value means a task never fires, fires wrong,
   or writes past its declared ceiling. The same contract
   (`packs/claudinite-tasks/task-contract.mjs`) is re-validated at run time, so the
-  static and runtime views can't drift. A task declares **no session scope** — see
-  the next entry.
+  static and runtime views can't drift. A task declares **no scope**: reach is a
+  property of which endpoint the hand-off calls, `invocation_endpoint` below, and
+  nothing else in the system has a concept of scope.
 
 - **A task's code reads only the environment code-work is handed.** Code-work runs as
   a subprocess with a fixed set of `CLAUDINITE_*` variables — `REPO_ROOT`, `REPO`,
@@ -149,16 +149,6 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   setting, leaving a fleet-wide sweep unable to be scoped or dry-run. **Operator
   parameters ride the item's Context** (`CLAUDINITE_CONTEXT`, one line per bullet),
   which is the only channel a task may take them from.
-
-- **Session scope is retired, and `session_scope` is now inert** (owner ruling,
-  2026-08-09; the field's last reader went with the slot scheduler). Reach is a
-  property of **which endpoint the hand-off calls** — `invocation_endpoint`, below
-  — so a task needing wider access names a different endpoint and nothing else in
-  the system has a concept of scope. A declaration still carrying `session_scope`
-  validates and does nothing at all; `task-declaration-shape` raises it as an
-  advisory rename (advisory on purpose: a member's vendor refresh must not turn its
-  CI red over a file nothing has edited yet). Drop it, and name an endpoint if the
-  task actually needed the reach.
 
 - **Every run is bounded.** An agentic task (`agent_model !== none`) declares
   `agent_execution_timeout` — seconds bounding the agentic run.
