@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
-import { DEFAULT_AGENT_MODEL } from '../../claudinite-tasks/task-contract.mjs';
+import { DEFAULT_AGENT_MODEL } from '../../claudinite-tasks/src/contract/task-contract.mjs';
 import rule, { runsAgent } from '../worldRules/task-md-only-when-agentic.mjs';
 
 const decl = (extra) => `${JSON.stringify({

@@ -111,7 +111,7 @@ console.log(wiring.changed.length ? `bootstrap: wiring — ${wiring.changed.join
 // pack it might not have vendored.
 const declaresTasks = (loadConfig(target)?.packs ?? [])
   .some((e) => (typeof e === 'string' ? e : e?.id) === 'claudinite-tasks');
-const scaffold = join(target, '.claudinite/shared/packs/claudinite-tasks/converge-workflows.mjs');
+const scaffold = join(target, '.claudinite/shared/packs/claudinite-tasks/src/adopt/converge-workflows.mjs');
 if (declaresTasks && existsSync(scaffold)) {
   const { convergeWorkflows, stubsDir, declaredSecrets } = await import(pathToFileURL(scaffold).href);
   const stubs = stubsDir(target);

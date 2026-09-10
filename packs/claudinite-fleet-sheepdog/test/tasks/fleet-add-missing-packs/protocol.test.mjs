@@ -7,7 +7,7 @@ import * as enforcerSide from '../../../tasks/fleet-add-missing-packs/protocol.m
 import * as memberSide from '../../../../claudinite-lifecycle/tasks/adopt-requested-packs/protocol.mjs';
 import { MEMBER_TASK } from '../../../tasks/fleet-add-missing-packs/worker.mjs';
 import memberDeclJson from '../../../../claudinite-lifecycle/tasks/adopt-requested-packs/task.json' with { type: 'json' };
-import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/src/contract/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const memberDecl = normalizeTaskDeclaration(memberDeclJson);
 

@@ -43,7 +43,7 @@ open the pull request on that branch under that title. Never search for an open 
 branch of your own. Either way the commit references the tracking issue so the `task-lifecycle` gate passes.
 
 Then hand it to the shared delivery procedure —
-[deliver-pr.md](../../../claudinite-tasks/deliver-pr.md). That procedure, never this file, owns
+[deliver-pr.md](../../../claudinite-tasks/src/deliver/deliver-pr.md). That procedure, never this file, owns
 whether and how the PR lands.
 
 What makes that safe unattended is the scope check, not a reader: it proves the diff is comment

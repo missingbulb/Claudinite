@@ -603,9 +603,9 @@ and never talks to GitHub.
 
 The page states none of the queue's vocabulary. Labels, the title grammar, the leash
 constants and the anchor arithmetic all come from the modules that define them —
-[`work-item.mjs`](../../packs/claudinite-tasks/queue/work-item.mjs),
-[`leases.mjs`](../../packs/claudinite-tasks/queue/leases.mjs),
-[`anchors.mjs`](../../packs/claudinite-tasks/queue/anchors.mjs) — so there is no second copy to drift
+[`work-item.mjs`](../claudinite-tasks/src/items/work-item.mjs),
+[`leases.mjs`](../claudinite-tasks/src/items/leases.mjs),
+[`anchors.mjs`](../claudinite-tasks/src/items/anchors.mjs) — so there is no second copy to drift
 from the mechanism being rendered.
 
 Those paths — `../../packs/claudinite-tasks/queue/…` — resolve identically in the canon

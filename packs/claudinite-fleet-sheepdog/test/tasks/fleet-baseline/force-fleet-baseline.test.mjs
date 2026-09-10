@@ -131,7 +131,7 @@ test('the member-side scheduler run resolves the very id this lever sends', asyn
   // member's own declared tasks. A bare id must be owned by exactly one canon pack,
   // or planWake refuses it as ambiguous and the force silently wakes nothing.
   const { planWake } = await import('../../../../claudinite-tasks/shared-code/wake.mjs');
-  const { normalizeTaskDeclaration } = await import('../../../../claudinite-tasks/task-contract.mjs');
+  const { normalizeTaskDeclaration } = await import('../../../../claudinite-tasks/src/contract/task-contract.mjs');
   const { readFileSync } = await import('node:fs');
   // The member's real declaration: a bare wake mints or wakes a SCHEDULED task's
   // standing item, where an unscheduled one has nothing standing to reach.

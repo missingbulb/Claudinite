@@ -9,8 +9,8 @@ import {
 } from '../../../tasks/publish-pages/worker.mjs';
 import declarationJson from '../../../tasks/publish-pages/task.json' with { type: 'json' };
 import updateJson from '../../../../claudinite-lifecycle/tasks/update/task.json' with { type: 'json' };
-import { normalizeTaskDeclaration, isScheduledTask } from '../../../../claudinite-tasks/task-contract.mjs';
-import { pickOrder } from '../../../../claudinite-tasks/queue/executor.mjs';
+import { normalizeTaskDeclaration, isScheduledTask } from '../../../../claudinite-tasks/src/contract/task-contract.mjs';
+import { pickOrder } from '../../../../claudinite-tasks/src/items/pick-order.mjs';
 import { WORK_PREFIX, STATUS_READY, STATUS_RUNNING_EXECUTOR } from '../../../../claudinite-tasks/shared-code/work-items.mjs';
 
 const REPO = 'o/r';

@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseRequestFields } from '../../claudinite-tasks/queue/work-item.mjs';
+import { parseRequestFields } from '../../claudinite-tasks/src/items/work-item.mjs';
 
 const skill = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '../skills/do-later/SKILL.md'), 'utf8');
