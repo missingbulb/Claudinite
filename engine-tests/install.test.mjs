@@ -186,19 +186,38 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
     }
   }
 
-  // THE EXPIRY REGISTER, empty in the healthy state. An export kept alive only for
-  // stale callers gets an entry here when it goes in, because "remove this once the
-  // fleet catches up" as a comment is a reminder nobody rereads, and a shim kept
-  // forever is indistinguishable from one still needed. When an entry fires, do not
-  // bump the number: read a member's vendored worker, and if the call is gone delete
-  // the shim, its name from `fielded` above, and the entry.
+  // THE EXPIRY REGISTER, empty in the healthy state. Anything the flows hold only
+  // for one-cycle-behind members — an export a fielded worker still calls, or a
+  // tolerance whose removal condition is a read of the field rather than a clock —
+  // gets an entry here when it goes in, because "remove this once the fleet catches
+  // up" as a comment is a reminder nobody rereads, and a shim kept forever is
+  // indistinguishable from one still needed. A convergence window cannot answer for
+  // these: it says when every member has RECEIVED the change, not what any member's
+  // own vendored copy still does. When an entry fires, do not bump the number: read
+  // a member's vendored worker, and if the hold is gone delete it, its name from
+  // `fielded` above where it has one, and the entry.
   const { ENGINE_VERSION } = await import('../engine/version.mjs');
-  const SHIMS = [];
+  const SHIMS = [
+    {
+      module: 'packs/claudinite-lifecycle/updates/engine-update.mjs',
+      name: 'LEGACY_SHIM_TARGET',
+      since: '60902.1',
+      reviewAt: '61008.1',
+      // #1317 put the tasks pack on the ENGINE lane so a shim and the pack it
+      // re-exported could not ship a cycle apart. #1643 asked whether that can go;
+      // the canon's `engine/scheduler/` shims are gone, but what decides the answer
+      // is which lane each MEMBER's mount is receiving that pack on — a member that
+      // never declared claudinite-tasks holds it only because this line puts it on
+      // the engine lane, and the pack lane would stop delivering it with no error
+      // anywhere. So it is held until somebody reads that, and this is what brings
+      // the question back.
+    },
+  ];
   for (const s of SHIMS) {
     assert.ok(ENGINE_VERSION < s.reviewAt,
-      `engine ${ENGINE_VERSION} has passed ${s.reviewAt}: re-check whether ${s.module}'s ${s.name} shim `
-      + `(added at engine ${s.since} for one-cycle-behind workers) is still called by any fielded worker. `
-      + 'If not, delete the shim, its entry in the fielded surface above, and this entry.');
+      `engine ${ENGINE_VERSION} has passed ${s.reviewAt}: re-check whether ${s.module}'s ${s.name} `
+      + `(held since engine ${s.since} for one-cycle-behind members) is still needed by any fielded mount. `
+      + 'If not, delete it, its entry in the fielded surface above where it has one, and this entry.');
   }
 });
 
