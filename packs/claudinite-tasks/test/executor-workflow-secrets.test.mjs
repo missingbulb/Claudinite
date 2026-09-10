@@ -73,16 +73,16 @@ test('executor-workflow-secrets: names the task secret the executor does not pas
   assert.match(findings[0].fix, /ALPHA_KEY: \$\{\{ secrets\.ALPHA_KEY \}\}/);
 });
 
-test('executor-workflow-secrets: a task\'s declared secret is expected too, retired spelling included', async () => {
+test('executor-workflow-secrets: a task\'s declared secret is expected too', async () => {
   const missing = async (over) => whatsOf(await run({
     '.claudinite-settings.json': settings(),
     [`${PACK}/tasks/alpha/task.json`]: taskJson(over),
     [EXECUTOR]: executor(),
   }));
   assert.match(await missing({ code_work_required_secrets: ['ALPHA_KEY'] }), /does not pass ALPHA_KEY/);
-  // `required_secrets` is the door's legacy name for the same field (task-contract.mjs),
-  // so a member still spelling it that way is held to the same list.
-  assert.match(await missing({ required_secrets: ['ALPHA_KEY'] }), /does not pass ALPHA_KEY/);
+  // The retired `required_secrets` spelling declares nothing since #1642, so there
+  // is no secret to expect and nothing to report.
+  assert.doesNotMatch(await missing({ required_secrets: ['ALPHA_KEY'] }), /ALPHA_KEY/);
 });
 
 test('executor-workflow-secrets: an absent executor is the same failure, said as itself', async () => {

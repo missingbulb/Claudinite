@@ -30,17 +30,15 @@ test('a trailing carriage return does not defeat the parse', () => {
   assert.ok(parseTaskRun(`${TASK_RUN_TAG} v1 basics/baselining [h2026-07-29T04] code-work\r`));
 });
 
-test('both pre-rename outcome words still parse, normalized to code-work', () => {
-  // Runs logged before the 2026-08-06 phase-language rename say `preprocess`;
-  // the fold must count them under the canonical key, not drop them.
-  assert.equal(parseTaskRun(`${TASK_RUN_TAG} v1 a/b [d2026-07-29] preprocess`).outcome, 'code-work');
-  assert.equal(parseTaskRun(`${TASK_RUN_TAG} v1 a/b [d2026-07-29] prework`).outcome, 'code-work');
-});
-
 test('anything that is not a record of this version parses to null', () => {
   assert.equal(parseTaskRun('- claudinite-growth/usage-fold [d2026-07-29] run-inline — fold 3 logs'), null);
   assert.equal(parseTaskRun(`${TASK_RUN_TAG} v2 a/b [d2026-07-29] agent`), null, 'a future shape is not half-read');
   assert.equal(parseTaskRun(`${TASK_RUN_TAG} v1 a/b [d2026-07-29] exploded`), null, 'an unknown outcome mints no counter');
+  // The pre-rename phase words are unknown outcomes now (#1642): the logs that
+  // carried them are long past the Actions retention window.
+  for (const retired of ['preprocess', 'prework']) {
+    assert.equal(parseTaskRun(`${TASK_RUN_TAG} v1 a/b [d2026-07-29] ${retired}`), null, retired);
+  }
   assert.equal(parseTaskRun(''), null);
 });
 

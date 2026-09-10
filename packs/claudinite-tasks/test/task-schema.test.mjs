@@ -5,7 +5,7 @@ import { execSync } from 'node:child_process';
 import { join } from 'node:path';
 import { FREQUENCIES } from '../calendar.mjs';
 import { MODEL_FAMILIES } from '../model-map.mjs';
-import { OUTCOMES, INTERRUPT_POLICIES, SESSION_SCOPES, validateTaskDeclaration, normalizeTaskDeclaration } from '../task-contract.mjs';
+import { OUTCOMES, INTERRUPT_POLICIES, validateTaskDeclaration, normalizeTaskDeclaration } from '../task-contract.mjs';
 import { loadTaskTerms } from '../task-terms.mjs';
 import { parseTaskDeclaration, findTaskDeclaration, loadTaskDeclaration, siblingTaskDeclaration, orderTaskKeys } from '../task-declaration.mjs';
 
@@ -20,7 +20,6 @@ test('task.schema.json: its enums are the contract\'s lists', () => {
   assert.deepEqual(p.agent_model.enum, MODEL_FAMILIES);
   assert.deepEqual(p.expected_outcome.enum, OUTCOMES);
   assert.deepEqual(p.on_interrupt.enum, INTERRUPT_POLICIES);
-  assert.deepEqual(p.session_scope.enum, SESSION_SCOPES);
 });
 
 // A subset validator — enough to hold every canon declaration to the schema's

@@ -112,9 +112,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DISPATCH_PATH_RE, dispatchFirstLine, validateDispatchBody } from './validate-dispatch.mjs';
-import { parseDispatchTitle, readyLabelForScope } from './dispatch.mjs';
+import { parseDispatchTitle, readyLabelForScope, EXECUTOR_SCOPES } from './dispatch.mjs';
 import { renderTaskExec } from './run-record.mjs';
-import { SESSION_SCOPES, opensPullRequest } from './task-contract.mjs';
+import { opensPullRequest } from './task-contract.mjs';
 import { findTaskDeclaration, loadTaskDeclaration } from './task-declaration.mjs';
 import { policyExpression } from './merge-policy.mjs';
 import { SHARED_SUBDIR } from '../../engine/pack_loader/pack-registry.mjs';
@@ -131,7 +131,7 @@ export const EXIT = {
 // SCHEDULER files a dispatch under (`readyLabelForScope`), derived from it rather
 // than restated, so the two can never drift. `null` = not a ready label at all.
 export const scopeForLabel = (label) =>
-  SESSION_SCOPES.find((scope) => readyLabelForScope(scope) === label) ?? null;
+  EXECUTOR_SCOPES.find((scope) => readyLabelForScope(scope) === label) ?? null;
 
 // Which checkout do the task paths in a dispatch body resolve against? Answered
 // from where THIS engine copy is mounted, not from cwd — a consumer runs the
@@ -291,8 +291,8 @@ async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
   const scopeGiven = positional.length > 0;
   const scope = positional[0] ?? 'self';
-  if (!SESSION_SCOPES.includes(scope)) {
-    console.error(`resolve-dispatch: unknown scope "${scope}" — usage: node resolve-dispatch.mjs [${SESSION_SCOPES.join('|')}] [--issue-json <path> | --issue-body-file <path> --issue-labels <csv>]`);
+  if (!EXECUTOR_SCOPES.includes(scope)) {
+    console.error(`resolve-dispatch: unknown scope "${scope}" — usage: node resolve-dispatch.mjs [${EXECUTOR_SCOPES.join('|')}] [--issue-json <path> | --issue-body-file <path> --issue-labels <csv>]`);
     process.exit(EXIT.usage);
   }
 

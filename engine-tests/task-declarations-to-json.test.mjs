@@ -10,7 +10,7 @@ import {
   LOCAL_PACK_ROOT, CANON_PACK_ROOT,
 } from '../engine/migrations/task-declarations-to-json.mjs';
 import { applyTaskSchedulingFields, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
-import { ACCEPTED_FREQUENCIES } from '../packs/claudinite-tasks/calendar.mjs';
+import { FREQUENCIES } from '../packs/claudinite-tasks/calendar.mjs';
 import { normalizeTaskDeclaration } from '../packs/claudinite-tasks/task-contract.mjs';
 import { parseTaskDeclaration } from '../packs/claudinite-tasks/task-declaration.mjs';
 
@@ -107,10 +107,10 @@ test('retireFrequencyText: nothing to do, a term already stated, and an unknown 
   assert.equal(retireFrequencyText('{\n  "id": "x",\n  "frequency": "daily",\n  "preconditions": [1, 2\n}\n'), null);
 });
 
-test('retireFrequencyText agrees with the contract\'s door on every accepted value', () => {
+test('retireFrequencyText agrees with the contract\'s door on every frequency', () => {
   // Two spellings of one mapping: the engine cannot import the pack, so the term
   // it writes is pinned to what the door reads (`cadenceTermFor`).
-  for (const f of ACCEPTED_FREQUENCIES) {
+  for (const f of FREQUENCIES) {
     const text = `{\n  "id": "x",\n  "frequency": "${f}",\n  "preconditions": ["repo-active"]\n}\n`;
     assert.deepEqual(JSON.parse(retireFrequencyText(text).text).preconditions, normalizeTaskDeclaration({ frequency: f, preconditions: ['repo-active'] }).preconditions, f);
   }

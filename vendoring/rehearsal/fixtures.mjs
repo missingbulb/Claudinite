@@ -49,16 +49,15 @@
 //                 either, and validation is the half that could turn a member red.
 //                 The dated pack also bundles a skill forcing itself for files (#1648): a
 //                 consumer's own path-scoped skill must mount, index and load.
-//   legacy-task   a local pack whose scheduled task still declares the DEPRECATED
-//                 task-level `session_scope` — the shape a consumer that predates
-//                 the 2026-08-09 retirement still has on disk. It holds the
-//                 retirement HARMLESS to such a member: red if the field ever
-//                 stops validating or any future check starts blocking on it —
-//                 the ways an un-migrated member would stop converging. What it
-//                 does NOT cover is the routing itself: the rehearsal runs the
-//                 vendor + the sweeps, never the scheduler, so that a lingering
-//                 field still routes to the fleet label is a unit test's job
-//                 (packs/claudinite-tasks/test/session-scope.test.mjs).
+//   legacy-task   a local pack whose scheduled task still declares fields the
+//                 contract retired — `session_scope`, the two-word ceiling, the
+//                 pre-rename code-work names — the shape a consumer that has not
+//                 edited its task files still has on disk. What it holds is that
+//                 such a member still CONVERGES: the mount lands, the self-test
+//                 passes, and the sweep runs. It does not hold that the fields
+//                 still mean anything (they do not, since #1642), and it does not
+//                 reach the declaration checks at all — this fixture declares no
+//                 `claudinite-tasks`, which is where those live.
 //   code-work-env   a local pack whose agentless task carries a WORKER — the half no
 //                 other shape has, and the half `task-code-work-env` (blocking, core)
 //                 judges. A member's task code is member-owned and nothing converges
@@ -358,8 +357,9 @@ const PACK_LEGACY_TASK = `export default {
 };
 `;
 
-// Deliberately declares the deprecated task-level scope AND no pack-level one —
-// the exact shape a consumer that has not migrated still has on disk.
+// Deliberately declares the retired task-level scope — the exact shape a consumer
+// that has not migrated still has on disk. Nothing reads it; the point is that its
+// presence does not stop the member converging.
 const LEGACY_TASK = `${JSON.stringify({
   id: 'legacy-scoped',
   frequency: 'weekly',
@@ -921,7 +921,7 @@ export const FIXTURES = [
   },
   {
     name: 'legacy-task',
-    why: 'a local pack whose task still declares the deprecated `session_scope` — the shape a consumer predating the retirement still has on disk',
+    why: 'a local pack whose task still declares fields the contract retired — the shape a consumer that has not edited its task files still has on disk, which must still converge',
     files: {
       'README.md': '# fixture-legacy-task\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics', 'local/fixture-legacy']),

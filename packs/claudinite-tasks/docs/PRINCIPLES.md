@@ -215,9 +215,9 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 
 - A task's `expected_outcome` is a ceiling on what its run may do to pull
   requests, never an instruction — `no_code_changes`, `fresh_pr`,
-  `amend_existing_or_create_new_pr`, `supersede_existing_pr` — and the
-  legacy two-word ceilings normalize to one of these at the door.
-  `test/queue/target.test.mjs: the legacy ceilings plan as the values they normalize to`
+  `amend_existing_or_create_new_pr`, `supersede_existing_pr` — and any other
+  word stops the run rather than resolving to a mode.
+  `test/queue/target.test.mjs: a ceiling the contract does not know throws rather than planning a mode`
 - `no_code_changes` gets no branch and no pull request; `fresh_pr` gets a
   freshly minted branch under the task's own prefix and leaves the task's
   earlier pull requests alone.
@@ -422,12 +422,11 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   bare legacy park and every unknown newer kind word reads as a fault rather
   than as somebody's inbox the schedule carries on around.
   `test/queue/work-item.test.mjs: a kind word maps to its label, and anything unrecognised to failure`
-- Every legacy label and field spelling decodes forever, in one pass, straight
+- A legacy label spelling that is still accepted decodes in one pass, straight
   to its current canonical form — never chained through an intermediate
   spelling — because closed issues keep the labels they were written with.
   `S62`, `S62b`, `S63`,
-  `test/queue/work-item.test.mjs: outcomeOf maps every spelling, legacy and current, to the canonical word`,
-  `test/legacy-task-fields.test.mjs: legacy-task-fields: every retired field name is reported at its own line, with its replacement`
+  `test/queue/work-item.test.mjs: outcomeOf maps every spelling, legacy and current, to the canonical word`
 - A hand-created item, a forced mint, and a `--wake` all stamp `Woken:` into
   the item's machine block; any item that is not the scheduler's own
   unqualified planned item is treated as woken too.
@@ -461,7 +460,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - A task declaration a member's own engine cannot read is skipped by
   discovery with a recorded error, never allowed to fail the whole mount —
   an invalid local task file stops running with something red to say so.
-- A task with `required_secrets` unconfigured parks the affected item at
+- A task with `code_work_required_secrets` unconfigured parks the affected item at
   `task:status:needs-human-action`, naming the missing secret, rather than
   failing silently or blocking every other task.
   `test/queue/executor-loop.test.mjs: an unconfigured declared secret parks at action`,

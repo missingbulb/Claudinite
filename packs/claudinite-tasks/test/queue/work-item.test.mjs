@@ -4,7 +4,7 @@ import {
   WORK_PREFIX, workItemTitle, parseWorkItemTitle, isWorkItemTitle,
   workItemBody, parseWorkItemBody, withNotBefore, withEndsWhen, withTarget, withSection,
   QUEUE_LABELS, STATE_LABELS, labelNames, hasLabel,
-  DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
+  DELIVERED_HEADING,
   TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
   NEEDS_HUMAN_FAILURE, triageLabelFor, isBlockingPark,
   TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, outcomeOf,
@@ -238,24 +238,11 @@ test('a section is replaced in place, so a body round-tripped twice has one of e
 });
 
 
-// The delivered section's heading has been renamed twice with the phase. A live work
-// item's body carries whichever word was current when its section was first written,
-// and a re-entrant run updates that section rather than appending beside it — so the
-// heading has to be located by its OLD spellings too, not just today's.
-test('a delivered section written under an older heading is updated, not duplicated', () => {
-  for (const legacy of LEGACY_DELIVERED_HEADINGS) {
-    const body = `task/path\n\nExecute the Claudinite task above.\n\n### ${legacy}\n\n- PR: #12 (open)\n`;
-    const out = withSection(body, DELIVERED_HEADING, ['PR: #12 (merged)'], LEGACY_DELIVERED_HEADINGS);
-    assert.equal(out.match(/^### Delivered by /gm).length, 1, `${legacy} should leave exactly one delivered section`);
-    assert.match(out, /### Delivered by code-work\n\n- PR: #12 \(merged\)/);
-    assert.doesNotMatch(out, new RegExp(`### ${legacy}`));
-  }
-});
-
-// And the ordinary re-entrant case still holds under the constant.
+// A re-entrant run updates the section it already wrote rather than appending
+// beside it — which is what a code-work re-run and a hand-off retry both do.
 test('withSection is re-entrant under the canonical heading', () => {
-  const once = withSection('task/path\n', DELIVERED_HEADING, ['a branch'], LEGACY_DELIVERED_HEADINGS);
-  const twice = withSection(once, DELIVERED_HEADING, ['a branch'], LEGACY_DELIVERED_HEADINGS);
+  const once = withSection('task/path\n', DELIVERED_HEADING, ['a branch']);
+  const twice = withSection(once, DELIVERED_HEADING, ['a branch']);
   assert.equal(twice.match(/^### Delivered by /gm).length, 1);
 });
 

@@ -8,7 +8,7 @@ import {
 } from '../../queue/janitor-rules.mjs';
 import { periodMs } from '../../queue/anchors.mjs';
 import { isParked } from '../../queue/work-item.mjs';
-import { ACCEPTED_FREQUENCIES } from '../../calendar.mjs';
+import { FREQUENCIES } from '../../calendar.mjs';
 
 let seq = 900;
 const it = ({ task = 'a', labels, created_at = '2026-08-10T04:00:00Z', updated_at = created_at, body = 'p/t.md\n' }) => ({
@@ -108,18 +108,16 @@ test('an open item wearing no state label at all is repaired to triage', () => {
 });
 
 
-// The whole accepted vocabulary yields a period the stale bounds can count in — the contract,
-// rather than any one line of `periodMs`. A retired spelling must never resolve finer than the
-// canonical token it stands for, which is what would park an un-converged member's task.
-test('every accepted frequency has a sane period, retired spellings included', () => {
+// The whole vocabulary yields a period the stale bounds can count in — the contract,
+// rather than any one line of `periodMs`. A word this code does not know must never
+// resolve FINER than a day, which is what would park an un-converged member's task.
+test('every frequency has a sane period, an unrecognised word included', () => {
   const DAY = 86_400_000;
-  for (const f of ACCEPTED_FREQUENCIES) {
+  for (const f of [...FREQUENCIES, 'hourly', 'daily-2h']) {
     const p = periodMs(f);
     if (f === 'manual') { assert.equal(p, null, 'manual has no period'); continue; }
     assert.ok(typeof p === 'number' && p >= DAY, `${f} is at least a day, got ${p}`);
   }
-  assert.equal(periodMs('hourly'), periodMs('daily'));
-  assert.equal(periodMs('daily-2h'), periodMs('daily'));
   assert.equal(periodMs('weekly'), 7 * DAY);
 });
 

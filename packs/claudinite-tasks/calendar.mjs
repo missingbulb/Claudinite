@@ -24,33 +24,6 @@
 // contract validation, code-work, the work item) when a human pulls it.
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'manual'];
 
-// The retired spellings, and what each reads as. `hourly` cannot mean anything under a cron that
-// fires twice a day (PRINCIPLES.md), and the `daily±Nh` offsets staggered dependent tasks by clock
-// hour where `after:` (PRINCIPLES.md) declares the same intent and actually enforces it.
-//
-// This map is PERMANENT, not a migration window. A task declaration is member-owned data that no
-// vendoring pass rewrites, so a member can carry a retired token indefinitely and must keep
-// working; `task-declaration-shape` is what stops a NEW declaration naming one.
-// EMPTIED, NOT DELETED (#1234). The map IS the tolerance, so emptying it collapses
-// `ACCEPTED_FREQUENCIES` onto `FREQUENCIES`, makes a declaration still naming a retired
-// token fail contract validation, and leaves `normalizeFrequency` as the identity every
-// caller can keep calling — nothing is unwired, and the next retirement fills it in again.
-// Emptied once the fleet's own declarations were read and none named a retired token:
-// GoogleCalendarEventCreator's `create-extractor` was the last, and moved to `daily`.
-// @legacy-tolerance advisory:none retire:#1642
-export const LEGACY_FREQUENCIES = Object.freeze({});
-
-// What a declaration may CARRY, as against what a new one may be WRITTEN with.
-export const ACCEPTED_FREQUENCIES = [...FREQUENCIES, ...Object.keys(LEGACY_FREQUENCIES)];
-
-// THE ONE DOOR (PRINCIPLES.md). Applied by `normalizeTaskDeclaration`, so every reader downstream
-// of a loaded declaration sees a canonical token — and there is more downstream than the
-// calendar: `periodMs` feeds the janitor's stale-ready bound (`queue/janitor-rules.mjs`) and the
-// precondition's signal window (`queue/signals.mjs`). Normalizing only the anchor would leave a
-// task that now runs daily judged stale after two HOURS, which is a spurious needs-human park on
-// exactly the members this tolerance exists for.
-export const normalizeFrequency = (frequency) => LEGACY_FREQUENCIES[frequency] ?? frequency;
-
 // The documented anchor defaults (docs/PRINCIPLES.md) — applied
 // when a repo omits `schedule` or any of its keys. This is the single source of
 // these values; the checks layer's load-time range validation
@@ -86,14 +59,10 @@ export function anchorInstant(frequency, schedule, now) {
   const s = normalizeSchedule(schedule);
   const at = new Date(now);
   const nowMs = at.getTime();
-  // Total over the accepted vocabulary, not just the canonical one: the door normalizes every
-  // LOADED declaration, and normalizing here too means a direct caller — a test, `slots.mjs`, a
-  // frequency read off something other than a discovered task — cannot get a different answer.
-  const freq = normalizeFrequency(frequency);
 
-  if (freq === 'manual') return null;
+  if (frequency === 'manual') return null;
 
-  if (freq === 'daily') {
+  if (frequency === 'daily') {
     // Walk anchor DATES back from today until the instant is ≤ now: today's anchor hour may not
     // have come yet, in which case the most recent occurrence is yesterday's.
     let anchor = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
@@ -104,7 +73,7 @@ export function anchorInstant(frequency, schedule, now) {
     }
   }
 
-  if (freq === 'weekly') {
+  if (frequency === 'weekly') {
     const targetDow = WEEKDAYS.indexOf(s.weeklyDay);
     let date = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
     // Up to 8 steps guarantees the previous week's occurrence even when today is
@@ -120,7 +89,7 @@ export function anchorInstant(frequency, schedule, now) {
     throw new Error(`no weekly occurrence resolved for ${s.weeklyDay}`);
   }
 
-  if (freq === 'monthly') {
+  if (frequency === 'monthly') {
     let year = at.getUTCFullYear();
     let month = at.getUTCMonth();
     for (;;) {
@@ -205,4 +174,4 @@ export const holdsOnFailure = (preconditions) => gatesOn(preconditions, NOT_FAIL
 // What the retired `frequency` field always meant, as the term that now says it —
 // or null for `manual`, which meant no schedule at all and so adds no term.
 export const cadenceTermFor = (frequency) =>
-  (normalizeFrequency(frequency) === 'manual' ? null : `${DUE_TERM}:${normalizeFrequency(frequency)}`);
+  (frequency === 'manual' ? null : `${DUE_TERM}:${frequency}`);

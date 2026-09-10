@@ -140,27 +140,9 @@
       },
       "description": "The repo Actions secret names the code-work phase needs configured — the phase that runs Action-side, where a secret exists. Never GITHUB_* or CLAUDINITE_*."
     },
-    "required_secrets": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      },
-      "deprecated": true,
-      "description": "The retired spelling of code_work_required_secrets; normalized at the door. Rename it."
-    },
     "model_from_request": {
       "const": true,
       "description": "Reserved to the engine's built-in request task: run at the model the work item names."
-    },
-    "session_scope": {
-      "type": "string",
-      "enum": [
-        "self",
-        "fleet"
-      ],
-      "deprecated": true,
-      "description": "Read by nothing since #974. Drop it; name an invocation_endpoint if the task needs wider reach."
     }
   }
 }

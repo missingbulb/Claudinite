@@ -93,13 +93,13 @@ export const TASK_OBSOLETE = STATUS_REJECTED;
 // aliases of the constants above precisely because those constants moved: a decode
 // map built from them would have mapped today's spelling to itself and forgotten
 // the vocabulary it exists to read (PRINCIPLES.md).
-// @legacy-tolerance advisory:none retire:#1642
+// @legacy-tolerance advisory:none retire:#1913
 export const LEGACY_BLOCKED = 'task:blocked';
-// @legacy-tolerance advisory:none retire:#1642
+// @legacy-tolerance advisory:none retire:#1913
 export const LEGACY_READY = 'task:ready';
-// @legacy-tolerance advisory:none retire:#1642
+// @legacy-tolerance advisory:none retire:#1913
 export const LEGACY_EXECUTING = 'task:executing';
-// @legacy-tolerance advisory:none retire:#1642
+// @legacy-tolerance advisory:none retire:#1913
 export const LEGACY_AGENT = 'task:agent';
 
 // @deprecated The bare park of the two-label era. A park is ONE label now
@@ -125,9 +125,9 @@ export const OUTCOME_OBSOLETE = 'outcome:obsolete';
 
 // @deprecated The pre-#1119 terminal spellings in the `task:` namespace, the
 // generation between `outcome:*` and today's statuses. Read forever, same reason.
-// @legacy-tolerance advisory:none retire:#1642
+// @legacy-tolerance advisory:none retire:#1913
 export const LEGACY_TASK_DONE = 'task:done';
-// @legacy-tolerance advisory:none retire:#1642
+// @legacy-tolerance advisory:none retire:#1913
 export const LEGACY_TASK_OBSOLETE = 'task:obsolete';
 
 // @deprecated The origin marker (PRINCIPLES.md). Nothing writes it and nothing
@@ -184,7 +184,11 @@ export const isBlockingPark = (item) => statusOf(item) === STATUS_NEEDS_HUMAN_FA
 // closed items keep theirs forever, and members converge on their own schedules. So
 // every reader here goes through one pass that maps every spelling ever written
 // straight to today's — never through a literal comparison against one of them.
-// @legacy-tolerance advisory:none retire:#1642
+//
+// The `task:*` entries come out when no OPEN item wears one (#1913); the two
+// `outcome:*` entries never do, because a closed item's labels are stored data and
+// dropping them would turn every historical run into an un-outcomed one.
+// @legacy-tolerance advisory:none retire:#1913
 const LEGACY_STATUS = new Map([
   [LEGACY_BLOCKED, STATUS_BLOCKED],
   [LEGACY_READY, STATUS_READY],
@@ -194,7 +198,7 @@ const LEGACY_STATUS = new Map([
   [LEGACY_TASK_OBSOLETE, STATUS_REJECTED], [OUTCOME_OBSOLETE, STATUS_REJECTED],
 ]);
 
-// @legacy-tolerance advisory:none retire:#1642
+// @legacy-tolerance advisory:none retire:#1913
 const LEGACY_PARK_RE = /^task:needs-human-(.+)$/;
 
 // The park an issue's labels name, canonical, or null. Both shapes decode here:
@@ -550,15 +554,6 @@ function policyFieldValue(raw) {
 // updates the section it already wrote.
 export const DELIVERED_HEADING = 'Delivered by code-work';
 
-// The same heading as earlier renames spelled it. A live item's body still carries
-// whichever word was current when its section was first written, and matching only
-// today's would append a SECOND section rather than updating that one.
-// @legacy-tolerance advisory:none retire:#1642
-export const LEGACY_DELIVERED_HEADINGS = Object.freeze([
-  'Delivered by prework',
-  'Delivered by code_work',
-]);
-
 // --- the machine block (docs/PRINCIPLES.md) ----------------------------------
 // A one-issue request's item IS the issue somebody marked, so the item's fields
 // share a body a person authored and keeps editing. They live in one delimited
@@ -892,16 +887,13 @@ function stampTarget(body, target) {
 // A section runs to the next `### ` heading or to the end of the body, so a replaced
 // section keeps its position rather than migrating to the bottom — the body stays in
 // the order a reader learned it.
-// `aliases` are older spellings of the SAME heading. The section is rewritten under
-// `heading`, but located by any of them, so a body written before a rename is updated
-// in place instead of gaining a second section.
-export function withSection(body, heading, lines, aliases = []) {
+export function withSection(body, heading, lines) {
   if (!lines.length) return body;
   const text = String(body ?? '').replace(/\s*$/, '');
   const section = [`### ${heading}`, '', ...lines.map((l) => `- ${l}`)];
   const existing = text.split('\n');
-  const wanted = new Set([heading, ...aliases].map((h) => `### ${h}`));
-  const at = existing.findIndex((l) => wanted.has(l.trim()));
+  const wanted = `### ${heading}`;
+  const at = existing.findIndex((l) => l.trim() === wanted);
   if (at === -1) return `${text}\n\n${section.join('\n')}\n`;
   const after = existing.findIndex((l, i) => i > at && l.startsWith('### '));
   const tail = after === -1 ? [] : ['', ...existing.slice(after)];
