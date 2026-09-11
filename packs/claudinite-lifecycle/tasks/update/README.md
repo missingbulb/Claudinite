@@ -26,6 +26,15 @@ staging directory) and the test tree (what its repairs touch). A migration that
 rewrites a repo-owned source file lands outside the prediction and parks the PR
 for a person, which is the review this task is willing to pay for.
 
+A cycle that cannot land its pull request REWRITES that pull request next time
+rather than opening the next in a line of obsolete ones: the converge is a full
+recompute from the base, so the open one's branch is simply force-pushed to this
+cycle's answer, its title and body with it. The one thing that is not rewritten is
+a branch already carrying this converge — pushing an identical tree would give the
+pull request a new head and discard the checks that had already run on it, which
+on a member waiting for slow CI is the difference between eventually landing and
+never landing.
+
 The mount takes two terms rather than one, and the pair is not redundant.
 `claudinite-shared-packs` is the declared rule carrying the grant for the
 canon-authored policy files a re-vendor replaces; the inline `under:.claudinite`

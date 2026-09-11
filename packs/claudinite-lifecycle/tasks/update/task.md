@@ -102,8 +102,8 @@ Not green, or a repair you are not sure of: leave the PR open, label
 it `task:status:needs-human-decision`, and say in one comment what is unresolved. A withheld workflow you did
 not deliver is "not green" — it stays owed, and the next cycle will stage it again.
 
-**Why the delivery is yours to run rather than left for later.** An unmerged PR is not lost — the next
-cycle's disposal merges a green one. But `update` is a **daily** task, so "the next
+**Why the delivery is yours to run rather than left for later.** An unmerged PR is not
+lost — the next cycle picks it back up. But `update` is a **daily** task, so "the next
 cycle" is up to a day away, and until then a workflow you moved into
 `.github/workflows/` on the branch is not in `.github/workflows/` on `main`. That
 standing ~24h offset between a run's output and the member's `main` is the exact defect

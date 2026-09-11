@@ -1,12 +1,12 @@
 {
   "$schema": "../../../claudinite-tasks/task.schema.json",
   "id": "update",
-  "description": "Maintains this repository's Claudinite mount: converges the vendored engine and packs to the canon's versions, runs the version-ranged migrations, gates on the self-test and opens the update pull request. An agent runs where the new rules meet member-authored content, and where the converge wrote what this repo's tests can see.",
+  "description": "Maintains this repository's Claudinite mount: converges the vendored engine and packs to the canon's versions, runs the version-ranged migrations, gates on the self-test and delivers the update pull request. An agent runs where the new rules meet member-authored content, and where the converge wrote what this repo's tests can see.",
   "trigger": "schedule",
   "preconditions": [
     "due:daily"
   ],
-  "expected_outcome": "supersede_existing_pr",
+  "expected_outcome": "amend_existing_or_create_new_pr",
   "automerge": [
     "claudinite-shared-packs",
     "under:.claudinite",
