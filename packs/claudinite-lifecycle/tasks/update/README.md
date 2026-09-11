@@ -13,8 +13,18 @@ held one is gone (#1252).
 Two stages, like baselining's. The DETERMINISTIC flows are `code_work`
 (worker.mjs): they converge the mount, run the version-ranged migrations, gate on
 the converged tree's self-test, open the PR, and act on the terminal. The AGENT
-stage runs only when the pack flow's apply stage is needed — the pack's new rules
-meeting member-authored content the canon has never seen.
+stage runs only when the pack flow's apply stage is needed: the pack's new rules
+meeting member-authored content the canon has never seen, a workflow file the
+Action token could not deliver, or a cycle whose writes this repository's own
+tests could see — the self-test the deterministic half gates on is Claudinite's
+probes, never the repo's suite, so a session is what runs that suite and repairs
+what the update broke.
+
+Its `automerge` is the written-out prediction of that shape: the mount, the two
+config files, `.github/workflows/` (what the apply stage delivers out of the
+staging directory) and the test tree (what its repairs touch). A migration that
+rewrites a repo-owned source file lands outside the prediction and parks the PR
+for a person, which is the review this task is willing to pay for.
 
 it standalone — the whole contract lives in this default export.
 The input is the CANON, which moves when this repo does not — so no repo-side

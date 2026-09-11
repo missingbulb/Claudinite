@@ -211,12 +211,15 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
   const { canonicalOutcome, opensPullRequest } = await import('../../claudinite-tasks/task-contract.mjs');
   assert.ok(opensPullRequest(canonicalOutcome(decl.expected_outcome)), 'the declared outcome must let the run open a pull request');
 
-  const land = brief.slice(brief.indexOf('## 5.'));
-  assert.ok(land, 'the brief must still carry a §5');
+  // Found by its heading rather than its number: the brief grows sections, and a
+  // slice keyed on "## 5." silently selects the wrong one the day it does.
+  const landingHeading = brief.match(/^## \d+\. End green, or park$/m);
+  assert.ok(landingHeading, 'the brief must still carry a landing section');
+  const land = brief.slice(landingHeading.index);
   // The action moved into the shared procedure (a task.md describes the changes
   // to perform, never what happens to them — owner, 2026-08-30), so the property
   // pinned here is that the brief sends the session THERE, now, in this run.
-  assert.match(land, /hand the PR to the shared\ndelivery procedure/i, 'the session must be told to act, not to wait');
+  assert.match(land, /hand the\s+PR to the shared\s+delivery procedure/i, 'the session must be told to act, not to wait');
   assert.match(land, /deliver-pr\.md/, 'and where the acting is spelled out');
   assert.match(land, /until you deliver it/i, 'nothing else lands an apply-stage PR — the delivery is this run\'s');
   assert.ok(!/maintenance\.delivery/.test(land), 'the settings mechanics stay in deliver-pr.md, not re-spelled here');

@@ -11,6 +11,7 @@ import { settingsPath } from '../../../engine/settings-file.mjs';
 import { installedVersions, hasInstalledMount, withInstalledVersions } from '../../../engine/installed-versions.mjs';
 import { loadMigrations, applyMigration, WITHHOLD_CAPABLE_ENV } from '../../../engine/migrations/registry.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
+import { changesTestsCouldSee } from './converge-scope.mjs';
 
 // THE PACK UPDATE FLOW (docs/versioned-updates/DESIGN.md §3): move one repo's
 // declared packs from the versions it has installed to the ones this canon ships.
@@ -30,9 +31,11 @@ import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs'
 //      member's engine can load a pack is how a fleet goes quiet. Violation is a
 //      terminal, never a downgrade to "try anyway".
 //   3. IT HAS AN AGENTIC TAIL — the one place agentic work survives, because the
-//      pack's new rules meet member-authored content the canon has never seen. This
-//      module is the DETERMINISTIC half and ends by saying whether that stage is
-//      needed; the stage itself belongs to the shell that can dispatch a session.
+//      pack's new rules meet member-authored content the canon has never seen, and
+//      because nothing deterministic can run the member's own test suite over what
+//      the cycle just wrote (./converge-scope.mjs). This module is the
+//      DETERMINISTIC half and ends by saying whether that stage is needed; the
+//      stage itself belongs to the shell that can dispatch a session.
 //
 // Everything else is shared with the engine flow on purpose: the same version
 // predicate decides the gap, the same self-test gates the merge, and every
@@ -140,9 +143,15 @@ export const stubFor = () => `${STUB_DIR}claudinite-scheduler.yml`;
 export async function pendingSchedulerWorkflow() { return { pending: null, error: null }; }
 export async function pendingExecutorWorkflow() { return { pending: null, error: null }; }
 
-export function applyStageFor(specs, withheld = []) {
+// How many of the test-visible paths the reason NAMES before collapsing the rest to
+// a count. The reason becomes a work item's `reason.detail`, a summary surface: a
+// migration that rewrites a hundred sources would otherwise put a hundred paths in
+// it, and the branch is where they are actually read.
+const TEST_VISIBLE_NAMED = 5;
+
+export function applyStageFor(specs, withheld = [], testVisible = []) {
   const asked = specs.filter((m) => m.applyStage);
-  if (!asked.length && !withheld.length) return { needed: false };
+  if (!asked.length && !withheld.length && !testVisible.length) return { needed: false };
   // A withheld workflow file needs the stage on its own, with no record asking: the file
   // is staged and undelivered, and only the stage's credential can finish it.
   // The reason names the CONDITION and the ARTIFACTS BY IDENTITY, and stops there —
@@ -154,6 +163,9 @@ export function applyStageFor(specs, withheld = []) {
   const why = [
     ...(withheld.length ? [`${withheld.length} withheld workflow file(s) staged under ${PENDING_DIR}`] : []),
     ...asked.map((m) => `${m.dir}: ${m.applyStage.why}`),
+    ...(testVisible.length
+      ? [`this converge wrote ${testVisible.length} file(s) the repo's own tests can see (${testVisible.slice(0, TEST_VISIBLE_NAMED).join(', ')}${testVisible.length > TEST_VISIBLE_NAMED ? `, +${testVisible.length - TEST_VISIBLE_NAMED} more` : ''})`]
+      : []),
   ].join('; ');
   return {
     needed: true,
@@ -342,6 +354,17 @@ export async function packUpdate(targetRoot, {
   //    and `applyStage` is where they say so. A bump carrying no such record is
   //    silent, which is what makes a first live run of an agentic change something
   //    you can aim at one member instead of fourteen at once.
+  //
+  //    THE SECOND ANSWERER IS THE DIFF (#1932), and it answers a different question:
+  //    not "does this record need judgment" but "could this cycle's writes have
+  //    broken the repo's own tests". A record's author cannot answer that one — the
+  //    same mechanical rewrite is inert in one member and breaks a suite in the
+  //    next — so it is read off what the cycle actually wrote (./converge-scope.mjs),
+  //    and `runSelfTest` below is no substitute: it runs Claudinite's own probes,
+  //    never the repo's suite. Asked at this point because every write of the cycle
+  //    has landed in the working tree by now — the engine flow's, this flow's
+  //    vendor, and every record's — and the terminal has yet to be decided.
+  const testVisible = changesTestsCouldSee(targetRoot);
   const selftest = runSelfTest(targetRoot, selfTestRun);
   const decision = deliveryDecision({ selftestOk: selftest.ok, delivery, forceMergeOnRedCi });
   // A wiring failure rides out on `detail`, which the worker already prints and which
@@ -356,6 +379,6 @@ export async function packUpdate(targetRoot, {
 
   return outcome(decision.action === 'needs-human' ? NEEDS_HUMAN : 'ok', detail, {
     plan, files: packFiles.length, applied, selftest, decision, withheld,
-    wiringError, applyStage: applyStageFor(specs, withheld),
+    wiringError, testVisible, applyStage: applyStageFor(specs, withheld, testVisible),
   });
 }

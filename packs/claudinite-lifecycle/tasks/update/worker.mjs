@@ -94,7 +94,7 @@ export function updatePullText(terminal, { engine, packs }) {
   if (terminal.action === 'needs-human') {
     lines.push('This PR stays open. Nothing merges on a non-green terminal — see the label.');
   } else if (terminal.action === 'apply-stage') {
-    lines.push('The deterministic half is done. The agent stage applies the new rules to this repo\'s own content before anything merges.');
+    lines.push('The deterministic half is done. The agent stage applies the new rules to this repo\'s own content and runs its tests over what this converge wrote, before anything merges.');
   }
   return { title, body: `${lines.join('\n')}\n` };
 }
