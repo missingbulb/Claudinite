@@ -16,7 +16,9 @@ import { NEEDS_HUMAN } from './engine-update.mjs';
 //      override it, including a repo that would otherwise auto-merge.
 //   2. `apply-stage` — the pack flow's agentic tail is needed. It is NOT a merge:
 //      the rules have landed but nothing has yet reconciled them with the member's
-//      own content, and merging first would call that reconciliation optional.
+//      own content — nor run the member's own tests over what the cycle wrote
+//      (../updates/converge-scope.mjs) — and merging first would call that
+//      reconciliation optional.
 //   3. whatever the flow's own delivery decision said — merge, or keep for review.
 //
 // Returning `{ action, label, why }` rather than a bare verb because the shell has
@@ -54,7 +56,7 @@ export function terminalFor(outcome) {
 // request payload. Nothing ever read it — that is the only reason two problems with
 // it stayed invisible.
 //
-// It restated `packs/claudinite-lifecycle/tasks/update/task.md` §2–5 from a second home that could
+// It restated `packs/claudinite-lifecycle/tasks/update/task.md` §2–6 from a second home that could
 // drift from the first, with no test able to notice. And it was the natural place to
 // put a withheld workflow's CONTENT, which is exactly where content must not go: the
 // scheduler's rule for the code→agent boundary (packs/claudinite-tasks/code-work.mjs) is that

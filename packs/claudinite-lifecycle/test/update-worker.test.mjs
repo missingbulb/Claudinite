@@ -139,9 +139,9 @@ test('the runner finds its incumbent by the same prefix it delivers on', async (
     'the delivered branch and the searched prefix are the same family');
 });
 
-// THE TARGET. The executor resolves which branch this
-// run pushes to and which incumbents it supersedes, and hands the branch in as
-// `CLAUDINITE_TARGET_BRANCH`. Given one, the runner disposes of nothing and mints
+// THE TARGET. The executor resolves which branch this run pushes to and which
+// pull request it delivers on, and hands them in as `CLAUDINITE_TARGET_BRANCH`
+// and `CLAUDINITE_TARGET_PR`. Given one, the runner disposes of nothing and mints
 // nothing: that was the second decision site #1695 removed. The old path stands
 // only for an executor that predates the hand-off, until #1698 removes it.
 test('given a target branch, the runner neither disposes of an incumbent nor mints a branch of its own', async () => {
@@ -211,12 +211,15 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
   const { canonicalOutcome, opensPullRequest } = await import('../../claudinite-tasks/task-contract.mjs');
   assert.ok(opensPullRequest(canonicalOutcome(decl.expected_outcome)), 'the declared outcome must let the run open a pull request');
 
-  const land = brief.slice(brief.indexOf('## 5.'));
-  assert.ok(land, 'the brief must still carry a §5');
+  // Found by its heading rather than its number: the brief grows sections, and a
+  // slice keyed on "## 5." silently selects the wrong one the day it does.
+  const landingHeading = brief.match(/^## \d+\. End green, or park$/m);
+  assert.ok(landingHeading, 'the brief must still carry a landing section');
+  const land = brief.slice(landingHeading.index);
   // The action moved into the shared procedure (a task.md describes the changes
   // to perform, never what happens to them — owner, 2026-08-30), so the property
   // pinned here is that the brief sends the session THERE, now, in this run.
-  assert.match(land, /hand the PR to the shared\ndelivery procedure/i, 'the session must be told to act, not to wait');
+  assert.match(land, /hand the\s+PR to the shared\s+delivery procedure/i, 'the session must be told to act, not to wait');
   assert.match(land, /deliver-pr\.md/, 'and where the acting is spelled out');
   assert.match(land, /until you deliver it/i, 'nothing else lands an apply-stage PR — the delivery is this run\'s');
   assert.ok(!/maintenance\.delivery/.test(land), 'the settings mechanics stay in deliver-pr.md, not re-spelled here');
@@ -260,4 +263,20 @@ test('the "nothing changed" guard never swallows an apply-stage terminal', async
   // And the request really does sit after the PR, which is what makes the guard fatal.
   assert.ok(src.indexOf("'agent-requested'") > src.indexOf('/repos/${repo}/pulls'),
     'if the request ever moves above PR creation, this guard stops being load-bearing');
+});
+
+test('a run amends the pull request the executor named, and only while it is still open', async () => {
+  // The reuse the owner asked for (#1934): a cycle that could not land its PR
+  // rewrites that PR rather than opening the next in a line of obsolete ones.
+  // The one case that must NOT amend is a named pull request somebody closed under
+  // the run — the branch is still ours to push to, and a new pull request opens on
+  // it, because pushing onto a closed one delivers nothing and says it delivered.
+  const { amendsPull } = await import('../tasks/update/worker.mjs');
+  assert.equal(amendsPull('41', { number: 41, state: 'open' }), true);
+  assert.equal(amendsPull(41, { number: 41, state: 'open' }), true, 'the executor hands it in as a string');
+  assert.equal(amendsPull('41', { number: 41, state: 'closed' }), false, 'closed under the run — open a new one');
+  assert.equal(amendsPull('41', { number: 42, state: 'open' }), false, 'a read that answered about another pull request settles nothing');
+  assert.equal(amendsPull('41', null), false, 'an unreadable pull request is not an open one');
+  assert.equal(amendsPull('', { number: 41, state: 'open' }), false, 'a fresh-branch run names none');
+  assert.equal(amendsPull(null, { number: 41, state: 'open' }), false);
 });

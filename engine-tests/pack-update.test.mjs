@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, pendingExecutorWorkflow, PENDING_DIR } from '../packs/claudinite-lifecycle/updates/pack-update.mjs';
 import { terminalFor } from '../packs/claudinite-lifecycle/updates/terminals.mjs';
@@ -534,5 +535,68 @@ test('two packs staging the same workflow path are BOTH held back', async () => 
   assert.equal(stamped['claudinite-tasks'], '60831.5', 'the first record owes its delivery');
   assert.equal(stamped['claudinite-lifecycle'], '60831.1',
     'and so does the second, whose content is the one actually staged');
+  removeTree(root);
+});
+
+test('a converge that wrote something the repo\'s own tests can see summons the stage alone', () => {
+  // No record asked and nothing was withheld — the deterministic half simply wrote
+  // into a file a member's suite reads. `runSelfTest` is Claudinite's probes, so
+  // nothing before this point ran that suite; the session is what can (#1932).
+  const stage = applyStageFor([], [], ['.claudinite-checks.json', 'src/app.mjs']);
+  assert.equal(stage.needed, true);
+  assert.deepEqual(stage.packs, [], 'no pack raised it — widening the scope to one would be a guess');
+  assert.deepEqual(stage.records, []);
+  assert.match(stage.why, /\.claudinite-checks\.json/);
+  assert.match(stage.why, /src\/app\.mjs/);
+});
+
+test('the reason names a few of those files and counts the rest — it is a summary surface', () => {
+  const many = Array.from({ length: 9 }, (_, i) => `src/${i}.mjs`);
+  const { why } = applyStageFor([], [], many);
+  assert.match(why, /src\/0\.mjs/);
+  assert.ok(!why.includes('src/8.mjs'), 'a record rewriting a hundred sources must not put a hundred paths in the reason');
+  assert.match(why, /\+4 more/, 'what is not named is still counted');
+});
+
+test('a record that wrote outside the vendored packs raises the stage from a real member', async () => {
+  const root = makeMember();
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0 } });
+  // A checkout, because the predicate reads what the cycle wrote out of git — and
+  // committed first, so only what packUpdate itself writes is in the answer.
+  const git = (...args) => execFileSync('git', ['-C', root, ...args], { stdio: 'ignore' });
+  git('init', '-q', '-b', 'main');
+  git('config', 'user.email', 't@example.com');
+  git('config', 'user.name', 't');
+  git('add', '-A');
+  git('commit', '-qm', 'the member before this cycle');
+
+  const rewritesSource = {
+    dir: 'packs/basics/migrations/2026-09-11-rewrite',
+    id: 'rewrite',
+    rewrite: [{ file: 'src/app.js', replace: [{ from: 'project code', to: 'rewritten by a record' }] }],
+  };
+  const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok', extraRecords: [rewritesSource] });
+  assert.equal(r.status, 'ok', r.detail);
+  assert.deepEqual(r.testVisible, ['src/app.js'], 'the vendored packs and the stamp are not in the answer');
+  assert.equal(r.applyStage.needed, true, 'nothing has run this repo\'s suite against that rewrite');
+  assert.equal(terminalFor(r).action, 'apply-stage', 'and so the cycle does not merge itself');
+  removeTree(root);
+});
+
+test('a pure re-vendor of the packs still merges itself — no session for a pack bump', async () => {
+  const root = makeMember();
+  assert.deepEqual((await applyVendor(root)).errors, []);
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0 } });
+  const git = (...args) => execFileSync('git', ['-C', root, ...args], { stdio: 'ignore' });
+  git('init', '-q', '-b', 'main');
+  git('config', 'user.email', 't@example.com');
+  git('config', 'user.name', 't');
+  git('add', '-A');
+  git('commit', '-qm', 'the member before this cycle');
+
+  const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
+  assert.equal(r.status, 'ok', r.detail);
+  assert.deepEqual(r.testVisible, [], 'a vendored pack tree, the rules index and the stamp are all invisible to a member\'s suite');
   removeTree(root);
 });
