@@ -364,5 +364,21 @@
         "fix": "open it with `> **Status: not implemented.** \u2026` or `> **Status: in flight.** \u2026`; a built system's design doc has no third status \u2014 delete it whole instead"
       }
     ]
+  },
+  {
+    "id": "busy-wait-loop",
+    "severity": "blocking",
+    "since": "2026-09-11",
+    "scope": "action",
+    "failureMessage": "a loop body of `:` yields nothing, so the shell spins at full tilt and the session answers nobody until a person interrupts it",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(^|[;&|]\\s*|\\n\\s*)(until|while)\\b[^\\n]*;\\s*do\\s*(:|true)\\s*;\\s*done\\b/",
+        "what": "a loop that spins without waiting: \"{match}\"",
+        "fix": "sleep inside the loop body and bound the wait \u2014 or drop the loop: a background task's completion arrives as a notification"
+      }
+    ]
   }
 ]

@@ -413,6 +413,15 @@ Below are rules on how to work on this repo.
   route. Hand-fabricating the transition is how an item ends up closed wearing a live status, or
   labelled `done` and left open. (2)
 
+- **Choosing a recurring task's `expected_outcome`** — prefer `amend_existing_or_create_new_pr`
+  wherever each run recomputes the whole answer, so one pull request accumulates the review;
+  `supersede_existing_pr` files a fresh one per cycle and buries whatever actually needed
+  attention. (portable → `claudinite-growth/skills/writing-tasks/SKILL.md`) (85)
+
+- **Re-delivering a scheduled recompute onto its own branch** — compare the branch's remote
+  **tree** against the one you built and push nothing when they match, since a force-push gives
+  the pull request a new head and discards every check already run on it. (86)
+
 ## Proving a change
 
 - **Testing a change to a task's triggering** — drive the real `planSchedulerRun` from a clock at
