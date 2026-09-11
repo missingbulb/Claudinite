@@ -26,6 +26,14 @@ staging directory) and the test tree (what its repairs touch). A migration that
 rewrites a repo-owned source file lands outside the prediction and parks the PR
 for a person, which is the review this task is willing to pay for.
 
+The mount takes two terms rather than one, and the pair is not redundant.
+`claudinite-shared-packs` is the declared rule carrying the grant for the
+canon-authored policy files a re-vendor replaces; the inline `under:.claudinite`
+beside it covers the rest of the mount that rule does not reach — the withheld
+workflows' staging directory, and a member's own local packs where a record
+normalizes one. The test tree is named by kind rather than by folder because a
+member's tests live wherever that member puts them.
+
 it standalone — the whole contract lives in this default export.
 The input is the CANON, which moves when this repo does not — so no repo-side
 condition may gate it, and a silent repo is exactly when the mount most needs

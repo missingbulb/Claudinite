@@ -12,9 +12,8 @@ work item names the branch and says which packs moved.
 - **A pack's updated rules have met content this repo authored** and the canon has never
   seen. This is the half that needs judgment, and it is all of the judgment there is.
 - **The converge wrote files this repo's own tests can see** — engine code, a config
-  file, a source file a migration rewrote. The self-test the deterministic half gated on
-  is Claudinite's own probes; nothing has run this repo's suite against those writes, and
-  you are the only stage that can.
+  file, a source file a migration rewrote. Nothing has run this repo's own test suite
+  against those writes.
 
 ## 1. Read why you are here
 
@@ -58,8 +57,8 @@ Then, on that branch:
 
 ## 4. Run this repo's tests, and repair what the update broke
 
-Always — whichever reason brought you here. The branch carries a converge nobody has
-run this repository's own suite against.
+Always — whichever reason brought you here. Nothing has run this repository's own test
+suite against the branch.
 
 Run it the way this repository runs it, read out of its own docs and config rather
 than guessed at. A repo with no suite has nothing to run here; say so and move on.
