@@ -42,6 +42,18 @@ test('the waiting and suite guards', () => {
     'for i in 1..3; do sleep 20; done; echo waited',
     'while ! curl -sf http://x; do sleep 5; done',
   ]), ['a counted loop with nothing but a sleep in its body: "for i in 1..3; do sleep 20; done"']);
+  // The opposite spelling: a loop that names its condition but never yields, so it holds
+  // the shell until somebody interrupts it. A body that sleeps is the clean form, and the
+  // words inside a quoted string are not a loop.
+  assert.deepEqual(judge('busy-wait-loop', [
+    'until [ -s /tmp/out ]; do :; done; cat /tmp/out',
+    'while ! test -f done.flag; do true; done',
+    'until test -f out; do sleep 2; done',
+    'echo "until x; do :; done"',
+  ]), [
+    'a loop that spins without waiting: "until [ -s /tmp/out ]; do :; done"',
+    'a loop that spins without waiting: "while ! test -f done.flag; do true; done"',
+  ]);
   assert.deepEqual(judge('test-suite-command-form', [
     'node --test engine-tests/*.test.mjs',
     'node --test',

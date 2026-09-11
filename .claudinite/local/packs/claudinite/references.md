@@ -325,3 +325,24 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   and re-appending the single entry resolved it in one pass; the detour cost ~90s and a merge
   abort. Several auto-merging runs a day append to this file, so the collision is structural.
   Retire the rule if the file stops being appended by more than one run at a time.
+- **(RULES-85)** #1934, 2026-09-11: `update` declared `supersede_existing_pr`, so a member that
+  could not land — slow CI, a `needs-human` park, a review gate — collected one obsolete update
+  pull request a night, and the one that actually needed attention was never the one in front of
+  anybody. Its converge is a full recompute from the base, which is exactly what makes rewriting
+  the standing pull request correct rather than lossy. Retire the rule if a task appears whose
+  successive runs produce genuinely unrelated answers, where the earlier pull request is worth
+  keeping open beside the new one.
+- **(RULES-86)** #1934, 2026-09-11: the same converge recomputes the same tree from the same base
+  every night, so reusing the pull request would have force-pushed an identical answer onto it
+  each cycle; each force-push gives the pull request a new head and discards the checks that had
+  already run, which on a member waiting for slow CI is the difference between eventually landing
+  and never landing. `worker.mjs` compares trees rather than commits because this cycle's commit
+  is new by construction — its own timestamp — and only the content decides whether anything is
+  owed. Retire the rule if GitHub stops keying check runs to the head sha.
+- **(check:busy-wait-loop)** Session 4baa0098, 2026-09-11 16:12–16:15Z: after the #1933 merge the
+  session backgrounded `capture-log.mjs`, then waited on its output file with
+  `until [ -s <file> ]; do :; done`. The file was never written, the empty body never yielded, and
+  the loop ran 2m28s until the owner killed the task — asking "What is holding you?" twice before
+  the session could answer at all. The retry that worked ran the command in the foreground into a
+  file. `bare-sleep-wait` catches the opposite spelling (a wait with no condition) and would not
+  have fired here. Retire the check if the harness starts pre-empting a wedged Bash call.
