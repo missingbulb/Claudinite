@@ -29,6 +29,12 @@
   or charting library often boils down to a handful of constructors and methods) and install a
   minimal no-op implementation of just those as an init script, before the page's own scripts run.
 
+- **A sandboxed agent's egress proxy can deny the browser's own connection to a host that
+  `curl`/`WebFetch` reaches fine — they don't share a tunnel path through the proxy.** When a
+  page needs one specific host's real, unstubbed asset, fetch it once with `curl`/`WebFetch` and
+  serve it from disk via route interception; a fetch tool succeeding through the same proxy is
+  not evidence the browser can reach that host too.
+
 - **A committed pixel golden is only comparable under the exact build that rendered it.** Two
   browsers a version apart rasterise text and shadows differently, so a comparison across them
   measures the renderer, not the product. Where the output is compared pixel by pixel, read the
