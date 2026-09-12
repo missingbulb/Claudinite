@@ -111,12 +111,10 @@ test('the throwaway index is cleaned up even when the push fails', () => {
 });
 
 // --- which branch and pull request the regenerate lands on (PRINCIPLES.md) ---------
-// The executor resolved the target and handed it in; the lane takes it as given.
-// Without one — an executor that predates the hand-off — the prefix discovery it
-// used to do on its own stands, for the window #1698 closes.
+// The executor resolved the target and handed it in; the lane takes it as given and
+// has no discovery of its own to fall back on (#1698).
 const open = [
   { number: 40, head: { ref: 'claudinite/claudinite-tasks/usage-fold/2026-09-03-aa11' } },
-  { number: 41, head: { ref: 'claudinite/usage-fold/2026-09-02' } },
   { number: 42, head: { ref: 'feature/other' } },
 ];
 
@@ -131,9 +129,12 @@ test('a handed-in target is taken as given: its pull request when it names one, 
   assert.deepEqual([gone.pr, gone.reused], [null, false]);
 });
 
-test('without a target the lane falls back to its own prefix discovery, as before', () => {
-  const found = generatedTarget({ pulls: open, branchPrefix: 'claudinite/usage-fold', stamp: '2026-09-04' });
-  assert.deepEqual([found.branch, found.pr?.number, found.reused], ['claudinite/usage-fold/2026-09-02', 41, true]);
-  const minted = generatedTarget({ pulls: [], branchPrefix: 'claudinite/usage-fold', stamp: '2026-09-04' });
-  assert.deepEqual([minted.branch, minted.pr, minted.reused], ['claudinite/usage-fold/2026-09-04', null, false]);
+test('a run handed no target fails rather than minting a branch of its own (#1698)', () => {
+  // The lane used to reuse an open pull request whose head carried a prefix, and mint
+  // `<prefix>/<stamp>` where it found none — a second decision site beside the
+  // executor's. An executor that hands none in now predates the hand-off, and its
+  // member's next converge brings the one that does: delivering somewhere the
+  // executor is not looking is worse than saying so.
+  assert.throws(() => generatedTarget({ pulls: open, branch: null, pr: null }), /CLAUDINITE_TARGET_BRANCH/);
+  assert.throws(() => generatedTarget({ pulls: open }), /CLAUDINITE_TARGET_BRANCH/);
 });

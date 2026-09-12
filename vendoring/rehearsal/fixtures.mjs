@@ -221,6 +221,49 @@ export default rule;
 // The one pack a fixture publishes rather than runs — content on a second canon's
 // shelf. It carries the two things the curation rules read of shelf content: a
 // `version` (the whole delivery signal) and prose that narrates no enforcement.
+// A local pack that reaches INTO THE MOUNT BY NAME — the one consumer surface no
+// other fixture models (#1848). A member's own rule imports the engine's finding
+// helper to build a finding at all, and a member's own delivery lane imports the
+// published delivery seam; a name the canon drops throws at link time, that pack
+// fails to load, and the converge refuses the whole tree. Every fixture whose local
+// pack imports nothing out of `.claudinite/shared/` converges green whatever this
+// canon does to those names, which is why the shape had to be modelled here.
+const PACK_MOUNT_IMPORTER = `import mountReach from './mount-reach.mjs';
+
+export default {
+  id: 'fixture-importer',
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own invariants, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+  worldRules: [mountReach],
+  workRules: [],
+};
+`;
+
+const MOUNT_REACH_RULE = `import { finding } from '../../../shared/engine/checks/helpers/findings.mjs';
+import { deliverGenerated, landDelivery } from '../../../shared/packs/claudinite-tasks/shared-code/delivery.mjs';
+
+const rule = {
+  id: 'fixture-mount-reach',
+  severity: 'advisory',
+  description: 'A rehearsal fixture rule that imports the mount by name and never fires',
+  doc: 'RULES.md',
+  why: 'it exists so a canon that drops a name a member imports cannot converge green',
+  // The imports are the point, so every name is referenced: the link already threw
+  // if the canon no longer exports one, and there is nothing left to report.
+  run() {
+    return [finding, deliverGenerated, landDelivery].some((f) => typeof f !== 'function')
+      ? [finding(rule, { what: 'a name imported out of the mount is not callable', fix: 'unreachable — the import throws first' })]
+      : [];
+  },
+};
+export default rule;
+`;
+
 const PACK_SHELF = `import './publish.mjs';
 
 export default {
@@ -1551,6 +1594,17 @@ fi
       '.claudinite-settings.json': checks(['basics', 'node']),
       'package.json': '{\n  "name": "fixture-node-consumer",\n  "type": "module",\n  "scripts": { "test": "node --test test/*.test.mjs" }\n}\n',
       'test/smoke.test.mjs': "import { test } from 'node:test';\ntest('fixture', () => {});\n",
+    },
+  },
+  {
+    name: 'mount-importing-local-pack',
+    why: 'a member whose own rule imports the mount by name — the engine\'s finding helper and the claudinite-tasks delivery seam — so a canon that drops a name a member holds fails the pack load here rather than in the fleet',
+    files: {
+      'README.md': '# fixture-mount-importer\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'claudinite-tasks', 'local/fixture-importer']),
+      '.claudinite/local/packs/fixture-importer/pack.mjs': PACK_MOUNT_IMPORTER,
+      '.claudinite/local/packs/fixture-importer/mount-reach.mjs': MOUNT_REACH_RULE,
+      '.claudinite/local/packs/fixture-importer/RULES.md': '# fixture-importer\n\nNo standing rules.\n',
     },
   },
   {
