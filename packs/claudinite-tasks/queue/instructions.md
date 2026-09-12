@@ -70,6 +70,11 @@ instructions.
      request on that branch. Never pick a branch of your own, never look for an
      open pull request to reuse, and never close an earlier run's pull request
      yourself: `Supersedes:` names the ones the converge closes once yours exists.
+   - **Never give the PR body a closing keyword (`Closes #<n>`) naming this item's own issue.**
+     GitHub auto-closes it on merge regardless of the run's outcome, racing ahead of
+     `converge-item.mjs`'s comment-and-label transition — including overriding an intended
+     `needs-human-approval` park. Cite it with `Refs #<n>` if useful; the close is the
+     convergence step's to make.
    - **An input the task file calls required and the issue does not carry stops the
      run.** Say which one was missing and park this item
      (`task:status:needs-human-action` — the item has to be re-created carrying it). Never

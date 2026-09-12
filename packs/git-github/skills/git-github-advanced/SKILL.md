@@ -153,7 +153,7 @@ Resolve the wait through exactly one path — a `Monitor` until-loop, **or** dir
 
 ## A run artifact resolves to a blob-storage URL a sandboxed session can't reach
 
-`download_workflow_run_artifact` hands back a `*.blob.core.windows.net`-style URL that a sandbox's egress proxy denies at CONNECT, so chasing it burns a call for nothing. Read `get_job_logs` with a generous `tail_lines` to learn which step or case failed, then reproduce it locally.
+`download_workflow_run_artifact` hands back a `*.blob.core.windows.net`-style URL that a sandbox's egress proxy denies at CONNECT, so chasing it burns a call for nothing. Read `get_job_logs` to learn which step or case failed, then reproduce it locally — but don't guess a large `tail_lines` to land the window inline: a big guess can itself exceed the tool's own token limit (`tail_lines: 2406` → `exceeds maximum allowed tokens`). Make a small call to get the log's saved-to-disk path, then `grep` that file locally for the failure marker (`not ok`, `FAIL`), the same way an oversized list/search result gets read.
 
 ## A long-running workflow that commits generated files will race a more-frequent scheduled writer
 
@@ -163,6 +163,10 @@ A workflow that regenerates and commits derived files and runs longer than a com
 
 Its `merged`/`merged_at` fields can read `false`/empty for a PR that has genuinely landed by squash-merge, even with `fields` narrowed. Confirm landed-ness by grepping the base branch's commit subjects for the squash's `(#N)`, or call `pull_request_read` `get` on the one PR you care about.
 
+## `list_pull_requests`'s `head` filter silently returns the wrong PR on a bare branch name
+
+Passing a bare branch name in `head` (no `owner:` prefix) does not filter — it can hand back an unrelated PR as if it matched, for every branch queried, with no error to flag the miss. Qualify it as `owner:branch-name`, or skip the lookup and confirm status with a git-based check (`merge-base`/`diff --stat` against the branch) instead.
+
 ## `issue_read`'s `get_*` methods reject a PR number
 
 `issue_read` (`get`, `get_comments`, `get_labels`, …) resolves only true issues and errors "Could not resolve to an Issue" on a PR number, even though a PR is an issue at the API level. Read a PR's labels, comments or metadata through `pull_request_read` instead.
@@ -170,6 +174,14 @@ Its `merged`/`merged_at` fields can read `false`/empty for a PR that has genuine
 ## Leaving several PRs open after one sweep, subscribe every one of them
 
 An unsubscribed PR gets noticed only on a manual re-poll, while a subscribed one's merge or comment arrives as an activity event the moment it happens. When a run's output is more than one open PR, subscribe all of them before ending the session, not a sample.
+
+## `search_code`'s index can lag — don't trust it alone to enumerate affected repos
+
+Scoping a sweep across many repos by `search_code` alone can silently undercount: its index has been observed to lag well behind a repo's actual content, returning a fraction of the repos a direct check turns up for the identical pattern. Before scoping a fleet-wide sweep on a search result, cross-check against a direct, structural enumeration (fetch each candidate repo's own relevant file rather than relying on the search index to have seen it).
+
+## The rendered PR-diff view can silently omit a new file — confirm with git, not the UI
+
+A GitHub PR's rendered diff view has been observed to drop a new root-level file or directory addition from what it displays, even though the file is genuinely present in the commit. Confirm whether a file landed with `git ls-files` / `git diff --stat` against the branch, never by reading the rendered diff — a false "it's missing" read costs a round-trip and an unnecessary re-push.
 
 ## A deleted workflow's old runs outlive it, and no session tool can clear them
 
@@ -217,6 +229,7 @@ A list or search API call that isn't bounded returns a full page of full-bodied 
 - **Trim the fields, not just the page size.** The per-object field set is what governs the payload, so capping the page can leave the response byte-identical — measured, the same call at two page sizes returned output identical to the character. Ask for the fields you need (`["number","title","state"]` covers most lookups); dropping the body alone is usually the whole difference. Where a tool offers no field selection, narrow the query instead, or take the overflow as the answer and read the spilled result file directly rather than retrying it smaller.
 - **Pass a small explicit page size.** Default page sizes are tuned for a browser, not a tool result; when the answer wanted is one issue or one run, ask for 5–10, never a bare unpaged call.
 - **`actions_list`'s `list_workflow_runs` can ignore `per_page` entirely.** On a repo with enough run history, shrinking the page size — even to 1–3 — returned a byte-identical response, confirmed on two separate repos. Don't retry it smaller: scope the query to a specific run id or one head SHA instead, or read the spilled overflow file directly.
+- **The spilled overflow file for a search call is GitHub's own response envelope** — `{ total_count, incomplete_results, items: [...] }` — not a bare list. Index `['items']` on the first parse instead of guessing the shape across several failed attempts.
 
 All of them, not one: a qualified query still returns a full page, a small page of unqualified matches is still the wrong records, and a small page of full-bodied records still overruns the cap.
 
