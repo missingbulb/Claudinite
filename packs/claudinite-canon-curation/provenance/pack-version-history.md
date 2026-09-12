@@ -24,3 +24,15 @@
 - **Model:** Claude Fable 5.1, per the commit trailer.
 - **Mechanism:** the task's automerge class matches `packs/<id>/provenance/VERSIONS.md` alone, the
   path spelled once in `pack-versions.mjs` (`versionsPath`) for the writer, the check and the class.
+
+## 2026-09-22 · policy-changed · the delivery target is handed in, never discovered (#1943)
+- **Reason:** the second caller of `deliverGenerated`, changed for the same reason as the first: the
+  branch a run delivers on is the executor's decision, and the window in which a worker had to fall
+  back on discovering one has passed. A required parameter reaches every caller, which is why this
+  pack is in a diff whose brief predicted two others.
+- **Mechanism:** the worker passes `branch` through from `CLAUDINITE_TARGET_BRANCH`; the delivery
+  seam requires it and the discovery parameters are gone.
+- **Actor:** claudinite/engine implement-request run, conflicts resolved and rebased in an owner
+  session.
+- **Model:** claude-opus-5
+- **Landed:** #1943
