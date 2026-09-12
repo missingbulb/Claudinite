@@ -53,7 +53,6 @@ import { settingsPath } from '../../../../engine/settings-file.mjs';
 
 const BRANCH = 'conversation-logs';
 export const USAGE_PATH = '.claudinite/local/usage.GENERATED.json';
-const PR_BRANCH_PREFIX = 'claudinite/usage-fold';
 
 const item = process.env.CLAUDINITE_ITEM || '';
 const log = (s) => console.log(`usage-fold${item ? ` [#${item}]` : ''}: ${s}`);
@@ -317,10 +316,10 @@ export async function main() {
   }
 
   const pr = await deliverGenerated({
-    root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX, log,
+    root, repo, base, token, log,
     // Which branch and pull request this fold lands on is the executor's decision
-    // (PRINCIPLES.md), handed in as environment; the prefix and stamp beside it are
-    // the lane's own fallback for an executor that predates the hand-off.
+    // (PRINCIPLES.md), handed in as environment — the lane has no discovery of its
+    // own and refuses a run that arrives without one.
     branch: process.env.CLAUDINITE_TARGET_BRANCH || null,
     pr: process.env.CLAUDINITE_TARGET_PR ? Number(process.env.CLAUDINITE_TARGET_PR) : null,
     // Which task wrote this, stamped onto the branch commit and the merge commit:

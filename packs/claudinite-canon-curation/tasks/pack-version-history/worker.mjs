@@ -20,7 +20,6 @@ import taskJson from './task.json' with { type: 'json' };
 // trailer below carries is the one this task declared.
 const task = normalizeTaskDeclaration(taskJson);
 export const TASK_ID = 'claudinite-canon-curation/pack-version-history';
-const PR_BRANCH_PREFIX = 'claudinite/pack-version-history';
 
 const item = process.env.CLAUDINITE_ITEM || '';
 const log = (s) => console.log(`pack-version-history${item ? ` [#${item}]` : ''}: ${s}`);
@@ -44,11 +43,11 @@ export async function main() {
   }
   for (const path of changed) log(`${path}: regenerated`);
 
-  const today = new Date().toISOString().slice(0, 10);
   const pr = await deliverGenerated({
-    root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX, log,
+    root, repo, base, token, log,
     // Which branch and pull request this lands on is the executor's decision, handed
-    // in as environment; the prefix and stamp are the lane's own fallback.
+    // in as environment — the lane has no discovery of its own and refuses a run
+    // that arrives without one.
     branch: process.env.CLAUDINITE_TARGET_BRANCH || null,
     pr: process.env.CLAUDINITE_TARGET_PR ? Number(process.env.CLAUDINITE_TARGET_PR) : null,
     task: TASK_ID,
