@@ -5,7 +5,7 @@ import { computeVendorSet, SHARED_SUBDIR } from '../../../vendoring/compute-vend
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../../../engine/version.mjs';
 import { isVersion, versionAbove } from '../../../engine/version.mjs';
-import { DECLARATION_FILE } from '../../../engine/checks/helpers/active-migrations.mjs';
+import { DECLARATION_FILE, migrationDirs, flowOf, recordVersion } from '../../../engine/checks/helpers/active-migrations.mjs';
 import { settingsPath } from '../../../engine/settings-file.mjs';
 import { installedVersions, hasInstalledMount, withInstalledVersions } from '../../../engine/installed-versions.mjs';
 import { NEEDS_HUMAN, runSelfTest, deliveryDecision } from './engine-update.mjs';
@@ -129,7 +129,8 @@ export async function installPacks(targetRoot, ids, {
 
   // No `installed` passed: an install fetches no migration records at all, whatever
   // the repo's stamp says. The set is content only.
-  const { files, errors } = await computeVendorSet(declared, { today, installed: { engineVersion, packVersions: forcedCurrent(packs) } });
+  const inEffect = versionsInEffect(packs);
+  const { files, errors } = await computeVendorSet(declared, { today, installed: { engineVersion, packVersions: inEffect } });
   if (errors.length) return outcome(NEEDS_HUMAN, errors.map((e) => e.what).join('; '), { errors, refused });
 
   const ourFiles = files.filter((f) => install.some(({ id }) => isPackFile(f, id)));
@@ -161,7 +162,7 @@ export async function installPacks(targetRoot, ids, {
   // and named nowhere in the file it was stamped in.
   next.packs = entries;
   const packVersions = {};
-  for (const { id, version } of install) if (version !== null) packVersions[id] = version;
+  for (const { id, version } of install) if (version !== null) packVersions[id] = inEffect[id];
   writeFileSync(settingsFile, `${JSON.stringify(withInstalledVersions(next, { packVersions }), null, 2)}\n`);
 
   // Seed ops: the install-only effects the repo owns from here (DESIGN §4). Written
@@ -207,11 +208,27 @@ export async function installPacks(targetRoot, ids, {
   });
 }
 
-// The version map that makes the record gate answer "nothing applies": every pack at
-// its newest. An install must fetch no records, and saying so through the same
-// predicate the other flows use is better than a second code path that could drift
-// from it.
-const forcedCurrent = (packs) => Object.fromEntries(packs.map((p) => [p.id, p.version ?? 0]));
+// The version map that makes the record gate answer "nothing applies", and the number
+// the install stamps: every pack at the newest version its content is IN EFFECT at.
+// That is its manifest's number — or a pending record's, where one names a higher
+// version. A record names the version main will cut after its merge (#1726, the bump
+// is a task's and never the pull request's), so between that merge and the bump the
+// manifest reads one number below the content it ships; a stamp taken off the
+// manifest alone would then fetch the record into a fresh install, and the next
+// converge would replay it onto a repo that already holds its result. Saying
+// "nothing applies" through the same predicate the other flows use is better than a
+// second code path that could drift from it.
+//
+// `records` is injectable for the unit test; the default is the corpus's own set.
+export function versionsInEffect(packs, records = migrationDirs().map((dir) => ({ dir, version: recordVersion(dir) }))) {
+  const current = Object.fromEntries(packs.map((p) => [p.id, p.version ?? 0]));
+  for (const { dir, version } of records) {
+    const { flow, pack } = flowOf(dir);
+    if (flow !== 'pack' || !(pack in current)) continue;
+    if (isVersion(version) && versionAbove(version, current[pack])) current[pack] = version;
+  }
+  return current;
+}
 
 // CLI: `node install.mjs --target <dir> <pack-id>…` — install packs into a repo, from
 // a fresh canon clone. Run by the adoption skills (adopt-pack, adopt-claudinite).

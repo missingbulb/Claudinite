@@ -1019,3 +1019,121 @@ test('movePackOwnedSettings: a malformed declaration is left for the settings ga
   assert.deepEqual(done, []);
   assert.equal(wrote, false, 'a migration is not the place to guess at a repair');
 });
+
+// --- job-permissions-contents-read: a job-level permissions block REPLACES the ---
+// workflow-level one, so the drain, the failure escalation and the chain continuation
+// ran with `contents: none` and could not check out a private member (#1993).
+
+const JOB_PERMISSIONS_RECORD = 'job-permissions-contents-read';
+
+test('job-permissions-contents-read: every job-level block gains contents: read, member tweaks survive, re-runs as a no-op', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === JOB_PERMISSIONS_RECORD);
+  assert.ok(m, 'discovered');
+
+  const SCHEDULER = '.github/workflows/claudinite-scheduler.yml';
+  const EXECUTOR = '.github/workflows/claudinite-executor.yml';
+  // A member's shapes: its own cron, its own stamped secret, and the two jobs whose
+  // block omits `contents`. The workflow-level block is complete and must not move.
+  const schedulerBefore = [
+    'name: Claudinite scheduler',
+    'on:',
+    '  schedule:',
+    "    - cron: '17 9,21 * * *'",
+    'permissions:',
+    '  contents: write',
+    '  actions: write',
+    'jobs:',
+    '  scheduler-run:',
+    '    steps:',
+    '      - uses: actions/checkout@v5',
+    '  drain:',
+    '    needs: scheduler-run',
+    '    permissions:',
+    '      actions: write',
+    '    steps:',
+    '      - uses: actions/checkout@v5',
+    '  report-failure:',
+    '    permissions:',
+    '      issues: write',
+    '    steps:',
+    '      - uses: actions/checkout@v5',
+    '',
+  ].join('\n');
+  const executorBefore = [
+    'name: Claudinite executor',
+    'permissions:',
+    '  contents: write',
+    '  issues: write',
+    'jobs:',
+    '  execute:',
+    '    steps:',
+    '      - env:',
+    '          # claudinite:secrets',
+    '          MEMBER_ONLY_TOKEN: ${{ secrets.MEMBER_ONLY_TOKEN }}',
+    '  continue-the-chain:',
+    '    permissions:',
+    '      actions: write',
+    '      issues: write',
+    '    steps:',
+    '      - uses: actions/checkout@v5',
+    '',
+  ].join('\n');
+  const files = new Map([[SCHEDULER, schedulerBefore], [EXECUTOR, executorBefore]]);
+  const io = { read: async (p) => files.get(p) ?? null, write: async (p, c) => { files.set(p, c); },
+    env: { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' } };
+
+  assert.equal(await m.appliesTo(io.read), true, 'a member whose job blocks omit contents');
+  assert.deepEqual((await applyRewrites(m, io)).sort(), [EXECUTOR, SCHEDULER].sort());
+
+  const scheduler = files.get(SCHEDULER);
+  const executor = files.get(EXECUTOR);
+  // Each job-level block now reads contents, directly under its `permissions:` line.
+  assert.equal((scheduler.match(/^ {4}permissions:\n {6}contents: read$/gm) ?? []).length, 2, 'drain and report-failure');
+  assert.equal((executor.match(/^ {4}permissions:\n {6}contents: read$/gm) ?? []).length, 1, 'continue-the-chain');
+  // What each block already granted is kept — read is added, write is not taken.
+  assert.match(scheduler, /^ {4}permissions:\n {6}contents: read\n {6}actions: write$/m);
+  assert.match(scheduler, /^ {4}permissions:\n {6}contents: read\n {6}issues: write$/m);
+  assert.match(executor, /^ {4}permissions:\n {6}contents: read\n {6}actions: write\n {6}issues: write$/m);
+  // The workflow-level block, the member's cron and its stamped secret all survive.
+  assert.match(scheduler, /^permissions:\n {2}contents: write\n {2}actions: write$/m);
+  assert.match(scheduler, /cron: '17 9,21 \* \* \*'/);
+  assert.match(executor, /MEMBER_ONLY_TOKEN: \$\{\{ secrets\.MEMBER_ONLY_TOKEN \}\}/);
+  assert.equal((executor.match(/contents: read/g) ?? []).length, 1);
+
+  // Re-running must not double a line: the rewritten block no longer matches the anchor.
+  assert.equal(await m.appliesTo(io.read), false);
+  assert.deepEqual(await applyRewrites(m, io), []);
+  assert.equal((scheduler.match(/contents: read/g) ?? []).length, 2);
+
+  // A member holding only one of the two files is still reached, for that file.
+  const only = new Map([[SCHEDULER, schedulerBefore]]);
+  const oneIo = { read: async (p) => only.get(p) ?? null, write: async (p, c) => { only.set(p, c); },
+    env: { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' } };
+  assert.equal(await m.appliesTo(oneIo.read), true);
+  assert.deepEqual(await applyRewrites(m, oneIo), [SCHEDULER]);
+
+  // A repo that does not run the queue is untouched.
+  assert.equal(await m.appliesTo(async () => null), false);
+});
+
+// The record's whole purpose is the block the stubs already carry, so the two must not
+// drift: an adopter scaffolds the stub, an upgrader gets the rewrite, and nothing else
+// compares the workflows they end up holding.
+test('job-permissions-contents-read writes exactly the blocks the stubs carry, and the stubs hold none of the old ones', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === JOB_PERMISSIONS_RECORD);
+  assert.ok(m, 'discovered');
+  const canon = dirname(dirname(fileURLToPath(import.meta.url)));
+  const stubFor = {
+    '.github/workflows/claudinite-scheduler.yml': 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
+    '.github/workflows/claudinite-executor.yml': 'packs/claudinite-tasks/stubs/claudinite-executor.yml',
+  };
+  assert.deepEqual(m.rewrite.map((r) => r.file).sort(), Object.keys(stubFor).sort(), 'both workflows, no other file');
+  for (const { file, replace } of m.rewrite) {
+    const stub = readFileSync(join(canon, stubFor[file]), 'utf8');
+    assert.ok(replace.length > 0, `${file}: a rewrite with nothing to replace`);
+    for (const { from, to } of replace) {
+      assert.ok(stub.includes(to), `${stubFor[file]} is missing the block the record writes:\n${to}`);
+      assert.ok(!stub.includes(from), `${stubFor[file]} still carries the block the record retires:\n${from}`);
+    }
+  }
+});

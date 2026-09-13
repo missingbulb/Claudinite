@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { installPacks, planInstall, unansweredQuestions } from '../packs/claudinite-lifecycle/updates/install.mjs';
+import { installPacks, planInstall, unansweredQuestions, versionsInEffect } from '../packs/claudinite-lifecycle/updates/install.mjs';
 import { terminalFor } from '../packs/claudinite-lifecycle/updates/terminals.mjs';
 import { NEEDS_HUMAN } from '../packs/claudinite-lifecycle/updates/engine-update.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';
@@ -53,6 +53,27 @@ test('an install stamps the latest version and fetches NO migration records', as
   assert.ok(existsSync(join(mounted, 'RULES.md')), 'the content is there');
   assert.ok(!existsSync(join(mounted, 'migrations')), 'and not one migration record with it');
   removeTree(root);
+});
+
+// A record names the version main cuts AFTER its merge (#1726), so until that bump the
+// manifest sits one number below the content it ships. The install reads the number the
+// content is in effect at — otherwise the record would ride into a fresh install and be
+// replayed onto it by the next converge.
+test('versionsInEffect: a pending record above the manifest lifts the number; nothing else moves it', () => {
+  const packs = [{ id: 'p', version: '60913.4' }, { id: 'q', version: '60913.4' }, { id: 'bare', version: null }];
+  const records = [
+    { dir: 'packs/p/migrations/2026-09-13-above', version: '60913.5' },
+    { dir: 'packs/p/migrations/2026-09-01-below', version: '60901.1' },
+    { dir: 'packs/q/migrations/2026-09-13-equal', version: '60913.4' },
+    { dir: 'packs/other/migrations/2026-09-13-not-installed', version: '60913.9' },
+    { dir: 'engine/migrations/2026-09-13-engine', version: '60913.9' },
+    { dir: 'packs/q/migrations/2026-09-13-unversioned', version: null },
+  ];
+  assert.deepEqual(versionsInEffect(packs, records), { p: '60913.5', q: '60913.4', bare: 0 });
+  // Two pending records: the highest wins, whatever order they are read in.
+  const two = [...records, { dir: 'packs/p/migrations/2026-09-13-higher', version: '60913.7' }];
+  assert.equal(versionsInEffect(packs, two).p, '60913.7');
+  assert.equal(versionsInEffect(packs, [...two].reverse()).p, '60913.7');
 });
 
 test('an install never runs a record even for a pack that has them', async () => {
