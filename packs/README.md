@@ -173,7 +173,7 @@ The prose index lists **every** rule, in the order `RULES.md` states them:
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Keep the tile provider's attribution | critical | legal | prose: 52 words + check (`leaflet/tile-attribution`) |
+| Keep the tile provider's attribution | critical | legal | prose: <100 words + check (`leaflet/tile-attribution`) |
 ```
 
 ```markdown
@@ -191,18 +191,23 @@ The prose index lists **every** rule, in the order `RULES.md` states them:
   repo), `low` (friction only).
 - **Reason** — the kind of cost: `correctness`, `performance`, `complexity`, or `legal` (licence,
   privacy, disclosure, store or platform policy). One per rule, the dominant one.
-- **Enforcement** — the mechanism and its price. `prose: <n> words` is what the rule *costs*: every
-  declaring repo pays those words in every session's context, counted by
-  [`../engine-tests/rule-index.mjs`](../engine-tests/rule-index.mjs). `check: blocking | advisory` is
-  how the engine reports a finding. A rule carried both ways names the check too.
+- **Enforcement** — the mechanism and its price. `prose:` is what the rule *costs*: every declaring
+  repo pays those words in every session's context. State the size band it falls in — `<20`, `<50`,
+  `<100`, `<200`, `<500` or `500+` words — rather than a count, because no reader spends the digit:
+  the session-start summary counts the prose itself, and a band survives the ordinary edit that a
+  count turns into a red build. The bands are spelled in
+  [`../engine-tests/rule-index.mjs`](../engine-tests/rule-index.mjs), which computes each rule's own.
+  `check: blocking | advisory` is how the engine reports a finding. A rule carried both ways names
+  the check too.
 
 Neither table describes what a rule says — the prose and the check's own failure message do that.
 
 Both indexes are held to the tree by [`../engine-tests/rule-index.test.mjs`](../engine-tests/rule-index.test.mjs):
-the rows must match `RULES.md` one-for-one with the right word counts, every check the pack runs must
-appear, and both vocabularies are closed. That guard is what makes a second listing of the rules safe
-here — an earlier hand-kept index drifted into claiming a prose rule that never existed (#777) — so
-recount a rule's row in the same change that edits its prose, and add a check's row in the change
+the rows must match `RULES.md` one-for-one in the right size bands, every check the pack runs must
+appear, and all three vocabularies are closed. That guard is what makes a second listing of the rules
+safe here — an earlier hand-kept index drifted into claiming a prose rule that never existed (#777) —
+so restate a rule's band in the same change that edits its prose past a boundary, and add a check's
+row in the change
 that declares it.
 
 ## Pack badge (`badge`)
@@ -307,7 +312,7 @@ manifest.
 
 Counted, never quoted: `check_the_world.mjs --list` prints the check catalog a rule at a time (id,
 severity, description, doc pointer), and each pack README's rule index carries that pack's prose rules
-with their word counts. Ask those two, in the tree in front of you. A total transcribed into this file
+with their size bands. Ask those two, in the tree in front of you. A total transcribed into this file
 is a copy of derived data that every pack change falsifies — it drifted to 41 against a real 65 once,
 and the ratio it fed was wrong by a third.
 

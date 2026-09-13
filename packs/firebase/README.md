@@ -25,11 +25,11 @@ function:
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Admin-SDK code bypasses rules | critical | correctness | prose: 26 words |
-| Identity comes from the verified token | critical | correctness | prose: 15 words |
-| Validate inputs at the boundary | critical | correctness | prose: 39 words |
-| Extract decision logic into pure modules | medium | complexity | prose: 26 words |
-| Cross-language contracts get mirrored test vectors. | high | correctness | prose: 44 words |
+| Admin-SDK code bypasses rules | critical | correctness | prose: <50 words |
+| Identity comes from the verified token | critical | correctness | prose: <20 words |
+| Validate inputs at the boundary | critical | correctness | prose: <50 words |
+| Extract decision logic into pure modules | medium | complexity | prose: <50 words |
+| Cross-language contracts get mirrored test vectors. | high | correctness | prose: <50 words |
 
 The security-rules discipline (default-deny, merge semantics, absent-field guards, server-owned
 fields, `request.time` pins, bounded strings, empirical rules tests) is the

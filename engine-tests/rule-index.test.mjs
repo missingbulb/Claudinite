@@ -4,12 +4,12 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverPacks } from '../engine/pack_loader/pack-registry.mjs';
-import { ruleBlocks, readmeRuleIndex, SEVERITIES, REASONS } from './rule-index.mjs';
+import { ruleBlocks, readmeRuleIndex, proseSize, SEVERITIES, REASONS, SIZES } from './rule-index.mjs';
 
-// A pack README's rule index states each prose rule's word count, the severity
-// of ignoring it and the reason it exists. The word count is derived from
-// RULES.md, and RULES.md is appended to several times a week — so it is held
-// against the prose here rather than trusted to stay current on its own.
+// A pack README's rule index states each prose rule's size band, the severity
+// of ignoring it and the reason it exists. The band is derived from RULES.md,
+// and RULES.md is appended to several times a week — so it is held against the
+// prose here rather than trusted to stay current on its own.
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const packsWithProse = async () => {
@@ -17,7 +17,7 @@ const packsWithProse = async () => {
   return packs.filter((p) => !p.local && p.prose && existsSync(join(ROOT, 'packs', p.id, 'README.md')));
 };
 
-test('each pack README indexes its RULES.md rules, in order, with their word counts', async () => {
+test('each pack README indexes its RULES.md rules, in order, with their size bands', async () => {
   for (const pack of await packsWithProse()) {
     const rules = ruleBlocks(readFileSync(join(ROOT, 'packs', pack.id, pack.prose), 'utf8'));
     if (!rules.length) continue;
@@ -29,8 +29,8 @@ test('each pack README indexes its RULES.md rules, in order, with their word cou
     );
     rules.forEach((rule, i) => {
       assert.equal(
-        rows[i].words, rule.words,
-        `packs/${pack.id}/README.md row ${i + 1} ("${rows[i].label}") says ${rows[i].words} words; "${rule.leadIn}" is ${rule.words}. Recount the row in the same change that edits the rule.`
+        rows[i].size, proseSize(rule.words),
+        `packs/${pack.id}/README.md row ${i + 1} ("${rows[i].label}") says ${rows[i].size} words; "${rule.leadIn}" is ${rule.words}, which is ${proseSize(rule.words)}. Restate the row's band in the same change that edits the rule.`
       );
     });
   }
@@ -84,9 +84,23 @@ test('every rule-index row draws its severity and reason from the closed vocabul
         `packs/${pack.id}/README.md row "${row.label}" has reason "${row.reason}"; use one of ${REASONS.join(', ')}.`
       );
       assert.ok(
+        SIZES.includes(row.size),
+        `packs/${pack.id}/README.md row "${row.label}" states its length as "${row.size}"; use one of ${SIZES.join(', ')}.`
+      );
+      assert.ok(
         row.label.split(/\s+/).length < 8,
         `packs/${pack.id}/README.md row "${row.label}" runs to ${row.label.split(/\s+/).length} words; a rule's name stays under 8 — the prose says the rest.`
       );
     }
   }
+});
+
+// The ladder itself: every rung reachable, the boundaries exclusive, and no
+// length falling between two rungs.
+test('a rule of any length lands on exactly one rung of the size ladder', () => {
+  assert.deepEqual(SIZES, ['<20', '<50', '<100', '<200', '<500', '500+']);
+  for (const [words, expected] of [
+    [0, '<20'], [19, '<20'], [20, '<50'], [49, '<50'], [50, '<100'], [99, '<100'],
+    [100, '<200'], [199, '<200'], [200, '<500'], [499, '<500'], [500, '500+'], [5000, '500+'],
+  ]) assert.equal(proseSize(words), expected, `${words} words`);
 });

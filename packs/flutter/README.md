@@ -12,17 +12,17 @@ committed tests inside the consuming project.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Widgets depend on ports, never on plugins. | medium | complexity | prose: 70 words |
-| Enforce the boundary with an import scan | medium | complexity | prose: 25 words |
-| Ship the fakes in the package | low | complexity | prose: 59 words |
-| Extract the root shell into a widget | low | complexity | prose: 38 words |
-| Inject the clock. | high | correctness | prose: 25 words |
-| Anything that fetches must be injectable | medium | complexity | prose: 47 words |
-| Async lifecycle guards need an epoch counter. | high | correctness | prose: 51 words |
-| Real I/O in testWidgets needs runAsync | high | correctness | prose: 67 words |
-| Verify plugin APIs against installed source | high | correctness | prose: 41 words |
-| flutter analyze at zero issues | medium | complexity | prose: 39 words |
-| Sandboxed/CI runners | medium | complexity | prose: 57 words |
+| Widgets depend on ports, never on plugins. | medium | complexity | prose: <100 words |
+| Enforce the boundary with an import scan | medium | complexity | prose: <50 words |
+| Ship the fakes in the package | low | complexity | prose: <100 words |
+| Extract the root shell into a widget | low | complexity | prose: <50 words |
+| Inject the clock. | high | correctness | prose: <50 words |
+| Anything that fetches must be injectable | medium | complexity | prose: <50 words |
+| Async lifecycle guards need an epoch counter. | high | correctness | prose: <100 words |
+| Real I/O in testWidgets needs runAsync | high | correctness | prose: <100 words |
+| Verify plugin APIs against installed source | high | correctness | prose: <50 words |
+| flutter analyze at zero issues | medium | complexity | prose: <50 words |
+| Sandboxed/CI runners | medium | complexity | prose: <100 words |
 
 The golden mechanics are the [`flutter-golden-tests`](skills/flutter-golden-tests/SKILL.md) skill
 and lockfile skew is [`flutter-pubspec`](skills/flutter-pubspec/SKILL.md); each forces itself for

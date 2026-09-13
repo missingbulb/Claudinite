@@ -60,30 +60,30 @@ What a canon session follows when it names, configures, writes or polices a pack
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Segregation rules go through barriers | medium | complexity | prose: 31 words |
-| Name a pack for its surface | high | correctness | prose: 24 words |
-| Claudinite-feature packs take the prefix | medium | complexity | prose: 24 words |
-| Read an unmounted skill from the tree | medium | correctness | prose: 37 words |
-| Cross-pack paths must resolve everywhere | high | correctness | prose: 21 words |
-| Universal values live in pack code | medium | complexity | prose: 36 words |
-| Config validation is a JSON Schema | medium | complexity | prose: 33 words |
-| No shared code between sibling packs | high | correctness | prose: 36 words |
-| Pack modules stay import-light, no top-level await | critical | correctness | prose: 41 words |
-| A failed pack load strands members | critical | correctness | prose: 33 words |
-| A check change re-runs against main | high | correctness | prose: 35 words |
-| Fix text matches the severity | medium | correctness | prose: 36 words |
-| Transcript checks screen plain-text pseudo-turns | high | correctness | prose: 46 words |
-| Stop-hook fixtures carry an interruption marker | medium | correctness | prose: 35 words |
-| An authoring-time how-to becomes a skill | low | complexity | prose: 35 words |
-| Re-verify doc pointers after a move | medium | correctness | prose: 36 words |
-| Two signals for a missing-or-misnamed check | high | correctness | prose: 40 words |
-| Widen a check to its sibling surface | medium | correctness | prose: 28 words |
-| Check a command is still wired in | medium | correctness | prose: 62 words |
-| Assert a path-pattern scope is non-empty | high | correctness | prose: 45 words |
-| Grep a named directory before shipping | medium | correctness | prose: 21 words |
-| Measure whether a check earns its keep | low | performance | prose: 43 words |
-| RULES.md instructs, never describes | medium | complexity | prose: 64 words |
-| Mechanize a re-derived procedure | low | performance | prose: 29 words |
+| Segregation rules go through barriers | medium | complexity | prose: <50 words |
+| Name a pack for its surface | high | correctness | prose: <50 words |
+| Claudinite-feature packs take the prefix | medium | complexity | prose: <50 words |
+| Read an unmounted skill from the tree | medium | correctness | prose: <50 words |
+| Cross-pack paths must resolve everywhere | high | correctness | prose: <50 words |
+| Universal values live in pack code | medium | complexity | prose: <50 words |
+| Config validation is a JSON Schema | medium | complexity | prose: <50 words |
+| No shared code between sibling packs | high | correctness | prose: <50 words |
+| Pack modules stay import-light, no top-level await | critical | correctness | prose: <50 words |
+| A failed pack load strands members | critical | correctness | prose: <50 words |
+| A check change re-runs against main | high | correctness | prose: <50 words |
+| Fix text matches the severity | medium | correctness | prose: <50 words |
+| Transcript checks screen plain-text pseudo-turns | high | correctness | prose: <50 words |
+| Stop-hook fixtures carry an interruption marker | medium | correctness | prose: <50 words |
+| An authoring-time how-to becomes a skill | low | complexity | prose: <50 words |
+| Re-verify doc pointers after a move | medium | correctness | prose: <50 words |
+| Two signals for a missing-or-misnamed check | high | correctness | prose: <50 words |
+| Widen a check to its sibling surface | medium | correctness | prose: <50 words |
+| Check a command is still wired in | medium | correctness | prose: <100 words |
+| Assert a path-pattern scope is non-empty | high | correctness | prose: <50 words |
+| Grep a named directory before shipping | medium | correctness | prose: <50 words |
+| Measure whether a check earns its keep | low | performance | prose: <50 words |
+| RULES.md instructs, never describes | medium | complexity | prose: <100 words |
+| Mechanize a re-derived procedure | low | performance | prose: <50 words |
 
 ### Checks
 

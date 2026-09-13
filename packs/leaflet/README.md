@@ -6,10 +6,10 @@ Active when the repo references [Leaflet](https://leafletjs.com/) — a CDN asse
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Feature-detect a plugin, fall back to core | high | correctness | prose: 68 words |
-| An embedded map sets scrollWheelZoom false | medium | correctness | prose: 31 words |
-| Keep the tile provider's attribution | critical | legal | prose: 53 words + check (`leaflet/tile-attribution`) |
-| Transform a marker's inner element | medium | correctness | prose: 68 words |
+| Feature-detect a plugin, fall back to core | high | correctness | prose: <100 words |
+| An embedded map sets scrollWheelZoom false | medium | correctness | prose: <50 words |
+| Keep the tile provider's attribution | critical | legal | prose: <100 words + check (`leaflet/tile-attribution`) |
+| Transform a marker's inner element | medium | correctness | prose: <100 words |
 
 Provenance: distilled from `missingbulb/EdFringeNow` (the "Fringe Discover" static site — `index.html` CDN wiring and `js/app.js` map/marker/cluster code), the first fleet member seen using Leaflet.
 

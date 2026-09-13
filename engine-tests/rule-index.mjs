@@ -1,15 +1,31 @@
 // The rule index a pack README carries: one row per rule in the pack's
-// RULES.md, each row stating that rule's word count, the severity of ignoring
+// RULES.md, each row stating that rule's length, the severity of ignoring
 // it and the reason it exists (packs/README.md#the-rule-index-a-pack-readme-carries).
 //
-// Word count is derived data, so it is computed here and compared against the
-// README by rule-index.test.mjs rather than hand-maintained in the two dozen
-// pack READMEs whose prose is appended to several times a week.
+// A rule's length is derived data, so it is computed here and compared against
+// the README by rule-index.test.mjs rather than hand-maintained in the two dozen
+// pack READMEs whose prose is appended to several times a week. The row states
+// the size BAND rather than the count, because nothing reads the digit: the
+// session-start summary counts the prose itself and no other reader opens this
+// index, so an exact figure only bought a red build every time a rule moved by
+// one word (#2006).
 
 // The two closed vocabularies a row's Severity and Reason cells are drawn from,
 // spelled once here and described in packs/README.md.
 export const SEVERITIES = ['critical', 'high', 'medium', 'low'];
 export const REASONS = ['correctness', 'performance', 'complexity', 'legal'];
+
+// The ladder a rule's length is reported on: an upper bound per rung, and an
+// open top so no length is unclassifiable. The corpus reaches ~200 words today,
+// so the last two rungs stand empty — kept because a rule that grows past 200
+// should find its rung already there rather than force a change to this ladder.
+export const SIZE_BOUNDS = [20, 50, 100, 200, 500];
+export const SIZES = [...SIZE_BOUNDS.map((n) => `<${n}`), `${SIZE_BOUNDS.at(-1)}+`];
+
+export function proseSize(words) {
+  const bound = SIZE_BOUNDS.find((n) => words < n);
+  return bound ? `<${bound}` : `${SIZE_BOUNDS.at(-1)}+`;
+}
 
 const RULE_BULLET = /^- \*\*/;
 const HEADING = /^(#{2,})\s+(.+?)\s*$/;
@@ -69,8 +85,8 @@ export function normalizeLeadIn(text) {
 }
 
 // The README's own index: the rows of the first `| Rule | Severity | Reason |
-// Enforcement |` table, whose Enforcement cell states the rule's length
-// ("prose: 52 words", plus the check that also carries it). Rows are held
+// Enforcement |` table, whose Enforcement cell states the rule's size band
+// ("prose: <100 words", plus the check that also carries it). Rows are held
 // against RULES.md by position — the index lists the rules in the order the
 // prose does — so a row's label stays a human summary rather than a second copy
 // of the rule's lead-in.
@@ -92,7 +108,7 @@ export function readmeRuleIndex(readme) {
       label: cells[0],
       severity: cells[1],
       reason: cells[2],
-      words: Number(/prose: (\d+) words/.exec(cells[3])?.[1]),
+      size: /prose: (<\d+|\d+\+) words/.exec(cells[3])?.[1],
     });
   }
   return rows;

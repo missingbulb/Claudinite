@@ -11,8 +11,8 @@ judgment with no false-positive-free signature, kept as `RULES.md` prose.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Ship a stdlib-only backend behind the interface | medium | complexity | prose: 49 words |
-| Mark the availability-probe import suppressed | low | complexity | prose: 49 words + skill check (`python-optional-import-install-hint`) |
+| Ship a stdlib-only backend behind the interface | medium | complexity | prose: <50 words |
+| Mark the availability-probe import suppressed | low | complexity | prose: <50 words + skill check (`python-optional-import-install-hint`) |
 
 ## Checks
 
