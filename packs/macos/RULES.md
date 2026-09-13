@@ -25,11 +25,13 @@
   (`request.requiresOnDeviceRecognition = true`), not of the recognizer — so it has to be set on
   every request the app builds, and a new call site added later starts out server-side. Nothing in
   the build says which mode ran; the difference is only visible in what left the machine.
-- **The opt-in is only honourable where the locale's model is installed.** `supportsOnDeviceRecognition`
-  is per-recognizer and false until then, and requiring on-device recognition where it isn't
-  supported fails the request rather than quietly falling back — so check it and decide the degrade
-  deliberately (refuse the feature, or say plainly that this locale would transcribe off-device).
-- Speech is TCC-gated, so it needs its usage string and **no** entitlement — see [macos-entitlements-and-tcc](skills/macos-entitlements-and-tcc/SKILL.md).
+- **The opt-in is only honourable where the locale's model is installed.**
+  `supportsOnDeviceRecognition` is per-recognizer and false until then, and requiring on-device
+  recognition where it isn't supported fails the request rather than quietly falling back — so
+  check it and decide the degrade deliberately (refuse the feature, or say plainly that this locale
+  would transcribe off-device).
+- Speech is TCC-gated, so it needs its usage string and **no** entitlement — see
+  [macos-entitlements-and-tcc](skills/macos-entitlements-and-tcc/SKILL.md).
 
 ## Keep signing and notarization an optional, secret-gated lane
 

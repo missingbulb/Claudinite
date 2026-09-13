@@ -4,8 +4,8 @@
 
 - **Widgets depend on ports, never on plugins.** Every platform/backend concern (location, auth,
   push, backend calls, the clock) enters the UI as a hand-written abstract interface with pure-Dart
-  value types; plugin adapters (`geolocator`, `firebase_*`, `google_sign_in`, …) implement them and
-  are constructed **only** in `main.dart`. A plugin type leaking into a screen (a geolocator
+  value types; plugin adapters (`geolocator`, `firebase_*`, `google_sign_in`, …) implement them
+  and are constructed **only** in `main.dart`. A plugin type leaking into a screen (a geolocator
   `Position`, a `FirebaseFunctionsException`) is a defect: it silently couples every widget test to
   the plugin's platform channels.
 - **Enforce the boundary with a committed import-scan test** (dart:io over `lib/ui/`, `lib/screens/`

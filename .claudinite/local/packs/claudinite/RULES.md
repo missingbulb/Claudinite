@@ -179,8 +179,8 @@ Below are rules on how to work on this repo.
   carrying that evidence, so a diff-scoped exemption selects nothing on every run and reads as
   strictness. (80)
 
-- **Writing a check that fires on a removed line** (`forbidRemovedLinesMatching`) — it cannot see a
-  deleted file: `removedLines` returns nothing for a path git no longer tracks, so removing one
+- **Writing a check that fires on a removed line** (`forbidRemovedLinesMatching`) — it cannot see
+  a deleted file: `removedLines` returns nothing for a path git no longer tracks, so removing one
   export fires and deleting the whole module is silent. Guard the deletion separately. (75)
 
 - **Changing a per-call hook** (`engine/hooks/*-judge.mjs`, the runner) — you are a guest in the
@@ -371,8 +371,8 @@ Below are rules on how to work on this repo.
   newness gates, and the full set stays the scope.
 
 - **Writing a task whose output is a regenerated file** — land it through
-  `packs/claudinite-tasks/deliver-generated.mjs`, reading prior state from the fetched base, not local
-  HEAD. (`basics/baselining` is the deliberate exception.)
+  `packs/claudinite-tasks/deliver-generated.mjs`, reading prior state from the fetched base, not
+  local HEAD. (`basics/baselining` is the deliberate exception.)
 
 - **A worker that checks out a branch or leaves an index behind** — one executor run drains
   several items from one checkout, so it hands the next item a tree it did not expect.
