@@ -95,12 +95,19 @@ test('every rule-index row draws its severity and reason from the closed vocabul
   }
 });
 
-// The ladder itself: every rung reachable, the boundaries exclusive, and no
-// length falling between two rungs.
+// The ladder itself: each bound excludes its own value, so no length falls
+// between two rungs or lands on both. The vocabulary a row is held to and the
+// band a rule is given are derived from SIZE_BOUNDS separately, so the two are
+// checked against each other rather than against a restatement of the ladder.
 test('a rule of any length lands on exactly one rung of the size ladder', () => {
-  assert.deepEqual(SIZES, ['<20', '<50', '<100', '<200', '<500', '500+']);
   for (const [words, expected] of [
     [0, '<20'], [19, '<20'], [20, '<50'], [49, '<50'], [50, '<100'], [99, '<100'],
     [100, '<200'], [199, '<200'], [200, '<500'], [499, '<500'], [500, '500+'], [5000, '500+'],
   ]) assert.equal(proseSize(words), expected, `${words} words`);
+
+  const reachable = [...new Set(Array.from({ length: 600 }, (_, words) => proseSize(words)))];
+  assert.deepEqual(
+    reachable, SIZES,
+    'every band a rule can be given must be one a row may state, and every band a row may state must be reachable'
+  );
 });
