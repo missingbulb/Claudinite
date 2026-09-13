@@ -20,7 +20,7 @@ export default {
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the Cloudflare Workers platform: Wrangler, D1, R2, Vectorize, Workflows, Workers AI and Containers',
-    excludes: 'shipping a static site with no Worker — static-website; a different serverless vendor — aws-sam; generic Node conventions — node',
+    excludes: 'serving a static site from Workers assets — cloudflare-site; a different serverless vendor — aws-sam; generic Node conventions — node',
   },
   marker: 'a wrangler.toml/.json/.jsonc config (at the repo root or one directory down)',
   detect: hasMarkerNearRoot,
