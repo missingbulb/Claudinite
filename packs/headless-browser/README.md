@@ -5,15 +5,17 @@ Active when the repo references a browser-automation driver in JS/TS source — 
 Scanning source rather than a dependency manifest is deliberate: a repo can drive a browser its
 environment image already installs, with no dependency entry anywhere to find.
 
-Prose only. Every rule is a runtime browser behaviour or a judgment about a harness's shape,
-neither of which has a repo-state signature a check could read without asserting that a
-particular call still exists — the shape the corpus rejects outright.
+Almost all prose. Nearly every rule is a runtime browser behaviour or a judgment about a harness's
+shape, neither of which has a repo-state signature a check could read without asserting that a
+particular call still exists — the shape the corpus rejects outright. The exception is the one
+forbidden pattern: a browser path hardcoded to a build number, which pins nothing and names a
+directory the next image rebuild replaces.
 
 ## Rules (`RULES.md`)
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Resolve binary, never download | high | correctness | prose: 123 words |
+| Resolve binary, never download | high | correctness | prose: 123 words + check (`headless-browser/version-stamped-browser-path`) |
 | Reinstalling the driver repeats the download danger | high | correctness | prose: 130 words |
 | Stub an unvendored CDN library's API | medium | correctness | prose: 114 words |
 | Pin the build for pixels | high | correctness | prose: 87 words |
@@ -34,6 +36,12 @@ particular call still exists — the shape the corpus rejects outright.
 | Whole-pixel clips | medium | correctness | prose: 57 words |
 | Strip scripts needing the runtime | medium | correctness | prose: 53 words |
 | One browser, many contexts | medium | performance | prose: 51 words |
+
+## Checks
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `headless-browser/version-stamped-browser-path` | high | correctness | check: blocking |
 
 ## Boundary
 

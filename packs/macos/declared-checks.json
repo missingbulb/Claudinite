@@ -18,5 +18,22 @@
         "fix": "remove the NSSupportsSuddenTermination key (or set it <false/>) — the app must get its chance to remove its tap and stop its engine on the way out"
       }
     ]
+  },
+  {
+    "id": "notarytool-submit-waits",
+    "severity": "blocking",
+    "since": "2026-09-13",
+    "failureMessage": "notarytool submit returns as soon as the upload finishes, so every later step — stapling included — runs against a submission Apple has not ruled on yet",
+    "scanFiles": "/\\.(sh|bash|zsh|command)$/",
+    "scanFileClasses": ["workflowFiles"],
+    "skipLinesMatching": "/^\\s*#/",
+    "matchLines": [
+      {
+        "match": "/\\bnotarytool\\s+submit\\b/",
+        "unlessFileMatches": "/--wait\\b|\\bnotarytool\\s+wait\\b/",
+        "what": "\"notarytool submit\" with nothing in this file waiting for the verdict",
+        "fix": "pass --wait on the submit so it blocks until Apple accepts or rejects, or follow it with an explicit `xcrun notarytool wait <submission-id>` before anything staples"
+      }
+    ]
   }
 ]

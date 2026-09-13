@@ -1,0 +1,23 @@
+[
+  {
+    "id": "headless-browser/version-stamped-browser-path",
+    "severity": "blocking",
+    "since": "2026-09-13",
+    "failureMessage": "a version-stamped browser directory is replaced by the next image rebuild, so the launch breaks for whoever rebuilds rather than whoever wrote the path",
+    "fix": "resolve the binary at run time — an override variable first, then the image's browser root, then the driver's own resolution — never a path read off this machine",
+    "scanFiles": "/\\.(m|c)?[jt]sx?$|\\.(ya?ml|json|sh|bash|zsh|toml)$|(^|\\/)Dockerfile[^\\/]*$/",
+    "excludeFiles": "/(^|\\/)(package-lock\\.json|npm-shrinkwrap\\.json|pnpm-lock\\.yaml|yarn\\.lock)$/",
+    "scanIgnoringComments": true,
+    "skipLinesMatching": "/^\\s*#/",
+    "matchLines": [
+      {
+        "match": "/\\/(?:chromium|chrome|firefox|webkit)(?:[-_][a-z]+)*[-_]\\d[\\d.]*(?![A-Za-z])/",
+        "what": "browser directory pinned to a build number: \"{match}\""
+      },
+      {
+        "match": "/\\/(?:linux|mac|win)(?:64|-arm64|-x64|_arm64|-x86)?-\\d+\\.\\d+\\.\\d+\\.\\d+(?![A-Za-z])/",
+        "what": "browser cache directory pinned to a build number: \"{match}\""
+      }
+    ]
+  }
+]
