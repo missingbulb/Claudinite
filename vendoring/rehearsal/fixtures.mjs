@@ -1154,6 +1154,31 @@ module.exports = { issue, check };
     },
   },
   {
+    name: 'cloudflare-site-consumer',
+    why: "a member serving a static site from Cloudflare: its four checks are blocking and every one of them reads the repo's own wrangler config, so the shape they can turn red is a repo that keeps one — which this canon does not",
+    files: {
+      'README.md': '# fixture-cloudflare-site-consumer\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'claudinite-tasks', 'cloudflare-site']),
+      // The deployment as the pack reads it: one published subdirectory, a pinned
+      // runtime, and the two hostnames the deploy attaches.
+      'wrangler.json': JSON.stringify({
+        name: 'fixture-site',
+        compatibility_date: '2026-09-08',
+        assets: { directory: './site' },
+        routes: [
+          { pattern: 'fixture.example', custom_domain: true },
+          { pattern: 'www.fixture.example', custom_domain: true },
+        ],
+      }, null, 2) + '\n',
+      'package.json': JSON.stringify({ name: 'fixture-site', version: '1.0908.3', private: true }, null, 2) + '\n',
+      // The stamp agrees with package.json, and the loader still carries the
+      // placeholder the release substitutes at upload time — the two states a
+      // member is in between releases.
+      'site/index.html': '<!doctype html>\n<p class="copyright" title="version 1.0908.3">fixture</p>\n',
+      'site/assets/analytics.js': "var TOKEN = 'REPLACE_WITH_CLOUDFLARE_WEB_ANALYTICS_TOKEN';\n",
+    },
+  },
+  {
     name: 'product-wiki-consumer',
     why: 'a member declaring the product-wiki standard over its scaffold, no config object on the entry — the skeleton check is declared data and the takes-no-config guard is its own coded rule, and this proves a member that adopted the standard converges green across that split',
     files: {
