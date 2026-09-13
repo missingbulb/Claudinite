@@ -23,8 +23,8 @@ export * from '../src/schedule/run.mjs';
 // consumer-safe-change check — can see.
 export {
   runSchedulerRun, planSchedulerRun, planWake, pickableCount, listWorkItems,
-  listMarkedIssues, blockersToResolve, parseWorkItemTitle, EXECUTING_LEASH_MS,
-  FORCED_WAKE_CONTEXT,
+  withOwnWrites, listMarkedIssues, blockersToResolve, parseWorkItemTitle,
+  EXECUTING_LEASH_MS, FORCED_WAKE_CONTEXT,
 } from '../src/schedule/run.mjs';
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
