@@ -40,7 +40,7 @@ If the run changed at least one comment, it lands all of it under the title
 names (`Target-branch:`), and onto `Target-pr:` where one is named: the round then joins the review already
 pending, so a reviewer who has not got to last week's work reads one PR, not three. Where none is named,
 open the pull request on that branch under that title. Never search for an open pull request or pick a
-branch of your own. Either way the commit references the tracking issue so the `task-lifecycle` gate passes.
+branch of your own. Either way the commit references the tracking issue.
 
 Then hand it to the shared delivery procedure —
 [deliver-pr.md](../../../claudinite-tasks/deliver-pr.md). That procedure, never this file, owns

@@ -190,7 +190,7 @@ test('conversationLogs: the age of the OLDEST jsonl, from its filename stamp', a
   const gh = fakeGh(logsTree([
     'README.md',
     '2026-07-12T0940Z--issue-123--sess-a.jsonl',
-    '2026-07-20T1100Z--issue-124--sess-b.jsonl',
+    '2026-07-20T1100Z--pr-124--sess-b.jsonl',
   ]));
   const out = await collectSignals(gh, ctx({ retentionDays: 10 }), ['conversationLogs']);
   assert.equal(out.conversationLogs.present, true);
@@ -225,10 +225,10 @@ test('conversationLogs: an unreadable tree degrades to "no age", never an error'
 // pin it to the writer. Change `logFilename` without changing the collector and
 // this fails, instead of the prune silently never firing again.
 test('conversationLogs: the collector parses exactly what the pack\'s capture step writes', async () => {
-  const name = logFilename('2026-07-12T09:40:00Z', 123, 'sess-a');
-  const gh = fakeGh(logsTree([name]));
+  const names = [logFilename('2026-07-12T09:40:00Z', { issue: 123 }, 'sess-a'), logFilename('2026-07-13T09:40:00Z', { pr: 1583 }, 'sess-b')];
+  const gh = fakeGh(logsTree(names));
   const out = await collectSignals(gh, ctx({ retentionDays: 10 }), ['conversationLogs']);
-  assert.equal(out.conversationLogs.logCount, 1, `collector did not recognize ${name} as a log`);
+  assert.equal(out.conversationLogs.logCount, 2, `collector did not recognize ${names} as logs`);
 });
 
 // NOTE — every test in this file hand-builds `ctx`, which proves the COLLECTOR

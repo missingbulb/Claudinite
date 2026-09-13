@@ -105,11 +105,14 @@ test('scrub redacts credential shapes and leaves prose alone', () => {
   assert.equal(scrub(clean), clean);
 });
 
-test('logFilename and parseLogFilename round-trip', () => {
-  const name = logFilename('2026-07-19T09:40:12.345Z', 123, 'abc-def');
+test('logFilename and parseLogFilename round-trip, keyed to an issue or to a PR', () => {
+  const name = logFilename('2026-07-19T09:40:12.345Z', { issue: 123 }, 'abc-def');
   assert.equal(name, '2026-07-19T0940Z--issue-123--abc-def.jsonl');
-  const parsed = parseLogFilename(name);
-  assert.deepEqual(parsed, { capturedAt: '2026-07-19T09:40:00Z', issue: 123, sessionId: 'abc-def' });
+  assert.deepEqual(parseLogFilename(name), { capturedAt: '2026-07-19T09:40:00Z', issue: 123, pr: null, sessionId: 'abc-def' });
+  const merged = logFilename('2026-07-19T09:40:12.345Z', { pr: 1583 }, 'abc-def');
+  assert.equal(merged, '2026-07-19T0940Z--pr-1583--abc-def.jsonl');
+  // The unnamed side is null, not 0: a PR-keyed capture says nothing about an issue.
+  assert.deepEqual(parseLogFilename(merged), { capturedAt: '2026-07-19T09:40:00Z', issue: null, pr: 1583, sessionId: 'abc-def' });
   assert.equal(parseLogFilename('README.md'), null);
 });
 
@@ -200,23 +203,24 @@ test('capture pushes an orphan branch, then a disjoint delta on a second merge',
     assert.doesNotMatch(body1, /my-injected-secret-42/);
     assert.match(body1, /work on task one/);
 
-    // the same session merges again: transcript grew, second capture, different issue
+    // the same session merges again: transcript grew, second capture, keyed to the
+    // PR the merge landed — the delta chains across the two key spellings alike
     appendFileSync(transcript, [
       userLine(4, 'now task two'),
       assistantLine(5, 'task two done'),
     ].join('\n') + '\n');
-    sh(work, 'node', [CAPTURE, '--issue', '9', '--transcript', transcript]);
+    sh(work, 'node', [CAPTURE, '--pr', '9', '--transcript', transcript]);
 
     files = originFiles(origin, 'conversation-logs');
-    const second = files.find((f) => f.includes('--issue-9--'));
-    assert.ok(second, `expected an issue-9 delta log, got: ${files}`);
+    const second = files.find((f) => f.includes('--pr-9--'));
+    assert.ok(second, `expected a pr-9 delta log, got: ${files}`);
     const body2 = sh(origin, 'git', ['show', `conversation-logs:${second}`]);
     assert.match(body2, /now task two/);
     assert.doesNotMatch(body2, /work on task one/); // delta only — nothing double-captured
     assert.ok(files.includes(first), 'first capture still present');
 
     // third run with nothing new: clean no-op, no third file
-    const out = sh(work, 'node', [CAPTURE, '--issue', '9', '--transcript', transcript]);
+    const out = sh(work, 'node', [CAPTURE, '--pr', '9', '--transcript', transcript]);
     assert.match(out, /nothing new/i);
     assert.equal(originFiles(origin, 'conversation-logs').filter((f) => f.endsWith('.jsonl')).length, 2);
   } finally { removeTree(dir); }
@@ -301,16 +305,21 @@ test('capture reports the unreachable origin once its attempts are spent', async
   } finally { removeTree(dir); }
 });
 
-test('capture fails fast on a missing or malformed --issue', () => {
+test('capture fails fast unless exactly one well-formed key is given', () => {
   const { dir, work, transcript } = makeCaptureFixture();
   try {
     writeFileSync(transcript, userLine(1, 'hello') + '\n');
     const r = spawnSync('node', [CAPTURE, '--transcript', transcript], { cwd: work, encoding: 'utf8' });
     assert.notEqual(r.status, 0);
-    assert.match(r.stderr, /--issue/);
-    // and a non-numeric one is still rejected — `0` is the ONLY new thing accepted
-    const bad = spawnSync('node', [CAPTURE, '--issue', 'none', '--transcript', transcript], { cwd: work, encoding: 'utf8' });
-    assert.notEqual(bad.status, 0);
+    assert.match(r.stderr, /--pr <n>.*--issue <n>/);
+    for (const args of [
+      ['--issue', 'none'],          // not a number
+      ['--pr', '0'],                // a PR has no "none"; 0 is an issue's spelling only
+      ['--pr', '5', '--issue', '7'], // one key, not two
+    ]) {
+      const bad = spawnSync('node', [CAPTURE, ...args, '--transcript', transcript], { cwd: work, encoding: 'utf8' });
+      assert.notEqual(bad.status, 0, `expected ${args.join(' ')} to be refused`);
+    }
   } finally { removeTree(dir); }
 });
 

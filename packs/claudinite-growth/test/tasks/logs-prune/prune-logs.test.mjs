@@ -4,7 +4,7 @@ import { planPrune, resolveRetentionDays, DEFAULT_RETENTION_DAYS } from '../../.
 import { logFilename } from '../../../capture-log.mjs';
 
 const NOW = '2026-07-22T00:00:00.000Z';
-const log = (iso, issue = 7, session = 'sess-a') => logFilename(iso, issue, session);
+const log = (iso, issue = 7, session = 'sess-a') => logFilename(iso, { issue }, session);
 
 const OLD = log('2026-07-01T09:40:00.000Z');   // 20 days before NOW
 const YOUNG = log('2026-07-21T09:40:00.000Z', 8, 'sess-b'); // 0.6 days

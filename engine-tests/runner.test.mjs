@@ -239,7 +239,7 @@ test('--list emits the machine-readable rule catalog', () => {
     // the assertion below reports "this id is absent" and the run's own
     // explanation of why is thrown away.
     assert.equal(r.status, 0, `--list failed (signal ${r.signal}); stderr was:\n${r.stderr}`);
-    for (const id of ['reference-integrity', 'markdown-link-labels', 'task-lifecycle',
+    for (const id of ['reference-integrity', 'markdown-link-labels',
                       'warning-suppression', 'file-placement',
                       'squash-merge-history']) {
       assert.match(r.stdout, new RegExp(`^${id}\t`, 'm'),

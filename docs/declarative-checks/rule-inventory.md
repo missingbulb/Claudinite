@@ -122,9 +122,9 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | 31 | Waiving a finding on text | F | Edit of `.claudinite-settings.json` `accept` | path-scoped guidance |
 | 32 | Working around a vendored-check finding | F | same trigger as 31 | — |
 | 33 | Deferring a warning — dedicated issue, search by identifier | F | `mcp__github__issue_write` create | tool-call-triggered skill |
-| 34 | Create an issue before work | X | `task-lifecycle` | none |
-| 35 | Branch + issue in commits | X | `task-lifecycle` | none |
-| 36 | PR body `Closes #N` on its own line | D | `mcp__github__create_pull_request` body lacks `^Closes #\d+$` | action guard (block) + transcript backstop — → `pull-request-without-closing-line` (#1711) |
+| 34 | A change worked on now is tracked by its PR; an issue only for work not starting now | G | — | — (2026-09-13: owner retired the issue-first rule; `task-lifecycle` deleted with it) |
+| 35 | Commits reference the issue when the change has one | G | — | — (2026-09-13: unenforceable — a PR-tracked change legitimately references nothing) |
+| 36 | PR body `Closes #N` on its own line, when the change has an issue | G | — | — (2026-09-13: `pull-request-without-closing-line` deleted; a guard cannot see whether an issue exists) |
 | 37 | Update the issue as work progresses | G | — | — |
 | 38 | Spotting a change that should wait — do-later | F | prompt phrase `/do-later`, `after this lands` | prompt-triggered skill |
 | 39 | Filing into the ad-hoc queue — only doable work | D | `issue_write` body with the queue marker naming another repo or a console | action guard (advisory) — logged 2026-09-06: "another repository" is not knowable in a portable pack; the home pack carries `cross-repo-verify-line` |
@@ -405,7 +405,7 @@ Rows `1`–`56` are the bold-led bullets in file order — the same 56 rows, sam
 | 54 | Maintain a session warm-up doc | A | requirePaths warm-up doc; checkSections requirePresent "How to run", "Parameters", "Current numbers" | doc path convention |
 | 55 | Maintain a continuation guide; keep headline metrics current | B | headline numbers quoted in the doc equal the metrics JSON's values; C variant: metrics changed ∧ doc unchanged | equality: regex capture ↔ parsed field |
 | 56 | Capture the owner's new way durably | E | owner turn classified `process-change` (classifiedTurns, exists) ∧ no edit to warm-up/reference docs in the session | turn-class ↔ changed-file join |
-| u6 | Follow branch/commit/PR conventions; no PR unless asked | D | `gh pr create` / `mcp__github__create_pull_request` with no owner turn mentioning a PR (`task-lifecycle` covers the issue ref) | MCP-arg + Bash guard with transcript precondition |
+| u6 | Follow branch/commit/PR conventions; no PR unless asked | D | `gh pr create` / `mcp__github__create_pull_request` with no owner turn mentioning a PR (the issue ref, when one exists, is unenforced) | MCP-arg + Bash guard with transcript precondition |
 | p5 | §14: revive a prior session to enhance this document | H | an instruction for a different session kind (mining dialogue for preferences); `extract-from-conversations` owns it | re-home to claudinite-growth; delete here |
 
 ## web-scraping — `packs/web-scraping/RULES.md`

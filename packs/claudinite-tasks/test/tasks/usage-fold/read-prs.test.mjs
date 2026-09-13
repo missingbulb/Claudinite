@@ -101,6 +101,17 @@ test('prRecordsFrom joins the listing to the session that did the work', () => {
   });
 });
 
+test('a PR-keyed capture joins by PR number, so a PR that closes no issue still has a session lead time', () => {
+  const [rec] = prRecordsFrom({
+    prs: [{ number: 1600, mergedAt: '2026-08-20T10:00:00Z', createdAt: '2026-08-20T08:00:00Z', closesIssue: null, issueCreatedAt: null }],
+    files: [
+      { date: '2026-08-20', stamp: '2026-08-20T06:00:00Z', issue: null, pr: 1600, sessionId: 's3' },
+      { date: '2026-08-20', stamp: '2026-08-20T11:00:00Z', issue: 0, pr: null, sessionId: 's3' },  // the tail capture
+    ],
+  });
+  assert.deepEqual(rec, { date: '2026-08-20', number: 1600, leadHours: 2, issueLeadHours: null, sessionToMergeHours: 4 });
+});
+
 test('a PR whose issue never captured has no session lead time, and no zero', () => {
   const [rec] = prRecordsFrom({
     prs: [{ number: 9, mergedAt: '2026-08-20T10:00:00Z', createdAt: null, closesIssue: 1500, issueCreatedAt: null }],

@@ -9,7 +9,7 @@ A GitHub procedure the consuming repo's own docs set — its merge command, when
 
 ## Updating an issue's status: comment, don't overwrite
 
-To post a **status update** on an issue (the lifecycle's "update the issue's status" step), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
+To post a **status update** on an issue (the lifecycle's "update the issue's status" step, for a change that has one), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
 
 ## An auto-merge refusal is not a verdict — read the PR's state, then act
 

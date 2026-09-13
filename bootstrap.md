@@ -14,9 +14,8 @@ Everything mechanical is one script invocation, so the whole adoption is seven s
 interview waits on a human. Don't re-enact the parts below by hand — they are the reference for
 *what* each converged artifact is; the script performs them.
 
-1. **Open the adoption issue first** — before anything is committed, so the adoption commit can
-   reference it. The work-scope sweep blocks a commit that references no issue; creating the
-   issue after committing costs an amend, a force-push and a CI rerun.
+1. **The adoption PR is its tracker** — no adoption issue; the PR opened right after the adoption
+   commit carries the context, and the capture below is keyed to it.
 2. **Fetch the canon and run the script** (Part 1):
 
    ```sh

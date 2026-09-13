@@ -523,17 +523,18 @@ export function turnSeconds(entries, cap = USAGE_CAPS.humanSeconds) {
 // the same pass — so this costs nothing beyond reading its keys.
 //
 // The two synthetic keys are states, not fallbacks: `(none)` is a session a PERSON
-// started (its capture names no issue), which is the human-driven share and worth
-// seeing; `(unresolved)` is a session that names an issue but attests no execution
-// record, which is a gap in the record rather than a person at the keyboard, and must
-// never be quietly filed as one.
+// started (its capture names no issue and no PR), which is the human-driven share and
+// worth seeing; `(unresolved)` is a session that names an issue or a PR but attests no
+// execution record, which is a gap in the record rather than a person at the keyboard,
+// and must never be quietly filed as one.
 export const TASK_COST_NONE = '(none)';
 export const TASK_COST_UNRESOLVED = '(unresolved)';
 
-export function taskCostKey(counts, issue) {
+// `keyed` is the number the capture's filename carries — its PR, or its issue.
+export function taskCostKey(counts, keyed) {
   const named = Object.keys(counts?.taskExec ?? {}).sort();
   if (named.length) return named[0];
-  return issue > 0 ? TASK_COST_UNRESOLVED : TASK_COST_NONE;
+  return keyed > 0 ? TASK_COST_UNRESOLVED : TASK_COST_NONE;
 }
 
 // How much a key is worth when a session's captures disagree: a named task beats
@@ -609,7 +610,7 @@ function addCounters(into, from) {
 }
 
 // Recompute the day rows from scratch, from the live capture files. `files` is
-// `[{ date, issue, sessionId, counts }]` — one entry per capture file in the raw
+// `[{ date, issue, pr, sessionId, counts }]` — one entry per capture file in the raw
 // window, `counts` being that file's `countEntries` result.
 //
 // Stateless by construction: a day is a pure function of the files stamped with it,
@@ -634,7 +635,9 @@ export function foldDays(files) {
   for (const file of files) {
     const day = (days[file.date] ??= emptyDay());
     day.captures += 1;
-    if (file.issue > 0) day.merges += 1;      // issue 0 = a capture with no merge behind it
+    // A capture keyed to a PR or an issue has work behind it; issue 0 is a tail
+    // capture with no merge behind it.
+    if (file.pr > 0 || file.issue > 0) day.merges += 1;
     day.userMessages += file.counts.userMessages;
     day.userCommands += file.counts.userCommands;
     addLoads(day.skillLoads, file.counts.skillLoads);
@@ -657,10 +660,10 @@ export function foldDays(files) {
     }
     // The task the session belongs to, resolved ACROSS its captures rather than per
     // capture: a session has one dispatch, but its captures disagree about the evidence
-    // — the tail capture is filed under issue 0 where the merge capture named the
-    // issue, and a capture written mid-run can predate the execution record the tail
+    // — the tail capture is filed under issue 0 where the merge capture named the PR,
+    // and a capture written mid-run can predate the execution record the tail
     // carries. So the most-informed answer any of them gives wins.
-    const key = taskCostKey(file.counts, file.issue);
+    const key = taskCostKey(file.counts, file.pr ?? file.issue);
     if (taskCostRank(key) > taskCostRank(s.task)) s.task = key;
     // Summed over the session's captures rather than deduped, so the per-task column
     // adds up to the day's own `userMessages` scalar, which is summed the same way.

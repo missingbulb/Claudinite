@@ -26,8 +26,9 @@ Below are rules on how to work on this repo.
 - **Having a deferred direction, blocked proposal or status to record** — `docs/`, pointed at from
   the issue or PR. Never a pack file: `docs/` is outside the vendor set.
 
-- **Ending a session on unfinished work** — write the state into the tracking issue; the owner's
-  opener is `continue work on #<n>`. Never compose a hand-off prompt.
+- **Ending a session on unfinished work** — write the state into the PR, or into the tracking
+  issue when the work has one; the owner's opener is `continue work on #<n>`. Never compose a
+  hand-off prompt.
 
 
 - **Designing anything that spans repos** — split it: a self-contained per-repo half in the canon,
@@ -540,7 +541,7 @@ Below are rules on how to work on this repo.
 - **Merging in a session that also has a consumer repo in its sources** — resolve the merge skill
   by *target repo*, not by which matched first. The consumer's wins on name, silently skipping the
   canon-only post-merge conversation capture
-  (`node packs/claudinite-growth/capture-log.mjs --issue <n>`), which is part of the merge.
+  (`node packs/claudinite-growth/capture-log.mjs --pr <n>`), which is part of the merge.
 
 - **Having work that completes or corrects an open PR** — put it on that PR's branch. A dispatch
   prompt's designated branch routes work, not review; splitting gives the owner two gates for one

@@ -110,7 +110,8 @@ One file therefore maps 1:1 to a **capture event**, not to a merge.
 ### 3.2 No-issue captures: `issue-0`
 
 The filename stays `<stamp>--issue-<n>--<session>.jsonl`, with **`0` meaning
-"no associated issue"**. The filename regex, the retention prune, and the
+"no associated issue"** (a merge capture is keyed to its pull request instead,
+`--pr-<n>--`, since 2026-09-13; every reader takes both). The filename regex, the retention prune, and the
 scheduler's `conversationLogs` signal already accept `0` — only the CLI's
 argument validation refuses it, and that is the whole change. Keeping the
 filename shape identical is deliberate: any *new* shape would be invisible to

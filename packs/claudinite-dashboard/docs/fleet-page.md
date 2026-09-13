@@ -118,8 +118,8 @@ to set.
 
 | Figure | Derived | Source | Bad when |
 |---|---|---|---|
-| **Issue → merged** (median; p90 in the sub-line) | `merged_at − closesIssue.created_at`, the link being the `Closes #n` line every PR body carries | live PRs with `closesIssue`; older days from fold `prs` | median ▲ > 50 % wk/wk, or p90 > 3 days |
-| **Session → merged** (median; p90 in the sub-line) | `merged_at − first transcript timestamp of the session that names that issue` | fold `prs` | p50 > 4 h → sessions wait on something after they finish (CI, or an approval park) |
+| **Issue → merged** (median; p90 in the sub-line) | `merged_at − closesIssue.created_at`, the link being the `Closes #n` line a PR closing an issue carries; a PR tracked by itself alone contributes no value | live PRs with `closesIssue`; older days from fold `prs` | median ▲ > 50 % wk/wk, or p90 > 3 days |
+| **Session → merged** (median; p90 in the sub-line) | `merged_at − first transcript timestamp of the session whose capture names that PR (or, for an older capture, the issue it closes)` | fold `prs` | p50 > 4 h → sessions wait on something after they finish (CI, or an approval park) |
 | **Merged per day** | merged ÷ days in window; sub-line *peak · days with none* | as GOT | — (context for lead time) |
 | **Stuck 3 d+**, sub-line *parked for you · on the machine* | open work items idle ≥ 3 d, split by whether a person or a leash the janitor reclaims clears it | live issues page, `troubles` | any *parked for you* ≥ 3 d → serious — this is what feeds Start here |
 

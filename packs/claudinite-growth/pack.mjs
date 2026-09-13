@@ -22,8 +22,8 @@
 //
 // The pack also owns the CONVERSATION lifecycle: capture-log.mjs pushes a session's
 // conversation onto the orphan conversation-logs branch (in-session — it needs the
-// live transcript), driven by TWO events: merge-to-main's capture step, with the
-// issue the merge closed, and session-end.mjs, with --issue 0, invoked by the
+// live transcript), driven by TWO events: merge-to-main's capture step, keyed to
+// the pull request it landed, and session-end.mjs, with --issue 0, invoked by the
 // engine's SessionEnd hook runner. The second is best-effort and captures what the
 // first structurally cannot — sessions that never merge, and the post-merge tail of
 // the ones that do; it is safe to double-write because capture deltas on the session
