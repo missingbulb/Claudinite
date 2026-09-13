@@ -394,6 +394,52 @@
   .chip.idle      .dot { background: var(--muted); }
   .chip.urgent { border-color: var(--critical); color: var(--critical); }
 
+  .chip.filter { background: none; cursor: pointer; color: inherit; font: inherit; font-size: 12px; }
+  .chip.filter.on { border-color: var(--ink); font-weight: 600; }
+
+  /* --- the grid's three bands, and the greyed rows in two of them ---
+     GREY IS THE POINT, not a disabled state: these members are readable and their
+     links work — the colour says the fleet is not acting on them, which is why the
+     rule is on the row's own text rather than on `pointer-events` or `opacity` over
+     the whole thing (a greyed-out control reads as broken). A dormant row keeps its
+     Claudinite columns and only loses the emphasis; an out-of-fleet row keeps its
+     GitHub facts. */
+  tr.out-of-fleet td, tr.dormant-row td { color: var(--muted); }
+  tr.out-of-fleet .name, tr.dormant-row .name { color: var(--muted); font-weight: 500; }
+  tr.out-of-fleet td a:not(.cta), tr.dormant-row td a:not(.cta) { color: var(--muted); }
+  tr.out-of-fleet .est, tr.dormant-row .est { color: var(--muted); }
+
+  .band-head td { padding: 6px 0 4px; border-bottom: 1px solid var(--rule); }
+  .band-toggle { background: none; border: 0; padding: 2px 0; cursor: pointer; font: inherit;
+                 font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase;
+                 color: var(--muted); }
+  .band-toggle.on { color: var(--ink); }
+  .band-toggle:disabled { cursor: default; opacity: 0.6; }
+
+  /* --- the call to action: one way out of every row --- */
+  .cta-cell { text-align: right; }
+  .cta-wrap { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  a.cta, button.cta { display: inline-block; font-size: 12px; border: 1px solid var(--border);
+                      border-radius: 4px; padding: 2px 7px; background: none; cursor: pointer;
+                      color: var(--ink); font-family: inherit; text-decoration: none; white-space: nowrap; }
+  a.cta:hover, button.cta:hover { border-color: var(--ink); }
+  .cta-text { width: 220px; height: 54px; font-size: 11px; font-family: var(--mono); }
+  .cta-clear { font-size: 18px; line-height: 1; }
+
+  /* --- member state tags: what KIND of member a row is, beside its name ---
+     Three marks that must never read as one another: `private` is GitHub's own
+     flag, `dormant` is the member's declaration (its scheduler is stopped, so the
+     fleet measures neither its mount nor its scheduler), and `sleepy` is a reading
+     of the last fortnight's commits on a member that is otherwise fully in the
+     fleet. Dormant is solid and quiet, sleepy is dashed — a state nothing declared
+     and that can change back tomorrow. */
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 1px; }
+  .tag { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
+         border-radius: 3px; padding: 0 4px; border: 1px solid var(--border);
+         color: var(--muted); white-space: nowrap; }
+  .tag.dormant { border-color: var(--muted); color: var(--ink); }
+  .tag.sleepy { border-style: dashed; border-color: var(--s-blue); color: var(--s-blue); }
+
   /* Warnings pair an icon with words — the color never carries it alone. */
   .warn { display: block; font-size: 12px; margin-top: 3px; }
   .warn.critical { color: var(--critical); }
@@ -717,6 +763,10 @@
   .commit-area { fill: color-mix(in srgb, var(--good) 22%, transparent); }
   .commit-line { fill: none; stroke: var(--good); stroke-width: 1;
                  vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  /* The second series — the commits that were genuine project work. A different hue
+     and a thinner stroke, because it is read AGAINST the total rather than beside it:
+     the gap between the two lines is the machinery's own share. */
+  .commit-line.meaningful { stroke: var(--s-blue); stroke-width: 1.4; }
   .commit-graph .sub { margin-top: 2px; }
 
   /* The pack count wearing the mount's verdict. */
@@ -895,6 +945,7 @@
         earns a corner rather than a column.
       </p>
       <p class="legend">Click a member to open its scheduler in full.</p>
+      <div class="chips" id="fleet-filters"></div>
       <div class="panel scroll"><table id="fleet"></table></div>
     </section>
 

@@ -510,6 +510,55 @@ export async function latestRelease(repo, token) {
   return out;
 }
 
+// The default branch's commits in a window, as the LISTING gives them: sha, date,
+// message and the author's login. That is exactly what the substantive-commit test
+// needs bar one exclusion — the corpus-only one, which reads each commit's file list
+// and would cost a request per commit — so the classification made from this is the
+// cheap one, and `fleet.mjs` states the gap rather than implying the full test ran.
+//
+// One page, so a member that landed more than `per_page` commits in the window is
+// read to a HORIZON rather than completely: `complete` says which, and a caller draws
+// the unreached days as unread rather than as quiet ones.
+//
+// Priced as decoration beside the commit graph it feeds: withheld under budget
+// pressure, and a withheld read is `undefined` — not read — never an empty window.
+export const WINDOW_COMMITS_TTL = 3600e3;
+
+export async function listCommitsSince(repo, branch, sinceIso, token, perPage = 100) {
+  const ck = `window-commits:${repo}:${branch}:${sinceIso}`;
+  const hit = ageing.get(ck, WINDOW_COMMITS_TTL);
+  if (hit !== undefined) { rate.served += 1; return hit; }
+
+  if (frozen() || !budgetLeft() || !policy.extras) { rate.withheld += 1; return undefined; }
+
+  const path = `/repos/${repo}/commits?sha=${encodeURIComponent(branch)}`
+    + `&since=${encodeURIComponent(sinceIso)}&per_page=${perPage}`;
+  const res = await raw(path, { token });
+  rate.spent += 1;
+  // An empty repository answers 409, and a branch the viewer cannot resolve 404:
+  // both are "no commits to read", not a failure of the page.
+  if (res.status === 409 || res.status === 404) {
+    const empty = { since: sinceIso, commits: [], complete: true };
+    ageing.set(ck, empty);
+    return empty;
+  }
+  if (!res.ok) throw await fail(res, path);
+  const list = (await res.json()) ?? [];
+  const out = {
+    since: sinceIso,
+    commits: (Array.isArray(list) ? list : []).map((c) => ({
+      sha: c.sha,
+      at: c.commit?.committer?.date ?? c.commit?.author?.date ?? null,
+      message: c.commit?.message ?? '',
+      author: c.author?.login ?? null,
+    })),
+    // Whether the window was read to its start. A full page means there may be more.
+    complete: (Array.isArray(list) ? list.length : 0) < perPage,
+  };
+  ageing.set(ck, out);
+  return out;
+}
+
 export const listComments = (repo, number, token) =>
   conditional(`/repos/${repo}/issues/${number}/comments?per_page=100`, token);
 

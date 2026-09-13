@@ -20,6 +20,9 @@ import { loadFleet } from './view-fleet.mjs';
 
 let CONFIG = null;
 let ROSTER = [];
+// The roster's own members the fleet does not act on — the deployment's exclude list,
+// resolved to the names it matched. They are drawn, greyed, rather than dropped.
+let IGNORED = [];
 
 const showError = (msg) => $('errors').append(el('div', { className: 'err', textContent: msg }));
 const showNotice = (msg) => $('errors').append(el('div', { className: 'notice', textContent: msg }));
@@ -188,6 +191,7 @@ async function render() {
   // ETag-revalidated, which makes re-resolving it per load free once warm.
   const roster = await resolveRoster(CONFIG, token, gh);
   ROSTER = roster.repos;
+  IGNORED = roster.ignored ?? [];
   const plan = await planBudget(token);
   renderRatePill(plan);
   const advice = credentialAdvice(plan.tier, { oauth: auth.isOAuthConfigured(CONFIG), hasToken: Boolean(token) });
@@ -211,6 +215,7 @@ async function render() {
       else if (!roster.complete) showNotice('This owner has more repositories than one enumeration reaches; the fleet below is the most recently pushed of them.');
       await loadFleet({
         repos: ROSTER,
+        ignored: IGNORED,
         token,
         config: CONFIG,
         onOpen: go,

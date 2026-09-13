@@ -224,27 +224,43 @@ export function commitGraph(series, { width = 108, height = 26, note = null } = 
   const y = (count) => height - 1 - (top > 0 ? (count / top) * (height - 2) : 0);
 
   // Contiguous runs of READ weeks. A run of one still draws, so a single week
-  // surrounded by unread ones is visible rather than dropped.
-  let run = [];
-  const flush = () => {
-    if (!run.length) { return; }
-    const line = run.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
-    svg.append(svgEl('path', {
-      d: `${line} L${run[run.length - 1].x.toFixed(2)},${height} L${run[0].x.toFixed(2)},${height} Z`,
-      class: 'commit-area',
-    }));
-    svg.append(svgEl('path', { d: line, class: 'commit-line' }));
-    run = [];
+  // surrounded by unread ones is visible rather than dropped. `pick` is which series
+  // this pass draws and `cls` how: the total is an area, the meaningful line a plain
+  // stroke over it.
+  const draw = (pick, cls, area) => {
+    let run = [];
+    const flush = () => {
+      if (!run.length) { return; }
+      const line = run.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+      if (area) {
+        svg.append(svgEl('path', {
+          d: `${line} L${run[run.length - 1].x.toFixed(2)},${height} L${run[0].x.toFixed(2)},${height} Z`,
+          class: 'commit-area',
+        }));
+      }
+      svg.append(svgEl('path', { d: line, class: cls }));
+      run = [];
+    };
+    buckets.forEach((b, i) => {
+      const v = pick(b);
+      if (v == null) { flush(); return; }
+      run.push({ x: i * step, y: y(v) });
+    });
+    flush();
   };
-  buckets.forEach((b, i) => {
-    if (b.count == null) { flush(); return; }
-    run.push({ x: i * step, y: y(b.count) });
-  });
-  flush();
+  draw((b) => b.count, 'commit-line', true);
+  // The SECOND series: the commits that were genuine project work rather than the
+  // machinery moving. Drawn on the same scale, over the span the commit listing
+  // reached and breaking where it did not — the gap between the two lines is the
+  // machinery's own share, which is the reading the fleet's owner asked for.
+  const meaningful = buckets.reduce((n, b) => n + (b.meaningful ?? 0), 0);
+  const classified = buckets.some((b) => b.meaningful != null);
+  if (classified) draw((b) => b.meaningful, 'commit-line meaningful', false);
 
   const title = svgEl('title');
   title.textContent = [
     `${total} commit${total === 1 ? '' : 's'} over ${days.length} days, by week`,
+    classified ? `${meaningful} meaningful where classified — the lower line` : 'meaningful commits not classified — the listing was not read',
     peak ? `busiest day ${peak}, busiest week ${top}` : null,
     unread ? `${unread} day(s) outside the year GitHub reports` : null,
   ].filter(Boolean).join(' · ');

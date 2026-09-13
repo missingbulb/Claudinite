@@ -97,7 +97,7 @@ export async function main() {
   try { cfg = JSON.parse(Buffer.from(cfgRes.json.content, 'base64').toString('utf8')); } catch (e) {
     throw new Error(`unparsable ${DECLARATION} on ${home}: ${e.message}`);
   }
-  const { owner, canonRepo } = parseSheepdogConfig(cfg, home);
+  const { owner, canonRepo, exclude } = parseSheepdogConfig(cfg, home);
 
   // The pack corpus comes from CANON, not from this enforcer's own mount — the mount
   // carries only the packs this repo declares, so the scan would test every member
@@ -105,7 +105,7 @@ export async function main() {
   // would reject a perfectly real pack id as unknown. See canon-packs.mjs.
   const { packs, dispose } = await loadCanonPacks({ canonRepo, token });
   try {
-    await run({ gh, home, owner, canonRepo, packs, params });
+    await run({ gh, home, owner, canonRepo, exclude, packs, params });
   } finally {
     dispose();
   }
@@ -114,13 +114,21 @@ export async function main() {
 // The run proper, with the corpus in hand. Split out so the scratch clone has exactly
 // one disposal site whatever happens inside — including the deliberate throw at the
 // foot, which must still fail the run.
-async function run({ gh, home, owner, canonRepo, packs, params }) {
+async function run({ gh, home, owner, canonRepo, exclude, packs, params }) {
   const packsById = new Map(packs.map((p) => [p.id, p]));
 
   // VALIDATE THE FORCE FIRST, before a single member is touched. A force is
   // all-or-nothing (force-add-packs.mjs), and the cheapest place to refuse one is
   // before anything has happened at all.
   if (params.addPacks.length) {
+    // An IGNORED repo is out of every aspect of the fleet, and a force is not an
+    // exception to that: the fleet was told to leave it alone, so the remedy is to
+    // stop ignoring it rather than to write around the list.
+    const ignored = params.repos.map((n) => qualify(n, owner)).filter((n) => exclude.has(n));
+    if (ignored.length) {
+      throw new Error(`${ignored.join(', ')} — ignored by this fleet (the claudinite-fleet-sheepdog pack entry's `
+        + 'config.exclude), and nothing was written. Take the repo off that list to bring it back into the fleet.');
+    }
     const unknown = unknownPacks(params.addPacks, packs);
     if (unknown.length) {
       throw new Error(`unknown pack id(s): ${unknown.join(', ')} — not in the ${packs.length}-pack corpus at ${canonRepo}. `
@@ -160,7 +168,7 @@ async function run({ gh, home, owner, canonRepo, packs, params }) {
   let scanUnknown = [];
   if (params.scan) {
     log('scanning the fleet for packs a member\'s shape suspects but its declaration does not carry');
-    const scanned = await runScan({ gh, home, owner, canonRepo, packs, repos: scopedRepos });
+    const scanned = await runScan({ gh, home, owner, canonRepo, exclude, packs, repos: scopedRepos });
     scanUnknown = scanned.unknown;
     const fired = [];
     for (const target of scanned.toFire) {

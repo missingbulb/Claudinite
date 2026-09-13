@@ -22,6 +22,12 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   docs that spelled the behaviour out without naming `expected_outcome` — `rule-revalidation` and
   `growth-dedup` — passed it, and `rule-revalidation`'s sentence was still describing a policy the
   declaration had moved off. Retire it if the landing story stops living in the declaration.
+- **(writing-tasks-3)** Owner, 2026-09-13, on the fleet shepherd: "Ignore the 'mount freshness /
+  claudinite update status', and 'tasks scheduler health' in the dashboard for repos with dormant
+  claudinite-tasks packs. Also do not perform any fleet-wide operations on them." It reverses the
+  earlier reading, in which dormancy stopped the scheduler but not the clock: with no converge and
+  no fleet operation reaching the repo, a version gap there is a finding with no owner. Retire it
+  if anything ever converges a dormant member's mount again.
 - **(writing-pack-prose-1)** Measured on two adjacent instructions in one spec: the one naming a
   file was got right first try 0 runs in 5, the one shipping a fenced command 5 in 5.
 - **(check:task-md-only-when-agentic)** `task.md` is defined as the spec an agentic session

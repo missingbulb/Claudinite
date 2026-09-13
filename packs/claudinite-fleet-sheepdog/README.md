@@ -79,18 +79,20 @@ the deprecated task-level `session_scope` ([the writing-tasks skill](../claudini
 place here.
 
 A member whose **scheduler is dormant** (`dormant` on its own `claudinite-tasks` pack entry) is out of
-the fit sweep, out of the usage denominator, and never written to by the pack-seed sweep — its silence
-says nothing about any skill, recommending it a pack would be recommending work it has declared it is
-not doing, and a commit landed in it from outside is the upkeep it opted out of. It stays a **member**:
-membership is unchanged, because dormancy is about upkeep, not membership.
+**every upkeep question this pack asks** (owner, 2026-09-13): out of the fit sweep, out of the usage
+denominator, never written to by the pack-seed sweep, not measured by the roster's freshness half, and
+dispatched by no fleet-wide operation. Its silence says nothing about any skill; recommending it a pack
+would be recommending work it has declared it is not doing; a commit landed in it from outside is the
+upkeep it opted out of; and a mount nothing will ever converge cannot be behind in a way anyone is
+going to fix — a freshness verdict on one is a finding with no owner. It stays a **member**: membership
+is unchanged, because dormancy is about upkeep, not membership, and the coverage census names it under
+`dormant`. The one lever that still reaches one is the hand-typed `INCLUDE_DORMANT=true` on a
+[fleet-baseline](tasks/fleet-baseline/README.md) item — a person asking for it by name.
 
-It is **not** out of the roster's freshness half. Dormancy stops the scheduler, not the clock, and a
-mount several engine versions behind canon is behind whether or not anything there is still running —
-so it is measured and reported like any other member, and named as dormant beside the verdict so the
-reader knows it will not repair itself. The single thing the declaration buys it is quiet about the
-scheduler: a member with no scheduler workflow at all is the `no-scheduler` finding when it is awake
-and nothing at all when it is dormant. The fan-out still leaves it alone, so the gap it reports is
-advisory — it clears when someone wakes the repo or baselines it deliberately.
+A repo the fleet was told to **ignore** (`config.exclude`) is out further still: no sweep reads it at
+all, so none of them learns whether it even carries a declaration, and every report names it once under
+`ignored` and claims nothing else about it. A force that names one is refused rather than written
+around — the remedy is to take the repo off the list.
 
 **Every report enumerates the full fleet.** Whatever a repo's state — covered, dormant, uncovered,
 excluded, archived, a fork, inactive today, or simply not measured by that sweep — each sweep's

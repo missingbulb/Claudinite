@@ -192,7 +192,7 @@ export function renderFitSummary({
 // issue still outstanding from an earlier force (re-firing is the retry loop for a
 // member whose earlier adoption run died). It does not throw on an unswept member:
 // the worker decides what a partial picture means for the whole run.
-export async function runScan({ gh, home, owner, canonRepo, packs, repos = null }) {
+export async function runScan({ gh, home, owner, canonRepo, exclude = new Set(), packs, repos = null }) {
   const packsById = new Map(packs.map((p) => [p.id, p]));
   const wanted = repos ? new Set(repos.map((n) => n.toLowerCase())) : null;
 
@@ -209,6 +209,9 @@ export async function runScan({ gh, home, owner, canonRepo, packs, repos = null 
     const fullName = r.full_name.toLowerCase();
     if (fullName === home.toLowerCase()) continue; // the enforcer itself — named in the summary, not swept
     if (wanted && !wanted.has(fullName)) continue; // out of this run's scope; the filter is the report's subject line
+    // An ignored repo is skipped before its declaration is read: the fleet claims
+    // nothing about one, so it is named and nothing more.
+    if (exclude.has(fullName)) { outOfScope.push(`${r.full_name} (ignored — config.exclude)`); continue; }
     if (r.archived || r.fork) { outOfScope.push(`${r.full_name} (${r.archived ? 'archived' : 'fork'})`); continue; }
 
     let decl;

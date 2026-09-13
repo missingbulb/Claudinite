@@ -657,3 +657,109 @@ test('each breakdown row carries its kind and the count the short line reads', (
     '2 tasks broken', '1 item needing a decision', '3 items needing approval',
   ]);
 });
+
+// --- which repos the fleet speaks about, and what it says about them --------------
+// Owner, 2026-09-13: an archived repo is out of the fleet; a dormant member is out of
+// the mount and scheduler questions and out of every fleet-wide operation; a member
+// with no meaningful commits lately is marked sleepy but stays fully in the fleet.
+
+const dormantDecl = (over = {}) => decl({
+  packs: [{ id: 'claudinite-lifecycle', version: 3 }, { id: 'claudinite-tasks', config: { dormant: true } }],
+  ...over,
+});
+
+const commitWindow = (commits, over = {}) => ({
+  since: new Date(NOW - 90 * 86400e3).toISOString(),
+  complete: true,
+  commits,
+  ...over,
+});
+
+const commitAt = (daysAgo, over = {}) => ({
+  sha: `sha${daysAgo}`,
+  at: new Date(NOW - daysAgo * 86400e3).toISOString(),
+  message: 'Add a thing',
+  author: 'a-person',
+  ...over,
+});
+
+test('an archived repo is out of the fleet, whatever it declares', () => {
+  const s = summariseMember(read({ archived: true, private: true }), { now: NOW, canon: CANON });
+  assert.equal(s.status, 'archived');
+  assert.equal(s.private, true);
+  assert.match(s.reasons[0].text, /archived/);
+});
+
+test('a member carries GitHub\'s private flag through, adopted or not', () => {
+  assert.equal(summariseMember(read({ private: true }), { now: NOW, canon: CANON }).private, true);
+  assert.equal(summariseMember({ repo: 'o/a', declaration: null, private: false }, { now: NOW }).private, false);
+});
+
+test('a dormant member is neither measured for its mount nor judged on its scheduler', () => {
+  const behind = dormantDecl({ engineVersion: 2 });
+  const s = summariseMember(read({
+    declaration: behind,
+    runs: [{ event: 'schedule', status: 'completed', conclusion: 'failure', created_at: '2026-08-17T04:00:00Z' }],
+  }), { now: NOW, canon: CANON });
+
+  assert.equal(s.dormant, true);
+  assert.equal(s.mount.state, 'dormant');
+  assert.deepEqual(s.reasons.filter((r) => r.kind === 'scheduler'), []);
+  assert.deepEqual(s.reasons.filter((r) => r.kind === 'mount').map((r) => r.level), ['info']);
+  assert.match(s.reasons.find((r) => r.kind === 'mount').text, /not measured/);
+  assert.equal(s.level, 'info', 'an obedient repo is not an alarm');
+});
+
+test('the contrast case: the same mount and scheduler on an AWAKE member are findings', () => {
+  const s = summariseMember(read({
+    declaration: decl({ engineVersion: 2 }),
+    runs: [{ event: 'schedule', status: 'completed', conclusion: 'failure', created_at: '2026-08-17T04:00:00Z' }],
+  }), { now: NOW, canon: CANON });
+  assert.equal(s.mount.state, 'behind-engine');
+  assert.ok(s.reasons.some((r) => r.kind === 'scheduler'));
+});
+
+test('the rollup counts machinery faults over the awake members only', () => {
+  const asleep = summariseMember(read({
+    repo: 'o/asleep',
+    declaration: dormantDecl({ engineVersion: 2 }),
+    runs: [{ event: 'schedule', status: 'completed', conclusion: 'failure', created_at: '2026-08-17T04:00:00Z' }],
+  }), { now: NOW, canon: CANON });
+  const awake = summariseMember(read({ repo: 'o/awake' }), { now: NOW, canon: CANON });
+  const roll = rollUp([asleep, awake]);
+  assert.equal(roll.behindMembers, 0);
+  assert.equal(roll.failingMembers, 0);
+  assert.equal(roll.dormantMembers, 1);
+  assert.equal(roll.adopted, 2, 'it is still a member — dormancy is about upkeep, not membership');
+});
+
+test('sleepy is decided on MEANINGFUL commits, by the claudinite-tasks test', () => {
+  const machineryOnly = summariseMember(read({
+    windowCommits: commitWindow([
+      commitAt(1, { message: 'Claudinite maintenance: converge the mount' }),
+      commitAt(2, { author: 'github-actions[bot]' }),
+      commitAt(3, { message: 'Regenerate the board\n\nClaudinite-Task: basics/usage-fold\n' }),
+      commitAt(40),
+    ]),
+  }), { now: NOW, canon: CANON });
+  assert.equal(machineryOnly.sleep.state, 'sleepy');
+  assert.equal(machineryOnly.dormant, false, 'sleepy is not dormancy — every sweep still reaches it');
+
+  const worked = summariseMember(read({
+    windowCommits: commitWindow([commitAt(1), commitAt(40)]),
+  }), { now: NOW, canon: CANON });
+  assert.equal(worked.sleep.state, 'awake');
+});
+
+test('a member whose commit listing was not read is unknown, never sleepy', () => {
+  const s = summariseMember(read({ windowCommits: undefined }), { now: NOW, canon: CANON });
+  assert.equal(s.sleep.state, 'unknown');
+  assert.equal(rollUp([s]).sleepyMembers, 0);
+});
+
+test('a commit window that starts inside the fortnight cannot answer the question', () => {
+  const s = summariseMember(read({
+    windowCommits: commitWindow([], { since: new Date(NOW - 3 * 86400e3).toISOString() }),
+  }), { now: NOW, canon: CANON });
+  assert.equal(s.sleep.state, 'unknown');
+});

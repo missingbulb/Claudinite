@@ -174,7 +174,7 @@ second. So nothing on it is a total for its own sake.
 | **What the corpus is doing across the fleet** | The detail behind the block above, from each member's usage fold: workload this week against last, the two check scopes side by side, which rules actually fire, which skills load and which are mounted everywhere and never do, and one row per member. A member that does not fold is named and counted in nothing |
 | **Fleet activity** | What the fleet *did* per day — work closed by outcome, runs and their pass rate, **how often the checks ran and caught something**, and which members moved at all |
 | **Rollup tiles** | How many *members* need a human — not how many items exist |
-| **Members** | Every member ranked worst-first, in three column groups asked in the order a reader asks them: **Activity** (90 days of commits, as a weekly curve), **Waiting on a person** (an estimate in minutes, what it is made of, then issues and pull requests) and **Claudinite** (packs wearing the mount's verdict, queue, outcomes, scheduler). Stars and CI ride in the member cell — they are how you recognise a row, not findings about it |
+| **Members** | Every member ranked worst-first, in three column groups asked in the order a reader asks them: **Activity** (90 days of commits, as a weekly curve, with a second line for the commits that were genuine project work), **Waiting on a person** (an estimate in minutes, what it is made of, then issues and pull requests) and **Claudinite** (packs wearing the mount's verdict, queue, outcomes, scheduler). Stars and CI ride in the member cell — they are how you recognise a row, not findings about it, and so do the state tags below |
 | **Tasks across the fleet** | One task, everywhere it runs — a shared pack's task parked in four members at once is a canon problem no single repo's page reveals |
 | **Pack adoption** | Which packs are in use and how widely — who a change to a pack would reach |
 | **What this deployment's packs report** | The fleet-scope cards, from the packs the deployment repo and the canon declare |
@@ -216,9 +216,68 @@ repo outside their access is not in their fleet, rather than being in it as a ro
 cannot open. No repo list is baked into any file, which is also why a fleet's numbers
 cannot leak from a shared artifact to someone without access to the repos behind them.
 
-Archived and forked repos leave the fleet by their own state; `exclude` covers the rest.
-An enumeration that could not be read is said out loud, never rendered as a fleet that
-happens to be empty.
+**Every repo the viewer can see is on the page**, and only a fork is not — that is
+someone else's project, and its work is upstream's. An enumeration that could not be read
+is said out loud, never rendered as a fleet that happens to be empty.
+
+Out of the fleet is a **state**, not a filter: an archived repo, and one on the
+deployment's `exclude` list, are drawn greyed with their core GitHub facts and nothing
+else, and counted in no figure above the grid. They are on the page because a repo the
+reader cannot find at all is indistinguishable from one that is gone — and because each
+carries the one action that brings it back.
+
+### What KIND of member a row is — private, dormant, sleepy
+
+Three tags sit beside a member's name, and they are deliberately unalike:
+
+- **private** — GitHub's own flag, carried through untouched. Who can see a member is part
+  of recognising it.
+- **dormant** — the member's own declaration (`dormant` on its `claudinite-tasks` entry).
+  Its scheduler is stopped, so the page measures **neither its mount nor its scheduler**
+  and no fleet-wide operation runs against it; the row says `dormant` where those two
+  verdicts would have sat, and the machine band's cells leave it out of their denominators
+  and name how many they left out. It is still a member: dormancy is about upkeep.
+- **sleepy** — nothing **meaningful** landed in the last 14 days. The test is the
+  claudinite-tasks pack's own `isSubstantiveCommit` over one page of the commit listing, so
+  a member reads quiet here exactly when its own preconditions read it quiet. It is **not**
+  dormancy: nobody declared it, it can change back tomorrow, and every fleet-wide operation
+  still reaches the repo. Drawn dashed for that reason.
+
+A member whose commit listing was not read (budget) is **unknown**, never sleepy: a repo
+nobody looked at and a repo nobody worked on are not the same fact. The one exclusion the
+cheap test cannot apply — a commit that touched only `.claudinite/` — is named on the tag's
+hover ([data-sources.md](docs/data-sources.md)).
+
+The chips above the grid filter it by those three states. "Which of my repos has nobody
+touched in a fortnight" is a morning question, and scanning a dozen rows for a dashed tag
+is not how it gets answered.
+
+### Three bands, and one thing to do per row
+
+The grid is the **fleet proper** ranked worst-first, then **Dormant** and **Out of the
+fleet**, each a collapsed band carrying its own count. Collapsed because those members are
+not being maintained and should not sit between the reader and the fleet; present because
+a page that hides them answers "where do I need to look" by pretending part of the account
+does not exist. Any filter opens the bands — a question about a state wants the rows, not
+a count.
+
+Every row ends in a **Next** cell, and what it offers follows the member's state, each a
+different kind of act:
+
+| Row | Next |
+|---|---|
+| archived | **Unarchive →**, GitHub's own settings page. Claudinite cannot undo an archive, and a button that pretended otherwise would send the reader somewhere that cannot work |
+| ignored | **Bring back — copy request**: the whole request to paste into a session, naming the repo and the `config.exclude` key. The enforcer's declaration is a file a person edits; this page reads it and must not write it |
+| dormant | **Wake — copy request**, the same shape against the member's own `claudinite-tasks` entry |
+| awake, something parked | **Advance #n →**, the member's own worst item, with the reason on the link |
+| awake, nothing parked | its open pull requests, else its open issues |
+| awake, nothing open | 🙂 — the one cell on this page that asks for nothing |
+
+A dormant row keeps its Claudinite columns and loses the **task-based delays**: no minutes
+estimate, no attention breakdown, and its queue as a plain count rather than a state mix.
+How many items are open there is an ordinary fact about the repo; which of them are
+blocked, ready or parked is the state of a queue that stopped, and colouring a row for
+delays the declaration asked for is exactly the nagging dormancy exists to prevent.
 
 ### What only the members' own files can say
 

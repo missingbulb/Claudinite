@@ -45,7 +45,7 @@ function adoptionBody(fullName) {
 
 // --- adoption-issue convergence ----------------------------------------------
 
-export async function convergeAdoption(gh, home, { uncovered, coveredSet, optedOutSet }) {
+export async function convergeAdoption(gh, home, { uncovered, coveredSet, ignoredSet }) {
   const actions = [];
   const { open: openIssues, closed } = await labeledIssues(gh, home, LABEL);
   const open = new Map(openIssues.map((i) => [i.title, i]));
@@ -79,8 +79,8 @@ export async function convergeAdoption(gh, home, { uncovered, coveredSet, optedO
     let reason = null; let note = null;
     if (coveredSet.has(fullName)) {
       reason = 'completed'; note = 'now mounts Claudinite — covered';
-    } else if (optedOutSet.has(fullName)) {
-      reason = 'not_planned'; note = "on the exclude list (the claudinite-fleet-sheepdog pack entry's config.exclude)";
+    } else if (ignoredSet.has(fullName)) {
+      reason = 'not_planned'; note = "ignored (the claudinite-fleet-sheepdog pack entry's config.exclude)";
     } else if (!uncovered.includes(fullName)) {
       reason = 'not_planned'; note = 'no longer an adoption candidate (deleted, archived, transferred, or now a fork)';
     }
@@ -99,22 +99,22 @@ export async function convergeAdoption(gh, home, { uncovered, coveredSet, optedO
 // --- the coverage section of the report (pure) --------------------------------
 
 // Enumerates the FULL fleet: every repo lands in exactly one list below, whatever its
-// state — covered, dormant, uncovered, opted out, skipped, unknown — plus the enforcer
+// state — covered, dormant, uncovered, ignored, skipped, unknown — plus the enforcer
 // itself, which is not censused but still named. A roster that names only the
 // exceptions has silent holes, and a reader cannot tell "fine" from "fell out of the
 // report". Kept free of I/O so the full-roster property is testable directly.
-export function renderCoverageSummary({ owner, home, covered, dormant, uncovered, optedOut, skipped, unknown, actions }) {
+export function renderCoverageSummary({ owner, home, covered, dormant, uncovered, ignored = [], skipped, unknown, actions }) {
   return [
     `# Fleet coverage census — ${owner}`,
     '',
-    '| covered | dormant | uncovered | opted out | skipped (fork/archived) | unknown |',
+    '| covered | dormant | uncovered | ignored | skipped (fork/archived) | unknown |',
     '| --- | --- | --- | --- | --- | --- |',
-    `| ${covered.length} | ${dormant.length} | ${uncovered.length} | ${optedOut.length} | ${skipped.length} | ${unknown.length} |`,
+    `| ${covered.length} | ${dormant.length} | ${uncovered.length} | ${ignored.length} | ${skipped.length} | ${unknown.length} |`,
     '',
     covered.length ? `**Covered:** ${covered.join(', ')}` : '**Covered:** none',
-    dormant.length ? `**Covered but dormant (self-declared, upkeep stopped):** ${dormant.join(', ')}` : '',
+    dormant.length ? `**Covered but dormant (self-declared, upkeep stopped — measured by nothing and swept by nothing):** ${dormant.join(', ')}` : '',
     uncovered.length ? `**Uncovered (adoption issue open):** ${uncovered.join(', ')}` : '**Uncovered:** none 🎉',
-    optedOut.length ? `**Opted out (config.exclude):** ${optedOut.join(', ')}` : '',
+    ignored.length ? `**Ignored (config.exclude — nothing is read, measured or claimed about these):** ${ignored.join(', ')}` : '',
     skipped.length ? `**Skipped:** ${skipped.join(', ')}` : '',
     unknown.length ? `**UNKNOWN (declaration read errored — fix the token/scope):** ${unknown.join('; ')}` : '',
     `**Not censused:** ${home} — the enforcer itself`,

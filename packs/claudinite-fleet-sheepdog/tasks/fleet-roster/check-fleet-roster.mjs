@@ -88,9 +88,11 @@ export async function buildRoster(gh, repos, {
     };
     roster.push(entry);
 
-    // The enforcer is not censused and not swept; an archived repo or a fork is
-    // neither. Nothing below would be read for any of them, so nothing is.
-    if (entry.isHome || entry.archived || entry.fork) continue;
+    // The enforcer is not censused and not swept; an archived repo, a fork and an
+    // IGNORED repo are neither. Nothing below would be read for any of them, so
+    // nothing is — an ignored repo is ignored in every aspect, which means the sweep
+    // does not even learn whether it carries a declaration.
+    if (entry.isHome || entry.archived || entry.fork || entry.excluded) continue;
 
     // The declaration is READ, not merely probed for existence: dormancy and the
     // stamp both live inside it. An unparsable one is UNKNOWN rather than uncovered,
@@ -104,17 +106,17 @@ export async function buildRoster(gh, repos, {
     if (entry.declaration === null) continue;   // uncovered — the coverage half's subject
     entry.dormant = isDormant(entry.declaration);
 
-    // Which members the freshness half measures: covered, in scope, and neither the
-    // enforcer nor canon. A DORMANT member is measured like any other — dormancy stops
-    // its scheduler, not its clock, and a mount three engine versions behind is behind
-    // whether or not anything there is still running. What its declaration does buy it
-    // is narrower and is applied inside the classification: a stopped scheduler is not
-    // counted against it.
-    if (entry.isCanon || entry.excluded) continue;
+    // Which members the freshness half measures: covered, awake, and not canon. A
+    // DORMANT member is out of the question entirely (owner, 2026-09-13): the update
+    // status of a mount nothing will converge is not a fact anyone acts on, and the
+    // fleet performs no operation on it either, so measuring it only fills the report
+    // with findings that are by construction nobody's to fix. It stays a member —
+    // dormancy is about upkeep, not membership — and the coverage half still names it.
+    if (entry.isCanon || entry.dormant) continue;
 
     try {
       const mount = await freshness.probeMount(gh, r.full_name, entry.declaration, { canon: canonVersions });
-      entry.freshness = freshness.classifyFreshness({ ...mount, dormant: entry.dormant });
+      entry.freshness = freshness.classifyFreshness(mount);
     } catch (e) {
       entry.freshnessError = e.message;
     }
@@ -126,45 +128,46 @@ export async function buildRoster(gh, repos, {
 
 // The coverage question's buckets. Note what is NOT consulted: `isCanon` (canon carries
 // a declaration and is an ordinary covered member here) and `freshnessError` (a mount
-// this half never asked about). `excluded` matters only once a repo turns out to be
-// uncovered — an excluded repo that still carries a declaration is covered, and saying
-// otherwise would report a repo as missing something it has.
+// this half never asked about). An IGNORED repo is bucketed before anything is asked
+// of it: no verdict is made about a repo the fleet was told to ignore, so it is neither
+// covered nor uncovered here, only named.
 export function coverageView(roster) {
-  const covered = []; const dormant = []; const uncovered = []; const optedOut = []; const skipped = []; const unknown = [];
+  const covered = []; const dormant = []; const uncovered = []; const ignored = []; const skipped = []; const unknown = [];
   for (const e of roster) {
     if (e.isHome) continue;                       // named in the summary, not censused
+    if (e.excluded) { ignored.push(e.fullName); continue; }
     if (e.archived || e.fork) { skipped.push(`${e.displayName} (${e.archived ? 'archived' : 'fork'})`); continue; }
     if (e.declarationError) { unknown.push(`${e.displayName} — ${e.declarationError}`); continue; }
     if (e.declaration !== null) (e.dormant ? dormant : covered).push(e.fullName);
-    else if (e.excluded) optedOut.push(e.fullName);
     else uncovered.push(e.fullName);
   }
-  return { covered, dormant, uncovered, optedOut, skipped, unknown };
+  return { covered, dormant, uncovered, ignored, skipped, unknown };
 }
 
 // The freshness question's buckets. `outOfScope` carries the repos this half does not
 // measure WITH their reasons, since the report names every repo rather than only the
 // failures.
 //
-// `dormant` is a LABEL here, not an exit: a dormant member is bucketed as fresh or
-// unhealthy like any other, and named in `dormant` as well so the summary can say which
-// of the members it just reported will not repair themselves. It used to be an exit, and
-// the cost was that a dormant member's mount could fall arbitrarily far behind canon with
-// the roster saying nothing at all about it.
+// `dormant` is an EXIT: a member that declared its scheduler stopped is not measured
+// here at all (owner, 2026-09-13). It is named in `dormant` so the report still
+// enumerates the full fleet, and nothing is claimed about its mount — nothing converges
+// it and no fleet operation touches it, so an update verdict on it is a finding nobody
+// owns. `ignored` is the same shape for a repo on `config.exclude`, and it never even
+// reached a declaration read.
 export function freshnessView(roster) {
-  const fresh = []; const unhealthy = []; const dormant = []; const outOfScope = []; const unknown = [];
+  const fresh = []; const unhealthy = []; const dormant = []; const ignored = []; const outOfScope = []; const unknown = [];
   for (const e of roster) {
     if (e.isHome || e.isCanon) continue;          // named in the summary, never measured
+    if (e.excluded) { ignored.push(e.fullName); continue; }
     if (e.archived || e.fork) { outOfScope.push(`${e.displayName} (${e.archived ? 'archived' : 'fork'})`); continue; }
-    if (e.excluded) { outOfScope.push(`${e.displayName} (excluded)`); continue; }
     if (e.declarationError) { unknown.push(`${e.displayName} — ${e.declarationError}`); continue; }
     if (e.declaration === null) { outOfScope.push(`${e.displayName} (uncovered — the adoption half's subject)`); continue; }
-    if (e.dormant) dormant.push(e.fullName);
+    if (e.dormant) { dormant.push(e.fullName); continue; }
     if (e.freshnessError) { unknown.push(`${e.displayName} — ${e.freshnessError}`); continue; }
     if (e.freshness.state === freshness.FRESH) fresh.push({ fullName: e.fullName, detail: e.freshness.detail });
-    else unhealthy.push({ fullName: e.fullName, dormant: e.dormant, ...e.freshness });
+    else unhealthy.push({ fullName: e.fullName, ...e.freshness });
   }
-  return { fresh, unhealthy, dormant, outOfScope, unknown };
+  return { fresh, unhealthy, dormant, ignored, outOfScope, unknown };
 }
 
 // --- main --------------------------------------------------------------------
@@ -216,7 +219,7 @@ export async function main() {
   const coverageActions = await adoption.convergeAdoption(gh, home, {
     uncovered: coverage.uncovered,
     coveredSet: new Set([...coverage.covered, ...coverage.dormant]),
-    optedOutSet: new Set(coverage.optedOut),
+    ignoredSet: new Set(coverage.ignored),
   });
 
   // Two sections, one report: the questions are separate and read separately, but a

@@ -67,7 +67,7 @@ export const FRESH = 'fresh';
 // The precedence is about ROOT CAUSE, not the order the facts arrive in: a member with
 // no scheduler is ALSO behind, and reporting "behind" would send the reader chasing a
 // symptom of the missing cron.
-export function classifyFreshness({ hasScheduler, installed, canon, dormant = false }) {
+export function classifyFreshness({ hasScheduler, installed, canon }) {
   // Neither number means the mount has never been written by an engine that stamps —
   // which is every engine there has been since the versioned flows landed. A repo
   // whose declaration names packs whose versions it cannot state has not been
@@ -76,11 +76,9 @@ export function classifyFreshness({ hasScheduler, installed, canon, dormant = fa
   if (installed.engineVersion === null && packIds.length === 0) {
     return { state: 'no-stamp', detail: `${DECLARATION} carries no engineVersion and no pack versions — the repo declares packs but has never been vendored` };
   }
-  // A DORMANT member's scheduler is stopped by its own declaration, so its absence is
-  // obedience rather than drift, and this is the ONE state dormancy suppresses. The
-  // version comparison below still runs: what the declaration bought was quiet about
-  // the scheduler, not exemption from being measured.
-  if (!hasScheduler && !dormant) {
+  // Every member reaching here is awake: dormancy is an exit one level up, in the
+  // roster's freshness view, so a stopped scheduler is never classified as drift.
+  if (!hasScheduler) {
     return { state: 'no-scheduler', detail: `no ${SCHEDULER} — the repo has no cron, so nothing there will ever converge it` };
   }
   // An absent canon number is not a zero: a pack retired from canon has no manifest
@@ -196,35 +194,35 @@ export async function probeMount(gh, fullName, declaration, { canon }) {
 // --- the freshness section of the report (pure) -------------------------------
 
 // Enumerates the FULL fleet: every repo lands in exactly one list — fresh (with how
-// fresh), unhealthy (with its root cause), dormant, out of scope (with why), unknown —
+// fresh), unhealthy (with its root cause), dormant, ignored, out of scope (with why), unknown —
 // plus the two repos this half never measures, named rather than silently absent. A
 // report that names only the failures leaves the reader unable to tell "fresh" from
 // "fell out of the report". Kept free of I/O so the full-roster property is testable
 // directly. `fresh` is `[{ fullName, detail }]`; `outOfScope` entries carry their
 // reason inline.
 export function renderFreshnessSummary({
-  owner, home, canonRepo, canonBranch, fresh, unhealthy, dormant, outOfScope, unknown,
+  owner, home, canonRepo, canonBranch, fresh, unhealthy, dormant, ignored = [], outOfScope, unknown,
 }) {
   const notMeasured = [`\`${home}\` — the enforcer, swept by its own scheduler`];
   if (canonRepo.toLowerCase() !== home.toLowerCase()) notMeasured.push(`\`${canonRepo}\` — canon, with no vendored mount to be stale`);
   return [
     `# Fleet freshness sweep — ${owner} (measured by stamped versions against canon: ${canonRepo}@${canonBranch})`,
     '',
-    '| fresh | behind | no scheduler | no stamp | dormant | out of scope | unknown |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
+    '| fresh | behind | no scheduler | no stamp | dormant | ignored | out of scope | unknown |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
     `| ${fresh.length} | ${unhealthy.filter((u) => u.state === 'behind').length} | `
       + `${unhealthy.filter((u) => u.state === 'no-scheduler').length} | `
       + `${unhealthy.filter((u) => u.state === 'no-stamp').length} | `
-      + `${dormant.length} | ${outOfScope.length} | ${unknown.length} |`,
+      + `${dormant.length} | ${ignored.length} | ${outOfScope.length} | ${unknown.length} |`,
     '',
     unhealthy.length
-      ? `**Behind:**\n${unhealthy.map((u) => `- \`${u.fullName}\` — **${u.state}**: ${u.detail}`
-        + `${u.dormant ? ' — dormant, so nothing there will converge this on its own' : ''}`).join('\n')}`
+      ? `**Behind:**\n${unhealthy.map((u) => `- \`${u.fullName}\` — **${u.state}**: ${u.detail}`).join('\n')}`
       : '**Every covered member is up to date 🎉**',
     fresh.length
       ? `**Fresh:**\n${fresh.map((f) => `- \`${f.fullName}\` — ${f.detail}`).join('\n')}`
       : '**Fresh:** none',
-    dormant.length ? `**Dormant (scheduler stopped by declaration — measured like any other member, but will not self-heal):** ${dormant.join(', ')}` : '',
+    dormant.length ? `**Dormant (scheduler stopped by declaration — not measured, and no fleet operation touches them):** ${dormant.join(', ')}` : '',
+    ignored.length ? `**Ignored (config.exclude — nothing is read, measured or claimed about these):** ${ignored.join(', ')}` : '',
     outOfScope.length ? `**Out of scope (not covered members):** ${outOfScope.join(', ')}` : '',
     unknown.length ? `**UNKNOWN (probe errored — fix the token/scope):** ${unknown.join('; ')}` : '',
     `**Not measured:** ${notMeasured.join('; ')}`,
