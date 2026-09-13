@@ -120,3 +120,8 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   never named the test a split must pass, so more links read as always the safer choice. Retire if
   a per-link cost ever drops to where splitting is free.
 
+- **(ci-performance-evaluation-1)** #2012's run ledger: the canon's CI spends 11 s of 150 s in
+  checkout and setup-node against 131 s of tests, so profiling was right there — but the skill
+  had no branch for the other shape, a run whose install dwarfs its suite, and would have sent it
+  through eight steps that only measure tests. Retire if the step-1 breakdown grows a mechanised
+  classifier that routes the two shapes itself.
