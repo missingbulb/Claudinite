@@ -434,6 +434,25 @@ test('dedup-prune-integrity: passes a real strip (shrinks, delegates without res
   } finally { cleanup(root); }
 });
 
+test('dedup-prune-integrity: a reflowed "strip" that ends up longer is growth too', () => {
+  // Fewer lines, more text: re-wrapping is how a corrupt strip hides from a
+  // line count, and since growth-dedup's auto-merge policy stopped measuring
+  // shrink per line, this check is the only thing measuring it at all.
+  const reflowed = `## Codebase gotchas
+
+- **A bare \`hostSuffix\` matcher also matches \`evilexample.com\`, which is the whole trap** — pair \`hostEquals\` with \`hostSuffix: ".example.com"\`, since the real match runs in Chrome and is verified only by the CI-only real-Chrome test, the sole verifier of the URL-to-icon match.
+`;
+  const root = makeRepo({
+    base: { [PROSE]: ORIGINAL },
+    changed: { [PROSE]: reflowed },
+    commitMsg: 'gcec: dedup the hostSuffix gotcha the canon now covers Refs #1',
+  });
+  try {
+    const findings = runWork(root);
+    assert.ok(findings.some((f) => /grew/.test(f.what)), 'growth flagged');
+  } finally { cleanup(root); }
+});
+
 test('dedup-prune-integrity: a non-dedup edit may grow the pack (extract adds a lesson)', () => {
   const grown = `## Codebase gotchas
 

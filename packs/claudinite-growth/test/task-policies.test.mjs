@@ -75,18 +75,22 @@ test('rule-revalidation may land any local-pack correction, never a canon one', 
   ]).mergeable, false);
 });
 
-test('growth-dedup may land Markdown removals and in-line trims, never growth', () => {
+test('growth-dedup may land any prune inside the local packs, nothing outside them', () => {
+  // The shape a real prune arrives in (ClaudiniteWebsite#499): prose stripped
+  // and RE-WRAPPED, a duplicated local check deleted with its declaration and
+  // its test. Only the first of those is Markdown at all, and a strip that
+  // reflows a paragraph pulls text up across a line boundary — so the whole
+  // local-pack tree is the scope, and shrink-only is the `dedup-prune-integrity`
+  // check's to measure rather than the policy's.
   assert.equal(verdict(dedup.automerge, [
-    { file: RULES_MD, before: '- a\n- b, stated too widely.\n- c\n', after: '- a\n- b.\n' },
-  ]).mergeable, true, 'a removal beside a line cut down');
+    { file: RULES_MD, before: '- a rule, stated at length\n  over two lines.\n', after: '- a rule, stated\n  briefly.\n' },
+    { file: '.claudinite/local/packs/claudinite/declared-checks.json', before: '[{"id":"x"}]\n', after: null },
+    { file: '.claudinite/local/packs/claudinite/workRules/duplicated.mjs', before: 'a\n', after: null },
+    { file: '.claudinite/local/packs/claudinite/test/duplicated.test.mjs', before: 'a\n', after: null },
+    { file: '.claudinite/local/packs/claudinite/VERSIONS.md', before: '| 1 | row |\n', after: null },
+  ]).mergeable, true);
 
-  // Growing an entry is outside the policy — the dedup rule "never grow an
-  // entry", measured rather than requested.
-  assert.equal(verdict(dedup.automerge, [
-    { file: RULES_MD, before: '- a\n- b\n', after: '- a\n- b (but wider)\n' },
-  ]).mergeable, false);
-
-  // …and a trim is only this task's to land inside the local packs: the same
+  // …and a prune is only this task's to land inside the local packs: the same
   // edit to the repo's own prose is somebody else's document.
   for (const file of ['README.md', 'CLAUDE.md', 'packs/basics/RULES.md']) {
     assert.equal(verdict(dedup.automerge, [
