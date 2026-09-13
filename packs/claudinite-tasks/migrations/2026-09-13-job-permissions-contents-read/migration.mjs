@@ -42,7 +42,7 @@ const REWRITE = [
 ];
 
 // True while either live workflow still carries a block this record retires.
-const stillLegacy = async (read) => {
+const carriesRetiredBlock = async (read) => {
   for (const { file, replace } of REWRITE) {
     const text = await read(file);
     if (text && replace.some(({ from }) => text.includes(from))) return true;
@@ -56,7 +56,7 @@ export default {
   version: '60913.5',
   summary: 'every job-level permissions block in the scheduler and executor workflows reads contents, so the drain, the failure escalation and the chain continuation can check out a private member (#1993)',
 
-  appliesTo: stillLegacy,
+  appliesTo: carriesRetiredBlock,
   rewrite: REWRITE,
-  legacyPresent: async (_exists, read) => stillLegacy(read),
+  legacyPresent: async (_exists, read) => carriesRetiredBlock(read),
 };
