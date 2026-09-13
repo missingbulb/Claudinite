@@ -567,10 +567,14 @@ test('foldUsage: a mounted skill that never loads has no key — the zero set is
 // ABSENT — a mount that prints no summary line, a transcript shape carrying no usage
 // records — and absent must never render as zero.
 
-test('ruleTokensIn reads the mount\'s own session-start line, separators and all', () => {
-  const line = 'Claudinite loaded, 8 packs, 35 checks, 16,500 rule tokens, 23 available skills, 530 personal preference tokens.';
-  assert.equal(ruleTokensIn(line), 16500);
-  assert.equal(ruleTokensIn(`prose before\n${line}\nprose after`), 16500);
+test('ruleTokensIn reads the mount\'s own session-start line, in thousands or with separators', () => {
+  const line = 'Loaded Claudinite from repo owner/repo: 8 packs, 14.3k context tokens, 29 guards, 86 code checks, 16 auto-trigger skills, 17 regular skills, 530 personal preference tokens.';
+  assert.equal(ruleTokensIn(line), 14300);
+  assert.equal(ruleTokensIn(`prose before\n${line}\nprose after`), 14300);
+  assert.equal(ruleTokensIn('Loaded Claudinite: 2 packs, 900 context tokens, 0 guards'), 900);
+  // The line a member under an older engine prints, total spelled out with separators.
+  const legacy = 'Claudinite loaded, 8 packs, 35 checks, 16,500 rule tokens, 23 available skills, 530 personal preference tokens.';
+  assert.equal(ruleTokensIn(legacy), 16500);
   assert.equal(ruleTokensIn('Claudinite loaded, 8 packs, 35 checks, 900 rule tokens'), 900);
 });
 
@@ -713,8 +717,9 @@ test('ruleTokensByPackIn reads the split off the same line the total comes from'
   assert.equal(ruleTokensIn(line), 15000, 'and the total still reads off the same line');
 });
 
-test('ruleTokensByPackIn answers null for a mount whose engine predates the facet', () => {
+test('ruleTokensByPackIn answers null for a line stating no split — an engine before the facet, or after it', () => {
   assert.equal(ruleTokensByPackIn('Claudinite loaded, 8 packs, 35 checks, 16,500 rule tokens.'), null);
+  assert.equal(ruleTokensByPackIn('Loaded Claudinite from repo o/r: 8 packs, 14.3k context tokens, 29 guards, 86 code checks.'), null);
   assert.equal(ruleTokensByPackIn(''), null);
   assert.equal(ruleTokensByPackIn(null), null);
 });

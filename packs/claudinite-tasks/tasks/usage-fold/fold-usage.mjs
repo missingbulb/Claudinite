@@ -423,16 +423,21 @@ export function countTaskExecs(entries) {
 // so it is read from the whole entry text (the hook's own output, or the assistant
 // echoing it back — either is the same session, and only the first match counts).
 //
+// Two spellings, one figure: the current line opens `Loaded Claudinite` and states
+// the weight in thousands (`14.3k context tokens`); a member whose engine predates it
+// opens `Claudinite loaded,` and states `14,300 rule tokens`. Both are read, since a
+// fold reaches back over captures older than the engine that folds them.
+//
 // Numbers are grouped for a human reader, so the separators are stripped before
 // parsing. No match is `null` — no opinion — and never zero: a repo whose mount does
 // not print the line has an unknown figure, not a corpus of nothing.
-const RULE_TOKENS_RE = /Claudinite loaded[^\n]*?([\d,]+)\s+rule tokens/;
+const RULE_TOKENS_RE = /(?:Loaded Claudinite|Claudinite loaded)[^\n]*?(\d[\d,]*(?:\.\d+)?)(k?)\s+(?:context|rule) tokens/;
 
 export function ruleTokensIn(text) {
   const m = RULE_TOKENS_RE.exec(String(text ?? ''));
   if (!m) return null;
-  const n = Number(m[1].replace(/,/g, ''));
-  return Number.isFinite(n) ? n : null;
+  const n = Number(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1);
+  return Number.isFinite(n) ? Math.round(n) : null;
 }
 
 // What the session spent, from the usage records the transcript's own assistant
@@ -536,13 +541,15 @@ export function turnSeconds(entries, cap = USAGE_CAPS.humanSeconds) {
   return { human: Math.round(human), agent: Math.round(agent) };
 }
 
-// The per-pack split of the same session-start line `ruleTokensIn` reads its total
-// from — `rule tokens by pack: basics 4200 · claudinite 5200`. Written without
-// thousands separators on purpose: the facet sits in a comma-joined line, so a comma
-// is the segment's own terminator and cannot also appear inside a number.
+// The per-pack split a LEGACY session-start line carried beside the total
+// `ruleTokensIn` reads — `rule tokens by pack: basics 4200 · claudinite 5200`.
+// Written without thousands separators: the facet sat in a comma-joined line, so a
+// comma was the segment's own terminator and could not also appear inside a number.
 //
-// No facet is `null` — no opinion — which is what a member whose engine predates the
-// split reports, while its total stands.
+// The current line states no split, so a session under a current engine reports
+// `null` here — no opinion — exactly as a member whose engine predated the facet did,
+// while its total stands. Captures from the window the facet was printed in still
+// fold.
 //
 // The segment runs to the line's end, and the line is a SENTENCE — so the last pair
 // carries the full stop that closes it, which is why the pair pattern tolerates one.
