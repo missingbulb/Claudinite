@@ -479,10 +479,10 @@ test('commits: a detail read that failed is retried by the next collection, not 
   assert.deepEqual(second.commits.touchedPaths, ['src/x.js']);
 });
 
-test('commits: the detail memo is per reader, so two repos\' readers never share a sha', async () => {
+test('commits: the detail memo is per reader — a second reader over the same repo and sha reads for itself', async () => {
   const mk = (file) => fakeGh([windowOf(['a']), [/\/commits\/a$/, { status: 200, json: { files: [{ filename: file }] } }]]);
-  const one = await collectSignals(mk('one.js'), ctx({ repo: 'o/one' }), ['commits']);
-  const two = await collectSignals(mk('two.js'), ctx({ repo: 'o/two' }), ['commits']);
+  const one = await collectSignals(mk('one.js'), ctx(), ['commits']);
+  const two = await collectSignals(mk('two.js'), ctx(), ['commits']);
   assert.deepEqual(one.commits.touchedPaths, ['one.js']);
   assert.deepEqual(two.commits.touchedPaths, ['two.js']);
 });
