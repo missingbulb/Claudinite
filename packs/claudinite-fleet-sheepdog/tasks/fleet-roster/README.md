@@ -41,7 +41,7 @@ For each measured member, by **root cause**, in this precedence:
 | `behind` | on trunk, but its stamped `engineVersion` is below canon's or a pack it stamps is below that pack's manifest version in canon — the self-refresh has stopped landing | read the member's recent `Claudinite scheduler` runs: a disabled workflow (GitHub disables cron after 60 days of no activity), a failing update task, or a maintenance PR that never merges all look like this. The gap closes only when an update flow actually re-stamps the mount. |
 | `fresh` | every version it stamps is at canon's | — |
 
-A **dormant** member behind canon is reported with that noted beside its verdict: none of the remedies above apply on their own, because nothing there is meant to be running. It clears when someone wakes the repo, baselines it deliberately, or retires it.
+A **dormant** member carries no verdict from this table at all: it is named under `dormant` and measured by nothing. None of the remedies above would apply anyway, because nothing there is meant to be running.
 
 ### What `behind` measures, and what it deliberately does not
 
@@ -57,8 +57,8 @@ Every repo lands in exactly one bucket per question, and the two disagree on pur
 
 - **The enforcer** is censused by neither — it is named in both summaries and swept by its own scheduler.
 - **Canon** is an ordinary covered member to the coverage question (it carries a declaration) and is never measured by the freshness one (it has no vendored mount to be stale).
-- **An excluded repo** that still carries a declaration is **covered** — saying otherwise would report a repo as missing something it has — and is **out of scope** for freshness, because upkeep is what the exclusion opted out of.
-- **A dormant member** (`dormant` on its `claudinite-tasks` entry, [the scheduler's gate](../../../claudinite-growth/skills/writing-tasks/SKILL.md)) is a covered member measured like any other: its stamp is read and its version gap classified on the same terms. Dormancy stops its scheduler, not its clock. The one thing it suppresses is the `no-scheduler` verdict — a member told to stop is not then reported for having stopped — and the report says beside its verdict that the gap will not close on its own, since the fan-out leaves dormant members alone. The test is `isDormant`, re-exported from the tasks pack rather than re-implemented, so the sweep and that member's own scheduler cannot disagree.
+- **An ignored repo** (`config.exclude`) is out of both questions and is never read: the walk skips it before the declaration fetch, so the sweep does not learn whether it mounts Claudinite, and each half names it once under `ignored`. "Ignore all aspects" is the owner's word (2026-09-13), and a verdict — even a favourable one — is an aspect.
+- **A dormant member** (`dormant` on its `claudinite-tasks` entry, [the scheduler's gate](../../../claudinite-growth/skills/writing-tasks/SKILL.md)) is a **covered** member to the census and is **not measured** by the freshness half: its mount probe is not even paid for. Nothing converges it and no fleet-wide operation touches it, so a version gap there is a finding nobody owns; what the report owes the reader is the fact that it was left alone. The test is `isDormant`, re-exported from the tasks pack rather than re-implemented, so the sweep and that member's own scheduler cannot disagree.
 
 ## Why daily, and what it costs
 

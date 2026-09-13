@@ -13,7 +13,7 @@ const buckets = {
   covered: ['o/alpha', 'o/beta'],
   dormant: ['o/asleep'],
   uncovered: ['o/naked'],
-  optedOut: ['o/left-out'],
+  ignored: ['o/left-out'],
   skipped: ['o/attic (archived)', 'o/copy (fork)'],
   unknown: ['o/flaky — declaration returned 500'],
   actions: ['opened #9 (o/naked)'],
@@ -33,7 +33,7 @@ test('coverage summary: each state is labelled, so a name is never ambiguous', (
   assert.match(out, /\*\*Covered:\*\* o\/alpha, o\/beta/);
   assert.match(out, /dormant.*o\/asleep/i);
   assert.match(out, /\*\*Uncovered \(adoption issue open\):\*\* o\/naked/);
-  assert.match(out, /\*\*Opted out \(config\.exclude\):\*\* o\/left-out/);
+  assert.match(out, /\*\*Ignored \(config\.exclude[^)]*\):\*\* o\/left-out/);
   assert.match(out, /\*\*UNKNOWN.*o\/flaky/);
 });
 

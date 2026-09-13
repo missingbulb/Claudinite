@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  suspectedBody, convergeSuspectedIssue, renderFitSummary,
+  suspectedBody, convergeSuspectedIssue, renderFitSummary, runScan,
 } from '../../../tasks/fleet-add-missing-packs/scan-for-needed-packs.mjs';
 import { SUSPECTED_TITLE, LABEL, MARK, withTargeting } from '../../../tasks/fleet-add-missing-packs/protocol.mjs';
 
@@ -175,4 +175,28 @@ test('renderFitSummary: names the corpus it measured against, and how big it was
   const s = summary({ fitted: ['acme/site'] });
   assert.match(s, /29 canon pack\(s\)/);
   assert.match(s, /acme\/Claudinite/);
+});
+
+
+// --- an ignored repo is out of the sweep --------------------------------------
+
+// "Ignore all aspects" (owner, 2026-09-13). The fit sweep used to read every repo
+// under the owner and consult only `archived`/`fork`, so a repo the fleet was told to
+// leave alone could still be fingerprinted and handed a work-list issue.
+test('runScan: a repo on config.exclude is named out of scope and never read', async () => {
+  const seen = [];
+  const gh = async (path) => {
+    seen.push(path);
+    if (path.startsWith('/user/repos')) {
+      return { status: 200, json: [{ full_name: 'acme/left-out', name: 'left-out', default_branch: 'main', owner: { login: 'acme' } }] };
+    }
+    throw new Error(`the sweep read ${path} for an ignored repo`);
+  };
+  const scanned = await runScan({
+    gh, home: 'acme/sheepdog', owner: 'acme', canonRepo: 'acme/Claudinite',
+    exclude: new Set(['acme/left-out']), packs: [],
+  });
+  assert.deepEqual(scanned.summaryArgs.outOfScope, ['acme/left-out (ignored — config.exclude)']);
+  assert.deepEqual(scanned.toFire, []);
+  assert.deepEqual(seen.filter((p) => !p.startsWith('/user/repos')), []);
 });

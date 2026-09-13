@@ -30,9 +30,10 @@ export const DECLARATION = SETTINGS_FILE;
 // here. It is a property of a member's SCHEDULER, and the test has to be the same one
 // that scheduler used to stop itself — a sweep with its own private notion of dormancy
 // would nag exactly the repos that had already opted out, which is the whole failure
-// this exists to prevent. What it licenses is narrow: a stopped scheduler is not a sick
-// member, and nothing more. Every other question a sweep asks — is the mount current,
-// is the declaration readable — is asked of a dormant member exactly as of any other.
+// this exists to prevent. What it licenses: a dormant member is out of every UPKEEP
+// question — its scheduler is not judged, its mount is not measured, and no sweep
+// writes to it or dispatches it. Its membership is untouched: the coverage census
+// still names it, because dormancy is about upkeep, not membership.
 export { isDormant };
 
 

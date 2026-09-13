@@ -163,7 +163,8 @@ const summaryInput = {
   fresh: [{ fullName: 'o/alpha', detail: 'engine v4, 9 declared pack(s) at canon versions' }, { fullName: 'o/beta', detail: 'engine v4, 3 declared pack(s) at canon versions' }],
   unhealthy: [{ fullName: 'o/late', state: 'behind', detail: 'engine v3 → v4' }],
   dormant: ['o/asleep'],
-  outOfScope: ['o/attic (archived)', 'o/naked (uncovered — the adoption half\'s subject)', 'o/left-out (excluded)'],
+  ignored: ['o/left-out'],
+  outOfScope: ['o/attic (archived)', 'o/naked (uncovered — the adoption half\'s subject)'],
   unknown: ['o/flaky — probe returned 500'],
 };
 
@@ -212,17 +213,14 @@ test('freshness summary: a behind member is named on the report, with no issue t
   assert.doesNotMatch(out, /Issue actions/, 'freshness files no issues, so it has no issue actions to report');
 });
 
-// The prognosis #1851 put in a dormant member's issue body has to land somewhere now
-// that there is no body: without it a reader follows the `behind` remedy into a repo
-// that is behaving exactly as its own declaration asks.
-test('freshness summary: a dormant member behind canon is marked as one that will not self-heal', () => {
-  const out = renderFreshnessSummary({
-    ...summaryInput,
-    unhealthy: [{ fullName: 'o/late', state: 'behind', detail: 'engine v3 → v4', dormant: true }],
-  });
-  assert.match(out, /`o\/late` — \*\*behind\*\*: engine v3 → v4 — dormant/);
-  assert.doesNotMatch(renderFreshnessSummary(summaryInput), /`o\/late`.*dormant/,
-    'an awake member carries no such note');
+// A dormant member is not measured at all (owner, 2026-09-13), so it can never appear
+// among the behind: what the report owes its reader is the fact that it was left
+// alone, and why nothing will move it.
+test('freshness summary: dormant and ignored repos are named as unmeasured, not as findings', () => {
+  const out = renderFreshnessSummary(summaryInput);
+  assert.match(out, /\*\*Dormant \(scheduler stopped by declaration — not measured[^)]*\):\*\* o\/asleep/);
+  assert.match(out, /\*\*Ignored \(config\.exclude[^)]*\):\*\* o\/left-out/);
+  assert.doesNotMatch(out, /`o\/asleep` — \*\*/, 'no state verdict is rendered against a dormant member');
 });
 
 test('the freshness module offers no way to file an issue', async () => {
