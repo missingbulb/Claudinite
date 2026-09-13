@@ -28,7 +28,7 @@ before(async () => {
     createElement: (tag) => new FakeEl(tag),
     createElementNS: (ns, tag) => new FakeEl(tag),
   };
-  ({ renderBoard, quietLine } = await import('../board-view.mjs'));
+  ({ renderBoard, quietLine } = await import('../src/render/board-view.mjs'));
 });
 
 const REPO = 'an-owner/TicketWatch';

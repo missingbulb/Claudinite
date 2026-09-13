@@ -4,7 +4,7 @@ Republishes the dashboard site to GitHub Pages when the page's sources have move
 and does not report success until the deploy run it started has concluded.
 
 The task runs no agent: `worker.mjs` builds the site with
-[`build-site.mjs`](../../build-site.mjs), force-pushes the result as one commit to the
+[`build-site.mjs`](../../tooling/build-site.mjs), force-pushes the result as one commit to the
 `gh-pages` branch, dispatches [the seeded workflow](../../stubs/workflows/claudinite-dashboard-pages.yml)
 on the default branch, and follows that run to its end.
 

@@ -48,7 +48,7 @@ before(async () => {
     getElementById: get,
     querySelectorAll: () => [],
   };
-  ({ renderWork } = await import('../view-repo.mjs'));
+  ({ renderWork } = await import('../src/views/view-repo.mjs'));
 });
 
 const NOW = Date.parse('2026-08-21T11:30:00Z');

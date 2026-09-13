@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fleetGrowth } from '../fleet-growth.mjs';
-import { decodeUsage } from '../usage.mjs';
+import { fleetGrowth } from '../src/derive/fleet-growth.mjs';
+import { decodeUsage } from '../src/read/usage.mjs';
 
 const NOW = Date.parse('2026-08-21T11:30:00Z');
 const dayKey = (msAgo) => new Date(NOW - msAgo).toISOString().slice(0, 10);
@@ -76,7 +76,7 @@ test('a fleet where nothing folds reports that, rather than a fleet doing nothin
 
 // --- the corpus panel ---------------------------------------------------------------
 
-import { fleetCorpus, mountedSkills } from '../fleet-growth.mjs';
+import { fleetCorpus, mountedSkills } from '../src/derive/fleet-growth.mjs';
 
 const CORPUS_FIELDS = {
   day: ['captures', 'merges', 'sessions', 'userMessages', 'userCommands'],

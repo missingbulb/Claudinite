@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { tmpdir } from 'node:os';
-import { join, resolve, dirname } from 'node:path';
+import { join, resolve, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 
@@ -42,7 +42,7 @@ async function member(declaration, extraFiles = {}) {
 }
 
 const build = (dir, env = {}) => run('node',
-  ['.claudinite/shared/packs/claudinite-dashboard/build-site.mjs'],
+  ['.claudinite/shared/packs/claudinite-dashboard/tooling/build-site.mjs'],
   { cwd: dir, env: { ...process.env, ...env } });
 
 const readJson = async (p) => JSON.parse(await readFile(p, 'utf8'));
@@ -70,7 +70,7 @@ test('the staged tree mirrors the mount, with the root a redirect', async (t) =>
   for (const p of [
     '_site/index.html',
     '_site/packs/claudinite-dashboard/index.html',
-    '_site/packs/claudinite-dashboard/model.mjs',
+    '_site/packs/claudinite-dashboard/src/derive/model.mjs',
     '_site/packs/claudinite-tasks/queue/work-item.mjs',
     '_site/engine/checks/helpers/code-scanning.mjs',
     '_site/.nojekyll',
@@ -88,11 +88,21 @@ test('every relative import in the staged page resolves inside the site', async 
   await build(dir);
 
   const pageDir = join(dir, '_site/packs/claudinite-dashboard');
-  const { stdout } = await run('sh', ['-c', `grep -ho "from '[^']*'" ${pageDir}/*.mjs | sort -u`]);
-  const specs = stdout.split('\n').map((l) => /from '([^']*)'/.exec(l)?.[1]).filter((x) => x?.startsWith('.'));
+  // Every staged module, at whatever depth `src/` puts it, and each specifier resolved
+  // against ITS OWN directory — a page whose modules sit in layer folders is only
+  // reachable if each file's own climb is right, which a page-root-relative check
+  // cannot see.
+  const { stdout } = await run('sh', ['-c',
+    `find ${pageDir} -name '*.mjs' -exec grep -Ho "from '[^']*'" {} + | sort -u`]);
+  const specs = stdout.split('\n')
+    .map((l) => /^([^:]+):from '([^']*)'/.exec(l))
+    .filter(Boolean)
+    .map(([, file, spec]) => ({ file, spec }))
+    .filter(({ spec }) => spec.startsWith('.'));
   assert.ok(specs.length > 0, 'found no relative imports — the grep is wrong, not the page');
-  for (const spec of specs) {
-    assert.ok(existsSync(resolve(pageDir, spec)), `staged page imports ${spec}, which is not in the site`);
+  for (const { file, spec } of specs) {
+    assert.ok(existsSync(resolve(dirname(file), spec)),
+      `${relative(pageDir, file)} imports ${spec}, which is not in the site`);
   }
 });
 
@@ -101,7 +111,7 @@ test('local-only and explanatory files are not published', async (t) => {
   t.after(() => rm(dir, { recursive: true, force: true }));
   await build(dir);
 
-  for (const f of ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'README.md', 'stubs', 'oauth-exchange.mjs']) {
+  for (const f of ['tooling', 'pack.mjs', 'README.md', 'stubs']) {
     assert.ok(!existsSync(join(dir, '_site/packs/claudinite-dashboard', f)), `${f} must not be published`);
   }
 });
@@ -187,8 +197,10 @@ test('a mount without the page produces nothing and exits clean', async (t) => {
   t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, '.claudinite/shared/packs/claudinite-dashboard'), { recursive: true });
   await mkdir(join(dir, '.claudinite/shared/engine'), { recursive: true });
-  for (const f of ['build-site.mjs', 'config.mjs', 'deployment-config.mjs']) {
-    await cp(join(PACK_DIR, f), join(dir, `.claudinite/shared/packs/claudinite-dashboard/${f}`));
+  for (const f of ['tooling/build-site.mjs', 'tooling/deployment-config.mjs', 'src/read/config.mjs']) {
+    const dest = join(dir, '.claudinite/shared/packs/claudinite-dashboard', f);
+    await mkdir(dirname(dest), { recursive: true });
+    await cp(join(PACK_DIR, f), dest);
   }
   // The build resolves the member's settings file by name rather than naming it, so
   // the module that knows both names is part of the mount it needs.

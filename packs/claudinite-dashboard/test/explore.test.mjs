@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   panelKind, buildPanel, convergeCommand, pendingPrPanel, failedTaskPanel,
   stuckItemPanel, plainIssuePanel, scheduledTaskPanel, parkPanel, runRecord,
-} from '../explore.mjs';
+} from '../src/derive/explore.mjs';
 import {
   WORK_PREFIX, MACHINE_BLOCK_START, MACHINE_BLOCK_END, CLAIM_MARKER, HANDOFF_MARKER,
   OUTCOME_DONE, OUTCOME_OBSOLETE,

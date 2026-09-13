@@ -27,13 +27,13 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { deploymentConfig, SIGN_IN_VARS } from '../../deployment-config.mjs';
+import { deploymentConfig, SIGN_IN_VARS } from '../../tooling/deployment-config.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // The endpoint's source, in the pack above this task. One canonical spelling of the
 // path; nothing else here names the file.
-export const SOURCE = resolve(HERE, '../../oauth-exchange.mjs');
+export const SOURCE = resolve(HERE, '../../tooling/oauth-exchange.mjs');
 
 const API = 'https://api.cloudflare.com/client/v4';
 

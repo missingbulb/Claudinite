@@ -1,5 +1,5 @@
 // The ledger sheet's render primitives — the marks the identity
-// ([docs/visual-identity.md](docs/visual-identity.md)) names, once each.
+// ([docs/visual-identity.md](../../docs/visual-identity.md)) names, once each.
 //
 // ONE TICK VOCABULARY. The heartbeat, the wake strip, the pulse and the sparklines are
 // the same square mark at four scales, so they are one function each rather than four
@@ -8,7 +8,7 @@
 //
 // NOTHING DECIDES ANYTHING. Every verdict — which delta is tinted, which square is
 // critical, what a gap's sentence says — arrives already made, from
-// [`fleet-ledger.mjs`](fleet-ledger.mjs) and [`fleet.mjs`](fleet.mjs). This file turns
+// [`fleet-ledger.mjs`](../derive/fleet-ledger.mjs) and [`fleet.mjs`](../derive/fleet.mjs). This file turns
 // those into nodes.
 
 import { el, refNodes } from './ui.mjs';

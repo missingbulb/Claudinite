@@ -1,6 +1,6 @@
 # deploy-oauth-exchange
 
-Puts the dashboard's sign-in endpoint — [`oauth-exchange.mjs`](../../oauth-exchange.mjs)
+Puts the dashboard's sign-in endpoint — [`oauth-exchange.mjs`](../../tooling/oauth-exchange.mjs)
 — live on Cloudflare Workers, and does not report success until the deployed URL
 answers as that endpoint.
 

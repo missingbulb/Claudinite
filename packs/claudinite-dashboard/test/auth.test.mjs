@@ -20,7 +20,7 @@ beforeEach(() => {
   globalThis.history = { replaceState: (_a, _b, url) => replaced.push(String(url)) };
 });
 
-const load = () => import(`../../../packs/claudinite-dashboard/auth.mjs?t=${Math.random()}`);
+const load = () => import(`../src/read/auth.mjs?t=${Math.random()}`);
 const CONFIG = { clientId: 'Iv1.x', exchangeUrl: 'https://exchange.example/gh' };
 
 test('a page that is not a callback is left alone', async () => {

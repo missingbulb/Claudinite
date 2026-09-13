@@ -13,36 +13,36 @@
 // repo that does not says so in the panel that wanted it, and the rest of the page is
 // unaffected.
 
-import * as gh from './github.mjs';
+import * as gh from '../read/github.mjs';
 import {
   buildRoster, describeItem, isWorkItem, parseDeclaration, taskDeclarationPaths,
   PARKED,
-} from './model.mjs';
+} from '../derive/model.mjs';
 import {
   ciStatus, mountState, parkMinutes, summariseRuns,
-} from './fleet.mjs';
-import { readCanon, priceStampedPacks } from './canon.mjs';
-import { workRows, rowsFor, viewCounts, defaultView, VIEWS } from './work.mjs';
-import { repoCandidates } from './next-work.mjs';
-import { readUsage, growthSeries, queueSeries, hourSeries } from './usage.mjs';
-import { readContributions, liveSourcesNeeded } from './contributions.mjs';
-import { packCard } from './contrib-view.mjs';
+} from '../derive/fleet.mjs';
+import { readCanon, priceStampedPacks } from '../read/canon.mjs';
+import { workRows, rowsFor, viewCounts, defaultView, VIEWS } from '../derive/work.mjs';
+import { repoCandidates } from '../derive/next-work.mjs';
+import { readUsage, growthSeries, queueSeries, hourSeries } from '../read/usage.mjs';
+import { readContributions, liveSourcesNeeded } from '../read/contributions.mjs';
+import { packCard } from '../render/contrib-view.mjs';
 import {
   $, el, ago, until, stamp, duration, chip, head, emptyRow, issueLink, refNodes, queueUrl, segmentBar,
   warnNodes, stackedColumns, chartLegend, dualAxisChart, flipRows,
   LEVEL_GLYPH, OUTCOME_COLOR,
-} from './ui.mjs';
-import { band, slip, machineCell, beats, wakeTicks, figureRow, pulseChart, detailTable, expander } from './sheet.mjs';
-import { repoLedger, repoMachine } from './repo-ledger.mjs';
-import { fmtTokens, fmtHours, fmtAge } from './fleet-ledger.mjs';
-import { buildBoard } from './board.mjs';
-import { renderBoard, quietLine } from './board-view.mjs';
-import { buildPanel } from './explore.mjs';
-import { wakeStrip } from './model.mjs';
-import { settingsTextAtSha, SETTINGS_FILE } from './settings-read.mjs';
+} from '../render/ui.mjs';
+import { band, slip, machineCell, beats, wakeTicks, figureRow, pulseChart, detailTable, expander } from '../render/sheet.mjs';
+import { repoLedger, repoMachine } from '../derive/repo-ledger.mjs';
+import { fmtTokens, fmtHours, fmtAge } from '../derive/fleet-ledger.mjs';
+import { buildBoard } from '../derive/board.mjs';
+import { renderBoard, quietLine } from '../render/board-view.mjs';
+import { buildPanel } from '../derive/explore.mjs';
+import { wakeStrip } from '../derive/model.mjs';
+import { settingsTextAtSha, SETTINGS_FILE } from '../read/settings-read.mjs';
 // The scheduler's own predicate, over the declaration this view already parsed — so the
 // page's idea of dormant and the member's own can never differ.
-import { isDormant } from '../claudinite-tasks/shared-code/dormancy.mjs';
+import { isDormant } from '../../../claudinite-tasks/shared-code/dormancy.mjs';
 
 // How far each past-data panel looks back. The month is the growth panel's, because a
 // fortnight of a corpus's own numbers is noise; the fortnight is the queue's, because
@@ -563,7 +563,7 @@ function renderGrowth(growth) {
       el('div', { className: 'k', textContent: 'no usage fold in this repo' }),
       el('p', {
         className: 'sub',
-        textContent: 'These figures come from `.claudinite/local/usage.GENERATED.json`, which the '
+        textContent: 'These figures come from `../../.claudinite/local/usage.GENERATED.json`, which the '
           + 'claudinite-growth pack\'s usage-fold task writes. Declare that pack and the panel fills in from '
           + 'its first run; nothing else on this page depends on it.',
       }),

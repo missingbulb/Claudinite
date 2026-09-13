@@ -9,14 +9,14 @@
 // ROUTING WITHIN A MODE IS THE URL. `?repo=` is the deep dive, its absence the landing
 // view, so every view is a link someone can send and the back button works.
 
-import * as gh from './github.mjs';
-import * as auth from './auth.mjs';
-import { loadConfig, resolveRoster, isFleetConfig } from './config.mjs';
-import { clearAll, stats } from './cache.mjs';
-import { planPolicy, credentialAdvice, MINUTE_MS } from './budget.mjs';
-import { $, el, resetCountUps } from './ui.mjs';
-import { loadRepo } from './view-repo.mjs';
-import { loadFleet } from './view-fleet.mjs';
+import * as gh from './read/github.mjs';
+import * as auth from './read/auth.mjs';
+import { loadConfig, resolveRoster, isFleetConfig } from './read/config.mjs';
+import { clearAll, stats } from './read/cache.mjs';
+import { planPolicy, credentialAdvice, MINUTE_MS } from './read/budget.mjs';
+import { $, el, resetCountUps } from './render/ui.mjs';
+import { loadRepo } from './views/view-repo.mjs';
+import { loadFleet } from './views/view-fleet.mjs';
 
 let CONFIG = null;
 let ROSTER = [];

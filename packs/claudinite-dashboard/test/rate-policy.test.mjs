@@ -23,7 +23,7 @@ const res = (body, { status = 200, headers = {} } = {}) => ({
   text: async () => JSON.stringify(body),
 });
 
-const load = () => import(`../../../packs/claudinite-dashboard/github.mjs?t=${Math.random()}`);
+const load = () => import(`../src/read/github.mjs?t=${Math.random()}`);
 
 beforeEach(() => { globalThis.localStorage = new Mem(); });
 

@@ -1,31 +1,31 @@
 // The fleet overview: every member at once, worst first, with a way into any one of
 // them. `fleet.mjs` decides what the rows MEAN; this file fetches and draws them.
 
-import * as gh from './github.mjs';
+import * as gh from '../read/github.mjs';
 import {
   summariseMember, rankMembers, rollUp, packSpread, taskSpread, attentionBreakdown,
   memberAttention, fleetAttention, estimateMinutes, estimateNote, parkMinutes, parkMinutesNote,
-} from './fleet.mjs';
-import { readCanon, priceStampedPacks } from './canon.mjs';
-import { activitySeries, delta, commitDays } from './activity.mjs';
-import { readUsage } from './usage.mjs';
+} from '../derive/fleet.mjs';
+import { readCanon, priceStampedPacks } from '../read/canon.mjs';
+import { activitySeries, delta, commitDays } from '../derive/activity.mjs';
+import { readUsage } from '../read/usage.mjs';
 import {
   readContributions, liveSourcesNeeded, readDeploymentContributions, valueOf, fleetPhrase, phraseText,
-} from './contributions.mjs';
-import { miniCard, miniAbsent, packCard, CONTRIB_STATE_TEXT } from './contrib-view.mjs';
-import { fleetCorpus } from './fleet-growth.mjs';
-import { fleetCandidates } from './next-work.mjs';
+} from '../read/contributions.mjs';
+import { miniCard, miniAbsent, packCard, CONTRIB_STATE_TEXT } from '../render/contrib-view.mjs';
+import { fleetCorpus } from '../derive/fleet-growth.mjs';
+import { fleetCandidates } from '../derive/next-work.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, leadCard, repoLink, tiles, segmentBar,
   reasonNodes, queueUrl, stackedColumns, chartLegend, windowFigure, ciMark, commitGraph, packMark,
   attentionMark,
   LEVEL_GLYPH, STATE_ORDER, STATE_COLOR, STATE_UI, OUTCOME_COLOR,
-} from './ui.mjs';
-import { band, slip, machineCell, beats, wakeTicks, figureRow, pulseChart, detailTable, expander } from './sheet.mjs';
-import { fleetLedger, machinePanel, fmtTokens, fmtHours, fmtAge, STUCK_DAYS } from './fleet-ledger.mjs';
-import { wakeStrip } from './model.mjs';
-import { settingsTextAtSha } from './settings-read.mjs';
-import { sweepPhases } from './fleet-sweep.mjs';
+} from '../render/ui.mjs';
+import { band, slip, machineCell, beats, wakeTicks, figureRow, pulseChart, detailTable, expander } from '../render/sheet.mjs';
+import { fleetLedger, machinePanel, fmtTokens, fmtHours, fmtAge, STUCK_DAYS } from '../derive/fleet-ledger.mjs';
+import { wakeStrip } from '../derive/model.mjs';
+import { settingsTextAtSha } from '../read/settings-read.mjs';
+import { sweepPhases } from '../read/fleet-sweep.mjs';
 
 // --- the passes ------------------------------------------------------------------
 //

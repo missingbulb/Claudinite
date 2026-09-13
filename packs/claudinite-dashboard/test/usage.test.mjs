@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   decodeUsage, decodeRow, decodeCounters, growthSeries, queueSeries, hourSeries,
   runKind, taskDetail, dayLadder, hourLadder,
-} from '../usage.mjs';
+} from '../src/read/usage.mjs';
 import {
   SCHEDULER_WORKFLOW_FILE, EXECUTOR_WORKFLOW_FILE,
 } from '../../claudinite-tasks/shared-code/github.mjs';

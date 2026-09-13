@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { priceModel, priceWindow, tokensByModelOver, modelTokens } from '../pricing.mjs';
+import { priceModel, priceWindow, tokensByModelOver, modelTokens } from '../src/derive/pricing.mjs';
 
 // A million of each counter, so a rate reads straight out of the arithmetic.
 const M = 1e6;

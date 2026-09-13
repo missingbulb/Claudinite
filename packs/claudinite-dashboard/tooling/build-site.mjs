@@ -3,7 +3,7 @@
 // Run by the `publish-pages` task, which pushes what this produces to `gh-pages` for
 // the seeded workflow to deploy; and by hand, from the member's root, to see what a
 // run would publish:
-//   node .claudinite/shared/packs/claudinite-dashboard/build-site.mjs [--out _site]
+//   node .claudinite/shared/packs/claudinite-dashboard/tooling/build-site.mjs [--out _site]
 //
 // Reads its deployment settings through `deployment-config.mjs`, which is also what the
 // deploy-oauth-exchange task reads, so the button and the endpoint it calls cannot be
@@ -18,7 +18,7 @@
 import { cp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveMode } from './config.mjs';
+import { resolveMode } from '../src/read/config.mjs';
 import { deploymentConfig } from './deployment-config.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -32,10 +32,12 @@ const HOME = 'packs/claudinite-dashboard';
 const ENGINE = 'engine';
 const TASKS = 'packs/claudinite-tasks';
 
-// Local-only or explanatory files. None belong on a published site — `serve.mjs` least
-// of all, being a file server's source sitting where it reads as part of the page.
-const NOT_PUBLISHED = ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'oauth-exchange.mjs',
-  'dashboard.config.example.json', 'README.md', 'badge.svg', 'stubs', 'tasks'];
+// Local-only or explanatory files. None belong on a published site — `tooling/` least of
+// all, being this build's own source and a file server's, sitting where they read as part
+// of the page. Everything the browser loads is under `src/`, so what publishes is decided
+// by a directory the tree already names rather than by a list of filenames to keep in step.
+const NOT_PUBLISHED = ['tooling', 'pack.mjs', 'dashboard.config.example.json',
+  'README.md', 'badge.svg', 'stubs', 'tasks'];
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
 
@@ -47,13 +49,13 @@ const arg = (name, fallback) => {
 // The mount this pack was read from, and the repo root above it. Resolved from this
 // file's own location rather than from `process.cwd()`, so the script works wherever it
 // is invoked from.
-const mountRoot = resolve(HERE, '../..');            // .claudinite/shared  (or the canon root)
+const mountRoot = resolve(HERE, '../../..');         // .claudinite/shared  (or the canon root)
 const repoRoot = resolve(arg('root', process.cwd()));
 const OUT = resolve(repoRoot, arg('out', '_site'));
 
-// This script ships inside the page's own directory, so that directory is `HERE` —
+// This script ships in the pack's `tooling/`, so the page is the directory above it —
 // no path guessing, and it stays right if the pack is ever renamed.
-const pageSource = HERE;
+const pageSource = resolve(HERE, '..');
 const engineSource = join(mountRoot, ENGINE);
 const tasksSource = join(mountRoot, TASKS);
 

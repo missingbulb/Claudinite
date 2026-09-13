@@ -1,5 +1,5 @@
 // The repo page's top block, as data — the same ledger as the fleet's, scoped to one
-// member ([docs/repo-page.md](docs/repo-page.md)).
+// member ([docs/repo-page.md](../../docs/repo-page.md)).
 //
 // WHY IT IS A SEPARATE MODULE and not a parameter on the fleet's. Three of its figures
 // are questions only a repo can ask: the queue's own outcome WORDS (an obsolete share

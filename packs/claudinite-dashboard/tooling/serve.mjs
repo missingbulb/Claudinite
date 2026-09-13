@@ -1,4 +1,4 @@
-// The dashboard's host. `node packs/claudinite-dashboard/serve.mjs`, then open the
+// The dashboard's host. `node packs/claudinite-dashboard/tooling/serve.mjs`, then open the
 // URL it prints.
 //
 // WHY A SERVER AT ALL, for a page with no backend: the dashboard imports the
@@ -18,10 +18,10 @@ import { stat } from 'node:fs/promises';
 import { join, normalize, extname, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// The repo root, from this file's own location — `packs/<id>/serve.mjs`, so two up.
+// The repo root, from this file's own location — `packs/<id>/tooling/serve.mjs`, so three up.
 // Never `process.cwd()`: the page is served by path, and a server started from
 // anywhere but the root would serve a tree the imports cannot reach out of.
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const HOME = '/packs/claudinite-dashboard/';
 const port = Number(process.env.PORT ?? 8099);
 

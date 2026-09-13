@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   workRows, rowsFor, viewCounts, defaultView, troubles, classify, attentionOf, VIEWS,
-} from '../work.mjs';
-import { describeItem, describeCadence, buildRoster } from '../model.mjs';
+} from '../src/derive/work.mjs';
+import { describeItem, describeCadence, buildRoster } from '../src/derive/model.mjs';
 import {
   WORK_PREFIX, STATUS_READY, STATUS_BLOCKED, STATUS_RUNNING_EXECUTOR, PARK_STATUSES, PARK_KINDS,
   NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,

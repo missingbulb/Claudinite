@@ -10,7 +10,7 @@ import {
 } from './ui.mjs';
 import {
   valueOf, windowDelta, listItems, valuesPath,
-} from './contributions.mjs';
+} from '../read/contributions.mjs';
 
 // --- pack-contributed metrics -----------------------------------------------------
 

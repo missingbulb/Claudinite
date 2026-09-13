@@ -26,7 +26,7 @@ about it. Then the rate pill and the reload / clear-cache buttons.
 **Question.** What is the one thing in this repo only a person can unblock?
 
 **Figures.** The worst row of the Work board (`repoCandidates` in
-[`next-work.mjs`](../next-work.mjs)): its issue, its park kind and minutes (`parkMinutes`),
+[`next-work.mjs`](../src/derive/next-work.mjs)): its issue, its park kind and minutes (`parkMinutes`),
 *N more*. The same slip as the fleet's, on warm paper, two lines. **Bad when** anything is at
 serious / critical — the same verdict as the first row of the *stuck* view, by construction.
 Green state is one line: *nothing is waiting on you*.
@@ -41,12 +41,12 @@ have*, hour by hour.
 
 | Cell | Figure | Derived | Source | Bad when |
 |---|---|---|---|---|
-| **Scheduler** | 24 squares, one per hour, filled where a scheduler run completed in it; headline `last 12 m ago`, sub `22 of 24 h · 2 h gap at 04:00` | `hours[h].scheduler > 0` for folded hours, topped up from the live runs page for hours past `runsFoldedThrough` (`hourSeries` in [`usage.mjs`](../usage.mjs)); an hour neither source reached is drawn hollow, not red | fold `hours` + live runs | a gap > 2 h → warning; > 6 h → serious; no run in 24 h on a repo declaring tasks → critical |
+| **Scheduler** | 24 squares, one per hour, filled where a scheduler run completed in it; headline `last 12 m ago`, sub `22 of 24 h · 2 h gap at 04:00` | `hours[h].scheduler > 0` for folded hours, topped up from the live runs page for hours past `runsFoldedThrough` (`hourSeries` in [`usage.mjs`](../src/read/usage.mjs)); an hour neither source reached is drawn hollow, not red | fold `hours` + live runs | a gap > 2 h → warning; > 6 h → serious; no run in 24 h on a repo declaring tasks → critical |
 | **Executor** | failed / total in 24 h, and what is in flight now | `hours[*].failed` summed over 24 h; in flight from `runs.status ∈ {queued, in_progress}` | fold `hours` + live runs | ≥ 1 failed → warning; the failed run's task named from the hour's `tasks` list where the fold has it |
-| **CI on main** | one word plus age | `ciStatus(runs, default_branch)` in [`fleet.mjs`](../fleet.mjs) | live runs | failing → critical (nothing the queue lands is safe) |
+| **CI on main** | one word plus age | `ciStatus(runs, default_branch)` in [`fleet.mjs`](../src/derive/fleet.mjs) | live runs | failing → critical (nothing the queue lands is safe) |
 | **Fold age** | `now − usage.generated` | the stamp | fold | > 6 h on a repo whose head moved → warning; no fold → *no fold*, and every fold-derived figure below reads *not recorded* |
 | **Drift** | `engine −1 · 2 packs`, the versions named | `mountState` | declaration stamp vs `canonRepo` | behind on the engine → serious; no canon configured → *unknown*, never *current* |
-| **Next wake** | `05:00 · 7 tasks · in 19 h`, then a 24 h tick strip, one tick per task anchor, hover naming the task | the roster's own `nextAsk.at` per row (`buildRoster` in [`model.mjs`](../model.mjs)) bucketed by hour | task declarations at head sha | a declaring repo with no anchor inside 24 h → serious (unwired); a task whose next ask is `held` (a failure park on a declaration carrying `last-run-not-failed`) is a critical tick at *now* |
+| **Next wake** | `05:00 · 7 tasks · in 19 h`, then a 24 h tick strip, one tick per task anchor, hover naming the task | the roster's own `nextAsk.at` per row (`buildRoster` in [`model.mjs`](../src/derive/model.mjs)) bucketed by hour | task declarations at head sha | a declaring repo with no anchor inside 24 h → serious (unwired); a task whose next ask is `held` (a failure park on a declaration carrying `last-run-not-failed`) is a critical tick at *now* |
 
 **Expand →** the 48-hour table: hour, scheduler, executor, sessions, failed, tasks executed
 (from `hours[h].taskExec`).

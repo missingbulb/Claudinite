@@ -1,5 +1,5 @@
 // The Work board's explore panels — one per status, because the reader's next move
-// differs by status ([docs/work-board.md](docs/work-board.md), *The explore panel*).
+// differs by status ([docs/work-board.md](../../docs/work-board.md), *The explore panel*).
 //
 // EVERY PANEL ENDS IN `do`: one imperative. A panel that only describes is a longer
 // hover; the point of opening one is to know what to do next.
@@ -16,8 +16,8 @@
 import {
   parseWorkItemBody, parseWorkItemTitle, statusOf, labelNames, outcomeOf,
   PARK_PREFIX, CLAIM_MARKER, HANDOFF_MARKER,
-} from '../claudinite-tasks/shared-code/work-items.mjs';
-import { holdsOnFailure } from '../claudinite-tasks/shared-code/anchors.mjs';
+} from '../../../claudinite-tasks/shared-code/work-items.mjs';
+import { holdsOnFailure } from '../../../claudinite-tasks/shared-code/anchors.mjs';
 
 const NOT_READ = 'not read';
 const ms = (t) => (t == null ? null : new Date(t).getTime());

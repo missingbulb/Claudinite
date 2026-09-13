@@ -5,10 +5,10 @@
 
 import {
   BLOCKED, READY, EXECUTING, AGENT,
-} from '../claudinite-tasks/shared-code/work-items.mjs';
+} from '../../../claudinite-tasks/shared-code/work-items.mjs';
 // `PARKED` is the page's own key rather than a label: a park is four labels, and
 // the page groups them into one column (model.mjs).
-import { PARKED } from './model.mjs';
+import { PARKED } from '../derive/model.mjs';
 
 export const $ = (id) => document.getElementById(id);
 

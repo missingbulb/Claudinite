@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {
   axisOf, edgesOf, componentsOf, placeItem, prWaits, scheduleGrid, workloadLine,
   quietTail, buildBoard, DAYS_BACK, DAYS_AHEAD, GROUP_CAP, nextDailyAnchor,
-} from '../board.mjs';
-import { describeCadence } from '../model.mjs';
+} from '../src/derive/board.mjs';
+import { describeCadence } from '../src/derive/model.mjs';
 import {
   WORK_PREFIX, ORIGIN_AD_HOC, STATUS_READY, STATUS_RUNNING_AGENT,
   NEEDS_HUMAN_FAILURE, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, OUTCOME_DONE, OUTCOME_OBSOLETE,
