@@ -3,10 +3,9 @@
 //
 // This is the panel the fleet page could not have before. Every other figure it shows
 // comes from a live read — issues, runs, a head commit — and none of those can answer
-// the two questions a corpus is actually judged on: how much of it each session is
-// paying for, and how often its checks caught something. Both live in each member's
-// `usage.GENERATED.json`, which the page now reads anyway, so the panel costs nothing
-// beyond what the sweep already spent.
+// the question a corpus is actually judged on: how often its checks caught something.
+// That lives in each member's `usage.GENERATED.json`, which the page now reads anyway,
+// so the panel costs nothing beyond what the sweep already spent.
 //
 // THE RULES THE FLEET PAGE'S OWN NUMBERS FOLLOW APPLY HERE TOO:
 //
@@ -49,7 +48,6 @@ export function fleetGrowth(reads, { now, days = 30, windowDays = 7 } = {}) {
     };
     return {
       day,
-      ruleTokens: sum('ruleTokens'),
       sessions: sum('sessions'),
       checkRuns: sum('checkRuns'),
       checkFailures: sum('checkFailures'),
@@ -66,7 +64,7 @@ export function fleetGrowth(reads, { now, days = 30, windowDays = 7 } = {}) {
       const known = slice.map((r) => r[field]).filter((n) => n !== null);
       return known.length ? known.reduce((a, b) => a + b, 0) : null;
     };
-    return { checkRuns: sum('checkRuns'), checkFailures: sum('checkFailures'), ruleTokens: sum('ruleTokens'), sessions: sum('sessions') };
+    return { checkRuns: sum('checkRuns'), checkFailures: sum('checkFailures'), sessions: sum('sessions') };
   };
 
   const dayKey = (t) => new Date(t).toISOString().slice(0, 10);
@@ -86,10 +84,6 @@ export function fleetGrowth(reads, { now, days = 30, windowDays = 7 } = {}) {
     folding: folding.length,
     members: readable.length,
     absent,
-    // The mean corpus a session in this fleet carries, which is the figure that says
-    // what the rules COST — null rather than 0 when no session in the window attested
-    // one, because "nobody printed the line" is not "the corpus is empty".
-    tokensPerSession: current.sessions ? Math.round((current.ruleTokens ?? 0) / current.sessions) : null,
   };
 }
 
@@ -173,7 +167,6 @@ export function fleetCorpus(reads, { now, days = 30, windowDays = 7 } = {}) {
   for (const r of folding) {
     const own = { work: emptyScope(), world: emptyScope() };
     let sessions = null; let turns = null; let commands = null; let skillLoads = null;
-    let ruleTokens = null; let ruleTokenSessions = null;
     let blocking = 0; let advisory = 0;
     let first = null; let last = null;
     const bump = (cur, n) => (typeof n === 'number' ? (cur ?? 0) + n : cur);
@@ -185,8 +178,6 @@ export function fleetCorpus(reads, { now, days = 30, windowDays = 7 } = {}) {
       sessions = bump(sessions, row.sessions);
       turns = bump(turns, row.userMessages);
       commands = bump(commands, row.userCommands);
-      ruleTokens = bump(ruleTokens, row.ruleTokens);
-      ruleTokenSessions = bump(ruleTokenSessions, row.ruleTokenSessions);
       for (const [scope, counts] of Object.entries(row.checks ?? {})) {
         if (!SCOPES.includes(scope)) continue;
         scopeSeen[scope] = true;
@@ -216,8 +207,6 @@ export function fleetCorpus(reads, { now, days = 30, windowDays = 7 } = {}) {
       skillLoads,
       work: own.work, world: own.world,
       blocking, advisory,
-      // The mean corpus per session, null where no session in range attested one.
-      tokensPerSession: ruleTokenSessions ? Math.round((ruleTokens ?? 0) / ruleTokenSessions) : null,
       foldedThrough: r.usage.foldedThrough ?? null,
       generated: r.usage.generated ?? null,
       span: first ? { from: first, to: last } : null,
@@ -258,21 +247,6 @@ export function fleetCorpus(reads, { now, days = 30, windowDays = 7 } = {}) {
   // against: a member whose tree was not read mounts nothing the page can see.
   const treesRead = folding.filter((r) => Array.isArray(r.paths)).length;
 
-  // WHAT A TYPICAL MEMBER'S SESSION CARRIES, which is the figure a single repo's page
-  // compares itself against — "our sessions load 15k of rules; the fleet's load 9k" is
-  // a sentence a number on its own cannot make.
-  //
-  // The mean of the per-member figures, not the pooled quotient: the comparison is
-  // against a typical MEMBER, so a member running ten times the sessions must not be
-  // ten times the answer. `members` says what it averaged over, since a mean of two is
-  // a different claim from a mean of twenty. Null where no member in range attested a
-  // corpus at all — a repo-mode deployment has no fleet to average, and reads *fleet:
-  // not read*.
-  const attested = members.filter((m) => typeof m.tokensPerSession === 'number');
-  const fleetTokensPerSession = attested.length
-    ? { mean: Math.round(attested.reduce((n, m) => n + m.tokensPerSession, 0) / attested.length), members: attested.length }
-    : { mean: null, members: 0 };
-
   members.sort((a, b) => Number(b.folding) - Number(a.folding) || (b.sessions ?? -1) - (a.sessions ?? -1) || a.repo.localeCompare(b.repo));
 
   return {
@@ -283,7 +257,6 @@ export function fleetCorpus(reads, { now, days = 30, windowDays = 7 } = {}) {
     findings: { blocking: ruleRows.reduce((n, e) => n + e.blocking, 0), advisory: ruleRows.reduce((n, e) => n + e.advisory, 0) },
     skills: { loaded, neverLoaded, mountedDistinct: Object.keys(mounted).length, treesRead },
     members,
-    fleetTokensPerSession,
     folding: folding.length,
     readable: readable.length,
     absent,

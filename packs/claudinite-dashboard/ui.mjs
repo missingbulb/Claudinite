@@ -630,10 +630,11 @@ export const chartLegend = (series) =>
 
 // --- two series, two scales -------------------------------------------------------
 
-// A line per series, each scaled to ITS OWN maximum, with both maxima printed. Rule
-// tokens are five figures and check runs are single ones; on a shared axis the second
-// line is the x-axis and the panel says nothing. On separate scales it says what each
-// is doing over the month, which is the only question this panel is for.
+// A line per series, each scaled to ITS OWN maximum, with both maxima printed. Check
+// runs are two figures a day and the runs that caught something are single ones; on a
+// shared axis the second line is the x-axis and the panel says nothing. On separate
+// scales it says what each is doing over the month, which is the only question this
+// panel is for.
 //
 // THE SCALES ARE STATED, never implied. Two lines at the same height mean nothing
 // alike, so each axis label carries its series' colour and its own peak, and the panel

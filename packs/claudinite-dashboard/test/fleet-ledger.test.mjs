@@ -293,10 +293,9 @@ test('the executor cell reads the fold\'s own hour tier over the last 24', () =>
 test('memberWindow answers null per field, never 0, where that member could not', () => {
   const rows = fleetDays([], { now: NOW, days: 14 });
   const w = windowsOf(rows, { now: NOW });
-  const m = memberWindow(folder('o/a', { [day(1)]: { sessions: 3, ruleTokens: 3000, ruleTokenSessions: 2 } }), w);
+  const m = memberWindow(folder('o/a', { [day(1)]: { sessions: 3 } }), w);
   assert.equal(m.sessions, 3);
   assert.equal(m.tokensIn, null, 'a member folding without token records spent an unknown amount, not nothing');
-  assert.equal(m.tokensPerSession, 1500);
 });
 
 test('fmtAge and fmtTokens keep a figure short without inventing precision', () => {

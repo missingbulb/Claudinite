@@ -201,7 +201,7 @@ export function repoMachine({ hourRows, runSummary, ci, usage, mount, canon, str
 
 // --- the block ------------------------------------------------------------------------
 
-export function repoLedger(read, { now, rates = null, fleetMean = null, windowDays = WINDOW_DAYS, days = LADDER_DAYS } = {}) {
+export function repoLedger(read, { now, rates = null, windowDays = WINDOW_DAYS, days = LADDER_DAYS } = {}) {
   const folding = read?.usage ? [read] : [];
   const rows = fleetDays(folding, { now, days }).map((row) => decorate(row, read));
   const w = windowsOf(rows, { now, windowDays });
@@ -217,13 +217,6 @@ export function repoLedger(read, { now, rates = null, fleetMean = null, windowDa
   const stuck = stuckItems([read], now);
   const priced = priceWindow(w.current.flatMap((r) => r.tokensByModel), rates);
   const pricedPrev = priceWindow(w.previous.flatMap((r) => r.tokensByModel), rates);
-
-  const perSession = (slice) => {
-    const tokens = sum(slice, 'ruleTokens');
-    const sessions = sum(slice, 'ruleTokenSessions');
-    return tokens === null || !sessions ? null : Math.round(tokens / sessions);
-  };
-  const mine = perSession(w.current);
 
   const leads = (list) => list.map((p) => p.issueLeadHours).filter((n) => finite(n) !== null);
   const issueLead = leads(merged);
@@ -267,17 +260,6 @@ export function repoLedger(read, { now, rates = null, fleetMean = null, windowDa
       unit: priced.ratesSet ? 'your rate table' : 'dollars',
       sub: pricingNote(priced),
       gap: priced.recorded ? 'unpriced — no model here has a rate' : 'not recorded — this fold predates tokensByModel',
-    }),
-    figure(mine, perSession(w.previous), {
-      unit: 'rule tokens / session',
-      sub: [
-        fleetMean === null ? 'fleet: not read' : `fleet mean ${fleetMean.toLocaleString('en-US')}`,
-        heaviestPack(w.current),
-      ].filter(Boolean).join(' · '),
-      spark: null,
-      // Heavier than half again the fleet's typical member means this repo's local
-      // packs are what every session here pays for — a growth-dedup candidate.
-      bad: Boolean(fleetMean && mine && mine > fleetMean * 1.5),
     }),
   ];
 
@@ -343,7 +325,6 @@ function decorate(row, read) {
     taskCost: source?.taskCost ?? {},
     taskExecByTask: source?.taskExec ?? {},
     parksByTask: source?.parks ?? {},
-    ruleTokensByPack: source?.ruleTokensByPack ?? {},
   };
 }
 
@@ -369,15 +350,10 @@ const peakCloses = (slice) => {
   return best && best.n ? `peak ${best.day.slice(5)}` : 'no peak';
 };
 
-// Which pack put the most rule tokens into this repo's sessions — the sub-line that
-// turns a corpus figure into a place to look.
-export function heaviestPack(slice) {
-  const totals = {};
-  for (const row of slice) {
-    for (const [pack, n] of Object.entries(row.ruleTokensByPack ?? {})) totals[pack] = (totals[pack] ?? 0) + n;
-  }
-  const top = Object.entries(totals).sort((a, b) => b[1] - a[1])[0];
-  return top ? `heaviest: ${top[0]} ${top[1].toLocaleString('en-US')}` : null;
-}
+// A name still exported is not a removal: a member's local pack may import the mount
+// by this name, and the canon cannot see whether one does. Always `null` — the fold
+// no longer writes the per-pack split it summarised.
+// @legacy-tolerance advisory:none retire:#1989
+export const heaviestPack = () => null;
 
 export { fmtAge };

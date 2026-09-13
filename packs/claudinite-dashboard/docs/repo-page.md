@@ -74,13 +74,6 @@ net: not recorded — shallow checkout* — so the gap is stated without spendin
 |---|---|---|---|
 | **Tokens in / out**, sub-line *N of M sessions recorded* | `tokensIn`, `tokensOut`; the denominator `tokenSessions ÷ sessions`, so a transcript shape that records nothing is named | fold day rows | ▲ while merged ▼ — see cost per PR in the totals |
 | **≈ Dollars** | `tokensByModel` × the `rates` config, assumption inline (*your rate table · N % on the top model · N tok unpriced*) | fold `tokensByModel` + the declaration's `rates` | no bad; it exists to be divided by merged PRs |
-| **Rule tokens per session**, sub-line *fleet mean N · heaviest: `<pack>` N* | `ruleTokens ÷ ruleTokenSessions`; beside it the **fleet mean** for the same window, and the heaviest source from `ruleTokensByPack` | fold `ruleTokens`, `ruleTokenSessions`, `ruleTokensByPack`; the fleet mean from the sweep's usage reads ([`fleet-growth.mjs`](../fleet-growth.mjs)) | > 1.5× the fleet mean → this repo's local packs are heavy (a `growth-dedup` candidate) |
-
-On a fleet deployment the page already holds every member's fold at head sha, so the mean is
-one reduction over folding members; on a repo-mode deployment the comparison reads *fleet:
-not read*. On the canon the figure is expected to be high — it mounts everything; on a
-member it is the direct measure of how much local-pack weight every session pays before its
-first turn.
 
 *Your turns / your minutes* is not a headline figure here: one repo's human minutes are only
 interesting against what the agent spent, so it lives in the totals row's *yours : agent
@@ -138,7 +131,7 @@ sessions.
 Two regions follow the Work board and its explore panel.
 
 **Corpus** — what Claudinite costs and catches here, over 30 days, as two small multiples on
-their own scales (rule tokens per session per day; checks run and caught per day) beside a
+their own scales (checks run and caught per day) beside a
 **per-rule table for this repo**: `checkFindings` this week against last, blocking / advisory,
 and *last fired*. A blocking rule mounted here that caught nothing in 30 days is a demotion
 candidate, and this is the only page with the per-repo denominator (`checks.work.runs`).

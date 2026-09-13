@@ -18,7 +18,7 @@ const fileWith = (over = {}) => ({
   generated: '2026-08-21T11:00:00Z',
   foldedThrough: '2026-08-20',
   fields: {
-    day: ['captures', 'merges', 'sessions', 'userMessages', 'userCommands', 'ruleTokens', 'ruleTokenSessions', 'tokensIn', 'tokensOut', 'tokenSessions', 'commits', 'linesAdded', 'linesRemoved', 'releases'],
+    day: ['captures', 'merges', 'sessions', 'userMessages', 'userCommands', 'tokensIn', 'tokensOut', 'tokenSessions', 'commits', 'linesAdded', 'linesRemoved', 'releases'],
     week: ['days', 'captures'],
     hour: ['scheduler', 'executor', 'agentic', 'failed'],
     checks: ['runs', 'failures', 'errors', 'blocking', 'advisory', 'ciRuns', 'ciFailures'],
@@ -66,24 +66,22 @@ test('a version-1 file decodes as itself, and an absent one is null — never an
 test('growthSeries reads what the file carries and says which series it does not', () => {
   const usage = decodeUsage(fileWith({
     days: {
-      '2026-08-20': { totals: [1, 1, 1, 4, 0, 16500, 1], checks: { work: [9, 2, 0, 3, 0, 0, 0] }, checkFindings: { 'task-lifecycle': [3, 0] } },
-      '2026-08-21': { totals: [1, 0, 1, 2, 0, 16500, 1], checks: { world: [1, 0, 0, 0, 0, 0, 0] } },
+      '2026-08-20': { totals: [1, 1, 1, 4, 0], checks: { work: [9, 2, 0, 3, 0, 0, 0] }, checkFindings: { 'task-lifecycle': [3, 0] } },
+      '2026-08-21': { totals: [1, 0, 1, 2, 0], checks: { world: [1, 0, 0, 0, 0, 0, 0] } },
     },
   }));
   const g = growthSeries(usage, { now: NOW, days: 3 });
   assert.deepEqual(g.days.map((d) => d.day), ['2026-08-19', '2026-08-20', '2026-08-21']);
-  assert.equal(g.days[1].ruleTokens, 16500);
   assert.equal(g.days[1].checkRuns, 9);
   assert.equal(g.days[1].findings, 3);
   // A day the file has no row for is null throughout — an unfolded day, not a quiet one.
-  assert.equal(g.days[0].ruleTokens, null);
+  assert.equal(g.days[0].checkRuns, null);
   assert.equal(g.days[0].missing, true);
   // …and the totals only ever sum the days that HAD an opinion.
-  assert.equal(g.totals.ruleTokens, 33000);
   assert.equal(g.totals.checkRuns, 10);
   // The optional series this repo does not carry are named as absent, so the panel can
   // say "not recorded" instead of drawing an empty chart that reads as zero.
-  assert.deepEqual(g.carries, { ruleTokens: true, checks: true, tokens: false, commits: false, releases: false });
+  assert.deepEqual(g.carries, { checks: true, tokens: false, commits: false, releases: false });
 });
 
 test('growthSeries on a repo that folds nothing says so rather than reporting zeroes', () => {

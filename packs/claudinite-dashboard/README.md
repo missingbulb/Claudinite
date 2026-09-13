@@ -122,7 +122,7 @@ wanted it say so, and nothing else on the page is affected.
 | **Work** | One row per piece of work, in three views — **stuck** (what has stopped, and for how long), **pending** (what is moving, and what happens next), **all** (what each task is and what it has done). The page opens on the worst view that has anything in it |
 | **What the queue closed** | Per-day outcomes over a fortnight — today from the live issue page, the days before it from the fold |
 | **What ran** | 48 hours of scheduler runs, executor runs and agent sessions per hour; hovering an hour names the tasks that executed in it |
-| **What Claudinite is doing here** | 30 days of rule tokens against checks executed, on two stated scales — plus tokens spent, lines committed and releases where the fold carries them |
+| **What Claudinite is doing here** | 30 days of checks executed against the runs that caught something, on two stated scales — plus tokens spent, lines committed and releases where the fold carries them |
 | **What the packs report** | One card per declared pack that contributes — see [below](#what-a-pack-contributes). Last, because it is the only region whose contents differ from repo to repo |
 
 ### One table, not two
@@ -348,8 +348,8 @@ closed with nobody in the loop, how many did need a person — this week against
 Two rules keep that block honest, and they are why some obvious figures are missing
 from it. **No vanity total**: every figure is bounded by a window, because a number
 that only grows says nothing about today. **Nothing invented**: no estimated hours
-saved, no score. Checks enforced and rule tokens are not there because no read this
-page makes can count them, and a plausible guess in a tile is worse than a gap.
+saved, no score. Checks enforced are not there because no read this page makes can
+count them, and a plausible guess in a tile is worse than a gap.
 
 Every figure in both panels comes from reads the page already makes — the issue page,
 the runs list, and the head commit whose date arrives with the sha the cache is keyed

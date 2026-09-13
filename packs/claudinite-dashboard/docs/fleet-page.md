@@ -109,7 +109,6 @@ it takes the serious tint.** A good move is not coloured: nothing green needs a 
 | **Tokens in / out** | `tokensIn`, `tokensOut` summed over folding members, `n of 12 folding` beside it | fold day rows (cache reads and writes count as input, as the fold counts them) | ▲ with merged ▼ — paying more for less; see cost per PR |
 | **≈ Dollars** | `Σ_model (input × in + cacheRead × cacheRead + cacheCreate × (cacheWrite ?? in) + output × out)` over `tokensByModel` and the `rates` table | fold `tokensByModel` × the declaration's `rates` config | no bad; it exists to be divided by merged PRs. It carries its assumption inline: *your rate table · N % on the top model · N tok unpriced* |
 | **Your minutes**, sub-line *your turns · sessions* | `humanSeconds` (per human turn, the gap since the previous entry, capped at 10 min) and `userMessages` | fold `humanSeconds`, `userMessages` | ▲ while merged flat → the fleet is consuming the person |
-| **Rule tokens per session** | `ruleTokens ÷ ruleTokenSessions` | fold | > 1.5× the fleet mean on a member → its local packs are heavy |
 
 Unpriced tokens are never folded into the dollar figure: a model with no rate shows as
 *unpriced (N tok)*. With no `rates` key at all, the figure reads *unpriced* and names the key

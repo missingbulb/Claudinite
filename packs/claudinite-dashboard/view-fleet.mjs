@@ -165,9 +165,9 @@ async function readCommitGraph(read, token) {
 // how you recognise the row; the reasons beside them are why it is where it is.
 //
 // Every column but one is derived from a read the page ALREADY makes. Four fields the
-// issue asked for are absent for that reason and not by oversight — rule tokens, test
-// counts and time saved would each need a member's own file read, and conversation-log
-// sessions a branch listing. They are named in the panel's own note rather than
+// issue asked for are absent for that reason and not by oversight — test counts and
+// time saved would each need a member's own file read, and conversation-log sessions a
+// branch listing. They are named in the panel's own note rather than
 // guessed at. The exception is the commit graph, which is priced as decoration.
 //
 // `Tasks — declared` is gone, and that one WAS a read the page makes: it is the whole
@@ -816,7 +816,7 @@ function skillsCards(c) {
 
 const CORPUS_MEMBER_GROUPS = [
   ['', ['Member']],
-  ['Sessions', ['Sessions', 'Turns', 'Skill loads', 'Rule tokens / session']],
+  ['Sessions', ['Sessions', 'Turns', 'Skill loads']],
   ['Checks', ['work runs / caught', 'world runs / caught', 'Findings']],
   ['Fold', ['Through']],
 ];
@@ -848,7 +848,6 @@ function corpusMembers(c, onOpen) {
       el('td', { className: 'num', textContent: fmt(m.sessions) }),
       el('td', { className: 'num', textContent: fmt(m.turns) }),
       el('td', { className: 'num', textContent: fmt(m.skillLoads) }),
-      el('td', { className: 'num', textContent: fmt(m.tokensPerSession) }),
       scope(m.work), scope(m.world), findings,
       el('td', { className: 'dim nw', textContent: m.foldedThrough ?? 'not stated' }),
     ])));
@@ -902,8 +901,8 @@ const CORPUS_SERIES = [
 ];
 
 // What the corpus did across the fleet, from the members' own folds. Runs and findings
-// share a scale here — unlike the repo page's rule-tokens-against-checks pair — because
-// the second is a SUBSET of the first and reading it as a share is the whole point.
+// share a scale here because the second is a SUBSET of the first and reading it as a
+// share is the whole point.
 // The two charts that stayed. The other two went to the sheet above, where each
 // answers its question in the place it is acted on: the corpus card's thirty days of
 // bars are the corpus section's job below the grid, and the ledger keeps the one
@@ -1055,7 +1054,7 @@ export function renderSheet({ ledger, machine, candidates, sweeping, progress, s
   const detail = el('div', { className: 'detail', hidden: true }, [
     detailTable(
       [{ label: 'Member' }, { label: 'Sessions', num: true }, { label: 'Turns', num: true },
-        { label: 'Tokens in', num: true }, { label: 'Caught', num: true }, { label: 'Rule tok/session', num: true }],
+        { label: 'Tokens in', num: true }, { label: 'Caught', num: true }],
       perMemberRows(ledger),
     ),
   ]);
@@ -1153,13 +1152,12 @@ function perMemberRows(ledger) {
       m.sessions ?? '—', m.turns ?? '—',
       m.tokensIn === null ? '—' : fmtTokens(m.tokensIn),
       m.caught ?? '—',
-      m.tokensPerSession === null ? '—' : fmtTokens(m.tokensPerSession),
     ]);
   }
   if (ledger.window.absent.length) {
     rows.push([
       { text: ledger.window.absent.map((r) => r.split('/')[1] ?? r).join(', '), gap: true },
-      { text: 'no fold · counted in nothing above', gap: true, colSpan: 5 },
+      { text: 'no fold · counted in nothing above', gap: true, colSpan: 4 },
     ]);
   }
   return rows;

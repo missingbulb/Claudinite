@@ -49,7 +49,7 @@ test('a row decodes against the FILE\'s declared vocabulary, not this code\'s', 
 test('a whole file round-trips, and version 1 decodes as itself', () => {
   // Every sub-map, empty — derived from the vocabulary so a newly appended counter
   // group is covered by this round-trip the day it exists.
-  const groups = { ruleTokensByPack: {}, ...Object.fromEntries(COUNTER_GROUPS.map((g) => [g, {}])) };
+  const groups = { ...Object.fromEntries(COUNTER_GROUPS.map((g) => [g, {}])) };
   const named = {
     generated: '2026-07-27T04:00:00Z',
     foldedThrough: '2026-07-26',
