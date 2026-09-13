@@ -152,6 +152,15 @@ config absence means "nothing declared").
 
 ## Known gaps
 
+- **User research has no first-party evidence channel.** The pack's market and competitor halves
+  cite public URLs; its user half has no in-repo home for interviews, tickets or call notes, so a
+  user-research page is sourced from public proxies — review sites, forum threads, competitors'
+  testimonials — which satisfies every check while describing other people's customers. The
+  remedy is honest labelling, in [`writing-wiki-pages`](skills/writing-wiki-pages/SKILL.md).
+  A raw evidence layer was considered and declined: no repo has qualitative input waiting, a
+  committed transcript puts customer PII in git history permanently, and the layer's central
+  "immutable" promise is unenforceable by checks that read the tracked tree rather than history.
+
 - The barrier engine never scans `*.test.mjs`/test files as sources, so a test
   importing from wiki space is invisible to `product-wiki-isolation` — covered
   by prose (nothing a test asserts against belongs under `product-wiki/`), not

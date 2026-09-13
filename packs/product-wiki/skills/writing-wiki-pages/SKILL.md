@@ -1,6 +1,6 @@
 ---
 name: writing-wiki-pages
-description: How a product-wiki page is written and grown — the Key insights header, citation, correction without deletion, the growth log, sample-data, when a pass writes nothing. Loaded for any edit under product-wiki/.
+description: How a product-wiki page is written and grown — the Key insights header, citation, what a source actually supports (attribution, independent voices, public proxies), correction without deletion, the growth log, sample-data, when a pass writes nothing. Loaded for any edit under product-wiki/.
 metadata:
   force-load-on-file-edits-paths:
     - "product-wiki/**"
@@ -49,6 +49,23 @@ material comes from is the caller's business — the weekly
   it. When you cannot open the report, attribute the figure to the publisher a source
   explicitly names as its **origin**; when sources disagree about that, say so on the page
   rather than picking one.
+
+- **Quoting a person.** Attribute it to the speaker, and read an asker's or author's framing as
+  theirs alone: a leading question carries the interviewer's hypothesis, a case study carries the
+  vendor's, and the quote answering one is evidence only of what the respondent chose to say
+  inside it. Where the source won't let you tell who introduced a term, say so beside the
+  quote. (1)
+
+- **Counting how many people back a finding.** Count independent voices, not mentions: one
+  thread's ten replies, or a case study and the vendor's post about it, are one voice, and a
+  theme one named customer raised says that rather than "users report". A count you cannot
+  establish is absent, not "several". (2)
+
+- **Researching what this product's own users need.** Review sites, forum threads and
+  competitors' testimonials are evidence about *other people's* customers, and a page built only
+  from them satisfies every check while reading as a finding about yours — so name the proxy in
+  the claim, and leave the question it cannot answer standing in `## Open questions` rather than
+  letting the page imply it is answered. (3)
 
 - **Finding nothing citable.** No fabricated growth: most passes find little or nothing; no new
   citable material → no edit, no log entry, no PR.
