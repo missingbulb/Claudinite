@@ -106,29 +106,51 @@ function go(repo) {
 
 // --- chrome ---------------------------------------------------------------------
 
-function renderAuth(viewer) {
-  const box = $('auth');
+// Where the credential is kept, offered beside every sign-in and left reachable from
+// the account menu afterwards: the viewer is the only party who knows whether this
+// browser is theirs alone, and the answer is worth changing later without signing out
+// to do it.
+function rememberBox() {
+  const input = el('input', { type: 'checkbox', checked: auth.isRemembered() });
+  input.addEventListener('change', () => auth.setRemember(input.checked));
+  return el('label', {
+    className: 'remember',
+    title: 'Keep the credential in this browser after the tab closes. Leave it off on a shared machine.',
+  }, [input, ' Remember me']);
+}
+
+// The gate's controls, which are the only sign-in surface the page has. OAuth when the
+// deployment configures it, the pasted token otherwise — the fallback is not offered
+// alongside the button, because a viewer who can click Sign in has no use for a PAT and
+// showing both asks them to choose between a door and a key to the same door.
+function renderGate() {
+  const box = $('signin-controls');
   box.replaceChildren();
 
-  if (viewer) {
+  if (auth.isOAuthConfigured(CONFIG)) {
+    $('signin-how').textContent = 'GitHub asks you to authorize this page once. Everything afterwards '
+      + 'runs as you, with exactly the repositories your account can already see.';
     box.append(
-      el('img', { className: 'avatar', src: viewer.avatar_url, alt: '', width: 22, height: 22 }),
-      el('span', { className: 'hint', textContent: viewer.login }),
-      // Signing out drops the CACHE as well as the credential. Everything stored was
-      // read as this person — a private repo's issues included — and a token that dies
-      // with the tab while its data outlives it on a shared machine is not a sign-out.
-      el('button', { textContent: 'Sign out', onclick: () => { auth.signOut(); clearAll(); location.reload(); } }),
+      el('button', { className: 'primary', textContent: 'Sign in with GitHub', onclick: () => auth.beginSignIn(CONFIG) }),
+      rememberBox(),
     );
     return;
   }
-  if (auth.isOAuthConfigured(CONFIG)) {
-    box.append(el('button', { className: 'primary', textContent: 'Sign in with GitHub', onclick: () => auth.beginSignIn(CONFIG) }));
-    return;
-  }
+  $('signin-how').textContent = 'This deployment has no sign-in configured, so it reads with a token you '
+    + 'paste. It needs read-only Contents, Issues and Actions.';
   const input = el('input', { type: 'password', placeholder: 'GitHub token', autocomplete: 'off' });
-  const use = () => { auth.setPastedToken(input.value); render(); };
+  const use = () => { if (input.value.trim()) { auth.setPastedToken(input.value); enter(); } };
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') use(); });
-  box.append(input, el('button', { textContent: 'Use token', onclick: use }));
+  box.append(input, el('button', { className: 'primary', textContent: 'Use token', onclick: use }), rememberBox());
+}
+
+// Who is signed in, and the levers that belong to them rather than to the view.
+function renderAccount(viewer) {
+  $('account').hidden = !viewer;
+  if (!viewer) return;
+  $('account-avatar').src = viewer.avatar_url;
+  $('account-avatar').alt = viewer.login;
+  $('account-login').textContent = viewer.login;
 }
 
 // The breadcrumb is the way back out of a deep dive, and it only exists when there is
@@ -156,11 +178,15 @@ const showView = (which, repo = null) => {
   if ($('fleet-view').hidden !== (which !== 'fleet')) resetCountUps();
   $('fleet-view').hidden = which !== 'fleet';
   $('repo-view').hidden = which !== 'repo';
-  // The heading says what you are looking at. A repo-mode deployment titled "Fleet
-  // status" is the page telling its one member it is something else.
-  const title = which === 'fleet' ? 'Fleet status' : (repo ? repo.split('/')[1] ?? repo : 'Claudinite');
+  $('signin-view').hidden = which !== 'signin';
+  if (which === 'signin') $('crumb').hidden = true;
+  // The heading says what you are looking at. A repo-mode deployment titled "Claudinite
+  // Fleet Status" is the page telling its one member it is something else.
+  const title = which === 'fleet' ? 'Claudinite Fleet Status'
+    : (which === 'signin' ? 'Claudinite' : (repo ? repo.split('/')[1] ?? repo : 'Claudinite'));
   $('title').textContent = title;
-  document.title = which === 'fleet' ? 'Fleet status' : `${title} · Claudinite`;
+  document.title = which === 'fleet' ? 'Claudinite Fleet Status'
+    : (which === 'signin' ? 'Claudinite' : `${title} · Claudinite`);
 };
 
 function footer(parts) {
@@ -198,13 +224,21 @@ async function render() {
   if (advice) showNotice(advice.text);
   if (plan.mode === 'frozen' || plan.mode === 'scarce') showNotice(plan.reason);
 
+  // A credential GitHub no longer accepts is not a degraded session to carry on in: it
+  // is the same state as never having signed in, so it goes back to the gate rather
+  // than leaving a signed-out page rendering someone's fleet from cache.
   let viewer = null;
   try {
-    if (token) viewer = await gh.getViewer(token);
+    viewer = await gh.getViewer(token);
   } catch (e) {
-    if (e.status === 401) { auth.signOut(); showError('That credential is no longer valid — sign in again.'); }
+    if (e.status === 401) {
+      inFlight = false;
+      $('reload').disabled = false;
+      signOut('That credential is no longer valid — sign in again.');
+      return;
+    }
   }
-  renderAuth(viewer);
+  renderAccount(viewer);
 
   try {
     if (wantsFleet()) {
@@ -255,12 +289,12 @@ async function render() {
           : 'no usage fold — past-data panels are limited to the live window',
       ]);
     }
-    $('setup').open = false;
+    $('account').open = false;
   } catch (e) {
     showError(e.message ?? String(e));
     if (e.status === 401 || e.status === 403) {
       showError(auth.isOAuthConfigured(CONFIG)
-        ? 'Sign in with an account that can read this.'
+        ? 'Your account cannot read this. Sign out and sign in with one that can.'
         : 'That token cannot read this — it needs read-only Contents, Issues and Actions.');
     }
     $('footnote').textContent = '';
@@ -272,6 +306,29 @@ async function render() {
   }
 }
 
+// --- entering and leaving ---------------------------------------------------------
+
+// The two transitions across the gate, in one place each so no caller has to remember
+// the other half. Leaving drops the CACHE as well as the credential: everything stored
+// was read as that person — a private repo's issues included — and data that outlives
+// the sign-out on a shared machine is not a sign-out.
+function enter() {
+  showView(wantsFleet() ? 'fleet' : 'repo');
+  render();
+}
+
+function signOut(why = null) {
+  auth.signOut();
+  clearAll();
+  resetCountUps();
+  renderAccount(null);
+  renderCrumb(null);
+  $('errors').replaceChildren();
+  if (why) showError(why);
+  renderGate();
+  showView('signin');
+}
+
 // --- boot ---------------------------------------------------------------------
 
 async function boot() {
@@ -281,7 +338,8 @@ async function boot() {
   const back = await auth.completeSignIn(CONFIG);
   if (back.status === 'error') showError(back.message);
 
-  renderAuth(null);
+  renderAccount(null);
+  renderGate();
 
   // The pill tracks the budget as the sweep spends it, rather than reporting what it
   // was before the sweep began.
@@ -311,12 +369,15 @@ async function boot() {
       b.setAttribute('aria-expanded', String(show));
     });
   }
+  // Clearing the cache is a cold read, not a sign-out: `cache.mjs` owns its own
+  // versioned prefix precisely so this sweep cannot reach a remembered credential.
   $('purge').addEventListener('click', () => { clearAll(); resetCountUps(); render(); });
+  $('signout').addEventListener('click', () => signOut());
   // A panel that floats over the page has to close the way one does — clicking away
   // from it, not only by finding the control that opened it again.
   document.addEventListener('click', (e) => {
-    const setup = $('setup');
-    if (setup.open && !setup.contains(e.target)) setup.open = false;
+    const account = $('account');
+    if (account.open && !account.contains(e.target)) account.open = false;
   });
   $('theme').addEventListener('click', () => {
     const dark = matchMedia('(prefers-color-scheme: dark)').matches;
@@ -324,14 +385,15 @@ async function boot() {
     document.documentElement.dataset.theme = cur === 'dark' ? 'light' : 'dark';
   });
   // Back/forward move between the fleet and a deep dive, because the views are URLs.
-  addEventListener('popstate', render);
+  // Behind the gate they move nothing: there is one screen until there is a credential.
+  addEventListener('popstate', () => { if (auth.currentToken()) render(); });
 
-  // Something to show without asking first: a credential, a repo named in the URL, or a
-  // deployment that knows what it covers. The roster itself is no longer part of that
-  // test — an `owner` deployment cannot enumerate anything until there is a credential
-  // to enumerate as.
-  if (auth.currentToken() || repoParam() || isFleetConfig(CONFIG) || CONFIG?.defaultRepo) render();
-  else { showView('repo'); $('setup').open = true; }
+  // NOTHING IS READ WITHOUT A CREDENTIAL. Every call this page makes is made as the
+  // viewer, so a page with no credential has nothing it could show and no useful
+  // anonymous budget to show it with — the deep-dive link in a `?repo=` URL survives the
+  // sign-in, because the gate leaves the URL alone.
+  if (auth.currentToken()) enter();
+  else showView('signin');
 }
 
 boot();

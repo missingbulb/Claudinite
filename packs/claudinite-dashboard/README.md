@@ -425,14 +425,29 @@ withheld before anything the queue depends on.
 **The viewer, and only the viewer.** There is no backend, no shared credential and
 no service account: the page calls `api.github.com` from the browser as whoever is
 using it, so it can show nobody anything their own GitHub account cannot already
-read. The credential lives in `sessionStorage` and dies with the tab.
+read.
 
-Two ways to get one:
+**The page is gated on a credential**, on a screen of its own that is all a viewer sees
+until they have one. There is no anonymous view to fall back to: every request is made
+as the viewer, so without a credential there is nothing to show and — at 60 requests an
+hour per IP — no budget worth showing it with. A `?repo=owner/name` deep link survives
+the gate; signing in lands on the view it named.
+
+Two ways to get one, offered on that screen:
 
 - **Sign in with GitHub** — a button, no typing. Available when the deployment
   configures `clientId` and `exchangeUrl`.
-- **A pasted token** — the fallback, and the local-development path. Needs
-  read-only **Contents**, **Issues** and **Actions**.
+- **A pasted token** — the fallback, and the local-development path, offered only when
+  sign-in is not configured. Needs read-only **Contents**, **Issues** and **Actions**.
+
+The credential dies with the tab unless the viewer ticks **Remember me**, which keeps it
+in this browser (`localStorage`) until they sign out. Signing out drops the cached data
+with it; clearing the cache does not sign you out.
+
+Everything that belongs to the viewer rather than to the view — who they are, the rate
+budget, **Reload**, **Clear cache**, **Sign out** and the note on how this page reads a
+repo — sits behind the avatar in the topbar, so the fleet and repo screens carry no
+account chrome at all.
 
 ### What each credential is worth
 

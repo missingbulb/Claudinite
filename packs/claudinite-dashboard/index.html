@@ -796,50 +796,102 @@
   .attn .sub { white-space: normal; line-height: 1.35; }
   code { background: color-mix(in srgb, var(--ink) 7%, transparent);
          padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+
+  /* --- the sign-in gate --------------------------------------------------------
+     A column narrow enough to read as a form rather than a page: this screen is one
+     decision wide, and the prose beside it is what makes that decision informed. */
+  .gate { max-width: 560px; margin: 48px auto; background: var(--surface);
+          border: 1px solid var(--border); border-radius: 12px; padding: 4px 24px 22px; }
+  .gate h2 { margin-top: 20px; }
+  .gate p { color: var(--ink-2); }
+  .gate-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0 6px; }
+
+  /* --- the account menu --------------------------------------------------------
+     Reuses the explainer popover's geometry (`.setup-body`); only the summary differs,
+     being a face rather than a word. */
+  details.setup > summary.face { padding: 0; border-radius: 50%; border-color: transparent; }
+  .account-head { display: flex; align-items: center; gap: 10px; justify-content: space-between;
+                  margin: 14px 0 12px; }
+  .account-login { font-weight: 600; }
+  .account-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  #account .pill { display: inline-block; margin-bottom: 10px; }
+  .remember { display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+              color: var(--ink-2); font-size: 13px; }
+  /* The sheet's `input` rule sets a 190px floor for the token box. A checkbox inherits
+     it otherwise, and its label sits a hand's width from the box it labels. */
+  .remember input { min-width: 0; width: auto; }
 </style>
 </head>
 <body>
 
 <header class="topbar">
   <div class="topbar-in">
-    <h1 id="title">Claudinite</h1>
+    <h1 id="title">Claudinite Fleet Status</h1>
     <span id="crumb" class="crumb" hidden></span>
-    <button id="reload" title="Re-read (cached data is revalidated, not refetched)">Reload</button>
     <span class="grow"></span>
-    <span id="rate" class="pill" hidden></span>
-    <details class="setup" id="setup">
-      <summary>How this reads your repo</summary>
+    <button id="theme" title="Toggle light / dark">◐</button>
+    <!-- Everything about the viewer's own session — who they are, what this load cost,
+         how the page reads a repo, and the two levers that re-read it — behind the face
+         of whoever is signed in. The topbar's job is to say what you are looking at; a
+         row of account controls beside that competes with it on every screen. -->
+    <details class="setup" id="account" hidden>
+      <summary class="face" title="Account, cache and how this page reads GitHub">
+        <img id="account-avatar" class="avatar" src="" alt="Account" width="24" height="24">
+      </summary>
       <div class="setup-body">
-      <p>
-      Everything happens in this browser tab. The page calls <code>api.github.com</code>
-      directly as <strong>you</strong>, so <strong>your own GitHub permissions are the only
-      access control</strong> — there is no backend, no shared credential, and this page can
-      show you nothing your account cannot already read. Your credential is held for this
-      tab only (<code>sessionStorage</code>) and is sent to GitHub and nowhere else.
-      </p>
-      <p>
-      Where sign-in is configured, <em>Sign in with GitHub</em> authorizes once and everything
-      afterwards runs as you. Otherwise the page falls back to a pasted token, which needs
-      <em>read-only</em> Contents, Issues and Actions.
-      </p>
+      <div class="account-head">
+        <span id="account-login" class="account-login"></span>
+        <button id="signout">Sign out</button>
+      </div>
+      <div class="account-actions">
+        <button id="reload" title="Re-read (cached data is revalidated, not refetched)">Reload</button>
+        <button id="purge" title="Drop every cached response and re-read from GitHub">Clear cache</button>
+      </div>
+      <!-- The budget lives here rather than in the topbar, so `renderRatePill` draws into
+           a panel that may be shut. It is written on every change regardless: a viewer
+           who opens the menu mid-sweep sees the current number, not the one from when
+           the panel was last open. -->
+      <span id="rate" class="pill" hidden></span>
       <p class="hint">
       Responses are cached in this browser: repo content is keyed by commit SHA, live data is
       revalidated with ETags (a <code>304</code> costs no rate limit), settled history ages
       out after 24 hours, and a member's commit graph — the one read here that is decoration
       rather than a fault signal — after six, and not at all when the budget is tight.
-      <em>Clear cache</em> forces a cold read. Pass <code>?repo=owner/name</code>
-      to jump straight to a repo.
+      <em>Clear cache</em> forces a cold read, and leaves you signed in. Pass
+      <code>?repo=owner/name</code> to jump straight to a repo.
       </p>
       </div>
     </details>
-    <button id="purge" title="Drop every cached response and re-read from GitHub">Clear cache</button>
-    <span id="auth" class="authbox"></span>
-    <button id="theme" title="Toggle light / dark">◐</button>
   </div>
 </header>
 
 <div class="wrap">
   <div id="errors"></div>
+
+  <!-- THE GATE. Nothing is read from GitHub until there is a credential, so this screen
+       is the whole of the page's sign-in surface and the views behind it carry none of
+       it: no anonymous rendering, no half-signed-in chrome, no paste box in the topbar.
+       It also answers the question a viewer has exactly once — what this page does with
+       their credential — which is why that explanation lives here rather than in the
+       account menu, where it would be re-read by everyone who went looking for Reload. -->
+  <div id="signin-view" hidden>
+    <div class="gate">
+      <h2 id="signin-heading">Sign in to read this fleet</h2>
+      <p>
+      Everything happens in this browser tab. The page calls <code>api.github.com</code>
+      directly as <strong>you</strong>, so <strong>your own GitHub permissions are the only
+      access control</strong> — there is no backend, no shared credential, and this page can
+      show you nothing your account cannot already read. Your credential is sent to GitHub
+      and nowhere else.
+      </p>
+      <p id="signin-how"></p>
+      <div id="signin-controls" class="gate-controls"></div>
+      <p class="hint">
+      Being signed in to github.com in this browser is not enough on its own: the API never
+      receives that session, so the page has to hold a credential of its own.
+      </p>
+    </div>
+  </div>
 
   <div id="fleet-view" hidden>
     <!-- The ledger sheet (docs/fleet-page.md): Start here, The machine, the

@@ -25,22 +25,52 @@
 
 const STATE_KEY = 'claudinite-dashboard:oauth-state';
 const TOKEN_KEY = 'claudinite-dashboard:token';
+const REMEMBER_KEY = 'claudinite-dashboard:remember';
 
-// The credential lives in sessionStorage, not localStorage: it is a user access
-// token, it should die with the tab, and it must not outlive the browser session on
-// a shared machine. The PAT provider deliberately uses the same store — a pasted
-// token is no less sensitive for having been typed.
+// WHERE THE CREDENTIAL LIVES IS THE VIEWER'S CALL, asked as `Remember me` beside the
+// sign-in it applies to. Unremembered it goes to sessionStorage and dies with the
+// tab; remembered it goes to localStorage and survives a browser restart, which is
+// what stops a daily visitor from re-signing in every morning. The page cannot know
+// whether the machine is shared, so it does not decide on the viewer's behalf — it
+// defaults to the safe store and offers the other one in a control that is visible
+// whichever way it is set. The PAT provider uses the same pair: a pasted token is no
+// less sensitive for having been typed, and no less tedious to re-paste daily.
+//
+// Nothing here bounds a remembered token's life. A GitHub App user token expires on
+// GitHub's own schedule and comes back 401, which `signOut`s it; a PAT lasts until
+// its own expiry. localStorage is the durable half of a credential whose lifetime
+// GitHub owns, not a second lifetime this page grants.
+const readFrom = (s, k) => { try { return s.getItem(k) || ''; } catch { return ''; } };
+const writeTo = (s, k, v) => { try { if (v) s.setItem(k, v); else s.removeItem(k); } catch { /* private mode */ } };
+
+export const isRemembered = () => readFrom(localStorage, REMEMBER_KEY) === '1';
+
 const store = {
-  get() { try { return sessionStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } },
-  set(t) { try { t ? sessionStorage.setItem(TOKEN_KEY, t) : sessionStorage.removeItem(TOKEN_KEY); } catch { /* private mode */ } },
+  // Read both, whichever the last sign-in chose — and read the durable one second, so
+  // a token this tab obtained wins over a stale remembered one if both somehow exist.
+  get() { return readFrom(sessionStorage, TOKEN_KEY) || readFrom(localStorage, TOKEN_KEY); },
+  // Written to one store and cleared from the other, so the choice has exactly one
+  // copy of the credential behind it and flipping it can never leave a forgotten one.
+  set(t, remember = isRemembered()) {
+    const durable = Boolean(t) && remember;
+    writeTo(localStorage, TOKEN_KEY, durable ? t : '');
+    writeTo(sessionStorage, TOKEN_KEY, durable ? '' : t);
+  },
 };
 
 export const currentToken = () => store.get();
 export const signOut = () => store.set('');
 
-// A `remember me` box would mean localStorage, and a token that survives the tab is
-// a different security decision than this page is entitled to make on the viewer's
-// behalf. Kept explicit so the omission reads as a choice.
+// Toggling after signing in moves the credential the viewer already has rather than
+// applying to the next sign-in only: a `Remember me` that silently needs a sign-out
+// and a sign-in to take effect is a lie about what the box did. The flag itself is
+// remembered — it has to survive the redirect to GitHub and back, and a viewer who
+// asked to be remembered once is not asking to be asked again.
+export function setRemember(on) {
+  const token = store.get();
+  writeTo(localStorage, REMEMBER_KEY, on ? '1' : '');
+  store.set(token, Boolean(on));
+}
 
 const randomState = () => {
   const b = new Uint8Array(16);
