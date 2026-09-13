@@ -8,6 +8,7 @@
   it to `publish_paths` in the same change. The list is additive on purpose — the alternative,
   "publish the repo minus what we remember to exclude", publishes every draft, note and key nobody
   thought to hide.
+
 - **The version moves with the change.** A change touching the published site raises
   `<major>.<ymmdd>.<n>` in the same PR —
   `node .github/actions/bump-site-version/bump.mjs $(version_files)` computes it from the previous
@@ -18,11 +19,13 @@
   deliberate human part is the **major**, a "this is a new generation of the site" statement; the
   owner's **"bump version"** means exactly that, and the release workflow's `bump: major` dispatch
   is what performs it.
+
 - **The site is served from a subpath, not a domain root.** GitHub Pages serves it at
   `https://<owner>.github.io/<repo>/` (unless a custom domain is configured), so a root-relative URL
   — `/style.css`, `/img/logo.png`, a `fetch('/data.json')` — resolves above the site and 404s in
   production while working fine in a local `file://` or `python -m http.server` preview. Write
   links, asset paths and fetches **relative** to the page.
+
 - **Freshness is a published manifest's job, not a per-file TTL's.** There is no server here to vary
   `Cache-Control` per file, so the freshness policy moves into the client — and the shape it
   reaches for first, giving each file a lifetime matching how fast you think it changes, reprices
@@ -34,6 +37,7 @@
   string. Expect a mismatch mid-deploy — the manifest is fetched, a deploy lands, the asset that
   follows disagrees — so refetch once and carry on; only a disagreement that survives fresh copies
   of both is a fault worth surfacing.
+
 - **Nothing can attest to its own freshness, and size attests to nothing at all.** A stale file
   carries a perfectly valid hash *of itself*, and an internal `"version"` field states which
   generation it is, never whether that generation is still current — so the expected hash has to
@@ -45,6 +49,7 @@
   every record in it. And record the manifest's hash beside the entry as you write it, so the check
   is a string compare; re-hashing the stored body means pushing megabytes through a digest on the
   critical path of every load to answer a question the bookkeeping already knows.
+
 - **Two files cached on separate clocks and later joined *will* be joined across generations —
   make them a verified set or don't split them.** Splitting a payload so each half caches on its own
   schedule is a sound instinct and it has this cost: every visitor eventually holds one half from
@@ -56,6 +61,7 @@
   the join *rate*, because a partial join is silent by construction: a missing key returns "no data
   for this row", which is indistinguishable from a row that genuinely has none yet, and a check
   written as "at least one row joined" passes at 6%.
+
 - **Don't call missing data survivable until you have followed it to the pixel.** "The fetch is
   allowed to fail — it'll just show as unknown, which we already handle" is a claim about every
   consumer downstream, and it is usually wrong: an absent value reaching a boolean, a comparison or

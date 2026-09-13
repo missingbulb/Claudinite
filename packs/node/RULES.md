@@ -11,17 +11,20 @@
   doesn't, `import pkg from '…'` and destructure off the default. Resolve the package's own
   directory (`$(npm root -g)/<pkg>` for a global install) rather than hardcoding an absolute path
   into a version-pinned layout, which moves under you on the next image or upgrade.
+
 - **Modern Node (22.7+) detects ES-module syntax in a `.js` file on its own** — no
   `"type": "module"`, no flag, no warning. A directory of ES modules therefore needs **no
   `package.json` of its own** just to be loadable; adding one to declare module-ness is cargo cult,
   and one already present for that reason is vestigial. (Prefer `.js` consistently within a tree
   over mixing in `.mjs` for the same purpose; the extension is then a style choice, not a signal.)
+
 - **A throwaway script that imports a project dependency can't live in an external scratchpad.**
   Node's module resolution walks up from the *script's own directory* looking for `node_modules`,
   which never reaches the project's tree when the script sits outside it — the import fails with
   `ERR_MODULE_NOT_FOUND` however correctly the dependency is installed, and `NODE_PATH` doesn't help
   (it has no effect on ESM resolution). Put such a script inside the project (a gitignored scratch
   directory works), not in the harness's separate scratchpad.
+
 - **Before relying on a version-gated Node runtime feature, check what version CI actually pins**
   — the workflow's `setup-node` step, not the Node installed in the sandbox you're working in. A
   session's own Node can be newer than CI's pin, so a local green run proves nothing about the
@@ -33,6 +36,7 @@
   falls through to `textContent` under test, which *includes* the `<script>` / `<style>` text,
   `<select>` / `<option>` text, and CSS-hidden text a real browser's `innerText` omits. Treat
   body-text results as jsdom-optimistic; never add a test that only passes because of it. (1)
+
 - **`runScripts: "outside-only"` (the default) parses `<noscript>` into live DOM — the opposite of
   a real browser.** A `textContent` read looks clean under test but splices the `<noscript>` markup
   into the value in Chrome, which keeps `<noscript>` as raw text. Parse a script-free fragment with
