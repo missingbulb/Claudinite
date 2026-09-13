@@ -439,3 +439,50 @@ test('prs: a task-authored merged PR stays out of `merged` too', async () => {
   const out = await collectSignals(gh, ctx(), ['prs']);
   assert.deepEqual(out.prs.merged.map((p) => p.number), [32]);
 });
+
+// --- commits: one detail read per commit per process ------------------------
+// A scheduler run collects signals once per task, and every commit-derived
+// collector resolves each window commit's file list with its own API read — so
+// thirteen tasks over a forty-commit weekly window cost five hundred sequential
+// reads of forty immutable objects (#2013). A commit's detail is a function of
+// its sha, so the second collection must find it already read.
+
+const windowOf = (shas) => [/\/commits\?sha=/, { status: 200, json: shas.map((sha) => ({ sha, commit: { message: `work ${sha}` }, author: { login: 'dev' } })) }];
+
+test('commits: a second collection over the same window reads no commit detail again', async () => {
+  let reads = 0;
+  const inner = fakeGh([
+    windowOf(['a', 'b']),
+    [/\/commits\/[ab]$/, { status: 200, json: { files: [{ filename: 'src/x.js' }] } }],
+  ]);
+  const gh = async (path) => { if (/\/commits\/[ab]$/.test(path)) reads += 1; return inner(path); };
+
+  const first = await collectSignals(gh, ctx(), ['commits']);
+  const second = await collectSignals(gh, ctx({ sinceIso: '2026-07-20T00:00:00Z' }), ['commits', 'stamp']);
+  assert.equal(reads, 2, 'each commit read once across both collections');
+  assert.deepEqual(second.commits.touchedPaths, first.commits.touchedPaths);
+});
+
+test('commits: a detail read that failed is retried by the next collection, not pinned', async () => {
+  let reads = 0;
+  const gh = async (path) => {
+    if (/\/commits\/a$/.test(path)) {
+      reads += 1;
+      return reads === 1 ? { status: 403, json: null } : { status: 200, json: { files: [{ filename: 'src/x.js' }] } };
+    }
+    return fakeGh([windowOf(['a'])])(path);
+  };
+  const first = await collectSignals(gh, ctx(), ['commits']);
+  assert.deepEqual(first.commits.touchedPaths, [], 'the failed read leaves the file list unknown');
+  const second = await collectSignals(gh, ctx(), ['commits']);
+  assert.equal(reads, 2, 'the failed read was made again');
+  assert.deepEqual(second.commits.touchedPaths, ['src/x.js']);
+});
+
+test('commits: the detail memo is per reader — a second reader over the same repo and sha reads for itself', async () => {
+  const mk = (file) => fakeGh([windowOf(['a']), [/\/commits\/a$/, { status: 200, json: { files: [{ filename: file }] } }]]);
+  const one = await collectSignals(mk('one.js'), ctx(), ['commits']);
+  const two = await collectSignals(mk('two.js'), ctx(), ['commits']);
+  assert.deepEqual(one.commits.touchedPaths, ['one.js']);
+  assert.deepEqual(two.commits.touchedPaths, ['two.js']);
+});

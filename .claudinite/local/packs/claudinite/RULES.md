@@ -152,6 +152,10 @@ Below are rules on how to work on this repo.
   own adoption. Nothing prompts this choice, and getting it wrong costs a move-and-rewrite
   cycle. (19)
 
+- **Naming a function** — a `<verb><noun>` name reads as doing that verb to that noun, so give a
+  reader a verb that says it reads (`readWindowCommits`) and never lead with a noun that is also
+  a verb: `commitFiles` reads as committing files, `windowCommits` as windowing commits. (88)
+
 - **Declaring a check, or adding a key to the vocabulary** — name the key so the declaration reads
   alone (`scanFiles`, `matchLines`, `relevantWhen`). If it needs a comment to be read, it needs a
   better name.
