@@ -5,8 +5,8 @@ import {
   hookCheckRuns, checkSummaries, findingHeaders, checkInvocations, checkOutputs, countChecks,
   foldDays, isoWeek, daysToFold, addDayToWeek, foldUsage, carryTaskRuns, withinTaskWindow,
   countTaskExecs, emptyTaskExec, encodeUsage, decodeUsage,
-  ruleTokensIn, tokensIn, foldDayFields, foldQueueOutcomes, foldHours, withinHourWindow, captureHours,
-  tokensByModelIn, turnSeconds, ruleTokensByPackIn, taskCostKey, foldPrs,
+  tokensIn, foldDayFields, foldQueueOutcomes, foldHours, withinHourWindow, captureHours,
+  tokensByModelIn, turnSeconds, taskCostKey, foldPrs,
   TOKENS_BY_MODEL_UNKNOWN, TASK_COST_NONE, TASK_COST_UNRESOLVED,
 } from '../../../tasks/usage-fold/fold-usage.mjs';
 import {
@@ -21,7 +21,7 @@ import { LEGACY_EXECUTOR_DOC } from '../../legacy-protocol.mjs';
 // every other field absent. Spelled here so a test about the absent ones does not have
 // to build a row by hand and accidentally assert its own construction.
 const blankDay = () => ({
-  captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0, ruleTokens: 0, ruleTokenSessions: 0,
+  captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0,
   skillLoads: {}, ...emptyGroups(),
 });
 
@@ -29,7 +29,7 @@ const blankDay = () => ({
 // speaks for it. Derived from the vocabulary rather than listed, so appending a
 // counter group does not silently leave a test asserting the shape it replaced.
 const emptyGroups = () => ({
-  ruleTokensByPack: {}, ...Object.fromEntries(COUNTER_GROUPS.map((g) => [g, {}])),
+  ...Object.fromEntries(COUNTER_GROUPS.map((g) => [g, {}])),
 });
 
 // --- entry fixtures -----------------------------------------------------------
@@ -398,10 +398,6 @@ test('foldDays: captures, merges and DISTINCT sessions per day', () => {
     userMessages: 11,
     userCommands: 1,
     skillLoads: { a: 2, b: 3 },
-    // No capture printed the mount's session-start line, so the rules it carried are a
-    // real zero rather than an absent key — the fixtures are transcripts, not stubs.
-    ruleTokens: 0,
-    ruleTokenSessions: 0,
     ...emptyGroups(),
     // The per-task cost split counts SESSIONS, not captures: s1 captured twice and is
     // one session. Both sessions name an issue and attest no execution record, so both
@@ -562,29 +558,9 @@ test('foldUsage: a mounted skill that never loads has no key — the zero set is
   assert.deepEqual(never, ['writing-tests', 'bug-investigation']);
 });
 
-// --- what Claudinite put in, and what the session cost --------------------------
-// Two per-session figures read off the transcript itself. Both are allowed to be
-// ABSENT — a mount that prints no summary line, a transcript shape carrying no usage
-// records — and absent must never render as zero.
-
-test('ruleTokensIn reads the mount\'s own session-start line, in thousands or with separators', () => {
-  const line = 'Loaded Claudinite from repo owner/repo: 8 packs, 14.3k context tokens, 29 guards, 86 code checks, 16 auto-trigger skills, 17 regular skills, 530 personal preference tokens.';
-  assert.equal(ruleTokensIn(line), 14300);
-  assert.equal(ruleTokensIn(`prose before\n${line}\nprose after`), 14300);
-  assert.equal(ruleTokensIn('Loaded Claudinite: 2 packs, 900 context tokens, 0 guards'), 900);
-  // The line a member under an older engine prints, total spelled out with separators.
-  const legacy = 'Claudinite loaded, 8 packs, 35 checks, 16,500 rule tokens, 23 available skills, 530 personal preference tokens.';
-  assert.equal(ruleTokensIn(legacy), 16500);
-  assert.equal(ruleTokensIn('Claudinite loaded, 8 packs, 35 checks, 900 rule tokens'), 900);
-});
-
-test('ruleTokensIn answers null — never zero — when the line is not there', () => {
-  assert.equal(ruleTokensIn('a session that said nothing about rule tokens'), null);
-  assert.equal(ruleTokensIn(''), null);
-  assert.equal(ruleTokensIn(null), null);
-  // A sentence merely ABOUT rule tokens is not the mount stating its own size.
-  assert.equal(ruleTokensIn('we should cut the rule tokens down'), null);
-});
+// --- what the session cost ----------------------------------------------------------
+// A per-session figure read off the transcript itself. It is allowed to be ABSENT — a
+// transcript shape carrying no usage records — and absent must never render as zero.
 
 test('tokensIn sums the usage records the transcript carries, and probes rather than assumes', () => {
   const assistant = (usage) => ({ type: 'assistant', message: { content: [], usage } });
@@ -601,17 +577,14 @@ test('tokensIn sums the usage records the transcript carries, and probes rather 
   assert.equal(tokensIn([]), null);
 });
 
-test('countEntries carries both, and foldDays counts them once per SESSION', () => {
-  const summary = 'Claudinite loaded, 8 packs, 35 checks, 16,500 rule tokens, 23 available skills, 530 personal preference tokens.';
+test('countEntries carries the spend, and foldDays counts it once per SESSION', () => {
   const counts = countEntries([
-    { type: 'system', subtype: 'session_start', content: summary },
     { type: 'assistant', message: { content: [], usage: { input_tokens: 7, output_tokens: 1 } } },
   ]);
-  assert.equal(counts.ruleTokens, 16500);
   assert.deepEqual(counts.tokens, { input: 7, output: 1 });
 
   // One session, captured twice — a merge capture and the session-end tail. The
-  // second file repeats the same facts, so summing them would double both figures.
+  // second file repeats the same facts, so summing them would double the figure.
   const file = (issue, extra) => ({
     date: '2026-08-20', stamp: '2026-08-20T09:30:00Z', issue, sessionId: 'sess-1',
     counts: {
@@ -620,13 +593,11 @@ test('countEntries carries both, and foldDays counts them once per SESSION', () 
     },
   });
   const days = foldDays([
-    file(12, { ruleTokens: 16500, tokens: { input: 100, output: 10 } }),
-    file(0, { ruleTokens: 16500, tokens: { input: 260, output: 30 } }),
+    file(12, { tokens: { input: 100, output: 10 } }),
+    file(0, { tokens: { input: 260, output: 30 } }),
   ]);
   assert.equal(days['2026-08-20'].captures, 2, 'both captures still count as captures');
   assert.equal(days['2026-08-20'].sessions, 1);
-  assert.equal(days['2026-08-20'].ruleTokens, 16500, 'the prompt was paid for once');
-  assert.equal(days['2026-08-20'].ruleTokenSessions, 1);
   assert.equal(days['2026-08-20'].tokensIn, 260, 'the fuller capture wins — the tail is a superset, not a second spend');
   assert.equal(days['2026-08-20'].tokenSessions, 1);
 });
@@ -634,12 +605,11 @@ test('countEntries carries both, and foldDays counts them once per SESSION', () 
 test('a day whose transcripts carried no usage records has NO token keys at all', () => {
   const days = foldDays([{
     date: '2026-08-20', stamp: '2026-08-20T09:30:00Z', issue: 0, sessionId: 's1',
-    counts: { userMessages: 1, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: {}, ruleTokens: null, tokens: null },
+    counts: { userMessages: 1, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: {}, tokens: null },
   }]);
   const day = days['2026-08-20'];
   assert.ok(!('tokensIn' in day), 'unknown is a state, not a zero');
   assert.ok(!('tokenSessions' in day));
-  assert.equal(day.ruleTokens, 0, 'but a captured session that printed no summary line genuinely loaded no counted rules');
 });
 
 // --- the redesign's new capture-derived fields ------------------------------------
@@ -710,20 +680,6 @@ test('turnSeconds answers null — never zero — for a transcript that carries 
   assert.equal(turnSeconds([]), null);
 });
 
-test('ruleTokensByPackIn reads the split off the same line the total comes from', () => {
-  const line = 'Claudinite loaded, 10 packs, 50 checks, 15,000 rule tokens, 28 available skills, '
-    + 'rule tokens by pack: claudinite 8100 \u00b7 basics 5100 \u00b7 claudinite-growth 200.';
-  assert.deepEqual(ruleTokensByPackIn(line), { claudinite: 8100, basics: 5100, 'claudinite-growth': 200 });
-  assert.equal(ruleTokensIn(line), 15000, 'and the total still reads off the same line');
-});
-
-test('ruleTokensByPackIn answers null for a line stating no split — an engine before the facet, or after it', () => {
-  assert.equal(ruleTokensByPackIn('Claudinite loaded, 8 packs, 35 checks, 16,500 rule tokens.'), null);
-  assert.equal(ruleTokensByPackIn('Loaded Claudinite from repo o/r: 8 packs, 14.3k context tokens, 29 guards, 86 code checks.'), null);
-  assert.equal(ruleTokensByPackIn(''), null);
-  assert.equal(ruleTokensByPackIn(null), null);
-});
-
 test('taskCostKey names the task, and keeps the two unknown lanes apart', () => {
   assert.equal(taskCostKey({ taskExec: { 'tidy-repo/tidy-issues': {} } }, 42), 'tidy-repo/tidy-issues');
   // A session filed under no issue is a PERSON at the keyboard — the human-driven
@@ -766,7 +722,7 @@ test('a task whose sessions attested no spend carries NO token columns', () => {
     date: '2026-08-20', stamp: '2026-08-20T09:30:00Z', issue: 0, sessionId: 's1',
     counts: {
       userMessages: 4, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, taskExec: {},
-      ruleTokens: null, tokens: null,
+      tokens: null,
     },
   }]);
   assert.deepEqual(days['2026-08-20'].taskCost, { [TASK_COST_NONE]: { sessions: 1, userMessages: 4 } });

@@ -7,18 +7,18 @@ const NOW = Date.parse('2026-08-21T11:30:00Z');
 const dayKey = (msAgo) => new Date(NOW - msAgo).toISOString().slice(0, 10);
 
 const FIELDS = {
-  day: ['captures', 'merges', 'sessions', 'userMessages', 'userCommands', 'ruleTokens', 'ruleTokenSessions'],
+  day: ['captures', 'merges', 'sessions', 'userMessages', 'userCommands'],
   checks: ['runs', 'failures', 'errors', 'blocking', 'advisory', 'ciRuns', 'ciFailures'],
   checkFindings: ['blocking', 'advisory'],
 };
 
 // A member whose fold recorded `perDay` check runs and failures on each of the last
 // `days` days.
-const member = (repo, { days = 10, runs = 3, failures = 1, sessions = 2, ruleTokens = 16000 } = {}) => {
+const member = (repo, { days = 10, runs = 3, failures = 1, sessions = 2 } = {}) => {
   const rows = {};
   for (let d = 0; d < days; d += 1) {
     rows[dayKey(d * 86400e3)] = {
-      totals: [1, 1, sessions, 4, 0, ruleTokens * sessions, sessions],
+      totals: [1, 1, sessions, 4, 0],
       checks: { work: [runs, failures, 0, failures, 0, 0, 0] },
     };
   }
@@ -67,18 +67,6 @@ test('the window is measured against the window before it, never as a running to
   assert.equal(g.current.checkFailures, 7);
 });
 
-test('the corpus a session carries is a mean, and null when nothing attested one', () => {
-  const g = fleetGrowth([member('o/a', { days: 10, sessions: 2, ruleTokens: 16000 })], { now: NOW, days: 10 });
-  assert.equal(g.tokensPerSession, 16000);
-
-  const noSessions = fleetGrowth([{
-    repo: 'o/b',
-    declaration: { packs: [] },
-    usage: decodeUsage({ version: 3, fields: FIELDS, days: { [dayKey(0)]: { totals: [1, 0, 0, 0, 0] } }, weeks: {}, hours: {} }),
-  }], { now: NOW, days: 3 });
-  assert.equal(noSessions.tokensPerSession, null, 'no session is not a corpus of zero');
-});
-
 test('a fleet where nothing folds reports that, rather than a fleet doing nothing', () => {
   const g = fleetGrowth([{ repo: 'o/a', declaration: { packs: [] }, usage: null }], { now: NOW, days: 3 });
   assert.equal(g.folding, 0);
@@ -91,7 +79,7 @@ test('a fleet where nothing folds reports that, rather than a fleet doing nothin
 import { fleetCorpus, mountedSkills } from '../fleet-growth.mjs';
 
 const CORPUS_FIELDS = {
-  day: ['captures', 'merges', 'sessions', 'userMessages', 'userCommands', 'ruleTokens', 'ruleTokenSessions'],
+  day: ['captures', 'merges', 'sessions', 'userMessages', 'userCommands'],
   checks: ['runs', 'failures', 'errors', 'blocking', 'advisory', 'ciRuns', 'ciFailures'],
   checkFindings: ['blocking', 'advisory'],
 };
@@ -102,7 +90,7 @@ const corpusMember = (repo, { days = 10, work = [4, 1, 0, 2, 0, 0, 0], world = [
   const rows = {};
   for (let d = 0; d < days; d += 1) {
     rows[dayKey(d * 86400e3)] = {
-      totals: [3, 2, 2, 5, 1, 30000, 2],
+      totals: [3, 2, 2, 5, 1],
       checks: Object.fromEntries(Object.entries({ work, world }).filter(([, v]) => v)),
       checkFindings: { 'reference-integrity': [2, 0], 'file-placement': [0, 9] },
       skillLoads: loads,
@@ -183,7 +171,6 @@ test('the member rows carry each member\'s own figures, and an absent member is 
   assert.equal(a.world.runs, 3);
   assert.equal(a.blocking, 6);
   assert.equal(a.advisory, 27);
-  assert.equal(a.tokensPerSession, 15000);
   assert.equal(a.foldedThrough, '2026-08-20');
   const q = c.members.find((m) => m.repo === 'o/quiet');
   assert.equal(q.folding, false);
@@ -199,20 +186,4 @@ test('a day carrying no session count leaves the sum null, never zero', () => {
   const c = fleetCorpus([noSessions], { now: NOW, days: 3 });
   assert.equal(c.workload.current.sessions, null);
   assert.equal(c.workload.current.captures, 1);
-  assert.equal(c.members[0].tokensPerSession, null);
-});
-
-// What a TYPICAL member's session carries — the figure one repo's page compares itself
-// against, which a number about itself alone cannot give it.
-test('the fleet mean of rule tokens per session averages MEMBERS, not sessions', () => {
-  const c = fleetCorpus([corpusMember('o/a'), corpusMember('o/b')], { now: NOW, days: 10 });
-  // Both fixtures carry 30,000 rule tokens over 2 attesting sessions per day, so each
-  // member's own figure is 15,000 and the fleet's is the same.
-  assert.equal(c.fleetTokensPerSession.mean, 15000);
-  assert.equal(c.fleetTokensPerSession.members, 2, 'a mean of two is a different claim from a mean of twenty');
-});
-
-test('a fleet where no member attested a corpus reports no mean, not a mean of zero', () => {
-  const c = fleetCorpus([{ repo: 'o/quiet', declaration: { packs: [] }, usage: null }], { now: NOW, days: 3 });
-  assert.deepEqual(c.fleetTokensPerSession, { mean: null, members: 0 });
 });

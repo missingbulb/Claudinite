@@ -56,7 +56,7 @@ export function fleetDays(folding, { now, days = LADDER_DAYS } = {}) {
   const ladder = dayLadder(now, days);
   const SCALARS = [
     'sessions', 'userMessages', 'tokensIn', 'tokensOut', 'tokenSessions',
-    'humanSeconds', 'agentSeconds', 'ruleTokens', 'ruleTokenSessions',
+    'humanSeconds', 'agentSeconds',
     'commits', 'linesAdded', 'linesRemoved', 'releases',
   ];
   return ladder.map((day) => {
@@ -254,12 +254,6 @@ export function fleetLedger(reads, { now, rates = null, windowDays = WINDOW_DAYS
     const removed = sum(slice, 'linesRemoved');
     return added === null || removed === null ? null : added - removed;
   };
-  const perSession = (slice) => {
-    const tokens = sum(slice, 'ruleTokens');
-    const sessions = sum(slice, 'ruleTokenSessions');
-    return tokens === null || !sessions ? null : Math.round(tokens / sessions);
-  };
-
   const releasedBy = [...new Set(w.current.flatMap((r) => r.releasedBy))].sort();
   const daysWithNone = w.current.filter((r) => !merged.some((p) => p.day === r.day)).length;
   const peakDay = w.current
@@ -317,11 +311,6 @@ export function fleetLedger(reads, { now, rates = null, windowDays = WINDOW_DAYS
       spark: sparkOf(rows, 'humanSeconds'),
       bad: (cur('humanSeconds') ?? 0) > (prev('humanSeconds') ?? 0) && merged.length <= mergedPrev.length,
       gap: 'not recorded — this fold predates humanSeconds',
-    }),
-    figure(perSession(w.current), perSession(w.previous), {
-      unit: 'rule tokens / session',
-      sub: 'the corpus, before the first turn',
-      spark: null,
     }),
   ];
 
@@ -631,14 +620,11 @@ export function memberWindow(read, w) {
   const rows = w.current.map((d) => read.usage?.days?.[d.day]).filter(Boolean);
   const sum = (field) => sumKnown(rows.map((row) => row[field]));
   const scopes = rows.flatMap((row) => Object.values(row.checks ?? {}));
-  const tokens = sum('ruleTokens');
-  const sessions = sum('ruleTokenSessions');
   return {
     repo: read.repo,
     sessions: sum('sessions'),
     turns: sum('userMessages'),
     tokensIn: sum('tokensIn'),
     caught: scopes.length ? scopes.reduce((n, s) => n + (s.failures ?? 0) + (s.ciFailures ?? 0), 0) : null,
-    tokensPerSession: tokens === null || !sessions ? null : Math.round(tokens / sessions),
   };
 }

@@ -553,9 +553,9 @@ function renderRuns(hours) {
 
 // --- what the corpus is doing --------------------------------------------------------
 
-// The growth panel: what Claudinite put INTO this repo's sessions, and what came back.
-// Two series on two scales — rule tokens are five figures a day and check runs are
-// single ones, so a shared axis would draw the second as the x-axis.
+// The growth panel: what came back out of this repo's checks. Two series on two
+// scales — check runs are two figures a day and the runs that caught something are
+// single ones, so a shared axis would flatten the second.
 function renderGrowth(growth) {
   const node = $('growth');
   if (!growth.folded) {
@@ -571,8 +571,8 @@ function renderGrowth(growth) {
     return;
   }
 
-  const left = { label: 'rule tokens in session prompts', color: 'var(--s-violet)', value: (d) => d.ruleTokens, format: (n) => n.toLocaleString() };
-  const right = { label: 'checks executed', color: 'var(--good)', value: (d) => d.checkRuns };
+  const left = { label: 'checks executed', color: 'var(--good)', value: (d) => d.checkRuns };
+  const right = { label: 'of those, catching something', color: 'var(--critical)', value: (d) => d.checkFailures };
 
   // The aspirational series. Each is shown when the file carries it and NAMED as absent
   // when it does not — a stated gap is information, an empty chart is not.
@@ -689,12 +689,11 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   const candidates = repoCandidates(repo, all);
 
   // The ledger sheet. The rate table is the deployment's own; unset is supported and
-  // reads *unpriced*, naming the key. The fleet mean is only available where the page
-  // holds other members' folds, so on a repo-mode deployment it reads *fleet: not read*.
+  // reads *unpriced*, naming the key.
   const hours = hourSeries(usage, { now, hours: RUN_HOURS, runs });
   const strip = wakeStrip(rows, now);
   const ledger = repoLedger({ repo, declaration, usage, items: issuePage.issues, prs: issuePage.prs }, {
-    now, rates: config?.rates ?? null, fleetMean: config?.fleetTokensPerSession ?? null,
+    now, rates: config?.rates ?? null,
   });
   const machine = repoMachine({
     hourRows: hours,

@@ -31,9 +31,6 @@ one for the days it reaches and the fold for the rest, as `queueSeries` and `hou
 | Tokens in / out; sessions recorded | both | fold `tokensIn`, `tokensOut`, `tokenSessions`, `sessions` | day rows |
 | ≈ Dollars, unpriced share, top-model share | both | fold `tokensByModel` (§2) × config `rates` (§3) | page pricing |
 | Your minutes; your turns | both | fold `humanSeconds` (§2), `userMessages` | day rows |
-| Rule tokens per session | both | fold `ruleTokens ÷ ruleTokenSessions` | `growthSeries` |
-| Rule tokens, fleet mean | repo | every member's fold (fleet deployment only) | `fleet-growth.mjs` (§3) |
-| Heaviest rule source | repo | fold `ruleTokensByPack` (§2) | day rows |
 | Issue → merged p50 / p90 | both | live PRs `closesIssue` (§3); fold `prs.issueLeadHours` (§2) | page reduction |
 | Session → merged p50 / p90 | both | fold `prs.sessionToMergeHours` (§2) | page reduction |
 | PR opened → merged | expand | fold `prs.leadHours` (§2) | page reduction |
@@ -157,22 +154,6 @@ from *unpriced* (a rate missing) and from 0.
   — and does not cost the item's `queue` row.
 - **Before it exists.** The per-task expand's *parked* column reads *not recorded*.
 
-### `ruleTokensByPack`
-
-- **Home.** Day rows only; a sub-map of bare numbers keyed by pack id, like `skillLoads`,
-  no vocabulary needed.
-- **Extraction.** A legacy session-start summary line carried the split as a facet beside
-  the total — `rule tokens by pack: basics 4200 · claudinite 5200 · …` — and `ruleTokensIn`'s
-  sibling parses it off captures from that window. The current line
-  ([`session-summary.mjs`](../../../engine/pack_loader/session-summary.mjs)) states the total
-  only, so no new capture feeds this map. Counted once per session, on the first match, as
-  the total is.
-- **Absence.** A session whose line lacks the facet — every session under a current engine —
-  contributes nothing to the map; a day with no such session has no key. The total
-  `ruleTokens` is unaffected.
-- **Before it exists.** The *heaviest source* sub-line is omitted; the per-session figure
-  stands.
-
 ### Lines (`commits`, `linesAdded`, `linesRemoved`)
 
 - **Home.** Existing day and week scalars; nothing in the shape changes.
@@ -213,14 +194,6 @@ a listing the fold pages properly. So the heartbeat reads `hours[h].scheduler` f
 fold, and the live page tops up the hours past the watermark — the merge `hourSeries` in
 [`usage.mjs`](../usage.mjs) already performs. A member with no fold reads its heartbeat from
 the live page alone and says so.
-
-### Fleet mean of rule tokens per session
-
-[`fleet-growth.mjs`](../fleet-growth.mjs) already reads every member's fold at head sha for
-the fleet's corpus panels; the mean of `ruleTokens ÷ ruleTokenSessions` over folding
-members for the same window is one more reduction there, handed to the repo page when the
-deployment is a fleet. A repo-mode deployment has no members to average and reads *fleet:
-not read*.
 
 ### Next anchors bucketed by hour
 

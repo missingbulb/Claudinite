@@ -121,15 +121,15 @@ const at = (row, field) => (typeof row?.[field] === 'number' ? row[field] : null
 
 // --- what the corpus is doing to the sessions ---------------------------------------
 
-// The growth series: what Claudinite put INTO each day's sessions, and what came back
-// out of the checks. Every field is null where the fold had no opinion, and a day with
+// The growth series: what came back out of the checks each day, and what the sessions
+// spent. Every field is null where the fold had no opinion, and a day with
 // no row at all is null throughout rather than a zero — a repo that folded nothing for
 // a week did not have a quiet week, it had an unfolded one.
 export function growthSeries(usage, { now, days = 30 } = {}) {
   const ladder = dayLadder(now, days);
   const rows = ladder.map((day) => {
     const row = usage?.days?.[day];
-    if (!row) return { day, missing: true, ruleTokens: null, sessions: null, checkRuns: null, checkFailures: null, findings: null, tokensIn: null, tokensOut: null, tokenSessions: null, commits: null, linesAdded: null, linesRemoved: null, releases: null };
+    if (!row) return { day, missing: true, sessions: null, checkRuns: null, checkFailures: null, findings: null, tokensIn: null, tokensOut: null, tokenSessions: null, commits: null, linesAdded: null, linesRemoved: null, releases: null };
     // Both scopes together: "how many times did the checks run today" is one question,
     // and splitting it by scope here would put the world sweep's weekly rhythm into a
     // daily line that is otherwise the Stop hook's.
@@ -139,8 +139,6 @@ export function growthSeries(usage, { now, days = 30 } = {}) {
     return {
       day,
       missing: false,
-      ruleTokens: at(row, 'ruleTokens'),
-      ruleTokenSessions: at(row, 'ruleTokenSessions'),
       sessions: at(row, 'sessions'),
       checkRuns: sum('runs'),
       checkFailures: sum('failures'),
@@ -166,14 +164,12 @@ export function growthSeries(usage, { now, days = 30 } = {}) {
     to: ladder[ladder.length - 1],
     folded: rows.some((r) => !r.missing),
     carries: {
-      ruleTokens: has('ruleTokens'),
       checks: has('checkRuns'),
       tokens: has('tokensIn'),
       commits: has('commits'),
       releases: has('releases'),
     },
     totals: {
-      ruleTokens: total(rows, 'ruleTokens'),
       checkRuns: total(rows, 'checkRuns'),
       checkFailures: total(rows, 'checkFailures'),
       tokensIn: total(rows, 'tokensIn'),

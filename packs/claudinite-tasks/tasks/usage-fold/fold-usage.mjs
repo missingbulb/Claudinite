@@ -417,29 +417,6 @@ export function countTaskExecs(entries) {
 
 // --- what Claudinite put into the session, and what the session cost --------------
 
-// The session-start summary line the mount prints into every session — the one place
-// the corpus states its own size in the terms a session actually pays: how many rule
-// tokens the prompt carried before the first turn. It is a SENTENCE the hook writes,
-// so it is read from the whole entry text (the hook's own output, or the assistant
-// echoing it back — either is the same session, and only the first match counts).
-//
-// Two spellings, one figure: the current line opens `Loaded Claudinite` and states
-// the weight in thousands (`14.3k context tokens`); a member whose engine predates it
-// opens `Claudinite loaded,` and states `14,300 rule tokens`. Both are read, since a
-// fold reaches back over captures older than the engine that folds them.
-//
-// Numbers are grouped for a human reader, so the separators are stripped before
-// parsing. No match is `null` — no opinion — and never zero: a repo whose mount does
-// not print the line has an unknown figure, not a corpus of nothing.
-const RULE_TOKENS_RE = /(?:Loaded Claudinite|Claudinite loaded)[^\n]*?(\d[\d,]*(?:\.\d+)?)(k?)\s+(?:context|rule) tokens/;
-
-export function ruleTokensIn(text) {
-  const m = RULE_TOKENS_RE.exec(String(text ?? ''));
-  if (!m) return null;
-  const n = Number(m[1].replace(/,/g, '')) * (m[2] ? 1000 : 1);
-  return Number.isFinite(n) ? Math.round(n) : null;
-}
-
 // What the session spent, from the usage records the transcript's own assistant
 // entries carry. ASPIRATIONAL AND PROBED, never assumed: a transcript shape that
 // records no usage returns null, and the consumer states the series as absent rather
@@ -541,34 +518,6 @@ export function turnSeconds(entries, cap = USAGE_CAPS.humanSeconds) {
   return { human: Math.round(human), agent: Math.round(agent) };
 }
 
-// The per-pack split a LEGACY session-start line carried beside the total
-// `ruleTokensIn` reads — `rule tokens by pack: basics 4200 · claudinite 5200`.
-// Written without thousands separators: the facet sat in a comma-joined line, so a
-// comma was the segment's own terminator and could not also appear inside a number.
-//
-// The current line states no split, so a session under a current engine reports
-// `null` here — no opinion — exactly as a member whose engine predated the facet did,
-// while its total stands. Captures from the window the facet was printed in still
-// fold.
-//
-// The segment runs to the line's end, and the line is a SENTENCE — so the last pair
-// carries the full stop that closes it, which is why the pair pattern tolerates one.
-const RULE_TOKENS_BY_PACK_RE = /rule tokens by pack:\s*([^\n,]+)/;
-const PACK_TOKENS_RE = /^\s*([A-Za-z0-9][A-Za-z0-9_-]*)\s+([\d,]+)\s*\.?\s*$/;
-
-export function ruleTokensByPackIn(text) {
-  const m = RULE_TOKENS_BY_PACK_RE.exec(String(text ?? ''));
-  if (!m) return null;
-  const out = {};
-  for (const part of m[1].split('\u00b7')) {
-    const pair = PACK_TOKENS_RE.exec(part);
-    if (!pair) continue;
-    const n = Number(pair[2].replace(/,/g, ''));
-    if (Number.isFinite(n)) out[pair[1]] = n;
-  }
-  return Object.keys(out).length ? out : null;
-}
-
 // Which task a captured session belongs to, for the per-task cost split. The join is
 // the executor's own `claudinite-task-exec` record, already counted into `taskExec` by
 // the same pass — so this costs nothing beyond reading its keys.
@@ -592,12 +541,18 @@ export function taskCostKey(counts, issue) {
 export const taskCostRank = (key) =>
   (key === null || key === undefined ? 0 : key === TASK_COST_NONE ? 1 : key === TASK_COST_UNRESOLVED ? 2 : 3);
 
+// Names still exported are not removals: a member's local pack may import the mount by
+// them, and the canon cannot see whether one does. Both always `null` — the summary
+// line's token figure is no longer folded.
+// @legacy-tolerance advisory:none retire:#1989
+export const ruleTokensIn = () => null;
+// @legacy-tolerance advisory:none retire:#1989
+export const ruleTokensByPackIn = () => null;
+
 export function countEntries(entries, mounted = new Set()) {
   const skillLoads = {};
   let userMessages = 0;
   let userCommands = 0;
-  let ruleTokens = null;
-  let ruleTokensByPack = null;
   const load = (name) => { skillLoads[name] = (skillLoads[name] ?? 0) + 1; };
 
   for (const entry of entries) {
@@ -608,18 +563,11 @@ export function countEntries(entries, mounted = new Set()) {
       userCommands += 1;
       if (mounted.has(command)) load(command);
     }
-    if (ruleTokens === null || ruleTokensByPack === null) {
-      const text = entryText(entry).join('\n');
-      if (ruleTokens === null) ruleTokens = ruleTokensIn(text);
-      if (ruleTokensByPack === null) ruleTokensByPack = ruleTokensByPackIn(text);
-    }
   }
   return {
     userMessages,
     userCommands,
     skillLoads,
-    ruleTokens,
-    ruleTokensByPack,
     tokens: tokensIn(entries),
     tokensByModel: tokensByModelIn(entries),
     seconds: turnSeconds(entries),
@@ -637,7 +585,7 @@ export function countEntries(entries, mounted = new Set()) {
 // zero written for it would read as a quiet day.
 const emptyDay = () => ({
   ...Object.fromEntries(CAPTURE_DAY_FIELDS.map((f) => [f, 0])),
-  skillLoads: {}, ruleTokensByPack: {},
+  skillLoads: {},
   checks: {}, checkFindings: {}, tasks: {}, taskExec: {}, queue: {},
   tokensByModel: {}, prs: {}, taskCost: {}, parks: {},
 });
@@ -673,11 +621,11 @@ export function foldDays(files) {
   // The two PER-SESSION figures, which must not be summed over capture files: a
   // session that captured twice (a merge, then the session-end tail) writes the same
   // facts into both files, and the second is usually a superset of the first. So they
-  // are collected per (day, session) and reduced at the end — the rule tokens the
-  // session started with, and the largest token spend any of its captures attests.
+  // are collected per (day, session) and reduced at the end — the largest token spend
+  // any of the session's captures attests.
   const perSession = {};
   const blankSession = () => ({
-    ruleTokens: null, ruleTokensByPack: null, tokens: null, tokensByModel: null,
+    tokens: null, tokensByModel: null,
     seconds: null, task: null, userMessages: 0,
   });
   const session = (date, id) => ((perSession[date] ??= new Map()).get(id)
@@ -696,12 +644,6 @@ export function foldDays(files) {
     (sessionsByDay[file.date] ??= new Set()).add(file.sessionId);
 
     const s = session(file.date, file.sessionId);
-    if (s.ruleTokens === null && file.counts.ruleTokens !== null && file.counts.ruleTokens !== undefined) {
-      s.ruleTokens = file.counts.ruleTokens;
-    }
-    if (s.ruleTokensByPack === null && file.counts.ruleTokensByPack) {
-      s.ruleTokensByPack = file.counts.ruleTokensByPack;
-    }
     const t = file.counts.tokens;
     // The per-model split rides the SAME winning capture as the total it splits, so
     // the two can never describe different captures of one session.
@@ -731,9 +673,7 @@ export function foldDays(files) {
 
   for (const [date, bySession] of Object.entries(perSession)) {
     const day = days[date];
-    for (const { ruleTokens, ruleTokensByPack, tokens, tokensByModel, seconds, task, userMessages } of bySession.values()) {
-      if (ruleTokens !== null) { day.ruleTokens += ruleTokens; day.ruleTokenSessions += 1; }
-      if (ruleTokensByPack) addLoads(day.ruleTokensByPack, ruleTokensByPack);
+    for (const { tokens, tokensByModel, seconds, task, userMessages } of bySession.values()) {
       // Absent until one session on this day attested a spend — the fields stay off
       // the row entirely on a day whose transcripts carried no usage records, which is
       // what makes "this shape does not record it" distinguishable from "it was free".
@@ -1008,10 +948,7 @@ export function addDayToWeek(week, day) {
     if (typeof value === 'number' && Number.isFinite(value)) add(field, value);
   }
   // The bare maps a week row can carry, so a week frozen before one existed reads
-  // back the same shape a fresh fold builds. `ruleTokensByPack` is present and stays
-  // EMPTY: it is a day-tier field — a week's sum of it would count the same mount once
-  // per session in the week — and an empty map is never written, so the file is
-  // unchanged by its being here.
+  // back the same shape a fresh fold builds.
   for (const map of BARE_MAPS) w[map] ??= {};
   addLoads(w.skillLoads, day.skillLoads);
   // Every counter group folds key-wise, driven off the vocabulary rather than a
