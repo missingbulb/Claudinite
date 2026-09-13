@@ -213,15 +213,15 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Acting on an add-packs work-list issue | high | correctness | prose: 70 words |
-| Acting on a scanned pack suggestion | medium | correctness | prose: 77 words |
-| Reading unknown in a report | high | correctness | prose: 64 words |
-| Judging whether a member is behind | high | correctness | prose: 69 words |
-| Answering why the fleet did not move | medium | complexity | prose: 52 words |
-| Pushing canon to the whole fleet now | low | complexity | prose: 138 words |
-| Adding a pack across the fleet | medium | complexity | prose: 53 words |
-| Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: 52 words |
-| A sweep reporting 403 or no-permission | medium | complexity | prose: 48 words |
+| Acting on an add-packs work-list issue | high | correctness | prose: <100 words |
+| Acting on a scanned pack suggestion | medium | correctness | prose: <100 words |
+| Reading unknown in a report | high | correctness | prose: <100 words |
+| Judging whether a member is behind | high | correctness | prose: <100 words |
+| Answering why the fleet did not move | medium | complexity | prose: <100 words |
+| Pushing canon to the whole fleet now | low | complexity | prose: <200 words |
+| Adding a pack across the fleet | medium | complexity | prose: <100 words |
+| Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: <100 words |
+| A sweep reporting 403 or no-permission | medium | complexity | prose: <50 words |
 
 The config rules (`exclude`, `packSeeds`, the declaration a seed must agree with) are the
 [`configuring-the-fleet`](skills/configuring-the-fleet/SKILL.md) skill, forced for

@@ -9,5 +9,5 @@ from worked examples as a project first exercises this for real.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Verifying a Swift/iOS change from a sandbox | high | correctness | prose: 51 words |
-| Apple Developer Documentation pages are JS-rendered | medium | complexity | prose: 35 words |
+| Verifying a Swift/iOS change from a sandbox | high | correctness | prose: <100 words |
+| Apple Developer Documentation pages are JS-rendered | medium | complexity | prose: <50 words |

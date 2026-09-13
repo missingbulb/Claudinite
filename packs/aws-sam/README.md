@@ -6,12 +6,12 @@ Active when the repo has a SAM `template.yaml`/`.yml`.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| The deploy role drives transform and CloudFront | high | correctness | prose: 79 words |
-| A new account waits for CloudFront verification | medium | correctness | prose: 58 words |
-| Clean up a failed first CREATE | high | correctness | prose: 54 words |
-| Review the change set for Replacement | critical | correctness | prose: 55 words |
-| A custom header preflights any GET | medium | correctness | prose: 60 words |
-| Reach AWS by CLI or boto3 | low | complexity | prose: 96 words |
+| The deploy role drives transform and CloudFront | high | correctness | prose: <100 words |
+| A new account waits for CloudFront verification | medium | correctness | prose: <100 words |
+| Clean up a failed first CREATE | high | correctness | prose: <100 words |
+| Review the change set for Replacement | critical | correctness | prose: <100 words |
+| A custom header preflights any GET | medium | correctness | prose: <100 words |
+| Reach AWS by CLI or boto3 | low | complexity | prose: <100 words |
 
 The template-shape gotchas (CloudFront `Authorization` forwarding, the CDN hit that skips the
 authorizer, TTL over invalidation, non-`http` CORS origins, GSI backfill) are the

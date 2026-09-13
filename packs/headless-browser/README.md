@@ -13,27 +13,27 @@ particular call still exists — the shape the corpus rejects outright.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Resolve binary, never download | high | correctness | prose: 123 words |
-| Reinstalling the driver repeats the download danger | high | correctness | prose: 130 words |
-| Stub an unvendored CDN library's API | medium | correctness | prose: 114 words |
-| Pin the build for pixels | high | correctness | prose: 87 words |
-| Zero-diff costs whole recipe | medium | correctness | prose: 95 words |
-| Fake origin, abort by default | high | correctness | prose: 80 words |
-| `https` origin for geolocation | medium | correctness | prose: 48 words |
-| Route vendored assets host-agnostically | medium | correctness | prose: 75 words |
-| Context knobs vs page knobs | medium | correctness | prose: 67 words |
-| Window-size flag isn't a viewport | high | correctness | prose: 132 words |
-| Fakes as init scripts | high | correctness | prose: 42 words |
-| CSS freeze misses `element.animate` | high | correctness | prose: 45 words |
-| Two clock modes | medium | correctness | prose: 55 words |
-| Font jail, not just webfonts | high | correctness | prose: 111 words |
-| Reproducible rasterisation flags | high | correctness | prose: 60 words |
-| Wait on the page's signal | high | correctness | prose: 66 words |
-| Clip, don't screenshot the element | medium | correctness | prose: 65 words |
-| Bounding boxes go stale | medium | correctness | prose: 59 words |
-| Whole-pixel clips | medium | correctness | prose: 57 words |
-| Strip scripts needing the runtime | medium | correctness | prose: 53 words |
-| One browser, many contexts | medium | performance | prose: 51 words |
+| Resolve binary, never download | high | correctness | prose: <200 words |
+| Reinstalling the driver repeats the download danger | high | correctness | prose: <200 words |
+| Stub an unvendored CDN library's API | medium | correctness | prose: <200 words |
+| Pin the build for pixels | high | correctness | prose: <100 words |
+| Zero-diff costs whole recipe | medium | correctness | prose: <100 words |
+| Fake origin, abort by default | high | correctness | prose: <100 words |
+| `https` origin for geolocation | medium | correctness | prose: <50 words |
+| Route vendored assets host-agnostically | medium | correctness | prose: <100 words |
+| Context knobs vs page knobs | medium | correctness | prose: <100 words |
+| Window-size flag isn't a viewport | high | correctness | prose: <200 words |
+| Fakes as init scripts | high | correctness | prose: <50 words |
+| CSS freeze misses `element.animate` | high | correctness | prose: <50 words |
+| Two clock modes | medium | correctness | prose: <100 words |
+| Font jail, not just webfonts | high | correctness | prose: <200 words |
+| Reproducible rasterisation flags | high | correctness | prose: <100 words |
+| Wait on the page's signal | high | correctness | prose: <100 words |
+| Clip, don't screenshot the element | medium | correctness | prose: <100 words |
+| Bounding boxes go stale | medium | correctness | prose: <100 words |
+| Whole-pixel clips | medium | correctness | prose: <100 words |
+| Strip scripts needing the runtime | medium | correctness | prose: <100 words |
+| One browser, many contexts | medium | performance | prose: <100 words |
 
 ## Boundary
 

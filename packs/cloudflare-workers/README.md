@@ -7,17 +7,17 @@ one directory down.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Route large uploads through R2 | high | correctness | prose: 61 words |
-| A Workflow step passes a key | high | correctness | prose: 87 words |
-| Size a Workflow step by CPU | high | correctness | prose: 58 words |
-| Native work needs a Container | high | correctness | prose: 52 words |
-| Migrations need three merges | critical | correctness | prose: 98 words |
-| Fix the embedding model first | high | correctness | prose: 44 words |
-| Distinguish absent from unknown | high | correctness | prose: 62 words |
-| A deploy URL is not production | medium | correctness | prose: 54 words |
-| Test through fakes, not bindings | medium | complexity | prose: 63 words |
-| Sign R2 requests like S3 | medium | correctness | prose: 48 words |
-| Cloudflare docs have a mirror | low | complexity | prose: 59 words |
+| Route large uploads through R2 | high | correctness | prose: <100 words |
+| A Workflow step passes a key | high | correctness | prose: <100 words |
+| Size a Workflow step by CPU | high | correctness | prose: <100 words |
+| Native work needs a Container | high | correctness | prose: <100 words |
+| Migrations need three merges | critical | correctness | prose: <100 words |
+| Fix the embedding model first | high | correctness | prose: <50 words |
+| Distinguish absent from unknown | high | correctness | prose: <100 words |
+| A deploy URL is not production | medium | correctness | prose: <100 words |
+| Test through fakes, not bindings | medium | complexity | prose: <100 words |
+| Sign R2 requests like S3 | medium | correctness | prose: <50 words |
+| Cloudflare docs have a mirror | low | complexity | prose: <100 words |
 
 ## Upstream
 

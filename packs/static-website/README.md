@@ -33,12 +33,12 @@ copies of the pack's stubs lives there too, forced for the `static-site-*` workf
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| The publish set names every published file | high | correctness | prose: 120 words + check (`sw/site-config`) |
-| The version moves with the change | high | correctness | prose: 133 words + checks (`sw/version-bumped`, `sw/version-scheme`) |
-| The site is served from a subpath | high | correctness | prose: 64 words |
-| Freshness is a published manifest's job | high | correctness | prose: 174 words |
-| Nothing attests to its own freshness | high | correctness | prose: 183 words |
-| Split caches join across generations | critical | correctness | prose: 182 words |
-| Follow missing data to the pixel | high | correctness | prose: 123 words |
+| The publish set names every published file | high | correctness | prose: <200 words + check (`sw/site-config`) |
+| The version moves with the change | high | correctness | prose: <200 words + checks (`sw/version-bumped`, `sw/version-scheme`) |
+| The site is served from a subpath | high | correctness | prose: <100 words |
+| Freshness is a published manifest's job | high | correctness | prose: <200 words |
+| Nothing attests to its own freshness | high | correctness | prose: <200 words |
+| Split caches join across generations | critical | correctness | prose: <200 words |
+| Follow missing data to the pixel | high | correctness | prose: <200 words |
 
 The version scheme and the code that computes it live together in [stubs/actions/bump-site-version/bump.mjs](stubs/actions/bump-site-version/bump.mjs) — the checks import `VERSION_RE` from there rather than restating it, so the rule and the bump can't disagree about what a version is.

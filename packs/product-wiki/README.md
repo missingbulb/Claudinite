@@ -40,8 +40,8 @@ Two rules, for the sessions that only read the wiki:
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Working on a requirement or spec | high | correctness | prose: 45 words |
-| Building on `product-wiki/` elsewhere | critical | correctness | prose: 26 words + check (`product-wiki-isolation`) |
+| Working on a requirement or spec | high | correctness | prose: <50 words |
+| Building on `product-wiki/` elsewhere | critical | correctness | prose: <50 words + check (`product-wiki-isolation`) |
 
 Everything about *editing* a page — the `## Key insights` header, citation, correction without
 deletion, the growth log, sample-data, the no-fabricated-growth stop — is the
