@@ -64,3 +64,13 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   design and whose escalation lives in the reusable workflows it calls. Reaffirm whenever a
   `gha/*` check is added: widen it to stubs unless its premise is about the repo rather than
   the file. Retire the split if stubs stop being copied verbatim into members.
+
+- **(git-github-advanced-1)** GitHub's *Caching dependencies to speed up workflows* doc,
+  "Restrictions for accessing a cache" and "Cache access for low-trust workflow triggers": a
+  `pull_request` run's cache is created for `refs/pull/.../merge` and restorable only by re-runs
+  of that PR; only `push`, `workflow_dispatch`, `repository_dispatch`, `delete`,
+  `registry_package`, `page_build` and `schedule` may write the default branch's scope, every
+  other trigger resolving there is read-only and a refused save "is reported as a warning in the
+  workflow log"; entries "not accessed in over 7 days" are removed. Read for #2012, where the
+  read-only case is the executor's own `issues: labeled` trigger. Retire when GitHub drops the
+  low-trust restriction or the 7-day eviction.
