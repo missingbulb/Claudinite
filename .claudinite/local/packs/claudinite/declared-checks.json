@@ -174,20 +174,6 @@
     ]
   },
   {
-    "id": "ask-user-question-cost",
-    "severity": "advisory",
-    "scope": "action",
-    "failureMessage": "AskUserQuestion blocks about 170 seconds, so it is spent only on a fork that cannot be taken back",
-    "guardToolCalls": [
-      {
-        "tool": "AskUserQuestion",
-        "inputMatches": "/./",
-        "what": "an AskUserQuestion about to block the session",
-        "fix": "if the instruction, the tree or a reversible default answers it, act and say what you assumed instead"
-      }
-    ]
-  },
-  {
     "id": "hook-judges-never-exit",
     "severity": "blocking",
     "since": "2026-09-05",

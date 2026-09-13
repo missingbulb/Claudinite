@@ -120,12 +120,8 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   machine-readable.
 - **(RULES-41)** #974, owner-authored: `DRY_RUN` stopped being read and silently defaulted to
   the operation's most dangerous mode — live and unscoped.
-- **(RULES-42)** #1094: a dashboard stuck showing a stale "hasn't converged" banner traced to
-  exactly this — the deploy workflow's `on: push` never fired for the pushes that actually
-  moved a mount. Retire the rule only if GitHub cascades workflows from `GITHUB_TOKEN`-authored
-  pushes.
-- **(RULES-43)** #1108: the same platform fact makes `.github/workflows/` the one path a
-  converge cannot push into, so a member's copy moves only when a human merges a PR.
+- **(RULES-43)** #1108: `.github/workflows/` is the one path a converge cannot push into, so a
+  member's copy moves only when a human merges a PR.
 - **(check:year-last-digit-rollover)** #1105: a year anchored on its last digit wraps to 0 in 2030 and sorts a decade
   of releases underneath every 2029 one.
 - **(RULES-46)** #1105: `'60820.10'` and `'60820.1'` are different versions and the same float,

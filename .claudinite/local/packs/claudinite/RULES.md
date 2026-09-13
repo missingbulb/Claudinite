@@ -306,10 +306,6 @@ Below are rules on how to work on this repo.
   read must fail loudly, never silently default. A dropped safety knob (`DRY_RUN`) defaults to the
   operation's most dangerous mode. (41)
 
-- **Relying on a push to trigger further Actions workflows** — a push authored with the default
-  `GITHUB_TOKEN`, which every converge and auto-merge here uses, fires no `on: push` workflow. Only
-  a real user or app credential cascades. (42)
-
 - **A workflow file referencing a renamed entry point by literal path** — hold a shim open, as for
   an `engine/` module a `packs/` file imports. `.github/workflows/` lands only through a PR a human
   merges. (43)

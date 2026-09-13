@@ -62,14 +62,8 @@ test('the waiting and suite guards', () => {
   ]), ['the suite run through a glob: "node --test engine-tests/*"', 'node --test with no files named']);
 });
 
-test('the commit and question guards', () => {
+test('the commit guard', () => {
   assert.deepEqual(judge('commit-all-sweeps-edits', ['git commit -am "probe"', 'git commit -m "real" -- a.mjs']), ['a commit with -a']);
-  const rule = declaredCheck('.claudinite/local/packs/claudinite', 'ask-user-question-cost');
-  const session = makeTranscript([{ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'AskUserQuestion', input: { questions: [{ question: 'q?' }] } }] } }]);
-  const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
-  try {
-    assert.deepEqual(runRule(rule, buildContext({ root, mode: 'all', transcriptPath: session.path })).map((f) => f.severity), ['advisory']);
-  } finally { cleanup(root); session.cleanup(); }
 });
 
 // Guards over tools other than Bash: the call is [name, input].
