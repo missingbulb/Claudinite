@@ -76,6 +76,12 @@ test('the staged tree mirrors the mount, with the root a redirect', async (t) =>
     '_site/.nojekyll',
   ]) assert.ok(existsSync(join(dir, p)), `missing from the staged site: ${p}`);
 
+  // The page is stored under `src/` and served from the directory above it. A staged
+  // tree that left it in place would serve a page whose every path is off by one
+  // directory, which is the one way this relocation can fail silently.
+  assert.ok(!existsSync(join(dir, '_site/packs/claudinite-dashboard/src/index.html')),
+    'the page must be moved to the root it is served from, not copied');
+
   const root = await readFile(join(dir, '_site/index.html'), 'utf8');
   assert.match(root, /url=\.\/packs\/claudinite-dashboard\//);
 });

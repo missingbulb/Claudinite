@@ -35,7 +35,11 @@ const stripLineComments = (src) => src.replace(/^\s*\/\/.*$/gm, '');
 // Every file the browser would load, starting from whatever `index.html` actually
 // names — so a renamed entry point re-points the walk instead of silently emptying it.
 async function graph() {
-  const html = await readFile(resolve(PAGE, 'index.html'), 'utf8');
+  // The page is stored at `src/index.html` and served from the directory above it, so
+  // its entry specifier is relative to PAGE — the pack root — not to the file's own
+  // directory. Reading it from one place and resolving it against the other is the
+  // whole of that relocation, and getting it backwards is what this walk would catch.
+  const html = await readFile(resolve(PAGE, 'src/index.html'), 'utf8');
   const entry = html.match(/<script[^>]*\btype="module"[^>]*\bsrc="([^"]+)"/)?.[1];
   assert.ok(entry, 'index.html names no module entry point — the walk would cover nothing');
 

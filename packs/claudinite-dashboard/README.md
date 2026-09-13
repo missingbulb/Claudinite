@@ -76,7 +76,7 @@ fleet overview would be nothing but a click in the way.
 ## How the code is laid out
 
 ```
-index.html            the page; its one module script names src/app.mjs
+src/index.html        the page; its one module script names ./src/app.mjs
 src/app.mjs           the shell — configure, authenticate, route between the two views
 src/derive/           pure: facts in, rows and figures out. No DOM, no fetch, no clock
                       it was not handed, so all of it is testable in plain Node
@@ -87,7 +87,26 @@ src/views/            the two pages, which fetch through read/, derive through d
                       and draw through render/
 tooling/              node-only: the dev server, the site build, the deployment-settings
                       reader, and the serverless sign-in source. Never published
+favicon.svg           served beside the page, at the pack root
 ```
+
+### The page is stored under `src/` and served from the pack root
+
+Everything the browser loads lives under `src/`, the page included — but the dashboard's
+URL stays `…/packs/claudinite-dashboard/`, one directory above it.
+
+That is worth knowing before editing `src/index.html`, because an HTML `src=` resolves
+against the **document's URL**, never the file's path on disk. The page's script tag
+therefore reads `./src/app.mjs` and its icon `./favicon.svg` — both written from the URL
+it is served at, both wrong relative to the directory it is stored in. Opening the file
+directly, or pointing a static server at `src/`, breaks every module it loads.
+
+Two places put it back where it belongs, and nothing else should serve it:
+[`tooling/serve.mjs`](tooling/serve.mjs) resolves a directory request to the page under
+`src/`, and [`tooling/build-site.mjs`](tooling/build-site.mjs) *moves* it up to the
+served root while staging — a move rather than a copy, so no second, broken entry is
+left behind at `src/index.html`. A staged tree that skipped either step is caught by
+`the staged tree mirrors the mount, with the root a redirect`.
 
 The layering runs one way: a view may reach any layer below it, and anything two views
 both need moves *down* rather than sideways. The one edge that crosses back is
