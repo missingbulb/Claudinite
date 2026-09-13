@@ -31,7 +31,12 @@ const NS = 'claudinite-dashboard';
 const VERSION = 4;
 export const DAY_MS = 24 * 3600e3;
 
-const key = (k) => `${NS}:v${VERSION}:${k}`;
+// Every cache entry is versioned, and that prefix is also what the cache CLAIMS to
+// own: `auth` keeps a remembered credential in the same localStorage under the bare
+// namespace, and an eviction sweep that reached it would sign the viewer out at a
+// quota boundary — an undecodable entry is exactly what this file evicts first.
+const PREFIX = `${NS}:v`;
+const key = (k) => `${PREFIX}${VERSION}:${k}`;
 
 const now = () => Date.now();
 
@@ -68,7 +73,7 @@ function ourKeys() {
   try {
     for (let i = 0; i < localStorage.length; i += 1) {
       const k = localStorage.key(i);
-      if (k?.startsWith(`${NS}:`)) out.push(k);
+      if (k?.startsWith(PREFIX)) out.push(k);
     }
   } catch { /* unavailable */ }
   return out;

@@ -13,6 +13,8 @@ class Mem {
 let replaced;
 beforeEach(() => {
   globalThis.sessionStorage = new Mem();
+  // Both stores, because where the credential lands is the viewer's choice.
+  globalThis.localStorage = new Mem();
   replaced = [];
   globalThis.location = { href: 'https://o.github.io/R/?repo=o%2Fa', origin: 'https://o.github.io', pathname: '/R/', search: '' };
   globalThis.history = { replaceState: (_a, _b, url) => replaced.push(String(url)) };
@@ -133,4 +135,81 @@ test('signOut clears the credential', async () => {
   assert.equal(a.currentToken(), 'ghp_x', 'a pasted token is trimmed');
   a.signOut();
   assert.equal(a.currentToken(), '');
+});
+
+// --- where the credential lives --------------------------------------------------
+
+// The default is the strict one: a credential nobody asked to keep dies with the tab.
+test('by default the credential does not survive the browser closing', async () => {
+  const a = await load();
+  a.setPastedToken('ghp_x');
+  assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), 'ghp_x');
+  assert.equal(localStorage.getItem('claudinite-dashboard:token'), null, 'nothing durable was written');
+
+  globalThis.sessionStorage = new Mem();   // closing the browser
+  assert.equal(a.currentToken(), '', 'the tab took it with it');
+});
+
+// The whole point of the option: a daily viewer stops re-signing in every morning.
+test('Remember me keeps the credential across a browser restart', async () => {
+  const a = await load();
+  a.setRemember(true);
+  a.setPastedToken('ghp_x');
+  assert.equal(localStorage.getItem('claudinite-dashboard:token'), 'ghp_x');
+  assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), null, 'one copy, not two');
+
+  globalThis.sessionStorage = new Mem();
+  assert.equal(a.currentToken(), 'ghp_x');
+  assert.equal(a.isRemembered(), true, 'and the box is still ticked on return');
+});
+
+// A box that only applied to the NEXT sign-in would be lying about what it just did.
+test('ticking it moves the credential the viewer already has', async () => {
+  const a = await load();
+  a.setPastedToken('ghp_x');
+  a.setRemember(true);
+  assert.equal(localStorage.getItem('claudinite-dashboard:token'), 'ghp_x');
+  assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), null);
+  assert.equal(a.currentToken(), 'ghp_x', 'and it is still usable across the move');
+});
+
+test('unticking it demotes the credential rather than waiting for the next sign-in', async () => {
+  const a = await load();
+  a.setRemember(true);
+  a.setPastedToken('ghp_x');
+  a.setRemember(false);
+
+  assert.equal(localStorage.getItem('claudinite-dashboard:token'), null, 'the durable copy is erased');
+  assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), 'ghp_x');
+  globalThis.sessionStorage = new Mem();
+  assert.equal(a.currentToken(), '', 'and it is gone with the tab again');
+});
+
+test('signing out leaves no copy in either store', async () => {
+  const a = await load();
+  a.setRemember(true);
+  a.setPastedToken('ghp_x');
+  a.signOut();
+  assert.equal(localStorage.getItem('claudinite-dashboard:token'), null);
+  assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), null);
+  assert.equal(a.currentToken(), '');
+});
+
+test('a sign-in honours the standing choice without being asked again', async () => {
+  const a = await load();
+  a.setRemember(true);
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ access_token: 'gho_abc' }) });
+  sessionStorage.setItem('claudinite-dashboard:oauth-state', 's1');
+  await a.completeSignIn(CONFIG, { search: '?code=abc&state=s1' });
+  assert.equal(localStorage.getItem('claudinite-dashboard:token'), 'gho_abc');
+});
+
+// Private browsing throws on both stores. A page that cannot remember is still a page.
+test('a browser that refuses storage signs in for the tab rather than failing', async () => {
+  const a = await load();
+  const throwing = { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); }, removeItem() { throw new Error('denied'); } };
+  globalThis.localStorage = throwing;
+  assert.equal(a.isRemembered(), false);
+  assert.doesNotThrow(() => a.setRemember(true));
+  assert.doesNotThrow(() => a.setPastedToken('ghp_x'));
 });

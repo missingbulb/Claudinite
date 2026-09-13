@@ -110,3 +110,39 @@ test('projectRun keeps only the rendered fields', async () => {
   // it, so a reader never has to distinguish "absent" from "old cache entry".
   assert.equal(c.projectRun({ name: 'CI' }).path, null);
 });
+
+// --- the credential shares this storage -------------------------------------------
+
+// A remembered credential sits in `localStorage` under the same namespace this file
+// sweeps. Signing a viewer out because their cache filled up, or because they asked
+// for a cold read, is the bug these two pin.
+const TOKEN_KEY = 'claudinite-dashboard:token';
+
+test('clearing the cache does not sign the viewer out', async () => {
+  const c = await load();
+  localStorage.setItem(TOKEN_KEY, 'gho_remembered');
+  c.ageing.set('some-entry', { a: 1 });
+
+  c.clearAll();
+
+  assert.equal(c.ageing.get('some-entry'), undefined, 'the cached entry is gone');
+  assert.equal(localStorage.getItem(TOKEN_KEY), 'gho_remembered', 'the credential is not cache');
+});
+
+test('the credential is not counted as a cache entry', async () => {
+  const c = await load();
+  localStorage.setItem(TOKEN_KEY, 'gho_remembered');
+  assert.deepEqual(c.stats(), { entries: 0, bytes: 0 });
+});
+
+// The eviction sweep sorts undecodable entries first — and a raw token is not JSON, so
+// a full quota would reach it before any real cache entry if it were in scope at all.
+test('a full quota evicts cache entries, never the credential', async () => {
+  const c = await load();
+  globalThis.localStorage = new FakeStorage(400);
+  localStorage.setItem(TOKEN_KEY, 'gho_remembered');
+  for (let i = 0; i < 12; i += 1) c.ageing.set(`entry-${i}`, { padding: 'x'.repeat(20) });
+
+  assert.equal(localStorage.getItem(TOKEN_KEY), 'gho_remembered');
+  assert.ok(c.stats().entries > 0, 'and the cache is still doing its job');
+});
