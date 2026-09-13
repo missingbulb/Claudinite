@@ -7,6 +7,17 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60913.1 | 2026-09-13 | growth-dedup auto-merges the whole local-pack tree (#1949) |
+| 60910.1 | 2026-09-10 | claudinite-growth: add the learning-a-technology skill (#1918) |
+| 60907.3 | 2026-09-07 | claudinite-tasks: PRINCIPLES.md as the spec, the two-way claim guard, seven design docs deleted (#1887) |
+| 60907.2 | 2026-09-07 | Move dormancy out of engine settings onto the scheduler's own pack (#1851) |
+| 60907.1 | 2026-09-07 | rule-revalidation lands its own local-pack corrections, canon stays reviewed (#1844) |
+| 60906.9 | 2026-09-06 | Retire the tidy-repo pack; absorb improve-comments into basics (#1842) |
+| 60906.8 | 2026-09-06 | Retire the task.mjs module form of a task declaration (#1795) |
+| 60906.7 | 2026-09-06 | Promote the validated survivors of four growth-promote PRs (#1828) |
+| 60906.6 | 2026-09-06 | Scheduling is the task's own precondition; the scheduler keeps no state (#1733) |
+| 60906.5 | 2026-09-06 | Janitor rule I: close a failure park nobody has answered in ten days (#1786) |
+| 60906.4 | 2026-09-06 | Promote the reviewed survivors of nine growth-promote PRs (#1671) |
 | 60906.3 | 2026-09-06 | Read the whole session's transcripts when a skill load gates an edit (#1757) |
 | 60906.2 | 2026-09-06 | Group the tidy sweeps' fan-out, and keep the run bound covering it (#1740) |
 | 60906.1 | 2026-09-06 | Declared checks at every moment: schema rung, work and action scopes, skill triggers, and the creation path (#1711) |

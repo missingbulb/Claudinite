@@ -7,6 +7,13 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60907.3 | 2026-09-07 | claudinite-tasks: PRINCIPLES.md as the spec, the two-way claim guard, seven design docs deleted (#1887) |
+| 60907.2 | 2026-09-07 | Move dormancy out of engine settings onto the scheduler's own pack (#1851) |
+| 60907.1 | 2026-09-07 | The machine leads with whether the nightly update is landing (#1853) |
+| 60906.7 | 2026-09-06 | Retire the tidy-repo pack; absorb improve-comments into basics (#1842) |
+| 60906.6 | 2026-09-06 | Retire the task.mjs module form of a task declaration (#1795) |
+| 60906.5 | 2026-09-06 | Restore the Work section's column headers (#1803); Make the Work board's marks links, and its detail a hover (#1805) |
+| 60906.4 | 2026-09-06 | Fold the fleet grid's What it is into a mark, and unstick the grouped head (#1801) |
 | 60906.3 | 2026-09-06 | The fleet grid's `What it is` is a mark, not prose (#1797): a bar weighing the levels with the counts on one line under it and the sentences on its hover, so the one prose column in a row of marks stops taking the width the other nine need — the busiest member's row halves. The grouped head's row is `group-band`: as `band` it matched the ledger sheet's grid component, which dropped its `colSpan` and stacked the group titles on top of each other on every grouped table on both views. |
 | 60906.2 | 2026-09-06 | The START HERE queue is STEPPED rather than counted (#1743): `‹ 2 / 4 ›` walks the candidates behind the prod and **see all** opens the whole set as one GitHub issue search — the repo's own listing narrowed to their numbers, or the cross-repository search on the fleet page, where the queue spans members. The page cannot read the verdict someone just reached on the candidate in front of them, so the next one had to be reachable without acting on this one; *3 more after this one* was a count to read and no way through. |
 | 60906.1 | 2026-09-06 | Every issue and pull request the page names by number is a link to it (#1741). `refNodes` turns the `#N` runs in a sentence into anchors — GitHub's `/issues/<n>` redirects to the pull request when the number is one, so an issue and the PR that closes it need no telling apart — and the board's gutters and findings take the SVG form of the same thing. It reaches the Work board, the quiet tail, the explore panels, the blocked-by and after cells, the task warnings and the ledger's stuck sub-line; before this only the lead card and two Work-table cells linked at all. |

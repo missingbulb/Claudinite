@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60913.1 | 2026-09-13 | product-wiki: qualitative-evidence methodology in writing-wiki-pages (#1947) |
+| 60907.1 | 2026-09-07 | claudinite-tasks: PRINCIPLES.md as the spec, the two-way claim guard, seven design docs deleted (#1887) |
+| 60906.1 | 2026-09-06 | Scheduling is the task's own precondition; the scheduler keeps no state (#1733) |
 | 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr` — except that `wiki-growth` declares `amend_existing_or_create_new_pr` (owner, 2026-09-04): a round joins its pending review, so the `no-open-pr-touching:product-wiki/` precondition that existed to prevent a stacked round retires, and its `task.md` delivers on the branch and pull request the item names. |
 | 60904.1 | 2026-09-04 | Absorb barriers into basics, and stop it interviewing on adoption (#1684) |
 | 60903.2 | 2026-09-03 | The page-editing rules move out of `RULES.md` into the `writing-wiki-pages` skill, forced for `product-wiki/**` by `force-load-on-file-edits-paths` (#1648); the prose keeps the two rules for sessions that only read the wiki. |
