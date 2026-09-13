@@ -39,6 +39,14 @@
   canon-scoped session) before filing an issue claiming it was never shipped, and where you can't,
   report only that the mount lacks the file.
 
+- **Reporting or judging behavior against what a pack, task or the engine currently does** (a
+  task's `automerge`, a pack's version, any config or policy you are about to state as canon's) —
+  read the canon repo's own `packs/<id>/` at its default branch, never this repo's mounted
+  `.claudinite/shared/`. The mount is a snapshot at this repo's last-vendored version, so it
+  answers what this member runs, never what canon currently says, and the two diverge precisely
+  when this member is behind — often the very reason the read was needed. Refreshing the mount
+  costs nothing beyond the `git fetch` you'd need anyway.
+
 - **An engine source comment under the mount points at a design doc** (`DESIGN.md`) — the mount
   vendors `.mjs` sources and pack docs only, never the canon's internal design-doc tree, so the
   pointer dangles in every member. Read the module's own header comment, which restates what the
@@ -48,6 +56,12 @@
   clean result, not a stall: a run with no findings prints nothing and exits `0`. Append
   `; echo "EXIT:$?"` if in doubt, rather than a second pass of `--help`/`head`/`tail` hunting for
   confirmation that silence is safe. (2)
+
+- **A green `check_the_world.mjs` is not evidence the Stop hook will stay quiet** — the two
+  runners cover disjoint rule scopes, not the same rules on different triggers: the world runner
+  only sees `scope !== 'work'` rules and is wired to CI, while the Stop hook runs
+  `check_the_work.mjs` against the diff-plus-transcript `scope: 'work'` rules. Verify "will Stop
+  block me" with `check_the_work.mjs`, never by declaring the world runner clean.
 
 - **Pushing a change that touches `.github/workflows/`, `.claudinite-checks.json` or pack config**
   — the world sweep runs in CI, not the Stop hook, so run it locally first rather than spend a
