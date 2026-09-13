@@ -133,10 +133,10 @@
 ## Harness-tool contracts
 
 
-- **Calling `Edit`** — the file's content must be current in the session, which a read *or* a
-  write in this session gives it. When neither has happened, read that exact path first; a narrow
-  offset window satisfies it. Read it anyway whenever you need to see it — Edit's tracking shows
-  you nothing. (3)
+- **Calling `Edit`** — a file under the working directory takes the edit whether or not this
+  session has opened it; one outside is refused ("File has not been read yet") until you read that
+  exact path, which a narrow offset window satisfies. Read it anyway whenever you need to see it —
+  Edit's tracking shows you nothing. (3)
 
 
 - **Polling with an `until` loop** — write a condition that names the state awaited (a file's

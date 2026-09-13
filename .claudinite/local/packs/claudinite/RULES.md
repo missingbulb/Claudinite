@@ -126,10 +126,10 @@ Below are rules on how to work on this repo.
   it. Answering the prompting question alone is not the fix. (17)
 
 
-- **Running a Bash command with a `cd` outside the project root** — the *next* Bash call silently
-  resets cwd back to the root ("Shell cwd was reset to …"), whether the first command succeeded or
-  failed. Prefix every command touching that directory with its own `cd`; a prior one never carries
-  forward.
+- **Running a Bash command with a `cd` outside the project root** — that call's own output ends
+  "Shell cwd was reset to …" and the next one starts back at the root, whether the command
+  succeeded or failed; a `cd` *within* the root persists instead. Prefix every command touching
+  that outside directory with its own `cd`; a prior one never carries forward.
 
 - **A Bash command refused as naming git (or a computed argument) "too complex to verify"
   inside a worktree-isolated agent** — drop straight to the plain, literal, unsubstituted form.

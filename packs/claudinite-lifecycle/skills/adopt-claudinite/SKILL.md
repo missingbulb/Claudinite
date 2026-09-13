@@ -30,9 +30,8 @@ nothing to skip. Read the next section before reaching for it anywhere else.
 
 **Refreshing** an already-vendored repo is **not** a session's job, and must not be hand-rolled.
 Force the repo's own update task and let the flow do it — through the **GitHub MCP tools**, which is
-the surface a session actually has (an unattended or web session carries no `gh` CLI, and a `curl`
-to a repo-scoped `api.github.com` path 403s there, so a shell recipe fails exactly where this is
-most needed):
+the surface a session actually has (an unattended or web session carries no `gh` CLI, so a shell
+recipe hand-rolls, against a raw `api.github.com`, the call the tool below already makes):
 
 ```
 actions_run_trigger(method: "run_workflow", owner: …, repo: …,
