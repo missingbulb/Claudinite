@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   rosterFrom, loadConfig, loadRoster, DEFAULTS, isFleetConfig, ignored, inFleet, resolveRoster, resolveMode,
-} from '../config.mjs';
-import { isOAuthConfigured } from '../auth.mjs';
+} from '../src/read/config.mjs';
+import { isOAuthConfigured } from '../src/read/auth.mjs';
 
 // The roster's source is a fleet artifact this page does not own, so it accepts the
 // shapes such an artifact plausibly has rather than dictating one.

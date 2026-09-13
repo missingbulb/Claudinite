@@ -30,8 +30,8 @@ let band;
 
 before(async () => {
   globalThis.document = { createElement: (tag) => new FakeEl(tag), createElementNS: (_ns, tag) => new FakeEl(tag) };
-  ({ groupedHead, columnCount } = await import('../ui.mjs'));
-  ({ band } = await import('../sheet.mjs'));
+  ({ groupedHead, columnCount } = await import('../src/render/ui.mjs'));
+  ({ band } = await import('../src/render/sheet.mjs'));
 });
 
 // The fleet members grid's own shape: an unlabelled identity column, a one-column group

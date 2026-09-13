@@ -4,7 +4,7 @@ import {
   sumKnown, quantile, fleetDays, windowsOf, mergedPrsIn, stuckItems, closedItems,
   figure, totalsOf, pulseOf, memberWindow, machinePanel, hourKeysSince, fmtAge, fmtTokens,
   fleetLedger, SCHEDULER_CADENCE_MS,
-} from '../fleet-ledger.mjs';
+} from '../src/derive/fleet-ledger.mjs';
 import { WORK_PREFIX, OUTCOME_DONE, NEEDS_HUMAN_APPROVAL } from '../../claudinite-tasks/shared-code/work-items.mjs';
 
 const NOW = Date.parse('2026-09-02T12:00:00Z');

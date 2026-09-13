@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sweepPhases } from '../fleet-sweep.mjs';
+import { sweepPhases } from '../src/read/fleet-sweep.mjs';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 

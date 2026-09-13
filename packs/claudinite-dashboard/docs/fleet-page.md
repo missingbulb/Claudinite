@@ -20,8 +20,8 @@ from is [data-sources.md](data-sources.md).
 **Question.** What is the one thing only a person can unblock?
 
 **Figures.** The worst candidate across every member, ranked by
-[`next-work.mjs`](../next-work.mjs): its headline, its repo, its minutes
-(`PARK_MINUTES` / `approvalMinutes` in [`fleet.mjs`](../fleet.mjs)), and *N more after this
+[`next-work.mjs`](../src/derive/next-work.mjs): its headline, its repo, its minutes
+(`PARK_MINUTES` / `approvalMinutes` in [`fleet.mjs`](../src/derive/fleet.mjs)), and *N more after this
 one*. It is printed as a **slip on warm paper** — the one object on the sheet addressed to the
 person — in two lines: headline, repo link and minutes on the first; the *more* count on the
 second, the named runners-up disclosed on click. The minutes are in the sentence; the chip
@@ -53,11 +53,11 @@ single member is the thing to go and look at.
 
 | Cell | Figure | Derived | Source | Bad when |
 |---|---|---|---|---|
-| **Updates** | members Claudinite's nightly update did not land on — behind the canon, behind on the engine, never converged, or carrying no stamp | `mountState` in [`fleet.mjs`](../fleet.mjs), counted over the adopted, **awake** members | declaration stamp vs `canonRepo` | ≥ 1 stale → warning; more than `sqrt(members)` stale → critical, set in red and bold; no `canonRepo` → *unknown*, never *current* |
+| **Updates** | members Claudinite's nightly update did not land on — behind the canon, behind on the engine, never converged, or carrying no stamp | `mountState` in [`fleet.mjs`](../src/derive/fleet.mjs), counted over the adopted, **awake** members | declaration stamp vs `canonRepo` | ≥ 1 stale → warning; more than `sqrt(members)` stale → critical, set in red and bold; no `canonRepo` → *unknown*, never *current* |
 | **Scheduler heartbeat** | one 10 px square per member, ordered as the grid below; colour = hours since its last completed scheduler run against its cadence; sub-line names the off-cadence members | per member, `now − latest hour with hours[h].scheduler > 0` in its fold, topped up from the live runs page for hours past `runsFoldedThrough`; cadence from the stub (hourly) | fold `hours` + live runs | any member > 2× cadence → serious; never ran → critical |
 | **Executor failures, 24 h** | failed / total executor runs, fleet-wide, worst member named | `hours[*].failed` summed over 24 h, topped up from the live runs page | fold `hours` + live runs | > 0 failed in 24 h → warning; ≥ 3 → serious |
 | **Fold age** | age of the *oldest* member's `usage.generated`; how many fold at all (`9 of 12 fold`) | `now − usage.generated`, max over folding members | fold stamp, read at head sha | oldest > 6 h on a member whose head moved → warning; a member that moved and has no fold → named |
-| **Next wake** | the next anchor across the fleet — `14:00 · 3 members · 5 tasks` — then a 24 h tick strip, one tick per anchor, hover naming member and task | each member's declared tasks' `nextAsk.at` (`buildRoster` in [`model.mjs`](../model.mjs)), collected fleet-wide and bucketed by hour | task declarations at head sha | no anchor inside 24 h on a member that declares tasks → serious (it is unwired) |
+| **Next wake** | the next anchor across the fleet — `14:00 · 3 members · 5 tasks` — then a 24 h tick strip, one tick per anchor, hover naming member and task | each member's declared tasks' `nextAsk.at` (`buildRoster` in [`model.mjs`](../src/derive/model.mjs)), collected fleet-wide and bucketed by hour | task declarations at head sha | no anchor inside 24 h on a member that declares tasks → serious (it is unwired) |
 
 **Every cell here is about the AWAKE fleet.** A member declaring `dormant` on its `claudinite-tasks`
 entry stopped its own scheduler, so it has no heartbeat to be late, no mount anything will converge

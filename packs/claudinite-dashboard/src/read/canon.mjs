@@ -16,8 +16,8 @@
 // is three times that, and a warm load pays for none of them.
 
 import * as gh from './github.mjs';
-import { installedVersions } from '../../engine/installed-versions.mjs';
-import { parseEngineVersion, parsePackVersion } from './fleet.mjs';
+import { installedVersions } from '../../../../engine/installed-versions.mjs';
+import { parseEngineVersion, parsePackVersion } from '../derive/fleet.mjs';
 
 export async function readCanon(config, token) {
   if (!config?.canonRepo) return null;

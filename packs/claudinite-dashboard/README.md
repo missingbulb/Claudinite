@@ -73,10 +73,59 @@ It has **two views**, and which one you land on is the URL:
 A deployment with one member (or none) goes straight to the repo view: a one-row
 fleet overview would be nothing but a click in the way.
 
+## How the code is laid out
+
+```
+src/index.html        the page; its one module script names ./src/app.mjs
+src/app.mjs           the shell — configure, authenticate, route between the two views
+src/derive/           pure: facts in, rows and figures out. No DOM, no fetch, no clock
+                      it was not handed, so all of it is testable in plain Node
+src/read/             the I/O plane — the credential, the one GitHub client, its cache,
+                      the rate-limit policy and sweep order, the per-file readers
+src/render/           the shared visual vocabulary and the drawing primitives
+src/views/            the two pages, which fetch through read/, derive through derive/
+                      and draw through render/
+tooling/              node-only: the dev server, the site build, the deployment-settings
+                      reader, and the serverless sign-in source. Never published
+favicon.svg           served beside the page, at the pack root
+```
+
+### The page is stored under `src/` and served from the pack root
+
+Everything the browser loads lives under `src/`, the page included — but the dashboard's
+URL stays `…/packs/claudinite-dashboard/`, one directory above it.
+
+That is worth knowing before editing `src/index.html`, because an HTML `src=` resolves
+against the **document's URL**, never the file's path on disk. The page's script tag
+therefore reads `./src/app.mjs` and its icon `./favicon.svg` — both written from the URL
+it is served at, both wrong relative to the directory it is stored in. Opening the file
+directly, or pointing a static server at `src/`, breaks every module it loads.
+
+Two places put it back where it belongs, and nothing else should serve it:
+[`tooling/serve.mjs`](tooling/serve.mjs) resolves a directory request to the page under
+`src/`, and [`tooling/build-site.mjs`](tooling/build-site.mjs) *moves* it up to the
+served root while staging — a move rather than a copy, so no second, broken entry is
+left behind at `src/index.html`. A staged tree that skipped either step is caught by
+`the staged tree mirrors the mount, with the root a redirect`.
+
+The layering runs one way: a view may reach any layer below it, and anything two views
+both need moves *down* rather than sideways. The one edge that crosses back is
+`read/contributions.mjs` reaching `render/ui.mjs` for `duration`, which its own header
+explains — the layout leaves that visible rather than hiding it.
+
+Depth stops at one level under `src/`. The `file-placement` rule counts a reference at
+folder distance three or more as a reach, and sibling layer folders are distance two; a
+second level would make every cross-folder import a finding and add another `../` to the
+climbs into `engine/`.
+
+Everything the browser loads is under `src/`, which is how the site build decides what to
+publish — a directory the tree already names, rather than a list of filenames to keep in
+step ([`tooling/build-site.mjs`](tooling/build-site.mjs)).
+
 ## Running it locally
 
 ```sh
-node packs/claudinite-dashboard/serve.mjs missingbulb/Claudinite
+node packs/claudinite-dashboard/tooling/serve.mjs missingbulb/Claudinite
 ```
 
 ## Two kinds of data, read two different ways
@@ -186,7 +235,7 @@ Each member's row is followed by a **subrow** of what its own packs report — s
 
 Both pages open on the same block, because both were otherwise pages that only
 **report** — and a reader who came without a question in hand is asked by a wall of
-accurate panels to do the ranking themselves. [`next-work.mjs`](next-work.mjs) does the
+accurate panels to do the ranking themselves. [`next-work.mjs`](src/derive/next-work.mjs) does the
 ranking and names **one** piece of work: worst first, an issue ahead of a repo-level
 fault at the same severity because only the issue is something to open, and among equals
 the one that has been wrong longest.
@@ -194,7 +243,7 @@ the one that has been wrong longest.
 The card carries **what it costs you** beside the reason, because "one item is parked" is
 a fact and "fifteen minutes" is a decision about the next fifteen minutes. The figure is
 one term of the same sum the tiles total — the park's own rate, by what it asks of you
-([`PARK_MINUTES`](fleet.mjs)) — so a card and a tile can never price one item
+([`PARK_MINUTES`](src/derive/fleet.mjs)) — so a card and a tile can never price one item
 differently. `next-work.mjs` holds no rates at all: a candidate carries the park's own
 classification and the view prices it. An approval is charged the floor of its rate,
 since no PR's size is read here, and the card says *at least*. Work the estimate does not
@@ -292,7 +341,7 @@ the `world` scope (the full sweep wired into tests), each with its runs, catches
 and advisory volume and runner errors; the findings per rule, ranked; and the skill loads
 per skill against where each is mounted — the tree listing the sweep already holds says
 which `SKILL.md`s a member's declared packs mount, so a skill mounted in ten members and
-loaded in none is a fact no single repo's page can state. [`fleet-growth.mjs`](fleet-growth.mjs)
+loaded in none is a fact no single repo's page can state. [`fleet-growth.mjs`](src/derive/fleet-growth.mjs)
 derives all of it; no read is added.
 
 A member with **no** usage file is named, never averaged in as a repo where nothing
@@ -300,7 +349,7 @@ happens. That census is the same fact a fleet-wide aggregate would carry as
 `coverage.absent`, derived live from the members instead of stored in one file that
 shows everyone the whole fleet.
 
-Three rules shape it, and they are in [`fleet.mjs`](fleet.mjs):
+Three rules shape it, and they are in [`fleet.mjs`](src/derive/fleet.mjs):
 
 **An estimate is published as an assumption, or not at all.** The Waiting group puts
 a number of minutes on each member, priced per park kind — the four parks are disjoint
@@ -550,14 +599,14 @@ Sign-in is the closest thing, and it is genuinely *your* permissions: after one
 authorization, every call runs as you. The only piece that cannot live in the page
 is the `code` → token exchange, which needs the app's client secret **and** hits an
 endpoint that sends no CORS headers. That is what `exchangeUrl` points at —
-[`oauth-exchange.mjs`](oauth-exchange.mjs) is a deployable
+[`oauth-exchange.mjs`](tooling/oauth-exchange.mjs) is a deployable
 implementation. It sees one code, returns one token, and never touches repo data.
 
 ## Caching
 
 A fleet view is only affordable because most of what it reads does not change.
 Three strategies, because the data has three shapes — see
-[`cache.mjs`](cache.mjs):
+[`cache.mjs`](src/read/cache.mjs):
 
 | Data | Strategy | Why |
 |---|---|---|
@@ -573,7 +622,7 @@ which is the whole reason the column exists rather than the single date it repla
 The daily counts are kept: they are the total, the peak and the hover.
 
 A fourth thing decides how hard those three are leaned on: **the budget policy**
-([`budget.mjs`](budget.mjs)), planned before a load starts and re-planned on every
+([`budget.mjs`](src/read/budget.mjs)), planned before a load starts and re-planned on every
 one. It exists because caching alone still *asks* — an ETag revalidation costs no
 primary budget but is still a request, and a cold entry has nothing to revalidate.
 
@@ -599,7 +648,7 @@ says the page declined to spend, never one that says the repo is broken.
 The ladder above decides *how much* a load may spend. What decides where that money
 goes when it runs out is the order the fleet is read in — and that order is
 **horizontal**: every member through one pass before any member starts the next
-([`fleet-sweep.mjs`](fleet-sweep.mjs)), cheapest and most load-bearing first.
+([`fleet-sweep.mjs`](src/read/fleet-sweep.mjs)), cheapest and most load-bearing first.
 
 | Pass | What it reads | What it buys |
 |---|---|---|
@@ -633,7 +682,7 @@ quota degrades to "uncached", never to an error. **Clear cache** forces a cold r
 
 ## How publishing works
 
-[`build-site.mjs`](build-site.mjs) stages the page and the engine modules it imports
+[`build-site.mjs`](tooling/build-site.mjs) stages the page and the engine modules it imports
 into `_site/`, then writes the roster and the `dashboard.config.json` the page reads —
 derived from the declaration's `config`, so there is no second place to configure the
 same thing.

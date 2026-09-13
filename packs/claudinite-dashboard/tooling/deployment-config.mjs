@@ -23,7 +23,7 @@
 // pair before this existed must keep working rather than losing its Sign in button on
 // the next build. That fallback is the migration, not a second supported store.
 import { readFile } from 'node:fs/promises';
-import { settingsPath } from '../../engine/settings-file.mjs';
+import { settingsPath } from '../../../engine/settings-file.mjs';
 
 export const PACK_ID = 'claudinite-dashboard';
 

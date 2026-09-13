@@ -14,7 +14,7 @@
 
 import { priceWindow, RATES_KEY } from './pricing.mjs';
 import { DAY_MS, dayKey, dayLadder } from './activity.mjs';
-import { isQueueItem, isParked, outcomeOf } from '../claudinite-tasks/shared-code/work-items.mjs';
+import { isQueueItem, isParked, outcomeOf } from '../../../claudinite-tasks/shared-code/work-items.mjs';
 
 // The block's own window. Seven days against the seven before them, over a 14-day
 // ladder — which is also the sparklines' and the pulse's span, so a figure, its delta

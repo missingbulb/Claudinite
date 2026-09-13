@@ -5,7 +5,7 @@ import {
   parseDescriptor, parseValues, valueOf, fleetPhrase, phraseText, listItems, windowDelta,
   descriptorPathIn, declaredPackIds, readContributions, liveSourcesNeeded,
   valuesPath, MAX_LIST_ITEMS, MAX_REPO_WIDGETS, FLEET_KINDS,
-} from '../contributions.mjs';
+} from '../src/read/contributions.mjs';
 
 const NOW = Date.UTC(2026, 7, 22, 12, 0, 0);
 

@@ -1,6 +1,6 @@
 // The Work board's marks, drawn. One SVG that scales to its container; every shape here
-// is named in the identity's mark table ([docs/visual-identity.md](docs/visual-identity.md)),
-// and the decisions behind them were all made in [`board.mjs`](board.mjs).
+// is named in the identity's mark table ([docs/visual-identity.md](../../docs/visual-identity.md)),
+// and the decisions behind them were all made in [`board.mjs`](../derive/board.mjs).
 //
 // FORM BEFORE COLOUR on every mark, so the board reads in either theme and in
 // greyscale: predicted and declined differ by HEIGHT rather than by a dash pattern

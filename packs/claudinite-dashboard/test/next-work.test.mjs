@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   itemCandidate, reasonCandidate, rankCandidates, pickCandidate, fleetCandidates, repoCandidates,
-} from '../next-work.mjs';
-import { estimateMinutes, parkMinutes, parkMinutesNote } from '../fleet.mjs';
+} from '../src/derive/next-work.mjs';
+import { estimateMinutes, parkMinutes, parkMinutesNote } from '../src/derive/fleet.mjs';
 import {
   READY, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
 } from '../../claudinite-tasks/shared-code/work-items.mjs';
-import { PARKED } from '../model.mjs';
+import { PARKED } from '../src/derive/model.mjs';
 
 const item = (over = {}) => ({
   number: 7,

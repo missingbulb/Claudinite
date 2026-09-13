@@ -21,7 +21,7 @@
 //   is the same fact the retired fleet aggregate carried as `coverage.absent`, derived
 //   live instead of stored.
 
-import { growthSeries } from './usage.mjs';
+import { growthSeries } from '../read/usage.mjs';
 
 const DAY_MS = 86400e3;
 

@@ -3,7 +3,7 @@
 // Run by the `publish-pages` task, which pushes what this produces to `gh-pages` for
 // the seeded workflow to deploy; and by hand, from the member's root, to see what a
 // run would publish:
-//   node .claudinite/shared/packs/claudinite-dashboard/build-site.mjs [--out _site]
+//   node .claudinite/shared/packs/claudinite-dashboard/tooling/build-site.mjs [--out _site]
 //
 // Reads its deployment settings through `deployment-config.mjs`, which is also what the
 // deploy-oauth-exchange task reads, so the button and the endpoint it calls cannot be
@@ -15,10 +15,10 @@
 // state on a fleet, not a fault, and failing on it would paint every run red until the
 // converge caught up.
 
-import { cp, mkdir, writeFile, readFile, rm, access } from 'node:fs/promises';
+import { cp, mkdir, writeFile, readFile, rm, rename, access } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveMode } from './config.mjs';
+import { resolveMode } from '../src/read/config.mjs';
 import { deploymentConfig } from './deployment-config.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -29,13 +29,20 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // to the site root sends those imports above the root and the page does not boot. So every
 // directory it reaches is staged at the depth it already has, and the site root is a redirect.
 const HOME = 'packs/claudinite-dashboard';
+// WHERE THE PAGE IS STORED, AND WHERE IT IS SERVED. An HTML `src=` resolves against the
+// document's URL, so the page's script tag names `./src/app.mjs` — correct at the URL it
+// is served from, which is the pack root, not the `src/` directory the file sits in. The
+// staging step below moves it up so the two agree; serve.mjs does the same for local runs.
+const PAGE_AT = 'src/index.html';
 const ENGINE = 'engine';
 const TASKS = 'packs/claudinite-tasks';
 
-// Local-only or explanatory files. None belong on a published site — `serve.mjs` least
-// of all, being a file server's source sitting where it reads as part of the page.
-const NOT_PUBLISHED = ['serve.mjs', 'build-site.mjs', 'pack.mjs', 'oauth-exchange.mjs',
-  'dashboard.config.example.json', 'README.md', 'badge.svg', 'stubs', 'tasks'];
+// Local-only or explanatory files. None belong on a published site — `tooling/` least of
+// all, being this build's own source and a file server's, sitting where they read as part
+// of the page. Everything the browser loads is under `src/`, so what publishes is decided
+// by a directory the tree already names rather than by a list of filenames to keep in step.
+const NOT_PUBLISHED = ['tooling', 'pack.mjs', 'dashboard.config.example.json',
+  'README.md', 'badge.svg', 'stubs', 'tasks'];
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
 
@@ -47,17 +54,17 @@ const arg = (name, fallback) => {
 // The mount this pack was read from, and the repo root above it. Resolved from this
 // file's own location rather than from `process.cwd()`, so the script works wherever it
 // is invoked from.
-const mountRoot = resolve(HERE, '../..');            // .claudinite/shared  (or the canon root)
+const mountRoot = resolve(HERE, '../../..');         // .claudinite/shared  (or the canon root)
 const repoRoot = resolve(arg('root', process.cwd()));
 const OUT = resolve(repoRoot, arg('out', '_site'));
 
-// This script ships inside the page's own directory, so that directory is `HERE` —
+// This script ships in the pack's `tooling/`, so the page is the directory above it —
 // no path guessing, and it stays right if the pack is ever renamed.
-const pageSource = HERE;
+const pageSource = resolve(HERE, '..');
 const engineSource = join(mountRoot, ENGINE);
 const tasksSource = join(mountRoot, TASKS);
 
-if (!await exists(join(pageSource, 'index.html')) || !await exists(engineSource)) {
+if (!await exists(join(pageSource, PAGE_AT)) || !await exists(engineSource)) {
   process.stdout.write(
     `No dashboard in the mount at ${pageSource} — nothing to publish. `
     + 'The next converge that delivers this pack will make this build produce a site.\n',
@@ -88,6 +95,10 @@ await cp(pageSource, join(OUT, HOME), { recursive: true });
 await cp(engineSource, join(OUT, ENGINE), { recursive: true });
 // The queue modules the page reads, at the same depth, for the same reason.
 if (await exists(tasksSource)) await cp(tasksSource, join(OUT, TASKS), { recursive: true });
+
+// The page up to the root it is served from, so its own `./src/app.mjs` resolves. A copy
+// would leave a second, broken entry at `src/index.html` for anyone who found it.
+await rename(join(OUT, HOME, PAGE_AT), join(OUT, HOME, 'index.html'));
 
 for (const f of NOT_PUBLISHED) await rm(join(OUT, HOME, f), { recursive: true, force: true });
 

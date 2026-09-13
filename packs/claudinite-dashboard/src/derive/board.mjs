@@ -1,5 +1,5 @@
 // The Work board, as data — lanes, marks and a schedule grid on a time axis
-// ([docs/work-board.md](docs/work-board.md)). Pure: no clock of its own, no DOM.
+// ([docs/work-board.md](../../docs/work-board.md)). Pure: no clock of its own, no DOM.
 //
 // WHY A BOARD AND NOT A TABLE. The three table views answer *what is stuck*, one row
 // per piece of work. They cannot answer the three questions this page is opened with —
@@ -21,13 +21,13 @@ import {
   STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_FAILURE,
   STATUS_RUNNING_AGENT, STATUS_RUNNING_EXECUTOR, STATUS_READY,
   PARK_PREFIX, PARK_KINDS, ORIGIN_AD_HOC,
-} from '../claudinite-tasks/shared-code/work-items.mjs';
+} from '../../../claudinite-tasks/shared-code/work-items.mjs';
 // Namespace-read for the one export that may be newer than the member's queue
 // module: the dashboard and claudinite-tasks converge on separate cadences, so a
 // named import of an export it has not reached yet is a link-time fault that takes
 // the whole page. Before `manual` arrives, `ad-hoc` alone is what this meant.
-import * as queueVocabulary from '../claudinite-tasks/shared-code/work-items.mjs';
-import { nextAnchor } from '../claudinite-tasks/shared-code/anchors.mjs';
+import * as queueVocabulary from '../../../claudinite-tasks/shared-code/work-items.mjs';
+import { nextAnchor } from '../../../claudinite-tasks/shared-code/anchors.mjs';
 
 // Every origin a person's action produces, as against the schedule's own.
 const askedForOrigins = () => queueVocabulary.ASKED_FOR_ORIGINS ?? [ORIGIN_AD_HOC];

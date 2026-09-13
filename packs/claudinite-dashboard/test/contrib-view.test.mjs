@@ -25,8 +25,8 @@ let miniCard, miniAbsent, packCard, parseDescriptor, fleetPhrase;
 
 before(async () => {
   globalThis.document = { createElement: (tag) => new FakeEl(tag) };
-  ({ miniCard, miniAbsent, packCard } = await import('../contrib-view.mjs'));
-  ({ parseDescriptor, fleetPhrase } = await import('../contributions.mjs'));
+  ({ miniCard, miniAbsent, packCard } = await import('../src/render/contrib-view.mjs'));
+  ({ parseDescriptor, fleetPhrase } = await import('../src/read/contributions.mjs'));
 });
 
 const NOW = Date.UTC(2026, 7, 22, 12, 0, 0);

@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { removeTree } from '../../../engine/remove-tree.mjs';
-import { deploymentConfig, SIGN_IN_VARS } from '../deployment-config.mjs';
+import { deploymentConfig, SIGN_IN_VARS } from '../tooling/deployment-config.mjs';
 
 const member = (config) => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-depcfg-'));

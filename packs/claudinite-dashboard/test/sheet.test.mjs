@@ -25,7 +25,7 @@ before(async () => {
     createElement: (tag) => new FakeEl(tag),
     createElementNS: (ns, tag) => new FakeEl(tag),
   };
-  sheet = await import('../sheet.mjs');
+  sheet = await import('../src/render/sheet.mjs');
 });
 
 const fig = (over = {}) => ({

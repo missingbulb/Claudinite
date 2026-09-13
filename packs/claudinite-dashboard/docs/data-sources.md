@@ -12,7 +12,7 @@ here changes those rules, it adds fields under them. Page readers are named by f
 member's `usage.GENERATED.json` at head sha; *declaration* is the task file at head sha;
 *config* is the deployment's `dashboard.config.json`. A figure with two sources takes the live
 one for the days it reaches and the fold for the rest, as `queueSeries` and `hourSeries` in
-[`usage.mjs`](../usage.mjs) already do.
+[`usage.mjs`](../src/read/usage.mjs) already do.
 
 | Figure | Page | Source | Reader |
 |---|---|---|---|
@@ -172,7 +172,7 @@ from *unpriced* (a rate missing) and from 0.
 
 ### `projectPull` keeps merged PRs
 
-[`cache.mjs`](../cache.mjs) projects PRs from the issues listing and today keeps only open
+[`cache.mjs`](../src/read/cache.mjs) projects PRs from the issues listing and today keeps only open
 ones, with the body dropped. The projection keeps a **closed PR with `merged_at` inside the
 page's window** (14 days) and adds two fields: `merged_at` — which the issues endpoint
 carries inside each PR's own stub, so the merged set costs no request of its own — and
@@ -192,12 +192,12 @@ that never ran, and the "never ran" state is exactly the critical verdict. The f
 tier carries three days of per-hour scheduler counts, appended past `runsFoldedThrough` from
 a listing the fold pages properly. So the heartbeat reads `hours[h].scheduler` from the
 fold, and the live page tops up the hours past the watermark — the merge `hourSeries` in
-[`usage.mjs`](../usage.mjs) already performs. A member with no fold reads its heartbeat from
+[`usage.mjs`](../src/read/usage.mjs) already performs. A member with no fold reads its heartbeat from
 the live page alone and says so.
 
 ### Next anchors bucketed by hour
 
-`buildRoster` in [`model.mjs`](../model.mjs) computes `nextAsk.at` per task for the roster's
+`buildRoster` in [`model.mjs`](../src/derive/model.mjs) computes `nextAsk.at` per task for the roster's
 next-anchor column. The wake strip collects those (fleet: across members) and buckets them by
 UTC hour over the next 24 h; a `held` next ask — a failure park on a task whose declaration
 holds its lane with `last-run-not-failed` — is a critical tick at *now*.

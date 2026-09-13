@@ -23,7 +23,7 @@ let ctaCell, claudeRequest;
 
 before(async () => {
   globalThis.document = { createElement: (tag) => new FakeEl(tag) };
-  ({ ctaCell, claudeRequest } = await import('../view-fleet.mjs'));
+  ({ ctaCell, claudeRequest } = await import('../src/views/view-fleet.mjs'));
 });
 
 const links = (cell) => cell.find((n) => n.tagName === 'a').map((a) => [a.href, a.textContent]);

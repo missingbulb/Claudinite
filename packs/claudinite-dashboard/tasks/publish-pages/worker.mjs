@@ -35,7 +35,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 // The site assembler, in the pack above this task, and the workflow adoption seeded.
 // One canonical spelling of each; nothing else here names them.
-export const BUILD_SCRIPT = resolve(HERE, '../../build-site.mjs');
+export const BUILD_SCRIPT = resolve(HERE, '../../tooling/build-site.mjs');
 export const WORKFLOW_FILE = 'claudinite-dashboard-pages.yml';
 
 // The branch that carries the built tree to the deploy's runner — the one the seeded

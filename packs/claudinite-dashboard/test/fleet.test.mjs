@@ -8,7 +8,7 @@ import {
   ciStatus, parseEngineVersion, parsePackVersion, attentionBreakdown,
   memberAttention, fleetAttention, estimateMinutes, estimateNote,
   PARK_MINUTES, APPROVAL_RATE, approvalMinutes, lastFoldedScheduler,
-} from '../fleet.mjs';
+} from '../src/derive/fleet.mjs';
 import { ENGINE_VERSION } from '../../../engine/version.mjs';
 import dashboardPack from '../pack.mjs';
 

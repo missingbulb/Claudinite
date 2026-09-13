@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   activitySeries, fleetBenefits, dayLadder, dayKey, delta, commitDays, bucketWeekly, commitClasses,
-} from '../activity.mjs';
+} from '../src/derive/activity.mjs';
 import {
   READY, NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
 } from '../../claudinite-tasks/shared-code/work-items.mjs';

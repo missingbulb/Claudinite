@@ -18,7 +18,7 @@
 // UNKNOWN IS NOT ZERO here as everywhere on this page. `undefined` means NOT READ (a
 // withheld read, a failure); `null` means read and absent. They render differently
 // and neither renders as a number.
-import { duration } from './ui.mjs';
+import { duration } from '../render/ui.mjs';
 import { settingsTextAtSha } from './settings-read.mjs';
 
 // The closed vocabulary. A descriptor naming anything outside it is not guessed at:

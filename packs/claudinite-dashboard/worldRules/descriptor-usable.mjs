@@ -1,5 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { parseDescriptor, FLEET_KINDS, KINDS } from '../contributions.mjs';
+import { parseDescriptor, FLEET_KINDS, KINDS } from '../src/read/contributions.mjs';
 
 // A pack's dashboard descriptor must be one the DASHBOARD'S OWN READER accepts.
 //

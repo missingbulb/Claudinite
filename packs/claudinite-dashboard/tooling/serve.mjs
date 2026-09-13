@@ -1,4 +1,4 @@
-// The dashboard's host. `node packs/claudinite-dashboard/serve.mjs`, then open the
+// The dashboard's host. `node packs/claudinite-dashboard/tooling/serve.mjs`, then open the
 // URL it prints.
 //
 // WHY A SERVER AT ALL, for a page with no backend: the dashboard imports the
@@ -18,10 +18,10 @@ import { stat } from 'node:fs/promises';
 import { join, normalize, extname, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// The repo root, from this file's own location — `packs/<id>/serve.mjs`, so two up.
+// The repo root, from this file's own location — `packs/<id>/tooling/serve.mjs`, so three up.
 // Never `process.cwd()`: the page is served by path, and a server started from
 // anywhere but the root would serve a tree the imports cannot reach out of.
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const HOME = '/packs/claudinite-dashboard/';
 const port = Number(process.env.PORT ?? 8099);
 
@@ -42,10 +42,19 @@ const server = createServer(async (req, res) => {
   const target = join(ROOT, normalize(path).replace(/^(\.\.[/\\])+/, ''));
   if (!target.startsWith(ROOT)) { res.writeHead(403).end('Outside the repo'); return; }
 
-  const file = path.endsWith('/') ? join(target, 'index.html') : target;
+  // THE PAGE LIVES UNDER `src/` AND IS SERVED FROM THE DIRECTORY ABOVE IT. An HTML
+  // `src=` resolves against the document's URL, so the page's own script tag names
+  // `./src/app.mjs` — true at the URL it is served from, not at the path it is stored
+  // at. Serving it anywhere else would break every module it loads, so a directory
+  // request tries the directory's own index first and then the one `src/` holds.
+  const candidates = path.endsWith('/')
+    ? [join(target, 'index.html'), join(target, 'src/index.html')]
+    : [target];
   try {
-    const info = await stat(file);
-    if (!info.isFile()) throw new Error('not a file');
+    const file = (await Promise.all(candidates.map(async (c) => {
+      try { return (await stat(c)).isFile() ? c : null; } catch { return null; }
+    }))).find(Boolean);
+    if (!file) throw new Error('not a file');
     res.writeHead(200, {
       'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream',
       'Cache-Control': 'no-store',

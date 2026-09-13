@@ -27,7 +27,7 @@ let attentionMark;
 
 before(async () => {
   globalThis.document = { createElement: (tag) => new FakeEl(tag) };
-  ({ leadCard, refNodes, reasonNodes, queueUrl, attentionMark } = await import('../ui.mjs'));
+  ({ leadCard, refNodes, reasonNodes, queueUrl, attentionMark } = await import('../src/render/ui.mjs'));
 });
 
 const candidate = (over = {}) => ({

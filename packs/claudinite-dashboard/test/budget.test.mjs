@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   planPolicy, classify, estimateCost, reserveFor, credentialAdvice, MINUTE_MS, HOUR_MS,
-} from '../budget.mjs';
+} from '../src/read/budget.mjs';
 
 const NOW = Date.UTC(2026, 0, 1, 12, 0, 0);
 const resetIn = (ms) => (NOW + ms) / 1000;

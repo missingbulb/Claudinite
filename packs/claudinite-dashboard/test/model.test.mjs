@@ -9,7 +9,7 @@ import {
   parseDeclaration, taskDeclarationPaths, warningsFor, commentKind,
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STUCK_BLOCKED_MS, DUE_SLACK_MS,
   BLOCKED, READY, EXECUTING, AGENT,
-} from '../model.mjs';
+} from '../src/derive/model.mjs';
 import {
   OUTCOME_DONE, OUTCOME_DELIVERED, TASK_DONE, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN,
 } from '../../claudinite-tasks/shared-code/work-items.mjs';
@@ -36,7 +36,7 @@ const item = (over = {}) => ({
 // label strings — a restated label is exactly the drift this design exists to
 // prevent, and it would look completely correct on the day it was written.
 test('the page states no queue label of its own', async () => {
-  for (const rel of ['packs/claudinite-dashboard/model.mjs', 'packs/claudinite-dashboard/app.mjs']) {
+  for (const rel of ['packs/claudinite-dashboard/src/derive/model.mjs', 'packs/claudinite-dashboard/src/app.mjs']) {
     const src = await readFile(resolve(ROOT, rel), 'utf8');
     const code = src.replace(/^\s*\/\/.*$/gm, '');
     assert.doesNotMatch(code, /'(task:(ready|blocked|executing|agent|urgent|done|obsolete)|outcome:\w+|needs-human)'/, `${rel} hardcodes a queue label`);
