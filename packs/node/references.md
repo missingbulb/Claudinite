@@ -22,3 +22,11 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   asymmetry is confirmed in both directions. Recovered from the rule's own pre-#467 text (cut
   by 2f3e4e9a as “consequence prose arguing for a rule rather than enabling it”, before this
   pack had a references.md to hold it).
+
+- **(RULES-3)** setup-node's README: its v5 breaking changes "enabled caching by default with
+  package manager detection if no cache input is provided", scoped to a `package.json` whose
+  `packageManager` or `devEngines.packageManager` names npm, and its `cache-dependency-path` note
+  that the key is a hash of the lockfile. The conditional form is
+  `packs/chrome-extension/stubs/workflows/chrome-extension-create-package.yml`, live in members,
+  whose own comment records that npm caching needs a lockfile. Retire when setup-node caches
+  without a lockfile or stops enabling itself. Filed under #2019.
