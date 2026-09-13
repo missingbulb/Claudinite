@@ -125,10 +125,6 @@ export function stagedFiles(targetRoot) {
   return readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => `${PENDING_DIR}${e.name}`);
 }
 
-// The member's vendored scheduler stub. Read from the MEMBER, not from this canon
-// clone: the engine flow refreshed it earlier in the same cycle, and reading the
-// member's copy is what makes this agree with `converge-wiring.mjs`'s own CLI —
-// the thing a human runs by hand, and the thing bootstrap runs at adoption.
 // Where the tasks pack's scheduler stub sits in a member's mount. EMPTIED of its
 // caller, not removed, for the reason every `updates/*` export is — the tasks pack's
 // own converge-workflows.mjs resolves the stubs it scaffolds from.
@@ -271,13 +267,13 @@ export async function packUpdate(targetRoot, {
   };
   const move = (from, to) => { mkdirSync(dirname(join(targetRoot, to)), { recursive: true }); renameSync(join(targetRoot, from), join(targetRoot, to)); };
   const readTemplate = (p) => (existsSync(join(canonRoot, p)) ? readFileSync(join(canonRoot, p), 'utf8') : null);
-  // The announcement is what un-skips a record naming a workflow path. It is an env
-  // handshake rather than a probe of the disk because what matters is what THIS process
-  // can do, and the vendor step earlier in this same cycle already replaced the on-disk
-  // worker while the old code is still running (registry.mjs states the same).
   // Beyond the classic set, for the scheduling-fields codemod (the registry says
   // why it is inert without it).
   const listDir = (p) => { try { return readdirSync(join(targetRoot, p)); } catch { return null; } };
+  // The announcement in `env` is what un-skips a record naming a workflow path. It is
+  // an env handshake rather than a probe of the disk because what matters is what THIS
+  // process can do, and the vendor step earlier in this same cycle already replaced the
+  // on-disk worker while the old code is still running (registry.mjs states the same).
   const io = { exists, move, read, write, readTemplate, listDir, env: { [WITHHOLD_CAPABLE_ENV]: '1' } };
   const applied = [];
   for (const m of [...specs, ...extraRecords]) {
@@ -286,9 +282,9 @@ export async function packUpdate(targetRoot, {
   }
   owedBy = null;
 
-  // 2c. THE CLAUDE.md PACK INDEX (#807), for the same reason as 2b and at the same
-  //     point: its content is a function of the pack set, and the vendor above is
-  //     what just changed it. The engine flow converges the index too, but it runs
+  // 2c. THE CLAUDE.md PACK INDEX (#807): its content is a function of the pack set,
+  //     and the vendor above is what just changed it. The engine flow converges the
+  //     index too, but it runs
   //     BEFORE the packs in a cycle — so on the one night a pack lands, the engine
   //     flow's copy is already yesterday's, and without this the member would carry
   //     a stale index (and inject the whole corpus through the hook as a fallback)
@@ -367,10 +363,6 @@ export async function packUpdate(targetRoot, {
   const testVisible = changesTestsCouldSee(targetRoot);
   const selftest = runSelfTest(targetRoot, selfTestRun);
   const decision = deliveryDecision({ selftestOk: selftest.ok, delivery, forceMergeOnRedCi });
-  // A wiring failure rides out on `detail`, which the worker already prints and which
-  // becomes the PR body and the work item's reason. Appended rather than given a
-  // field of its own, because a new field only reaches a member when its worker
-  // catches up a cycle later, and `detail` reaches every fielded worker today.
   // No flow computes a workflow any more, so there is no wiring failure left to ride
   // out on `detail`. The field stays null rather than absent: a fielded worker reads it,
   // and a key that vanished would read as a worker too old to report one.

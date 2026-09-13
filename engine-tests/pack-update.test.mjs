@@ -143,13 +143,15 @@ test('the engine half of the mount is left alone — it belongs to the engine fl
   removeTree(root);
 });
 
-// --- no workflow lane at all (#1317) ------------------------------------------
+// --- no flow computes a workflow file (#1317) ---------------------------------
 //
-// A member's two workflow files are static after adoption, so no flow computes,
-// writes, or stages one. The staging lane that used to carry them is retired; these
-// pin the three halves of that being true, because a lane that half-exists — an
-// export still answering, a directory still filling — is how a member ends up waiting
-// on delivery that nobody is doing.
+// A member's two workflow files are static after adoption, so no flow computes or
+// writes one of its own, and the exports that used to answer with content are
+// emptied. These pin the three halves of that being true, because a half-existing
+// lane — an export still answering with content, a directory still filling on an
+// ordinary cycle — is how a member ends up waiting on delivery that nobody is doing.
+// A MIGRATION RECORD naming a workflow path is the separate case, staged rather than
+// written: the withhold lane further down (#1509).
 
 test('the flow writes no workflow file, and reports none outstanding', async () => {
   const root = makeMember();
@@ -166,9 +168,9 @@ test('the flow writes no workflow file, and reports none outstanding', async () 
 });
 
 test('the retired staging directory is swept, whatever an earlier cycle left in it', async () => {
-  // A member that converged before the lane was retired still carries staged files.
-  // Left alone they read forever as work nobody did, and the apply stage they were
-  // waiting for no longer exists.
+  // A file staged by an earlier cycle was either delivered or abandoned, and either
+  // way the record that staged it stages it again — so a leftover this run did not
+  // write reads forever as work nobody did.
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
   mkdirSync(join(root, PENDING_DIR), { recursive: true });
