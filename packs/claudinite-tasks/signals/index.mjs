@@ -105,10 +105,10 @@ const isMinablePr = (p) => {
 // run (#2013). Keyed on the reader so a test's fake `gh`, or a fleet reader over
 // another repo, never sees a sha another reader resolved. Only a 200 is kept: a
 // rate limit or a 5xx is the next collector's to retry, not the run's verdict.
-const commitFilesByReader = new WeakMap();
-async function commitFiles(gh, repo, sha) {
-  let memo = commitFilesByReader.get(gh);
-  if (!memo) commitFilesByReader.set(gh, (memo = new Map()));
+const fileListsByReader = new WeakMap();
+async function readCommitFiles(gh, repo, sha) {
+  let memo = fileListsByReader.get(gh);
+  if (!memo) fileListsByReader.set(gh, (memo = new Map()));
   const key = `${repo}@${sha}`;
   if (memo.has(key)) return memo.get(key);
   const d = await gh(`/repos/${repo}/commits/${sha}`);
@@ -119,11 +119,11 @@ async function commitFiles(gh, repo, sha) {
 }
 
 // Commit objects in the window, with their changed-file lists resolved.
-async function windowCommits(gh, repo, branch, sinceIso) {
+async function readWindowCommits(gh, repo, branch, sinceIso) {
   const list = await paged(gh, `/repos/${repo}/commits?sha=${encodeURIComponent(branch)}&since=${sinceIso}`);
   const detailed = [];
   for (const c of list) {
-    const files = await commitFiles(gh, repo, c.sha);
+    const files = await readCommitFiles(gh, repo, c.sha);
     detailed.push({
       sha: c.sha,
       message: c.commit?.message ?? '',
@@ -141,7 +141,7 @@ async function windowCommits(gh, repo, branch, sinceIso) {
 
 const COLLECTORS = {
   async commits(gh, ctx) {
-    const commits = ctx.commits ?? await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
+    const commits = ctx.commits ?? await readWindowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
     return {
       list: commits,
       count: commits.length,
@@ -284,7 +284,7 @@ const COLLECTORS = {
   // `.claudinite/local/packs/<repo>/` and the nightly deliberately never re-seeds
   // or removes it, so movement is the only thing left to report.
   async localPacks(gh, ctx) {
-    const commits = ctx.commits ?? await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
+    const commits = ctx.commits ?? await readWindowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
     const touches = (f) => f.startsWith(LOCAL_PACK_ROOT);
     return { changedInWindow: commits.some((c) => c.files.some(touches)) };
   },
@@ -292,7 +292,7 @@ const COLLECTORS = {
   // Which DECLARED packs' vendored files changed in the window — the local echo
   // of "canon changed" (replaces the cross-repo relevantCanonChanged).
   async sharedMount(gh, ctx) {
-    const commits = ctx.commits ?? await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
+    const commits = ctx.commits ?? await readWindowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
     const declared = new Set(ctx.activePacks ?? []);
     const changed = new Set();
     for (const c of commits) {
@@ -358,7 +358,7 @@ const COLLECTORS = {
   // it. `present` is the mount's existence, which the versions answer directly: an
   // engine that stamps always stamps.
   async stamp(gh, ctx) {
-    const commits = ctx.commits ?? await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
+    const commits = ctx.commits ?? await readWindowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
     const convergedInWindow = commits.some((c) => c.files.some((f) => f.startsWith(`${SHARED_SUBDIR}/`)));
     return {
       present: (ctx.config?.engineVersion ?? null) !== null || Object.keys(ctx.config?.packVersions ?? {}).length > 0,
@@ -518,7 +518,7 @@ export async function collectSignals(gh, ctx, names) {
   const out = {};
   // Commit-derived collectors share one window read.
   if (names.some((n) => ['commits', 'localPacks', 'sharedMount', 'stamp'].includes(n)) && !ctx.commits) {
-    try { ctx = { ...ctx, commits: await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso) }; } catch { /* collectors re-read on demand */ }
+    try { ctx = { ...ctx, commits: await readWindowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso) }; } catch { /* collectors re-read on demand */ }
   }
   for (const name of names) {
     const collect = COLLECTORS[name];
