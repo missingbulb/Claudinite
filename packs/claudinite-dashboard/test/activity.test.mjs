@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  activitySeries, fleetBenefits, dayLadder, dayKey, delta, commitDays, bucketWeekly,
+  activitySeries, fleetBenefits, dayLadder, dayKey, delta, commitDays, bucketWeekly, commitClasses,
 } from '../activity.mjs';
 import {
   READY, NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
@@ -260,4 +260,50 @@ test('a week is null only when every day in it was unread', () => {
   ]);
   assert.equal(b[0].count, null);
   assert.equal(b[1].count, 8, 'four read days at 2 each');
+});
+
+
+// --- the second series: meaningful against machinery ------------------------------
+
+const at = (daysAgo, over = {}) => ({
+  sha: `s${daysAgo}`,
+  at: new Date(NOW - daysAgo * DAY).toISOString(),
+  message: 'Add a thing',
+  author: 'a-person',
+  ...over,
+});
+
+test('commitClasses splits a window by the claudinite-tasks substantive test', () => {
+  const c = commitClasses({
+    since: new Date(NOW - 90 * DAY).toISOString(),
+    complete: true,
+    commits: [at(1), at(1, { message: 'Claudinite baselining' }), at(2, { author: 'x[bot]' })],
+  });
+  assert.equal(c.total, 3);
+  assert.equal(c.meaningful, 1);
+  assert.deepEqual(c.byDay.get(dayKey(NOW - DAY)), { total: 2, meaningful: 1 });
+  assert.equal(c.lastMeaningfulAt, Date.parse(at(1).at));
+});
+
+test('a withheld commit listing classifies nothing, rather than classifying zero', () => {
+  assert.equal(commitClasses(undefined), null);
+});
+
+test('commitDays carries the meaningful series only where the listing reached', () => {
+  const classes = commitClasses({
+    since: new Date(NOW - 7 * DAY).toISOString(),
+    complete: true,
+    commits: [at(1), at(1, { message: '[skip ci] bump' })],
+  });
+  const r = commitDays([week('2026-08-16T00:00:00Z', [1, 2, 0, 0, 0, 0, 0])], { now: NOW, days: 14, classes });
+  const byDay = Object.fromEntries(r.days.map((d) => [d.day, d.meaningful]));
+  assert.equal(byDay[dayKey(NOW - DAY)], 1, 'a classified day carries its count');
+  assert.equal(byDay[dayKey(NOW - 13 * DAY)], null, 'a day the listing never reached is not a zero');
+  assert.equal(r.buckets.at(-1).meaningful, 1);
+});
+
+test('commitDays without a classification leaves the second series absent everywhere', () => {
+  const r = commitDays([week('2026-08-16T00:00:00Z', [1, 2, 0, 0, 0, 0, 0])], { now: NOW, days: 14 });
+  assert.ok(r.days.every((d) => d.meaningful === null));
+  assert.ok(r.buckets.every((b) => b.meaningful === null));
 });

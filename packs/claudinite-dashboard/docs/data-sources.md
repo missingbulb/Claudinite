@@ -247,9 +247,31 @@ cache-creation tokens are priced at the `in` rate unless a `cacheWrite` rate is 
 with no entry is *unpriced (N tok)* and never folded into the sum; with no `rates` key at all,
 every dollar figure reads *unpriced* and names the key.
 
+### The window commit listing — the meaningful series and the sleepy mark
+
+`/repos/{repo}/commits?sha={default}&since={90 days}` — **one page, one request per member**, and
+the only per-member read the fleet page adds beyond the commit statistics it already fetches. It is
+priced with those statistics, as decoration: withheld first under budget pressure, and a withheld
+read renders as *not classified* rather than as a quiet repo.
+
+What it buys is the split between **genuine project work** and **the machinery moving** — the
+second line on each row's commit graph, and the `sleepy` mark on a member with nothing meaningful
+in a fortnight. The classification is the claudinite-tasks pack's own `isSubstantiveCommit`, so a
+member reads quiet here exactly when its own preconditions read it quiet.
+
+**One exclusion is deliberately skipped.** The full test also drops a commit that touched nothing
+outside `.claudinite/`, which needs each commit's file list — a request per commit, per member, which
+this budget does not have. So a corpus-only commit counts as work here unless its message says
+otherwise (the converge's own commits do). The gap is stated on the mark's hover rather than implied
+away.
+
+A listing that filled its single page is a **horizon**: the days before its oldest commit are not
+classified, and the second line breaks there instead of dropping to the floor.
+
 ## 4. Request budget
 
-**The viewer makes no new read.** Merged PRs and their bodies are in the issues listing the
+**The viewer makes one new read** — the window commit listing above, priced as decoration. Every
+other figure: Merged PRs and their bodies are in the issues listing the
 page already fetches; the fold and the declarations are content at a sha; the fleet mean and
 the anchor buckets are reductions over reads in hand.
 

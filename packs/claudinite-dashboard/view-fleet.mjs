@@ -65,6 +65,9 @@ async function readIdentity(repo, token) {
       defaultBranch: meta.default_branch,
       stars: meta.stars,
       archived: meta.archived,
+      // Who can see this member. Straight from the repo read the page already makes,
+      // because it is part of recognising a row rather than a finding about one.
+      private: meta.private,
       sha,
       head,
     };
@@ -136,6 +139,14 @@ async function readPackCards(read, token) {
 // every row costs the page nothing it was opened for.
 async function readCommitGraph(read, token) {
   read.commits = await gh.commitActivity(read.repo, token).catch(() => null);
+  // The second series, and the sleepy mark's whole evidence: the window's commits as
+  // the LISTING gives them, classified by the claudinite-tasks substantive-commit test.
+  // Priced with the graph — decoration — so a tight budget loses the classification
+  // before it loses anything the queue depends on, and the row then says "not read"
+  // rather than calling a member quiet it never looked at.
+  read.windowCommits = await gh
+    .listCommitsSince(read.repo, read.defaultBranch, new Date(Date.now() - COMMIT_WINDOW_DAYS * 86400e3).toISOString(), token)
+    .catch(() => undefined);
 }
 
 // --- render ---------------------------------------------------------------------
@@ -196,6 +207,12 @@ const FLEET_TASK_GROUPS = [
 const SHOWN_ELSEWHERE = new Set(['park', 'mount', 'ci']);
 
 const MEMBER_COLS = columnCount(MEMBER_GROUPS);
+
+// How far back the commit LISTING is read, which is the span the graph's meaningful
+// line can cover. The same 90 days the commit statistics are drawn over, so the two
+// series share a window and the second one simply stops where the listing's single
+// page ran out.
+const COMMIT_WINDOW_DAYS = 90;
 const MEMBER_STARTS = groupStarts(MEMBER_GROUPS);
 
 // The group's first cell carries the same rule the header band draws, so the three
@@ -244,6 +261,91 @@ function contribRow(s, now) {
   ]);
 }
 
+// WHAT KIND OF MEMBER THIS IS, beside its name: who can see it, and whether anything
+// is happening in it. Three facts, and they are deliberately different marks:
+//
+//   private   GitHub's own flag, carried through untouched.
+//   dormant   the member's own declaration — its scheduler is stopped, so the fleet
+//             measures neither its mount nor its scheduler and runs nothing against it.
+//   sleepy    nothing MEANINGFUL landed in the last fortnight (`sleepState`). It is
+//             NOT dormancy: a sleepy member is fully in the fleet, every sweep still
+//             reaches it, and the mark is a reading of the fortnight rather than a
+//             state anyone declared. The two are drawn unalike for that reason.
+//
+// Sleepy is absent rather than negated on an awake member, and absent again where the
+// commit listing was not read — the row never says "sleepy" about a repo nobody looked
+// at, which the mark's own hover states.
+function stateTags(s) {
+  const tags = [];
+  if (s.private) tags.push(['private', 'private', 'private on GitHub']);
+  if (s.dormant) {
+    tags.push(['dormant', 'dormant',
+      'dormant by its own declaration — its scheduler is stopped, so its mount and scheduler are not measured and no fleet-wide operation touches it']);
+  }
+  if (s.sleep?.state === 'sleepy') {
+    const last = s.sleep.lastMeaningfulAt
+      ? `last meaningful commit ${new Date(s.sleep.lastMeaningfulAt).toISOString().slice(0, 10)}`
+      : `nothing meaningful in the ${s.sleep.days} days read`;
+    tags.push(['sleepy', 'sleepy', `${last} — ${s.sleep.caveat}. Still in every fleet-wide operation.`]);
+  }
+  if (!tags.length) return [];
+  return [el('div', { className: 'tags' }, tags.map(([cls, text, title]) =>
+    el('span', { className: `tag ${cls}`, textContent: text, title })))];
+}
+
+// --- filtering the grid ----------------------------------------------------------
+//
+// The one control on this page, and it exists because the marks it filters on are
+// worth a QUESTION and not only a glance: "which of my repos has nobody touched in a
+// fortnight" is a real morning question, and scanning twelve rows for a dashed tag is
+// not how it gets answered. Kept to the states the row already draws, so the control
+// adds a way to ask rather than a second vocabulary.
+//
+// `all` is the page's own reading of the fleet, and it is the default on every load:
+// a filter that persisted would make a partial fleet look like the whole one.
+const FILTERS = {
+  all: { label: 'All', keep: () => true, count: () => null, empty: 'in the roster' },
+  sleepy: {
+    label: 'Sleepy',
+    keep: (s) => s.sleep?.state === 'sleepy',
+    count: (roll) => roll.sleepyMembers,
+    empty: 'sleepy — every member read has had meaningful work lately',
+  },
+  dormant: {
+    label: 'Dormant',
+    keep: (s) => Boolean(s.dormant),
+    count: (roll) => roll.dormantMembers,
+    empty: 'dormant',
+  },
+  private: {
+    label: 'Private',
+    keep: (s) => Boolean(s.private),
+    count: (roll) => roll.privateMembers,
+    empty: 'private',
+  },
+};
+
+let memberFilter = 'all';
+
+function renderFilters(roll, archivedCount, repaint) {
+  const host = $('fleet-filters');
+  if (!host) return;
+  const chips = Object.entries(FILTERS).map(([id, f]) => {
+    const n = f.count(roll);
+    return el('button', {
+      type: 'button',
+      className: `chip filter${id === memberFilter ? ' on' : ''}`,
+      'aria-pressed': String(id === memberFilter),
+      onclick: () => { memberFilter = id; repaint(); },
+    }, [f.label, ...(n == null ? [] : [el('b', { className: 'count', textContent: String(n) })])]);
+  });
+  // Archived repos are out of the fleet and out of every figure above, so the count is
+  // stated here rather than left as a gap between the roster's size and the grid's.
+  host.replaceChildren(...chips, ...(archivedCount
+    ? [el('span', { className: 'sub', textContent: `${archivedCount} archived, out of the fleet` })]
+    : []));
+}
+
 // One member, as the rows of its own `<tbody>`: the standard metrics, then the subrow
 // when it has one. They are one member and not two rows — which is what the grouping
 // buys, since a `<tbody>` is what lets both highlight together on hover.
@@ -263,6 +365,7 @@ function memberRows(s, onOpen, now) {
     ciMark(ciUi, s.ci?.at ? duration(now - s.ci.at) : 'no run'),
     el('div', {}, [
       el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, className: 'name', textContent: s.repo.split('/')[1] ?? s.repo, onclick: open }),
+      ...stateTags(s),
       el('div', { className: 'sub' }, [repoLink(s.repo)]),
       ...kids,
     ]),
@@ -334,15 +437,23 @@ function memberRows(s, onOpen, now) {
     el('div', { className: 'sub', textContent: s.lastActivity ? ago(s.lastActivity, now) : (s.closedSeen ? 'unknown' : 'nothing closed yet') }),
   ]);
 
-  const runs = el('td', { className: 'nw' }, [
-    el('div', {
-      className: s.runs.consecutiveFailures ? 'warn critical' : 'sub',
-      textContent: s.runs.consecutiveFailures
-        ? `${LEVEL_GLYPH.critical} ${s.runs.consecutiveFailures} failing`
-        : (s.runs.everRan ? 'passing' : 'never run'),
-    }),
-    el('div', { className: 'sub', textContent: s.runs.lastAt ? ago(s.runs.lastAt, now) : '—' }),
-  ]);
+  // A dormant member's scheduler health is not measured (owner, 2026-09-13): what the
+  // cell owes the reader there is why it is empty, not a verdict on a cron that was
+  // switched off on purpose.
+  const runs = el('td', { className: 'nw' }, s.dormant
+    ? [
+      el('div', { className: 'sub', textContent: 'stopped' }),
+      el('div', { className: 'sub', textContent: 'dormant by declaration' }),
+    ]
+    : [
+      el('div', {
+        className: s.runs.consecutiveFailures ? 'warn critical' : 'sub',
+        textContent: s.runs.consecutiveFailures
+          ? `${LEVEL_GLYPH.critical} ${s.runs.consecutiveFailures} failing`
+          : (s.runs.everRan ? 'passing' : 'never run'),
+      }),
+      el('div', { className: 'sub', textContent: s.runs.lastAt ? ago(s.runs.lastAt, now) : '—' }),
+    ]);
 
   // --- Work: what is waiting on a person ------------------------------------------
 
@@ -734,14 +845,16 @@ export function renderSheet({ ledger, machine, candidates, sweeping, progress, s
       level: m.updates.level, label: 'Updates',
       value: m.updates.stale,
       unit: m.updates.stale === null ? 'not judged' : `of ${m.updates.total} behind the canon`,
-      note: m.updates.note,
+      // The denominator is the AWAKE fleet, so the dormant members it leaves out are
+      // named rather than silently missing from the count.
+      note: m.dormant.length ? `${m.updates.note} · ${m.dormant.length} dormant, not measured` : m.updates.note,
       alarm: m.updates.fleetWide,
     }),
     machineCell({
       level: m.heartbeat.level, label: 'Scheduler',
       value: m.heartbeat.total ? m.heartbeat.onTime : null,
       unit: m.heartbeat.total ? `of ${m.heartbeat.total} ran on time` : 'no member read',
-      note: m.heartbeat.note,
+      note: m.dormant.length ? `${m.heartbeat.note} · ${m.dormant.length} dormant, not measured` : m.heartbeat.note,
       extra: m.heartbeat.beats.length ? beats(m.heartbeat.beats) : null,
     }),
     machineCell({
@@ -891,7 +1004,14 @@ function perMemberRows(ledger) {
 }
 
 function renderFleet(summaries, reads, now, onOpen, canon, progress = null, deployment = null) {
-  const resolved = summaries.filter(Boolean);
+  // ARCHIVED IS OUT OF THE FLEET (owner, 2026-09-13). GitHub has frozen the repo, so
+  // nothing there converges, runs or can be acted on, and every figure a row could
+  // carry would be about a repository nobody can change. They are counted under the
+  // grid rather than dropped in silence — a member that vanished and one that was
+  // archived are different facts.
+  const all = summaries.filter(Boolean);
+  const archived = all.filter((s) => s.status === 'archived');
+  const resolved = all.filter((s) => s.status !== 'archived');
   const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
   const roll = rollUp(resolved);
 
@@ -904,7 +1024,8 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
   // Every figure the sheet draws, decided in one place. `rates` is the deployment's
   // own table and unset is a supported state — the dollar figure then reads unpriced
   // and names the key rather than showing a price nobody set.
-  const resolvedReads = reads.filter(Boolean);
+  const archivedRepos = new Set(archived.map((s) => s.repo));
+  const resolvedReads = reads.filter((r) => r && !archivedRepos.has(r.repo));
   const ledger = fleetLedger(resolvedReads, { now, rates: deployment?.rates ?? gh.config?.rates ?? null });
   // The wake strip needs each task's own declared anchor, and a member read carries
   // its task paths rather than their contents. So the strip is built from whatever
@@ -942,8 +1063,14 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
   const table = $('fleet');
   const body = groupedHead(table, MEMBER_GROUPS);
   if (!summaries.length) { body.append(emptyRow(MEMBER_COLS, 'No members in the roster.')); return; }
-  for (const s of rankMembers(resolved)) table.append(el('tbody', { className: 'm' }, memberRows(s, onOpen, now)));
-  for (const repo of pending) body.append(pendingRow(repo));
+  const repaint = () => renderFleet(summaries, reads, now, onOpen, canon, progress, deployment);
+  const shown = rankMembers(resolved.filter(FILTERS[memberFilter].keep));
+  renderFilters(roll, archived.length, repaint);
+  if (!shown.length) body.append(emptyRow(MEMBER_COLS, `No member is ${FILTERS[memberFilter].empty}.`));
+  for (const s of shown) table.append(el('tbody', { className: 'm' }, memberRows(s, onOpen, now)));
+  // Pending rows belong to the unfiltered reading of the fleet: a member still being
+  // read has no state to filter on yet.
+  if (memberFilter === 'all') for (const repo of pending) body.append(pendingRow(repo));
   table.append(body);
 
   // Tasks across the fleet. This is the view a per-repo page structurally cannot

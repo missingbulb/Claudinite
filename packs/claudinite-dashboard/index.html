@@ -394,6 +394,23 @@
   .chip.idle      .dot { background: var(--muted); }
   .chip.urgent { border-color: var(--critical); color: var(--critical); }
 
+  .chip.filter { background: none; cursor: pointer; color: inherit; font: inherit; font-size: 12px; }
+  .chip.filter.on { border-color: var(--ink); font-weight: 600; }
+
+  /* --- member state tags: what KIND of member a row is, beside its name ---
+     Three marks that must never read as one another: `private` is GitHub's own
+     flag, `dormant` is the member's declaration (its scheduler is stopped, so the
+     fleet measures neither its mount nor its scheduler), and `sleepy` is a reading
+     of the last fortnight's commits on a member that is otherwise fully in the
+     fleet. Dormant is solid and quiet, sleepy is dashed — a state nothing declared
+     and that can change back tomorrow. */
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 1px; }
+  .tag { font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
+         border-radius: 3px; padding: 0 4px; border: 1px solid var(--border);
+         color: var(--muted); white-space: nowrap; }
+  .tag.dormant { border-color: var(--muted); color: var(--ink); }
+  .tag.sleepy { border-style: dashed; border-color: var(--s-blue); color: var(--s-blue); }
+
   /* Warnings pair an icon with words — the color never carries it alone. */
   .warn { display: block; font-size: 12px; margin-top: 3px; }
   .warn.critical { color: var(--critical); }
@@ -717,6 +734,10 @@
   .commit-area { fill: color-mix(in srgb, var(--good) 22%, transparent); }
   .commit-line { fill: none; stroke: var(--good); stroke-width: 1;
                  vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+  /* The second series — the commits that were genuine project work. A different hue
+     and a thinner stroke, because it is read AGAINST the total rather than beside it:
+     the gap between the two lines is the machinery's own share. */
+  .commit-line.meaningful { stroke: var(--s-blue); stroke-width: 1.4; }
   .commit-graph .sub { margin-top: 2px; }
 
   /* The pack count wearing the mount's verdict. */
@@ -895,6 +916,7 @@
         earns a corner rather than a column.
       </p>
       <p class="legend">Click a member to open its scheduler in full.</p>
+      <div class="chips" id="fleet-filters"></div>
       <div class="panel scroll"><table id="fleet"></table></div>
     </section>
 

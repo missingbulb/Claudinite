@@ -142,15 +142,24 @@ export const isFleetConfig = (config) => config?.mode === 'fleet';
 // repositories are excluded by their own state rather than by anyone maintaining a
 // list, and `exclude` covers the rest.
 export const inFleet = (repo, exclude = []) =>
-  !repo.archived && !repo.fork && !exclude.includes(repo.full_name)
-  && !exclude.includes(repo.full_name.split('/')[1]);
+  !repo.archived && !repo.fork && !ignored(repo.full_name, exclude);
+
+// Whether a NAME is on the exclude list — the half of `inFleet` that needs nothing but
+// the name, so a roster that arrives as bare strings (an inline `repos`, a roster
+// artifact) is filtered by the same list as an enumerated one. An ignored repo is
+// ignored in every aspect (owner, 2026-09-13), and a deployment that states its
+// members must not be the one place that reading does not hold.
+export const ignored = (fullName, exclude = []) =>
+  exclude.includes(fullName) || exclude.includes(fullName.split('/')[1]);
 
 // The roster, resolved. Static sources win — a deployment that named its members meant
 // it — and `owner` is enumerated live as the viewer. `gh` is injected so this is
 // testable without a network and so config.mjs owes the GitHub client nothing.
 export async function resolveRoster(config, token, gh) {
   const stated = await loadRoster(config);
-  if (stated.length) return { repos: stated, source: 'configured', complete: true };
+  if (stated.length) {
+    return { repos: stated.filter((r) => !ignored(r, config.exclude ?? [])), source: 'configured', complete: true };
+  }
   if (!config?.owner) return { repos: [], source: 'none', complete: true };
   try {
     const { repos, complete } = await gh.listOwnerRepos(config.owner, token);

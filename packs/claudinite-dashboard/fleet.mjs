@@ -32,8 +32,9 @@ import {
 } from '../claudinite-tasks/shared-code/work-items.mjs';
 import { installedVersions } from '../../engine/installed-versions.mjs';
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../engine/version.mjs';
+import { isDormant } from '../claudinite-tasks/shared-code/dormancy.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths, PARKED } from './model.mjs';
-import { commitDays } from './activity.mjs';
+import { commitDays, commitClasses, DAY_MS } from './activity.mjs';
 import { itemCandidate, pickCandidate } from './next-work.mjs';
 
 // Severity ladder, worst first. The order IS the sort, so it is stated once here
@@ -112,6 +113,39 @@ export function mountState(declaration, canon = null) {
   return { state: 'current', engineVersion, comparedPacks, unknownPacks };
 }
 
+// --- is anyone working here ------------------------------------------------------
+
+// How long a member may go without GENUINE PROJECT WORK before the fleet view calls it
+// sleepy. Short on purpose (owner, 2026-09-13): a repo crossing back and forth is fine,
+// because this is a reading of the last fortnight rather than a verdict on the project.
+export const SLEEPY_DAYS = 14;
+
+// Sleepy, awake, or not classified. The input is `commitClasses` over the window
+// commit listing, so the test is the claudinite-tasks pack's own substantive-commit
+// one and a member reads quiet here exactly when its own preconditions read it quiet.
+//
+// THREE STATES, and the third is the point: a member whose commit listing was withheld
+// under the page's budget is `unknown`, never `sleepy`. A repo nobody looked at and a
+// repo nobody worked on are not the same fact, and only one of them is news.
+export function sleepState(classes, { now } = {}) {
+  if (!classes) return { state: 'unknown', days: SLEEPY_DAYS, lastMeaningfulAt: null };
+  const since = now - SLEEPY_DAYS * DAY_MS;
+  // The window the listing actually reached. A read that stopped at a full page covers
+  // the recent end — which is the end this question is about — so a truncated listing
+  // still answers it; one whose window starts INSIDE the fortnight does not.
+  const from = classes.from == null ? null : new Date(classes.from).getTime();
+  if (from != null && from > since) return { state: 'unknown', days: SLEEPY_DAYS, lastMeaningfulAt: classes.lastMeaningfulAt };
+  const awake = classes.lastMeaningfulAt != null && classes.lastMeaningfulAt >= since;
+  return {
+    state: awake ? 'awake' : 'sleepy',
+    days: SLEEPY_DAYS,
+    lastMeaningfulAt: classes.lastMeaningfulAt,
+    // The one exclusion the cheap test cannot apply, named where the state is decided
+    // rather than in a footnote nobody reads beside the row it changes.
+    caveat: 'commits are classified from the listing, so a commit that touched only .claudinite/ counts as work unless its message says otherwise',
+  };
+}
+
 // --- one member -----------------------------------------------------------------
 
 // Everything a fleet row shows about one member, plus the reasons it needs looking
@@ -121,7 +155,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
   const {
     repo, error = null, declaration = null, items = null, runs = null, paths = null,
     prs = null, head = null, stars = null, defaultBranch = null, commits = undefined,
-    usage = null,
+    usage = null, windowCommits = undefined, archived = false, private: isPrivate = null,
   } = read ?? {};
 
   if (error) {
@@ -142,10 +176,25 @@ export function summariseMember(read, { now, canon = null } = {}) {
     };
   }
 
+  // An ARCHIVED repo is out of the fleet entirely (owner, 2026-09-13), whatever it
+  // declares: nothing converges it, nothing runs there, and every verdict a row could
+  // carry would be about a repo GitHub has frozen. It is summarised so the page can
+  // account for it, and the grid draws no row.
+  if (archived) {
+    return {
+      repo,
+      status: 'archived',
+      level: 'ok',
+      private: isPrivate,
+      reasons: [{ level: 'info', text: 'archived on GitHub — out of the fleet' }],
+    };
+  }
+
   if (!declaration) {
     return {
       repo,
       status: 'not-adopted',
+      private: isPrivate,
       level: 'info',
       reasons: [{ level: 'info', text: 'does not run Claudinite' }],
     };
@@ -193,7 +242,17 @@ export function summariseMember(read, { now, canon = null } = {}) {
 
   const runSummary = summariseRuns(runs ?? [], now, usage);
   const ci = ciStatus(runs ?? [], defaultBranch);
-  const mount = mountState(declaration, canon);
+  // A DORMANT member declared its own scheduler stopped, and the fleet takes that at
+  // its word (owner, 2026-09-13): its mount is not measured and its scheduler is not
+  // judged. Nothing converges it and no fleet-wide operation touches it, so both
+  // verdicts would be findings nobody owns — which is a different thing from the row
+  // being quiet about the repo, since the row says dormant where they would have sat.
+  const dormant = isDormant(declaration);
+  const mount = dormant
+    ? { state: 'dormant', engineVersion: installedVersions(declaration).engineVersion }
+    : mountState(declaration, canon);
+  const classes = commitClasses(windowCommits);
+  const sleep = sleepState(classes, { now });
 
   const n = (count, word) => `${count} ${word}${count > 1 ? 's' : ''}`;
   // Every reason carries a `kind`, because the row shows some of these twice
@@ -211,7 +270,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
   if (approvals.length) {
     reasons.push({ kind: 'park', level: 'warning', text: `${n(approvals.length, 'PR')} waiting for approval` });
   }
-  if (runSummary.consecutiveFailures > 0) {
+  if (runSummary.consecutiveFailures > 0 && !dormant) {
     reasons.push({
       kind: 'scheduler',
       level: runSummary.consecutiveFailures > 1 ? 'critical' : 'serious',
@@ -221,7 +280,11 @@ export function summariseMember(read, { now, canon = null } = {}) {
   if (warned.length) {
     reasons.push({ kind: 'park', level: 'serious', text: `${n(warned.length, 'item')} tripping a recovery rule` });
   }
-  if (mount.state === 'behind-engine') {
+  if (dormant) {
+    // Not a fault, and not a silence either: the reader is told why the two Claudinite
+    // verdicts are absent from this row.
+    reasons.push({ kind: 'mount', level: 'info', text: 'dormant — its scheduler is stopped by declaration, so its mount and scheduler are not measured' });
+  } else if (mount.state === 'behind-engine') {
     reasons.push({ kind: 'mount', level: 'serious', text: `mount is on engine v${mount.engineVersion}, canon is v${canon?.engineVersion}` });
   } else if (mount.state === 'behind') {
     reasons.push({ kind: 'mount', level: 'info', text: `mount behind canon on ${mount.behindPacks.map((p) => p.pack).join(', ')}` });
@@ -233,7 +296,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
   // A repo that declares tasks and has never produced a work item is not idle — its
   // scheduler is not running. That is invisible in every per-repo number here, which
   // is exactly why the fleet view is the place it shows up.
-  if (declaredTasks !== null && declaredTasks > 0 && work.length === 0) {
+  if (declaredTasks !== null && declaredTasks > 0 && work.length === 0 && !dormant) {
     reasons.push({ kind: 'scheduler', level: 'serious', text: `${declaredTasks} task${declaredTasks > 1 ? 's' : ''} declared, no work item ever created` });
   }
   if (ci.state === 'failing') {
@@ -252,6 +315,14 @@ export function summariseMember(read, { now, canon = null } = {}) {
     status: 'adopted',
     level,
     reasons,
+    // GitHub's own two facts about the repository, carried through untouched: the row
+    // shows `private` because who can see a member is part of recognising it.
+    private: isPrivate,
+    dormant,
+    // Whether anything MEANINGFUL landed here lately — `sleepState` above. Distinct
+    // from dormant in both directions: a sleepy member is fully in the fleet and every
+    // fleet-wide operation still reaches it.
+    sleep,
     packs: (declaration.packs ?? []).map((p) => (typeof p === 'string' ? p : p?.id)).filter(Boolean),
     declaredTasks,
     open: { total: open.length, byState, urgent: described.filter((d) => d.urgent).length },
@@ -281,7 +352,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
     lastCommit: head?.committedAt ? ms(head.committedAt) : null,
     // Null all the way through when the read did not happen, so the row draws "not
     // read" rather than an empty quarter that reads as a repo nobody touched.
-    commits: commitDays(commits, { now }),
+    commits: commitDays(commits, { now, classes }),
     work: humanWork(items, prs, now),
     mount,
     schedule: declaration.taskScheduler ?? null,
@@ -420,6 +491,10 @@ export function rankMembers(summaries) {
 // things — "3 members need you" is actionable where "47 open items" is not.
 export function rollUp(summaries) {
   const adopted = summaries.filter((s) => s.status === 'adopted');
+  // The fleet's machinery figures are about the AWAKE members: a dormant one declared
+  // its scheduler stopped, so counting it as failing, never-run or behind reports an
+  // obedient repo as a fault (owner, 2026-09-13).
+  const awake = adopted.filter((s) => !s.dormant);
   const outcomes = { done: 0, delivered: 0, obsolete: 0, none: 0 };
   for (const s of adopted) for (const [k, v] of Object.entries(s.outcomes ?? {})) outcomes[k] += v;
 
@@ -439,9 +514,13 @@ export function rollUp(summaries) {
     parkedApprovals: adopted.reduce((n, s) => n + (s.parkedApprovals ?? 0), 0),
     warnedItems: adopted.reduce((n, s) => n + (s.warned ?? 0), 0),
     warnedMembers: adopted.filter((s) => s.warned > 0).length,
-    failingMembers: adopted.filter((s) => s.runs?.consecutiveFailures > 0).length,
-    neverRan: adopted.filter((s) => s.runs && !s.runs.everRan).length,
-    behindMembers: adopted.filter((s) => ['behind', 'behind-engine', 'unversioned'].includes(s.mount?.state)).length,
+    failingMembers: awake.filter((s) => s.runs?.consecutiveFailures > 0).length,
+    neverRan: awake.filter((s) => s.runs && !s.runs.everRan).length,
+    behindMembers: awake.filter((s) => ['behind', 'behind-engine', 'unversioned'].includes(s.mount?.state)).length,
+    // The two states the grid marks, counted so a filter can say how many it will show.
+    dormantMembers: adopted.filter((s) => s.dormant).length,
+    sleepyMembers: adopted.filter((s) => s.sleep?.state === 'sleepy').length,
+    privateMembers: adopted.filter((s) => s.private).length,
     openItems: adopted.reduce((n, s) => n + (s.open?.total ?? 0), 0),
     inFlight: adopted.reduce((n, s) => n + (s.runs?.inFlight ?? 0), 0),
     declaredTasks: adopted.reduce((n, s) => n + (s.declaredTasks ?? 0), 0),

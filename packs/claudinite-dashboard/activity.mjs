@@ -19,6 +19,7 @@
 // carries the horizon past which it stops being a count and starts being a floor.
 
 import { isParked, outcomeOf } from '../claudinite-tasks/shared-code/work-items.mjs';
+import { isSubstantiveCommit } from '../claudinite-tasks/shared-code/substantive-commit.mjs';
 import { isWorkItem } from './model.mjs';
 
 export const DAY_MS = 86400e3;
@@ -241,7 +242,7 @@ export function delta(current, previous) {
 //
 // A day the year does not cover is `null` rather than `0` for the same reason: a
 // window wider than the data is under-read at its far end, not quiet there.
-export function commitDays(weeks, { now, days = 90 } = {}) {
+export function commitDays(weeks, { now, days = 90, classes = null } = {}) {
   if (!Array.isArray(weeks)) return null;
 
   const byDay = new Map();
@@ -254,7 +255,15 @@ export function commitDays(weeks, { now, days = 90 } = {}) {
   }
 
   const ladder = dayLadder(now, days);
-  const rows = ladder.map((day) => ({ day, count: byDay.has(day) ? byDay.get(day) : null }));
+  // `meaningful` is the second series, and it is null wherever the commit LISTING did
+  // not reach — a shorter window than the statistics cover, or a page that filled up
+  // before the window's start. Null there, not zero: "we did not classify this day" is
+  // not "nothing meaningful happened".
+  const rows = ladder.map((day) => ({
+    day,
+    count: byDay.has(day) ? byDay.get(day) : null,
+    meaningful: classes?.byDay?.has(day) ? classes.byDay.get(day).meaningful : null,
+  }));
   const counted = rows.filter((r) => r.count != null);
   return {
     days: rows,
@@ -264,6 +273,9 @@ export function commitDays(weeks, { now, days = 90 } = {}) {
     // Days inside the window the year of statistics did not reach. Stated rather than
     // drawn as blank squares that read as quiet ones.
     unread: rows.length - counted.length,
+    // How far the second series reaches, so the graph can draw it over its own span
+    // and the hover can say what the rest of the line is not claiming.
+    classified: classes ? { from: classes.from, complete: classes.complete } : null,
   };
 }
 
@@ -283,12 +295,64 @@ export function bucketWeekly(rows) {
   for (let end = rows.length; end > 0; end -= WEEK) {
     const slice = rows.slice(Math.max(0, end - WEEK), end);
     const read = slice.filter((r) => r.count != null);
+    const classified = slice.filter((r) => r.meaningful != null);
     out.unshift({
       from: slice[0].day,
       to: slice[slice.length - 1].day,
       days: slice.length,
       count: read.length ? read.reduce((n, r) => n + r.count, 0) : null,
+      // The same rule as `count`, one series down: a week nothing classified is null,
+      // and the drawn line breaks there rather than dropping to the floor.
+      meaningful: classified.length ? classified.reduce((n, r) => n + r.meaningful, 0) : null,
     });
   }
   return out;
+}
+
+// --- meaningful against machinery ------------------------------------------------
+
+// Which of a member's window commits were GENUINE PROJECT WORK, per day. The test is
+// the claudinite-tasks pack's own (`isSubstantiveCommit`), so a member reads as quiet
+// here exactly when its own preconditions read the repo as not having moved — a second
+// notion of "meaningful" would mark a member sleepy on the commits its scheduler counts
+// as movement.
+//
+// THE CHEAP TEST, and the page says so. The listing carries the message and the
+// author, which is every exclusion but one: the corpus-only exclusion (a commit that
+// touched nothing outside `.claudinite/`) needs each commit's file list, one request
+// per commit, which this page's budget does not have. What survives it is the
+// converge's own commits, and those carry the housekeeping marker in their messages
+// anyway — so the gap is narrow, and it is stated rather than implied away.
+//
+// `window` is github.mjs's `listCommitsSince` answer, or `undefined` when that read
+// was withheld — which returns null here, the "not classified" state every consumer
+// keeps distinct from "nothing meaningful happened".
+export function commitClasses(window) {
+  if (!window || !Array.isArray(window.commits)) return null;
+  const byDay = new Map();
+  let lastMeaningfulAt = null;
+  for (const c of window.commits) {
+    const at = ms(c.at);
+    if (at == null) continue;
+    const day = dayKey(at);
+    if (!byDay.has(day)) byDay.set(day, { total: 0, meaningful: 0 });
+    const row = byDay.get(day);
+    row.total += 1;
+    if (!isSubstantiveCommit(c)) continue;
+    row.meaningful += 1;
+    if (lastMeaningfulAt === null || at > lastMeaningfulAt) lastMeaningfulAt = at;
+  }
+  return {
+    byDay,
+    // The window's own start, and whether the read reached it. An incomplete read is
+    // a HORIZON: the days before its oldest commit were not classified at all.
+    from: window.since ?? null,
+    complete: window.complete !== false,
+    oldestSeen: window.commits.length
+      ? Math.min(...window.commits.map((c) => ms(c.at)).filter((t) => t != null))
+      : null,
+    lastMeaningfulAt,
+    meaningful: [...byDay.values()].reduce((n, r) => n + r.meaningful, 0),
+    total: window.commits.length,
+  };
 }
