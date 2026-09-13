@@ -234,12 +234,48 @@ test('--list emits the machine-readable rule catalog', () => {
   const root = makeRepo({ changed: {} });
   try {
     const r = runCli(root, '--list');
-    assert.equal(r.status, 0);
+    // Carry stderr into the failure: a check missing from the catalog is a pack
+    // that did not load, and the reason is only ever on that channel. Without it
+    // the assertion below reports "this id is absent" and the run's own
+    // explanation of why is thrown away.
+    assert.equal(r.status, 0, `--list failed (signal ${r.signal}); stderr was:\n${r.stderr}`);
     for (const id of ['reference-integrity', 'markdown-link-labels', 'task-lifecycle',
                       'warning-suppression', 'file-placement',
                       'squash-merge-history']) {
-      assert.match(r.stdout, new RegExp(`^${id}\t`, 'm'));
+      assert.match(r.stdout, new RegExp(`^${id}\t`, 'm'),
+        `${id} is absent from the catalog. stderr was:\n${r.stderr}`);
     }
+  } finally { cleanup(root); }
+});
+
+// A pack that fails to load is absent from discoverPacks' `packs` rather than
+// fatal — the reason goes to its `errors`. An entry point that reads one without
+// the other cannot tell a pack that was never there from one that did not load,
+// so it reports success over a registry it knows is incomplete (#2008).
+const brokenPack = { '.claudinite/local/packs/broken/pack.mjs': 'throw new Error("boom");\n' };
+
+test('--list refuses to print a catalog a pack failed to load into', () => {
+  const root = makeRepo({ changed: { ...brokenPack, '.claudinite-settings.json': JSON.stringify({ packs: ['local/broken'] }) } });
+  try {
+    const r = runCli(root, '--list');
+    assert.equal(r.status, 1, `--list must fail when a pack did not load. stdout was:\n${r.stdout}\nstderr was:\n${r.stderr}`);
+    assert.match(r.stderr, /broken/);
+    assert.match(r.stderr, /boom/);
+    // stdout is the machine-readable channel a caller parses: the diagnostic
+    // goes to stderr so a partial catalog is never mistaken for a complete one.
+    assert.doesNotMatch(r.stdout, /boom/);
+  } finally { cleanup(root); }
+});
+
+test('--init refuses to seed a declaration from a registry a pack failed to load into', () => {
+  const root = makeRepo({ changed: brokenPack });
+  try {
+    const r = runCli(root, '--init');
+    assert.equal(r.status, 1, `--init must fail when a pack did not load. stdout was:\n${r.stdout}\nstderr was:\n${r.stderr}`);
+    assert.match(r.stderr, /boom/);
+    // The declaration it would have written omits the pack that did not load,
+    // and a member copies that file once — so it must not be written at all.
+    assert.ok(!existsSync(join(root, '.claudinite-settings.json')), 'a partial registry must leave no declaration behind');
   } finally { cleanup(root); }
 });
 
