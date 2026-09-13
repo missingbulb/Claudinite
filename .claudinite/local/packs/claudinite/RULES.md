@@ -156,6 +156,13 @@ Below are rules on how to work on this repo.
   alone (`scanFiles`, `matchLines`, `relevantWhen`). If it needs a comment to be read, it needs a
   better name.
 
+- **Adding a property to a declared vocabulary** — it is judged on its own terms: a validation,
+  a default or a behaviour that reads a SIBLING property's value needs the owner's explicit
+  permission before it is written, and so does prose describing the new property as if a
+  sibling's value were part of its meaning. The task contract's existing pairs
+  (`automerge`/`expected_outcome`, `agent_instructions`/`agent_model`,
+  `code_work_timeout`/`code_work`) predate the rule and stand. (87)
+
 - **Choosing how a declared field spells two opposite states** — never let them differ by one
   keystroke (`["none"]` vs. no key at all); a reader who hasn't loaded the schema must still be
   able to tell them apart correctly. (72)
