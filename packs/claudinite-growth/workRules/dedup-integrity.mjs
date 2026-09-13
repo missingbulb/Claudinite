@@ -80,10 +80,10 @@ const rule = {
         // Lines AND characters, because re-wrapping trades one for the other:
         // a strip that pulls text up across line boundaries can shrink the line
         // count while the entry itself grows.
-        const grew = head.split('\n').length > base.split('\n').length
-          ? `from ${base.split('\n').length} to ${head.split('\n').length} lines`
-          : head.length > base.length
-            ? `from ${base.length} to ${head.length} characters`
+        const baseLines = base.split('\n').length;
+        const headLines = head.split('\n').length;
+        const grew = headLines > baseLines ? `from ${baseLines} to ${headLines} lines`
+          : head.length > base.length ? `from ${base.length} to ${head.length} characters`
             : null;
         if (grew) {
           findings.push(finding(rule, {
