@@ -49,15 +49,12 @@ export function terminalFor(outcome) {
   return { action: 'needs-human', label: NEEDS_HUMAN, why: 'the flow reported success but reached no delivery decision' };
 }
 
-// THERE IS NO RENDERED BRIEF HERE ANY MORE, and its absence is the design.
+// NO RENDERED BRIEF LIVES HERE, and its absence is the design.
 //
-// This module used to export `applyStageBrief`, which composed a full set of
-// instructions for the apply-stage session and which the worker wrote into the
-// request payload. Nothing ever read it — that is the only reason two problems with
-// it stayed invisible.
-//
-// It restated `packs/claudinite-lifecycle/tasks/update/task.md` §2–6 from a second home that could
-// drift from the first, with no test able to notice. And it was the natural place to
+// A composed set of instructions for the apply-stage session, written into the
+// request payload, has two problems. It restates
+// `packs/claudinite-lifecycle/tasks/update/task.md` §2–6 from a second home that can
+// drift from the first, with no test able to notice. And it is the natural place to
 // put a withheld workflow's CONTENT, which is exactly where content must not go: the
 // scheduler's rule for the code→agent boundary (packs/claudinite-tasks/code-work.mjs) is that
 // a request payload carries identifiers and the NAME of the condition that fired,
@@ -66,7 +63,7 @@ export function terminalFor(outcome) {
 // nobody can see in a diff is a workflow nobody reviewed.
 //
 // So the apply stage is told three things, each from where it belongs: WHY, as
-// `reason.detail` from the terminal below; WHAT TO DO, from task.md, which the
+// `reason.detail` from the terminal above; WHAT TO DO, from task.md, which the
 // work item's first line links; and WHAT TO DO IT TO, from the branch — the
 // staged workflow files and the migration record named in the reason, both of which
 // the session reads out of the repository like any other fact about it.
