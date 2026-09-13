@@ -17,10 +17,10 @@ teaches its reader to skim it.
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| Only the published tree reaches the site | high | correctness | prose: 54 words |
+| Only the published tree reaches the site | high | correctness | prose: 53 words |
 | The version stamp is generated, never typed | medium | correctness | prose: 45 words + check (`cloudflare-site/version-stamp-matches-package`) |
 | One path to production | high | correctness | prose: 47 words + check (`cloudflare-site/no-second-publisher`) |
-| What a parked release is asking for | medium | correctness | prose: 59 words |
+| What a parked release is asking for | medium | correctness | prose: 53 words |
 
 ## Skills
 

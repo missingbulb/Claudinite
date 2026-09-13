@@ -10,6 +10,9 @@ ruleTester(beaconTokenIsNotCommitted, {
     'the loader as it is committed, carrying the placeholder': {
       files: { ...base, 'site/analytics.js': `{"token": "${BEACON_PLACEHOLDER}"}\n` },
     },
+    'a token in a commented-out loader, which beacons nothing': {
+      files: { ...base, 'site/analytics.js': `// var beacon = {"token": "${TOKEN}"};\n` },
+    },
     'a token outside the published tree': {
       files: { ...base, 'site/index.html': '<p>x</p>\n', 'docs/notes.md': `{"token": "${TOKEN}"}\n` },
     },

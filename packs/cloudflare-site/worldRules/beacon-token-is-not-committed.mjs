@@ -1,4 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
+import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
 import { BEACON_PLACEHOLDER, parseWranglerConfig, publishedDir, wranglerConfigPath } from '../lib.mjs';
 
 // WHY. The Cloudflare Web Analytics beacon token is public, but it is also the
@@ -9,7 +10,10 @@ import { BEACON_PLACEHOLDER, parseWranglerConfig, publishedDir, wranglerConfigPa
 // placeholder and the loader no-ops until a deploy fills it in.
 //
 // SCOPE. The published tree only. A token in a test fixture or a doc is not what
-// beacons; a token under the directory that reaches the public URL is.
+// beacons; a token under the directory that reaches the public URL is. A script's
+// comments are stripped first (`stripComments` preserves line numbers), so a token
+// in a commented-out loader — which beacons nothing — does not count as present.
+// Markup is scanned as written: an HTML comment carries no script to strip.
 
 // A beacon token as it appears in the loader Cloudflare hands out: the `token` field
 // of a `data-cf-beacon` attribute, or the same key set in a script.
@@ -30,8 +34,9 @@ const rule = {
 
     const out = [];
     for (const file of ctx.tracked.filter((f) => f.startsWith(`${dir}/`))) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+      const raw = ctx.read(file);
+      if (raw === null) continue;
+      const text = /\.(js|mjs|cjs)$/.test(file) ? stripComments(raw) : raw;
       text.split('\n').forEach((line, i) => {
         for (const [, token] of line.matchAll(TOKEN)) {
           out.push(finding(rule, {
