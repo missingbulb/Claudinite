@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  rosterFrom, loadConfig, loadRoster, DEFAULTS, isFleetConfig, ignored, resolveRoster, resolveMode,
+  rosterFrom, loadConfig, loadRoster, DEFAULTS, isFleetConfig, ignored, inFleet, resolveRoster, resolveMode,
 } from '../config.mjs';
 import { isOAuthConfigured } from '../auth.mjs';
 
@@ -129,6 +129,16 @@ test('the agreeing shapes pass, and a rosterFile counts as a roster source', () 
   assert.equal(resolveMode({ mode: 'repo' }), 'repo');
   // A single-entry `repos` is not a roster: it is this repo, named.
   assert.equal(resolveMode({ mode: 'repo', repos: ['o/a'] }), 'repo');
+});
+
+// The roster stopped subtracting anyone, but the predicate stays exported for a
+// member's local pack that imports it — answering the same question it always did.
+test('inFleet still answers whether the fleet\'s figures would count a repo', () => {
+  const repo = (full_name, over = {}) => ({ full_name, archived: false, fork: false, ...over });
+  assert.equal(inFleet(repo('o/a')), true);
+  assert.equal(inFleet(repo('o/a', { archived: true })), false);
+  assert.equal(inFleet(repo('o/a', { fork: true })), false);
+  assert.equal(inFleet(repo('o/a'), ['a']), false);
 });
 
 test('the exclude list is matched on either spelling of a name', () => {

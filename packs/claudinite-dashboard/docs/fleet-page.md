@@ -63,8 +63,8 @@ single member is the thing to go and look at.
 entry stopped its own scheduler, so it has no heartbeat to be late, no mount anything will converge
 and no anchor that will fire: it is out of every cell's numerator *and* denominator, and the count of
 what was left out rides beside the Updates and Scheduler notes. Counting an obedient repo would make
-it read as a missing member. Archived repos and repos on the deployment's `exclude` list are not on
-the page at all.
+it read as a missing member. Archived repos and repos on the deployment's `exclude` list are out of
+every figure here too — they are drawn in the grid below, greyed, and counted in nothing above it.
 
 The heartbeat reads the fold's hour tier rather than the live runs listing, because one page
 of runs on a busy member covers hours, not days, and a member whose last scheduler run has

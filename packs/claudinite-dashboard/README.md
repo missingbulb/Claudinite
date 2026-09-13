@@ -216,13 +216,15 @@ repo outside their access is not in their fleet, rather than being in it as a ro
 cannot open. No repo list is baked into any file, which is also why a fleet's numbers
 cannot leak from a shared artifact to someone without access to the repos behind them.
 
-Archived and forked repos leave the fleet by their own state; `exclude` covers the rest,
-and it is applied to a **stated** roster (an inline `repos`, a roster artifact) exactly as
-to an enumerated one — an ignored repo is ignored in every aspect, and a deployment that
-lists its members is not the one place that stops being true. An archived repo is dropped
-from the grid and every figure above it, and counted under the grid rather than silently
-missing. An enumeration that could not be read is said out loud, never rendered as a fleet
-that happens to be empty.
+**Every repo the viewer can see is on the page**, and only a fork is not — that is
+someone else's project, and its work is upstream's. An enumeration that could not be read
+is said out loud, never rendered as a fleet that happens to be empty.
+
+Out of the fleet is a **state**, not a filter: an archived repo, and one on the
+deployment's `exclude` list, are drawn greyed with their core GitHub facts and nothing
+else, and counted in no figure above the grid. They are on the page because a repo the
+reader cannot find at all is indistinguishable from one that is gone — and because each
+carries the one action that brings it back.
 
 ### What KIND of member a row is — private, dormant, sleepy
 
@@ -249,6 +251,33 @@ hover ([data-sources.md](docs/data-sources.md)).
 The chips above the grid filter it by those three states. "Which of my repos has nobody
 touched in a fortnight" is a morning question, and scanning a dozen rows for a dashed tag
 is not how it gets answered.
+
+### Three bands, and one thing to do per row
+
+The grid is the **fleet proper** ranked worst-first, then **Dormant** and **Out of the
+fleet**, each a collapsed band carrying its own count. Collapsed because those members are
+not being maintained and should not sit between the reader and the fleet; present because
+a page that hides them answers "where do I need to look" by pretending part of the account
+does not exist. Any filter opens the bands — a question about a state wants the rows, not
+a count.
+
+Every row ends in a **Next** cell, and what it offers follows the member's state, each a
+different kind of act:
+
+| Row | Next |
+|---|---|
+| archived | **Unarchive →**, GitHub's own settings page. Claudinite cannot undo an archive, and a button that pretended otherwise would send the reader somewhere that cannot work |
+| ignored | **Bring back — copy request**: the whole request to paste into a session, naming the repo and the `config.exclude` key. The enforcer's declaration is a file a person edits; this page reads it and must not write it |
+| dormant | **Wake — copy request**, the same shape against the member's own `claudinite-tasks` entry |
+| awake, something parked | **Advance #n →**, the member's own worst item, with the reason on the link |
+| awake, nothing parked | its open pull requests, else its open issues |
+| awake, nothing open | 🙂 — the one cell on this page that asks for nothing |
+
+A dormant row keeps its Claudinite columns and loses the **task-based delays**: no minutes
+estimate, no attention breakdown, and its queue as a plain count rather than a state mix.
+How many items are open there is an ordinary fact about the repo; which of them are
+blocked, ready or parked is the state of a queue that stopped, and colouring a row for
+delays the declaration asked for is exactly the nagging dormancy exists to prevent.
 
 ### What only the members' own files can say
 

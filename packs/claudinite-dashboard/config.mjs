@@ -152,6 +152,14 @@ export const isFleetConfig = (config) => config?.mode === 'fleet';
 export const ignored = (fullName, exclude = []) =>
   exclude.includes(fullName) || exclude.includes(fullName.split('/')[1]);
 
+// @deprecated The roster no longer subtracts anyone: every repo the viewer can see is
+// drawn, and what used to be filtered out here is now a row's STATE (`ignored`, above,
+// and GitHub's own `archived`, read per repo). Kept because a member's local pack may
+// import it, and a predicate over a repo object cannot break by standing still — it
+// still answers the old question, "would the fleet's figures count this repo".
+export const inFleet = (repo, exclude = []) =>
+  !repo.archived && !repo.fork && !ignored(repo.full_name, exclude);
+
 // The roster, resolved. Static sources win — a deployment that named its members meant
 // it — and `owner` is enumerated live as the viewer. `gh` is injected so this is
 // testable without a network and so config.mjs owes the GitHub client nothing.
