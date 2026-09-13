@@ -161,16 +161,15 @@ from *unpriced* (a rate missing) and from 0.
 
 - **Home.** Day rows only; a sub-map of bare numbers keyed by pack id, like `skillLoads`,
   no vocabulary needed.
-- **Extraction.** The session-start summary line
-  ([`session-summary.mjs`](../../../engine/pack_loader/session-summary.mjs)) prints one rule-token
-  total and **no per-pack split**; the split is a new facet on that line —
-  `rule tokens by pack: basics 4200 · claudinite 5200 · …` — printed beside the total, and
-  `ruleTokensIn`'s sibling parses it. No thousands separators, unlike the total beside
-  it: the facets are joined into one comma-separated line, so a comma has to stay the
-  segment's own terminator for the parse to know where the split ends. Counted once per session, on the first match, as the
-  total is.
-- **Absence.** A session whose line lacks the facet contributes nothing to the map; a day
-  with no such session has no key. The total `ruleTokens` is unaffected.
+- **Extraction.** A legacy session-start summary line carried the split as a facet beside
+  the total — `rule tokens by pack: basics 4200 · claudinite 5200 · …` — and `ruleTokensIn`'s
+  sibling parses it off captures from that window. The current line
+  ([`session-summary.mjs`](../../../engine/pack_loader/session-summary.mjs)) states the total
+  only, so no new capture feeds this map. Counted once per session, on the first match, as
+  the total is.
+- **Absence.** A session whose line lacks the facet — every session under a current engine —
+  contributes nothing to the map; a day with no such session has no key. The total
+  `ruleTokens` is unaffected.
 - **Before it exists.** The *heaviest source* sub-line is omitted; the per-session figure
   stands.
 

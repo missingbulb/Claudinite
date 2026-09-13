@@ -11,8 +11,8 @@ import { removeTree } from '../../engine/remove-tree.mjs';
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // The SESSION SUMMARY step: the one line a session opens with, stating what
-// actually loaded — active packs, their checks, the token weight of the prose
-// injected, the skills mounted. It exists because every other session-start step
+// actually loaded — which repo, the active packs, the token weight of the prose
+// injected, the guards and checks armed, the skills mounted. It exists because every other session-start step
 // reports that the MACHINERY ran; none of them says how much landed, which is the
 // only part a person can sanity-check.
 //
@@ -55,7 +55,9 @@ function makeProject(declaration) {
 function run(corpus, project, env = {}) {
   const r = spawnSync('node', [join(corpus, 'engine', 'pack_loader', 'session-summary.mjs')], {
     encoding: 'utf8',
-    env: { ...process.env, CLAUDE_PROJECT_DIR: project, ...env },
+    // A CI runner names its own repo in the environment; a fixture project says
+    // nothing about a repo unless the test gives it one.
+    env: { ...process.env, GITHUB_REPOSITORY: '', CLAUDE_PROJECT_DIR: project, ...env },
   });
   // A non-zero exit makes Claude Code DISCARD the orchestrator's whole stdout, so
   // this step may never produce one — whatever it found.
@@ -65,7 +67,10 @@ function run(corpus, project, env = {}) {
 
 // A rule needs only an id and a run to be a rule (pack-schema's isRuleArray), and
 // the manifest is JSON-serialized into the fixture — so rules arrive as source.
-const rules = (n) => ({ manifestSource: (json) => `const rules = ${JSON.stringify(Array.from({ length: n }, (_, i) => ({ id: `r${i}` })))}.map((r) => ({ ...r, run: () => {} }));\nexport default { ...${json}, workRules: rules };\n` });
+// A guard is a rule whose declaration has `scope: "action"` — the shape a declared
+// `guardToolCalls` check loads to; `rules(n)` gives plain ones, `rules(n, g)` adds g guards.
+const ruleSource = (n, spec) => JSON.stringify(Array.from({ length: n }, (_, i) => ({ id: `${spec ? 'g' : 'r'}${i}`, ...(spec ? { spec } : {}) })));
+const rules = (n, guards = 0) => ({ manifestSource: (json) => `const rules = [...${ruleSource(n)}, ...${ruleSource(guards, { scope: 'action' })}].map((r) => ({ ...r, run: () => {} }));\nexport default { ...${json}, workRules: rules };\n` });
 
 // Prose is estimated through WORDS (roughly 0.75 of them per token), so a fixture
 // says how many words it is, not how many bytes.
@@ -80,42 +85,59 @@ test('counts the active packs, their checks and their prose, and says so in one 
   const project = makeProject({ packs: ['alpha', 'beta'] });
   try {
     const out = run(corpus, project);
-    // gamma is not declared, so nothing of gamma's is counted.
-    assert.match(out, /Claudinite loaded, 2 packs, 5 checks, 3,000 rule tokens, 0 available skills, /);
+    // gamma is not declared, so nothing of gamma's is counted. The weight reads in
+    // thousands, the unit a person compares context sizes in.
+    assert.match(out, /Loaded Claudinite: 2 packs, 3\.0k context tokens, 0 guards, 5 code checks, 0 auto-trigger skills, 0 regular skills\./);
   } finally { removeTree(corpus); removeTree(project); }
 });
 
-test('says WHERE the prose weight comes from, heaviest pack first', () => {
-  // The total on its own is a number nobody can act on. The split is what turns "the
-  // corpus grew" into "this pack grew", and it is finer-grained than the total because
-  // a pack's own share rounded to the total's step would read as zero for most of them.
+test('keeps the guards apart from the code checks, and counts a skill-owned check as a check', () => {
+  // A guard judges one tool call before it runs; a code check judges the tree or the
+  // change at a sweep. Both are rules to the registry, and a reader wants to know how
+  // many of each stand between them and a mistake.
   const corpus = makeCorpus({
-    alpha: { prose: 'RULES.md', proseText: words(750) },
-    beta: { prose: 'RULES.md', proseText: words(1500) },
-    quiet: { prose: 'RULES.md', proseText: '' },
+    alpha: { ...rules(3, 2) },
+    beta: { ...rules(1, 4), skills: ['guarded'] },
   });
-  const project = makeProject({ packs: ['alpha', 'beta', 'quiet'] });
+  mkdirSync(join(corpus, 'packs', 'beta', 'skills', 'guarded'), { recursive: true });
+  writeFileSync(join(corpus, 'packs', 'beta', 'skills', 'guarded', 'SKILL.md'), '# skill\n');
+  writeFileSync(join(corpus, 'packs', 'beta', 'skills', 'guarded', 'checks.mjs'), 'export default [{ id: \'s1\', run: () => {} }];\n');
+  const project = makeProject({ packs: ['alpha', 'beta'] });
   try {
-    const out = run(corpus, project);
-    // NO thousands separators: the facets are comma-joined, so a comma has to stay this
-    // segment's own terminator for anything reading the line back.
-    assert.match(out, /rule tokens by pack: beta 2000 · alpha 1000\./);
-    assert.doesNotMatch(out, /quiet \d/, 'a pack contributing nothing is not listed at all');
+    assert.match(run(corpus, project), /6 guards, 5 code checks, /);
   } finally { removeTree(corpus); removeTree(project); }
 });
 
-test('counts the mounted skill set from the registry, not the mount directory', () => {
-  const corpus = makeCorpus({ alpha: { skills: ['one', 'two'] }, beta: { skills: ['two'] } });
-  for (const [id, names] of [['alpha', ['one', 'two']], ['beta', ['two']]]) {
+test('counts the mounted skill set from the registry, split by whether a hook loads it', () => {
+  const corpus = makeCorpus({ alpha: { skills: ['one', 'two'] }, beta: { skills: ['two', 'forced'] } });
+  const frontmatter = '---\nname: forced\ndescription: x\nmetadata:\n  force-load-on-file-edits-paths:\n    - "**/x.md"\n---\n';
+  for (const [id, names] of [['alpha', ['one', 'two']], ['beta', ['two', 'forced']]]) {
     for (const name of names) {
       mkdirSync(join(corpus, 'packs', id, 'skills', name), { recursive: true });
-      writeFileSync(join(corpus, 'packs', id, 'skills', name, 'SKILL.md'), '# skill\n');
+      writeFileSync(join(corpus, 'packs', id, 'skills', name, 'SKILL.md'), `${name === 'forced' ? frontmatter : ''}# skill\n`);
     }
   }
   const project = makeProject({ packs: ['alpha', 'beta'] });
   try {
-    // "two" is bundled by both packs and mounts once — the union, not the sum.
-    assert.match(run(corpus, project), /2 available skills\./);
+    // "two" is bundled by both packs and mounts once — the union, not the sum — and
+    // the one skill carrying a force-load trigger is the auto-trigger one.
+    assert.match(run(corpus, project), /1 auto-trigger skill, 2 regular skills\./);
+  } finally { removeTree(corpus); removeTree(project); }
+});
+
+test('names the repo off the checkout\'s origin remote, else the runner\'s environment, else not at all', () => {
+  const corpus = makeCorpus({ alpha: {} });
+  const project = makeProject({ packs: ['alpha'] });
+  try {
+    assert.match(run(corpus, project), /Loaded Claudinite: 1 pack, /);
+    assert.match(run(corpus, project, { GITHUB_REPOSITORY: 'someone/theirs' }), /Loaded Claudinite from repo someone\/theirs: 1 pack, /);
+    const git = (...args) => assert.equal(spawnSync('git', args, { cwd: project, encoding: 'utf8' }).status, 0);
+    git('init', '-q');
+    git('remote', 'add', 'origin', 'https://github.com/owner/repo.git');
+    // The checkout's own remote outranks whatever the environment says.
+    assert.match(run(corpus, project, { GITHUB_REPOSITORY: 'someone/theirs' }), /Loaded Claudinite from repo owner\/repo: 1 pack, /);
+    git('remote', 'set-url', 'origin', 'git@github.com:owner/other');
+    assert.match(run(corpus, project), /from repo owner\/other: /);
   } finally { removeTree(corpus); removeTree(project); }
 });
 
@@ -125,7 +147,7 @@ test('appends whatever the packs said on the facet channel, in the order stated'
   const channel = join(project, 'facets');
   writeFileSync(channel, '7 shrubberies\n2 herrings\n');
   try {
-    assert.match(run(corpus, project, { CLAUDINITE_SESSION_FACETS: channel }), /0 available skills, 7 shrubberies, 2 herrings\./);
+    assert.match(run(corpus, project, { CLAUDINITE_SESSION_FACETS: channel }), /0 regular skills, 7 shrubberies, 2 herrings\./);
   } finally { removeTree(corpus); removeTree(project); }
 });
 
@@ -134,9 +156,9 @@ test('a channel that is absent or empty leaves the engine facets standing alone'
   const project = makeProject({ packs: ['alpha', 'beta', 'gamma'] });
   try {
     const missing = run(corpus, project, { CLAUDINITE_SESSION_FACETS: join(project, 'never-written') });
-    assert.match(missing, /3 packs, 0 checks, 0 rule tokens, 0 available skills\./);
+    assert.match(missing, /3 packs, 0 context tokens, 0 guards, 0 code checks, 0 auto-trigger skills, 0 regular skills\./);
     writeFileSync(join(project, 'facets'), '\n\n');
-    assert.match(run(corpus, project, { CLAUDINITE_SESSION_FACETS: join(project, 'facets') }), /0 available skills\./);
+    assert.match(run(corpus, project, { CLAUDINITE_SESSION_FACETS: join(project, 'facets') }), /0 regular skills\./);
   } finally { removeTree(corpus); removeTree(project); }
 });
 
@@ -150,13 +172,13 @@ test('directs the session to open its first reply with the summary line, unambig
   try {
     const out = run(corpus, project);
     // The summary appears once: two copies are two candidates to choose between.
-    assert.equal(out.match(/Claudinite loaded,/g).length, 1);
+    assert.equal(out.match(/Loaded Claudinite/g).length, 1);
     // The directive disclaims itself, so the sentence cannot read as the thing to say.
     assert.match(out, /not text to repeat/i);
     // No deixis: nothing points at a line the reader has to resolve for itself.
     assert.doesNotMatch(out, /\bthat line\b/i);
     // And the line to say is what the directive ends on — last in, first out.
-    assert.match(out.trimEnd(), /:\n+Claudinite loaded, 1 pack, 0 checks, 0 rule tokens, 0 available skills\.$/);
+    assert.match(out.trimEnd(), /:\n+Loaded Claudinite: 1 pack, 0 context tokens, 0 guards, 0 code checks, 0 auto-trigger skills, 0 regular skills\.$/);
   } finally { removeTree(corpus); removeTree(project); }
 });
 
