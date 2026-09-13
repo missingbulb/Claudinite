@@ -180,6 +180,10 @@ const MEMBER_GROUPS = [
   ['Activity', ['Commits']],
   ['Waiting on a person', ['Est.', 'What it is', 'Issues', 'Pull requests']],
   ['Claudinite', ['Packs', 'Queue', 'Recent outcomes', 'Scheduler']],
+  // The one cell that is not a reading of the row but a way OUT of it: what to do
+  // about this member, as a link or a button. Its own group at the right edge because
+  // it belongs to none of the three questions — it is the answer to all of them.
+  ['', ['Next']],
 ];
 
 // The same split, one level down: a task's identity, where it stands right now, and
@@ -327,7 +331,7 @@ const FILTERS = {
 
 let memberFilter = 'all';
 
-function renderFilters(roll, archivedCount, repaint) {
+function renderFilters(roll, repaint) {
   const host = $('fleet-filters');
   if (!host) return;
   const chips = Object.entries(FILTERS).map(([id, f]) => {
@@ -339,11 +343,156 @@ function renderFilters(roll, archivedCount, repaint) {
       onclick: () => { memberFilter = id; repaint(); },
     }, [f.label, ...(n == null ? [] : [el('b', { className: 'count', textContent: String(n) })])]);
   });
-  // Archived repos are out of the fleet and out of every figure above, so the count is
-  // stated here rather than left as a gap between the roster's size and the grid's.
-  host.replaceChildren(...chips, ...(archivedCount
-    ? [el('span', { className: 'sub', textContent: `${archivedCount} archived, out of the fleet` })]
-    : []));
+  host.replaceChildren(...chips);
+}
+
+// Which bands the reader has opened. Module state rather than a parameter, because it
+// is the reader's own doing and must survive every repaint the sweep triggers — a band
+// that closed itself under them each time a member finished reading would be unusable.
+// Closed by default: these are the members nothing is maintaining.
+const openBands = new Set();
+
+// One collapsed band of member rows, as its own `<tbody>` header plus a `<tbody>` per
+// member. The header always draws, even empty: "no dormant members" is a fact about
+// the fleet worth reading, and a band that vanishes when it empties makes the reader
+// wonder whether the page forgot to look.
+function memberBand(table, { id, title, members, onOpen, now, repaint }) {
+  // A filter is a question about a state, so it opens the bands: asking for the
+  // dormant members and getting a closed band that says "3" would be the page
+  // answering with a count when it was asked for the rows.
+  const open = openBands.has(id) || memberFilter !== 'all';
+  const head = el('tbody', { className: 'band-head' }, [
+    el('tr', {}, [
+      el('td', { colSpan: MEMBER_COLS }, [
+        el('button', {
+          type: 'button',
+          className: `band-toggle${open ? ' on' : ''}`,
+          'aria-expanded': String(open),
+          disabled: members.length === 0,
+          textContent: `${open ? '▾' : '▸'} ${title} · ${members.length}`,
+          onclick: () => {
+            if (open) openBands.delete(id); else openBands.add(id);
+            repaint();
+          },
+        }),
+      ]),
+    ]),
+  ]);
+  table.append(head);
+  if (!open) return;
+  for (const s of members) table.append(el('tbody', { className: 'm' }, memberRows(s, onOpen, now)));
+}
+
+// --- the way out of a row ---------------------------------------------------------
+//
+// Every row ends in ONE thing to do about that member, because a page whose reader has
+// to work out the next step per row is a page that reports rather than one that helps.
+// What that step is follows the member's state, and each is a different KIND of act:
+//
+//   archived  → GitHub's own settings page. Claudinite cannot unarchive a repo, and
+//               pretending otherwise would send the reader somewhere that cannot work.
+//   ignored   → a request to paste into Claude. The exclude list lives in the fleet
+//               enforcer's declaration, which this page reads over the API and must not
+//               write: the person is the one who edits it, with an agent's help.
+//   dormant   → the same shape, against the member's own declaration.
+//   awake     → the work itself: the member's worst item where it has one, its issues
+//               or pull requests where it has those, and a plain "nothing waiting"
+//               where it has neither.
+//
+// The two request buttons COPY rather than link, and the text they copy is the whole
+// request — a person pastes it into a session and reads it before sending, which is
+// why it names the file and the key rather than telling them to "re-enable" something.
+export const claudeRequest = (s) => (s.status === 'ignored'
+  ? 'In the fleet enforcer repo (the one declaring the claudinite-fleet-sheepdog pack), take '
+    + `${s.repo} off that pack entry's config.exclude in .claudinite-settings.json, and off the `
+    + "dashboard deployment's own exclude list, so the fleet covers it again."
+  : `In ${s.repo}, remove "dormant": true from the claudinite-tasks pack entry in `
+    + '.claudinite-settings.json, so its scheduler starts running again.');
+
+// Copy, and say so on the button itself. `navigator.clipboard` is unavailable over
+// plain HTTP and in some embedded views, so the fallback REVEALS the text instead of
+// failing silently — the reader can still select it, which is all the button was for.
+function copyButton(label, text) {
+  const reveal = el('textarea', { className: 'cta-text', readOnly: true, hidden: true, value: text });
+  const button = el('button', {
+    type: 'button', className: 'cta', textContent: label, title: text,
+    onclick: async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        button.textContent = 'Copied';
+        setTimeout(() => { button.textContent = label; }, 2000);
+      } catch {
+        reveal.hidden = false;
+        reveal.select();
+      }
+    },
+  });
+  return el('div', { className: 'cta-wrap' }, [button, reveal]);
+}
+
+const ctaLink = (href, label, title = null) =>
+  el('a', { className: 'cta', href, target: '_blank', rel: 'noopener', textContent: label, ...(title ? { title } : {}) });
+
+// Exported so the one cell that tells a reader what to DO can be driven against a
+// fixture per member state — which is the part of this file a unit test can see.
+export function ctaCell(s) {
+  if (s.status === 'archived') {
+    return el('td', { className: 'nw cta-cell' }, [
+      ctaLink(`https://github.com/${s.repo}/settings`, 'Unarchive →', "GitHub's own settings page — scroll to the danger zone"),
+    ]);
+  }
+  if (s.status === 'ignored') {
+    return el('td', { className: 'nw cta-cell' }, [copyButton('Bring back — copy request', claudeRequest(s))]);
+  }
+  if (s.status !== 'adopted') {
+    return el('td', { className: 'nw cta-cell' }, [ctaLink(`https://github.com/${s.repo}`, 'Open on GitHub →')]);
+  }
+  if (s.dormant) {
+    return el('td', { className: 'nw cta-cell' }, [copyButton('Wake — copy request', claudeRequest(s))]);
+  }
+  // An awake member's own worst item, which is the thing to advance and the only CTA
+  // here that carries a reason with it.
+  if (s.top) {
+    return el('td', { className: 'nw cta-cell' }, [
+      ctaLink(s.top.url, s.top.number != null ? `Advance #${s.top.number} →` : 'Look →', s.top.why),
+    ]);
+  }
+  const openPrs = s.work?.prs ?? 0;
+  const openIssues = s.work?.issues ?? 0;
+  if (openPrs) return el('td', { className: 'nw cta-cell' }, [ctaLink(`https://github.com/${s.repo}/pulls`, `Review ${openPrs} PR${openPrs > 1 ? 's' : ''} →`)]);
+  if (openIssues) return el('td', { className: 'nw cta-cell' }, [ctaLink(`https://github.com/${s.repo}/issues`, `Pick from ${openIssues} issue${openIssues > 1 ? 's' : ''} →`)]);
+  // Nothing parked, nothing open, nobody waiting. The row has earned the one cell on
+  // this page that asks for nothing.
+  return el('td', { className: 'nw cta-cell' }, [
+    el('span', { className: 'cta-clear', role: 'img', 'aria-label': 'nothing waiting', title: 'no open issues, no open pull requests, nothing parked', textContent: '🙂' }),
+  ]);
+}
+
+// A member the fleet does not act on — archived, or on the deployment's exclude list.
+// Its row is GREY and short: the core GitHub facts that say what the repo is, and the
+// one action that would bring it back. Every Claudinite column is left out rather than
+// filled with a verdict about a repo nothing is maintaining.
+function outOfFleetRow(s, onOpen, now) {
+  const open = (e) => { e.preventDefault(); onOpen(s.repo); };
+  const facts = [
+    s.lastCommit ? `last commit ${duration(now - s.lastCommit)} ago` : 'no commit read',
+    s.stars ? `${s.stars}★` : null,
+    s.adoptedOnce ? 'declares Claudinite' : 'does not run Claudinite',
+  ].filter(Boolean).join(' · ');
+  return [el('tr', { className: 'std out-of-fleet' }, [
+    el('td', { className: 'member-cell' }, [el('div', { className: 'member' }, [
+      el('div', {}, [
+        el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, className: 'name', textContent: s.repo.split('/')[1] ?? s.repo, onclick: open }),
+        ...stateTags(s),
+        el('div', { className: 'sub' }, [repoLink(s.repo)]),
+      ]),
+    ])]),
+    el('td', { colSpan: MEMBER_COLS - 2 }, [
+      el('div', { className: 'sub', textContent: facts }),
+      ...reasonNodes(s.reasons),
+    ]),
+    ctaCell(s),
+  ])];
 }
 
 // One member, as the rows of its own `<tbody>`: the standard metrics, then the subrow
@@ -351,6 +500,7 @@ function renderFilters(roll, archivedCount, repaint) {
 // buys, since a `<tbody>` is what lets both highlight together on hover.
 function memberRows(s, onOpen, now) {
   const open = (e) => { e.preventDefault(); onOpen(s.repo); };
+  if (s.outOfFleet) return outOfFleetRow(s, onOpen, now);
 
   // ONE mark ahead of the name now, not two: CI, whether it builds, read as part of
   // identifying the row rather than as a finding.
@@ -375,8 +525,8 @@ function memberRows(s, onOpen, now) {
   if (s.status !== 'adopted') {
     return [el('tr', { className: `std lvl-${s.level} muted-row` }, [
       name,
-      el('td', { colSpan: MEMBER_COLS - 2 }, reasonNodes(s.reasons)),   // the last cell is the open link
-      el('td', { className: 'nw' }, [el('a', { href: `?repo=${encodeURIComponent(s.repo)}`, textContent: 'open', onclick: open })]),
+      el('td', { colSpan: MEMBER_COLS - 2 }, reasonNodes(s.reasons)),
+      ctaCell(s),
     ])];
   }
 
@@ -402,14 +552,20 @@ function memberRows(s, onOpen, now) {
   // list nobody can prioritise between rows. The breakdown is a mark rather than the
   // sentences the tiles print — see `attentionMark`, and the width this column used to
   // take from the other nine.
+  // A DORMANT member's parks are not a person's queue: nothing there is running, so an
+  // estimate of minutes and a breakdown of what is waiting would prod the reader about
+  // delays its own declaration asked for (owner, 2026-09-13). The two cells stay, empty
+  // — the row keeps the grid's shape, and says what it is not claiming.
   const attention = memberAttention(s);
-  const minutes = estimateMinutes(attention);
+  const minutes = s.dormant ? 0 : estimateMinutes(attention);
   const est = el('td', { className: 'num nw' }, [
     el('div', { className: 'est num', textContent: minutes ? String(minutes) : '—' }),
     el('div', { className: 'sub', textContent: minutes ? 'min' : '' }),
   ]);
 
-  const what = el('td', {}, [attentionMark(attentionBreakdown(attention))]);
+  const what = el('td', {}, s.dormant
+    ? [el('span', { className: 'sub', textContent: 'not tracked while dormant' })]
+    : [attentionMark(attentionBreakdown(attention))]);
 
   // --- Claudinite: what the machinery is doing here -------------------------------
 
@@ -422,10 +578,16 @@ function memberRows(s, onOpen, now) {
   // member with nothing open reads as empty rather than as a row of zeros.
   const counts = STATE_ORDER.filter((st) => s.open.byState[st] > 0)
     .map((st) => `${s.open.byState[st]} ${STATE_UI[st].label}`);
-  const queue = el('td', {}, [
-    segmentBar(STATE_ORDER.map((st) => [STATE_UI[st].label, s.open.byState[st], STATE_COLOR[st]]), { width: 92 }),
-    el('div', { className: 'sub', textContent: counts.length ? counts.join(' · ') : 'nothing open' }),
-  ]);
+  // Dormant: the COUNT, not the state mix. How many items are open there is an
+  // ordinary fact about the repo; which of them are blocked, ready or parked is the
+  // state of a queue that stopped, and drawing it would colour a row for delays the
+  // declaration asked for.
+  const queue = el('td', {}, s.dormant
+    ? [el('div', { className: 'sub', textContent: s.open.total ? `${s.open.total} open, queue stopped` : 'nothing open' })]
+    : [
+      segmentBar(STATE_ORDER.map((st) => [STATE_UI[st].label, s.open.byState[st], STATE_COLOR[st]]), { width: 92 }),
+      el('div', { className: 'sub', textContent: counts.length ? counts.join(' · ') : 'nothing open' }),
+    ]);
 
   const outcomes = el('td', {}, [
     segmentBar([
@@ -476,8 +638,8 @@ function memberRows(s, onOpen, now) {
   ]);
 
   return [
-    el('tr', { className: `std lvl-${s.level}` },
-      banded([identified, commit, est, what, issues, prs, packs, queue, outcomes, runs])),
+    el('tr', { className: `std lvl-${s.level}${s.dormant ? ' dormant-row' : ''}` },
+      banded([identified, commit, est, what, issues, prs, packs, queue, outcomes, runs, ctaCell(s)])),
     contribRow(s, now),
   ].filter(Boolean);
 }
@@ -1010,8 +1172,8 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
   // grid rather than dropped in silence — a member that vanished and one that was
   // archived are different facts.
   const all = summaries.filter(Boolean);
-  const archived = all.filter((s) => s.status === 'archived');
-  const resolved = all.filter((s) => s.status !== 'archived');
+  const outOfFleet = all.filter((s) => s.outOfFleet);
+  const resolved = all.filter((s) => !s.outOfFleet);
   const pending = summaries.map((s, i) => (s ? null : reads.names?.[i])).filter(Boolean);
   const roll = rollUp(resolved);
 
@@ -1024,8 +1186,8 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
   // Every figure the sheet draws, decided in one place. `rates` is the deployment's
   // own table and unset is a supported state — the dollar figure then reads unpriced
   // and names the key rather than showing a price nobody set.
-  const archivedRepos = new Set(archived.map((s) => s.repo));
-  const resolvedReads = reads.filter((r) => r && !archivedRepos.has(r.repo));
+  const outOfFleetRepos = new Set(outOfFleet.map((s) => s.repo));
+  const resolvedReads = reads.filter((r) => r && !outOfFleetRepos.has(r.repo));
   const ledger = fleetLedger(resolvedReads, { now, rates: deployment?.rates ?? gh.config?.rates ?? null });
   // The wake strip needs each task's own declared anchor, and a member read carries
   // its task paths rather than their contents. So the strip is built from whatever
@@ -1064,10 +1226,21 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
   const body = groupedHead(table, MEMBER_GROUPS);
   if (!summaries.length) { body.append(emptyRow(MEMBER_COLS, 'No members in the roster.')); return; }
   const repaint = () => renderFleet(summaries, reads, now, onOpen, canon, progress, deployment);
-  const shown = rankMembers(resolved.filter(FILTERS[memberFilter].keep));
-  renderFilters(roll, archived.length, repaint);
-  if (!shown.length) body.append(emptyRow(MEMBER_COLS, `No member is ${FILTERS[memberFilter].empty}.`));
-  for (const s of shown) table.append(el('tbody', { className: 'm' }, memberRows(s, onOpen, now)));
+  const keep = FILTERS[memberFilter].keep;
+  // THREE BANDS, in the order a reader spends attention on them. The fleet proper is
+  // ranked worst-first as always; the two bands below it are members nothing is
+  // maintaining, and they are COLLAPSED by default — present, findable and one click
+  // from open, but not a screen of grey between the reader and the fleet.
+  const live = rankMembers(resolved.filter((m) => !m.dormant).filter(keep));
+  const dormant = rankMembers(resolved.filter((m) => m.dormant).filter(keep));
+  const parked = [...outOfFleet].filter(keep).sort((a, b) => a.repo.localeCompare(b.repo));
+  renderFilters(roll, repaint);
+  if (!live.length && !dormant.length && !parked.length) {
+    body.append(emptyRow(MEMBER_COLS, `No member is ${FILTERS[memberFilter].empty}.`));
+  }
+  for (const s of live) table.append(el('tbody', { className: 'm' }, memberRows(s, onOpen, now)));
+  memberBand(table, { id: 'dormant', title: 'Dormant — scheduler stopped by declaration', members: dormant, onOpen, now, repaint });
+  memberBand(table, { id: 'out-of-fleet', title: 'Out of the fleet — archived or ignored', members: parked, onOpen, now, repaint });
   // Pending rows belong to the unfiltered reading of the fleet: a member still being
   // read has no state to filter on yet.
   if (memberFilter === 'all') for (const repo of pending) body.append(pendingRow(repo));
@@ -1110,7 +1283,7 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
 
 // --- entry ----------------------------------------------------------------------
 
-export async function loadFleet({ repos, token, config, onOpen, onError, onProgress }) {
+export async function loadFleet({ repos, ignored = [], token, config, onOpen, onError, onProgress }) {
   gh.resetCounters();
   const now = Date.now();
 
@@ -1137,11 +1310,15 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
 
   // One state object per member, carried through every pass and filled in as the
   // passes reach it.
+  const ignoredSet = new Set(ignored);
   const members = repos.map((repo, i) => ({ repo, i, read: null }));
   // Who each pass after the first has anything to ask about. A repo that does not run
-  // Claudinite, and one whose first read failed, are both already everything the page
-  // will ever say about them.
-  const adopted = (m) => Boolean(m.read?.declaration) && !m.read?.error;
+  // Claudinite, one whose first read failed, and one the fleet does not act on
+  // (archived, or on the exclude list) are all already everything the page will ever
+  // say about them — the greyed row shows the identity pass's own facts and nothing
+  // that would need a second read.
+  const adopted = (m) => Boolean(m.read?.declaration) && !m.read?.error
+    && !m.read?.archived && !m.read?.ignored;
 
   await sweepPhases({
     members,
@@ -1151,6 +1328,10 @@ export async function loadFleet({ repos, token, config, onOpen, onError, onProgr
         label: 'Identifying members',
         run: async (m) => {
           m.read = await readIdentity(m.repo, token);
+          // The fleet's own "ignore this repo" list, which is config rather than
+          // anything GitHub knows — so it is stamped here, beside the flag GitHub does
+          // know (`archived`), and the summary reads the two together.
+          m.read.ignored = ignoredSet.has(m.repo);
           reads[m.i] = m.read;
           // The canon side of the mount comparison, priced from what this member
           // stamps. In this pass rather than beside the summary, so every member's

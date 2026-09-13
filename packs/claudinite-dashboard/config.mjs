@@ -138,17 +138,17 @@ export function resolveMode(config) {
 // deduced from which other keys happen to be present.
 export const isFleetConfig = (config) => config?.mode === 'fleet';
 
-// A repo that is in the owner's account but not in the fleet. Archived and forked
-// repositories are excluded by their own state rather than by anyone maintaining a
-// list, and `exclude` covers the rest.
-export const inFleet = (repo, exclude = []) =>
-  !repo.archived && !repo.fork && !ignored(repo.full_name, exclude);
-
-// Whether a NAME is on the exclude list — the half of `inFleet` that needs nothing but
-// the name, so a roster that arrives as bare strings (an inline `repos`, a roster
-// artifact) is filtered by the same list as an enumerated one. An ignored repo is
-// ignored in every aspect (owner, 2026-09-13), and a deployment that states its
-// members must not be the one place that reading does not hold.
+// Whether a NAME is on the deployment's exclude list — the Shepherd fleet's "ignore
+// this repo". It takes either spelling, because a member writes whichever reads
+// naturally in its own declaration.
+//
+// IGNORED IS A STATE, NOT A FILTER (owner, 2026-09-13). Every repo the viewer can see
+// belongs on the fleet page, including the ones the fleet does not act on: an ignored
+// repo and an archived one are drawn greyed, with their core GitHub facts and a way
+// back into the fleet, rather than left off a page whose reader then cannot tell them
+// from a repo that does not exist. What ignoring buys is that no fleet OPERATION
+// touches them and no figure counts them — which is the sweeps' business, not the
+// page's.
 export const ignored = (fullName, exclude = []) =>
   exclude.includes(fullName) || exclude.includes(fullName.split('/')[1]);
 
@@ -156,21 +156,29 @@ export const ignored = (fullName, exclude = []) =>
 // it — and `owner` is enumerated live as the viewer. `gh` is injected so this is
 // testable without a network and so config.mjs owes the GitHub client nothing.
 export async function resolveRoster(config, token, gh) {
+  const exclude = config?.exclude ?? [];
+  // The ignored NAMES travel beside the roster rather than being subtracted from it:
+  // the page draws them, greyed, and needs to know which they are. Archived is not
+  // here — it is GitHub's own flag, read per repo with everything else about it.
+  const markIgnored = (repos) => repos.filter((r) => ignored(r, exclude));
+
   const stated = await loadRoster(config);
-  if (stated.length) {
-    return { repos: stated.filter((r) => !ignored(r, config.exclude ?? [])), source: 'configured', complete: true };
-  }
-  if (!config?.owner) return { repos: [], source: 'none', complete: true };
+  if (stated.length) return { repos: stated, ignored: markIgnored(stated), source: 'configured', complete: true };
+  if (!config?.owner) return { repos: [], ignored: [], source: 'none', complete: true };
   try {
     const { repos, complete } = await gh.listOwnerRepos(config.owner, token);
+    // A FORK is still not a member: it is someone else's project, and its work is
+    // upstream's. Everything else the viewer can see is on the page.
+    const names = repos.filter((r) => !r.fork).map((r) => r.full_name).sort();
     return {
-      repos: repos.filter((r) => inFleet(r, config.exclude ?? [])).map((r) => r.full_name).sort(),
+      repos: names,
+      ignored: markIgnored(names),
       source: 'owner',
       // Whether the enumeration reached the end of the account. A truncated one is
       // said out loud rather than rendered as a fleet that happens to be that size.
       complete,
     };
   } catch (error) {
-    return { repos: [], source: 'owner', complete: false, error };
+    return { repos: [], ignored: [], source: 'owner', complete: false, error };
   }
 }

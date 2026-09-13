@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  rosterFrom, loadConfig, loadRoster, DEFAULTS, isFleetConfig, inFleet, resolveRoster, resolveMode,
+  rosterFrom, loadConfig, loadRoster, DEFAULTS, isFleetConfig, ignored, resolveRoster, resolveMode,
 } from '../config.mjs';
 import { isOAuthConfigured } from '../auth.mjs';
 
@@ -131,16 +131,11 @@ test('the agreeing shapes pass, and a rosterFile counts as a roster source', () 
   assert.equal(resolveMode({ mode: 'repo', repos: ['o/a'] }), 'repo');
 });
 
-test('archived and forked repos leave the fleet by their own state, not by a list', () => {
-    const repo = (full_name, over = {}) => ({ full_name, archived: false, fork: false, ...over });
-  assert.equal(inFleet(repo('o/a')), true);
-  assert.equal(inFleet(repo('o/a', { archived: true })), false);
-  assert.equal(inFleet(repo('o/a', { fork: true })), false);
-  // `exclude` takes either spelling, because a member writes whichever reads naturally
-  // in its own declaration.
-  assert.equal(inFleet(repo('o/a'), ['o/a']), false);
-  assert.equal(inFleet(repo('o/a'), ['a']), false);
-  assert.equal(inFleet(repo('o/a'), ['b']), true);
+test('the exclude list is matched on either spelling of a name', () => {
+  assert.equal(ignored('o/a', ['o/a']), true);
+  assert.equal(ignored('o/a', ['a']), true);
+  assert.equal(ignored('o/a', ['b']), false);
+  assert.equal(ignored('o/a'), false);
 });
 
 test('resolveRoster enumerates the owner, sorted, and says how far it got', async () => {
@@ -156,9 +151,28 @@ test('resolveRoster enumerates the owner, sorted, and says how far it got', asyn
     }),
   };
   const out = await resolveRoster({ owner: 'o', exclude: ['o/skip'] }, 't', gh);
-  assert.deepEqual(out.repos, ['o/alpha', 'o/zeta']);
+  // Every repo the viewer can see is on the page — an ignored one and an archived one
+  // included, greyed rather than absent (owner, 2026-09-13). Only a fork is left out.
+  assert.deepEqual(out.repos, ['o/alpha', 'o/old', 'o/skip', 'o/zeta']);
+  assert.deepEqual(out.ignored, ['o/skip']);
   assert.equal(out.source, 'owner');
   assert.equal(out.complete, true);
+});
+
+test('a fork is not a member — it is someone else\'s project', async () => {
+  const gh = {
+    listOwnerRepos: async () => ({
+      repos: [{ full_name: 'o/mine', fork: false }, { full_name: 'o/theirs', fork: true }],
+      complete: true,
+    }),
+  };
+  assert.deepEqual((await resolveRoster({ owner: 'o' }, 't', gh)).repos, ['o/mine']);
+});
+
+test('a stated roster keeps its ignored members, named', async () => {
+  const out = await resolveRoster({ repos: ['o/a', 'o/b'], exclude: ['b'] }, 't', {});
+  assert.deepEqual(out.repos, ['o/a', 'o/b']);
+  assert.deepEqual(out.ignored, ['o/b']);
 });
 
 test('a stated roster wins over enumeration, and a failed enumeration is not an empty fleet', async () => {

@@ -156,6 +156,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
     repo, error = null, declaration = null, items = null, runs = null, paths = null,
     prs = null, head = null, stars = null, defaultBranch = null, commits = undefined,
     usage = null, windowCommits = undefined, archived = false, private: isPrivate = null,
+    ignored = false,
   } = read ?? {};
 
   if (error) {
@@ -176,17 +177,37 @@ export function summariseMember(read, { now, canon = null } = {}) {
     };
   }
 
-  // An ARCHIVED repo is out of the fleet entirely (owner, 2026-09-13), whatever it
-  // declares: nothing converges it, nothing runs there, and every verdict a row could
-  // carry would be about a repo GitHub has frozen. It is summarised so the page can
-  // account for it, and the grid draws no row.
-  if (archived) {
+  // OUT OF THE FLEET, and drawn anyway. An archived repo is frozen by GitHub and an
+  // ignored one was put on the deployment's exclude list: no fleet operation touches
+  // either and no figure counts them, so every Claudinite verdict a row could carry
+  // would be about a repo nothing is maintaining. The page still draws them — greyed,
+  // with their core GitHub facts and the one action that brings them back — because a
+  // repo the reader cannot find at all is indistinguishable from one that is gone
+  // (owner, 2026-09-13).
+  //
+  // Archived wins the status when a repo is both: it is the one a person cannot undo
+  // from Claudinite's side, so it is the action the row offers.
+  if (archived || ignored) {
     return {
       repo,
-      status: 'archived',
+      status: archived ? 'archived' : 'ignored',
       level: 'ok',
+      outOfFleet: true,
+      archived,
+      ignored,
       private: isPrivate,
-      reasons: [{ level: 'info', text: 'archived on GitHub — out of the fleet' }],
+      stars,
+      lastCommit: head?.committedAt ? ms(head.committedAt) : null,
+      // Whether it runs Claudinite at all is read from the identity pass either way,
+      // and is the one Claudinite fact a greyed row carries: it says what coming back
+      // into the fleet would resume, not how that repo is doing.
+      adoptedOnce: Boolean(declaration),
+      reasons: [{
+        level: 'info',
+        text: archived
+          ? 'archived on GitHub — nothing runs here until it is unarchived'
+          : 'ignored by this fleet — no sweep reads it and no figure counts it',
+      }],
     };
   }
 
