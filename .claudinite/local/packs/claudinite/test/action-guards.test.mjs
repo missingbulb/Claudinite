@@ -62,6 +62,29 @@ test('the waiting and suite guards', () => {
   ]), ['the suite run through a glob: "node --test engine-tests/*"', 'node --test with no files named']);
 });
 
+test('the mount guard: an engine module run through a vendored path only members have', () => {
+  assert.deepEqual(judge('mount-path-in-the-canon-home', [
+    'node .claudinite/shared/engine/checks/check_the_world.mjs 2>&1 | tail -20; echo "EXIT:$?"',
+    'CLAUDINITE_CHECKS_NO_FETCH=1 node .claudinite/shared/engine/checks/check_the_work.mjs',
+    'node engine/checks/check_the_world.mjs',
+    // A member's checkout cloned into this session DOES carry the mount, so a
+    // command saying which tree it runs in is the legitimate use.
+    'cd /home/user/Shepherd && node .claudinite/shared/engine/checks/check_the_world.mjs',
+    // …including the fake consumer tree a session builds in its scratchpad, where
+    // the cd naming it sits inside a subshell rather than at the command's head.
+    '(cd "$T" && CLAUDINITE_CHECKS_NO_FETCH=1 node .claudinite/shared/engine/checks/check_the_world.mjs)',
+    // The two-root form the mount rule prescribes already survives both layouts.
+    'node .claudinite/shared/engine/checks/check_the_world.mjs 2>/dev/null || node engine/checks/check_the_world.mjs',
+    // The path as text — grepped for, or rewritten into a member-facing doc through
+    // a heredoc — is data the command carries, not a command the shell runs.
+    'grep -rn "\\.claudinite/shared/engine" packs/',
+    "python3 - <<'PY'\np = 'packs/basics/tasks/baselining/task.md'\ns = open(p).read().replace('''run it with\nnode .claudinite/shared/engine/checks/check_the_world.mjs''', 'x')\nPY",
+  ]), [
+    'an engine module run through the mount: "node .claudinite/shared/"',
+    'an engine module run through the mount: "CLAUDINITE_CHECKS_NO_FETCH=1 node .claudinite/shared/"',
+  ]);
+});
+
 test('the commit guard', () => {
   assert.deepEqual(judge('commit-all-sweeps-edits', ['git commit -am "probe"', 'git commit -m "real" -- a.mjs']), ['a commit with -a']);
 });

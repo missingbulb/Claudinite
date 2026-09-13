@@ -366,5 +366,22 @@
         "fix": "sleep inside the loop body and bound the wait \u2014 or drop the loop: a background task's completion arrives as a notification"
       }
     ]
+  },
+  {
+    "id": "mount-path-in-the-canon-home",
+    "severity": "blocking",
+    "since": "2026-09-13",
+    "scope": "action",
+    "failureMessage": "the canon home carries no .claudinite/shared/ at all, so a module invoked through that path is Cannot find module and the sweep the session believed it ran never ran",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(^|[;&|(]\\s*|\\n\\s*)(?:[A-Za-z_][A-Za-z0-9_]*=[^\\s;&|]*\\s+)*(node|bash|sh)\\s+(--test\\s+)?\\.claudinite\\/shared\\//",
+        "unlessMatches": "/(^|[;&|(]\\s*|\\n\\s*)cd\\s|PROJECT_DIR|--root|<<|\\|\\|\\s*(node|bash|sh)\\s/",
+        "what": "an engine module run through the mount: \"{match}\"",
+        "fix": "drop the prefix and run it from the repo root (node engine/checks/check_the_world.mjs); a member's checkout cloned into this session keeps the mount path, and needs the cd that says so"
+      }
+    ]
   }
 ]
