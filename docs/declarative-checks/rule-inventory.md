@@ -446,7 +446,7 @@ Scan scope for every A row is structural, expressible today: harness files are t
 
 | # | Rule | Class | Signature / trigger / derived set | Needs |
 |---|---|---|---|---|
-| 1 | Resolve the binary out of the environment; never let the driver download | A | matchLines forbid version-stamped browser paths `/(chromium\|chrome\|firefox\|webkit)[-_]?\d{3,}/` in source/config, and `playwright install` in scripts/workflows; checkParsedFiles package.json: prefer the `-core` package | none |
+| 1 | Resolve the binary out of the environment; never let the driver download | A | matchLines forbid version-stamped browser paths `/(chromium\|chrome\|firefox\|webkit)[-_]?\d{3,}/` in source/config, and `playwright install` in scripts/workflows; checkParsedFiles package.json: prefer the `-core` package | none — → `headless-browser/version-stamped-browser-path` (2026-09-13), the hardcoded-path half only; the other two halves logged that day: a committed `playwright install` is the documented CI step wherever the runner ships no browser, and `@playwright/test` has no `-core` variant to prefer |
 | 2 | A fresh install of the driver package is the same danger | D | Bash `/\b(npm\|pnpm\|yarn) (i\|install\|add)\b.*\b(playwright\|puppeteer)\b\|pip install playwright\|playwright install/` → block/warn | declarable Bash-shape PreToolUse guard |
 | 3 | Stub a CDN library's API surface, don't reach the CDN | B | set: external `<script src="https://…">` hosts in served HTML ↔ `addInitScript` stubs naming each library's global in the harness | join: HTML src captures ↔ harness text |
 | 4 | A pixel golden is comparable only under the exact build | A | relevantWhen tracked goldens (`/__screenshots__\|goldens\/\|\.golden\.png/`) → someTrackedFileContains `/browser\.version\(\)\|chromium\.version\|BROWSER_VERSION/` in the harness, else flag | none |
@@ -583,7 +583,7 @@ Scan scope for every A row is structural, expressible today: harness files are t
 | 11 | Speech is TCC-gated: usage string, no entitlement | A | dup of #5/#7 | none |
 | 12 | The unsigned path must stay a working path | A | workflow `run:` with `codesign --sign <identity>` whose step lacks `if: … secrets.` | YAML same-mapping sibling relation |
 | 13 | An ad-hoc signature cannot be notarized | A | `notarytool submit` step not gated on the identity secret / same step as `codesign -s -` | same sibling relation |
-| 14 | Notarize then staple | A | `checkEachFile whenFileMatches /notarytool submit/ require /stapler staple/, /stapler validate/`; `matchLines /notarytool submit(?!.*--wait)/` | none |
+| 14 | Notarize then staple | A | `checkEachFile whenFileMatches /notarytool submit/ require /stapler staple/, /stapler validate/`; `matchLines /notarytool submit(?!.*--wait)/` | none — the `--wait` half → `notarytool-submit-waits` (2026-09-13); the staple pairing stays logged (2026-08-16): a check can see both commands in one file, never that they name the same container |
 | 15 | Imported identity must be in the keychain list | A | `checkEachFile whenFileMatches /security import/ require /security list-keychains/` | none |
 | 16 | Say in a build annotation which lane ran | A | `checkEachFile whenFileMatches /codesign -s -/ require /::notice::|::warning::|GITHUB_STEP_SUMMARY/` | none |
 | 17 | A DMG is a staged folder, not Finder scripting | A | `matchLines /osascript.*Finder|tell application "Finder"/`; `whenFileMatches /hdiutil create/ require /\.VolumeIcon\.icns/` | none |
