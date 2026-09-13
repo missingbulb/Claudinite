@@ -93,6 +93,25 @@ test('no usable identity means there is nothing to look up', () => {
   } finally { removeTree(root); }
 });
 
+test('an unattended session loads no preferences, whoever it runs as', () => {
+  // A routine fired under a person's account carries their identity but not their
+  // presence; preferences written for a present person (a popup for every decision)
+  // misdirect a run nobody is watching. Unset is an older harness, and loads.
+  const root = project();
+  try {
+    mkdirSync(join(root, 'preferences'), { recursive: true });
+    writeFileSync(join(root, 'preferences', 'me@example.com.md'), 'MY PREFS\n');
+    const unattended = run(root, { config: { repo: 'owner/store' }, CLAUDE_CODE_SESSION_ATTENDED: '0' });
+    assert.equal(unattended.status, 0);
+    assert.match(unattended.stdout, /USER PREFERENCES: the session is unattended/);
+    assert.doesNotMatch(unattended.stdout, /MY PREFS|CLAUDINITE-FACET/);
+    for (const CLAUDE_CODE_SESSION_ATTENDED of ['1', '']) {
+      const r = run(root, { config: { repo: 'owner/store' }, CLAUDE_CODE_SESSION_ATTENDED });
+      assert.match(r.stdout, /MY PREFS/, JSON.stringify(CLAUDE_CODE_SESSION_ATTENDED));
+    }
+  } finally { removeTree(root); }
+});
+
 test('the loaded preferences are weighed onto the engine facet channel', () => {
   // The session's opening summary states how much loaded, and states it in TOKENS,
   // because a context window is what every part of the load is spent against. This
