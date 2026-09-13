@@ -98,14 +98,32 @@ const isMinablePr = (p) => {
   return !HOUSEKEEPING.test((p.title ?? '').trim());
 };
 
-// Commit objects in the window, with their changed-file lists resolved (one read
-// per commit — the window is a handful of commits).
+// A commit's changed-file list, read from the API AT MOST ONCE PER READER: the
+// scheduler collects signals once per task and every commit-derived collector
+// resolves the same window, so without this a forty-commit weekly window cost a
+// read per commit per task — five hundred sequential calls, most of a five-minute
+// run (#2013). Keyed on the reader so a test's fake `gh`, or a fleet reader over
+// another repo, never sees a sha another reader resolved. Only a 200 is kept: a
+// rate limit or a 5xx is the next collector's to retry, not the run's verdict.
+const commitFilesByReader = new WeakMap();
+async function commitFiles(gh, repo, sha) {
+  let memo = commitFilesByReader.get(gh);
+  if (!memo) commitFilesByReader.set(gh, (memo = new Map()));
+  const key = `${repo}@${sha}`;
+  if (memo.has(key)) return memo.get(key);
+  const d = await gh(`/repos/${repo}/commits/${sha}`);
+  if (d.status !== 200) return [];
+  const files = (d.json?.files ?? []).map((f) => f.filename).filter(Boolean);
+  memo.set(key, files);
+  return files;
+}
+
+// Commit objects in the window, with their changed-file lists resolved.
 async function windowCommits(gh, repo, branch, sinceIso) {
   const list = await paged(gh, `/repos/${repo}/commits?sha=${encodeURIComponent(branch)}&since=${sinceIso}`);
   const detailed = [];
   for (const c of list) {
-    const d = await gh(`/repos/${repo}/commits/${c.sha}`);
-    const files = d.status === 200 ? (d.json?.files ?? []).map((f) => f.filename).filter(Boolean) : [];
+    const files = await commitFiles(gh, repo, c.sha);
     detailed.push({
       sha: c.sha,
       message: c.commit?.message ?? '',
@@ -123,7 +141,7 @@ async function windowCommits(gh, repo, branch, sinceIso) {
 
 const COLLECTORS = {
   async commits(gh, ctx) {
-    const commits = await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
+    const commits = ctx.commits ?? await windowCommits(gh, ctx.repo, ctx.defaultBranch, ctx.sinceIso);
     return {
       list: commits,
       count: commits.length,
