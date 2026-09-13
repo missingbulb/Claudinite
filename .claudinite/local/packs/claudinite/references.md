@@ -366,3 +366,8 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   what the episode was worth. Retire the rule if a property is introduced whose legal values
   genuinely cannot be enumerated without a sibling's.
 
+- **(RULES-88)** #2015, 2026-09-13: owner review of `commitFiles` and `windowCommits`, both
+  readers — "when a function is named `<verb><noun>` that usually conveys that it performs that
+  action on that noun. You have a READER of the committed files here, right?" Retire only if the
+  corpus stops naming readers by their noun.
+
