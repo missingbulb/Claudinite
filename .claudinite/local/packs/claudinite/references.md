@@ -342,3 +342,13 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   the session could answer at all. The retry that worked ran the command in the foreground into a
   file. `bare-sleep-wait` catches the opposite spelling (a wait with no condition) and would not
   have fired here. Retire the check if the harness starts pre-empting a wedged Bash call.
+- **(check:mount-path-in-the-canon-home)** 14 sessions across the captured corpus ran an engine
+  module through `.claudinite/shared/…` from this repo's root and got `Cannot find module` —
+  `check_the_work`/`check_the_world` mostly, but `converge-item.mjs` and
+  `session-end-command.mjs` too, and twice on 2026-09-13 alone (sessions 809b13de and f44b0ffb).
+  The mount path is what `claudinite-lifecycle`'s rules and the queue's instructions spell,
+  correctly, for a member; the canon home has no `.claudinite/shared/` at all, so the sweep a
+  session believed it ran never ran until it noticed the error and retried. Replayed over 558
+  sessions rooted here the guard fires on those 14 and nothing else — the `cd` into a cloned
+  member or a scratch consumer tree, the two-root `||` fallback, and the path quoted inside a
+  heredoc all stay silent. Retire the check if the canon ever vendors itself.
