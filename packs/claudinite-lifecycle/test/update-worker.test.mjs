@@ -208,7 +208,7 @@ test('the apply-stage brief tells the session to LAND its own delivery, not to w
 
   // Merging must be within the ceiling, or the instruction below tells the session to
   // violate its own contract — verify-outcome.mjs would then fail every apply stage.
-  const { canonicalOutcome, opensPullRequest } = await import('../../claudinite-tasks/src/contract/task-contract.mjs');
+  const { canonicalOutcome, opensPullRequest } = await import('../../claudinite-tasks/shared-code/task-contract.mjs');
   assert.ok(opensPullRequest(canonicalOutcome(decl.expected_outcome)), 'the declared outcome must let the run open a pull request');
 
   // Found by its heading rather than its number: the brief grows sections, and a

@@ -1,5 +1,5 @@
 // THE AUTOMERGE VERDICT, AS A COMMAND — the landing lane runs this before it may
-// merge, and quotes the `AUTOMERGE:` line it prints (src/deliver/deliver-pr.md):
+// merge, and quotes the `AUTOMERGE:` line it prints (deliver-pr.md):
 //
 //   node <this file> --base origin/main --policy 'comment-only-changes;readme-changes'
 //

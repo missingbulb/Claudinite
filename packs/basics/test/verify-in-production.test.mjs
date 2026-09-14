@@ -8,8 +8,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseRequestFields } from '../../claudinite-tasks/src/items/work-item.mjs';
-import { parseVerificationSpec, parseRetryEvery, RETRY_FIELD } from '../../claudinite-tasks/tasks/verify-production/probes.mjs';
+import { parseRequestFields } from '../../claudinite-tasks/shared-code/work-items.mjs';
+import { parseVerificationSpec, parseRetryEvery, RETRY_FIELD } from '../../claudinite-tasks/shared-code/verification.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const skill = readFileSync(join(here, '../skills/verify-in-production/SKILL.md'), 'utf8');
