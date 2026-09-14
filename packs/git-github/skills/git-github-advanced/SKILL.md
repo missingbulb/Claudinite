@@ -16,6 +16,10 @@ A GitHub procedure the consuming repo's own docs set — its merge command, when
 
 To post a **status update** on an issue (the lifecycle's "update the issue's status" step, for a change that has one), use `add_issue_comment`. **Don't** reach for `issue_write` with `method: update` — that edits the issue itself and **replaces the whole body**, silently wiping the original description. Reserve `issue_write`/`update` for genuinely editing the issue (retitling, rewriting the body on purpose).
 
+## Don't cite an issue or PR number before that object exists
+
+Issue and PR numbers share one counter per repo, so a comment or PR body written before its companion object is filed ("filed as a dedicated issue: #222") can end up citing the wrong number once that object actually lands and consumes a different one. Comments generally have no reliable edit path to fix a wrong citation afterward. File or create the referenced object first, read back the real number it returns, then write anything that cites it — or leave an explicit placeholder and patch it once the number is known.
+
 ## An auto-merge refusal is not a verdict — read the PR's state, then act
 
 `enable_pr_auto_merge` only accepts a PR whose required checks are still **pending**, so its refusals answer *timing and configuration*, never the change. Take each at face value and stop:
@@ -25,6 +29,10 @@ To post a **status update** on an issue (the lifecycle's "update the issue's sta
 - *"Protected branch rules not configured"* — auto-merge is a protected-branch feature, so a repo with no rule on its default branch can never arm it. Final; don't let an earlier refusal's wording talk you out of it.
 
 Never re-arm on a loop hoping the answer changes — observed runs answered "unstable" then "clean" seconds later with nothing changed in between, and one spent ~6 minutes of a 13-minute budget circling a single PR without merging it.
+
+## `merge_pull_request` right after a force-push to its head can 500 — retry, don't diagnose
+
+The PR's mergeable-state recompute lags a force-push to its head branch, so a `merge_pull_request` call issued immediately after can 500 even though the merge is otherwise clean. Treat the first such 500 as a timing artifact and retry with backoff, rather than reading it as a real merge failure.
 
 ## Don't prune a `.gitignore` section in the same commit that deletes what produced its artifacts
 
