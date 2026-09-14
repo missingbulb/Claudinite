@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import usageFoldJson from '../../../tasks/usage-fold/task.json' with { type: 'json' };
 import { evaluatePrecondition, loadTaskTerms, preconditionSignals } from '../../../shared-code/preconditions.mjs';
-import { normalizeTaskDeclaration } from '../../../task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../../src/contract/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const usageFold = normalizeTaskDeclaration(usageFoldJson);
 

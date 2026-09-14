@@ -148,8 +148,8 @@ test('the canon\'s path-only fingerprints really are decidable over a tree listi
   // The sweep's value depends on this being true of most packs; if the corpus moved
   // wholesale to content-reading fingerprints, the remote sweep would defer
   // everything and this test is where that would surface.
-  const { default: node } = await import('../../../../../packs/node/pack.mjs');
-  const { default: firebase } = await import('../../../../../packs/firebase/pack.mjs');
+  const { default: node } = await import('../../../../node/pack.mjs');
+  const { default: firebase } = await import('../../../../firebase/pack.mjs');
   const tracked = ['package.json', 'firebase.json'];
   const evaluate = makeRemoteEvaluator(fakeGh(), 'o/r', 'main', { tracked, truncated: false });
   assert.deepEqual(await evaluate(node), { verdict: true, why: null });

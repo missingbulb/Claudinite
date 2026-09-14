@@ -7,8 +7,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseRequestFields } from '../../claudinite-tasks/queue/work-item.mjs';
-import { parseRetryEvery, RETRY_FIELD } from '../../claudinite-tasks/tasks/verify-production/probes.mjs';
+import { parseRequestFields } from '../../claudinite-tasks/shared-code/work-items.mjs';
+import { parseRetryEvery, RETRY_FIELD } from '../../claudinite-tasks/shared-code/verification.mjs';
 
 const skill = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '../skills/production-retrospective/SKILL.md'), 'utf8');

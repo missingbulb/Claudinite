@@ -34,7 +34,7 @@
 - **Pushing canon to the whole fleet now** — create the work item, from a checkout of this repo:
 
   ```
-  node .claudinite/shared/packs/claudinite-tasks/queue/create-work-item.mjs \
+  node .claudinite/shared/packs/claudinite-tasks/src/schedule/create-work-item.mjs \
     claudinite-fleet-sheepdog/fleet-baseline
   ```
 

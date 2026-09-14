@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { engineUpdate, engineRecordsInGap, isEngineFile, NEEDS_HUMAN, deliveryDecision, runSelfTest } from '../packs/claudinite-lifecycle/updates/engine-update.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
-import { SCHEDULER_WORKFLOW } from '../packs/claudinite-tasks/converge-workflows.mjs';
+import { SCHEDULER_WORKFLOW } from '../packs/claudinite-tasks/src/adopt/converge-workflows.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 import { installedVersions } from '../engine/installed-versions.mjs';
 

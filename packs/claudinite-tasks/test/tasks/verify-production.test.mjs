@@ -12,10 +12,10 @@ import {
 } from '../../tasks/verify-production/probes.mjs';
 import { runVerification } from '../../tasks/verify-production/worker.mjs';
 import declarationJson from '../../tasks/verify-production/task.json' with { type: 'json' };
-import { validateTaskDeclaration } from '../../task-contract.mjs';
+import { validateTaskDeclaration } from '../../src/contract/task-contract.mjs';
 import { evaluatePrecondition } from '../../shared-code/preconditions.mjs';
-import { planSchedulerRun } from '../../queue/scheduler-run.mjs';
-import { normalizeTaskDeclaration } from '../../task-contract.mjs';
+import { planSchedulerRun } from '../../src/schedule/run.mjs';
+import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const declaration = normalizeTaskDeclaration(declarationJson);
 

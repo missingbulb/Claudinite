@@ -40,7 +40,7 @@ test('a mixed branch deletes exactly the aged captures', () => {
 // --- the worker's one pure read ----------------------------------------------
 
 test('readRetentionDays takes this pack own entry config, and nothing else', async () => {
-  const { readRetentionDays } = await import('../../../../../packs/claudinite-growth/tasks/logs-prune/worker.mjs');
+  const { readRetentionDays } = await import('../../../tasks/logs-prune/worker.mjs');
   const { mkdtempSync, writeFileSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
@@ -101,7 +101,7 @@ test('the resolved default deletes exactly what a declared 10 would', () => {
 });
 
 test('readRetentionDays separates "said nothing" from "cannot tell"', async () => {
-  const { readRetentionDays } = await import('../../../../../packs/claudinite-growth/tasks/logs-prune/worker.mjs');
+  const { readRetentionDays } = await import('../../../tasks/logs-prune/worker.mjs');
   const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');

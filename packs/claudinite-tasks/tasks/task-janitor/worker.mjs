@@ -29,9 +29,10 @@ import {
   staleDispatchIssues, staleEscalationComment, staleClaimedDispatchIssues, staleClaimComment,
   rearmDispatchIssues, readyLabelOn, DISPATCH_PREFIX, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
   SCHEDULER_LABELS,
-} from '../../../claudinite-tasks/dispatch.mjs';
-import { makeGh } from '../../../claudinite-tasks/signals/gh.mjs';
-import { ensureLabels } from '../../../claudinite-tasks/github.mjs';
+} from '../../src/session/dispatch.mjs';
+import { makeGh } from '../../src/world/github.mjs';
+import { ensureLabels } from '../../src/world/github.mjs';
+import { searchIssues, comment, addLabel, removeLabel } from '../../src/world/github.mjs';
 
 const item = process.env.CLAUDINITE_ITEM || '';
 const log = (s) => console.log(`task-janitor${item ? ` [#${item}]` : ''}: ${s}`);
@@ -41,7 +42,7 @@ const log = (s) => console.log(`task-janitor${item ? ` [#${item}]` : ''}: ${s}`)
 // state=all search (its filing guards) is a different question.
 export async function openDispatchIssues(gh, repo) {
   const q = encodeURIComponent(`repo:${repo} is:issue is:open in:title "${DISPATCH_PREFIX}"`);
-  const { status, json } = await gh(`/search/issues?q=${q}&per_page=100`);
+  const { status, json } = await searchIssues(gh, q);
   if (status !== 200 || !Array.isArray(json?.items)) {
     throw new Error(`could not list open dispatch issues: search returned ${status}`);
   }
@@ -67,9 +68,9 @@ export async function sweep(gh, repo, now) {
   }
 
   const escalate = async (issue, body, dropLabel) => {
-    await gh(`/repos/${repo}/issues/${issue.number}/comments`, { method: 'POST', body: { body } });
-    if (dropLabel) await gh(`/repos/${repo}/issues/${issue.number}/labels/${encodeURIComponent(dropLabel)}`, { method: 'DELETE' });
-    await gh(`/repos/${repo}/issues/${issue.number}/labels`, { method: 'POST', body: { labels: [NEEDS_HUMAN_LABEL] } });
+    await comment(gh, repo, issue.number, body);
+    if (dropLabel) await removeLabel(gh, repo, issue.number, dropLabel);
+    await addLabel(gh, repo, issue.number, NEEDS_HUMAN_LABEL);
   };
 
   for (const issue of stale) {
@@ -84,9 +85,9 @@ export async function sweep(gh, repo, now) {
   }
   for (const issue of rearm) {
     const ready = readyLabelOn(issue);
-    const del = await gh(`/repos/${repo}/issues/${issue.number}/labels/${encodeURIComponent(ready)}`, { method: 'DELETE' });
+    const del = await removeLabel(gh, repo, issue.number, ready);
     if (del.status >= 300) { log(`! could not un-label #${issue.number} to re-arm it: ${del.status}`); continue; }
-    const add = await gh(`/repos/${repo}/issues/${issue.number}/labels`, { method: 'POST', body: { labels: [ready] } });
+    const add = await addLabel(gh, repo, issue.number, ready);
     if (add.status >= 300) log(`! re-arm of #${issue.number} dropped its ${ready} label: ${add.status}`);
     else { log(`re-armed #${issue.number} (${ready}) — its trigger event never landed`); result.rearmed.push(issue.number); }
   }
@@ -116,7 +117,7 @@ export async function main() {
   const { loadConfig } = await import('../../../../engine/checks/helpers/repo-context.mjs');
   const config = loadConfig(root);
   const { sweepQueue } = await import('./queue-sweep.mjs');
-  const { discoverTasks } = await import('../../../claudinite-tasks/discover.mjs');
+  const { discoverTasks } = await import('../../src/contract/discover.mjs');
   const { tasks } = await discoverTasks(root, config);
   await sweepQueue(makeGh(), repo, new Date(), { tasks, log });
   // The slot dispatch-issue sweep still runs BESIDE the queue's: the slot scheduler

@@ -3,7 +3,7 @@
 The specification a fold or page implementer works from. The fold's contract — three tiers,
 tuples against a `fields` header, *unknown is not zero*, append-once past a watermark — is
 [the usage-fold README](../../claudinite-tasks/tasks/usage-fold/README.md) and its shape
-module [`usage-format.mjs`](../../claudinite-tasks/tasks/usage-fold/usage-format.mjs); nothing
+module [`usage-format.mjs`](../../claudinite-tasks/src/items/usage-format.mjs); nothing
 here changes those rules, it adds fields under them. Page readers are named by file.
 
 ## 1. Every figure → its source
