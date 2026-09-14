@@ -383,5 +383,21 @@
         "fix": "drop the prefix and run it from the repo root (node engine/checks/check_the_world.mjs); a member's checkout cloned into this session keeps the mount path, and needs the cd that says so"
       }
     ]
+  },
+  {
+    "id": "shell-write-to-skill-scoped-path",
+    "severity": "advisory",
+    "since": "2026-09-14",
+    "scope": "action",
+    "failureMessage": "the pre-edit skill guard reads Edit, Write and NotebookEdit only, so a shell write carries its skill requirement to Stop, after the work the skill was there to shape",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/(?:>>?\\s*|\\bopen\\(\\s*|\\bPath\\(\\s*|\\b[A-Za-z_]\\w*\\s*=\\s*['\"])['\"]?(?:[\\w.@-]+\\/)*(?:[\\w.@-]+\\.(?:test|spec)\\.\\w+|RULES\\.md|SKILL\\.md|CLAUDE\\.md|tasks\\/[\\w.@\\/-]+|engine\\/checks\\/[\\w.@\\/-]+)/",
+        "what": "a skill-scoped file written through the shell: \"{match}\"",
+        "fix": "write it with Write, or Edit it after a read \u2014 those are the calls the guard sees"
+      }
+    ]
   }
 ]
