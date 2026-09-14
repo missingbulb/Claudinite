@@ -122,6 +122,27 @@ test('the filing guards: a cross-repo Verify line, an add_repo, a scratch screen
   ]), ['a screenshot from the scratchpad sent without saying it came from a scratch harness']);
 });
 
+test('the shell-write guard: a skill-scoped file written past the pre-edit guard', () => {
+  // The three shell spellings a session actually reaches for, all taken from captured
+  // sessions that went on to collect the Stop-time skill-loaded-before-editing finding.
+  assert.deepEqual(judge('shell-write-to-skill-scoped-path', [
+    "cat >> packs/claudinite-tasks/test/signals.test.mjs <<'EOF'\ntest('x', () => {});\nEOF",
+    "python3 - <<'PY'\np='packs/node/RULES.md'\ns=open(p).read()\nopen(p,'w').write(s)\nPY",
+    "cat > packs/cloudflare-site/skills/releasing-a-cloudflare-site/SKILL.md <<'EOF'\n---\nEOF",
+    'cat > packs/cloudflare-site/tasks/site-release/task.json <<EOF\n{}\nEOF',
+  ]).length, 4);
+  // Reads, runs and redirects elsewhere are the bulk of a session's shell and must stay silent:
+  // naming a scoped path is not writing one, and a redirect whose target is not a scoped path
+  // (the suite's own output, the scratchpad) is the commonest command in the window.
+  assert.deepEqual(judge('shell-write-to-skill-scoped-path', [
+    "node --test $(git ls-files '*.test.mjs') > /tmp/s/suite.txt 2>&1",
+    'node --test packs/claudinite-tasks/test/signals.test.mjs 2>&1 | tail -5',
+    'grep -rn --include=RULES.md "window" packs/',
+    'node engine/checks/check_the_world.mjs; echo "EXIT:$?"',
+    "cat > /tmp/s/scratchpad/probe.mjs <<'EOF'\nconsole.log(1);\nEOF",
+  ]), []);
+});
+
 test('the restore and settings guards', () => {
   assert.deepEqual(judge('checkout-restores-index', ['git checkout -- a.mjs', 'git stash', 'git checkout -b feature', 'echo "git checkout -- x"']), [
     'a working-tree restore: "git checkout --"', 'a working-tree restore: "git stash"',
