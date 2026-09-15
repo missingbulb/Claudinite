@@ -45,6 +45,18 @@ A consuming repo's own test *mechanics* — runner, layout, which suites exist �
   Grepping a *different* artifact is the two-artifact drift guard above and stays. Where the
   module is callable and a grep is still the only way in, report that its entry point does the
   whole job at once — that is worth more than the assertion. (8)
+- **Choosing the cases for a validator, parser or guard** — its own rejection branches are the
+  list: for each, write the input that forces it. A branch nothing forces is either a promise
+  no test holds or one the code can no longer reach, and both are worth finding. The gap
+  clusters on the **present-but-unusable** input — the empty string, the directory that will
+  not read, the module that throws on import — because absent and valid are the two cases
+  everyone writes, while the field that is there and broken is the one that arrives in
+  production. (11)
+- **A comparison against a threshold, a deadline or an anchor instant** — test the value
+  exactly **on** it, not only either side. `<=` and `<` differ on exactly one input, so a suite
+  that samples comfortably around the boundary agrees with both and pins neither. Where a cron
+  or a poll drives the comparison, that one input is the ordinary case rather than the edge: the
+  run fires *at* the anchor. (12)
 - Prefer a single shared double; but when a subsystem is faked by more than one (a minimal unit stub vs. a faithful harness that boots the real module), a new call into the faked surface must be taught to **every** double, or the untaught one breaks — and the faithful harness turns an unmodeled API into a confusing **far-away** failure (a DOM-snapshot pixel-diff, not a local error at the call site). After adding a call into a faked boundary, find every double of it and extend each.
 - When one wire format, encoding, or algorithm is **implemented twice** — two languages, two tiers, a hand-rolled client encoder against the server's library — no compiler, type system, or single test run spans the two, so the only thing holding them together is a **shared vector set carried deliberately by both suites**: the same inputs and the same expected outputs, asserted independently on each side, including the boundary cases the two could plausibly round differently (a value exactly on a bisection midpoint, a tie, a truncation edge). A vector asserted on only one side is an input nobody ever compared — both suites stay green, in different languages under different runners, while the claim quietly stops covering it. So: touching *either* implementation re-runs *both* suites, and adding a vector adds it to both. Where the pairing is mechanical (the two vector lists must contain the same inputs), pin it with a check rather than a convention.
 - A traceability/coverage gate that requires every spec item be *claimed* by some test of one fixed kind proves only that it's claimed, not that it's verified. When items differ in kind, the gate green-lights claims that kind can't check — a pixel snapshot "covers" a click's tab-opening it can never observe, or a state the case never renders (and can't, when the data can't reach it). Segment the gate by the verification each item needs (route behavior to a behavior test, rendering to a snapshot) rather than forcing every item onto one mechanism. (1)
