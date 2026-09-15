@@ -815,17 +815,39 @@
 
   /* --- the account menu --------------------------------------------------------
      Reuses the explainer popover's geometry (`.setup-body`); only the summary differs,
-     being a face rather than a word. */
+     being a face rather than a word.
+     SHAPED AFTER GITHUB'S OWN avatar menu, which is the menu a viewer's hand already
+     knows: a header naming the account, then full-width rows of one icon and one
+     label, grouped into sections by hairline rules, sign-out last. Every row is a
+     destination or an action — which is the rule the caching note now obeys too, as a
+     disclosure in the last section rather than six lines of prose standing open on
+     every visit by someone who came for Reload. */
   details.setup > summary.face { padding: 0; border-radius: 50%; border-color: transparent; }
-  .account-head { display: flex; align-items: center; gap: 10px; justify-content: space-between;
-                  margin: 14px 0 12px; }
-  .account-login { font-weight: 600; }
-  .account-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-  #account .pill { display: inline-block; margin-bottom: 10px; }
+  #account .setup-body { padding: 0; }
+  .menu-head { padding: 12px 16px 10px; font-size: 13px; color: var(--ink-2); }
+  .menu-head b { color: var(--ink); }
+  .menu-sec { border-top: 1px solid var(--rule); padding: 4px 0; }
+  /* A row, whether it is a button, a disclosure's summary or a line that only reports.
+     One shape, so the eye reads the menu as a list rather than as a form. */
+  .menu-row { display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box;
+              padding: 6px 16px; font-size: 13px; text-align: left; cursor: pointer;
+              background: none; border: 0; border-radius: 0; color: var(--ink);
+              list-style: none; }
+  .menu-row::-webkit-details-marker { display: none; }
+  .menu-row:hover, .menu-row:focus-visible { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .menu-row:disabled { color: var(--muted); cursor: default; background: none; }
+  .menu-row.static { cursor: default; }
+  .menu-row.static:hover { background: none; }
+  /* The glyph column, fixed-width so every label starts at one left edge. */
+  .menu-row .ico { width: 16px; flex: none; text-align: center; color: var(--ink-2); font-size: 12px; }
+  .menu-row .grow { flex: 1; }
+  .menu-disclosure > summary::after { content: "▸"; color: var(--muted); font-size: 11px; }
+  .menu-disclosure[open] > summary::after { content: "▾"; }
+  .menu-note { padding: 2px 16px 10px; margin: 0; font-size: 12px; }
   .remember { display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
               color: var(--ink-2); font-size: 13px; }
-  /* The sheet's `input` rule sets a 190px floor for the token box. A checkbox inherits
-     it otherwise, and its label sits a hand's width from the box it labels. */
+  /* The sheet's `input` rule sets a 190px floor. A checkbox inherits it otherwise, and
+     its label sits a hand's width from the box it labels. */
   .remember input { min-width: 0; width: auto; }
 </style>
 </head>
@@ -846,27 +868,39 @@
         <img id="account-avatar" class="avatar" src="" alt="Account" width="24" height="24">
       </summary>
       <div class="setup-body">
-      <div class="account-head">
-        <span id="account-login" class="account-login"></span>
-        <button id="signout">Sign out</button>
-      </div>
-      <div class="account-actions">
-        <button id="reload" title="Re-read (cached data is revalidated, not refetched)">Reload</button>
-        <button id="purge" title="Drop every cached response and re-read from GitHub">Clear cache</button>
+      <div class="menu-head">Signed in as <b id="account-login"></b></div>
+      <div class="menu-sec">
+        <button class="menu-row" id="reload" title="Re-read (cached data is revalidated, not refetched)"><span class="ico">&#8635;</span>Reload</button>
+        <button class="menu-row" id="purge" title="Drop every cached response and re-read from GitHub"><span class="ico">&#9003;</span>Clear cache</button>
       </div>
       <!-- The budget lives here rather than in the topbar, so `renderRatePill` draws into
            a panel that may be shut. It is written on every change regardless: a viewer
            who opens the menu mid-sweep sees the current number, not the one from when
-           the panel was last open. -->
-      <span id="rate" class="pill" hidden></span>
-      <p class="hint">
-      Responses are cached in this browser: repo content is keyed by commit SHA, live data is
-      revalidated with ETags (a <code>304</code> costs no rate limit), settled history ages
-      out after 24 hours, and a member's commit graph — the one read here that is decoration
-      rather than a fault signal — after six, and not at all when the budget is tight.
-      <em>Clear cache</em> forces a cold read, and leaves you signed in. Pass
-      <code>?repo=owner/name</code> to jump straight to a repo.
-      </p>
+           the panel was last open. A row of its own, labelled: a chip floating in a
+           menu says a number without saying what it counts. -->
+      <div class="menu-sec">
+        <div class="menu-row static"><span class="ico">&#9201;</span>Rate budget<span class="grow"></span><span id="rate" class="pill" hidden></span></div>
+      </div>
+      <!-- Reference, not an action, so it is the one row that opens rather than doing
+           something — and it is shut until someone asks. It sits with the controls it
+           explains: Reload and Clear cache are the two levers whose effect this note is
+           the answer to, and the gate already carries the credential's own explanation. -->
+      <div class="menu-sec">
+        <details class="menu-disclosure">
+          <summary class="menu-row"><span class="ico">&#9432;</span>How this page reads GitHub<span class="grow"></span></summary>
+          <p class="hint menu-note">
+          Responses are cached in this browser: repo content is keyed by commit SHA, live data is
+          revalidated with ETags (a <code>304</code> costs no rate limit), settled history ages
+          out after 24 hours, and a member's commit graph — the one read here that is decoration
+          rather than a fault signal — after six, and not at all when the budget is tight.
+          <em>Clear cache</em> forces a cold read, and leaves you signed in. Pass
+          <code>?repo=owner/name</code> to jump straight to a repo.
+          </p>
+        </details>
+      </div>
+      <div class="menu-sec">
+        <button class="menu-row" id="signout"><span class="ico">&#8677;</span>Sign out</button>
+      </div>
       </div>
     </details>
   </div>
