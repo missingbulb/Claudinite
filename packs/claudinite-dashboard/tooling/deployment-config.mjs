@@ -24,16 +24,14 @@
 // the next build. That fallback is the migration, not a second supported store.
 import { readFile } from 'node:fs/promises';
 import { settingsPath } from '../../../engine/settings-file.mjs';
+import { SIGN_IN_VARS } from '../src/read/signin-vars.mjs';
 
 export const PACK_ID = 'claudinite-dashboard';
 
-// The repository variables the sign-in pair travel in, keyed by the config name each
-// one falls back to. Namespaced, because a variable's name is repo-global and this
-// pack does not own the word `CLIENT_ID`.
-export const SIGN_IN_VARS = {
-  clientId: 'CLAUDINITE_DASHBOARD_CLIENT_ID',
-  exchangeUrl: 'CLAUDINITE_DASHBOARD_EXCHANGE_URL',
-};
+// The repository variables the sign-in pair travel in. Defined in `src/read/` and
+// re-exported here: the page's own gate names them too, and it cannot import a module
+// that reads the filesystem.
+export { SIGN_IN_VARS } from '../src/read/signin-vars.mjs';
 
 export async function declaredConfig(repoRoot) {
   let decl = null;

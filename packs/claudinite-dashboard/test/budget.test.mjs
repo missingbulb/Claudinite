@@ -80,7 +80,7 @@ test('cost scales with the roster and never reads as zero', () => {
 });
 
 test('the anonymous viewer is told what being logged in to github.com does not buy', () => {
-  const a = credentialAdvice('anonymous', { oauth: true });
+  const a = credentialAdvice('anonymous');
   assert.match(a.text, /60 requests per hour/);
   assert.match(a.text, /github\.com/);
   assert.equal(credentialAdvice('user'), null);

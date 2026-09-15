@@ -218,6 +218,51 @@ const DEMO_RULE = `const rule = {
 export default rule;
 `;
 
+// A LOCAL PACK THAT IMPORTS OUT OF THE MOUNT, which is the shape no other fixture has
+// and the one that makes a dropped export visible. Every member's local rules reach
+// into `.claudinite/shared/` for the engine's own helpers — `finding` is how a rule
+// builds a finding at all — so each name `engine/**` and `packs/**` exports is a
+// contract whose other side the canon never sees. A name dropped in the canon does not
+// degrade such a member gently: its module throws at load, the pack fails, and the
+// converge's self-test refuses the whole tree, so the member stops receiving anything —
+// including the version that would have fixed it.
+//
+// The imports are deliberately spread across the two roots the vendor set carries, and
+// deliberately cover both import forms the exports scanner reads, so this fixture goes
+// red on the removal rather than on a rename of the file it happens to name.
+const PACK_MOUNT_IMPORTING = `import mountRule from './mount-rule.mjs';
+
+export default {
+  id: 'fixture-mount',
+  ruleRoutingGuidance: {
+    belongs: 'the fixture project\\'s own invariants, for rehearsal purposes only',
+    excludes: 'anything portable — that belongs in a canon pack',
+  },
+  detect: null,
+  marker: null,
+  prose: 'RULES.md',
+  worldRules: [mountRule],
+  workRules: [],
+};
+`;
+
+const MOUNT_RULE = `import { finding } from '../../../shared/engine/checks/helpers/findings.mjs';
+import { isActive } from '../../../shared/engine/pack_loader/pack-registry.mjs';
+
+// A rehearsal fixture rule. It never fires; what it is for is the two imports above,
+// which fail at LOAD if the canon drops either name — taking this pack, and with it the
+// converge's self-test, down in exactly the way a real member's would.
+const rule = {
+  id: 'fixture-mount-import',
+  severity: 'advisory',
+  description: 'A rehearsal fixture rule that never fires',
+  doc: 'RULES.md',
+  why: 'it exists so a name dropped from the mount fails a rehearsal instead of a member',
+  run(ctx) { return isActive === null ? [finding(rule, { file: 'RULES.md', what: 'unreachable', fix: 'unreachable' })] : []; },
+};
+export default rule;
+`;
+
 // The one pack a fixture publishes rather than runs — content on a second canon's
 // shelf. It carries the two things the curation rules read of shelf content: a
 // `version` (the whole delivery signal) and prose that narrates no enforcement.
@@ -907,6 +952,17 @@ export const FIXTURES = [
       '.claudinite/local/packs/fixture-local/skills/fixture-skill/SKILL.md':
         '---\nname: fixture-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
       '.claudinite/local/packs/fixture-local/tasks/fixture-task/task.json': FIXTURE_TASK,
+    },
+  },
+  {
+    name: 'mount-importing',
+    why: 'a local pack whose rule imports the engine out of `.claudinite/shared/` — the shape a name dropped from the canon breaks at load, taking the member\'s whole converge with it',
+    files: {
+      'README.md': '# fixture-mount\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics', 'local/fixture-mount']),
+      '.claudinite/local/packs/fixture-mount/pack.mjs': PACK_MOUNT_IMPORTING,
+      '.claudinite/local/packs/fixture-mount/mount-rule.mjs': MOUNT_RULE,
+      '.claudinite/local/packs/fixture-mount/RULES.md': '# fixture-mount\n\nNo standing rules.\n',
     },
   },
   {

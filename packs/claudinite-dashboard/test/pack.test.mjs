@@ -203,7 +203,7 @@ test('a mount without the page produces nothing and exits clean', async (t) => {
   t.after(() => rm(dir, { recursive: true, force: true }));
   await mkdir(join(dir, '.claudinite/shared/packs/claudinite-dashboard'), { recursive: true });
   await mkdir(join(dir, '.claudinite/shared/engine'), { recursive: true });
-  for (const f of ['tooling/build-site.mjs', 'tooling/deployment-config.mjs', 'src/read/config.mjs']) {
+  for (const f of ['tooling/build-site.mjs', 'tooling/deployment-config.mjs', 'src/read/config.mjs', 'src/read/signin-vars.mjs']) {
     const dest = join(dir, '.claudinite/shared/packs/claudinite-dashboard', f);
     await mkdir(dirname(dest), { recursive: true });
     await cp(join(PACK_DIR, f), dest);
@@ -273,7 +273,7 @@ test('the install flow reports the handover so adoption cannot miss it', async (
 
   assert.match(stdout, /only a human can do/, 'the handover is printed');
   assert.match(stdout, /\[ \] \(claudinite-dashboard\) Enable GitHub Pages/);
-  assert.match(stdout, /\[ \] \(claudinite-dashboard\) Decide how this dashboard authenticates/);
+  assert.match(stdout, /\[ \] \(claudinite-dashboard\) Turn on Sign in with GitHub/);
   assert.match(stdout, /while off:/);
   assert.match(stdout, /done when:/);
   // And the thing it is a handover FOR actually landed.

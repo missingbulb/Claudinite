@@ -877,14 +877,17 @@
 
   <!-- THE GATE. Nothing is read from GitHub until there is a credential, so this screen
        is the whole of the page's sign-in surface and the views behind it carry none of
-       it: no anonymous rendering, no half-signed-in chrome, no paste box in the topbar.
+       it: no anonymous rendering, no half-signed-in chrome, no credential box anywhere.
        It also answers the question a viewer has exactly once — what this page does with
        their credential — which is why that explanation lives here rather than in the
-       account menu, where it would be re-read by everyone who went looking for Reload. -->
+       account menu, where it would be re-read by everyone who went looking for Reload.
+       Its heading and the two paragraphs `app.mjs` fills are written by `renderGate`,
+       which has a second screen to draw here: a deployment whose owner has not
+       configured sign-in has no credential to explain, and is told what is missing. -->
   <div id="signin-view" hidden>
     <div class="gate">
       <h2 id="signin-heading">Sign in to read this fleet</h2>
-      <p>
+      <p id="signin-why">
       Everything happens in this browser tab. The page calls <code>api.github.com</code>
       directly as <strong>you</strong>, so <strong>your own GitHub permissions are the only
       access control</strong> — there is no backend, no shared credential, and this page can
@@ -893,7 +896,7 @@
       </p>
       <p id="signin-how"></p>
       <div id="signin-controls" class="gate-controls"></div>
-      <p class="hint">
+      <p class="hint" id="signin-hint">
       Being signed in to github.com in this browser is not enough on its own: the API never
       receives that session, so the page has to hold a credential of its own.
       </p>

@@ -250,7 +250,7 @@ export function wiringNote({ url, exchangeUrl }) {
   if (exchangeUrl === url) return `${name} already names ${url} — sign-in is fully wired.`;
   return `NOT YET WIRED: set the repository variable ${name} to ${url}`
     + `${exchangeUrl ? ` (it currently resolves to ${exchangeUrl})` : ''}. `
-    + 'Until it does, the page renders the token box and no Sign in button.';
+    + 'Until it does, the page has no way in at all: its gate says this deployment is not finished being set up.';
 }
 
 export async function main({ argv = process.argv, env = process.env, log = console.log } = {}) {
