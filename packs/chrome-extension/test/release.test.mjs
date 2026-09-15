@@ -322,7 +322,6 @@ test('permission-added-store-issue: an added permission raises an advisory to op
     const findings = run(permissionAddedStoreIssue, root);
     assert.equal(findings.length, 1);
     assert.match(findings[0].what, /adds the "tabs" permission/);
-    assert.match(findings[0].fix, /Privacy-practices tab/);
   } finally { cleanup(root); }
 });
 

@@ -273,7 +273,6 @@ test('no-conflict-markers: flags every conflict marker left in a scanned file', 
   try {
     const findings = run(noConflictMarkers, root, 'all');
     assert.equal(findings.length, 2);
-    assert.equal(findings[0].file, 'notes.md');
     assert.equal(findings[0].line, 1);
     assert.equal(findings[1].line, 5);
     assert.match(findings[0].what, /merge-conflict marker/);

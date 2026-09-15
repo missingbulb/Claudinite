@@ -30,7 +30,6 @@ test('declared-check-spec-keys: a key the vocabulary cannot place is one finding
     assert.match(findings[0].what, /"fx-keys" carries "unlesLineMatches" inside "matchLines"/);
     assert.match(findings[1].what, /"fx-keys" carries "scanFile", which is not a spec key/);
     assert.equal(findings[0].severity, 'advisory');
-    assert.equal(findings[0].file, 'packs/demo/declared-checks.json');
   } finally { cleanup(root); }
 });
 

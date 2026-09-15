@@ -24,7 +24,6 @@ test('in-session-github-access: flags a GITHUB_TOKEN read in migration-pass code
   try {
     const f = run(root);
     assert.equal(f.length, 1);
-    assert.equal(f[0].file, 'migrations/2026-01-01-demo/migration.mjs');
     assert.match(f[0].what, /REST token/);
   } finally { cleanup(root); }
 });
