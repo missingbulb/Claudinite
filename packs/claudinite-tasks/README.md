@@ -65,7 +65,7 @@ import aimed anywhere else is one this repository cannot repair when the layout 
 | `merge-policy.mjs` | the auto-merge policy verdict (`automerge`, the `Merge:` field, the arming trailer) and the `merge-rules.json` compiler | any pack declaring policies or merge rules, in its own tests |
 | `task-declaration.mjs` | the declaration as text — the reader that lifts its fields out and the agentic defaults the loader fills, reaching no Node built-in so a browser bundle can load it | claudinite-dashboard |
 | `task-discovery.mjs` | where a task's declaration lives on disk and how it is read — kept apart from `task-declaration.mjs`, which reaches no Node built-in | a member's own worker needing its task's declared fields at run time |
-| `usage-format.mjs` | the usage aggregate's codec | claudinite-fleet-sheepdog's fleet-wide aggregator |
+| `usage-format.mjs` | the usage aggregate's codec | **nobody today** — held for the fleet-wide aggregator, which is not a task in the sheepdog pack at present; every live caller reads `src/items/usage-format.mjs` from inside this pack |
 | `verification.mjs` | what a production-verification spec looks like, and the re-arm cadence a not-yet-live run reschedules on | basics, whose skill writes the spec this pack's probes read |
 | `dormancy.mjs` | whether a repo's scheduler is dormant, by the same test the scheduler stops itself with | claudinite-dashboard, claudinite-fleet-sheepdog |
 | `substantive-commit.mjs` | whether a commit was genuine project work rather than the machinery moving — the test a `commits`-gated precondition is decided by | claudinite-dashboard, for the fleet view's `sleepy` mark |
