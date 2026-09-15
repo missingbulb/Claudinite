@@ -18,7 +18,7 @@
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { isSuspended, liveSuspendReader, suspendedNotice, SUSPEND_ALL_VAR } from '../world/hold.mjs';
-import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from '../items/heartbeat.mjs';
+import { HEARTBEAT_MS, heartbeatComment, withHeartbeat, realTimers } from '../items/heartbeat.mjs';
 import { renderTaskExec, startRunCost } from '../items/run-record.mjs';
 import { evaluatePrecondition } from '../contract/precondition.mjs';
 import { isScheduledTask } from '../contract/task-contract.mjs';
@@ -162,7 +162,7 @@ export async function runExecutor({
   gh, repo, root, config, tasks, executorId, runUrl = null,
   now = () => clockNow(), random = Math.random, heartbeatMs = HEARTBEAT_MS,
   collectSignalsFor, runTaskCodeWork, invokeAgent, heldNow = null, log = console.log,
-  resolveTargetFor = null, runCost = null,
+  resolveTargetFor = null, runCost = null, timers = realTimers,
 }) {
   const api = await import('../world/github.mjs');
   const { listOpenWorkItems } = await import('../items/read.mjs');
@@ -243,7 +243,7 @@ export async function runExecutor({
     const outcome = await executeItem({
       api, gh, repo, root, config, schedule, byId, pathTo, item: candidate, executorId,
       claim: winner, now, heartbeatMs, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
-      resolveTargetOf, cost: runCost, phase,
+      resolveTargetOf, cost: runCost, phase, timers,
     });
     done.push({ issue: candidate.number, outcome });
 
@@ -275,7 +275,7 @@ async function withClaimIds(api, gh, repo, items, selfNumber) {
 async function executeItem({
   api, gh, repo, root, config, schedule, byId, pathTo = () => null, item, executorId, claim,
   now, heartbeatMs, collectSignalsFor, runTaskCodeWork, invokeAgent, log, resolveTargetOf,
-  cost = null, phase = () => () => {},
+  cost = null, phase = () => () => {}, timers,
 }) {
   const parsed = parseWorkItemTitle(item.title);
   const { taskPath } = parseWorkItemBody(item.body);
@@ -422,6 +422,7 @@ async function executeItem({
     const endCodeWork = phase('code-work');
     const result = await withHeartbeat(() => runTaskCodeWork(task, { item, context, target }), {
       intervalMs: heartbeatMs,
+      timers,
       log,
       beat: (minutes) => api.comment(gh, repo, item.number,
         heartbeatComment({ executor: executorId, at: nowIso(), minutes })),
