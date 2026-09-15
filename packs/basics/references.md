@@ -85,17 +85,18 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(writing-migration-plans-1)** Same decision as RULES-1: the sizing questions and the
   breakage cases were the ones the owner asked while planning #1602, and asked to have made
   into the planning skill "highlighting the importance of continuation".
-- **(RULES-3)** Probed 2026-09-06: a scratchpad file OUTSIDE the working directory, created by a
-  Bash `printf` and never opened with the read tool, edited successfully, and the result line
-  read "file state is current in your context". The rule previously said only the read tool
-  counts, which is what a reader would apply — sending them back to re-read a file they had just
-  written. Retire the wording if Edit stops accepting a session write as making a file current.
-- **(searching-for-a-tool-1)** Probed 2026-09-06 in a Claude Code on the web session:
-  `select:get_teams` returned "No matching deferred tools found" while `get_teams` alone returned
-  the tool's full schema, with `mcp__github__get_teams` in the deferred listing throughout. The
-  skill previously named the bare short name as the form that fails, sending a session that has a
-  name but not a server to the one query shape that cannot work. Retire the split if `select:`
-  starts resolving short names, or if keyword search stops resolving them.
+- **(RULES-3)** Re-probed 2026-09-15 across four paths, each created by a Bash `printf` or the
+  `Write` tool and never read: a repo file and a scratchpad file both edited with no prior read,
+  while a file under `/home/user/` refused with "File has not been read yet" until a session
+  `Write` made it current. So the gate is the path's *root*, not any session write — the
+  2026-09-06 entry read a scratchpad exemption as a shell write counting, which sends a reader
+  outside both roots to a shell write that does not unlock the edit. Retire the wording if Edit
+  starts demanding a read inside the working directory, or stops demanding one outside it.
+- **(searching-for-a-tool-1)** Re-probed 2026-09-15: `select:get_teams` now returns the tool's full
+  schema, as does `select:mcp__github__get_teams`, and `get_teams` alone still resolves — so the two
+  forms no longer differ and the rule no longer splits them. The 2026-09-06 probe recorded the
+  opposite for `select:` with a short name, which is what the skill was written to route around.
+  Retire the rule if `select:` stops accepting either spelling.
 - **(RULES-4)** From `missingbulb/MissingBulbWebsite` via #1303: two copies of one constant table in
   different languages could not be paired by literal value because `"150"` is a substring of
   `"1500"`, so a value-matching guard mispaired rows silently. Pairing by name through the casing

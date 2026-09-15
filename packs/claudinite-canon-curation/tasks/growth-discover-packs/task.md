@@ -6,7 +6,7 @@ One weekly pass over **every member**: read what the fleet is actually built on,
 
 ## Conventions used in this doc
 
-- **GitHub access is MCP-only** (`mcp__github__*`). You are outside each member repo — read its files over the API (get-file-contents, never a cross-repo checkout; the sandbox has no cross-repo git). The canon PR is opened over MCP too.
+- **GitHub access is MCP-only** (`mcp__github__*`). You are outside each member repo — read its files over the API (get-file-contents, never a cross-repo checkout: the shell's git can reach another repo, and not doing so is the session's granted scope rather than a missing capability). The canon PR is opened over MCP too.
 - **`main`** stands for the canon's default branch.
 - **The canon shelf** is this repo's own `packs/` tree — the packs every member can declare.
 
