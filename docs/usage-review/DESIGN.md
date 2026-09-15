@@ -1,248 +1,343 @@
-# Usage review — the corpus's standing feedback loop (design)
+# Usage review — expectations, observations, and the rules between them (design)
 
-> **Status: not implemented.** The end state below is agreed; the plan is its tracking issue.
+> **Status: not implemented.** The end state below is under review; the rules in §3 are the part to agree on first.
 
-The corpus that reaches a session — mounted skills, the checks and guards, the prose in every
-`RULES.md` — is placed on the promotion ladder by judgment at authoring time, and nothing reads
-back whether the placement held. A skill that loads in every session is prose paying a load
-round-trip per session; a check that never fires is either a dud or a rule the prose already
-carries; an advisory nobody acts on is noise every Stop; a guard that holds every call to load a
-four-bullet skill costs a tool call to save a hundred tokens of context. Each of these is
-detectable from marks the machinery already leaves in the captured transcripts, and each has an
-adaptation a reader can name without judgment. This document specifies the loop that reads
-those marks on a schedule and names the adaptation: **measure → judge → act → verify**, each
-stage in the pack that already owns that kind of work.
+The corpus that reaches a session — mounted skills, the checks and guards, the prose — is placed
+on the promotion ladder by judgment at authoring time, and nothing reads back whether the
+placement held. This document specifies the loop that does: each skill **declares what usage it
+expects of itself**, the record **observes** what happened, a small set of **readable rules**
+compares the two, and every finding carries a **certainty** that decides what may follow from
+it. A cause that is known is fixed; a cause that is not is diagnosed, put to the owner, or only
+recorded — never fixed on a guess.
 
-Companion: [skill-usage-metrics](../skill-usage-metrics/DESIGN.md) specifies the fold this
-review reads; its §7 names canon curation as the consumer of the fold "in both directions", and
-this loop is that consumer, made deterministic and scheduled.
+Companion: [skill-usage-metrics](../skill-usage-metrics/DESIGN.md) specifies the fold whose
+counters this loop reads; its §7 names canon curation as the consumer "in both directions".
 
 ## 1. The one idea
 
-Every misplacement on the ladder has a **signature in the record** — a ratio between two counts
-the fold already keeps or can keep — and a **single adaptation** that follows from it. So the
-judgment is a table of thresholds over counters, evaluated by code, and the agent is reserved
-for the one thing code cannot do: *rewriting* a skill into prose, a trigger into another moment,
-a check's fix text into the words a session follows.
+```
+declared expectation  ──┐
+                        ├──  rule  ──►  finding { subject, evidence, certainty, adaptation }
+observed record       ──┘
+```
 
-| Stage | Task | Pack | Kind | Cadence |
-|---|---|---|---|---|
-| **Measure** | `usage-fold` (extended) | claudinite-tasks | agentless | daily, as today |
-| **Judge** | `usage-review` (new) | claudinite-growth | agentless | weekly, over the trailing four ISO weeks |
-| **Act, local** | `growth-extract` (reads the review) | claudinite-growth | opus | daily, as today |
-| **Act, canon** | `canon-usage-review` (new) | claudinite-canon-curation | opus | weekly |
-| **Act, fleet** | the sheepdog's aggregation of members' review files | Shepherd | — | out of canon scope |
-| **Verify** | a `Rule effectiveness` retrospective per experiment the acting stage runs | basics | queue | `Not-before:` + window |
+- **The expectation** is the skill's own, in its frontmatter (§2). Without it, "zero loads"
+  means nothing: a version-bump skill and a broken one both read zero. With it, zero is either
+  exactly right or exactly the finding.
+- **The record** is the fold (`usage.GENERATED.json`) for rates over weeks, and the raw captures
+  still inside retention for the one comparison no counter can make — reading a session and
+  asking whether the skill *should* have loaded (§4).
+- **The rules** are data, not code: one JSON file of declarations the growth pack ships, each
+  rule readable as a sentence, evaluated by one generic evaluator (§3). A local pack may add its
+  own rules in the same vocabulary.
+- **The certainty tier** is part of the rule, and it is what makes the rules soft. `act` means
+  the cause is known and the adaptation follows; `diagnose` means the cause is one of several
+  and an agent reads samples before anything moves; `decide` means the remedy is a choice only
+  the owner makes; `observe` means the finding is evidence, recorded and carried forward, and
+  nothing else.
 
-The fold stays a pure data plane — counts, never verdicts — because the dashboard and the fleet
-read it as data. The review is a separate task because thresholds are policy, and policy is
-re-examined on a different clock from a counter's shape. The acting stages are the existing
-agentic runs, each in the pack whose write scope already covers the artifact it would edit: a
-member's local packs for `growth-extract`, the `packs/` shelf for canon curation.
+## 2. What a skill declares about its own usage
 
-## 2. The classes, their signatures and their adaptations
+Under the frontmatter `metadata` every skill already carries its triggers in
+(`force-load-on-*`), one more block:
 
-Every row is evaluated over the window (§4), with the floors of §4 applied first. A row whose
-denominator is under its floor is *not evaluated* and the report says so — a verdict on three
-sessions is a claim nobody made. Thresholds are constants in one module, `review-policy.mjs`,
-each named and cheap to re-examine (§8).
+```yaml
+metadata:
+  usage:
+    expect: routine            # adoption | routine | triggered | rare
+    loads-per-sessions: 1 in 5 # routine only: about one load in that many sessions
+```
 
-### 2.1 Skills
-
-| Class | Signature (window) | Adaptation the report names |
+| `expect` | The skill says of itself | What zero loads means |
 |---|---|---|
-| **S1 always loaded** | `skillSessions[s] / sessions ≥ 0.75` | its body is context, not a procedure: move it to the owning pack's `RULES.md` (or narrow a trigger that is far too wide); the report states both costs — tokens × sessions loaded vs tokens × all sessions |
-| **S2 never reached** | loads, blocks and trigger fires for `s` all `0`, `sessions ≥ MIN_SESSIONS` | the description or trigger does not name the moment it applies; or the skill is dead — re-describe, or retire |
-| **S3 only ever forced** | `(blockedEdit + blockedCall) / loads ≥ 0.9` | the guard, not the description, is what loads it. Small skill (`≤ SMALL_SKILL_TOKENS`): the block costs more than carrying the lines in context — move them, or into the guard's own block text. Large: the guard is doing its job; no change |
-| **S4 result trigger that is really a call trigger** | `resultTrigger[s] / toolCalls[tool] ≥ 0.5` for the tool the trigger names | the symptom follows most calls of that tool, so the skill belongs *before* the call: declare `force-load-on-tool-calls` for it and drop the result pattern |
-| **S5 unfollowed trigger** | `(fired − followed) / fired ≥ 0.5` | the pattern matches text that merely mentions the symptom (a `403` in prose): tighten it to the tool's own result shape |
-| **S6 loaded and still caught** | `skillCaught[s] / skillSessions[s] ≥ 0.3` | the skill's text does not carry the rule its own check enforces: put the rule in the skill's first lines or the check's fix text |
+| `adoption` | it is used while a pack is being adopted or set up — a few loads in the weeks after the pack's declaration, then nothing | fine once the adoption window (4 weeks from the pack's declaration commit) has passed; a finding inside it |
+| `routine` | ordinary work reaches for it at about the declared rate | a finding when the observed rate falls under half the declared one over the window; the cause is *unknown* (the description may not name the moment, or the moment may not have arisen), so the tier is `diagnose` |
+| `triggered` | its declared `force-load-on-*` moments are when it loads, and it expects nothing else | judged against **moments**, not sessions: the calls of the named tool, the edits under the named paths, the prompts matching the named pattern, all counted from the record; loads far under moments is a mechanical fault (`act`) |
+| `rare` | it is wanted seldom and says nothing about how seldom | never a finding; only the *always loaded* rule applies |
+| *(undeclared)* | | the review lists the skill under `unstated` and evaluates only *always loaded*; the list is itself the nudge to declare |
 
-### 2.2 Checks and guards
+The pack's declaration commit — the first commit that names the pack in the settings file — is
+read from git history, deepened as the fold already deepens it for commit counts; where history
+does not reach it, `adoption` rules read *not recorded*.
 
-`checkFindings` counts Stop-hook and CI findings; `guardFires` counts PreToolUse verdicts. A rule
-is evaluated over both.
+The block is validated by the skill-frontmatter schema (a closed `expect` set; `loads-per-sessions`
+only with `routine`, as `"1 in N"`), so a mis-declared expectation is a `check_the_world` finding at
+authoring time, not a silent `unstated`. Checks and guards declare nothing: their signal is their
+own firing, and §3 judges it on the tier alone.
 
-| Class | Signature (window) | Adaptation the report names |
-|---|---|---|
-| **C1 never fires** | no finding and no guard fire for `r`, with `checks.runs ≥ MIN_RUNS` | with a prose twin (§3.3): the **prose-removal experiment** — delete the prose, keep the check, file the retrospective that reads `checkFindings[r]` a window later (≤ 1 firing means the check alone suffices and context was freed; more means the prose was doing the work and comes back). Without one: confirm its fixture test fails on the violation it exists for; a check whose test cannot be made to fail is a dud, retired |
-| **C2 fires on most sessions** | `checkFindings[r].sessions / sessions ≥ 0.5` (blocking) | the corpus default is wrong: carry the lesson *before* the work — a `RULES.md` line, or a pre-edit trigger for the files it fires on — and keep the check as the net. A check whose every firing is followed by the same fix is teaching by red |
-| **C3 advisory ignored** | `persisted / advisory ≥ 0.8` | nobody acts on it, so it is noise at every Stop: promote it to blocking if it names a defect, delete it if it names a bias |
-| **C4 unsatisfiable** | `relent ≥ 1` | a session could not clear it in two attempts: the condition or the fix text is wrong, never the session |
-| **C5 accepted away** | `acceptances[r] ≥ 3`, or a severity override to advisory | the rule is mis-scoped: encode the exemption structurally (a set derived from the tree, a barrier `except` with a reason) or demote it; the report lists the acceptances so their reasons can be read together |
-| **C6 enforcement off** | `checks.errors > 0` | the runner failed to launch in a session: a defect, never a quiet day (the fold already counts it; the review names it) |
-| **C7 slow** | median `stopMs` this window ≥ `1.25 ×` previous window **and** `≥ 2000 ms`; any rule with `maxMs ≥ 1000` | a regression to localise: the report names the slowest rules from the timing record (§3.2); a declaration quantifying a file-wide `requireSomeFileMatching` over a large tree is the usual shape |
-| **G1 guard overruled** | `guardFires[r].advisory / sessions ≥ 0.5` | a bias fired on most sessions and the call ran anyway: the guard is mis-scoped or the bias is not one the corpus holds |
+## 3. The rules
 
-The floor for a rate over sessions is `MIN_SESSIONS` (10); over runs, `MIN_RUNS` (20).
+One file, `packs/claudinite-growth/usage-rules.json`, pointed at a schema. Each rule is five
+lines a reader can say aloud: *over these subjects, in this window, above this floor, when this
+holds, with this certainty, this follows.* The vocabulary:
 
-### 2.3 What is deliberately not a class
+- `over`: `skill`, `check`, `guard`, or `checks` (the scope totals). `expect` narrows a skill
+  rule to skills declaring that expectation.
+- `window`: `4 weeks` — the trailing closed ISO weeks; `previous` in an expression names the
+  four before them.
+- `floor`: counts that must hold before the rule is evaluated at all; under the floor the
+  review records *not evaluated* with the figure.
+- `when`: one comparison in a grammar of four shapes — `a / b >= n`, `a / b <= n`, `a = 0`,
+  `a >= n` — over the counters of §4, with `median(a)` and `previous` where a rule compares
+  windows. Nothing else; a rule that needs more is a coded rule, and there are none.
+- `certainty`: `act` | `diagnose` | `decide` | `observe`.
+- `finding` and `adaptation`: the sentences a person reads.
 
-- **A rare load or a rare firing.** A version-bump skill that loads once a month and a check that
-  fires once a quarter are both healthy; the classes above are ratios against a denominator,
-  never raw counts, which is why the fold carries denominators at all.
-- **Prose.** Nothing in a transcript says which `RULES.md` line a session read. Prose is judged
-  only by what it *displaces*: a C1 experiment frees it, an S1 or C2 finding grows it.
+The rules, as declared. The evaluator prints each as the sentence the fields spell.
 
-## 3. The measurement
+### 3.1 Skills
 
-### 3.1 New fold counters
+```jsonc
+[
+  { "id": "skill-always-loaded",
+    "over": "skill", "window": "4 weeks", "floor": { "sessions": 10 },
+    "when": "skillSessions / sessions >= 0.75",
+    "certainty": "act",
+    "finding": "loads in three of every four sessions — it is context wearing a skill's clothes",
+    "adaptation": "move its body to the owning pack's RULES.md; the cost either way is stated: tokens × sessions loaded against tokens × all sessions" },
 
-All read from the captured transcripts by the fold's existing per-file counting
-(`countEntries`), folded per day and per week exactly as `skillLoads` and `checkFindings` are —
-keyed maps, zeros implicit, fixed-shape rows declared in the file's `fields` header. Week rows
-frozen before a counter existed carry no key for it, and the review reads a missing key as *not
-recorded*, never as zero.
+  { "id": "skill-adoption-not-reached",
+    "over": "skill", "expect": "adoption", "window": "adoption", "floor": { "sessions": 3 },
+    "when": "skillLoads = 0",
+    "certainty": "diagnose",
+    "finding": "the pack was declared and its adoption-time skill never loaded while the adoption was live",
+    "adaptation": "read the adoption sessions: was the step done another way, skipped, or did the description not name it" },
+
+  { "id": "skill-routine-under-rate",
+    "over": "skill", "expect": "routine", "window": "4 weeks", "floor": { "sessions": 10 },
+    "when": "skillSessions / sessions <= declaredRate / 2",
+    "certainty": "diagnose",
+    "finding": "loads at under half the rate it declares for itself",
+    "adaptation": "sample the sessions where it did not load and ask whether they fell under its description (§4.2); if they did, the description is what to rewrite; if not, the declared rate is" },
+
+  { "id": "skill-triggered-missing-moments",
+    "over": "skill", "expect": "triggered", "window": "4 weeks", "floor": { "moments": 5 },
+    "when": "skillLoads / moments <= 0.5",
+    "certainty": "act",
+    "finding": "its declared moments occurred and the skill was not loaded for most of them",
+    "adaptation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard and fix what fails" },
+
+  { "id": "skill-forced-only-small",
+    "over": "skill", "window": "4 weeks", "floor": { "skillLoads": 5 },
+    "when": "skillBlocks / skillLoads >= 0.9",
+    "certainty": "act",
+    "finding": "it is only ever loaded because a guard held a call for it, and a block is a tool call spent to read it",
+    "adaptation": "a skill under 300 tokens: carry the lines in context or in the guard's own block text; a larger one: no change, the guard is doing its job" },
+
+  { "id": "trigger-fires-unfollowed",
+    "over": "skill", "window": "4 weeks", "floor": { "triggerFired": 5 },
+    "when": "triggerFollowed / triggerFired <= 0.5",
+    "certainty": "diagnose",
+    "finding": "its result or prompt trigger fires and the skill is not loaded afterwards",
+    "adaptation": "read the fires: a pattern matching text that merely mentions the symptom is tightened; a session ignoring a real symptom is a lesson for the trigger's context text" },
+
+  { "id": "result-trigger-follows-every-call",
+    "over": "skill", "window": "4 weeks", "floor": { "toolCalls": 10 },
+    "when": "triggerFired / toolCalls >= 0.5",
+    "certainty": "diagnose",
+    "finding": "the symptom its result trigger names follows most calls of that tool",
+    "adaptation": "if the skill's advice is about making the call, load on the call instead (force-load-on-tool-calls); if it is about the symptom, the tool itself is misused and that is the lesson" },
+
+  { "id": "skill-loaded-still-caught",
+    "over": "skill", "window": "4 weeks", "floor": { "skillSessions": 5 },
+    "when": "skillCaught / skillSessions >= 0.3",
+    "certainty": "observe",
+    "finding": "sessions that loaded it were still caught by a check the skill owns",
+    "adaptation": "none yet — carried forward; repeated across windows it is the case for putting the rule in the skill's first lines" }
+]
+```
+
+### 3.2 Checks and guards
+
+```jsonc
+[
+  { "id": "check-never-fires-with-prose-twin",
+    "over": "check", "window": "4 weeks", "floor": { "runs": 20 },
+    "when": "checkFindings = 0", "and": "proseTwin",
+    "certainty": "act",
+    "finding": "never fires, and a RULES.md line states the same rule",
+    "adaptation": "the prose-removal experiment: delete the prose, keep the check, file the retrospective that reads this counter one window later — at most one firing means the check alone suffices; more means the prose was doing the work and returns" },
+
+  { "id": "check-never-fires",
+    "over": "check", "window": "4 weeks", "floor": { "runs": 20 },
+    "when": "checkFindings = 0",
+    "certainty": "observe",
+    "finding": "never fires and has no prose twin",
+    "adaptation": "none — a net that has caught nothing is not evidence of a hole; carried forward, and named for the fixture test that proves it can fire" },
+
+  { "id": "check-fires-most-sessions",
+    "over": "check", "window": "4 weeks", "floor": { "sessions": 10 },
+    "when": "checkSessions / sessions >= 0.5",
+    "certainty": "diagnose",
+    "finding": "fires blocking in half the sessions or more",
+    "adaptation": "read a sample of the firings: real violations each fixed the same way mean the lesson belongs before the work (a RULES.md line, a pre-edit trigger) with the check kept as the net; findings the session argued with mean the check is wrong" },
+
+  { "id": "advisory-ignored",
+    "over": "check", "window": "4 weeks", "floor": { "advisory": 10 },
+    "when": "advisoryPersisted / advisory >= 0.8",
+    "certainty": "decide",
+    "finding": "an advisory nobody acts on, printed at every Stop",
+    "adaptation": "the owner's call: promote it to blocking if it names a defect, delete it if it names a bias" },
+
+  { "id": "check-unsatisfiable",
+    "over": "check", "window": "4 weeks", "floor": {},
+    "when": "relent >= 1",
+    "certainty": "diagnose",
+    "finding": "a session could not clear it in two attempts and the Stop hook let it through",
+    "adaptation": "read the relent: a condition the fix text cannot satisfy is a bug in the check; a session that fixed the wrong thing is a lesson for the fix text" },
+
+  { "id": "check-accepted-away",
+    "over": "check", "window": "now", "floor": {},
+    "when": "acceptances >= 3",
+    "certainty": "decide",
+    "finding": "carries three or more acceptances or an override to advisory",
+    "adaptation": "the owner's call, with the acceptance reasons listed together: encode the exemption structurally, or demote" },
+
+  { "id": "enforcement-off",
+    "over": "checks", "window": "4 weeks", "floor": {},
+    "when": "errors >= 1",
+    "certainty": "act",
+    "finding": "the check runner failed to launch in a session — enforcement was silently off",
+    "adaptation": "a defect: read the hook log line the fold counted it from and fix the launch" },
+
+  { "id": "checks-slower",
+    "over": "checks", "window": "4 weeks", "floor": { "runs": 20, "previous.runs": 20 },
+    "when": "median(stopMs) / previous.median(stopMs) >= 1.25", "and": "median(stopMs) >= 2000",
+    "certainty": "act",
+    "finding": "the Stop hook's checks take a quarter longer than the window before",
+    "adaptation": "the timing record names the slowest rules; optimise the named one" },
+
+  { "id": "guard-overruled",
+    "over": "guard", "window": "4 weeks", "floor": { "sessions": 10 },
+    "when": "guardAdvisory / sessions >= 0.5",
+    "certainty": "diagnose",
+    "finding": "an advisory guard fires in most sessions and the call runs anyway",
+    "adaptation": "read the calls: a guard matching calls it was not written for is narrowed; a bias sessions consistently overrule is not one the corpus holds" }
+]
+```
+
+What the tiers buy, stated once: of the seventeen rules, six are `act`, and every one of those
+names a cause that is mechanical or arithmetic — a guard that did not hold, a runner that did
+not launch, a block that costs more than the lines it protects, a timing regression the record
+localises, an experiment that is itself the safe probe. Everything whose cause could be one of
+two things is `diagnose` or `decide`, and the two weakest signals are `observe`.
+
+## 4. The record
+
+### 4.1 Folded — what the fold gains
+
+All counted per capture file by the fold's existing per-file pass, keyed maps with zeros
+implicit, declared in the file's `fields` header. Weeks frozen before a counter existed carry no
+key; a rule meeting a missing key reads *not recorded* on that side.
 
 | Counter | Key | Row | Read from |
 |---|---|---|---|
-| `skillLoadsBy` | skill | `[voluntary, blockedEdit, blockedCall, resultTrigger, promptTrigger, command, read]` | a `Skill` tool call, a typed `/command`, or a `Read` of a mounted `SKILL.md` (the guard accepts that as a load, so the fold does too); the cause is the nearest earlier mark for that skill in the same stream since its last load: a PreToolUse block error naming it (`skill-not-loaded`, `skill-not-loaded-for-call`), an injected trigger context naming it, the command tag, else voluntary |
-| `skillSessions` | skill | count | distinct session ids with ≥ 1 load, per day; a session spanning midnight counts on both days, so the week figure is a ceiling and says so |
-| `skillBlocks` | skill | count | PreToolUse block errors naming the skill — each one a tool call spent |
-| `triggerFires` | skill | `[fired, followed]` | injected trigger contexts naming the skill; followed when a load of it comes later in the same capture |
-| `toolCalls` | tool name | count | every `tool_use` block, main stream and sidechains — the denominator S4 needs and the one guards read against |
-| `guardFires` | rule | `[blocking, advisory]` | the hook's `done exit=2 action-guard <rules>` block text and `advisory action-guard <rules>` stderr lines, both of which reach the transcript |
-| `checkFindings` (extended) | rule | `[blocking, advisory, sessions, persisted, relent]` | rendered finding lines (`[SEVERITY] <rule>  <file>[:line]`): `sessions` distinct per day; `persisted` the advisory `(rule, file)` pairs still present in the session's last Stop output; `relent` the rules in the findings block preceding a `loop-guard-relent` |
-| `skillCaught` | skill | count | sessions in which the skill was loaded and a check that skill owns (its `checks.mjs`, per the runner's `skillChecks` catalog) fired blocking after the load |
-| `checkTiming` | scope, and rule | `[runs, totalMs, maxMs]` | per scope: `Stop: start checks` → `Stop: done` on the same run id (both reach the transcript); per rule: the timing record of §3.2 |
+| `skillLoadsBy` | skill | `[voluntary, blockedEdit, blockedCall, resultTrigger, promptTrigger, command, read]` | a `Skill` call, a typed `/command`, or a `Read` of a mounted `SKILL.md`; the cause is the nearest earlier mark for that skill since its last load — a PreToolUse block error naming it, an injected trigger context naming it, the command tag, else voluntary |
+| `skillSessions` | skill | count | distinct sessions with a load, per day; a session spanning midnight counts twice and the week figure is a stated ceiling |
+| `skillBlocks` | skill | count | PreToolUse block errors naming it (`skill-not-loaded`, `skill-not-loaded-for-call`) |
+| `triggerFires` | skill | `[fired, followed]` | injected trigger contexts naming it; followed when a load of it comes later in the capture |
+| `moments` | skill | count | for a `triggered` skill: calls of the tools it names, `Edit`/`Write` calls under the paths it names, owner prompts matching its patterns — the same resolver the hooks use, run over the transcript |
+| `toolCalls` | tool | count | every `tool_use` block, sidechains included |
+| `guardFires` | rule | `[blocking, advisory]` | the hook's `done exit=2 action-guard <rules>` block text and `advisory action-guard <rules>` lines, both in the transcript |
+| `checkFindings` (extended) | rule | `[blocking, advisory, sessions, persisted, relent]` | rendered finding lines (`[SEVERITY] <rule>  <file>`): `persisted` is the advisory pairs still present at the session's last Stop; `relent` the rules in the block before a `loop-guard-relent` |
+| `skillCaught` | skill | count | sessions that loaded the skill and were then caught blocking by a check the skill owns |
+| `checkTiming` | scope, rule | `[runs, totalMs, maxMs]` | per scope the `Stop: start checks` → `Stop: done` gap on one run id; per rule the runners' timing record: one line after the report, `claudinite-check-timing v1 <scope> total=<ms> <rule>=<ms> …`, the eight slowest rules, rendered and parsed in one module |
 
-The scope timing is a floor on the Stop hook's cost, not the checks' alone: it includes the
-runner's process start. That is the figure a session waits on, so it is the right one.
+The fold already keeps `sessions`, `checks.runs` and `checks.errors`.
 
-### 3.2 The runner's timing record
+### 4.2 Raw — what only a capture can answer
 
-Neither runner reports how long each rule took, so C7 cannot localise anything. Each runner
-prints, after its report and whether or not there were findings, one machine line the fold
-parses — rendered and parsed in `engine/checks/helpers/check-timing.mjs`, the single home of its
-format, the discipline `run-record.mjs` sets for the queue's records:
+Two rules (`skill-routine-under-rate`, `skill-adoption-not-reached`) ask whether a skill
+*should* have loaded in a session where it did not. No counter says that; a reader must compare
+the session's activity with the skill's description. So the review's diagnosis samples up to
+five captures per finding from the logs branch — only captures inside retention exist, so the
+sample is the last ten days, and the review runs weekly precisely so the sample is always there
+— and builds for each a **deterministic digest**: the owner's prompts, the tools called with
+their targets, the files edited, the commands run. The agent reads digest and description and
+answers one question per sample: *did this session's activity fall under the description?* A
+majority yes is a description that does not name its moment; a majority no is a declared rate
+that is wrong. The digest, the samples and the answers go into the finding, so the verdict is
+re-readable without the captures.
 
-```
-claudinite-check-timing v1 <scope> total=<ms> rules=<n> <rule>=<ms> <rule>=<ms> …
-```
+Retention stays the pack's ten-day default; the review needs no more, and a repo that opted
+into capture-only (`retention_days: 0`) gets its `diagnose` rules recorded as *not sampled*
+rather than judged.
 
-Only the `SLOWEST_RULES_REPORTED` (8) slowest rules are named, so the line stays one line on a
-catalog of any size. The Stop hook already forwards runner stdout on a passing run, so the line
-reaches the transcript on every run; in CI it lands in the job log and counts under the same
-rule every check number does — when the session pulled the log in.
+### 4.3 Live — read from the tree, never windowed
 
-### 3.3 What the review reads live, not from the fold
+- the mounted skill catalog: each skill's estimated tokens, its `usage` block, its triggers;
+- the active rule catalog (`packRules`): severity, scope, owning skill, and the **prose twin** —
+  a `RULES.md` bullet in the same pack naming the rule id in backticks, or a `references.md`
+  `check:<id>` entry citing a `RULES-n` the bullets carry; a twin expressed any other way is
+  not seen, and the report counts the rules judged twin-less;
+- the settings file: `accept` entries and `rules` overrides per rule, barrier `except` entries;
+- the pack declaration commits, for the adoption window.
 
-Three inputs are point-in-time facts about the tree, not events in a window, and a windowed
-count of a standing population reads as a trend that is not there. The review reads them at run
-time from the tree it runs in:
+## 5. When it runs, where, and what performs the work
 
-- **The mounted skill catalog**, each skill's estimated tokens (the session summary's own
-  estimator) and its declared triggers — what S1 and S3 price, what S4 rewrites.
-- **The active rule catalog** (`packRules` over the discovered packs): severity, scope, the
-  owning skill, and whether a rule has a **prose twin** — a `RULES.md` bullet in the same pack
-  naming the rule id in backticks, or a `references.md` `check:<id>` entry citing a `RULES-n`
-  the bullets carry. That is the deterministic definition; a twin an author expressed some other
-  way is not seen, and the report says how many rules were judged twin-less.
-- **The settings file**: `accept` entries and `rules` overrides per rule, barrier `except`
-  entries per barrier rule — C5's whole input.
+| Stage | Runs | Scope | What performs it |
+|---|---|---|---|
+| Measure | daily, `usage-fold` as today | every repo carrying the tasks pack | code |
+| Judge | weekly, `usage-review` in claudinite-growth; precondition: a closed week since the last review's window and `sessions ≥ 10` in the window | every subject the repo mounts — local packs **and** the canon it vendors; findings about canon subjects are evidence the repo cannot act on and carries upward | code for every rule; an agent phase requested only when a `diagnose` finding has samples to read |
+| Act, local | daily, `growth-extract` as today | this repo's local packs | opus, reading the review file: `act` findings on local subjects applied, `diagnose` verdicts applied where the diagnosis named the fix |
+| Act, canon | weekly, `canon-usage-review` in claudinite-canon-curation | the `packs/` shelf, from the canon's own review file (the canon is a member of itself) and, where Shepherd has landed one, the fleet aggregate | opus: applies `act` and settled `diagnose` findings, files `decide` findings as parked discussion issues with the evidence, runs the prose-removal experiment with its retrospective |
+| Act, fleet | Shepherd's aggregation of member review files | the fleet | out of canon scope; the file's keys are skill names and rule ids so a sum across members reads |
 
-## 4. The review task
-
-`packs/claudinite-growth/tasks/usage-review/` — `agent_model: none`, `code_work: node worker.mjs`,
-`due:weekly`, and one custom precondition term, `review-window-ready`: the fold's week rows
-cover at least one ISO week closed since the last review's `window.through`, **and** the window
-holds `≥ MIN_SESSIONS` sessions. A quiet repo declines with the count in the reason, and a
-declined run costs nothing.
-
-**The window** is the four most recent closed ISO weeks in the fold, compared against the four
-before them — every figure in the report is a window against the previous window, and a class
-whose previous window lacks the counter says *not recorded* on that side.
-
-**The report** is `.claudinite/local/usage-review.GENERATED.json`: `version`, `generated`,
-`window` (`from`, `through`, `sessions`, `runs`, and the same for the previous window),
-`floors` (the constants applied), `notEvaluated` (each class whose floor was not met, with the
-figure), and `findings` — one entry per (class, subject): the class id, the subject (skill name
-or rule id, and the pack it belongs to), the figures behind the verdict for both windows, the
-adaptation text, and for C1 the prose twin found. Findings are sorted by class then subject, so
-the file is a pure function of its inputs, and the unchanged-compare ignores `generated` alone.
-
-**Delivery** is `deliver-generated.mjs`, `expected_outcome: amend_existing_or_create_new_pr`,
-automerge `under:.claudinite/local && generated-file-changes`: one PR accumulates the weeks, and
-its body carries the human rendering — a table per class with the figures — since the file is
-for machines and the PR is where a person reads it. A week that changes no finding still moves
-`window`, so the PR moves weekly and no more.
-
-The run's pinned commit subject, `Claudinite growth: usage review`, joins the `growth-write-scope`
-rule's list, so the write stays inside `.claudinite/local/`.
-
-## 5. Who acts, and on what
-
-- **`growth-extract`** reads the review file each run. A finding whose subject lives in this
-  repo's local packs is a lesson input with its adaptation already named — S1 moves a local
-  skill's body into the local `RULES.md`, C2 writes the line, C3 flips or deletes the local
-  check. A finding about mounted canon content is not its business (its write scope is the local
-  packs) and it leaves it alone; the report is what carries that evidence upward.
-- **`canon-usage-review`** (claudinite-canon-curation, weekly, opus, titled
-  `Claudinite canon: usage review`) reads the canon's own review file — the canon is a member of
-  itself, mounting its packs from the repo root — and the fleet aggregate where Shepherd has
-  landed one, and applies the adaptations to `packs/`. For a C1 finding with a prose twin it
-  runs the experiment: removes the prose, keeps the check, and files a **`Rule effectiveness`**
-  retrospective (the class the production-retrospective skill proposes) whose brief states the
-  expected firing count and the fold field it is read from. For an S4 it rewrites the trigger;
-  for an S3 on a small skill it moves the lines. Each adaptation is one PR under the ordinary
-  canon review, and the review file it read is cited in the body.
-- **Shepherd** aggregates members' review files fleet-wide; the canon knows no member, so the
-  file's keys are repo-agnostic (skill names and rule ids) and the aggregate is a sum over
-  members with a member count beside each finding. Out of canon scope, noted so the grain fits.
-- **The dashboard** renders the growth pack's `dashboard.json`: a `window` widget of findings
-  this window against the previous, and a `list` of the newest findings' subjects.
+The review's output is `.claudinite/local/usage-review.GENERATED.json` — `window` (both
+windows' bounds and denominators), `notEvaluated` (rule, floor, figure), `unstated` (skills
+with no `usage` block), and `findings` sorted by rule then subject, each carrying the rule id,
+subject and pack, the figures for both windows, the certainty, the sentences, and for a
+diagnosed finding the samples and the answers. Delivered by the shared generated-file helper on
+one accumulating auto-merged PR whose body renders the findings as a table per tier; the
+unchanged-compare ignores the stamp alone. A finding restated unchanged across windows stays a
+finding — the count of restatements is in the row, and it is the retrospective's underuse signal.
 
 ## 6. Alternatives, and why not
 
-- **Judge inside the fold.** No new task, but thresholds would live in the file the dashboard
-  and the fleet read as data, and a threshold re-examined would rewrite frozen week rows'
-  meaning. The fold counts; the review judges.
-- **A review task with its own agent phase**, the ci-performance shape. Acts in the same run,
-  but spends a session per week per member on findings whose adaptation is usually an edit an
-  existing agentic run already makes on the same corpus; and the detection was asked for
-  deterministic, so the agent would have nothing to decide.
-- **An issue per finding.** Findings restate until acted on, so issues would restate weekly;
-  growth tasks keep no standing tracker; and the acting runs read a file more cheaply than a
-  listing.
-- **A Markdown report file.** Readable in the GitHub UI, but every consumer would parse prose;
-  the PR body carries the rendering and the file carries the data.
-- **Daily cadence.** Most days restate the same rows and rarely clear the session floor; a
-  week is what the denominators need.
-- **Reading `.claudinite-hooks.log`** for the hook marks. It is per machine and unversioned;
-  the transcripts are the durable record and already carry every mark the review needs.
+- **Coded rules** instead of declarations: every threshold would need reading code to know what
+  it asserts; the rules are the part a person must be able to review in a sitting.
+- **Judging inside the fold**: thresholds would live in the data plane the dashboard and fleet
+  read, and a re-examined threshold would rewrite frozen weeks' meaning.
+- **One tier, everything acted on**: a skill that did not load has several possible causes and
+  only one of them is the description; acting on the first guess rewrites skills that were
+  right.
+- **No declared expectation**: rates against sessions alone cannot separate rare-and-healthy
+  from never-and-broken, which is the distinction the whole review exists to draw.
+- **Issues per finding**: findings restate until acted on; growth keeps no standing tracker; a
+  file is what the acting runs read.
+- **Longer retention for diagnosis**: ten days already covers a weekly sample; more raw logs
+  buy nothing the rules read.
 
 ## 7. Failure modes, stated
 
-- **A window under the floor** evaluates nothing and says so; no finding is a result only when
-  the floors were met, and `notEvaluated` is what distinguishes the two.
-- **A counter absent from frozen weeks** leaves its classes *not recorded* until enough weeks
-  carry it; the review advances anyway — a partial series beats a wedged one.
-- **A finding nobody acts on** restates every week, unchanged. That is the signal that the
-  acting stage is broken, and the retrospective (§8) counts exactly that.
-- **A false twin.** C1's prose-twin read is textual; an experiment on a wrong twin removes prose
-  the check does not cover, and the retrospective's firing count is what brings it back.
+- A window under a floor evaluates nothing and says so; *no findings* is a result only when
+  `notEvaluated` is empty.
+- A counter absent from frozen weeks leaves its rules *not recorded* until enough weeks carry it.
+- A capture-only repo gets no diagnosis and says so; its `act` rules still run.
+- A false prose twin: the experiment removes prose the check does not cover, and the
+  retrospective's firing count brings it back.
+- A description the agent misjudges: the samples and answers are in the finding, so the
+  acting run and a person can read the same evidence the verdict was drawn from.
 
 ## 8. Retrospective brief
 
-The element earns the review the production-retrospective skill defines, a week after
-`canon-usage-review` first lands an adaptation. Expectations, and where each is read:
+Owed once `canon-usage-review` has landed its first adaptation and lived a week.
 
-- **Volume.** In this repository, `sessions ≥ 10` per window (the fold's week rows) and 2–8
-  findings per review (the review file's history on `main`); zero findings across two reviews
-  with the floors met means the thresholds are too loose, more than twelve means too tight.
-- **Every class fires at least once in the first two months**, read off the review file's
-  history; a class that never fires has a signature nothing in the record produces, and is
-  re-examined before it is trusted.
-- **Acting.** `growth-extract` consumes ≥ 1 local finding a month (its PR bodies cite the
-  review), `canon-usage-review` lands ≥ 1 canon adaptation a month (PRs titled
-  `Claudinite canon: usage review`), and at least one C1 experiment has its retrospective filed.
-- **Underuse.** A finding restated unchanged for more than four reviews; expected count 0.
-- **Misuse.** An adaptation applied from a class under its floor; a prose removal without its
-  retrospective; a review PR opened by a run whose precondition should have declined.
-- **Overuse.** Review PRs moving on `window` alone for more than four consecutive weeks in a
-  repo with no finding — the cadence is finer than the repo's signal.
-- **Cost.** The Stop hook's median `stopMs` does not rise by more than the timing line's own
-  cost (expected under 5 ms), read from `checkTiming` before and after the runner change.
-- **Cheap to re-examine:** every threshold and floor, the window length, the slowest-rules cap,
-  the twin definition. **Expensive:** the counter shapes in the fold's header, which every
-  member writes from the day they ship, and the timing line's format.
+- **Volume.** `sessions ≥ 10` per window in this repository; two to eight findings per review
+  with the floors met (zero across two reviews means the thresholds are loose, more than twelve
+  means tight); read from the review file's history on `main`.
+- **Tiers.** `act` findings applied within one acting cycle; `diagnose` findings settled (a
+  verdict recorded) within two reviews; `decide` findings each with a parked issue; `observe`
+  findings never acted on. Read from the acting PRs' bodies and the issues.
+- **Expectations.** Every canon skill carries a `usage` block within a month (the `unstated`
+  list empties); read from the review file.
+- **Underuse.** A finding restated unchanged for more than four reviews; expected zero.
+- **Misuse.** An adaptation applied from a `diagnose` or `decide` finding without its verdict; a
+  prose removal without its retrospective.
+- **Overuse.** Review PRs moving on `window` alone for more than four weeks; agent phases
+  requested with nothing to sample.
+- **Cost.** The Stop hook's median `stopMs` rises by no more than the timing line's own cost,
+  under 5 ms, read from `checkTiming` across the change.
+- **Cheap to re-examine:** every threshold and floor, the tier of any rule, the window, the
+  sample size, the twin definition. **Expensive:** the counter shapes in the fold header, the
+  `usage` frontmatter vocabulary, the timing line's format.
