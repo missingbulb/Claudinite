@@ -53,6 +53,8 @@ why.
 | `upstream-watch` | monthly, over the packs that declared an upstream source | a PR against the canon's default branch |
 | `pack-version-bump` | daily when commits landed under `packs/`, and on every push to the canon's default branch (its workflow) | a commit straight onto the canon's default branch |
 | `pack-version-history` | weekly, when commits landed under `packs/` | a self-landing PR touching only `packs/*/VERSIONS.md` |
+| `canon-prose-to-checks` | weekly, on a canon somebody worked in that week | a PR converting the shelf's always-testable prose into checks |
+| `canon-rule-revalidation` | weekly | corrections to shelf rules whose environment claim no longer probes true |
 
 ### Rules (`RULES.md`)
 
@@ -60,6 +62,7 @@ What a canon session follows when it names, configures, writes or polices a pack
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
+| Growth actions over the shelf | high | correctness | prose: <50 words |
 | Segregation rules go through barriers | medium | complexity | prose: <50 words |
 | Name a pack for its surface | high | correctness | prose: <50 words |
 | Claudinite-feature packs take the prefix | medium | complexity | prose: <50 words |
@@ -182,6 +185,14 @@ How a lesson is learned in a consuming project, lifted onto the shelf when it's 
 back out of the project once the canon owns it. Two packs split it by who declares them:
 **[claudinite-growth](../claudinite-growth/README.md)** (member-side: extract + dedup, seeded,
 opt-out by removal) and **claudinite-canon-curation** (this pack, the central stage).
+
+**The corpus is what splits them, not the action.** A growth task writes
+`.claudinite/local/packs/` exclusively — in a member the shelf is a read-only mount the next
+converge replaces whole — so the two actions that also need doing *to the shelf*, converting its
+prose to checks and revalidating its environmental claims, are this pack's `canon-prose-to-checks`
+and `canon-rule-revalidation`. They load the growth pack's skills for the method and differ from
+their member-side twins only in the corpus their worker names and the policy that bounds it
+(`under:packs` here, `under:.claudinite/local` there).
 
 ```
 EXTRACT   per member    → auto-merging PR against the member's default branch  (claudinite-growth)

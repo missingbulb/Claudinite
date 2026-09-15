@@ -342,7 +342,7 @@ mistake:
 - **Scope.** Which files, PRs or members a granted run works on is the worker's
   decision, made in the work sections from the same signals. The conditions decide
   run or no-run, nothing else.
-- **Standing instruction and config** — a `pack_paths` list, a read-only
+- **Standing instruction and config** — the corpus a sweep writes, a read-only
   constraint. Those belong in `task.md`, where they hold on every run.
 
 ### No task runs on a silent repo unless its declaration says so

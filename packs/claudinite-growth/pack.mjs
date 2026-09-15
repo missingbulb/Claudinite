@@ -53,8 +53,15 @@
 // moved. A claim about the harness, a token's reach or an MCP tool's existence is
 // falsified by a platform this repo does not control, and nothing here goes red
 // when it happens — so the trigger is the calendar, and the method is re-running
-// the probe rather than re-reading the prose. It shares prose-to-checks-sweep's
-// `pack_paths` config: a member revalidates its own local packs, the canon its own.
+// the probe rather than re-reading the prose.
+//
+// EVERY TASK HERE WRITES `.claudinite/local/packs/` AND NOTHING ELSE. This pack
+// runs in every declaring member, where the canon is a read-only mount the next
+// converge replaces whole, so its corpus is the repo's own local packs by
+// construction rather than by configuration. The same actions over a canon's
+// `packs/` shelf are claudinite-canon-curation's tasks, which load these skills —
+// skills/ here carries the method and names no corpus, so a second caller needs
+// no copy of it.
 //
 // A declared pack (no fingerprint), seeded like the baseline: --init seeds it into every
 // new repo, the one-time grow-with-claudinite-seed migration seeds the existing fleet,

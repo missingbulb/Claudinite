@@ -6,6 +6,10 @@
   `config.barriers`, extending the mechanism generically if a capability is missing. Never
   standalone segregation-checking code. (12)
 
+- **Wanting a growth action — an extraction, a conversion, a revalidation — over the shelf** —
+  declare a task here loading `claudinite-growth`'s skill for the method; never widen a growth
+  task, which runs in every member, where `packs/` is a read-only mount. (RULES-14)
+
 - **Naming a new canon pack** — name it for the surface it serves rather than the first feature
   you are building for it.
 

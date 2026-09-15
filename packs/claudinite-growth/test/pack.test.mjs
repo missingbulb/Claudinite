@@ -603,6 +603,54 @@ test('growth-write-scope: a capture run deleting a file outside the surface is f
   } finally { cleanup(root); }
 });
 
+test('growth-write-scope: the prose-to-checks sweep writing the canon shelf is flagged', () => {
+  // The sweep's corpus became the local packs exclusively (#2044): a conversion
+  // that lands in packs/ is the canon curation task's work, not this one's.
+  const root = makeRepo({
+    base: { 'packs/headless-browser/RULES.md': '# Rules\n\n- A rule.\n' },
+    changed: {
+      [PROSE]: '- a converted rule\n',
+      'packs/headless-browser/RULES.md': '# Rules\n\n- A narrowed rule.\n',
+    },
+    commitMsg: 'Claudinite growth: prose to checks\n\nRefs #2044',
+  });
+  try {
+    const findings = runScope(root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'packs/headless-browser/RULES.md');
+    assert.equal(findings[0].severity, 'blocking');
+  } finally { cleanup(root); }
+});
+
+test('growth-write-scope: the rule-revalidation sweep writing the canon shelf is flagged', () => {
+  const root = makeRepo({
+    base: { 'packs/git-github/RULES.md': '# Rules\n\n- A probed claim.\n' },
+    changed: { 'packs/git-github/RULES.md': '# Rules\n\n- A re-probed claim.\n' },
+    commitMsg: 'Claudinite growth: rule revalidation\n\nRefs #2044',
+  });
+  try {
+    const findings = runScope(root);
+    assert.equal(findings.length, 1);
+    assert.equal(findings[0].file, 'packs/git-github/RULES.md');
+  } finally { cleanup(root); }
+});
+
+test('growth-write-scope: the canon-side twins, under their own title, are not gated here', () => {
+  // claudinite-canon-curation runs the same actions over the shelf and titles its
+  // runs `Claudinite canon: …` precisely so this gate reads them as somebody
+  // else's business — their surface is packs/, which their own policy bounds.
+  for (const title of ['Claudinite canon: prose to checks', 'Claudinite canon: rule revalidation']) {
+    const root = makeRepo({
+      base: { 'packs/git-github/RULES.md': '# Rules\n\n- A claim.\n' },
+      changed: { 'packs/git-github/RULES.md': '# Rules\n\n- A corrected claim.\n' },
+      commitMsg: `${title}\n\nRefs #2044`,
+    });
+    try {
+      assert.equal(runScope(root).length, 0, `${title} must not be gated by growth-write-scope`);
+    } finally { cleanup(root); }
+  }
+});
+
 test('growth-write-scope: the sibling promote run, with its wider surface, is not gated here', () => {
   // Promote writes the canon by design, and is gated elsewhere — not by this rule.
   const promote = makeRepo({
