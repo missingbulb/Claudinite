@@ -173,8 +173,25 @@
 // false, and every rule and task the pack owns silently does not run. The
 // `core-undeclared` fixture below pins that shape deliberately, once, instead of
 // it being every fixture's accidental default.
+//
+// `claude-code-web-users-support` is prepended for the same reason and carries the
+// config its seed record writes, so a fixture starts where a real member already
+// is. Without it every fixture modelled a PRE-record member, which made the
+// runner's conditional second converge — the one that only runs when a record
+// rewrote the declaration — fire on all 74 rehearsals: the whole vendor set
+// applied twice each, to re-prove one seed 74 times over. `core-undeclared`
+// bypasses this helper entirely, so the seed-then-reconverge path still has its
+// fixture, once, deliberately, as `core`'s undeclared shape does.
+const WEB_SUPPORT = { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } };
+const packEntryIsWebSupport = (e) => (typeof e === 'string' ? e : e?.id) === WEB_SUPPORT.id;
+
+const declaredPacks = (packs) => {
+  const withCore = packs.includes('claudinite-lifecycle') ? packs : ['claudinite-lifecycle', ...packs];
+  return withCore.some(packEntryIsWebSupport) ? withCore : [...withCore, WEB_SUPPORT];
+};
+
 const checks = (packs, extra = {}) => JSON.stringify({
-  packs: packs.includes('claudinite-lifecycle') ? packs : ['claudinite-lifecycle', ...packs],
+  packs: declaredPacks(packs),
   taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
   // The installed versions are written per MODE by the runner (fresh vs stale).
   ...extra,

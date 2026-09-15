@@ -36,10 +36,11 @@ test('makeRepo builds its fixture even where the host insists on signing every c
     const { makeRepo, cleanup, git } = await import('./helpers.mjs');
     const root = makeRepo({ base: { 'a.md': 'x\n' }, changed: { 'b.md': 'y\n' } });
     try {
-      // %G? is git's own verdict per commit: N for unsigned. Both commits, so the
-      // seed on main is covered as well as the one on the feature branch.
+      // %G? is git's own verdict per commit: N for unsigned. Over `--all`, so a
+      // commit on either branch is covered however many the seeding path made.
       const verdicts = git(root, 'log', '--all', '--format=%G?').trim().split('\n');
-      assert.deepEqual(verdicts, ['N', 'N'], 'a fixture commit must never carry a signature');
+      assert.ok(verdicts.length >= 2, `expected the seed and the change to be commits, got ${verdicts.length}`);
+      assert.deepEqual([...new Set(verdicts)], ['N'], 'a fixture commit must never carry a signature');
     } finally { cleanup(root); }
   } finally {
     if (restore === undefined) delete process.env.GIT_CONFIG_GLOBAL;
