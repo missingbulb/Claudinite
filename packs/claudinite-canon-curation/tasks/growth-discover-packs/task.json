@@ -6,7 +6,7 @@
   "preconditions": [
     "due:weekly"
   ],
-  "expected_outcome": "amend_existing_or_create_new_pr",
+  "expected_outcome": "fresh_pr",
   "automerge": "nothing",
   "invocation_endpoint": "fleet",
   "agent_model": "opus",

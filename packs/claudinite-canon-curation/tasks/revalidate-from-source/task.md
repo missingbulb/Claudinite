@@ -1,4 +1,4 @@
-# upstream-watch worker
+# revalidate-from-source worker
 
 Reconcile the shelf's packs against the technologies they teach. A pack opts in by carrying an
 `## Upstream` section in its `README.md`; this run reads what those sources have published since
@@ -57,7 +57,8 @@ and judged in this run — never for one you skipped, and never past what you ac
 
 ## 5. Open the PR
 
-One PR, titled for the run. Give the body one section per pack that had something to say:
+One PR, titled for the run, delivered the way [deliver-pr.md](../../../claudinite-tasks/deliver-pr.md)
+says. Give the body one section per pack that had something to say:
 
 - the source, and what published since its anchor;
 - what changed in the pack, or `no change — anchor advanced`;

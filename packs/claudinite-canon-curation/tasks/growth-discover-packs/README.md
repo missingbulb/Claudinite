@@ -23,6 +23,11 @@ No repo-side gate: the opportunity is standing — a technology the fleet uses
 that no canon pack homes — rather than a recent change here, so the weekly
 anchor is the whole trigger and the run no-ops cheaply when nothing is
 unhomed. The fleet roster it sweeps is read by the run itself.
+
+`fresh_pr`: each run authors a different pack, for a different gap and a
+different set of members, so a week's PR has no relationship to the one before
+it — folding two into one review would put two unrelated packs in front of the
+owner, and closing last week's would discard a pack nobody has judged yet.
 This task reads every member's tree, which an ordinary session in this repo does
 not reach. Reach is a property of WHICH endpoint the hand-off calls, so a task
 needing more than an ordinary session names one; the key resolves in this repo's

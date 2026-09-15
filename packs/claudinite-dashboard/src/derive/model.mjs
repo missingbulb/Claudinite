@@ -15,7 +15,7 @@
 
 import { parseTaskDeclaration, applyTaskDefaults } from '../../../claudinite-tasks/shared-code/task-declaration.mjs';
 import {
-  mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, holdsOnFailure, statesConditions,
+  mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, holdsOnFailure, holdsOnAnyPark, statesConditions,
   DUE_TERM, ELAPSED_TERM,
 } from '../../../claudinite-tasks/shared-code/anchors.mjs';
 import {
@@ -204,26 +204,27 @@ export function parseDeclaration(text) {
 // to diagnose beside a task still being asked on schedule.
 export function describeCadence(preconditions, trigger) {
   if (!Array.isArray(preconditions)) {
-    return { frequency: null, cadence: null, periodMs: null, scheduled: null, holdsOnFailure: null, anchorNote: 'cadence unknown' };
+    return { frequency: null, cadence: null, periodMs: null, scheduled: null, holdsOnFailure: null, holdsOnAnyPark: null, anchorNote: 'cadence unknown' };
   }
   const holds = holdsOnFailure(preconditions);
+  const holdsAnywhere = holdsOnAnyPark(preconditions);
   // The door once more, so a caller handing over only the conditions — a fixture, a
   // declaration written before the field — reads exactly as the roster's own entry does.
   if (withTrigger(trigger, preconditions) !== TRIGGER_SCHEDULE) {
-    return { frequency: 'unscheduled', cadence: null, periodMs: null, scheduled: false, holdsOnFailure: holds, anchorNote: 'not on the schedule — runs only from an item somebody creates' };
+    return { frequency: 'unscheduled', cadence: null, periodMs: null, scheduled: false, holdsOnFailure: holds, holdsOnAnyPark: holdsAnywhere, anchorNote: 'not on the schedule — runs only from an item somebody creates' };
   }
   const cadence = cadenceOf(preconditions);
   const period = taskPeriodMs({ preconditions });
   if (cadence === null) {
-    return { frequency: 'on movement', cadence, periodMs: period, scheduled: true, holdsOnFailure: holds, anchorNote: 'no cadence term — asked at every tick' };
+    return { frequency: 'on movement', cadence, periodMs: period, scheduled: true, holdsOnFailure: holds, holdsOnAnyPark: holdsAnywhere, anchorNote: 'no cadence term — asked at every tick' };
   }
   if (cadence.kind === 'elapsed') {
     return {
-      frequency: `every ${cadence.text}`, cadence, periodMs: period, scheduled: true, holdsOnFailure: holds,
+      frequency: `every ${cadence.text}`, cadence, periodMs: period, scheduled: true, holdsOnFailure: holds, holdsOnAnyPark: holdsAnywhere,
       anchorNote: `every ${cadence.text} — counted from its newest run, not the calendar`,
     };
   }
-  return { frequency: cadence.cadence, cadence, periodMs: period, scheduled: true, holdsOnFailure: holds, anchorNote: null };
+  return { frequency: cadence.cadence, cadence, periodMs: period, scheduled: true, holdsOnFailure: holds, holdsOnAnyPark: holdsAnywhere, anchorNote: null };
 }
 
 // --- work items ----------------------------------------------------------------
@@ -441,11 +442,12 @@ export function buildRoster({ tasks = [], items = [], now, schedule, isOpen }) {
       cadence: read.cadence,
       scheduled: read.scheduled,
       holdsOnFailure: read.holdsOnFailure,
+      holdsOnAnyPark: read.holdsOnAnyPark,
       nextAnchor: next,
       anchorNote,
       periodMs: read.periodMs,
       current,
-      nextAsk: nextAskOf(current, next, anchorNote, read.holdsOnFailure),
+      nextAsk: nextAskOf(current, next, anchorNote, read.holdsOnFailure, read.holdsOnAnyPark),
       openCount: open.length,
       lastClosed: closed.length ? describeItem(closed[0], now) : null,
       history: closed.map((i) => describeItem(i, now)),
@@ -458,20 +460,21 @@ export function buildRoster({ tasks = [], items = [], now, schedule, isOpen }) {
 // This is where the standing-item model's facts become the roster's advice:
 //   - the stamped Not-before IS the schedule (S28), so it wins over the
 //     computed anchor;
-//   - a failure park holds the task's lane only where the declaration says so with
-//     `last-run-not-failed` — showing an anchor there would promise a run the
-//     task itself declines, and showing `held` anywhere else would hide a run the
-//     scheduler files on schedule around the park;
-//   - every other park consumed its occurrence and leaves the lane open, so the
-//     next anchor stands beside it.
-function nextAskOf(current, anchor, anchorNote, holdsOnFailure) {
+//   - a park holds the task's lane only where the declaration says so — with
+//     `last-run-not-failed` for the failure park, or `last-run-not-parked` for
+//     all four. Showing an anchor there would promise a run the task itself
+//     declines, and showing `held` anywhere else would hide a run the scheduler
+//     files on schedule around the park;
+//   - every park the declaration does not name consumed its occurrence and leaves
+//     the lane open, so the next anchor stands beside it.
+function nextAskOf(current, anchor, anchorNote, holdsOnFailure, holdsOnAnyPark) {
   if (!current) return anchor ? { kind: 'anchor', at: anchor } : { kind: 'note', note: anchorNote };
   if (current.state === READY) return { kind: 'ready', urgent: current.urgent };
   if (current.state === EXECUTING || current.state === AGENT) {
     return { kind: 'running', phase: current.state === AGENT ? 'agent' : 'executor' };
   }
   if (current.state === PARKED) {
-    if (current.blockingPark && holdsOnFailure === true) return { kind: 'held' };
+    if (holdsOnAnyPark === true || (current.blockingPark && holdsOnFailure === true)) return { kind: 'held' };
     return anchor ? { kind: 'anchor', at: anchor } : { kind: 'note', note: anchorNote };
   }
   if (current.state === BLOCKED) {

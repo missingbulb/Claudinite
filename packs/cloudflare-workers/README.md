@@ -22,7 +22,7 @@ one directory down.
 ## Upstream
 
 Where the platform this pack describes publishes its own changes, and the state this pack's
-guidance has been reconciled against. The canon's `upstream-watch` reads this section; a member
+guidance has been reconciled against. The canon's `revalidate-from-source` reads this section; a member
 repo reads nothing here.
 
 - **Cloudflare Docs** (Workers, D1, R2, Vectorize, Workflows, Workers AI platform/limits pages)

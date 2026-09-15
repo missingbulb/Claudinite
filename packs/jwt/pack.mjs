@@ -12,7 +12,7 @@
 // JWT practice moves with the outside world — an advisory or a revised best
 // current practice can date this pack's guidance while nothing here is edited —
 // so the README declares the sources that carry it, and the canon's own
-// upstream-watch reconciles the content against them.
+// revalidate-from-source reconciles the content against them.
 const JWT_LIB = /['"](jsonwebtoken|express-jwt|jwks-rsa|node-jose|jose|python-jose)['"]|^\s*(import\s+jwt\b|from\s+jwt(\.[\w.]*)?\s+import\b)/m;
 const SOURCE = /\.(mjs|cjs|js|jsx|ts|tsx|py)$/;
 
