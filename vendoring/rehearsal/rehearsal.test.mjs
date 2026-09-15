@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { FIXTURES, MODES } from './fixtures.mjs';
 import { rehearse, formatResult } from './rehearse.mjs';
@@ -12,26 +12,43 @@ import { SETTINGS_FILES, LEGACY_SETTINGS_FILE } from '../../engine/settings-file
 // eleven consumer packs stopped validating, because the canon's own packs were
 // already migrated and nothing ever converged anything else.
 //
-// Slower than a unit test (four fixtures x two modes, each vendoring the whole
+// Slower than a unit test (every fixture x two modes, each vendoring the whole
 // set and running two sweeps) and that is the correct trade — it runs on every
 // canon PR, and the alternative is finding out from the fleet.
+//
+// It is also the suite's LONG POLE: node --test parallelises across FILES, so
+// every rehearsal in this one file used to queue behind the last, and the file's
+// own serial runtime was the floor no number of workers could get the suite
+// under. Each (fixture, mode) is independent — its own temp dir, its own
+// subprocesses, nothing shared — so they run concurrently here instead, which is
+// what makes the file's wall clock a fraction of its CPU cost rather than equal
+// to it.
+//
+// The rehearsals are subprocess-bound, not CPU-bound: a rehearsal spends its time
+// waiting on nine child processes, so more of them in flight than there are cores
+// is the point. REHEARSAL_CONCURRENCY is measured, not derived — see the pack's
+// own CI-performance notes; above it the runs start contending for real CPU and
+// the file stops getting faster.
+const REHEARSAL_CONCURRENCY = 4;
 
-for (const fixture of FIXTURES) {
-  for (const mode of MODES) {
-    test(`rehearsal: ${fixture.name} [${mode.name}] — ${fixture.why}`, () => {
-      const r = rehearse(fixture, mode);
-      assert.ok(r.ok, `\n${formatResult(r)}\n`);
-    });
+describe('the fixture-consumer rehearsals', { concurrency: REHEARSAL_CONCURRENCY }, () => {
+  for (const fixture of FIXTURES) {
+    for (const mode of MODES) {
+      test(`rehearsal: ${fixture.name} [${mode.name}] — ${fixture.why}`, async () => {
+        const r = await rehearse(fixture, mode);
+        assert.ok(r.ok, `\n${formatResult(r)}\n`);
+      });
+    }
   }
-}
+});
 
 // The stale mode is only meaningful if the versions it writes actually reach the
 // tree — otherwise every "with a migration" run is silently a "without" run, and
 // the half of the gate that covers migrations would pass by doing nothing.
-test('the stale mode really pins the fixture below the corpus before converging', () => {
+test('the stale mode really pins the fixture below the corpus before converging', async () => {
   const fixture = FIXTURES.find((f) => f.name === 'canon-packs');
   const stale = MODES.find((m) => m.name === 'stale');
-  const r = rehearse(fixture, stale);
+  const r = await rehearse(fixture, stale);
   assert.ok(r.ok, `\n${formatResult(r)}\n`);
   // apply-vendor-set advances the versions, so the POST-converge numbers are
   // current; what must be true is that the converge ran against the pinned ones.

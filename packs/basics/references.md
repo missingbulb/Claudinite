@@ -72,6 +72,18 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   `main()`, which drives git and the network; the rule's second clause is what that file should
   say instead. Retire if the corpus stops shipping modules whose whole behaviour sits behind one
   side-effecting entry point.
+- **(writing-tests-9)** Measured on this canon (#2062): a check fixture's `git init` + seed
+  commit + branch is four subprocesses at ~27ms, against ~3ms to copy the finished tree, and
+  the suite built it over a thousand times — ~1000 tests sat in a band at ~53ms each before any
+  rule ran. The band, not a few slow outliers, was where the time was. Retire the rule if
+  process-level setup stops being the dominant per-test cost — a runner that shares one warm
+  process across files, or fixtures that stop shelling out, would do it.
+- **(writing-tests-10)** Measured on this canon (#2062): the suite ran 120.6s wall against 250s
+  of user+sys on 4 cores — 52% utilisation — because one file of 74 subprocess-bound cases took
+  76.5s by itself, above the 66s perfect 4-core parallelism would have given. `node --test`
+  schedules whole files, so no `--test-concurrency` reaches inside one; running that file's
+  cases concurrently took it to 22.1s and the suite to 58s. Retire the rule if the runners in
+  use schedule at test granularity across files rather than at file granularity.
 - **(check:declared-check-spec-keys)** The engine's declaration load drops a key it cannot place
   instead of throwing, because refusing it wedges a member holding an older engine (#1400); this
   check is where the typo half of that trade is caught. Retire it only if the load can refuse

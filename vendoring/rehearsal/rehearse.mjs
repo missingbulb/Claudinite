@@ -25,13 +25,16 @@
 // happens under a temp dir that is removed afterwards.
 
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { removeTree } from '../../engine/remove-tree.mjs';
 import { settingsPath, isSettingsFile } from '../../engine/settings-file.mjs';
 import { installedVersions, withInstalledVersions } from '../../engine/installed-versions.mjs';
+
+const execFileAsync = promisify(execFile);
 
 // The fixture's declaration with this mode's installed versions written in: the
 // engine version at the top, and every declared pack pinned at the same number so
@@ -53,10 +56,16 @@ export const CANON = dirname(dirname(dirname(fileURLToPath(import.meta.url)))); 
 // Every step is captured, never thrown: a rehearsal that dies on step two must
 // still report which step and why, because "it failed" is not actionable and
 // "apply-vendor-set exited 1 saying X" is.
-function step(name, argv, env = {}, cwd = undefined) {
+//
+// Asynchronous so that rehearsals of different fixtures overlap: a rehearsal is
+// nine child processes end to end and spends nearly all of its wall clock waiting
+// on them, so running one at a time left three of four cores idle. The steps
+// WITHIN one rehearsal stay strictly ordered — each awaits the last, because each
+// judges what the one before it wrote.
+async function step(name, argv, env = {}, cwd = undefined) {
   try {
-    const stdout = execFileSync(process.execPath, argv, {
-      encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...env }, cwd,
+    const { stdout } = await execFileAsync(process.execPath, argv, {
+      encoding: 'utf8', env: { ...process.env, ...env }, cwd, maxBuffer: 64 * 1024 * 1024,
     });
     return { name, ok: true, stdout };
   } catch (e) {
@@ -64,7 +73,7 @@ function step(name, argv, env = {}, cwd = undefined) {
   }
 }
 
-export function buildFixture(fixture, mode) {
+export async function buildFixture(fixture, mode) {
   const root = mkdtempSync(join(tmpdir(), `claudinite-rehearsal-${fixture.name}-`));
   for (const [rel, content] of Object.entries(fixture.files)) {
     const abs = join(root, rel);
@@ -83,35 +92,35 @@ export function buildFixture(fixture, mode) {
   // up fails these commits for reasons that have nothing to do with the canon
   // change under test, and the rehearsal then reports a fleet-breaking result
   // because a signing helper was unavailable.
-  const git = (...a) => execFileSync('git', [
+  const git = (...a) => execFileAsync('git', [
     '-c', 'user.email=rehearsal@example.invalid', '-c', 'user.name=rehearsal',
     '-c', 'commit.gpgsign=false', '-c', 'gpg.format=openpgp', ...a,
-  ], { cwd: root, stdio: 'ignore' });
-  git('init', '-q', '-b', 'main');
-  git('commit', '-q', '--allow-empty', '--no-gpg-sign', '-m', 'fixture');
-  git('add', '-A');
-  git('commit', '-q', '--no-gpg-sign', '-m', 'fixture content');
+  ], { cwd: root });
+  await git('init', '-q', '-b', 'main');
+  await git('commit', '-q', '--allow-empty', '--no-gpg-sign', '-m', 'fixture');
+  await git('add', '-A');
+  await git('commit', '-q', '--no-gpg-sign', '-m', 'fixture content');
   return root;
 }
 
-export function rehearse(fixture, mode) {
-  const root = buildFixture(fixture, mode);
+export async function rehearse(fixture, mode) {
+  const root = await buildFixture(fixture, mode);
   const steps = [];
   try {
     // apply-vendor-set reads the CANON checkout (its own root), so it alone runs
     // with the canon as cwd. Everything after it judges the FIXTURE, and must run
     // with the fixture as cwd — a sweep inheriting the canon's cwd resolves git
     // against the canon and cheerfully reports on the wrong repo.
-    steps.push(step('apply-vendor-set', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
+    steps.push(await step('apply-vendor-set', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
     if (steps.at(-1).ok) {
       const declarationBefore = readFileSync(settingsPath(root), 'utf8');
-      steps.push(step('migrations-apply', [join(CANON, 'engine/migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root }, root));
+      steps.push(await step('migrations-apply', [join(CANON, 'engine/migrations/apply.mjs')], { CLAUDE_PROJECT_DIR: root }, root));
       // The worker's conditional second pass, mirrored: a note that DECLARED a pack
       // left its content out of the set the first pass computed, and the fixture must
       // meet the same converge a member does — otherwise the rehearsal green-lights a
       // seed that would red every member for a night.
       if (readFileSync(settingsPath(root), 'utf8') !== declarationBefore) {
-        steps.push(step('re-converge', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
+        steps.push(await step('re-converge', [join(CANON, 'vendoring/apply-vendor-set.mjs'), '--target', root]));
       }
       // AFTER the migrations, which is the order the real flow runs in
       // (packs/claudinite-lifecycle/updates/engine-update.mjs: replace the engine, apply
@@ -119,15 +128,15 @@ export function rehearse(fixture, mode) {
       // converge the wiring). Anything the wiring converge derives from the
       // declaration — the rules index above all — is wrong if a record moved the
       // declaration after it ran, and the rehearsal is where that shows up.
-      steps.push(step('converge-wiring', [join(CANON, 'engine/converge-wiring.mjs'), 'fixture/rehearsal'],
+      steps.push(await step('converge-wiring', [join(CANON, 'engine/converge-wiring.mjs'), 'fixture/rehearsal'],
         { CLAUDINITE_REPO_ROOT: root }, root));
-      steps.push(step('selftest', [join(CANON, 'engine/selftest.mjs'), '--strict'], { CLAUDE_PROJECT_DIR: root }, root));
+      steps.push(await step('selftest', [join(CANON, 'engine/selftest.mjs'), '--strict'], { CLAUDE_PROJECT_DIR: root }, root));
       const sweep = join(root, '.claudinite/shared/engine/checks/check_the_world.mjs');
       // The member runs its own VENDORED sweep, not the canon's — that is the
       // copy it will actually live with, and a converge that failed to vendor it
       // must read as a failure here rather than be silently covered for.
       steps.push(existsSync(sweep)
-        ? step('check-the-world', [sweep], { CLAUDE_PROJECT_DIR: root }, root)
+        ? await step('check-the-world', [sweep], { CLAUDE_PROJECT_DIR: root }, root)
         : { name: 'check-the-world', ok: false, stdout: 'the converge vendored no check_the_world.mjs' });
     }
     const stamp = existsSync(settingsPath(root))

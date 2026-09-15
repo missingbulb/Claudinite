@@ -24,11 +24,20 @@ const gitTry = (root, ...args) => sh(root, 'git', args, { allowFail: true });
 // context resolves can never name different branches.
 export const BASE_REF_CANDIDATES = ['origin/main', 'origin/master', 'main', 'master'];
 
+// All four candidates in ONE subprocess. `cat-file --batch-check` takes revisions on
+// stdin and answers each independently — `<sha> commit <size>` for one that resolves,
+// `<input> missing` for one that does not — so it is the same revision parser
+// `rev-parse --verify` uses, `^{commit}` peeling included, asked four questions at
+// once instead of four times. A repo whose base is a local `main` (every check fixture,
+// and any clone without a remote) missed on both `origin/` candidates first and paid
+// three spawns for an answer that now costs one.
 function resolveBaseRef(root) {
-  for (const ref of BASE_REF_CANDIDATES) {
-    if (gitTry(root, 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`) !== null) return ref;
-  }
-  return null;
+  const answers = (sh(root, 'git', ['cat-file', '--batch-check'],
+    { allowFail: true, input: `${BASE_REF_CANDIDATES.map((ref) => `${ref}^{commit}`).join('\n')}\n` }) || '')
+    .split('\n');
+  // Object-id length is the repo's hash algorithm's, not a constant — sha1 and sha256
+  // repos both answer here, and only the `commit` word decides.
+  return BASE_REF_CANDIDATES.find((_, i) => /^[0-9a-f]+ commit /.test(answers[i] ?? '')) ?? null;
 }
 
 const FETCH_TIMEOUT_MS = 8000;
