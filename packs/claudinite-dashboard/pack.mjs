@@ -40,7 +40,7 @@
 // What adoption cannot do is enable Pages — the handover step below.
 
 export default {
-  version: '60915.5',
+  version: '60915.6',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state and the site that publishes it',
