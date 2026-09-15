@@ -137,6 +137,14 @@ and *last fired*. A blocking rule mounted here that caught nothing in 30 days is
 candidate, and this is the only page with the per-repo denominator (`checks.work.runs`).
 The two series never share an axis.
 
+**The machinery** — this repo's own scheduler and executor, read from the *second* past-data
+file, `tasks-usage.GENERATED.json`, and never from the sessions' one beside it. Reliability
+(what closed and how it ended, what was parked by kind, the four legs of an item's life as
+quantiles taken here over the window's samples) and cost (runs, jobs, billed minutes, spend
+where a rate is configured, API calls per run), each as **this week against last**. A member
+folding one file and not the other is ordinary, so the panel says which plane is missing
+rather than borrowing the other's numbers, and a counter no day recorded reads *not recorded*.
+
 **What the packs report** — last, unchanged, the one region whose contents differ from repo
 to repo ([pack-contributions.md](pack-contributions.md)).
 
@@ -151,6 +159,9 @@ to repo ([pack-contributions.md](pack-contributions.md)).
   ran; the machine's expand keeps that as text.
 - **A dual-axis corpus chart.** Two scales on one plot violate the one-scale rule; the two
   series are small multiples.
+- **Park kinds as a coloured chart.** The four kinds carry severity and the status palette is
+  reserved for severity; painting them as four categorical series spends it on identity. They
+  are a ruled table, which is also the table view the lighter series colours oblige.
 - **A side card of month totals** (tokens / lines / releases). Tokens are COST; releases
   and lines are GOT's tail line.
 

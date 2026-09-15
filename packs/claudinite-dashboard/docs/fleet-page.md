@@ -159,6 +159,23 @@ members that moved. The note beside it carries two facts: *peak N · the weekend
 **Source.** fold `sessions` per day. **Bad when.** Seven flat days on a fleet that declares
 tasks while the heartbeat is green: the scheduler runs, nothing produces sessions.
 
+## The machinery, fleet-wide
+
+**Question.** Is a week of parks one member's bad luck, or the machinery's?
+
+Below the grid, the repo page's own reliability and cost panel summed across the fleet —
+closes and parks by kind, billed minutes, API calls, and the four latency legs — each as this
+week against last. Its quantiles are taken over every member's **samples pooled**, never over
+their medians: an average of medians is not a median, and the samples are in each file
+precisely so the quantile can be taken at the window being drawn. One row per folding member,
+and a member that folds no `tasks-usage.GENERATED.json` is **named in the table and counted in
+no figure** — that census is the denominator every number above it is read against, and it is
+why nothing in the panel is stated as a rate.
+
+**Source.** each member's tasks fold at head sha ([data-sources.md](data-sources.md)).
+**Bad when.** Failure parks up on a flat run count: the machinery is breaking rather than
+being asked for more.
+
 ## What is deliberately absent
 
 - **A count of scheduler runs**, as a tile or a chart. Whether every member ran when due is

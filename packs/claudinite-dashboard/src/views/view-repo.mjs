@@ -38,6 +38,8 @@ import { fmtTokens, fmtHours, fmtAge } from '../derive/fleet-ledger.mjs';
 import { buildBoard } from '../derive/board.mjs';
 import { renderBoard, quietLine } from '../render/board-view.mjs';
 import { buildPanel } from '../derive/explore.mjs';
+import { tasksMachine } from '../derive/tasks-machine.mjs';
+import { machinePanel } from '../render/machine-view.mjs';
 import { wakeStrip } from '../derive/model.mjs';
 import { settingsTextAtSha, SETTINGS_FILE } from '../read/settings-read.mjs';
 // The scheduler's own predicate, over the declaration this view already parsed — so the
@@ -51,6 +53,10 @@ import { isDormant } from '../../../claudinite-tasks/public/dormancy.mjs';
 const GROWTH_DAYS = 30;
 const OUTCOME_DAYS = 14;
 const RUN_HOURS = 48;
+// The machinery panel's window, and the window before it. A week each, because that is
+// the span the fleet page's own report-card figures use and the two are read side by
+// side; a shorter one turns a quiet weekend into a collapse.
+const MACHINE_SPAN = 7;
 
 const CI_UI = {
   passing: { label: 'passing', color: 'var(--good)' },
@@ -607,6 +613,15 @@ function renderGrowth(growth) {
 
 const fmt = (n) => (n === null || n === undefined ? '—' : n.toLocaleString());
 
+// --- how the machinery itself ran, and what it cost ----------------------------------
+
+// The second past-data plane: `tasks-usage.GENERATED.json`, folded by its own task on
+// its own watermark. A repo folding the sessions' file and not this one is an ordinary
+// state, so the panel says which plane is missing rather than falling back to the other.
+export function renderMachine(machine) {
+  $('machine').replaceChildren(...machinePanel(machine));
+}
+
 // --- what the packs report ---------------------------------------------------------
 
 // LAST on the page, and the only region whose contents differ from repo to repo:
@@ -730,6 +745,7 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   }), usage);
   renderRuns(hourSeries(usage, { now, hours: RUN_HOURS, runs }));
   renderGrowth(growthSeries(usage, { now, days: GROWTH_DAYS }));
+  renderMachine(tasksMachine(tasksUsage, { now, span: MACHINE_SPAN }));
 
   return {
     now, sha, branch: meta.default_branch, taskCount: tasks.length, itemCount: items.length, issuePage,
