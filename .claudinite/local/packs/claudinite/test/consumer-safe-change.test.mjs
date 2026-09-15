@@ -229,10 +229,18 @@ test('a removed export outside the vendor set, or in a test, is not a surface', 
   const before = 'export const A = 1;\n';
   // .claudinite/local/ reaches no member, and a dated migration record is a
   // one-shot the fleet runs and forgets — neither is imported by anybody's pack.
+  // A pack's whole `test/` DIRECTORY goes the same way: the vendor set drops it
+  // by name, so a harness or a fixture beside the scenarios that use it reaches
+  // no member either — and excluding only the `.test.mjs` suffix would read
+  // rewriting one of those helpers as a fleet migration.
   for (const f of ['.claudinite/local/packs/claudinite/x.mjs', 'engine/migrations/2026-08-01-thing/migration.mjs',
-    'engine/x.test.mjs', 'engine-tests/x.mjs', 'bootstrap.mjs']) {
+    'engine/x.test.mjs', 'engine-tests/x.mjs', 'bootstrap.mjs',
+    'packs/claudinite-tasks/test/sim/sim.mjs', 'packs/basics/test/fixtures/thing.mjs']) {
     assert.deepEqual(contractChanges([f], () => '', () => before), [], f);
   }
+  // …and the exclusion is the directory, not the whole pack: a module beside it
+  // is still the contract it always was.
+  assert.equal(contractChanges(['packs/claudinite-tasks/src/items/work-item.mjs'], () => '', () => before).length, 1);
 });
 
 test('a removed export WITH a migration record or a fixture passes', () => {
