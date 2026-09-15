@@ -62,17 +62,19 @@ const RETIRED = [
   // records — the holders were enumerated and fixed, not notified and waited on.
   /^packs\/claudinite-tasks\/queue\/create-work-item\.mjs$/,
   /^packs\/claudinite-tasks\/converge-workflows\.mjs$/,
+  // The growth pack's rename left this one behind, and #2050 tracked it because the
+  // question it turned on — does any member still name it — is a per-repo read this
+  // repository cannot do. The same session that swept the fleet for #2069 answered it:
+  // all fourteen member repositories were read, and not one names the command. The only
+  // surviving mention anywhere is a prose aside in a pack comment, which invokes nothing.
+  /^packs\/grow_with_claudinite\//,
 ];
 
 // TRACKED is a path this scan found gone with no holder known and no shim available,
 // carried under its own issue rather than silently waived. It differs from RETIRED in
 // what is owed: a retired path is finished, a tracked one is a question — does any member
 // still name it — that only a per-repo read can answer.
-const TRACKED = [
-  // The growth pack's rename left this behind; standing `packs/grow_with_claudinite/` up
-  // again to re-export one module would resurrect the id the rename map retires (#2050).
-  /^packs\/grow_with_claudinite\//,
-];
+const TRACKED = [];
 
 test('every mount path a fielded canon doc told a member to run still resolves', () => {
   // A SHALLOW checkout has no history to walk, so the scan would find nothing and report
