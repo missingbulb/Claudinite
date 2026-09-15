@@ -8,76 +8,20 @@ import assert from 'node:assert/strict';
 import { runExecutor } from '../../src/execute/loop.mjs';
 import { parseWorkItemBody } from '../../src/items/work-item.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
+import { makeClock } from '../sim/world/clock.mjs';
+import { makeGithub } from '../sim/world/github.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const CONFIG = { taskScheduler: SCHEDULE, packConfig: {} };
 
-// A fake repo: issues with labels, bodies, comments and state, driven through the
-// same REST paths the shell calls.
-function fakeRepo(issues = [], pulls = []) {
-  const state = {
-    issues: issues.map((i) => ({ comments: [], state: 'open', ...i })), commentSeq: 100, calls: [],
-    pulls: pulls.map((p) => ({ comments: [], state: 'open', ...p })),
-  };
-  const find = (n) => state.issues.find((i) => i.number === n);
-  const findPull = (n) => state.pulls.find((p) => p.number === n);
-  const gh = async (path, { method = 'GET', body } = {}) => {
-    state.calls.push(`${method} ${path}`);
-    let m;
-    if (method === 'GET' && /^\/repos\/[^/]+\/[^/]+\/pulls\?/.test(path)) {
-      return { status: 200, json: state.pulls.filter((p) => p.state === 'open') };
-    }
-    if ((m = /^\/repos\/[^/]+\/[^/]+\/pulls\/(\d+)$/.exec(path))) {
-      const pr = findPull(Number(m[1]));
-      if (!pr) return { status: 404, json: null };
-      if (method === 'PATCH') Object.assign(pr, body);
-      return { status: 200, json: pr };
-    }
-    if (/\/git\/refs\/heads\//.test(path)) return { status: 204, json: null };
-    if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/(\d+)\/comments/.exec(path)) && !find(Number(m[1])) && findPull(Number(m[1]))) {
-      if (method === 'POST') findPull(Number(m[1])).comments.push({ body: body.body });
-      return { status: 201, json: {} };
-    }
-    if (method === 'GET' && /^\/repos\/[^/]+\/[^/]+\/issues\?/.test(path)) {
-      const page = Number(/[?&]page=(\d+)/.exec(path)?.[1] ?? 1); // NOT /page=/ — that matches per_page
-      return { status: 200, json: page === 1 ? state.issues.filter((i) => i.state === 'open') : [] };
-    }
-    if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/comments\/(\d+)$/.exec(path))) {
-      const id = Number(m[1]);
-      for (const issue of state.issues) {
-        const c = issue.comments.find((x) => x.id === id);
-        if (c) { if (method === 'PATCH') c.body = body.body; return { status: 200, json: c }; }
-      }
-      return { status: 404, json: null };
-    }
-    if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/(\d+)\/comments/.exec(path))) {
-      const issue = find(Number(m[1]));
-      if (method === 'POST') {
-        issue.comments.push({ id: (state.commentSeq += 1), body: body.body });
-        issue.updated_at = 'now';
-        return { status: 201, json: {} };
-      }
-      return { status: 200, json: issue.comments };
-    }
-    if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/(\d+)\/labels\/(.+)$/.exec(path))) {
-      const issue = find(Number(m[1]));
-      issue.labels = issue.labels.filter((l) => l !== decodeURIComponent(m[2]));
-      return { status: 200, json: {} };
-    }
-    if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/(\d+)\/labels$/.exec(path))) {
-      const issue = find(Number(m[1]));
-      issue.labels.push(...body.labels);
-      return { status: 200, json: {} };
-    }
-    if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/(\d+)$/.exec(path))) {
-      const issue = find(Number(m[1]));
-      if (method === 'PATCH') Object.assign(issue, body);
-      return { status: 200, json: issue };
-    }
-    return { status: 404, json: null };
-  };
-  return { state, gh, find, findPull };
-}
+// The shared fake GitHub (`test/sim/world/github.mjs`), seeded at the instant
+// this file's `drive` runs at, so the timestamps it stamps agree with the `now`
+// the executor is handed. Every fault it can inject is off: this file is about
+// the shell driving its rules to a terminal state, and a platform misbehaving is
+// a scenario's subject, not a unit test's.
+const fakeRepo = (issues = [], pulls = []) => makeGithub({
+  clock: makeClock({ start: '2026-08-14T04:20:00Z' }), issues, pulls,
+});
 
 const workItem = (number, task, labels, body = null) => ({
   number, title: `[claudinite-work] p/${task}`, labels,
