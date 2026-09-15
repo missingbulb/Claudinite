@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import declJson from '../../../tasks/adopt-requested-packs/task.json' with { type: 'json' };
-import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
-import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
+import { evaluatePrecondition } from '../../../../claudinite-tasks/public/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/public/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const decl = normalizeTaskDeclaration(declJson);
 

@@ -57,7 +57,7 @@ and judged in this run — never for one you skipped, and never past what you ac
 
 ## 5. Open the PR
 
-One PR, titled for the run, delivered the way [deliver-pr.md](../../../claudinite-tasks/deliver-pr.md)
+One PR, titled for the run, delivered the way [deliver-pr.md](../../../claudinite-tasks/src/deliver/deliver-pr.md)
 says. Give the body one section per pack that had something to say:
 
 - the source, and what published since its anchor;

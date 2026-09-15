@@ -19,9 +19,9 @@ import { pathToFileURL } from 'node:url';
 // Reading a branch tip without disturbing the executor's checkout, and stamping the
 // trailer that says which task wrote a commit, are claudinite-tasks' to own; a local
 // copy would be a second implementation of the one thing that must not have two. The
-// published `shared-code/` seam is the only way a pack may reach another's code, and
+// published `public/` seam is the only way a pack may reach another's code, and
 // the relative path resolves the same from the canon and from a member's mount.
-import { baseTip, readAt, remoteUrl, withTaskTrailer } from '../../../claudinite-tasks/shared-code/delivery.mjs';
+import { baseTip, readAt, remoteUrl, withTaskTrailer } from '../../../claudinite-tasks/public/delivery.mjs';
 import { BEACON_PLACEHOLDER, claimedHostnames, parseWranglerConfig, publishedDir, wranglerConfigPath } from '../../lib.mjs';
 import { nextVersion, stampHtml } from '../../bump-version.mjs';
 import { preflight } from './preflight.mjs';

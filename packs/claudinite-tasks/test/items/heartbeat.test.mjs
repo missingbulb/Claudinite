@@ -136,7 +136,7 @@ test('the beat says who is working and how long they have been', () => {
 // the note are asserted for the same reason: the no-progress park reads that note, so a
 // beat that drops it is a beat nothing downstream can judge.
 //
-// WHAT THESE CANNOT CATCH: that a session actually beats. That is prose in `executor.md`
+// WHAT THESE CANNOT CATCH: that a session actually beats. That is prose in `public/instructions.md`
 // and nothing enforces it — these prove only that a beat, once posted, counts and that
 // the progress it leaves behind accumulates.
 

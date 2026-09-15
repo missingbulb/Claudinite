@@ -17,7 +17,7 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { remoteUrl, withTaskTrailer } from '../../../claudinite-tasks/shared-code/delivery.mjs';
+import { remoteUrl, withTaskTrailer } from '../../../claudinite-tasks/public/delivery.mjs';
 import { planBumps, bumpSubject, BUMP_TASK } from '../../pack-versions.mjs';
 
 const item = process.env.CLAUDINITE_ITEM || '';

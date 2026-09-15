@@ -6,7 +6,7 @@ import {
 import { estimateMinutes, parkMinutes, parkMinutesNote } from '../src/derive/fleet.mjs';
 import {
   READY, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
-} from '../../claudinite-tasks/shared-code/work-items.mjs';
+} from '../../claudinite-tasks/public/work-items.mjs';
 import { PARKED } from '../src/derive/model.mjs';
 
 const item = (over = {}) => ({

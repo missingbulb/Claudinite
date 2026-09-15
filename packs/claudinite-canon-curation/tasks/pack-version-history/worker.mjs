@@ -9,9 +9,9 @@
 // A recompute that changes no record opens nothing.
 
 import { pathToFileURL } from 'node:url';
-import { deliverGenerated, remoteUrl } from '../../../claudinite-tasks/shared-code/delivery.mjs';
-import { AUTOMERGE_TRAILER, policyExpression } from '../../../claudinite-tasks/shared-code/merge-policy.mjs';
-import { normalizeTaskDeclaration } from '../../../claudinite-tasks/shared-code/task-contract.mjs';
+import { deliverGenerated, remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
+import { AUTOMERGE_TRAILER, policyExpression } from '../../../claudinite-tasks/public/merge-policy.mjs';
+import { normalizeTaskDeclaration } from '../../../claudinite-tasks/public/task-contract.mjs';
 import { planHistory } from '../../pack-versions.mjs';
 import { fetchBase, makeGit } from '../pack-version-bump/worker.mjs';
 import taskJson from './task.json' with { type: 'json' };

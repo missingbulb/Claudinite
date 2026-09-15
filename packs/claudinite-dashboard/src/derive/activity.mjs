@@ -18,8 +18,8 @@
 // day at the far end of the window is under-read rather than empty, and every series
 // carries the horizon past which it stops being a count and starts being a floor.
 
-import { isParked, outcomeOf } from '../../../claudinite-tasks/shared-code/work-items.mjs';
-import { isSubstantiveCommit } from '../../../claudinite-tasks/shared-code/substantive-commit.mjs';
+import { isParked, outcomeOf } from '../../../claudinite-tasks/public/work-items.mjs';
+import { isSubstantiveCommit } from '../../../claudinite-tasks/public/substantive-commit.mjs';
 import { isWorkItem } from './model.mjs';
 
 export const DAY_MS = 86400e3;

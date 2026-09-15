@@ -390,7 +390,7 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   the reference scanner gains a per-edge opt-in for test files.
 
 - **(RULES-90)** #1890's rebase onto a `main` that had moved 54 commits: the branch renamed
-  `queue/scheduler-run.mjs` to `src/schedule/run.mjs`, git raised the conflict at the old path,
+  `public/scheduler-run.mjs` to `src/schedule/run.mjs`, git raised the conflict at the old path,
   and resolving it in favour of the shim dropped #1980's `withOwnWrites` hunks entirely — no
   marker, no error, and only that change's own test red out of 3535. The audit that followed
   checked all 2140 lines `main` had added to the affected packs since the branch's base and found

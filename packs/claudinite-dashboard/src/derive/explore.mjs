@@ -16,8 +16,8 @@
 import {
   parseWorkItemBody, parseWorkItemTitle, statusOf, labelNames, outcomeOf,
   PARK_PREFIX, CLAIM_MARKER, HANDOFF_MARKER,
-} from '../../../claudinite-tasks/shared-code/work-items.mjs';
-import { holdsOnFailure } from '../../../claudinite-tasks/shared-code/anchors.mjs';
+} from '../../../claudinite-tasks/public/work-items.mjs';
+import { holdsOnFailure } from '../../../claudinite-tasks/public/anchors.mjs';
 
 const NOT_READ = 'not read';
 const ms = (t) => (t == null ? null : new Date(t).getTime());

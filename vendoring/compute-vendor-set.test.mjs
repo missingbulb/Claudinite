@@ -193,7 +193,7 @@ test('regression (fleet executor-broken): the REAL canon tree vendors the tasks 
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
   const { files, errors } = await computeVendorSet(['basics', 'claudinite-tasks']);
   assert.deepEqual(errors, []);
-  for (const doc of ['executor.md', 'deliver-pr.md', 'queue/instructions.md']) {
+  for (const doc of ['src/deliver/deliver-pr.md', 'public/instructions.md', 'public/implement-request.md']) {
     assert.ok(files.includes(`packs/claudinite-tasks/${doc}`),
       `the live ${doc} must be in the vendor set — a member's routine reads it from its own mount`);
   }
@@ -499,7 +499,7 @@ test("no canon pack ships its docs/ — over the real corpus, not a fixture", as
   const { files, errors } = await computeVendorSet(ids, { today: '2026-01-01' });
   assert.deepEqual(errors, []);
   assert.deepEqual(files.filter((f) => f.split('/').includes('docs')), []);
-  assert.ok(files.includes('packs/claudinite-tasks/queue/instructions.md'), 'claudinite-tasks still ships its operational tree');
+  assert.ok(files.includes('packs/claudinite-tasks/public/instructions.md'), 'claudinite-tasks still ships its operational tree');
   assert.ok(files.includes('packs/claudinite-dashboard/pack.mjs'), 'claudinite-dashboard still ships');
 
   const docsFiles = execFileSync('git', ['ls-files', ':(glob)packs/*/docs/**'], { cwd: REPO_ROOT, encoding: 'utf8' })

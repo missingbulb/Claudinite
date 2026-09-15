@@ -403,12 +403,16 @@ export const isWorkItemTitle = (title) => parseWorkItemTitle(title) !== null;
 // resolves the path against the discovered task set instead (the executor does).
 const PACK_TASK_PATH_RE = /^(?:\.claudinite\/shared\/)?packs\/([^/]+)\/tasks\/([^/]+)\/[^/]+$/;
 const BUILT_IN_TASK_PATH_RE = /^(?:\.claudinite\/shared\/)?(?:engine\/scheduler|packs\/claudinite-tasks)\/queue\/tasks\/([^/]+)\/[^/]+$/;
+// The built-in spec's `public/` home, which new items name. `taskIdFromPath` is the
+// DECODE side, so this is read forever beside the two above: an item minted today
+// outlives any number of moves, and an undecodable path leaves it unattributable.
+const BUILT_IN_PUBLIC_TASK_PATH_RE = /^(?:\.claudinite\/(?:shared|local)\/)?packs\/claudinite-tasks\/public\/(implement-request)\.md$/;
 
 export function taskIdFromPath(path) {
   const p = String(path ?? '');
   const pack = PACK_TASK_PATH_RE.exec(p);
   if (pack) return { pack: canonicalPackId(pack[1]), task: pack[2] };
-  const builtIn = BUILT_IN_TASK_PATH_RE.exec(p);
+  const builtIn = BUILT_IN_TASK_PATH_RE.exec(p) ?? BUILT_IN_PUBLIC_TASK_PATH_RE.exec(p);
   return builtIn ? { pack: 'engine', task: builtIn[1] } : null;
 }
 

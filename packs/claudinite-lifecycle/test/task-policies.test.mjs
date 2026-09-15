@@ -10,10 +10,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { policyVerdict, declaredMergeRules } from '../../claudinite-tasks/shared-code/merge-policy.mjs';
+import { policyVerdict, declaredMergeRules } from '../../claudinite-tasks/public/merge-policy.mjs';
 import adoptJson from '../tasks/adopt-requested-packs/task.json' with { type: 'json' };
 import updateJson from '../tasks/update/task.json' with { type: 'json' };
-import { normalizeTaskDeclaration } from '../../claudinite-tasks/shared-code/task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/public/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const adopt = normalizeTaskDeclaration(adoptJson);
 const update = normalizeTaskDeclaration(updateJson);

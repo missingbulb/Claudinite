@@ -21,13 +21,13 @@ import {
   STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_FAILURE,
   STATUS_RUNNING_AGENT, STATUS_RUNNING_EXECUTOR, STATUS_READY,
   PARK_PREFIX, PARK_KINDS, ORIGIN_AD_HOC,
-} from '../../../claudinite-tasks/shared-code/work-items.mjs';
+} from '../../../claudinite-tasks/public/work-items.mjs';
 // Namespace-read for the one export that may be newer than the member's queue
 // module: the dashboard and claudinite-tasks converge on separate cadences, so a
 // named import of an export it has not reached yet is a link-time fault that takes
 // the whole page. Before `manual` arrives, `ad-hoc` alone is what this meant.
-import * as queueVocabulary from '../../../claudinite-tasks/shared-code/work-items.mjs';
-import { nextAnchor } from '../../../claudinite-tasks/shared-code/anchors.mjs';
+import * as queueVocabulary from '../../../claudinite-tasks/public/work-items.mjs';
+import { nextAnchor } from '../../../claudinite-tasks/public/anchors.mjs';
 
 // Every origin a person's action produces, as against the schedule's own.
 const askedForOrigins = () => queueVocabulary.ASKED_FOR_ORIGINS ?? [ORIGIN_AD_HOC];

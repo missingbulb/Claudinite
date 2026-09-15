@@ -363,15 +363,15 @@ test('the re-queue lever reaches the comment a parked person reads', () => {
 // a torn state the janitor then repairs. Scanned from the tracked tree rather than a
 // list, so a new brief is covered the moment it is added.
 //
-// Two exclusions, each because the legacy spelling is the point there:
-//   - `executor.md`, the RETIRED slot mechanism's instructions, frozen for routines
-//     nobody has repointed — its vocabulary is that scheme's, not this one's;
-//   - every `VERSIONS.md`, a historical record of what each version did.
+// One exclusion, because the legacy spelling is the point there: every `VERSIONS.md`,
+// a historical record of what each version did. `executor.md` was the other — the
+// RETIRED slot mechanism's instructions, kept while routines still named it — and it
+// is deleted, so the exemption goes with it rather than sitting here matching nothing.
 // `packs/claudinite-tasks/docs/` carried the same exemption while it held the dated
 // design records (§P, #1870): that content is gone and PRINCIPLES.md, its one
 // remaining file, states only current vocabulary, so it is checked like any other
 // pack prose now.
-const PROSE_EXCLUDED = /(^|\/)(VERSIONS\.md$|executor\.md$)/;
+const PROSE_EXCLUDED = /(^|\/)VERSIONS\.md$/;
 const trackedProse = (pattern) => execFileSync('git', ['ls-files', pattern], { encoding: 'utf8' })
   .split('\n').filter((p) => p && !PROSE_EXCLUDED.test(p));
 

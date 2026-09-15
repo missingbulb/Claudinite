@@ -15,13 +15,13 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SUSPEND_ALL_VAR, suspendedNotice } from '../../src/world/hold.mjs';
 
-const QUEUE = join(dirname(fileURLToPath(import.meta.url)), '../../queue');
+const PUBLIC = join(dirname(fileURLToPath(import.meta.url)), '../../public');
 
 // Driven under the operator hold, which is the scheduler run's first act: a run that
 // gets that far has been STARTED by the shim, and the hold stops it before it needs a
 // token or a repo — so this proves the delegation without a GitHub in the loop.
 test('the retired `tick.mjs` name still starts a scheduler run, and says which name was used', () => {
-  const r = spawnSync(process.execPath, [join(QUEUE, 'tick.mjs')], {
+  const r = spawnSync(process.execPath, [join(PUBLIC, 'tick.mjs')], {
     encoding: 'utf8', env: { ...process.env, [SUSPEND_ALL_VAR]: 'true', GITHUB_TOKEN: '' },
   });
   assert.equal(r.status, 0, `${r.stdout}${r.stderr}`);
