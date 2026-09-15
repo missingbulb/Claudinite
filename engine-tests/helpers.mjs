@@ -64,9 +64,9 @@ export function writeFiles(root, files) {
 
 // The seeded repo every fixture starts from, built once per process and copied
 // rather than rebuilt. `git init` + the seed commit + the feature branch is four
-// subprocesses (~27ms), and it produces a byte-identical tree for every fixture
-// whose `base` is empty — which is nearly all of them, and the suite makes this
-// call over a thousand times. A file copy of the result is ~3ms.
+// subprocesses (~27ms), and it produces a byte-identical starting point for every
+// fixture — the suite makes this call over a thousand times. A file copy of the
+// result is ~3ms.
 //
 // The copy is what the pruning is for: git writes ten files here that it never
 // reads back in a fixture's life — the hook samples above all, plus info/exclude,
@@ -96,16 +96,17 @@ function templateRepo() {
  */
 export function makeRepo({ base = {}, changed = {}, commitMsg = 'change Refs #1', uncommitted = {} }) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-checks-'));
-  // `base` files belong IN the seed commit, so a fixture that has them cannot start
-  // from the shared template and seeds its own repo the long way.
+  cpSync(templateRepo(), root, { recursive: true });
+  // `base` files belong in the commit `main` names, which the template's seed
+  // commit is not — so they arrive as a commit on top of the copy and `main` moves
+  // onto it. What a context reads is the merge-base with `main` and the range above
+  // it, both of which that move reproduces exactly; the tree at the merge-base is
+  // the same tree the one-commit seed had, README override included.
   if (Object.keys(base).length) {
-    git(root, 'init', '-q', '-b', 'main');
-    writeFiles(root, { 'README.md': 'seed\n', ...base });
+    writeFiles(root, base);
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'seed');
-    git(root, 'checkout', '-q', '-b', 'feature');
-  } else {
-    cpSync(templateRepo(), root, { recursive: true });
+    git(root, 'branch', '-f', 'main', 'HEAD');
   }
   if (Object.keys(changed).length) {
     writeFiles(root, changed);

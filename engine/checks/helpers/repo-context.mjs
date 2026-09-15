@@ -90,6 +90,50 @@ function lines(out) {
   return (out || '').split('\n').filter(Boolean);
 }
 
+// The tracked and the untracked file list out of ONE subprocess. `-t` prefixes each
+// path with its status tag, and under `-c -o` the only tag an untracked path can
+// carry is `?` — a cached path is `H`, `S` while skip-worktree is set, or `M` per
+// index stage while a merge is unresolved, which is the same one-line-per-stage
+// shape plain `ls-files` prints. So the tag alone separates the two lists, each in
+// git's own order and with its own `core.quotePath` quoting, exactly as the
+// `ls-files` / `ls-files --others --exclude-standard` pair produced them.
+function listFiles(root) {
+  const tracked = [];
+  const untracked = [];
+  for (const line of lines(gitTry(root, 'ls-files', '-c', '-o', '--exclude-standard', '-t'))) {
+    (line.startsWith('? ') ? untracked : tracked).push(line.slice(2));
+  }
+  return { tracked, untracked };
+}
+
+// Both diff lists out of one subprocess where the answer is unambiguous. The pair
+// this replaces asked the same diff twice — `--diff-filter=d` for the files the
+// change touched, `--diff-filter=D` for the ones it removed — and `--name-status`
+// labels every entry, so `D` is the second list and everything else is the first.
+//
+// A rename or copy is the one entry that does not name a single path — git reports
+// it as `R<score>\t<source>\t<destination>`, where the pair named the destination
+// alone — so a change carrying one falls back to the pair. Reading the last field
+// gives the same set, and git 2.43 orders that entry where the pair's output has it
+// (fuzzed over 200 random histories of renames, deletions, additions and edits);
+// but nothing git documents says the two commands order a two-path entry alike, and
+// this list's order reaches ctx.files. A second subprocess on the rare change that
+// renames something is cheaper than depending on that.
+function diffLists(root, diffBase, mergeBase) {
+  const status = gitTry(root, 'diff', '--name-status', diffBase);
+  const entries = lines(status).map((l) => l.split('\t'));
+  if (status !== null && !entries.some(([s]) => s.startsWith('R') || s.startsWith('C'))) {
+    return {
+      vsBase: entries.filter(([s]) => !s.startsWith('D')).map((e) => e[e.length - 1]),
+      deleted: mergeBase ? entries.filter(([s]) => s.startsWith('D')).map((e) => e[1]) : [],
+    };
+  }
+  return {
+    vsBase: lines(gitTry(root, 'diff', '--name-only', '--diff-filter=d', diffBase)),
+    deleted: mergeBase ? lines(gitTry(root, 'diff', '--name-only', '--diff-filter=D', mergeBase)) : [],
+  };
+}
+
 // Files git marks vendored or generated (linguist-vendored / linguist-generated in
 // .gitattributes) — third-party or machine-written content, not the project's own
 // code. `buildContext` drops these from the default `ctx.files`, so every check that
@@ -529,10 +573,8 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
   const onBaseBranch = (sha) =>
     !!baseRef && gitTry(root, 'merge-base', '--is-ancestor', sha, baseRef) !== null;
 
-  const tracked = lines(gitTry(root, 'ls-files'));
-  const untracked = lines(gitTry(root, 'ls-files', '--others', '--exclude-standard'));
-
-  const vsBase = lines(gitTry(root, 'diff', '--name-only', '--diff-filter=d', diffBase));
+  const { tracked, untracked } = listFiles(root);
+  const { vsBase, deleted } = diffLists(root, diffBase, mergeBase);
   let scanned;
   if (mode === 'all') {
     scanned = [...tracked, ...untracked];
@@ -559,8 +601,6 @@ export function buildContext({ root, mode = 'changed', baseOverride = null, tran
   // check-the-work rules that judge the work rather than re-audit the world.
   const changedSet = new Set([...vsBase, ...untracked]);
   const changedFiles = files.filter((f) => changedSet.has(f));
-
-  const deleted = mergeBase ? lines(gitTry(root, 'diff', '--name-only', '--diff-filter=D', mergeBase)) : [];
 
   let commits = [];
   if (mergeBase) {
