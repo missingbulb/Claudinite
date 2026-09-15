@@ -53,7 +53,7 @@ import aimed anywhere else is one this repository cannot repair when the layout 
 
 | Module | What it publishes | Who reads it |
 |---|---|---|
-| `work-items.mjs` | the title grammar that is a work item's identity, the outcome/status decode over its labels, lease state, and the pick order over the open queue | claudinite-dashboard, claudinite-fleet-sheepdog |
+| `work-items.mjs` | the title grammar that is a work item's identity, the outcome/status decode over its labels, lease state, the pick order over the open queue, and whether a title is the scheduler's own dispatch issue rather than work | claudinite-dashboard, claudinite-fleet-sheepdog, a member's own packs |
 | `anchors.mjs` | period length, and the instant a task's window last opened at or opens next | claudinite-dashboard |
 | `delivery.mjs` | `landPr`, `deliverGenerated` — how a task's output becomes a landed PR or a regenerated file | any pack whose tasks deliver |
 | `github.mjs` | the GitHub client, the workflow dispatch, the two workflow file names, and the tracker issue a worker records on | any pack whose tasks reach GitHub |
