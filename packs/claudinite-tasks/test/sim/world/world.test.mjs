@@ -200,17 +200,66 @@ test('fires dropped in a window simply never happen', async () => {
   assert.deepEqual(actions.runs().map((r) => r.trigger), ['schedule', 'schedule']);
 });
 
-// The scheduler's concurrency group: a second run of the group does not execute,
-// and the platform still started it, so it is still a row.
-test('a run held off by the concurrency group is recorded but never executes', async () => {
+// The scheduler's concurrency group, with `cancel-in-progress: false`: one run in
+// progress and at most ONE queued behind it. The queued one WAITS and then runs —
+// which is what serializes scheduler runs instead of dropping them — and only a
+// third, arriving while one already waits, is superseded.
+test('a second run of the concurrency group waits and then runs; a third is superseded', async () => {
   const { clock, actions } = world();
-  let bodies = 0;
-  const body = () => { bodies += 1; };
+  const started = [];
+  const body = ({ run }) => { started.push(run.startedAt); };
+  actions.startRun({ workflow: 'w.yml', trigger: 'schedule', body, durationMs: 10 * MINUTE, concurrency: 'g' });
   actions.startRun({ workflow: 'w.yml', trigger: 'schedule', body, durationMs: 10 * MINUTE, concurrency: 'g' });
   actions.startRun({ workflow: 'w.yml', trigger: 'schedule', body, durationMs: 10 * MINUTE, concurrency: 'g' });
   await clock.runUntil('2026-08-12T01:00:00Z');
-  assert.equal(bodies, 1);
-  assert.deepEqual(actions.runs().map((r) => r.conclusion), ['success', 'superseded']);
+  assert.equal(started.length, 2, 'two of the three executed');
+  assert.ok(started[1] > started[0], 'the second waited for the first to finish');
+  assert.deepEqual(actions.runs().map((r) => r.conclusion).sort(), ['success', 'success', 'superseded']);
+});
+
+// A run whose body takes virtual time is the JOB: `measure` makes the ledger bill
+// what it actually took, and every caller awaits `done`, so the clock can never
+// advance through the middle of one.
+test('a measured run ends when its body does, and the ledger bills that span', async () => {
+  const { clock, actions } = world();
+  const run = actions.startRun({
+    workflow: 'w.yml', trigger: 'workflow_dispatch', measure: true,
+    body: async () => { await clock.sleep(7 * MINUTE); },
+  });
+  await clock.runUntil('2026-08-12T01:00:00Z');
+  assert.equal(run.endedAt - run.startedAt, 7 * MINUTE);
+  assert.equal(run.conclusion, 'success');
+  assert.equal(actions.billedMinutes(), 7);
+});
+
+// The pump's contract, and the reason it is a pump: an event that waits for a
+// LATER event must not deadlock the queue.
+test('an event that sleeps for virtual time resumes in the same total order', async () => {
+  const { clock } = world();
+  const seen = [];
+  clock.at('2026-08-12T01:00:00Z', async () => {
+    seen.push('start');
+    await clock.sleep(2 * 60 * MINUTE);
+    seen.push('resumed');
+  });
+  clock.at('2026-08-12T02:00:00Z', () => seen.push('between'));
+  await clock.runUntil('2026-08-12T05:00:00Z');
+  assert.deepEqual(seen, ['start', 'between', 'resumed']);
+  assert.equal(clock.iso(), '2026-08-12T05:00:00.000Z');
+});
+
+// A run that throws is a job that FAILED — which is what the workflow's
+// continuation job keys on — and the clock still settles rather than hanging on
+// an abandoned promise.
+test('a body that throws ends its run as a failure and does not wedge the clock', async () => {
+  const { clock, actions } = world();
+  const run = actions.startRun({
+    workflow: 'w.yml', trigger: 'workflow_dispatch', measure: true,
+    body: async () => { await clock.sleep(MINUTE); throw new Error('the runner died'); },
+  });
+  await clock.runUntil('2026-08-12T01:00:00Z');
+  assert.equal(run.conclusion, 'failure');
+  assert.match(run.error.message, /the runner died/);
 });
 
 // The accounting the whole cost question turns on: the ledger counts the
