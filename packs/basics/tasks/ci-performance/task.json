@@ -6,7 +6,7 @@
   "preconditions": [
     "due:weekly",
     "substantive-change || prs-touched",
-    "no-open-pr-of-this-task"
+    "last-run-not-parked"
   ],
   "expected_outcome": "fresh_pr",
   "automerge": "anything",

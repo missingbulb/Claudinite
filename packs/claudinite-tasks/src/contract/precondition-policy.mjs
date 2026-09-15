@@ -32,8 +32,7 @@
 // Import-light and pure over the signals: no I/O, so the same evaluation runs at
 // the scheduler's tick and at the executor's pick.
 
-import { anchorInstant, CADENCES, DUE_TERM, ELAPSED_TERM, NOT_FAILED_TERM, parseDuration } from './calendar.mjs';
-import { isTaskBranch, taskBranchPrefix } from './task-branch.mjs';
+import { anchorInstant, CADENCES, DUE_TERM, ELAPSED_TERM, NOT_FAILED_TERM, NOT_PARKED_TERM, parseDuration } from './calendar.mjs';
 
 // The retired empty precondition. The contract's door still strips it from a
 // declaration that carries a `frequency` (the cadence term takes its place); on
@@ -311,6 +310,23 @@ const BUILTIN_TERMS = new Map(Object.entries({
     },
   },
 
+  // The wider statement of the same thing: this task does not run while its
+  // newest run stands at ANY of the four parks — the three a person's inbox owns
+  // as much as the failure. What a task states when its round is not finished
+  // until a person has dealt with it, an unmerged pull request above all: that
+  // run parks on approval, which is not a fault and which `last-run-not-failed`
+  // reads as clear. Re-queueing the parked item is what puts a run in front of it.
+  [NOT_PARKED_TERM]: {
+    signals: ['runs'],
+    holds(s) {
+      const newest = newestRun(s);
+      if (!newest) return { holds: true, reason: 'no run of this task to be parked' };
+      return newest.park
+        ? { holds: false, reason: `the newest run, #${newest.number}, stands at a ${newest.park} park — this task declares it does not run past a park of its own` }
+        : { holds: true, reason: `the newest run, #${newest.number}, is not parked` };
+    },
+  },
+
   // --- the movement terms -----------------------------------------------------
   // The positive umbrella over all four activity dimensions — what a
   // cadence-triggered task states when its value is zero on a repo nobody works
@@ -447,27 +463,6 @@ const BUILTIN_TERMS = new Map(Object.entries({
     },
   },
 
-  // The third, and the one that needs no convention of the task's: a round is
-  // recognised by the branch family the executor mints it on, so a task whose pull
-  // requests carry neither a stable title nor a fixed path can still decline while
-  // one is pending. It is the complement of `fresh_pr`, which leaves an earlier
-  // round open — without it such a task opens one pull request per period whatever
-  // is waiting for review.
-  'no-open-pr-of-this-task': {
-    signals: ['prs'],
-    holds(s, { taskId }) {
-      // The task is the caller's to supply, and a verdict without it would be
-      // about no task at all — permanent silence for whichever one asked.
-      if (!taskId) return { error: 'no-open-pr-of-this-task has no task to ask about — the caller supplied no `taskId`' };
-      const mine = openPrs(s).map((p) => ({ pr: p, ours: isTaskBranch(p.headRef, taskId) }));
-      const pending = mine.find((m) => m.ours === true);
-      if (pending) return { holds: false, reason: `PR #${pending.pr.number} is this task's own previous round, still open — this round waits for it rather than open a second` };
-      const opaque = mine.find((m) => m.ours === null);
-      if (opaque) return { holds: false, reason: `PR #${opaque.pr.number}'s head branch could not be read, so whether a round of this task is pending is unknown — a skipped round is cheaper than a second one stacked on it` };
-      return { holds: true, reason: `no open PR on this task's own branches (${taskBranchPrefix(taskId)}…)` };
-    },
-  },
-
   'no-open-pr-titled': {
     signals: ['prs'],
     takesArg: true,
@@ -500,7 +495,7 @@ export const BUILTIN_TERM_NAMES = [...BUILTIN_TERMS.keys()];
 // missing signal is a term that does not hold, as it always was.
 export function evaluatePreconditions({
   preconditions, signals = {}, config = {}, item = null, terms = new Map(), windowDays = null, now = null,
-  schedule = null, taskId = null, partial = false,
+  schedule = null, partial = false,
 }) {
   const parsed = parsePreconditions(preconditions);
   if (parsed.kind === 'invalid') return { error: `the "preconditions" declaration is not legal: ${parsed.reason}` };
@@ -527,7 +522,7 @@ export function evaluatePreconditions({
         if (absent.length) { absent.forEach((n) => missing.add(n)); unknown = true; continue; }
       }
       let out;
-      try { out = term.holds(signals, { arg: ref.arg, config, item, windowDays, now, schedule, taskId }) ?? {}; }
+      try { out = term.holds(signals, { arg: ref.arg, config, item, windowDays, now, schedule }) ?? {}; }
       catch (e) { return { error: `the precondition "${ref.name}" threw: ${e.message}` }; }
       if (out.error) return { error: `${ref.name}: ${out.error}` };
       outcomes.push({ ref, out });

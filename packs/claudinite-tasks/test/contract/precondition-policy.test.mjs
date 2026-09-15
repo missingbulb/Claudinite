@@ -193,29 +193,3 @@ test('a task-local term shadowing a built-in is loud, never a quiet override', (
   assert.match(validatePreconditions(['none'], clash).map((p) => p.what).join(' | '),
     /redefines the built-in term "substantive-change"/);
 });
-
-test('a task declines while one of its own pull requests is still open', () => {
-  // The task's branch family is what recognises its own rounds, so the term needs
-  // no title convention and no path prefix — the two the other pending-round terms
-  // rest on, neither of which a task delivering an arbitrary fix can offer.
-  const over = { taskId: 'basics/ci-performance' };
-  const open = (prs) => ({ prs: { open: prs } });
-  const term = ['no-open-pr-of-this-task'];
-
-  assert.equal(evaluate(term, open([]), over).run, true);
-  assert.equal(evaluate(term, open([{ number: 1, headRef: 'claudinite/basics/improve-comments/2026-09-01-ab12' }]), over).run, true,
-    "another task's round is not this one's");
-  assert.equal(evaluate(term, open([{ number: 2, headRef: 'someone/a-branch' }]), over).run, true);
-
-  const pending = evaluate(term, open([{ number: 3, headRef: 'claudinite/basics/ci-performance/2026-09-08-cd34' }]), over);
-  assert.equal(pending.run, false);
-  assert.match(pending.reason, /#3/);
-
-  // A head ref that could not be read is UNKNOWN, and unknown is not clear — the
-  // same call the sibling pending-round terms make.
-  assert.equal(evaluate(term, open([{ number: 4, headRef: null }]), over).run, false);
-
-  // No task to ask about is a failed run, never a decline: a verdict taken on a
-  // taskId nobody supplied would silence this task permanently.
-  assert.match(evaluate(term, open([])).error, /no-open-pr-of-this-task/);
-});

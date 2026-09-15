@@ -308,6 +308,11 @@ no read:
 - `last-run-not-failed` — the newest run does not stand at a failure park.
   Declare it where a run past the task's own failure would repeat the fault;
   absent it, the next occurrence is filed beside the park.
+- `last-run-not-parked` — the newest run stands at no park at all, the three a
+  person's inbox owns included. Declare it where a round is not finished until a
+  person has dealt with it — an unmerged pull request parks on approval, which
+  `last-run-not-failed` reads as clear — and the next run would stack a second
+  round behind an unanswered one.
 
 A `due:` or `last-run-over:` term holds on a woken item — the wake stands in for
 the cadence — while every other condition still applies. A scheduled task with a
@@ -329,7 +334,7 @@ them into a member's own task files. Write both fields.
 signal union is derived from the conditions — each names what it reads, so the
 collector can never disagree with the gate. A gate the built-ins cannot express is
 a **task-local term** in a `preconditions.mjs` beside the declaration, which is
-handed `{ arg, config, item, windowDays, now, schedule, taskId }` and stays pure over them.
+handed `{ arg, config, item, windowDays, now, schedule }` and stays pure over them.
 
 **Three things are NOT preconditions**, and putting them there is the common
 mistake:
@@ -371,7 +376,7 @@ The vocabulary carries the gate; no operator or marker states it:
 ### When no built-in condition fits
 
 Ship a **`preconditions.mjs` beside the `task.json`**, exporting `terms`: a map from
-term name to `{ signals, takesArg?, holds(signals, { arg, config, item, windowDays, now, schedule, taskId }) }`, where
+term name to `{ signals, takesArg?, holds(signals, { arg, config, item, windowDays, now, schedule }) }`, where
 `holds` returns `{ holds, reason?, context? }` or `{ error }`. Names resolve
 against the built-ins first, then the task's own, in one flat namespace where a
 collision is loud. Reach for it when the gate is genuinely this task's — an age
@@ -540,8 +545,8 @@ closing or running anything.
   occurrence is the task's own declaration, `last-run-not-failed`, with no default:
   declare it where a queue of items that will break the same way helps nobody and
   the silence is the signal; leave it out where the next run is what clears a
-  transient fault. The other three parks are one person's inbox, not a fault in
-  the task, and no term reads them.
+  transient fault. The other three parks are one person's inbox rather than a
+  fault in the task, so only the wider `last-run-not-parked` reads them.
 - **Never ran** → `task:status:rejected`, closed as not planned: the precondition
   declined, or the task is gone (file removed, pack undeclared). An obsolete item
   is not an anomaly and gets no park. A scheduled task's next occurrence is the

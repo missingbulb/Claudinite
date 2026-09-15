@@ -609,7 +609,6 @@ async function main() {
       // occurrence being planned rather than about the moment the run happens to
       // reach it.
       now,
-      taskId: `${task.pack}/${task.id}`,
       partial,
     });
 

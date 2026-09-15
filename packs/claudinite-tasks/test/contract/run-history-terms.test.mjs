@@ -119,6 +119,30 @@ test('last-run-not-failed declines exactly while the newest run stands or ended 
   assert.equal(evaluate(['last-run-not-failed'], runs(run({ number: 13, createdAt: '2026-09-09T05:00:00Z' }), failed)).run, true);
 });
 
+// --- last-run-not-parked ------------------------------------------------------
+
+test('last-run-not-parked declines while the newest run stands at ANY of the four parks', () => {
+  assert.equal(evaluate(['last-run-not-parked'], runs()).run, true, 'nothing ran');
+  assert.equal(evaluate(['last-run-not-parked'], runs(run())).run, true, 'done');
+  assert.equal(evaluate(['last-run-not-parked'], runs(run({ status: 'task:status:rejected', outcome: 'rejected' }))).run, true, 'a decline is not a park');
+
+  // Where it differs from last-run-not-failed: an unmerged pull request waiting
+  // for a person parks on approval, which is not a fault and which that term
+  // reads as clear.
+  for (const park of ['failure', 'approval', 'action', 'decision']) {
+    const parked = run({ number: 12, closedAt: null, state: 'open', status: `task:status:needs-human-${park}`, park, outcome: null });
+    const v = evaluate(['last-run-not-parked'], runs(parked));
+    assert.equal(v.run, false, `${park} holds the next run back`);
+    assert.match(v.reason, new RegExp(`#12.*${park}`));
+  }
+
+  // Only the NEWEST run speaks, as for every other run-history term: a park
+  // behind a later clean run is history, and re-queueing the parked item is what
+  // puts a run in front of it.
+  const parked = run({ number: 12, closedAt: null, state: 'open', status: 'task:status:needs-human-approval', park: 'approval', outcome: null });
+  assert.equal(evaluate(['last-run-not-parked'], runs(run({ number: 13, createdAt: '2026-09-09T05:00:00Z' }), parked)).run, true);
+});
+
 // --- the empty expression -----------------------------------------------------
 // A task stating no condition is not on the schedule; at the pick of an item
 // somebody created for it, the empty expression holds.
