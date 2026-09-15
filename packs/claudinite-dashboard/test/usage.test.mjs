@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  decodeUsage, decodeRow, decodeCounters, growthSeries, queueSeries, hourSeries,
+  decodeUsage, decodeTasksUsage, decodeRow, decodeCounters, growthSeries, queueSeries, hourSeries,
   runKind, taskDetail, dayLadder, hourLadder,
 } from '../src/read/usage.mjs';
 import {
@@ -184,4 +184,73 @@ test('taskDetail puts what failed first and drops what never happened', () => {
 test('the ladders are UTC and end at the current day and hour', () => {
   assert.deepEqual(dayLadder(NOW, 2), ['2026-08-20', '2026-08-21']);
   assert.deepEqual(hourLadder(NOW, 2), ['2026-08-21T10', '2026-08-21T11']);
+});
+
+// --- the machinery's own plane, beside the sessions' --------------------------------
+// A second file, read the same self-describing way. Rendering it is a later change;
+// what these hold is that the page can read it at all, and reads what it says rather
+// than what this code assumes.
+
+// Built by hand, like the session fixture above and for the same reason: the claim
+// under test is that this reader needs nothing from the pack that writes it.
+const TASKS_FILE = {
+  version: 1,
+  generated: '2026-08-21T11:00:00Z',
+  foldedThrough: '2026-08-20',
+  minuteRate: 0.008,
+  fields: {
+    day: ['runs', 'jobs', 'minutesBilled', 'spend', 'apiCalls', 'list', 'ask', 'drain', 'pick', 'claim', 'code-work', 'hand-off', 'converge'],
+    hour: ['runs', 'jobs', 'minutesBilled', 'spend', 'apiCalls'],
+    week: ['days', 'runs', 'jobs', 'minutesBilled', 'spend', 'apiCalls'],
+    workflows: ['runs', 'jobs', 'minutesBilled', 'spend'],
+    runCosts: ['apiCalls', 'list', 'ask', 'drain', 'pick', 'claim', 'code-work', 'hand-off', 'converge'],
+    queue: ['done', 'delivered', 'obsolete', 'none'],
+    parks: ['failure', 'action', 'decision', 'approval'],
+    latency: ['tickToItemMinutes', 'itemToPickMinutes', 'pickToHandOffMinutes', 'handOffToConvergeMinutes'],
+  },
+  hours: { '2026-08-21T10': { totals: [2, 3, 7, 0.056, 12] } },
+  days: {
+    '2026-08-21': {
+      totals: [5, 8, 21, 0.168, 40, 100, 200, 50, null, null, null, null, null],
+      workflows: { scheduler: [2, 2, 4, 0.032], executor: [3, 6, 17, 0.136] },
+      runCosts: { 77: [31, null, null, null, 1000, 2000, null, null, null] },
+      queue: { 'p/a': [3, null, 1, null] },
+      parks: { 'p/a': [1, null, null, null] },
+      latency: { 42: [2, 8, 5, 15] },
+    },
+  },
+  weeks: { '2026-W34': { totals: [7, 30, 40, 120, 0.96, 250] } },
+};
+
+test('the machinery file decodes against its own header, tuples and sub-maps alike', () => {
+  const usage = decodeTasksUsage(TASKS_FILE);
+  assert.equal(usage.minuteRate, 0.008);
+  assert.equal(usage.days['2026-08-21'].minutesBilled, 21);
+  assert.deepEqual(usage.days['2026-08-21'].workflows.scheduler, { runs: 2, jobs: 2, minutesBilled: 4, spend: 0.032 });
+  assert.deepEqual(usage.days['2026-08-21'].runCosts['77'], { apiCalls: 31, pick: 1000, claim: 2000 });
+  assert.deepEqual(usage.days['2026-08-21'].queue['p/a'], { done: 3, obsolete: 1 });
+  assert.deepEqual(usage.days['2026-08-21'].parks['p/a'], { failure: 1 });
+  assert.deepEqual(usage.days['2026-08-21'].latency['42'], {
+    tickToItemMinutes: 2, itemToPickMinutes: 8, pickToHandOffMinutes: 5, handOffToConvergeMinutes: 15,
+  });
+  assert.equal(usage.hours['2026-08-21T10'].apiCalls, 12);
+  assert.equal(usage.weeks['2026-W34'].days, 7);
+});
+
+test('a slot the file left null yields no key, so the page can say *not recorded*', () => {
+  const usage = decodeTasksUsage(TASKS_FILE);
+  // The day's four phase slots the scheduler never spent are `null` in the tuple,
+  // and a zero there would claim a measured instant.
+  assert.ok(!('pick' in usage.days['2026-08-21']));
+  assert.ok(!('delivered' in usage.days['2026-08-21'].queue['p/a']));
+});
+
+test('a repo that declares no rate reads as unpriced rather than as free', () => {
+  const usage = decodeTasksUsage({ ...TASKS_FILE, minuteRate: null, days: {} });
+  assert.equal(usage.minuteRate, null);
+});
+
+test('a member that folds no machinery file at all reads as null, not as a quiet repo', () => {
+  assert.equal(decodeTasksUsage(null), null);
+  assert.equal(decodeTasksUsage('not a file'), null);
 });

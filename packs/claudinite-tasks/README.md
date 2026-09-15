@@ -32,7 +32,7 @@ and `tasks-world-edges-live-in-world` checks are what hold the shape.
 | `queue/` | **frozen workflow and routine ABI** — the six entry points a member's `.github/workflows/` names literally (`scheduler-run`, `drain-dispatch`, `workflow-failure`, `executor`, `executor-continuation`, `tick`), `instructions.md`, and `tasks/implement-request/`, whose `task.md` path is written into every adopted issue's machine block. Entry points, never logic |
 | `stubs/` | the two workflow files an adopting repo receives |
 | `shared-code/` | the published import surface — see below |
-| `tasks/` | this pack's own tasks: `task-janitor` (the queue's sweeps), `usage-fold` (it folds this mechanism's run records and outcome labels) and `verify-production` (coded production validations — URL probes judged as code-work) |
+| `tasks/` | this pack's own tasks: `task-janitor` (the queue's sweeps), `usage-fold` (it folds this mechanism's run records and outcome labels), `tasks-usage-fold` (what the machinery itself cost — runs, billed minutes, API calls, outcomes, parks, latencies) and `verify-production` (coded production validations — URL probes judged as code-work) |
 | `worldRules/` | the task-declaration checks |
 | `workRules/` | the armed-auto-merge gate (`automerge-policy-scope`) |
 | `test/` | the unit suite, mirroring `src/`, and `test/sim/` — the simulator and its scenario suite, the mechanism's executable spec |

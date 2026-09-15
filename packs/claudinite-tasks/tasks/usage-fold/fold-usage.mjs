@@ -400,6 +400,12 @@ export const emptyTaskExec = () => Object.fromEntries(TASK_EXEC_STATUSES.map((s)
 // stdout and the harness's copy of it, collapses to the one execution it names;
 // a retry of the same slot is a different session, hence a different capture
 // file, and still counts.
+// @deprecated The `taskExec` rows have a successor: the `queue` rows of
+// `.claudinite/local/tasks-usage.GENERATED.json`, which read what each occurrence
+// came to off the item itself rather than off whether its session happened to
+// capture (`packs/claudinite-tasks/tasks/tasks-usage-fold/README.md`). Still
+// written, and still a sample of the sessions that captured; retiring it is a later
+// plan of its own.
 export function countTaskExecs(entries) {
   const seen = new Set();
   const taskExec = {};
@@ -531,6 +537,14 @@ export const TASK_COST_NONE = '(none)';
 export const TASK_COST_UNRESOLVED = '(unresolved)';
 
 // `keyed` is the number the capture's filename carries — its PR, or its issue.
+//
+// @deprecated The `taskCost` rows have a successor for the cost half of the
+// question: `.claudinite/local/tasks-usage.GENERATED.json` carries what each run of
+// the machinery was billed and what it spent in API calls, per workflow and per run
+// (`packs/claudinite-tasks/tasks/tasks-usage-fold/README.md`). The TOKEN share these
+// rows carry has no successor there and is not meant to gain one — that is what the
+// sessions spent, which is the session fold's subject. Still written; retiring it is
+// a later plan of its own.
 export function taskCostKey(counts, keyed) {
   const named = Object.keys(counts?.taskExec ?? {}).sort();
   if (named.length) return named[0];
@@ -735,6 +749,12 @@ export function foldDayFields(days, bySource = {}) {
 // any point in its life, each counted ONCE for it — an item bounced between a person
 // and the machine twice is one park of that kind, not two — or `null` where the item's
 // event listing could not be read, which costs its parks and not its outcome.
+// @deprecated The `queue` and `parks` rows have a successor:
+// `.claudinite/local/tasks-usage.GENERATED.json`, which counts the same outcomes and
+// the same parks beside the latencies and costs they belong with
+// (`packs/claudinite-tasks/tasks/tasks-usage-fold/README.md`). This writer keeps
+// running — the rows it has already written are real and its readers still read them
+// — and retiring it is a later plan of its own rather than a window this one closes.
 export function foldQueueOutcomes(days, priorDays = {}, records = [], today) {
   for (const [date, row] of Object.entries(priorDays)) {
     if (!withinTaskWindow(date, today, DAY_WINDOW_DAYS)) continue;

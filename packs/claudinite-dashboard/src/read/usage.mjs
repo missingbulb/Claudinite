@@ -82,6 +82,58 @@ export function decodeUsage(doc) {
   };
 }
 
+// --- the machinery's own plane, beside the sessions' -------------------------------
+//
+// A SECOND FILE, read exactly the same way. `tasks-usage.GENERATED.json` carries what
+// this repo's scheduled machinery cost and how well it ran — runs, jobs, billed
+// minutes and spend per workflow, API calls and wall time per run, and per task the
+// outcomes, parks and latency samples its closed work items answer.
+//
+// It is a separate read because it is a separate file, written by a separate fold on
+// a separate watermark: a member folding one and not the other is an ordinary state,
+// and a page that asked for one file and inferred the other would report a member
+// mid-rollout as broken. Both are content at a sha, so the second costs one request
+// the first time a member's branch moves and none afterwards.
+//
+// NOTHING HERE KNOWS THE FILE'S VOCABULARY. The decode below is `decodeRow` against
+// the header the file declares for itself, the same generic expansion the session
+// file gets — which is what lets a field added or retired on the writing side read
+// correctly here with no change and no coordinated release. Rendering is not this
+// module's business and is not here yet.
+export const TASKS_USAGE_PATH = '.claudinite/local/tasks-usage.GENERATED.json';
+
+export function decodeTasksUsage(doc) {
+  if (!doc || typeof doc !== 'object') return null;
+  const fields = doc.fields ?? {};
+  const rows = (map, totalsFields) => Object.fromEntries(
+    Object.entries(map ?? {}).map(([k, v]) => [k, decodeRow(v, totalsFields, fields)]),
+  );
+  return {
+    version: Number(doc.version ?? 1),
+    generated: doc.generated ?? null,
+    foldedThrough: doc.foldedThrough ?? null,
+    // The rate every `spend` in the file was priced at, or null where the member
+    // declares none — in which case no row carries a spend and the page says *not
+    // recorded* rather than drawing a zero.
+    minuteRate: typeof doc.minuteRate === 'number' ? doc.minuteRate : null,
+    hours: rows(doc.hours, fields.hour),
+    days: rows(doc.days, fields.day),
+    weeks: rows(doc.weeks, fields.week),
+  };
+}
+
+// Read one repo's machinery aggregate at a sha. A 404 is an ANSWER — this member
+// does not fold this file — and it is cached as one.
+export async function readTasksUsage(repo, sha, token) {
+  try {
+    const text = await gh.getTextAtSha(repo, sha, TASKS_USAGE_PATH, token);
+    if (!text) return null;
+    return decodeTasksUsage(JSON.parse(text));
+  } catch {
+    return null;
+  }
+}
+
 // Read one repo's aggregate at a sha. A 404 is an ANSWER — this repo does not fold —
 // and it is cached as one, so a fleet sweep does not re-ask every member every load.
 export async function readUsage(repo, sha, token) {

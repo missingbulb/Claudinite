@@ -24,7 +24,7 @@ import {
 import { readCanon, priceStampedPacks } from '../read/canon.mjs';
 import { workRows, rowsFor, viewCounts, defaultView, VIEWS } from '../derive/work.mjs';
 import { repoCandidates } from '../derive/next-work.mjs';
-import { readUsage, growthSeries, queueSeries, hourSeries } from '../read/usage.mjs';
+import { readUsage, readTasksUsage, growthSeries, queueSeries, hourSeries } from '../read/usage.mjs';
 import { readContributions, liveSourcesNeeded } from '../read/contributions.mjs';
 import { packCard } from '../render/contrib-view.mjs';
 import {
@@ -640,13 +640,17 @@ export async function loadRepo({ repo, token, config = null, onError }) {
   const schedule = declaration?.taskScheduler ?? null;
   if (declaration && !schedule) onError?.('No taskScheduler block — next-anchor times cannot be computed.');
 
-  const [{ paths, truncated }, runs, issuePage, usage] = await Promise.all([
+  const [{ paths, truncated }, runs, issuePage, usage, tasksUsage] = await Promise.all([
     gh.listTreeAtSha(repo, sha, token).catch((e) => { onError?.(`The tree could not be read — ${e.message}`); return { paths: [], truncated: false }; }),
     gh.listRuns(repo, token).catch((e) => { onError?.(`Actions unreadable — ${e.message}`); return []; }),
     gh.listIssues(repo, token),
     // The past-data plane. Keyed by the head sha, so this costs one request the first
     // time the branch moves and nothing afterwards.
     readUsage(repo, sha, token),
+    // The machinery's own plane beside it, written by its own fold on its own
+    // watermark — so a repo folding one and not the other is an ordinary state, and
+    // this is its own read and its own null. Rendering it is M2's.
+    readTasksUsage(repo, sha, token),
   ]);
   if (truncated) onError?.('GitHub truncated the tree listing — some tasks may be missing from the roster.');
 
@@ -729,7 +733,7 @@ export async function loadRepo({ repo, token, config = null, onError }) {
 
   return {
     now, sha, branch: meta.default_branch, taskCount: tasks.length, itemCount: items.length, issuePage,
-    usage, generated: usage?.generated ?? null, headCommittedAt: headCommit.committedAt,
+    usage, tasksUsage, generated: usage?.generated ?? null, headCommittedAt: headCommit.committedAt,
   };
 }
 
