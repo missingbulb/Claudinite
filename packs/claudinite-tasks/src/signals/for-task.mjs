@@ -55,11 +55,11 @@ export function windowFromRuns(task, runs, now) {
 export function collectSignalsForTask({ gh, repo, root, config, defaultBranch, items = null }) {
   const packConfigFor = (packId) => config.packConfig?.[packId] ?? {};
   // The checkout probes are pure over `root`, so they are read once for this
-  // collector and passed into every context it builds. The memo is scoped to the
-  // COLLECTOR and not to the module because the tree can be rewritten under a
+  // collector and passed into every context it builds. They are held by the
+  // COLLECTOR and not by the module because the tree can be rewritten under a
   // running process — a `code_work` step does exactly that — so how long a probe
-  // may be trusted is its caller's call: a collector built per tick or per
-  // executor run answers for that span and nothing outside it.
+  // may be trusted is the caller's call: a collector answers for the span it was
+  // built for and nothing outside it.
   const local = localSignalContext(root, { packIds: config.packs ?? [], packConfigFor });
   return async function collectFor(task, now, item = null, { only = null } = {}) {
     const [{ collectSignals }, { buildSignalContext }] = await signalModules();

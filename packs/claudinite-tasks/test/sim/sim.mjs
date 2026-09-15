@@ -395,7 +395,8 @@ export function makeSim({
         now: () => clock.port.now(), random: draw,
         heartbeatMs: heartbeatsDisabled ? 0 : heartbeatMinutes * MINUTE,
         timers: clock.timers(),
-        collectSignalsFor: collectorFor(),
+        // Built per ask, as the executor's own wiring builds it (execute/loop.mjs).
+        collectSignalsFor: (task, now, item, opts) => collectorFor()(task, now, item, opts),
         runTaskCodeWork,
         invokeAgent: sessions.port.agentInvoker({ repo: REPO, config: CONFIG }),
         heldNow: async () => suspended(),
