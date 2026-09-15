@@ -53,9 +53,17 @@ argument for its existence.
   suite and [`packs/claudinite-tasks/docs/PRINCIPLES.md`](../../docs/PRINCIPLES.md): every scenario
   here is cited by some claim there, and every test PRINCIPLES.md cites
   actually exists.
+- [`world/`](world/) — the fake world: one module per port under
+  [`packs/claudinite-tasks/src/world/`](../../src/world), in memory, plus
+  `agents.mjs` and `humans.mjs`, which stand in for no port because neither is
+  an edge the engine calls. Each module's header says what it models and what
+  it does not. [`world/parity.test.mjs`](world/parity.test.mjs) is what stops a
+  fake drifting from the port it stands in for.
 
-Run: `node --test packs/claudinite-tasks/test/sim/*.test.mjs`. Naming the folder
-alone does not work: `node --test <dir>` does not recurse into it.
+Run: `node --test packs/claudinite-tasks/test/sim/*.test.mjs
+packs/claudinite-tasks/test/sim/world/*.test.mjs`. Naming a folder alone does
+not work: `node --test <dir>` does not recurse into it, which is also why the
+`world/` glob is spelled out beside the first.
 
 ## Working discipline
 
