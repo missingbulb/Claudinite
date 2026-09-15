@@ -111,19 +111,24 @@ export function parseConfig(text) {
   return { values, errors };
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// The step, as a function so each ending is a `return` and the process ends on an
+// exit code: an Actions step captures this output, and process.exit() drops a write
+// still queued on the pipe carrying it.
+function cli() {
   let text;
   try {
     text = readFileSync(CONFIG_PATH, 'utf8');
   } catch {
     console.error(`read-site-config: ${CONFIG_PATH} is missing — every static-site repo declares its publish set explicitly.`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const { values, errors } = parseConfig(text);
   if (errors.length) {
     for (const e of errors) console.error(`read-site-config: ${e}`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   // An omitted optional key emits as empty, so every consumer of these outputs
@@ -132,3 +137,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${out}\n`);
   console.log(out);
 }
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) cli();

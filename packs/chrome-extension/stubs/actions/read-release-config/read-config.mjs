@@ -37,9 +37,12 @@ export const REQUIRED_KEYS = [
   'ship_paths',
 ];
 
+// Ends the step. The code is set rather than forced, and every caller returns
+// through this: an Actions step captures stderr, and process.exit() drops a write
+// still queued on a pipe — so the reason for the failure can go missing.
 function fail(msg) {
   console.error(`read-release-config: ${msg}`);
-  process.exit(1);
+  process.exitCode = 1;
 }
 
 // PascalCase / camelCase / ALLCAPS repo name -> kebab, for the standard zip name
@@ -94,14 +97,14 @@ export function parseConfig(text) {
 // this module gets the parse and nothing else.
 function main() {
   const repoName = process.env.REPO_NAME;
-  if (!repoName) fail('REPO_NAME env is required (github.event.repository.name).');
+  if (!repoName) return fail('REPO_NAME env is required (github.event.repository.name).');
 
   if (!existsSync(CONFIG_PATH)) {
-    fail(`${CONFIG_PATH} is required — every extension repo declares its release config explicitly (see the Chrome Web Store release standard in Claudinite).`);
+    return fail(`${CONFIG_PATH} is required — every extension repo declares its release config explicitly (see the Chrome Web Store release standard in Claudinite).`);
   }
 
   const { cfg, errors } = parseConfig(readFileSync(CONFIG_PATH, 'utf8'));
-  for (const e of errors) fail(e);
+  if (errors.length) return fail(errors[0]);
 
   const zipName = `${kebab(repoName)}.zip`;
 

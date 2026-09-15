@@ -26,5 +26,5 @@ export {
 } from '../src/schedule/create-work-item.mjs';
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runCreateWorkItem().catch((e) => { console.error(e); process.exit(1); });
+  runCreateWorkItem().catch((e) => { console.error(e); process.exitCode = 1; });
 }

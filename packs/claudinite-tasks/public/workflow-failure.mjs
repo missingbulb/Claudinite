@@ -27,5 +27,5 @@ export {
 } from '../src/recover/workflow-failure.mjs';
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runWorkflowFailureReport().catch((e) => { console.error(e.message ?? e); process.exit(1); });
+  runWorkflowFailureReport().catch((e) => { console.error(e.message ?? e); process.exitCode = 1; });
 }

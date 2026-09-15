@@ -128,6 +128,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     await plan(projectRoot);
   } else {
     process.stderr.write('usage: env.mjs <install|check|plan>\n');
-    process.exit(2);
+    process.exitCode = 2;
   }
 }

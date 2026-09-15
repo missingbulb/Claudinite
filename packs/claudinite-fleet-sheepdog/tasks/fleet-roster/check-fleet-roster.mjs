@@ -245,5 +245,5 @@ export async function main() {
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  main().catch((e) => { console.error(`fleet-roster sweep failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => { console.error(`fleet-roster sweep failed: ${e.message}`); process.exitCode = 1; });
 }

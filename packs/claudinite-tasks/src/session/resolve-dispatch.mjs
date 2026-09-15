@@ -451,8 +451,10 @@ export async function resolveDispatch(argv = process.argv.slice(2), env = action
   });
 }
 
-// The shell around the decision: one write to each channel, one exit. Returns
-// the code rather than exiting so the printing is testable on its own.
+// The shell around the decision: one write to each channel, and the code to end
+// on. Returned rather than exited on, so the printing is testable on its own —
+// and so the caller SETS it: this block is the executor's whole answer and it is
+// read over a pipe, where process.exit() drops whatever is still queued.
 export function emitResult({ code, fields, advice }) {
   if (fields) console.log(block(fields));
   if (advice) console.error(`resolve-dispatch: ${advice}`);
@@ -463,6 +465,6 @@ export function emitResult({ code, fields, advice }) {
 // never on import — the exported helpers above are unit-testable without it.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   resolveDispatch()
-    .then((result) => process.exit(emitResult(result)))
-    .catch((e) => { console.error(`resolve-dispatch: ${e.stack || e}`); process.exit(EXIT.internal); });
+    .then((result) => { process.exitCode = emitResult(result); })
+    .catch((e) => { console.error(`resolve-dispatch: ${e.stack || e}`); process.exitCode = EXIT.internal; });
 }

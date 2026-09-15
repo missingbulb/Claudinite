@@ -84,7 +84,8 @@ export async function main() {
 
   if (verdict.outcome === 'invalid') {
     console.log(`claudinite-needs-human: action — this verification's probe spec is unreadable: ${verdict.problems.join('; ')}`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   if (verdict.outcome === 'not-live') {
     console.log(`claudinite-requeue: ${verdict.until} — ${verdict.reason}`);
@@ -95,5 +96,5 @@ export async function main() {
 
 // Run only when invoked directly (code-work's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`verify-production failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => { console.error(`verify-production failed: ${e.message}`); process.exitCode = 1; });
 }

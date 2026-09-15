@@ -54,72 +54,74 @@ const facet = (text) => {
   if (tokens) process.stdout.write(`CLAUDINITE-FACET: ${tokens.toLocaleString('en-US')} personal preference tokens\n`);
 };
 
-const emit = (s) => { facet(s); process.stdout.write(s.endsWith('\n') ? s : `${s}\n`); process.exit(0); };
+const emit = (s) => { facet(s); process.stdout.write(s.endsWith('\n') ? s : `${s}\n`); };
 
 // Strip quotes/backslashes before embedding an identity in a message, so an unusual
 // one stays tidy in the injected text.
 const safe = (s) => String(s).replace(/["\\]/g, '');
 
-const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+// Every ending below is a `return` and the process ends on its own. The step's whole
+// product is what it writes to stdout, read over a pipe by the runner that spawned
+// it, and process.exit() drops a write still queued there — the preferences would
+// arrive truncated, or not at all, under a clean exit 0.
+async function main() {
+  const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
-// The engine hands this pack its own entry `config`; nothing here re-reads settings.
-let config = {};
-try { config = JSON.parse(process.env.CLAUDINITE_PACK_CONFIG || '{}'); } catch { /* malformed — the rule reports it */ }
+  // The engine hands this pack its own entry `config`; nothing here re-reads settings.
+  let config = {};
+  try { config = JSON.parse(process.env.CLAUDINITE_PACK_CONFIG || '{}'); } catch { /* malformed — the rule reports it */ }
 
-const store = resolveStore(config);
-if (!store) {
-  note('this project declares no preferences store (the pack entry\'s "config": { "repo": … }) — proceeding with default interaction behavior.');
-  process.exit(0);
-}
-
-if (process.env.CLAUDE_CODE_SESSION_ATTENDED === '0') {
-  note('the session is unattended (CLAUDE_CODE_SESSION_ATTENDED=0) — personal preferences are for a present person; proceeding with default interaction behavior.');
-  process.exit(0);
-}
-
-const email = process.env.CLAUDE_CODE_USER_EMAIL || '';
-if (!email) {
-  note('CLAUDE_CODE_USER_EMAIL is not set — proceeding with default interaction behavior.');
-  process.exit(0);
-}
-if (!isUsableIdentity(email)) {
-  note(`CLAUDE_CODE_USER_EMAIL (${safe(email)}) is not a usable file name — proceeding with default interaction behavior.`);
-  process.exit(0);
-}
-
-const relative = fileFor(store, email);
-
-// Local first: this tree is the store itself.
-const local = join(root, relative);
-if (existsSync(local)) {
-  try {
-    emit(readFileSync(local, 'utf8'));
-  } catch (e) {
-    note(`${relative} is present but unreadable (${e.message}) — proceeding with default interaction behavior.`);
-    process.exit(0);
+  const store = resolveStore(config);
+  if (!store) {
+    return note('this project declares no preferences store (the pack entry\'s "config": { "repo": … }) — proceeding with default interaction behavior.');
   }
-}
 
-// Otherwise fetch the single file. CLAUDINITE_PREFS_URL overrides the derived base
-// for a fork or a test. `HEAD` is the store repo's default branch, whatever it is
-// called — the config names a repo, never a branch.
-const base = process.env.CLAUDINITE_PREFS_URL
-  || `https://raw.githubusercontent.com/${store.repo}/HEAD/${store.path}`;
-const url = `${base}/${encodeURIComponent(email)}.md`;
-
-let lastError = 'no response';
-for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-    if (res.status === 404) { lastError = 'no preferences file for this user'; break; } // a definite answer — do not retry it
-    if (!res.ok) { lastError = `HTTP ${res.status}`; continue; }
-    const text = await res.text();
-    if (text.trim()) emit(text);
-    lastError = 'the file is empty';
-    break;
-  } catch (e) {
-    lastError = e.message || String(e);
+  if (process.env.CLAUDE_CODE_SESSION_ATTENDED === '0') {
+    return note('the session is unattended (CLAUDE_CODE_SESSION_ATTENDED=0) — personal preferences are for a present person; proceeding with default interaction behavior.');
   }
+
+  const email = process.env.CLAUDE_CODE_USER_EMAIL || '';
+  if (!email) {
+    return note('CLAUDE_CODE_USER_EMAIL is not set — proceeding with default interaction behavior.');
+  }
+  if (!isUsableIdentity(email)) {
+    return note(`CLAUDE_CODE_USER_EMAIL (${safe(email)}) is not a usable file name — proceeding with default interaction behavior.`);
+  }
+
+  const relative = fileFor(store, email);
+
+  // Local first: this tree is the store itself.
+  const local = join(root, relative);
+  if (existsSync(local)) {
+    try {
+      return emit(readFileSync(local, 'utf8'));
+    } catch (e) {
+      return note(`${relative} is present but unreadable (${e.message}) — proceeding with default interaction behavior.`);
+    }
+  }
+
+  // Otherwise fetch the single file. CLAUDINITE_PREFS_URL overrides the derived base
+  // for a fork or a test. `HEAD` is the store repo's default branch, whatever it is
+  // called — the config names a repo, never a branch.
+  const base = process.env.CLAUDINITE_PREFS_URL
+    || `https://raw.githubusercontent.com/${store.repo}/HEAD/${store.path}`;
+  const url = `${base}/${encodeURIComponent(email)}.md`;
+
+  let lastError = 'no response';
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      if (res.status === 404) { lastError = 'no preferences file for this user'; break; } // a definite answer — do not retry it
+      if (!res.ok) { lastError = `HTTP ${res.status}`; continue; }
+      const text = await res.text();
+      if (text.trim()) return emit(text);
+      lastError = 'the file is empty';
+      break;
+    } catch (e) {
+      lastError = e.message || String(e);
+    }
+  }
+  note(`${safe(email)} at ${store.repo} could not be read (${lastError}) — proceeding with default interaction behavior.`);
 }
-note(`${safe(email)} at ${store.repo} could not be read (${lastError}) — proceeding with default interaction behavior.`);
-process.exit(0);
+
+await main();

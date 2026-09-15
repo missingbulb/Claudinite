@@ -98,5 +98,8 @@ async function main() {
   }
 }
 
+// Never block a session from ending — an exit CODE, not process.exit(), because
+// hooklog echoes every line above to stderr and that is a pipe whenever the caller
+// captures it.
 main().catch((e) => { hooklog('SessionEnd', `done exit=0 runner error: ${e.message}`); })
-  .finally(() => process.exit(0)); // never block a session from ending
+  .finally(() => { process.exitCode = 0; });

@@ -264,5 +264,5 @@ export async function main() {
 
 // Run only when invoked directly (code-work's `node worker.mjs`), never on import.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`site-release failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => { console.error(`site-release failed: ${e.message}`); process.exitCode = 1; });
 }
