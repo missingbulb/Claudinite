@@ -1,0 +1,18 @@
+[
+  {
+    "id": "tasks-pack-read-through-its-surface",
+    "severity": "blocking",
+    "since": "2026-09-14",
+    "failureMessage": "an import past claudinite-tasks' published shared-code/ couples a consumer to a layout the pack is free to change",
+    "fix": "import it from packs/claudinite-tasks/shared-code/; if nothing there publishes what you need, add the named export to the right shared-code module rather than deepening the reach",
+    "scanFiles": "/^(\\.claudinite\\/(shared|local)\\/)?packs\\/(?!claudinite-tasks\\/).*\\.mjs$/",
+    "scanIgnoringComments": true,
+    "matchLines": [
+      {
+        "match": "/(?:from|import\\s*\\()\\s*['\"][^'\"]*claudinite-tasks\\/(?!shared-code\\/)[^'\"]*['\"]/",
+        "what": "reads claudinite-tasks past its published surface: \"{match}\"",
+        "fix": "reach it through packs/claudinite-tasks/shared-code/, adding the named export there if it is not published yet"
+      }
+    ]
+  }
+]

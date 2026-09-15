@@ -35,6 +35,7 @@ and `tasks-world-edges-live-in-world` checks are what hold the shape.
 | `tasks/` | this pack's own tasks: `task-janitor` (the queue's sweeps), `usage-fold` (it folds this mechanism's run records and outcome labels), `tasks-usage-fold` (what the machinery itself cost — runs, billed minutes, API calls, outcomes, parks, latencies) and `verify-production` (coded production validations — URL probes judged as code-work) |
 | `worldRules/` | the task-declaration checks |
 | `workRules/` | the armed-auto-merge gate (`automerge-policy-scope`) |
+| `declared-checks.json` | `tasks-pack-read-through-its-surface` — the guard over this pack's published surface, which runs wherever the pack is declared |
 | `test/` | the unit suite, mirroring `src/`, and `test/sim/` — the simulator and its scenario suite, the mechanism's executable spec |
 | `docs/PRINCIPLES.md` | the mechanism as claims, each citing the test that proves it |
 | `executor.md`, `queue/instructions.md`, `deliver-pr.md` | operational documents a member's routines and workers read out of their own mount at runtime |
@@ -44,6 +45,11 @@ and `tasks-world-edges-live-in-world` checks are what hold the shape.
 Another pack's code may import `packs/claudinite-tasks/shared-code/*`, and nothing else of this
 pack. The `pack-independence` barrier's allow list names that directory; no other pack gains an
 equivalent surface by existing.
+
+**A member's own `.claudinite/local/packs/**` reads it the same way**, through its mount
+(`.claudinite/shared/packs/claudinite-tasks/shared-code/*`). That is the surface's whole point: the
+nightly converge replaces `.claudinite/shared/` and may never touch a member's own packs, so an
+import aimed anywhere else is one this repository cannot repair when the layout behind it moves.
 
 | Module | What it publishes | Who reads it |
 |---|---|---|
@@ -86,6 +92,13 @@ pack paths behind which everything converges nightly.
 | `automerge-policy-scope` | high | correctness | check: blocking |
 | `legacy-task-fields` | low | complexity | check: advisory |
 | `executor-workflow-secrets` | high | correctness | check: advisory |
+| `tasks-pack-read-through-its-surface` | high | correctness | declared check: blocking |
+
+`tasks-pack-read-through-its-surface` is this pack's, not the canon's, because the consumers that
+can get it wrong are members: it scans a repo's own `packs/` **and** its `.claudinite/local/packs/`,
+the tree no converge may rewrite, so a deep import written there is caught in that repo's own run
+rather than when it crashes. Declared here so every repo declaring this pack runs it — a canon-only
+pack would never reach them (missingbulb/Shepherd#613).
 
 The first two are relevance-first — inert until the repo carries a `tasks/<name>/task.json` of its own; the third is self-gating on the branch's own arming trailer.
 
