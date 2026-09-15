@@ -18,5 +18,20 @@
         "fix": "remove the NSSupportsSuddenTermination key (or set it <false/>) — the app must get its chance to remove its tap and stop its engine on the way out"
       }
     ]
+  },
+  {
+    "id": "notarize-then-staple",
+    "severity": "blocking",
+    "since": "2026-09-15",
+    "failureMessage": "an unstapled artifact carries no ticket, so Gatekeeper must reach Apple the first time a user opens it — and never has to on the machine that submitted it",
+    "scanFiles": "/\\.(sh|bash|zsh|ya?ml|mjs|cjs|jsx?|tsx?|py|rb)$|(^|\\/)Makefile$/",
+    "repoWide": [
+      {
+        "unlessSomeFileMatches": "/\\bstapler\\s+staple\\b/",
+        "flagFilesMatching": [["/^[^#\\n]*\\bnotarytool\\s+submit\\b/m"]],
+        "what": "submits the artifact to the notary service, and nothing in this repo staples the ticket onto it",
+        "fix": "follow `xcrun notarytool submit --wait` with `xcrun stapler staple <the container you distribute>` and `xcrun stapler validate`, in the same lane that submitted it"
+      }
+    ]
   }
 ]
