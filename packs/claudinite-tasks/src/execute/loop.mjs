@@ -259,6 +259,15 @@ export async function runExecutor({
   return done;
 }
 
+// Whether `claim` is still the item's live claim — the earliest of THIS episode,
+// by the same arbiter the lease itself trusts. False where a reclaim's episode
+// marker struck it, or where another executor now holds the item.
+async function holdsClaim(api, gh, repo, item, claim) {
+  if (!claim) return true;
+  const winner = claimWinner(await api.listComments(gh, repo, item.number));
+  return !!winner && winner.id === claim.id;
+}
+
 // The claim id of each live item, so the post-claim verify can compare episodes.
 // One comment read per conflicting-looking item, not per item in the repo.
 async function withClaimIds(api, gh, repo, items, selfNumber) {
@@ -428,6 +437,20 @@ async function executeItem({
         heartbeatComment({ executor: executorId, at: nowIso(), minutes })),
     });
     endCodeWork();
+    // THE LEASE, RE-VERIFIED ACROSS THE ONE PHASE THAT CAN OUTLIVE IT (F17). The
+    // work step is the only thing a run does that may legally take longer than the
+    // executing leash, so it is the only place this run can have been reclaimed
+    // while it was still alive: every other write here happens within seconds of
+    // the claim. A run whose beats stopped reaching GitHub — the beat is fail-soft
+    // by design, and a partitioned runner keeps working — is reclaimed, re-picked,
+    // and would then converge the item out from under the executor now holding it.
+    // Re-entrant code-work makes the second RUN safe; it says nothing about a
+    // second CONVERGE. So the stale runner abandons silently: the item is not its
+    // to write to, and the live holder never notices.
+    if (!(await holdsClaim(api, gh, repo, item, claim))) {
+      log(`- #${item.number} ${id}: reclaimed while this run's work step ran — another executor holds it now, leaving it to them`);
+      return 'reclaimed';
+    }
     if (!result.ok) {
       // A RUN THAT FAILED PARKS `failure`, whatever the worker asked for (#1452).
       // The marker used to route the park, so a worker naming `action` put a failed
