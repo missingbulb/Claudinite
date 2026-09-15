@@ -18,7 +18,7 @@ mechanics for the CI that runs the lane).
 | On-device opt-in needs the locale's model | high | correctness | prose: <100 words |
 | The unsigned path stays a working path | medium | complexity | prose: <100 words |
 | An ad-hoc signature cannot be notarized. | high | legal | prose: <50 words |
-| Notarize the distributed container, then staple it | high | legal | prose: <50 words |
+| Notarize the distributed container, then staple it | high | legal | prose: <50 words + check (`notarize-then-staple`) |
 | A CI identity joins the searchable keychain | medium | correctness | prose: <100 words |
 | Annotate which signing lane ran | medium | complexity | prose: <50 words |
 | A drag-install DMG is a staged folder | medium | complexity | prose: <100 words |
@@ -58,11 +58,13 @@ actually follow is the sign the signing lane isn't running.
 | `signal-teardown-routing` | high | correctness | check: blocking |
 | `minimum-system-version-agrees` | high | correctness | check: blocking |
 | `swift-toolchain-gate` | high | correctness | check: blocking |
+| `notarize-then-staple` | high | legal | check: blocking |
 
-Four checks, each on a rule whose static signature is false-positive-free *because the rule is
+Each is on a rule whose static signature is false-positive-free *because the rule is
 itself conditional*: each fires only where the tree already shows the posture the rule is about —
-terminate-time teardown, an AppKit app that installs a capture tap, or a plist and a package
-manifest that both state an OS floor. The rest stays prose: runtime device behaviour, a CI lane's
+terminate-time teardown, an AppKit app that installs a capture tap, a plist and a package
+manifest that both state an OS floor, or a release lane that submits to the notary service. The
+rest stays prose: runtime device behaviour, a CI lane's
 shape, or a plist/entitlement judgment call, none of which a scan can tell apart from a healthy
 repo. The `Package.swift` fingerprint only **suspects** the pack — a Swift package can be a
 library or an iOS-only target, so declaration stays the project's call.
