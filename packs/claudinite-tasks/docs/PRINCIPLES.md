@@ -152,9 +152,20 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   `S31b`
 - The wiring-time conformance check enforces exactly one relation: the
   heartbeat interval sits well inside the executing leash. `S31`
-- A worker that names its failure kind on stdout/stderr parks there; the last
-  marker printed wins, so a sweep may revise its own verdict mid-run; a
-  worker that says nothing parks at failure. `S41`, `S41b`
+- A RUN THAT FAILED PARKS `failure`, whatever kind the worker asked for
+  (#1452): the marker used to route the park, so a worker naming `action` put
+  a failed run in a non-blocking lane and the task re-filed the next morning
+  against a cause nobody had fixed. The worker's verdict is not discarded —
+  it goes into the park's comment, where it was always most useful, as the
+  human-facing instruction rather than as routing; a worker that says nothing
+  parks the same way with nothing to add. `S41`, `S41b`
+- An executor re-verifies its own claim across the WORK STEP, which is the
+  one phase that may legally outlive the executing leash, and abandons the
+  item silently where the claim is no longer its. Without it a runner whose
+  beats stopped reaching GitHub — the beat is fail-soft by design — is
+  reclaimed, re-picked, and then converges the item out from under the
+  executor now holding it: re-entrant code-work makes the second RUN safe and
+  says nothing about a second CONVERGE. `S31b`
 - The work step's terminal comment carries the `claudinite-task-exec` record
   and every artifact the run created — for an agentless task it is the only
   durable trace of the run, since Actions logs expire. (comment content, not
@@ -318,6 +329,18 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - Clearing a park, a rejection or an approval is the one lever that re-enters
   a request into the queue — there is no second label and no predecessor to
   supersede, because there is only the one issue. `S49`, `S51`
+- A SESSION that parks an item writes the episode boundary in its own
+  converge comment. It cannot strike the claim the way a departing executor
+  does — the claim is the executor's and a session has no edit for it — so
+  without the boundary every claim of the parked episode outlives the park,
+  and the next executor to claim the re-queued item loses the race to a dead
+  one on its first try, and on every try after it. `S49`
+- Membership in the queue is EITHER artifact adoption wrote — the machine
+  block or the status beside the mark — never the mark alone. The mark is a
+  label a person can take off at any moment, and an adopted item gated on it
+  drops out of every read of the queue the instant they do: never picked,
+  never declined, and invisible to the janitor's rules, which cannot sweep
+  what they cannot list. `S48`
 - A live prior item of the same mark makes a re-ask wait; a parked one is
   superseded rather than blocking it forever. `S49`, `S51`
 - The precondition is the security check, evaluated once, at pickup: it
@@ -399,6 +422,11 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   suspension parks a batched drain at most one item later. `S37`,
   `test/execute/loop.test.mjs: a run that drained the queue asks the hold once per settle, not once more`
 
+- Every wait in the scenario suite is virtual: a simulated working day, with a
+  chain of tasks running for hours of simulated time, costs milliseconds of
+  real time and sleeps for none of it. A scenario that needs real time is a
+  scenario written wrong. `S80`
+
 ## Contract
 
 - A work item is a GitHub issue titled `[claudinite-work] <pack>/<task>`,
@@ -478,40 +506,57 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 
 ## Not yet verifiable
 
-The simulator models the protocol's decision points, not the platform under
-it. Each of the following is a place a bug could live that no scenario here
-can catch; what would make it verifiable is named beside it.
+The scenarios drive the real queue against a fake world, so what a bug can
+hide behind is no longer the model — it is the fake. Each of the following is
+a place a bug could live that nothing here catches; what would make it
+verifiable is named beside it.
 
-- **Cron delivery** — `schedule:` fires land late or are silently dropped,
-  and GitHub disables a quiet public repo's schedule after 60 days. Late and
-  dropped fires are modeled abstractly; the 60-day disable is inherited risk,
-  unverifiable without a live repo left quiet that long.
-- **Label API non-atomicity** — a label swap is two calls with no CAS; a
-  torn swap between them is defended structurally (labels are never the
-  arbiter, only comments are) but not exercised by the simulator, which
-  applies swaps atomically. Verifiable only against real API timing.
+The fake's own limitations are stated in the header of the module that owns
+them ([`packs/claudinite-tasks/test/sim/world/`](../test/sim/world)), and the behaviours it DOES
+model are proven in
+[`packs/claudinite-tasks/test/sim/world/world.test.mjs`](../test/sim/world/world.test.mjs) rather
+than assumed — the strictly-increasing comment ids that claim arbitration
+rests on, the one-second timestamp granularity that makes them necessary, a
+torn label swap, a rate limit, a stale listing, a dropped `labeled` webhook, a
+dropped cron fire and a job killed at its timeout ceiling.
+
+- **Cron delivery** — dropped and late fires are driven
+  (`test/sim/world/world.test.mjs: fires dropped in a window simply never happen`,
+  `S71`); what remains inherited risk is GitHub disabling a quiet public
+  repo's schedule after 60 days, unverifiable without a live repo left quiet
+  that long.
+- **Label API non-atomicity** — a swap is two calls with no CAS, and the fake
+  can tear one
+  (`test/sim/world/world.test.mjs: a torn label swap leaves the item wearing neither label`).
+  What is defended structurally rather than exercised end to end is the
+  janitor repairing a tear it finds mid-flight; no scenario yet tears a swap
+  underneath a running queue.
 - **Comment list consistency** — the design assumes a comment list read after
   posting includes every earlier-id comment; GitHub's own consistency
-  guarantee for that read is undocumented.
-- **A whole day settling inside one Actions job** — the simulator's work
-  durations are scenario fixtures, not any real task's; whether a real
-  member's full daily chain fits inside the executor workflow's
-  `timeout-minutes` is unmeasured until a real one is watched settle.
-- **Rate limits and secondary quotas** — not modeled; only real usage
-  observes them.
+  guarantee for that read is undocumented, and the fake grants it.
+- **A whole day settling inside one Actions job** — the work durations are
+  scenario fixtures, not any real task's; whether a real member's full daily
+  chain fits inside the executor workflow's `timeout-minutes` is unmeasured
+  until a real one is watched settle.
+- **Rate limits and secondary quotas** — the fake answers 403 for a stated
+  number of calls
+  (`test/sim/world/world.test.mjs: a rate limit answers 403 for the calls it was given and then lets go`),
+  which is the shape but not the real service's thresholds or its secondary
+  quotas; only real usage observes those.
 - **The invocation wire's real contract** — the routine-fire API's timeout
-  behaviour and nonce handling are modeled by their *outcomes*
+  behaviour and nonce handling are driven by their *outcomes*
   (fired/refused/unanswered), never by the wire format itself.
 - **Actions variable delivery mid-run** — that a hold set mid-drain is caught
-  only between items (never inside running work) follows from the platform's
-  documented env-at-start-only behaviour, unexercised against a live hold.
+  only between items follows from the platform's documented
+  env-at-start-only behaviour; the fake grants that behaviour rather than
+  observing it.
 - **Secrets storage and masking** — Actions' own secret store, env stamping
-  and masking-per-literal are platform behaviour the simulator does not
-  reach; only the needs-human convergence around a missing one is modeled.
-- **Real code-work and agent content** — the simulator scripts a session's
-  duration and verdict as fixtures; the outcome ceiling and record formats
-  are the tested surface, never a real diff or a real transcript.
+  and masking-per-literal are platform behaviour nothing here reaches; only
+  the needs-human convergence around a missing one is driven.
+- **Real code-work and agent content** — a session's duration and verdict are
+  scripted; the outcome ceiling and record formats are the tested surface,
+  never a real diff or a real transcript.
 - **F32 — an unpicked deduped twin's survivor** — the self-heal that closes
-  every duplicate live item but the oldest is modeled (`S30`); what the
-  survivor's own next pick then does with a `runs` window that saw a run it
-  never started is open, and no scenario pins an answer yet.
+  every duplicate live item but the oldest is driven (`S30`), and the
+  survivor's own next pick is now driven with it; what no scenario pins is
+  the same shape under a stale list that hides the survivor instead.
