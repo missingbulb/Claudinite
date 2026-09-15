@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -62,6 +62,33 @@ export function writeFiles(root, files) {
   }
 }
 
+// The seeded repo every fixture starts from, built once per process and copied
+// rather than rebuilt. `git init` + the seed commit + the feature branch is four
+// subprocesses (~27ms), and it produces a byte-identical tree for every fixture
+// whose `base` is empty — which is nearly all of them, and the suite makes this
+// call over a thousand times. A file copy of the result is ~3ms.
+//
+// The copy is what the pruning is for: git writes ten files here that it never
+// reads back in a fixture's life — the hook samples above all, plus info/exclude,
+// branches/, description and the reflog — and they were four fifths of the copy.
+// Anything git needs from them it recreates on demand.
+let seedTemplate = null;
+function templateRepo() {
+  if (seedTemplate) return seedTemplate;
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-checks-seed-'));
+  git(root, 'init', '-q', '-b', 'main');
+  writeFiles(root, { 'README.md': 'seed\n' });
+  git(root, 'add', '-A');
+  git(root, 'commit', '-q', '-m', 'seed');
+  git(root, 'checkout', '-q', '-b', 'feature');
+  for (const inert of ['hooks', 'info', 'branches', 'logs', 'description']) {
+    removeTree(join(root, '.git', inert));
+  }
+  process.on('exit', () => removeTree(root));
+  seedTemplate = root;
+  return root;
+}
+
 /**
  * Scratch git repo: `base` files committed on main, then a feature branch with
  * `changed` files committed on top (message `commitMsg`). Mirrors the runner's
@@ -69,11 +96,17 @@ export function writeFiles(root, files) {
  */
 export function makeRepo({ base = {}, changed = {}, commitMsg = 'change Refs #1', uncommitted = {} }) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-checks-'));
-  git(root, 'init', '-q', '-b', 'main');
-  writeFiles(root, { 'README.md': 'seed\n', ...base });
-  git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'seed');
-  git(root, 'checkout', '-q', '-b', 'feature');
+  // `base` files belong IN the seed commit, so a fixture that has them cannot start
+  // from the shared template and seeds its own repo the long way.
+  if (Object.keys(base).length) {
+    git(root, 'init', '-q', '-b', 'main');
+    writeFiles(root, { 'README.md': 'seed\n', ...base });
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', 'seed');
+    git(root, 'checkout', '-q', '-b', 'feature');
+  } else {
+    cpSync(templateRepo(), root, { recursive: true });
+  }
   if (Object.keys(changed).length) {
     writeFiles(root, changed);
     git(root, 'add', '-A');
