@@ -36,6 +36,19 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(writing-tests-3)** A hostname-apex helper passed its hand-picked tests but mis-stripped
   `tel-aviv.gov.il` → `gov.il`; the gap only surfaced when the function was run over the actual
   list of existing URLs.
+- **(writing-tests-4)** An audit of the canon's ~3,600 tests found ~30 assertions reading back a
+  value the test's own setup had chosen: a declared check's `severity` (a pass-through of the
+  declaration) and its `rule` id (the very id the test selected the check by). Retire the rule if
+  findings stop carrying fields the engine copies through unchanged.
+- **(writing-tests-5)** Four fleet-sheepdog task suites each asserted that their own `task.json`
+  named its directory and a worker beside it. The canon had ~30 tasks, so the shape was held for
+  the four that happened to have a suite and unguarded for the rest; folding it into
+  `task-schema.test.mjs`'s existing tree walk covered all of them and deleted four copies. Retire
+  the rule if per-member suites become mandatory for every member of such a set.
+- **(writing-tests-6)** The same audit found `.fix` assertions split evenly between remedies
+  computed from the input (`raise it to 1.2.4`, `rename it to <dir>README.md`) and static
+  sentences re-typed from the declaration; only the first kind can fail for a reason that is a
+  defect. Retire the rule if remedies stop being authored as editable prose.
 - **(check:declared-check-spec-keys)** The engine's declaration load drops a key it cannot place
   instead of throwing, because refusing it wedges a member holding an older engine (#1400); this
   check is where the typo half of that trade is caught. Retire it only if the load can refuse
