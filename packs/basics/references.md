@@ -49,6 +49,29 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   computed from the input (`raise it to 1.2.4`, `rename it to <dir>README.md`) and static
   sentences re-typed from the declaration; only the first kind can fail for a reason that is a
   defect. Retire the rule if remedies stop being authored as editable prose.
+- **(writing-tests-7)** Derived from xUnit Test Patterns' *Conditional Test Logic* smell and
+  from `claudinite-canon-curation`'s standing rule that a check selecting inputs by path
+  pattern must assert its scope is non-empty — the same failure on the test side, which no rule
+  covered. Proven rather than argued: renaming the emitted `issue_write` call in
+  `converge-item.mjs` left `converge-session.test.mjs`'s "names the repo it was given, on every
+  call" green, and the same mutation against the pinned body fails on the count. Note the
+  mechanism, which is why the rule says *how many* rather than *not empty*: the filter selected
+  two call kinds and kept one, so the surviving `add_issue_comment` line satisfied the loop
+  while the renamed call went unchecked. The audit found the same shape
+  unpinned in `bootstrap.test.mjs`, `scenarios.test.mjs` and `rule-index.test.mjs`, and as an
+  inner `if (script)` inside `task-schema.test.mjs`'s own pinned tree walk. Retire the rule if a
+  runner reports per-assertion execution counts, which would make an unexecuted assertion
+  visible without a pin.
+- **(writing-tests-8)** *Software Engineering at Google* ch. 12, "Test via Public APIs": a test
+  that reaches past the interface "is brittle, and almost any refactoring of the system under
+  test (such as renaming its methods, factoring them out into a helper class…) would cause the
+  test to break, even if such a change would be invisible to the class's real users." One
+  holder in this corpus: `update-worker.test.mjs` greps `tasks/update/worker.mjs` — a module it
+  also imports — for `settingsPath(root)`, `deliveryFor(declaration)` and the byte order of two
+  lines (`target < disposal`). Those greps exist because the worker's only real entry point is
+  `main()`, which drives git and the network; the rule's second clause is what that file should
+  say instead. Retire if the corpus stops shipping modules whose whole behaviour sits behind one
+  side-effecting entry point.
 - **(check:declared-check-spec-keys)** The engine's declaration load drops a key it cannot place
   instead of throwing, because refusing it wedges a member holding an older engine (#1400); this
   check is where the typo half of that trade is caught. Retire it only if the load can refuse
