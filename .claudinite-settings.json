@@ -84,15 +84,7 @@
       }
     },
     "git-github",
-    {
-      "id": "claudinite-growth",
-      "config": {
-        "pack_paths": [
-          ".claudinite/local/packs",
-          "packs"
-        ]
-      }
-    },
+    "claudinite-growth",
     {
       "id": "local/claudinite",
       "config": {

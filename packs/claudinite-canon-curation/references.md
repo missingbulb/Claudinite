@@ -70,3 +70,9 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   plain token grep with one hit while the command runs zero times — the check reports the wiring
   intact after the invocation was deleted. Retire the rule if checks stop being written as token
   greps over script text.
+- **(RULES-14)** #2044, owner: "The canon-curation pack should be the only one that touches the
+  packs/ folder. It should define tasks that perform the growth actions on the canon packs using the
+  skills defined in claudinite-growth." The shelf and a member's local packs are two corpora with
+  two policies — `under:packs` here, `under:.claudinite/local` there — and one task cannot hold
+  both: the config that used to widen a growth sweep onto the shelf made every canon-side run park
+  outside its own policy. Retire if the two corpora ever merge into one write surface.
