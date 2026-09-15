@@ -19,4 +19,4 @@ import { runSchedulerRun } from '../src/schedule/run.mjs';
 
 console.log('- invoked as `tick.mjs`, which is the old name for the scheduler run —'
   + ' this repo\'s scheduler workflow is behind the mount and should be re-converged');
-runSchedulerRun().catch((e) => { console.error(e); process.exit(1); });
+runSchedulerRun().catch((e) => { console.error(e); process.exitCode = 1; });

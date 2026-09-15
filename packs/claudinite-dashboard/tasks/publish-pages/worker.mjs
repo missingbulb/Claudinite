@@ -217,6 +217,6 @@ if (isMain) {
     console.error(e instanceof NeedsHuman
       ? `claudinite-needs-human: ${e.kind} — ${e.message}`
       : `publish-pages failed: ${e.stack ?? e.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   });
 }

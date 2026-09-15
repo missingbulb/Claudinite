@@ -146,4 +146,4 @@ async function main() {
 // one note, exit 0.
 main()
   .catch((e) => note(`the pack session-start runner could not complete (${e.message}) — continuing.`))
-  .finally(() => process.exit(0));
+  .finally(() => { process.exitCode = 0; });

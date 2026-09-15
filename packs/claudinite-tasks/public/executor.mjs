@@ -33,5 +33,5 @@ export {
 } from '../src/contract/precondition.mjs';
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runExecutorJob().catch((e) => { console.error(e.message ?? e); process.exit(1); });
+  runExecutorJob().catch((e) => { console.error(e.message ?? e); process.exitCode = 1; });
 }

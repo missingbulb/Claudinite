@@ -26,5 +26,5 @@ export {
 } from '../src/schedule/drain-dispatch.mjs';
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runDrainDispatch().catch((e) => { console.error(e.message ?? e); process.exit(1); });
+  runDrainDispatch().catch((e) => { console.error(e.message ?? e); process.exitCode = 1; });
 }

@@ -64,12 +64,18 @@ const pageSource = resolve(HERE, '..');
 const engineSource = join(mountRoot, ENGINE);
 const tasksSource = join(mountRoot, TASKS);
 
+// A stop at module top level, where there is no `return` to take — so the write is
+// AWAITED to its flush before the process ends. process.exit() drops whatever is
+// still queued on a pipe, and the publish-pages task captures this output.
+const sayAndStop = async (stream, text, code) => {
+  await new Promise((flushed) => stream.write(text, flushed));
+  process.exit(code);
+};
+
 if (!await exists(join(pageSource, PAGE_AT)) || !await exists(engineSource)) {
-  process.stdout.write(
+  await sayAndStop(process.stdout,
     `No dashboard in the mount at ${pageSource} — nothing to publish. `
-    + 'The next converge that delivers this pack will make this build produce a site.\n',
-  );
-  process.exit(0);
+    + 'The next converge that delivers this pack will make this build produce a site.\n', 0);
 }
 
 // --- settings, from the member's own declaration ---------------------------------
@@ -171,8 +177,7 @@ let fleetMode;
 try {
   fleetMode = resolveMode({ ...cfg, rosterUrl: rosterUrl ?? cfg.rosterUrl }) === 'fleet';
 } catch (e) {
-  process.stderr.write(`claudinite-dashboard: ${e.message}\n`);
-  process.exit(1);
+  await sayAndStop(process.stderr, `claudinite-dashboard: ${e.message}\n`, 1);
 }
 const config = {
   mode: fleetMode ? 'fleet' : 'repo',

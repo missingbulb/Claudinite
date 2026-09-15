@@ -74,7 +74,9 @@ try {
   const packs = await loadPacks({ localRoot: projectRoot });
   const active = packs.filter((pack) => isActive(pack, { packs: declared }));
   // Nothing active means this repo runs no Claudinite. Nothing loaded, so there
-  // is nothing to state — the same silence the prose injector keeps.
+  // is nothing to state — the same silence the prose injector keeps. A safe
+  // process.exit, and top-level code has no `return`: the one write this step makes
+  // is below, so nothing is queued for the exit to drop.
   if (!active.length) process.exit(0);
 
   // The prose the injector actually emits: each active pack's own file, resolved

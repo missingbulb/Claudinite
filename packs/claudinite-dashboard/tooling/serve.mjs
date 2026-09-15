@@ -109,8 +109,12 @@ server.on('error', (e) => {
   // A busy port is the one failure worth a word rather than a stack: it is what
   // happens when the last run is still up.
   if (e.code === 'EADDRINUSE') {
-    process.stderr.write(`Port ${port} is busy — another copy may be running. Try PORT=8100 node ${process.argv[1]}\n`);
-    process.exit(1);
+    // Exit from the write's own callback: the listening socket is still an open
+    // handle, so an exit code alone would not end the process, and an immediate
+    // process.exit() would drop the line on a captured stderr.
+    process.stderr.write(`Port ${port} is busy — another copy may be running. Try PORT=8100 node ${process.argv[1]}\n`,
+      () => process.exit(1));
+    return;
   }
   throw e;
 });

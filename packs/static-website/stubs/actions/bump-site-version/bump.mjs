@@ -168,6 +168,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(version);
   } catch (err) {
     console.error(`bump-site-version: ${err.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   }
 }

@@ -125,8 +125,8 @@ export async function main() {
   // which is exactly what the next converge's anti-rewind guard refuses: a rehearsal
   // that wedges its own canary.
   const rehearsalRef = process.env.CLAUDINITE_CANON_REF || null;
-  if (!repo) { console.error('update: no repo (CLAUDINITE_REPO/GITHUB_REPOSITORY)'); process.exit(1); }
-  if (!token) { console.error('update: no GITHUB_TOKEN in env'); process.exit(1); }
+  if (!repo) { console.error('update: no repo (CLAUDINITE_REPO/GITHUB_REPOSITORY)'); process.exitCode = 1; return; }
+  if (!token) { console.error('update: no GITHUB_TOKEN in env'); process.exitCode = 1; return; }
 
   // Either settings-file name, in the rename's read order: this worker is VENDORED,
   // so the copy running on a member may predate the record that renamed its own
@@ -219,7 +219,8 @@ export async function main() {
       git(['-C', root, 'clean', '-fd']);
       if (terminal.action === 'needs-human') {
         console.error(`update: rehearsing ${rehearsalRef} FAILED — ${terminal.why}`);
-        process.exit(1);
+        process.exitCode = 1;
+        return;
       }
       console.log(`${REHEARSAL_MARKER} ${repo} against ${rehearsalRef} — ${terminal.action}: ${terminal.why}`);
       return;
@@ -324,5 +325,5 @@ export async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`update failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => { console.error(`update failed: ${e.message}`); process.exitCode = 1; });
 }

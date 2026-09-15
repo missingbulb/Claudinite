@@ -28,5 +28,5 @@ export {
 } from '../src/schedule/run.mjs';
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runSchedulerRun().catch((e) => { console.error(e.message ?? e); process.exit(1); });
+  runSchedulerRun().catch((e) => { console.error(e.message ?? e); process.exitCode = 1; });
 }

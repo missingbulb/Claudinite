@@ -44,16 +44,20 @@ export function toGithubEnv(pairs) {
     .join('\n');
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// The step, as a function so each ending is a `return` and the process ends on an
+// exit code: an Actions step captures this output, and process.exit() drops a write
+// still queued on the pipe carrying it.
+function cli() {
   const declared = process.env.DECLARED_BUILD_VARS ?? '';
-  if (!declared.trim()) process.exit(0);
+  if (!declared.trim()) return;
 
   let repoVars;
   try {
     repoVars = JSON.parse(process.env.REPO_VARS_JSON || '{}');
   } catch {
     console.error('export-build-vars: REPO_VARS_JSON is not valid JSON — the workflow must pass ${{ toJSON(vars) }}.');
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const { resolved, missing } = resolve(declared, repoVars);
@@ -61,7 +65,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error(`export-build-vars: .github/site.config declares ${missing.length === 1 ? 'a build variable' : 'build variables'} with no value in this repo: ${missing.join(', ')}.`);
     console.error('Set them under Settings → Secrets and variables → Actions → Variables, or drop the name from build_vars.');
     console.error('Failing here rather than building with a blank value, which would publish a page with the feature silently dead.');
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   if (process.env.GITHUB_ENV && resolved.length) {
@@ -70,3 +75,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // Names only — the values belong in the build's environment, not in a log.
   console.log(`export-build-vars: exported ${resolved.map(([n]) => n).join(', ')}`);
 }
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) cli();

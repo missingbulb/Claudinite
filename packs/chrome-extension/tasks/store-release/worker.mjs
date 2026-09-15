@@ -47,8 +47,8 @@ export async function main() {
   const repo = process.env.CLAUDINITE_REPO || process.env.GITHUB_REPOSITORY;
   const ref = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
   const item = process.env.CLAUDINITE_ITEM || '';
-  if (!repo) { console.error('store-release: no repo in env (CLAUDINITE_REPO/GITHUB_REPOSITORY)'); process.exit(1); }
-  if (!process.env.GITHUB_TOKEN) { console.error('store-release: no GITHUB_TOKEN in env'); process.exit(1); }
+  if (!repo) { console.error('store-release: no repo in env (CLAUDINITE_REPO/GITHUB_REPOSITORY)'); process.exitCode = 1; return; }
+  if (!process.env.GITHUB_TOKEN) { console.error('store-release: no GITHUB_TOKEN in env'); process.exitCode = 1; return; }
 
   // Fire the orchestrator's daily leg via workflow_dispatch — the orchestrator is
   // push + workflow_dispatch only now (its own cron retired), so this is the sole
@@ -59,7 +59,8 @@ export async function main() {
   });
   if (res.status !== 204) {
     console.error(`store-release [#${item}]: dispatching ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref} returned ${res.status}`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   console.log(`store-release [#${item}]: dispatched ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref}`);
 

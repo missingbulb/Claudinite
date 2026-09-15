@@ -50,6 +50,8 @@ try {
   const wanted = [...sourceByName.keys()].sort();
 
   const mountDir = join(projectRoot, '.claude', 'skills');
+  // A stop, and a safe process.exit: this step writes nothing at all, so there is
+  // no queued output for the exit to drop, and top-level code has no `return`.
   if (!wanted.length && !existsSync(mountDir)) process.exit(0);
   mkdirSync(mountDir, { recursive: true });
 
