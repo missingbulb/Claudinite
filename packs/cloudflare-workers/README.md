@@ -28,7 +28,7 @@ repo reads nothing here.
 - **Cloudflare Docs** (Workers, D1, R2, Vectorize, Workflows, Workers AI platform/limits pages)
   — https://developers.cloudflare.com/ (mirrored as source at
   `raw.githubusercontent.com/cloudflare/cloudflare-docs`, `production` branch, under
-  `src/content/docs/<product>/platform/limits.mdx`) — reconciled through 2026-09-06, against the
+  `src/content/docs/<product>/platform/limits.mdx`) — reconciled through 2026-09-15, against the
   request-body, D1, R2, Vectorize dimension-immutability, and Workflow step-result-size limits
   this pack's rules cite.
 

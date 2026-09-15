@@ -47,7 +47,11 @@ teaches its reader to skim it.
 
 - Cloudflare Workers static assets and custom domains —
   https://developers.cloudflare.com/workers/static-assets/ and
-  https://developers.cloudflare.com/workers/configuration/routing/custom-domains/ — reconciled
-  against the documentation as of 2026-09-13.
-- Wrangler releases — https://github.com/cloudflare/workers-sdk/releases — the release pins
-  `wrangler@4.128.0`; the pin moves in a commit that says so.
+  https://developers.cloudflare.com/workers/configuration/routing/custom-domains/ (mirrored as
+  source at `raw.githubusercontent.com/cloudflare/cloudflare-docs`, `production` branch, under
+  `src/content/docs/workers/static-assets/` and
+  `src/content/docs/workers/configuration/routing/custom-domains.mdx`) — reconciled through
+  2026-09-15.
+- Wrangler releases — https://github.com/cloudflare/workers-sdk/releases (the same notes are the
+  `packages/wrangler/CHANGELOG.md` of that repository) — reconciled through `wrangler@4.131.2`.
+  The release pins `wrangler@4.128.0`; the pin moves in a commit that says so.
