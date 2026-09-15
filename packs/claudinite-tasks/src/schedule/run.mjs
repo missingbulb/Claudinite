@@ -31,6 +31,7 @@ import { isReleasable } from './readiness.mjs';
 import { isQueueItem } from '../items/read.mjs';
 import { pickOrder } from '../items/pick-order.mjs';
 import { lastLivenessAt } from '../items/heartbeat.mjs';
+import { startRunCost } from '../items/run-record.mjs';
 import {
   WORK_PREFIX, BLOCKED, READY, TASK_OBSOLETE,
   NEEDS_HUMAN_DECISION, LIVE_STATUSES,
@@ -538,7 +539,7 @@ async function main() {
   // first API call, so a held queue reads nothing and writes nothing rather than
   // deriving the world and then declining to act on it.
   if (isSuspended()) { console.log('## Claudinite scheduler run\n'); console.log(suspendedNotice()); return; }
-  const { makeGh } = await import('../world/github.mjs');
+  const { makeGh, apiCallCount } = await import('../world/github.mjs');
   const { actionRepoContext, repoRoot } = await import('../world/actions.mjs');
   const { discoverTasks } = await import('../contract/discover.mjs');
   const { loadConfig } = await import('../../../../engine/checks/helpers/repo-context.mjs');
@@ -564,10 +565,19 @@ async function main() {
   const { tasks, errors } = await discoverTasks(root, config);
   for (const e of errors) console.log(`! ${e.what}`);
 
+  // WHAT THIS TICK COSTS, timed as it runs (run-record.mjs). The three phases are
+  // the three things a tick does — read the queue, ask the tasks, act on the answer
+  // — and the record is printed at the end of the run, into this job's log, which is
+  // the only place a tick's cost can live: a tick owns no work item to write it on.
+  const cost = startRunCost({
+    workflow: 'scheduler', runId: actionsEnv().GITHUB_RUN_ID ?? null, apiCalls: apiCallCount,
+  });
+
   const now = clockNow();
   // Closed items matter only back to the run-history horizon — the longest any
   // cadence term looks; older history can never change a verdict.
   const since = new Date(now.getTime() - RUN_HORIZON_DAYS * 86400e3).toISOString();
+  const endList = cost.phase('list');
   const items = await listWorkItems(gh, repo, { since });
   const requests = await listMarkedIssues(gh, repo);
 
@@ -583,6 +593,7 @@ async function main() {
     if (item.state !== 'open' || !isStatus(item, STATUS_RUNNING_EXECUTOR)) continue;
     item.livenessAt = lastLivenessAt(await listComments(gh, repo, item.number));
   }
+  endList();
 
   // THE ASK (PRINCIPLES.md), in two passes. The task's run-history terms — its
   // cadence, its view of its last failure — read only the queue this run already
@@ -632,13 +643,16 @@ async function main() {
     return judge(signals, false);
   };
 
+  const endAsk = cost.phase('ask');
   const { ops, asked } = await planSchedulerRun({
     tasks, items, requests, now, schedule: config.taskScheduler, stateOf: (n) => known.get(n) ?? null,
     evaluate,
   });
+  endAsk();
   // The whole record of an ask is this line — a decline writes nothing durable.
   for (const a of asked) console.log(`- asked ${a.task}: ${a.verdict}${a.reason ? ` — ${a.reason}` : ''}`);
 
+  const endDrain = cost.phase('drain');
   if (ops.some((o) => o.kind === 'create' || o.kind === 'adopt')) await ensureLabels(gh, repo, QUEUE_LABELS);
   // The mark is ensured whenever the mode can run here at all, not only when
   // something was marked: `task:origin:ad-hoc` is the entry point, and a label that
@@ -767,6 +781,11 @@ async function main() {
 
   // LAST, AFTER THE WAKE: whether this run leaves anything for an executor to do.
   await announcePickable(gh, repo, tasks, readied);
+  endDrain();
+
+  // The tick's own cost, printed once, at the end. A `console.log` and nothing else:
+  // the fold reads it out of this job's log, bounded at the scheduler's own cadence.
+  console.log(`\n${cost.record()}`);
 }
 
 // THE DRAIN GATE (PRINCIPLES.md). Every workflow run is a billed invocation whatever it

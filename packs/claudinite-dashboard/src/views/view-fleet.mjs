@@ -8,7 +8,7 @@ import {
 } from '../derive/fleet.mjs';
 import { readCanon, priceStampedPacks } from '../read/canon.mjs';
 import { activitySeries, delta, commitDays } from '../derive/activity.mjs';
-import { readUsage } from '../read/usage.mjs';
+import { readUsage, readTasksUsage } from '../read/usage.mjs';
 import {
   readContributions, liveSourcesNeeded, readDeploymentContributions, valueOf, fleetPhrase, phraseText,
 } from '../read/contributions.mjs';
@@ -103,12 +103,16 @@ async function readAttention(read, token) {
 // own past-data plane, keyed by its head sha, so it is one read the first time a
 // member's branch moves and none afterwards.
 async function readDepth(read, token) {
-  const [tree, usage] = await Promise.all([
+  const [tree, usage, tasksUsage] = await Promise.all([
     gh.listTreeAtSha(read.repo, read.sha, token).catch(() => null),
     readUsage(read.repo, read.sha, token),
+    // The machinery's own plane, beside the sessions'. A member folding one and not
+    // the other is an ordinary state, so it is its own read and its own null.
+    readTasksUsage(read.repo, read.sha, token),
   ]);
   read.paths = tree?.paths ?? null;
   read.usage = usage;
+  read.tasksUsage = tasksUsage;
 }
 
 // Pass four: what this member's own packs report. Discovery is a match against the

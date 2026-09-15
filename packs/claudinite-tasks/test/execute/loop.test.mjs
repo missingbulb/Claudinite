@@ -10,6 +10,7 @@ import { parseWorkItemBody } from '../../src/items/work-item.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
 import { makeClock } from '../sim/world/clock.mjs';
 import { makeGithub } from '../sim/world/github.mjs';
+import { startRunCost, parseRunCost, parseRunCosts } from '../../src/items/run-record.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 const CONFIG = { taskScheduler: SCHEDULE, packConfig: {} };
@@ -795,4 +796,108 @@ test('a long work step leaves heartbeats on its own item', async () => {
   const beats = beatsSoFar();
   assert.ok(beats.length >= 2, `the item stayed live through the work (got ${beats.length})`);
   assert.match(beats[0].body, /executor `E1`/);
+});
+
+// --- what the run cost (run-record.mjs) ------------------------------------------
+// A scheduler tick can only print its record into a log that expires; an executor
+// run has items, so it writes the record where the record survives. These pin that
+// it reaches the item, that it is scoped to the RUN rather than to one item, and
+// that a run given no stopwatch writes exactly what it always wrote.
+
+// A stopwatch on a clock the test drives, so the phases are asserted values rather
+// than whatever the machine happened to take.
+function stopwatch(runId = '77') {
+  let t = 0;
+  let calls = 0;
+  const cost = startRunCost({
+    workflow: 'executor', runId, apiCalls: () => calls, now: () => (t += 1),
+  });
+  return { cost, spend: (n) => { calls += n; } };
+}
+
+const costOn = (issue) => parseRunCosts(issue.comments.map((c) => c.body).join('\n'));
+
+test('an executor run stamps its cost record on the item it settled', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  const { cost } = stopwatch();
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], { runCost: cost });
+
+  const records = costOn(repo.find(1));
+  assert.equal(records.length, 1);
+  assert.equal(records.at(-1).workflow, 'executor');
+  assert.equal(records.at(-1).runId, '77');
+  // The terminal comment carries both records in one block — the exec record says
+  // what happened to the work, this one says what the run spent doing it.
+  assert.match(repo.find(1).comments.at(-1).body, /claudinite-task-exec v1 p\/a \[#1\] success/);
+});
+
+test('the phases a run actually passed through are the ones it reports', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  const { cost } = stopwatch();
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], { runCost: cost });
+
+  const phases = Object.keys(costOn(repo.find(1)).at(-1).phaseMs).sort();
+  // A stamp is written DURING the converge it is part of, so this item's own
+  // converge is not in its own stamp — the complete reading is the one the run
+  // prints into its log at the end (run-record.mjs). Every figure here is a floor.
+  assert.deepEqual(phases, ['claim', 'code-work', 'pick']);
+  // No agent ran, so there is no hand-off to report — absent, not zero.
+  assert.ok(!phases.includes('hand-off'));
+});
+
+test('an item handed to an agent carries the record on its hand-off, the run\'s last word on it', async () => {
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  const { cost } = stopwatch();
+  await drive(repo, [task('a')], { runCost: cost });
+
+  const records = costOn(repo.find(1));
+  assert.equal(records.length, 1);
+  assert.equal(records.at(-1).runId, '77');
+  // Written during the hand-off, so the hand-off itself is not in it — the same
+  // floor the converge has, for the same reason.
+  assert.deepEqual(Object.keys(records.at(-1).phaseMs).sort(), ['claim', 'pick']);
+});
+
+test('a run that settled two items leaves a snapshot on each, growing, under one run id', async () => {
+  // The record is the RUN's, so the reader keys on the run id and keeps the largest
+  // — summing the stamps would count one run's spend once per item it touched.
+  const repo = fakeRepo([
+    workItem(1, 'a', ['task:status:waiting-for-executor']),
+    workItem(2, 'b', ['task:status:waiting-for-executor']),
+  ]);
+  const { cost, spend } = stopwatch();
+  const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
+  await drive(repo, ['a', 'b'].map(agentless), {
+    runCost: cost,
+    runTaskCodeWork: async () => { spend(5); return { ok: true, agentRequested: false }; },
+  });
+
+  const first = costOn(repo.find(1)).at(-1);
+  const second = costOn(repo.find(2)).at(-1);
+  assert.equal(first.runId, second.runId);
+  assert.ok(second.apiCalls > first.apiCalls, 'the later stamp is the fuller reading of one run');
+  assert.ok(second.phaseMs.pick > first.phaseMs.pick);
+});
+
+test('a run given no stopwatch writes exactly the block it always wrote', async () => {
+  // The simulator and every fixture drive the loop without one: a test run is not a
+  // billed invocation and has no run id to file a cost under.
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })]);
+  assert.deepEqual(costOn(repo.find(1)), []);
+  assert.match(repo.find(1).comments.at(-1).body, /claudinite-task-exec v1 p\/a \[#1\] success/);
+});
+
+test('a park carries the cost record even where it writes no execution record', async () => {
+  // An approval park is neither `success` nor `failed`, so it prints no exec record
+  // — and the run still cost what it cost.
+  const repo = fakeRepo([workItem(1, 'a', ['task:status:waiting-for-executor'])]);
+  const { cost } = stopwatch();
+  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
+    runCost: cost,
+    runTaskCodeWork: async () => ({ ok: true, agentRequested: false, delivered: ['PR: #7 (open)'], openPr: 7 }),
+  });
+  assert.ok(repo.find(1).labels.includes('task:status:needs-human-approval'));
+  assert.equal(costOn(repo.find(1)).length, 1);
+  assert.equal(parseRunCost(repo.find(1).comments.at(-1).body.split('\n').at(-2)).runId, '77');
 });

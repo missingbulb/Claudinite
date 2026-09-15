@@ -152,7 +152,13 @@ export function makeGithub({
   // One router, matched most-specific first: `/issues/comments/{id}` and
   // `/issues/{n}/comments` both have to beat `/issues/{n}`.
 
+  // How many requests this fake has served, as the real port counts them: every
+  // call through the transport, a rate-limited refusal included, because a run
+  // that spent its budget on refusals spent it.
+  let apiCalls = 0;
+
   async function route(path, { method = 'GET', body } = {}) {
+    apiCalls += 1;
     const limited = charge(`${method} ${path}`);
     if (limited) return limited;
     const bare = path.split('?')[0];
@@ -321,6 +327,8 @@ export function makeGithub({
   const port = {
     makeGh: () => gh,
     restCall: (_token, path, opts = {}) => route(path, opts),
+    apiCallCount: () => apiCalls,
+    resetApiCallCount: () => { apiCalls = 0; },
     // Scriptable, because nothing in the queue calls GraphQL yet and a fake that
     // guessed at a schema would be describing an API nobody here uses.
     graphqlCall: async (_token, query, variables) => graphql(query, variables),
