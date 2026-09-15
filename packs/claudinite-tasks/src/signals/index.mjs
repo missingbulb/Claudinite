@@ -215,6 +215,11 @@ const COLLECTORS = {
       const changedPaths = files.map((f) => f.filename).filter(Boolean);
       withPaths.push({
         number: p.number, title: p.title, updatedAt: p.updated_at,
+        // The head branch, which says whose round a pull request is: the listing
+        // already carries it, so recognising a task's own costs no read. `null`
+        // is UNKNOWN here too — a listing entry without one is a PR whose head
+        // was deleted or is unreadable, not one belonging to nobody.
+        headRef: p.head?.ref ?? null,
         changedPaths: changedPaths.length ? changedPaths : null,
       });
     }

@@ -329,7 +329,7 @@ them into a member's own task files. Write both fields.
 signal union is derived from the conditions — each names what it reads, so the
 collector can never disagree with the gate. A gate the built-ins cannot express is
 a **task-local term** in a `preconditions.mjs` beside the declaration, which is
-handed `{ arg, config, item, windowDays, now, schedule }` and stays pure over them.
+handed `{ arg, config, item, windowDays, now, schedule, taskId }` and stays pure over them.
 
 **Three things are NOT preconditions**, and putting them there is the common
 mistake:
@@ -371,7 +371,7 @@ The vocabulary carries the gate; no operator or marker states it:
 ### When no built-in condition fits
 
 Ship a **`preconditions.mjs` beside the `task.json`**, exporting `terms`: a map from
-term name to `{ signals, takesArg?, holds(signals, { arg, config, item, windowDays, now, schedule }) }`, where
+term name to `{ signals, takesArg?, holds(signals, { arg, config, item, windowDays, now, schedule, taskId }) }`, where
 `holds` returns `{ holds, reason?, context? }` or `{ error }`. Names resolve
 against the built-ins first, then the task's own, in one flat namespace where a
 collision is loud. Reach for it when the gate is genuinely this task's — an age

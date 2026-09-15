@@ -51,5 +51,9 @@ export function evaluatePrecondition(task, signals, packConfig = {}, item = null
     // for, so a clock-reading term and a windowed one cannot disagree about when
     // "now" is.
     now: at,
+    // Which task is asking, for a term ruling on this task's own artifacts — the
+    // branch family its pull requests are minted on. A task never spells its own
+    // id in its declaration to get this.
+    taskId: `${task.pack}/${task.id}`,
   });
 }

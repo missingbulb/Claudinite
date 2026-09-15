@@ -21,14 +21,14 @@
 import { pullDisposition } from '../deliver/land-pr.mjs';
 import { taskFromMessage, taskTrailer } from '../contract/task-trailer.mjs';
 import { canonicalOutcome, opensPullRequest } from '../contract/task-contract.mjs';
+import { BRANCH_ROOT, taskBranchPrefix } from '../contract/task-branch.mjs';
 import { deleteBranchRef, listOpenPulls, readCommit, readPull, listRunsForSha, mergePull, closePull, comment as postComment } from '../world/github.mjs';
 
 export const TARGET_MODES = Object.freeze(['none', 'fresh', 'amend']);
 
-// Every branch the executor mints lives under one root, and every task under its
-// own prefix beneath it — which is what makes the prefix a family, not a guess.
-export const BRANCH_ROOT = 'claudinite';
-export const taskBranchPrefix = (taskId) => `${BRANCH_ROOT}/${taskId}/`;
+// The family a minted branch joins is the contract's (contract/task-branch.mjs),
+// re-exported here because this module's callers mint and recognise through it.
+export { BRANCH_ROOT, taskBranchPrefix };
 
 // One branch per run, dated and seeded: two runs on one day must not collide, and
 // a name that carries its date is one a person can read a week later.
