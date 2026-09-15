@@ -7,8 +7,12 @@
 // `evaluatePrecondition` takes a DISCOVERED task, which a test asserting a declaration
 // against synthetic signals has no way to build, so it reaches for the raw-fields
 // `evaluatePreconditions` underneath — the same engine, entered a level lower.
+//
+// `MAX_CONTEXT_ITEMS` rides with it because the cap is what such a test asserts
+// against: a case proving a flood is capped has to build one item more than the cap,
+// and a consumer that hard-coded 40 instead would pass while the engine moved.
 export {
-  preconditionSignals, evaluatePreconditions,
+  preconditionSignals, evaluatePreconditions, MAX_CONTEXT_ITEMS,
 } from '../src/contract/precondition-policy.mjs';
 export {
   loadTaskTerms, TASK_TERMS_FILE,
