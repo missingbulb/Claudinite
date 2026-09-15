@@ -9,7 +9,10 @@ here changes those rules, it adds fields under them. Page readers are named by f
 ## 1. Every figure → its source
 
 *Live* is a read the page already makes (ETag-revalidated, free on a 304); *fold* is the
-member's `usage.GENERATED.json` at head sha; *declaration* is the task file at head sha;
+member's `usage.GENERATED.json` at head sha; ***tasks fold*** is the second past-data file
+beside it, `tasks-usage.GENERATED.json`, written by its own task on its own watermark — a
+member folding one and not the other is ordinary, so nothing reads across the two;
+*declaration* is the task file at head sha;
 *config* is the deployment's `dashboard.config.json`. A figure with two sources takes the live
 one for the days it reaches and the fold for the rest, as `queueSeries` and `hourSeries` in
 [`usage.mjs`](../src/read/usage.mjs) already do.
@@ -40,6 +43,9 @@ one for the days it reaches and the fold for the rest, as `queueSeries` and `hou
 | Autonomy; yours : agent minutes | both | quotients; fold `humanSeconds`, `agentSeconds` (§2) | page |
 | Would have shipped broken; top rule | both | fold `checks.work.failures`, `checkFindings` | `growthSeries` |
 | Per-member expand | fleet | the above, per member | `fleet-growth.mjs` |
+| Machinery reliability: closed, parks by kind | both | **tasks fold** `days[d].queue`, `parks` | `tasks-machine.mjs` |
+| Machinery latency p50 / p90 per leg | both | **tasks fold** `days[d].latency` samples, quantiled at the window | `tasks-machine.mjs` |
+| Machinery cost: runs, jobs, billed minutes, spend, API calls | both | **tasks fold** `days[d]` totals and `workflows`; `minuteRate` for `spend` | `tasks-machine.mjs` |
 | Per-task expand: closed, sessions, tokens, $, exec failed, parked, model | repo | fold `queue`, `taskCost` (§2), `taskExec`, `parks` (§2); declaration `agent_model` | day rows, `parseDeclaration` |
 | Pulse | both | fold `sessions` per day | day rows |
 | Board: kinds, edges, times, landing, run record | repo | live issues and PRs (labels, body lines, timestamps, comments); declarations | `work.mjs`, `model.mjs` |

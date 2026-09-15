@@ -14,6 +14,8 @@ import {
 } from '../read/contributions.mjs';
 import { miniCard, miniAbsent, packCard, CONTRIB_STATE_TEXT } from '../render/contrib-view.mjs';
 import { fleetCorpus } from '../derive/fleet-growth.mjs';
+import { fleetTasksMachine } from '../derive/tasks-machine.mjs';
+import { fleetMachinePanel } from '../render/machine-view.mjs';
 import { fleetCandidates } from '../derive/next-work.mjs';
 import {
   $, el, ago, duration, groupedHead, columnCount, groupStarts, emptyRow, leadCard, repoLink, tiles, segmentBar,
@@ -875,6 +877,19 @@ function renderCorpus(c, onOpen) {
   corpusMembers(c, onOpen);
 }
 
+// --- the machinery roll-up ---------------------------------------------------------
+
+// The per-repo panel's own figures, summed across the fleet. It answers the question a
+// single repo page structurally cannot: whether a week's parks are one member's bad
+// luck or the machinery's, and which members are not folding the file the rest is read
+// from — that census is the denominator every figure above it is read against.
+export function renderFleetMachine(f, onOpen) {
+  const section = $('fleet-machine');
+  if (!f.readable) { section.hidden = true; return; }
+  section.hidden = false;
+  $('fleet-machine-body').replaceChildren(...fleetMachinePanel(f, onOpen));
+}
+
 // --- the activity panel ----------------------------------------------------------
 
 // The one panel that answers "what has this fleet been doing". Everything else here
@@ -1254,6 +1269,7 @@ function renderFleet(summaries, reads, now, onOpen, canon, progress = null, depl
   renderDeployment(deployment, now);
   renderActivity(activitySeries(resolvedReads, { now }));
   renderCorpus(fleetCorpus(resolvedReads, { now }), onOpen);
+  renderFleetMachine(fleetTasksMachine(resolvedReads, { now }), onOpen);
 
   const spread = taskSpread(resolvedReads, now).filter((t) => t.members > 0);
   const tbody = groupedHead($('fleet-tasks'), FLEET_TASK_GROUPS);

@@ -1065,6 +1065,26 @@
       <div class="panel scroll"><table id="fleet-tasks"></table></div>
     </section>
 
+    <section id="fleet-machine" hidden>
+      <h2>The machinery, fleet-wide <button class="info" type="button" data-info="fleet-machine" aria-expanded="false" title="Where these come from">&#9432;</button></h2>
+      <p class="info-body" id="info-fleet-machine" hidden>
+        The repo page's reliability and cost panel, summed across the fleet: what every member's
+        scheduler and executor closed, parked, and were billed, <strong>this week against last
+        week</strong>. It answers what one repo's page structurally cannot — whether a week of parks
+        is one member's bad luck or the machinery's.
+      </p>
+      <p class="info-body" id="info-fleet-machine-2" hidden>
+        Every figure comes from each member's own
+        <code>.claudinite/local/tasks-usage.GENERATED.json</code>, read at its head sha alongside the
+        usage file above. A member that does <strong>not</strong> fold it is named in the table and
+        counted in <strong>no</strong> figure — that census is the denominator each number is read
+        against, and it is why nothing here is shown as a rate. Latency quantiles are taken over
+        every member's samples <em>pooled</em>, never over their medians: an average of medians is
+        not a median.
+      </p>
+      <div class="charts" id="fleet-machine-body"></div>
+    </section>
+
     <section>
       <h2>Pack adoption <button class="info" type="button" data-info="packs" aria-expanded="false" title="Why this panel exists">&#9432;</button></h2>
       <p class="info-body" id="info-packs" hidden>
@@ -1155,6 +1175,28 @@
       repo that does not run it says so instead of showing an empty chart.
     </p>
     <div class="charts" id="growth"></div>
+  </section>
+
+  <section>
+    <h2>How the machinery ran, and what it cost <button class="info" type="button" data-info="machine" aria-expanded="false" title="Where these come from">&#9432;</button></h2>
+    <p class="info-body" id="info-machine" hidden>
+      This repo's own scheduler and executor, measured: how many <strong>work items closed</strong> and
+      how they ended, how many were <strong>parked</strong> for a person, how long each leg of an
+      item's life took, and what Actions billed for the runs behind it. Every figure is
+      <strong>this week against last week</strong> — a total that only grows says nothing about this
+      week, so none is drawn.
+    </p>
+    <p class="info-body" id="info-machine-2" hidden>
+      It all comes from <code>.claudinite/local/tasks-usage.GENERATED.json</code>, a
+      <em>second</em> past-data file written by the claudinite-tasks pack's own fold on its own
+      watermark — not the <code>usage.GENERATED.json</code> the panels above read. A repo that folds
+      one and not the other is ordinary, and this panel says so rather than borrowing the other
+      file's numbers. A counter no day recorded reads <strong>not recorded</strong>, never zero, and
+      a day the fold has not reached is left <strong>blank</strong> rather than drawn at the floor.
+      Latency is stated as quantiles taken here over the window's own samples: the file carries
+      samples, because a week's p50 is not derivable from its days'.
+    </p>
+    <div class="charts" id="machine"></div>
   </section>
 
   <section id="pack-metrics" hidden>
