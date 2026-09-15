@@ -14,16 +14,26 @@ const STEP = join(dirname(fileURLToPath(import.meta.url)), '../../../packs/claud
 // CLAUDE_CODE_USER_EMAIL. Everything below is one of the ways it can miss, because
 // every one of them must be fail-soft — the step contributes a nicety, and a nicety
 // that can stop a session from starting is a defect, not a feature.
-const run = (project, { email = 'me@example.com', config = {}, ...extra } = {}) => spawnSync('node', [STEP], {
+//
+// Attendedness is one of those inputs, so every case states the one it means and none
+// inherits the ambient value: the harness exports CLAUDE_CODE_SESSION_ATTENDED=0 in
+// exactly the sessions the task queue runs in, so a case that let it through would
+// assert about the session the suite happens to run in rather than the one it
+// describes — green at a terminal and in CI, red for every unattended run. `attended:
+// null` is the older harness that sets nothing at all.
+const { CLAUDE_CODE_SESSION_ATTENDED: _ambientAttended, ...BASE_ENV } = process.env;
+
+const run = (project, { email = 'me@example.com', config = {}, attended = '1', ...extra } = {}) => spawnSync('node', [STEP], {
   encoding: 'utf8',
   env: {
-    ...process.env,
+    ...BASE_ENV,
     CLAUDE_PROJECT_DIR: project,
     CLAUDE_CODE_USER_EMAIL: email,
     CLAUDINITE_PACK_CONFIG: JSON.stringify(config),
     // An unreachable base forces the fetch path to fail fast and prove fail-soft.
     CLAUDINITE_PREFS_URL: 'https://127.0.0.1:1/preferences',
     ...extra,
+    ...(attended === null ? {} : { CLAUDE_CODE_SESSION_ATTENDED: attended }),
   },
 });
 
@@ -101,13 +111,13 @@ test('an unattended session loads no preferences, whoever it runs as', () => {
   try {
     mkdirSync(join(root, 'preferences'), { recursive: true });
     writeFileSync(join(root, 'preferences', 'me@example.com.md'), 'MY PREFS\n');
-    const unattended = run(root, { config: { repo: 'owner/store' }, CLAUDE_CODE_SESSION_ATTENDED: '0' });
+    const unattended = run(root, { config: { repo: 'owner/store' }, attended: '0' });
     assert.equal(unattended.status, 0);
     assert.match(unattended.stdout, /USER PREFERENCES: the session is unattended/);
     assert.doesNotMatch(unattended.stdout, /MY PREFS|CLAUDINITE-FACET/);
-    for (const CLAUDE_CODE_SESSION_ATTENDED of ['1', '']) {
-      const r = run(root, { config: { repo: 'owner/store' }, CLAUDE_CODE_SESSION_ATTENDED });
-      assert.match(r.stdout, /MY PREFS/, JSON.stringify(CLAUDE_CODE_SESSION_ATTENDED));
+    for (const attended of ['1', '', null]) {
+      const r = run(root, { config: { repo: 'owner/store' }, attended });
+      assert.match(r.stdout, /MY PREFS/, JSON.stringify(attended));
     }
   } finally { removeTree(root); }
 });
