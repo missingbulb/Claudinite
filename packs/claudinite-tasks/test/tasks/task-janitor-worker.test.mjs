@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sweep } from '../../tasks/task-janitor/worker.mjs';
 import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, NEEDS_HUMAN_LABEL } from '../../src/session/dispatch.mjs';
+import { HEARTBEAT_MARKER } from '../../src/items/heartbeat.mjs';
 
 // A fake gh that serves one search result set and records every write.
 const janitorGh = (items) => {
@@ -95,6 +96,32 @@ test('an idle repo with no open dispatch issues writes nothing — not even the 
   const { gh, calls } = janitorGh([]);
   const out = await quiet(() => sweep(gh, 'o/r', '2026-07-22T02:00:00Z'));
   assert.deepEqual(out, { open: 0, stale: [], deadClaims: [], rearmed: [] });
+  assert.equal(calls.filter((c) => c.method !== 'GET').length, 0);
+});
+
+test('sweep reclaims a dead claim whose issue was touched by somebody else', async () => {
+  // The holder last beat at 02:00 and died; a losing executor let go at 11:00,
+  // moving `updated_at`. The issue looks an hour idle and the claim is 10h dead.
+  const { gh, calls } = janitorGh([
+    { number: 51, title: '[claudinite-task] p/a d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T11:00:00Z', comments: 3 },
+  ]);
+  const withComments = async (path, opts = {}) => (path.includes('/issues/51/comments') && !opts.method
+    ? { status: 200, json: [{ body: `${HEARTBEAT_MARKER}\nStill working`, created_at: '2026-07-22T02:00:00Z' }] }
+    : gh(path, opts));
+  const out = await quiet(() => sweep(withComments, 'o/r', '2026-07-22T12:00:00Z'));
+  assert.deepEqual(out.deadClaims, [51]);
+  assert.ok(calls.some((c) => c.method === 'POST' && c.path === '/repos/o/r/issues/51/comments'));
+});
+
+test('sweep spares a claim whose holder is still beating on an otherwise untouched issue', async () => {
+  const { gh, calls } = janitorGh([
+    { number: 52, title: '[claudinite-task] p/a d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z', comments: 2 },
+  ]);
+  const withComments = async (path, opts = {}) => (path.includes('/issues/52/comments') && !opts.method
+    ? { status: 200, json: [{ body: `${HEARTBEAT_MARKER}\nStill working`, created_at: '2026-07-22T11:30:00Z' }] }
+    : gh(path, opts));
+  const out = await quiet(() => sweep(withComments, 'o/r', '2026-07-22T12:00:00Z'));
+  assert.deepEqual(out.deadClaims, []);
   assert.equal(calls.filter((c) => c.method !== 'GET').length, 0);
 });
 
