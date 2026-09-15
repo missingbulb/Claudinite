@@ -152,7 +152,7 @@ those runs loaded and every check that caught something in them was invisible.
 The fix is not a third capture path but the **same** step, invoked deliberately
 instead of waited for. `session-end-command.mjs` is a runner, not a hook body: it
 invokes every active pack's `session-end.mjs`, discovering them structurally. So
-the executor's last step (`executor.md` step 5, after its issue is converged)
+the executor's last step (`public/instructions.md` step 5, after its issue is converged)
 runs that runner itself:
 
 ```bash

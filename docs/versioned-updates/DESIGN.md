@@ -270,7 +270,7 @@ implement:
    Phase 2) — automatic, during each repo's own cycle.
 2. **The CCR executor routines** are the one per-repo artifact outside
    GitHub's reach. Their prompt is a thin pointer to the vendored
-   `executor.md`, so content changes ride the mount; only a change to the
+   `public/instructions.md`, so content changes ride the mount; only a change to the
    dispatch *wiring* (label name, model, launcher prompt) would need
    per-repo trigger-API access. The rollout should avoid requiring that —
    or accept the bootstrap-Part-6 owner-issue path where it cannot.
