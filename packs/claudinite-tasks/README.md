@@ -55,12 +55,15 @@ import aimed anywhere else is one this repository cannot repair when the layout 
 |---|---|---|
 | `work-items.mjs` | the title grammar that is a work item's identity, the outcome/status decode over its labels, lease state, the pick order over the open queue, and whether a title is the scheduler's own dispatch issue rather than work | claudinite-dashboard, claudinite-fleet-sheepdog, a member's own packs |
 | `anchors.mjs` | period length, and the instant a task's window last opened at or opens next | claudinite-dashboard |
+| `wake.mjs` | which of a repo's declared tasks a scheduler run would instantiate an item for at a given instant — the plan a forced sweep has to predict | claudinite-fleet-sheepdog |
+| `pull-requests.mjs` | how a merged pull request names the issue it closes, and how a span between two timestamps becomes hours | claudinite-dashboard |
 | `delivery.mjs` | `landPr`, `deliverGenerated` — how a task's output becomes a landed PR or a regenerated file | any pack whose tasks deliver |
 | `github.mjs` | the GitHub client, the workflow dispatch, the two workflow file names, and the tracker issue a worker records on | any pack whose tasks reach GitHub |
 | `signals.mjs` | the signal shapes a precondition is handed | packs asserting what their own tasks will see |
 | `task-contract.mjs` | task-declaration validation, and the signal union either precondition form resolves to | every pack with tasks, in its own tests |
 | `preconditions.mjs` | the precondition vocabulary, the expression grammar, and the one seam that turns a task plus its signals into a verdict — the call the executor makes at pick | every pack with tasks, in its own tests |
 | `merge-policy.mjs` | the auto-merge policy verdict (`automerge`, the `Merge:` field, the arming trailer) and the `merge-rules.json` compiler | any pack declaring policies or merge rules, in its own tests |
+| `task-declaration.mjs` | the declaration as text — the reader that lifts its fields out and the agentic defaults the loader fills, reaching no Node built-in so a browser bundle can load it | claudinite-dashboard |
 | `task-discovery.mjs` | where a task's declaration lives on disk and how it is read — kept apart from `task-declaration.mjs`, which reaches no Node built-in | a member's own worker needing its task's declared fields at run time |
 | `usage-format.mjs` | the usage aggregate's codec | claudinite-fleet-sheepdog's fleet-wide aggregator |
 | `verification.mjs` | what a production-verification spec looks like, and the re-arm cadence a not-yet-live run reschedules on | basics, whose skill writes the spec this pack's probes read |
