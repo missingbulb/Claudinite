@@ -5,7 +5,7 @@
     "since": "2026-09-14",
     "failureMessage": "an import past claudinite-tasks' published shared-code/ couples a consumer to a layout the pack is free to change",
     "fix": "import it from packs/claudinite-tasks/shared-code/; if nothing there publishes what you need, add the named export to the right shared-code module rather than deepening the reach",
-    "scanFiles": "/^(\\.claudinite\\/(shared|local)\\/)?packs\\/(?!claudinite-tasks\\/).*\\.mjs$/",
+    "scanFiles": "/^(\\.claudinite\\/(shared|local)\\/)?packs\\/(?!claudinite-tasks\\/).*\\.m?js$/",
     "scanIgnoringComments": true,
     "matchLines": [
       {

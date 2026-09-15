@@ -46,6 +46,13 @@ test('the surface guard scopes to both trees a consumer can write in', () => {
   assert.ok(scope.test('.claudinite/local/packs/shepherd/tasks/fleet-issues-snapshot/worker.mjs'),
     "a member's own pack must be in scope — it is the tree no converge can repair");
 
+  // `.js`, not only `.mjs`. The canon is all-ESM by convention, so a scope written here
+  // reads as complete while missing a whole file type a member is free to use — and does:
+  // GoogleCalendarEventCreator reaches this pack from two `.js` test files, which an
+  // `\.mjs$` scope skipped in silence.
+  assert.ok(scope.test('.claudinite/local/packs/gcec/tasks/create-extractor/test/task.test.js'),
+    "a member's .js file must be in scope — the canon's all-ESM habit is not a member's");
+
   // This pack's own modules import their own internals; that is not a crossing.
   assert.equal(scope.test('packs/claudinite-tasks/src/items/work-item.mjs'), false,
     'the pack may read itself');
