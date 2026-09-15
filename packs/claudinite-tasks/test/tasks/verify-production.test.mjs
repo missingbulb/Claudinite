@@ -12,7 +12,6 @@ import {
 } from '../../tasks/verify-production/probes.mjs';
 import { runVerification } from '../../tasks/verify-production/worker.mjs';
 import declarationJson from '../../tasks/verify-production/task.json' with { type: 'json' };
-import { validateTaskDeclaration } from '../../src/contract/task-contract.mjs';
 import { evaluatePrecondition } from '../../shared-code/preconditions.mjs';
 import { planSchedulerRun } from '../../src/schedule/run.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
@@ -21,8 +20,7 @@ const declaration = normalizeTaskDeclaration(declarationJson);
 
 // --- the declaration -----------------------------------------------------------
 
-test('the declaration validates, and the scheduler never files an item for it on its own', async () => {
-  assert.deepEqual(validateTaskDeclaration(declaration), []);
+test('the scheduler never files an item for this task on its own', async () => {
   // Items exist only because a verification was filed: across a full day of anchors
   // the scheduler run instantiates nothing for this task.
   const { ops } = await planSchedulerRun({

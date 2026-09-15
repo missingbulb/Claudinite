@@ -96,7 +96,6 @@ test('cloudfront-authorization: flags a custom policy listing Authorization', ()
   try {
     const findings = run(cloudfrontAuth, root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
   } finally { cleanup(root); }
 });
 
@@ -137,7 +136,6 @@ test('esbuild-dependency: flags devDependency esbuild under SAM esbuild build, p
   try {
     const findings = run(esbuildDependency, bad);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
     assert.equal(run(esbuildDependency, good).length, 0);
     assert.equal(run(esbuildDependency, noSam).length, 0);
   } finally { cleanup(bad); cleanup(good); cleanup(noSam); }

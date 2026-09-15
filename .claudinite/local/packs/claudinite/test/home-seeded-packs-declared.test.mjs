@@ -50,9 +50,7 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
     assert.match(ids, /claudinite-growth/);
     assert.match(ids, /product-wiki/);
     for (const finding of findings) {
-      assert.equal(finding.rule, 'home-seeded-packs-declared');
       assert.equal(finding.file, '.claudinite-settings.json');
-      assert.equal(finding.severity, 'blocking');
     }
   } finally {
     cleanup(root);

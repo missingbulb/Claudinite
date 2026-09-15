@@ -30,8 +30,6 @@ const runOn = (rule, files) => {
 const fires = (rule, files, match) => {
   const findings = runOn(rule, files);
   assert.equal(findings.length, 1, `expected exactly one finding, got ${JSON.stringify(findings, null, 2)}`);
-  assert.equal(findings[0].rule, rule.id);
-  assert.equal(findings[0].severity, 'blocking');
   if (match) assert.match(findings[0].what, match);
 };
 

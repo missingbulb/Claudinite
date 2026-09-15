@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { FREQUENCIES } from '../../src/contract/calendar.mjs';
 import { MODEL_FAMILIES } from '../../src/contract/model-map.mjs';
 import { OUTCOMES, INTERRUPT_POLICIES, SESSION_SCOPES, validateTaskDeclaration, normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
@@ -54,6 +54,17 @@ test('every canon task.json satisfies the schema, points at it, and validates ag
     assert.equal(findTaskDeclaration(dir), join(dir, 'task.json'));
     const decl = normalizeTaskDeclaration(await loadTaskDeclaration(join(dir, 'task.json')));
     assert.deepEqual(validateTaskDeclaration(decl, await loadTaskTerms(dir)), [], f);
+    // discover.mjs resolves a task by its DIRECTORY and the executor runs code_work
+    // from it, so both couplings are between two artifacts that move independently:
+    // rename either the directory or the id and the task stops being found; move or
+    // rename the worker and the run dies at spawn. Held here for every task rather
+    // than in a handful of per-task suites, which is where they used to live — the
+    // ones that had a suite were held and the rest were not.
+    assert.equal(decl.id, basename(dir), `${f}: the id and the directory it is discovered by disagree`);
+    if (decl.code_work) {
+      const [, script] = decl.code_work.split(/\s+/);
+      assert.ok(existsSync(join(dir, script)), `${f}: code_work names ${script}, which is not beside the declaration`);
+    }
   }
 });
 

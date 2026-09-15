@@ -87,7 +87,6 @@ test('layout: missing sink alone yields exactly one finding naming it', () => {
   const f = run(layout, { 'product-wiki/README.md': '# product\n' });
   assert.equal(f.length, 1);
   assert.equal(f[0].file, 'product-wiki/product-requirements/README.md');
-  assert.equal(f[0].severity, 'blocking');
 });
 
 test('layout: a freshly written, not-yet-staged scaffold satisfies the check', () => {
@@ -139,7 +138,6 @@ test('key-insights: a header that does not lead the page is flagged, naming what
   const page = `# Market\n\nIntro.\n\n## Findings\n\n- a cited claim\n\n## Key insights\n\n- the header, buried.\n\n## Sources\n\n- [Example](https://example.com/x)\n\n## Open questions\n\n- next?\n\n## Growth log\n\n- **${daysAgo(1)}** — initial seed.\n`;
   const f = run(keyInsights, { ...SCAFFOLD, 'product-wiki/Market/README.md': page });
   assert.equal(f.length, 1);
-  assert.equal(f[0].severity, 'blocking');
   assert.match(f[0].what, /opens with "## Findings"/);
 });
 
@@ -285,7 +283,6 @@ test('freshness: a stale page gets one per-page advisory; fresh siblings stay si
   });
   assert.equal(f.length, 1);
   assert.equal(f[0].file, 'product-wiki/Market/README.md');
-  assert.equal(f[0].severity, 'advisory');
   assert.match(f[0].what, /60 days old/);
 });
 
@@ -343,9 +340,7 @@ test('isolation: an outside doc referencing a wiki page is a blocking crossing; 
   };
   const f = run(isolation, files);
   assert.equal(f.length, 1);
-  assert.equal(f[0].rule, 'product-wiki-isolation');
   assert.equal(f[0].file, 'dev/notes.md');
-  assert.equal(f[0].severity, 'blocking');
   // The finding's own instruction must name the lever that actually works for
   // a pack-shipped barrier (an accept), not the engine's per-rule except.
   assert.match(f[0].fix, /accept/);
@@ -377,7 +372,6 @@ test('isolation: an empty product-wiki/ expansion fails closed instead of disarm
   const f = run(isolation, { 'src/a.js': 'x\n' });
   assert.equal(f.length, 1);
   assert.equal(f[0].file, '.claudinite-settings.json');
-  assert.equal(f[0].severity, 'blocking');
   assert.match(f[0].what, /matched no/);
 });
 

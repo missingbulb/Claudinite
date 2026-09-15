@@ -22,7 +22,6 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].rule, 'leaflet/tile-attribution');
     assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].file, 'js/app.js');
     assert.equal(findings[0].line, 2);

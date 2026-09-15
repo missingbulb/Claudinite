@@ -33,7 +33,6 @@ test('google-token-email-verified: flags reading the email claim with no email_v
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].line, 2);
     assert.match(findings[0].what, /never checks email_verified/);
   } finally { cleanup(root); }

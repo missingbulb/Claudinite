@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
 import declJson from '../../../tasks/adopt-requested-packs/task.json' with { type: 'json' };
 import { evaluatePrecondition } from '../../../../claudinite-tasks/shared-code/preconditions.mjs';
 import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/shared-code/task-contract.mjs';
@@ -14,9 +13,6 @@ const decl = normalizeTaskDeclaration(declJson);
 // property whose drift would either let the task fire on its own (nagging every
 // member on a cadence) or move the adoption back outside the member's own guards.
 
-test('adopt-requested-packs: the declaration satisfies the task contract', () => {
-  assert.deepEqual(validateTaskDeclaration(decl), []);
-});
 
 test('adopt-requested-packs: its precondition admits its own forced item', () => {
   // Under the slot mechanism this said NO, because a forced run bypassed the

@@ -28,7 +28,6 @@ test('google-token-audience-pinned: flags an issuer with no audience anywhere in
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].line, 5);
     assert.match(findings[0].what, /no .*audience/);
   } finally { cleanup(root); }

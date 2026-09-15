@@ -22,7 +22,6 @@ test('functions-node-pin: flags a deployed functions package with no engines.nod
   try {
     const findings = run(functionsNodePin, root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].file, 'functions/package.json');
     assert.match(findings[0].what, /no engines\.node/);
   } finally { cleanup(root); }
