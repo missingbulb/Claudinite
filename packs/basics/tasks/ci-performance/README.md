@@ -22,11 +22,18 @@ method for finding the cause.
 
 WHY sonnet: the finding arrives already localized to a workflow and a delta, and
 the skill states the method step by step; what remains is profiling and a bounded
-fix. Ceilinged at `pr`; what it may land unattended is the `automerge` policy below.
+fix. What it may land unattended is the `automerge` policy below.
 
 Movement, not standing state: CI runtime only changes when something lands, so
 a week where nothing moved has the same runs, the same medians and the same
 verdict as last week.
+
+`fresh_pr`, and a week whose fix is still open does not run at all
+(`no-open-pr-of-this-task`): a performance fix is argued from an A/B this run
+measured, so a second round cannot be folded into the first one's review, and
+an earlier round left standing is the reviewer's context for this one. The term
+reads the task's own branch family rather than a title or a path, which is what
+a fix landing anywhere in the repo can offer.
 A couple of hundred run records plus one job breakdown, against this repo's own
 API. Seconds in practice; the bound is for a rate-limited or wedged read.
 Profiling a suite means running it, more than once, in both arms of an A/B.
