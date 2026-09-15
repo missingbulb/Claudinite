@@ -4,8 +4,9 @@ import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { format } from 'node:util';
 import { loadDeclaredChecks } from '../engine/checks/helpers/pattern-rules.mjs';
 import { runRule } from '../engine/checks/helpers/work.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
@@ -217,5 +218,41 @@ export function ruleTester(rule, { clean = {}, flagged = {} }) {
         if ('fix' in expected) assert.match(got.fix, expected.fix);
       });
     });
+  }
+}
+
+// Run a top-level CLI module in THIS process rather than spawning a node for it:
+// import it under a fresh query string so its body re-evaluates on every call,
+// with argv and the console channels swapped for the duration. The return shape
+// is spawnSync's — { status, stdout, stderr } — so a test converted onto it
+// asserts exactly what it asserted through a real process.
+//
+// Only for a module that ends on `process.exitCode` (check_the_world.mjs and
+// check_the_work.mjs both do, deliberately: #2062). One that calls process.exit
+// takes the test runner down with it and must keep spawning.
+//
+// It does NOT stand in for the process contract itself — a pipe's asynchronous
+// write, which is what truncated the catalog in #2062, and a real exit status are
+// both invisible from in here. Each entry point keeps a spawning test for that.
+let inProcessCall = 0;
+export async function runScriptInProcess(script, args = []) {
+  const argv = process.argv;
+  const { log, error } = console;
+  // The module under test sets process.exitCode; left in place it becomes the
+  // TEST process's own exit status, turning a green run red (or the reverse).
+  const callersExitCode = process.exitCode;
+  let stdout = '', stderr = '';
+  process.argv = [process.execPath, script, ...args];
+  console.log = (...a) => { stdout += format(...a) + '\n'; };
+  console.error = (...a) => { stderr += format(...a) + '\n'; };
+  process.exitCode = undefined;
+  try {
+    await import(`${pathToFileURL(script).href}?call=${inProcessCall++}`);
+    return { status: process.exitCode ?? 0, stdout, stderr };
+  } finally {
+    process.exitCode = callersExitCode;
+    process.argv = argv;
+    console.log = log;
+    console.error = error;
   }
 }
