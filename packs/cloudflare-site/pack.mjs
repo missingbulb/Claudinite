@@ -16,7 +16,7 @@ const servesASite = (ctx) => {
 };
 
 export default {
-  version: '60913.2',
+  version: '60915.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'serving a static site from Cloudflare: the published tree, custom domains, the release that cuts its version',
