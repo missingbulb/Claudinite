@@ -143,6 +143,24 @@ test('the shell-write guard: a skill-scoped file written past the pre-edit guard
   ]), []);
 });
 
+test('the sweep-reading guard: a severity filter over a check sweep', () => {
+  // The shape #1890 shipped a false "both new checks are silent" claim on: both were
+  // inside their `since` grace, so every finding they made printed as ADVISORY and the
+  // filter dropped all seven. Either spelling — piped, or saved and grepped after.
+  assert.deepEqual(judge('check-sweep-read-blocking-only', [
+    'node engine/checks/check_the_world.mjs 2>&1 | grep -E "^\\[BLOCKING\\]"',
+    'node engine/checks/check_the_world.mjs > /tmp/s/world.txt 2>&1; grep -c BLOCKING /tmp/s/world.txt',
+  ]).length, 2);
+  // Reading the sweep whole, slicing it by the check's own id, and grepping BLOCKING
+  // out of something that is not a sweep at all, all stay silent.
+  assert.deepEqual(judge('check-sweep-read-blocking-only', [
+    'node engine/checks/check_the_world.mjs; echo "EXIT:$?"',
+    'node engine/checks/check_the_work.mjs 2>&1 | tail -100',
+    'node engine/checks/check_the_world.mjs 2>&1 | grep -A3 tasks-stage-barriers',
+    'grep -rn "BLOCKING" engine/checks/helpers/findings.mjs',
+  ]), []);
+});
+
 test('the restore and settings guards', () => {
   assert.deepEqual(judge('checkout-restores-index', ['git checkout -- a.mjs', 'git stash', 'git checkout -b feature', 'echo "git checkout -- x"']), [
     'a working-tree restore: "git checkout --"', 'a working-tree restore: "git stash"',

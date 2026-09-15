@@ -381,3 +381,28 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   many scoped files is a legitimate shell job the guard cannot tell apart. Retire the check if
   the pre-edit guard learns to read Bash.
 
+- **(RULES-89)** #1890: the roles-as-folders extraction expressed its `contract`/`items`/stage
+  boundary as a `forbidReferences` barrier, then found the cleanup unenforced — `isTestFile` in
+  `engine/checks/helpers/reference-scanning.mjs` filters `*.test.[cm]js` out of `scannable` for
+  every edge, by design (a test references what it tests). The exclusion is scanner-wide, not
+  per-rule, so no carve-out or config reaches it and the barrier reads green over a surface it
+  never opened; the same boundary expressed as a line match did see the tests. Retire the rule if
+  the reference scanner gains a per-edge opt-in for test files.
+
+- **(RULES-90)** #1890's rebase onto a `main` that had moved 54 commits: the branch renamed
+  `queue/scheduler-run.mjs` to `src/schedule/run.mjs`, git raised the conflict at the old path,
+  and resolving it in favour of the shim dropped #1980's `withOwnWrites` hunks entirely — no
+  marker, no error, and only that change's own test red out of 3535. The audit that followed
+  checked all 2140 lines `main` had added to the affected packs since the branch's base and found
+  exactly that one loss. Retire the rule if the repo stops carrying long-lived branches that
+  relocate files.
+
+- **(check:check-sweep-read-blocking-only)** #1890 claimed both of its new checks were silent on
+  the moved tree; both were inside their two-week `since` grace, so their findings printed as
+  ADVISORY and every read had grepped `^\[BLOCKING\]`. Seven real barrier violations were standing
+  behind that filter. The grace window is what makes this recurrent rather than a one-off: every
+  extraction run lands checks with `since: '<today>'`, so the run that most needs to read its own
+  findings is the one whose findings a severity filter hides. Advisory because asking "is anything
+  blocking?" before a push is a legitimate read the regex cannot tell apart. Retire the check if
+  the sweep stops holding new checks to advisory.
+
