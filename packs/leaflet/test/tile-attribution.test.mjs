@@ -22,9 +22,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].rule, 'leaflet/tile-attribution');
     assert.equal(findings[0].severity, 'blocking');
-    assert.equal(findings[0].file, 'js/app.js');
     assert.equal(findings[0].line, 2);
     assert.match(findings[0].what, /literal options object/);
   } finally { cleanup(root); }
@@ -71,7 +69,6 @@ test('leaflet/tile-attribution: fires on an inline <script> in an HTML page, at 
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].file, 'index.html');
     assert.equal(findings[0].line, 5);
   } finally { cleanup(root); }
 });

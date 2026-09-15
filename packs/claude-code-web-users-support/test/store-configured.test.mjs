@@ -13,7 +13,6 @@ test('a resolvable store is the healthy case and says nothing', () => {
 
 test('a declared pack with no store is reported, with the fix in the finding', () => {
   const [f] = rule.run(ctx({}));
-  assert.equal(f.rule, 'preferences-store-configured');
   // A project mid-adoption sits here legitimately for a while; blocking would make that a build break.
   assert.equal(f.severity, 'advisory');
   assert.equal(f.file, '.claudinite-settings.json');

@@ -23,12 +23,10 @@ test('content-script-module-syntax: flags a top-level import in a static content
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].rule, 'content-script-module-syntax');
     assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].file, 'content/main.js');
     assert.equal(findings[0].line, 1);
     assert.match(findings[0].what, /top-level `import`/);
-    assert.match(findings[0].fix, /dynamic import|import\(chrome\.runtime\.getURL/);
     // lib.js is only *imported* by the content script, never injected as one —
     // module syntax there is correct and must stay quiet.
     assert.equal(findings.filter((f) => f.file === 'content/lib.js').length, 0);

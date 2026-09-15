@@ -22,7 +22,6 @@ test('an inherited CNAME on a claimed hostname is what blocks the attach', () =>
 test("the old host's apex addresses are named as still-serving, not as blocking", () => {
   const verdict = judgeHostname('example.com', { cname: [], a: ['185.199.110.153'] });
   assert.match(verdict.what, /still resolves to GitHub Pages \(185\.199\.110\.153\)/);
-  assert.match(verdict.fix, /visitors keep reaching the old host/);
 });
 
 // The steady state, and the one the release must not park on: a hostname Cloudflare

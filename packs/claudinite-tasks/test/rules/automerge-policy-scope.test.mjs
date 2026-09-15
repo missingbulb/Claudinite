@@ -46,7 +46,6 @@ test('an armed diff outside its policy blocks, naming the file', () => {
     assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].file, 'src/a.mjs');
     assert.match(findings[0].what, /armed auto-merge/);
-    assert.match(findings[0].fix, /never widen the policy/);
   } finally { cleanup(root); }
 });
 

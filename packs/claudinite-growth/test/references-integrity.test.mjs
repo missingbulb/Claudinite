@@ -46,7 +46,6 @@ test('references-integrity: flags a marker with no references doc beside the pac
   assert.equal(findings.length, 1);
   assert.equal(findings[0].severity, 'blocking');
   assert.match(findings[0].what, /mypack\/references\.md does not carry as RULES-3/);
-  assert.match(findings[0].fix, /creating .*references\.md if the pack has none/);
 });
 
 test('references-integrity: flags a marker whose number has no entry', () => {

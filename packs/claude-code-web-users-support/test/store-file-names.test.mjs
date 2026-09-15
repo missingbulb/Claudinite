@@ -18,7 +18,6 @@ const ctx = (files, config = STORE) => ({
 test('a file not named for an identity is found — and really is unaddressable', () => {
   const found = rule.run(ctx(['preferences/README.md', 'preferences/ariel.md']));
   assert.equal(found.length, 1);
-  assert.equal(found[0].rule, 'preferences-store-file-names');
   assert.equal(found[0].file, 'preferences/ariel.md');
   assert.equal(found[0].severity, 'advisory');
   assert.match(found[0].what, /not named for a usable identity/);

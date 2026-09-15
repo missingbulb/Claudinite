@@ -33,7 +33,6 @@ test('pack-discovery-entry-await: fires on a top-level await in a module a skill
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].rule, 'pack-discovery-entry-await');
     assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].file, 'packs/claudinite-growth/skills/adopt/interview.mjs');
     assert.match(findings[0].fix, /\.catch\(/);

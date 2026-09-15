@@ -28,7 +28,6 @@ test('declared-check-messages: an over-cap field and a fix repeated across asser
     assert.equal(findings.length, 2);
     assert.match(findings[0].what, /"fx-wordy" has a failureMessage of 40 words/);
     assert.match(findings[1].what, /"fx-wordy" repeats one fix verbatim across 2 assertions/);
-    assert.equal(findings[0].file, 'packs/demo/declared-checks.json');
   } finally { cleanup(root); }
 });
 

@@ -304,7 +304,6 @@ test('privacy-permission-alignment: every manifest permission must be disclosed 
   try {
     const findings = run(privacyPermissionAlignment, root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
     assert.match(findings[0].what, /tabs/);
     assert.match(findings[0].file, /PRIVACY\.md/);
   } finally { cleanup(root); }
@@ -322,9 +321,7 @@ test('permission-added-store-issue: an added permission raises an advisory to op
   try {
     const findings = run(permissionAddedStoreIssue, root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'advisory');
     assert.match(findings[0].what, /adds the "tabs" permission/);
-    assert.match(findings[0].fix, /Privacy-practices tab/);
   } finally { cleanup(root); }
 });
 

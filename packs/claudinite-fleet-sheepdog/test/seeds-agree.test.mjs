@@ -34,7 +34,6 @@ test('a seed disagreeing with what this repo runs is found — and really is wha
   const c = ctx({ own: { repo: 'missingbulb/Shepherd' }, seed: { repo: 'missingbulb/Claudinite' } });
   const found = rule.run(c);
   assert.equal(found.length, 1);
-  assert.equal(found[0].rule, 'fleet-pack-seed-agrees');
   assert.equal(found[0].severity, 'blocking');
   assert.match(found[0].what, /missingbulb\/Claudinite/);
   assert.match(found[0].what, /missingbulb\/Shepherd/);

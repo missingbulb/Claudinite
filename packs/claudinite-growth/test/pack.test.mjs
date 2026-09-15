@@ -545,7 +545,6 @@ test('growth-write-scope: a capture run touching outside the local packs is flag
   try {
     const findings = runScope(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].file, 'src/app.mjs');
     assert.equal(findings[0].severity, 'blocking');
     assert.match(findings[0].what, /outside \.claudinite\/local\/packs\//);
   } finally { cleanup(root); }

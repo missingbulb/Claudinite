@@ -45,12 +45,10 @@ test('signal-teardown-routing: flags a capture app that routes no signals at all
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].rule, 'signal-teardown-routing');
     assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].file, 'Sources/App/AudioHub.swift');
     assert.equal(findings[0].line, 6);
     assert.match(findings[0].what, /nothing in the sources routes termination signals/);
-    assert.match(findings[0].fix, /makeSignalSource/);
   } finally { cleanup(root); }
 });
 

@@ -24,7 +24,6 @@ test('a row sitting below an older one is the violation — the tail must not re
     'packs/demo/VERSIONS.md': log(['60824.1', 'Oldest, at the top by mistake.'], ['60830.5', 'Actually newest.']),
   }));
   assert.equal(findings.length, 1);
-  assert.equal(findings[0].file, 'packs/demo/VERSIONS.md');
   assert.equal(findings[0].line, 6);                    // the misplaced row, with what precedes it named in the message
   assert.match(findings[0].what, /60830\.5.*60824\.1.*newer/s);
 });

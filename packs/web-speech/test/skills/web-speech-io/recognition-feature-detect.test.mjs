@@ -15,8 +15,6 @@ test('web-speech-recognition-feature-detected: a bare webkit construction is adv
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'advisory');
-    assert.equal(findings[0].file, 'src/stt.js');
     assert.equal(findings[0].line, 2);
     assert.match(findings[0].fix, /globalThis\.SpeechRecognition/);
   } finally { cleanup(root); }

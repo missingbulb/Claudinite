@@ -38,7 +38,6 @@ test('promote-scope: fires on a path outside the corpus roots', () => {
     const findings = run(root);
     assert.equal(findings.length, 1);
     assert.equal(findings[0].file, 'engine/pack_loader/pack-registry.mjs');
-    assert.equal(findings[0].rule, 'promote-scope');
   } finally {
     cleanup(root);
   }

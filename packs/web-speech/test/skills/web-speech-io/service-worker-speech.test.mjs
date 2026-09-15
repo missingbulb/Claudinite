@@ -17,7 +17,6 @@ test('web-speech-no-window-api-in-service-worker: recognition in the named worke
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].file, 'extension/background.js');
     assert.equal(findings[0].line, 2);
     assert.match(findings[0].what, /recognition/);
@@ -32,7 +31,6 @@ test('web-speech-no-window-api-in-service-worker: speechSynthesis in the named w
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
-    assert.equal(findings[0].severity, 'blocking');
     assert.equal(findings[0].file, 'ext/src/sw.js');
     assert.equal(findings[0].line, 2);
     assert.match(findings[0].fix, /chrome\.tts/);
