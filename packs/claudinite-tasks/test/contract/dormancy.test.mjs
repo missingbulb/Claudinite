@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { isDormant, dormancyErrors, TASKS_PACK_ID } from '../../src/contract/dormancy.mjs';
-import { isDormant as published } from '../../shared-code/dormancy.mjs';
+import { isDormant as published } from '../../public/dormancy.mjs';
 import { loadConfig } from '../../../../engine/checks/helpers/repo-context.mjs';
 
 // A member's declaration exactly as it sits on disk — the shape a cross-repo reader
@@ -98,7 +98,7 @@ test('a misshapen declaration is answered, never thrown on', () => {
 });
 
 test('the published surface is the same function, never a second implementation', () => {
-  // Shepherd and the dashboard import through shared-code/; the scheduler imports the
+  // Shepherd and the dashboard import through public/; the scheduler imports the
   // module directly. Two implementations would be two notions of dormancy — the exact
   // failure this predicate exists to prevent.
   assert.equal(published, isDormant);

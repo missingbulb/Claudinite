@@ -25,7 +25,7 @@ const executor = (...names) => [
   '          GITHUB_TOKEN: ${{ github.token }}',
   '          # claudinite:secrets',
   ...names.map((n) => `          ${n}: \${{ secrets.${n} }}`),
-  '        run: node packs/claudinite-tasks/queue/executor.mjs', '',
+  '        run: node packs/claudinite-tasks/public/executor.mjs', '',
 ].join('\n');
 
 const ENDPOINT = { default: { url: 'https://x.invalid/fire', tokenSecret: 'CCR_ROUTINE_TOKEN' } };

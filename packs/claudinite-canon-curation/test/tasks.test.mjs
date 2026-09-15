@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import promoteJson from '../tasks/growth-promote/task.json' with { type: 'json' };
 import bumpJson from '../tasks/pack-version-bump/task.json' with { type: 'json' };
 import historyJson from '../tasks/pack-version-history/task.json' with { type: 'json' };
-import { declaredMergeRules, policyVerdict } from '../../claudinite-tasks/shared-code/merge-policy.mjs';
+import { declaredMergeRules, policyVerdict } from '../../claudinite-tasks/public/merge-policy.mjs';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { evaluatePrecondition, loadTaskTerms } from '../../claudinite-tasks/shared-code/preconditions.mjs';
-import { normalizeTaskDeclaration } from '../../claudinite-tasks/shared-code/task-contract.mjs';
+import { evaluatePrecondition, loadTaskTerms } from '../../claudinite-tasks/public/preconditions.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/public/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const promote = normalizeTaskDeclaration(promoteJson);
 const bump = normalizeTaskDeclaration(bumpJson);

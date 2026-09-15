@@ -67,6 +67,6 @@ test('the guard fires on a member-shaped deep import and stays silent on the sur
   const deep = "import { deliverGenerated } from '../../../../../shared/packs/claudinite-tasks/deliver-generated.mjs';";
   assert.ok(match.test(deep), 'a member reaching past the surface must be caught');
 
-  const viaSurface = "import { deliverGenerated } from '../../../../../shared/packs/claudinite-tasks/shared-code/delivery.mjs';";
+  const viaSurface = "import { deliverGenerated } from '../../../../../shared/packs/claudinite-tasks/public/delivery.mjs';";
   assert.equal(match.test(viaSurface), false, 'the published surface is the sanctioned reach');
 });

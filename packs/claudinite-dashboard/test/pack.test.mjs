@@ -29,7 +29,7 @@ async function member(declaration, extraFiles = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'cd-member-'));
   await mkdir(join(dir, '.claudinite/shared/packs'), { recursive: true });
   await cp(join(ROOT, 'engine'), join(dir, '.claudinite/shared/engine'), { recursive: true });
-  // The queue modules the page reads through the tasks pack's published shared-code/.
+  // The queue modules the page reads through the tasks pack's published public/.
   await cp(join(ROOT, 'packs/claudinite-tasks'), join(dir, '.claudinite/shared/packs/claudinite-tasks'), { recursive: true });
   // As the vendor set lays it down: a pack's tests sit beside the files they cover and
   // are dropped on the way into a mount, so a fixture that copied them would be staging

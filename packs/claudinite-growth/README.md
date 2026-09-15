@@ -37,7 +37,7 @@ described below, but it is the claudinite-tasks pack's task, not this one's.)
    whether any of it upgrades to a check before the PR opens.
 
 Everything lands in **one** PR, delivered to land where the repo's delivery settings allow
-(`packs/claudinite-tasks/deliver-pr.md`). The two extraction halves used to be two tasks firing in
+(`packs/claudinite-tasks/src/deliver/deliver-pr.md`). The two extraction halves used to be two tasks firing in
 the same nightly anchor against the same local packs; they share the lesson bar, the promotion ladder
 and the dedup surface ([extracting-lessons.md](extracting-lessons.md)), so the split bought nothing
 and cost a second opus dispatch, a second PR, and two runs deduping against a corpus the other was

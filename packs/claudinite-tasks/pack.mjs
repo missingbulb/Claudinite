@@ -17,7 +17,7 @@
 // checks (from claudinite-growth). The simulator and its scenario suite — the
 // mechanism's executable spec — are in this pack's own test/.
 //
-// SHARED-CODE IS THE PUBLISHED SURFACE. `shared-code/` is the one place in the corpus
+// SHARED-CODE IS THE PUBLISHED SURFACE. `public/` is the one place in the corpus
 // another pack's code may import across a pack boundary (the `pack-independence`
 // barrier's allow list names it, and nothing else). Everything of this pack outside
 // it stays off-limits.

@@ -21,7 +21,7 @@
 
 import {
   BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION,
-} from '../../../claudinite-tasks/shared-code/work-items.mjs';
+} from '../../../claudinite-tasks/public/work-items.mjs';
 // `PARKED` is the page's own state key, not a label — a park is four labels and the
 // page groups them into one (model.mjs).
 import { PARKED } from './model.mjs';

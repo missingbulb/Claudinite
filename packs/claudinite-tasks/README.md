@@ -29,25 +29,51 @@ and `tasks-world-edges-live-in-world` checks are what hold the shape.
 | `src/deliver/` | turning a run's output into a landed pull request or a regenerated file |
 | `src/recover/` | repair: the janitor's rules, workflow-failure escalation, the dead-run continuation |
 | `src/adopt/` | what an adopting repo receives: the workflows converged from the stubs, the per-repo cron minute |
-| `queue/` | **frozen workflow and routine ABI** — the six entry points a member's `.github/workflows/` names literally (`scheduler-run`, `drain-dispatch`, `workflow-failure`, `executor`, `executor-continuation`, `tick`), `instructions.md`, and `tasks/implement-request/`, whose `task.md` path is written into every adopted issue's machine block. Entry points, never logic |
+| `queue/` | `tasks/implement-request/` — the engine's own built-in task. Its `task.md` is a redirect kept for work items minted before the move (retired 2026-10-15); the spec itself is `public/implement-request.md` |
 | `stubs/` | the two workflow files an adopting repo receives |
-| `shared-code/` | the published import surface — see below |
+| `public/` | **everything outside this pack may reference** — the import surface, the commands a workflow or a doc runs, and the documents a routine reads. See below |
 | `tasks/` | this pack's own tasks: `task-janitor` (the queue's sweeps), `usage-fold` (it folds this mechanism's run records and outcome labels), `tasks-usage-fold` (what the machinery itself cost — runs, billed minutes, API calls, outcomes, parks, latencies) and `verify-production` (coded production validations — URL probes judged as code-work) |
 | `worldRules/` | the task-declaration checks |
 | `workRules/` | the armed-auto-merge gate (`automerge-policy-scope`) |
 | `declared-checks.json` | `tasks-pack-read-through-its-surface` — the guard over this pack's published surface, which runs wherever the pack is declared |
 | `test/` | the unit suite, mirroring `src/`, and `test/sim/` — the simulator and its scenario suite, the mechanism's executable spec |
 | `docs/PRINCIPLES.md` | the mechanism as claims, each citing the test that proves it |
-| `executor.md`, `queue/instructions.md`, `deliver-pr.md` | operational documents a member's routines and workers read out of their own mount at runtime |
+| `src/deliver/deliver-pr.md` | the landing procedure every PR-delivering task's worker is pointed at, beside the lane it describes |
 
-## `shared-code/` — the one sanctioned cross-pack import
+## `public/` — everything outside this pack may reference
 
-Another pack's code may import `packs/claudinite-tasks/shared-code/*`, and nothing else of this
-pack. The `pack-independence` barrier's allow list names that directory; no other pack gains an
+One folder, one promise: **a name in `public/` does not move.** Everything a workflow runs, a
+routine reads, another pack imports or a member's own local pack names lives here, and nothing
+else of this pack is addressable from outside.
+
+That promise is what the folder is for. A member's `.github/workflows/`, a routine's stored
+prompt and a member's `.claudinite/local/packs/**` are all things this repository cannot
+rewrite: a converge refreshes `.claudinite/shared/` and touches none of them. Every path any of
+them names therefore has to be one that stays put, and `public/` is where those paths are kept.
+
+Another pack's code may import `packs/claudinite-tasks/public/*` and nothing else of this pack;
+the `pack-independence` barrier's allow list names that directory, and no other pack gains an
 equivalent surface by existing.
 
+### Commands and documents named from outside
+
+| Path | What names it |
+|---|---|
+| `scheduler-run.mjs` | every member's `.github/workflows/claudinite-scheduler.yml` |
+| `drain-dispatch.mjs` | the same workflow's post-scheduler drain |
+| `workflow-failure.mjs` | the same workflow's failure-escalation job |
+| `executor.mjs` | every member's `.github/workflows/claudinite-executor.yml` |
+| `executor-continuation.mjs` | the same workflow's continuation job |
+| `tick.mjs` | the retired scheduler entry, still named by workflows nobody has repointed |
+| `create-work-item.mjs` | prose in members' own local packs — filing an item by hand, and waking a parked one |
+| `converge-workflows.mjs` | the `adopt-pack` skill, run by an operator against a member checkout |
+| `instructions.md` | a repo's work-item routine, as a stored prompt in its console settings |
+| `implement-request.md` | the machine block of every issue adopted into the queue |
+
+### Modules other packs import
+
 **A member's own `.claudinite/local/packs/**` reads it the same way**, through its mount
-(`.claudinite/shared/packs/claudinite-tasks/shared-code/*`). That is the surface's whole point: the
+(`.claudinite/shared/packs/claudinite-tasks/public/*`). That is the surface's whole point: the
 nightly converge replaces `.claudinite/shared/` and may never touch a member's own packs, so an
 import aimed anywhere else is one this repository cannot repair when the layout behind it moves.
 

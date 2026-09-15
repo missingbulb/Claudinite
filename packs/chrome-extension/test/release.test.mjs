@@ -186,7 +186,7 @@ jobs:
   schedule:
     runs-on: ubuntu-latest
     steps:
-      - run: node .claudinite/shared/packs/claudinite-tasks/queue/scheduler-run.mjs
+      - run: node .claudinite/shared/packs/claudinite-tasks/public/scheduler-run.mjs
 `;
   // De-cron'd orchestrator: keeps push + workflow_dispatch, drops the schedule block.
   const deCronOrchestrator = ORCHESTRATOR.replace('  schedule:\n    - cron: "30 0 * * *"\n', '');
@@ -407,7 +407,7 @@ test('shipping gate: the declared checks carry the same test as the coded predic
 });
 
 test('shipping gate: the scheduler signal answers what the pack rules answer', async () => {
-  const { localSignalContext } = await import('../../claudinite-tasks/shared-code/signals.mjs');
+  const { localSignalContext } = await import('../../claudinite-tasks/public/signals.mjs');
   // One matrix, both readers. Each row is a repo shape that has actually mattered:
   // a publisher, a publisher known only by its release config, the canon's own copies
   // of the reusable workflows, and a repo that just codes an extension.

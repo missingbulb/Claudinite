@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isCovered, readFile, readDeclaration, putFile, isDormant, DECLARATION,
 } from '../fleet-api.mjs';
-import { isDormant as schedulerIsDormant } from '../../claudinite-tasks/shared-code/dormancy.mjs';
+import { isDormant as schedulerIsDormant } from '../../claudinite-tasks/public/dormancy.mjs';
 
 // The pack's shared cross-repo REST layer. Membership is the tracked declaration
 // file, the ONE probe every member carries whatever its mount shape

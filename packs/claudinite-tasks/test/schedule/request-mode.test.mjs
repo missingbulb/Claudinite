@@ -11,7 +11,7 @@ import { runExecutor } from '../../src/execute/loop.mjs';
 import { collectSignals } from '../../src/signals/index.mjs';
 import requestTaskJson from '../../queue/tasks/implement-request/task.json' with { type: 'json' };
 import { eligibility } from '../../queue/tasks/implement-request/preconditions.mjs';
-import { evaluatePrecondition, loadTaskTerms } from '../../shared-code/preconditions.mjs';
+import { evaluatePrecondition, loadTaskTerms } from '../../public/preconditions.mjs';
 import { REQUEST_TASK_ID } from '../../src/contract/built-in-tasks.mjs';
 import { parseWorkItemBody, machineBlockOf, ORIGIN_AD_HOC } from '../../src/items/work-item.mjs';
 import { join } from 'node:path';

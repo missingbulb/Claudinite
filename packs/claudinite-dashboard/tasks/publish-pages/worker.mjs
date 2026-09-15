@@ -29,7 +29,7 @@ import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { makeGh, dispatchWorkflow } from '../../../claudinite-tasks/shared-code/github.mjs';
+import { makeGh, dispatchWorkflow } from '../../../claudinite-tasks/public/github.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 

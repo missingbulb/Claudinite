@@ -24,7 +24,7 @@ import { deploymentConfig } from './deployment-config.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // The page imports the queue's own modules by relative path — the tasks pack's published
-// `shared-code/`, and the engine surface beneath it — precisely so it cannot drift from
+// `public/`, and the engine surface beneath it — precisely so it cannot drift from
 // them. The published tree therefore has to preserve that shape: flattening the dashboard
 // to the site root sends those imports above the root and the page does not boot. So every
 // directory it reaches is staged at the depth it already has, and the site root is a redirect.

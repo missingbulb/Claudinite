@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { isSubstantiveCommit } from '../../src/signals/substantive-commit.mjs';
-import * as published from '../../shared-code/substantive-commit.mjs';
+import * as published from '../../public/substantive-commit.mjs';
 
 // The one test for "did the project move, or was that the machinery" — published
 // because a cross-repo reader (the dashboard's sleepy mark) must classify a member's

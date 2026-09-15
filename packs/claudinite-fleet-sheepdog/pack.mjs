@@ -82,7 +82,7 @@ export default {
   },
   // Every sweep here runs as a task on the enforcer's own queue, and each one asks
   // whether a member's SCHEDULER is dormant — a question the tasks pack owns and
-  // publishes (shared-code/dormancy.mjs). Declared so the vendor set carries the code
+  // publishes (public/dormancy.mjs). Declared so the vendor set carries the code
   // this pack imports: an enforcer that mounted the sweeps without it would fail its
   // own converge on a dangling import.
   requires: ['claudinite-tasks'],

@@ -42,7 +42,7 @@ import { wakeStrip } from '../derive/model.mjs';
 import { settingsTextAtSha, SETTINGS_FILE } from '../read/settings-read.mjs';
 // The scheduler's own predicate, over the declaration this view already parsed — so the
 // page's idea of dormant and the member's own can never differ.
-import { isDormant } from '../../../claudinite-tasks/shared-code/dormancy.mjs';
+import { isDormant } from '../../../claudinite-tasks/public/dormancy.mjs';
 
 // How far each past-data panel looks back. The month is the growth panel's, because a
 // fortnight of a corpus's own numbers is noise; the fortnight is the queue's, because

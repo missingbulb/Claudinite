@@ -9,7 +9,7 @@
 // formality; both of the first two live agentic runs got part of it wrong,
 // silently, in different ways.
 //
-// THIS FILE RUNS IN ONE PLACE: INSIDE A WORK-ITEM SESSION. `queue/instructions.md`
+// THIS FILE RUNS IN ONE PLACE: INSIDE A WORK-ITEM SESSION. `public/instructions.md`
 // step 6 is its only caller — no workflow invokes it, no module imports it. The
 // Actions side converges through `executor.mjs`, which owns that path entirely.
 //

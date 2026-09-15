@@ -14,9 +14,9 @@
         "scope": "imports",
         "allow": [
           "engine",
-          "packs/claudinite-tasks/shared-code"
+          "packs/claudinite-tasks/public"
         ],
-        "reason": "a pack imports only its own files, the engine surface, and the tasks pack's published shared-code/ — abilities otherwise cross pack boundaries through declaration and configuration, never imports; a pack's updates/ is carved out because no vendor set carries it, so an import there cannot crash a consumer (#1317)",
+        "reason": "a pack imports only its own files, the engine surface, and the tasks pack's published public/ — abilities otherwise cross pack boundaries through declaration and configuration, never imports; a pack's updates/ is carved out because no vendor set carries it, so an import there cannot crash a consumer (#1317)",
         "except": [
           "packs/claudinite-lifecycle/updates"
         ]
@@ -231,10 +231,10 @@
         "from": "packs/claudinite-tasks/src",
         "to": [
           "packs/claudinite-tasks/queue",
-          "packs/claudinite-tasks/shared-code"
+          "packs/claudinite-tasks/public"
         ],
         "scope": "imports",
-        "reason": "`queue/` is frozen workflow ABI and `shared-code/` is the published surface: both re-export the mechanism, so a module under src/ importing one would close a cycle through a path that exists only for outside callers"
+        "reason": "`queue/` is frozen workflow ABI and `public/` is the published surface: both re-export the mechanism, so a module under src/ importing one would close a cycle through a path that exists only for outside callers"
       }
     ]
   },

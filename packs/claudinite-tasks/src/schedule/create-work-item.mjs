@@ -132,7 +132,7 @@ export async function createWorkItem(gh, repo, { pack, task, taskPath, scheduled
   return { ok: true, number: res.number };
 }
 
-// Exported because `queue/create-work-item.mjs` runs it: prose in a member's own local
+// Exported because `public/create-work-item.mjs` runs it: prose in a member's own local
 // packs still addresses this command at that path, and nothing here can rewrite it.
 export async function runCreateWorkItem() {
   const { makeGh } = await import('../world/github.mjs');

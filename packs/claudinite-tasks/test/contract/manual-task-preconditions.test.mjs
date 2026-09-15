@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
-import { evaluatePrecondition, loadTaskTerms } from '../../shared-code/preconditions.mjs';
+import { evaluatePrecondition, loadTaskTerms } from '../../public/preconditions.mjs';
 import { loadTaskDeclaration } from '../../src/contract/task-declaration.mjs';
 import { normalizeTaskDeclaration, isScheduledTask } from '../../src/contract/task-contract.mjs';
 

@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 // nothing else, so moving the file it names leaves prose no converge can correct, in a
 // repository no canon session reads.
 //
-// It happened at #1478. `queue/create-work-item.mjs` moved to `src/schedule/`, the canon's
+// It happened at #1478. `public/create-work-item.mjs` moved to `src/schedule/`, the canon's
 // own three docs were swept with it, and Shepherd's local pack — three call sites nobody
 // here could see — began failing `runnable-doc-commands` at BLOCKING on its next update.
 // Nothing went red in this repository, because this repository's copies were correct.
@@ -54,7 +54,15 @@ function fieldedRunnableMountPaths() {
 // A RETIRED path is one whose holders were reached and moved — an advisory fired in their
 // own repository for a stated window, and the window closed. Never a path whose absence
 // from HEAD's docs made it look unused.
-const RETIRED = [];
+const RETIRED = [
+  // Both moved into `public/` by #2069, which is also the change that reached their
+  // holders: every member repository was read in that session and the ones naming
+  // either path had their own prose rewritten in the same pull request that refreshed
+  // their mount. That is a stronger close than the advisory window this list normally
+  // records — the holders were enumerated and fixed, not notified and waited on.
+  /^packs\/claudinite-tasks\/queue\/create-work-item\.mjs$/,
+  /^packs\/claudinite-tasks\/converge-workflows\.mjs$/,
+];
 
 // TRACKED is a path this scan found gone with no holder known and no shim available,
 // carried under its own issue rather than silently waived. It differs from RETIRED in

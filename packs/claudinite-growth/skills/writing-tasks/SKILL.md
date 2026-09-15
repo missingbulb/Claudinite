@@ -236,7 +236,7 @@ where the mechanics belong: `agent_model`, `schedule_after`, `expected_outcome` 
 merges itself, not what it authorizes to land unreviewed, not what becomes of an
 earlier run's still-open one. Say what this run must do (open a PR, never merge
 it, what its body must carry), point at the shared delivery procedure
-([deliver-pr.md](../../../claudinite-tasks/deliver-pr.md)) where the run must
+([deliver-pr.md](../../../claudinite-tasks/src/deliver/deliver-pr.md)) where the run must
 invoke one, and stop. Watch for the spelled-out form, which names no field and so
 reads as ordinary instruction: "an earlier round's pull request closes as
 superseded once yours exists" *is* `expected_outcome`. (2)

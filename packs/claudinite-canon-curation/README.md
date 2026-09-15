@@ -114,7 +114,7 @@ scanning. The [barrier guide](../basics/barriers.md) documents the edge vocabula
   subprocesses and the clock are reached through that pack's `src/world/` and nowhere else, so a
   run can be driven at a chosen instant against a fake world. The pack is guarded from OUTSIDE by
   `tasks-pack-read-through-its-surface`, which it declares itself — a consumer reads it through
-  `shared-code/` or not at all, and that cannot be a barrier here because the reference scanner
+  `public/` or not at all, and that cannot be a barrier here because the reference scanner
   never sees a test file and this pack's checks never reach a member's own tree.
 
 - **[tasks/growth-promote/](tasks/growth-promote/task.md)** — the growth lifecycle's central stage:
