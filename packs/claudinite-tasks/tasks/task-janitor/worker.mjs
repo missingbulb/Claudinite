@@ -27,12 +27,14 @@
 import { pathToFileURL } from 'node:url';
 import {
   staleDispatchIssues, staleEscalationComment, staleClaimedDispatchIssues, staleClaimComment,
+  claimedDispatchIssues,
   rearmDispatchIssues, readyLabelOn, DISPATCH_PREFIX, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
   SCHEDULER_LABELS,
 } from '../../src/session/dispatch.mjs';
+import { lastLivenessAt } from '../../src/items/heartbeat.mjs';
 import { makeGh } from '../../src/world/github.mjs';
 import { ensureLabels } from '../../src/world/github.mjs';
-import { searchIssues, comment, addLabel, removeLabel } from '../../src/world/github.mjs';
+import { searchIssues, comment, addLabel, removeLabel, listComments } from '../../src/world/github.mjs';
 
 const item = process.env.CLAUDINITE_ITEM || '';
 const log = (s) => console.log(`task-janitor${item ? ` [#${item}]` : ''}: ${s}`);
@@ -56,6 +58,14 @@ export async function openDispatchIssues(gh, repo) {
 export async function sweep(gh, repo, now) {
   const open = await openDispatchIssues(gh, repo);
   const result = { open: open.length, stale: [], deadClaims: [], rearmed: [] };
+
+  // One comment read per CLAIMED dispatch issue — the same read the scheduler's
+  // executing-leash reclaim makes, for the same reason: the dead-claim rule
+  // measures the holder's own silence, and only its comments carry that.
+  for (const issue of claimedDispatchIssues(open)) {
+    issue.livenessAt = lastLivenessAt(await listComments(gh, repo, issue.number));
+  }
+
   const stale = staleDispatchIssues(open, now);
   const staleNumbers = new Set(stale.map((i) => i.number));
   const deadClaims = staleClaimedDispatchIssues(open, now).filter((i) => !staleNumbers.has(i.number));

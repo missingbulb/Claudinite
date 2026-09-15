@@ -421,3 +421,28 @@ test('a built-in dispatch validates from the pack path and the legacy engine pat
     assert.equal(v.task, 'implement-request');
   }
 });
+
+test("staleClaimedDispatchIssues measures the holder's own silence, not the issue's", () => {
+  // The claim died at 02:00; something else — a losing executor letting go, a
+  // person, the task's own bookkeeping — commented at 11:00 and moved
+  // `updated_at`. Reading that clock reports a dead claim as live (#924).
+  const now = '2026-07-22T12:00:00Z';
+  const open = [{
+    number: 1, title: '[claudinite-task] basics/baselining d2026-07-22',
+    labels: [{ name: AGENT_RUNNING_LABEL }],
+    created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T11:00:00Z',
+    livenessAt: '2026-07-22T02:00:00Z',
+  }];
+  assert.deepEqual(staleClaimedDispatchIssues(open, now).map((i) => i.number), [1]);
+});
+
+test('staleClaimedDispatchIssues spares a beating holder whose issue looks untouched', () => {
+  const now = '2026-07-22T12:00:00Z';
+  const open = [{
+    number: 2, title: '[claudinite-task] basics/baselining d2026-07-22',
+    labels: [{ name: AGENT_RUNNING_LABEL }],
+    created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z',
+    livenessAt: '2026-07-22T11:30:00Z',
+  }];
+  assert.deepEqual(staleClaimedDispatchIssues(open, now), []);
+});

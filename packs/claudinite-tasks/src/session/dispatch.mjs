@@ -316,15 +316,35 @@ export function readyLabelOn(issue) {
 // what enforces it): a task may put `agent-running` on an issue IT owns — a
 // request its pipeline has claimed, which stays claimed while its PR is in review,
 // far longer than 3h — and only that task knows when its own claim is stale.
+//
+// SILENCE IS THE HOLDER'S, NOT THE ISSUE'S (#924). `livenessAt` is the shell's read
+// of when the session that holds this claim last signed for it — its own claim or
+// heartbeat comment, `lastLivenessAt` in `../items/heartbeat.mjs`. Measuring from
+// `updated_at` instead reads a dead claim as live, because any comment moves it: a
+// losing executor letting go, a person, the task's own bookkeeping. `updated_at` is
+// still the fallback, for an issue with no liveness signal at all and for a comment
+// read that did not answer — a read that fails is not a verdict that the holder is
+// dead.
 export function staleClaimedDispatchIssues(openIssues = [], now, { idleMs = 3 * 3600e3 } = {}) {
   const nowMs = new Date(now).getTime();
   return openIssues.filter((issue) => {
     if (!parseDispatchTitle(issue.title)) return false;
     const names = labelNames(issue);
     if (!names.includes(AGENT_RUNNING_LABEL) || names.includes(NEEDS_HUMAN_LABEL)) return false;
-    return nowMs - new Date(issue.updated_at ?? issue.created_at).getTime() > idleMs;
+    const lastSign = issue.livenessAt ?? issue.updated_at ?? issue.created_at;
+    return nowMs - new Date(lastSign).getTime() > idleMs;
   });
 }
+
+// The claims a janitor run must read comments for before it can judge them —
+// `livenessAt`'s scope. Every open dispatch claim, so a candidate set narrowed by
+// the very clock the rule stopped trusting cannot narrow it wrongly; the count is
+// the health line's `running`, a handful.
+export const claimedDispatchIssues = (openIssues = []) => openIssues.filter((issue) => {
+  if (!parseDispatchTitle(issue.title)) return false;
+  const names = labelNames(issue);
+  return names.includes(AGENT_RUNNING_LABEL) && !names.includes(NEEDS_HUMAN_LABEL);
+});
 
 // The comment the shell posts when it reclaims a dead session's claim.
 export function staleClaimComment(issue) {
