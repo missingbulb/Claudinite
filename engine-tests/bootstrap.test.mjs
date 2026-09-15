@@ -138,7 +138,11 @@ test('the report hands over the executor secret in every adoption, and the web S
   assert.match(block, /CCR_ROUTINE_TOKEN/, 'core hands over the executor token secret');
   // Seeded by default, so its step is here without anyone asking for the pack.
   assert.match(block, /Setup script/, 'the web pack hands over its environment Setup script');
-  for (const step of block.split('\n').filter((l) => l.startsWith('  [ ] '))) {
+  const steps = block.split('\n').filter((l) => l.startsWith('  [ ] '));
+  // Restyle the checkbox and this filter selects nothing, which reads as every
+  // step being well-written rather than as no step having been looked at.
+  assert.ok(steps.length >= 2, `the HANDOVER block offers ${steps.length} steps:\n${block}`);
+  for (const step of steps) {
     assert.ok(step.length > 40, `a hand-over step says what it is: ${step}`);
   }
 

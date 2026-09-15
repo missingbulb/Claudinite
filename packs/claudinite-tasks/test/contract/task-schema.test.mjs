@@ -44,6 +44,7 @@ function violations(decl) {
 test('every canon task.json satisfies the schema, points at it, and validates against the contract', async () => {
   const files = execSync('git ls-files "packs/*/tasks/*/task.json" "packs/*/queue/tasks/*/task.json"', { cwd: root }).toString().trim().split('\n');
   assert.ok(files.length >= 25, `found ${files.length}`);
+  let workers = 0;
   for (const f of files) {
     const raw = JSON.parse(readFileSync(join(root, f), 'utf8'));
     assert.deepEqual(violations(raw), [], f);
@@ -65,8 +66,12 @@ test('every canon task.json satisfies the schema, points at it, and validates ag
     // as legal a command as `node worker.mjs`, and taking the second token would fail
     // it for the wrong reason.
     const script = decl.code_work?.split(/\s+/).find((t) => t.endsWith('.mjs'));
-    if (script) assert.ok(existsSync(join(dir, script)), `${f}: code_work names ${script}, which is not beside the declaration`);
+    if (script) { workers++; assert.ok(existsSync(join(dir, script)), `${f}: code_work names ${script}, which is not beside the declaration`); }
   }
+  // The guard above is the one assertion here that a task can sit out, so the outer
+  // count does not cover it: were `.mjs` to stop being how a worker is spelled, every
+  // task would sit out and the worker check would report a pass over none of them.
+  assert.ok(workers >= 15, `${workers} of ${files.length} tasks named a worker to check`);
 });
 
 test('parseTaskDeclaration strips $schema and leaves a non-object as it is', () => {

@@ -12,9 +12,14 @@ import { ruleBlocks, readmeRuleIndex, proseSize, SEVERITIES, REASONS, SIZES } fr
 // prose here rather than trusted to stay current on its own.
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+// Every shared pack carrying prose, README or not: a pack that LOSES its README
+// must fail the sweep below rather than drop out of it, and the count pins that
+// the sweep ran over the shelf and not over whatever survived a filter.
 const packsWithProse = async () => {
   const { packs } = await discoverPacks({ localRoot: ROOT });
-  return packs.filter((p) => !p.local && p.prose && existsSync(join(ROOT, 'packs', p.id, 'README.md')));
+  const withProse = packs.filter((p) => !p.local && p.prose);
+  assert.ok(withProse.length >= 6, `the shelf has ${withProse.length} shared packs carrying prose`);
+  return withProse;
 };
 
 test('each pack README indexes its RULES.md rules, in order, with their size bands', async () => {

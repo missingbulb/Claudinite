@@ -92,7 +92,11 @@ test('a foreign issue is a read-modify-write, never a computed label set', () =>
 
 test('the script names the repo it was given, on every call', () => {
   const script = sessionScript(item(), done, 'missingbulb/WIP');
-  for (const line of script.split('\n').filter((l) => l.includes('`issue_write`') || l.includes('`add_issue_comment`'))) {
+  const calls = script.split('\n').filter((l) => l.includes('`issue_write`') || l.includes('`add_issue_comment`'));
+  // Without this the sweep is the whole test, and a rename on either tool name
+  // empties the filter: every call goes unchecked and the run reports a pass.
+  assert.ok(calls.length >= 2, `the script makes ${calls.length} named calls to check`);
+  for (const line of calls) {
     assert.match(line, /owner `missingbulb`, repo `WIP`/);
   }
 });

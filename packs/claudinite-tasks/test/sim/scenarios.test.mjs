@@ -1392,7 +1392,9 @@ test('S32 twin-title race: post-claim re-verify serializes, later claim reverts'
   assert.equal(new Set(times).size, times.length, 'the twins were never evaluated at the same instant');
   // and BOTH still converged — a reverted or lost claim is re-claimed in a fresh
   // episode (F18) and simply waits its turn
-  for (const it of sim.issues.filter((i) => !i.seeded)) {
+  const twins = sim.issues.filter((i) => !i.seeded);
+  assert.equal(twins.length, 2, 'both twins were instantiated');
+  for (const it of twins) {
     assert.equal(it.state, 'closed', `#${it.number} converged`);
     assert.equal(it.outcome, 'done', `#${it.number} ran — an empty expression holds at pick`);
   }
