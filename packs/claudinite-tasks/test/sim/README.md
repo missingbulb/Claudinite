@@ -1,79 +1,76 @@
-# The dispatch simulator — the mechanism, executable
+# The scenario harness — the mechanism, executable
 
-A discrete-event simulator of the task-dispatch mechanism, so its claims run
-as tests instead of living only as prose. Owner request, 2026-08-13: *"add the
-'at time x — y happens' to the tests, and then execute the simulator — this
-will help us make the design more robust."* It has caught real spec bugs prose
-replay missed — **F13** (the occurrence guard's missing closed-at half),
-**F14** (the stale rule can never see a stuck *blocked* item), **F31** (the
-board's go rows eating an occurrence) and **F32** (the stateless `due:` term
-reading an unpicked deduped twin as this period's run) — which is the whole
-argument for its existence.
+A discrete-event harness that runs the REAL queue against a fake world, so the
+mechanism's claims run as tests instead of living only as prose. Owner request,
+2026-08-13: *"add the 'at time x — y happens' to the tests, and then execute the
+simulator — this will help us make the design more robust."*
 
-- [`sim.mjs`](sim.mjs) — the model: a virtual clock and an ordered event
-  queue (no threads, no waits, no wall clock), an in-memory issue store, and
-  the mechanism as [`packs/claudinite-tasks/docs/PRINCIPLES.md`](../../docs/PRINCIPLES.md) states
-  it — the scheduler run as a STATELESS loop: at every tick it asks every task
-  on the schedule — one stating a condition, none of which reads the item
-  itself; a task stating none runs only from an item somebody created, at
-  whose pick the empty expression holds — through the task's own
-  preconditions — the run-history terms (`due:`, `last-run-over:`,
-  `last-run-not-failed`) judged first over the task's own items in the issue
-  store, then the scenario's precondition function standing for every other
-  condition, over the since-last-run window the engine collects movement
-  over — files a READY item on a yes, writes a log entry and nothing else on
-  a no, fails OPEN on a read it cannot make, and keeps the engine's one
-  invariant, ONE LIVE ITEM PER TASK (a parked item is not live; whether it
-  holds the task is the task's own `last-run-not-failed`); its drain
-  dispatched only when something is pickable; executor RUNS as first-class
-  objects (each drains until nothing is pickable, items settled serially —
-  urgent-then-random pick under a seeded PRNG, the verified lease, a recorded
-  trigger: scheduler-run-drain / label-event / close-drain /
-  failure-redispatch, and an `actionExecutions()` accounting of every billed
-  workflow run); the pick-time re-evaluation over the item's OWN facts and
-  its own run history excluding it, where a `Woken`-stamped item satisfies the
-  cadence terms; the work step → hand-off → converge as timed phases with
-  heartbeat comments; at-most-once invocation (fired / refused / unanswered);
-  the janitor's rules; and the force/re-queue levers, the force stamping
-  `Woken` on what it wakes or mints. The model keeps no schedule board, no
-  watermark, no first-window booking and no migration because the engine
-  keeps none: what the engine WRITES is the item and the log line, never a
-  rule's intent. Ad-hoc requests are modeled as their own issue store beside
-  the work items: a mark, the scheduler run's adopt job, the built-in request
-  task's precondition, and the two write-backs — each modeled where the
-  engine will leave a mark, never where the rule merely says something
-  happened.
-- [`scenarios.test.mjs`](scenarios.test.mjs) — the play-throughs, one per
-  named scenario. Each test schedules world events at instants
-  (`sim.at('2026-08-12T09:03Z', …)`), runs the clock across a window, and
-  asserts on the issue store and event log. Multi-executor contention runs
-  through `sim.raceExecutorsAt(…)`, which gives two executors the same stale
-  snapshot and lets the lease sort it out.
-- [`coverage.test.mjs`](coverage.test.mjs) — the two-way guard between this
-  suite and [`packs/claudinite-tasks/docs/PRINCIPLES.md`](../../docs/PRINCIPLES.md): every scenario
-  here is cited by some claim there, and every test PRINCIPLES.md cites
-  actually exists.
+It began as a model — a second implementation of the dispatch mechanism beside
+`queue/` — and that model caught real spec bugs prose replay missed (**F13**,
+the occurrence guard's missing closed-at half; **F14**, the stale rule that can
+never see a stuck *blocked* item; **F31**, the board's go rows eating an
+occurrence; **F32**, the stateless `due:` term reading an unpicked deduped twin
+as this period's run). Once the design shipped, the model stopped running ahead
+of the code and started drifting behind it, so the model was deleted and the
+scenarios were pointed at the engine itself. The first pass of that port found
+three more, this time in the CODE rather than in the spec: an executor that
+converges an item it was reclaimed off, a session park that leaves no episode
+boundary, and a queue membership test a requester can fail by taking their own
+label off.
+
+- [`sim.mjs`](sim.mjs) — the harness: the wiring between the fake world and the
+  real entry points, plus the scenario DSL. It holds no answer of its own —
+  `schedulerRun`, `runExecutor`, `sweepQueue`, `continueOrEscalate`,
+  `convergeOps`, the precondition engine and the anchor arithmetic are imported
+  and run. Its own header says what it owns.
 - [`world/`](world/) — the fake world: one module per port under
   [`packs/claudinite-tasks/src/world/`](../../src/world), in memory, plus
   `agents.mjs` and `humans.mjs`, which stand in for no port because neither is
   an edge the engine calls. Each module's header says what it models and what
   it does not. [`world/parity.test.mjs`](world/parity.test.mjs) is what stops a
-  fake drifting from the port it stands in for.
+  fake drifting from the port it stands in for, and
+  [`world/world.test.mjs`](world/world.test.mjs) proves the behaviours the fake
+  OWNS — the orderings the clock guarantees, the GitHub limitations the
+  mechanism is designed around, the shape of a session's life.
+- [`scenarios.test.mjs`](scenarios.test.mjs) — the play-throughs, one per named
+  scenario. Each schedules world events at instants
+  (`sim.at('2026-08-12T09:03Z', …)`), runs the virtual clock across a window,
+  and asserts on the issue store the engine wrote and on the harness's log of
+  what it drove.
+- [`coverage.test.mjs`](coverage.test.mjs) — the two-way guard between this
+  suite and [`packs/claudinite-tasks/docs/PRINCIPLES.md`](../../docs/PRINCIPLES.md):
+  every scenario here is cited by some claim there, and every test PRINCIPLES.md
+  cites actually exists.
 
 Run: `node --test packs/claudinite-tasks/test/sim/*.test.mjs
 packs/claudinite-tasks/test/sim/world/*.test.mjs`. Naming a folder alone does
 not work: `node --test <dir>` does not recurse into it, which is also why the
 `world/` glob is spelled out beside the first.
 
-## Working discipline
+## What a scenario states, and what it may not
 
-**Write the scenario first, then the code.** A design change starts as a new
-or edited scenario in `scenarios.test.mjs`, run red against the unchanged
-`sim.mjs`; encode the change in `sim.mjs` until it goes green, and only then
-update `docs/PRINCIPLES.md` — a claim never precedes the test that proves it.
-When a change touches the real engine rather than only the model, the same
-order holds one level up: the scenario names the behaviour, the engine change
-makes it true, and `coverage.test.mjs` is what stops the document drifting
-out of step with either side. A retired scenario's test deletes with it;
-PRINCIPLES.md's guard has nothing to say about a scenario that no longer
-exists, only about one that exists uncited.
+A scenario's task is a DECLARATION, in the same fields a real one uses: a
+cadence term, a `schedule_after`, whether it has a work step and how long that
+step takes. Its `precondition` function stands for every other condition a real
+declaration would name in terms of its own signals, and is loaded as a
+task-local TERM — so the real precondition engine evaluates it, in the real
+expression, in the real two passes.
+
+**A scenario may not state an answer.** Whether the item is filed, who wins the
+claim, which park it lands in and what the day cost are all read back off the
+world afterwards. Where a scenario and the engine disagree, the disagreement is
+the finding: decide it by the claim the scenario cites in `PRINCIPLES.md` —
+either the code is wrong and the fix is the change, or the claim is wrong and
+correcting it is. Never weaken a scenario to make it pass.
+
+**Write the scenario first.** A design change starts as a new or edited scenario
+here, run red against the unchanged engine; the engine change makes it true; and
+`coverage.test.mjs` is what stops `docs/PRINCIPLES.md` drifting out of step with
+either side. A retired scenario's test deletes with it — PRINCIPLES.md's guard
+has nothing to say about a scenario that no longer exists, only about one that
+exists uncited.
+
+**Everything waits on virtual time.** The clock is the only source of "later":
+a real timer never fires here, and a promise that resolves from outside the
+clock's own accounting is invisible to the pump that advances it. A scenario
+that needs real time is a scenario written wrong (`S80`).

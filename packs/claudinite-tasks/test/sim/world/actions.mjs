@@ -49,6 +49,7 @@ export function makeActions({
   let runSeq = 0;
   let current = null;         // the run whose job is executing right now
   const busy = new Map();     // concurrency group -> the run holding it
+  const waiting = new Set();  // groups with a run already queued behind the holder
 
   const idOf = (run) => `actions-${run.id}`;
 
@@ -73,41 +74,94 @@ export function makeActions({
     },
   };
 
-  // Start a run NOW. `body` executes synchronously against the current clock
-  // instant; anything it wants to happen later it books on the clock itself.
-  // `durationMs` is what the platform bills for, and `timeoutMs` the ceiling the
-  // runner kills the job at.
-  function startRun({ workflow, trigger, body = () => {}, durationMs = MINUTE, timeoutMs = null, concurrency = null, env: runEnv = {} }) {
+  // Start a run NOW. `body` may be async and takes as long as it takes — a job is
+  // the unit the platform bills, so a run that does real work has to be able to
+  // occupy real virtual time. `run.done` settles when the body does, and every
+  // caller here awaits it: a run left floating would let the clock advance through
+  // the middle of a job.
+  //
+  // `durationMs` is the declared length of a body that does nothing in particular;
+  // `measure: true` says the body's own span is the length, which is what a run
+  // driving the engine wants. `timeoutMs` is the ceiling the runner kills the job
+  // at, and a killed job's body is simply ABANDONED — its promise is never awaited
+  // again, exactly as a runner's process is not.
+  function startRun({
+    workflow, trigger, body = () => {}, durationMs = MINUTE, timeoutMs = null,
+    concurrency = null, env: runEnv = {}, measure = false,
+  }) {
+    // THE CONCURRENCY GROUP, as `cancel-in-progress: false` actually behaves: one
+    // run in progress and at most ONE pending behind it. A second run of the group
+    // WAITS and then runs — which is what makes the scheduler run serialized rather
+    // than skipped, and the whole reason its duplicate-standing-item self-heal can
+    // never race itself. A third, arriving while one already waits, is the one the
+    // platform supersedes.
     const held = concurrency && busy.get(concurrency);
     if (held) {
-      // The concurrency group: a second run of the same group does not execute.
-      // It is still a row, because the platform started it before deciding.
-      runs.push({
-        id: (runSeq += 1), workflow, trigger, startedAt: clock.ms(), endedAt: clock.ms(),
-        conclusion: 'superseded', outputs: {}, env: runEnv,
+      if (waiting.has(concurrency)) {
+        runs.push({
+          id: (runSeq += 1), workflow, trigger, startedAt: clock.ms(), endedAt: clock.ms(),
+          conclusion: 'superseded', outputs: {}, env: runEnv, done: Promise.resolve(), ended: Promise.resolve(),
+        });
+        return runs.at(-1);
+      }
+      waiting.add(concurrency);
+      const queued = { done: null };
+      // It waits for the holder to END — not for its body to settle. A run whose
+      // length is declared rather than measured finishes its body at once and holds
+      // the group until its declared end, and a waiter keyed on the body would
+      // re-queue itself in a tight loop against a group still busy.
+      queued.done = clock.park(held.ended).then(() => {
+        waiting.delete(concurrency);
+        const run = startRun({ workflow, trigger, body, durationMs, timeoutMs, concurrency, env: runEnv, measure });
+        Object.assign(queued, run);
+        return run.done;
       });
-      return runs.at(-1);
+      return queued;
     }
     const run = {
       id: (runSeq += 1), workflow, trigger, startedAt: clock.ms(), endedAt: null,
       conclusion: null, outputs: {}, env: runEnv,
     };
+    // When this run RELEASES its group, which is not when its body settles.
+    let markEnded;
+    run.ended = new Promise((r) => { markEnded = r; });
     runs.push(run);
     if (concurrency) busy.set(concurrency, run);
 
     const killAt = timeoutMs === null ? null : run.startedAt + timeoutMs;
-    const endAt = killAt === null ? run.startedAt + durationMs : Math.min(run.startedAt + durationMs, killAt);
+    const finish = (conclusion) => {
+      if (run.endedAt !== null) return;
+      run.endedAt = clock.ms();
+      run.conclusion = conclusion;
+      if (concurrency && busy.get(concurrency) === run) busy.delete(concurrency);
+      markEnded();
+    };
+
     const previous = current;
     current = run;
-    try {
-      body({ run, id: idOf(run) });
-    } finally {
-      current = previous;
+    let outcome;
+    try { outcome = body({ run, id: idOf(run) }); } finally { current = previous; }
+
+    if (measure) {
+      // The body IS the job: it ends when the body does, and the ledger bills what
+      // it actually took. A body that throws is a job that failed — which is what
+      // the continuation job downstream exists for.
+      run.done = Promise.resolve(outcome).then(
+        () => finish('success'),
+        (e) => { finish('failure'); run.error = e; },
+      );
+      if (killAt !== null) clock.at(killAt, () => finish('cancelled'));
+      return run;
     }
+
+    const endAt = killAt === null ? run.startedAt + durationMs : Math.min(run.startedAt + durationMs, killAt);
+    run.done = Promise.resolve(outcome).then(() => {}, (e) => { run.error = e; });
     clock.at(endAt, () => {
+      if (run.endedAt !== null) return;
       run.endedAt = endAt;
       run.conclusion = killAt !== null && endAt === killAt && durationMs > timeoutMs ? 'cancelled' : 'success';
       if (concurrency && busy.get(concurrency) === run) busy.delete(concurrency);
+      markEnded();
     });
     return run;
   }
@@ -123,15 +177,15 @@ export function makeActions({
     // Book the cron grid across a window: one fire per hour on the grid, at
     // `cronMinute`, each starting `startLatencyMs` later — the run's START is
     // what the ledger records, because that is when the platform begins billing.
-    cron: (fromIso, toIso, body, { concurrency = 'claudinite-scheduler', durationMs = MINUTE } = {}) => {
+    cron: (fromIso, toIso, body, { concurrency = 'claudinite-scheduler', durationMs = MINUTE, measure = false } = {}) => {
       const from = at_(fromIso); const to = at_(toIso);
       for (let t = Math.ceil(from / HOUR) * HOUR + cronMinute * MINUTE; t < to; t += HOUR) {
         if (t < from) continue;
         if (cronHours && !cronHours.includes(new Date(t).getUTCHours())) continue;
         if (dropped.some(([a, b]) => t >= a && t < b)) continue;
         clock.at(t + startLatencyMs, () => startRun({
-          workflow: SCHEDULER_WORKFLOW_FILE, trigger: 'schedule', body, durationMs, concurrency,
-        }));
+          workflow: SCHEDULER_WORKFLOW_FILE, trigger: 'schedule', body, durationMs, concurrency, measure,
+        }).done);
       }
       return harness;
     },
@@ -142,11 +196,16 @@ export function makeActions({
     // Turn every `workflow_dispatch` the GitHub fake accepts into a run. The
     // ledger then counts the engine's REAL dispatch calls rather than a model's
     // idea of when a chain fires.
-    runDispatches: (body, { durationMs = MINUTE, timeoutMs = null } = {}) => {
-      github.onDispatch((fired) => startRun({
+    runDispatches: (body, { durationMs = MINUTE, timeoutMs = null, measure = false } = {}) => {
+      // A dispatch is a REQUEST for a run, and the platform starts it a moment
+      // later on its own runner — never inside the call that asked for it. Booked
+      // on the clock for that reason: a run that began inside the dispatching run's
+      // own step would be draining the queue while the run that dispatched it was
+      // still writing to it.
+      github.onDispatch((fired) => clock.at(clock.ms() + startLatencyMs, () => startRun({
         workflow: fired.workflow, trigger: 'workflow_dispatch', body: (ctx) => body({ ...ctx, fired }),
-        durationMs, timeoutMs,
-      }));
+        durationMs, timeoutMs, measure, env: fired.inputs ?? {},
+      }).done));
       return harness;
     },
 

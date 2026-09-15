@@ -89,6 +89,8 @@ export function makeGithub({
     tearNextSwap: false,   // the next swapLabel's add fails after its remove lands
     dropNextLabeled: false, // the next `labeled` webhook never arrives
     unknownLabels422: false, // applying an undefined label 422s, as GitHub does
+    refuseCreateTitled: null, // the next POST /issues with this exact title fails
+    unreadable: new Set(),    // issue numbers whose direct read answers 500
   };
 
   const RATE_LIMITED = () => ({
@@ -126,6 +128,7 @@ export function makeGithub({
     const c = { id: (state.commentSeq += 1), body, created_at: secondIso(nowMs()) };
     target.comments.push(c);
     if (target.updated_at !== undefined) touch(target);
+    announce({ kind: 'comment', issue: target.number, body, id: c.id, at: nowMs() });
     return c;
   }
 
@@ -135,6 +138,7 @@ export function makeGithub({
     }
     if (!i.labels.includes(name)) i.labels.push(name);
     touch(i);
+    announce({ kind: 'addLabel', issue: i.number, name, at: nowMs() });
     return { status: 200, json: i.labels.map((n) => ({ name: n })) };
   }
 
@@ -198,14 +202,35 @@ export function makeGithub({
     }
 
     if ((m = /^\/repos\/[^/]+\/[^/]+\/issues\/(\d+)$/.exec(bare))) {
+      // TRANSIENTLY UNREADABLE is not GONE, and the difference is the whole of
+      // F27: a 500 says nothing about whether the issue exists, so a caller that
+      // declined on it would be declining on a guess.
+      if (faults.unreadable.has(Number(m[1]))) return { status: 500, json: { message: 'the issue could not be read (injected)' } };
       const i = issue(m[1]);
       if (!i) return { status: 404, json: null };
-      if (method === 'PATCH') { Object.assign(i, body); touch(i); }
+      if (method === 'PATCH') {
+        Object.assign(i, body);
+        // `closed_at` is the SERVER's, never the caller's: the whole of the `due:`
+        // term's second half reads it, and an item closed with no stamp reads as
+        // one that ran and left no trace of when.
+        if (body.state === 'closed' && !i.closed_at) i.closed_at = nowIso();
+        if (body.state === 'open') i.closed_at = null;
+        touch(i);
+      }
       return { status: 200, json: i };
     }
 
     if (/^\/repos\/[^/]+\/[^/]+\/issues$/.test(bare)) {
-      if (method === 'POST') return { status: 201, json: newIssue(body) };
+      if (method === 'POST') {
+        // A refused CREATE, which is the one write failure that leaves nothing at
+        // all behind: no issue, no trace, and the next run of whatever asked for it
+        // simply asks again.
+        if (faults.refuseCreateTitled !== null && body?.title === faults.refuseCreateTitled) {
+          faults.refuseCreateTitled = null;
+          return { status: 500, json: { message: 'the issue could not be created (injected)' } };
+        }
+        return { status: 201, json: newIssue(body) };
+      }
       // The listing. Paging is read off the parsed query, never a `/page=/`
       // regex — that one matches `per_page` first, which is how a list read
       // silently returns page one forever.
@@ -316,6 +341,14 @@ export function makeGithub({
   // one and turns each into a run.
   const onDispatch = [];
 
+  // Whoever wants to hear about a WRITE, as it lands. The two writes the queue's
+  // whole protocol is made of — a comment and a label — announced with the instant
+  // they happened at, because the store keeps the label set and not the moment it
+  // changed. A scenario reading "when was this claimed" has the comment; one
+  // reading "when did this item close" would otherwise have to poll.
+  const onWriteFns = [];
+  const announce = (event) => { for (const fn of onWriteFns) fn(event); };
+
   const gh = (path, opts = {}) => route(path, opts);
 
   // --- the port -----------------------------------------------------------
@@ -423,6 +456,7 @@ export function makeGithub({
     dispatches: () => state.dispatches,
     calls: () => state.calls,
     onDispatch: (fn) => { onDispatch.push(fn); return harness; },
+    onWrite: (fn) => { onWriteFns.push(fn); return harness; },
     scriptGraphql: (fn) => { graphql = fn; return harness; },
 
     // Direct writes, for seeding a world and for `humans.mjs`.
@@ -460,6 +494,22 @@ export function makeGithub({
       return false;
     },
     unknownLabels422: (on = true) => { faults.unknownLabels422 = on; return harness; },
+    // The write half of a failing API: the next attempt to file this exact title is
+    // refused. Titled rather than "the next one" so a scenario can aim it at one
+    // task's item while the rest of a repo's queue goes on being filed.
+    refuseNextIssueCreateTitled: (title) => { faults.refuseCreateTitled = title; return harness; },
+    // A 500 on this issue's own read: it still exists and still lists, but a
+    // caller asking for it by number cannot learn anything about it.
+    makeUnreadable: (number, on = true) => {
+      if (on) faults.unreadable.add(Number(number)); else faults.unreadable.delete(Number(number));
+      return harness;
+    },
+    // The issue stops existing — a 404 everywhere, which is a FACT about the world
+    // rather than a fault in reaching it.
+    deleteIssue: (number) => {
+      state.issues = state.issues.filter((i) => i.number !== Number(number));
+      return harness;
+    },
     faults,
   };
   return harness;

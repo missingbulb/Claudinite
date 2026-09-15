@@ -1,5 +1,6 @@
 import { finding } from '../../../../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../../../../engine/checks/helpers/code-scanning.mjs';
+import { TEST_DIR } from '../../../../../vendoring/compute-vendor-set.mjs';
 
 // Phase 4 of #593: the rule that stops the class recurring by omission.
 //
@@ -74,7 +75,17 @@ const LOCAL_PACKS = '.claudinite/local/packs';
 // 4 commits would have fired (1 engine, 3 packs). `packs/**` is in because the surface
 // is structurally identical — Shepherd's fleet-issues-snapshot worker reaches four
 // modules under `shared/packs/`.
+//
+// A PACK'S `test/` DIRECTORY IS NOT THAT SURFACE: the vendor set drops it whole, so no
+// member holds any of it and nothing there is a name anybody can import. Excluded by
+// the vendor set's own constant rather than by a second spelling of it, and by the
+// DIRECTORY rather than by the `.test.mjs` suffix — which is the distinction
+// `compute-vendor-set.mjs` states for itself: "the name is the rule, so a fixture, a
+// helper or a golden file a test needs stops shipping with it instead of being one
+// `*.test.mjs` short of the exclusion". A harness beside its scenarios is exactly that
+// helper, and a suffix-only exclusion reads rewriting one as a fleet migration.
 const VENDORED_MODULE = /^(engine|packs)\//;
+const PACK_TEST_DIR = new RegExp(`^packs/[^/]+/${TEST_DIR}/`);
 
 // The names a module exports, by every form the corpus writes: a declaration
 // (`export const|let|var|function|async function|class NAME`) and an export list
@@ -107,7 +118,7 @@ export function exportedNames(text) {
 // takes and the one a diff-line rule cannot see. A base that cannot be read is a file
 // this change ADDED, and an addition removes nothing.
 export function removedExports(file, head, base) {
-  if (!VENDORED_MODULE.test(file) || MIGRATION_RECORD.test(file)) return [];
+  if (!VENDORED_MODULE.test(file) || MIGRATION_RECORD.test(file) || PACK_TEST_DIR.test(file)) return [];
   if (typeof base !== 'string') return [];
   const now = exportedNames(head);
   return [...exportedNames(base)].filter((name) => !now.has(name));

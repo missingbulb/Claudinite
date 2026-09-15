@@ -18,7 +18,7 @@
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { isSuspended, liveSuspendReader, suspendedNotice, SUSPEND_ALL_VAR } from '../world/hold.mjs';
-import { HEARTBEAT_MS, heartbeatComment, withHeartbeat } from '../items/heartbeat.mjs';
+import { HEARTBEAT_MS, heartbeatComment, withHeartbeat, realTimers } from '../items/heartbeat.mjs';
 import { renderTaskExec, startRunCost } from '../items/run-record.mjs';
 import { evaluatePrecondition } from '../contract/precondition.mjs';
 import { isScheduledTask } from '../contract/task-contract.mjs';
@@ -162,7 +162,7 @@ export async function runExecutor({
   gh, repo, root, config, tasks, executorId, runUrl = null,
   now = () => clockNow(), random = Math.random, heartbeatMs = HEARTBEAT_MS,
   collectSignalsFor, runTaskCodeWork, invokeAgent, heldNow = null, log = console.log,
-  resolveTargetFor = null, runCost = null,
+  resolveTargetFor = null, runCost = null, timers = realTimers,
 }) {
   const api = await import('../world/github.mjs');
   const { listOpenWorkItems } = await import('../items/read.mjs');
@@ -243,7 +243,7 @@ export async function runExecutor({
     const outcome = await executeItem({
       api, gh, repo, root, config, schedule, byId, pathTo, item: candidate, executorId,
       claim: winner, now, heartbeatMs, collectSignalsFor, runTaskCodeWork, invokeAgent, log,
-      resolveTargetOf, cost: runCost, phase,
+      resolveTargetOf, cost: runCost, phase, timers,
     });
     done.push({ issue: candidate.number, outcome });
 
@@ -257,6 +257,15 @@ export async function runExecutor({
     }
   }
   return done;
+}
+
+// Whether `claim` is still the item's live claim — the earliest of THIS episode,
+// by the same arbiter the lease itself trusts. False where a reclaim's episode
+// marker struck it, or where another executor now holds the item.
+async function holdsClaim(api, gh, repo, item, claim) {
+  if (!claim) return true;
+  const winner = claimWinner(await api.listComments(gh, repo, item.number));
+  return !!winner && winner.id === claim.id;
 }
 
 // The claim id of each live item, so the post-claim verify can compare episodes.
@@ -275,7 +284,7 @@ async function withClaimIds(api, gh, repo, items, selfNumber) {
 async function executeItem({
   api, gh, repo, root, config, schedule, byId, pathTo = () => null, item, executorId, claim,
   now, heartbeatMs, collectSignalsFor, runTaskCodeWork, invokeAgent, log, resolveTargetOf,
-  cost = null, phase = () => () => {},
+  cost = null, phase = () => () => {}, timers,
 }) {
   const parsed = parseWorkItemTitle(item.title);
   const { taskPath } = parseWorkItemBody(item.body);
@@ -422,11 +431,26 @@ async function executeItem({
     const endCodeWork = phase('code-work');
     const result = await withHeartbeat(() => runTaskCodeWork(task, { item, context, target }), {
       intervalMs: heartbeatMs,
+      timers,
       log,
       beat: (minutes) => api.comment(gh, repo, item.number,
         heartbeatComment({ executor: executorId, at: nowIso(), minutes })),
     });
     endCodeWork();
+    // THE LEASE, RE-VERIFIED ACROSS THE ONE PHASE THAT CAN OUTLIVE IT (F17). The
+    // work step is the only thing a run does that may legally take longer than the
+    // executing leash, so it is the only place this run can have been reclaimed
+    // while it was still alive: every other write here happens within seconds of
+    // the claim. A run whose beats stopped reaching GitHub — the beat is fail-soft
+    // by design, and a partitioned runner keeps working — is reclaimed, re-picked,
+    // and would then converge the item out from under the executor now holding it.
+    // Re-entrant code-work makes the second RUN safe; it says nothing about a
+    // second CONVERGE. So the stale runner abandons silently: the item is not its
+    // to write to, and the live holder never notices.
+    if (!(await holdsClaim(api, gh, repo, item, claim))) {
+      log(`- #${item.number} ${id}: reclaimed while this run's work step ran — another executor holds it now, leaving it to them`);
+      return 'reclaimed';
+    }
     if (!result.ok) {
       // A RUN THAT FAILED PARKS `failure`, whatever the worker asked for (#1452).
       // The marker used to route the park, so a worker naming `action` put a failed
