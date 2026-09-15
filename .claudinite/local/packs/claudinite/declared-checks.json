@@ -399,5 +399,21 @@
         "fix": "write it with Write, or Edit it after a read \u2014 those are the calls the guard sees"
       }
     ]
+  },
+  {
+    "id": "check-sweep-read-blocking-only",
+    "severity": "advisory",
+    "since": "2026-09-15",
+    "scope": "action",
+    "failureMessage": "a check inside its two-week since grace reports ADVISORY, so a BLOCKING-only filter reads your own new check as silent and the violations it found as none",
+    "guardToolCalls": [
+      {
+        "tool": "Bash",
+        "inputField": "command",
+        "match": "/check_the_(?:world|work)\\.mjs[^\\n]*[|;\\n][^\\n]*\\b(?:grep|egrep|rg)\\b[^\\n]*BLOCKING/",
+        "what": "a sweep read through a BLOCKING-only filter: \"{match}\"",
+        "fix": "read the whole output \u2014 the advisory lines carry every check still inside its since grace, your own new one among them"
+      }
+    ]
   }
 ]

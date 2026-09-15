@@ -187,6 +187,10 @@ Below are rules on how to work on this repo.
   a deleted file: `removedLines` returns nothing for a path git no longer tracks, so removing one
   export fires and deleting the whole module is silent. Guard the deletion separately. (75)
 
+- **Wanting a boundary enforced in test files** — never a `forbidReferences` barrier: the
+  reference scanner drops every `*.test.mjs` before it starts, so the rule reads as passing over a
+  surface it never scanned. Express it as a line-match check, which does see tests. (89)
+
 - **Changing a per-call hook** (`engine/hooks/*-judge.mjs`, the runner) — you are a guest in the
   harness: a judge returns a verdict and `hook-runner.mjs` alone exits, 0 or a deliberate 2;
   measure before and after with `node dev/tools/hook-latency.mjs` and record the numbers in the
@@ -522,6 +526,10 @@ Below are rules on how to work on this repo.
   re-append your one entry rather than hand-merging the markers, since the collision is a
   neighbouring entry another run appended; under `rebase` that base side is `--ours`, not
   `--theirs`. (84)
+
+- **Rebasing a branch that moved files onto a `main` that edited them** — git raises the
+  conflict at the old path only, so resolving it in favour of the move drops `main`'s hunks
+  silently; audit every line `main` added under the moved tree for survival before pushing. (90)
 
 - **After a PR lands by squash-merge** — `git remote prune origin` before touching that branch
   again. GitHub deletes the head ref here, so a stale tracking ref makes the next push reject and
