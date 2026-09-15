@@ -61,6 +61,7 @@ import aimed anywhere else is one this repository cannot repair when the layout 
 | `task-contract.mjs` | task-declaration validation, and the signal union either precondition form resolves to | every pack with tasks, in its own tests |
 | `preconditions.mjs` | the precondition vocabulary, the expression grammar, and the one seam that turns a task plus its signals into a verdict — the call the executor makes at pick | every pack with tasks, in its own tests |
 | `merge-policy.mjs` | the auto-merge policy verdict (`automerge`, the `Merge:` field, the arming trailer) and the `merge-rules.json` compiler | any pack declaring policies or merge rules, in its own tests |
+| `task-discovery.mjs` | where a task's declaration lives on disk and how it is read — kept apart from `task-declaration.mjs`, which reaches no Node built-in | a member's own worker needing its task's declared fields at run time |
 | `usage-format.mjs` | the usage aggregate's codec | claudinite-fleet-sheepdog's fleet-wide aggregator |
 | `verification.mjs` | what a production-verification spec looks like, and the re-arm cadence a not-yet-live run reschedules on | basics, whose skill writes the spec this pack's probes read |
 | `dormancy.mjs` | whether a repo's scheduler is dormant, by the same test the scheduler stops itself with | claudinite-dashboard, claudinite-fleet-sheepdog |
