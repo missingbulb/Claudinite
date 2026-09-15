@@ -566,7 +566,17 @@ export function loadConfig(root) {
 // a test that builds a context for one rule pays for the eight lists that rule never
 // looks at. The memo keeps a re-read free, so a rule reading `ctx.files` twice still
 // spawns `check-attr` once — exactly what the eager field did.
-const once = (fn) => { let v, done = false; return () => (done ? v : (done = true, v = fn())); };
+// Derive once, on first read. The flag is set AFTER the call, not before: a
+// derivation that throws must throw again on the next read rather than be
+// remembered as `undefined`, which is what the eager form did — it threw during
+// buildContext and the run stopped there.
+const once = (fn) => {
+  let value, derived = false;
+  return () => {
+    if (!derived) { value = fn(); derived = true; }
+    return value;
+  };
+};
 
 // Replace a lazy accessor with a plain value assigned over it. ESM is strict, so a
 // getter with no setter turns `ctx.files = …` into a TypeError. Nothing in this repo
