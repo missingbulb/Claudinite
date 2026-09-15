@@ -7,6 +7,23 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60907.3 | 2026-09-07 | claudinite-tasks: PRINCIPLES.md as the spec, the two-way claim guard, seven design docs deleted (#1887) |
+| 60907.2 | 2026-09-07 | A task that files an issue says which task filed it (#1857) |
+| 60907.1 | 2026-09-07 | Move dormancy out of engine settings onto the scheduler's own pack (#1851) |
+| 60906.18 | 2026-09-06 | Retire the tidy-repo pack; absorb improve-comments into basics (#1842) |
+| 60906.17 | 2026-09-06 | test-changes covers a deleted test file (#1841) |
+| 60906.16 | 2026-09-06 | The janitor is a fallback, and a rejected terminal closes its issue (#1836) |
+| 60906.15 | 2026-09-06 | Retire the task.mjs module form of a task declaration (#1795) |
+| 60906.14 | 2026-09-06 | Hold the executor to its tasks' secrets, not the repo's endpoint tokens (#1832) |
+| 60906.13 | 2026-09-06 | Delete the top-level updates/ shim tree — the claudinite-tasks migration's last link (#1819) |
+| 60906.12 | 2026-09-06 | Merge pull request #1818 from missingbulb/claudinite/engine/implement-request/2026-09-06-7diqmz |
+| 60906.11 | 2026-09-06 | Retire the per-project-scheduling MIGRATION.md into its tracking issue (#1811) |
+| 60906.10 | 2026-09-06 | Move task design docs into packs/claudinite-tasks/docs/, carved out of the vendor set (#1813) |
+| 60906.9 | 2026-09-06 | Scheduling is the task's own precondition; the scheduler keeps no state (#1733) |
+| 60906.8 | 2026-09-06 | Check that the executor workflow passes every declared secret (#1798) |
+| 60906.7 | 2026-09-06 | Say the hold's unreadable variable once, and keep verifications inside this repo (#1793) |
+| 60906.6 | 2026-09-06 | Janitor rule I: close a failure park nobody has answered in ten days (#1786) |
+| 60906.5 | 2026-09-06 | Claudinite tidy: improve comments (#1778) |
 | 60906.4 | 2026-09-06 | Keep Claudinite's own bookkeeping inside .claudinite/: mount attributes, no README row (#1754) |
 | 60906.3 | 2026-09-06 | Group the tidy sweeps' fan-out, and keep the run bound covering it (#1740) |
 | 60906.2 | 2026-09-06 | Judge a beating agent on its progress, not its punctuality (#1756) |
