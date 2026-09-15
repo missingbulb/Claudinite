@@ -26,7 +26,7 @@ _Provenance: distilled from **The JWT Handbook** (Sebastián E. Peyrott, Auth0) 
 ## Upstream
 
 Where JWT practice publishes the changes that can date this pack's guidance, and the state the
-content has been reconciled against. The canon's `upstream-watch` reads this section; a member
+content has been reconciled against. The canon's `revalidate-from-source` reads this section; a member
 repo reads nothing here.
 
 - **RFC 8725 — JWT Best Current Practices** — https://www.rfc-editor.org/rfc/rfc8725

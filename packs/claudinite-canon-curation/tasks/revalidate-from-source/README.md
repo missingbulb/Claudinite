@@ -1,10 +1,10 @@
-# upstream-watch
+# revalidate-from-source
 
 ## Why the declaration reads as it does
 
 Carried over from the declaration's comments when it became `task.json`.
 
-upstream-watch — the shelf's own currency. A pack teaches a technology, and
+revalidate-from-source — the shelf's own currency. A pack teaches a technology, and
 the technology moves: an advisory publishes, a best current practice is
 revised, an API the skills tell people to call is deprecated. None of that
 touches this repo's history, so nothing repo-side can signal it — the watch is
@@ -26,3 +26,9 @@ the trigger, and a run whose sources all moved nothing says so.
 Canon content every member reads, and the reconciliation anchors that decide
 what the NEXT run re-reads — both owner-approved, never auto-merged. A clean
 month is still a PR: advancing the anchors is what windows the next run.
+
+A month whose PR nobody reviewed is not a month to stack a second PR beside.
+The run recomputes the whole answer from the sources and the anchors on the
+base, so last month's unreviewed PR holds nothing this month's does not, and
+`supersede_existing_pr` retires it once the successor exists — or lands it
+first, where it had concluded green and was simply never merged.

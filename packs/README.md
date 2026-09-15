@@ -116,7 +116,7 @@ A manifest field still **overrides** the resolution where a pack genuinely diffe
 
 A pack's `README.md` may carry an **`## Upstream`** section: one line per source naming what to
 watch, where it publishes, and the state the pack's content was last reconciled against. It is read
-by one thing, [claudinite-canon-curation](claudinite-canon-curation/README.md)'s `upstream-watch`,
+by one thing, [claudinite-canon-curation](claudinite-canon-curation/README.md)'s `revalidate-from-source`,
 which reconciles the pack against those sources monthly and advances the anchors. Presence of the
 section is the whole opt-in, and its absence is a legitimate answer: most packs teach something that
 does not move on anyone else's clock.

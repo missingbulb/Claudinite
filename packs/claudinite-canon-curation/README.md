@@ -50,7 +50,7 @@ why.
 |---|---|---|
 | `growth-promote` | a participating member changed its local packs in the window | a PR against the canon's default branch |
 | `growth-discover-packs` | weekly, over every covered member | a PR against the canon's default branch, plus an adopt issue in each member that evidenced the pack |
-| `upstream-watch` | monthly, over the packs that declared an upstream source | a PR against the canon's default branch |
+| `revalidate-from-source` | monthly, over the packs that declared an upstream source | a PR against the canon's default branch, superseding the month before's if it is still open |
 | `pack-version-bump` | daily when commits landed under `packs/`, and on every push to the canon's default branch (its workflow) | a commit straight onto the canon's default branch |
 | `pack-version-history` | weekly, when commits landed under `packs/` | a self-landing PR touching only `packs/*/VERSIONS.md` |
 
@@ -129,7 +129,7 @@ scanning. The [barrier guide](../basics/barriers.md) documents the edge vocabula
   stage that authors a pack at all — a member's local packs are what adoption seeded, and
   growth-extract writes rules into those. (Promote's stub-minting is narrower still: one lesson's
   technology, minted as a seed; this task authors from the whole fleet's usage.)
-- **[tasks/upstream-watch/](tasks/upstream-watch/task.md)** — the monthly reconciliation of the
+- **[tasks/revalidate-from-source/](tasks/revalidate-from-source/task.md)** — the monthly reconciliation of the
   shelf against the technologies it teaches: read what each declared source has published since its
   anchor, correct the packs that were dated by it, and advance the anchors. **Keeping a pack current
   is the canon's duty, not the pack's** — a pack's tasks are work a member repo runs, so a pack
