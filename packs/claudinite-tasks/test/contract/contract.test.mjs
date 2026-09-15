@@ -130,6 +130,31 @@ test('validateTaskDeclaration validates code_work + its required timeout and con
     validateTaskDeclaration({ ...none, code_work: 'node ../evil.mjs', code_work_timeout: 120 })[0].what,
     /reaches outside the task directory/,
   );
+  // Present but unusable — the case between "absent" (the field is optional, so
+  // nothing fires) and "valid". A declaration reaches this shape by having the key
+  // edited to nothing, which is how a field empties in practice.
+  for (const empty of ['', '   ']) {
+    assert.match(
+      validateTaskDeclaration({ ...none, code_work: empty, code_work_timeout: 120 })[0].what,
+      /"code_work" is present but not a non-empty string/,
+      `code_work: ${JSON.stringify(empty)} is refused`,
+    );
+  }
+});
+
+// `model_from_request` is a one-value field: declaring it at all means "take the
+// model from the request", so every spelling other than `true` — including the
+// `false` an author writes meaning to switch it off — is an authoring error rather
+// than the off state. Nothing forced this rejection before.
+test('validateTaskDeclaration: model_from_request accepts only a literal true', () => {
+  assert.deepEqual(validateTaskDeclaration({ ...validTask, model_from_request: true }), []);
+  for (const wrong of [false, 'true', 1, null]) {
+    assert.match(
+      validateTaskDeclaration({ ...validTask, model_from_request: wrong })[0].what,
+      /"model_from_request" .* is not `true`/,
+      `model_from_request: ${JSON.stringify(wrong)} is refused`,
+    );
+  }
 });
 
 test('validateTaskDeclaration accepts code_work_required_secrets as a plain list of names (DESIGN §9)', () => {

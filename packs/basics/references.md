@@ -84,6 +84,25 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   schedules whole files, so no `--test-concurrency` reaches inside one; running that file's
   cases concurrently took it to 22.1s and the suite to 58s. Retire the rule if the runners in
   use schedule at test granularity across files rather than at file granularity.
+- **(writing-tests-11)** *Pragmatic Unit Testing*'s Right-BICEP, whose **E** is "can you force
+  error conditions to happen", and its CORRECT boundary list (Existence, Conformance). Measured
+  rather than assumed: instrumenting `task-contract.mjs` and `pack-registry.mjs` to record which
+  rejection branches fire across all 3,666 tests gave 40 rejections, 32 fired, 8 never — the same
+  fifth in each module independently. Of `task-contract`'s four, one (`code_work` present but
+  empty) was a real gap whose own test already covered absent, valid, absolute and traversal;
+  one (`model_from_request` not `true`) likewise; and one (`a "fresh_pr" task declares no
+  "automerge"`) proved **unreachable**, since `validateTaskDeclaration` normalizes first and
+  normalization always fills the field — which is why the rule says a never-forced branch is
+  worth finding either way. `pack-registry`'s four were all present-but-unusable: an unreadable
+  skills directory, a check module that throws on import. Retire the rule if branch coverage
+  becomes part of the suite's own reporting, which would surface these without an audit.
+- **(writing-tests-12)** Found by mutation: changing `time.getTime() <= nowMs` to `<` in
+  `calendar.mjs`'s `anchorInstant` — three comparisons, covering the daily, weekly and monthly
+  cadence — survived all 3,666 tests. The two mutants differ on exactly one input, the anchor
+  instant itself, and no test stood there. It is not an exotic input here: the scheduler runs on
+  an hourly cron, so a daily task anchored at 04:00 is evaluated at 04:00:00.000 on the ordinary
+  path, and `<` would have made every such task wait a further day. Retire if the suite gains a
+  generator that samples boundaries automatically.
 - **(check:declared-check-spec-keys)** The engine's declaration load drops a key it cannot place
   instead of throwing, because refusing it wedges a member holding an older engine (#1400); this
   check is where the typo half of that trade is caught. Retire it only if the load can refuse
