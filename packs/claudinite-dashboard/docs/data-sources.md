@@ -112,8 +112,8 @@ from *unpriced* (a rate missing) and from 0.
   `issueLeadHours = merged_at − issue.created_at` for the issue named by the first
   `Closes|Fixes|Resolves #n` line in the body — one narrow issue read per merged PR that
   names one; `null` where none does. `sessionToMergeHours = merged_at − first timestamp` of
-  the capture file whose name carries that issue number (what `merges` already counts);
-  `null` where no capture names it.
+  the capture file whose name carries that PR's number, or that issue's for a capture keyed
+  to an issue (what `merges` already counts); `null` where no capture names either.
 - **Dedup and watermark.** Append-once past `prsFoldedThrough`, a fourth watermark beside
   the three the file carries, bounded on `merged_at` for the same reason the queue read is
   bounded on `closed_at`: a merge is settled and never moves. The first read looks back the

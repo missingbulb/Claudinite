@@ -94,7 +94,7 @@ test('bootstrap converges a fresh repo in one invocation', () => {
 
   // The adoption session starts with no Claudinite loaded, so no SessionEnd hook
   // captures it — the report must tell the session to run the capture itself.
-  assert.ok(out.includes('capture-log.mjs --issue'), `report names the conversation capture in:\n${out}`);
+  assert.ok(out.includes('capture-log.mjs --pr'), `report names the conversation capture in:\n${out}`);
 });
 
 test('bootstrap re-run is idempotent and records late answers', () => {

@@ -46,8 +46,8 @@ engineeringPractices judgment core.
 | working-discipline: fix warnings, don't tolerate | per-project CI config (fail on warnings); rule text leaves baseline |
 | working-discipline: never suppress a warning as the quick path | **check** `basics/warning-suppression`: a `eslint-disable`/`@ts-ignore`/`noqa`-style marker with no reason at the site (inline or in the comment immediately above) → finding; a self-documented suppression passes |
 | working-discipline: approval applies only backward | stays |
-| task-lifecycle: issue before work; commits reference it | **check** `basics/task-lifecycle`: commits since merge-base carry `#N`; the issue exists |
-| task-lifecycle: update issue status as work progresses | **check** *(adv)*, partial — full flow lives in the merge skill |
+| task-lifecycle: the PR tracks a change worked on now; an issue only for work not starting now | stays (2026-09-13; the `task-lifecycle` check was retired with the issue-first rule) |
+| task-lifecycle: update issue status as work progresses, when the change has one | stays — flow lives in the merge skill |
 | merge-to-main: the recipe (~4 calls) | **skill** (trigger stays the owner's "LGTM" preference) |
 | merge-to-main: squash as the method | **setting** — GitHub "allow squash merging" only — verified by **check** `basics/squash-merge-history`: the change introduces no merge commits (scoped to the work — its own commits since the merge-base — not the repo's whole history), plus a CI-surface config check later |
 | merge-to-main: gate on CI only if the repo has it | folds into the skill |

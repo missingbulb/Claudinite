@@ -384,6 +384,16 @@ const fileOf = (date, issue, sessionId, counts = {}) => ({
   counts: { userMessages: 0, userCommands: 0, skillLoads: {}, checks: {}, checkFindings: {}, ...counts },
 });
 
+test('foldDays: a PR-keyed capture is a merge, and its session is (unresolved) like an issue-keyed one', () => {
+  const days = foldDays([
+    { ...fileOf('2026-07-28', null, 's9', { userMessages: 3 }), pr: 1583 },
+    fileOf('2026-07-28', 0, 's9'),  // the session-end tail
+  ]);
+  assert.equal(days['2026-07-28'].merges, 1);
+  assert.equal(days['2026-07-28'].sessions, 1);
+  assert.deepEqual(days['2026-07-28'].taskCost, { '(unresolved)': { sessions: 1, userMessages: 3 } });
+});
+
 test('foldDays: captures, merges and DISTINCT sessions per day', () => {
   const days = foldDays([
     fileOf('2026-07-28', 12, 's1', { userMessages: 4, skillLoads: { a: 1 } }),

@@ -15,21 +15,24 @@ test('parseLogName agrees with the capture step that writes the name', () => {
   // this worker parses them, and neither imports the other (the fold must stay
   // runnable from its own task dir). A format change on either side would otherwise
   // make the fold silently see zero files and report a fleet-wide zero as fact.
-  for (const [issue, session] of [[123, 'abc-def'], [0, 'sess-1'], [7, 'a-b-c-d-e']]) {
-    const name = logFilename('2026-07-28T09:40:00.000Z', issue, session);
+  for (const [ref, session] of [[{ issue: 123 }, 'abc-def'], [{ issue: 0 }, 'sess-1'], [{ pr: 1583 }, 'a-b-c-d-e']]) {
+    const name = logFilename('2026-07-28T09:40:00.000Z', ref, session);
     const mine = parseLogName(name);
     const theirs = parseLogFilename(name);
     assert.ok(mine, `the fold must parse ${name}`);
     assert.equal(mine.issue, theirs.issue);
+    assert.equal(mine.pr, theirs.pr);
     assert.equal(mine.sessionId, theirs.sessionId);
     assert.equal(mine.date, theirs.capturedAt.slice(0, 10));
   }
 });
 
-test('parseLogName takes the collision suffix and the issue-0 form, and rejects everything else', () => {
+test('parseLogName takes the collision suffix, the issue-0 form and the PR key, and rejects everything else', () => {
   assert.deepEqual(parseLogName('2026-07-28T0940Z-2--issue-9--s1.jsonl'),
-    { date: '2026-07-28', stamp: '2026-07-28T09:40:00Z', issue: 9, sessionId: 's1' });
+    { date: '2026-07-28', stamp: '2026-07-28T09:40:00Z', issue: 9, pr: null, sessionId: 's1' });
   assert.equal(parseLogName('2026-07-28T0940Z--issue-0--s1.jsonl').issue, 0);
+  assert.deepEqual(parseLogName('2026-07-28T0940Z--pr-1583--s1.jsonl'),
+    { date: '2026-07-28', stamp: '2026-07-28T09:40:00Z', issue: null, pr: 1583, sessionId: 's1' });
   // The branch also carries its README; anything unparsable is simply not a capture.
   assert.equal(parseLogName('README.md'), null);
   assert.equal(parseLogName('notes.jsonl'), null);

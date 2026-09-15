@@ -9,7 +9,6 @@ import linkLabels from '../worldRules/markdown-link-labels.mjs';
 import filePlacement from '../worldRules/file-placement.mjs';
 import sharedConstants from '../worldRules/shared-constants.mjs';
 
-const taskLifecycle = declaredCheck('packs/basics', 'task-lifecycle');
 const squashMergeHistory = declaredCheck('packs/basics', 'squash-merge-history');
 const claudeMdLength = declaredCheck('packs/basics', 'claude-md-length');
 const warningSuppression = declaredCheck('packs/basics', 'warning-suppression');
@@ -158,25 +157,6 @@ test('markdown-link-labels: flags a path-like label that contradicts the target'
     assert.equal(findings.length, 1);
     assert.equal(run(linkLabels, good).length, 0);
   } finally { cleanup(bad); cleanup(good); }
-});
-
-test('task-lifecycle: flags a branch with no issue reference, passes a referencing one', () => {
-  const bad = makeRepo({ changed: { 'f.txt': 'x\n' }, commitMsg: 'no reference here' });
-  const good = makeRepo({ changed: { 'f.txt': 'x\n' }, commitMsg: 'work Refs #12' });
-  try {
-    const findings = run(taskLifecycle, bad);
-    assert.equal(findings.length, 1);
-    assert.match(findings[0].what, /issue/i);
-    assert.equal(run(taskLifecycle, good).length, 0);
-  } finally { cleanup(bad); cleanup(good); }
-});
-
-test('task-lifecycle: silent on main itself', () => {
-  const root = makeRepo({ changed: { 'f.txt': 'x\n' }, commitMsg: 'no reference here' });
-  try {
-    git(root, 'checkout', '-q', 'main');
-    assert.equal(run(taskLifecycle, root).length, 0);
-  } finally { cleanup(root); }
 });
 
 test('warning-suppression: flags a newly added suppression marker', () => {

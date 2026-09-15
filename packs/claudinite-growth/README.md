@@ -63,15 +63,18 @@ GitHub MCP tools.
 
 1. **Capture — a step in the merge-to-main skill** (in-session, where the transcript lives).
    Right after a merge lands:
-   `node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --issue <n>`
-   (in the canon repo itself: `node packs/claudinite-growth/capture-log.mjs --issue <n>`).
+   `node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --pr <n>`
+   (in the canon repo itself: `node packs/claudinite-growth/capture-log.mjs --pr <n>`), `<n>` the
+   pull request the merge landed.
    Deterministic, seconds; it bundles the session transcript (sidechains inline, timestamp
    order), **scrubs enumeration-first** (every value the environment holds — `process.env`
    minus a short named allowlist of structural values, plus known credential stores — is
    redacted wherever it appears, with credential-shape patterns as the backstop; a secret the
    session itself transformed is beyond any static scrub, and push protection is the last
    net), and pushes one file per **capture event** onto the orphan **`conversation-logs`**
-   branch: `<stamp>--issue-<n>--<session>.jsonl`, commits marked `[skip ci]`.
+   branch: `<stamp>--pr-<n>--<session>.jsonl`, commits marked `[skip ci]`. A capture no merge
+   produced is keyed to an issue instead, `<stamp>--issue-<n>--<session>.jsonl`; every reader of
+   the branch takes both spellings.
    **Delta-aware, keyed on the session id:** every capture pushes only the entries after this
    session's previous capture, whatever event produced it, so any two events chain into
    disjoint files and a zero delta pushes nothing at all. Double-writing is therefore safe by
@@ -81,14 +84,12 @@ GitHub MCP tools.
    session clones and retention keeps them bounded.
 1. **Capture — again, when the session ends** ([session-end.mjs](session-end.mjs), invoked by the
    engine's SessionEnd hook runner for every active pack that ships one). Same capture, with
-   `--issue 0`: **`0` means "no associated issue"**, and the filename shape stays byte-identical
-   on purpose — the retention prune, the `conversationLogs` signal and the extract's filename
-   parse all already accept it, whereas a *new* shape would be invisible to the prune and become
-   immortal on the branch. This event is what captures the sessions that never merge (a review, an
-   investigation, a session that ended in a question) and the post-merge **tail** of the ones that
-   do. **Best effort:** a container reclaimed by timeout never fires it, so nothing depends on it
+   `--issue 0`: **`0` means "no associated issue"**, in the same filename shape the retention
+   prune, the `conversationLogs` signal and the extract's filename parse read. This event is what
+   captures the sessions that never merge (a review, an investigation, a session that ended in a
+   question) and the post-merge **tail** of the ones that do. **Best effort:** a container reclaimed by timeout never fires it, so nothing depends on it
    having run — every firing enriches the record, every miss leaves exactly the merge-only
-   behaviour. An `issue-0` log has no issue for the extract to post its exchange
+   behaviour. An `issue-0` log has no PR or issue for the extract to post its exchange
    summary on; nothing else about its lifecycle differs.
    **Unattended sessions capture through the same step, deliberately not through the hook.** A
    scheduled task's executor session ends by having its container reclaimed, which is exactly
@@ -97,11 +98,11 @@ GitHub MCP tools.
    place of `0`. Those logs therefore file under the task that ran (the item's title
    names `pack/task`), and the work no human watched becomes as countable as the work one did.
 2. **The pass — the conversation half of [growth-extract](tasks/growth-extract/task.md)**
-   (precondition: a substantive merge; local git on the repo's working tree, MCP only for the issue comment). It
+   (precondition: a substantive merge; local git on the repo's working tree, MCP only for the provenance comment). It
    applies the [extract-from-conversations](skills/extract-from-conversations/SKILL.md) skill (the
    friction signals and the measured efficiency analysis, computable from the log's timestamps and
    token usage) over [extracting-lessons.md](extracting-lessons.md)'s shared bar, routes keepers into
-   the member's local packs, and posts on the worked issue, for each rule that landed, a
+   the member's local packs, and posts on the worked PR or issue, for each rule that landed, a
    **200-word-max** summary of the slice of conversation that caused it — the dialogue itself is
    never pasted there, it is far too verbose for an issue —
    **extraction is the only path to permanence**: a log that yields no rule gets no comment,

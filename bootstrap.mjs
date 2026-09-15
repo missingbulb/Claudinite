@@ -240,5 +240,5 @@ if (handover.length) {
     if (h.done) console.log(`        done when: ${h.done}`);
   }
 }
-console.log(`\nNEXT: ${pending.length ? 'interview → re-run → ' : ''}create the executor routine and write its endpoint into taskScheduler (bootstrap.md Part 6 — THIS session's work wherever the trigger tool is present, and before the commit so it lands in one PR), then commit (reference the adoption issue — create it BEFORE committing), push, PR. Once it lands: capture this session — Claudinite was not loaded when it started, so no SessionEnd hook will — with \`node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --issue <adoption-issue>\`, and file the HANDOVER issue.`);
+console.log(`\nNEXT: ${pending.length ? 'interview → re-run → ' : ''}create the executor routine and write its endpoint into taskScheduler (bootstrap.md Part 6 — THIS session's work wherever the trigger tool is present, and before the commit so it lands in one PR), then commit, push, PR. Once it lands: capture this session — Claudinite was not loaded when it started, so no SessionEnd hook will — with \`node .claudinite/shared/packs/claudinite-growth/capture-log.mjs --pr <adoption-pr>\`, and file the HANDOVER issue.`);
 if (!selftest.ok) process.exit(1);

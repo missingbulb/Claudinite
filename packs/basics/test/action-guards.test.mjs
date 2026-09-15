@@ -50,11 +50,7 @@ test('pipe-tail-hides-exit and pkill-pattern-self-match', () => {
   ]), ['pkill -f with the unbracketed pattern "http.server"']);
 });
 
-test('pull-request-without-closing-line and github-list-without-fields', () => {
-  assert.deepEqual(judge('pull-request-without-closing-line', [
-    ['mcp__github__create_pull_request', { title: 't', body: 'Refs #12\n' }],
-    ['mcp__github__create_pull_request', { title: 't', body: 'Closes #12\nRefs #1\n' }],
-  ]), ['a pull request whose body carries no "Closes #<issue>" line of its own']);
+test('github-list-without-fields', () => {
   assert.deepEqual(judge('github-list-without-fields', [
     ['mcp__github__list_issues', { owner: 'o', repo: 'r' }],
     ['mcp__github__search_issues', { query: 'q', fields: ['number'] }],
