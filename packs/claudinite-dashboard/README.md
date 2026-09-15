@@ -31,8 +31,9 @@ because someone declared it. Adopting it wires the GitHub Pages deploy.
 { "packs": ["claudinite-dashboard"] }
 ```
 
-That is the whole of it for a member: the dashboard covers this repo, signs in with a
-pasted token, and publishes to Pages. The
+That is the whole of it for a member: the dashboard covers this repo and publishes to
+Pages. It also needs sign-in turned on before anyone can read it — the checklist is
+["Turning sign-in on"](#turning-sign-in-on) below. The
 [publish-pages task](tasks/publish-pages/README.md) builds the site whenever the
 page's sources move and fires
 [the deploy workflow](stubs/workflows/claudinite-dashboard-pages.yml) adoption seeds
@@ -482,12 +483,18 @@ as the viewer, so without a credential there is nothing to show and — at 60 re
 hour per IP — no budget worth showing it with. A `?repo=owner/name` deep link survives
 the gate; signing in lands on the view it named.
 
-Two ways to get one, offered on that screen:
+One way to get one: **Sign in with GitHub** — a button, no typing, which needs the
+deployment to have configured `clientId` and `exchangeUrl`. There is no second route.
+A deployment that has not configured them cannot sign anybody in, and the gate says so,
+naming the two variables its owner sets: it is not finished being set up. The paste box
+that used to stand there asked every viewer to go and mint a PAT, which is worse than
+the thing sign-in replaced, and it was what a deployment shipped with by default.
 
-- **Sign in with GitHub** — a button, no typing. Available when the deployment
-  configures `clientId` and `exchangeUrl`.
-- **A pasted token** — the fallback, and the local-development path, offered only when
-  sign-in is not configured. Needs read-only **Contents**, **Issues** and **Actions**.
+**Locally**, `tooling/serve.mjs` takes the developer's own token out of the environment
+(`DASHBOARD_DEV_TOKEN`, else `GITHUB_TOKEN`/`GH_TOKEN`) and hands it to the page in the
+config it synthesizes — a checkout has no registered app behind it and no business
+registering one. The page keeps it for the tab only, and nothing published can carry
+one: the site build writes a fixed list of config keys and `devToken` is not among them.
 
 The credential dies with the tab unless the viewer ticks **Remember me**, which keeps it
 in this browser (`localStorage`) until they sign out. Signing out drops the cached data
@@ -509,9 +516,8 @@ The reason sign-in is not a nicety. GitHub's limits, per hour:
 | a GitHub App *installation* token | 5,000 minimum, up to 12,500 by size |
 | an Actions `GITHUB_TOKEN` | 1,000, per repository |
 
-A twelve-member sweep costs around 85 requests cold. So an unconfigured deployment —
-no `clientId`, nobody pasting a token — exceeds the whole anonymous hour on its
-**first load**, and 5,000/hour is not an optimisation over that, it is 83×. There is
+A twelve-member sweep costs around 85 requests cold — so 5,000/hour is not an
+optimisation over the anonymous 60, it is 83×. There is
 no higher tier available to a page that runs as its viewer: an installation token
 would raise the ceiling, but only by putting a shared credential behind a backend,
 which would show every viewer everything that app can see. That is a different
@@ -536,9 +542,10 @@ A **different** owner cannot reuse it, and the reason is not policy but mechanis
   App and their tokens would be minted by someone else's endpoint. That is a trust
   relationship, not a configuration.
 
-So the ladder for an adopter with no app of their own is the token box, which needs no
-registration and is the same 5,000/hour. Sign-in is the button they add later, for
-their own fleet, with their own app.
+So an adopter with no app of their own registers one — the checklist below — and a
+dashboard is not readable until they have. That is the cost of the alternative being a
+paste box: a deployment can be up, deployed and serving a page that nobody but its
+owner can be asked to use.
 
 #### Turning sign-in on
 

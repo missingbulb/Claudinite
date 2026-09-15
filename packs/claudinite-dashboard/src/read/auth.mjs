@@ -1,4 +1,4 @@
-// How the page gets a credential. Two providers, chosen by configuration.
+// How the page gets a credential: signing in, and nothing else.
 //
 // WHAT IS NOT POSSIBLE, because it is the first thing anyone asks for: a static
 // page CANNOT reuse the viewer's existing github.com login. Session cookies belong
@@ -7,11 +7,13 @@
 // credential a browser can spend, so there is no configuration that avoids an
 // explicit sign-in of some kind.
 //
-// What IS possible is making that sign-in a BUTTON rather than a paste box, which
-// is the `oauth` provider below: the viewer clicks Sign in, GitHub asks them to
-// authorize (once), and everything after runs as them, with exactly the repos and
-// permissions their account already has. That is the honest version of "the current
-// user's logged-in permissions".
+// What IS possible is making that sign-in a BUTTON rather than a paste box: the
+// viewer clicks Sign in, GitHub asks them to authorize (once), and everything after
+// runs as them, with exactly the repos and permissions their account already has.
+// That is the honest version of "the current user's logged-in permissions", and it
+// is the only route in — a paste box asks a viewer to go and mint a PAT, which is
+// worse than the thing this replaced, and it was what every deployment offered
+// until its owner configured the pair below.
 //
 // The one piece that cannot live here: exchanging the returned `code` for a token
 // needs the app's client secret, and GitHub's token endpoint sends no CORS headers,
@@ -20,8 +22,8 @@
 // only job is that swap. It never sees repo data: once the token is back, the page
 // talks to GitHub directly.
 //
-// `token` remains as the fallback for local development and for anyone who would
-// rather paste a PAT than register an app.
+// A deployment that has not configured the pair cannot sign anybody in, and the gate
+// says so rather than offering a worse credential (`app.mjs`, `renderGate`).
 
 const STATE_KEY = 'claudinite-dashboard:oauth-state';
 const TOKEN_KEY = 'claudinite-dashboard:token';
@@ -33,13 +35,12 @@ const REMEMBER_KEY = 'claudinite-dashboard:remember';
 // what stops a daily visitor from re-signing in every morning. The page cannot know
 // whether the machine is shared, so it does not decide on the viewer's behalf — it
 // defaults to the safe store and offers the other one in a control that is visible
-// whichever way it is set. The PAT provider uses the same pair: a pasted token is no
-// less sensitive for having been typed, and no less tedious to re-paste daily.
+// whichever way it is set.
 //
 // Nothing here bounds a remembered token's life. A GitHub App user token expires on
-// GitHub's own schedule and comes back 401, which `signOut`s it; a PAT lasts until
-// its own expiry. localStorage is the durable half of a credential whose lifetime
-// GitHub owns, not a second lifetime this page grants.
+// GitHub's own schedule and comes back 401, which `signOut`s it. localStorage is the
+// durable half of a credential whose lifetime GitHub owns, not a second lifetime this
+// page grants.
 const readFrom = (s, k) => { try { return s.getItem(k) || ''; } catch { return ''; } };
 const writeTo = (s, k, v) => { try { if (v) s.setItem(k, v); else s.removeItem(k); } catch { /* private mode */ } };
 
@@ -156,4 +157,18 @@ export async function completeSignIn(config, { search = location.search, replace
   }
 }
 
-export const setPastedToken = (t) => store.set(String(t ?? '').trim());
+// THE LOCAL-DEVELOPMENT CREDENTIAL, and the only one that does not come from a
+// sign-in. A checkout served by `tooling/serve.mjs` has no registered app behind it
+// and no business registering one, so the dev server hands the page a token from the
+// developer's own environment in the config it synthesizes — a key the SITE BUILD
+// cannot emit, because it writes a fixed list of keys and `devToken` is not on it.
+//
+// Session-scoped whatever `Remember me` says: a credential the page was handed rather
+// than asked for is not one a viewer chose to keep, and a dev token outliving the tab
+// in localStorage would then be spent by whatever else that origin later serves.
+export function adoptDevCredential(config) {
+  const token = String(config?.devToken ?? '').trim();
+  if (!token || store.get()) return false;
+  writeTo(sessionStorage, TOKEN_KEY, token);
+  return true;
+}

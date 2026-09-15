@@ -201,10 +201,10 @@ await writeFile(join(OUT, HOME, 'dashboard.config.json'), `${JSON.stringify(conf
 
 // Say which mode the site actually built in. Sign-in quietly not being configured, or a
 // fleet roster quietly not arriving, are exactly the things nobody notices until they
-// wonder why the page is asking for a token or showing one repo.
+// wonder why the page will not let them in or is showing one repo.
 const signIn = config.clientId && config.exchangeUrl
   ? 'configured'
-  : `NOT configured — the site will ask for a token${config.clientId ? ' (exchangeUrl missing)' : ''}${config.exchangeUrl ? ' (clientId missing)' : ''}`;
+  : `NOT configured — NOBODY CAN READ THE SITE${config.clientId ? ' (exchangeUrl missing)' : ''}${config.exchangeUrl ? ' (clientId missing)' : ''}`;
 const covers = repos.length ? `${repos.length} named members`
   : cfg.owner ? `every repo under ${cfg.owner} the viewer can read${config.exclude.length ? `, less ${config.exclude.length} excluded` : ''}`
     : rosterUrl ? `whatever ${rosterUrl} names`

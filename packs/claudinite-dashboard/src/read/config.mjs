@@ -10,10 +10,10 @@
 // baked into any file here. An explicit `repos` list and a `rosterUrl` artifact are
 // both still accepted — a deployment that wants a fixed set says so.
 //
-// Absent config is a valid deployment, not a broken one: it means the token-paste
-// provider and whatever repo the URL names. So every key here is optional and every
-// miss is a plain default — every key EXCEPT `mode`, which the build requires and
-// refuses to guess; see `resolveMode`.
+// Absent config is a valid deployment, not a broken one: it means whatever repo the URL
+// names, and a gate that says sign-in has not been configured. So every key here is
+// optional and every miss is a plain default — every key EXCEPT `mode`, which the build
+// requires and refuses to guess; see `resolveMode`.
 //
 // Shape:
 //   {
@@ -27,6 +27,10 @@
 //     "defaultRepo": "owner/a",
 //     "rates":       { "claude-opus-5": { "in": 15, "cacheRead": 1.5, "out": 75 } }
 //   }
+//
+// One key is not a deployment's to set: `devToken`, which only `tooling/serve.mjs` puts
+// in the config it synthesizes for a locally-served checkout (`read/auth.mjs`). The site
+// build writes the list above and nothing else, so no published config can carry one.
 
 export const DEFAULTS = {
   // WHICH DASHBOARD THIS IS, and the one key with no default. `repo` is this repo's own

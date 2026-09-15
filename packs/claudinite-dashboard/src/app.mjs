@@ -14,6 +14,7 @@ import * as auth from './read/auth.mjs';
 import { loadConfig, resolveRoster, isFleetConfig } from './read/config.mjs';
 import { clearAll, stats } from './read/cache.mjs';
 import { planPolicy, credentialAdvice, MINUTE_MS } from './read/budget.mjs';
+import { SIGN_IN_VARS } from './read/signin-vars.mjs';
 import { $, el, resetCountUps } from './render/ui.mjs';
 import { loadRepo } from './views/view-repo.mjs';
 import { loadFleet } from './views/view-fleet.mjs';
@@ -119,15 +120,20 @@ function rememberBox() {
   }, [input, ' Remember me']);
 }
 
-// The gate's controls, which are the only sign-in surface the page has. OAuth when the
-// deployment configures it, the pasted token otherwise — the fallback is not offered
-// alongside the button, because a viewer who can click Sign in has no use for a PAT and
-// showing both asks them to choose between a door and a key to the same door.
+// The gate's controls, which are the only sign-in surface the page has — and signing
+// in is the only route to a credential. A deployment whose owner has not configured
+// the pair cannot sign anybody in, so the gate says THAT, naming the two variables:
+// the alternative was a paste box telling every viewer to go and mint a PAT, which is
+// worse than the thing sign-in replaced and was what a deployment shipped with until
+// somebody turned sign-in on. An unconfigured dashboard is not finished being set up,
+// and the screen is the one place the person who can finish it is standing.
 function renderGate() {
   const box = $('signin-controls');
   box.replaceChildren();
 
   if (auth.isOAuthConfigured(CONFIG)) {
+    for (const id of ['signin-why', 'signin-hint']) $(id).hidden = false;
+    $('signin-heading').textContent = wantsFleet() ? 'Sign in to read this fleet' : 'Sign in to read this repository';
     $('signin-how').textContent = 'GitHub asks you to authorize this page once. Everything afterwards '
       + 'runs as you, with exactly the repositories your account can already see.';
     box.append(
@@ -136,12 +142,14 @@ function renderGate() {
     );
     return;
   }
-  $('signin-how').textContent = 'This deployment has no sign-in configured, so it reads with a token you '
-    + 'paste. It needs read-only Contents, Issues and Actions.';
-  const input = el('input', { type: 'password', placeholder: 'GitHub token', autocomplete: 'off' });
-  const use = () => { if (input.value.trim()) { auth.setPastedToken(input.value); enter(); } };
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') use(); });
-  box.append(input, el('button', { className: 'primary', textContent: 'Use token', onclick: use }), rememberBox());
+  // The standing prose answers "what does this page do with my credential", which is
+  // not the question in front of a viewer who cannot get one. It comes back for every
+  // deployment that can.
+  for (const id of ['signin-why', 'signin-hint']) $(id).hidden = true;
+  $('signin-heading').textContent = 'This dashboard is not finished being set up';
+  $('signin-how').textContent = 'Sign in is the only way in, and this deployment has not configured it, so there is '
+    + `nothing here to sign in with yet. Its owner sets the repository variables ${SIGN_IN_VARS.clientId} and `
+    + `${SIGN_IN_VARS.exchangeUrl} — the pack README's "Turning sign-in on" is that checklist.`;
 }
 
 // Who is signed in, and the levers that belong to them rather than to the view.
@@ -220,7 +228,7 @@ async function render() {
   IGNORED = roster.ignored ?? [];
   const plan = await planBudget(token);
   renderRatePill(plan);
-  const advice = credentialAdvice(plan.tier, { oauth: auth.isOAuthConfigured(CONFIG), hasToken: Boolean(token) });
+  const advice = credentialAdvice(plan.tier, { hasToken: Boolean(token) });
   if (advice) showNotice(advice.text);
   if (plan.mode === 'frozen' || plan.mode === 'scarce') showNotice(plan.reason);
 
@@ -293,9 +301,7 @@ async function render() {
   } catch (e) {
     showError(e.message ?? String(e));
     if (e.status === 401 || e.status === 403) {
-      showError(auth.isOAuthConfigured(CONFIG)
-        ? 'Your account cannot read this. Sign out and sign in with one that can.'
-        : 'That token cannot read this — it needs read-only Contents, Issues and Actions.');
+      showError('Your account cannot read this. Sign out and sign in with one that can.');
     }
     $('footnote').textContent = '';
   } finally {
@@ -337,6 +343,10 @@ async function boot() {
   // Handle an OAuth landing before anything reads the credential.
   const back = await auth.completeSignIn(CONFIG);
   if (back.status === 'error') showError(back.message);
+
+  // A locally-served checkout arrives with its developer's own token in the config the
+  // dev server synthesized. Nothing published can carry one (`auth.adoptDevCredential`).
+  auth.adoptDevCredential(CONFIG);
 
   renderAccount(null);
   renderGate();

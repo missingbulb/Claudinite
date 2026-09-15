@@ -62,9 +62,8 @@ export default {
 
   // ONE question, and it is the one thing this pack cannot pick for a repo: which
   // dashboard the deployment is. Everything else has a default that is right for nearly
-  // every project — a pasted token, no canon reference — and is read
-  // as optional throughout, an unset key meaning the default rather than a
-  // misconfiguration. The mode is not like that: both answers are ordinary, neither is
+  // every project — no canon reference, no exclusions — and is read as optional
+  // throughout, an unset key meaning the default rather than a misconfiguration. The mode is not like that: both answers are ordinary, neither is
   // rarer, and guessing it wrong publishes a plausible-looking site covering the wrong
   // thing. So it is asked, and the build refuses to publish without it.
   //
@@ -108,22 +107,20 @@ export default {
       breaks: 'the publish-pages task pushes the build, and its deploy run then fails — the task parks at needs-human-action naming this',
       done: 'the Pages URL serves the dashboard, and a publish-pages run converged done',
     },
-    // ONE entry, not the four mechanical steps, because for many deployments the right
-    // answer is "nothing" — a member's own dashboard read with a pasted token is on the
-    // same 5,000/hour as a signed-in one. What every adopter does have to meet is the
-    // DECISION, since until someone makes it their page reads GitHub anonymously; four
-    // unconditional checkboxes that are mostly no-ops teach the reader to skim exactly
-    // the list that exists to stop them skimming. The mechanics live in the README,
-    // where they are read at the moment the answer is yes — and a `step` becomes one
-    // checkbox in somebody's handover issue, so spelling them here would put six
-    // actions and a rationale inside one box (basics' `writing-handover-issues`).
+    // ONE entry, not the dozen mechanical steps, because a `step` becomes one checkbox
+    // in somebody's handover issue and spelling them here would put a registration, two
+    // variables, two secrets and a deploy inside one box (basics'
+    // `writing-handover-issues`). The mechanics live in the README, read at the moment
+    // the adopter is standing in the settings page.
+    //
+    // Not a decision any more, and not optional: signing in is the only route to a
+    // credential, so a deployment whose owner has not done this publishes a page that
+    // tells every viewer it is unfinished.
     {
-      step: 'Decide how this dashboard authenticates its viewers: leave it on the pasted-token box, or turn on '
-        + 'Sign in with GitHub — the pack README\'s "Turning sign-in on" is that checklist.',
-      breaks: 'nothing fails, but a viewer who has not pasted a token reads GitHub anonymously at 60 requests/hour per IP — '
-        + 'which one fleet sweep exceeds, so the page serves cached data or empty rows until the hour rolls',
-      done: 'a signed-in viewer sees the rate pill read “…/5000 · user”, or this repo has recorded that the token box is '
-        + 'this deployment\'s answer',
+      step: 'Turn on Sign in with GitHub — the pack README\'s "Turning sign-in on" is that checklist.',
+      breaks: 'nobody can read the dashboard at all: sign-in is the only way in, so until the pair is set the page '
+        + 'shows its gate saying this deployment is not finished being set up, naming the two variables',
+      done: 'a signed-in viewer sees the rate pill read “…/5000 · user”',
     },
   ],
 

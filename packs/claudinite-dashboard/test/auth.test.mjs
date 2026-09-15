@@ -23,6 +23,16 @@ beforeEach(() => {
 const load = () => import(`../src/read/auth.mjs?t=${Math.random()}`);
 const CONFIG = { clientId: 'Iv1.x', exchangeUrl: 'https://exchange.example/gh' };
 
+// A credential, obtained the ONLY way the page offers one. The storage cases below all
+// need a token in hand, and driving the real callback to get it is what keeps them
+// honest now that there is no second way in.
+async function signIn(a, token = 'gho_abc') {
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ access_token: token }) });
+  sessionStorage.setItem('claudinite-dashboard:oauth-state', 's1');
+  const out = await a.completeSignIn(CONFIG, { search: '?code=abc&state=s1' });
+  assert.equal(out.status, 'signed-in');
+}
+
 test('a page that is not a callback is left alone', async () => {
   const a = await load();
   assert.deepEqual(await a.completeSignIn(CONFIG, { search: '?repo=o/a' }), { status: 'none' });
@@ -131,8 +141,8 @@ test('an unreachable exchange endpoint is an error, not a crash', async () => {
 
 test('signOut clears the credential', async () => {
   const a = await load();
-  a.setPastedToken('  ghp_x  ');
-  assert.equal(a.currentToken(), 'ghp_x', 'a pasted token is trimmed');
+  await signIn(a);
+  assert.equal(a.currentToken(), 'gho_abc');
   a.signOut();
   assert.equal(a.currentToken(), '');
 });
@@ -142,7 +152,7 @@ test('signOut clears the credential', async () => {
 // The default is the strict one: a credential nobody asked to keep dies with the tab.
 test('by default the credential does not survive the browser closing', async () => {
   const a = await load();
-  a.setPastedToken('ghp_x');
+  await signIn(a, 'ghp_x');
   assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), 'ghp_x');
   assert.equal(localStorage.getItem('claudinite-dashboard:token'), null, 'nothing durable was written');
 
@@ -154,7 +164,7 @@ test('by default the credential does not survive the browser closing', async () 
 test('Remember me keeps the credential across a browser restart', async () => {
   const a = await load();
   a.setRemember(true);
-  a.setPastedToken('ghp_x');
+  await signIn(a, 'ghp_x');
   assert.equal(localStorage.getItem('claudinite-dashboard:token'), 'ghp_x');
   assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), null, 'one copy, not two');
 
@@ -166,7 +176,7 @@ test('Remember me keeps the credential across a browser restart', async () => {
 // A box that only applied to the NEXT sign-in would be lying about what it just did.
 test('ticking it moves the credential the viewer already has', async () => {
   const a = await load();
-  a.setPastedToken('ghp_x');
+  await signIn(a, 'ghp_x');
   a.setRemember(true);
   assert.equal(localStorage.getItem('claudinite-dashboard:token'), 'ghp_x');
   assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), null);
@@ -176,7 +186,7 @@ test('ticking it moves the credential the viewer already has', async () => {
 test('unticking it demotes the credential rather than waiting for the next sign-in', async () => {
   const a = await load();
   a.setRemember(true);
-  a.setPastedToken('ghp_x');
+  await signIn(a, 'ghp_x');
   a.setRemember(false);
 
   assert.equal(localStorage.getItem('claudinite-dashboard:token'), null, 'the durable copy is erased');
@@ -188,7 +198,7 @@ test('unticking it demotes the credential rather than waiting for the next sign-
 test('signing out leaves no copy in either store', async () => {
   const a = await load();
   a.setRemember(true);
-  a.setPastedToken('ghp_x');
+  await signIn(a, 'ghp_x');
   a.signOut();
   assert.equal(localStorage.getItem('claudinite-dashboard:token'), null);
   assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), null);
@@ -211,5 +221,43 @@ test('a browser that refuses storage signs in for the tab rather than failing', 
   globalThis.localStorage = throwing;
   assert.equal(a.isRemembered(), false);
   assert.doesNotThrow(() => a.setRemember(true));
-  assert.doesNotThrow(() => a.setPastedToken('ghp_x'));
+  await assert.doesNotReject(() => signIn(a));
+});
+
+// --- the local-development credential ----------------------------------------------
+
+// The one credential that does not come from a sign-in, and the reason the paste box
+// could go: a served checkout has no registered app behind it, so the dev server hands
+// the page a token instead of a viewer being told to mint a PAT.
+test('a dev-server config credential is adopted for the tab', async () => {
+  const a = await load();
+  assert.equal(a.adoptDevCredential({ devToken: '  ghp_dev  ' }), true);
+  assert.equal(a.currentToken(), 'ghp_dev', 'trimmed, and usable');
+  assert.equal(localStorage.getItem('claudinite-dashboard:token'), null,
+    'never durable — the viewer did not choose to keep a credential they were handed');
+});
+
+// Remember me is the viewer's answer about a credential they asked for. A handed one is
+// not that, so the flag must not promote it into localStorage.
+test('Remember me does not make the dev credential durable', async () => {
+  const a = await load();
+  a.setRemember(true);
+  a.adoptDevCredential({ devToken: 'ghp_dev' });
+  assert.equal(localStorage.getItem('claudinite-dashboard:token'), null);
+  assert.equal(sessionStorage.getItem('claudinite-dashboard:token'), 'ghp_dev');
+});
+
+test('a config with no dev token leaves the page at the gate', async () => {
+  const a = await load();
+  assert.equal(a.adoptDevCredential({}), false);
+  assert.equal(a.adoptDevCredential({ devToken: '   ' }), false);
+  assert.equal(a.currentToken(), '');
+});
+
+// Signing in is the stronger claim: whoever is at the keyboard said who they are.
+test('a signed-in credential is not replaced by the dev one', async () => {
+  const a = await load();
+  await signIn(a, 'gho_real');
+  assert.equal(a.adoptDevCredential({ devToken: 'ghp_dev' }), false);
+  assert.equal(a.currentToken(), 'gho_real');
 });
