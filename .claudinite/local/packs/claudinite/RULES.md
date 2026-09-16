@@ -90,6 +90,10 @@ Below are rules on how to work on this repo.
   terms, not internal jargon, and give an axis the owner treats as independent (e.g. whether to
   fix vs. which PR) its own option rather than folding it into another. (79)
 
+- **Writing the reason an `AskUserQuestion` option gives for itself** — verify it against the call
+  sites first, since the owner picks the option *for* that reason: one that turns out false for a
+  caller is this change's to make true, not a new decision to take back to them. (91)
+
 - **Being asked to generalise something, or to review it** — land the conversions or action points
   it unlocks in the same change. A capability ships with its first caller, an analysis with its
   first recommendation applied.
@@ -140,6 +144,10 @@ Below are rules on how to work on this repo.
 - **Calling `EnterWorktree` in an unattended queue session** — nobody is present to approve it,
   so it is denied after about a minute; go straight to `git worktree add`/`git checkout -b`
   instead. (78)
+
+- **Finishing a fan-out of subagents** — clear its wreckage before reporting done: stop the waiter
+  tasks, then confirm each child's commits are on your branch and remove its worktree and branch;
+  left standing they read to the owner as work still stuck. (92)
 
 - **Asserting why a system behaved a certain way** (a park correctly closed, a routing mechanism's
   logic) — read the primary evidence, the issue's own body/comments or the enforcing source line,

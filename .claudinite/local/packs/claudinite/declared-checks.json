@@ -415,5 +415,22 @@
         "fix": "read the whole output \u2014 the advisory lines carry every check still inside its since grace, your own new one among them"
       }
     ]
+  },
+  {
+    "id": "subagent-branch-named-git",
+    "severity": "blocking",
+    "since": "2026-09-16",
+    "scope": "action",
+    "failureMessage": "a worktree-isolated agent's shell guard refuses a command over the word git, so a branch carrying it in its own name cannot be created there under any spelling",
+    "guardToolCalls": [
+      {
+        "tool": "Agent",
+        "inputField": "prompt",
+        "match": "/(?:branch\\s+named|branch\\s+-m|switch\\s+-c|checkout\\s+-b)\\s+[`'\"]?(?:[\\w.\\/-]*[\\/_-])?git[\\w.\\/-]*/",
+        "inputMatches": "/\"isolation\"\\s*:\\s*\"worktree\"/",
+        "what": "a worktree-isolated dispatch mandating a branch named over git: \"{match}\"",
+        "fix": "name the branch without the word git (perf/fixtures, not perf/git-fixtures) \u2014 the child cannot rename it afterwards either"
+      }
+    ]
   }
 ]
