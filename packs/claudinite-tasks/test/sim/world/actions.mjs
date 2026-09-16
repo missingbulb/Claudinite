@@ -216,10 +216,10 @@ export function makeActions({
       .reduce((sum, r) => sum + Math.max(1, Math.ceil((r.endedAt - r.startedAt) / MINUTE)), 0),
     runsOf: (workflow) => runs.filter((r) => r.workflow === workflow),
 
-    // THE OPERATOR HOLD, set where both readers look: the env bag the run starts
-    // with, and the repo variable a drain re-reads between items.
-    suspendAll: () => { bag[SUSPEND_ALL_VAR] = 'true'; github.setVariable(SUSPEND_ALL_VAR, 'true'); return harness; },
-    resumeAll: () => { delete bag[SUSPEND_ALL_VAR]; github.clearVariable(SUSPEND_ALL_VAR); return harness; },
+    // THE OPERATOR HOLD, set in the env bag a run starts with — the one place the
+    // engine reads it (hold.mjs). A run already past its first act does not see it.
+    suspendAll: () => { bag[SUSPEND_ALL_VAR] = 'true'; return harness; },
+    resumeAll: () => { delete bag[SUSPEND_ALL_VAR]; return harness; },
   };
   return harness;
 }

@@ -47,7 +47,6 @@ export function makeGithub({
   pulls = [],
   labels = [],
   collaborators = {},
-  variables = {},
   branches = {},
   commits = {},
   trees = {},
@@ -66,7 +65,6 @@ export function makeGithub({
     pulls: pulls.map((p) => ({ comments: [], state: 'open', merged: false, ...p })),
     labelDefs: new Map(labels.map((l) => [l.name, { ...l }])),
     collaborators: { ...collaborators },
-    variables: { ...variables },
     branches: { ...branches },
     commits: { ...commits },
     trees: { ...trees },
@@ -315,13 +313,6 @@ export function makeGithub({
       return state.releases ? { status: 200, json: state.releases } : { status: 404, json: null };
     }
 
-    if ((m = /^\/repos\/[^/]+\/[^/]+\/actions\/variables\/([^/]+)$/.exec(bare))) {
-      const name = decodeURIComponent(m[1]);
-      return name in state.variables
-        ? { status: 200, json: { name, value: String(state.variables[name]) } }
-        : { status: 404, json: null };
-    }
-
     if ((m = /^\/repos\/[^/]+\/[^/]+\/actions\/workflows\/([^/]+)\/dispatches$/.exec(bare))) {
       const fired = { workflow: decodeURIComponent(m[1]), ref: body?.ref ?? null, inputs: body?.inputs ?? null, at: nowMs() };
       state.dispatches.push(fired);
@@ -431,7 +422,10 @@ export function makeGithub({
     readCommit: (_gh, _repo, sha) => route(`/repos/${repo}/commits/${sha}`),
     listRunsForSha: (_gh, _repo, sha) => route(`/repos/${repo}/actions/runs?head_sha=${sha}&per_page=100`),
     latestRelease: (_gh, _repo) => route(`/repos/${repo}/releases/latest`),
-    readRepoVariable: (_gh, _repo, name) => route(`/repos/${repo}/actions/variables/${name}`),
+    // The real one answers from the run's vars bag, never the API (src/world/github.mjs);
+    // the fake carries no run env, and nothing in the engine calls it any more, so it
+    // answers "no such variable" — the state of every repo nobody has ever held.
+    readRepoVariable: async (_gh, _repo, _name) => ({ status: 404, json: null }),
 
     dispatchWorkflow: async (_gh, _repo, file, ref, inputs = null) => {
       const { status } = await route(`/repos/${repo}/actions/workflows/${file}/dispatches`, {
@@ -478,8 +472,6 @@ export function makeGithub({
     },
     defineLabels: (defs) => { for (const d of defs) state.labelDefs.set(d.name, { ...d }); return harness; },
     setCollaborator: (login, permission) => { state.collaborators[login] = permission; return harness; },
-    setVariable: (name, value) => { state.variables[name] = value; return harness; },
-    clearVariable: (name) => { delete state.variables[name]; return harness; },
 
     // --- faults ---------------------------------------------------------
     rateLimit: (calls) => { faults.rateLimited = calls; return harness; },

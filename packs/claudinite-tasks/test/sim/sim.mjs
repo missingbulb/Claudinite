@@ -399,7 +399,6 @@ export function makeSim({
         collectSignalsFor: (task, now, item, opts) => collectorFor()(task, now, item, opts),
         runTaskCodeWork,
         invokeAgent: sessions.port.agentInvoker({ repo: REPO, config: CONFIG }),
-        heldNow: async () => suspended(),
         // The run's own log, for the two exits that leave no artifact of their
         // own: a lost claim race and a reverted claim are both "this run let go",
         // and only the run says which.
@@ -408,7 +407,6 @@ export function makeSim({
           if ((m = /^- #(\d+): another executor holds/.exec(line))) record('claim-lost', { issue: Number(m[1]), exec: id });
           else if ((m = /^- #(\d+): reverted —/.exec(line))) record('claim-reverted', { issue: Number(m[1]), exec: id });
           else if ((m = /^- #(\d+).*reclaimed while this run's work step ran/.exec(line))) record('claim-stale', { issue: Number(m[1]), exec: id });
-          else if (line.startsWith(`- ${SUSPEND_ALL_VAR} is set`)) record('suspended-skip', { workflow: 'executor', trigger, midRun: true });
         },
       });
       record('run-end', { run: runId, exec: id, trigger, settled: done.length });
