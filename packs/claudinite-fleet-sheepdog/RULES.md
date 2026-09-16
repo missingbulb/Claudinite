@@ -30,6 +30,13 @@
   itself, with its own token and its own delivery policy. Propose a settings change as a conclusion,
   never as the diagnosis. (answering-fleet-did)
 
+- **Reporting or judging what canon currently declares** — a task's `automerge`, a pack's version,
+  any behaviour a member is measured against — read canon's own live `packs/<id>/` at its default
+  branch, never this repo's own vendored `.claudinite/shared/` mount. The mount is a snapshot at
+  *this* repo's own declared version, so it answers what this enforcer itself runs, never what
+  canon currently says, and the two diverge precisely on the question a force-fleet run exists to
+  settle.
+
 ## Running the manual levers
 
 - **Pushing canon to the whole fleet now** — create the work item, from a checkout of this repo:

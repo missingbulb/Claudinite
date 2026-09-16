@@ -253,6 +253,10 @@ A list or search API call that isn't bounded returns a full page of full-bodied 
 
 All of them, not one: a qualified query still returns a full page, a small page of unqualified matches is still the wrong records, and a small page of full-bodied records still overruns the cap.
 
+**The same cap catches a single large text result, not only a list.** `get_job_logs`'s `tail_lines` is not exempt — guessing a large value to pull enough context for a CI diagnosis can itself exceed the limit, independently of how many records a call returns. Pass a small `tail_lines` first; on overflow, read the tool's own saved-to-disk log path and grep that file for the failure marker (`not ok`, `FAIL`) rather than guessing a bigger number.
+
+**An overflowed `search_issues`/`search_code` result read back from its saved file is GitHub's own search envelope.** The shape is always `{total_count, incomplete_results, items: [...]}` — index `['items']` on the first parse rather than iterating the dict directly or guessing a bare list shape.
+
 ## Merging gotchas
 
 These conflict/merge traps are independent of any one project's file layout.

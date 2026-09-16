@@ -205,6 +205,7 @@ asks the owner for it. A workflow that exists only to hold a secret is redundant
 | Reading unknown in a report | high | correctness | prose: <100 words |
 | Judging whether a member is behind | high | correctness | prose: <100 words |
 | Answering why the fleet did not move | medium | complexity | prose: <100 words |
+| Reporting or judging what canon currently declares | medium | correctness | prose: <100 words |
 | Pushing canon to the whole fleet now | low | complexity | prose: <200 words |
 | Adding a pack across the fleet | medium | complexity | prose: <100 words |
 | Granting or repairing FLEETGITHUBTOKEN | high | correctness | prose: <100 words |
