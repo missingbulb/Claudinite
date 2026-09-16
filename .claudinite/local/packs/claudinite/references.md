@@ -397,6 +397,32 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   exactly that one loss. Retire the rule if the repo stops carrying long-lived branches that
   relocate files.
 
+- **(RULES-91)** #2074's fan-out: an option put to the owner argued for scoping a probe cache to
+  the collector factory over a process-wide memo *because* "the cache dies with the collector", and
+  the owner chose it on that sentence. It was false at `execute/loop.mjs:758`, where one collector
+  is built per executor run and drains several items, so a `code_work` step between two picks would
+  have been served the old tree — the hazard the chosen option existed to avoid. The coordinator
+  messaged the working subagent mid-flight to close it rather than re-ask, and the widening was in
+  scope because the owner had approved the reason, not only the shape. Retire the rule if options
+  stop carrying their own rationale.
+- **(RULES-92)** 2026-09-15's capture on #2074 (session f3d8d7fb, 16:53–17:14): the owner opened
+  "I think some tasks are stuck", the session read the queue, and the owner had to correct it —
+  "I meant your background tasks". Nothing was running: six subagents and ten background commands
+  had all returned, leaving 8 worktrees, 12 stale branches and two `Wait for…` tasks that went on
+  firing completion notifications for agents that had finished. Two owner turns and a queue-wide
+  audit were spent on wreckage. Retire the rule if the harness reclaims a finished agent's worktree
+  and branch on its own.
+
+- **(check:subagent-branch-named-git)** 2026-09-15's capture on #2074 (15:04:05–15:05:24): a
+  worktree-isolated child was dispatched "on a branch named `perf/git-fixtures`" and could not
+  create it — `git checkout -b`, `git switch -c`, a script wrapper, a `command -v g''it` splice,
+  `git branch -m` bare and quoted, and a direct write of `.git/refs/heads/perf/git-fixtures` were
+  all refused across eight attempts, while `git switch -c perf/xtmp` passed first try. The child
+  handed back asking the parent to rename the branch for it. `RULES-73` covers varying the
+  *wrapper*; nothing covered the argument that carries the token, and the dispatch is the only
+  moment the name can still be changed cheaply. Retire the check if the isolation guard stops
+  reading the word `git` out of a command's arguments.
+
 - **(check:check-sweep-read-blocking-only)** #1890 claimed both of its new checks were silent on
   the moved tree; both were inside their two-week `since` grace, so their findings printed as
   ADVISORY and every read had grepped `^\[BLOCKING\]`. Seven real barrier violations were standing

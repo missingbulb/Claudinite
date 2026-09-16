@@ -122,6 +122,27 @@ test('the filing guards: a cross-repo Verify line, an add_repo, a scratch screen
   ]), ['a screenshot from the scratchpad sent without saying it came from a scratch harness']);
 });
 
+test('the dispatch guard: a worktree-isolated child told to create a branch named over git', () => {
+  const dispatch = (prompt, isolation = 'worktree') =>
+    ['Agent', { description: 'perf', subagent_type: 'general-purpose', isolation, prompt }];
+  assert.deepEqual(judgeCalls('subagent-branch-named-git', [
+    dispatch('Work in your worktree, on a branch named `perf/git-fixtures` created from `origin/main`.'),
+    dispatch('In your worktree: `git switch -c perf/git-utils origin/main`. Commit there.'),
+    // The same dispatch with a name the child can actually spell.
+    dispatch('Work in your worktree, on a branch named `perf/fixtures` created from `origin/main`.'),
+    // "git" inside a word is not the token the shell guard counts, so the separator
+    // in the class is what keeps every branch named after a digit or a legitimate
+    // thing out of the finding.
+    dispatch('In your worktree: `git checkout -b claude/digit-fix origin/main`.'),
+    // Without worktree isolation the child runs in the parent's checkout, under no
+    // such guard, so the name costs it nothing.
+    ['Agent', { description: 'perf', subagent_type: 'general-purpose', prompt: 'On a branch named `perf/git-fixtures`, report what you find.' }],
+  ]), [
+    'a worktree-isolated dispatch mandating a branch named over git: "branch named `perf/git-fixtures"',
+    'a worktree-isolated dispatch mandating a branch named over git: "switch -c perf/git-utils"',
+  ]);
+});
+
 test('the shell-write guard: a skill-scoped file written past the pre-edit guard', () => {
   // The three shell spellings a session actually reaches for, all taken from captured
   // sessions that went on to collect the Stop-time skill-loaded-before-editing finding.
