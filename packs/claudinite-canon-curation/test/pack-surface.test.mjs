@@ -96,6 +96,23 @@ test('consumerBucket separates a live dependency from the canon proving its own 
   assert.equal(b(`${PACK_DIR}/src/execute/loop.mjs`), 'own pack');
 });
 
+// Run from a member, the pack's own internals are spelled through the mount. Reading
+// them as an external pack would count every name they import as taken — and a pack
+// imports its own surface far more than any consumer does, so the inflation lands
+// hardest on exactly the modules the report is consulted about.
+test('the pack reached through the mount is still the pack itself', () => {
+  assert.equal(consumerBucket(`.claudinite/shared/${PACK_DIR}/src/execute/loop.mjs`, PACK_DIR), 'own pack');
+  assert.equal(consumerBucket('.claudinite/local/packs/other/worker.mjs', PACK_DIR), 'pack');
+
+  const files = new Map([
+    [`${PACK_DIR}/public/executor.mjs`, "export { runExecutor } from '../src/execute/loop.mjs';"],
+    [`.claudinite/shared/${PACK_DIR}/src/execute/loop.mjs`, "import { runExecutor } from '../../public/executor.mjs';"],
+  ]);
+  const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('executor.mjs');
+  assert.deepEqual([...mod.consumers.keys()], [], 'the pack is not a consumer of itself under any spelling');
+  assert.deepEqual([...mod.used], [], 'nor does its own import count as a name taken');
+});
+
 // Three spellings reach one module — a sibling pack's relative path, a member's mount
 // path, and the pack's own — and all three have to land on the same row, or the report
 // undercounts exactly the consumers that cannot be rewritten from here.

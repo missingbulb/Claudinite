@@ -62,7 +62,14 @@ export function publishedNames(text) {
 // Who a reference belongs to. The buckets are the ones that carry different weight:
 // a member's workflow names a path this repo cannot rewrite, another pack's production
 // code is a live dependency, and a test is only the canon proving its own contract.
+//
+// The mount prefix comes off first, so the pack reached through `.claudinite/shared/`
+// is the same pack. Without that, a member running this over its own mount reads the
+// pack's internals as an external consumer and every name they import counts as taken —
+// the inflation this report exists to avoid, arriving from the one root that makes the
+// pack look most in demand.
 export function consumerBucket(path, packDir) {
+  path = path.replace(/^\.claudinite\/(?:shared|local)\//, '');
   if (path.startsWith(`${packDir}/`)) return 'own pack';
   if (path.startsWith('.github/workflows/') || path.endsWith('.yml')) return 'workflow';
   const test = path.includes('/test/') || path.endsWith('.test.mjs');
