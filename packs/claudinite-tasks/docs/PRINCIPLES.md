@@ -179,9 +179,9 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   fresh runner within about a minute; the dead item itself still waits for
   the leash. `S36`
 - `CLAUDINITE_TASKS_SUSPEND_ALL` makes every workflow exit at its first act,
-  having fired nothing; a live drain re-reads the variable between items over
-  the API, so suspension still parks the train at most one item later.
-  `S37`, `test/execute/loop.test.mjs: a hold arriving mid-drain stops the next pick and leaves the queue untouched`
+  having fired nothing; a drain already in flight finishes the batch it
+  started with, and the hold reaches the next run. `S37`,
+  `test/world/hold.test.mjs: the hold reads from the vars bag when the job carries one`
 - Clearing the suspend variable needs no lever of its own: the next scheduler
   run's reclaim, readiness and drain jobs perform the entire self-heal
   unaided; a hand-dispatched **scheduler** run (not the bare executor) does it
@@ -417,10 +417,10 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - A newly marked issue is not caught by a drain already in flight — adoption
   is the scheduler run's own job, so a mark landing mid-drain waits for the
   next tick. `S69`
-- The operator hold is re-read between items over the API, since the
-  workflow's env copy of the variable is delivered at run start only, so
-  suspension parks a batched drain at most one item later. `S37`,
-  `test/execute/loop.test.mjs: a run that drained the queue asks the hold once per settle, not once more`
+- The operator hold is read from the env a run starts with — the executor's
+  vars bag, the scheduler's named copy — never live over the REST variables
+  API, which the Actions token is refused on in every member; a hold set
+  mid-drain lands on the next run. `S37`
 
 - Every wait in the scenario suite is virtual: a simulated working day, with a
   chain of tasks running for hours of simulated time, costs milliseconds of
@@ -546,8 +546,8 @@ dropped cron fire and a job killed at its timeout ceiling.
 - **The invocation wire's real contract** — the routine-fire API's timeout
   behaviour and nonce handling are driven by their *outcomes*
   (fired/refused/unanswered), never by the wire format itself.
-- **Actions variable delivery mid-run** — that a hold set mid-drain is caught
-  only between items follows from the platform's documented
+- **Actions variable delivery mid-run** — that a hold set mid-drain reaches
+  only the next run follows from the platform's documented
   env-at-start-only behaviour; the fake grants that behaviour rather than
   observing it.
 - **Secrets storage and masking** — Actions' own secret store, env stamping

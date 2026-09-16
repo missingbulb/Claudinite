@@ -1309,8 +1309,9 @@ test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the lea
 });
 
 // ---- S37 — the operator hold: CLAUDINITE_TASKS_SUSPEND_ALL set mid-morning.
-// Every workflow exits at its first act; a live drain finishes its current item
-// and parks between items; items freeze exactly where they were.
+// Every workflow exits at its first act; a drain already in flight finishes the
+// batch it started with (the hold reaches a run through the env bag it starts
+// with, hold.mjs); items nothing picked freeze exactly where they were.
 test('S37 suspend-all: workflows exit at start, the queue freezes in place', async () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
     id: `x/${n}`, preconditions: ['due:daily'], codeWorkMinutes: 5,
@@ -1321,21 +1322,21 @@ test('S37 suspend-all: workflows exit at start, the queue freezes in place', asy
   sim.at('2026-08-12T04:30Z', (s) => s.suspendAll());
   await sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z'); // no resume in this window
 
-  // suspension gates STARTS, not running work: an in-flight run may still finish
-  // its item after the hold, but nothing NEW is ever picked
+  // suspension gates STARTS, not running work: no run begins after the hold…
   assert.ok(sim.log.some((e) => e.kind === 'close' && e.t < AT), 'the morning had started');
-  assert.equal(sim.log.filter((e) => e.kind === 'evaluate' && e.t >= AT).length, 0, 'no evaluation after the hold');
-  const pickedBefore = new Set(sim.log.filter((e) => e.kind === 'evaluate' && e.t < AT).map((e) => e.issue));
-  for (const c of sim.log.filter((e) => e.kind === 'close')) {
-    assert.ok(pickedBefore.has(c.issue), `#${c.issue} closed post-hold without a pre-hold evaluation`);
-  }
+  assert.equal(sim.log.filter((e) => e.kind === 'executor-run' && e.t >= AT).length, 0, 'no executor run started after the hold');
+  // …and every evaluation after it belongs to the one drain already in flight,
+  // which ends when its batch does
+  const inFlightEnd = Math.max(...sim.log.filter((e) => e.kind === 'run-end' && e.t >= AT).map((e) => e.t));
+  const evaluated = sim.log.filter((e) => e.kind === 'evaluate');
+  assert.ok(evaluated.some((e) => e.t >= AT), 'the in-flight drain kept its batch');
+  for (const e of evaluated) assert.ok(e.t <= inFlightEnd, `#${e.issue} evaluated after the in-flight drain ended`);
   // the parked runs are visible, workflow by workflow
   const skips = sim.log.filter((e) => e.kind === 'suspended-skip');
-  assert.ok(skips.some((e) => e.workflow === 'executor'), 'the in-flight drain parked between items');
   assert.ok(skips.filter((e) => e.workflow === 'scheduler-run').length >= 3, 'every cron fire exited at start');
   // and the queue is frozen, not lost: every never-picked item still sits ready
   const openReady = sim.issues.filter((i) => !i.seeded && i.state === 'open');
-  assert.equal(openReady.length, 5 - pickedBefore.size, 'unpicked items all survived the hold');
+  assert.equal(openReady.length, 5 - new Set(evaluated.map((e) => e.issue)).size, 'unpicked items all survived the hold');
   for (const it of openReady) assert.ok(it.labels.has(READY), `#${it.number} froze as ready`);
 });
 

@@ -9,7 +9,8 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SUSPEND_ALL_VAR, isSuspended, liveSuspendReader, suspendedNotice } from '../../src/world/hold.mjs';
+import { SUSPEND_ALL_VAR, isSuspended, suspendedNotice } from '../../src/world/hold.mjs';
+import { VARS_BAG_ENV } from '../../src/world/vars-bag.mjs';
 import { HEARTBEAT_MS } from '../../src/items/heartbeat.mjs';
 import { EXECUTING_LEASH_MS } from '../../src/items/leases.mjs';
 
@@ -61,74 +62,23 @@ test('every workflow stamps the hold, and every entry point exits on it before r
   }
 });
 
-// --- the between-items read (PRINCIPLES.md) -----------------------------------------
+// --- the hold reads through the vars bag (vars-bag.mjs) ------------------------------
 //
-// A batched drain outlives the env copy it started with, so the hold it must obey
-// is the one the API reports NOW. Each branch below is a different way of being
-// wrong about a running queue, which is why they are pinned one by one.
-
-const ghAnswering = (status, value) => async () => ({ status, json: value === undefined ? null : { value } });
-// A `gh` that counts what the drain actually asked, so "stopped asking" is testable
-// as the absence of a call rather than as the absence of a log line.
-const ghCounting = (status, value) => {
-  const calls = [];
-  const gh = async (path) => { calls.push(path); return { status, json: value === undefined ? null : { value } }; };
-  return { gh, calls };
-};
-
-test('the live hold read decodes the variable exactly as the env copy does', async () => {
-  for (const on of ['true', 'TRUE', ' true ', '1', 'yes']) {
-    assert.equal(await liveSuspendReader(ghAnswering(200, on), 'o/r')(), true, on);
-  }
-  for (const off of ['false', '0', 'no', '', 'maybe']) {
-    assert.equal(await liveSuspendReader(ghAnswering(200, off), 'o/r')(), false, String(off));
-  }
-});
-
-// The normal state of every repo nobody has ever held: no such variable. That is
-// not a fault and must not read as one.
-test('an absent variable is not a hold and says nothing about it', async () => {
-  const lines = [];
-  assert.equal(await liveSuspendReader(ghAnswering(404), 'o/r', { log: (l) => lines.push(l) })(), false);
-  assert.deepEqual(lines, []);
-});
-
-// A READ THAT DID NOT ANSWER IS NOT A VERDICT. It falls back to the value this
-// run started with — so a held run stays held and an unheld one keeps draining —
-// and it says so, because a live check that silently stopped being live is the
-// failure nothing else here would surface.
-test('a refused live read falls back to the start value and names what it means', async () => {
-  const lines = [];
-  const held = liveSuspendReader(ghAnswering(403), 'o/r',
-    { env: { [SUSPEND_ALL_VAR]: 'true' }, log: (l) => lines.push(l) });
-  assert.equal(await held(), true, 'the run started held, so it stays held');
-  assert.equal(await liveSuspendReader(ghAnswering(403), 'o/r', { env: {} })(), false);
-  assert.ok(lines.some((l) => l.includes(SUSPEND_ALL_VAR)), lines.join('\n'));
-  assert.ok(lines.some((l) => /next run|next start/i.test(l)), 'the log says where the hold does still land');
-});
-
-// THE WHOLE POINT OF THE REFUSAL LATCH (#1791). The Actions GITHUB_TOKEN has no
-// variables permission, so on the reference deployment this read is refused at
-// EVERY boundary of EVERY drain, forever. Asking again cannot change the answer,
-// and saying it again is the line the owner found "everywhere".
-test('an access refusal is asked once, said once, and never asked again this run', async () => {
-  const { gh, calls } = ghCounting(403);
-  const lines = [];
-  const heldNow = liveSuspendReader(gh, 'o/r', { env: {}, log: (l) => lines.push(l) });
-  for (let i = 0; i < 5; i++) assert.equal(await heldNow(), false);
-  assert.equal(calls.length, 1, 'a refusal this run\'s token cannot outgrow is not re-asked');
-  assert.equal(lines.length, 1, lines.join('\n'));
-});
-
-// A 5xx is the other shape: the token may well be able to read, so the next
-// boundary asks again — but the drain still says it once, not once per item.
-test('a transient failure keeps asking, and is still said only once', async () => {
-  const { gh, calls } = ghCounting(500);
-  const lines = [];
-  const heldNow = liveSuspendReader(gh, 'o/r', { env: { [SUSPEND_ALL_VAR]: 'true' }, log: (l) => lines.push(l) });
-  for (let i = 0; i < 4; i++) assert.equal(await heldNow(), true);
-  assert.equal(calls.length, 4, 'a blip is not a verdict about the token');
-  assert.equal(lines.length, 1, lines.join('\n'));
+// The executor carries every repository variable as one bag, and that is where the
+// hold is read from — the REST variables API the Actions token is refused on is not
+// asked (missingbulb/Shepherd run 34955548243 logged that refusal on every drain).
+// The scheduler carries no bag, so there the named env copy is the only channel.
+test('the hold reads from the vars bag when the job carries one', () => {
+  const bagged = (value, rest = {}) => ({ ...rest, [VARS_BAG_ENV]: JSON.stringify({ [SUSPEND_ALL_VAR]: value }) });
+  assert.equal(isSuspended(bagged('true')), true);
+  assert.equal(isSuspended(bagged('false')), false);
+  // The two copies come from the same context, so the bag answers; a named copy
+  // beside an unset bag is the scheduler's shape and still answers.
+  assert.equal(isSuspended(bagged('true', { [SUSPEND_ALL_VAR]: '' })), true);
+  assert.equal(isSuspended({ [SUSPEND_ALL_VAR]: 'true', [VARS_BAG_ENV]: JSON.stringify({ OTHER: 'x' }) }), true);
+  assert.equal(isSuspended({ [SUSPEND_ALL_VAR]: 'true' }), true);
+  // A malformed bag contributes nothing rather than masking the named copy.
+  assert.equal(isSuspended({ [SUSPEND_ALL_VAR]: 'true', [VARS_BAG_ENV]: '{oops' }), true);
 });
 
 // --- the bounds the heartbeat reframed (PRINCIPLES.md) --------------------------------

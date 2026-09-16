@@ -620,40 +620,6 @@ test('an item this run reverted is never re-picked by it (F15 under the drain)',
   assert.deepEqual(done, [{ issue: 2, outcome: 'task:status:done' }]);
 });
 
-// --- the operator hold, between items (PRINCIPLES.md, S37) ---------------------------
-//
-// `vars.*` reaches the env at run START only, so a drain that outlives the hold's
-// arrival can see it only by asking. It stops PICKING; the item it holds finishes.
-test('a hold arriving mid-drain stops the next pick and leaves the queue untouched', async () => {
-  const repo = fakeRepo([
-    workItem(1, 'a', ['task:ready']),
-    workItem(2, 'b', ['task:ready']),
-    workItem(3, 'c', ['task:ready']),
-  ]);
-  const lines = [];
-  const agentless = (id) => task(id, { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 });
-  let asked = 0;
-  const done = await drive(repo, ['a', 'b', 'c'].map(agentless), {
-    heldNow: async () => (asked += 1) >= 2, // held from the second boundary on
-    log: (l) => lines.push(l),
-  });
-  assert.deepEqual(done.map((d) => d.issue), [1, 2], 'the item in hand finished; nothing new was picked');
-  assert.equal(repo.find(3).state, 'open');
-  assert.deepEqual(repo.find(3).labels, ['task:ready'], 'frozen exactly as it was — no label touched');
-  assert.ok(lines.some((l) => l.includes('CLAUDINITE_TASKS_SUSPEND_ALL')), lines.join('\n'));
-});
-
-// The read costs an API call, so a run with nothing left to do must not spend it:
-// the hold is asked between items, never after the last one.
-test('a run that drained the queue asks the hold once per settle, not once more', async () => {
-  const repo = fakeRepo([workItem(1, 'a', ['task:ready'])]);
-  let asked = 0;
-  await drive(repo, [task('a', { agent_model: 'none', code_work: 'node w.mjs', code_work_timeout: 60 })], {
-    heldNow: async () => { asked += 1; return false; },
-  });
-  assert.equal(asked, 1);
-});
-
 // --- F24: letting go of an open item kills your claim --------------------------
 //
 // A single-executor test cannot see this class: an executor beats its own stale
