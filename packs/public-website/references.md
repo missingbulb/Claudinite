@@ -1,22 +1,7 @@
-# static-website — why its rules exist
+# public-website — why its rules exist
 
 Maintenance and review only: the reason behind each rule, written so a later pass can reaffirm or
 retire it. No session loads this file and no rule points a reader here.
-
-- **(RULES-1)** The publish set is deliberately **additive**, and the rule exists to make the cost
-  of that choice survivable. The rejected alternative — "publish the repo except the tooling" —
-  publishes every draft, note and key nobody thought to exclude, and publishes each *new* one
-  silently the day it lands. Additive inverts the failure: a forgotten entry is a missing page,
-  visible on the site and caught on the PR by `assemble-site`'s two guards (a publish path that
-  does not exist fails the run; so does an assembled site with no root `index.html`). Retire the
-  rule if the artifact ever stops being built from an explicit list.
-
-- **(RULES-2)** The version is computed, never typed, because a hand-written `ymmdd` or counter
-  either collides with a released version or is dated in the future, and the next bump then
-  refuses. The rule is load-bearing only while the release flow writes no version of its own —
-  it ships what it finds on the default branch — so the number a reviewer sees on a PR is the
-  number that ships. `sw/version-bumped` enforces the bump; `sw/version-scheme` enforces the
-  shape. Retire if a serving pack ever starts writing versions during the release.
 
 - **(RULES-3)** There is no server here to vary `Cache-Control` per file, so the freshness policy
   moves into the client. A per-file TTL reprices the same bet on every file and gets it wrong in
@@ -48,3 +33,16 @@ retire it. No session loads this file and no rule points a reader here.
   handle" is a claim about every consumer downstream, and it is usually wrong. The rule survives
   as long as the codebase has any boolean, comparison or status lookup that cannot distinguish
   absent from false; a wrong answer with no error is worse than an error.
+
+- **(RULES-7)** The stamp is a generated copy of `package.json`'s version, and a copy that drifts
+  names a build that was never served while the page looks perfectly normal. The rule and the
+  scheme arrived here from cloudflare-site when versioning stopped being a hosting pack's business
+  (owner, 2026-09-17: a hosting pack "needs to only care itself with how to serve, wire release,
+  maintain a release … not anything else that deals 'being a website' like versions"). Retire the
+  rule if the version stops being copied into the pages.
+
+- **(check:public-website/version-stamp-matches-package)** The same drift, held by a check rather
+  than remembered: it fires on what a hand-edit, a half-applied release and a page added without
+  the stamp all look like. Every tracked page is in scope because the stamp is the page's own
+  opt-in and this pack knows no served directory. Retire it if the version stops being copied
+  into the pages.

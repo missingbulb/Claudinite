@@ -1,13 +1,12 @@
-# Static website
+# Public website
 
-- **Adding a page, stylesheet or data file the site serves** — put it under an already-published
-  path or add it to `publish_paths` in the same change; the artifact is that list and nothing else,
-  so an unlisted file 404s on a live site whose build, deploy and checks were all green. (1)
+- **Writing a version number into a page** — don't: `title="version …"` is generated from
+  `package.json` by the pack's bump, and a hand-typed stamp names a build that was never served.
+  Repair a drifted one, consuming no version number, with (7)
 
-- **Changing anything under the publish set** — raise the version in the same PR with
-  `node .github/actions/bump-site-version/bump.mjs $(the repo's version_files)`, never by hand: the
-  release ships what it finds on the default branch, so a published change without a bump is never
-  released at all. (2)
+  ```
+  node .claudinite/shared/packs/public-website/bump-version.mjs --stamp-only
+  ```
 
 - **Deciding how long a published asset may be cached** — publish a manifest naming every asset
   and a hash of its contents, fetch that on each load and evict the entries whose hash moved,
