@@ -169,6 +169,13 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   under-running. The rule previously grouped it with the bash glob as an equally silent trap,
   which understates the glob: only the glob produces a green run over a subset. Retire the
   distinction if `node --test <dir>` starts recursing, or starts failing quietly.
+- **(running-the-suite-5)** 2026-09-16's capture on #2089 (session 2f6cc995, 20:37–20:47): the run
+  edited six packs' prose, then cleared `check_the_world`, `check_the_work`, the edited pack's own
+  suite and `engine-tests/pattern-rules.test.mjs` before pushing — none of which reads a README's
+  rule index — and learned about the missing rows from CI four minutes later. Nothing in the path
+  of `packs/<pack>/RULES.md` points at `engine-tests/`, so the covering test is the one an
+  edit-touches heuristic cannot find. Retire the line if the rule index moves under the pack it
+  indexes, or a conformance check takes it over from the test.
 - **(RULES-62)** Three misses in one window, one of each shape: `CLAUDINITE_TASKS_SUSPEND_ALL`
   documented as live and never built, beside `exclusive` which had retired with its mechanism
   (#975); `session_scope`, a writer with no reader left and nothing saying so (#993); and the
@@ -412,6 +419,18 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   firing completion notifications for agents that had finished. Two owner turns and a queue-wide
   audit were spent on wreckage. Retire the rule if the harness reclaims a finished agent's worktree
   and branch on its own.
+- **(RULES-93)** #2100: `cloudflare-site`'s release minor was a bare `MMDD`, which runs backwards
+  every New Year — `1231` then `0101` — so "later means bigger" stopped being true once a year.
+  Counting years from a fixed epoch took the minor to at least five digits where the old one was
+  at most four, so every adopter's next release sorts above its last whatever date it lands on,
+  and the fix shipped with no renumbering, no cutover and no tolerance to retire. The canon cannot
+  census its members (RULES-12), so a format change that orders itself is the only one that
+  converges without a window. Retire the rule if members gain a lockstep migration path.
+- **(RULES-94)** 2026-09-16's capture on #2089 (session 2f6cc995, 20:44:14–20:47:13): six rules
+  across five packs went in without their README rows, and `rule-index.test.mjs`'s first subtest
+  asserts inside its per-pack loop, so each run named one pack. The session re-ran the same file
+  six times, ~3 minutes, to collect faults one loop iteration would have reported together.
+  Retire the rule if the repo stops carrying whole-shelf conformance tests.
 
 - **(check:subagent-branch-named-git)** 2026-09-15's capture on #2074 (15:04:05–15:05:24): a
   worktree-isolated child was dispatched "on a branch named `perf/git-fixtures`" and could not

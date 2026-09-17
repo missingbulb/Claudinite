@@ -19,3 +19,6 @@ metadata:
 - **Iterating on a sweep across many files** — run only the test files the edit touches, plus
   `check_the_work`; spend the whole suite and `check_the_world` once, at the end. Both are
   whole-tree aggregates whose verdict cannot turn on one file. (3)
+- **Editing a `RULES.md` or `README.md` under `packs/`** — the file that holds a pack's rule index
+  in step with its prose sits outside the pack, and neither conformance sweep runs it, so add
+  `node --test engine-tests/rule-index.test.mjs` to the files the edit touches. (5)
