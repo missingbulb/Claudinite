@@ -421,6 +421,10 @@ export function makeGithub({
 
     readCommit: (_gh, _repo, sha) => route(`/repos/${repo}/commits/${sha}`),
     listRunsForSha: (_gh, _repo, sha) => route(`/repos/${repo}/actions/runs?head_sha=${sha}&per_page=100`),
+    listWorkflowRuns: (_gh, _repo, file, { event = 'workflow_dispatch', perPage = 10 } = {}) =>
+      route(`/repos/${repo}/actions/workflows/${file}/runs?event=${event}&per_page=${perPage}`),
+    readWorkflowRun: (_gh, _repo, runId) => route(`/repos/${repo}/actions/runs/${runId}`),
+    readPagesSite: (_gh, _repo) => route(`/repos/${repo}/pages`),
     latestRelease: (_gh, _repo) => route(`/repos/${repo}/releases/latest`),
     // The real one answers from the run's vars bag, never the API (src/world/github.mjs);
     // the fake carries no run env, and nothing in the engine calls it any more, so it
