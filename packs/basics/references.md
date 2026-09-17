@@ -114,6 +114,14 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   also fixed the timing the check cannot enforce: grep the tree for the old path in the same
   change as the removal, not later. Reaffirm while dangling references stay invisible to the
   suite; retire only if the test suite starts failing on them.
+- **(check:work-request-not-started)** The reword alone had a poor prior: the session-summary
+  directive it fixes had already been reworded once for the same class of failure (sessions
+  reciting the directive instead of the line), and the failure returned in a new shape. The
+  gate is the declared class rather than a length threshold because measuring "no substance"
+  means stripping the announcements, which would copy the summary's wording into this pack.
+  Sized against the 692 captured sessions on `conversation-logs`: none reached Stop having
+  made no tool call, so the rule is silent on every session that did any work. Retire if a
+  legitimate working session can end without calling a tool.
 - **(check:markdown-link-labels)** Converted from `repo-text-sweeps`' prose in #552. The
   mechanism a review needs is the sweep that produces it: a Markdown link carries its path
   **twice** — ``[`old/path.md`](old/path.md)`` holds it in both the visible label and the
@@ -176,6 +184,13 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   said "when the plan is agreed" three times without ever saying how agreement is obtained or that
   it gates filing, so a session could file tracker, links and edges and ask afterwards. Retire only
   if the owner says a filed-then-reviewed plan is acceptable.
+- **(RULES-6)** The continuation clause only. A `missingbulb/EdFringeNow` session opened on "Let's
+  move from github pages to deploy to Cloudflare. Adopt the relevant package and lets go", replied
+  with the session-start summary line and `**Comment class: process-change**`, and ended the turn:
+  one assistant message, `stop_reason` `end_turn`, zero thinking tokens, no tool call. Every
+  instruction governing that reply said what it must open with and none said it continues, so the
+  reply was complete by its own rules and empty of work. Retire if the instructions a first reply
+  answers to ever state their own continuation.
 - **(writing-migration-plans-2)** Same owner statement as RULES-5; this entry carries the three
   required contents of the submission (step lines, dependency graph, per-link automerge policy with
   its predicted diff) and the placement of the gate before any issue is filed.

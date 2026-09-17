@@ -5,6 +5,7 @@ import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
 import referenceIntegrity from '../workRules/reference-integrity.mjs';
 import commentClassificationForm from '../workRules/comment-classification-form.mjs';
+import workRequestNotStarted from '../workRules/work-request-not-started.mjs';
 import linkLabels from '../worldRules/markdown-link-labels.mjs';
 import filePlacement from '../worldRules/file-placement.mjs';
 import sharedConstants from '../worldRules/shared-constants.mjs';
@@ -692,3 +693,56 @@ test('comment-classification-form: silent with no classification line at all, or
   } finally { cleanup(root); }
 });
 
+// --- work-request-not-started: a session that classified the owner's comment as
+// work and then made no tool call at all has announced its intent and done nothing.
+
+const replyWithTool = (text, name = 'Read', timestamp = '2026-01-01T10:01:00Z') =>
+  ({ type: 'assistant', timestamp, message: { role: 'assistant', content: [
+    { type: 'text', text }, { type: 'tool_use', id: 'tu1', name, input: {} },
+  ] } });
+
+test('work-request-not-started: fires on a work-classified reply that called nothing', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const findings = runWithTranscript(workRequestNotStarted, root, [
+      owner("Let's move from github pages to deploy to Cloudflare. Adopt the relevant package and lets go."),
+      reply("I'll start by getting oriented.\n\nLoaded Claudinite from repo missingbulb/EdFringeNow: 12 packs.\n\n**Comment class: process-change**"),
+    ]);
+    assert.equal(findings.length, 1);
+    assert.match(findings[0].what, /process-change/);
+  } finally { cleanup(root); }
+});
+
+test('work-request-not-started: silent once the session has called a tool', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const findings = runWithTranscript(workRequestNotStarted, root, [
+      owner('please add the widget'),
+      replyWithTool('Comment class: feature\nStarting on it.'),
+    ]);
+    assert.equal(findings.length, 0);
+  } finally { cleanup(root); }
+});
+
+test('work-request-not-started: silent on `other`, the class covering questions and command phrases', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const findings = runWithTranscript(workRequestNotStarted, root, [
+      owner('why did that check fire?'),
+      reply('Comment class: other\nBecause the line carried two class tokens.'),
+    ]);
+    assert.equal(findings.length, 0);
+  } finally { cleanup(root); }
+});
+
+test('work-request-not-started: silent unclassified, and with no transcript (CI)', () => {
+  const root = makeRepo({ changed: { 'a.md': 'x\n' } });
+  try {
+    const unclassified = runWithTranscript(workRequestNotStarted, root, [
+      owner('please add the widget'),
+      reply('On it.'),
+    ]);
+    assert.equal(unclassified.length, 0);
+    assert.equal(runRule(workRequestNotStarted, buildContext({ root, mode: 'changed' })).length, 0);
+  } finally { cleanup(root); }
+});
