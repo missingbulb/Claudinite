@@ -20,7 +20,7 @@ export default {
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'serving a static site from Cloudflare: the published tree, custom domains, the release that cuts its version',
-    excludes: 'Workers runtime and bindings — cloudflare-workers; the GitHub Pages pipeline — static-website; markup — html',
+    excludes: 'Workers runtime and bindings — cloudflare-workers; the GitHub Pages pipeline — github-pages; markup — html',
   },
   marker: 'a near-root wrangler.json/.jsonc declaring assets.directory',
   detect: servesASite,

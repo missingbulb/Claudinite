@@ -1,7 +1,7 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { VERSION_RE, readVersion } from '../stubs/actions/bump-site-version/bump.mjs';
 import { parseConfig } from '../stubs/actions/read-site-config/read-config.mjs';
-import { CONFIG_PATH } from './site-config.mjs';
+import { adoptedStandard, CONFIG_PATH } from './vendored-pipeline.mjs';
 
 // The date-anchored version — `<major>.<ymmdd>.<n>`, released as `v…` — is the
 // standard's one number, and it is only worth anything if every record of it in
@@ -17,12 +17,13 @@ const rule = {
   id: 'sw/version-scheme',
   severity: 'blocking',
   description: 'Every declared version record carries the same <major>.<ymmdd>.<n> version',
-  doc: 'packs/static-website/skills/static-site-releases/SKILL.md',
+  doc: 'packs/static-website/skills/shipping-a-static-site/SKILL.md',
   why: 'a version that is off-scheme cannot be bumped (the release fails), and records that disagree ship a number that matches nothing that was released',
 
   run(ctx) {
+    if (!adoptedStandard(ctx)) return [];
     const configText = ctx.read(CONFIG_PATH);
-    if (configText === null) return [];
+    if (configText === null) return [];          // sw/site-config owns a missing config
     const { values } = parseConfig(configText);
     const files = (values.get('version_files') ?? '').split(/\s+/).filter(Boolean);
     if (!files.length) return [];

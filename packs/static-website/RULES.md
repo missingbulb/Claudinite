@@ -14,17 +14,10 @@
   `node .github/actions/bump-site-version/bump.mjs $(version_files)` computes it from the previous
   version and the UTC date, and `sw/version-bumped` is what holds the line. Never hand-write the
   `ymmdd` or the counter: a typed value either collides with a released one or is dated in the
-  future, and the next bump refuses. The release flow writes no version of its own — it ships what
-  it finds on `main` — so a shipped change without a bump is never released at all. The one
-  deliberate human part is the **major**, a "this is a new generation of the site" statement; the
-  owner's **"bump version"** means exactly that, and the release workflow's `bump: major` dispatch
-  is what performs it.
-
-- **The site is served from a subpath, not a domain root.** GitHub Pages serves it at
-  `https://<owner>.github.io/<repo>/` (unless a custom domain is configured), so a root-relative URL
-  — `/style.css`, `/img/logo.png`, a `fetch('/data.json')` — resolves above the site and 404s in
-  production while working fine in a local `file://` or `python -m http.server` preview. Write
-  links, asset paths and fetches **relative** to the page.
+  future, and the next bump refuses. Whatever serves the site writes no version of its own — it
+  ships what it finds on the default branch — so a published change without a bump is never
+  released at all. The one deliberate human part is the **major**, a "this is a new generation of
+  the site" statement, performed by a dispatch the serving pack owns.
 
 - **Freshness is a published manifest's job, not a per-file TTL's.** There is no server here to vary
   `Cache-Control` per file, so the freshness policy moves into the client — and the shape it

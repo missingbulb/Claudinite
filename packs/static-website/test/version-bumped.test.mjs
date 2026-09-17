@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import rule, { publishPrefixes, touchesPublishSet } from '../workRules/version-bumped.mjs';
 
-const ORCHESTRATOR = '.github/workflows/static-site-release.yml';
+const CI_STUB = '.github/workflows/static-site-ci.yml';
 const CONFIG = '.github/site.config';
 
 const config = (extra = '') => [
@@ -24,7 +24,7 @@ const work = (changedFiles, files, base) => ({
 });
 
 const siteFiles = (version, extra = {}) => ({
-  [ORCHESTRATOR]: 'name: Release static site\n',
+  [CI_STUB]: 'name: CI\n',
   [CONFIG]: config(),
   'package.json': pkg(version),
   ...extra,
@@ -87,9 +87,13 @@ test('a change that publishes nothing needs no bump', () => {
   assert.deepEqual(run(['README.md', '.github/workflows/static-site-ci.yml', 'tools/build.mjs'], '1.60821.1'), []);
 });
 
-test('a repo that does not ship the pipeline is asked for nothing', () => {
+test('a repo that has not adopted the standard is asked for nothing', () => {
+  // Neither the site config nor the vendored gate: this repo never took the
+  // standard on, so a change to a path that merely looks published is not its
+  // business. Dropping only ONE of the two leaves it relevant, by design.
   const files = siteFiles('1.60821.1');
-  delete files[ORCHESTRATOR];
+  delete files[CI_STUB];
+  delete files[CONFIG];
   const findings = rule.run(work(['site/index.html'], files, { 'package.json': pkg('1.60821.1') }));
   assert.deepEqual(findings, []);
 });

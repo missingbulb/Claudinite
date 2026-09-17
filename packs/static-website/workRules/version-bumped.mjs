@@ -1,8 +1,7 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { BumpError, compare, readVersion } from '../stubs/actions/bump-site-version/bump.mjs';
 import { parseConfig } from '../stubs/actions/read-site-config/read-config.mjs';
-import { shipsPipeline } from '../worldRules/release-workflows.mjs';
-import { CONFIG_PATH } from '../worldRules/site-config.mjs';
+import { adoptedStandard, CONFIG_PATH } from '../worldRules/vendored-pipeline.mjs';
 
 // THE VERSION BELONGS TO THE CHANGE. The release flow ships whatever version it
 // finds on `main` and writes none of its own, so a change that alters the
@@ -44,11 +43,11 @@ const rule = {
   severity: 'blocking',
   scope: 'work',
   description: 'A change to the published site raises the site version in the same change',
-  doc: 'packs/static-website/skills/static-site-releases/SKILL.md',
-  why: 'the release flow releases the version it finds on main and never writes one, so a published change that does not raise the version is never released — the pipeline no-ops on a version it has already shipped',
+  doc: 'packs/static-website/skills/shipping-a-static-site/SKILL.md',
+  why: 'whatever serves the site releases the version it finds on the default branch and never writes one, so a published change that does not raise the version is never released — the release no-ops on a version it has already shipped',
 
   run(work) {
-    if (!shipsPipeline(work)) return [];
+    if (!adoptedStandard(work)) return [];
     const configText = work.read(CONFIG_PATH);
     if (configText === null) return [];          // sw/site-config owns a missing or broken config
     const { values } = parseConfig(configText);
@@ -83,7 +82,7 @@ const rule = {
         ? `this change edits the published site (${touched[0]}${touched.length > 1 ? `, +${touched.length - 1} more` : ''}) but leaves the version at ${head}`
         : `the site version moves backwards, ${base} → ${head}`,
       fix: head === base
-        ? 'raise the version in every version_files record together — `node .github/actions/bump-site-version/bump.mjs $(the repo\'s version_files)` writes them all, or the release flow\'s dispatch does it for a deliberate major'
+        ? 'raise the version in every version_files record together — `node .github/actions/bump-site-version/bump.mjs $(the repo\'s version_files)` writes them all, or the serving pack\'s dispatch does it for a deliberate major'
         : 'site versions only ever increase — the release flow reads them as an ordering, so a lowered number releases nothing and the site stops updating',
     })];
   },

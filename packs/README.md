@@ -34,7 +34,8 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills; the technology's own movement is watched from the canon, not from here) |
 | <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 4 |
-| <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 7 (+ RELEASE contract; 1 skill: static-site-releases) |
+| <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: `.github/site.config` | 4 | 6 (+ 1 skill: shipping-a-static-site) |
+| <img src="github-pages/badge.svg" width="18" height="18" alt=""> [github-pages](github-pages/README.md) | declared (opt-in); marker: the `Release to GitHub Pages` orchestrator | 1 | 1 (+ 1 skill: releasing-to-github-pages) |
 | <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 10 (+ 2 skills: flutter-golden-tests, flutter-pubspec) |
 | <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 5 + 3 skills: firestore-security-rules, firebase-functions, create-release-plan |
 | <img src="cloudflare-workers/badge.svg" width="18" height="18" alt=""> [cloudflare-workers](cloudflare-workers/README.md) | wrangler config near root | 0 | 11 |

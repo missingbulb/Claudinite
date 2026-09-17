@@ -3,25 +3,13 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import pack from '../pack.mjs';
-import releaseWorkflows, { VENDORED_ACTIONS, VENDORED_WORKFLOWS } from '../worldRules/release-workflows.mjs';
+import vendoredPipeline, { CI_STUB_FILE, VENDORED_ACTIONS } from '../worldRules/vendored-pipeline.mjs';
 import siteConfig from '../worldRules/site-config.mjs';
 import versionScheme from '../worldRules/version-scheme.mjs';
 import { parseConfig } from '../stubs/actions/read-site-config/read-config.mjs';
 import { resolve, toGithubEnv } from '../stubs/actions/read-site-config/export-build-vars.mjs';
 
 const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
-
-const ORCHESTRATOR = [
-  'name: Release static site',
-  'on:',
-  '  push:',
-  '    branches: [main]',
-  '  workflow_dispatch:',
-  'jobs:',
-  '  release:',
-  '    uses: ./.github/workflows/static-site-publish.yml',
-  '',
-].join('\n');
 
 const CONFIG = [
   'publish_root=.',
@@ -32,74 +20,20 @@ const CONFIG = [
   '',
 ].join('\n');
 
-// A repo carrying the whole vendored pipeline, its config, and a version on the
-// scheme — the shape every rule here is quiet on.
+// A repo carrying the whole vendored set, its config, and a version on the
+// scheme — the shape every rule here is quiet on. Nothing about how the site is
+// SERVED: that is the serving pack's fixture, and none of these rules read it.
 function siteRepo(overrides = {}) {
   const files = {
-    '.github/workflows/static-site-release.yml': ORCHESTRATOR,
-    '.github/workflows/static-site-ci.yml': 'name: CI\non:\n  pull_request:\n',
+    [`.github/workflows/${CI_STUB_FILE}`]: 'name: CI\non:\n  pull_request:\n',
     '.github/site.config': CONFIG,
     'index.html': '<!doctype html><title>site</title>\n',
     'assets/style.css': 'body{}\n',
     'package.json': '{\n  "version": "1.60704.1"\n}\n',
   };
-  for (const wf of VENDORED_WORKFLOWS) files[`.github/workflows/${wf}`] = `name: reusable ${wf}\n`;
   for (const a of VENDORED_ACTIONS) files[`.github/actions/${a}/action.yml`] = `name: ${a}\n`;
   return makeRepo({ base: { ...files, ...overrides } });
 }
-
-test('static-website: the pack fingerprints a repo carrying the orchestrator, and only that', () => {
-  const root = siteRepo();
-  try {
-    assert.equal(pack.detect(buildContext({ root, mode: 'all' })), true);
-  } finally { cleanup(root); }
-
-  // Same file, a different workflow's name — not this standard's orchestrator.
-  const other = siteRepo({ '.github/workflows/static-site-release.yml': 'name: Something else\non:\n  push:\n' });
-  try {
-    assert.equal(pack.detect(buildContext({ root: other, mode: 'all' })), false);
-  } finally { cleanup(other); }
-});
-
-test('sw/release-workflows: clean on the fully vendored pipeline', () => {
-  const root = siteRepo();
-  try {
-    assert.deepEqual(run(releaseWorkflows, root), []);
-  } finally { cleanup(root); }
-});
-
-test('sw/release-workflows: names every missing leg of the pipeline', () => {
-  const root = makeRepo({ base: { '.github/workflows/static-site-release.yml': ORCHESTRATOR } });
-  try {
-    const findings = run(releaseWorkflows, root);
-    const files = findings.map((f) => f.file);
-    for (const wf of VENDORED_WORKFLOWS) assert.ok(files.includes(`.github/workflows/${wf}`), `expected a finding for ${wf}`);
-    for (const a of VENDORED_ACTIONS) assert.ok(files.includes(`.github/actions/${a}/action.yml`), `expected a finding for ${a}`);
-    assert.ok(files.includes('.github/workflows/static-site-ci.yml'), 'expected a finding for the missing PR gate');
-    assert.ok(findings.every((f) => f.severity === 'blocking'));
-  } finally { cleanup(root); }
-});
-
-test('sw/release-workflows: an orchestrator that lost its push trigger or its call is flagged', () => {
-  const root = siteRepo({
-    '.github/workflows/static-site-release.yml': 'name: Release static site\non:\n  workflow_dispatch:\njobs:\n  release:\n    runs-on: ubuntu-latest\n',
-  });
-  try {
-    const what = run(releaseWorkflows, root).map((f) => f.what).join('\n');
-    assert.match(what, /does not call the local/);
-    assert.match(what, /no push: trigger/);
-  } finally { cleanup(root); }
-});
-
-test('sw/release-workflows: inert on a repo that does not ship the pipeline (FP guard)', () => {
-  // A site that deploys somewhere other than Pages declares the pack for the
-  // versioning and CI half and carries no orchestrator — nothing to say.
-  const root = makeRepo({ base: { 'index.html': '<!doctype html>\n', '.github/workflows/deploy.yml': 'name: Deploy elsewhere\n' } });
-  try {
-    assert.deepEqual(run(releaseWorkflows, root), []);
-    assert.deepEqual(run(siteConfig, root), []);
-  } finally { cleanup(root); }
-});
 
 test('sw/site-config: clean on a fully declared config', () => {
   const root = siteRepo();
@@ -109,9 +43,11 @@ test('sw/site-config: clean on a fully declared config', () => {
 });
 
 test('sw/site-config: a missing config file is blocking', () => {
+  // Relevant through the OTHER signal: the vendored gate is here, the config is
+  // not — which is exactly the case a config-only gate would pass in silence.
   const bare = makeRepo({
     base: {
-      '.github/workflows/static-site-release.yml': ORCHESTRATOR,
+      [`.github/workflows/${CI_STUB_FILE}`]: 'name: CI\non:\n  pull_request:\n',
       'index.html': '<!doctype html>\n',
     },
   });
@@ -244,32 +180,92 @@ test('export-build-vars: a multi-line value is written in the heredoc form', () 
   );
 });
 
-test('sw/release-workflows: declaring build_vars on a pre-exporter vendored copy is blocking', () => {
-  const root = siteRepo({ '.github/site.config': `${CONFIG}build_vars=SITE_TOKEN\n` });
+
+// ---------------------------------------------------------------------------
+// sw/vendored-pipeline — the pack's own vendored surface, and the two-signal
+// relevance gate all four of its rules share.
+
+test('sw/vendored-pipeline: clean on the fully vendored set', () => {
+  const root = siteRepo();
   try {
-    const findings = run(releaseWorkflows, root);
-    const files = findings.map((f) => f.file);
-    assert.ok(files.includes('.github/actions/read-site-config/export-build-vars.mjs'));
-    assert.ok(files.includes('.github/workflows/static-site-deploy-pages.yml'));
-    assert.ok(files.includes('.github/workflows/static-site-ci.yml'));
+    assert.deepEqual(run(vendoredPipeline, root), []);
   } finally { cleanup(root); }
 });
 
-test('sw/release-workflows: a vendored copy that honours build_vars is clean', () => {
+test('sw/vendored-pipeline: names every missing composite action and the absent gate', () => {
+  const root = makeRepo({ base: { '.github/site.config': CONFIG, 'index.html': '<!doctype html>\n' } });
+  try {
+    const findings = run(vendoredPipeline, root);
+    const files = findings.map((f) => f.file);
+    assert.equal(files.length, VENDORED_ACTIONS.length + 1,
+      `expected one finding per action plus the gate, got: ${files.join(', ')}`);
+    for (const a of VENDORED_ACTIONS) assert.ok(files.includes(`.github/actions/${a}/action.yml`), `expected a finding for ${a}`);
+    assert.ok(files.includes(`.github/workflows/${CI_STUB_FILE}`), 'expected a finding for the missing PR gate');
+    assert.ok(findings.every((f) => f.severity === 'blocking'));
+  } finally { cleanup(root); }
+});
+
+test('sw/vendored-pipeline: a repo running its own CI workflow satisfies the gate', () => {
+  // The gate requirement is that pull requests run SOMETHING, not that they run
+  // this stub — a repo with its own suite is not asked to take a second one.
+  const files = {
+    '.github/site.config': CONFIG,
+    '.github/workflows/my-ci.yml': 'name: My CI\non:\n  pull_request:\n',
+    'index.html': '<!doctype html>\n',
+    'assets/style.css': 'body{}\n',
+    'package.json': '{\n  "version": "1.60704.1"\n}\n',
+  };
+  for (const a of VENDORED_ACTIONS) files[`.github/actions/${a}/action.yml`] = `name: ${a}\n`;
+  const root = makeRepo({ base: files });
+  try {
+    assert.deepEqual(run(vendoredPipeline, root), []);
+  } finally { cleanup(root); }
+});
+
+test('sw/vendored-pipeline: declaring build_vars on a pre-exporter vendored copy is blocking', () => {
+  const root = siteRepo({ '.github/site.config': `${CONFIG}build_vars=SITE_TOKEN\n` });
+  try {
+    const files = run(vendoredPipeline, root).map((f) => f.file);
+    assert.ok(files.includes('.github/actions/read-site-config/export-build-vars.mjs'));
+    assert.ok(files.includes(`.github/workflows/${CI_STUB_FILE}`));
+  } finally { cleanup(root); }
+});
+
+test('sw/vendored-pipeline: a vendored copy that honours build_vars is clean', () => {
   const root = siteRepo({
     '.github/site.config': `${CONFIG}build_vars=SITE_TOKEN\n`,
     '.github/actions/read-site-config/export-build-vars.mjs': '// vendored exporter\n',
-    '.github/workflows/static-site-deploy-pages.yml': 'name: deploy\nrun: node .github/actions/read-site-config/export-build-vars.mjs\n',
-    '.github/workflows/static-site-ci.yml': 'name: CI\non:\n  pull_request:\nrun: node .github/actions/read-site-config/export-build-vars.mjs\n',
+    [`.github/workflows/${CI_STUB_FILE}`]: 'name: CI\non:\n  pull_request:\nrun: node .github/actions/read-site-config/export-build-vars.mjs\n',
   });
   try {
-    assert.deepEqual(run(releaseWorkflows, root), []);
+    assert.deepEqual(run(vendoredPipeline, root), []);
   } finally { cleanup(root); }
 });
 
-test('sw/release-workflows: a repo that declares no build_vars is untouched by the exporter (FP guard)', () => {
+test('sw/vendored-pipeline: a repo that declares no build_vars is untouched by the exporter (FP guard)', () => {
   const root = siteRepo();
   try {
-    assert.deepEqual(run(releaseWorkflows, root), []);
+    assert.deepEqual(run(vendoredPipeline, root), []);
+  } finally { cleanup(root); }
+});
+
+test('the pack is inert on a repo carrying neither signal (FP guard)', () => {
+  // Neither the config nor the gate: nothing here has adopted the standard, so
+  // every rule in the pack — including the one whose whole job is to report a
+  // missing config — stays silent rather than demanding one of a repo that
+  // never asked for it.
+  const root = makeRepo({ base: { 'index.html': '<!doctype html>\n', 'package.json': '{"version": "1.2.3"}' } });
+  try {
+    for (const rule of [vendoredPipeline, siteConfig, versionScheme]) {
+      assert.deepEqual(run(rule, root), [], `${rule.id} fired on a repo that has not adopted the standard`);
+    }
+    assert.equal(pack.detect(buildContext({ root, mode: 'all' })), false);
+  } finally { cleanup(root); }
+});
+
+test('the pack fingerprints a repo carrying the site config', () => {
+  const root = siteRepo();
+  try {
+    assert.equal(pack.detect(buildContext({ root, mode: 'all' })), true);
   } finally { cleanup(root); }
 });

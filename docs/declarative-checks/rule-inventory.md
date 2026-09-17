@@ -47,7 +47,8 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | node | 5 | 3 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
 | web-speech | 15 | 15 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | html | 4 | 1 | 0 | 0 | 0 | 2 | 1 | 0 | 0 | 0 |
-| static-website | 8 | 2 | 1 | 1 | 0 | 0 | 1 | 2 | 0 | 1 |
+| static-website | 6 | 1 | 1 | 1 | 0 | 0 | 1 | 1 | 0 | 1 |
+| github-pages | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | product-wiki | 2 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 1 |
 | leaflet | 4 | 2 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | python | 3 | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 0 | 0 |
@@ -692,12 +693,22 @@ Scan scope for every A row is structural, expressible today: harness files are t
 |---|------|-------|-----------------------------------|-------|
 | 1 | Published file is one the publish set names | C | added `\.(html|css|js|json|svg|png)$` under `publish_root` matching no `publish_paths` prefix while `site.config` unchanged | work assertion: added paths covered by a parsed key-value list |
 | 2 | The version moves with the change | X | — | `sw/version-bumped`, `sw/version-scheme` |
-| 3 | Pipeline files are managed copies of stubs | B | DERIVE: vendored `.github/workflows/static-site-*.yml`, `.github/actions/{read-site-config,bump-site-version,assemble-site}/**`; ASSERT: each byte-equals its `.claudinite/shared/packs/static-website/stubs/` twin | `requireFilesEqual` (pair by relative path); `sw/release-workflows` checks presence only |
-| 4 | Site served from a subpath | A | `relevantWhen pathAbsent CNAME`; `matchLines /(href|src)=["']\/(?!\/)|fetch\(\s*['"]\/(?!\/)|url\(\s*['"]?\/(?!\/)/` over the publish set | none |
+| 3 | Pipeline files are managed copies of stubs | B | DERIVE: vendored `.github/workflows/static-site-*.yml`, `.github/actions/{read-site-config,bump-site-version,assemble-site}/**`; ASSERT: each byte-equals its `.claudinite/shared/packs/static-website/stubs/` twin | `requireFilesEqual` (pair by relative path); `sw/vendored-pipeline` checks presence only |
 | 5 | Freshness is a published manifest's job | G | design guidance; no artifact signature until a manifest exists | none |
 | 6 | Nothing attests to its own freshness | A | `matchLines /fetch\([^)]*manifest[^)]*\)/ unlessLineMatches /no-store|Date\.now|\?v=/`; `matchLines /content-length|\.size\s*[!=]==/` in cache code (advisory) | none |
 | 7 | Two files on separate clocks joined across generations | G | design guidance; the join-rate assertion is a judgment on the data | none |
 | 8 | Don't call missing data survivable | F | trigger: added line `/\.catch\(\s*\(\)\s*=>\s*(null|undefined|\{\}|\[\])\s*\)|\?\?\s*\{\}/` on a fetch → "follow it to the pixel" skill | added-line-pattern skill trigger (as html-2) |
+
+## github-pages — `packs/github-pages/RULES.md`
+
+Split out of `static-website` on 2026-09-17: the serving half became its own pack, and this
+rule went with it. Numbering is kept from the old `static-website` table so a row cited
+elsewhere still resolves.
+
+| # | Rule | Class | Signature / trigger / derived set | Needs |
+|---|------|-------|-----------------------------------|-------|
+| 4 | Site served from a subpath | A | `relevantWhen pathAbsent CNAME`; `matchLines /(href|src)=["']\/(?!\/)|fetch\(\s*['"]\/(?!\/)|url\(\s*['"]?\/(?!\/)/` over the publish set | none |
+| 3b | Pages pipeline files are managed copies of stubs | B | DERIVE: vendored `.github/workflows/github-pages-*.yml`; ASSERT: each byte-equals its `.claudinite/shared/packs/github-pages/stubs/` twin | `requireFilesEqual` (pair by relative path); `gp/pages-workflows` checks presence only |
 
 ## product-wiki — `packs/product-wiki/RULES.md`
 

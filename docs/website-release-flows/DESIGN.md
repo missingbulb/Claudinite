@@ -14,6 +14,14 @@ Inputs: [COMPARISON.md](COMPARISON.md) (the fleet evidence), [SOUNDNESS.md](SOUN
 > as *data, not as the desired outcome*: this design's conclusions stand where they
 > disagree with what shipped. Decisions affected by the new state say so inline.
 
+> **State note (2026-09-17).** EdFringeNow has since removed the pack, so it has no
+> adopters and D1's "one live adopter to carry along" no longer holds. The owner has
+> answered open question 1 the other way: rather than renaming, the pack is **split** —
+> the serving half (release-on-push, the Release, the Pages deploy, the subpath rule) is
+> now the `github-pages` pack, and `static-website` keeps the version scheme, the publish
+> set, `site.config` and the PR gate. **D1 is superseded**; the rest of this design is
+> still open input, now to be read against two packs rather than one.
+
 ## Goal
 
 One github-pages-serving standard, owned by the pack, with:
@@ -247,8 +255,8 @@ consumer the export existed for. Three details of it are worth keeping anyway:
 
 ## Open questions for the owner
 
-1. Rename the pack to `github-pages-serving`, or keep `static-website`? (D1 — cosmetic;
-   default: keep.)
+1. ~~Rename the pack to `github-pages-serving`, or keep `static-website`?~~ **Answered
+   2026-09-17**: neither — the pack is split in two, `static-website` + `github-pages`.
 2. EdFringeNow data refreshes: `deploy-only` (recommended, D6) or full releases per data
    push (#319's stated expectation, ~17 Releases/day under the pack)? As merged, neither
    happens — data pushes deploy nothing (D5 state note) — so this needs an answer either

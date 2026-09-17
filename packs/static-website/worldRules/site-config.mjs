@@ -1,8 +1,6 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { KEYS, parseConfig } from '../stubs/actions/read-site-config/read-config.mjs';
-import { shipsPipeline } from './release-workflows.mjs';
-
-export const CONFIG_PATH = '.github/site.config';
+import { adoptedStandard, CONFIG_PATH } from './vendored-pipeline.mjs';
 
 // Directories that must never appear in a publish set. Two of them are the agent
 // tooling (whose skill symlinks dangle on a runner and whose content is nobody's
@@ -20,17 +18,17 @@ const rule = {
   id: 'sw/site-config',
   severity: 'blocking',
   description: `${CONFIG_PATH} declares the publish set explicitly — the five required keys, no unknown keys, every published path present`,
-  doc: 'packs/static-website/skills/static-site-releases/SKILL.md',
+  doc: 'packs/static-website/skills/shipping-a-static-site/SKILL.md',
   why: 'the published artifact is an explicit list, so a stale entry silently drops a page from the live site and an unknown key silently does nothing',
 
   run(ctx) {
-    if (!shipsPipeline(ctx)) return [];
+    if (!adoptedStandard(ctx)) return [];
     const text = ctx.read(CONFIG_PATH);
     if (text === null) {
       return [finding(rule, {
         file: CONFIG_PATH,
         what: `missing — the pipeline reads every repo value from it (${KEYS.filter((k) => !k.optional).map((k) => k.name).join(', ')})`,
-        fix: `write ${CONFIG_PATH} with all five required keys, explicitly (see the static-site-releases skill)`,
+        fix: `write ${CONFIG_PATH} with all five required keys, explicitly (see the shipping-a-static-site skill)`,
       })];
     }
 
