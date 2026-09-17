@@ -1664,6 +1664,14 @@ fi
         '---\nname: fixture-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
     },
   },
+  {
+    name: 'bare-basics-member',
+    why: 'a member declaring basics and nothing else — proving the vendored work-request-not-started rule (blocking, work scope) loads and leaves the world sweep green. The rehearsal never runs check_the_work, so it does not prove the rule fires, and no fixture can: what that rule reads is a session transcript, which a repo shape has none of. What a member is exposed to is a new blocking finding at its own Stop hook, cleared by doing the work the finding names',
+    files: {
+      'README.md': '# fixture-bare-basics-member\n\nA rehearsal fixture.\n',
+      '.claudinite-settings.json': checks(['basics']),
+    },
+  },
 ];
 
 // The two MODES, stated as what the fixture has INSTALLED. `stale` is the half that
