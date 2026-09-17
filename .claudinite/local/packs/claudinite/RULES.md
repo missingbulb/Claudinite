@@ -342,6 +342,10 @@ Below are rules on how to work on this repo.
 - **Carrying a dotted version identifier** — keep it string-typed everywhere. `'60820.10'` and
   `'60820.1'` are different versions and the same float. (46)
 
+- **Changing the format of an identifier members compare for order** — choose the new shape so
+  every old value already sorts below every new one (one more digit does it), and the change
+  needs no migration, no legacy tolerance and no convergence window. (93)
+
 - **Designing text that instructs a model to echo an exact string** — state the instruction first,
   have it disclaim itself as instruction-not-payload, and put the literal string once, last. Never
   reference the payload anaphorically ("that line"); recency is what resolves it. (47)
@@ -466,6 +470,10 @@ Below are rules on how to work on this repo.
 
 - **Asserting a mid-run invariant** — capture it at the exact moment the state holds. By the end
   of the run, normal convergence has cleared the evidence.
+
+- **Writing a conformance test that quantifies over the shelf or the tree** — gather every
+  member's failure and assert once at the end; one that throws inside the loop reports a single
+  fault per run, so a change touching five packs pays five red-green cycles. (94)
 
 - **Writing a regression test that pins a policy or convention decision** — assert the
   behavior/invariant the decision requires, never a literal sentence quoted from a doc: a
