@@ -10,8 +10,7 @@
 // converge stamps each one's own `required_secrets` beneath the `# claudinite:secrets`
 // marker. Copying the stub over it would deliver the line and take every member's
 // secrets with it, which is a far worse outcome than the gap this closes. A rewrite
-// preserves everything it does not name — the same reason github-pages' vendoring record
-// rewrites rather than replaces.
+// preserves everything it does not name.
 //
 // IDEMPOTENCY LIVES IN `appliesTo`, not in the replacement. `applyRewrites` uses
 // split/join, so running this twice against an already-rewritten file would insert a
