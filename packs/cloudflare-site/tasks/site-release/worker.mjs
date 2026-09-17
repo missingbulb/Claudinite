@@ -9,6 +9,11 @@
 // can fail, and of the two possible drifts only one is silent — a site serving a
 // version the repo has no record of. A consumed version number that never shipped is
 // visible in the park and costs nothing; the next release simply takes the next one.
+//
+// THE VERSION IS ANOTHER PACK'S. public-website owns the scheme and the page stamp,
+// and publishes them through its `public/version.mjs`; this worker imports that seam
+// when the pack is on the mount and releases without a bump when it is not. Nothing
+// else of that pack is reached, and nothing here knows how the version is shaped.
 
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -23,8 +28,22 @@ import { pathToFileURL } from 'node:url';
 // the relative path resolves the same from the canon and from a member's mount.
 import { baseTip, readAt, remoteUrl, withTaskTrailer } from '../../../claudinite-tasks/public/delivery.mjs';
 import { BEACON_PLACEHOLDER, claimedHostnames, parseWranglerConfig, publishedDir, wranglerConfigPath } from '../../lib.mjs';
-import { nextVersion, stampHtml } from '../../bump-version.mjs';
 import { preflight } from './preflight.mjs';
+
+// public-website's seam, resolved beside this pack on whatever tree runs the worker.
+// Absent means the pack is not declared here (the mount holds declared packs only),
+// which is the documented no-bump release, not an error; any other failure to load
+// it is a real one.
+export const VERSIONING_SEAM = '../../../public-website/public/version.mjs';
+
+export async function loadVersioning(importImpl = (specifier) => import(specifier)) {
+  try {
+    return await importImpl(VERSIONING_SEAM);
+  } catch (e) {
+    if (e?.code === 'ERR_MODULE_NOT_FOUND') return null;
+    throw e;
+  }
+}
 
 // Pinned rather than floating: a release that silently changes its own toolchain
 // between two nights is a change nobody reviewed.
@@ -90,38 +109,31 @@ function commitOnto(root, { parent, files, message }) {
 // Advance the version on `base` and push it, rebuilding on top of whatever landed
 // under us. The version is recomputed from each attempt's tip rather than carried
 // across, so a release that raced another writer still counts from what is there.
+// With no `versioning` there is nothing to write: the release is the tip as found.
 //
 // Deliberately not `pushGenerated`: that lane force-pushes, which is correct for a
 // regenerate-not-reconcile branch and catastrophic for the default branch.
-export function pushRelease(root, { remote, base, taskId, now = new Date() }) {
+export function pushRelease(root, { remote, base, taskId, versioning, now = new Date() }) {
   let lastError = null;
   for (let attempt = 1; attempt <= PUSH_ATTEMPTS; attempt += 1) {
     const parent = baseTip(root, remote, base);
-    const pkgText = readAt(root, parent, 'package.json');
-    if (pkgText === null) {
-      console.error(`claudinite-needs-human: decision — package.json is absent from ${base}, so there is no version to advance`);
-      throw new Error(`package.json is absent from ${base}`);
-    }
-    const pkg = JSON.parse(pkgText);
-    const version = nextVersion(pkg.version, now);
     const deployment = deploymentAt(root, parent);
+    if (!versioning) return { version: null, commit: parent, attempts: attempt, deployment };
 
-    const files = { 'package.json': `${JSON.stringify({ ...pkg, version }, null, 2)}\n` };
-    for (const page of deployment.tracked.filter((p) => p.startsWith(`${deployment.dir}/`) && p.endsWith('.html'))) {
-      const html = readAt(root, parent, page);
-      if (html === null) continue;
-      const stamped = stampHtml(html, version);
-      if (stamped !== html) files[page] = stamped;
+    const bump = versioning.bumpedFiles({ read: (path) => readAt(root, parent, path), tracked: deployment.tracked, now });
+    if (!bump) {
+      console.error(`claudinite-needs-human: decision — package.json is absent from ${base} or carries no version, so public-website has nothing to advance — add one, or undeclare public-website to release unversioned`);
+      throw new Error(`package.json on ${base} carries nothing to advance`);
     }
 
     const commit = commitOnto(root, {
       parent,
-      files,
-      message: withTaskTrailer(`Release site version ${version}`, taskId),
+      files: bump.files,
+      message: withTaskTrailer(`Release site version ${bump.version}`, taskId),
     });
     try {
       git(root, ['push', '--quiet', remote, `${commit}:refs/heads/${base}`]);
-      return { version, commit, attempts: attempt, deployment };
+      return { version: bump.version, commit, attempts: attempt, deployment };
     } catch (e) {
       lastError = e;
       log(`push rejected on attempt ${attempt} — ${base} moved; rebuilding on its new tip`);
@@ -198,17 +210,25 @@ function deploy(dir, { apiToken, accountId }) {
   }
 }
 
-// What the hostnames served after the upload. A release is not finished when the API
-// returns 200: the point of the exercise is that a visitor reaches the page, and the
-// run is the only place that is ever checked. A first attach issues a certificate,
-// which takes minutes, so this REPORTS rather than parks — the version is already
-// cut and the upload already happened, and there is nothing here to undo.
-export async function reportServed(hostnames, { fetchImpl = fetch } = {}) {
+// What the hostnames served after the upload, and whether the page shows the version
+// just cut. A release is not finished when the API returns 200: the point of the
+// exercise is that a visitor reaches the page, and the run is the only place that is
+// ever checked. A first attach issues a certificate, which takes minutes, so this
+// REPORTS rather than parks — the version is already cut and the upload already
+// happened, and there is nothing here to undo. `stamp` is `matches`, `stale`, `none`
+// (the page carries no stamp) or null (no version was cut).
+export async function reportServed(hostnames, { version = null, fetchImpl = fetch } = {}) {
   const served = [];
   for (const hostname of hostnames) {
     try {
       const res = await fetchImpl(`https://${hostname}/`, { redirect: 'follow' });
-      served.push({ hostname, status: res.status });
+      const body = typeof res.text === 'function' ? await res.text() : '';
+      let stamp = null;
+      if (version) {
+        if (body.includes(`title="version ${version}"`)) stamp = 'matches';
+        else stamp = /title="version [^"]*"/.test(body) ? 'stale' : 'none';
+      }
+      served.push({ hostname, status: res.status, stamp });
     } catch (e) { served.push({ hostname, error: e.message }); }
   }
   return served;
@@ -241,8 +261,15 @@ export async function main() {
     throw new Error('a claimed hostname still answers from the previous host');
   }
 
-  const { version, commit, attempts, deployment } = pushRelease(root, { remote: remoteUrl(repo, token), base, taskId });
-  log(`released version ${version} as ${commit.slice(0, 7)}${attempts > 1 ? ` (after ${attempts} push attempts)` : ''}`);
+  const versioning = await loadVersioning();
+  log(versioning
+    ? 'public-website is declared — the release advances the version before uploading'
+    : 'public-website is not declared — the release uploads the branch tip with no version bump');
+
+  const { version, commit, attempts, deployment } = pushRelease(root, { remote: remoteUrl(repo, token), base, taskId, versioning });
+  log(version
+    ? `released version ${version} as ${commit.slice(0, 7)}${attempts > 1 ? ` (after ${attempts} push attempts)` : ''}`
+    : `releasing ${commit.slice(0, 7)}`);
 
   withReleaseTree(root, commit, (dir) => {
     const published = deployment.tracked.filter((p) => p.startsWith(`${deployment.dir}/`));
@@ -256,10 +283,14 @@ export async function main() {
     deploy(configDir, { apiToken, accountId });
   });
 
-  for (const r of await reportServed(deployment.hostnames)) {
-    log(r.error ? `https://${r.hostname}/ did not answer: ${r.error}` : `https://${r.hostname}/ answered ${r.status}`);
+  for (const r of await reportServed(deployment.hostnames, { version })) {
+    if (r.error) { log(`https://${r.hostname}/ did not answer: ${r.error}`); continue; }
+    const stamp = r.stamp === 'matches' ? ` and shows version ${version}`
+      : r.stamp === 'stale' ? ' but still shows an earlier version — the edge propagates for a minute or so; a later visit is the check'
+        : r.stamp === 'none' ? ' (the page carries no version stamp)' : '';
+    log(`https://${r.hostname}/ answered ${r.status}${stamp}`);
   }
-  log(`published ${deployment.dir} at version ${version}`);
+  log(`published ${deployment.dir}${version ? ` at version ${version}` : ''}`);
 }
 
 // Run only when invoked directly (code-work's `node worker.mjs`), never on import.

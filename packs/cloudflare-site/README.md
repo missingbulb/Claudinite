@@ -2,9 +2,17 @@
 
 Active when a near-root `wrangler.json`/`.jsonc` declares `assets.directory` — a repo whose
 wrangler config describes a *site* rather than a Worker backend. It brings the nightly
-`site-release` task (cut the version, stamp the pages, push the bump, upload the tree, report
-what the domain answered), the version scheme itself, and the checks that keep the upload
-boundary, the version stamp, the beacon token and the single path to production honest.
+`site-release` task (advance the version where public-website is declared, push the bump,
+upload the tree, report what the domain answered and whether it shows that version), and the
+checks that keep the upload boundary, the beacon token and the single path to production
+honest.
+
+## What this pack does not own
+
+The version. [public-website](../public-website/README.md) owns the scheme and the page stamp,
+and the release reaches that pack's `public/version.mjs` to advance it when the pack is declared
+— a repo that declares only this one is uploaded unversioned. No other host is named here: a site
+is served from Cloudflare or from something else, never both.
 
 The Cloudflare account's own steps — the zone, the account id, the API token — are the pack's
 `adoptionHandover`, filed as a tracking issue when the pack is adopted. What a previous host
@@ -18,7 +26,6 @@ teaches its reader to skim it.
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | Only the published tree reaches the site | high | correctness | prose: <100 words |
-| The version stamp is generated, never typed | medium | correctness | prose: <50 words + check (`cloudflare-site/version-stamp-matches-package`) |
 | One path to production | high | correctness | prose: <50 words + check (`cloudflare-site/no-second-publisher`) |
 | What a parked release is asking for | medium | correctness | prose: <100 words |
 
@@ -33,7 +40,6 @@ teaches its reader to skim it.
 | Check | Severity | Reason | Enforcement |
 |---|---|---|---|
 | `cloudflare-site/publishes-a-site-directory` | critical | correctness | check: blocking |
-| `cloudflare-site/version-stamp-matches-package` | medium | correctness | check: blocking |
 | `cloudflare-site/no-second-publisher` | high | correctness | check: blocking |
 | `cloudflare-site/beacon-token-is-not-committed` | high | legal | check: blocking |
 
@@ -41,7 +47,7 @@ teaches its reader to skim it.
 
 | Task | Cadence | What it does |
 |---|---|---|
-| [`site-release`](tasks/site-release/README.md) | daily, when the branch has moved past the last release | cuts the next version, stamps and pushes it, uploads the published tree to Cloudflare |
+| [`site-release`](tasks/site-release/README.md) | daily, when the branch has moved past the last release | advances the version where public-website is declared, pushes it, uploads the published tree to Cloudflare, probes the domain |
 
 ## Upstream
 

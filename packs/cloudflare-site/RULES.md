@@ -5,16 +5,8 @@
   from the live site with no error anywhere, and a file under it that is documentation rather
   than page goes in `.assetsignore`.
 
-- **Writing a version number into a page** — don't: `title="version …"` is generated from
-  `package.json` by the pack's bump, and a hand-edited stamp names a build that was never
-  served. Repair a drifted one, consuming no version number, with
-
-  ```
-  node .claudinite/shared/packs/cloudflare-site/bump-version.mjs --stamp-only
-  ```
-
 - **Publishing the site from anywhere but the `site-release` task** — never: the task is what
-  cuts the version, gates on what has landed and parks where a person must act, and a second
+  advances the version, gates on what has landed and parks where a person must act, and a second
   publisher has none of that while its green run looks exactly like success.
 
 - **A release parked** — the lane is the diagnosis: `action` is a credential, a scope, the zone,

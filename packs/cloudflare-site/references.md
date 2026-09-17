@@ -9,10 +9,6 @@ asks whether each still earns its place. No session loads this file.
   reports success either way. Retire the check if a Cloudflare deployment ever gains a second,
   independent statement of what is uploaded.
 
-- **(check:cloudflare-site/version-stamp-matches-package)** The stamp is a generated copy of
-  `package.json`'s version, and a copy that drifts names a build that was never served while the
-  page looks perfectly normal. Retire it if the version stops being copied into the pages.
-
 - **(check:cloudflare-site/no-second-publisher)** A workflow that deploys ships the tree with no
   version cut, no gate and no park lane; a `CNAME` file under the published tree is the previous
   host still claiming the domain. Both are leftovers rather than choices, which is why they are

@@ -10,18 +10,20 @@ metadata:
 
 # Releasing a Cloudflare-served site
 
-A release is one thing: the default branch's tree, at a version the release itself cuts,
-uploaded to Cloudflare. The `cloudflare-site/site-release` task owns all of it — its
+A release is one thing: the default branch's tree, uploaded to Cloudflare — at a version the
+release advances first, when the public-website pack is declared beside this one. The
+`cloudflare-site/site-release` task owns all of it — its
 [README](../../tasks/site-release/README.md) says what the worker does; this says how to
 operate it and what a change to it must not break.
 
 ## The four properties a change preserves
 
-- **The version names what shipped.** `package.json` is the only source and the page stamps
-  are generated from it, so the bump and the upload are one run — and the bump goes first,
-  because of the two possible drifts only one is invisible: a site serving a version the repo
-  has no record of. A number consumed by an upload that then failed is visible in the park and
-  costs nothing.
+- **The version names what shipped.** The scheme and the page stamp are public-website's, and
+  the release reaches that pack's `public/version.mjs` for them, so the bump and the upload are
+  one run — and the bump goes first, because of the two possible drifts only one is invisible:
+  a site serving a version the repo has no record of. A number consumed by an upload that then
+  failed is visible in the park and costs nothing. With public-website undeclared the site is
+  uploaded unversioned, and the run says so.
 - **A release cannot re-arm itself.** The gate is "the branch has moved past the last release
   commit", read off the `Claudinite-Task:` trailer. Anything that makes the release's own commit
   look like ordinary work releases nightly, forever.
@@ -76,8 +78,9 @@ verdict: the release proceeds and says the probe did not run.
 
 The worker names the lane it wants, so the label is the diagnosis. **`action`** is a credential,
 a scope, the zone, or an inherited record, and the comment names which — nothing is wrong with
-the code. **`decision`** means a surface the release depends on changed underneath it (no
-`package.json` on the branch, no `assets.directory`, the analytics placeholder gone), and
+the code. **`decision`** means a surface the release depends on changed underneath it
+(public-website declared with no `package.json` version to advance, no `assets.directory`,
+the analytics placeholder gone), and
 whether the release should follow is a person's call. **`failure`** means read the trace; that
 lane also holds the next occurrence until the item is woken or closed, so a broken release stops
 rather than filing a queue of items that break the same way. A park after the push but before

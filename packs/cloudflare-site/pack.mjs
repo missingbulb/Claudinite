@@ -1,7 +1,13 @@
 // Technology-plus-aspect pack: a static tree served from Cloudflare Workers static
-// assets on its own domain — the nightly release that cuts the version and uploads
-// it, the boundary of what reaches a public URL, and the parts of the deployment
-// only a person holding the Cloudflare account can do.
+// assets on its own domain — the nightly release that uploads it, the boundary of what
+// reaches a public URL, and the parts of the deployment only a person holding the
+// Cloudflare account can do.
+//
+// WHAT IS NOT HERE: the version. public-website owns the scheme and the page stamp,
+// and the release reaches that pack's `public/version.mjs` to advance it — when the
+// pack is declared. A repo that declares only this one is uploaded unversioned. And
+// nothing here knows any other host: a site is served from Cloudflare or from
+// something else, never both, so no other hosting pack is named.
 //
 // Fingerprint: a near-root JSON wrangler config that declares `assets.directory`.
 // The sibling cloudflare-workers pack fingerprints on a wrangler config of any
@@ -19,8 +25,8 @@ export default {
   version: '60917.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
-    belongs: 'serving a static site from Cloudflare: the published tree, custom domains, the release that cuts its version',
-    excludes: 'Workers runtime and bindings — cloudflare-workers; the GitHub Pages pipeline — github-pages; markup — html',
+    belongs: 'serving a static site from Cloudflare: the published tree, custom domains, the nightly release that uploads it',
+    excludes: 'Workers runtime and bindings — cloudflare-workers; the version scheme and the page stamp — public-website; markup — html',
   },
   marker: 'a near-root wrangler.json/.jsonc declaring assets.directory',
   detect: servesASite,
