@@ -34,12 +34,12 @@ Relevance for all four is `adoptedStandard` — **two independent signals, eithe
 
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
-| The publish set names every published file | high | correctness | prose: <200 words + check (`sw/site-config`) |
-| The version moves with the change | high | correctness | prose: <200 words + checks (`sw/version-bumped`, `sw/version-scheme`) |
-| Freshness is a published manifest's job | high | correctness | prose: <200 words |
-| Nothing attests to its own freshness | high | correctness | prose: <200 words |
-| Split caches join across generations | critical | correctness | prose: <200 words |
-| Follow missing data to the pixel | high | correctness | prose: <200 words |
+| The publish set names every published file | high | correctness | prose: <100 words + check (`sw/site-config`) |
+| The version moves with the change | high | correctness | prose: <50 words + checks (`sw/version-bumped`, `sw/version-scheme`) |
+| Freshness is a published manifest's job | high | correctness | prose: <100 words |
+| Nothing attests to its own freshness | high | correctness | prose: <50 words |
+| Split caches join across generations | critical | correctness | prose: <100 words |
+| Follow missing data to the pixel | high | correctness | prose: <100 words |
 
 The last four are the client-side half: with no server to vary `Cache-Control` per file, the freshness policy moves into the page, and these are the four ways that goes wrong quietly.
 

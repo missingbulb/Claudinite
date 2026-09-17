@@ -15,7 +15,7 @@ keep everything repo-specific in `.github/site.config`.
 
 **What this pack does not own.** Whatever *serves* the site is a separate pack: release-on-push, the
 GitHub Release and the Pages deploy are
-[github-pages](../../../github-pages/skills/releasing-to-github-pages/SKILL.md)'s; a Cloudflare-served
+[github-pages](../../../github-pages/skills/github-pages-pipeline/SKILL.md)'s; a Cloudflare-served
 site is cloudflare-site's. Everything below is true of a static site whichever one is bolted on, and
 a repo declares this pack plus at most one of those.
 
