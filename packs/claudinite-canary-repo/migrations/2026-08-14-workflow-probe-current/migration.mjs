@@ -13,7 +13,7 @@
 //
 // STANDING, NOT TRANSITIONAL. There is no old shape to leave behind (`legacyPresent` is
 // false by construction). Its job is to keep the vendored copy equal to the pack's
-// template, forever — the same shape as static-website's `static-site-vendoring`, and
+// template, forever — the same shape as github-pages' `github-pages-vendoring`, and
 // the same reason: the pack owns the content, the repo owns the file, and "edit the
 // pack, not the copy" is only true if something re-vendors.
 //

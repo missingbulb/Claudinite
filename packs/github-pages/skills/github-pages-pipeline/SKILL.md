@@ -1,43 +1,76 @@
 ---
 name: github-pages-pipeline
-description: Wiring, changing or debugging the vendored GitHub Pages release pipeline in a site repo — which files to vendor, the one-time repository settings, and the two dispatches it answers to. Use when setting a Pages repo up, when a gp/ check fires, when a release run fails, or when asked to "bump version" on one.
+description: Wiring, operating or debugging the GitHub Pages release of a site repo — the site-release task, the one vendored deploy workflow it dispatches, .github/site.config, the two repository settings, forcing a release, rolling one back, and reading a park. Use when setting a Pages repo up, when a gp/ check fires, when a release parks, or when asked to deploy a Pages site now.
 metadata:
   force-load-on-file-edits-paths:
+    - ".github/site.config"
     - ".github/workflows/github-pages-*.yml"
+    - "**/tasks/site-release/**"
 ---
 
-# The GitHub Pages release pipeline
+# The GitHub Pages release
 
-Four workflows, vendored from [`stubs/workflows/`](../../stubs/) into the repo's own `.github/`
-because GitHub resolves a reusable workflow only from there. They are **managed copies**: fix the
-pack and re-vendor, never the copy. Everything repo-specific is read from `.github/site.config`,
-which the static-website pack owns along with the composite actions these workflows call and the
-PR gate that checks them.
+A release is one thing: the default branch's tree, deployed to Pages by the vendored
+[deploy workflow](../../stubs/workflows/github-pages-deploy.yml), which the
+`github-pages/site-release` task dispatches at the exact commit it released — after
+advancing the version, when the public-website pack is declared. The task's
+[README](../../tasks/site-release/README.md) says what the worker does; this says how to
+wire it, operate it, and what a change to it must not break.
 
 ## Wiring it into a repo
 
-1. The static-website half first — that pack's skill owns `site.config`, the version scheme and
-   the composite actions. Nothing here works without it.
-2. Declare `github-pages`, re-vendor, and copy all four `stubs/workflows/` files into `.github/`.
-   There are no tokens to replace.
-3. File the pack's `adoptionHandover` steps as an issue — three repository *settings* nothing in
-   the repo can set. Until they are on, the first run fails and opens a `workflow-failure` issue.
-4. `gp/pages-workflows` is the checklist for whether the wiring is complete.
+1. Declare `github-pages` and answer its one adoption question. Write the answer into
+   `.github/site.config`: `publish_root`, `publish_paths` (the additive publish set), and
+   `build_command` (`""` = nothing to build, stated), plus `build_vars` only if the build
+   reads repo variables. `gp/site-config` is the checklist for whether it is complete.
+2. Re-vendor, and copy the pack's [deploy workflow stub](../../stubs/workflows/github-pages-deploy.yml)
+   into `.github/workflows/`. There are no tokens to replace; the file is a managed copy, so
+   fix the pack and re-vendor, never the copy.
+3. File the pack's `adoptionHandover` as an issue — two repository *settings* nothing in the
+   repo can set. Until they are on, the first release parks naming the failed deploy run.
+4. Want a version on the site? Declare `public-website` beside this pack. The release then
+   advances `package.json` and stamps every page carrying `title="version …"` before it
+   deploys; with the pack undeclared the site is deployed unversioned, and the run says so.
 
-## Driving it
+## Releasing now rather than tonight
 
-| You want | Do |
-|---|---|
-| ship a change | raise the version in the same PR and merge. It releases and redeploys on its own. |
-| **"bump version"** | dispatch **Release to GitHub Pages** with `bump: major` — the generation statement, the one version this pipeline writes. |
-| redeploy unchanged | same dispatch with `force: true`. Redeploys the existing tag rather than cutting a second one. |
-| a failed run | read the `workflow-failure` issue it opened. Nothing before the tag changes anything, so the next push releases from there with nothing to unwind. |
+The release is the queue's, so force it the way any task is forced:
 
-## Two things that surprise people
+```
+gh workflow run claudinite-scheduler.yml -f wake=github-pages/site-release
+```
 
-- **The pipeline writes no version of its own** (except a `bump: major`). It releases whatever it
-  finds on the default branch and no-ops on a version already released, so a published change that
-  forgot its bump is never released at all — which is why `sw/version-bumped` fails it on the PR.
-- **The `bump: major` push uses `GITHUB_TOKEN`, which fires no workflow.** That is why the
-  orchestrator runs the release explicitly after the bump instead of relying on its own push
-  trigger, and why the push cannot loop.
+The gate is still evaluated when the item is picked, so a force with nothing to release
+rolls with its reason on record rather than shipping a duplicate. To redeploy the same
+tree after a settings fix, the same command: a repo with no version has nothing to gate on
+but the window, and one with a version takes the next number.
+
+## Rolling back
+
+Revert on the branch and let the next release carry it — the revert sits above the last
+release commit, so the gate opens on it; force the run with the command above when it
+cannot wait for the nightly anchor. Don't add a rollback lever: it would be a second path to
+production, and `gp/deploy-workflow` refuses one.
+
+## Reading a park
+
+The worker names the lane it wants, so the label is the diagnosis. **`action`** is the
+deploy workflow missing from the branch or a token that cannot dispatch it — nothing is wrong
+with the code. **`decision`** means a surface the release depends on changed underneath it:
+no `site.config` on the branch, a publish path that no longer exists, or public-website
+declared with no `package.json` version to advance. **`failure`** is a deploy run that did
+not succeed, with its URL — on a first release, Settings → Pages → Source is the usual cause;
+otherwise the run's log is the trace. A park after the push but before the deploy has
+consumed a version number — re-queue the item, and the retry counts from the branch's new
+tip.
+
+## Changing the release
+
+- **Never add a workflow that publishes, and never give the deploy workflow a push trigger.**
+  The task is the one path to production; a second publisher ships a tree with no version cut
+  and no park lane. `gp/deploy-workflow` refuses both, so don't also guard it in review.
+- **Keep the workflow to the `uses:` steps.** Reading the config, exporting build variables
+  and assembling the publish set are the pack's [`build-site.mjs`](../../build-site.mjs), run
+  from the mount, so a fix reaches every Pages repo the night it lands without a workflow
+  edit anywhere.
+- **Correct the task README and this file in the same commit** as any behaviour change.

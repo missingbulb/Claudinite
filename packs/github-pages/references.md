@@ -11,11 +11,26 @@ retire it. No session loads this file and no rule points a reader here.
   ever standardise on custom domains, or if the local preview is replaced by one that serves from
   the repo subpath.
 
-- **(check:gp/pages-workflows)** The pipeline runs entirely from the repo's own `.github/` because
-  GitHub resolves a reusable workflow or a composite action only from there, never from the shared
-  mount — so the pack holds the templates and each repo hosts a managed copy. A missing leg is a
-  release that half-runs: a bumped version with no deploy, or a deploy of an untested tree. The
-  `build_vars` arm exists because declaring a build variable against a vendored copy that predates
-  the exporter reads the key, ignores it, and builds with the variable unset — silent all the way
-  to the live page. Retire the check if the vendored surface is ever replaced by something the
-  member cannot hold a stale copy of.
+- **(RULES-2)** The release is a task rather than a push-triggered workflow because the queue
+  owns the trigger, the gate, the version bump and the park lanes, and a workflow that deploys on
+  push has none of them: it ships a tree with no version cut, and a red run in the Actions list
+  reaches nobody (owner, 2026-09-17: the hosting packs should have "a daily release task that will
+  bump the version and release if there was any change"). The wake command is in the rule because
+  a session that wants the site deployed now would otherwise reach for a push or a dispatch of
+  its own. Retire the rule if the deploy ever becomes idempotent against a second publisher.
+
+- **(check:gp/site-config)** The publish set is deliberately **additive**, and the check makes
+  the cost of that choice survivable. The rejected alternative — "publish the repo except the
+  tooling" — publishes every draft, note and key nobody thought to exclude, and publishes each
+  *new* one silently the day it lands. Additive inverts the failure: a forgotten entry is a
+  missing page, and the check catches a path that matches nothing tracked, a tooling directory
+  in the set and a set with no `index.html` before any of them reaches the default branch.
+  Retire it if the artifact ever stops being built from an explicit list.
+
+- **(check:gp/deploy-workflow)** The deploy runs from the repo's own `.github/` because GitHub
+  runs a Pages deploy only from a workflow job in the repo's own tree, never from the mount — so
+  the pack holds the template and each repo hosts a managed copy. The check holds the copy
+  present, dispatch-only and current, and holds every other workflow off the Pages actions,
+  because a second publisher or a push trigger deploys a tree with no version cut and no park
+  lane, and its green run looks exactly like success. Retire it if the vendored surface is ever
+  replaced by something the member cannot hold a stale copy of.

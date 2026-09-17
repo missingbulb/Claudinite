@@ -1,32 +1,28 @@
-name: "GitHub Pages: Deploy (reusable)"
+name: Deploy to GitHub Pages
 
-# Deploys the repo's EXPLICIT publish set to GitHub Pages. Vendored from the
-# github-pages pack into the repo's own .github/; workflow_call ONLY — it is
-# invoked by "GitHub Pages: Publish" at the released commit, so what is live is
-# always exactly what was tagged. A repo never dispatches it directly.
+# THE ONE WORKFLOW of the github-pages pack, vendored into each Pages-served repo's
+# own .github/ because a Pages deploy is made of marketplace actions —
+# configure-pages, upload-pages-artifact, deploy-pages — which only a workflow job
+# can run, with the job's own OIDC token. Everything else about a release is the
+# pack's `site-release` task: it decides when a release is due, advances the
+# version where the public-website pack is declared, and dispatches THIS at the
+# exact commit to deploy. Dispatch only — no push trigger — so the task is the one
+# path to production and nothing deploys behind its back.
 #
-# The artifact is assembled by the assemble-site composite action from
-# `publish_root` + `publish_paths` — an additive list, so the agent-tooling dirs
-# (.claude/, .claudinite/), dev tooling, notes and anything else unlisted are
-# absent by construction rather than by remembering to exclude them. That also
-# sidesteps the dangling-symlink trap that breaks a whole-root Pages upload:
-# upload-pages-artifact tars with --dereference, and .claude/skills/* are
-# symlinks into the gitignored corpus, empty on a runner.
+# The one `run:` line calls the pack's build script from the mount, so reading the
+# config, exporting the build variables and assembling the publish set change with
+# the pack and never with this file. It is copy-verbatim in every Pages repo.
 #
-# One-time owner setup in the calling repo: Settings → Pages → Source =
-# "GitHub Actions". Until that is set, deploy-pages fails; the caller's failure
-# reporter opens the tracking issue.
-#
-# The calling job must grant `permissions: contents: read, pages: write,
-# id-token: write`.
+# One-time owner setup in the calling repo: Settings → Pages → Source = "GitHub
+# Actions". Until that is set, deploy-pages fails and the release task parks
+# naming this run.
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       ref:
-        description: "Commit to deploy (empty = the default checkout)"
-        required: false
+        description: "The commit to deploy"
+        required: true
         type: string
-        default: ""
 
 # Least privilege for a Pages deploy: read the repo, write Pages, mint the OIDC
 # token deploy-pages exchanges.
@@ -37,7 +33,7 @@ permissions:
 
 # Never run two Pages deploys at once; let an in-flight deploy finish.
 concurrency:
-  group: pages
+  group: github-pages
   cancel-in-progress: false
 
 defaults:
@@ -45,41 +41,26 @@ defaults:
     shell: bash
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref }}
 
-      - id: cfg
-        uses: ./.github/actions/read-site-config
-
       - uses: actions/setup-node@v5
-        if: steps.cfg.outputs.build_command != ''
         with:
           node-version: 22
 
-      # Repo variables the config declares, exported into the build's env.
-      # `vars` structurally cannot carry a secret, which is the point: this
-      # feeds the step that produces the published artifact.
-      - name: Export the declared build variables
-        if: steps.cfg.outputs.build_vars != ''
+      # `vars` structurally cannot carry a secret, which is the point: this feeds
+      # the step that produces the published artifact.
+      - name: Build and assemble the publish set
         env:
-          DECLARED_BUILD_VARS: ${{ steps.cfg.outputs.build_vars }}
           REPO_VARS_JSON: ${{ toJSON(vars) }}
-        run: node .github/actions/read-site-config/export-build-vars.mjs
-
-      # A build_command that needs dependencies installs them itself
-      # (`npm ci && npm run build`) — see the config's keys.
-      - name: Build the site
-        if: steps.cfg.outputs.build_command != ''
-        run: ${{ steps.cfg.outputs.build_command }}
-
-      - uses: ./.github/actions/assemble-site
-        with:
-          publish_root: ${{ steps.cfg.outputs.publish_root }}
-          publish_paths: ${{ steps.cfg.outputs.publish_paths }}
+        run: node .claudinite/shared/packs/github-pages/build-site.mjs
 
       - uses: actions/configure-pages@v5
 
@@ -87,12 +68,5 @@ jobs:
         with:
           path: _site
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - id: deployment
         uses: actions/deploy-pages@v4

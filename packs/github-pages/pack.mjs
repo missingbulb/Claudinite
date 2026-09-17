@@ -1,53 +1,58 @@
-import { servesPages, STUB_FILE, STUB_NAME } from './worldRules/pages-workflows.mjs';
+import { adoptedPages, CONFIG_PATH } from './lib.mjs';
 
-// Serving a site from GitHub Pages: the release-on-push orchestrator, the
-// GitHub Release it cuts, the Pages deploy of that exact commit, and the
-// subpath the result is served from. The pipeline is authored once in this
-// pack's stubs/ and vendored into each site repo's own .github/ (GitHub
-// resolves reusable workflows and composite actions only from a repo's own
-// .github/), so a repo hosts the pipeline without owning it.
+// Serving a site from GitHub Pages: the nightly release that deploys the default
+// branch, the one vendored workflow that performs the deploy, the config naming what
+// is published, and the subpath the result is served from. The workflow is authored
+// once in this pack's stubs/ and vendored into each site repo's own .github/ (GitHub
+// runs a Pages deploy only from a workflow job in the repo's own tree), so a repo
+// hosts it without owning it.
 //
-// WHAT IS NOT HERE: the version scheme, `.github/site.config`, the publish set
-// and the composite actions that read them are the static-website pack's — they
-// are true of a static site whatever serves it, and this pack requires that one
-// rather than restating them. Declaring THIS pack is the statement "and it is
-// served from Pages"; a site that deploys to a host of its own declares only
-// static-website and carries none of the machinery below.
+// WHAT IS NOT HERE: the version. public-website owns the scheme and the page stamp,
+// and the release reaches that pack's `public/version.mjs` to advance it — when the
+// pack is declared. A repo that declares only this one is deployed unversioned. And
+// nothing here knows any other host: a site is served from Pages or from something
+// else, never both, so no other hosting pack is named.
 //
-// The standard itself — the flow, the dispatches and the setup a new site repo
-// needs — is skills/, not prose: it is wanted when a pipeline is being set up or
-// debugged, not carried by every session in the repo.
+// Fingerprinted by the site config, the pack's own central artifact — declaring is
+// still what activates the pack.
 export default {
   version: '60917.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
-    belongs: 'serving a site from GitHub Pages: release on push, the Release it cuts, the Pages deploy, the serving subpath',
-    excludes: 'the version scheme, site.config and the publish set — static-website; Cloudflare-served sites — cloudflare-site; markup — html',
+    belongs: 'serving a site from GitHub Pages: the nightly release, the vendored deploy workflow, site.config, the serving subpath',
+    excludes: 'the version scheme and the page stamp — public-website; markup — html',
   },
-  marker: `.github/workflows/${STUB_FILE} (named "${STUB_NAME}")`,
-  detect: servesPages,
-  // The site's config, its version scheme and the three composite actions these
-  // workflows run all ship with static-website; a Pages repo carries both
-  // vendored sets.
-  requires: ['static-website'],
+  marker: CONFIG_PATH,
+  detect: adoptedPages,
+  // The release is a work item: the queue owns its trigger, its gate and its park
+  // lanes, which is the whole reason it is a task rather than a push-triggered
+  // workflow.
+  requires: ['claudinite-tasks'],
 
-  // Settings, not repo content: no workflow, check or agent can turn these on,
-  // and a pipeline that silently depends on one fails its first run for a reason
-  // nobody wrote down.
+  // Adoption interview. One question, a genuine fork in the road the pack cannot
+  // default: WHAT is published, an additive list only the project knows. The answer
+  // does not become config on the member's pack entry: its home is the repo's own
+  // .github/site.config, where the deploy's build step and the checks both read it.
+  questions: [
+    {
+      id: 'publish_set',
+      prompt: 'Which files and folders make up the published site — the exact list, and the directory it is rooted at? The artifact is built from this list and nothing else, so name the pages, assets and data the site actually serves (not "everything except the tooling").',
+      distill: "written into the repo's own .github/site.config as publish_root + publish_paths (with build_command), which is where the deploy's build step and the gp/site-config check both read it",
+    },
+  ],
+
+  // Settings, not repo content: no workflow, check or agent can turn these on, and a
+  // deploy that silently depends on one fails its first run for a reason nobody
+  // wrote down.
   adoptionHandover: [
     {
       step: 'Settings → Pages → Build and deployment → Source = "GitHub Actions" (not "Deploy from a branch").',
       breaks: 'actions/deploy-pages fails and nothing is ever served.',
-      done: 'the first release-on-push run deploys successfully.',
-    },
-    {
-      step: 'Settings → Actions → General → Workflow permissions = "Read and write permissions".',
-      breaks: 'the pipeline cannot cut the Release, and a bump: major dispatch cannot push.',
-      done: 'a release run creates its tag and Release.',
+      done: 'the first site-release run deploys successfully.',
     },
     {
       step: 'Settings → Environments → github-pages → deployment branches must allow the default branch.',
-      breaks: 'the deploy job is refused by the environment after the Release is already cut.',
+      breaks: 'the deploy job is refused by the environment after the version is already cut.',
       done: 'the deploy job runs rather than waiting on an environment rule.',
     },
   ],
