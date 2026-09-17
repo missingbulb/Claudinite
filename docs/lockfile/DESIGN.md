@@ -54,6 +54,18 @@ Keys are sorted, the file is two-space JSON with a trailing newline, and a rewri
 nothing produces byte-identical output: a lock diff in a pull request is a real change, every
 time.
 
+### A major version, still to design
+
+A `<day>.<n>` version orders releases and says nothing about compatibility, so a repository has
+no way to say "take fixes, never a breaking change" for one pack. A careful adopter wants exactly
+that: a pack they mark **don't bump automatically** stays where it is across a breaking release
+and moves only when a person lifts the mark, while every other pack converges nightly. That needs
+a **major** component a pack raises on a breaking change, a manifest field on the pack's entry
+that names the major a repository accepts, an update flow that converges within it and parks the
+cross-major move as a reviewed pull request, and a lock row that records the major beside the
+version. What counts as breaking for a pack of prose, checks and skills, and how the `requires`
+closure behaves when one pack in it is held, are the open questions; neither is settled here.
+
 ## 2. Who reads it
 
 - **`installedVersions`** in `engine/installed-versions.mjs` reads the lock. It is the one
