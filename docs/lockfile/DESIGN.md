@@ -35,8 +35,9 @@ each pack is there. Neither file holds a value the other owns.
 
 - **`lockfileVersion`** — the shape's own version, so an engine can refuse a lock it does not
   read rather than misread it. Every field below is judged against it.
-- **`manifestDigest`** — a digest of the settings file's `packs` declaration (ids and `requires`
-  closure only; `config`, `answers` and `accept` do not change what is vendored). A session-start
+- **`manifestDigest`** — a digest of what in the settings file decides the vendored tree: the
+  `packs` declaration's ids with their `requires` closure, and the `canon.hold` (§6) when set.
+  `config`, `answers` and `accept` do not change what is vendored and stay out of it. A session-start
   probe compares it against the live settings file and reports a stale lock without resolving
   anything, the way Poetry's `content-hash` does.
 - **`canon`** — the canon commit the vendored tree was computed from. It is provenance for a
@@ -110,7 +111,48 @@ record, `installedVersions` still falls back to the settings-file fields, and th
 `legacy-shape-in-use` advisory reports a member that still carries them; the fallback comes out
 one convergence window after that advisory ships.
 
-## 6. Alternatives and their drawbacks
+## 6. One snapshot per converge
+
+Every converge takes the engine and every pack from **one canon commit**, and the lock's
+`canon.sha` names it. A pack's behaviour depends on the engine and on the one cross-pack surface
+another pack publishes, and nothing in a manifest constrains those by version: `requires` names
+ids, never ranges. One snapshot is what makes the closure consistent by construction, so no row
+in the lock can ever disagree with the `public/` surface it imports.
+
+The commit a converge takes is the **release** the canon's rehearsal has qualified, never the
+canon's head. The engine already moves that way; packs join it. A pack's delivery cadence
+therefore becomes the release cadence, and the canon cuts releases as often as it wants packs
+delivered.
+
+### The snapshot hold
+
+A repository that wants to stop taking updates says so in the manifest, once, for the whole
+snapshot:
+
+```json
+"canon": { "hold": "4e16770" }
+```
+
+The update flow converges to the held commit and no further: a newer release is not vendored,
+the lock keeps its rows, and the maintenance pull request is not opened. Lifting the hold is
+deleting the field; moving it is editing the sha. The self-test reports a lock whose `canon.sha`
+is not the held commit, so a converge that ignored the hold fails its own gate.
+
+The hold is a whole-snapshot value because a per-pack pin has no consistent meaning here: a pack
+held at an older version beside a dependant that advanced may lack a `public/` export the
+dependant now imports, and no field exists to say which pairs are compatible. The major version
+(§1) is the per-pack instrument, and it is a statement about compatibility rather than a pin.
+
+### `minEngineVersion` is retired
+
+A pack's `minEngineVersion` was the floor that kept a pack vendored from the canon's head from
+loading on an engine still at the previous release. With engine and packs taken from the same
+release commit, the floor is implied: a pack version and the engine it needs are the same
+snapshot. The field is deleted from every pack manifest, the pack flow stops enforcing it, and a
+manifest that still carries it is rejected by the loader so the retirement cannot silently
+regress into a field nothing reads.
+
+## 7. Alternatives and their drawbacks
 
 - **Keep the versions in the settings file** (today's shape). The machine rewrites a
   person-edited file nightly, so every human edit to `config` or `accept` races a converge for the
@@ -129,6 +171,16 @@ one convergence window after that advisory ships.
   new `lockfileVersion`.
 - **YAML** (pnpm, Yarn). Readable, but the engine is dependency-free and a JSON lock is what the
   self-test and the API readers already parse.
+- **Packs from the canon's head, engine from the release** (today's two lanes), keeping
+  `minEngineVersion` as the floor between them. The floor is honest only if a pack author raises
+  it when the pack starts using newer engine code, and the shelf's uniform value shows nobody
+  does; and a member holding a head pack beside a release engine is a pair no rehearsal ever
+  ran.
+- **A per-pack pin** (`"basics": { "pin": "60915.8" }`). Reads like every other package
+  manager, and means nothing here: with `requires` naming ids and not ranges, a pinned pack and
+  an advancing dependant are a pair nothing can judge compatible, so the pin must hold the whole
+  connected component, which on this shelf is most of the corpus. The snapshot hold says that
+  directly.
 - **Naming it `lock.GENERATED.json`.** The `GENERATED` marker is this repository's convention for
   a file a tool regenerates, and it is what the generated-files guard keys on. A lockfile is
   recognisable by its bare name in every ecosystem, so the guard names this path explicitly
