@@ -46,7 +46,7 @@ const rule = {
   id: 'gp/pages-workflows',
   severity: 'blocking',
   description: 'The Pages orchestrator and the reusable workflows + composite actions it calls must all be vendored into .github/',
-  doc: 'packs/github-pages/skills/releasing-to-github-pages/SKILL.md',
+  doc: 'packs/github-pages/skills/github-pages-pipeline/SKILL.md',
   why: 'the pipeline runs entirely from the repo own .github/ — a missing leg is a release that half-runs: a bumped version with no deploy, or a deploy of an untested tree',
 
   run(ctx) {
