@@ -192,3 +192,25 @@ test('the restore and settings guards', () => {
     'cat .claudinite-settings.json',
   ]).length, 2);
 });
+
+test('the transcript guard: a session file chosen by mtime rather than by session id', () => {
+  // The shape #2111's diagnostic shipped with: a scan of every project directory for
+  // the newest .jsonl, handed to a session in another repo, which then reported on its
+  // own run. Both spellings a script arrives by — a heredoc, and a Write.
+  const scan = "const root = join(homedir(), '.claude', 'projects');\n"
+    + "for (const f of readdirSync(dir)) { if (!f.endsWith('.jsonl')) continue;\n"
+    + '  const m = statSync(join(dir, f)).mtimeMs; if (!best || m > best.m) best = { p, m }; }';
+  assert.deepEqual(judge('transcript-found-by-mtime', [`cat > /tmp/diag.mjs <<'EOF'\n${scan}\nEOF`]),
+    ['a Bash locating a session transcript by newest mtime']);
+  assert.deepEqual(judgeCalls('transcript-found-by-mtime', [['Write', { file_path: '/tmp/s/diag.mjs', content: scan }]]),
+    ['a Write locating a session transcript by newest mtime']);
+  // Naming the session — or the helper that resolves one — is the clean form, and the
+  // ordinary reads that carry one of the three tokens alone must stay silent.
+  assert.deepEqual(judge('transcript-found-by-mtime', [
+    `node -e "const { findTranscript } = await import('./packs/claudinite-growth/capture-log.mjs');"`,
+    'ls -la /root/.claude/projects/-home-user-Claudinite/',
+    'ls -lt --time=mtime packs/',
+    'git show origin/conversation-logs:2026-09-17T1652Z--pr-2111--e6579854.jsonl | head',
+  ]), []);
+  assert.deepEqual(judgeCalls('transcript-found-by-mtime', [['Write', { file_path: '/tmp/s/fix.mjs', content: `// ${scan}\n// see capture-log.mjs` }]]), []);
+});
