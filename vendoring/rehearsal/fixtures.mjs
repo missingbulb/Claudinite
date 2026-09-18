@@ -339,12 +339,12 @@ const FIXTURE_TASK = `{
   "$schema": "../../../../../shared/packs/claudinite-tasks/task.schema.json",
   "id": "fixture-task",
   "description": "A rehearsal fixture task; it never runs.",
-  "frequency": "weekly",
-  "precondition_signals": [],
+  "trigger": "schedule",
+  "preconditions": ["due:weekly"],
   "agent_model": "none",
-  "expected_outcome": "none",
-  "agent_preprocessing": "node prepare.mjs",
-  "agent_preprocessing_timeout": 60
+  "expected_outcome": "no_code_changes",
+  "code_work": "node prepare.mjs",
+  "code_work_timeout": 60
 }
 `;
 
@@ -962,13 +962,16 @@ export const FIXTURES = [
     why: 'a local pack with scoped rules and a bundled skill — the #555 shape',
     files: {
       'README.md': '# fixture-local-rules\n\nA rehearsal fixture.\n',
-      '.claudinite-settings.json': checks(['basics', 'local/fixture-local']),
+      // The task's `$schema` names claudinite-tasks' contract, so the pack is declared:
+      // a member that schedules work declares the pack that reads its declarations.
+      '.claudinite-settings.json': checks(['basics', 'claudinite-tasks', 'local/fixture-local']),
       '.claudinite/local/packs/fixture-local/pack.mjs': PACK_LOCAL_RULES,
       '.claudinite/local/packs/fixture-local/demo-rule.mjs': DEMO_RULE,
       '.claudinite/local/packs/fixture-local/RULES.md': '# fixture-local\n\nNo standing rules.\n',
       '.claudinite/local/packs/fixture-local/skills/fixture-skill/SKILL.md':
         '---\nname: fixture-skill\ndescription: A rehearsal fixture skill. Never invoked.\n---\n\nNothing to do.\n',
       '.claudinite/local/packs/fixture-local/tasks/fixture-task/task.json': FIXTURE_TASK,
+      '.claudinite/local/packs/fixture-local/tasks/fixture-task/prepare.mjs': 'export {};\n',
     },
   },
   {

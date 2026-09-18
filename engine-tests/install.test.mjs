@@ -105,6 +105,24 @@ test('unanswered adoption questions end the run the same way a red check does', 
   removeTree(root);
 });
 
+test('a pack the repo already declares is never re-interviewed by a later install', async () => {
+  const packs = await loadPacks();
+  const withQuestions = packs.find((p) => p.questions?.length);
+  const quiet = packs.find((p) => !p.questions?.length && !p.requires?.length && p.id !== withQuestions.id);
+  assert.ok(withQuestions && quiet, 'the corpus has a pack that interviews and one that does not');
+
+  // Declared bare and stamped on an earlier day: whatever it left unanswered is that
+  // adoption's gap, and this install adds a pack that asks nothing.
+  const root = makeRepo(withInstalledVersions({ packs: [withQuestions.id] }, { packVersions: { [withQuestions.id]: 1 } }));
+  // An engine is already mounted on a repo with a stamp, and the gate runs its selftest.
+  mkdirSync(join(root, MOUNT, 'engine'), { recursive: true });
+  writeFileSync(join(root, MOUNT, 'engine', 'selftest.mjs'), '');
+  const r = await installPacks(root, [quiet.id], { selfTestRun: () => 'ok' });
+  assert.equal(r.status, 'ok', r.detail);
+  assert.deepEqual(r.unanswered, []);
+  removeTree(root);
+});
+
 test('an install always wants the apply stage — the rules meet the repo for the first time', async () => {
   const root = makeRepo();
   const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
