@@ -13,3 +13,9 @@
   or a record the previous host left on a claimed hostname; `decision` is a surface the release
   depends on changing underneath it; `failure` means read the trace. The
   `releasing-a-cloudflare-site` skill says what each one wants.
+
+- **Linking to another published page** — name the extensionless path, never the `.html` file.
+  Workers static assets serves a `.html` request by 307-redirecting it to the extensionless URL
+  the asset actually lives at, so a link still naming the `.html` form still works — it just
+  costs every visitor who follows it a redirect they'd never see otherwise. (Tracked as a check
+  to author: #2129.)
