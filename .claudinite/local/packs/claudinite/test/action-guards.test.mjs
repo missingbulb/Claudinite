@@ -211,13 +211,24 @@ test('the transcript guard: a session file chosen by mtime rather than by sessio
     'ls -la /root/.claude/projects/-home-user-Claudinite/',
     'ls -lt --time=mtime packs/',
     'git show origin/conversation-logs:2026-09-17T1652Z--pr-2111--e6579854.jsonl | head',
-    // Two of the three tokens and no selection: reading which project directory
-    // was last written is what makes the .jsonl half of the match load-bearing.
-    'ls -l --time=mtime /root/.claude/projects/',
-    // Working on the guard itself spells the shape it forbids, so the rule's own id
-    // exempts it — otherwise the first session to weaken it for a see-it-fail run is
-    // denied by the thing it is testing.
-    `python3 -c "s=open('declared-checks.json').read().replace('mtime)(?=[s S]*projects)(?=[s S]*.jsonl)','x')" # transcript-found-by-mtime`,
+    // Prose about the guard is the commonest payload carrying all three words — a
+    // commit message, a finding quoted back — so the match reads the stat property
+    // rather than the word, and this line would fire if it read the word.
+    "git commit -m 'Guard a transcript picked by mtime under ~/.claude/projects rather than <id>.jsonl'",
+    // Two of the three tokens and a real selection: finding the most recently active
+    // project directory is what makes the .jsonl third of the match load-bearing.
+    `node -e "for (const d of readdirSync(root)) console.log(d, statSync(join(root, d)).mtimeMs)" # ~/.claude/projects`,
+    // The other two-token pair: captures fetched off conversation-logs into the
+    // scratchpad, ordered by write time. They are .jsonl and they are picked by
+    // mtime, and they are not transcripts — the projects third is what says so.
+    `node -e "for (const f of readdirSync(d).filter((f) => f.endsWith('.jsonl'))) console.log(f, statSync(join(d, f)).mtimeMs)" # scratchpad/logs`,
   ]), []);
-  assert.deepEqual(judgeCalls('transcript-found-by-mtime', [['Write', { file_path: '/tmp/s/fix.mjs', content: `// ${scan}\n// see capture-log.mjs` }]]), []);
+  // Two writes that spell the forbidden shape without performing it: one pointing at
+  // the helper, and this file itself, whose fixture is the shape. Without the rule's
+  // own id in the exemption the second is denied — so the first session to weaken the
+  // guard for a see-it-fail run would be stopped by the thing it is testing.
+  assert.deepEqual(judgeCalls('transcript-found-by-mtime', [
+    ['Write', { file_path: '/tmp/s/fix.mjs', content: `// ${scan}\n// see capture-log.mjs` }],
+    ['Write', { file_path: 'action-guards.test.mjs', content: `judge('transcript-found-by-mtime', [\`${scan}\`]);` }],
+  ]), []);
 });

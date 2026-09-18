@@ -442,7 +442,7 @@
     "guardToolCalls": [
       {
         "tool": "/^(Bash|Write)$/",
-        "inputMatches": "/^(?=[\\s\\S]*mtime)(?=[\\s\\S]*projects)(?=[\\s\\S]*\\.jsonl)/",
+        "inputMatches": "/^(?=[\\s\\S]*(?:mtimeMs|\\.mtime\\b))(?=[\\s\\S]*projects)(?=[\\s\\S]*\\.jsonl)/",
         "unlessInputMatches": "/findTranscript|capture-log\\.mjs|transcript-found-by-mtime/",
         "what": "a {tool} locating a session transcript by newest mtime",
         "fix": "resolve <sessionId>.jsonl with findTranscript from packs/claudinite-growth/capture-log.mjs; a transcript never leaves its container, so a script for another session takes that session's id as an argument"
