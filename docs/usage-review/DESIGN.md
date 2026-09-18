@@ -6,35 +6,37 @@ The corpus that reaches a session — mounted skills, the checks and guards, the
 on the promotion ladder by judgment at authoring time, and nothing reads back whether the
 placement held. This document specifies the loop that does: each skill **declares what usage it
 expects of itself**, the record **observes** what happened, a small set of **readable rules**
-compares the two, and every finding carries a **certainty** that decides what may follow from
-it. A cause that is known is fixed; a cause that is not is diagnosed, put to the owner, or only
-recorded — never fixed on a guess.
+compares the two, and every finding carries how well its **cause** is known and what a fix would
+likely be. The review **changes nothing**. It is an analysis with a recommendation attached, run
+by code alone, and what is done about a finding is a separate decision made by whoever reads it
+(§6). Separating the two keeps the review cheap — no agent phase — and means the review does not
+have to be right about the remedy to be right about the finding.
 
 Companion: [skill-usage-metrics](../skill-usage-metrics/DESIGN.md) specifies the fold whose
-counters this loop reads; its §7 names canon curation as the consumer "in both directions".
+counters this loop reads; its §7 names canon curation as a consumer of the fold "in both
+directions", and this review is what gives that consumer something to read.
 
 ## 1. The one idea
 
 ```
 declared expectation  ──┐
-                        ├──  rule  ──►  finding { subject, evidence, certainty, adaptation }
+                        ├──  rule  ──►  finding { subject, evidence, cause, recommendation }
 observed record       ──┘
 ```
 
 - **The expectation** is the skill's own, in its frontmatter (§2). Without it, "zero loads"
   means nothing: a version-bump skill and a broken one both read zero. With it, zero is either
   exactly right or exactly the finding.
-- **The record** is the fold (`usage.GENERATED.json`) for rates over weeks, and the raw captures
-  still inside retention for the one comparison no counter can make — reading a session and
-  asking whether the skill *should* have loaded (§4).
+- **The record** is the fold (`usage.GENERATED.json`) for rates over the window, plus a
+  deterministic digest of the captures still inside retention for the one comparison no counter
+  makes — what a session was doing when a skill did not load (§4.2).
 - **The rules** are data, not code: one JSON file of declarations the growth pack ships, each
   rule readable as a sentence, evaluated by one generic evaluator (§3). A local pack may add its
   own rules in the same vocabulary.
-- **The certainty tier** is part of the rule, and it is what makes the rules soft. `act` means
-  the cause is known and the adaptation follows; `diagnose` means the cause is one of several
-  and an agent reads samples before anything moves; `decide` means the remedy is a choice only
-  the owner makes; `observe` means the finding is evidence, recorded and carried forward, and
-  nothing else.
+- **The cause confidence** is part of the rule: `known` where the arithmetic or the mechanism
+  leaves one cause, `probable` where one cause is likeliest but another is possible, `unknown`
+  where the finding is evidence only. It tells the reader how much the recommendation is worth,
+  and nothing else follows from it automatically.
 
 ## 2. What a skill declares about its own usage
 
@@ -51,99 +53,100 @@ metadata:
 | `expect` | The skill says of itself | What zero loads means |
 |---|---|---|
 | `adoption` | it is used while a pack is being adopted or set up — a few loads in the weeks after the pack's declaration, then nothing | fine once the adoption window (4 weeks from the pack's declaration commit) has passed; a finding inside it |
-| `routine` | ordinary work reaches for it at about the declared rate | a finding when the observed rate falls under half the declared one over the window; the cause is *unknown* (the description may not name the moment, or the moment may not have arisen), so the tier is `diagnose` |
-| `triggered` | its declared `force-load-on-*` moments are when it loads, and it expects nothing else | judged against **moments**, not sessions: the calls of the named tool, the edits under the named paths, the prompts matching the named pattern, all counted from the record; loads far under moments is a mechanical fault (`act`) |
+| `routine` | ordinary work reaches for it at about the declared rate | a finding when the observed rate falls under half the declared one; the cause is `unknown` — the description may not name the moment, or the moment may not have arisen — and the finding carries the digests that let a reader tell which |
+| `triggered` | its declared `force-load-on-*` moments are when it loads, and it expects nothing else | judged against **moments**, not sessions: the calls of the named tool, the edits under the named paths, the prompts matching the named pattern, all counted from the record; loads far under moments has a `known` cause, a mechanical fault |
 | `rare` | it is wanted seldom and says nothing about how seldom | never a finding; only the *always loaded* rule applies |
 | *(undeclared)* | | the review lists the skill under `unstated` and evaluates only *always loaded*; the list is itself the nudge to declare |
 
-The pack's declaration commit — the first commit that names the pack in the settings file — is
-read from git history, deepened as the fold already deepens it for commit counts; where history
-does not reach it, `adoption` rules read *not recorded*.
+The pack's declaration commit — the first commit naming the pack in the settings file — is read
+from git history, deepened as the fold already deepens it; where history does not reach it,
+`adoption` rules read *not recorded*.
 
-The block is validated by the skill-frontmatter schema (a closed `expect` set; `loads-per-sessions`
-only with `routine`, as `"1 in N"`), so a mis-declared expectation is a `check_the_world` finding at
-authoring time, not a silent `unstated`. Checks and guards declare nothing: their signal is their
-own firing, and §3 judges it on the tier alone.
+The block is validated by the skill-frontmatter schema (a closed `expect` set;
+`loads-per-sessions` only with `routine`, as `"1 in N"`), so a mis-declared expectation is a
+`check_the_world` finding at authoring time, not a silent `unstated`. Checks and guards declare
+nothing: their signal is their own firing.
 
 ## 3. The rules
 
-One file, `packs/claudinite-growth/usage-rules.json`, pointed at a schema. Each rule is five
+One file, `packs/claudinite-growth/usage-rules.json`, pointed at a schema. Each rule is a few
 lines a reader can say aloud: *over these subjects, in this window, above this floor, when this
-holds, with this certainty, this follows.* The vocabulary:
+holds, the cause is this well known, and this is what it usually means.* The vocabulary:
 
 - `over`: `skill`, `check`, `guard`, or `checks` (the scope totals). `expect` narrows a skill
   rule to skills declaring that expectation.
-- `window`: `4 weeks` — the trailing closed ISO weeks; `previous` in an expression names the
-  four before them.
+- `window`: `28 days` — the trailing window; `previous` in an expression names the 28 before.
+  `adoption` is the skill's adoption window; `now` is a live read of the tree.
 - `floor`: counts that must hold before the rule is evaluated at all; under the floor the
   review records *not evaluated* with the figure.
 - `when`: one comparison in a grammar of four shapes — `a / b >= n`, `a / b <= n`, `a = 0`,
-  `a >= n` — over the counters of §4, with `median(a)` and `previous` where a rule compares
-  windows. Nothing else; a rule that needs more is a coded rule, and there are none.
-- `certainty`: `act` | `diagnose` | `decide` | `observe`.
-- `finding` and `adaptation`: the sentences a person reads.
+  `a >= n` — over the counters of §4, with `median(a)` and `previous.` where a rule compares
+  windows, and an optional `and` naming a live predicate. Nothing else; a rule that needs more
+  is a coded rule, and there are none.
+- `cause`: `known` | `probable` | `unknown`.
+- `finding` and `recommendation`: the sentences a person reads.
 
-The rules, as declared. The evaluator prints each as the sentence the fields spell.
+The evaluator prints each rule as the sentence its fields spell.
 
 ### 3.1 Skills
 
 ```jsonc
 [
   { "id": "skill-always-loaded",
-    "over": "skill", "window": "4 weeks", "floor": { "sessions": 10 },
+    "over": "skill", "window": "28 days", "floor": { "sessions": 10 },
     "when": "skillSessions / sessions >= 0.75",
-    "certainty": "act",
+    "cause": "known",
     "finding": "loads in three of every four sessions — it is context wearing a skill's clothes",
-    "adaptation": "move its body to the owning pack's RULES.md; the cost either way is stated: tokens × sessions loaded against tokens × all sessions" },
+    "recommendation": "move its body to the owning pack's RULES.md; the cost either way is stated: tokens × sessions loaded against tokens × all sessions" },
 
   { "id": "skill-adoption-not-reached",
     "over": "skill", "expect": "adoption", "window": "adoption", "floor": { "sessions": 3 },
     "when": "skillLoads = 0",
-    "certainty": "diagnose",
+    "cause": "unknown",
     "finding": "the pack was declared and its adoption-time skill never loaded while the adoption was live",
-    "adaptation": "read the adoption sessions: was the step done another way, skipped, or did the description not name it" },
+    "recommendation": "read the adoption sessions' digests: was the step done another way, skipped, or did the description not name it" },
 
   { "id": "skill-routine-under-rate",
-    "over": "skill", "expect": "routine", "window": "4 weeks", "floor": { "sessions": 10 },
+    "over": "skill", "expect": "routine", "window": "28 days", "floor": { "sessions": 10 },
     "when": "skillSessions / sessions <= declaredRate / 2",
-    "certainty": "diagnose",
+    "cause": "unknown",
     "finding": "loads at under half the rate it declares for itself",
-    "adaptation": "sample the sessions where it did not load and ask whether they fell under its description (§4.2); if they did, the description is what to rewrite; if not, the declared rate is" },
+    "recommendation": "read the digests of sessions where it did not load: if their activity fell under its description, the description does not name its moment; if not, the declared rate is wrong" },
 
   { "id": "skill-triggered-missing-moments",
-    "over": "skill", "expect": "triggered", "window": "4 weeks", "floor": { "moments": 5 },
+    "over": "skill", "expect": "triggered", "window": "28 days", "floor": { "moments": 5 },
     "when": "skillLoads / moments <= 0.5",
-    "certainty": "act",
+    "cause": "known",
     "finding": "its declared moments occurred and the skill was not loaded for most of them",
-    "adaptation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard and fix what fails" },
+    "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard" },
 
   { "id": "skill-forced-only-small",
-    "over": "skill", "window": "4 weeks", "floor": { "skillLoads": 5 },
-    "when": "skillBlocks / skillLoads >= 0.9",
-    "certainty": "act",
-    "finding": "it is only ever loaded because a guard held a call for it, and a block is a tool call spent to read it",
-    "adaptation": "a skill under 300 tokens: carry the lines in context or in the guard's own block text; a larger one: no change, the guard is doing its job" },
+    "over": "skill", "window": "28 days", "floor": { "skillLoads": 5 },
+    "when": "skillBlocks / skillLoads >= 0.9", "and": "tokens <= 300",
+    "cause": "known",
+    "finding": "it is only ever loaded because a guard held a call for it, and each block is a tool call spent to read a few lines",
+    "recommendation": "carry the lines in context or in the guard's own block text" },
 
   { "id": "trigger-fires-unfollowed",
-    "over": "skill", "window": "4 weeks", "floor": { "triggerFired": 5 },
+    "over": "skill", "window": "28 days", "floor": { "triggerFired": 5 },
     "when": "triggerFollowed / triggerFired <= 0.5",
-    "certainty": "diagnose",
+    "cause": "probable",
     "finding": "its result or prompt trigger fires and the skill is not loaded afterwards",
-    "adaptation": "read the fires: a pattern matching text that merely mentions the symptom is tightened; a session ignoring a real symptom is a lesson for the trigger's context text" },
+    "recommendation": "usually a pattern matching text that merely mentions the symptom — tighten it to the tool's own result shape; the fires' contexts are in the finding" },
 
   { "id": "result-trigger-follows-every-call",
-    "over": "skill", "window": "4 weeks", "floor": { "toolCalls": 10 },
+    "over": "skill", "window": "28 days", "floor": { "toolCalls": 10 },
     "when": "triggerFired / toolCalls >= 0.5",
-    "certainty": "diagnose",
+    "cause": "probable",
     "finding": "the symptom its result trigger names follows most calls of that tool",
-    "adaptation": "if the skill's advice is about making the call, load on the call instead (force-load-on-tool-calls); if it is about the symptom, the tool itself is misused and that is the lesson" },
+    "recommendation": "if the skill's advice is about making the call, load on the call instead (force-load-on-tool-calls); if it is about the symptom, the tool is being misused and that is the lesson" },
 
   { "id": "skill-loaded-still-caught",
-    "over": "skill", "window": "4 weeks", "floor": { "skillSessions": 5 },
+    "over": "skill", "window": "28 days", "floor": { "skillSessions": 5 },
     "when": "skillCaught / skillSessions >= 0.3",
-    "certainty": "observe",
+    "cause": "unknown",
     "finding": "sessions that loaded it were still caught by a check the skill owns",
-    "adaptation": "none yet — carried forward; repeated across windows it is the case for putting the rule in the skill's first lines" }
+    "recommendation": "none yet — evidence carried forward; repeated across windows it is the case for putting the rule in the skill's first lines" }
 ]
 ```
 
@@ -152,75 +155,73 @@ The rules, as declared. The evaluator prints each as the sentence the fields spe
 ```jsonc
 [
   { "id": "check-never-fires-with-prose-twin",
-    "over": "check", "window": "4 weeks", "floor": { "runs": 20 },
+    "over": "check", "window": "28 days", "floor": { "runs": 20 },
     "when": "checkFindings = 0", "and": "proseTwin",
-    "certainty": "act",
+    "cause": "probable",
     "finding": "never fires, and a RULES.md line states the same rule",
-    "adaptation": "the prose-removal experiment: delete the prose, keep the check, file the retrospective that reads this counter one window later — at most one firing means the check alone suffices; more means the prose was doing the work and returns" },
+    "recommendation": "a candidate for the prose-removal experiment: delete the prose, keep the check, read this counter one window later — at most one firing means the check alone suffices; more means the prose was doing the work" },
 
   { "id": "check-never-fires",
-    "over": "check", "window": "4 weeks", "floor": { "runs": 20 },
+    "over": "check", "window": "28 days", "floor": { "runs": 20 },
     "when": "checkFindings = 0",
-    "certainty": "observe",
+    "cause": "unknown",
     "finding": "never fires and has no prose twin",
-    "adaptation": "none — a net that has caught nothing is not evidence of a hole; carried forward, and named for the fixture test that proves it can fire" },
+    "recommendation": "none — a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named" },
 
   { "id": "check-fires-most-sessions",
-    "over": "check", "window": "4 weeks", "floor": { "sessions": 10 },
+    "over": "check", "window": "28 days", "floor": { "sessions": 10 },
     "when": "checkSessions / sessions >= 0.5",
-    "certainty": "diagnose",
+    "cause": "probable",
     "finding": "fires blocking in half the sessions or more",
-    "adaptation": "read a sample of the firings: real violations each fixed the same way mean the lesson belongs before the work (a RULES.md line, a pre-edit trigger) with the check kept as the net; findings the session argued with mean the check is wrong" },
+    "recommendation": "usually the lesson belongs before the work (a RULES.md line, a pre-edit trigger) with the check kept as the net; if the findings were argued with, the check is wrong — a sample of the findings is attached" },
 
   { "id": "advisory-ignored",
-    "over": "check", "window": "4 weeks", "floor": { "advisory": 10 },
+    "over": "check", "window": "28 days", "floor": { "advisory": 10 },
     "when": "advisoryPersisted / advisory >= 0.8",
-    "certainty": "decide",
+    "cause": "known",
     "finding": "an advisory nobody acts on, printed at every Stop",
-    "adaptation": "the owner's call: promote it to blocking if it names a defect, delete it if it names a bias" },
+    "recommendation": "promote it to blocking if it names a defect, delete it if it names a bias — the choice is the owner's" },
 
   { "id": "check-unsatisfiable",
-    "over": "check", "window": "4 weeks", "floor": {},
+    "over": "check", "window": "28 days", "floor": {},
     "when": "relent >= 1",
-    "certainty": "diagnose",
+    "cause": "probable",
     "finding": "a session could not clear it in two attempts and the Stop hook let it through",
-    "adaptation": "read the relent: a condition the fix text cannot satisfy is a bug in the check; a session that fixed the wrong thing is a lesson for the fix text" },
+    "recommendation": "usually a condition the fix text cannot satisfy; the relent's findings block is attached" },
 
   { "id": "check-accepted-away",
     "over": "check", "window": "now", "floor": {},
     "when": "acceptances >= 3",
-    "certainty": "decide",
+    "cause": "known",
     "finding": "carries three or more acceptances or an override to advisory",
-    "adaptation": "the owner's call, with the acceptance reasons listed together: encode the exemption structurally, or demote" },
+    "recommendation": "encode the exemption structurally, or demote; the acceptance reasons are listed together" },
 
   { "id": "enforcement-off",
-    "over": "checks", "window": "4 weeks", "floor": {},
+    "over": "checks", "window": "28 days", "floor": {},
     "when": "errors >= 1",
-    "certainty": "act",
+    "cause": "known",
     "finding": "the check runner failed to launch in a session — enforcement was silently off",
-    "adaptation": "a defect: read the hook log line the fold counted it from and fix the launch" },
+    "recommendation": "a defect; the hook log line it was counted from is attached" },
 
   { "id": "checks-slower",
-    "over": "checks", "window": "4 weeks", "floor": { "runs": 20, "previous.runs": 20 },
+    "over": "checks", "window": "28 days", "floor": { "runs": 20, "previous.runs": 20 },
     "when": "median(stopMs) / previous.median(stopMs) >= 1.25", "and": "median(stopMs) >= 2000",
-    "certainty": "act",
+    "cause": "known",
     "finding": "the Stop hook's checks take a quarter longer than the window before",
-    "adaptation": "the timing record names the slowest rules; optimise the named one" },
+    "recommendation": "the timing record names the slowest rules; they are listed" },
 
   { "id": "guard-overruled",
-    "over": "guard", "window": "4 weeks", "floor": { "sessions": 10 },
+    "over": "guard", "window": "28 days", "floor": { "sessions": 10 },
     "when": "guardAdvisory / sessions >= 0.5",
-    "certainty": "diagnose",
+    "cause": "probable",
     "finding": "an advisory guard fires in most sessions and the call runs anyway",
-    "adaptation": "read the calls: a guard matching calls it was not written for is narrowed; a bias sessions consistently overrule is not one the corpus holds" }
+    "recommendation": "usually a guard matching calls it was not written for — narrow it; a sample of the calls is attached" }
 ]
 ```
 
-What the tiers buy, stated once: of the seventeen rules, six are `act`, and every one of those
-names a cause that is mechanical or arithmetic — a guard that did not hold, a runner that did
-not launch, a block that costs more than the lines it protects, a timing regression the record
-localises, an experiment that is itself the safe probe. Everything whose cause could be one of
-two things is `diagnose` or `decide`, and the two weakest signals are `observe`.
+Every finding is attached to its evidence: the figures for both windows, and for the rules
+that say so, a sample of the concrete events (fires, findings, calls) drawn from the captures
+still inside retention. A reader never has to go back to a transcript to judge a finding.
 
 ## 4. The record
 
@@ -233,7 +234,7 @@ key; a rule meeting a missing key reads *not recorded* on that side.
 | Counter | Key | Row | Read from |
 |---|---|---|---|
 | `skillLoadsBy` | skill | `[voluntary, blockedEdit, blockedCall, resultTrigger, promptTrigger, command, read]` | a `Skill` call, a typed `/command`, or a `Read` of a mounted `SKILL.md`; the cause is the nearest earlier mark for that skill since its last load — a PreToolUse block error naming it, an injected trigger context naming it, the command tag, else voluntary |
-| `skillSessions` | skill | count | distinct sessions with a load, per day; a session spanning midnight counts twice and the week figure is a stated ceiling |
+| `skillSessions` | skill | count | distinct sessions with a load, per day; a session spanning midnight counts twice and the window figure is a stated ceiling |
 | `skillBlocks` | skill | count | PreToolUse block errors naming it (`skill-not-loaded`, `skill-not-loaded-for-call`) |
 | `triggerFires` | skill | `[fired, followed]` | injected trigger contexts naming it; followed when a load of it comes later in the capture |
 | `moments` | skill | count | for a `triggered` skill: calls of the tools it names, `Edit`/`Write` calls under the paths it names, owner prompts matching its patterns — the same resolver the hooks use, run over the transcript |
@@ -245,27 +246,25 @@ key; a rule meeting a missing key reads *not recorded* on that side.
 
 The fold already keeps `sessions`, `checks.runs` and `checks.errors`.
 
-### 4.2 Raw — what only a capture can answer
+### 4.2 Raw — what only a capture can answer, and how far the review goes
 
-Two rules (`skill-routine-under-rate`, `skill-adoption-not-reached`) ask whether a skill
-*should* have loaded in a session where it did not. No counter says that; a reader must compare
-the session's activity with the skill's description. So the review's diagnosis samples up to
-five captures per finding from the logs branch — only captures inside retention exist, so the
-sample is the last ten days, and the review runs weekly precisely so the sample is always there
-— and builds for each a **deterministic digest**: the owner's prompts, the tools called with
-their targets, the files edited, the commands run. The agent reads digest and description and
-answers one question per sample: *did this session's activity fall under the description?* A
-majority yes is a description that does not name its moment; a majority no is a declared rate
-that is wrong. The digest, the samples and the answers go into the finding, so the verdict is
-re-readable without the captures.
+Two rules ask whether a skill *should* have loaded in a session where it did not, and several
+attach a sample of concrete events. The review reads captures on the logs branch for both, and
+stops at a **deterministic digest**: per sampled session, the owner's prompts (first line each),
+the tools called with their targets, the files edited, the commands run; per sampled event, the
+lines around the mark. Up to five samples per finding, newest first. The judgment — *did this
+session's activity fall under the description?* — is not made by the review. It is left to the
+reader of the finding, human or agent, who has the digest and the description side by side and
+never needs the transcript.
 
-Retention stays the pack's ten-day default; the review needs no more, and a repo that opted
-into capture-only (`retention_days: 0`) gets its `diagnose` rules recorded as *not sampled*
-rather than judged.
+Retention stays the pack's ten-day default: the review runs daily, so the ten days always hold
+the sample it wants. A repo that opted into capture-only (`retention_days: 0`) has its digests
+recorded as *not sampled*; the rules still evaluate from the fold.
 
 ### 4.3 Live — read from the tree, never windowed
 
-- the mounted skill catalog: each skill's estimated tokens, its `usage` block, its triggers;
+- the mounted skill catalog: each skill's estimated tokens (the session summary's estimator),
+  its `usage` block, its triggers;
 - the active rule catalog (`packRules`): severity, scope, owning skill, and the **prose twin** —
   a `RULES.md` bullet in the same pack naming the rule id in backticks, or a `references.md`
   `check:<id>` entry citing a `RULES-n` the bullets carry; a twin expressed any other way is
@@ -273,71 +272,110 @@ rather than judged.
 - the settings file: `accept` entries and `rules` overrides per rule, barrier `except` entries;
 - the pack declaration commits, for the adoption window.
 
-## 5. When it runs, where, and what performs the work
+## 5. When it runs, at what scope, and what performs it
 
-| Stage | Runs | Scope | What performs it |
-|---|---|---|---|
-| Measure | daily, `usage-fold` as today | every repo carrying the tasks pack | code |
-| Judge | weekly, `usage-review` in claudinite-growth; precondition: a closed week since the last review's window and `sessions ≥ 10` in the window | every subject the repo mounts — local packs **and** the canon it vendors; findings about canon subjects are evidence the repo cannot act on and carries upward | code for every rule; an agent phase requested only when a `diagnose` finding has samples to read |
-| Act, local | daily, `growth-extract` as today | this repo's local packs | opus, reading the review file: `act` findings on local subjects applied, `diagnose` verdicts applied where the diagnosis named the fix |
-| Act, canon | weekly, `canon-usage-review` in claudinite-canon-curation | the `packs/` shelf, from the canon's own review file (the canon is a member of itself) and, where Shepherd has landed one, the fleet aggregate | opus: applies `act` and settled `diagnose` findings, files `decide` findings as parked discussion issues with the evidence, runs the prose-removal experiment with its retrospective |
-| Act, fleet | Shepherd's aggregation of member review files | the fleet | out of canon scope; the file's keys are skill names and rule ids so a sum across members reads |
+| | |
+|---|---|
+| **Task** | `usage-review`, `packs/claudinite-growth/tasks/usage-review/`, `agent_model: none`, `code_work: node worker.mjs` |
+| **Cadence** | daily, after `usage-fold`; precondition: the fold moved since the last review, and the window holds `≥ 10` sessions |
+| **Window** | the trailing 28 days: closed ISO weeks from the fold's week rows, the current week from its day rows; compared with the 28 before |
+| **Scope** | every subject the repo mounts — its local packs **and** the vendored canon; a finding about a canon subject is evidence the repo cannot act on, and it carries it upward (§6) |
+| **Performs** | code, entirely: the evaluator over the rule file, the fold, the live reads, and the digests |
+| **Writes** | `.claudinite/local/usage-review.GENERATED.json` — `window` (both windows' bounds and denominators), `notEvaluated` (rule, floor, figure), `unstated` (skills with no `usage` block), `findings` sorted by rule then subject (rule, subject, pack, figures for both windows, cause, sentences, digests, and `since`, the first review date the finding appeared) — delivered by the shared generated-file helper on one accumulating auto-merged PR whose body renders the findings as a table per cause confidence; the unchanged-compare ignores the stamp alone, so a day that changes no finding opens nothing |
 
-The review's output is `.claudinite/local/usage-review.GENERATED.json` — `window` (both
-windows' bounds and denominators), `notEvaluated` (rule, floor, figure), `unstated` (skills
-with no `usage` block), and `findings` sorted by rule then subject, each carrying the rule id,
-subject and pack, the figures for both windows, the certainty, the sentences, and for a
-diagnosed finding the samples and the answers. Delivered by the shared generated-file helper on
-one accumulating auto-merged PR whose body renders the findings as a table per tier; the
-unchanged-compare ignores the stamp alone. A finding restated unchanged across windows stays a
-finding — the count of restatements is in the row, and it is the retrospective's underuse signal.
+`since` is what makes a finding's age readable without diffing history, and it is what the
+consumers below key on.
 
-## 6. Alternatives, and why not
+## 6. What happens with the results
+
+The review's output is a file that moves when a finding appears, changes or clears. Nothing in
+the review acts on it. The proposal for what does:
+
+1. **The dashboard**, first. The growth pack's `dashboard.json` declares a `window` widget —
+   findings this window against the previous — and a `list` of the newest findings' subjects
+   with their cause confidence. That is where a person sees the review without opening a file,
+   and it costs no session and no issue.
+
+2. **An issue per finding that has lasted**, filed by the review itself once a finding's
+   `since` is 14 days old and its cause is `known` or `probable`: title
+   `Usage: <rule> — <subject>`, label `usage-finding`, body the finding's rendering, one issue
+   per (rule, subject), updated in place while the finding persists and **closed by the review**
+   the day the finding clears, with the clearing figures in the closing comment. A finding
+   with an `unknown` cause never files; it stays in the file and on the dashboard. This is the
+   one place a person is asked for attention, and it is asked only for a finding that stayed
+   two weeks with a recommendation worth reading. The queue does not pick these up: they carry
+   no `task:` marks, so they are a person's inbox, not a run's.
+
+3. **Canon evidence, upward.** A finding about a canon skill or check in this repository is
+   the canon's business, not the member's. The fleet half is Shepherd's, per the
+   skill-usage-metrics decision on record: it sums members' review files by (rule, subject),
+   with a member count, into a fleet file the canon's own dashboard renders. This repository is
+   a member of itself, so its own review file is the first evidence canon curation reads —
+   when the owner asks it to, not on a schedule.
+
+4. **Existing agentic runs read it, and change nothing because of it.** `growth-extract` and
+   the curation sweeps may cite a finding as evidence when they land a lesson they found on
+   their own grounds; the review's recommendation is not an instruction to them. That keeps
+   the review honest about remedies it was never in a position to test.
+
+What is deliberately **not** proposed: an acting task, a chain of experiments, or a retrospective
+per finding. A finding that turns out to deserve a fix gets it the ordinary way — a person, or a
+`/do-later`, or an owner asking a session — with the finding as its brief.
+
+## 7. Alternatives, and why not
 
 - **Coded rules** instead of declarations: every threshold would need reading code to know what
   it asserts; the rules are the part a person must be able to review in a sitting.
 - **Judging inside the fold**: thresholds would live in the data plane the dashboard and fleet
   read, and a re-examined threshold would rewrite frozen weeks' meaning.
-- **One tier, everything acted on**: a skill that did not load has several possible causes and
-  only one of them is the description; acting on the first guess rewrites skills that were
-  right.
+- **An agent phase for the "should it have loaded" judgment**: it spends a session a day on a
+  question the digest lets a reader answer in a minute, and the answer only matters once the
+  finding has lasted.
+- **Acting on findings automatically**: the review cannot test its own remedies, and a skill
+  that did not load has several causes of which only one is the description; a fix on a guess
+  rewrites content that was right.
 - **No declared expectation**: rates against sessions alone cannot separate rare-and-healthy
-  from never-and-broken, which is the distinction the whole review exists to draw.
-- **Issues per finding**: findings restate until acted on; growth keeps no standing tracker; a
-  file is what the acting runs read.
-- **Longer retention for diagnosis**: ten days already covers a weekly sample; more raw logs
+  from never-and-broken, which is the distinction the review exists to draw.
+- **An issue per finding on first sight**: most findings on a young window are floor noise
+  or a single week's weather; two weeks of persistence is what earns attention.
+- **Longer retention for the digests**: ten days already covers a daily sample; more raw logs
   buy nothing the rules read.
 
-## 7. Failure modes, stated
+## 8. Failure modes, stated
 
 - A window under a floor evaluates nothing and says so; *no findings* is a result only when
   `notEvaluated` is empty.
 - A counter absent from frozen weeks leaves its rules *not recorded* until enough weeks carry it.
-- A capture-only repo gets no diagnosis and says so; its `act` rules still run.
-- A false prose twin: the experiment removes prose the check does not cover, and the
-  retrospective's firing count brings it back.
-- A description the agent misjudges: the samples and answers are in the finding, so the
-  acting run and a person can read the same evidence the verdict was drawn from.
+- A capture-only repo gets no digests and says so; the rules still run from the fold.
+- A false prose twin recommends an experiment on prose the check does not cover; the
+  recommendation says how the experiment is read, and a reader who runs it learns so within a
+  window.
+- A finding issue whose review stops running stays open with a stale body; the issue names the
+  review date it was last confirmed on, so staleness is readable.
+- A rule whose signature nothing in the record produces never fires; the retrospective reads
+  the per-rule firing history and names it.
 
-## 8. Retrospective brief
+## 9. Retrospective brief
 
-Owed once `canon-usage-review` has landed its first adaptation and lived a week.
+Owed once the review has landed in this repository and lived four weeks.
 
-- **Volume.** `sessions ≥ 10` per window in this repository; two to eight findings per review
-  with the floors met (zero across two reviews means the thresholds are loose, more than twelve
-  means tight); read from the review file's history on `main`.
-- **Tiers.** `act` findings applied within one acting cycle; `diagnose` findings settled (a
-  verdict recorded) within two reviews; `decide` findings each with a parked issue; `observe`
-  findings never acted on. Read from the acting PRs' bodies and the issues.
-- **Expectations.** Every canon skill carries a `usage` block within a month (the `unstated`
-  list empties); read from the review file.
-- **Underuse.** A finding restated unchanged for more than four reviews; expected zero.
-- **Misuse.** An adaptation applied from a `diagnose` or `decide` finding without its verdict; a
-  prose removal without its retrospective.
-- **Overuse.** Review PRs moving on `window` alone for more than four weeks; agent phases
-  requested with nothing to sample.
+- **Volume.** `sessions ≥ 10` per window here; two to eight findings per review with the floors
+  met (zero across two windows means the thresholds are loose, more than twelve means tight);
+  read from the review file's history on `main`.
+- **Every rule fires at least once in the first two months**, read off the file's history; a
+  rule that never fires is re-examined before it is trusted.
+- **Issues.** Between one and five `usage-finding` issues open at a time; each closed by the
+  review or by a person within a month; read from the label.
+- **Acted on.** At least one finding cited as the brief of a change (a PR body or `/do-later`
+  naming the rule and subject) in the first two months; zero means the recommendations are not
+  worth reading, and the rules are revisited.
+- **Expectations declared.** Every canon skill carries a `usage` block within a month (the
+  `unstated` list empties); read from the review file.
+- **Underuse.** A `known`-cause finding older than 60 days with no citing change; expected zero.
+- **Overuse.** Review PRs moving daily with no finding change (a stamp leak); agent-free by
+  construction, so no session cost to watch.
 - **Cost.** The Stop hook's median `stopMs` rises by no more than the timing line's own cost,
-  under 5 ms, read from `checkTiming` across the change.
-- **Cheap to re-examine:** every threshold and floor, the tier of any rule, the window, the
-  sample size, the twin definition. **Expensive:** the counter shapes in the fold header, the
-  `usage` frontmatter vocabulary, the timing line's format.
+  under 5 ms, read from `checkTiming` across the runner change.
+- **Cheap to re-examine:** every threshold and floor, the cause of any rule, the window, the
+  sample size, the twin definition, the 14-day issue threshold. **Expensive:** the counter
+  shapes in the fold header, the `usage` frontmatter vocabulary, the timing line's format.
