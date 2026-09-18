@@ -13,7 +13,8 @@ import requestTaskJson from '../../queue/tasks/implement-request/task.json' with
 import { eligibility } from '../../queue/tasks/implement-request/preconditions.mjs';
 import { evaluatePrecondition, loadTaskTerms } from '../../public/preconditions.mjs';
 import { REQUEST_TASK_ID } from '../../src/contract/built-in-tasks.mjs';
-import { parseWorkItemBody, machineBlockOf, ORIGIN_AD_HOC } from '../../src/items/work-item.mjs';
+import { ORIGIN_AD_HOC } from '../../public/task-constants.mjs';
+import { parseWorkItemBody, machineBlockOf } from '../../public/work-item-grammar.mjs';
 import { join } from 'node:path';
 import { LEGACY_BUILT_IN_TASK_PATH } from '../legacy-protocol.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';

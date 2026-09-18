@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   pickTracker, findTracker, createTracker, findOrCreateTracker, writeTracker,
-} from '../../src/items/tracker.mjs';
+} from '../../public/github.mjs';
 
 // A GitHub stand-in whose search is TEXT-ranked like the real one: it returns
 // every title containing the query, in insertion order, so a test that passes here

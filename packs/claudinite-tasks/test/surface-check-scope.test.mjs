@@ -53,6 +53,17 @@ test('the surface guard scopes to both trees a consumer can write in', () => {
   assert.ok(scope.test('.claudinite/local/packs/gcec/tasks/create-extractor/test/task.test.js'),
     "a member's .js file must be in scope — the canon's all-ESM habit is not a member's");
 
+  // A CANON PACK'S OWN TEST may reach `src/` for a name only a test needs: it runs in
+  // the same suite as the layout it reaches into, so a move fails in its own change.
+  assert.equal(scope.test('packs/claudinite-fleet-sheepdog/test/dormancy-drift.test.mjs'), false,
+    "a canon pack's test is exempt — the suite catches the move");
+  assert.equal(scope.test('packs/basics/test/skills/x/checks.test.mjs'), false,
+    'the exemption holds for a nested canon test');
+  // A MEMBER'S test is not: it runs where no canon session reads, so the reach survives
+  // until the layout moves under it.
+  assert.ok(scope.test('.claudinite/local/packs/gcec/test/task.test.mjs'),
+    "a member's test stays in scope");
+
   // This pack's own modules import their own internals; that is not a crossing.
   assert.equal(scope.test('packs/claudinite-tasks/src/items/work-item.mjs'), false,
     'the pack may read itself');

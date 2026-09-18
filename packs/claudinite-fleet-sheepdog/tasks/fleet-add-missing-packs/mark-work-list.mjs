@@ -18,9 +18,10 @@
 //    a body that actually changed clears whatever status stands — a parked or
 //    finished run of the OLD list must not be what silences the new one.
 import { ensureLabel } from '../../fleet-api.mjs';
+import { ORIGIN_AD_HOC, QUEUE_LABELS } from '../../../claudinite-tasks/public/task-constants.mjs';
 import {
-  ORIGIN_AD_HOC, QUEUE_LABELS, statusOf, spellingsOf, machineBlockOf, withMachineBlock,
-} from '../../../claudinite-tasks/public/work-items.mjs';
+  statusOf, spellingsOf, machineBlockOf, withMachineBlock,
+} from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 import { MARK, withTargeting } from './protocol.mjs';
 
 // The engine's own definition of the mark — never a second copy of its colour and

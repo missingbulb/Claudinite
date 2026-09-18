@@ -16,6 +16,10 @@
 // fact about this file at all; rendering the target's current names would state a
 // promise the folder has not made.
 
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
 // `export { a, b as c } from '…'` / `export { a, b }` — the named form, which is the
 // only form that pins a surface. `as` matters: what the outside sees is the alias.
 const RE_NAMED = /^export\s*\{([^}]*)\}/;
@@ -200,4 +204,25 @@ edit here and no diff in this report's name counts.
 
 ${starred.map((m) => `- \`${m.name}\` → ${m.wildcards.map((w) => `\`${w}\``).join(', ')}`).join('\n')}
 ` : ''}`;
+}
+
+// --- on demand ---------------------------------------------------------------------
+// `node packs/claudinite-canon-curation/pack-surface.mjs packs/claudinite-tasks` prints the
+// report for that pack over the working tree. Never committed: a surface report is read
+// when a surface is being changed, and a committed copy is stale the moment it is not.
+function treeText(root, dir = root, files = new Map()) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (['.git', 'node_modules', '.claudinite-cache'].includes(entry.name)) continue;
+    const abs = join(dir, entry.name);
+    if (entry.isDirectory()) { treeText(root, abs, files); continue; }
+    if (!entry.isFile() || !/\.(mjs|js|json|md|yml|yaml)$/.test(entry.name)) continue;
+    files.set(relative(root, abs).split(sep).join('/'), readFileSync(abs, 'utf8'));
+  }
+  return files;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const packDir = process.argv[2];
+  if (!packDir) { console.error('usage: node pack-surface.mjs <packs/<pack>>'); process.exit(2); }
+  process.stdout.write(renderSurfaceReport({ packDir, files: treeText(process.cwd()) }));
 }

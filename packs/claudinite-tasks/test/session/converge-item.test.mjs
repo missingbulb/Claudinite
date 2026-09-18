@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {
   OUTCOMES, convergeOps, parseArgs, refusal, recordLine, convergeComment, sessionScript,
 } from '../../src/session/converge-item.mjs';
-import { parseWorkItemBody, humanTextOf } from '../../src/items/work-item.mjs';
+import { parseWorkItemBody, humanTextOf } from '../../public/work-item-grammar.mjs';
 import { isReleasable } from '../../src/schedule/readiness.mjs';
 import { LEGACY_BUILT_IN_TASK_PATH } from '../legacy-protocol.mjs';
 

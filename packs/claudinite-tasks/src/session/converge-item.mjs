@@ -39,12 +39,14 @@ import { pathToFileURL } from 'node:url';
 import { renderTaskExec } from '../items/run-record.mjs';
 import { actionsEnv } from '../world/actions.mjs';
 import {
-  AGENT, TASK_DONE, STATUS_RUNNING_AGENT, isStatus, machineBlockOf,
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
-  QUEUED_LABEL, IN_REVIEW_LABEL, ORIGIN_LABELS, hasLabel,
-  parseWorkItemTitle, parseWorkItemBody, spellingsOf, labelNames,
-  editItemBody, withEndsWhen, EPISODE_MARKER,
-} from '../items/work-item.mjs';
+  AGENT, TASK_DONE, STATUS_RUNNING_AGENT, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL,
+  NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE, QUEUED_LABEL, IN_REVIEW_LABEL, ORIGIN_LABELS,
+  EPISODE_MARKER,
+} from '../../public/task-constants.mjs';
+import {
+  isStatus, machineBlockOf, hasLabel, parseWorkItemTitle, parseWorkItemBody, spellingsOf,
+  labelNames, editItemBody, withEndsWhen,
+} from '../../public/work-item-grammar.mjs';
 
 // What a session may claim, and what each one means for the item. `record` is the
 // execution-record status, and `null` means no record: an approval park is a run

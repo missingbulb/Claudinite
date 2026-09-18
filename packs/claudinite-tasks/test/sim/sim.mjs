@@ -54,17 +54,18 @@ import { normalizeTaskDeclaration, taskCadence } from '../../src/contract/task-c
 import { mostRecentAnchor } from '../../src/items/anchors.mjs';
 import { validatePreconditions } from '../../src/contract/precondition-policy.mjs';
 import { collectSignalsForTask } from '../../src/signals/for-task.mjs';
-import { EXECUTING_LEASH_MS } from '../../src/items/leases.mjs';
+import { EXECUTING_LEASH_MS } from '../../public/task-constants.mjs';
 import { HEARTBEAT_MS, HEARTBEAT_MARKER } from '../../src/items/heartbeat.mjs';
 import { REQUEST_TASK_ID, REQUEST_TASK, BUILT_IN_PACK } from '../../src/contract/built-in-tasks.mjs';
 import { terms as requestTerms } from '../../queue/tasks/implement-request/preconditions.mjs';
 import {
-  READY, URGENT, BLOCKED, EPISODE_MARKER, CLAIM_MARKER, HANDOFF_MARKER,
-  STATUS_DONE, STATUS_REJECTED, STATUS_LABELS, PARK_PREFIX,
-  ORIGIN_PLANNED, ORIGIN_MANUAL, ORIGIN_AD_HOC,
-  statusOf, isParked, parkKindOf, outcomeOf, originOf,
-  workItemTitle, workItemBody, parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
-} from '../../src/items/work-item.mjs';
+  READY, URGENT, BLOCKED, EPISODE_MARKER, CLAIM_MARKER, HANDOFF_MARKER, STATUS_DONE,
+  STATUS_REJECTED, STATUS_LABELS, PARK_PREFIX, ORIGIN_PLANNED, ORIGIN_MANUAL, ORIGIN_AD_HOC,
+} from '../../public/task-constants.mjs';
+import {
+  statusOf, isParked, parkKindOf, outcomeOf, originOf, workItemTitle, workItemBody,
+  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
+} from '../../public/work-item-grammar.mjs';
 
 export { MINUTE, HOUR, DAY };
 export { READY, ORIGIN_AD_HOC, ORIGIN_PLANNED, ORIGIN_MANUAL, statusOf, isParked, parkKindOf };

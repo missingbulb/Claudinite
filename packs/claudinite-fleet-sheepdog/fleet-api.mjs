@@ -13,7 +13,7 @@
 // Keeping the write to a single named function is deliberate: "what can this module
 // change in someone else's repo" then has exactly one answer to read.
 
-import { isDormant } from '../claudinite-tasks/public/dormancy.mjs';
+import { isDormant } from './dormancy.mjs';
 import { forbiddenHint } from './fleet-token.mjs';
 import { SETTINGS_FILE, SETTINGS_FILES } from '../../engine/settings-file.mjs';
 

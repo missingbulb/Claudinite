@@ -2,9 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sweepQueue } from '../../tasks/task-janitor/queue-sweep.mjs';
 import {
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE, HANDOFF_MARKER, TASK_DONE, TASK_OBSOLETE,
-  parkKindOf,
-} from '../../src/items/work-item.mjs';
+  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE, HANDOFF_MARKER, TASK_DONE,
+  TASK_OBSOLETE,
+} from '../../public/task-constants.mjs';
+import { parkKindOf } from '../../public/work-item-grammar.mjs';
 import { SUPERSEDABLE_PARKS } from '../../src/recover/janitor-rules.mjs';
 
 // A fake GitHub that answers the two reads the sweep makes and records the writes.

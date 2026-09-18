@@ -13,8 +13,9 @@ import {
   USAGE_FIELDS, USAGE_VERSION, QUEUE_OUTCOMES, COUNTER_GROUPS, renderUsageFile,
 } from '../../../src/items/usage-format.mjs';
 import {
-  outcomeOf, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-} from '../../../src/items/work-item.mjs';
+  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
+} from '../../../public/task-constants.mjs';
+import { outcomeOf } from '../../../public/work-item-grammar.mjs';
 import { LEGACY_EXECUTOR_DOC } from '../../legacy-protocol.mjs';
 
 // A day row as `foldDays` builds an empty one: the capture-derived scalars zeroed and

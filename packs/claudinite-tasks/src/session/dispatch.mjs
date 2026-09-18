@@ -9,6 +9,8 @@
 // All behavior-defining content (agent_model, expected_outcome, agent_instructions) is read from the
 // tracked task files, never from the issue — the body only points at the task
 // file and carries the precondition's binding Context (PRINCIPLES.md).
+import { NEEDS_HUMAN_LABEL } from '../../public/task-constants.mjs';
+
 
 // The labels this machinery drives. `ready-for-agent` is what the executor
 // routine fires on; `needs-human` is the single triage state every anomaly
@@ -22,7 +24,7 @@ export const READY_LABEL = 'ready-for-agent';
 // this; today just growth-promote.
 export const READY_FLEET_LABEL = 'ready-for-agent-fleet';
 export const AGENT_RUNNING_LABEL = 'agent-running';
-export const NEEDS_HUMAN_LABEL = 'needs-human';
+export { NEEDS_HUMAN_LABEL };
 export const WORKFLOW_FAILURE_LABEL = 'workflow-failure';
 
 // The ready label a task's dispatch is filed under, from its declared

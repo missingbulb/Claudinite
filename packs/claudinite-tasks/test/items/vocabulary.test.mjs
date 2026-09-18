@@ -12,18 +12,19 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN,
-  LEGACY_BLOCKED, LEGACY_READY, LEGACY_EXECUTING, LEGACY_AGENT,
-  LEGACY_TASK_DONE, LEGACY_TASK_OBSOLETE,
-  TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_OBSOLETE, OUTCOME_DELIVERED,
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE,
-  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
-  STATUS_NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_DECISION,
-  STATUS_NEEDS_HUMAN_FAILURE, STATUS_DONE, STATUS_REJECTED,
-  STATUS_LABELS, ORIGIN_LABELS, ORIGIN_PLANNED, ORIGIN_AD_HOC, ORIGIN_GITHUB, ORIGIN_SCHEDULE,
-  QUEUE_LABELS, statusOf, statusesOn, isStatus, isParked, parkKindOf, originOf,
-  spellingsOf, isBlockingPark, outcomeOf, triageLabelFor, TRIAGE_LABELS, requeueHint,
-} from '../../src/items/work-item.mjs';
+  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, LEGACY_BLOCKED, LEGACY_READY, LEGACY_EXECUTING,
+  LEGACY_AGENT, LEGACY_TASK_DONE, LEGACY_TASK_OBSOLETE, TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE,
+  OUTCOME_OBSOLETE, OUTCOME_DELIVERED, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL,
+  NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE, STATUS_BLOCKED, STATUS_READY,
+  STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, STATUS_NEEDS_HUMAN_ACTION,
+  STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_DECISION, STATUS_NEEDS_HUMAN_FAILURE,
+  STATUS_DONE, STATUS_REJECTED, STATUS_LABELS, ORIGIN_LABELS, ORIGIN_PLANNED, ORIGIN_AD_HOC,
+  ORIGIN_GITHUB, ORIGIN_SCHEDULE, QUEUE_LABELS, TRIAGE_LABELS, requeueHint,
+} from '../../public/task-constants.mjs';
+import {
+  statusOf, statusesOn, isStatus, isParked, parkKindOf, originOf, spellingsOf, isBlockingPark,
+  outcomeOf, triageLabelFor,
+} from '../../public/work-item-grammar.mjs';
 import { swapStatus, clearStatus } from '../../src/items/apply-status.mjs';
 import { convergeOps, OUTCOMES } from '../../src/session/converge-item.mjs';
 import { reportWorkflowFailure } from '../../src/recover/workflow-failure.mjs';
@@ -273,7 +274,7 @@ test('a blocked item is releasable in either spelling, and a parked one never is
 // pins is that the parse covers both homes a task can have, and that the janitor
 // rule which would otherwise skip every request run does not.
 
-import { taskIdFromPath, withMachineBlock } from '../../src/items/work-item.mjs';
+import { taskIdFromPath, withMachineBlock } from '../../public/work-item-grammar.mjs';
 import { staleReadyComment } from '../../src/recover/janitor-rules.mjs';
 import { LEGACY_BUILT_IN_TASK_PATH, LEGACY_BUILT_IN_TASK_PATH_MOUNTED } from '../legacy-protocol.mjs';
 

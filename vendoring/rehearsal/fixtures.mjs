@@ -628,7 +628,7 @@ jobs:
           GITHUB_TOKEN: \${{ github.token }}
           CLAUDINITE_WAKE: \${{ inputs.wake }}
           CLAUDINITE_TASKS_SUSPEND_ALL: \${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
-        run: node .claudinite/shared/packs/claudinite-tasks/public/scheduler-run.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/schedule/run.mjs
 
   drain:
     needs: scheduler-run
@@ -643,7 +643,7 @@ jobs:
           node-version: 24
       - env:
           GITHUB_TOKEN: \${{ github.token }}
-        run: node .claudinite/shared/packs/claudinite-tasks/public/drain-dispatch.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/schedule/drain-dispatch.mjs
 
   report-failure:
     needs: [scheduler-run, drain]
@@ -660,7 +660,7 @@ jobs:
           node-version: 24
       - env:
           GITHUB_TOKEN: \${{ github.token }}
-        run: node .claudinite/shared/packs/claudinite-tasks/public/workflow-failure.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/recover/workflow-failure.mjs
 `;
 
 const THIN_EXECUTOR_WORKFLOW = `name: Claudinite executor
@@ -698,7 +698,7 @@ jobs:
           GITHUB_TOKEN: \${{ github.token }}
           CLAUDINITE_TASKS_SUSPEND_ALL: \${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
           # claudinite:secrets
-        run: node .claudinite/shared/packs/claudinite-tasks/public/executor.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/execute/loop.mjs
 
   continue-the-chain:
     needs: execute
@@ -715,7 +715,7 @@ jobs:
       - env:
           GITHUB_TOKEN: \${{ github.token }}
           CLAUDINITE_CONTINUATION_DEPTH: \${{ inputs.continuation_depth }}
-        run: node .claudinite/shared/packs/claudinite-tasks/public/executor-continuation.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/recover/continuation.mjs
 `;
 
 // The scheduler workflow as it stands on a member that has the DISPATCHING drain
@@ -757,7 +757,7 @@ jobs:
           GITHUB_TOKEN: \${{ github.token }}
           CLAUDINITE_WAKE: \${{ inputs.wake }}
           CLAUDINITE_TASKS_SUSPEND_ALL: \${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
-        run: node .claudinite/shared/packs/claudinite-tasks/public/scheduler-run.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/schedule/run.mjs
 
   drain:
     needs: scheduler-run
@@ -814,7 +814,7 @@ jobs:
         env:
           GITHUB_TOKEN: \${{ github.token }}
           # claudinite:secrets
-        run: node .claudinite/shared/packs/claudinite-tasks/public/executor.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/execute/loop.mjs
 `;
 
 // A member whose live executor still stamps its secrets by NAME, and sets no bag.
@@ -853,7 +853,7 @@ jobs:
         env:
           GITHUB_TOKEN: \${{ github.token }}
           CLAUDINITE_SECRETS: \${{ toJSON(secrets) }}
-        run: node .claudinite/shared/packs/claudinite-tasks/public/executor.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/execute/loop.mjs
 `;
 
 const STAMPING_EXECUTOR_WORKFLOW = `name: Claudinite executor
@@ -887,7 +887,7 @@ jobs:
           CLAUDINITE_TASKS_SUSPEND_ALL: \${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}
           # claudinite:secrets
           CCR_ROUTINE_TOKEN: \${{ secrets.CCR_ROUTINE_TOKEN }}
-        run: node .claudinite/shared/packs/claudinite-tasks/public/executor.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/execute/loop.mjs
 `;
 
 // A member whose live executor already carries the repository-variable bag (#1492) —

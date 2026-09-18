@@ -6,10 +6,10 @@ import {
 } from '../src/derive/board.mjs';
 import { describeCadence } from '../src/derive/model.mjs';
 import {
-  WORK_PREFIX, ORIGIN_AD_HOC, STATUS_READY, STATUS_RUNNING_AGENT,
-  NEEDS_HUMAN_FAILURE, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, OUTCOME_DONE, OUTCOME_OBSOLETE,
-  MACHINE_BLOCK_START, MACHINE_BLOCK_END,
-} from '../../claudinite-tasks/public/work-items.mjs';
+  WORK_PREFIX, ORIGIN_AD_HOC, STATUS_READY, STATUS_RUNNING_AGENT, NEEDS_HUMAN_FAILURE,
+  NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, OUTCOME_DONE, OUTCOME_OBSOLETE, MACHINE_BLOCK_START,
+  MACHINE_BLOCK_END,
+} from '../../claudinite-tasks/public/task-constants.mjs';
 
 const NOW = Date.parse('2026-09-02T10:30:00Z');
 const DAY = 86400e3;

@@ -7,7 +7,7 @@ import {
   abandonedParkItems, abandonedParkComment, scheduledForTasks,
 } from '../../src/recover/janitor-rules.mjs';
 import { periodMs } from '../../src/items/anchors.mjs';
-import { isParked } from '../../src/items/work-item.mjs';
+import { isParked } from '../../public/work-item-grammar.mjs';
 import { ACCEPTED_FREQUENCIES } from '../../src/contract/calendar.mjs';
 
 let seq = 900;
