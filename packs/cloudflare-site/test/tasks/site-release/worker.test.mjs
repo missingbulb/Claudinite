@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { removeTree } from '../../../../../engine/remove-tree.mjs';
-import { BEACON_PLACEHOLDER, injectBeacon, isOperatorFailure, reportServed } from '../../../tasks/site-release/worker.mjs';
+import { BEACON_PLACEHOLDER, injectBeacon, isOperatorFailure, loadVersioning, reportServed, VERSIONING_SEAM } from '../../../tasks/site-release/worker.mjs';
 
 const REAL_TOKEN = '4f8b21ce9a7d4e0fb3c65a1d2e7f9081';
 
@@ -82,15 +82,30 @@ test('Cloudflare refusals route to the human-action lane', () => {
 });
 
 // A release is not finished when the API returns 200 — what matters is that a visitor
-// reaches the page — and the run is the only place that is ever checked. A hostname
-// that does not answer is REPORTED, since the version is cut and the upload happened.
-test('what each hostname answered is reported, errors included', async () => {
+// reaches the page and sees the version that was cut — and the run is the only place
+// that is ever checked. A hostname that does not answer, or a page still showing the
+// previous version, is REPORTED, since the version is cut and the upload happened.
+test('what each hostname answered is reported, errors and the stamp included', async () => {
   const fetchImpl = async (url) => {
     if (url.includes('www.')) throw new Error('ENOTFOUND');
-    return { status: 200 };
+    return { status: 200, text: async () => '<p title="version 1.10917.5">' };
   };
-  assert.deepEqual(await reportServed(['example.com', 'www.example.com'], { fetchImpl }), [
-    { hostname: 'example.com', status: 200 },
+  assert.deepEqual(await reportServed(['example.com', 'www.example.com'], { version: '1.10917.5', fetchImpl }), [
+    { hostname: 'example.com', status: 200, stamp: 'matches' },
     { hostname: 'www.example.com', error: 'ENOTFOUND' },
   ]);
+  const stale = async () => ({ status: 200, text: async () => '<p title="version 1.10917.4">' });
+  assert.equal((await reportServed(['example.com'], { version: '1.10917.5', fetchImpl: stale }))[0].stamp, 'stale');
+  assert.equal((await reportServed(['example.com'], { fetchImpl: stale }))[0].stamp, null, 'no version cut, nothing to compare');
+});
+
+// The seam is resolved beside this pack, so in the canon — where public-website sits
+// beside cloudflare-site — it loads; a mount without the pack answers the not-found
+// code and nothing else, which is the documented no-bump release.
+test('the versioning seam loads from beside the pack, and its absence is a null', async () => {
+  assert.equal(typeof (await loadVersioning()).bumpedFiles, 'function');
+  const absent = Object.assign(new Error('nope'), { code: 'ERR_MODULE_NOT_FOUND' });
+  assert.equal(await loadVersioning(async () => { throw absent; }), null);
+  await assert.rejects(loadVersioning(async () => { throw new SyntaxError('broken seam'); }), /broken seam/);
+  assert.match(VERSIONING_SEAM, /public-website\/public\/version\.mjs$/);
 });

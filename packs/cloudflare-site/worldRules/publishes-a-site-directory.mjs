@@ -34,7 +34,7 @@ const rule = {
       return [finding(rule, {
         file: configPath,
         what: `${configPath} does not parse as JSON`,
-        fix: 'fix the syntax — the release, the version stamp and these checks all read this file, and a config they cannot parse stops the release at the gate',
+        fix: 'fix the syntax — the release and these checks all read this file, and a config they cannot parse stops the release at the gate',
       })];
     }
 

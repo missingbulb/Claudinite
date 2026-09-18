@@ -20,8 +20,7 @@
 // `withheldWorkflowPaths` in the baselining worker plus §2b of its task.md; this record
 // declares WHAT to vendor and stays out of how.
 //
-// STANDING, NOT TRANSITIONAL — the same shape (and the same reason) as
-// `static-site-vendoring`. There is no old shape to move off: this workflow never
+// STANDING, NOT TRANSITIONAL. There is no old shape to move off: this workflow never
 // existed anywhere else, so `legacyPresent` is false everywhere by construction — the
 // record exists to keep the copy current, forever, applied from the fresh canon clone
 // each member's baselining fetches (where every record loads regardless of age). If a

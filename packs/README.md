@@ -34,11 +34,12 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="google-identity/badge.svg" width="18" height="18" alt=""> [google-identity](google-identity/README.md) | declared | 0 (3 in its skill) | 0 |
 | <img src="jwt/badge.svg" width="18" height="18" alt=""> [jwt](jwt/README.md) | JWT library in JS/TS/Python source | 0 (5 in its skills) | 0 (2 skills; the technology's own movement is watched from the canon, not from here) |
 | <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 4 |
-| <img src="static-website/badge.svg" width="18" height="18" alt=""> [static-website](static-website/README.md) | declared (opt-in); marker: the `Release static site` orchestrator | 3 | 7 (+ RELEASE contract; 1 skill: static-site-releases) |
+| <img src="public-website/badge.svg" width="18" height="18" alt=""> [public-website](public-website/README.md) | declared (opt-in); marker: a page carrying a `title="version …"` stamp | 1 | 5 |
+| <img src="github-pages/badge.svg" width="18" height="18" alt=""> [github-pages](github-pages/README.md) | declared (opt-in); marker: `.github/site.config` | 2 | 2 (+ 1 skill: github-pages-pipeline, + the `site-release` task) |
 | <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 10 (+ 2 skills: flutter-golden-tests, flutter-pubspec) |
 | <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 5 + 3 skills: firestore-security-rules, firebase-functions, create-release-plan |
 | <img src="cloudflare-workers/badge.svg" width="18" height="18" alt=""> [cloudflare-workers](cloudflare-workers/README.md) | wrangler config near root | 0 | 11 |
-| <img src="cloudflare-site/badge.svg" width="18" height="18" alt=""> [cloudflare-site](cloudflare-site/README.md) | a near-root wrangler config declaring `assets.directory` | 4 | 4 (+ 1 skill: releasing-a-cloudflare-site, + the `site-release` task) |
+| <img src="cloudflare-site/badge.svg" width="18" height="18" alt=""> [cloudflare-site](cloudflare-site/README.md) | a near-root wrangler config declaring `assets.directory` | 3 | 3 (+ 1 skill: releasing-a-cloudflare-site, + the `site-release` task) |
 | <img src="android/badge.svg" width="18" height="18" alt=""> [android](android/README.md) | `AndroidManifest.xml` | 0 | 0 (stub) |
 | <img src="ios/badge.svg" width="18" height="18" alt=""> [ios](ios/README.md) | `ios/Runner/Info.plist` | 0 | 2 |
 | <img src="macos/badge.svg" width="18" height="18" alt=""> [macos](macos/README.md) | `Package.swift` near root | 4 | 26 (+ 2 skills: macos-app-bundle, macos-entitlements-and-tcc) |

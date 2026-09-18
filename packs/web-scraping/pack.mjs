@@ -23,6 +23,6 @@ export default {
     belongs:
       'acquiring data from a site you do not own: finding its data surface, fetching defensively, caching raw payloads',
     excludes:
-      'Actions triggers and secrets wiring — that is git-github; publishing a site you own — that is static-website',
+      'Actions triggers and secrets wiring — that is git-github; publishing a site you own — that is public-website',
   },
 };
