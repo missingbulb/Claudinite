@@ -112,7 +112,6 @@ export async function installPacks(targetRoot, ids, {
   }
 
   const entries = resolveDeclaredPacks(declared, packs);
-  const unanswered = unansweredQuestions(packs, entries);
 
   // THE `requires` CLOSURE IS INSTALLED TOO, and stamped. A pack pulled in by another
   // (git-github via basics) has its content vendored either way — `computeVendorSet`
@@ -126,6 +125,14 @@ export async function installPacks(targetRoot, ids, {
   const named = new Set(install.map((i) => i.id));
   const pulled = entries.map(packEntryId).filter((id) => typeof id === 'string' && !named.has(id));
   install.push(...planInstall(packs, pulled, installed, { engineVersion }).install);
+
+  // THE INTERVIEW COVERS WHAT THIS INSTALL ADDS, never a pack the repo declared on an
+  // earlier day: what that adoption left unanswered is its own gap, and ending this
+  // run `needs-human` on it would refuse every later pack to a repo with one old
+  // unanswered question — while the adoption checks already hold that a pack in the
+  // base is not re-litigated.
+  const installing = new Set(install.map((i) => i.id));
+  const unanswered = unansweredQuestions(packs, entries.filter((e) => installing.has(packEntryId(e))));
 
   // No `installed` passed: an install fetches no migration records at all, whatever
   // the repo's stamp says. The set is content only.
