@@ -432,5 +432,21 @@
         "fix": "name the branch without the word git (perf/fixtures, not perf/git-fixtures) \u2014 the child cannot rename it afterwards either"
       }
     ]
+  },
+  {
+    "id": "transcript-found-by-mtime",
+    "severity": "blocking",
+    "since": "2026-09-18",
+    "scope": "action",
+    "failureMessage": "the newest .jsonl under ~/.claude/projects is always the transcript of the session running the scan, so the script reads its own run rather than the one asked about",
+    "guardToolCalls": [
+      {
+        "tool": "/^(Bash|Write)$/",
+        "inputMatches": "/^(?=[\\s\\S]*(?:mtimeMs|\\.mtime\\b))(?=[\\s\\S]*projects)(?=[\\s\\S]*\\.jsonl)/",
+        "unlessInputMatches": "/findTranscript|capture-log\\.mjs|transcript-found-by-mtime/",
+        "what": "a {tool} locating a session transcript by newest mtime",
+        "fix": "resolve <sessionId>.jsonl with findTranscript from packs/claudinite-growth/capture-log.mjs; a transcript never leaves its container, so a script for another session takes that session's id as an argument"
+      }
+    ]
   }
 ]

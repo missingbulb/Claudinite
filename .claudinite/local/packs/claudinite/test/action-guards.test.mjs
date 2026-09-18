@@ -192,3 +192,43 @@ test('the restore and settings guards', () => {
     'cat .claudinite-settings.json',
   ]).length, 2);
 });
+
+test('the transcript guard: a session file chosen by mtime rather than by session id', () => {
+  // The shape #2111's diagnostic shipped with: a scan of every project directory for
+  // the newest .jsonl, handed to a session in another repo, which then reported on its
+  // own run. Both spellings a script arrives by — a heredoc, and a Write.
+  const scan = "const root = join(homedir(), '.claude', 'projects');\n"
+    + "for (const f of readdirSync(dir)) { if (!f.endsWith('.jsonl')) continue;\n"
+    + '  const m = statSync(join(dir, f)).mtimeMs; if (!best || m > best.m) best = { p, m }; }';
+  assert.deepEqual(judge('transcript-found-by-mtime', [`cat > /tmp/diag.mjs <<'EOF'\n${scan}\nEOF`]),
+    ['a Bash locating a session transcript by newest mtime']);
+  assert.deepEqual(judgeCalls('transcript-found-by-mtime', [['Write', { file_path: '/tmp/s/diag.mjs', content: scan }]]),
+    ['a Write locating a session transcript by newest mtime']);
+  // Naming the session — or the helper that resolves one — is the clean form, and the
+  // ordinary reads that carry one of the three tokens alone must stay silent.
+  assert.deepEqual(judge('transcript-found-by-mtime', [
+    `node -e "const { findTranscript } = await import('./packs/claudinite-growth/capture-log.mjs');"`,
+    'ls -la /root/.claude/projects/-home-user-Claudinite/',
+    'ls -lt --time=mtime packs/',
+    'git show origin/conversation-logs:2026-09-17T1652Z--pr-2111--e6579854.jsonl | head',
+    // Prose about the guard is the commonest payload carrying all three words — a
+    // commit message, a finding quoted back — so the match reads the stat property
+    // rather than the word, and this line would fire if it read the word.
+    "git commit -m 'Guard a transcript picked by mtime under ~/.claude/projects rather than <id>.jsonl'",
+    // Two of the three tokens and a real selection: finding the most recently active
+    // project directory is what makes the .jsonl third of the match load-bearing.
+    `node -e "for (const d of readdirSync(root)) console.log(d, statSync(join(root, d)).mtimeMs)" # ~/.claude/projects`,
+    // The other two-token pair: captures fetched off conversation-logs into the
+    // scratchpad, ordered by write time. They are .jsonl and they are picked by
+    // mtime, and they are not transcripts — the projects third is what says so.
+    `node -e "for (const f of readdirSync(d).filter((f) => f.endsWith('.jsonl'))) console.log(f, statSync(join(d, f)).mtimeMs)" # scratchpad/logs`,
+  ]), []);
+  // Two writes that spell the forbidden shape without performing it: one pointing at
+  // the helper, and this file itself, whose fixture is the shape. Without the rule's
+  // own id in the exemption the second is denied — so the first session to weaken the
+  // guard for a see-it-fail run would be stopped by the thing it is testing.
+  assert.deepEqual(judgeCalls('transcript-found-by-mtime', [
+    ['Write', { file_path: '/tmp/s/fix.mjs', content: `// ${scan}\n// see capture-log.mjs` }],
+    ['Write', { file_path: 'action-guards.test.mjs', content: `judge('transcript-found-by-mtime', [\`${scan}\`]);` }],
+  ]), []);
+});
