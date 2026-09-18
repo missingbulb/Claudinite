@@ -211,6 +211,13 @@ test('the transcript guard: a session file chosen by mtime rather than by sessio
     'ls -la /root/.claude/projects/-home-user-Claudinite/',
     'ls -lt --time=mtime packs/',
     'git show origin/conversation-logs:2026-09-17T1652Z--pr-2111--e6579854.jsonl | head',
+    // Two of the three tokens and no selection: reading which project directory
+    // was last written is what makes the .jsonl half of the match load-bearing.
+    'ls -l --time=mtime /root/.claude/projects/',
+    // Working on the guard itself spells the shape it forbids, so the rule's own id
+    // exempts it — otherwise the first session to weaken it for a see-it-fail run is
+    // denied by the thing it is testing.
+    `python3 -c "s=open('declared-checks.json').read().replace('mtime)(?=[s S]*projects)(?=[s S]*.jsonl)','x')" # transcript-found-by-mtime`,
   ]), []);
   assert.deepEqual(judgeCalls('transcript-found-by-mtime', [['Write', { file_path: '/tmp/s/fix.mjs', content: `// ${scan}\n// see capture-log.mjs` }]]), []);
 });
