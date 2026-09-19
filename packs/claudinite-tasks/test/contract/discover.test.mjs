@@ -9,7 +9,7 @@ const taskJson = (id, over = {}) => `${JSON.stringify({ id, trigger: 'schedule',
 test('discoverTasks finds a declared local pack\'s tasks with the repo-relative task path', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
-    '.claudinite/local/packs/mypack/tasks/alpha/task.json': taskJson('alpha', { frequency: 'daily', preconditions: ['none'], agent_model: 'opus', expected_outcome: 'fresh_pr', automerge: 'anything', agent_instructions: 'task.md', agent_execution_timeout: 900 }),
+    '.claudinite/local/packs/mypack/tasks/alpha/task.json': taskJson('alpha', { agent_model: 'opus', expected_outcome: 'fresh_pr', automerge: 'anything', agent_instructions: 'task.md', agent_execution_timeout: 900 }),
     '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# alpha worker\n',
     '.claudinite/local/packs/mypack/tasks/beta/task.json': taskJson('beta', { preconditions: ['schedule:at-most-weekly'], code_work: 'node worker.mjs', code_work_timeout: 60 }),
     '.claudinite/local/packs/mypack/tasks/beta/task.md': '# beta worker\n',

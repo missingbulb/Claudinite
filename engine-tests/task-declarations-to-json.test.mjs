@@ -10,7 +10,7 @@ import {
   LOCAL_PACK_ROOT, CANON_PACK_ROOT,
 } from '../engine/migrations/task-declarations-to-json.mjs';
 import { applyTaskSchedulingFields, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
-import { FREQUENCIES, statesConditions } from '../packs/claudinite-tasks/src/contract/calendar.mjs';
+import { FREQUENCIES, statesConditions, cadenceTermFor } from '../packs/claudinite-tasks/src/contract/calendar.mjs';
 import { normalizeTaskDeclaration, validateTaskDeclaration } from '../packs/claudinite-tasks/src/contract/task-contract.mjs';
 import { parseTaskDeclaration } from '../packs/claudinite-tasks/src/contract/task-declaration.mjs';
 
@@ -107,13 +107,18 @@ test('retireFrequencyText: nothing to do, a term already stated, and an unknown 
   assert.equal(retireFrequencyText('{\n  "id": "x",\n  "frequency": "daily",\n  "preconditions": [1, 2\n}\n'), null);
 });
 
-test('retireFrequencyText agrees with the contract\'s door on every frequency', () => {
-  // Two spellings of one mapping: the engine cannot import the pack, so the term
-  // it writes is pinned to what the door reads (`cadenceTermFor`).
+test('retireFrequencyText agrees with the pack\'s own mapping on every accepted value', () => {
+  // Two spellings of one mapping: the engine cannot import the pack, so the term it
+  // writes is pinned to the one the pack spells. The contract's door is gone (#1732)
+  // — a declaration carrying the field is rejected there — and this rewrite is what
+  // a member converging after that still needs to stop carrying it.
   for (const f of FREQUENCIES) {
     const text = `{\n  "id": "x",\n  "frequency": "${f}",\n  "preconditions": ["repo-active"]\n}\n`;
-    assert.deepEqual(JSON.parse(retireFrequencyText(text).text).preconditions, normalizeTaskDeclaration({ frequency: f, preconditions: ['repo-active'] }).preconditions, f);
+    const term = cadenceTermFor(f);
+    assert.deepEqual(JSON.parse(retireFrequencyText(text).text).preconditions,
+      term === null ? ['repo-active'] : [term, 'repo-active'], f);
   }
+  assert.ok(FREQUENCIES.length >= 4, 'the whole vocabulary was swept, not an emptied list');
 });
 
 // --- the unstated `trigger` ------------------------------------------------------

@@ -51,3 +51,28 @@
 - **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
 - **Model:** claude-opus-5
 - **Landed:** #1920
+
+## 2026-09-22 · severity-changed · the retired `frequency` field is no longer this advisory's business (#2138)
+- **Reason:** this advisory exists to name a tolerance the door hides - by the time anything holds a
+  declaration, the field has already been renamed away. With the door gone the field is rejected
+  outright, so a declaration carrying it does not run at all, and an advisory asking for an optional
+  rename would understate that. `task-declaration-shape` blocks it instead.
+- **Mechanism:** the frequency branch is deleted from the rule; the trigger half and the outcome
+  ceilings it also covers are untouched.
+- **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
+- **Model:** claude-opus-5
+- **Landed:** #2138
+
+## 2026-09-22 · retired · the advisory has no subject left, so the rule goes (#2138)
+- **Reason:** the two changes above landed in the same day and each removed one half of what this
+  rule reported - the field names and outcome ceilings with #1920, the `frequency` field with
+  #2138 - leaving a check that can no longer produce a finding. Neither change could see the
+  other's effect, because each was green against a `main` the other had not reached. Keeping the
+  husk would also state something now false: the rule's whole premise is that the door hides a
+  tolerance, and there is no door left to hide one.
+- **Mechanism:** `worldRules/legacy-task-fields.mjs` and its test are deleted, and the catalog row
+  with them. What the rule used to advise is now blocked by `task-declaration-shape`, which is the
+  end state #1732's migration named for it.
+- **Actor:** owner session, reconciling the two merges.
+- **Model:** claude-opus-5
+- **Landed:** #2138

@@ -4,11 +4,11 @@
 // `validate-dispatch` validate against this one function, so the accepted shape
 // can never drift between the two surfaces.
 
-import { FREQUENCIES, cadenceTermFor, cadenceOf, normalizeCadenceTerms, scheduleTermFor } from './calendar.mjs';
+import { FREQUENCIES, CADENCES, cadenceTermFor, cadenceOf, normalizeCadenceTerms, scheduleTermFor } from './calendar.mjs';
 import { MODEL_FAMILIES } from './model-map.mjs';
 import { EXECUTING_LEASH_MS } from '../../public/task-constants.mjs';
 import { normalizePolicy } from './merge-policy.mjs';
-import { validatePreconditions, preconditionSignals, NONE } from './precondition-policy.mjs';
+import { validatePreconditions, preconditionSignals } from './precondition-policy.mjs';
 import { applyTaskDefaults } from './task-defaults.mjs';
 
 // A declared timeout is always a whole number of seconds, > 0.
@@ -51,30 +51,6 @@ export function normalizeTaskDeclaration(decl) {
   const out = { ...decl };
   // The editor's schema pointer, when a caller hands over a parsed task.json whole.
   delete out.$schema;
-  // THE FREQUENCY DOOR (docs/PRINCIPLES.md). `frequency` is retired: a task's
-  // cadence is one of its own preconditions, read off its run history. A declaration
-  // still carrying the field reads exactly as it always did — the field becomes the
-  // cadence term it always meant, first in the expression, and a `none` beside it
-  // (the empty precondition it used to need) drops; `manual` meant no schedule and
-  // adds no term. The field itself does not survive the door: nothing downstream
-  // reads it.
-  //
-  // Scaffolding, not a second vocabulary: `legacy-task-fields` reports the field,
-  // and the nightly update rewrites a member's own task files (the
-  // `task-cadence-terms` record), so the acceptance ends one convergence window
-  // after #1725 ships (#1732).
-  // @legacy-tolerance advisory:legacy-task-fields retire:#1732
-  if (out.frequency !== undefined) {
-    const stated = Array.isArray(out.preconditions) ? out.preconditions.filter((e) => String(e).trim() !== NONE) : [];
-    if (FREQUENCIES.includes(out.frequency)) {
-      const term = cadenceTermFor(out.frequency);
-      out.preconditions = term === null || stated.some((e) => String(e).trim() === term) ? stated : [term, ...stated];
-    } else {
-      // An illegal frequency is still reported, as the illegal condition it becomes.
-      out.preconditions = [scheduleTermFor(out.frequency), ...stated];
-    }
-    delete out.frequency;
-  }
   // THE CADENCE-SPELLING DOOR (calendar.mjs, DUE_TERM). `due:<cadence>` is the same
   // term under the name it was introduced with, permanently accepted because a task
   // declaration is member-owned data no vendoring pass rewrites. Rewriting it here
@@ -228,10 +204,21 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   if (decl.precondition !== undefined) {
     bad('the task declares a "precondition" function, which is retired', 'move the gate into "preconditions" — a built-in condition, or a term this task\'s preconditions.mjs exports');
   }
+  // `frequency` is retired with the calendar the scheduler used to keep: a task's
+  // cadence is one of its own conditions, read off its own run history. Rejected by
+  // NAME rather than ignored, and naming the term to write, so a declaration carrying
+  // it is told its replacement instead of reading as a task that forgot its cadence.
+  if (decl.frequency !== undefined) {
+    const term = FREQUENCIES.includes(decl.frequency)
+      ? cadenceTermFor(decl.frequency)
+      : scheduleTermFor(`<${CADENCES.join('|')}>`);
+    bad('the task declares "frequency", which is retired', term === null
+      ? 'drop it and write "trigger": "request" - "manual" meant no schedule at all, which a declaration now says outright'
+      : `write the cadence as a condition - "preconditions": ["${term}", …] - with "trigger": "schedule" beside it, and drop a "none"`);
+  }
   // OPTIONAL (PRINCIPLES.md): a task may require nothing, and then every occurrence of
   // it runs. What is NOT read off this list is whether the scheduler asks the task —
-  // `trigger` says that. A retired `frequency` arrives here already turned into its
-  // cadence term by the door.
+  // `trigger` says that.
   if (decl.preconditions !== undefined) {
     for (const problem of validatePreconditions(decl.preconditions, terms)) bad(problem.what, problem.fix);
   }

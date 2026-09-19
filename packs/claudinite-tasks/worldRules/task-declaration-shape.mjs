@@ -1,6 +1,6 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { FREQUENCIES, cadenceTermFor, cadenceOf } from '../src/contract/calendar.mjs';
+import { FREQUENCIES, CADENCES, scheduleTermFor, cadenceTermFor, cadenceOf } from '../src/contract/calendar.mjs';
 import { MODEL_FAMILIES } from '../src/contract/model-map.mjs';
 import {
   OUTCOMES, OUTCOME_NO_PR, DEFAULT_AGENT_MODEL, descriptionProblem, normalizeTaskDeclaration,
@@ -77,17 +77,18 @@ const rule = {
         if (v === null) flag(`declares no "${key}"`, `add "${key}": one of ${legal.join(', ')}`);
         else if (!legal.includes(v)) flag(`"${key}" is "${v}", not a legal value`, `use one of: ${legal.join(', ')}`);
       };
-      // `frequency` is retired (docs/PRINCIPLES.md): the cadence is a condition
-      // in `preconditions`, and the door reads the field as exactly that term.
-      // ADVISORY because the file keeps working and the nightly update rewrites a
-      // member's own - so what blocks is only a declaration that states no "when"
-      // at all.
-      const legacyFrequency = str('frequency');
+      // `frequency` is retired (docs/PRINCIPLES.md): the cadence is a condition in
+      // `preconditions`, and nothing reads the field any more. BLOCKING, unlike the
+      // renames below, because the runtime contract rejects it too - a declaration
+      // carrying it no longer runs, so saying so at author time is the whole point.
+      // Flagged by NAME rather than left unrecognised, so its author is told the term
+      // to write instead of reading as a task that simply forgot its cadence.
       if (decl.has('frequency')) {
-        const term = FREQUENCIES.includes(legacyFrequency) ? cadenceTermFor(legacyFrequency) : 'due:<daily|weekly|monthly>';
-        advise('declares the retired field "frequency"', term === null
-          ? 'drop the field, and a "none" beside it: "manual" meant no schedule, which a declaration says by stating no "preconditions" at all'
-          : `write it as the first condition — "preconditions": [${JSON.stringify(term)}, …] — and drop a "none" beside it; the field reads as exactly that today`);
+        const declared = str('frequency');
+        const term = FREQUENCIES.includes(declared) ? cadenceTermFor(declared) : scheduleTermFor(`<${CADENCES.join('|')}>`);
+        flag('declares "frequency", which is retired', term === null
+          ? 'drop the field, and a "none" beside it, and write "trigger": "request" - "manual" meant no schedule at all'
+          : `write the cadence as a condition - "preconditions": [${JSON.stringify(term)}, …] - with "trigger": "schedule" beside it, and drop a "none"`);
       }
       // `trigger` says whether the scheduler asks this task at every tick, and is
       // REQUIRED: nothing derives it from the shape of the conditions any more, so a
@@ -167,17 +168,15 @@ const rule = {
         flag('declares "precondition_signals", which is retired', 'drop it — the signal union is derived from the conditions, each of which names what it reads');
       }
       // What must hold for a run, and OPTIONAL: a declaration stating none requires
-      // nothing, and every occurrence of it runs. A retired `frequency` reads exactly
-      // as the door reads it, cadence term first and a `none` beside it dropped — and
-      // the expression is judged term by term.
-      if (decl.has('preconditions') || decl.has('frequency')) {
+      // nothing, and every occurrence of it runs. The expression is judged term by term.
+      if (decl.has('preconditions')) {
         // Deliberately strict: a declaration whose trigger is computed cannot be
         // audited by anyone reading it, which is the whole reason the field is data.
-        const stated = decl.has('preconditions') ? decl.list('preconditions') : [];
+        const stated = decl.list('preconditions');
         if (stated === null) {
           flag('"preconditions" is not a literal list of condition strings', 'write it as a literal, e.g. "preconditions": ["due:daily", "substantive-change"] — a computed expression is unreadable to this check and to the next person');
         } else {
-          const expression = normalizeTaskDeclaration({ preconditions: stated, ...(decl.has('frequency') ? { frequency: legacyFrequency } : {}) }).preconditions;
+          const expression = normalizeTaskDeclaration({ preconditions: stated }).preconditions;
           for (const problem of validatePreconditions(expression, siblingTerms(ctx, file))) flag(problem.what, problem.fix);
         }
       }

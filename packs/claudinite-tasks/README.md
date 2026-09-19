@@ -100,7 +100,6 @@ pack paths behind which everything converges nightly.
 | `task-declaration-shape` | high | correctness | check: blocking |
 | `task-code-work-env` | high | correctness | check: blocking |
 | `automerge-policy-scope` | high | correctness | check: blocking |
-| `legacy-task-fields` | low | complexity | check: advisory |
 | `executor-workflow-secrets` | high | correctness | check: advisory |
 | `tasks-pack-read-through-its-surface` | high | correctness | declared check: blocking |
 | `repo-variables-through-the-bag` | high | correctness | declared check: blocking |
