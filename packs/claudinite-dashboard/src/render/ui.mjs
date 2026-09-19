@@ -4,7 +4,7 @@
 // to learn twice.
 
 import {
-  BLOCKED, READY, EXECUTING, AGENT,
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
 } from '../../../claudinite-tasks/public/task-constants.mjs';
 // `PARKED` is the page's own key rather than a label: a park is four labels, and
 // the page groups them into one column (model.mjs).
@@ -39,10 +39,10 @@ export const stamp = (iso) => (iso ? new Date(iso).toISOString().replace('T', ' 
 // --- state and severity ---------------------------------------------------------
 
 export const STATE_UI = {
-  [BLOCKED]:     { cls: 'blocked',   label: 'blocked' },
-  [READY]:       { cls: 'ready',     label: 'ready' },
-  [EXECUTING]:   { cls: 'executing', label: 'executing' },
-  [AGENT]:       { cls: 'agent',     label: 'agent' },
+  [STATUS_BLOCKED]:     { cls: 'blocked',   label: 'blocked' },
+  [STATUS_READY]:       { cls: 'ready',     label: 'ready' },
+  [STATUS_RUNNING_EXECUTOR]:   { cls: 'executing', label: 'executing' },
+  [STATUS_RUNNING_AGENT]:       { cls: 'agent',     label: 'agent' },
   [PARKED]: { cls: 'human',     label: 'needs human' },
   torn:          { cls: 'torn',      label: 'torn labels' },
   unlabelled:    { cls: 'torn',      label: 'no state label' },
@@ -51,7 +51,7 @@ export const STATE_UI = {
 
 // The order the queue's states are shown in everywhere: the sequence an item moves
 // through, so a row reads left to right as progress.
-export const STATE_ORDER = [BLOCKED, READY, EXECUTING, AGENT, PARKED];
+export const STATE_ORDER = [STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, PARKED];
 
 // Keyed by the canonical outcome words `outcomeOf` decodes to, so a spelling
 // migration in the labels never reaches this table.
@@ -63,10 +63,10 @@ export const OUTCOME_COLOR = {
 };
 
 export const STATE_COLOR = {
-  [BLOCKED]: 'var(--s-blue)',
-  [READY]: 'var(--s-aqua)',
-  [EXECUTING]: 'var(--s-yellow)',
-  [AGENT]: 'var(--s-violet)',
+  [STATUS_BLOCKED]: 'var(--s-blue)',
+  [STATUS_READY]: 'var(--s-aqua)',
+  [STATUS_RUNNING_EXECUTOR]: 'var(--s-yellow)',
+  [STATUS_RUNNING_AGENT]: 'var(--s-violet)',
   [PARKED]: 'var(--critical)',
 };
 

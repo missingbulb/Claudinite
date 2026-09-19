@@ -59,7 +59,7 @@ import { HEARTBEAT_MS, HEARTBEAT_MARKER } from '../../src/items/heartbeat.mjs';
 import { REQUEST_TASK_ID, REQUEST_TASK, BUILT_IN_PACK } from '../../src/contract/built-in-tasks.mjs';
 import { terms as requestTerms } from '../../queue/tasks/implement-request/preconditions.mjs';
 import {
-  READY, URGENT, BLOCKED, EPISODE_MARKER, CLAIM_MARKER, HANDOFF_MARKER, STATUS_DONE,
+  STATUS_READY, URGENT, STATUS_BLOCKED, EPISODE_MARKER, CLAIM_MARKER, HANDOFF_MARKER, STATUS_DONE,
   STATUS_REJECTED, STATUS_LABELS, PARK_PREFIX, ORIGIN_PLANNED, ORIGIN_MANUAL, ORIGIN_AD_HOC,
 } from '../../public/task-constants.mjs';
 import {
@@ -68,7 +68,7 @@ import {
 } from '../../public/work-item-grammar.mjs';
 
 export { MINUTE, HOUR, DAY };
-export { READY, ORIGIN_AD_HOC, ORIGIN_PLANNED, ORIGIN_MANUAL, statusOf, isParked, parkKindOf };
+export { STATUS_READY, ORIGIN_AD_HOC, ORIGIN_PLANNED, ORIGIN_MANUAL, statusOf, isParked, parkKindOf };
 
 // A scenario's instant, in the shorthand its `at(…)` calls are written in: a bare
 // `2026-08-12T09:03Z` is a minute, not a second.
@@ -573,7 +573,7 @@ export function makeSim({
           blockedBy,
           woken: byLever ? clock.iso() : null,
         }),
-        labels: [byLever ? ORIGIN_MANUAL : ORIGIN_PLANNED, blocked ? BLOCKED : READY, ...(urgent ? [URGENT] : [])],
+        labels: [byLever ? ORIGIN_MANUAL : ORIGIN_PLANNED, blocked ? STATUS_BLOCKED : STATUS_READY, ...(urgent ? [URGENT] : [])],
       });
       if (!blocked) deliverLabelEvent(eventLost);
       return view(created);
@@ -587,7 +587,7 @@ export function makeSim({
       return view(github.seedIssue({
         title: workItemTitle({ pack, task: rest.join('/') }),
         body: workItemBody({ taskPath: task.taskPath }),
-        labels: [ORIGIN_PLANNED, READY],
+        labels: [ORIGIN_PLANNED, STATUS_READY],
       }));
     },
 

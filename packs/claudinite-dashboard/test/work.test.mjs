@@ -6,7 +6,7 @@ import {
 import { describeItem, describeCadence, buildRoster } from '../src/derive/model.mjs';
 import {
   WORK_PREFIX, STATUS_READY, STATUS_BLOCKED, STATUS_RUNNING_EXECUTOR, PARK_STATUSES, PARK_KINDS,
-  NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
+  STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_FAILURE,
 } from '../../claudinite-tasks/public/task-constants.mjs';
 
 // The park STATUS an item wears, picked out of the engine's own list by kind rather
@@ -54,18 +54,18 @@ test('a healthy task is neither stuck nor pending — it is simply waiting for i
 });
 
 test('a parked item is stuck, at the severity its park kind earns', () => {
-  const broken = taskRow('growth-extract', { current: described(issue(9, 'growth-extract', [NEEDS_HUMAN_FAILURE, parkStatus('failure')])) });
+  const broken = taskRow('growth-extract', { current: described(issue(9, 'growth-extract', [STATUS_NEEDS_HUMAN_FAILURE, parkStatus('failure')])) });
   assert.equal(classify(broken), 'stuck');
   assert.equal(troubles(broken)[0].level, 'critical', 'a failure park is a broken run');
 
-  const approval = taskRow('usage-fold', { current: described(issue(10, 'usage-fold', [NEEDS_HUMAN_APPROVAL, parkStatus('approval')])) });
+  const approval = taskRow('usage-fold', { current: described(issue(10, 'usage-fold', [STATUS_NEEDS_HUMAN_APPROVAL, parkStatus('approval')])) });
   assert.equal(classify(approval), 'stuck');
   assert.equal(troubles(approval)[0].level, 'warning', 'a PR waiting on a reviewer is not a broken lane');
 });
 
 test('a held lane is said once, as a fact about the TASK', () => {
   const row = taskRow('growth-extract', {
-    current: described(issue(9, 'growth-extract', [NEEDS_HUMAN_FAILURE, parkStatus('failure')])),
+    current: described(issue(9, 'growth-extract', [STATUS_NEEDS_HUMAN_FAILURE, parkStatus('failure')])),
     nextAsk: { kind: 'held' },
   });
   const said = troubles(row).map((t) => t.text);
@@ -96,7 +96,7 @@ test('an open item whose task this repo no longer declares gets a row of its own
 
 test('the views partition the rows, and `all` is every one of them', () => {
   const rows = [
-    taskRow('parked', { current: described(issue(1, 'parked', [NEEDS_HUMAN_FAILURE, parkStatus('failure')])) }),
+    taskRow('parked', { current: described(issue(1, 'parked', [STATUS_NEEDS_HUMAN_FAILURE, parkStatus('failure')])) }),
     taskRow('running', { current: described(issue(2, 'running', [STATUS_RUNNING_EXECUTOR], { updated_at: '2026-08-21T11:25:00Z' })) }),
     taskRow('waiting'),
   ];
@@ -111,8 +111,8 @@ test('the views partition the rows, and `all` is every one of them', () => {
 
 test('the worst thing true of the repo sorts to the top of every view', () => {
   const rows = [
-    taskRow('approval', { current: described(issue(1, 'approval', [NEEDS_HUMAN_APPROVAL, parkStatus('approval')])) }),
-    taskRow('broken', { current: described(issue(2, 'broken', [NEEDS_HUMAN_FAILURE, parkStatus('failure')])) }),
+    taskRow('approval', { current: described(issue(1, 'approval', [STATUS_NEEDS_HUMAN_APPROVAL, parkStatus('approval')])) }),
+    taskRow('broken', { current: described(issue(2, 'broken', [STATUS_NEEDS_HUMAN_FAILURE, parkStatus('failure')])) }),
   ];
   const all = workRows(rows, rows.map((r) => r.current));
   assert.equal(all[0].task, 'broken');
@@ -127,8 +127,8 @@ test('the page opens on the worst view that has anything in it', () => {
 
 test('the attention split is the same arithmetic the fleet row estimates from', () => {
   const open = [
-    described(issue(1, 'a', [NEEDS_HUMAN_FAILURE, parkStatus('failure')])),
-    described(issue(2, 'b', [NEEDS_HUMAN_APPROVAL, parkStatus('approval')])),
+    described(issue(1, 'a', [STATUS_NEEDS_HUMAN_FAILURE, parkStatus('failure')])),
+    described(issue(2, 'b', [STATUS_NEEDS_HUMAN_APPROVAL, parkStatus('approval')])),
     described(issue(3, 'c', [STATUS_BLOCKED], { updated_at: '2026-08-01T00:00:00Z' })),
   ];
   const a = attentionOf(open);

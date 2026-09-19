@@ -40,9 +40,26 @@ export const STATUS_REJECTED = `${STATUS_PREFIX}rejected`;
 export const LIVE_STATUSES = Object.freeze([
   STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
 ]);
-// The park kinds, in the order a decoder prefers them when an item somehow wears
-// more than one: `failure` first, because it is the conservative lane — the one
-// that holds the task's lane rather than letting a broken task keep filing work.
+// THE PARK KINDS. A park is ONE label since the flip — `task:status:needs-human-<kind>`
+// — and the kind is what the human is being asked for, which is the whole
+// difference between a queue a person can skim and one they have to read.
+//
+// The four are disjoint by REMEDY, not by cause:
+//   action   — something outside the code must change: a secret set, a scope
+//              granted, a routine's prompt or endpoint fixed, an item re-created
+//              with the parameter it was missing. Mechanical; no judgement.
+//   decision — the run stopped mid-flight and what happens next is a choice:
+//              re-queue or abandon, does the half-done work stand, was the
+//              ceiling violation acceptable.
+//   approval — the run SUCCEEDED and deliberately left an unmerged PR. The only
+//              park that is not a fault; the human merges it or closes it.
+//   failure  — the run broke: a bug, a contract-forbidden shape, a malformed or
+//              forged item. Someone diagnoses and fixes code.
+// `failure` is the default a park falls back to, so an unclassified park reads as
+// "diagnose me" rather than quietly joining the mechanical lane.
+// Ordered as a decoder prefers them when an item somehow wears more than one:
+// `failure` first, the conservative lane. The two-label era's sub-labels
+// (`task:needs-human-<kind>`) are read by the grammar's `parkOf` and written by nobody.
 export const PARK_KINDS = Object.freeze(['failure', 'action', 'decision', 'approval']);
 export const PARK_STATUSES = Object.freeze(PARK_KINDS.map((k) => `${PARK_PREFIX}${k}`));
 export const STATUS_LABELS = Object.freeze([
@@ -68,18 +85,7 @@ export const ORIGIN_LABELS = Object.freeze([ORIGIN_PLANNED, ORIGIN_MANUAL, ORIGI
 // so this is its complement among the origins a person's action produces.
 export const ASKED_FOR_ORIGINS = Object.freeze([ORIGIN_MANUAL, ORIGIN_AD_HOC]);
 
-// --- the write spellings ------------------------------------------------------
-// What this engine APPLIES — the canonical vocabulary above, since the write-side
-// flip (#1119). The names survive the flip because fielded pack versions import
-// them: a pack still on the old engine's spelling writes a legacy label, which
-// every decoder here reads as the status it always meant.
-export const BLOCKED = STATUS_BLOCKED;
-export const READY = STATUS_READY;
 export const URGENT = 'task:urgent';
-export const EXECUTING = STATUS_RUNNING_EXECUTOR;
-export const AGENT = STATUS_RUNNING_AGENT;
-export const TASK_DONE = STATUS_DONE;
-export const TASK_OBSOLETE = STATUS_REJECTED;
 
 // --- the legacy spellings, written never and read forever ----------------------
 // Every spelling any fielded engine has written. They are literals rather than
@@ -98,7 +104,8 @@ export const LEGACY_AGENT = 'task:agent';
 // @deprecated The bare park of the two-label era. A park is ONE label now
 // (`task:status:needs-human-<kind>`); this is still read — on its own it decodes to
 // `failure`, the conservative lane — and still ensured, because an open item filed
-// by a fielded engine wears it.
+// by a fielded engine wears it. Its one live writer is the session-side dispatch
+// flow, which labels an anomaly with it for triage (`src/session/dispatch.mjs`).
 export const NEEDS_HUMAN = 'needs-human';
 
 // @deprecated Nothing writes this since the approval park: a run that left an
@@ -131,33 +138,6 @@ export const LEGACY_TASK_OBSOLETE = 'task:obsolete';
 // choked on an unknown label would fail on exactly those.
 export const ORIGIN_SCHEDULE = 'origin:schedule';
 
-// THE PARK KINDS. A park is ONE label since the flip — `task:status:needs-human-<kind>`
-// — and the kind is what the human is being asked for, which is the whole
-// difference between a queue a person can skim and one they have to read.
-//
-// The four are disjoint by REMEDY, not by cause:
-//   action   — something outside the code must change: a secret set, a scope
-//              granted, a routine's prompt or endpoint fixed, an item re-created
-//              with the parameter it was missing. Mechanical; no judgement.
-//   decision — the run stopped mid-flight and what happens next is a choice:
-//              re-queue or abandon, does the half-done work stand, was the
-//              ceiling violation acceptable.
-//   approval — the run SUCCEEDED and deliberately left an unmerged PR. The only
-//              park that is not a fault; the human merges it or closes it.
-//   failure  — the run broke: a bug, a contract-forbidden shape, a malformed or
-//              forged item. Someone diagnoses and fixes code.
-// `failure` is the default a park falls back to, so an unclassified park reads as
-// "diagnose me" rather than quietly joining the mechanical lane.
-//
-// The names are the ones fielded packs import; their VALUES are today's park
-// statuses. The two-label era's sub-labels (`task:needs-human-<kind>`) are read by
-// `parkOf` below and written by nobody.
-export const NEEDS_HUMAN_ACTION = STATUS_NEEDS_HUMAN_ACTION;
-export const NEEDS_HUMAN_DECISION = STATUS_NEEDS_HUMAN_DECISION;
-export const NEEDS_HUMAN_APPROVAL = STATUS_NEEDS_HUMAN_APPROVAL;
-export const NEEDS_HUMAN_FAILURE = STATUS_NEEDS_HUMAN_FAILURE;
-export const TRIAGE_LABELS = PARK_STATUSES;
-
 // THE RE-QUEUE LEVER, in words — one home, because it is written into every message
 // that parks an item and a stale copy of it is an instruction that no longer works.
 // Clearing the status IS the re-ask (PRINCIPLES.md): a park is one label now, so
@@ -186,15 +166,6 @@ export const IN_REVIEW_LABEL = 'claude-in-review';
 // them: a request is implemented by a session, so an agentless family would name a
 // run that cannot happen.
 export const REQUEST_MODELS = Object.freeze(['opus', 'sonnet', 'haiku']);
-
-// The four state labels an open item may wear. An open item wearing none of them
-// and no `needs-human` is off the state machine entirely — a torn label swap's
-// leavings, which the janitor repairs (docs/PRINCIPLES.md).
-export const STATE_LABELS = [BLOCKED, READY, EXECUTING, AGENT];
-
-// The canonical statuses the same four decode to — what a reader tests against,
-// since an item may wear either engine's spelling (`statusesOn`).
-export { LIVE_STATUSES as STATE_STATUSES };
 
 // Every label this mechanism applies, with the colour and description a bootstrap
 // one-off would have given it. Ensured create-if-missing before anything is
@@ -375,12 +346,6 @@ export const AGENT_LEASH_MS = 3 * 3600e3;
 export const STALE_READY_PERIODS = 2;
 export const STUCK_BLOCKED_MS = 2 * 86400e3;
 
-
-// --- the triage label the session-side dispatch flow applies --------------------------
-// The bare `needs-human` of the two-label era is still what the dispatch flow labels an
-// anomaly with for triage (`src/session/dispatch.mjs`); the queue's own parks are the
-// `STATUS_NEEDS_HUMAN_*` statuses above.
-export const NEEDS_HUMAN_LABEL = NEEDS_HUMAN;
 
 // --- the commit trailers ---------------------------------------------------------
 // `Claudinite-Task: <pack>/<task>` says a scheduled task wrote this commit; the

@@ -12,14 +12,14 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, LEGACY_BLOCKED, LEGACY_READY, LEGACY_EXECUTING,
-  LEGACY_AGENT, LEGACY_TASK_DONE, LEGACY_TASK_OBSOLETE, TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE,
-  OUTCOME_OBSOLETE, OUTCOME_DELIVERED, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL,
-  NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE, STATUS_BLOCKED, STATUS_READY,
-  STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, STATUS_NEEDS_HUMAN_ACTION,
-  STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_DECISION, STATUS_NEEDS_HUMAN_FAILURE,
-  STATUS_DONE, STATUS_REJECTED, STATUS_LABELS, ORIGIN_LABELS, ORIGIN_PLANNED, ORIGIN_AD_HOC,
-  ORIGIN_GITHUB, ORIGIN_SCHEDULE, QUEUE_LABELS, TRIAGE_LABELS, requeueHint,
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, NEEDS_HUMAN, LEGACY_BLOCKED, LEGACY_READY, LEGACY_EXECUTING,
+  LEGACY_AGENT, LEGACY_TASK_DONE, LEGACY_TASK_OBSOLETE, STATUS_DONE, STATUS_REJECTED, OUTCOME_DONE,
+  OUTCOME_OBSOLETE, OUTCOME_DELIVERED, STATUS_NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_APPROVAL,
+  STATUS_NEEDS_HUMAN_DECISION, STATUS_NEEDS_HUMAN_FAILURE, 
+  
+  
+  STATUS_LABELS, ORIGIN_LABELS, ORIGIN_PLANNED, ORIGIN_AD_HOC,
+  ORIGIN_GITHUB, ORIGIN_SCHEDULE, QUEUE_LABELS, PARK_STATUSES, requeueHint,
 } from '../../public/task-constants.mjs';
 import {
   statusOf, statusesOn, isStatus, isParked, parkKindOf, originOf, spellingsOf, isBlockingPark,
@@ -53,10 +53,10 @@ test('a canonical status reads as itself', () => {
 // The legacy park is a PAIR, and the sub-label is what decides the kind.
 test('the legacy park pair decodes to the kind its sub-label names', () => {
   for (const [sub, canonical] of [
-    [NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_ACTION],
-    [NEEDS_HUMAN_DECISION, STATUS_NEEDS_HUMAN_DECISION],
-    [NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_APPROVAL],
-    [NEEDS_HUMAN_FAILURE, STATUS_NEEDS_HUMAN_FAILURE],
+    ['task:needs-human-action', STATUS_NEEDS_HUMAN_ACTION],
+    ['task:needs-human-decision', STATUS_NEEDS_HUMAN_DECISION],
+    ['task:needs-human-approval', STATUS_NEEDS_HUMAN_APPROVAL],
+    ['task:needs-human-failure', STATUS_NEEDS_HUMAN_FAILURE],
   ]) {
     assert.equal(statusOf(item(NEEDS_HUMAN, sub)), canonical);
     assert.equal(parkKindOf(item(NEEDS_HUMAN, sub)), canonical.split('needs-human-')[1]);
@@ -76,15 +76,15 @@ test('a park whose kind cannot be decoded reads as failure, and only failure hol
   for (const soft of [STATUS_NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_DECISION, STATUS_NEEDS_HUMAN_APPROVAL]) {
     assert.equal(isBlockingPark(item(soft)), false, `${soft} is somebody's inbox, not a fault`);
   }
-  assert.equal(isBlockingPark(item(NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL)), false);
+  assert.equal(isBlockingPark(item(NEEDS_HUMAN, STATUS_NEEDS_HUMAN_APPROVAL)), false);
   assert.equal(isBlockingPark(item(STATUS_READY)), false);
 });
 
 // A torn transition can leave a state label beside a park. The queue must read that
 // as PARKED — reading it as ready would hand an executor an item a human owns.
 test('a park outranks any state label standing beside it', () => {
-  assert.equal(statusOf(item(READY, NEEDS_HUMAN, NEEDS_HUMAN_ACTION)), STATUS_NEEDS_HUMAN_ACTION);
-  assert.equal(isStatus(item(READY, NEEDS_HUMAN), STATUS_READY), false);
+  assert.equal(statusOf(item(STATUS_READY, NEEDS_HUMAN, STATUS_NEEDS_HUMAN_ACTION)), STATUS_NEEDS_HUMAN_ACTION);
+  assert.equal(isStatus(item(STATUS_READY, NEEDS_HUMAN), STATUS_READY), false);
   assert.equal(isParked(item(STATUS_RUNNING_AGENT, STATUS_NEEDS_HUMAN_DECISION)), true);
 });
 
@@ -92,9 +92,9 @@ test('a park outranks any state label standing beside it', () => {
 // old engine and touched by the new one wears both spellings of ONE status. It is
 // not torn, and a reader that counted labels rather than statuses would say it was.
 test('an item wearing both spellings of one status reads as that one status', () => {
-  assert.deepEqual(statusesOn(item(READY, STATUS_READY)), [STATUS_READY]);
-  assert.equal(statusOf(item(READY, STATUS_READY)), STATUS_READY);
-  assert.deepEqual(statusesOn(item(READY, EXECUTING)).sort(), [STATUS_RUNNING_EXECUTOR, STATUS_READY].sort());
+  assert.deepEqual(statusesOn(item(LEGACY_READY, STATUS_READY)), [STATUS_READY]);
+  assert.equal(statusOf(item(LEGACY_READY, STATUS_READY)), STATUS_READY);
+  assert.deepEqual(statusesOn(item(STATUS_READY, STATUS_RUNNING_EXECUTOR)).sort(), [STATUS_RUNNING_EXECUTOR, STATUS_READY].sort());
 });
 
 test('an item wearing nothing the vocabulary knows has no status at all', () => {
@@ -118,10 +118,10 @@ test('the origin is whichever `task:origin:` label stands, and the retired marke
 // A closed item's terminal write is its outcome whatever else stands on it, in
 // every spelling — the fleet's history is what these numbers are counted from.
 test('outcomes decode from every spelling, canonical and legacy alike', () => {
-  for (const l of [TASK_DONE, OUTCOME_DONE, STATUS_DONE]) assert.equal(outcomeOf(item(l)), 'done');
-  for (const l of [TASK_OBSOLETE, OUTCOME_OBSOLETE, STATUS_REJECTED]) assert.equal(outcomeOf(item(l)), 'obsolete');
+  for (const l of [STATUS_DONE, OUTCOME_DONE, STATUS_DONE]) assert.equal(outcomeOf(item(l)), 'done');
+  for (const l of [STATUS_REJECTED, OUTCOME_OBSOLETE, STATUS_REJECTED]) assert.equal(outcomeOf(item(l)), 'obsolete');
   assert.equal(outcomeOf(item(OUTCOME_DELIVERED)), 'delivered');
-  assert.equal(outcomeOf(item(AGENT, OUTCOME_DONE, NEEDS_HUMAN)), 'done');
+  assert.equal(outcomeOf(item(STATUS_RUNNING_AGENT, OUTCOME_DONE, NEEDS_HUMAN)), 'done');
   assert.equal(outcomeOf(item(STATUS_READY)), null);
 });
 
@@ -133,8 +133,8 @@ test('every spelling of a status is what leaving it clears', () => {
   assert.deepEqual(spellingsOf(STATUS_DONE).sort(), [LEGACY_TASK_DONE, OUTCOME_DONE, STATUS_DONE].sort());
   // Leaving a park leaves it entirely: every kind, both shapes, and the bare label.
   const park = spellingsOf(STATUS_NEEDS_HUMAN_APPROVAL);
-  for (const l of [NEEDS_HUMAN, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
-    NEEDS_HUMAN_FAILURE, STATUS_NEEDS_HUMAN_FAILURE, STATUS_NEEDS_HUMAN_APPROVAL]) {
+  for (const l of [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_DECISION,
+    STATUS_NEEDS_HUMAN_FAILURE, STATUS_NEEDS_HUMAN_FAILURE, STATUS_NEEDS_HUMAN_APPROVAL]) {
     assert.ok(park.includes(l), `a re-queue must clear ${l}`);
   }
 });
@@ -145,9 +145,9 @@ test('a swap removes both spellings of the status it leaves and adds the one it 
     removeLabel: async (_gh, _repo, _n, name) => removed.push(name),
     addLabel: async (_gh, _repo, _n, name) => added.push(name),
   };
-  await swapStatus(api, null, 'o/r', item(LEGACY_READY), STATUS_READY, EXECUTING);
+  await swapStatus(api, null, 'o/r', item(LEGACY_READY), STATUS_READY, STATUS_RUNNING_EXECUTOR);
   assert.deepEqual(removed.sort(), [LEGACY_READY, STATUS_READY].sort());
-  assert.deepEqual(added, [EXECUTING]);
+  assert.deepEqual(added, [STATUS_RUNNING_EXECUTOR]);
 
   removed.length = 0;
   await clearStatus(api, null, 'o/r', item(STATUS_RUNNING_AGENT), STATUS_RUNNING_AGENT);
@@ -221,21 +221,21 @@ const workItem = (n, labels, extra = {}) => ({
 });
 
 test('the executor picks up an item readied in either spelling, and yields to a running twin in either', () => {
-  assert.deepEqual(pickOrder([workItem(1, [READY]), workItem(2, [STATUS_READY])]).map((i) => i.number).sort(), [1, 2]);
+  assert.deepEqual(pickOrder([workItem(1, [STATUS_READY]), workItem(2, [STATUS_READY])]).map((i) => i.number).sort(), [1, 2]);
   // The same-title mutex: one task, one execution at a time, and the running twin
   // is recognised whichever engine wrote its label.
-  assert.deepEqual(pickOrder([workItem(1, [STATUS_READY]), workItem(2, [EXECUTING])]), []);
-  assert.deepEqual(pickOrder([workItem(1, [READY]), workItem(2, [STATUS_RUNNING_AGENT])]), []);
+  assert.deepEqual(pickOrder([workItem(1, [STATUS_READY]), workItem(2, [STATUS_RUNNING_EXECUTOR])]), []);
+  assert.deepEqual(pickOrder([workItem(1, [STATUS_READY]), workItem(2, [STATUS_RUNNING_AGENT])]), []);
   // A DIFFERENT title is a different run, so it is pickable beside either.
   const other = { ...workItem(3, [STATUS_RUNNING_EXECUTOR]), title: '[claudinite-work] p/daily2' };
-  assert.deepEqual(pickOrder([workItem(1, [READY]), other]).map((i) => i.number), [1]);
+  assert.deepEqual(pickOrder([workItem(1, [STATUS_READY]), other]).map((i) => i.number), [1]);
   // And a parked item is never picked, in either shape.
-  assert.deepEqual(pickOrder([workItem(1, [STATUS_NEEDS_HUMAN_FAILURE]), workItem(2, [READY, NEEDS_HUMAN])]), []);
+  assert.deepEqual(pickOrder([workItem(1, [STATUS_NEEDS_HUMAN_FAILURE]), workItem(2, [STATUS_READY, NEEDS_HUMAN])]), []);
 });
 
 test('the scheduler run reclaims a dead claim written in either spelling', async () => {
   const tasks = [{ pack: 'p', id: 'daily1', taskPath: 'packs/p/tasks/daily1/task.md', decl: { id: 'daily1', frequency: 'daily' } }];
-  for (const label of [EXECUTING, STATUS_RUNNING_EXECUTOR]) {
+  for (const label of [LEGACY_EXECUTING, STATUS_RUNNING_EXECUTOR]) {
     const { ops } = await planSchedulerRun({
       tasks, items: [workItem(1, [label])], now: '2026-08-14T05:30:00Z',
       schedule: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
@@ -246,14 +246,14 @@ test('the scheduler run reclaims a dead claim written in either spelling', async
 
 test('the janitor\'s rules read either spelling', () => {
   const late = '2026-08-20T00:00:00Z';
-  for (const label of [READY, STATUS_READY]) {
+  for (const label of [LEGACY_READY, STATUS_READY]) {
     assert.equal(staleReadyItems([workItem(1, [label])], late).length, 1, `${label} should go stale`);
   }
-  for (const label of [AGENT, STATUS_RUNNING_AGENT]) {
+  for (const label of [LEGACY_AGENT, STATUS_RUNNING_AGENT]) {
     assert.equal(deadAgentItems([workItem(1, [label])], late).length, 1, `${label} should hit the leash`);
   }
   // A park is nobody's to escalate again, whichever shape it wears.
-  assert.equal(staleReadyItems([workItem(1, [READY, NEEDS_HUMAN])], late).length, 0);
+  assert.equal(staleReadyItems([workItem(1, [STATUS_READY, NEEDS_HUMAN])], late).length, 0);
   assert.equal(deadAgentItems([workItem(1, [STATUS_NEEDS_HUMAN_DECISION])], late).length, 0);
   // Rule D reads the absence of a status, so an item wearing only an origin — or
   // only the retired schedule marker — is the torn-swap leaving it is meant to find.
@@ -262,7 +262,7 @@ test('the janitor\'s rules read either spelling', () => {
 
 test('a blocked item is releasable in either spelling, and a parked one never is', () => {
   const body = 'packs/p/tasks/daily1/task.md\n\nBlocked-by: #7\n';
-  for (const label of [BLOCKED, STATUS_BLOCKED]) {
+  for (const label of [LEGACY_BLOCKED, STATUS_BLOCKED]) {
     assert.equal(isReleasable(workItem(1, [label], { body }), { stateOf: () => 'closed' }), true, label);
   }
   assert.equal(isReleasable(workItem(1, [STATUS_BLOCKED, NEEDS_HUMAN], { body }), { stateOf: () => 'closed' }), false);
@@ -351,7 +351,7 @@ test('a park is one label, and a kind word resolves to it', () => {
   // A worker that misspells its class has a bug, which is exactly what that lane means.
   assert.equal(triageLabelFor('quantum'), STATUS_NEEDS_HUMAN_FAILURE);
   // And nothing writes the bare legacy park any more, though everything reads it.
-  assert.equal(TRIAGE_LABELS.every((l) => l.startsWith('task:status:needs-human-')), true);
+  assert.equal(PARK_STATUSES.every((l) => l.startsWith('task:status:needs-human-')), true);
 });
 
 test('the re-queue lever reaches the comment a parked person reads', () => {

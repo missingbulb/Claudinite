@@ -4,7 +4,7 @@ import {
   activitySeries, fleetBenefits, dayLadder, dayKey, delta, commitDays, bucketWeekly, commitClasses,
 } from '../src/derive/activity.mjs';
 import {
-  READY, NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
+  STATUS_READY, NEEDS_HUMAN, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
 } from '../../claudinite-tasks/public/task-constants.mjs';
 
 const NOW = Date.parse('2026-08-18T12:00:00Z');
@@ -156,7 +156,7 @@ test('an item still sitting parked counts as one that needed a person', () => {
 });
 
 test('an outcome-less closure is not counted as completed work', () => {
-  const b = fleetBenefits([read({ items: [closedWork('2026-08-17T09:00:00Z', [READY])] })],
+  const b = fleetBenefits([read({ items: [closedWork('2026-08-17T09:00:00Z', [STATUS_READY])] })],
     { now: NOW, windowDays: 7 });
   assert.equal(b.current.completed, 0);
 });

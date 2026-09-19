@@ -5,7 +5,7 @@ import {
 } from '../src/derive/next-work.mjs';
 import { estimateMinutes, parkMinutes, parkMinutesNote } from '../src/derive/fleet.mjs';
 import {
-  READY, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION,
+  STATUS_READY, STATUS_NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_DECISION,
 } from '../../claudinite-tasks/public/task-constants.mjs';
 import { PARKED } from '../src/derive/model.mjs';
 
@@ -13,7 +13,7 @@ const item = (over = {}) => ({
   number: 7,
   title: '[claudinite-work] basics/baselining',
   key: 'basics/baselining',
-  state: READY,
+  state: STATUS_READY,
   warnings: [],
   idleMs: 3600e3,
   ...over,
@@ -44,8 +44,8 @@ test('a filed item shows no title — its key already says what it is', () => {
 });
 
 test('the candidate carries the park\'s own classification, and no price', () => {
-  assert.deepEqual(itemCandidate('o/r', parked({ triage: NEEDS_HUMAN_DECISION })).park,
-    { blocking: false, triage: NEEDS_HUMAN_DECISION });
+  assert.deepEqual(itemCandidate('o/r', parked({ triage: STATUS_NEEDS_HUMAN_DECISION })).park,
+    { blocking: false, triage: STATUS_NEEDS_HUMAN_DECISION });
   assert.equal(itemCandidate('o/r', parked({ blockingPark: true })).park.blocking, true);
   // Not a park: an item tripping a recovery rule, and a repo-level fault. Both are
   // outside the attention estimate, so neither carries one here.
@@ -56,17 +56,17 @@ test('the candidate carries the park\'s own classification, and no price', () =>
 test("one item's price is one term of the estimate's own sum", () => {
   const priceOf = (over) => parkMinutes(itemCandidate('o/r', parked(over)).park);
   assert.equal(priceOf({ blockingPark: true }), estimateMinutes({ broken: 1 }));
-  assert.equal(priceOf({ triage: NEEDS_HUMAN_ACTION }), estimateMinutes({ actions: 1 }));
-  assert.equal(priceOf({ triage: NEEDS_HUMAN_DECISION }), estimateMinutes({ decisions: 1 }));
-  assert.equal(priceOf({ triage: NEEDS_HUMAN_APPROVAL }), estimateMinutes({ approvals: 1 }));
+  assert.equal(priceOf({ triage: STATUS_NEEDS_HUMAN_ACTION }), estimateMinutes({ actions: 1 }));
+  assert.equal(priceOf({ triage: STATUS_NEEDS_HUMAN_DECISION }), estimateMinutes({ decisions: 1 }));
+  assert.equal(priceOf({ triage: STATUS_NEEDS_HUMAN_APPROVAL }), estimateMinutes({ approvals: 1 }));
   // Nothing to price is null, never a zero.
   assert.equal(parkMinutes(null), null);
 });
 
 test('only an approval disclaims its figure, because only its size is unread', () => {
   const noteOf = (over) => parkMinutesNote(itemCandidate('o/r', parked(over)).park);
-  assert.match(noteOf({ triage: NEEDS_HUMAN_APPROVAL }), /lower bound/);
-  assert.equal(noteOf({ triage: NEEDS_HUMAN_DECISION }), null);
+  assert.match(noteOf({ triage: STATUS_NEEDS_HUMAN_APPROVAL }), /lower bound/);
+  assert.equal(noteOf({ triage: STATUS_NEEDS_HUMAN_DECISION }), null);
   assert.equal(noteOf({ blockingPark: true }), null);
   assert.equal(parkMinutesNote(null), null);
 });

@@ -6,7 +6,7 @@ import {
 } from '../../../tasks/usage-fold/read-queue.mjs';
 import {
   WORK_PREFIX, ORIGIN_AD_HOC, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-  MACHINE_BLOCK_START, MACHINE_BLOCK_END, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
+  MACHINE_BLOCK_START, MACHINE_BLOCK_END, NEEDS_HUMAN, STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_FAILURE,
   PARK_PREFIX,
 } from '../../../public/task-constants.mjs';
 
@@ -128,8 +128,8 @@ test('the first read covers the day tier\'s whole width, so one fold fills it', 
 // --- the parks an item collected --------------------------------------------------
 
 test('parkKindOf decodes every spelling a park has ever worn', () => {
-  assert.equal(parkKindOf(NEEDS_HUMAN_APPROVAL), 'approval');
-  assert.equal(parkKindOf(NEEDS_HUMAN_FAILURE), 'failure');
+  assert.equal(parkKindOf(STATUS_NEEDS_HUMAN_APPROVAL), 'approval');
+  assert.equal(parkKindOf(STATUS_NEEDS_HUMAN_FAILURE), 'failure');
   // The two-label era's sub-label, still worn by items closed under it.
   assert.equal(parkKindOf('task:needs-human-decision'), 'decision');
   // A bare legacy park, and a kind a NEWER engine invents, both read as `failure` —
@@ -144,10 +144,10 @@ test('parkKindOf decodes every spelling a park has ever worn', () => {
 
 test('readParks reads the label EVENTS, since final labels say only where an item ended', async () => {
   const events = [
-    { event: 'labeled', label: { name: NEEDS_HUMAN_APPROVAL } },
-    { event: 'unlabeled', label: { name: NEEDS_HUMAN_APPROVAL } },
-    { event: 'labeled', label: { name: NEEDS_HUMAN_APPROVAL } },   // parked for the same thing twice
-    { event: 'labeled', label: { name: NEEDS_HUMAN_FAILURE } },
+    { event: 'labeled', label: { name: STATUS_NEEDS_HUMAN_APPROVAL } },
+    { event: 'unlabeled', label: { name: STATUS_NEEDS_HUMAN_APPROVAL } },
+    { event: 'labeled', label: { name: STATUS_NEEDS_HUMAN_APPROVAL } },   // parked for the same thing twice
+    { event: 'labeled', label: { name: STATUS_NEEDS_HUMAN_FAILURE } },
     { event: 'labeled', label: { name: OUTCOME_DONE } },
     { event: 'closed' },
   ];

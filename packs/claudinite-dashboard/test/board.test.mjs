@@ -6,8 +6,8 @@ import {
 } from '../src/derive/board.mjs';
 import { describeCadence } from '../src/derive/model.mjs';
 import {
-  WORK_PREFIX, ORIGIN_AD_HOC, STATUS_READY, STATUS_RUNNING_AGENT, NEEDS_HUMAN_FAILURE,
-  NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, OUTCOME_DONE, OUTCOME_OBSOLETE, MACHINE_BLOCK_START,
+  WORK_PREFIX, ORIGIN_AD_HOC, STATUS_READY, STATUS_RUNNING_AGENT, STATUS_NEEDS_HUMAN_FAILURE,
+  STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_ACTION, OUTCOME_DONE, OUTCOME_OBSOLETE, MACHINE_BLOCK_START,
   MACHINE_BLOCK_END,
 } from '../../claudinite-tasks/public/task-constants.mjs';
 
@@ -104,7 +104,7 @@ test('a plain issue nobody is scheduled to close BREAKS the lane — no time at 
 
 test('a ready item sits at the next scheduler tick, and a park and a run sit at now', () => {
   assert.equal(place(item({ labels: labelled(ORIGIN_AD_HOC, STATUS_READY) })).at, nextDailyAnchor(NOW, axisOf(NOW, SCHEDULE)));
-  assert.equal(place(item({ labels: labelled(NEEDS_HUMAN_ACTION) })).kind, 'park');
+  assert.equal(place(item({ labels: labelled(STATUS_NEEDS_HUMAN_ACTION) })).kind, 'park');
   assert.equal(place(item({ labels: labelled(STATUS_RUNNING_AGENT) })).kind, 'running');
 });
 
@@ -156,7 +156,7 @@ test('A FAILURE PARK LANDS ON ITS OWN TASK\'S ROW, and the later cells are the r
   // read left to right on one line — which is why there is no separate held-lanes row.
   const axis = axisOf(NOW, SCHEDULE);
   const grid = scheduleGrid([taskRow()], [
-    item({ number: 1, labels: labelled(NEEDS_HUMAN_FAILURE), updated_at: iso(NOW - 3 * DAY) }),
+    item({ number: 1, labels: labelled(STATUS_NEEDS_HUMAN_FAILURE), updated_at: iso(NOW - 3 * DAY) }),
     item({ number: 2, state: 'closed', closed_at: iso(NOW - DAY), labels: labelled(OUTCOME_DONE) }),
   ], axis, { now: NOW, schedule: SCHEDULE });
   const cells = grid[0].cells;

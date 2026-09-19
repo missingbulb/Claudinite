@@ -27,7 +27,7 @@
 
 import { pathToFileURL } from 'node:url';
 import {
-  READY, BLOCKED, URGENT, TASK_OBSOLETE, QUEUE_LABELS, ORIGIN_MANUAL, EPISODE_MARKER,
+  STATUS_READY, STATUS_BLOCKED, URGENT, STATUS_REJECTED, QUEUE_LABELS, ORIGIN_MANUAL, EPISODE_MARKER,
 } from '../../public/task-constants.mjs';
 import {
   workItemTitle, workItemBody, withNotBefore, withWoken, statusesOn,
@@ -82,7 +82,7 @@ export async function wakeItem(gh, repo, number, { urgent = false } = {}) {
   // back from whatever held it, and a park half-cleared (the state gone, its kind
   // still standing) is the torn shape the janitor would have to repair.
   for (const status of statusesOn(issue)) await clearStatus(api, gh, repo, issue, status);
-  await api.addLabel(gh, repo, number, READY);
+  await api.addLabel(gh, repo, number, STATUS_READY);
   if (urgent) await api.addLabel(gh, repo, number, URGENT);
   return { ok: true, number };
 }
@@ -122,13 +122,13 @@ export async function createWorkItem(gh, repo, { pack, task, taskPath, scheduled
     // A hand-created item is `manual` by construction — a declared task, and
     // nobody's schedule asked for it — and the origin is worn for life beside
     // whatever status it holds (PRINCIPLES.md).
-    labels: [ORIGIN_MANUAL, blocked ? BLOCKED : READY, ...(opts.urgent ? [URGENT] : [])],
+    labels: [ORIGIN_MANUAL, blocked ? STATUS_BLOCKED : STATUS_READY, ...(opts.urgent ? [URGENT] : [])],
   });
   if (!res.number) return { ok: false, error: `could not create the item: ${res.status}` };
 
   if (opts.supersedes) {
     await api.comment(gh, repo, opts.supersedes, `Superseded by #${res.number}, a retry of this work created by hand.`);
-    await api.addLabel(gh, repo, opts.supersedes, TASK_OBSOLETE);
+    await api.addLabel(gh, repo, opts.supersedes, STATUS_REJECTED);
     await api.closeIssue(gh, repo, opts.supersedes, 'not_planned');
   }
   return { ok: true, number: res.number };

@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  WORK_PREFIX, QUEUE_LABELS, STATE_LABELS, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
-  TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
-  NEEDS_HUMAN_FAILURE, TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_DELIVERED,
+  WORK_PREFIX, QUEUE_LABELS, LIVE_STATUSES, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
+  PARK_STATUSES, STATUS_NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_DECISION, STATUS_NEEDS_HUMAN_APPROVAL,
+  STATUS_NEEDS_HUMAN_FAILURE, STATUS_DONE, STATUS_REJECTED, OUTCOME_DONE, OUTCOME_DELIVERED,
   OUTCOME_OBSOLETE, LAST_VERDICT_HEADING,
 } from '../../public/task-constants.mjs';
 import {
@@ -191,7 +191,7 @@ test('every label the scheduler run and a convergence apply is one the queue ens
   }
   assert.ok(written.length >= 6, 'the writers wrote something');
   for (const l of written) assert.ok(ensured.has(l), `${l} is applied but never ensured`);
-  for (const l of STATE_LABELS) assert.ok(ensured.has(l), `${l} must be ensurable`);
+  for (const l of LIVE_STATUSES) assert.ok(ensured.has(l), `${l} must be ensurable`);
 });
 
 test('labels are read from either shape GitHub returns them in', () => {
@@ -262,21 +262,21 @@ test('withSection is re-entrant under the canonical heading', () => {
 // --- the triage sub-labels ----------------------------------------------------
 
 test('a kind word maps to its label, and anything unrecognised to failure', () => {
-  assert.equal(triageLabelFor('action'), NEEDS_HUMAN_ACTION);
-  assert.equal(triageLabelFor('approval'), NEEDS_HUMAN_APPROVAL);
+  assert.equal(triageLabelFor('action'), STATUS_NEEDS_HUMAN_ACTION);
+  assert.equal(triageLabelFor('approval'), STATUS_NEEDS_HUMAN_APPROVAL);
   // A worker that misspells its class has a bug, which is what `failure` means —
   // and so does an engine reading a kind a newer one invented.
-  assert.equal(triageLabelFor('urgent'), NEEDS_HUMAN_FAILURE);
-  assert.equal(triageLabelFor(undefined), NEEDS_HUMAN_FAILURE);
+  assert.equal(triageLabelFor('urgent'), STATUS_NEEDS_HUMAN_FAILURE);
+  assert.equal(triageLabelFor(undefined), STATUS_NEEDS_HUMAN_FAILURE);
 });
 
 test('only a fault park holds the task\'s lane', () => {
   const at = (...labels) => ({ labels });
-  assert.equal(isBlockingPark(at('needs-human', NEEDS_HUMAN_FAILURE)), true);
+  assert.equal(isBlockingPark(at('needs-human', STATUS_NEEDS_HUMAN_FAILURE)), true);
   // The compatibility case that has to be safe on the way in: everything parked by
   // an engine older than these labels wears the bare state and must keep the lane.
   assert.equal(isBlockingPark(at('needs-human')), true);
-  for (const l of [NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL]) {
+  for (const l of [STATUS_NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_DECISION, STATUS_NEEDS_HUMAN_APPROVAL]) {
     assert.equal(isBlockingPark(at('needs-human', l)), false, l);
   }
   assert.equal(isBlockingPark(at('task:ready')), false);
@@ -284,7 +284,7 @@ test('only a fault park holds the task\'s lane', () => {
 
 test('every triage label is one the executor guarantees before applying', () => {
   const ensured = new Set(QUEUE_LABELS.map((l) => l.name));
-  for (const l of TRIAGE_LABELS) assert.ok(ensured.has(l), l);
+  for (const l of PARK_STATUSES) assert.ok(ensured.has(l), l);
 });
 
 // --- outcome decoding ------------------------------------------------------------
@@ -295,10 +295,10 @@ test('every triage label is one the executor guarantees before applying', () => 
 // carry forever.
 test('outcomeOf maps every spelling, legacy and current, to the canonical word', () => {
   const at = (...labels) => ({ labels });
-  assert.equal(outcomeOf(at(TASK_DONE)), 'done');
+  assert.equal(outcomeOf(at(STATUS_DONE)), 'done');
   assert.equal(outcomeOf(at(OUTCOME_DONE)), 'done');
   assert.equal(outcomeOf(at(OUTCOME_DELIVERED)), 'delivered');
-  assert.equal(outcomeOf(at(TASK_OBSOLETE)), 'obsolete');
+  assert.equal(outcomeOf(at(STATUS_REJECTED)), 'obsolete');
   assert.equal(outcomeOf(at(OUTCOME_OBSOLETE)), 'obsolete');
   assert.equal(outcomeOf(at('task:ready', 'needs-human')), null);
   assert.equal(outcomeOf(at()), null);
