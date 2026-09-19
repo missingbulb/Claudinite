@@ -23,12 +23,13 @@ import {
   abandonedParkItems, abandonedParkComment, scheduledForTasks,
 } from '../../src/recover/janitor-rules.mjs';
 import {
-  QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE, TASK_DONE, IN_REVIEW_LABEL,
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_FAILURE,
-  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
-  isStatus, isParked, statusOf,
-  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
-} from '../../src/items/work-item.mjs';
+  QUEUE_LABELS, HANDOFF_MARKER, TASK_OBSOLETE, TASK_DONE, IN_REVIEW_LABEL, NEEDS_HUMAN_ACTION,
+  NEEDS_HUMAN_FAILURE, STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR,
+  STATUS_RUNNING_AGENT,
+} from '../../public/task-constants.mjs';
+import {
+  isStatus, isParked, statusOf, parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
+} from '../../public/work-item-grammar.mjs';
 import { listOpenWorkItems, listDoneWorkItems } from '../../src/items/read.mjs';
 import { lastProgressAt } from '../../src/items/heartbeat.mjs';
 import { ensureLabels, addLabel, removeLabel, comment, listComments, readIssue, closeIssue } from '../../src/world/github.mjs';

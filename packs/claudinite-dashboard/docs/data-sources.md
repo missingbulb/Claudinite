@@ -183,9 +183,9 @@ ones, with the body dropped. The projection keeps a **closed PR with `merged_at`
 page's window** (14 days) and adds two fields: `merged_at` — which the issues endpoint
 carries inside each PR's own stub, so the merged set costs no request of its own — and
 `closesIssue`, the number named by the first `Closes|Fixes|Resolves #n` line, parsed from
-the body **before** it is dropped, by the fold's own rule rather than a second one: that
-parse is published as `public/pull-requests.mjs` precisely so the two halves of one
-lead-time series cannot disagree about which issue a PR is for. The body still stores
+the body **before** it is dropped, by the same rule as the fold's: the parse is the
+dashboard's own copy (`src/read/pr-fields.mjs`), held to the fold's by a drift guard, so the
+two halves of one lead-time series cannot disagree about which issue a PR is for. The body still stores
 nothing. Merged PRs outside the window are dropped as they
 are now, which is what keeps a fleet's history inside the storage quota.
 

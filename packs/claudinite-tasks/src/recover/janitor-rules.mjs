@@ -24,11 +24,13 @@
 import { taskPeriodMs } from '../items/anchors.mjs';
 import { isScheduledTask } from '../contract/task-contract.mjs';
 import {
-  READY, AGENT, requeueHint,
-  STATUS_READY, STATUS_RUNNING_AGENT, STATUS_BLOCKED, STATUS_DONE, STATUS_REJECTED, isStatus, statusOf,
-  isParked, parkKindOf, originOf, ASKED_FOR_ORIGINS, STATUS_NEEDS_HUMAN_FAILURE, isStandingItem,
-  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
-} from '../items/work-item.mjs';
+  READY, AGENT, requeueHint, STATUS_READY, STATUS_RUNNING_AGENT, STATUS_BLOCKED, STATUS_DONE,
+  STATUS_REJECTED, ASKED_FOR_ORIGINS, STATUS_NEEDS_HUMAN_FAILURE,
+} from '../../public/task-constants.mjs';
+import {
+  isStatus, statusOf, isParked, parkKindOf, originOf, isStandingItem, parseWorkItemTitle,
+  parseWorkItemBody, taskIdFromPath,
+} from '../../public/work-item-grammar.mjs';
 
 export const AGENT_LEASH_MS = 3 * 3600e3;
 // The park kinds a later clean run ANSWERS. Both name a broken thing — a failure is

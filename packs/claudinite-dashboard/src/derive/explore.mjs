@@ -15,9 +15,11 @@
 
 import {
   parseWorkItemBody, parseWorkItemTitle, statusOf, labelNames, outcomeOf,
+} from '../../../claudinite-tasks/public/work-item-grammar.mjs';
+import {
   PARK_PREFIX, CLAIM_MARKER, HANDOFF_MARKER,
-} from '../../../claudinite-tasks/public/work-items.mjs';
-import { holdsOnFailure } from '../../../claudinite-tasks/public/anchors.mjs';
+} from '../../../claudinite-tasks/public/task-constants.mjs';
+import { holdsOnFailure } from './task-calendar.mjs';
 
 const NOT_READ = 'not read';
 const ms = (t) => (t == null ? null : new Date(t).getTime());

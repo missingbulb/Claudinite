@@ -12,8 +12,8 @@ import {
 } from '../src/derive/model.mjs';
 import {
   OUTCOME_DONE, OUTCOME_DELIVERED, TASK_DONE, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN,
-} from '../../claudinite-tasks/public/work-items.mjs';
-import { normalizeTaskDeclaration } from '../../claudinite-tasks/public/task-contract.mjs';
+} from '../../claudinite-tasks/public/task-constants.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/public/task-declaration.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const NOW = Date.parse('2026-08-16T12:00:00Z');

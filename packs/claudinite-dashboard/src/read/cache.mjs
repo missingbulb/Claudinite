@@ -23,7 +23,7 @@
 
 // The queue's published surface, the one place a cross-pack import is sanctioned: the
 // projection below has to find a PR's closing issue by the same rule the fold does.
-import { closesIssueIn } from '../../../claudinite-tasks/public/pull-requests.mjs';
+import { closesIssueIn } from './pr-fields.mjs';
 
 const NS = 'claudinite-dashboard';
 // Bump when a stored shape changes: entries from an older writer are dropped rather

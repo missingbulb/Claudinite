@@ -6,9 +6,9 @@ import {
 } from '../../../tasks/usage-fold/read-queue.mjs';
 import {
   WORK_PREFIX, ORIGIN_AD_HOC, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
-  MACHINE_BLOCK_START, MACHINE_BLOCK_END,
-  NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE, PARK_PREFIX,
-} from '../../../src/items/work-item.mjs';
+  MACHINE_BLOCK_START, MACHINE_BLOCK_END, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
+  PARK_PREFIX,
+} from '../../../public/task-constants.mjs';
 
 // A body carrying the machine block the queue writes, built from the queue's own
 // markers rather than a copied string.

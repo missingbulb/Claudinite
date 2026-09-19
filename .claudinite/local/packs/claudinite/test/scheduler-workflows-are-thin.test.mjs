@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: node packs/claudinite-tasks/public/scheduler-run.mjs
+      - run: node packs/claudinite-tasks/src/schedule/run.mjs
 `;
 
 // All four, so a fixture never trips the blind-scope guard by accident.
@@ -40,7 +40,7 @@ test('silent when every copy is a thin wrapper', () => {
 });
 
 test('fires on github-script, in the stub and in the canon copy alike', () => {
-  const withScript = THIN.replace('      - run: node packs/claudinite-tasks/public/scheduler-run.mjs',
+  const withScript = THIN.replace('      - run: node packs/claudinite-tasks/src/schedule/run.mjs',
     `      - uses: actions/github-script@v7
         with:
           script: |
@@ -57,7 +57,7 @@ test('fires on github-script, in the stub and in the canon copy alike', () => {
     for (const f of findings) {
       assert.equal(f.severity, 'blocking');
       assert.match(f.what, /github-script/);
-      assert.match(f.fix, /packs\/claudinite-tasks\/queue\//);
+      assert.match(f.fix, /packs\/claudinite-tasks\/src\//);
     }
   });
 });
@@ -66,8 +66,8 @@ test('fires on a block `run:` — a shell script is a program too', () => {
   for (const scalar of ['|', '>', '|-', '|+']) {
     withFixture(four({
       'packs/claudinite-tasks/stubs/claudinite-scheduler.yml':
-        THIN.replace('- run: node packs/claudinite-tasks/public/scheduler-run.mjs',
-          `- run: ${scalar}\n          node packs/claudinite-tasks/public/scheduler-run.mjs\n          echo done`),
+        THIN.replace('- run: node packs/claudinite-tasks/src/schedule/run.mjs',
+          `- run: ${scalar}\n          node packs/claudinite-tasks/src/schedule/run.mjs\n          echo done`),
     }), (findings) => {
       assert.equal(findings.length, 1, `\`run: ${scalar}\` is a block scalar`);
       assert.match(findings[0].what, /block `run:`/);
@@ -78,8 +78,8 @@ test('fires on a block `run:` — a shell script is a program too', () => {
 test('a single-line `run: node …` is the sanctioned form and stays silent', () => {
   withFixture(four({
     'packs/claudinite-tasks/stubs/claudinite-scheduler.yml':
-      THIN.replace('node packs/claudinite-tasks/public/scheduler-run.mjs',
-        'node .claudinite/shared/packs/claudinite-tasks/public/scheduler-run.mjs'),
+      THIN.replace('node packs/claudinite-tasks/src/schedule/run.mjs',
+        'node .claudinite/shared/packs/claudinite-tasks/src/schedule/run.mjs'),
   }), (findings) => assert.deepEqual(findings, []));
 });
 

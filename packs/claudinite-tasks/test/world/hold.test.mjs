@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { SUSPEND_ALL_VAR, isSuspended, suspendedNotice } from '../../src/world/hold.mjs';
 import { VARS_BAG_ENV } from '../../src/world/vars-bag.mjs';
 import { HEARTBEAT_MS } from '../../src/items/heartbeat.mjs';
-import { EXECUTING_LEASH_MS } from '../../src/items/leases.mjs';
+import { EXECUTING_LEASH_MS } from '../../public/task-constants.mjs';
 
 const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const read = (p) => readFileSync(join(CANON, p), 'utf8');

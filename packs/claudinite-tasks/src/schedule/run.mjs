@@ -25,7 +25,7 @@
 
 import { pathToFileURL } from 'node:url';
 import { isSuspended, suspendedNotice } from '../world/hold.mjs';
-import { EXECUTING_LEASH_MS } from '../items/leases.mjs';
+import { EXECUTING_LEASH_MS } from '../../public/task-constants.mjs';
 import { swapStatus } from '../items/apply-status.mjs';
 import { isReleasable } from './readiness.mjs';
 import { isQueueItem } from '../items/read.mjs';
@@ -33,15 +33,14 @@ import { pickOrder } from '../items/pick-order.mjs';
 import { lastLivenessAt } from '../items/heartbeat.mjs';
 import { startRunCost } from '../items/run-record.mjs';
 import {
-  WORK_PREFIX, BLOCKED, READY, TASK_OBSOLETE,
-  NEEDS_HUMAN_DECISION, LIVE_STATUSES,
-  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
-  isStatus, statusOf,
-  QUEUE_LABELS, EPISODE_MARKER, workItemTitle, parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
-  workItemBody, labelNames, hasLabel,
-  ORIGIN_AD_HOC, ORIGIN_PLANNED, ORIGIN_LABELS, REQUEST_LABEL, parseRequestFields,
-  parseBlockedBy, withMachineBlock,
-} from '../items/work-item.mjs';
+  WORK_PREFIX, BLOCKED, READY, TASK_OBSOLETE, NEEDS_HUMAN_DECISION, LIVE_STATUSES, STATUS_BLOCKED,
+  STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, QUEUE_LABELS, EPISODE_MARKER,
+  ORIGIN_AD_HOC, ORIGIN_PLANNED, ORIGIN_LABELS, REQUEST_LABEL,
+} from '../../public/task-constants.mjs';
+import {
+  isStatus, statusOf, workItemTitle, parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
+  workItemBody, labelNames, hasLabel, parseRequestFields, parseBlockedBy, withMachineBlock,
+} from '../../public/work-item-grammar.mjs';
 import { REQUEST_TASK_ID } from '../contract/built-in-tasks.mjs';
 import { taskSignalNames, isScheduledTask } from '../contract/task-contract.mjs';
 import { evaluatePreconditions } from '../contract/precondition-policy.mjs';

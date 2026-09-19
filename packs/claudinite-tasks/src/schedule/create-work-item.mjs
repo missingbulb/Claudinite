@@ -27,9 +27,11 @@
 
 import { pathToFileURL } from 'node:url';
 import {
-  READY, BLOCKED, URGENT, TASK_OBSOLETE, QUEUE_LABELS, ORIGIN_MANUAL,
-  EPISODE_MARKER, workItemTitle, workItemBody, withNotBefore, withWoken, statusesOn,
-} from '../items/work-item.mjs';
+  READY, BLOCKED, URGENT, TASK_OBSOLETE, QUEUE_LABELS, ORIGIN_MANUAL, EPISODE_MARKER,
+} from '../../public/task-constants.mjs';
+import {
+  workItemTitle, workItemBody, withNotBefore, withWoken, statusesOn,
+} from '../../public/work-item-grammar.mjs';
 import { clearStatus } from '../items/apply-status.mjs';
 import { isScheduledTask } from '../contract/task-contract.mjs';
 import { repoRoot } from '../world/actions.mjs';
@@ -132,7 +134,7 @@ export async function createWorkItem(gh, repo, { pack, task, taskPath, scheduled
   return { ok: true, number: res.number };
 }
 
-// Exported because `public/create-work-item.mjs` runs it: prose in a member's own local
+// Exported because this module is run directly as a command: prose in a member's own local
 // packs still addresses this command at that path, and nothing here can rewrite it.
 export async function runCreateWorkItem() {
   const { makeGh } = await import('../world/github.mjs');

@@ -1,16 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  WORK_PREFIX, workItemTitle, parseWorkItemTitle, isWorkItemTitle,
-  workItemBody, parseWorkItemBody, withNotBefore, withEndsWhen, withTarget, withSection,
-  QUEUE_LABELS, STATE_LABELS, labelNames, hasLabel,
-  DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
+  WORK_PREFIX, QUEUE_LABELS, STATE_LABELS, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
   TRIAGE_LABELS, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
-  NEEDS_HUMAN_FAILURE, triageLabelFor, isBlockingPark,
-  TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, outcomeOf,
-  LAST_VERDICT_HEADING, lastVerdictLines, parseLastVerdict,
-  withWoken, itemFacts,
-} from '../../src/items/work-item.mjs';
+  NEEDS_HUMAN_FAILURE, TASK_DONE, TASK_OBSOLETE, OUTCOME_DONE, OUTCOME_DELIVERED,
+  OUTCOME_OBSOLETE, LAST_VERDICT_HEADING,
+} from '../../public/task-constants.mjs';
+import {
+  workItemTitle, parseWorkItemTitle, isWorkItemTitle, workItemBody, parseWorkItemBody,
+  withNotBefore, withEndsWhen, withTarget, withSection, labelNames, hasLabel, triageLabelFor,
+  isBlockingPark, outcomeOf, lastVerdictLines, parseLastVerdict, withWoken, itemFacts,
+} from '../../public/work-item-grammar.mjs';
 import { planSchedulerRun } from '../../src/schedule/run.mjs';
 import { convergeOps, OUTCOMES } from '../../src/session/converge-item.mjs';
 

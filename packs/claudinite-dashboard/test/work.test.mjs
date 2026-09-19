@@ -7,7 +7,7 @@ import { describeItem, describeCadence, buildRoster } from '../src/derive/model.
 import {
   WORK_PREFIX, STATUS_READY, STATUS_BLOCKED, STATUS_RUNNING_EXECUTOR, PARK_STATUSES, PARK_KINDS,
   NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
-} from '../../claudinite-tasks/public/work-items.mjs';
+} from '../../claudinite-tasks/public/task-constants.mjs';
 
 // The park STATUS an item wears, picked out of the engine's own list by kind rather
 // than spelled here: a park is two labels — the status the queue reads and the triage

@@ -30,16 +30,16 @@ import { actionsEnv, repoRoot } from '../world/actions.mjs';
 import { now as clockNow } from '../world/clock.mjs';
 import { setIssueBody } from '../world/github.mjs';
 import {
-  BLOCKED, READY, URGENT, EXECUTING, AGENT, requeueHint,
-  STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, isStatus,
-  TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, QUEUED_LABEL, isStandingItem,
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE,
-  CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
-  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, parseContextLines, mergeContext, withNotBefore, withSection, editItemBody, hasLabel, DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS,
-  LAST_VERDICT_HEADING, lastVerdictLines,
-  withTarget,
-  itemFacts,
-} from '../items/work-item.mjs';
+  BLOCKED, READY, URGENT, EXECUTING, AGENT, requeueHint, STATUS_READY, STATUS_RUNNING_EXECUTOR,
+  STATUS_RUNNING_AGENT, TASK_DONE, TASK_OBSOLETE, QUEUE_LABELS, QUEUED_LABEL, NEEDS_HUMAN_ACTION,
+  NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE, CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
+  DELIVERED_HEADING, LEGACY_DELIVERED_HEADINGS, LAST_VERDICT_HEADING,
+} from '../../public/task-constants.mjs';
+import {
+  isStatus, isStandingItem, parseWorkItemTitle, parseWorkItemBody, taskIdFromPath,
+  parseContextLines, mergeContext, withNotBefore, withSection, editItemBody, hasLabel,
+  lastVerdictLines, withTarget, itemFacts,
+} from '../../public/work-item-grammar.mjs';
 
 // The claim comment carries WHO and WHEN — the executor id and its run URL —
 // because executor identity is an unbounded set and must never become a label

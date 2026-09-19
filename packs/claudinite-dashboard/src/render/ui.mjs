@@ -5,7 +5,7 @@
 
 import {
   BLOCKED, READY, EXECUTING, AGENT,
-} from '../../../claudinite-tasks/public/work-items.mjs';
+} from '../../../claudinite-tasks/public/task-constants.mjs';
 // `PARKED` is the page's own key rather than a label: a park is four labels, and
 // the page groups them into one column (model.mjs).
 import { PARKED } from '../derive/model.mjs';

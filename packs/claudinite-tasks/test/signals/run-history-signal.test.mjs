@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { collectSignals, SIGNAL_COLLECTORS, RUN_HORIZON_DAYS } from '../../src/signals/index.mjs';
 import { collectSignalsForTask, windowFromRuns, defaultWindowMs, windowDaysOf } from '../../src/signals/for-task.mjs';
-import { workItemBody } from '../../src/items/work-item.mjs';
+import { workItemBody } from '../../public/work-item-grammar.mjs';
 
 // The `runs` signal (docs/PRINCIPLES.md) — a task's own run history, read
 // off the queue — and the window every other signal is then collected over. The

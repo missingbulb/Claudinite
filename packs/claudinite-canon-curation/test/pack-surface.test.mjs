@@ -1,25 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderSurfaceReport, publishedNames, consumerBucket, readSurfaceUse } from '../pack-surface.mjs';
 
-// Maintained the way packs/directory.GENERATED.md is (engine-tests/pack-directory.test.mjs):
-// locally this test rewrites the artifact, under CI it only asserts, so a change that
-// widens a published surface without regenerating fails in ITS OWN pull request rather
-// than in a later sweep's.
+// The report is rendered on demand (`node pack-surface.mjs <packDir>`), never committed;
+// what is pinned here is the renderer over the real tree and over fixtures.
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const PACK_DIR = 'packs/claudinite-tasks';
-const REPORT = `${PACK_DIR}/public/SURFACE.GENERATED.md`;
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', '.claudinite-cache']);
 
-// Two files are held out of the scan, both because they would report themselves. The
-// artifact names every module, so it would make each one read as consumed by the canon;
-// this file carries import statements as fixture DATA, which the scanner cannot tell
-// from the real thing — it read a fixture's `unreadName` as a live import of a name the
-// surface has never had.
+// This file is held out of the scan because it would report itself: it carries import
+// statements as fixture DATA, which the scanner cannot tell from the real thing — it read
+// a fixture's `unreadName` as a live import of a name the surface has never had.
 const SELF = relative(ROOT, fileURLToPath(import.meta.url)).split(sep).join('/');
 
 // The tree, read once. Only text the surface can be named from is worth scanning.
@@ -30,28 +25,11 @@ function treeText(dir = ROOT, files = new Map()) {
     if (entry.isDirectory()) { treeText(abs, files); continue; }
     if (!entry.isFile() || !/\.(mjs|js|json|md|yml|yaml)$/.test(entry.name)) continue;
     const rel = relative(ROOT, abs).split(sep).join('/');
-    if (rel === REPORT || rel === SELF) continue;
+    if (rel === SELF) continue;
     files.set(rel, readFileSync(abs, 'utf8'));
   }
   return files;
 }
-
-test(`${REPORT} is current with the tree`, () => {
-  const files = treeText();
-  assert.ok(files.size > 100, `only ${files.size} files read — a partial checkout cannot judge a surface`);
-
-  const rendered = renderSurfaceReport({ packDir: PACK_DIR, files });
-  const modules = readSurfaceUse({ files, packDir: PACK_DIR });
-  assert.ok(modules.size >= 20, `only ${modules.size} public/ modules found — the folder's scope has moved out from under this test`);
-
-  const path = join(ROOT, REPORT);
-  if (!process.env.CI && (!existsSync(path) || readFileSync(path, 'utf8') !== rendered)) writeFileSync(path, rendered);
-  assert.ok(existsSync(path), `${REPORT} is missing — run this test locally (it regenerates the file) and commit the result`);
-  assert.equal(
-    readFileSync(path, 'utf8'), rendered,
-    `${REPORT} is stale — run this test locally (it regenerates the file) and commit the result in the same change that moved the surface`,
-  );
-});
 
 // The scope assertion has to fail loudly: a packDir left behind by a layout change
 // matches no module, and an empty report reads as "this pack publishes nothing".

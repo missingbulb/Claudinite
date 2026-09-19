@@ -5,7 +5,9 @@ import {
   figure, totalsOf, pulseOf, memberWindow, machinePanel, hourKeysSince, fmtAge, fmtTokens,
   fleetLedger, SCHEDULER_CADENCE_MS,
 } from '../src/derive/fleet-ledger.mjs';
-import { WORK_PREFIX, OUTCOME_DONE, NEEDS_HUMAN_APPROVAL } from '../../claudinite-tasks/public/work-items.mjs';
+import {
+  WORK_PREFIX, OUTCOME_DONE, NEEDS_HUMAN_APPROVAL,
+} from '../../claudinite-tasks/public/task-constants.mjs';
 
 const NOW = Date.parse('2026-09-02T12:00:00Z');
 const DAY = 86400e3;

@@ -11,7 +11,7 @@ import { settingsPath } from '../../../engine/settings-file.mjs';
 import { installedVersions, hasInstalledMount, withInstalledVersions } from '../../../engine/installed-versions.mjs';
 import { loadMigrations, applyMigration } from '../../../engine/migrations/registry.mjs';
 import { convergeWiring } from '../../../engine/converge-wiring.mjs';
-import { NEEDS_HUMAN_LABEL } from '../../claudinite-tasks/public/work-items.mjs';
+import { NEEDS_HUMAN_LABEL } from '../../claudinite-tasks/public/task-constants.mjs';
 
 // THE ENGINE UPDATE FLOW (docs/versioned-updates/DESIGN.md §2): move one repo from
 // the engine version it has installed to the one this canon tree ships. Fully

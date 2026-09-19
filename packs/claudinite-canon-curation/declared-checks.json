@@ -109,6 +109,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/items"
         ],
         "reason": "what a task DECLARES is what every stage agrees on, so the contract names no stage and no port — a contract that read the world would make the thing being agreed on depend on who was asking, which is why the automerge verdict's git-reading command sits in src/session/ and the policy engine here decides"
@@ -119,6 +120,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/contract",
           "packs/claudinite-tasks/src/world"
         ],
@@ -130,6 +132,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/contract",
           "packs/claudinite-tasks/src/items"
         ],
@@ -141,6 +144,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/contract",
           "packs/claudinite-tasks/src/items",
           "packs/claudinite-tasks/src/world"
@@ -153,6 +157,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/contract",
           "packs/claudinite-tasks/src/items",
           "packs/claudinite-tasks/src/world",
@@ -166,6 +171,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/contract",
           "packs/claudinite-tasks/src/items",
           "packs/claudinite-tasks/src/world",
@@ -180,6 +186,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/contract",
           "packs/claudinite-tasks/src/items",
           "packs/claudinite-tasks/src/world",
@@ -194,6 +201,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/contract",
           "packs/claudinite-tasks/src/items",
           "packs/claudinite-tasks/src/world",
@@ -207,6 +215,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/contract",
           "packs/claudinite-tasks/src/items",
           "packs/claudinite-tasks/src/world",
@@ -220,6 +229,7 @@
         "scope": "imports",
         "allow": [
           "engine",
+          "packs/claudinite-tasks/public",
           "packs/claudinite-tasks/src/contract",
           "packs/claudinite-tasks/src/items",
           "packs/claudinite-tasks/src/world",
@@ -229,12 +239,9 @@
       },
       {
         "from": "packs/claudinite-tasks/src",
-        "to": [
-          "packs/claudinite-tasks/queue",
-          "packs/claudinite-tasks/public"
-        ],
+        "to": "packs/claudinite-tasks/queue",
         "scope": "imports",
-        "reason": "`queue/` is frozen workflow ABI and `public/` is the published surface: both re-export the mechanism, so a module under src/ importing one would close a cycle through a path that exists only for outside callers"
+        "reason": "`queue/` is frozen workflow ABI that re-exports the mechanism, so a module under src/ importing it would close a cycle through a path that exists only for outside callers; `public/` is different — its definition files (the vocabulary, the grammar, the GitHub client) are what src/ builds on"
       }
     ]
   },

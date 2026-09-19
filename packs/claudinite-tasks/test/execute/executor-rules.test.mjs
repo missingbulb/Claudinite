@@ -4,7 +4,8 @@ import {
   claimWinner, conflictsWithEarlierClaim, noGoPlan, rollBody, claimComment,
 } from '../../src/execute/loop.mjs';
 import { pickOrder } from '../../src/items/pick-order.mjs';
-import { CLAIM_MARKER, EPISODE_MARKER, parseWorkItemBody } from '../../src/items/work-item.mjs';
+import { CLAIM_MARKER, EPISODE_MARKER } from '../../public/task-constants.mjs';
+import { parseWorkItemBody } from '../../public/work-item-grammar.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 

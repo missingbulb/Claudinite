@@ -13,24 +13,23 @@
 // so the dashboard sits beside the mechanism it renders rather than reaching across
 // the tree at it.
 
-import { parseTaskDeclaration, applyTaskDefaults } from '../../../claudinite-tasks/public/task-declaration.mjs';
+import { parseTaskDeclaration, applyTaskDefaults } from './declaration-text.mjs';
 import {
   mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, holdsOnFailure, holdsOnAnyPark, statesConditions,
   DUE_TERM, ELAPSED_TERM,
-} from '../../../claudinite-tasks/public/anchors.mjs';
+} from './task-calendar.mjs';
 import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
-} from '../../../claudinite-tasks/public/work-items.mjs';
+} from '../../../claudinite-tasks/public/task-constants.mjs';
 import {
-  WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT,
-  outcomeOf as decodeOutcome,
-  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
-  statusesOn, isParked, parkKindOf, triageLabelFor,
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
-  NEEDS_HUMAN_FAILURE, isBlockingPark, parseLastVerdict,
-  CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
-  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, hasLabel, labelNames,
-} from '../../../claudinite-tasks/public/work-items.mjs';
+  WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT, STATUS_BLOCKED, STATUS_READY,
+  STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION,
+  NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_FAILURE, CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
+} from '../../../claudinite-tasks/public/task-constants.mjs';
+import {
+  outcomeOf as decodeOutcome, statusesOn, isParked, parkKindOf, triageLabelFor, isBlockingPark,
+  parseLastVerdict, parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, hasLabel, labelNames,
+} from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 
 export {
   WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT,
@@ -232,7 +231,7 @@ export function describeCadence(preconditions, trigger) {
 // An item is a filed `[claudinite-work]` issue OR an adopted marked issue — the
 // one-issue request model's other shape, which keeps the person's own title
 // One definition, shared with the queue's own reader.
-export { isQueueItem as isWorkItem } from '../../../claudinite-tasks/public/work-items.mjs';
+export { isQueueItem as isWorkItem } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 
 // THE PAGE'S FIVE STATE KEYS. Four are the engine's own status labels; the fifth is
 // this page's own word, because a park is four labels and the page groups them into

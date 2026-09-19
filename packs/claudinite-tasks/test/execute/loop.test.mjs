@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runExecutor } from '../../src/execute/loop.mjs';
-import { parseWorkItemBody } from '../../src/items/work-item.mjs';
+import { parseWorkItemBody } from '../../public/work-item-grammar.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
 import { makeClock } from '../sim/world/clock.mjs';
 import { makeGithub } from '../sim/world/github.mjs';

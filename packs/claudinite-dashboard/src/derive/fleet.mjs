@@ -25,14 +25,14 @@
 //   repo or a rate-limit stumble cannot blank the page.
 
 import { stripComments } from '../../../../engine/checks/helpers/code-scanning.mjs';
-import { periodMs } from '../../../claudinite-tasks/public/anchors.mjs';
+import { periodMs } from './task-calendar.mjs';
 import {
-  BLOCKED, READY, EXECUTING, AGENT, URGENT,
-  NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, outcomeOf, isParked,
-} from '../../../claudinite-tasks/public/work-items.mjs';
+  BLOCKED, READY, EXECUTING, AGENT, URGENT, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION,
+} from '../../../claudinite-tasks/public/task-constants.mjs';
+import { outcomeOf, isParked } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 import { installedVersions } from '../../../../engine/installed-versions.mjs';
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../../../engine/version.mjs';
-import { isDormant } from '../../../claudinite-tasks/public/dormancy.mjs';
+import { isDormant } from '../read/dormancy.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths, PARKED } from './model.mjs';
 import { commitDays, commitClasses, DAY_MS } from './activity.mjs';
 import { itemCandidate, pickCandidate } from './next-work.mjs';

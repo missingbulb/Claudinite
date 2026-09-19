@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { listMarkedIssues } from '../../src/schedule/run.mjs';
-import { ORIGIN_AD_HOC, REQUEST_LABEL, STATUS_READY } from '../../src/items/work-item.mjs';
+import { ORIGIN_AD_HOC, REQUEST_LABEL, STATUS_READY } from '../../public/task-constants.mjs';
 
 // GitHub's issues-list `labels` filter is CONJUNCTIVE: a comma-separated list
 // selects the issues carrying EVERY name on it, not any of them. That is modelled
@@ -103,7 +103,8 @@ test('an ADOPTED marked issue is in the work-item list, and an unadopted mark is
 // throughout. Nothing drives `main`, so the step is exercised here instead.
 test('a marked issue\'s own blockers are read, alongside a blocked item\'s', async () => {
   const { blockersToResolve } = await import('../../src/schedule/run.mjs');
-  const { STATUS_BLOCKED, workItemBody } = await import('../../src/items/work-item.mjs');
+  const { STATUS_BLOCKED } = await import('../../public/task-constants.mjs');
+  const { workItemBody } = await import('../../public/work-item-grammar.mjs');
 
   const items = [{
     number: 200, state: 'open', labels: [{ name: STATUS_BLOCKED }],

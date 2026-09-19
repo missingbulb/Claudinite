@@ -5,9 +5,9 @@ import {
   stuckItemPanel, plainIssuePanel, scheduledTaskPanel, parkPanel, runRecord,
 } from '../src/derive/explore.mjs';
 import {
-  WORK_PREFIX, MACHINE_BLOCK_START, MACHINE_BLOCK_END, CLAIM_MARKER, HANDOFF_MARKER,
-  OUTCOME_DONE, OUTCOME_OBSOLETE,
-} from '../../claudinite-tasks/public/work-items.mjs';
+  WORK_PREFIX, MACHINE_BLOCK_START, MACHINE_BLOCK_END, CLAIM_MARKER, HANDOFF_MARKER, OUTCOME_DONE,
+  OUTCOME_OBSOLETE,
+} from '../../claudinite-tasks/public/task-constants.mjs';
 
 const NOW = Date.parse('2026-09-02T10:30:00Z');
 const DAY = 86400e3;

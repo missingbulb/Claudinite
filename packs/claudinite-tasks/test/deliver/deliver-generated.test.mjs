@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { baseTip, readAt, pushGenerated, generatedTarget } from '../../src/deliver/deliver-generated.mjs';
+import { baseTip, readAt, pushGenerated, generatedTarget } from '../../public/delivery.mjs';
 import { removeTree } from '../../../../engine/remove-tree.mjs';
 
 // The PR half needs GitHub; the GIT half is where the risk lives and it is fully

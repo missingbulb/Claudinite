@@ -62,7 +62,7 @@ const rule = {
             file,
             line,
             what: `${file} runs github-script — a program living in a file a converge cannot update`,
-            fix: 'move the script into a module under packs/claudinite-tasks/queue/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
+            fix: 'move the script into a module under packs/claudinite-tasks/src/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
           }));
         }
         if (BLOCK_RUN.test(text)) {
@@ -70,7 +70,7 @@ const rule = {
             file,
             line,
             what: `${file} carries a block \`run:\` — a shell script living in a file a converge cannot update`,
-            fix: 'move the script into a module under packs/claudinite-tasks/queue/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
+            fix: 'move the script into a module under packs/claudinite-tasks/src/ and call it with a single-line `run: node <module>`; the engine converges nightly, this file needs a human-merged PR per repo',
           }));
         }
       });

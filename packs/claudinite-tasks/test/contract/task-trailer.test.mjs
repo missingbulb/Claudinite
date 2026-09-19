@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TASK_TRAILER, taskTrailer, withTaskTrailer, taskFromMessage } from '../../src/contract/task-trailer.mjs';
+import { TASK_TRAILER } from '../../public/task-constants.mjs';
+import { taskTrailer, withTaskTrailer, taskFromMessage } from '../../public/work-item-grammar.mjs';
 
 // The trailer every delivery lane stamps, and the reader the movement signals
 // classify by (docs/PRINCIPLES.md).
