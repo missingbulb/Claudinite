@@ -1,15 +1,25 @@
 import { resolveRetentionDays } from './prune-logs.mjs';
 
-// logs-prune's own precondition term. The prune's trigger is a CLOCK crossing a
-// boundary — the oldest capture aged past this repo's retention — and
-// no built-in movement condition can say that: it must keep firing on exactly the
-// repos that went quiet, which is where logs sit long enough to expire.
+// logs-prune's own precondition term: the oldest capture is aged past this repo's
+// retention. Nothing built in can say that, and no movement condition would — logs
+// sit long enough to expire on exactly the repos that went quiet. The task is asked
+// only when somebody wakes it, so this is the content gate on that wake rather than
+// a trigger: nothing aged out declines the run instead of pruning nothing.
 
 export const terms = {
   'log-past-retention': {
     signals: ['conversationLogs'],
     holds(signals) {
-      const logs = signals.conversationLogs ?? {};
+      // NO READING IS NOT A DECLINE. The executor collects this signal at every pick,
+      // so absence here is a bare item evaluated with no world behind it — and a
+      // decline on data that was not there would close the one lever this task has,
+      // `task:status:rejected`, without ever running. The worker reads the branch and
+      // the declaration first-hand and deletes nothing it should not, so it is the
+      // authority when the gate has nothing to judge.
+      const logs = signals.conversationLogs;
+      if (logs === undefined || logs === null) {
+        return { holds: true, reason: 'no conversation-logs reading — the worker decides what is deletable' };
+      }
       if (logs.present !== true) {
         return { holds: false, reason: 'no conversation-logs branch — nothing captured yet' };
       }

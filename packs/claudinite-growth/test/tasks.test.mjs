@@ -45,10 +45,19 @@ test('growth-dedup: a declared pack moving in the mount fires it (and names the 
 // `log-past-retention` is this task's own precondition term (retention math and
 // the opt-out reading live beside its declaration), so its decisions are kept.
 
-test('logs-prune: fires on age alone, which is what makes it independent of activity', async () => {
-  // A CLOCK crossing a boundary, and deliberately no repo-movement condition beside
-  // it: the prune must keep firing on exactly the repos that went quiet, which is
-  // where logs sit long enough to expire.
+// The task runs only when somebody wakes it, and its item is closed unrun on a
+// decline — so a verdict taken with no reading behind it would be the difference
+// between a lever and a dead one.
+test('logs-prune: an unread conversationLogs signal grants the run rather than declining it', async () => {
+  const unread = await verdictFor(logsPrune, {});
+  assert.equal(unread.run, true);
+  assert.match(unread.reason, /the worker decides/);
+});
+
+test('logs-prune: holds on age alone, which is what makes it independent of activity', async () => {
+  // Age against retention, and deliberately no repo-movement condition beside it: a
+  // wake has to be granted on exactly the repos that went quiet, which is where logs
+  // sit long enough to expire.
   const v = await verdictFor(logsPrune, {
     conversationLogs: { present: true, retentionDays: 10, oldestLogAgeDays: 14 },
   });
@@ -58,7 +67,6 @@ test('logs-prune: fires on age alone, which is what makes it independent of acti
 
 test('logs-prune: no branch, a declared opt-out, or nothing aged yet — all silent', async () => {
   assert.match((await verdictFor(logsPrune, { conversationLogs: { present: false } })).reason, /nothing captured/);
-  assert.match((await verdictFor(logsPrune, {})).reason, /nothing captured/);
   // Capture-only is declared now, never inferred from a missing key (#1620): an
   // undeclared retention takes the default, and only a non-positive one is silent.
   assert.match((await verdictFor(logsPrune, { conversationLogs: { present: true, retentionDays: 0 } })).reason, /capture-only/);

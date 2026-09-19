@@ -9,8 +9,8 @@
 //
 // What keeps this safe to do without an agent is the extract run's reading window,
 // not a per-file handshake: growth-extract reads from the OLDEST end of the branch
-// on every run, so a capture reaches retention having been read. That is a property
-// of the two cadences — daily reads against a retention measured in days — and it
+// on every run, so a capture reaches retention having been read. That holds because
+// the extract run's cadence is far shorter than a retention measured in days, and it
 // is stated in the extract-from-conversations skill, which owns the window.
 
 import { parseLogFilename } from '../../capture-log.mjs';

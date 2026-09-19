@@ -17,9 +17,9 @@ Coupled to the opus run it also kept that run's precondition carrying a second
 arm whose only job was to fire the prune on a quiet repo, so a repo with nothing
 to extract still paid an opus dispatch on the nights one log aged out.
 
-WHAT MAKES AGE ENOUGH. The prune used to be coupled to a judgment step — an aged
-log got a final pass before deletion — so pruning on the calendar risked deleting
-a capture nothing had read. What removes the risk is the extract run's READING
+WHAT MAKES AGE ENOUGH. Deletion is decided on the stamp in a filename, with no
+judgment step over the capture itself — an aged log gets no final pass. What
+makes that safe is the extract run's READING
 WINDOW, not a per-file handshake between the two tasks: growth-extract reads from
 the oldest end of the branch on every run, against a retention measured in days,
 so a capture reaches retention having been read. The extract-from-conversations
@@ -27,8 +27,14 @@ skill owns that window; this task owns the arithmetic.
 
 The whole contract is this default export; the retention arithmetic it names is
 in preconditions.mjs beside it.
-A CLOCK crossing a boundary, not repo movement (the term beside this file):
-the prune must keep firing on exactly the repos that went quiet.
+NOTHING ASKS IT. `trigger: 'request'` (owner, 2026-09-19): a capture the calendar
+decided to delete is data loss nobody asked for, so no tick mints an occurrence
+and the branch is pruned only when somebody wakes the task. `log-past-retention`
+stays beside it — the term in preconditions.mjs, the arithmetic this task owns —
+so a wake with nothing aged out declines instead of running an empty pass; a bare
+item with no reading behind it runs, because the item's only other exit is closed
+unrun and that would leave the task with no lever at all. No cadence term can sit
+here: one is inert on a request task, and rejected.
 It opens no PR: its whole write is remove commits on the non-default logs
 branch, which is outside the outcome taxonomy.
 One ls-remote, one fetch, one tree read, at most one push — against a branch
