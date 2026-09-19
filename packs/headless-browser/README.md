@@ -16,6 +16,7 @@ particular call still exists — the shape the corpus rejects outright.
 | Resolve binary, never download | high | correctness | prose: <200 words |
 | Reinstalling the driver repeats the download danger | high | correctness | prose: <200 words |
 | Stub an unvendored CDN library's API | medium | correctness | prose: <200 words |
+| Vendor a CDN asset via curl | medium | correctness | prose: <200 words |
 | Pin the build for pixels | high | correctness | prose: <100 words |
 | Zero-diff costs whole recipe | medium | correctness | prose: <100 words |
 | Fake origin, abort by default | high | correctness | prose: <100 words |

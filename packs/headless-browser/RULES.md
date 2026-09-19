@@ -29,6 +29,15 @@
   or charting library often boils down to a handful of constructors and methods) and install a
   minimal no-op implementation of just those as an init script, before the page's own scripts run.
 
+- **When the case needs the library's real behaviour, not just its surface stubbed, a plain HTTP
+  client can often reach the CDN from a restricted CI/sandbox environment even though the browser
+  cannot.** A network-restricted runner can deny the browser's own connection to an off-allowlist
+  CDN host while a `curl` to the identical URL from the same environment succeeds — the two don't
+  tunnel the restriction the same way. Fetch the real asset to disk once with the client that can
+  reach it, then route-intercept the CDN URL to serve those bytes — real library behaviour,
+  reachable despite the restriction, with nothing left to break when the library adds a call the
+  stub never anticipated.
+
 - **A committed pixel golden is only comparable under the exact build that rendered it.** Two
   browsers a version apart rasterise text and shadows differently, so a comparison across them
   measures the renderer, not the product. Where the output is compared pixel by pixel, read the

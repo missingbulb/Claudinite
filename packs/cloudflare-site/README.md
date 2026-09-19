@@ -28,6 +28,7 @@ teaches its reader to skim it.
 | Only the published tree reaches the site | high | correctness | prose: <100 words |
 | One path to production | high | correctness | prose: <50 words + check (`cloudflare-site/no-second-publisher`) |
 | What a parked release is asking for | medium | correctness | prose: <100 words |
+| Linking to another published page | medium | correctness | prose: <100 words (check to author: #2129) |
 
 ## Skills
 
