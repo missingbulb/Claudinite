@@ -1,6 +1,4 @@
 ---
-covers:
-  - check: cer/release-workflows
 status: live
 ---
 

@@ -1,6 +1,4 @@
 ---
-covers:
-  - rule: RULES.md — Wanting a token to survive a browser restart
 status: live
 ---
 

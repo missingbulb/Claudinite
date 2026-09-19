@@ -1,6 +1,4 @@
 ---
-covers:
-  - skill: extension-host-permissions
 status: live
 ---
 

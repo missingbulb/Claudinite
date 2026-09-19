@@ -1,6 +1,4 @@
 ---
-covers:
-  - check: cer/version-bumped
 status: live
 ---
 

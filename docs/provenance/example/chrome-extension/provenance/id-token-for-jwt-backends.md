@@ -1,6 +1,4 @@
 ---
-covers:
-  - rule: RULES.md — Authenticating an extension to a JWT-validating backend
 status: live
 ---
 

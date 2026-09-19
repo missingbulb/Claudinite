@@ -1,6 +1,4 @@
 ---
-covers:
-  - check: declarative-content-set-icon
 status: live
 ---
 

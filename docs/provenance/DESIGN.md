@@ -20,45 +20,51 @@ Provenance is a log of decisions. It is never a description of the current rule:
 restates what the carrier says is wrong by construction, and a reader who wants the rule reads the
 carrier.
 
-## 1. The element and its file
+## 1. The element, its id, and its file
 
-An **element** is one guideline the pack maintains. It has exactly one provenance file, named by a
-slug chosen when the file is created and never renamed afterwards (a rename breaks every entry that
-cites it). The file's header **binds** it to the carriers that state the guideline:
+An **element** is one guideline the pack maintains. It has exactly one provenance file, and the
+file's name is the element's **id**: a slug chosen when the element is born, for the guideline
+rather than its current wording, and never renamed afterwards (a rename breaks every entry and
+every override that cites it). The id is also how each carrier references the file:
 
-| Binding | Names | Identity |
-|---|---|---|
-| `rule: <file> — <trigger>` | a top-level bullet in `RULES.md`, or in another prose file of the pack | its bold trigger phrase, whitespace-normalized |
-| `skill: <name>` | a `skills/<name>/` directory: the body, the description, every `force-load-on-*` trigger | the directory name |
-| `check: <id>` | a coded rule module or a declared check | the check id |
-| `task: <id>` | a `tasks/<id>/` declaration: preconditions, `expected_outcome`, `automerge`, the worker | the task id |
-| `pack: <id>` | the manifest: fingerprint, `requires`, routing guidance, seeding, and the pack's own existence and name | the pack id |
+| Carrier | Its reference to the element |
+|---|---|
+| a coded or declared check | its check id; a slash becomes a hyphen (`cer/version-bumped` → `cer-version-bumped.md`) |
+| a skill — the body, the description, every `force-load-on-*` trigger | its directory name |
+| a task — the declaration, its preconditions, `expected_outcome`, `automerge`, the worker | its task id |
+| the manifest — fingerprint, `requires`, routing guidance, seeding, the pack's own existence and name | `pack` |
+| a prose rule — a top-level bullet of `RULES.md`, or of a `SKILL.md` where the bullet has a history of its own | a **marker** ending the rule: `… never a filesystem walk. (url-filter-host-operators)` |
 
-A rule is bound by its trigger, not by a marker in the prose: the trigger is the phrase a
-maintainer already scans for, and binding on it costs the injected prose nothing. The cost falls
-where it belongs — a change that rewords a trigger is a decision about the rule, and the same
-change updates the binding and writes the entry that says why.
+A check, a skill and a task already carry a stable id, so their files are named by it and nothing
+is added to them. A prose rule has none, and the marker gives it one: the reference from the prose
+to its file, and the stable id by which a member's override or `accept` entry can name the rule
+and survive its rewording — the one obligation the layering design places on the corpus, paid
+once. The marker is the only thing this design adds to injected prose, and it is rationed like the
+prose: a slug of two to four words, so a rewording never has to touch it. It costs a few tokens
+per rule, two to three times what a numeric marker costs — on the order of a thousand tokens
+across a member that loads two hundred rules, out of a budget of fifteen thousand — and nothing
+cheaper carries both the reference and the id.
 
-One file normally covers one carrier. It covers several when they are one guideline: a prose rule
-and the check that enforces its checkable half, a rule and the skill it delegates to. The rule is
-independence where it is real and one file where it is not; a carrier is covered by exactly one
-live file, and a check or a skill is never split across files.
+One file normally covers one carrier. It covers several when they are one guideline — a prose rule
+and the check that enforces its checkable half, a rule and the skill it delegates to — and then
+the file is named by the check or the skill, and the rule's marker cites that name. Independence
+where it is real, one file where it is not; a carrier names exactly one live file, and a check or
+a skill is never split across files.
 
-A skill is one element. Where a bullet inside a skill has its own decision history, an entry names
-the bullet in its title and the file stays the skill's — the skill's own `SKILL.md` is the one
-carrier and the bullets are not enumerated as elements, which is what keeps a long procedure from
-minting thirty files.
+A skill is one element, named by its directory. A bullet inside a skill earns an element of its
+own — its own marker and file — only where it has a decision history of its own; every other
+bullet is the skill's, and the skill's file records their decisions as titled entries. That is
+what keeps a long procedure from minting thirty files while letting the one bullet that was
+fought over keep its own log.
 
 Stubs and migrations are not elements: their rationale is their own module header, and the
-decision to ship them is a `pack.md` entry. Contributed rules, merge rules and adoption questions
-are manifest-level and belong to `pack.md` too.
+decision to ship them is a `pack` entry. Contributed rules, merge rules and adoption questions are
+manifest-level and belong to `pack` too.
 
 ### The file
 
 ```
 ---
-covers:
-  - rule: RULES.md — Matching a host with `chrome.events.UrlFilter`
 status: live
 ---
 
@@ -81,9 +87,9 @@ status: live
 - **Evidence:** #467, per basics' rule-writing method.
 ```
 
-The **header** is a line grammar, read without a YAML library: `covers:` followed by `  - <kind>:
-<ref>` lines, then `status: live` or `status: retired`. The header is the only part of the file
-that is ever edited, and only when `covers` or `status` change.
+The **header** is one line, `status: live` or `status: retired`, and it is the only part of the
+file ever edited. What the file covers is not written down, because it is derived: the carriers
+that name it, by id or by marker, and `check` prints them.
 
 An **entry** opens `## <YYYY-MM-DD> · <kind> · <one line>` and carries bold-labelled fields, one
 per bullet, continuation lines indented. Entries are appended in date order and never edited.
@@ -141,8 +147,9 @@ rejection is settled.
   `docs/` and `updates/`, pinned by a test over the real corpus so the exclusion cannot go vacuous.
   A member mounting a canon pack receives the guidelines, not the reasoning, and never another
   organisation's decision log.
-- **Never loaded.** No `@` import, no skill mount, no session-summary token count. The folder's
-  size is invisible to a session by construction.
+- **Never loaded.** No `@` import, no skill mount, no session-summary token count. The marker at
+  the end of a rule is the whole of what reaches a session, and it invites the reader nowhere: no
+  rule names the folder, links it, or asks anyone to follow anything.
 - **Never barrier-scanned.** A provenance file references what it explains — other packs, `docs/`,
   member repositories, retired mechanisms — so the barrier config carves `provenance/` out of every
   guarded region. Where the carve-out grammar cannot spell a folder one level below a `siblings`
@@ -157,12 +164,12 @@ Every flow that creates or changes an element appends, in the same change:
 
 | Flow | Appends |
 |---|---|
-| `growth-extract` (activity and conversations) | `born` per landed lesson; a conversation-born lesson's `Source` names the capture's date and session id; `declined.md` for a candidate dropped for a reason worth keeping |
+| `growth-extract` (activity and conversations) | `born` per landed lesson, and the marker on the rule; a conversation-born lesson's `Source` names the capture's date and session id; `declined.md` for a candidate dropped for a reason worth keeping |
 | `prose-to-checks` and `canon-prose-to-checks` | `converted` on the element, carrying the deletion-test verdict (prose deleted, or kept and why); `declined.md` for a rule judged not checkable, dated |
 | `growth-dedup` | `retired` (superseded by the canon element it names), `weakened` (a strip), `reworded` |
 | `rule-revalidation`, `canon-rule-revalidation`, `revalidate-from-source` | `reaffirmed` only with new evidence or a changed `Retire when`; `reworded` or `retired` for a correction |
-| `growth-promote` | on the canon side the local file, reduced (§4), plus a `promoted` entry; the local file stays until dedup retires it |
-| `generate-project-instructions`, `learning-a-technology` | `pack.md` and one `born` per element, citing the evidence set or the dated sources |
+| `growth-promote` | on the canon side the local file, reduced (§4), a `promoted` entry, and the marker on the promoted rule; the local file stays until dedup retires it |
+| `generate-project-instructions`, `learning-a-technology` | `pack` and one `born` per element, citing the evidence set or the dated sources |
 | an attended session editing a carrier | the skill the edit force-loads (`writing-pack-prose` for prose, `writing-repo-scanning-checks` for a check, `writing-tasks` for a task) ends with the append |
 
 The mechanics are one helper, `provenance.mjs` in `claudinite-growth`, vendored so a member runs it
@@ -170,12 +177,12 @@ from the mount and the canon from the repo root:
 
 | Command | Does |
 |---|---|
-| `mark <pack>` | enumerates the pack's elements and creates a header-only file for each one no live file covers, with a proposed slug |
+| `mark <pack>` | creates a header-only file for every check, skill, task and the manifest that none names, and for every unmarked rule appends a proposed marker to the rule and creates the file it names — the slugs are proposals a maintainer refines before the change lands |
 | `append <pack> <element> --kind <kind> [--changed]` | validates and appends the entry read from stdin; `--changed` appends the same entry to every element the working tree's diff touched |
-| `check <pack>` | the parser the check uses, run by hand |
+| `check <pack>` | the parser the check uses, run by hand; prints what each file is named by |
 | `convert-references <pack>` | the migration of a `references.md` (§6) |
 | `reduce <file>` | the promotion reduction (§4) |
-| `history <pack> <element>` | the backfill brief: the carrier's commits through every rename, a pickaxe on the trigger, the pull requests those commits name, the `VERSIONS.md` rows naming them, a README provenance line, the tracker comments |
+| `history <pack> <element>` | the backfill brief: the carrier's commits through every rename, a pickaxe on the rule's text, the pull requests those commits name, the `VERSIONS.md` rows naming them, a README provenance line, the tracker comments |
 
 `append` refuses an entry that matches the capture scrub's secret patterns: a decision log is prose
 an agent writes, and the one place a token could land is the one place nothing else scans.
@@ -183,9 +190,11 @@ an agent writes, and the one place a token could land is the one place nothing e
 ## 4. Promotion, and the reduction that makes a shared canon safe
 
 A lesson promoted from a member's local pack travels with its provenance: promote copies the
-element's file into the canon pack's `provenance/` (slug kept unless it collides, then suffixed)
-and appends `promoted · from a member's local pack (<canon PR>)`. The canon's version of the file
-is therefore the full history of the guideline, not a history that starts at promotion.
+element's file into the canon pack's `provenance/`, ends the promoted rule with the marker, and
+appends `promoted · from a member's local pack (<canon PR>)`. The canon's version of the file is
+therefore the full history of the guideline, not a history that starts at promotion. A slug that
+collides on the canon side is suffixed there, and the promoted rule's marker takes the suffixed
+name; the local file is never renamed.
 
 What must not leave the repo is rewritten before the copy lands:
 
@@ -211,14 +220,14 @@ reduction is not built to see: a product name inside a `Reason`.
 | canon pack (`packs/`), hidden packs included | required | role | vendored never; forked by clone with the folder intact |
 | the home's structural local pack | as a repo-local pack | handle or role | never |
 | organisation pack (a second canon in the organisation's registry) | as a canon pack; the organisation's release task is a promote target and source like any other | role | as a canon pack |
-| vendor-authored pack | as a canon pack in the vendor's repository; a consumer never receives it | role | never; a consumer's decision *about* it — an `accept` waiver with its `reason`, an override that names the element's id — lives where it is declared and needs no file |
+| vendor-authored pack | as a canon pack in the vendor's repository; a consumer never receives it | role | never; a consumer's decision *about* it — an `accept` waiver with its `reason`, an override naming the element's id — lives where it is declared and needs no file |
 | process and rules-of-thumb packs (`basics`, testing, git) | as a canon pack; `Source` cites the practice, book or incident; `Retire when` may be a judgment ("the practice is abandoned corpus-wide") and says so | role | as a canon pack |
-| a pack minted from project evidence | `pack.md`'s `born` cites the evidence set or the dated sources | role | as a canon pack |
-| a stub pack with no rules | `pack.md` only | role | as a canon pack |
+| a pack minted from project evidence | `pack`'s `born` cites the evidence set or the dated sources | role | as a canon pack |
+| a stub pack with no rules | `pack` only | role | as a canon pack |
 | personal preferences (`<email>.md` in the store) | not a pack: the person is the actor and the request is the reason; an optional per-person log in a sibling folder of the store, never promoted, never required | the person | never |
 
 A consumer that forks an element from a canon into its local pack (an override) writes a `born`
-entry citing the canon element it overrides; the canon's file is not copied down.
+entry citing the canon element by its id; the canon's file is not copied down.
 
 ## 6. Backfill, conversion, and the standing mechanism
 
@@ -226,8 +235,11 @@ Two things bring existing packs onto the convention, and both are mechanisms rat
 someone remembers to run.
 
 **Marking is one mechanical pass.** `mark` over every pack creates a header-only file per
-uncovered element. From that commit every element is bound, the integrity check (§7) holds, and
-the only thing missing is history.
+unnamed carrier and ends every unmarked rule with a proposed marker. It therefore edits every
+`RULES.md` and every `SKILL.md` that carries unmarked rules — prose that vendors — so the
+`pack-version-bump` task cuts every touched pack's version once the pass lands, and the nightly
+converge delivers a prose-only change the way it delivers any other. From that commit every
+carrier names a file, the integrity check (§7) holds, and the only thing missing is history.
 
 **Filling is a task, one pack per run, until no header-only file remains.** The backfill task —
 `provenance-backfill` in `claudinite-growth` over a member's local packs, its twin in
@@ -239,63 +251,62 @@ the rule implied. A fact the evidence does not carry is `unrecovered`; a fabrica
 would let a future review reaffirm a rule on false grounds, which is worse than no rationale at
 all. The task's pull request is one pack's backfill, reviewed as such.
 
-**`references.md` converts mechanically.** `convert-references` turns each entry into an entry
-of the element it keys — `RULES-n` resolves through the rule carrying the marker `(n)`,
-`<skill>-n` to that skill, `check:<id>` to that check — as a `born` entry dated by the entry's
-own adding commit, its reaffirmation sentence as `Retire when`, the rest as `Reason` and
-`Evidence`; then strips the markers from the prose and deletes the file. A pack-root
+**`references.md` converts mechanically.** `convert-references` turns each entry into an entry of
+the element it keys — `RULES-n` resolves through the rule carrying the marker `(n)`, `<skill>-n`
+to that skill, `check:<id>` to that check — as a `born` entry dated by the entry's own adding
+commit, its reaffirmation sentence as `Retire when`, the rest as `Reason` and `Evidence`; then
+rewrites each numeric marker to the slug its element takes and deletes the file. A pack-root
 `references.md` that still exists is a finding: advisory through the conversion window the
 migration states, blocking after it, with the command in the fix text. In a member, the backfill
 task runs the conversion as its first step.
 
-**Existing README provenance paragraphs** ("distilled from …") move into `pack.md` with the same
+**Existing README provenance paragraphs** ("distilled from …") move into `pack` with the same
 pass: a README vendors, and that sentence is the one thing in it a third party should not receive.
 
 ## 7. The check: `provenance-integrity`
 
-A coded rule in `claudinite-growth` (a declared check cannot read a bullet whose bold trigger
-wraps), over both roots, replacing `references-integrity`.
+A coded rule in `claudinite-growth` (a declared check cannot read a bullet whose last line and
+bold trigger wrap), over both roots, replacing `references-integrity`.
 
 World scope, blocking:
 
-1. every element in every owned pack is covered by exactly one live file; a carrier covered twice
-   or not at all is a finding naming the carrier;
-2. every binding resolves — the trigger exists in the named file, the id exists in the pack;
-3. every file parses: the header grammar, the entry grammar, a kind in the vocabulary, dates in
+1. every check, skill and task id, and the manifest, names a live file; every rule bullet ends
+   with a marker, and the marker names a live file; a rule with no marker, a marker naming no live
+   file, and a live file no carrier names are each a finding naming the carrier or the file;
+2. every file parses: the one-line header, the entry grammar, a kind in the vocabulary, dates in
    order;
-4. a file with entries opens with `born`; a header-only file is reported as pending history, at
+3. a file with entries opens with `born`; a header-only file is reported as pending history, at
    advisory, since it is the backfill task's worklist and not a defect;
-5. a pack-root `references.md` is the migration finding above.
+4. a pack-root `references.md` is the migration finding above.
 
 Work scope, blocking:
 
-6. a carrier whose normalized text changed in this change is covered by a file that gained an
-   entry in this change — comments stripped, whitespace collapsed, a marker-stripping conversion
-   commit exempt by its `since`;
-7. a provenance file changed in this change lost no line below the header, and its new lines
+5. a carrier whose normalized text changed in this change names a file that gained an entry in
+   this change — comments stripped, whitespace collapsed, the marking pass exempt by its `since`;
+6. a provenance file changed in this change lost no line below the header, and its new lines
    follow the last existing entry;
-8. a carrier deleted in this change is covered by a file whose status became `retired` with a
-   `retired` entry in the same change — a removed-lines check cannot see a deleted file, so the
-   deletion is asserted from the tree's side.
+7. a carrier deleted in this change named a file whose status became `retired` with a `retired`
+   entry in the same change — a removed-lines check cannot see a deleted file, so the deletion is
+   asserted from the tree's side.
 
 The work-scope half is what makes the convention hold for a hand edit: the skill says append, and
 the Stop hook says so again when the session did not.
 
 ## 8. Invariants
 
-1. Every live carrier has exactly one live provenance file, and every live file covers at least
-   one live carrier.
-2. Below its header a provenance file only grows; the header changes only when `covers` or
-   `status` do.
+1. Every live carrier names exactly one live provenance file, and every live file is named by at
+   least one live carrier.
+2. Below its header a provenance file only grows; the header changes only when `status` does.
 3. No entry describes the current rule. The carrier is the description; the entry is the
    decision.
 4. Nothing under `provenance/` reaches a session, a member's mount, a barrier scan, or a check that
-   judges carriers.
+   judges carriers; the marker is the one token a session sees.
 5. What crosses a repository boundary is reduced (§4); what stays is written as the repository's
    own norms allow.
 6. Unknown is written as `unrecovered`. Nothing is invented, and nothing is deleted to look
    complete.
 7. A reaffirmation with nothing new writes nothing.
+8. An element's id never changes.
 
 ## 9. Sizing, and the failure modes stated
 
@@ -310,17 +321,17 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
   construction — two runs deciding about one element at once is a conflict on the element itself —
   and it is the whole answer to the merge hazard that ruled out an aggregate changelog: per-element
   files collide only on the element, never on the line every run would append to.
-- **A sweep rewords forty triggers.** Forty bindings change and forty one-line entries are owed;
-  `append --changed` writes them and rebinds each trigger from the diff's removed and added bold
-  spans in position. Without the helper the check fails the sweep's change forty times, which is
-  the mechanism working.
-- **A trigger is reworded and the binding is not.** The change fails the work-scope check; the
-  rewording is the moment the entry was owed.
-- **Two rules share a trigger in one file.** A binding conflict, reported; the second rule takes a
-  distinct trigger, which it needed for readers anyway.
-- **A promoted slug collides.** Suffixed on the canon side; the local file is never renamed.
+- **A sweep rewords forty rules.** Forty one-line entries are owed and `append --changed` writes
+  them; the markers stay where they were, so nothing rebinds. A sweep that drops a marker while
+  rewording leaves the rule unmarked, which the check reports.
+- **A marker is misspelled or names a retired file.** A finding naming the rule; the fix is the
+  file the rule meant.
+- **Two rules carry one marker.** Legal only as a cluster the file's entries account for; a
+  second rule that merely reused a slug takes its own.
+- **A promoted slug collides.** Suffixed on the canon side, marker included; the local file is
+  never renamed.
 - **A whole element is deleted.** The file stays, `status: retired`, with the `retired` entry: the
-  decision to remove is a decision. A retired file binds nothing and costs nothing.
+  decision to remove is a decision. A retired file is named by nothing and costs nothing.
 - **Private text reaches the canon.** The reduction removes what it is built to see; the
   owner-gated promote pull request is the guard for what it is not; the scrub refuses a secret at
   append time.
@@ -338,12 +349,13 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
   runs a night collide on it, and one element's history is interleaved with every other's. A folder
   of files makes each element's history its own file, its own `git log`, and its own copy on
   promotion. The cost is the file count, paid by no session and no member.
-- **Binding a rule by its trigger phrase** — over a numbered marker at the end of every rule. A
-  marker is a stable id, but every rule pays two or three tokens for it in every session of every
-  declaring repo, and nothing forces the marker's entry to be written when the rule changes; the
-  trigger costs nothing and its rewording is exactly the moment an entry is owed. The drawback is
-  that a rule's identity in the file name is a slug someone chose, and a reader mapping prose to
-  files goes through the header rather than a number in the prose.
+- **A slug marker naming the file** — over the numeric marker `references.md` uses, and over
+  binding a rule by its trigger phrase with nothing in the prose. A number is stable but opaque: a
+  reader cannot go from `(12)` to a file, and `RULES-12` says nothing about the guideline. Trigger
+  binding costs the prose nothing but gives a rule no id — a rewording changes its identity, every
+  sweep rebinds every header, and nothing a member writes survives the rewording of the rule it
+  overrides. The slug is the reference and the id in one string, at a few tokens per rule, and the
+  same string names the file, the override and the entry.
 - **A Markdown log with a line grammar** — over JSON or JSONL. A JSON array cannot be appended to;
   JSONL can, but a reviewer reads a decision log in a pull request and a maintainer reads it
   cold, and neither reads JSONL. The grammar is small enough to parse without a library.
@@ -356,7 +368,7 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
   decision log, which is the privacy failure §4 exists to prevent.
 - **A skill is one element** — over binding every skill bullet. A long skill is procedure, and
   procedure changes as a whole; thirty files for one skill is noise, and a bullet with its own
-  history is still legible as a titled entry in the skill's file.
+  history takes its own marker only when it has one.
 - **`declined.md` per pack** — over a tracker issue's comment feed. A comment feed is one
   scrollable history for every candidate in the corpus; a per-pack file is read by the pass that
   is about to re-nominate in that pack, which is the read that prevents the rework.
@@ -366,6 +378,8 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
 
 ## 11. What the log buys beyond the record
 
+- **Overrides and waivers can name a rule** and survive its rewording: the marker is the stable id
+  the layering design requires, and it exists for every rule from the marking pass on.
 - **Revalidation reads `Retire when` per element, with the history behind it**, rather than one
   sentence that was overwritten at the last correction.
 - **Conversion passes stop re-deriving**: `declined.md` and `converted` entries are the memory the
@@ -392,41 +406,46 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
 Filed at the merge that completes the mechanism, horizon one week after the marking pass lands
 on `main`; a second reading a week after the backfill task's precondition first reads false.
 
-- **Expected amounts.** One marking commit creating a header-only file per element (about 850 on
-  the shelf, 185 in the home's local pack; the count is `mark`'s own report and the file count
-  under `provenance/`). Backfill: one pull request per run, one pack each, so about 36 canon runs
-  and one local; forced daily the shelf completes inside two weeks, weekly inside a season. Growth
-  flows: a handful of `born` entries a week fleet-wide, read from the extract pull requests'
-  diffs; zero `reaffirmed` entries from a revalidation run that found everything still true.
-  `references.md` files on the shelf: 21 before the conversion, 0 after; in members' local packs
-  the same fall on each member's first backfill run.
-- **Expected behaviours.** Every promote pull request carries a reduced provenance file per
-  promoted lesson (read from the promote PR's diff). A hand edit of a carrier in an attended
-  session appends in the same commit (read from the `provenance-integrity` firing counts in the
-  usage fold: a firing that the session then fixed is the check working; a firing rate near zero
-  with carrier edits flowing means sessions append unprompted).
+- **Expected amounts.** One marking commit creating a header-only file per unnamed carrier and a
+  marker per unmarked rule (about 850 files on the shelf, 185 in the home's local pack; the count
+  is `mark`'s own report and the file count under `provenance/`). Backfill: one pull request per
+  run, one pack each, so about 36 canon runs and one local; forced daily the shelf completes inside
+  two weeks, weekly inside a season. Growth flows: a handful of `born` entries a week fleet-wide,
+  read from the extract pull requests' diffs; zero `reaffirmed` entries from a revalidation run
+  that found everything still true. `references.md` files on the shelf: 21 before the conversion,
+  0 after; in members' local packs the same fall on each member's first backfill run. The
+  session-start summary's prose token weight rises by the marker count and no more.
+- **Expected behaviours.** Every promote pull request carries a reduced provenance file and a
+  marker per promoted lesson (read from the promote PR's diff). A hand edit of a carrier in an
+  attended session appends in the same commit (read from the `provenance-integrity` firing counts
+  in the usage fold: a firing that the session then fixed is the check working; a firing rate near
+  zero with carrier edits flowing means sessions append unprompted).
 - **Misuse.** An entry that restates the rule; an edited entry (a removed line below the header,
   which the check reports); an `Actor` that is an email; a session link or a quote in a canon
-  file; a provenance path in a member's mount.
+  file; a provenance path in a member's mount; a rule whose marker names a file and whose file
+  says nothing about that rule.
 - **Overuse.** `reaffirmed` entries with no new evidence; sweep entries longer than a line; a
   `declined.md` that grows by more than a few entries a week in one pack; backfill runs that end
   with every field `unrecovered` for a pack whose history is plainly in git.
 - **Underuse.** Elements still header-only a season after marking; extract runs whose diff adds a
   rule and no entry (only possible outside a Stop hook — a direct API write — and the check on
-  the branch would say so); promote pull requests with no provenance file beside a promoted rule.
-- **Per decision, what would show the alternative was right.** Trigger binding: sweeps failing
-  the work-scope check more than once each, or bindings drifting (a resolution failure on `main`)
-  — the marker was cheaper after all. One file per element: conflict resolutions on
-  `provenance/` files more than once a month — the collision was not rare. Skill as one element:
-  entries on a skill file that name bullets more often than the skill, month after month.
-  Roles-only in the canon: a review that could not judge a decision without knowing who took it.
+  the branch would say so); promote pull requests with no provenance file beside a promoted rule;
+  overrides and waivers still naming rules by quoting their text after the marker exists.
+- **Per decision, what would show the alternative was right.** The slug marker: the prose token
+  weight rising by more than the marker count predicts, or markers dropped in reword sweeps more
+  than once each — the marker was noisier than rationed, and a number or nothing was cheaper. One
+  file per element: conflict resolutions on `provenance/` files more than once a month — the
+  collision was not rare. Skill as one element: entries on a skill file that name bullets more
+  often than the skill, month after month. Roles-only in the canon: a review that could not judge
+  a decision without knowing who took it.
 - **Cheap to re-examine:** the backfill cadence and its one-pack-per-run size, the conversion
-  window's date, the advisory grade on header-only files, the entry-field vocabulary. **Expensive:**
-  the file grammar, the binding rule, the never-vendored and never-loaded properties, the
-  reduction's boundary rule.
+  window's date, the advisory grade on header-only files, the entry-field vocabulary, the slug
+  length. **Expensive:** the file grammar, the id rule (a marker is the id and never changes), the
+  never-vendored and never-loaded properties, the reduction's boundary rule.
 - **Metrics the review needs, and the read.** File and entry counts: `git ls-files
-  'packs/*/provenance/*.md'` and a grep for `^## ` on the shelf. Firing counts for
-  `provenance-integrity`: the usage fold's per-check series. Promote coverage: the diffs of the
-  pull requests the `Claudinite tracker: Promote to Canon` issue's comments name. Backfill
-  progress: the task's run records and the header-only count `mark` reports. Conflict
-  resolutions: commits touching `provenance/` whose parents both touched the same file.
+  'packs/*/provenance/*.md'` and a grep for `^## ` on the shelf. Marker counts: a grep for the
+  marker pattern over `packs/*/RULES.md`. Firing counts for `provenance-integrity`: the usage
+  fold's per-check series. Promote coverage: the diffs of the pull requests the `Claudinite
+  tracker: Promote to Canon` issue's comments name. Backfill progress: the task's run records and
+  the header-only count `mark` reports. Conflict resolutions: commits touching `provenance/` whose
+  parents both touched the same file.

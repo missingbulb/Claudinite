@@ -1,6 +1,4 @@
 ---
-covers:
-  - rule: RULES.md — Storing a token
 status: live
 ---
 
@@ -14,6 +12,6 @@ status: live
 - **Retire when:** Chrome encrypts `chrome.storage.local` at rest.
 - **Evidence:** #222 (Refs #99).
 
-## 2026-08-12 · split · the restart clause becomes its own rule, `wanting-token-survive-browser-restart` (#775)
+## 2026-08-12 · split · the restart clause becomes its own rule, `token-across-restarts` (#775)
 - **Actor:** owner.
 - **Evidence:** #775.

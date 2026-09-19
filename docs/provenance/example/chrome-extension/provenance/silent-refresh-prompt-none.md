@@ -1,6 +1,4 @@
 ---
-covers:
-  - rule: RULES.md — Refreshing a token silently
 status: live
 ---
 

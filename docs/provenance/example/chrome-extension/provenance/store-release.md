@@ -1,6 +1,4 @@
 ---
-covers:
-  - task: store-release
 status: live
 ---
 

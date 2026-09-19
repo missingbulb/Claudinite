@@ -1,6 +1,4 @@
 ---
-covers:
-  - pack: chrome-extension
 status: live
 ---
 

@@ -1,6 +1,4 @@
 ---
-covers:
-  - rule: RULES.md — Matching a host with `chrome.events.UrlFilter`
 status: live
 ---
 

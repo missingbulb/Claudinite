@@ -1,6 +1,4 @@
 ---
-covers:
-  - skill: chrome-store-releases
 status: live
 ---
 

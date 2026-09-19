@@ -1,7 +1,4 @@
 ---
-covers:
-  - rule: RULES.md — Loading ES module code into a content script
-  - check: content-script-module-syntax
 status: live
 ---
 
