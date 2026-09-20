@@ -2,6 +2,7 @@
 name: create-release-plan
 description: The Firebase release standard — two separate dev/prod projects with the committed default pinned to dev, prod config injected only by the release pipeline, App Check attestation gating, and deliberate promotion. Use when planning a Firebase-backed app's first release, splitting a project into dev and prod, wiring prod config and App Check into a release pipeline, or editing firebase.json or .firebaserc.
 metadata:
+  body: workflow
   force-load-on-file-edits-paths:
     - ".firebaserc"
     - "firebase.json"
@@ -67,4 +68,4 @@ treating it as settled canon.
   `.firebase/` gitignored.
 - **Commit `.firebaserc` with named aliases and make the default the safe target** (§1 above is
   the full environment discipline). Deploy commands in docs always name
-  what they deploy (`--only functions,firestore`). (4)
+  what they deploy (`--only functions,firestore`).

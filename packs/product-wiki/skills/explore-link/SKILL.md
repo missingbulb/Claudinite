@@ -1,6 +1,8 @@
 ---
 name: explore-link
 description: Mine one given URL for product, market, usage and pricing insights and fold them into an existing product-wiki page — cited, dated, delivered as a PR. Use when the owner says "/explore-link <url>", or hands over a link and asks for it to be read into the wiki.
+metadata:
+  body: workflow
 ---
 
 # /explore-link — fold one link into a wiki

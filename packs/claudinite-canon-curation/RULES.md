@@ -4,100 +4,105 @@
 
 - **Wanting a rule about what the `packs/` tree may reference** — configure the baseline pack's
   `config.barriers`, extending the mechanism generically if a capability is missing. Never
-  standalone segregation-checking code. (12)
+  standalone segregation-checking code. (wanting-rule-packs)
 
 - **Wanting a growth action — an extraction, a conversion, a revalidation — over the shelf** —
   declare a task here loading `claudinite-growth`'s skill for the method; never widen a growth
-  task, which runs in every member, where `packs/` is a read-only mount. (RULES-14)
+  task, which runs in every member, where `packs/` is a read-only mount. (wanting-growth-action)
 
 - **Naming a new canon pack** — name it for the surface it serves rather than the first feature
-  you are building for it.
+  you are building for it. (naming-new-canon)
 
 - **Naming a pack whose subject is a Claudinite feature itself** — the `claudinite-` prefix
   (`claudinite-lifecycle`, `claudinite-dashboard`). `claudinite-growth` is grandfathered.
-  (convertible → prose-to-checks) (1)
+  (convertible → prose-to-checks) (naming-pack-subject)
 
 - **Looking for a skill and not finding it in `.claude/skills/`** — read
   `packs/<pack>/skills/<name>/SKILL.md` out of the tracked tree. Mounting filters on the literal
-  declaration, so an unmounted skill says nothing about whether its procedure applies. (2)
+  declaration, so an unmounted skill says nothing about whether its procedure applies.
+  (looking-skill-finding)
 
 - **A canon pack's prose naming another pack by literal path** — check the name resolves inside
-  every consumer's vendored tree.
+  every consumer's vendored tree. (canon-packs-prose)
 
 
 ## Pack config and shared logic
 
 - **Choosing a value right for nearly every project** — keep it in the pack's own code: ask
   nothing at adoption, write nothing into member config. Read config as optional; unset means the
-  default, never "misconfigured".
+  default, never "misconfigured". (choosing-value-right)
 
 - **Wanting a `.claudinite-settings.json` entry's config validated** — a real JSON Schema the file
   points at with `$schema`. Never a coded per-pack validation vocabulary or a `configSchema` type
-  system on the manifest. (4)
+  system on the manifest. (wanting-claudinite-settings)
 
 - **Wanting to share logic between two sibling packs** — never `engine/`, which breaks the
   package-manager model, and never a pack-to-pack dependency, which breaks independence. Prefer
-  self-describing data; else duplicate, possibly with a drift guard. (5)
+  self-describing data; else duplicate, possibly with a drift guard. (wanting-share-logic)
 
 ## Pack modules and the engine they load against
 
 - **Adding a module under `packs/`** — keep it import-light, and start work after evaluation
   completes (`check(…).catch(…)`), never in a top-level `await`. Discovery imports every
   `pack.mjs` before activation is consulted, so a CLI entry point re-imports mid-evaluation and
-  Node exits 13.
+  Node exits 13. (adding-module-packs)
 
 
 - **A pack that fails to load** — it fails the mount's self-test, the converge refuses to land at
-  all, and the member cannot receive the pack version that would have fixed it.
+  all, and the member cannot receive the pack version that would have fixed it. (pack-fails-load)
 
 ## Writing and keeping checks
 
 - **Adding or changing a check** — update the pack's catalog row, and re-run the suite against
   current `main` before merging: a whole-tree aggregate is judged post-merge, so a branch's own
-  green never covers it.
+  green never covers it. (adding-changing-check)
 
 - **Writing a check's `fix` text** — name only remedies matching the enforced severity; sessions
   follow the words, not the `severity` field. An advisory's remedies are act on it or leave it,
-  never a config-acceptance escape.
+  never a config-acceptance escape. (writing-checks-fix)
 
 
 - **Writing a check that reads the session transcript** — screen the harness's plain-text
   pseudo-turns, not only tag-wrapped ones. `humanText` in
   `engine/checks/helpers/session-transcript.mjs` drops an entry starting with `<`, so a marker
-  like `[Request interrupted by user for tool use]` reads as the owner's latest comment. (6)
+  like `[Request interrupted by user for tool use]` reads as the owner's latest comment.
+  (writing-check-reads)
 
 - **Fixturing a check that fires at the Stop hook** — carry an interruption marker beside a real
-  owner turn. A false positive there spends a whole cycle on something no edit can clear. (7)
+  owner turn. A false positive there spends a whole cycle on something no edit can clear.
+  (fixturing-check-fires)
 
 - **A doc reached only by following a link out of `RULES.md` or a check's `doc:` line** — if it is
   a how-to wanted at authoring time, convert it into a skill invocable by description.
+  (doc-reached-only)
 
 - **Moving or renaming a file a check's `doc:` field points at** — grep for and re-verify every
   `doc:` by hand. Nothing opens the field until the check fires, so a stale pointer sits broken
-  indefinitely.
+  indefinitely. (moving-renaming-file)
 
 - **A check built to catch a thing being missing or misnamed** — don't gate its relevance on the
   single signal it exists to validate, or the failure it catches also silences it. Use two
-  independent signals, either sufficient. (8)
+  independent signals, either sufficient. (check-built-catch)
 
 - **Finding a check that watches only one of two structurally-identical surfaces** — widen it to
-  the sibling in the same change rather than filing it separately. (9)
+  the sibling in the same change rather than filing it separately. (finding-check-watches)
 
 - **Writing a check that a command is still wired into a script or CI step** — match the
   invocation line, never a step's display label. A plain token grep passes on the label alone
   (`step "Normalizer self-test — some-cmd --flag"`) after the real command line is deleted, so
-  strip a labeling helper's quoted argument before searching for a surviving invocation. (13)
+  strip a labeling helper's quoted argument before searching for a surviving invocation.
+  (writing-check-command)
 
 - **Writing a check that selects inputs by path pattern** — assert over the real tree that its
   scope is non-empty. A pattern left behind by a layout change matches nothing, reads as live, and
-  fixtures spelling the same dead layout keep proving the matching.
+  fixtures spelling the same dead layout keep proving the matching. (writing-check-selects)
 
 - **Naming a directory in a finding, a remedy or a doc pointer** — grep the tree for it before
-  shipping.
+  shipping. (naming-directory-finding)
 
 - **Deciding whether an enforced check still earns its keep** — measure its blocking-firing rate
   against what it buys. A check whose firings are dominated by cases where the agent already did
-  the right thing is a demotion candidate (check → prose-only). (10)
+  the right thing is a demotion candidate (check → prose-only). (deciding-whether-enforced)
 
 ## Writing pack prose and skills
 
@@ -105,17 +110,18 @@
   mechanism works, or what the pack's own tasks do — not there, where every session in every
   declaring repo pays for it whether or not it is that session's work. Description belongs in the
   module header and the pack `README.md`; rationale and history on the element's provenance
-  file; a worker's policy belongs in the `task.md` it loads.
+  file; a worker's policy belongs in the `task.md` it loads. (writing-anything-packs)
 
 - **Writing a pack's `README.md`** - how a repo uses the pack and its elements: when it
   activates, what each check demands, when a skill is reached for, what the task does. Never how
   an element came to be, what it replaced or how it is maintained: a date, a pull request
   number, an "until" or a "kept as it was" is an entry on the element's provenance file, and the
-  maintainer's method is the growth skills'.
+  maintainer's method is the growth skills'. (writing-packs-readme)
 
 - **Changing a carrier on the shelf** - a rule, a skill's trigger, a check's gate or severity, a
   task's policy - lands with the entry on its provenance file in the same change; the forced
-  `changing-pack-elements` skill names the kind.
+  `changing-pack-elements` skill names the kind. (changing-carrier-shelf)
 
 - **A documented multi-step procedure the agent re-derives every run** — mechanize it into a
   script the agent runs once. That pattern, not the doc's polish, is the signal.
+  (documented-multi-step)

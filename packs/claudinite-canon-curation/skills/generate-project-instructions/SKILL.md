@@ -1,6 +1,8 @@
 ---
 name: generate-project-instructions
 description: Decompose a project into its pack facets (working-style class, technology, aspect, domain) and author the canon packs those facets earn. Use from a canon when a project's evidence shows a facet its shelf does not yet home — the curation stages' pack-writing method, and an owner's when asking what a project has taught the shelf.
+metadata:
+  body: workflow
 ---
 
 # Generate project instructions — extract packs, not a project doc
@@ -141,7 +143,7 @@ stray (a single rule joins the nearest existing pack, or waits as a handoff note
   slugs, `append` writes the entries (the growth pack's changing-pack-elements skill has the
   grammar).
 - **Index entries** — a row in [packs/README.md](../../../../packs/README.md) and, for a new pack kind, the
-  matching line in the corpus map ([README.md](../../../../README.md) — there is no agent-facing corpus index). (1)
+  matching line in the corpus map ([README.md](../../../../README.md) — there is no agent-facing corpus index).
 
 The acid test before proposing any pack: **a reader must not be able to tell which project it was
 extracted from.** Any surviving repo path, command line, or product noun marks a rule that belonged in
