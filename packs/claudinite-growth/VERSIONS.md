@@ -7,6 +7,28 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60920.1 | 2026-09-20 | Take logs-prune off the schedule: it deletes captures only when asked (#2135) |
+| 60915.5 | 2026-09-15 | Give the tasks pack one public surface, and make it enforceable in members (#2068) |
+| 60915.4 | 2026-09-15 | Claudinite canon: rule revalidation (#2058) |
+| 60915.3 | 2026-09-15 | Scope claudinite-growth to local packs, give the shelf its own tasks (#2047) |
+| 60915.2 | 2026-09-15 | Five canon tasks change what they do to their pull requests (#2045) |
+| 60915.1 | 2026-09-15 | Track a change worked on now by its PR, not an issue (#2016) |
+| 60914.1 | 2026-09-14 | claudinite-tasks: roles as folders — src/<role>/, typed world ports, queue/ frozen as ABI (#1890) |
+| 60913.5 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.4 | 2026-09-13 | Drop pr_name; keep the rule, and simplify the growth policies (#1951) |
+| 60913.3 | 2026-09-13 | Fleet shepherd: every visible repo on the dashboard, each row with one thing to do; ignored and dormant out of the sweeps (#1976) |
+| 60913.2 | 2026-09-13 | Claudinite tidy: improve comments (#1970) |
+| 60913.1 | 2026-09-13 | growth-dedup auto-merges the whole local-pack tree (#1949) |
+| 60910.1 | 2026-09-10 | claudinite-growth: add the learning-a-technology skill (#1918) |
+| 60907.3 | 2026-09-07 | claudinite-tasks: PRINCIPLES.md as the spec, the two-way claim guard, seven design docs deleted (#1887) |
+| 60907.2 | 2026-09-07 | Move dormancy out of engine settings onto the scheduler's own pack (#1851) |
+| 60907.1 | 2026-09-07 | rule-revalidation lands its own local-pack corrections, canon stays reviewed (#1844) |
+| 60906.9 | 2026-09-06 | Retire the tidy-repo pack; absorb improve-comments into basics (#1842) |
+| 60906.8 | 2026-09-06 | Retire the task.mjs module form of a task declaration (#1795) |
+| 60906.7 | 2026-09-06 | Promote the validated survivors of four growth-promote PRs (#1828) |
+| 60906.6 | 2026-09-06 | Scheduling is the task's own precondition; the scheduler keeps no state (#1733) |
+| 60906.5 | 2026-09-06 | Janitor rule I: close a failure park nobody has answered in ten days (#1786) |
+| 60906.4 | 2026-09-06 | Promote the reviewed survivors of nine growth-promote PRs (#1671) |
 | 60906.3 | 2026-09-06 | Read the whole session's transcripts when a skill load gates an edit (#1757) |
 | 60906.2 | 2026-09-06 | Group the tidy sweeps' fan-out, and keep the run bound covering it (#1740) |
 | 60906.1 | 2026-09-06 | Declared checks at every moment: schema rung, work and action scopes, skill triggers, and the creation path (#1711) |

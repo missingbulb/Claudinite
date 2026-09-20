@@ -7,6 +7,10 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60915.1 | 2026-09-15 | Canon prose to checks: a stale voice cache and an unstapled notarization (#2059) |
+| 60913.2 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.1 | 2026-09-13 | Wrap RULES.md prose at 100 columns and separate every pack's rules (#1998) |
+| 60906.1 | 2026-09-06 | Merge pull request #1781 from missingbulb/claudinite/claudinite-growth/prose-to-checks-sweep/2026-09-06-oq95hy |
 | 60904.1 | 2026-09-04 | Six pack-level checks on the API contracts, promoted with their prose from CrosswordChat's `local/browser-speech`: mic release and constraints, the error-map default, interim-result gating, recognizer terminal handlers and TTS settle. Two rules join them — interim results as a signal rather than input, and the application-level guard for your own spoken output — plus the preflight-when-already-granted clause and voice order and rate as settings. |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |

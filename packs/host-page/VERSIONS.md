@@ -7,4 +7,5 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60913.1 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
 | 60904.1 | 2026-09-04 | The pack, promoted from CrosswordChat's `local/host-page-adaptation`: eleven rules for operating a web app you do not own, and three checks on the silent failures — an observer that outlives its feature, a synthetic event that does not bubble, and one aimed outside the app root. |

@@ -7,6 +7,28 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60920.1 | 2026-09-20 | Restructure the tasks pack's public surface behind shims and collapse its aliases (#2116) |
+| 60918.1 | 2026-09-18 | Interview only the packs an install adds, and get main's suite green again (#2114) |
+| 60915.4 | 2026-09-15 | Dashboard: sign-in as the only way in, a GitHub-shaped account menu, and a signal for stale seeded files (#2075) |
+| 60915.3 | 2026-09-15 | Give the tasks pack one public surface, and make it enforceable in members (#2068) |
+| 60915.2 | 2026-09-15 | Claudinite canon: rule revalidation (#2058) |
+| 60915.1 | 2026-09-15 | Five canon tasks change what they do to their pull requests (#2045) |
+| 60914.1 | 2026-09-14 | claudinite-tasks: roles as folders — src/<role>/, typed world ports, queue/ frozen as ABI (#1890) |
+| 60913.4 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.3 | 2026-09-13 | Grant contents: read to every job-level permissions block in the queue workflows (#2004) |
+| 60913.2 | 2026-09-13 | Wrap RULES.md prose at 100 columns and separate every pack's rules (#1998) |
+| 60913.1 | 2026-09-13 | Claudinite tidy: improve comments (#1970) |
+| 60911.1 | 2026-09-11 | update: run the repo's own tests in the apply stage, reuse the open PR, and predict its shape (#1933) |
+| 60907.2 | 2026-09-07 | claudinite-tasks: PRINCIPLES.md as the spec, the two-way claim guard, seven design docs deleted (#1887) |
+| 60907.1 | 2026-09-07 | Gate a removed engine or pack export — the surface neither rehearsal can see (#1850) |
+| 60906.11 | 2026-09-06 | Retire the tidy-repo pack; absorb improve-comments into basics (#1842) |
+| 60906.10 | 2026-09-06 | prose-to-checks-sweep: guard the mount against edits, at the tool call and at Stop (#1285) |
+| 60906.9 | 2026-09-06 | Retire the task.mjs module form of a task declaration (#1795) |
+| 60906.8 | 2026-09-06 | Promote the validated survivors of four growth-promote PRs (#1828) |
+| 60906.7 | 2026-09-06 | Rule revalidation: re-probe five harness claims at their live addresses (#1782) |
+| 60906.6 | 2026-09-06 | Delete the top-level updates/ shim tree — the claudinite-tasks migration's last link (#1819) |
+| 60906.5 | 2026-09-06 | Scheduling is the task's own precondition; the scheduler keeps no state (#1733) |
+| 60906.4 | 2026-09-06 | Promote the reviewed survivors of nine growth-promote PRs (#1671) |
 | 60906.3 | 2026-09-06 | Read the whole session's transcripts when a skill load gates an edit (#1757) |
 | 60906.2 | 2026-09-06 | Keep Claudinite's own bookkeeping inside .claudinite/: mount attributes, no README row (#1754) |
 | 60906.1 | 2026-09-06 | Declared checks at every moment: schema rung, work and action scopes, skill triggers, and the creation path (#1711) |

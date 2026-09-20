@@ -7,6 +7,10 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60915.1 | 2026-09-15 | Canon prose to checks: a stale voice cache and an unstapled notarization (#2059) |
+| 60913.2 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.1 | 2026-09-13 | Wrap RULES.md prose at 100 columns and separate every pack's rules (#1998) |
+| 60906.1 | 2026-09-06 | Merge pull request #1781 from missingbulb/claudinite/claudinite-growth/prose-to-checks-sweep/2026-09-06-oq95hy |
 | 60904.1 | 2026-09-04 | The `swift-toolchain-gate` check, promoted from LaughCounter's `local/macos-audio`: a `command -v swift` probe must sit behind an `xcode-select -p` gate, since `/usr/bin/swift` is a stub present on every Mac. |
 | 60903.1 | 2026-09-03 | The `Info.plist`/`Package.swift` keys and the TCC/entitlement rules move out of `RULES.md` into the `macos-app-bundle` and `macos-entitlements-and-tcc` skills, forced by `force-load-on-file-edits-paths` for the files they govern; the notarized-build line moves to the README (#1662). |
 | 60902.1 | 2026-09-02 | The TCC usage-description rule becomes a bullet keyed to reaching for a protected resource; section preambles and the descriptive framing go, the latter to the pack README. |

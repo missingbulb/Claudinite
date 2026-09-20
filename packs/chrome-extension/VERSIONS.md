@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60913.1 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60907.1 | 2026-09-07 | claudinite-tasks: PRINCIPLES.md as the spec, the two-way claim guard, seven design docs deleted (#1887) |
+| 60906.1 | 2026-09-06 | Scheduling is the task's own precondition; the scheduler keeps no state (#1733) |
 | 60905.2 | 2026-09-05 | Pack versions are cut on main by automation, never in the pull request (#1726) |
 | 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr`. |
 | 60903.6 | 2026-09-03 | The two runtime host-permission rules become the `extension-host-permissions` skill, forced for any `manifest.json` edit (#1662). |

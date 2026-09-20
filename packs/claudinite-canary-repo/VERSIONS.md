@@ -7,6 +7,8 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60918.1 | 2026-09-18 | Split the website packs by ownership: public-website, github-pages, cloudflare-site (#2101) |
+| 60906.1 | 2026-09-06 | Delete the top-level updates/ shim tree — the claudinite-tasks migration's last link (#1819) |
 | 60831.1 | 2026-08-31 | The manifest and README say the withhold lane this pack probes is LIVE again, where they said it was retired and the probe exercised a route that no longer existed. Reopened in #1509; this pack is once more the thing that makes the record's `materialize` runnable against a real member (#1539). |
 | 60824.2 | 2026-08-24 | A README link followed the task surface out of `engine/scheduler/` (#1328). |
 | 60824.1 | 2026-08-24 | The withhold lane this pack probes is retired, so the probe exercises a delivery route that no longer exists; the manifest says so where an adopter reads it (#1317). |

@@ -7,6 +7,21 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60920.1 | 2026-09-20 | Restructure the tasks pack's public surface behind shims and collapse its aliases (#2116) |
+| 60917.1 | 2026-09-17 | Derive the tasks pack's published surface instead of hand-listing it (#2099) |
+| 60915.5 | 2026-09-15 | Give the tasks pack one public surface, and make it enforceable in members (#2068) |
+| 60915.4 | 2026-09-15 | Claudinite canon: rule revalidation (#2058) |
+| 60915.3 | 2026-09-15 | Scope claudinite-growth to local packs, give the shelf its own tasks (#2047) |
+| 60915.2 | 2026-09-15 | Five canon tasks change what they do to their pull requests (#2045) |
+| 60915.1 | 2026-09-15 | Track a change worked on now by its PR, not an issue (#2016) |
+| 60914.1 | 2026-09-14 | claudinite-tasks: roles as folders — src/<role>/, typed world ports, queue/ frozen as ABI (#1890) |
+| 60913.1 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60906.6 | 2026-09-06 | Retire the tidy-repo pack; absorb improve-comments into basics (#1842) |
+| 60906.5 | 2026-09-06 | Enforce newest-first ordering in every pack's VERSIONS.md (#1543) |
+| 60906.4 | 2026-09-06 | Promote the validated survivors of four growth-promote PRs (#1828) |
+| 60906.3 | 2026-09-06 | Give the three canon-curation PR tasks an automerge policy (#1822) |
+| 60906.2 | 2026-09-06 | Scheduling is the task's own precondition; the scheduler keeps no state (#1733) |
+| 60906.1 | 2026-09-06 | Rules to checks with the four-moment mechanisms: 27 bullets retired across basics, the home pack and canon-curation (#1779) |
 | 60905.2 | 2026-09-05 | Pack versions are cut on main by automation, never in the pull request (#1726) |
 | 60905.1 | 2026-09-05 | Task declarations name what the run does to pull requests in the four-value `expected_outcome` vocabulary (#1695): `pr` became `fresh_pr` and `none` became `no_code_changes`, the same behaviour under the word that now sits beside `amend_existing_or_create_new_pr` and `supersede_existing_pr` — except that `growth-discover-packs` and `growth-promote` declare `amend_existing_or_create_new_pr` (owner, 2026-09-04): their `task.md` files deliver on the branch and pull request the item names, a run authors one pack rather than one per gap, and a promote run names a technology with no home on its tracker instead of minting the stub in a second pull request. |
 | 60904.2 | 2026-09-04 | The pack drops its `barriers` requirement, vestigial since its segregation wall became a declared `forbidReferences` check the engine runs, and the segregation rule points at where a shelf's graph now lives — the baseline pack's `config.barriers`, the mechanism having been absorbed into `basics` (#1681). The Claudinite canon's own reason for that graph, retired from the barriers pack's adoption answer, becomes `(RULES-12)`. |

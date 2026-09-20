@@ -7,6 +7,7 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60913.2 | 2026-09-18 | Split the website packs by ownership: public-website, github-pages, cloudflare-site (#2101) |
 | 60905.1 | 2026-09-05 | Pack versions are cut on main by automation, never in the pull request (#1726) |
 | 60903.3 | 2026-09-03 | The managed-stub-copies rule moves out of `RULES.md` into `static-site-releases`, forced for the `static-site-*` workflows (#1662). |
 | 60903.2 | 2026-09-03 | `static-site-releases` forces itself for `.github/site.config` and the vendored `static-site-*` workflows (`force-load-on-file-edits-paths`) (#1648): the guard holds an edit there until the skill is loaded. |

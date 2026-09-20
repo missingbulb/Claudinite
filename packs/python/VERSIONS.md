@@ -7,6 +7,8 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60913.2 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.1 | 2026-09-13 | Wrap RULES.md prose at 100 columns and separate every pack's rules (#1998) |
 | 60904.2 | 2026-09-04 | The extra-declaration rule moves out of `RULES.md` into the `python-optional-deps` skill, now forced for `pyproject.toml`, `setup.cfg` and `setup.py` (root or one directory down) (#1662). |
 | 60904.1 | 2026-09-04 | The optional-deps checks' `doc:` pointers name their skill at `packs/python/skills/…`, the path the tree carries (#1675). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |

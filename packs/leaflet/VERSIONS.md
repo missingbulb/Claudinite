@@ -7,6 +7,8 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60913.2 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.1 | 2026-09-13 | Wrap RULES.md prose at 100 columns and separate every pack's rules (#1998) |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60901.1 | 2026-09-01 | Recovers the rationale #467 cut from two rules into a new `references.md` — the mid-page scroll trap and the OSM attribution licence term. The `Grounded in <project file>` notes stay cut (#1571). |
 | 60822.1 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |

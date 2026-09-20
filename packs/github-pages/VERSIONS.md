@@ -7,3 +7,4 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60917.1 | 2026-09-18 | Split the website packs by ownership: public-website, github-pages, cloudflare-site (#2101) |

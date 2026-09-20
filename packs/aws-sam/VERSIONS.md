@@ -7,6 +7,8 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60913.2 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.1 | 2026-09-13 | Wrap RULES.md prose at 100 columns and separate every pack's rules (#1998) |
 | 60903.1 | 2026-09-03 | The template-shape rules move into the new `sam-template` skill (forced for `**/template.yaml`, `**/template.yml`) and the build-dependency rules into the new `sam-build-and-deps` skill (forced for `package.json` and the template); `RULES.md` keeps the rules no file edit predicts (#1662). |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60901.2 | 2026-09-01 | Recovers the rationale #467 cut from two rules into `references.md`: esbuild's artifact impact, and why cache key and origin forwarding are set separately (#1571). |

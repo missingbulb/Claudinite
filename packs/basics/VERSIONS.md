@@ -7,6 +7,30 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60917.1 | 2026-09-17 | Make a session's first reply carry its work, not just its announcements (#2111) |
+| 60915.8 | 2026-09-15 | Give the tasks pack one public surface, and make it enforceable in members (#2068) |
+| 60915.7 | 2026-09-15 | Two guidelines about what to test, measured by branch instrumentation and mutation (#2072) |
+| 60915.6 | 2026-09-15 | Halve the test suite: unblock the long pole, cut the per-fixture git spawns (#2062) |
+| 60915.5 | 2026-09-15 | Add two test guidelines from the external compendia, and fix the five tests they find (#2066) |
+| 60915.4 | 2026-09-15 | Prune ceremony assertions from the test corpus, and strengthen the guidelines that catch them (#2061) |
+| 60915.3 | 2026-09-15 | Claudinite canon: rule revalidation (#2058) |
+| 60915.2 | 2026-09-15 | Five canon tasks change what they do to their pull requests (#2045) |
+| 60915.1 | 2026-09-15 | Track a change worked on now by its PR, not an issue (#2016) |
+| 60913.3 | 2026-09-13 | Member-facing Actions cache advice: node setup step, CI profiling split, scoping gotchas (#2022) |
+| 60913.2 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.1 | 2026-09-13 | Claudinite tidy: improve comments (#1970) |
+| 60908.1 | 2026-09-08 | Delete the chrome-extension release plumbing from the core .github/ (#1889) |
+| 60907.1 | 2026-09-07 | claudinite-tasks: PRINCIPLES.md as the spec, the two-way claim guard, seven design docs deleted (#1887) |
+| 60906.13 | 2026-09-06 | Retire the tidy-repo pack; absorb improve-comments into basics (#1842) |
+| 60906.12 | 2026-09-06 | Sweep per-pack task tests to stop re-proving the task mechanism (#1820) |
+| 60906.11 | 2026-09-06 | State the test a plan's link split must pass (#1834) |
+| 60906.10 | 2026-09-06 | Gate a migration plan's issue-filing on the owner's approval of the plan (#1830) |
+| 60906.9 | 2026-09-06 | Promote the validated survivors of four growth-promote PRs (#1828) |
+| 60906.8 | 2026-09-06 | Rule revalidation: re-probe five harness claims at their live addresses (#1782) |
+| 60906.7 | 2026-09-06 | Move task design docs into packs/claudinite-tasks/docs/, carved out of the vendor set (#1813) |
+| 60906.6 | 2026-09-06 | Scheduling is the task's own precondition; the scheduler keeps no state (#1733) |
+| 60906.5 | 2026-09-06 | Rules to checks with the four-moment mechanisms: 27 bullets retired across basics, the home pack and canon-curation (#1779) |
+| 60906.4 | 2026-09-06 | Promote the reviewed survivors of nine growth-promote PRs (#1671); Make a blocking action check date itself (#1787) |
 | 60906.3 | 2026-09-06 | Keep Claudinite's own bookkeeping inside .claudinite/: mount attributes, no README row (#1754) |
 | 60906.2 | 2026-09-06 | Declared checks at every moment: schema rung, work and action scopes, skill triggers, and the creation path (#1711) |
 | 60906.1 | 2026-09-06 | Remove tests that only assert a declared value is set; widen the writing-tests rule (#1734) |
