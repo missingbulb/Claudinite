@@ -144,6 +144,15 @@ test('ruleBlocks finds top-level bold bullets with their blocks, markers and ret
   assert.equal(ruleBlocks('- **Done** — cite (#1119).')[0].slug, null);
   const fenced = ruleBlocks('- **Appending** — write it so:\n\n```\n## 2026-01-01 · born · x\n- **Reason:** an example, not a rule\n```\n\n- **Next** — a real rule. (next-rule)\n');
   assert.deepEqual(fenced.map((b) => [b.trigger, b.slug]), [['Appending', null], ['Next', 'next-rule']], 'a bold bullet inside a fenced code block is an example, not a rule');
+  assert.equal(ruleBlocks('- **Wanting a growth action** — declare a task here. (RULES-14)')[0].numeric, '14', 'the RULES-n spelling of a numeric marker');
+  assert.equal(ruleBlocks('- **Suffixed** — cited so. (2a)')[0].numeric, '2a');
+  const plain = ruleBlocks('- See a test fail before you trust it: write it red first. (1)\n- **Never test that a value is set.** A test that reads a value someone declared. (2)\n  - a sub-bullet\n- Before trusting a new transform, run it over the real corpus.\n', { plainBullets: true });
+  assert.deepEqual(plain.map((b) => [b.trigger, b.numeric]), [
+    ['See a test fail before you trust it', '1'],
+    ['Never test that a value is set.', '2'],
+    ['Before trusting a new transform, run it over', null],
+  ], 'with plainBullets a top-level bullet without a bold lead-in is a rule, triggered by its opening words');
+  assert.equal(ruleBlocks('- See a test fail before you trust it. (1)\n').length, 0, 'without plainBullets a plain bullet is not a rule');
 });
 
 test('skillShape reads the declared body and proposes one from the shape', () => {
@@ -289,9 +298,9 @@ test('markPack puts a marker that would pass the width on a continuation line of
   } finally { removeTree(root); }
 });
 
-test('parseReferencesDoc reads RULES-n, <skill>-n and check: keys with their continuation lines', () => {
-  const refs = parseReferencesDoc('# refs\n\n- **(RULES-3)** First reason,\n  continued. Retire when X.\n- **(writing-tests-2)** A skill reason.\n- **(check:cer/coded-check)** Why the check.\n- **(weird)** Unknown.\n');
-  assert.deepEqual(refs.map((r) => [r.kind, r.kind === 'rule' ? r.n : r.target ?? null]), [['rule', '3'], ['skill', 'writing-tests'], ['check', 'cer/coded-check'], ['unknown', null]]);
+test('parseReferencesDoc reads RULES-n, <skill>-n, check: and task: keys with their continuation lines', () => {
+  const refs = parseReferencesDoc('# refs\n\n- **(RULES-3)** First reason,\n  continued. Retire when X.\n- **(writing-tests-2)** A skill reason.\n- **(check:cer/coded-check)** Why the check.\n- **(weird)** Unknown.\n- **(task:nightly)** Why the task.\n- **(RULES-2a)** A suffixed key.\n');
+  assert.deepEqual(refs.map((r) => [r.kind, r.kind === 'rule' ? r.n : r.target ?? null]), [['rule', '3'], ['skill', 'writing-tests'], ['check', 'cer/coded-check'], ['unknown', null], ['task', 'nightly'], ['rule', '2a']]);
   assert.equal(refs[0].text, 'First reason, continued. Retire when X.');
   assert.equal(refs[1].target, 'writing-tests');
   assert.equal(refs[1].n, '2');
@@ -363,6 +372,27 @@ test('a second entry on one element from a second key is strengthened, never a s
     assert.deepEqual(errors, []);
     assert.deepEqual(entries.map((e) => e.kind), ['born', 'strengthened']);
     assert.match(readFileSync(join(root, 'packs/p/RULES.md'), 'utf8'), /twice cited\. \(doing-x\)\n$/);
+  } finally { removeTree(root); }
+});
+
+test('the RULES-n marker spelling, a suffixed key, a task key and a guidelines skill\'s plain bullets all convert', () => {
+  const root = repo({
+    'packs/p/pack.mjs': 'export default {};\n',
+    'packs/p/RULES.md': '- **Wanting a growth action** — declare it here. (RULES-14)\n\n- **Suffixed** — cited so. (2a)\n',
+    'packs/p/tasks/nightly/task.json': '{}\n',
+    'packs/p/skills/g/SKILL.md': '---\nname: g\nmetadata:\n  body: guidelines\n---\n\n- See a test fail before you trust it: red first. (1)\n',
+    'packs/p/references.md': '- **(RULES-14)** Growth runs in every member.\n- **(RULES-2a)** The suffixed reason.\n- **(task:nightly)** Why the task runs nightly.\n- **(g-1)** A test that never failed proves nothing.\n',
+  });
+  try {
+    const report = convertReferences('packs/p', checkoutIo(root), { today: '2026-09-21' });
+    assert.ok(!report.some((l) => /dropped/.test(l)), report.join('\n'));
+    const rules = readFileSync(join(root, 'packs/p/RULES.md'), 'utf8');
+    assert.match(rules, /declare it here\. \(wanting-growth-action\)\n/);
+    assert.match(rules, /cited so\. \(suffixed-rule\)\n/);
+    assert.match(readFileSync(join(root, 'packs/p/provenance/nightly.md'), 'utf8'), /Mechanism:\*\* a task/);
+    const g = readFileSync(join(root, 'packs/p/skills/g/SKILL.md'), 'utf8');
+    assert.match(g, /red first\. \(see-test-fail\)\n/, 'a guidelines skill\'s plain bullet is marked like any rule');
+    assert.match(readFileSync(join(root, 'packs/p/provenance/see-test-fail.md'), 'utf8'), /A test that never failed proves nothing/);
   } finally { removeTree(root); }
 });
 

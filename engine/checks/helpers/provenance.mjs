@@ -38,9 +38,9 @@ export const DECLINED_KIND = 'declined';
 // numeric marker (`(3)`, `(3, 7)`) never read as one.
 export const SLUG_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+$/;
 const MARKER_AT_END = /\s*\(([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\)\s*$/;
-// The numeric marker the references convention used, read only so the conversion
-// can replace it.
-const NUMERIC_MARKER_AT_END = /\s*\((\d+(?:\s*,\s*\d+)*)\)\s*$/;
+// The numeric marker the references convention used — `(3)`, `(3, 7)`, `(2a)`, and the
+// `(RULES-14)` spelling some rules took — read only so the conversion can replace it.
+const NUMERIC_MARKER_AT_END = /\s*\((?:RULES-)?(\d+[a-z]?(?:\s*,\s*\d+[a-z]?)*)\)\s*$/;
 
 const RULE_BULLET = /^- \*\*/;
 const TOP_BULLET = /^- /;
@@ -192,12 +192,14 @@ export function parseEntryText(text) {
 
 // The top-level rule bullets of a prose file: `- **lead-in** …` and every line that
 // belongs to it (continuation, sub-bullets, blank lines inside the block), closed by
-// the next top-level bullet or a heading. The marker ends the rule's lead paragraph —
-// its last line before a nested list or a blank line — or, where a rule was marked
-// after its nested list, the block's last non-blank line; `lastLine` is where it is,
-// or where a writer puts one. `numeric` is the retired numeric marker, read only so
-// the conversion can replace it. Indices are 0-based.
-export function ruleBlocks(text) {
+// the next top-level bullet or a heading. With `plainBullets`, a top-level bullet with
+// no bold lead-in is a rule too — a guidelines skill's bullets are its rules whatever
+// their typography — and its trigger is the opening words. The marker ends the rule's
+// lead paragraph — its last line before a nested list or a blank line — or, where a
+// rule was marked after its nested list, the block's last non-blank line; `lastLine`
+// is where it is, or where a writer puts one. `numeric` is the retired numeric marker,
+// read only so the conversion can replace it. Indices are 0-based.
+export function ruleBlocks(text, { plainBullets = false } = {}) {
   const lines = String(text ?? '').split('\n');
   const blocks = [];
   let cur = null;
@@ -218,10 +220,10 @@ export function ruleBlocks(text) {
       if (tail.slug || tail.numeric) { at = tail; lastLine = end; }
     }
     const body = lines.slice(cur.start, end + 1).map((l, i) => (cur.start + i === lastLine ? stripMarkers(l) : l)).join('\n');
-    const lead = /\*\*([\s\S]+?)\*\*/.exec(body);
+    const lead = RULE_BULLET.test(lines[cur.start]) ? /\*\*([\s\S]+?)\*\*/.exec(body) : null;
     blocks.push({
       start: cur.start, lastLine, slug: at.slug, numeric: at.numeric,
-      trigger: normalizeLeadIn(lead ? lead[1] : lines[cur.start].replace(/^- /, '')),
+      trigger: lead ? normalizeLeadIn(lead[1]) : openingWords(stripMarkers(lines[cur.start]).replace(/^- /, '')),
       text: normalizeRuleText(body),
     });
     cur = null;
@@ -232,7 +234,7 @@ export function ruleBlocks(text) {
   lines.forEach((line, i) => {
     if (/^\s*```/.test(line)) { fenced = !fenced; if (cur) cur.end = i; return; }
     if (fenced) { if (cur) cur.end = i; return; }
-    if (RULE_BULLET.test(line)) { close(); cur = { start: i, end: i }; return; }
+    if (RULE_BULLET.test(line) || (plainBullets && TOP_BULLET.test(line))) { close(); cur = { start: i, end: i }; return; }
     if (TOP_BULLET.test(line) || HEADING.test(line)) { close(); return; }
     if (cur) cur.end = i;
   });
@@ -241,6 +243,13 @@ export function ruleBlocks(text) {
 }
 
 export const normalizeLeadIn = (s) => s.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim().replace(/[—–-]$/, '').trim();
+
+// A plain bullet's trigger: its first clause, or its first eight words.
+const openingWords = (s) => {
+  const clean = normalizeLeadIn(s);
+  const clause = clean.split(/\s[—–:]\s|[.:;]\s|[.!?]$/)[0];
+  return clause.split(' ').slice(0, 8).join(' ');
+};
 
 const stripMarkers = (line) => line.replace(MARKER_AT_END, '').replace(NUMERIC_MARKER_AT_END, '');
 
@@ -261,11 +270,11 @@ export function skillShape(text) {
   const end = src.startsWith('---') ? src.indexOf('\n---', 3) : -1;
   const bodyStart = end === -1 ? 0 : src.indexOf('\n', end + 1) + 1;
   const bodyText = src.slice(bodyStart);
-  const bullets = ruleBlocks(bodyText);
+  const bullets = ruleBlocks(bodyText, { plainBullets: true });
   const steps = bodyText.split('\n').filter((l) => NUMBERED_STEP.test(l)).length;
   return {
     body: bodyOf(fm),
-    proposed: bullets.length && !steps ? 'guidelines' : 'workflow',
+    proposed: bullets.some((b) => RULE_BULLET.test(bodyText.split('\n')[b.start])) && !steps ? 'guidelines' : 'workflow',
     bullets,
     bodyOffset: src.slice(0, bodyStart).split('\n').length - 1,
   };
@@ -531,9 +540,11 @@ export function parseReferencesDoc(text) {
     if (m) {
       cur = { key: m[1].trim(), text: m[2].trim(), line: i + 1 };
       const check = /^check:(.+)$/.exec(cur.key);
-      const rule = /^RULES-(\d+)$/.exec(cur.key);
-      const skill = /^(.+)-(\d+)$/.exec(cur.key);
+      const task = /^task:(.+)$/.exec(cur.key);
+      const rule = /^RULES-(\d+[a-z]?)$/.exec(cur.key);
+      const skill = /^(.+)-(\d+[a-z]?)$/.exec(cur.key);
       if (check) Object.assign(cur, { kind: 'check', target: check[1] });
+      else if (task) Object.assign(cur, { kind: 'task', target: task[1] });
       else if (rule) Object.assign(cur, { kind: 'rule', n: rule[1] });
       else if (skill) Object.assign(cur, { kind: 'skill', target: skill[1], n: skill[2] });
       else cur.kind = 'unknown';
@@ -626,7 +637,12 @@ export function convertReferences(packDir, io, { dateOf = () => null, today = ne
       write(elementIdOf(ref.target), entryFor(ref, 'a check'));
       continue;
     }
-    report.push(`${doc}:${ref.line}: ${ref.key} is not a RULES-n, <skill>-n or check:<id> key — dropped`);
+    if (ref.kind === 'task') {
+      if (!carriers.tasks.some((t) => t.id === ref.target)) { report.push(`${doc}:${ref.line}: ${ref.key} names no task the pack carries — dropped`); continue; }
+      write(ref.target, entryFor(ref, 'a task'));
+      continue;
+    }
+    report.push(`${doc}:${ref.line}: ${ref.key} is not a RULES-n, <skill>-n, check:<id> or task:<id> key — dropped`);
   }
   for (const [file, plan] of rewrites) {
     const lines = io.read(file).split('\n');
