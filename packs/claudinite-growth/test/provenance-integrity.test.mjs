@@ -88,9 +88,9 @@ ruleTester(worldRule, {
         { file: `${PACK}provenance/doing-thing.md`, line: 2, what: /opens with born/ },
       ],
     },
-    'a pack-root references.md is the retired convention, tolerated at advisory with the conversion in the fix': {
+    'a pack-root references.md is the retired convention, a blocking fault with the conversion in the fix': {
       files: { ...filled, [`${PACK}references.md`]: '- **(RULES-3)** old\n' },
-      at: [{ file: `${PACK}references.md`, severity: 'advisory', what: /retired rationale convention/, fix: /convert-references mypack/ }],
+      at: [{ file: `${PACK}references.md`, severity: 'blocking', what: /retired rationale convention/, fix: /convert-references mypack/ }],
     },
     'the canon shelf is judged the same way': {
       files: { 'packs/somepack/pack.mjs': 'export default {};\n', 'packs/somepack/RULES.md': '- **Doing a thing** — no marker.\n', 'packs/somepack/provenance/_pack.md': BORN },

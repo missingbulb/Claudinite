@@ -15,9 +15,10 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 // the pack either way. A dangling marker, an unnamed file, a bodyless skill and a
 // grammar fault are each their own finding, because each has its own line.
 //
-// TWO ADVISORY BRANCHES inside a blocking rule: an EMPTY file is pending history, the
-// backfill's worklist and not a defect; a pack-root references.md is the retired
-// convention still in place, tolerated at advisory through the conversion window.
+// ONE ADVISORY BRANCH inside a blocking rule: an EMPTY file is pending history, the
+// backfill's worklist and not a defect. A pack-root references.md is the retired
+// convention still in place, and blocks like any other fault: the conversion window
+// that tolerated it has closed.
 //
 // RELEVANCE-FIRST: inert in a repo that carries no pack under either root.
 const PACK = 'claudinite-growth';
@@ -100,10 +101,9 @@ const rule = {
           fix: 'the backfill fills them from each carrier\'s history (the backfilling-provenance skill), one pack per pull request; nothing else is owed',
         }));
       }
-      // @legacy-tolerance advisory:provenance-integrity retire:#2170
       if (a.referencesDoc) {
         out.push(finding(rule, {
-          file: a.referencesDoc, severity: 'advisory',
+          file: a.referencesDoc,
           what: 'a pack-root references.md is the retired rationale convention',
           fix: `run \`node ${tool} convert-references ${id}\` - each entry becomes an entry on the element its key names, the numeric markers become slugs, and the doc goes`,
         }));
