@@ -19,8 +19,8 @@ const NOW = '2026-08-14T04:00:00Z';
 
 test('the stale-ready escalation counts the task\'s OWN declared period', () => {
   const periodFor = periodForTasks([
-    { pack: 'p', id: 'dailyish', decl: { preconditions: ['due:daily'] } },
-    { pack: 'p', id: 'weeklyish', decl: { preconditions: ['due:weekly', 'repo-active'] } },
+    { pack: 'p', id: 'dailyish', decl: { preconditions: ['schedule:at-most-daily'] } },
+    { pack: 'p', id: 'weeklyish', decl: { preconditions: ['schedule:at-most-weekly', 'repo-active'] } },
   ]);
   const daily = it({ task: 'dailyish', labels: ['task:ready'], updated_at: '2026-08-11T01:00:00Z' });
   const weekly = it({ task: 'weeklyish', labels: ['task:ready'], updated_at: '2026-08-11T01:00:00Z' });
@@ -29,11 +29,8 @@ test('the stale-ready escalation counts the task\'s OWN declared period', () => 
 });
 
 // A task that keeps no cadence term — asked at every tick, it runs on movement or
-// when woken — has no period of its own, and the rule counts it on a day: an
-// elapsed cadence counts on its own duration, never finer than the hours it states.
-test('a task with no cadence term is judged on a DAY, and an elapsed cadence on its own duration', () => {
-  const elapsed = periodForTasks([{ pack: 'p', id: 'paced', decl: { preconditions: ['last-run-over:2d'] } }]);
-  assert.equal(elapsed('p/paced'), 2 * 86_400_000);
+// when woken — has no period of its own, and the rule counts it on a day.
+test('a task with no cadence term is judged on a DAY', () => {
   const periodFor = periodForTasks([{ pack: 'p', id: 'legacy', decl: { preconditions: ['substantive-change'] } }]);
   const threeHours = it({ task: 'legacy', labels: ['task:ready'], updated_at: '2026-08-14T01:00:00Z' });
   assert.deepEqual(staleReadyItems([threeHours], NOW, { periodFor }), [], 'three hours is not stale');
@@ -399,7 +396,7 @@ test('an item wearing an older engine\'s spelling of done is closed too', () => 
 // Rule I — the abandoned failure park (#1785).
 
 const headTasks = [
-  { pack: 'p', id: 'a', decl: { trigger: 'schedule', preconditions: ['due:daily'] } },
+  { pack: 'p', id: 'a', decl: { trigger: 'schedule', preconditions: ['schedule:at-most-daily'] } },
   { pack: 'p', id: 'manualish', decl: { trigger: 'request' } },
 ];
 const onSchedule = scheduledForTasks(headTasks);

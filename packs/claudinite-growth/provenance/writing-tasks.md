@@ -21,3 +21,12 @@
   no fleet operation reaching the repo, a version gap there is a finding with no owner.
 - **Mechanism:** a step of the writing-tasks skill, a workflow
 - **Retire when:** Retire it if anything ever converges a dormant member's mount again.
+
+## 2026-09-20 · reworded · the cadence vocabulary it teaches (#2182)
+- **Reason:** `due:<cadence>` and `last-run-over:<duration>` were the two cadence terms this taught;
+  the first is now the retired spelling of `schedule:at-most-<cadence>` and the second is deleted,
+  so a task author reading this would have written a term that no longer exists. The bullet also
+  lost rationale that had grown onto it: why the vocabulary changed is #1995, not something an
+  author needs while writing a task.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #2182

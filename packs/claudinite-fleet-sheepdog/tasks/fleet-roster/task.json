@@ -4,7 +4,7 @@
   "description": "Walks every repository under the owner over the fleet token, builds the roster of members and non-members, and files an issue per finding: repositories that should adopt Claudinite, and members whose declaration or mount is off.",
   "trigger": "schedule",
   "preconditions": [
-    "due:daily"
+    "schedule:at-most-daily"
   ],
   "expected_outcome": "no_code_changes",
   "code_work": "node worker.mjs",

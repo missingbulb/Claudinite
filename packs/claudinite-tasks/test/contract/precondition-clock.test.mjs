@@ -36,21 +36,19 @@ test('the executor seam passes its own evaluation instant through', () => {
   assert.equal(evaluatePrecondition(task, {}, {}, null, new Date('2026-09-02T09:00:00Z')).run, false);
 });
 
-// THE EXACT ANCHOR INSTANT. The scheduler fires on an hourly cron, so a daily task
-// anchored at 04:00 is evaluated AT 04:00:00.000 on the ordinary path — the boundary
-// is the common case here, not the exotic one. Each cadence is pinned at the instant
-// and at the millisecond before it, because `<=` and `<` differ on exactly one input
-// and every test that stood here sat far enough from the anchor to agree either way.
-const anchorAt = (freq, schedule, iso) => anchorInstant(freq, schedule, new Date(iso)).toISOString();
+// THE EXACT PERIOD BOUNDARY. A period opening is the common case, not the exotic
+// one: `<=` and `<` differ on exactly one input, so each cadence is pinned at the
+// instant its period opens and at the millisecond before it.
+const anchorAt = (freq, iso) => anchorInstant(freq, new Date(iso)).toISOString();
 
-test('an anchor that falls exactly now is this period\'s, not the previous one', () => {
-  assert.equal(anchorAt('daily', { dailyHour: 4 }, '2026-09-15T04:00:00.000Z'), '2026-09-15T04:00:00.000Z');
-  assert.equal(anchorAt('weekly', { weeklyDay: 'Sun', dailyHour: 4 }, '2026-09-13T04:00:00.000Z'), '2026-09-13T04:00:00.000Z');
-  assert.equal(anchorAt('monthly', { monthlyDay: 1, dailyHour: 4 }, '2026-09-01T04:00:00.000Z'), '2026-09-01T04:00:00.000Z');
+test('a period that opens exactly now is this period\'s, not the previous one', () => {
+  assert.equal(anchorAt('daily', '2026-09-15T00:00:00.000Z'), '2026-09-15T00:00:00.000Z');
+  assert.equal(anchorAt('weekly', '2026-09-13T00:00:00.000Z'), '2026-09-13T00:00:00.000Z');
+  assert.equal(anchorAt('monthly', '2026-09-01T00:00:00.000Z'), '2026-09-01T00:00:00.000Z');
 });
 
-test('one millisecond before the anchor, the most recent one is still the previous period\'s', () => {
-  assert.equal(anchorAt('daily', { dailyHour: 4 }, '2026-09-15T03:59:59.999Z'), '2026-09-14T04:00:00.000Z');
-  assert.equal(anchorAt('weekly', { weeklyDay: 'Sun', dailyHour: 4 }, '2026-09-13T03:59:59.999Z'), '2026-09-06T04:00:00.000Z');
-  assert.equal(anchorAt('monthly', { monthlyDay: 1, dailyHour: 4 }, '2026-09-01T03:59:59.999Z'), '2026-08-01T04:00:00.000Z');
+test('one millisecond earlier, the current period is still the previous one', () => {
+  assert.equal(anchorAt('daily', '2026-09-14T23:59:59.999Z'), '2026-09-14T00:00:00.000Z');
+  assert.equal(anchorAt('weekly', '2026-09-12T23:59:59.999Z'), '2026-09-06T00:00:00.000Z');
+  assert.equal(anchorAt('monthly', '2026-08-31T23:59:59.999Z'), '2026-08-01T00:00:00.000Z');
 });

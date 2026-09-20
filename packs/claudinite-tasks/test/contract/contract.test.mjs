@@ -74,7 +74,7 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
 test('normalizeTaskDeclaration fills the defaults, and only where absent', () => {
   const minimal = { id: 't', frequency: 'daily', expected_outcome: 'pr' };
   const filled = normalizeTaskDeclaration(minimal);
-  assert.deepEqual(filled.preconditions, ['due:daily']);
+  assert.deepEqual(filled.preconditions, ['schedule:at-most-daily']);
   assert.equal(filled.frequency, undefined, 'the field does not survive the door');
   assert.equal(filled.automerge, DEFAULT_AUTOMERGE);
   assert.equal(filled.agent_model, DEFAULT_AGENT_MODEL);
@@ -86,7 +86,7 @@ test('normalizeTaskDeclaration fills the defaults, and only where absent', () =>
   assert.deepEqual(validateTaskDeclaration({ ...minimal, code_work: 'node w.mjs', code_work_timeout: 60 }), []);
   // A declared field is kept; a none task takes no automerge default.
   assert.equal(normalizeTaskDeclaration({ ...minimal, agent_model: 'opus' }).agent_model, 'opus');
-  assert.deepEqual(normalizeTaskDeclaration({ ...minimal, preconditions: ['substantive-change'] }).preconditions, ['due:daily', 'substantive-change']);
+  assert.deepEqual(normalizeTaskDeclaration({ ...minimal, preconditions: ['substantive-change'] }).preconditions, ['schedule:at-most-daily', 'substantive-change']);
   assert.equal(normalizeTaskDeclaration({ ...minimal, automerge: 'anything' }).automerge, 'anything');
   assert.equal(normalizeTaskDeclaration({ ...minimal, expected_outcome: 'none' }).automerge, undefined);
   // The editor's pointer leaves at the door.
@@ -203,7 +203,7 @@ test('validateTaskDeclaration flags every malformed field', () => {
   });
   const whats = problems.map((p) => p.what).join(' | ');
   assert.match(whats, /no string "id"/);
-  assert.match(whats, /"due" takes one of daily, weekly, monthly, not "fortnightly"/);
+  assert.match(whats, /"schedule" takes one of at-most-daily, at-most-weekly, at-most-monthly, not "at-most-fortnightly"/);
   assert.match(whats, /not a legal model family/);
   assert.match(whats, /not a legal outcome ceiling/);
   assert.match(whats, /no string "agent_instructions"/);
@@ -241,7 +241,7 @@ test('validateTaskDeclaration reads the expression statically: unknown terms and
   // The empty expression is legal — a task stating no condition is off the schedule —
   // and a non-array is still the shape error it always was.
   assert.deepEqual(validateTaskDeclaration({ ...noField, preconditions: [] }), []);
-  assert.match(validateTaskDeclaration({ ...noField, preconditions: 'due:daily' }).map((p) => p.what).join(' | '), /not an array/);
+  assert.match(validateTaskDeclaration({ ...noField, preconditions: 'schedule:at-most-daily' }).map((p) => p.what).join(' | '), /not an array/);
 
   // A task-local term resolves after the built-ins, in one flat namespace…
   const own = new Map([['my-gate', { signals: ['stamp'], holds: () => ({ holds: true }) }]]);
@@ -542,15 +542,15 @@ test('the retired frequency field reads as the cadence term it meant, first in t
     assert.deepEqual(filled.preconditions, f === 'manual' ? [] : [cadenceTermFor(f)], f);
     assert.equal(filled.frequency, undefined);
   }
-  assert.deepEqual(normalizeTaskDeclaration({ frequency: 'weekly', preconditions: ['repo-active'] }).preconditions, ['due:weekly', 'repo-active']);
+  assert.deepEqual(normalizeTaskDeclaration({ frequency: 'weekly', preconditions: ['repo-active'] }).preconditions, ['schedule:at-most-weekly', 'repo-active']);
   assert.deepEqual(normalizeTaskDeclaration({ frequency: 'manual', preconditions: ['request-eligible'] }).preconditions, ['request-eligible']);
   assert.deepEqual(normalizeTaskDeclaration({ frequency: 'manual', preconditions: ['none'] }).preconditions, []);
   // No field and no expression: the empty expression, so every reader judges one array.
   assert.deepEqual(normalizeTaskDeclaration({ id: 'x' }).preconditions, []);
   // The empty precondition the field used to need drops with it.
-  assert.deepEqual(normalizeTaskDeclaration({ frequency: 'daily', preconditions: ['none'] }).preconditions, ['due:daily']);
+  assert.deepEqual(normalizeTaskDeclaration({ frequency: 'daily', preconditions: ['none'] }).preconditions, ['schedule:at-most-daily']);
   // A declaration already stating the term is not given it twice.
-  assert.deepEqual(normalizeTaskDeclaration({ frequency: 'daily', preconditions: ['due:daily', 'any-commit'] }).preconditions, ['due:daily', 'any-commit']);
+  assert.deepEqual(normalizeTaskDeclaration({ frequency: 'daily', preconditions: ['schedule:at-most-daily', 'any-commit'] }).preconditions, ['schedule:at-most-daily', 'any-commit']);
   // No field, no rewrite: the expression is the author's.
   assert.deepEqual(normalizeTaskDeclaration({ preconditions: ['substantive-change'] }).preconditions, ['substantive-change']);
   assert.equal(normalizeFrequency('nonsense'), 'nonsense', 'an unknown token is left for the validator');
@@ -564,7 +564,7 @@ test('a declaration carrying an unknown frequency is reported as the illegal con
   };
   const findings = validateTaskDeclaration(decl);
   assert.equal(findings.length, 1, 'the dead vocabulary is no longer accepted at the door');
-  assert.match(findings[0].what, /"due" takes one of daily, weekly, monthly, not "hourly"/);
+  assert.match(findings[0].what, /"schedule" takes one of at-most-daily, at-most-weekly, at-most-monthly, not "at-most-hourly"/);
 });
 
 test('a declaration with no frequency and no preconditions is off the schedule, and says so by absence', () => {
@@ -578,8 +578,10 @@ test('a declaration with no frequency and no preconditions is off the schedule, 
 // Which task is ASKED is `trigger`'s answer, pinned in task-trigger.test.mjs. This
 // is the other half of "when": the rate a task keeps, once it is being asked.
 test('taskCadence reads the cadence term a declaration states, in either shape', () => {
-  assert.deepEqual(taskCadence(normalizeTaskDeclaration({ frequency: 'weekly' })), { kind: 'due', cadence: 'weekly' });
-  assert.deepEqual(taskCadence({ preconditions: ['last-run-over:2d'] }), { kind: 'elapsed', ms: 2 * 86400e3, text: '2d' });
+  assert.deepEqual(taskCadence(normalizeTaskDeclaration({ frequency: 'weekly' })), { kind: 'period', cadence: 'weekly' });
+  // The retired spelling reads as the same cadence, for a caller that did not come
+  // through the door (calendar.mjs, DUE_TERM).
+  assert.deepEqual(taskCadence({ preconditions: ['due:monthly'] }), { kind: 'period', cadence: 'monthly' });
   assert.equal(taskCadence({ preconditions: ['substantive-change'] }), null, 'no cadence term: asked every tick, runs on movement');
   assert.equal(taskCadence(normalizeTaskDeclaration({ frequency: 'manual' })), null);
   assert.equal(taskCadence(null), null);

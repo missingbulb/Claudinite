@@ -28,3 +28,14 @@
 - **Mechanism:** scheduling is the task's own precondition; the scheduler keeps no state.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #1733 · pack version 60906.1.
+
+## 2026-09-20 · policy-changed · its cadence is stated as a UTC period (#2182)
+- **Reason:** the per-repo `taskScheduler` anchor let each repo move the boundary its cadence was
+  measured against, which put a seam inside every day and never delivered the member-before-canon
+  ordering it was kept for (#1995). How often this task runs is unchanged; what "a period" means is
+  now the same everywhere.
+- **Mechanism:** its `preconditions`, the only gate the scheduler reads, restated from
+  `due:<cadence>` to `schedule:at-most-<cadence>`. The old spelling stays accepted permanently, so
+  nothing here is a compatibility deadline.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #2182

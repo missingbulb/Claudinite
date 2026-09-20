@@ -4,7 +4,7 @@
   "description": "Cuts the next site version, stamps it into the published pages and uploads the site tree to Cloudflare so the claimed domain serves what the default branch says. The bump lands on the branch before the upload, so the repo never records a release that did not go out.",
   "trigger": "schedule",
   "preconditions": [
-    "due:daily",
+    "schedule:at-most-daily",
     "unreleased-commits"
   ],
   "expected_outcome": "no_code_changes",

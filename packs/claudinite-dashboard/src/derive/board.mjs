@@ -216,7 +216,7 @@ export function scheduleGrid(rows, items, axis, { now, schedule }) {
     });
 
     if (day.future) {
-      const at = nextAnchorFor(row, now, schedule);
+      const at = nextAnchorFor(row, now);
       if (at === null || at < day.start || at >= day.end) return { day: day.day, state: 'none', count: 0 };
       // Predicted and WILL DECLINE are told apart by height, never by dash pattern,
       // which at three pixels is invisible.
@@ -263,12 +263,12 @@ export function scheduleGrid(rows, items, axis, { now, schedule }) {
   return gridRows;
 }
 
-// Only a `due:` cadence is on the calendar; every other reading has no instant to
+// Only a stated cadence is on the calendar; a task with none has no instant to
 // predict, so its future cells stay empty rather than guessed.
-const nextAnchorFor = (row, now, schedule) => {
+const nextAnchorFor = (row, now) => {
   if (row.nextAsk?.at) return ms(row.nextAsk.at);
-  if (row.cadence?.kind !== 'due' || !schedule) return null;
-  const at = nextAnchor(row.cadence.cadence, schedule, now);
+  if (!row.cadence) return null;
+  const at = nextAnchor(row.cadence.cadence, now);
   return at ? ms(at) : null;
 };
 

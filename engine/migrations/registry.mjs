@@ -496,6 +496,41 @@ export async function applyPackOwnedSettingMoves(migration, { read, write }) {
   return done;
 }
 
+// DROP a retired `taskScheduler` key from the member's own declaration. The keys are
+// the per-repo scheduling anchor (#1995): a cadence now measures whole UTC periods and
+// the scheduler workflow's cron hours were written into that file when it was
+// scaffolded, so nothing reads them and what is left is a value that looks live.
+//
+// A DELETE RATHER THAN A MOVE, because there is no new home: the setting is gone, not
+// relocated. It stays safe to run against a member whose vendored engine is a cycle
+// behind, because that engine's own reader already fills an absent key with the
+// documented default, which is what every repo that never moved its anchor was using.
+// `appliesTo` is what holds it back where that is not true.
+//
+// The block goes with its last key: a `taskScheduler` left holding nothing says less
+// than no block at all, and the reader treats the two identically.
+//
+// Idempotent by construction: every step is "if the retired key is there".
+export async function applyRetiredSchedulerSettings(migration, { read, write }) {
+  if (!migration.dropSchedulerSettings?.length) return [];
+  if (migration.appliesTo && !(await migration.appliesTo(read))) return [];
+  const file = await declarationFile(read);
+  if (file == null) return [];
+  let config;
+  try { config = JSON.parse(await read(file)); } catch { return []; }
+  if (config === null || typeof config !== 'object' || Array.isArray(config)) return [];
+  const block = config.taskScheduler;
+  if (block === null || typeof block !== 'object' || Array.isArray(block)) return [];
+
+  const dropped = migration.dropSchedulerSettings.filter((key) => block[key] !== undefined);
+  if (!dropped.length) return [];
+  const next = { ...config, taskScheduler: { ...block } };
+  for (const key of dropped) delete next.taskScheduler[key];
+  if (!Object.keys(next.taskScheduler).length) delete next.taskScheduler;
+  await write(file, `${JSON.stringify(next, null, 2)}\n`);
+  return [`${file}: dropped the retired taskScheduler ${dropped.map((k) => `"${k}"`).join(', ')}: nothing reads the per-repo scheduling anchor`];
+}
+
 // Write side — "this member's settings file moves to its new name and its new
 // shape" (#1252). The one op that RENAMES the declaration, which is why it is an op
 // rather than four `rewrite`s: a rewrite replaces literal text, and no two members
@@ -639,6 +674,7 @@ export async function applyMigration(migration, io) {
   // AFTER the renames: a setting moving onto a pack's entry has to find that entry
   // under the id the pack carries TODAY, which is what the rename above just settled.
   applied.push(...(await applyPackOwnedSettingMoves(migration, io)));
+  applied.push(...(await applyRetiredSchedulerSettings(migration, io)));
   // LAST: every op above writes to whichever name the member still carries, and this
   // is the one that changes which name that is.
   applied.push(...(await applySettingsReshape(migration, io)));

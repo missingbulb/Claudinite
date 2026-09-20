@@ -75,9 +75,6 @@ for (const a of answers) {
   const distill = byId.get(a.pack).questions.find((q) => q.id === a.question).distill;
   if (distill) console.log(`  distill: ${distill}`);
 }
-// The scheduler anchors (bootstrap.md's defaults), materialized so the file the
-// owner would edit shows them.
-if (!decl.taskScheduler) decl.taskScheduler = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 writeFileSync(declPath, `${JSON.stringify(decl, null, 2)}\n`);
 
 // 2. Vendor the snapshot (whole-set + stamp; aborts before any write on error).
@@ -122,7 +119,6 @@ if (declaresTasks && existsSync(scaffold)) {
     schedulerStub: readFileSync(stubPath, 'utf8'),
     executorStub: existsSync(executorPath) ? readFileSync(executorPath, 'utf8') : null,
     secretNames: await declaredSecrets(target, config),
-    dailyHour: config?.taskScheduler?.dailyHour,
   });
   console.log(changed.length ? `bootstrap: workflows — ${changed.join(', ')}` : 'bootstrap: workflows: already scaffolded');
 } else {

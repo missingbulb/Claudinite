@@ -23,7 +23,7 @@ test('legacy-task-fields: silent on a declaration in the current vocabulary', ()
 // nothing goes red when the derivation is dropped (#1789) except the task not running.
 test('legacy-task-fields: a declaration stating no trigger is reported at the line it belongs on', () => {
   const none = { trigger: '' };
-  const listed = run(declaration('  "preconditions": ["due:daily"],\n  "expected_outcome": "fresh_pr"\n', none));
+  const listed = run(declaration('  "preconditions": ["schedule:at-most-daily"],\n  "expected_outcome": "fresh_pr"\n', none));
   assert.equal(listed.length, 1);
   assert.match(listed[0].what, /states no `trigger`/);
   assert.match(listed[0].fix, /"trigger": "schedule"/, 'the value its own conditions imply');
@@ -36,7 +36,7 @@ test('legacy-task-fields: a declaration stating no trigger is reported at the li
   assert.equal(bare[0].line, 3);
 
   // No second finding once it is stated.
-  assert.deepEqual(run(declaration('  "preconditions": ["due:daily"],\n')), []);
+  assert.deepEqual(run(declaration('  "preconditions": ["schedule:at-most-daily"],\n')), []);
 });
 
 test('legacy-task-fields: reads task declarations only', () => {
@@ -83,7 +83,7 @@ test('legacy-task-fields: a two-word ceiling is reported as the word it became',
 // The advisory exists because the tolerance is invisible downstream: by the time
 // anything holds a declaration, the door has already renamed the field away.
 test('legacy-task-fields: the retired frequency field is reported with the condition it reads as', () => {
-  for (const [field, term] of [['daily', 'due:daily'], ['weekly', 'due:weekly'], ['monthly', 'due:monthly'], ['manual', null]]) {
+  for (const [field, term] of [['daily', 'schedule:at-most-daily'], ['weekly', 'schedule:at-most-weekly'], ['monthly', 'schedule:at-most-monthly'], ['manual', null]]) {
     const findings = run(declaration(`  "frequency": "${field}"\n`));
     assert.equal(findings.length, 1, field);
     assert.match(findings[0].what, /retired field `frequency`/);

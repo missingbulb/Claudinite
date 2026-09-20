@@ -127,9 +127,9 @@ what you need. The `claudinite-isolation` check enforces this outside the wiring
 
 A consuming project schedules **itself** (docs/PRINCIPLES.md). The script converges
 the mechanical half: the `claudinite-scheduler.yml` workflow at the repo's stable hashed cron
-minute (computed, never guessed — `hash-minute.mjs`, a pure function of the full name), the
-executor workflow, the `taskScheduler` anchors
-(`{ "dailyHour": 4, "weeklyDay": "Sun", "monthlyDay": 1 }`, all UTC), the rules index and its
+minute and hours (computed, never guessed: `hash-minute.mjs`, a pure function of the full
+name; written once here and preserved by every converge after), the
+executor workflow, the rules index and its
 `CLAUDE.md` import, the README pack-badge row and this repo's own seed local pack — the last two
 one-time seeds the repo owns from there (baselining deliberately re-passes neither). Labels need
 no step either: the scheduler run and the executor create the queue's labels if missing.

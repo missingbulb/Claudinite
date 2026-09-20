@@ -30,19 +30,21 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   scheduler asks a task at all: a `request` task's precondition cannot hold
   it back onto the schedule, and a `schedule` task with no `preconditions`
   runs at every tick. `S79`
-- `due:<daily|weekly|monthly>` holds when no run of the task started or ended
-  since that cadence's most recent anchor on the repo's `taskScheduler`
-  schedule. `S74`, `S26b`, `S59`, `S6`
-- `last-run-over:<duration>` holds when the newest run started longer ago than
-  that duration, or there is no run in the horizon — elapsed, so it drifts by
-  up to a tick's gap each period. `S75`
+- `schedule:at-most-<daily|weekly|monthly>` holds when no run of the task
+  started or ended since the current UTC period opened: midnight, the Sunday
+  that opened the week, the 1st of the month. Nothing a repo configures moves
+  those boundaries. `S74`, `S26b`, `S59`, `S6`
+- `due:<cadence>` is that same term under the name it was introduced with,
+  accepted permanently because a task declaration is member-owned data no
+  vendoring pass rewrites. `normalizeTaskDeclaration` rewrites it at the door,
+  so one spelling reaches every reader downstream of a loaded declaration.
 - `last-run-not-failed` holds unless the newest run stands at a
   `needs-human-failure` park; only a task that declares the term is held back
   by its own failure, and only the newest run speaks. `backlog`, `S41b`,
   `S62b`, `S63`
-- `due:` and `last-run-over:` hold on a `Woken`-stamped item without reading
-  the run history at all — the wake stands in for the cadence, while every
-  other condition the task states still applies. `S77`
+- A cadence term holds on a `Woken`-stamped item without reading the run
+  history at all: the wake stands in for the cadence, while every other
+  condition the task states still applies. `S77`
 - A task is asked at its very first tick like any other; there is no gentler
   first-sight rule and no booked first window.
   `S78`, `test/schedule/run.test.mjs: a brand-new task is asked at the first run like any other — there is no first-window booking`
@@ -103,10 +105,10 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - Forcing ad-hoc work is creating an item, stamped `Woken`, with a generic
   Context saying no precondition asserted there was work. `S13'`, `S15`, `S16`
 - A dropped or late scheduler-run fire costs latency only, never the
-  occurrence: the next tick's `due:` term reads the missed period as the
+  occurrence: the next tick's cadence term reads the missed period as the
   current one. `S71`, `S5`
-- `due:weekly` fires exactly once a week even when no tick lands on its
-  anchor hour. `S73`
+- `schedule:at-most-weekly` fires exactly once a week however the ticks fall
+  inside it. `S73`
 - A `Not-before` that falls between two ticks waits for the next tick,
   unescalated. `S72`
 - A task declaration change — cadence, `schedule_after`, a precondition, a

@@ -10,10 +10,6 @@ import * as anchors from '../../claudinite-tasks/src/items/anchors.mjs';
 // same inputs, in both directions, and the first instant or declaration they answer
 // differently fails here rather than on a rendered board.
 
-const SCHEDULES = [
-  undefined, {}, { dailyHour: 0 }, { dailyHour: 23, weeklyDay: 'Mon', monthlyDay: 31 },
-  { dailyHour: 7, weeklyDay: 'Sat', monthlyDay: 15 }, { weeklyDay: 'Wed' },
-];
 const FREQUENCIES = ['daily', 'weekly', 'monthly', 'manual'];
 // Every hour across a leap February, a month end and a year end.
 const instants = [];
@@ -21,20 +17,24 @@ for (const start of [Date.UTC(2024, 1, 26), Date.UTC(2026, 2, 29), Date.UTC(2026
   for (let h = 0; h < 24 * 6; h += 1) instants.push(new Date(start + h * 3600e3));
 }
 const DECLARATIONS = [
-  { preconditions: ['due:daily'] }, { preconditions: ['due:weekly', 'last-run-not-failed'] },
-  { preconditions: ['due:monthly || touched'] }, { preconditions: ['last-run-over:12h'] },
+  { preconditions: ['schedule:at-most-daily'] },
+  { preconditions: ['schedule:at-most-weekly', 'last-run-not-failed'] },
+  { preconditions: ['schedule:at-most-monthly || touched'] },
+  // The retired spelling, which both copies still read: the page lifts a declaration
+  // out of GitHub as text, so it meets it on any member that has not converged.
+  { preconditions: ['due:daily'] }, { preconditions: ['touched || due:weekly'] },
   { preconditions: ['last-run-over:7d', 'last-run-not-parked'] }, { preconditions: ['touched'] },
   { preconditions: [] }, { preconditions: ['||'] }, {}, null,
 ];
 
 test('the dashboard anchors every frequency exactly as the queue does', () => {
   const diffs = [];
-  for (const s of SCHEDULES) for (const f of FREQUENCIES) for (const now of instants) {
+  for (const f of FREQUENCIES) for (const now of instants) {
     const pairs = [
-      ['mostRecentAnchor', page.mostRecentAnchor(f, s, now), anchors.mostRecentAnchor(f, s, now)],
-      ['nextAnchor', page.nextAnchor(f, s, now), anchors.nextAnchor(f, s, now)],
+      ['mostRecentAnchor', page.mostRecentAnchor(f, now), anchors.mostRecentAnchor(f, now)],
+      ['nextAnchor', page.nextAnchor(f, now), anchors.nextAnchor(f, now)],
     ];
-    for (const [name, a, b] of pairs) if (String(a) !== String(b)) diffs.push(`${name}(${f}, ${JSON.stringify(s)}, ${now.toISOString()}): page ${a} queue ${b}`);
+    for (const [name, a, b] of pairs) if (String(a) !== String(b)) diffs.push(`${name}(${f}, ${now.toISOString()}): page ${a} queue ${b}`);
   }
   for (const f of FREQUENCIES) if (page.periodMs(f) !== anchors.periodMs(f)) diffs.push(`periodMs(${f})`);
   assert.deepEqual(diffs.slice(0, 5), [], `${diffs.length} disagreement(s)`);
@@ -56,5 +56,6 @@ test('the dashboard reads a cadence term exactly as the queue does', () => {
   for (const f of FREQUENCIES) if (page.cadenceTermFor(f) !== calendar.cadenceTermFor(f)) diffs.push(`cadenceTermFor(${f})`);
   assert.deepEqual(diffs, []);
   assert.equal(page.DUE_TERM, calendar.DUE_TERM);
-  assert.equal(page.ELAPSED_TERM, calendar.ELAPSED_TERM);
+  assert.equal(page.SCHEDULE_TERM, calendar.SCHEDULE_TERM);
+  assert.equal(page.AT_MOST_PREFIX, calendar.AT_MOST_PREFIX);
 });

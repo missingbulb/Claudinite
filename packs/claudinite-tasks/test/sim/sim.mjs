@@ -94,9 +94,6 @@ const ROOT = fileURLToPath(new URL('.', import.meta.url));
 // The whole of what a fake session costs, in the shape the invoker's config takes.
 const CONFIG = Object.freeze({
   taskScheduler: {
-    dailyHour: 4,
-    weeklyDay: 'Sun',
-    monthlyDay: 1,
     [ENDPOINTS_KEY]: { default: { url: 'https://example.invalid/fire', tokenSecret: 'CCR_TOKEN' } },
   },
   packConfig: {},
@@ -829,9 +826,13 @@ export function makeSim({
   // about do not agree with.
   function previousOccurrence(task, t0) {
     const cadence = taskCadence(task.decl);
-    if (cadence?.kind === 'due') return mostRecentAnchor(cadence.cadence, CONFIG.taskScheduler, new Date(t0)).getTime();
-    if (cadence?.kind === 'elapsed') return t0 - cadence.ms;
-    return t0 - DAY;
+    if (cadence === null) return t0 - DAY;
+    // The PREVIOUS period's, not this one's. Steady state means the task has already
+    // run once and is not due again yet, so the seed has to sit before the period the
+    // scenario is about; a seed at this period's own start would consume it, and every
+    // ask of that scenario's first day would decline on the cadence.
+    const opened = mostRecentAnchor(cadence.cadence, new Date(t0)).getTime();
+    return mostRecentAnchor(cadence.cadence, new Date(opened - 1)).getTime();
   }
 
   return sim;

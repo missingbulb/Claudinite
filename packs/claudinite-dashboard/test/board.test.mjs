@@ -178,10 +178,10 @@ test('everything on a longer cadence is one row — the question is whether it f
   const grid = scheduleGrid(
     [
       taskRow(),
-      taskRow({ key: 'p/w', task: 'w', ...cadenced(['due:weekly']) }),
-      // An elapsed cadence longer than a day shares the row too — the period, not the
-      // term's spelling, is what puts a task there.
-      taskRow({ key: 'p/slow', task: 'slow', ...cadenced(['last-run-over:3d']), nextAsk: { kind: 'note', note: 'x' } }),
+      taskRow({ key: 'p/w', task: 'w', ...cadenced(['schedule:at-most-weekly']) }),
+      // The retired spelling shares the row too: the period, not the term's spelling,
+      // is what puts a task there.
+      taskRow({ key: 'p/slow', task: 'slow', ...cadenced(['due:monthly']), nextAsk: { kind: 'note', note: 'x' } }),
     ],
     [], axis, { now: NOW, schedule: SCHEDULE },
   );
@@ -222,7 +222,7 @@ test('the workload line counts a task with no cadence term apart, and an unsched
   const line = workloadLine(0, [
     taskRow({ key: 'p/move', task: 'move', ...cadenced(['substantive-change'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
     taskRow({ key: 'p/lever', task: 'lever', ...cadenced([], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
-    taskRow({ key: 'p/slow', task: 'slow', ...cadenced(['last-run-over:7d'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
+    taskRow({ key: 'p/slow', task: 'slow', ...cadenced(['schedule:at-most-weekly'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
   ], { schedule: SCHEDULE, now: NOW });
   assert.match(line, /nothing waits for a person/);
   assert.match(line, /1 more on movement/, '"a day" is a promise a task with no cadence term never made');
