@@ -16,7 +16,7 @@
 - **Reason:** the coding gotchas apply whenever an extension is written; the release standard (the guide, seven `cer/` checks, the stubs) only when it ships, and declaring the coding pack forced four workflow stubs, a privacy page and README sections on a half-built extension.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 4.8, per the commit trailer.
-- **Mechanism:** the release pack is opt-in, fingerprinted by the standard's "Release: *" workflow stubs and never by the manifest, so a manifest alone never arms the release checks; the check ids were already `cer/`.
+- **Mechanism:** the release pack is opt-in, fingerprinted by the standard's "Release: *" workflow stubs and never by the manifest, so a manifest alone never arms the release checks; the check ids were already `cer/`. The workflows and composite actions ship as stubs materialized into each consumer's own `.github/`, because GitHub resolves a reusable workflow or a composite action only from the repo's own `.github/`; a cross-repo `@main` reference would not resolve at all.
 - **Rejected:** one pack whose release half is gated on a second declaration.
 - **Landed:** #155 (Refs #153, #156) · pack version 1.
 

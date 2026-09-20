@@ -1,44 +1,70 @@
-# Worked example — `packs/chrome-extension` as the design renders it
+# chrome-extension pack
 
-What sits beside this file is the pack as it reads once [the design](../../DESIGN.md) is applied
-to it — every carrier the transformation touches, and the provenance folder in full — placed here
-because nothing under `packs/` may hold a `provenance/` folder until the vendor set excludes it.
-Once the mechanism lands, `provenance/`, `RULES.md` and the two skills move whole onto
-`packs/chrome-extension/`, and this README goes with the rest of `docs/provenance/`.
+Active when a `manifest.json` declares `manifest_version` — the MV3 build/runtime gotchas that apply while you're *coding* an extension. Mostly prose (`RULES.md`); the gotchas with a static signature in the source are checks.
 
-| Rendered here | What the transformation did to it |
-|---|---|
-| `RULES.md` | every one of its 22 rules ends with a marker naming its provenance file; nothing else changes (one link is repointed at the real skill and rewrapped so it resolves from this folder; in the pack it stays relative) |
-| `skills/chrome-store-releases/SKILL.md`, `skills/extension-host-permissions/SKILL.md` | unchanged: a skill is named by its directory, so its file, its description and its `force-load-on-file-edits-paths` gain nothing — their history, the load triggers' above all, is on the skill's provenance file (the release skill's relative links are repointed here for the same reason as the rules file's) |
-| the four coded checks, seven declared checks, the task and the manifest | unchanged and not copied: each is named by the id it already carries |
-| `provenance/` | 36 element files and `declined.md`, for 37 carriers: 22 rules, 2 skills, 4 coded checks, 7 declared checks, 1 task, the manifest. `content-script-module-syntax.md` covers two — the classic-content-script rule and the check converted from it — so the file takes the check's name and the rule's marker cites it |
+Releasing and Chrome-Web-Store publication live here too, in the [**chrome-store-releases**](skills/chrome-store-releases/SKILL.md) skill (the standard: the pipeline's contract, the setup steps, the manual store actions), the **vendored release set** ([`stubs/workflows/`](../../../../packs/chrome-extension/stubs/workflows/) + [`stubs/actions/`](../../../../packs/chrome-extension/stubs/actions/), materialized into each consumer's own `.github/` by the `chrome-release-vendoring` migration), the `cer/` conformance checks, and the `store-release` task that fires the daily release.
 
-Every file was created by the marking pass (a dry run of `mark` over the real pack, which proposes
-a slug per rule; the slugs here are the refined ones a maintainer would land). Fifteen were then
-filled by hand from the pack's git history, its pull requests and the two issues behind the skill
-triggers, following the backfill method the design states — each entry derived from the adding
-commit, its pull request and the `VERSIONS.md` row **before** re-reading the rule, and a field
-left out wherever the history is silent. The other 21 are empty, which is exactly the state the
-backfill task consumes. A dry run of `check` over the folder, the rendered `RULES.md` and the
-real pack resolves every marker and id to a live file, finds every file named, and finds a
-`Mechanism` on every entry whose kind carries one.
+**The release half applies once the repo ships the pipeline** — the orchestrator workflow, or a `.github/release.config`, is present — and nothing is declared for it. A repo that only codes an extension is asked for no release config, no privacy page and no README release section; a repo that publishes gets all of it.
 
-| Filled | What it shows |
-|---|---|
-| `pack.md` | pack-level mechanism decisions: the manifest fingerprint, the split into an opt-in release pack and why it collapsed back into a structural gate, the kept `cer/` ids |
-| `extension-host-permissions.md` | a rule that became a path-forced skill: why `**/manifest.json` and not a source glob, why the description names two moments, the description-only alternative the owner rejected and where that call is recorded |
-| `chrome-store-releases.md` | a skill's life — standard, opt-in pack, vendoring, skill, path trigger — with the trigger entry saying which files are forced, which are deliberately not, and what the guard and its backstop do |
-| `declined.md` | the three extractions the audit proposed for this pack and the owner declined, each with the reason a later pass can re-derive against |
-| `content-script-module-syntax.md` | one element covering a rule **and** the check converted from it: parsed-not-grepped, why coded rather than declared, the deletion-test verdict (prose kept, and why), a later split |
-| `declarative-content-set-icon.md` | a check whose prose was deleted on conversion; the README-drift correction; the retire test |
-| `cer-permission-added-store-issue.md`, `cer-privacy-permission-alignment.md` | two declared checks born of one decision, one advisory and one blocking, with the severity reasoned from where the fix lives |
-| `cer-version-bumped.md` | why a work-scope check and not a world-scope one, with the prior state as the rejected alternative |
-| `cer-release-workflows.md` | a legacy tolerance keyed on a migration record's recency, then an advisory and a convergence-window retirement |
-| `store-release.md` | a task: why agentless, three policy changes, the `disabledTasks` decision |
-| `url-filter-host-operators.md`, `id-token-for-jwt-backends.md`, `silent-refresh-prompt-none.md` | rules born by promotion, then reworded by corpus-wide passes; one line each |
-| `tokens-in-session-storage.md`, `token-across-restarts.md` | a split, recorded on both sides |
+## What the pack carries
 
-`Actor` names the person by handle with their role, or the run that decided and who merged it.
-`Model` is written where a landing commit's trailer names one and left out where it does not.
-`Landed` is the pull request or commit and the pack version that shipped the decision — a locator
-from the decision to its diff and to the members that received it, not a proof.
+The gotchas themselves live in [`RULES.md`](RULES.md), grouped by the surface each concerns —
+service worker, content scripts, permissions and host access, sign-in and tokens, extension UI
+surfaces, and introspecting a service worker over CDP.
+
+## Rules (`RULES.md`)
+
+| Rule | Severity | Reason | Enforcement |
+|---|---|---|---|
+| Passing a path from a service worker | high | correctness | prose: <100 words |
+| Wanting import/export in extension code | medium | correctness | prose: <100 words |
+| Assembling a shared global across files | high | correctness | prose: <100 words |
+| Accumulating state in a re-injected file | high | correctness | prose: <50 words |
+| Loading module code into a content script | high | correctness | prose: <200 words + check (`content-script-module-syntax`) |
+| Adding an import to a content-script module | high | correctness | prose: <50 words |
+| Keeping that webaccessibleresources list correct | high | correctness | prose: <50 words |
+| Matching a host with chrome.events.UrlFilter | high | correctness | prose: <100 words |
+| A listed host's fetch failing in-browser | medium | correctness | prose: <50 words |
+| Reaching your own backend | medium | correctness | prose: <50 words |
+| Authenticating an extension to a JWT-validating backend | critical | correctness | prose: <100 words |
+| Refreshing a token silently | medium | correctness | prose: <50 words |
+| Refreshing silently with two accounts | medium | correctness | prose: <50 words |
+| Storing a token | critical | correctness | prose: <50 words |
+| Keeping a token across a restart | medium | correctness | prose: <50 words |
+| Knowing whether your side panel is open | low | correctness | prose: <50 words |
+| Opening the side panel programmatically | medium | correctness | prose: <20 words |
+| Putting a menu on the toolbar icon | low | correctness | prose: <50 words |
+| Recreating menu items on startup | medium | correctness | prose: <50 words |
+| Awaiting a chrome. callback API inside Runtime.evaluate | low | correctness | prose: <50 words |
+| Reading a worker value over CDP | low | correctness | prose: <50 words |
+| Attaching to a dormant worker | low | correctness | prose: <50 words |
+
+Runtime host access — the two rules that concern `host_permissions` — is the
+[`extension-host-permissions`](skills/extension-host-permissions/SKILL.md) skill, forced for any
+`manifest.json` edit.
+
+## Checks
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `content-script-module-syntax` | high | correctness | check: blocking |
+| `declarative-content-set-icon` | medium | correctness | check: blocking |
+| `cer/release-workflows` | high | correctness | check: blocking |
+| `cer/template-tokens` | high | correctness | check: blocking |
+| `cer/release-config` | high | correctness | check: blocking |
+| `cer/version-sync` | high | correctness | check: blocking |
+| `cer/version-bumped` | high | correctness | check: blocking |
+| `cer/release-layout` | medium | correctness | check: blocking |
+| `cer/readme-sections` | low | complexity | check: blocking |
+| `cer/privacy-permission-alignment` | critical | legal | check: blocking |
+| `cer/permission-added-store-issue` | high | legal | check: advisory |
+
+Every `cer/` rule is about a release that would otherwise fail — or publish the wrong thing — only once it reached the store, and every one of them is inert until this repo ships the pipeline. `cer/version-bumped` judges the diff, so it fires in a change that ships files without moving the version.
+
+## Skills
+
+[**chrome-store-releases**](skills/chrome-store-releases/SKILL.md) is the release standard itself — the vendored workflows and composite actions, `.github/release.config`, versioning and the packaged artifact, the store secrets, the README install sections, and the manual Chrome Web Store steps. It is the contract the `cer/` checks judge against, reached when a pipeline is being set up or debugged rather than carried by every session in the repo.
+
+## Task
+
+`tasks/store-release/` fires the repo's daily release: agentless, `code_work` only, dispatching the vendored daily workflow. Its precondition declines on a repo that does not publish.

@@ -15,6 +15,7 @@ read by maintenance and never by a working session.
 |---|---|---|
 | the carriers — `RULES.md`, `skills/`, the checks, `tasks/`, `pack.mjs` | what does a session do | every session in every repo that declares the pack |
 | `provenance/<element>.md` | why the element is as it is — its mechanism above all — and what would retire it | the growth and curation passes, a promote run, a maintainer |
+| `README.md` | how a repository uses the pack and its elements | a person adopting the pack, or reaching for one of its elements |
 
 Provenance is a log of decisions. It is never a description of the current rule: an entry that
 restates what the carrier says is wrong by construction, and a reader who wants the rule reads the
@@ -73,10 +74,24 @@ that element's file, or an artifact whose decision is the pack's, or evidence:
 | the pack's own existence, name, split or collapse; a rename-map entry for an absorbed pack | `pack` of the pack that exists afterwards |
 | stubs and migrations | their own module headers, plus a `pack` entry for the decision to ship them |
 | tests and fixtures | nothing — a fixture is evidence, cited from the check's entry |
-| `README.md` | nothing — it describes; its "distilled from" paragraph moves to `pack` (§6) |
+| `README.md` | nothing — it says how the pack is used (below), and every sentence of history in it moves onto the entry it is evidence for (§6) |
 | `VERSIONS.md`, `directory.GENERATED.md`, the rule inventory | nothing — derived, never decided |
 | a member's `accept` waiver, severity override or `disabledTasks` entry | the member's settings file, whose `reason` is the record; no provenance file |
 | a design doc, a capture on the conversation-logs branch, a tracker comment, a pull request body | evidence — cited by an entry, never copied into one |
+
+### The README beside them
+
+A pack's `README.md` is for the person adopting the pack or reaching for one of its elements, and
+it carries only what that person does with it: when the pack activates, what each check demands
+and what satisfies it, when a skill is the thing to load, what the task does to the repository,
+and the catalog of what the pack carries. It never carries how an element came to be, what it
+replaced, why its id reads as it does, what an earlier shape did, or how the pack is maintained.
+The test is the sentence: a date, a pull request number, an "until", a "was", a "kept as it was"
+or a "distilled from" is a decision, and a decision is an entry on the element's file — `pack`
+for the pack's own shape, the element's own file for the rest. The maintainer's procedure is not
+the README's either: it is the growth skills', forced when a pack file is edited (§3), and the
+provenance those skills append to. What is left is shorter, and it is read by the one reader a
+README has.
 
 ### The file
 
@@ -192,7 +207,7 @@ Every flow that creates or changes an element appends, in the same change:
 | `rule-revalidation`, `canon-rule-revalidation`, `revalidate-from-source` | `reaffirmed` only with new evidence or a changed `Retire when`; `reworded` or `retired` for a correction |
 | `growth-promote` | on the canon side the local file, reduced (§4), a `promoted` entry, and the marker on the promoted rule; the local file stays until dedup retires it |
 | `generate-project-instructions`, `learning-a-technology` | `pack` and one `born` per element, citing the evidence set or the dated sources |
-| an attended session editing a carrier | the skill the edit force-loads (`writing-pack-prose` for prose, `writing-repo-scanning-checks` for a check, `writing-tasks` for a task) ends with the append |
+| an attended session editing a carrier or a README | `changing-pack-elements`, the skill forced on every pack file (below), which ends with the append |
 
 The mechanics are one helper, `provenance.mjs` in `claudinite-growth`, vendored so a member runs it
 from the mount and the canon from the repo root:
@@ -204,10 +219,54 @@ from the mount and the canon from the repo root:
 | `check <pack>` | the parser the check uses, run by hand; prints what each file is named by |
 | `convert-references <pack>` | the migration of a `references.md` (§6) |
 | `reduce <file>` | the promotion reduction (§4) |
-| `history <pack> <element>` | the backfill brief: the carrier's commits through every rename, a pickaxe on the rule's text, the pull requests those commits name, the `VERSIONS.md` rows naming them, a README provenance line, the tracker comments |
+| `history <pack> <element>` | the backfill brief: the carrier's commits through every rename, a pickaxe on the rule's text, the pull requests those commits name, the `VERSIONS.md` rows naming them, the README's history sentences, the tracker comments |
 
 `append` refuses an entry that matches the capture scrub's secret patterns: a decision log is prose
 an agent writes, and the one place a token could land is the one place nothing else scans.
+
+### The forced skill
+
+One skill in `claudinite-growth`, `changing-pack-elements`, is forced by
+`force-load-on-file-edits-paths` on every file of a pack that a decision can change, in a local
+pack and on a canon's shelf alike, through the two-root patterns the pack's `writing-pack-prose`
+already uses (`**/packs/*/…` matches `.claudinite/local/packs/<pack>/` in a member and
+`packs/<pack>/` in a canon):
+
+| Forced on | Because |
+|---|---|
+| `RULES.md`, `skills/**` | a rule's wording and modality, a skill's body, description and triggers |
+| `worldRules/**`, `workRules/**`, `declared-checks.json` | a check's gate, scope, severity and text |
+| `tasks/**` | a task's preconditions, policy and worker |
+| `pack.mjs` | the fingerprint, requirements, routing and seeding |
+| `README.md` | the one file with no skill today, and the one that history creeps back into |
+| `provenance/**` | a hand edit of a file that is otherwise appended by the helper |
+
+The skill is short and states three things: which kind of entry this edit owes and the `append`
+command that writes it; what the README carries and what it does not (the paragraph above, in
+the imperative); and that a file under `.claudinite/shared/` is never edited, which the lifecycle
+pack's rule already says. It names no corpus, as a growth skill must, so the same skill serves the
+shelf; `claudinite-canon-curation` adds no twin, only the rules below. The skills that already
+load on these edits keep their subjects — `writing-pack-prose` the prose, `writing-tasks` the task
+contract, `writing-repo-scanning-checks` the check — and none of them learns the append:
+`writing-repo-scanning-checks` is the basics pack's, and a growth mechanism written into another
+pack's skill is the pack-to-pack dependency the curation rules refuse. The cost is a second skill
+loaded on a prose, task or check edit, and the first skill ever loaded on a README edit.
+
+### The rules that say so
+
+The skill fires at the edit; three rules say the same thing where a session reads rules, so a
+session that plans a pack change knows the shape before the hook holds its first edit:
+
+| Pack | Rule |
+|---|---|
+| `claudinite-canon-curation` | **Writing a pack's `README.md`** — how a repo uses the pack and its elements: when it activates, what each check demands, when a skill is reached for, what the task does. Never how an element came to be, what it replaced or how it is maintained: a date, a pull request number, an "until" or a "kept as it was" is an entry on the element's provenance file, and the maintainer's method is the growth skills'. |
+| `claudinite-canon-curation` | **Changing a carrier on the shelf** — a rule, a skill's trigger, a check's gate or severity, a task's policy — lands with the entry on its provenance file in the same change; the forced skill names the kind. The existing rule on descriptive prose in `RULES.md` gains the same destination: description to the module header and the README, rationale and history to the element's file. |
+| `claudinite-growth` | **Recording a local pack change** keeps its verdict — no changelog file, the commit and its pull request are the record of *what* changed — and gains its complement: the *decision* is the entry on the element's provenance file, which the change carries. |
+
+The home's own local pack carries one rule that names the old destination — a design doc whose
+system is built moves "an owner-decision record with its rationale" into a module header or a
+pack README — and that destination becomes the element's provenance file; the section-by-section
+verification it asks for is unchanged.
 
 ## 4. Promotion, and the reduction that makes a shared canon safe
 
@@ -278,8 +337,13 @@ decision-bearing entries from that source **before** re-reading the rule, then d
 the rule implied. A field the evidence does not carry is left out; a fabricated rationale would
 let a future review reaffirm a rule on false grounds, which is worse than no rationale at all.
 An element whose history the evidence does not reach at all gets a `born` entry that says only
-what is known — the date and commit it first appears in — and stays as short as that. The task's
-pull request is one pack's backfill, reviewed as such.
+what is known — the date and commit it first appears in — and stays as short as that. The same
+run trims the pack's README: each sentence of history it holds — the "distilled from" paragraph,
+the "until #n", the "kept as it was", the mechanism's reasons — is evidence the run has already
+read, so it moves onto the entry it evidences and leaves the README, which keeps only what §1
+says a README carries. The task's pull request is one pack's backfill and one README's trim,
+reviewed as such; the README is the one vendored file the run touches, so the pack's version is
+cut once by automation as for any prose change.
 
 **`references.md` converts mechanically.** `convert-references` turns each entry into an entry of
 the element it keys — `RULES-n` resolves through the rule carrying the marker `(n)`, `<skill>-n`
@@ -292,8 +356,9 @@ with a slug marker and a file — about fifty bullets across twenty skills. A pa
 migration states, blocking after it, with the command in the fix text. In a member, the backfill
 task runs the conversion as its first step.
 
-**Existing README provenance paragraphs** ("distilled from …") move into `pack` with the same
-pass: a README vendors, and that sentence is the one thing in it a third party should not receive.
+**No README is trimmed by the marking pass.** Which sentence of a README is history is a
+judgment made with the element's evidence in hand, so it belongs to the backfill run and not to
+the mechanical pass; until a pack's run has come, its README reads as today, and nothing loads it.
 
 ## 7. The check: `provenance-integrity`
 
@@ -381,6 +446,10 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
   review readable.
 - **A session edits a carrier without appending.** The work-scope check fails the change at the
   Stop hook with the `append` command in the fix.
+- **History creeps back into a README.** The forced skill states the scope at the edit, the
+  curation rule states it where rules are read, and the next backfill or revalidation run over
+  the pack reads the README as evidence and moves what it finds. No check greps a README for a
+  date: the phrase list would be the whole check, and the skill at the edit is the cheaper guard.
 - **A vendored copy leaks the folder.** The vendor-set test asserts over the real corpus that no
   `provenance/` path vendors, in the same test that pins `test/` and `docs/`.
 
@@ -417,6 +486,15 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
 - **`declined.md` per pack** — over a tracker issue's comment feed. A comment feed is one
   scrollable history for every candidate in the corpus; a per-pack file is read by the pass that
   is about to re-nominate in that pack, which is the read that prevents the rework.
+- **One forced skill for the append and the README scope** — over teaching every editing skill
+  the append. Three skills from two packs load on carrier edits today, one of them the basics
+  pack's, and a growth mechanism cannot be written into it; one growth skill states the append
+  once, reaches the README that no skill reaches today, and serves the shelf without a curation
+  twin. The cost is one more skill loaded per pack edit.
+- **The README trimmed by the backfill run** — over a separate sweep, and over leaving READMEs as
+  they are. The run holds the evidence each history sentence points at, so moving the sentence is
+  the same read; a sweep would re-derive the element for every sentence, and a README that keeps
+  its history keeps a second, unmaintained copy of the log beside the log.
 - **Handles reduced by the canon's visibility** — over one identity policy everywhere. A local pack
   and a private canon sit beside git logs that already name their authors; a public canon is read
   by people who never saw that repo. The boundary is the policy, and it is read, not set.
@@ -446,6 +524,9 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
   per authoring model is a number something measures.
 - **The conversion inventory's class column becomes derivable** from `converted` and `declined`
   entries instead of hand-dated corrections.
+- **A README shrinks to its reader**: a person adopting a pack reads how to use it, and the
+  history that read as description — a third of some READMEs today — is on the file that can
+  answer for it.
 - **An audit can answer what shaped the rules**: incidents, documents and requests, and never a
   member's product source.
 
@@ -463,7 +544,9 @@ on `main`; a second reading a week after the backfill task's precondition first 
   that found everything still true. `references.md` files on the shelf: 21 before the conversion,
   0 after; in members' local packs the same fall on each member's first backfill run. About
   fifty skill bullets with numeric markers today become elements of their own. The session-start
-  summary's prose token weight rises by the marker count and no more.
+  summary's prose token weight rises by the marker count and no more. README bytes on the shelf:
+  about 230 KB across 37 files before the backfill; each run's pull request reports the pack's
+  before and after, and the shelf total falls as the runs come.
 - **Expected behaviours.** Every promote pull request carries a reduced provenance file and a
   marker per promoted lesson (read from the promote PR's diff). A hand edit of a carrier in an
   attended session appends in the same commit (read from the `provenance-integrity` firing counts
@@ -471,6 +554,8 @@ on `main`; a second reading a week after the backfill task's precondition first 
   zero with carrier edits flowing means sessions append unprompted). Every `trigger-changed` and
   `policy-changed` entry carries a `Mechanism` that names the alternative it beat.
 - **Misuse.** An entry that restates the rule; an edited or removed line, which the check reports;
+  a README edit made without the forced skill (the hook's `skill-not-loaded` count for
+  `changing-pack-elements`); a history sentence written into a README after its trim;
   an `Actor` that is an email; a session id or a quote in a canon file; a provenance path in a
   member's mount; a rule whose marker names a file and whose file says nothing about that rule; a
   placeholder value where a field should have been omitted.
@@ -481,7 +566,8 @@ on `main`; a second reading a week after the backfill task's precondition first 
   and no entry (only possible outside a Stop hook — a direct API write — and the check on the
   branch would say so); promote pull requests with no provenance file beside a promoted rule;
   overrides and waivers still naming rules by quoting their text after the marker exists; a
-  `trigger-changed` entry with no `Mechanism`.
+  `trigger-changed` entry with no `Mechanism`; READMEs of backfilled packs still carrying an
+  "until #n".
 - **Per decision, what would show the alternative was right.** The slug marker: the prose token
   weight rising by more than the marker count predicts, or markers dropped in reword sweeps more
   than once each — the marker was noisier than rationed, and a number or nothing was cheaper. One
@@ -489,9 +575,12 @@ on `main`; a second reading a week after the backfill task's precondition first 
   collision was not rare. Skill as one element: entries on a skill file that name bullets more
   often than the skill, month after month. No header: a check or a reader that needed coverage
   written down after all. Handles by visibility: a review that could not judge a decision without
-  knowing who took it, or a name in a public canon that should not have been there.
+  knowing who took it, or a name in a public canon that should not have been there. One forced
+  skill: sessions that loaded it on a README edit and changed nothing the skill speaks to (a
+  typo, a link), often enough that the load is the cost and the README should leave the list.
 - **Cheap to re-examine:** the backfill cadence and its one-pack-per-run size, the conversion
-  window's date, the advisory grade on empty files, the entry-field vocabulary, the slug length.
+  window's date, the advisory grade on empty files, the entry-field vocabulary, the slug length,
+  the forced skill's path list.
   **Expensive:** the file grammar, the id rule (a marker is the id and never changes), the
   never-vendored and never-loaded properties, the reduction's boundary rule.
 - **Metrics the review needs, and the read.** File and entry counts: `git ls-files
