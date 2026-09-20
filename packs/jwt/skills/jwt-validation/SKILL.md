@@ -1,6 +1,8 @@
 ---
 name: jwt-validation
 description: Wiring or changing JWT verification — pinning algorithms, validating claims, nested or encrypted tokens. Use when adding or changing code that accepts JWTs.
+metadata:
+  body: guidelines
 ---
 
 # JWT validation

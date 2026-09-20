@@ -2,6 +2,7 @@
 name: firebase-functions
 description: Writing Cloud Functions for Firebase — transactional rate limits, batched-write chunking and at-least-once fan-out, best-effort push with dead-token cleanup, smoke-loading the built entrypoint. Use when editing anything under functions/.
 metadata:
+  body: guidelines
   force-load-on-file-edits-paths:
     - "functions/**"
 ---

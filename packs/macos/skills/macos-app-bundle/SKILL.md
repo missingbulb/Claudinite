@@ -2,6 +2,7 @@
 name: macos-app-bundle
 description: Assembling a macOS .app bundle from a SwiftPM build — the bundle script, the generated .icns, LSUIElement for a menu-bar app, LSMinimumSystemVersion against the package's platform floor. Use when editing Info.plist, Package.swift or the bundle-assembly script.
 metadata:
+  body: guidelines
   force-load-on-file-edits-paths:
     - "**/Info.plist"
     - "**/Package.swift"

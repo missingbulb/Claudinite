@@ -1,6 +1,8 @@
 ---
 name: verify-in-production
 description: Decide whether a change that has merged can only be proven in production, and if so file the verification that comes back on its own once it is live. Use immediately after the merge, beside the conversation capture — never before, and not on request.
+metadata:
+  body: workflow
 ---
 
 # Verify in production

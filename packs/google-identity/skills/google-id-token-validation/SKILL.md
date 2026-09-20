@@ -1,6 +1,8 @@
 ---
 name: google-id-token-validation
 description: Wiring server-side validation of Google Sign-In ID tokens — a JWT authorizer or OIDC verifier — and handling their claims. Use when adding or changing such validation.
+metadata:
+  body: workflow
 ---
 
 # Google ID-token validation

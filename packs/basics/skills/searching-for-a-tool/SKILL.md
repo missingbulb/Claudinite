@@ -2,6 +2,7 @@
 name: searching-for-a-tool
 description: Finding a harness tool by name — the select form for a deferred tool, and what an empty search means. Use before any ToolSearch, and when a search finds nothing.
 metadata:
+  body: guidelines
   force-load-on-tool-calls:
     - 'ToolSearch'
   force-load-on-tool-results-matching:

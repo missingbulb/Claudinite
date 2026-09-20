@@ -1,6 +1,8 @@
 ---
 name: unattended-agents
 description: Architecture and practices for unattended, automation-invoked agents and recurring routines. Use when building, structuring, or running an AI agent, a scheduled routine, or a multi-stage agent pipeline.
+metadata:
+  body: guidelines
 ---
 
 # Agent architecture principles

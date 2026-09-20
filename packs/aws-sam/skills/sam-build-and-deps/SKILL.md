@@ -2,6 +2,7 @@
 name: sam-build-and-deps
 description: Declaring a SAM Lambda's build dependencies — esbuild as a regular dependency for SAM's production-only install, and bundling the AWS SDK packages the handler imports instead of trusting the managed runtime's copy. Use when editing package.json or the build settings of a SAM template.
 metadata:
+  body: guidelines
   force-load-on-file-edits-paths:
     - "package.json"
     - "**/template.yaml"
