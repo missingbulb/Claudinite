@@ -90,11 +90,14 @@ const rule = {
           fix: 'write the entry in the file grammar — `## <YYYY-MM-DD> · <kind> · <one line>` and `- **Field:** …` lines, appended in date order, born first, Mechanism on every mechanism-bearing kind — through `append`, which validates it',
         }));
       }
-      for (const e of a.empty) {
+      // Pending history is one line per pack, not one per file: it is the backfill's
+      // worklist, and a worklist is read as a count.
+      if (a.empty.length) {
+        const ids = a.empty.map((e) => fileOfId(e.id)).sort();
         out.push(finding(rule, {
-          file: e.file, severity: 'advisory',
-          what: `${fileOfId(e.id)} is empty — an element whose history is not written yet`,
-          fix: 'the backfill fills it from the carrier\'s history (the backfilling-provenance skill); nothing else is owed',
+          file: `${dir}/${PROVENANCE_DIR}`, severity: 'advisory',
+          what: `${ids.length} provenance file${ids.length === 1 ? ' is' : 's are'} empty — elements whose history is not written yet (${ids.slice(0, 3).join(', ')}${ids.length > 3 ? ', …' : ''})`,
+          fix: 'the backfill fills them from each carrier\'s history (the backfilling-provenance skill), one pack per pull request; nothing else is owed',
         }));
       }
       // @legacy-tolerance advisory:provenance-integrity retire:#2170

@@ -33,7 +33,10 @@ const HEADING = /^(#{2,})\s+(.+?)\s*$/;
 // several lines below the bullet marker.
 const LEAD_IN = /\*\*([\s\S]+?)\*\*/;
 
-const wordsIn = (lines) => lines.join('\n').split(/\s+/).filter(Boolean).length;
+// The marker that ends a rule and names its provenance file is an id, not prose: it
+// is not counted, so marking a rule never moves its band.
+const PROVENANCE_MARKER = /\s*\([a-z][a-z0-9]*(?:-[a-z0-9]+)+\)\s*$/;
+const wordsIn = (lines) => lines.join('\n').replace(PROVENANCE_MARKER, '').split(/\s+/).filter(Boolean).length;
 
 const trimTrailingBlanks = (lines) => {
   const out = [...lines];

@@ -48,8 +48,9 @@ test('provenance-integrity: a marked pack is clean but for its empty files, whic
   try {
     const findings = runRule(worldRule, buildContext({ root, mode: 'all' }));
     assert.deepEqual(notAdvisory(findings), [], JSON.stringify(findings, null, 2));
-    assert.equal(findings.length, 8, 'one advisory per empty file');
-    assert.ok(findings.every((f) => /is empty/.test(f.what)));
+    assert.equal(findings.length, 1, 'pending history is one advisory per pack, a count');
+    assert.match(findings[0].what, /^8 provenance files are empty .*\(_pack\.md, declared-one\.md, doing-another\.md, …\)/);
+    assert.equal(findings[0].file, `${PACK}provenance`);
   } finally { cleanup(root); }
 });
 

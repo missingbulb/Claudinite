@@ -226,7 +226,12 @@ export function ruleBlocks(text) {
     });
     cur = null;
   };
+  // A fenced code block is opaque: a `- **Field:** …` line inside one is an example,
+  // not a rule, and it neither opens a block nor ends one.
+  let fenced = false;
   lines.forEach((line, i) => {
+    if (/^\s*```/.test(line)) { fenced = !fenced; if (cur) cur.end = i; return; }
+    if (fenced) { if (cur) cur.end = i; return; }
     if (RULE_BULLET.test(line)) { close(); cur = { start: i, end: i }; return; }
     if (TOP_BULLET.test(line) || HEADING.test(line)) { close(); return; }
     if (cur) cur.end = i;

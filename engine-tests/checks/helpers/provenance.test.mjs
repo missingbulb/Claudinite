@@ -142,6 +142,8 @@ test('ruleBlocks finds top-level bold bullets with their blocks, markers and ret
   assert.equal(blocks[1].text, '- **Wanting import/export** — bundle it. - a sub-bullet stays inside the block');
   assert.equal(ruleBlocks('- **Done** — it is (canon) and fine (see below).')[0].slug, null, 'an ordinary parenthetical is not a marker');
   assert.equal(ruleBlocks('- **Done** — cite (#1119).')[0].slug, null);
+  const fenced = ruleBlocks('- **Appending** — write it so:\n\n```\n## 2026-01-01 · born · x\n- **Reason:** an example, not a rule\n```\n\n- **Next** — a real rule. (next-rule)\n');
+  assert.deepEqual(fenced.map((b) => [b.trigger, b.slug]), [['Appending', null], ['Next', 'next-rule']], 'a bold bullet inside a fenced code block is an example, not a rule');
 });
 
 test('skillShape reads the declared body and proposes one from the shape', () => {
