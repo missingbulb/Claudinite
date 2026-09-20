@@ -471,5 +471,24 @@
         "fix": "repoint it at the file's current path; where the target is gone for good, delete the probe or materialization naming it rather than leave one that can never fire"
       }
     ]
+  },
+  {
+    "id": "no-new-long-dashes",
+    "severity": "blocking",
+    "scope": "work",
+    "since": "2026-09-20",
+    "failureMessage": "the owner writes with hyphens; a long dash is a model's habit, and a JSON round trip turns the ones already there into escapes nobody meant to write",
+    "excludeFileClasses": [
+      "testFiles"
+    ],
+    "forbidAddedLinesMatching": [
+      {
+        "inFilesMatching": "/^(?!\\.claudinite\\/shared\\/).*$/",
+        "match": "/[\u2013\u2014]|\\\\u201[34]/",
+        "unlessLineMatches": "/^\\s*\"match\": /",
+        "what": "adds a long dash: \"{match}\"",
+        "fix": "use a hyphen, a comma or a full stop; a line the change merely moved keeps its text, so re-add it as it was"
+      }
+    ]
   }
 ]
