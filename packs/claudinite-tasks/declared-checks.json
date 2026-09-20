@@ -27,7 +27,7 @@
       {
         "match": "/\\/actions\\/(organization-)?variables\\b/",
         "what": "reads a repository variable over the REST API: \"{match}\"",
-        "fix": "take it from the vars bag \u2014 CLAUDINITE_VARS, unpacked into a task's environment by taskEnv and readable in engine code through varsBag(env)"
+        "fix": "take it from the vars bag — CLAUDINITE_VARS, unpacked into a task's environment by taskEnv and readable in engine code through varsBag(env)"
       }
     ]
   }
