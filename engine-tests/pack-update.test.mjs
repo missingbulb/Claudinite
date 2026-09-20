@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { git as gitIn } from './helpers.mjs';
 import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, pendingExecutorWorkflow, PENDING_DIR } from '../packs/claudinite-lifecycle/updates/pack-update.mjs';
 import { terminalFor } from '../packs/claudinite-lifecycle/updates/terminals.mjs';
 import { SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW } from '../packs/claudinite-tasks/src/adopt/converge-workflows.mjs';
@@ -566,7 +566,7 @@ test('a record that wrote outside the vendored packs raises the stage from a rea
   setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0 } });
   // A checkout, because the predicate reads what the cycle wrote out of git — and
   // committed first, so only what packUpdate itself writes is in the answer.
-  const git = (...args) => execFileSync('git', ['-C', root, ...args], { stdio: 'ignore' });
+  const git = (...args) => gitIn(root, ...args);
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 't@example.com');
   git('config', 'user.name', 't');
@@ -590,7 +590,7 @@ test('a pure re-vendor of the packs still merges itself — no session for a pac
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
   setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0 } });
-  const git = (...args) => execFileSync('git', ['-C', root, ...args], { stdio: 'ignore' });
+  const git = (...args) => gitIn(root, ...args);
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 't@example.com');
   git('config', 'user.name', 't');
