@@ -8,7 +8,9 @@ the rest of `docs/provenance/`.
 
 - **`RULES.md`** — the pack's rules exactly as they stand today, plus the one thing the design adds
   to injected prose: every rule ends with a marker naming its provenance file. The two skills and
-  the checks gain nothing, since their ids already name their files.
+  the checks gain nothing, since their ids already name their files. (One link is repointed at the
+  real skill and rewrapped so it resolves from this folder inside the line band; in the pack it
+  stays relative.)
 - **`provenance/`** — 36 element files and one `declined.md`, for a pack of 22 prose rules,
   2 skills, 4 coded checks, 7 declared checks, 1 task and the manifest: 37 carriers. One file,
   `content-script-module-syntax.md`, covers two — the classic-content-script rule and the check

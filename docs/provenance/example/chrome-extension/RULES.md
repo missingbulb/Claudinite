@@ -1,9 +1,9 @@
 # Chrome extensions
 
 > **Releasing, versioning, and Chrome Web Store publication are standardized** — before building
-> or changing any release/publish machinery in an extension repo, read the
-> [chrome-store-releases standard](skills/chrome-store-releases/SKILL.md) and copy its canonical
-> workflows instead of re-deriving them.
+> or changing any release/publish machinery in an extension repo, read the chrome-store-releases
+> [standard](../../../../packs/chrome-extension/skills/chrome-store-releases/SKILL.md) and copy
+> its canonical workflows instead of re-deriving them.
 
 ## Service worker
 
