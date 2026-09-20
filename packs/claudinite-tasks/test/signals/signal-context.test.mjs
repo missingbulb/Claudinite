@@ -13,7 +13,8 @@ import logsPruneJson from '../../../claudinite-growth/tasks/logs-prune/task.json
 import proseToChecksJson from '../../../claudinite-growth/tasks/prose-to-checks-sweep/task.json' with { type: 'json' };
 import revalidationJson from '../../../claudinite-growth/tasks/rule-revalidation/task.json' with { type: 'json' };
 import { removeTree } from '../../../../engine/remove-tree.mjs';
-import { evaluatePrecondition, loadTaskTerms } from '../../public/preconditions.mjs';
+import { evaluatePrecondition } from '../../src/contract/precondition.mjs';
+import { loadTaskTerms } from '../../src/contract/task-terms.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const storeRelease = normalizeTaskDeclaration(storeReleaseJson);

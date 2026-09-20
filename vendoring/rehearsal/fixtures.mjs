@@ -569,7 +569,7 @@ jobs:
         env:
           GITHUB_TOKEN: \${{ github.token }}
           CLAUDINITE_WAKE: \${{ inputs.wake }}
-        run: node .claudinite/shared/packs/claudinite-tasks/public/scheduler-run.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/schedule/run.mjs
 
   drain:
     needs: tick
@@ -584,7 +584,7 @@ jobs:
         env:
           GITHUB_TOKEN: \${{ github.token }}
           # claudinite:secrets
-        run: node .claudinite/shared/packs/claudinite-tasks/public/executor.mjs
+        run: node .claudinite/shared/packs/claudinite-tasks/src/execute/loop.mjs
 `;
 
 // The thin shape: no inline program anywhere, every job a single-line

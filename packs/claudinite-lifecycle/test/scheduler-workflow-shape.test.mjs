@@ -108,9 +108,3 @@ jobs:
   assert.match(whats, /no concurrency group/);
   assert.match(whats, /does not run the vendored scheduler entry/);
 });
-
-// A member whose own workflow pull request has not landed still names the retired
-// `public/` entry, which the canon keeps as a shim until every member's has.
-test('scheduler-workflow-shape: the retired public/ entry still passes', () => {
-  assert.deepEqual(run({ [WF]: goodWorkflow.replace('src/schedule/run.mjs', 'public/scheduler-run.mjs') }), []);
-});

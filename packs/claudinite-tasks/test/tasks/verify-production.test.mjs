@@ -12,7 +12,7 @@ import {
 } from '../../tasks/verify-production/probes.mjs';
 import { runVerification } from '../../tasks/verify-production/worker.mjs';
 import declarationJson from '../../tasks/verify-production/task.json' with { type: 'json' };
-import { evaluatePrecondition } from '../../public/preconditions.mjs';
+import { evaluatePrecondition } from '../../src/contract/precondition.mjs';
 import { planSchedulerRun } from '../../src/schedule/run.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.

@@ -67,7 +67,7 @@ test('a changed rule that stays advisory is not — it cannot turn a member red'
 // The narrowness is the point: a rule that fires on every canon commit gets
 // turned off, and is then worth nothing on the day it matters.
 test('ordinary engine and pack edits are not contract surfaces', () => {
-  assert.deepEqual(contractChanges(['packs/claudinite-tasks/public/executor.mjs', 'packs/node/README.md'], () => 'whatever'), []);
+  assert.deepEqual(contractChanges(['packs/claudinite-tasks/src/execute/loop.mjs', 'packs/node/README.md'], () => 'whatever'), []);
 });
 
 test('test files are never contract surfaces, even when they contain a blocking rule', () => {

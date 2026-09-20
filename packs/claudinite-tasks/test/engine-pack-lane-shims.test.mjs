@@ -96,22 +96,3 @@ test('every engine module a fielded pack version imports still resolves, with th
   }
   assert.deepEqual(missing, [], `a fielded pack version imports these and would break mid-converge:\n  ${missing.join('\n  ')}`);
 });
-
-test('the frozen queue entry points re-export rather than re-declare, so they cannot drift', async () => {
-  // `queue/` is workflow and routine ABI: a member's workflow names those paths
-  // literally and moves only through a PR somebody merges, while the mount beside
-  // it refreshes nightly. A shim that re-DECLARED anything would be a second copy
-  // of the mechanism, delivered on the frozen path's cycle rather than the code's.
-  const [shim, home] = await Promise.all([
-    import(join(ROOT, 'packs/claudinite-tasks/public/executor.mjs')),
-    import(join(ROOT, 'packs/claudinite-tasks/src/execute/loop.mjs')),
-  ]);
-  assert.equal(shim.runExecutor, home.runExecutor, 'same function, not a copy');
-  assert.equal(shim.runExecutorJob, home.runExecutorJob, 'the entry point the workflow runs is the real one');
-
-  const [schedShim, schedHome] = await Promise.all([
-    import(join(ROOT, 'packs/claudinite-tasks/public/scheduler-run.mjs')),
-    import(join(ROOT, 'packs/claudinite-tasks/src/schedule/run.mjs')),
-  ]);
-  assert.equal(schedShim.runSchedulerRun, schedHome.runSchedulerRun, 'same function, not a copy');
-});

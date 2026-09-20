@@ -829,7 +829,7 @@ test('executor-vars-bag: inserts the bag, preserves each member\'s stamped secre
     '          CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}',
     '          # claudinite:secrets',
     '          MEMBER_ONLY_TOKEN: ${{ secrets.MEMBER_ONLY_TOKEN }}',
-    '        run: node .claudinite/shared/packs/claudinite-tasks/public/executor.mjs',
+    '        run: node .claudinite/shared/packs/claudinite-tasks/src/execute/loop.mjs',
     '',
   ].join('\n');
   const EXECUTOR = '.github/workflows/claudinite-executor.yml';

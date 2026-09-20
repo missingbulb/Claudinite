@@ -20,7 +20,7 @@ test('classifyPath names docs, tests and code', () => {
   assert.equal(classifyPath('packs/basics/tests/fixture.json'), 'test');
   assert.equal(classifyPath('packs/basics/test/pack.test.mjs'), 'test');
   assert.equal(classifyPath('app/test_parser.py'), 'test');
-  assert.equal(classifyPath('packs/claudinite-tasks/public/scheduler-run.mjs'), 'code');
+  assert.equal(classifyPath('packs/claudinite-tasks/src/schedule/run.mjs'), 'code');
   // A whole-segment match, so a directory that merely CONTAINS the word is code.
   assert.equal(classifyPath('src/latest/index.mjs'), 'code');
 });
