@@ -105,7 +105,7 @@ test('sitting ON the base branch is a clean skip — there is no change to judge
     const verdict = decide(root, { branch: 'main', fetch: false, eventPath: null });
     assert.equal(verdict.run, false);
     assert.equal(verdict.code, 0);
-    assert.match(verdict.say, /HEAD is main/);
+    assert.match(verdict.say, /HEAD is on main/);
   } finally { cleanup(root); }
 });
 
@@ -143,6 +143,25 @@ test('the push\'s OWN base is judged, not merely the previous commit', () => {
     assert.equal(verdict.run, false);
     assert.equal(verdict.code, 1);
     assert.match(verdict.say, /no diff against/);
+  } finally { cleanup(root); }
+});
+
+// The pushed commit is HEAD, but the base branch has moved past it by the time the
+// step fetches it: on a busy trunk two merges and a version bump land in the minute
+// between a push and its CI step. HEAD is then an ANCESTOR of the base, not equal
+// to it, and a three-dot diff from the base is empty — the push must still be
+// judged against what the branch held before it.
+test('a push overtaken on the base branch by later pushes is still judged against its own before', () => {
+  const { root, eventPath } = pushedRepo();
+  try {
+    const head = git(root, 'rev-parse', 'HEAD').trim();
+    writeFiles(root, { 'b.txt': 'later\n' });
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', 'landed after Refs #2');
+    git(root, 'checkout', '-q', '--detach', head);
+    const verdict = decide(root, { branch: 'main', fetch: false, eventPath });
+    assert.equal(verdict.run, true, verdict.say);
+    assert.deepEqual(verdict.changed, ['a.txt']);
   } finally { cleanup(root); }
 });
 
