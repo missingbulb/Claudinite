@@ -36,7 +36,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="html/badge.svg" width="18" height="18" alt=""> [html](html/README.md) | declared | 0 | 4 |
 | <img src="public-website/badge.svg" width="18" height="18" alt=""> [public-website](public-website/README.md) | declared (opt-in); marker: a page carrying a `title="version …"` stamp | 1 | 5 |
 | <img src="github-pages/badge.svg" width="18" height="18" alt=""> [github-pages](github-pages/README.md) | declared (opt-in); marker: `.github/site.config` | 2 | 2 (+ 1 skill: github-pages-pipeline, + the `site-release` task) |
-| <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 0 | 10 (+ 2 skills: flutter-golden-tests, flutter-pubspec) |
+| <img src="flutter/badge.svg" width="18" height="18" alt=""> [flutter](flutter/README.md) | pubspec.yaml | 2 | 9 (+ 2 skills: flutter-golden-tests, flutter-pubspec) |
 | <img src="firebase/badge.svg" width="18" height="18" alt=""> [firebase](firebase/README.md) | `firebase.json` | 2 | 5 + 3 skills: firestore-security-rules, firebase-functions, create-release-plan |
 | <img src="cloudflare-workers/badge.svg" width="18" height="18" alt=""> [cloudflare-workers](cloudflare-workers/README.md) | wrangler config near root | 0 | 11 |
 | <img src="cloudflare-site/badge.svg" width="18" height="18" alt=""> [cloudflare-site](cloudflare-site/README.md) | a near-root wrangler config declaring `assets.directory` | 3 | 3 (+ 1 skill: releasing-a-cloudflare-site, + the `site-release` task) |

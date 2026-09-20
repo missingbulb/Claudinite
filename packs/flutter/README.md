@@ -5,8 +5,9 @@ Active when the repo has `pubspec.yaml`. Durable, project-agnostic Flutter pract
 (with the committed import-boundary test and the shipped fake world), widget-test/golden mechanics
 (real fonts, no `pumpAndSettle` on spinners, injectable fetchers, fixed viewport, the async-epoch
 guard), and toolchain habits (pub-cache API verification, zero-issue analyze, stall-robust test
-runners for sandboxes). Prose and two skills — the enforceable pieces (import scan, coverage gates) live as
-committed tests inside the consuming project.
+runners for sandboxes). Prose, two checks and two skills — the enforceable pieces the pack cannot
+judge from outside (import scan, coverage gates) live as committed tests inside the consuming
+project.
 
 ## Rules (`RULES.md`)
 
@@ -16,13 +17,22 @@ committed tests inside the consuming project.
 | Enforce the boundary with an import scan | medium | complexity | prose: <50 words |
 | Ship the fakes in the package | low | complexity | prose: <100 words |
 | Extract the root shell into a widget | low | complexity | prose: <50 words |
-| Inject the clock. | high | correctness | prose: <50 words |
-| Anything that fetches must be injectable | medium | complexity | prose: <50 words |
+| Anything that fetches must be injectable | medium | complexity | prose: <50 words + check (`flutter/network-fetch-in-widget-tree`) |
 | Async lifecycle guards need an epoch counter. | high | correctness | prose: <100 words |
 | Real I/O in testWidgets needs runAsync | high | correctness | prose: <100 words |
 | Verify plugin APIs against installed source | high | correctness | prose: <50 words |
 | flutter analyze at zero issues | medium | complexity | prose: <50 words |
 | Sandboxed/CI runners | medium | complexity | prose: <100 words |
+
+## Checks
+
+| Check | Severity | Reason | Enforcement |
+|---|---|---|---|
+| `flutter/network-fetch-in-widget-tree` | medium | complexity | check: blocking |
+| `flutter/device-clock-not-injected` | high | correctness | check: blocking |
+
+`flutter/device-clock-not-injected` stands where a prose rule used to: the clock is already named
+as a port by the architecture rule above it, so the check and its fix line carry the rest.
 
 The golden mechanics are the [`flutter-golden-tests`](skills/flutter-golden-tests/SKILL.md) skill
 and lockfile skew is [`flutter-pubspec`](skills/flutter-pubspec/SKILL.md); each forces itself for
