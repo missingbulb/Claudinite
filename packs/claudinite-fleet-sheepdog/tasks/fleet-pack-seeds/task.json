@@ -4,7 +4,7 @@
   "description": "Checks that every member declares the packs this fleet standardises on, carrying the fleet-level parameters no member can derive for itself, and seeds what is missing.",
   "trigger": "schedule",
   "preconditions": [
-    "due:daily"
+    "schedule:at-most-daily"
   ],
   "expected_outcome": "no_code_changes",
   "code_work": "node worker.mjs",

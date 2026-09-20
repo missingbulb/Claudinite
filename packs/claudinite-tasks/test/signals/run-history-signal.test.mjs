@@ -99,25 +99,25 @@ test('the window opens at the newest run that actually ran', () => {
     { number: 8, createdAt: '2026-09-04T04:05:00Z', outcome: 'obsolete' },
     { number: 9, createdAt: '2026-09-03T04:05:00Z', outcome: 'done' },
   ] };
-  const w = windowFromRuns(task(['due:daily', 'substantive-change']), runs, NOW);
+  const w = windowFromRuns(task(['schedule:at-most-daily', 'substantive-change']), runs, NOW);
   assert.equal(w.sinceIso, '2026-09-03T04:05:00.000Z', 'the rejected #8 did nothing, so it does not move the seam');
   assert.ok(Math.abs(w.days - 2.4965) < 0.001);
   // A parked run started, so it counts.
   const parked = { list: [{ number: 10, createdAt: '2026-09-05T04:05:00Z', outcome: null, park: 'failure' }] };
-  assert.equal(windowFromRuns(task(['due:daily']), parked, NOW).sinceIso, '2026-09-05T04:05:00.000Z');
+  assert.equal(windowFromRuns(task(['schedule:at-most-daily']), parked, NOW).sinceIso, '2026-09-05T04:05:00.000Z');
 });
 
 test('with no run in the horizon the window is the task\'s own cadence plus slack, a day where it states none', () => {
   const DAY = 86400e3;
-  assert.equal(defaultWindowMs(task(['due:weekly', 'repo-active'])), 7 * DAY + 3600e3);
-  assert.equal(defaultWindowMs(task(['due:monthly'])), 31 * DAY + 3600e3);
-  assert.equal(defaultWindowMs(task(['last-run-over:3d'])), 3 * DAY + 3600e3);
+  assert.equal(defaultWindowMs(task(['schedule:at-most-weekly', 'repo-active'])), 7 * DAY + 3600e3);
+  assert.equal(defaultWindowMs(task(['schedule:at-most-monthly'])), 31 * DAY + 3600e3);
+  assert.equal(defaultWindowMs(task(['due:daily'])), DAY + 3600e3, 'the retired spelling is the same cadence');
   assert.equal(defaultWindowMs(task(['substantive-change'])), DAY + 3600e3);
   assert.equal(defaultWindowMs(task([])), DAY + 3600e3);
-  const w = windowFromRuns(task(['due:weekly']), { list: [] }, NOW);
+  const w = windowFromRuns(task(['schedule:at-most-weekly']), { list: [] }, NOW);
   assert.equal(w.sinceIso, new Date(Date.parse(NOW) - 7 * DAY - 3600e3).toISOString());
-  assert.equal(windowFromRuns(task(['due:weekly']), null, NOW).sinceIso, w.sinceIso, 'an unreadable history reads the default');
-  assert.ok(Math.abs(windowDaysOf(task(['due:weekly']), {}) - 7.0417) < 0.001);
+  assert.equal(windowFromRuns(task(['schedule:at-most-weekly']), null, NOW).sinceIso, w.sinceIso, 'an unreadable history reads the default');
+  assert.ok(Math.abs(windowDaysOf(task(['schedule:at-most-weekly']), {}) - 7.0417) < 0.001);
   assert.equal(windowDaysOf(task([]), { runs: { window: { days: 2.5 } } }), 2.5, 'read off the bundle where it was decided');
 });
 
@@ -128,7 +128,7 @@ test('collectFor reads the history first, sets the window from it, and can stop 
   const paths = [];
   const gh = async (path) => { paths.push(path); return { status: 200, json: [] }; };
   const collect = collectSignalsForTask({ gh, repo: 'o/r', root: process.cwd(), config: { packs: [] }, defaultBranch: 'main', items });
-  const t = task(['due:daily', 'substantive-change']);
+  const t = task(['schedule:at-most-daily', 'substantive-change']);
 
   const cheap = await collect(t, NOW, null, { only: ['runs'] });
   assert.deepEqual(Object.keys(cheap), ['runs']);
@@ -157,13 +157,13 @@ test('collectFor reads the history only where a term or a windowed collector rea
   assert.ok(paths.some((p) => /\/issues\/500$/.test(p)), 'the named request was read');
 
   paths.length = 0;
-  await collect(task(['due:daily']), NOW, null);
+  await collect(task(['schedule:at-most-daily']), NOW, null);
   assert.ok(paths.some((p) => /\/issues\?state=all/.test(p)), 'a run-history term reads the queue');
 });
 
 test('collectFor hands the item\'s facts to the collectors, the runs history excluding it', async () => {
   const items = [item(9), item(11, { state: 'open', labels: ['task:status:running-executor', 'task:origin:planned'], created_at: '2026-09-05T15:00:00Z', closed_at: null })];
   const collect = collectSignalsForTask({ gh: noGh, repo: 'o/r', root: process.cwd(), config: { packs: [] }, defaultBranch: 'main', items });
-  const out = await collect(task(['due:daily']), NOW, items[1]);
+  const out = await collect(task(['schedule:at-most-daily']), NOW, items[1]);
   assert.deepEqual(out.runs.list.map((r) => r.number), [9]);
 });

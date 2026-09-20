@@ -14,8 +14,9 @@
 
 import { parseTaskDeclaration, applyTaskDefaults } from './declaration-text.mjs';
 import {
-  mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, holdsOnFailure, holdsOnAnyPark, statesConditions,
-  DUE_TERM, ELAPSED_TERM,
+  mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, normalizeCadenceTerms,
+  holdsOnFailure, holdsOnAnyPark, statesConditions,
+  DUE_TERM, SCHEDULE_TERM,
 } from './task-calendar.mjs';
 import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
@@ -130,9 +131,12 @@ const withTrigger = (trigger, preconditions) => {
   return statesConditions(preconditions) ? TRIGGER_SCHEDULE : TRIGGER_REQUEST;
 };
 function withCadenceTerm(frequency, preconditions) {
-  if (frequency == null) return preconditions;
+  // The cadence-spelling door, run first so a declaration carrying the retired
+  // `due:<cadence>` reads the same here as it does through the contract's.
+  const current = normalizeCadenceTerms(preconditions);
+  if (frequency == null) return current;
   const term = cadenceTermFor(frequency);
-  const stated = (preconditions ?? []).filter((c) => String(c).trim() !== NONE);
+  const stated = (current ?? []).filter((c) => String(c).trim() !== NONE);
   return term === null || stated.some((c) => String(c).trim() === term) ? stated : [term, ...stated];
 }
 
@@ -140,7 +144,7 @@ function withCadenceTerm(frequency, preconditions) {
 // being routine and being a fault, so the roster shows it. The cadence terms say WHEN
 // a task runs, not whether, and `none` is the EMPTY precondition — so neither is a
 // gate, and a task carrying only those answers no here, exactly as it should.
-const CADENCE_TERM_NAMES = [DUE_TERM, ELAPSED_TERM];
+const CADENCE_TERM_NAMES = [SCHEDULE_TERM, DUE_TERM];
 const termName = (t) => t.split(':')[0].trim();
 const isGate = (entry) => String(entry ?? '').split('||')
   .some((t) => termName(t) !== NONE && !CADENCE_TERM_NAMES.includes(termName(t)));
@@ -192,9 +196,9 @@ export function parseDeclaration(text) {
 // "on movement" would hide behind a legitimate answer, and a task that reads exactly
 // as its author wrote it must not show as unknown.
 //
-// Only a `due:` cadence is on the calendar, so only it can have a next anchor: an
-// elapsed cadence counts from the task's newest run, and no-cadence and off-schedule
-// have no next instant at all. `scheduled` is null, not false, where nothing was read.
+// Only a stated cadence is on the calendar, so only it has a next anchor: no-cadence
+// and off-schedule have no next instant at all. `scheduled` is null, not false, where
+// nothing was read.
 //
 // `holdsOnFailure` is the same read for the one other thing a declaration says about
 // its own lane: whether a failure park stops the task (`last-run-not-failed`). No
@@ -215,12 +219,6 @@ export function describeCadence(preconditions, trigger) {
   const period = taskPeriodMs({ preconditions });
   if (cadence === null) {
     return { frequency: 'on movement', cadence, periodMs: period, scheduled: true, holdsOnFailure: holds, holdsOnAnyPark: holdsAnywhere, anchorNote: 'no cadence term — asked at every tick' };
-  }
-  if (cadence.kind === 'elapsed') {
-    return {
-      frequency: `every ${cadence.text}`, cadence, periodMs: period, scheduled: true, holdsOnFailure: holds, holdsOnAnyPark: holdsAnywhere,
-      anchorNote: `every ${cadence.text} — counted from its newest run, not the calendar`,
-    };
   }
   return { frequency: cadence.cadence, cadence, periodMs: period, scheduled: true, holdsOnFailure: holds, holdsOnAnyPark: holdsAnywhere, anchorNote: null };
 }
@@ -416,15 +414,10 @@ export function buildRoster({ tasks = [], items = [], now, schedule, isOpen }) {
     const closed = mine.filter((i) => i.state === 'closed');
     const read = describeCadence(statedPreconditions(t.declaration), statedTrigger(t.declaration));
 
-    // The calendar answers only a `due:` cadence, and only where the repo has a
-    // schedule to anchor it on; every other reading carries its own note instead, so
-    // an unreadable declaration yields no anchor rather than a guessed one.
-    let next = null;
-    let anchorNote = read.anchorNote;
-    if (read.cadence?.kind === 'due') {
-      if (!schedule) anchorNote = 'no schedule configured';
-      else next = nextAnchor(read.cadence.cadence, schedule, now);
-    }
+    // Only a stated cadence is on the calendar; every other reading carries its own
+    // note instead, so an unreadable declaration yields no anchor rather than a guess.
+    const anchorNote = read.anchorNote;
+    const next = read.cadence === null ? null : nextAnchor(read.cadence.cadence, now);
 
     const current = open.length
       ? describeItem(open[0], now, { periodFor: () => read.periodMs, isOpen })

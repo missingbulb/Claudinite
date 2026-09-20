@@ -7,7 +7,7 @@
   ],
   "trigger": "schedule",
   "preconditions": [
-    "due:daily",
+    "schedule:at-most-daily",
     "mount-moved || commits-under:.claudinite-settings.json || commits-under:.claudinite-checks.json"
   ],
   "expected_outcome": "no_code_changes",

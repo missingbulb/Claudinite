@@ -51,11 +51,11 @@ test('the CLI rewrites a checkout\'s canon and local packs, or the folders it is
   try {
     await main(['--root', root]);
     const read = (p) => JSON.parse(readFileSync(join(root, p), 'utf8'));
-    assert.deepEqual(read(`${CANON_PACK_ROOT}/p/tasks/one/task.json`).preconditions, ['due:daily']);
-    assert.deepEqual(read(`${LOCAL_PACK_ROOT}/q/tasks/two/task.json`).preconditions, ['due:weekly']);
+    assert.deepEqual(read(`${CANON_PACK_ROOT}/p/tasks/one/task.json`).preconditions, ['schedule:at-most-daily']);
+    assert.deepEqual(read(`${LOCAL_PACK_ROOT}/q/tasks/two/task.json`).preconditions, ['schedule:at-most-weekly']);
     assert.equal(read(`${CANON_PACK_ROOT}/p/queue/tasks/three/task.json`).frequency, 'daily', 'a folder outside the pack roots is not scanned');
     await main(['--root', root, `${CANON_PACK_ROOT}/p/queue/tasks/three`]);
-    assert.deepEqual(read(`${CANON_PACK_ROOT}/p/queue/tasks/three/task.json`).preconditions, ['due:daily']);
+    assert.deepEqual(read(`${CANON_PACK_ROOT}/p/queue/tasks/three/task.json`).preconditions, ['schedule:at-most-daily']);
   } finally { removeTree(root); }
 });
 
@@ -67,13 +67,13 @@ test('the CLI rewrites a checkout\'s canon and local packs, or the folders it is
 test('retireFrequencyText: the field becomes the first condition; a none beside it drops; the layout survives', () => {
   const before = '{\n  "$schema": "s",\n  "id": "sweep",\n  "frequency": "weekly",\n  "preconditions": [\n    "none"\n  ],\n  "expected_outcome": "no_code_changes"\n}\n';
   const out = retireFrequencyText(before);
-  assert.equal(out.term, 'due:weekly');
-  assert.equal(out.text, '{\n  "$schema": "s",\n  "id": "sweep",\n  "preconditions": [\n    "due:weekly"\n  ],\n  "expected_outcome": "no_code_changes"\n}\n');
-  assert.deepEqual(JSON.parse(out.text).preconditions, ['due:weekly']);
+  assert.equal(out.term, 'schedule:at-most-weekly');
+  assert.equal(out.text, '{\n  "$schema": "s",\n  "id": "sweep",\n  "preconditions": [\n    "schedule:at-most-weekly"\n  ],\n  "expected_outcome": "no_code_changes"\n}\n');
+  assert.deepEqual(JSON.parse(out.text).preconditions, ['schedule:at-most-weekly']);
 
   const stated = '{\n  "id": "sweep",\n  "frequency": "daily",\n  "preconditions": [\n    "substantive-change",\n    "no-open-pr-titled:My sweep"\n  ]\n}\n';
-  assert.deepEqual(JSON.parse(retireFrequencyText(stated).text).preconditions, ['due:daily', 'substantive-change', 'no-open-pr-titled:My sweep']);
-  assert.match(retireFrequencyText(stated).text, /\n    "due:daily",\n    "substantive-change",\n/, 'the array keeps its own indentation');
+  assert.deepEqual(JSON.parse(retireFrequencyText(stated).text).preconditions, ['schedule:at-most-daily', 'substantive-change', 'no-open-pr-titled:My sweep']);
+  assert.match(retireFrequencyText(stated).text, /\n    "schedule:at-most-daily",\n    "substantive-change",\n/, 'the array keeps its own indentation');
 
   const inline = '{ "id": "x", "frequency": "manual", "preconditions": ["request-eligible"] }\n';
   assert.equal(retireFrequencyText(inline).text, '{ "id": "x", "preconditions": ["request-eligible"] }\n');
@@ -87,22 +87,22 @@ test('retireFrequencyText: the field becomes the first condition; a none beside 
 
 test('retireFrequencyText: with no preconditions the field\'s own line becomes the list, comma and indent kept', () => {
   const middle = '{\n  "id": "x",\n  "frequency": "monthly",\n  "expected_outcome": "fresh_pr"\n}\n';
-  assert.equal(retireFrequencyText(middle).text, '{\n  "id": "x",\n  "preconditions": [\n    "due:monthly"\n  ],\n  "expected_outcome": "fresh_pr"\n}\n');
+  assert.equal(retireFrequencyText(middle).text, '{\n  "id": "x",\n  "preconditions": [\n    "schedule:at-most-monthly"\n  ],\n  "expected_outcome": "fresh_pr"\n}\n');
   // The last key carries no comma, and neither does what replaces it.
   const last = '{\n  "id": "x",\n  "frequency": "daily"\n}\n';
-  assert.equal(retireFrequencyText(last).text, '{\n  "id": "x",\n  "preconditions": [\n    "due:daily"\n  ]\n}\n');
+  assert.equal(retireFrequencyText(last).text, '{\n  "id": "x",\n  "preconditions": [\n    "schedule:at-most-daily"\n  ]\n}\n');
   // …and when the field was last and the list already exists, the line before it loses its comma.
   const lastWithList = '{\n  "id": "x",\n  "preconditions": ["repo-active"],\n  "frequency": "weekly"\n}\n';
-  assert.equal(retireFrequencyText(lastWithList).text, '{\n  "id": "x",\n  "preconditions": ["due:weekly", "repo-active"]\n}\n');
+  assert.equal(retireFrequencyText(lastWithList).text, '{\n  "id": "x",\n  "preconditions": ["schedule:at-most-weekly", "repo-active"]\n}\n');
 });
 
 test('retireFrequencyText: nothing to do, a term already stated, and an unknown value', () => {
-  assert.equal(retireFrequencyText('{\n  "id": "x",\n  "preconditions": ["due:daily"]\n}\n'), null, 'no field, no rewrite');
-  const doubled = '{\n  "id": "x",\n  "frequency": "daily",\n  "preconditions": ["due:daily", "any-commit"]\n}\n';
-  assert.deepEqual(JSON.parse(retireFrequencyText(doubled).text).preconditions, ['due:daily', 'any-commit'], 'never given the term twice');
+  assert.equal(retireFrequencyText('{\n  "id": "x",\n  "preconditions": ["schedule:at-most-daily"]\n}\n'), null, 'no field, no rewrite');
+  const doubled = '{\n  "id": "x",\n  "frequency": "daily",\n  "preconditions": ["schedule:at-most-daily", "any-commit"]\n}\n';
+  assert.deepEqual(JSON.parse(retireFrequencyText(doubled).text).preconditions, ['schedule:at-most-daily', 'any-commit'], 'never given the term twice');
   // A value the door cannot read still leaves the file: the illegal condition it
   // becomes is what the contract then reports, exactly as the door reads it.
-  assert.deepEqual(JSON.parse(retireFrequencyText('{\n  "id": "x",\n  "frequency": "hourly"\n}\n').text).preconditions, ['due:hourly']);
+  assert.deepEqual(JSON.parse(retireFrequencyText('{\n  "id": "x",\n  "frequency": "hourly"\n}\n').text).preconditions, ['schedule:at-most-hourly']);
   // A file the patch would leave unparsable is left alone and said so.
   assert.equal(retireFrequencyText('{\n  "id": "x",\n  "frequency": "daily",\n  "preconditions": [1, 2\n}\n'), null);
 });
@@ -119,7 +119,7 @@ test('retireFrequencyText agrees with the contract\'s door on every accepted val
 // --- the unstated `trigger` ------------------------------------------------------
 
 test('stateTriggerText writes the answer the conditions already gave, keeping the layout', () => {
-  const listed = '{\n  "id": "x",\n  "preconditions": [\n    "due:daily"\n  ],\n  "expected_outcome": "fresh_pr"\n}\n';
+  const listed = '{\n  "id": "x",\n  "preconditions": [\n    "schedule:at-most-daily"\n  ],\n  "expected_outcome": "fresh_pr"\n}\n';
   assert.equal(stateTriggerText(listed).trigger, 'schedule');
   assert.match(stateTriggerText(listed).text, /\n  "trigger": "schedule",\n  "preconditions": \[/, 'a line of its own at the key\'s indent');
   // No conditions: `preconditions` may not be there to anchor on, so the required
@@ -127,8 +127,8 @@ test('stateTriggerText writes the answer the conditions already gave, keeping th
   const bare = '{\n  "id": "x",\n  "description": "d",\n  "expected_outcome": "fresh_pr"\n}\n';
   assert.equal(stateTriggerText(bare).text, '{\n  "id": "x",\n  "description": "d",\n  "trigger": "request",\n  "expected_outcome": "fresh_pr"\n}\n');
   // One-line object: the separator it uses, not a new line.
-  assert.equal(stateTriggerText('{ "id": "x", "preconditions": ["due:daily"] }\n').text,
-    '{ "id": "x", "trigger": "schedule", "preconditions": ["due:daily"] }\n');
+  assert.equal(stateTriggerText('{ "id": "x", "preconditions": ["schedule:at-most-daily"] }\n').text,
+    '{ "id": "x", "trigger": "schedule", "preconditions": ["schedule:at-most-daily"] }\n');
   // Nothing to do, and nothing safe to do.
   assert.equal(stateTriggerText('{\n  "id": "x",\n  "trigger": "request",\n  "preconditions": []\n}\n'), null, 'already stated');
   assert.equal(stateTriggerText('{\n  "id": "x",\n  "preconditions": [1\n}\n'), null, 'does not parse');
@@ -138,7 +138,7 @@ test('stateTriggerText writes the answer the conditions already gave, keeping th
 test('stateTriggerText agrees with the contract\'s door on every shape of expression', () => {
   // Two spellings of one rule: the engine cannot import the pack, so what it writes
   // is pinned to what the door derives (`statesConditions`).
-  const shapes = [undefined, [], ['due:daily'], ['substantive-change'], ['||'], ['', ' '], ['a || b'], ['due:weekly', 'repo-active']];
+  const shapes = [undefined, [], ['schedule:at-most-daily'], ['substantive-change'], ['||'], ['', ' '], ['a || b'], ['schedule:at-most-weekly', 'repo-active']];
   for (const preconditions of shapes) {
     const decl = { id: 'x', expected_outcome: 'fresh_pr', ...(preconditions === undefined ? {} : { preconditions }) };
     const patched = stateTriggerText(`${JSON.stringify(decl, null, 2)}\n`);
@@ -157,11 +157,11 @@ test('updateTaskSchedulingFields brings every local task.json up to the vocabula
     const applied = await updateTaskSchedulingFields(taskDirsWithJson([LOCAL_PACK_ROOT], io), io);
     // alpha needs both rewrites; beta only the trigger, which its shape reads as `request`.
     assert.equal(applied.length, 3);
-    assert.match(applied[0], /alpha\/task\.json: frequency "daily" → "due:daily"/);
+    assert.match(applied[0], /alpha\/task\.json: frequency "daily" → "schedule:at-most-daily"/);
     assert.match(applied[1], /alpha\/task\.json: trigger "schedule" stated/);
     assert.match(applied[2], /beta\/task\.json: trigger "request" stated/);
     const alpha = JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8'));
-    assert.deepEqual(alpha.preconditions, ['due:daily']);
+    assert.deepEqual(alpha.preconditions, ['schedule:at-most-daily']);
     assert.equal(alpha.trigger, 'schedule');
     assert.equal(JSON.parse(readFileSync(join(root, LOCAL_PACK_ROOT, 'mypack/tasks/beta/task.json'), 'utf8')).trigger, 'request');
     assert.match(readFileSync(join(root, CANON_PACK_ROOT, 'p/tasks/one/task.json'), 'utf8'), /"frequency"/, 'the canon packs are the canon\'s');
@@ -181,7 +181,7 @@ test('applyTaskSchedulingFields: gated on the flag, the probe and the io, and on
     const applied = await applyMigration(record, io);
     assert.equal(applied.length, 2, 'the field folded, then the trigger stated');
     const decl = JSON.parse(readFileSync(join(root, TASK, 'task.json'), 'utf8'));
-    assert.deepEqual(decl.preconditions, ['due:weekly']);
+    assert.deepEqual(decl.preconditions, ['schedule:at-most-weekly']);
     assert.equal(decl.trigger, 'schedule');
   } finally { removeTree(root); }
 });

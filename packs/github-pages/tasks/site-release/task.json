@@ -4,7 +4,7 @@
   "description": "Deploys the default branch to GitHub Pages, advancing the site version first where public-website is declared so the repo records what went out. The upload is the vendored deploy workflow, dispatched at the exact commit: the one part of a Pages release only a workflow job can run.",
   "trigger": "schedule",
   "preconditions": [
-    "due:daily",
+    "schedule:at-most-daily",
     "unreleased-commits"
   ],
   "expected_outcome": "no_code_changes",

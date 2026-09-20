@@ -48,14 +48,16 @@ test('bootstrap converges a fresh repo in one invocation', () => {
   const out = run(root, '--packs', 'product-wiki', '--answer', 'product-wiki/product=A widget catalog app');
 
   // Declaration: seeded defaults plus the requested pack, its answer recorded,
-  // the scheduler anchors, and the vendor stamp.
+  // and the vendor stamp.
   const decl = json(root);
   const ids = decl.packs.map((p) => (typeof p === 'string' ? p : p.id));
   assert.ok(ids.includes('basics'), `basics seeded (got ${ids.join(', ')})`);
   assert.ok(ids.includes('product-wiki'), 'requested pack declared');
   const wiki = decl.packs.find((p) => p?.id === 'product-wiki');
   assert.equal(wiki.answers.product, 'A widget catalog app');
-  assert.deepEqual(decl.taskScheduler, { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 });
+  // Bootstrap materializes no scheduling anchor: a cadence measures whole UTC periods
+  // and the cron's own hours went into the workflow file below (#1995).
+  assert.equal(decl.taskScheduler, undefined);
   assert.equal(decl.dailyClaudiniteUpdatesRequirePrReview, undefined,
     'the delivery override is written only by a repo that wants review (#1252)');
   assert.ok(decl.engineVersion, 'stamped');

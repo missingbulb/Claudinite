@@ -1,8 +1,7 @@
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { DEFAULT_SCHEDULE } from '../../src/contract/calendar.mjs';
 import assert from 'node:assert/strict';
-import { hashedMinute, hashedCron, MINUTE_MIN, MINUTE_MAX } from '../../src/adopt/hash-minute.mjs';
+import { hashedMinute, hashedCron, hashedHours, isSchedulerCron, MINUTE_MIN, MINUTE_MAX } from '../../src/adopt/hash-minute.mjs';
 
 // Golden values pin the hash function itself: if the algorithm ever changes, every
 // repo's stable minute moves and the fleet re-stampedes — so these must fail loudly
@@ -42,41 +41,33 @@ test('the band is well-spread — a realistic fleet covers the whole window', ()
 });
 
 test('hashedCron is the full two-tick line the workflow holds', () => {
-  assert.equal(hashedCron('missingbulb/GoogleCalendarEventCreator', 4), '24 4,16 * * *');
   // "<minute> <anchor>,<drain> * * *" — two ticks a day, twelve hours apart (PRINCIPLES.md).
-  assert.match(hashedCron('missingbulb/anything', 4), /^([1-9]\d?) \d{1,2},\d{1,2} \* \* \*$/);
+  assert.match(hashedCron('missingbulb/anything'), /^([1-9]\d?) \d{1,2},\d{1,2} \* \* \*$/);
+  assert.equal(hashedCron('o/r'), hashedCron('o/r'), 'a pure function of the name');
 });
 
-test('both cron hours follow the repo\'s own dailyHour, and the drain wraps the day', () => {
-  const hours = (name, h) => hashedCron(name, h).split(' ')[1].split(',').map(Number);
-  assert.deepEqual(hours('o/r', 0), [0, 12]);
-  assert.deepEqual(hours('o/r', 5), [5, 17]);
-  assert.deepEqual(hours('o/r', 12), [12, 0], 'the drain tick wraps past midnight');
-  assert.deepEqual(hours('o/r', 23), [23, 11]);
-  // Every legal anchor produces two distinct in-range hours — a cron GitHub will accept.
-  for (let h = 0; h <= 23; h += 1) {
-    const [a, d] = hours('o/r', h);
-    assert.equal(a, h);
-    assert.ok(a >= 0 && a <= 23 && d >= 0 && d <= 23, `hours in range for ${h}`);
-    assert.notEqual(a, d);
+// THE HOUR IS HASHED, NOT CONFIGURED (#1995). What the retired `dailyHour` reliably
+// did was spread the fleet across the clock, and the hash does that without a knob.
+test('both cron hours come from the repo name, twelve apart, inside the day', () => {
+  const seen = new Set();
+  for (let i = 0; i < 400; i += 1) {
+    const { anchor, drain } = hashedHours(`owner/repo-${i}`);
+    assert.ok(anchor >= 0 && anchor <= 11, `anchor in the first half of the day for ${i}`);
+    assert.equal(drain, anchor + 12, 'the drain is twelve hours after the anchor');
+    assert.ok(drain <= 23, 'and still inside the same day');
+    seen.add(anchor);
   }
+  assert.equal(seen.size, 12, 'every hour of the anchor band is reachable');
 });
 
-// A member's VENDORED worker is a cycle stale and may still call this with one argument. It must
-// get the default-schedule answer — right for every repo that has not moved its anchor — rather
-// than an `undefined` that would write a cron GitHub rejects outright.
-test('a one-argument call from a stale worker still writes a valid cron', () => {
-  assert.equal(hashedCron('missingbulb/GoogleCalendarEventCreator'),
-    hashedCron('missingbulb/GoogleCalendarEventCreator', DEFAULT_SCHEDULE.dailyHour));
-  assert.match(hashedCron('o/r'), /^([1-9]\d?) \d{1,2},\d{1,2} \* \* \*$/);
-});
-
-// The drift guard the duplication needs. `hash-minute.mjs` imports nothing by contract, so it
-// carries its own copy of the default anchor hour; if `calendar.mjs` ever moves DEFAULT_SCHEDULE,
-// a stale worker's one-argument call would silently write a cron for the wrong hour.
-test('hash-minute\'s default anchor hour agrees with the calendar\'s DEFAULT_SCHEDULE', () => {
-  const src = readFileSync(new URL('../../src/adopt/hash-minute.mjs', import.meta.url), 'utf8');
-  const declared = Number(/const DEFAULT_DAILY_HOUR = (\d+);/.exec(src)?.[1]);
-  assert.equal(declared, DEFAULT_SCHEDULE.dailyHour,
-    'hash-minute.mjs duplicates calendar.mjs DEFAULT_SCHEDULE.dailyHour — move both together');
+// The shape the converge keeps rather than restamping. A line outside it is not one
+// this repo wrote, so the converge replaces it instead of preserving a broken cron.
+test('isSchedulerCron accepts what hashedCron writes, and nothing malformed', () => {
+  for (const name of ['o/r', 'missingbulb/Claudinite', 'a/b']) {
+    assert.ok(isSchedulerCron(hashedCron(name)), name);
+  }
+  assert.ok(isSchedulerCron('44 5,17 * * *'), 'a cron written before the hour was hashed');
+  for (const bad of ['10 * * * *', '5 4,16 * * *', '44 5,18 * * *', '44 13,1 * * *', '', 'nonsense', null]) {
+    assert.equal(isSchedulerCron(bad), false, JSON.stringify(bad));
+  }
 });

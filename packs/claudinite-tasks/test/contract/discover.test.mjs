@@ -4,14 +4,14 @@ import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { discoverTasks } from '../../src/contract/discover.mjs';
 
 const packMjs = (id) => `export default { id: '${id}' };\n`;
-const taskJson = (id, over = {}) => `${JSON.stringify({ id, preconditions: ['due:daily'], expected_outcome: 'no_code_changes', ...over })}\n`;
+const taskJson = (id, over = {}) => `${JSON.stringify({ id, preconditions: ['schedule:at-most-daily'], expected_outcome: 'no_code_changes', ...over })}\n`;
 
 test('discoverTasks finds a declared local pack\'s tasks with the repo-relative task path', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/mypack/pack.mjs': packMjs('mypack'),
     '.claudinite/local/packs/mypack/tasks/alpha/task.json': taskJson('alpha', { frequency: 'daily', preconditions: ['none'], agent_model: 'opus', expected_outcome: 'fresh_pr', automerge: 'anything', agent_instructions: 'task.md', agent_execution_timeout: 900 }),
     '.claudinite/local/packs/mypack/tasks/alpha/task.md': '# alpha worker\n',
-    '.claudinite/local/packs/mypack/tasks/beta/task.json': taskJson('beta', { preconditions: ['due:weekly'], code_work: 'node worker.mjs', code_work_timeout: 60 }),
+    '.claudinite/local/packs/mypack/tasks/beta/task.json': taskJson('beta', { preconditions: ['schedule:at-most-weekly'], code_work: 'node worker.mjs', code_work_timeout: 60 }),
     '.claudinite/local/packs/mypack/tasks/beta/task.md': '# beta worker\n',
   } });
   try {
@@ -23,8 +23,8 @@ test('discoverTasks finds a declared local pack\'s tasks with the repo-relative 
     assert.equal(byId.alpha.taskPath, '.claudinite/local/packs/mypack/tasks/alpha/task.md');
     // The door: the retired `frequency` field is read where the declaration is LOADED as the
     // cadence term it meant, and nothing downstream ever sees the field (PRINCIPLES.md).
-    assert.deepEqual(byId.alpha.decl.preconditions, ['due:daily']);
-    assert.deepEqual(byId.beta.decl.preconditions, ['due:weekly']);
+    assert.deepEqual(byId.alpha.decl.preconditions, ['schedule:at-most-daily']);
+    assert.deepEqual(byId.beta.decl.preconditions, ['schedule:at-most-weekly']);
     assert.equal(byId.alpha.decl.frequency, undefined);
   } finally { cleanup(root); }
 });
@@ -72,7 +72,7 @@ test('discoverTasks reads a task.json, with the defaults filled at the door', as
     const { tasks, errors } = await discoverTasks(root, { packs: ['local/mypack'] });
     const byId = Object.fromEntries(tasks.map((t) => [t.id, t]));
     assert.deepEqual(Object.keys(byId).sort(), ['alpha', 'beta']);
-    assert.deepEqual(byId.alpha.decl.preconditions, ['due:daily'], 'the expression is the author\'s — it has no default');
+    assert.deepEqual(byId.alpha.decl.preconditions, ['schedule:at-most-daily'], 'the expression is the author\'s — it has no default');
     assert.equal(byId.alpha.decl.$schema, undefined);
     assert.equal(byId.beta.decl.agent_model, 'none', 'no agent, by default');
     assert.equal(byId.alpha.taskPath, '.claudinite/local/packs/mypack/tasks/alpha/task.md');

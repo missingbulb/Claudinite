@@ -12,7 +12,7 @@ const good = {
   automerge: 'anything',
   agent_instructions: 'task.md',
   agent_execution_timeout: 1800,
-  preconditions: ['due:daily', 'substantive-change'],
+  preconditions: ['schedule:at-most-daily', 'substantive-change'],
 };
 const json = (obj) => `${JSON.stringify(obj, null, 2)}\n`;
 const goodTask = json(good);
@@ -36,7 +36,7 @@ test('task-declaration-shape: is inert when no task declaration exists', () => {
 // carrying neither is a clean agentless task once it names its code work and when
 // it runs, and the two timeouts are never defaulted.
 test('task-declaration-shape: the minimal declaration is a code-work task, and needs its timeout', () => {
-  const minimal = { id: 'growth-extract', description: 'A minimal task.', preconditions: ['due:daily'], expected_outcome: 'fresh_pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
+  const minimal = { id: 'growth-extract', description: 'A minimal task.', preconditions: ['schedule:at-most-daily'], expected_outcome: 'fresh_pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
   assert.deepEqual(run({ [TASK]: json(minimal) }), []);
   const { code_work_timeout, ...noBound } = minimal;
   assert.match(whatsOf({ [TASK]: json(noBound) }), /no numeric "code_work_timeout"/);
@@ -71,8 +71,8 @@ test('task-declaration-shape: a file that is not a JSON object is flagged', () =
 });
 
 test('task-declaration-shape: flags illegal enum values', () => {
-  const whats = whatsOf({ [TASK]: json({ ...good, preconditions: ['due:nightly'], agent_model: 'gpt', expected_outcome: 'push' }) });
-  assert.match(whats, /"due" takes one of daily, weekly, monthly, not "nightly"/);
+  const whats = whatsOf({ [TASK]: json({ ...good, preconditions: ['schedule:at-most-nightly'], agent_model: 'gpt', expected_outcome: 'push' }) });
+  assert.match(whats, /"schedule" takes one of at-most-daily, at-most-weekly, at-most-monthly, not "at-most-nightly"/);
   assert.match(whats, /"agent_model" is "gpt", not a legal value/);
   assert.match(whats, /"expected_outcome" is "push", not a legal value/);
 });
@@ -82,7 +82,7 @@ test('task-declaration-shape: flags illegal enum values', () => {
 // and the nightly update rewrites it — so this finding names the edit and its CI stays green.
 test('task-declaration-shape: the retired frequency field is an advisory rename to its cadence term', () => {
   const { preconditions, ...bare } = good;
-  for (const [field, term] of [['daily', 'due:daily'], ['weekly', 'due:weekly'], ['monthly', 'due:monthly'], ['manual', null]]) {
+  for (const [field, term] of [['daily', 'schedule:at-most-daily'], ['weekly', 'schedule:at-most-weekly'], ['monthly', 'schedule:at-most-monthly'], ['manual', null]]) {
     const findings = run({ [TASK]: json({ ...bare, frequency: field, preconditions: ['none'] }) });
     assert.equal(findings.length, 1, `${field}: the field is the one finding — the none beside it is what the door strips`);
     assert.equal(findings[0].severity, 'advisory');
@@ -92,9 +92,9 @@ test('task-declaration-shape: the retired frequency field is an advisory rename 
   }
   // A field the door cannot read is still reported as the illegal condition it becomes.
   const findings = run({ [TASK]: json({ ...bare, frequency: 'hourly' }) });
-  assert.ok(findings.some((f) => f.severity === 'blocking' && /"due" takes one of daily, weekly, monthly, not "hourly"/.test(f.what)), 'hourly blocks');
+  assert.ok(findings.some((f) => f.severity === 'blocking' && /"schedule" takes one of at-most-daily, at-most-weekly, at-most-monthly, not "at-most-hourly"/.test(f.what)), 'hourly blocks');
   // …and a well-formed expression beside the field is judged as the door reads it: no double term.
-  assert.deepEqual(run({ [TASK]: json({ ...bare, frequency: 'daily', preconditions: ['due:daily', 'substantive-change'] }) }).map((f) => f.severity), ['advisory']);
+  assert.deepEqual(run({ [TASK]: json({ ...bare, frequency: 'daily', preconditions: ['schedule:at-most-daily', 'substantive-change'] }) }).map((f) => f.severity), ['advisory']);
 });
 
 // The ordering field's rename. ADVISORY, not blocking: the runtime normalizes `after` at the
@@ -144,7 +144,7 @@ test('task-declaration-shape: the legacy outcome ceilings are an advisory rename
 });
 
 const noneTask = {
-  id: 'growth-extract', description: 'An agentless task.', preconditions: ['due:daily'], agent_model: 'none', expected_outcome: 'no_code_changes',
+  id: 'growth-extract', description: 'An agentless task.', preconditions: ['schedule:at-most-daily'], agent_model: 'none', expected_outcome: 'no_code_changes',
   code_work: 'node w.mjs', code_work_timeout: 60,
 };
 
@@ -224,7 +224,7 @@ test('task-declaration-shape: a none task needs no execution bound but flags cod
 });
 
 test('task-declaration-shape: flags an agentless (none) task that declares no code_work', () => {
-  assert.match(whatsOf({ [TASK]: json({ id: 'x', preconditions: ['due:daily'], agent_model: 'none', expected_outcome: 'none' }) }), /declares no "code_work"/);
+  assert.match(whatsOf({ [TASK]: json({ id: 'x', preconditions: ['schedule:at-most-daily'], agent_model: 'none', expected_outcome: 'none' }) }), /declares no "code_work"/);
 });
 
 test('task-declaration-shape: a none task with no agent_instructions is clean — the field is not applicable', () => {
@@ -268,13 +268,13 @@ test('task-declaration-shape: a stated trigger is checked; an unstated one is th
 // The sim's S79 is what establishes this: a wake stands in for the cadence, and
 // every occurrence of a request task is a wake, so the term declines nothing ever.
 test('task-declaration-shape: a request task may not state a cadence it can never be held by', () => {
-  assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['due:daily'] }) }),
+  assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['schedule:at-most-daily'] }) }),
     /a "request" task states a cadence term/);
-  assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['last-run-over:7d'] }) }),
-    /a "request" task states a cadence term/);
+  assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['due:weekly'] }) }),
+    /a "request" task states a cadence term/, 'the retired spelling is the same term');
   // Its other conditions are judged at pick like anyone's, so they are fine.
   assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['substantive-change'] }) }), []);
-  assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'schedule', preconditions: ['due:daily'] }) }), []);
+  assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'schedule', preconditions: ['schedule:at-most-daily'] }) }), []);
 });
 
 test('task-declaration-shape: a scheduled task may not gate on a condition that reads the item', () => {

@@ -214,7 +214,11 @@ test('loadConfig: taskScheduler.disabledTasks is a known setting, validated as a
   } finally { for (const r of [ok, empty, notList, notIds]) cleanup(r); }
 });
 
-test('loadConfig: out-of-range and misshaped schedule values are settings errors', () => {
+// THE RETIRED ANCHOR KEYS ARE ACCEPTED AND DEAD (#1995). Nothing reads them, so
+// nothing validates them either — but they are not UNKNOWN keys, because an unknown
+// key is a blocking settings error and every member carries them until its own
+// converge runs the record that strips them out. #2178 takes them off the list.
+test('loadConfig: an unknown schedule key is an error; the retired anchor keys are not', () => {
   const ranges = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: ['basics'], taskScheduler: { dailyHour: 24, weeklyDay: 'Sunday', monthlyDay: 0, nonsense: 1 },
   }) } });
@@ -223,11 +227,8 @@ test('loadConfig: out-of-range and misshaped schedule values are settings errors
   }) } });
   try {
     const cfg = loadConfig(ranges);
-    assert.equal(cfg.errors.length, 4);
+    assert.equal(cfg.errors.length, 1, 'only the unknown key: the three retired ones pass through unread');
     assert.match(cfg.errors[0].what, /unknown "taskScheduler" setting "nonsense"/);
-    assert.match(cfg.errors[1].what, /"taskScheduler\.dailyHour" must be an integer 0–23/);
-    assert.match(cfg.errors[2].what, /"taskScheduler\.weeklyDay" must be one of/);
-    assert.match(cfg.errors[3].what, /"taskScheduler\.monthlyDay" must be an integer 1–31/);
     assert.deepEqual(cfg.packs, ['basics']); // the good keys still load
     const arr = loadConfig(notObject);
     assert.equal(arr.errors.length, 1);

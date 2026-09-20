@@ -22,26 +22,26 @@ function cast() {
     {
       // The one task in the cast that declares it does not run past its own
       // failure: a broken mount is not something to re-run every morning.
-      id: 'basics/baselining', preconditions: ['due:daily', 'last-run-not-failed'],
+      id: 'basics/baselining', preconditions: ['schedule:at-most-daily', 'last-run-not-failed'],
       codeWorkMinutes: 21, agentMinutes: 30,
       precondition: (w) => ({ run: !!w.mountBehind, reason: 'mount converged, no pending notes' }),
       requestsAgent: (w) => !!w.baseliningNeedsJudgment,
       codeWorkFails: (w) => !!w.mountBroken,
     },
     {
-      id: 'grow/growth-extract', preconditions: ['due:daily'], schedule_after: ['basics/baselining'],
+      id: 'grow/growth-extract', preconditions: ['schedule:at-most-daily'], schedule_after: ['basics/baselining'],
       codeWorkMinutes: 2, agentMinutes: 35,
       precondition: (w) => ({ run: !!w.extractHasLessons, reason: 'nothing new to extract' }),
     },
     {
-      id: 'grow/growth-promote', preconditions: ['due:daily'], schedule_after: ['grow/growth-extract'],
+      id: 'grow/growth-promote', preconditions: ['schedule:at-most-daily'], schedule_after: ['grow/growth-extract'],
       codeWorkMinutes: 1, agentMinutes: 2,
       precondition: (w) => ({ run: !!w.promoteHasCandidates, reason: 'nothing staged' }),
     },
     {
       // A movement-gated task: its signal is windowed the way the engine's
       // collectors window it — since this task's newest run started.
-      id: 'tidy/tidy-issues', preconditions: ['due:daily'],
+      id: 'tidy/tidy-issues', preconditions: ['schedule:at-most-daily'],
       codeWorkMinutes: 1, agentMinutes: 16,
       precondition: (w, _now, _item, window) => ({
         run: w.issueTouchedAt != null && w.issueTouchedAt >= window.since,
@@ -49,11 +49,11 @@ function cast() {
       }),
     },
     {
-      id: 'chrome/store-release', preconditions: ['due:daily'], codeWorkMinutes: 3,
+      id: 'chrome/store-release', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 3,
       precondition: (w) => ({ run: !!w.releasePending, reason: 'nothing to release' }),
     },
     {
-      id: 'gcec/create-extractor', preconditions: ['due:daily'],
+      id: 'gcec/create-extractor', preconditions: ['schedule:at-most-daily'],
       codeWorkMinutes: 4, agentMinutes: 10,
       precondition: (w, _now, _item, window) => ({
         run: w.requestAt != null && w.requestAt >= window.since,
@@ -61,7 +61,7 @@ function cast() {
       }),
     },
     {
-      id: 'tidy/tidy-prs', preconditions: ['due:weekly'],
+      id: 'tidy/tidy-prs', preconditions: ['schedule:at-most-weekly'],
       codeWorkMinutes: 1, agentMinutes: 5,
       precondition: (w) => ({ run: !!w.stalePrs, reason: 'no stale PRs' }),
     },
@@ -80,13 +80,13 @@ function cast() {
 // always-run tasks would add executor contention to every other scenario, and
 // S15's mutex timing is sensitive to exactly that.
 const SEEDS = {
-  id: 'fleet/fleet-seeds', preconditions: ['due:daily'], codeWorkMinutes: 2,
+  id: 'fleet/fleet-seeds', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 2,
   precondition: () => ({ run: true }),
   codeWorkFails: (w) => !!w.patScopeMissing,
   codeWorkTriage: () => 'action', // the PAT lacks Contents: write — a person grants it
 };
 const REGENERATE = {
-  id: 'site/regenerate', preconditions: ['due:daily'], codeWorkMinutes: 2,
+  id: 'site/regenerate', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 2,
   precondition: () => ({ run: true }),
   deliversOpenPr: () => true,
 };
@@ -115,12 +115,12 @@ test("S1' quiet night: asked at every tick, no items, nothing recorded", async (
     assert.ok(asks(sim, task).every((e) => e.verdict === 'no'), `${task} declined every time`);
     assert.equal(sim.standingItem(task), undefined, `${task} filed no item`);
   }
-  // The ticks before the day's anchor decline on the cadence — yesterday's run
-  // is still the current period's — the ones after it on the task's own
-  // condition. Both are the same nothing.
-  const early = asks(sim, 'tidy/tidy-issues').filter((e) => e.t < T('2026-08-12T04:00Z'));
-  assert.ok(early.length === 4 && early.every((e) => /already ran since the daily anchor/.test(e.reason)));
-  assert.equal(asks(sim, 'tidy/tidy-issues').find((e) => e.t > T('2026-08-12T04:00Z')).reason, 'no issue touched in window');
+  // ONE PERIOD, ONE ANSWER, ALL DAY. Under the retired per-repo anchor this day had a
+  // seam in it: before the anchor hour the ticks declined on the cadence (yesterday's
+  // run was still the current period's) and after it on the task's own condition. A UTC
+  // day has no such seam, so every tick of a quiet day declines for the same reason.
+  assert.ok(asks(sim, 'tidy/tidy-issues').every((e) => e.reason === 'no issue touched in window'),
+    'the same nothing at every hour, not two different nothings either side of an anchor');
   // a task stating no cadence is off the schedule: never asked, never instantiated
   assert.equal(asks(sim, 'fleet/fleet-baseline').length, 0);
   assert.equal(own(sim, 'fleet/fleet-baseline').length, 0);
@@ -148,7 +148,7 @@ test('S2 happy path: touched issues -> item runs, closes done', async () => {
 
 // ---- S3' — work appears mid-window: the NEXT TICK finds it, not the next
 // anchor. The scheduler keeps no memory of the morning's decline (PRINCIPLES.md), so
-// every tick asks again; `due:daily` still holds — nothing ran since 04:00 —
+// every tick asks again; `schedule:at-most-daily` still holds — nothing ran since 04:00 —
 // and the window, since the last run, contains the touch.
 test("S3' mid-window work runs at the next tick, not the next anchor", async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
@@ -194,7 +194,7 @@ test('S4 late fire: the chain completes the same morning, ordered', async () => 
 });
 
 // ---- S5 — the scheduler run is down for three days: the first tick back asks
-// about NOW — `due:daily` against the current anchor, the window since the last
+// about NOW — `schedule:at-most-daily` against the current anchor, the window since the last
 // run — so a touch from the outage is found once. No backfill of the missed
 // days, and nothing to catch up on but the present.
 test('S5 three-day outage: the first tick back finds the work once, no backfill', async () => {
@@ -217,16 +217,15 @@ test('S5 three-day outage: the first tick back finds the work once, no backfill'
 // ---- S21 — the quiet month: no items at all, an ask at every tick, zero
 // escalations. The quiet task's whole footprint is the scheduler's log lines.
 test('S21 quiet weeks: no items, an ask per tick, no janitor noise', async () => {
-  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-02T05:00Z'); // Sunday, past the 04:00 anchor
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-02T05:00Z'); // a Sunday
   await sim.run('2026-08-02T05:00Z', '2026-09-07T00:00Z');
 
   assert.equal(own(sim, 'tidy/tidy-prs').length, 0, 'five quiet weeks file nothing');
   assert.equal(asks(sim, 'tidy/tidy-prs').length, ticks(sim).length, 'asked at every tick, nothing skipped');
   assert.ok(asks(sim, 'tidy/tidy-prs').every((e) => e.verdict === 'no'));
-  // Between Sundays the cadence declines; on a Sunday, past its anchor, the
-  // task's own condition does — no run is ever recorded anywhere but here.
-  assert.ok(asks(sim, 'tidy/tidy-prs').some((e) => /already ran since the weekly anchor/.test(e.reason)));
-  assert.ok(asks(sim, 'tidy/tidy-prs').some((e) => e.reason === 'no stale PRs'));
+  // Nothing ever runs, so the cadence never has a run to decline on: every one of
+  // those thousand asks is the task's own condition saying there is no work.
+  assert.ok(asks(sim, 'tidy/tidy-prs').every((e) => e.reason === 'no stale PRs'));
   assert.equal(sim.log.filter((e) => e.kind === 'escalate').length, 0,
     'nothing to escalate: no item ever sat anywhere');
 });
@@ -238,7 +237,7 @@ test('S22 asked every tick; the tick that finds work runs it, the next anchor do
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   // Work arrives on the second day, after a quiet first one.
   sim.at('2026-08-13T01:40Z', ({ world }) => { world.requestAt = T('2026-08-13T01:40Z'); });
-  await sim.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
+  await sim.run('2026-08-12T00:00Z', '2026-08-14T06:00Z');
 
   const fam = own(sim, 'gcec/create-extractor');
   assert.equal(fam.length, 1, 'the quiet period filed nothing — only the working one has an item');
@@ -248,11 +247,15 @@ test('S22 asked every tick; the tick that finds work runs it, the next anchor do
   assert.ok(it.closedAt <= T('2026-08-13T03:00Z'), 'ran at the tick that found it');
   assert.equal(asks(sim, 'gcec/create-extractor').length, ticks(sim).length,
     'every tick asked — the item ran and closed between two of them, so none found it live');
-  // Thursday's 04:17 anchor asks again — `due:daily` holds, the 02:17 run was
-  // Wednesday's period — and the window since that run holds no request.
-  const anchor = asks(sim, 'gcec/create-extractor').find((e) => e.t === tick('2026-08-13T04:17Z'));
-  assert.equal(anchor.verdict, 'no');
-  assert.equal(anchor.reason, 'no eligible requests');
+  // The rest of Thursday declines on the cadence: the 02:17 run was Thursday's.
+  const sameDay = asks(sim, 'gcec/create-extractor').find((e) => e.t === tick('2026-08-13T04:17Z'));
+  assert.equal(sameDay.verdict, 'no');
+  assert.match(sameDay.reason, /already ran in the daily period/);
+  // Friday opens a new period, so the cadence holds and the window since that run
+  // decides — and it holds no request.
+  const nextPeriod = asks(sim, 'gcec/create-extractor').find((e) => e.t === tick('2026-08-14T00:17Z'));
+  assert.equal(nextPeriod.verdict, 'no');
+  assert.equal(nextPeriod.reason, 'no eligible requests');
 });
 
 // ---- S23 — the upstream declines (or is broken): dependents run anyway. A
@@ -299,30 +302,32 @@ test('S24 three quiet-upstream days: the yield never holds the dependent', async
     'the quiet upstream filed nothing all week');
 });
 
-// ---- S26b — the `due:` term's second half (F13): an item CREATED before the
-// anchor that CLOSES after it consumed this period, or the tick after its close
-// would run the task twice. A forced mint at 03:00 doing two hours of work is
-// exactly that shape; and the next day's anchor must still be asked.
-test("S26b the closed-at half covers the rest of the day; the next anchor is asked again", async () => {
+// ---- S26b — the cadence term's second half (F13): an item CREATED before the
+// period boundary that CLOSES after it consumed the new period too, or the tick
+// after its close would run the task twice. A forced mint late on Wednesday doing
+// two hours of work is exactly that shape; and the period after must still be asked.
+test("S26b the closed-at half covers the rest of the period; the next one is asked again", async () => {
   const tasks = [{
-    id: 'x/long', preconditions: ['due:daily'], codeWorkMinutes: 120,
+    id: 'x/long', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 120,
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T03:00Z', (s) => s.force('x/long'));
-  await sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
+  // A wake stands in for the cadence, so this runs beside Wednesday's own occurrence
+  // and straddles midnight.
+  sim.at('2026-08-12T23:00Z', (s) => s.force('x/long'));
+  await sim.run('2026-08-12T00:00Z', '2026-08-15T00:00Z');
 
-  const [forced, next, ...rest] = own(sim, 'x/long');
-  assert.ok(forced.createdAt < T('2026-08-12T04:00Z') && forced.closedAt > T('2026-08-12T04:00Z'),
-    "the scenario's premise: created before the anchor, closed after it");
-  // Every tick after the close, for the rest of Wednesday, declines on the
+  const forced = own(sim, 'x/long').find((i) => i.createdAt >= T('2026-08-12T23:00Z') && i.createdAt < T('2026-08-13T00:00Z'));
+  assert.ok(forced && forced.closedAt > T('2026-08-13T00:00Z'),
+    "the scenario's premise: created before the boundary, closed after it");
+  // Every tick after the close, for the rest of Thursday, declines on the
   // closed-at half — the created-at half alone would have filed a second run.
-  const afterClose = asks(sim, 'x/long').filter((e) => e.t > forced.closedAt && e.t < T('2026-08-13T04:00Z'));
+  const afterClose = asks(sim, 'x/long').filter((e) => e.t > forced.closedAt && e.t < T('2026-08-14T00:00Z'));
   assert.ok(afterClose.length >= 20, 'asked every remaining tick');
-  assert.ok(afterClose.every((e) => e.verdict === 'no' && new RegExp(`#${forced.number} already ran since the daily anchor`).test(e.reason)));
-  // Thursday's anchor is not eaten by Wednesday's close.
-  assert.ok(next && next.createdAt === tick('2026-08-13T04:17Z') && next.outcome === 'done');
-  assert.equal(rest.length, 0, 'two days, two runs — never a double execution');
+  assert.ok(afterClose.every((e) => e.verdict === 'no' && new RegExp(`#${forced.number} already ran in the daily period`).test(e.reason)));
+  // Friday is not eaten by Thursday's close.
+  const friday = own(sim, 'x/long').find((i) => i.createdAt >= T('2026-08-14T00:00Z'));
+  assert.ok(friday && friday.createdAt === tick('2026-08-14T00:17Z') && friday.outcome === 'done');
 });
 
 // ---- S28 — the mechanism (or a task) changes mid-flight: nothing durable
@@ -334,7 +339,7 @@ test('S28 declaration change mid-flight: the next tick follows HEAD', async () =
   // Mid-day, an update lands: tidy-prs moves from the weekly cadence to the daily
   // one, and its precondition is replaced outright.
   sim.at('2026-08-12T12:00Z', (s) => s.updateTask('tidy/tidy-prs', {
-    preconditions: ['due:daily'],
+    preconditions: ['schedule:at-most-daily'],
     precondition: (w, _now, _item, window) => ({
       run: w.newSignalAt != null && w.newSignalAt >= window.since,
       reason: 'new precondition, no work',
@@ -344,8 +349,9 @@ test('S28 declaration change mid-flight: the next tick follows HEAD', async () =
   await sim.run('2026-08-12T00:00Z', '2026-08-15T12:00Z');
 
   const a = asks(sim, 'tidy/tidy-prs');
-  // Under the weekly cadence every Wednesday-morning tick declined on Sunday's run.
-  assert.ok(a.filter((e) => e.t < T('2026-08-12T12:00Z')).every((e) => /weekly anchor/.test(e.reason)));
+  // Under the weekly cadence every Wednesday-morning tick declined, on the task's
+  // own condition: the week is open, there is simply no work in it.
+  assert.ok(a.filter((e) => e.t < T('2026-08-12T12:00Z')).every((e) => e.reason === 'no stale PRs'));
   // The very next tick reads the new cadence — daily, so Wednesday's occurrence
   // is open — and judges it by the NEW precondition.
   const first = a.find((e) => e.t >= T('2026-08-12T12:00Z'));
@@ -358,23 +364,29 @@ test('S28 declaration change mid-flight: the next tick follows HEAD', async () =
   assert.equal(g.length, 1);
   assert.equal(g[0].t, tick('2026-08-14T01:17Z'));
   assert.equal(closedOf(sim, 'tidy/tidy-prs').length, 1, 'and ran under the new declaration');
-  // Friday's own anchor asks again under the daily cadence — the 01:17 run was
-  // Thursday's period — and the window, since that run, holds nothing new.
-  const anchor = a.find((e) => e.t === tick('2026-08-14T04:17Z'));
-  assert.equal(anchor.verdict, 'no');
-  assert.equal(anchor.reason, 'new precondition, no work');
+  // The rest of Thursday declines on the cadence: the 01:17 run was Thursday's.
+  const sameDay = a.find((e) => e.t === tick('2026-08-14T04:17Z'));
+  assert.equal(sameDay.verdict, 'no');
+  assert.match(sameDay.reason, /already ran in the daily period/);
+  // Friday opens a new period and is asked again under the daily cadence, and the
+  // window, since that run, holds nothing new.
+  const nextPeriod = a.find((e) => e.t === tick('2026-08-15T00:17Z'));
+  assert.equal(nextPeriod.verdict, 'no');
+  assert.equal(nextPeriod.reason, 'new precondition, no work');
 });
 
 // ---- S71 — a DROPPED tick. GitHub drops scheduled runs under load, and the
 // cadence sets what that costs: an hourly grid absorbs it in an hour, two ticks
 // a day absorb it in twelve, and one tick a day loses the occurrence for the
-// whole day. Nothing is stranded either way — `due:daily` is decided from the
+// whole day. Nothing is stranded either way — `schedule:at-most-daily` is decided from the
 // ANCHOR and the run history, never from whether the cron fired.
 test('S71 a dropped anchor tick is caught by the next one — the cost is latency, never the occurrence', async () => {
   const armed = async (opts) => {
     const s = makeSim({ tasks: cast(), ...opts }).seedSteadyState('2026-08-12T00:00Z');
     s.at('2026-08-12T00:05Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T00:05Z'); });
-    s.dropSchedulerRuns('2026-08-12T04:00Z', '2026-08-12T05:00Z'); // the 04:17 tick never fires
+    // The day's first tick never fires: 00:17 on the hourly grid, 04:17 on the others.
+    s.dropSchedulerRuns('2026-08-12T00:00Z', '2026-08-12T01:00Z');
+    s.dropSchedulerRuns('2026-08-12T04:00Z', '2026-08-12T05:00Z');
     await s.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
     return s;
   };
@@ -384,7 +396,7 @@ test('S71 a dropped anchor tick is caught by the next one — the cost is latenc
   const hourly = await armed({});
 
   // Two ticks: the 16:17 tick still instantiates the day's occurrence. The task
-  // is late, not lost — and the anchor it covers is still the 04:00 one.
+  // is late, not lost — and the period it covers is still this UTC day.
   const t = closedOf(twice, 'tidy/tidy-issues');
   assert.equal(t.length, 1, 'the dropped tick did not cost the occurrence');
   assert.equal(new Date(t[0].createdAt).toISOString().slice(11, 16), '16:17');
@@ -395,11 +407,11 @@ test('S71 a dropped anchor tick is caught by the next one — the cost is latenc
 
   // The hourly grid absorbs the same drop in an hour — the twelvefold latency
   // amplification the cadence trades for its cost, stated as a number.
-  assert.equal(new Date(closedOf(hourly, 'tidy/tidy-issues')[0].createdAt).toISOString().slice(11, 16), '05:17');
+  assert.equal(new Date(closedOf(hourly, 'tidy/tidy-issues')[0].createdAt).toISOString().slice(11, 16), '01:17');
 });
 
 // ---- S73 — the weekly anchor under a coarse cron, INCLUDING one whose hours do
-// not contain the anchor hour at all. `due:weekly` is decided from the anchor
+// not contain the anchor hour at all. `schedule:at-most-weekly` is decided from the anchor
 // and the run history, so a weekly task must fire exactly once a week whatever
 // hours the cron names — never twice for being looked at twice a day, and never
 // never for being looked at late.
@@ -422,7 +434,7 @@ test('S73 a weekly task fires exactly once a week, even when no tick lands on it
     assert.equal(goes(s, 'tidy/tidy-prs').length, 2, 'two weekly anchors in the window');
     assert.equal(closedOf(s, 'tidy/tidy-prs').length, 2);
     assert.ok(asks(s, 'tidy/tidy-prs').filter((e) => e.verdict === 'no')
-      .every((e) => /already ran since the weekly anchor/.test(e.reason)));
+      .every((e) => /already ran in the weekly period/.test(e.reason)));
   }
 
   // …and each is picked up by the FIRST tick at or after its anchor, which is
@@ -438,12 +450,12 @@ test('S73 a weekly task fires exactly once a week, even when no tick lands on it
 // scheduled task, and a task's cadence is a term in its own preconditions, read
 // off its run history. These pin the terms one at a time.
 
-// ---- S74 — `due:daily` under the twice-daily cron: BOTH ticks ask. The 04:17
-// tick finds no run since the anchor and files; the 16:17 tick finds that run
-// and declines. Once a day is the term's doing, not a watermark's.
-test('S74 due:daily is asked at both daily ticks; the second declines on the run since the anchor', async () => {
+// ---- S74 — `schedule:at-most-daily` under the twice-daily cron: BOTH ticks ask. The
+// 04:17 tick finds no run in the UTC day and files; the 16:17 tick finds that run and
+// declines. Once a day is the term's doing, not a watermark's.
+test('S74 at-most-daily is asked at both daily ticks; the second declines on the run already in the day', async () => {
   const tasks = [{
-    id: 'x/daily', preconditions: ['due:daily'], codeWorkMinutes: 2,
+    id: 'x/daily', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 2,
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks, cronHours: [4, 16] }).seedSteadyState('2026-08-12T00:00Z');
@@ -455,34 +467,8 @@ test('S74 due:daily is asked at both daily ticks; the second declines on the run
     [tick('2026-08-13T04:17Z'), 'go'], [tick('2026-08-13T16:17Z'), 'no'],
   ]);
   const [wed] = closedOf(sim, 'x/daily');
-  assert.equal(a[1].reason, `#${wed.number} already ran since the daily anchor at 2026-08-12T04:00:00.000Z`);
+  assert.equal(a[1].reason, `#${wed.number} already ran in the daily period that opened 2026-08-12T00:00:00.000Z`);
   assert.equal(closedOf(sim, 'x/daily').length, 2, 'one run per day, two days');
-});
-
-// ---- S75 — `last-run-over:1d` keeps no anchor: it measures from the newest
-// run's START, strictly more than the duration ago. A task that runs at the
-// first tick of the day then drifts one tick later each day — the tick exactly
-// 24h after the last start is "not over 1d", the one after it is.
-test('S75 last-run-over:1d drifts one tick a day: strictly over, measured from the last start', async () => {
-  const tasks = [{
-    id: 'x/drift', preconditions: ['last-run-over:1d'], codeWorkMinutes: 2,
-    precondition: () => ({ run: true }),
-  }];
-  const sim = makeSim({ tasks }); // no history at all: "no run in the horizon" holds
-  await sim.run('2026-08-12T00:00Z', '2026-08-15T00:00Z');
-
-  // The go's reason joins every held conjunct: the cadence term's, then the
-  // scenario's gate, which states none of its own and so contributes its name.
-  assert.match(asks(sim, 'x/drift')[0].reason, /^no run of this task in the last 40 days/);
-  assert.deepEqual(closedOf(sim, 'x/drift').map((i) => i.createdAt),
-    [tick('2026-08-12T00:17Z'), tick('2026-08-13T01:17Z'), tick('2026-08-14T02:17Z')],
-    'the first tick, then one tick later each day');
-  // the tick exactly 24h after a start declines — `>` not `>=` — and names the run
-  const [first] = closedOf(sim, 'x/drift');
-  const exact = asks(sim, 'x/drift').find((e) => e.t === first.createdAt + 24 * 3_600_000);
-  assert.equal(exact.verdict, 'no');
-  assert.match(exact.reason, new RegExp(`the newest run, #${first.number}, started .* inside 1d`));
-  assert.ok(asks(sim, 'x/drift').every((e) => e.verdict !== 'fail-open'));
 });
 
 // ---- S76 — a task stating no condition is off the schedule: the scheduler never
@@ -518,17 +504,18 @@ test('S76 a task with no preconditions is never asked; its hand-created item run
 });
 
 // ---- S77 — a forced mint satisfies the cadence at pick: the item is stamped
-// `Woken`, and the wake stands in for `due:daily` even though today's run
+// `Woken`, and the wake stands in for `schedule:at-most-daily` even though today's run
 // already happened. The contrast: an unstamped hand-made item of the same task
 // is judged over the same history and declines — the stamp, not the shape, is
 // what the terms read.
 test('S77 a forced mint passes the cadence at pick by its Woken stamp; an unstamped twin does not', async () => {
   const tasks = [{
-    id: 'x/ran', preconditions: ['due:daily'], codeWorkMinutes: 1,
+    id: 'x/ran', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 1,
     precondition: () => ({ run: true }),
   }];
-  // seeded as of 05:00: the task ran at TODAY's 04:00 anchor
-  const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T05:00Z');
+  // Seeded as of tomorrow, so the seeded run sits inside TODAY: the day's occurrence
+  // has already happened and only a wake can produce another.
+  const sim = makeSim({ tasks }).seedSteadyState('2026-08-13T05:00Z');
   let byHand;
   sim.at('2026-08-12T10:00Z', (s) => s.force('x/ran'));
   sim.at('2026-08-12T13:00Z', (s) => { byHand = s.createItem('x/ran'); });
@@ -547,13 +534,13 @@ test('S77 a forced mint passes the cadence at pick by its Woken stamp; an unstam
   const twin = sim.item(byHand.number);
   assert.equal(twin.woken, null);
   assert.equal(twin.outcome, 'obsolete', "judged over the day's runs like the schedule's own item");
-  assert.match(sim.declineReason(twin.number), /already ran since the daily anchor/);
+  assert.match(sim.declineReason(twin.number), /already ran in the daily period/);
 });
 
 // ---- S78 — a brand-new task is asked at its first tick like any other: no
 // first-window booking, no born-blocked item. A weekly task with no history and
-// work waiting runs mid-week at the first tick — "no run since the anchor" is
-// simply true — and its NEXT run is the following Sunday's.
+// work waiting runs mid-week at the first tick — "no run in this week" is simply
+// true — and its NEXT run is the following Sunday's.
 test("S78 a new task is asked at its first tick; its next occurrence is the cadence's", async () => {
   const sim = makeSim({ tasks: cast() }); // no seeded history — a fresh repo
   sim.at('2026-08-12T00:00Z', ({ world }) => { world.stalePrs = true; });
@@ -562,8 +549,8 @@ test("S78 a new task is asked at its first tick; its next occurrence is the cade
   const runs = closedOf(sim, 'tidy/tidy-prs');
   assert.equal(runs.length, 2);
   assert.equal(runs[0].createdAt, tick('2026-08-12T00:17Z'), 'the first tick, mid-week, off-anchor');
-  assert.match(asks(sim, 'tidy/tidy-prs')[0].reason, /^no run since the weekly anchor at 2026-08-09T04:00/);
-  assert.equal(runs[1].createdAt, tick('2026-08-16T04:17Z'), "then Sunday's anchor, and nothing between");
+  assert.match(asks(sim, 'tidy/tidy-prs')[0].reason, /^no run in the weekly period that opened 2026-08-09T00:00/);
+  assert.equal(runs[1].createdAt, tick('2026-08-16T00:17Z'), "then the Sunday its next week opens on, and nothing between");
   assert.equal(sim.family('tidy/tidy-prs').filter((i) => i.state === 'open').length, 0, 'nothing born blocked');
   // the daily tasks were asked at 00:17 too, and declined on their own conditions
   assert.equal(asks(sim, 'tidy/tidy-issues')[0].t, tick('2026-08-12T00:17Z'));
@@ -578,7 +565,7 @@ test("S78 a new task is asked at its first tick; its next occurrence is the cade
 // stands in for the cadence — so the term cannot decline a single run.
 test('S79 a cadence cannot hold back a request task; a schedule task requiring nothing runs every tick', async () => {
   const tasks = [
-    { id: 'x/lever', trigger: 'request', preconditions: ['due:daily'], codeWorkMinutes: 1 },
+    { id: 'x/lever', trigger: 'request', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 1 },
     { id: 'x/always', trigger: 'schedule', preconditions: [], codeWorkMinutes: 1 },
   ];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -590,7 +577,7 @@ test('S79 a cadence cannot hold back a request task; a schedule task requiring n
   assert.equal(asks(sim, 'x/lever').length, 0, 'a request task is never asked, cadence or no cadence');
   assert.equal(sim.item(first.number).outcome, 'done', 'the first hand-created item runs');
   assert.equal(sim.item(second.number).outcome, 'done',
-    'and so does the second, the same day: the wake stands in for `due:daily`');
+    'and so does the second, the same day: the wake stands in for `schedule:at-most-daily`');
 
   const asked = asks(sim, 'x/always');
   assert.equal(asked.length, 24, 'asked at every tick of the day');
@@ -734,7 +721,7 @@ test('S55 signals unavailable for one task: fail-open item, executor decides; th
   assert.equal(fam.length, 2, 'an item per occurrence — fail-open never files fewer');
   const a = asks(sim, 'basics/baselining');
   assert.deepEqual(a.filter((e) => e.verdict === 'fail-open').map((e) => e.t),
-    [tick('2026-08-12T04:17Z'), tick('2026-08-13T04:17Z')],
+    [tick('2026-08-12T00:17Z'), tick('2026-08-13T00:17Z')],
     'failed open exactly where the cadence held — every other tick declined on the run history alone');
   assert.ok(a.filter((e) => e.verdict !== 'fail-open').every((e) => e.verdict === 'no'));
   // day 1: the executor's own evaluation declined, and the item closed
@@ -763,7 +750,7 @@ test("S57 a hand-minted item preempts the tick's ask; no duplicate, no dedupe", 
   // Once it closed, the later ticks ask again — and the closed item is this
   // period's run, so they decline on the cadence.
   const later = asks(sim, 'tidy/tidy-issues').filter((e) => e.t > fam[0].closedAt);
-  assert.ok(later.length === 3 && later.every((e) => /already ran since the daily anchor/.test(e.reason)));
+  assert.ok(later.length === 3 && later.every((e) => /already ran in the daily period/.test(e.reason)));
 });
 
 // ---- S59 — the verdict flips between the tick's yes and the pick: the
@@ -771,9 +758,9 @@ test("S57 a hand-minted item preempts the tick's ask; no duplicate, no dedupe", 
 // and the closed item — rejected or not — is this period's run.
 test("S59 a go at the tick, a no at pick: the executor's verdict wins, once", async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
+  sim.at('2026-08-12T00:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T00:00Z'); });
   // the world changes in the seconds between the scheduler run and its drain
-  sim.at('2026-08-12T04:18:00Z', ({ world }) => { world.issueTouchedAt = null; });
+  sim.at('2026-08-12T00:18:00Z', ({ world }) => { world.issueTouchedAt = null; });
   await sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
 
   assert.equal(goes(sim, 'tidy/tidy-issues').length, 1, 'the tick said go and filed the item');
@@ -792,9 +779,9 @@ test("S59 a go at the tick, a no at pick: the executor's verdict wins, once", as
   // reaches back to the last run that actually ran — Tuesday's.
   sim.at('2026-08-12T13:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
   await sim.run('2026-08-12T12:00Z', '2026-08-13T12:00Z');
-  const [tomorrow] = goes(sim, 'tidy/tidy-issues').filter((e) => e.t >= T('2026-08-13T04:00Z'));
-  assert.equal(tomorrow?.t, tick('2026-08-13T04:17Z'),
-    'found at the next anchor, over a window the rejected item did not shorten');
+  const [tomorrow] = goes(sim, 'tidy/tidy-issues').filter((e) => e.t >= T('2026-08-13T00:00Z'));
+  assert.equal(tomorrow?.t, tick('2026-08-13T00:17Z'),
+    "found at the next period's first tick, over a window the rejected item did not shorten");
   assert.equal(closedOf(sim, 'tidy/tidy-issues').filter((i) => i.outcome === 'done').length, 1);
 });
 
@@ -889,22 +876,27 @@ test('S62 legacy-labeled items drain; the first write canonicalizes; a legacy pa
 // holds the lane of a task declaring `last-run-not-failed`.
 test('S62b a legacy approval pair spares the lane; a bare legacy park reads as failure and holds it', async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T00:30Z', (s) => {
-    s.updateTask('gcec/create-extractor', { preconditions: ['due:daily', 'last-run-not-failed'] });
+  // The parks are YESTERDAY's leftovers, which is what a park from the old engine is.
+  // An unqualified item created inside today would be today's run, and the cadence
+  // would decline all day for that reason rather than for the park's.
+  sim.at('2026-08-11T12:05Z', (s) => {
+    s.updateTask('gcec/create-extractor', { preconditions: ['schedule:at-most-daily', 'last-run-not-failed'] });
     s.legacyIssue('tidy/tidy-issues', ['needs-human', 'task:needs-human-approval']);
     s.legacyIssue('gcec/create-extractor', ['needs-human']);
-    s.world.issueTouchedAt = T('2026-08-12T04:00Z');
-    s.world.requestAt = T('2026-08-12T04:00Z');
   });
-  await sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
+  sim.at('2026-08-12T00:05Z', (s) => {
+    s.world.issueTouchedAt = T('2026-08-12T00:05Z');
+    s.world.requestAt = T('2026-08-12T00:05Z');
+  });
+  await sim.run('2026-08-11T12:00Z', '2026-08-12T08:00Z');
 
   const tidy = own(sim, 'tidy/tidy-issues');
-  assert.equal(tidy.length, 2, 'the approval pair did not consume the lane — the 04:17 occurrence filed beside it');
+  assert.equal(tidy.length, 2, "the approval pair did not consume the lane — the day's occurrence filed beside it");
   assert.ok(tidy.some((i) => i.state === 'closed' && i.labels.has('task:status:done')), 'and it ran');
   assert.ok(tidy.some((i) => i.state === 'open'), 'while the legacy park sat untouched, its PR still in review');
   assert.equal(own(sim, 'gcec/create-extractor').length, 1,
     'the bare park holds the lane: no occurrence files behind it');
-  assert.ok(asks(sim, 'gcec/create-extractor').filter((e) => e.t > T('2026-08-12T04:00Z'))
+  assert.ok(asks(sim, 'gcec/create-extractor').filter((e) => e.t > T('2026-08-12T00:05Z'))
     .every((e) => /failure park/.test(e.reason)), "declined by the task's own term, reading the decoded kind");
 });
 
@@ -914,7 +906,7 @@ test('S62b a legacy approval pair spares the lane; a bare legacy park reads as f
 test('S63 an unknown park kind decodes as failure and holds the lane of a task that declares it', async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:30Z', (s) => {
-    s.updateTask('tidy/tidy-issues', { preconditions: ['due:daily', 'last-run-not-failed'] });
+    s.updateTask('tidy/tidy-issues', { preconditions: ['schedule:at-most-daily', 'last-run-not-failed'] });
     s.legacyIssue('tidy/tidy-issues', ['needs-human', 'task:needs-human-shrugged']);
     s.world.issueTouchedAt = T('2026-08-12T04:00Z');
   });
@@ -936,20 +928,20 @@ test('backlog guard: a failure park holds the lane only for a task declaring las
   assert.ok(fam[0].parked && fam[0].labels.has(NH('failure')));
   assert.equal(evals(held, 'basics/baselining').length, 1, 'not re-run while broken');
   // The park does not silence the ask: every later tick still asks. For the rest
-  // of Wednesday `due:daily` declines first — the parked item IS this period's
+  // of Wednesday `schedule:at-most-daily` declines first — the parked item IS this period's
   // run — and from Thursday's anchor on it is the task's own
   // `last-run-not-failed` that declines, reading the park.
   const after = asks(held, 'basics/baselining').filter((e) => e.t > T('2026-08-12T05:00Z'));
   assert.ok(after.length >= 40 && after.every((e) => e.verdict === 'no'));
-  assert.ok(after.filter((e) => e.t < T('2026-08-13T04:00Z')).every((e) => /already ran since the daily anchor/.test(e.reason)));
-  const thursday = after.filter((e) => e.t >= T('2026-08-13T04:00Z'));
+  assert.ok(after.filter((e) => e.t < T('2026-08-13T00:00Z')).every((e) => /already ran in the daily period/.test(e.reason)));
+  const thursday = after.filter((e) => e.t >= T('2026-08-13T00:00Z'));
   assert.ok(thursday.length >= 19 && thursday.every((e) => /failure park/.test(e.reason)));
 
   // The contrast: strip the term and the next anchor files beside the park — a
   // parked item is not live, and nothing in the engine holds a lane by itself.
   const open = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   open.at('2026-08-12T00:01Z', (s) => {
-    s.updateTask('basics/baselining', { preconditions: ['due:daily'] });
+    s.updateTask('basics/baselining', { preconditions: ['schedule:at-most-daily'] });
     s.world.mountBehind = true; s.world.mountBroken = true;
   });
   await open.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
@@ -968,15 +960,15 @@ test('S70 the door: a retired `frequency` field reads as its cadence term at loa
     { id: 'x/daily', frequency: 'daily', codeWorkMinutes: 1, precondition: () => ({ run: true }) },
     { id: 'x/weekly', frequency: 'weekly', preconditions: ['none', 'last-run-not-failed'], codeWorkMinutes: 1 },
     { id: 'x/manual', frequency: 'manual', codeWorkMinutes: 1 },
-    { id: 'x/stated', frequency: 'daily', preconditions: ['due:daily'], codeWorkMinutes: 1 },
+    { id: 'x/stated', frequency: 'daily', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 1 },
   ] }).seedSteadyState('2026-08-12T00:00Z');
   await sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
   // what passed the door: the term first, the empty `none` gone, the field gone
-  assert.deepEqual(sim.task('x/daily').decl.preconditions, ['due:daily', 'gate']);
-  assert.deepEqual(sim.task('x/weekly').decl.preconditions, ['due:weekly', 'last-run-not-failed']);
+  assert.deepEqual(sim.task('x/daily').decl.preconditions, ['schedule:at-most-daily', 'gate']);
+  assert.deepEqual(sim.task('x/weekly').decl.preconditions, ['schedule:at-most-weekly', 'last-run-not-failed']);
   assert.deepEqual(sim.task('x/manual').decl.preconditions, [], '`manual` meant no schedule and adds no term');
-  assert.deepEqual(sim.task('x/stated').decl.preconditions, ['due:daily'], 'a term already stated is not doubled');
+  assert.deepEqual(sim.task('x/stated').decl.preconditions, ['schedule:at-most-daily'], 'a term already stated is not doubled');
   for (const id of ['x/daily', 'x/weekly', 'x/manual', 'x/stated']) assert.equal(sim.task(id).decl.frequency, undefined);
   // and the loaded declaration behaves as its term: a daily task asked at every
   // tick and run once at its anchor, a `manual` one — stating nothing — never asked
@@ -1079,7 +1071,7 @@ test('S15 force-while-executing: the mutex queues the twin', async () => {
   // An unstamped hand-made twin is judged on the cadence over the task's other
   // runs, and the scheduled item IS this period's run.
   assert.equal(sim.item(twin.number).outcome, 'obsolete');
-  assert.match(sim.declineReason(twin.number), /already ran since the daily anchor/);
+  assert.match(sim.declineReason(twin.number), /already ran in the daily period/);
 });
 
 // ---- S16 — urgent item, lost label event: the scheduler run's drain is the
@@ -1226,7 +1218,7 @@ test('S31 heartbeat interval >= executing leash is refused at wiring (F17 refram
 
 test('S31b the livelock heartbeats prevent: silent long work reclaimed alive, forever', async () => {
   const tasks = [{
-    id: 'x/slow', preconditions: ['due:daily'], codeWorkMinutes: 130, // > 1h leash
+    id: 'x/slow', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 130, // > 1h leash
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks, heartbeatsDisabled: true }).seedSteadyState('2026-08-12T00:00Z');
@@ -1241,7 +1233,7 @@ test('S31b the livelock heartbeats prevent: silent long work reclaimed alive, fo
 
 test('S31c long work with heartbeats: never reclaimed alive, converges once', async () => {
   const tasks = [{
-    id: 'x/slow', preconditions: ['due:daily'], codeWorkMinutes: 130, // > 1h leash — legal now
+    id: 'x/slow', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 130, // > 1h leash — legal now
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
@@ -1255,11 +1247,11 @@ test('S31c long work with heartbeats: never reclaimed alive, converges once', as
 
 test('S31d dead executor mid-long-work: recovery is bounded by the leash, not the work', async () => {
   const tasks = [{
-    id: 'x/slow', preconditions: ['due:daily'], codeWorkMinutes: 130,
+    id: 'x/slow', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 130,
     precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T04:00Z', (s) => s.crashDuringWorkOf('x/slow', 40)); // dies 40m in
+  sim.at('2026-08-12T00:00Z', (s) => s.crashDuringWorkOf('x/slow', 40)); // dies 40m in
   await sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
 
   const crash = sim.log.find((e) => e.kind === 'executor-crash');
@@ -1277,11 +1269,11 @@ test('S31d dead executor mid-long-work: recovery is bounded by the leash, not th
 // workflow's failure-continuation job re-dispatches on a fresh runner.
 test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the leash recovers the item', async () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
-    id: `x/${n}`, preconditions: ['due:daily'], codeWorkMinutes: 5,
+    id: `x/${n}`, preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 5,
     precondition: () => ({ run: true }),
   }));
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
-  sim.at('2026-08-12T04:00Z', (s) => s.crashDuringWorkOf('x/c3', 2)); // dies 2m into its work
+  sim.at('2026-08-12T00:00Z', (s) => s.crashDuringWorkOf('x/c3', 2)); // dies 2m into its work
   await sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
   const crash = sim.log.find((e) => e.kind === 'executor-crash');
@@ -1314,12 +1306,12 @@ test('S36 dead run mid-queue: failure-redispatch keeps the train moving; the lea
 // with, hold.mjs); items nothing picked freeze exactly where they were.
 test('S37 suspend-all: workflows exit at start, the queue freezes in place', async () => {
   const tasks = ['c1', 'c2', 'c3', 'c4', 'c5'].map((n) => ({
-    id: `x/${n}`, preconditions: ['due:daily'], codeWorkMinutes: 5,
+    id: `x/${n}`, preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 5,
     precondition: () => ({ run: true }),
   }));
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
-  const AT = T('2026-08-12T04:30Z');
-  sim.at('2026-08-12T04:30Z', (s) => s.suspendAll());
+  const AT = T('2026-08-12T00:30Z');
+  sim.at('2026-08-12T00:30Z', (s) => s.suspendAll());
   await sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z'); // no resume in this window
 
   // suspension gates STARTS, not running work: no run begins after the hold…
@@ -1345,15 +1337,15 @@ test('S37 suspend-all: workflows exit at start, the queue freezes in place', asy
 // the variable — the next cron scheduler run alone self-heals everything.
 test('S38 resume after a hold: clearing the variable + the next scheduler run recovers everything', async () => {
   const tasks = [
-    { id: 'x/slow', preconditions: ['due:daily'], codeWorkMinutes: 30, precondition: () => ({ run: true }) },
-    { id: 'x/quick', preconditions: ['due:daily'], codeWorkMinutes: 3, precondition: () => ({ run: true }) },
+    { id: 'x/slow', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 30, precondition: () => ({ run: true }) },
+    { id: 'x/quick', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 3, precondition: () => ({ run: true }) },
   ];
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
   // the user cancels x/slow's run 5 minutes into its work…
-  sim.at('2026-08-12T04:00Z', (s) => s.crashDuringWorkOf('x/slow', 5));
+  sim.at('2026-08-12T00:00Z', (s) => s.crashDuringWorkOf('x/slow', 5));
   // …and suspends everything moments later, before the continuation job's
   // re-dispatch lands — intent 2 overrides intent 1's train
-  sim.at('2026-08-12T04:23Z', (s) => s.suspendAll());
+  sim.at('2026-08-12T00:23Z', (s) => s.suspendAll());
   sim.at('2026-08-12T10:00Z', (s) => s.resumeAll()); // clear the variable; no manual dispatch
   await sim.run('2026-08-12T00:00Z', '2026-08-12T14:00Z');
 
@@ -1449,7 +1441,7 @@ test('S41 a worker that names its failure class parks there, not at failure', as
 // before the marker existed. An unexplained break is a break — and whether it
 // holds the task's lane is the task's own declaration.
 test('S41b a worker that says nothing parks at failure; the lane is held only where the task says so', async () => {
-  const holding = makeSim({ tasks: [{ ...SEEDS, codeWorkTriage: undefined, preconditions: ['due:daily', 'last-run-not-failed'] }] });
+  const holding = makeSim({ tasks: [{ ...SEEDS, codeWorkTriage: undefined, preconditions: ['schedule:at-most-daily', 'last-run-not-failed'] }] });
   holding.at('2026-08-12T00:00Z', ({ world }) => { world.patScopeMissing = true; });
   await holding.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
 
@@ -1483,7 +1475,7 @@ test('S42 a run that left an unmerged PR parks open for approval and keeps its s
 
   // Even a task that does not run past its own FAILURE runs past its own review:
   // `last-run-not-failed` reads the failure park and no other kind.
-  const strict = makeSim({ tasks: [{ ...REGENERATE, preconditions: ['due:daily', 'last-run-not-failed'] }] });
+  const strict = makeSim({ tasks: [{ ...REGENERATE, preconditions: ['schedule:at-most-daily', 'last-run-not-failed'] }] });
   await strict.run('2026-08-12T00:00Z', '2026-08-14T12:00Z');
   assert.ok(strict.family('site/regenerate').length >= 2, 'an approval park is not a failure — the lane is open');
   assert.ok(asks(strict, 'site/regenerate').every((e) => !/failure park/.test(e.reason)));
@@ -1849,19 +1841,19 @@ test('S64 the request labels: bare mark, adopted, running, in review — one iss
 test("S34 busy morning: one drain run settles all its hour's items; every run's cause is recorded", async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:01Z', ({ world }) => { world.extractHasLessons = true; });
-  sim.at('2026-08-12T04:00Z', ({ world }) => {
-    world.issueTouchedAt = T('2026-08-12T04:00Z'); // tidy-issues has work
+  sim.at('2026-08-12T00:02Z', ({ world }) => {
+    world.issueTouchedAt = T('2026-08-12T00:02Z'); // tidy-issues has work
     world.releasePending = true;                   // store-release has work
   });
   await sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
-  // ONE drain for the 04:17 batch. The staggered anchor hours retired with the
+  // ONE drain for the 00:17 batch. The staggered anchor hours retired with the
   // twice-daily cron, so the whole morning is one batch.
   const morning = sim.log.filter((e) => e.kind === 'executor-run'
-    && e.t >= tick('2026-08-12T04:17Z') && e.t < T('2026-08-12T05:00Z'));
+    && e.t >= tick('2026-08-12T00:17Z') && e.t < T('2026-08-12T01:00Z'));
   assert.equal(morning.length, 1, 'exactly one executor invocation for the busy hour');
   assert.equal(morning[0].trigger, 'scheduler-run-drain');
-  // the 04:17 run settled its hour's items in one invocation — the batch, not a
+  // the 00:17 run settled its hour's items in one invocation — the batch, not a
   // chain: no run was ever caused by a re-dispatch
   const ends = sim.log.filter((e) => e.kind === 'run-end');
   assert.ok(ends.some((e) => e.settled === 3), 'the batch run settled all three items');
@@ -1993,8 +1985,11 @@ test('S67 twice-daily cron: a full day of work completes on a handful of billed 
   for (const task of ['basics/baselining', 'grow/growth-extract', 'grow/growth-promote']) {
     assert.equal(new Date(closedOf(twice, task)[0].createdAt).toISOString().slice(11, 16), '04:17');
   }
-  assert.ok(asks(hourly, 'tidy/tidy-issues').filter((e) => e.t < T('2026-08-12T04:00Z'))
-    .every((e) => e.verdict === 'no'), 'the pre-anchor ticks asked and declined on the cadence');
+  // The hourly grid picks the same work up at the first tick after it arrives, and
+  // every tick for the rest of the day then declines on the run it just made.
+  assert.deepEqual(goes(hourly, 'tidy/tidy-issues').map((e) => e.t), [tick('2026-08-12T00:17Z')]);
+  assert.ok(asks(hourly, 'tidy/tidy-issues').filter((e) => e.t > tick('2026-08-12T00:17Z'))
+    .every((e) => e.verdict === 'no'), 'and nothing re-ran for the rest of the day');
 });
 
 // ---- S68 — the ad-hoc mark is what the second tick is FOR. A mark is adopted by
@@ -2048,7 +2043,7 @@ test('S68 ad-hoc latency is the wait for the next tick: 0.2h hourly, 7.2h twice-
 // job. So a mark landing mid-drain waits for the next TICK.
 test('S69 a mark landing mid-drain waits for the next tick — continuations chain dependents, not marks', async () => {
   const slow = [{
-    id: 'tidy/tidy-issues', preconditions: ['due:daily'],
+    id: 'tidy/tidy-issues', preconditions: ['schedule:at-most-daily'],
     codeWorkMinutes: 90, agentMinutes: 60, precondition: () => ({ run: true }),
   }];
   const sim = makeSim({ tasks: slow, cronHours: [4, 16] }).seedSteadyState('2026-08-12T00:00Z');

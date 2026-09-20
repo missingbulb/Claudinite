@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,22 +36,26 @@ test('convergeSchedulerWorkflow: writes the stub with the repo-hashed cron, and 
 });
 
 
-// The repo's own anchor hour picks BOTH cron hours (PRINCIPLES.md). The rehearsal's
-// `custom-anchor-hour` fixture proves such a member converges green; this proves the value that
-// lands is its own — a converge that stamped the default instead would fire every task before its
-// anchor and land it a day late, and nothing would go red.
-test('convergeSchedulerWorkflow: both cron hours come from the repo\'s own dailyHour', () => {
-  const root = mkdtempSync(join(tmpdir(), 'cw-hours-'));
-  convergeSchedulerWorkflow(root, REPO, STUB, [], 9);
-  const written = readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8');
-  assert.match(written, /cron: '\d+ 9,21 \* \* \*'/, "the member's own anchor, and twelve hours after it");
+// THE CRON A REPO ALREADY CARRIES IS ITS OWN (#1995). The converge preserves it
+// rather than restamping, because `.github/workflows/` lands only through a pull
+// request a person merges: a converge that rewrote the line would put every member's
+// scheduler behind a human gate every time the derivation changed.
+test('convergeSchedulerWorkflow: an existing cron is kept, a malformed one is replaced', () => {
+  const kept = mkdtempSync(join(tmpdir(), 'cw-keep-'));
+  mkdirSync(join(kept, '.github/workflows'), { recursive: true });
+  writeFileSync(join(kept, SCHEDULER_WORKFLOW), STUB.replace("cron: '10 * * * *'", "cron: '44 5,17 * * *'"));
+  convergeSchedulerWorkflow(kept, REPO, STUB);
+  assert.match(readFileSync(join(kept, SCHEDULER_WORKFLOW), 'utf8'), /cron: '44 5,17 \* \* \*'/,
+    "the repo's own hour survives a converge that did not write it");
 
-  // Absent means the documented default, not a broken cron — an unset key is the default.
-  const dflt = mkdtempSync(join(tmpdir(), 'cw-hours-'));
-  convergeSchedulerWorkflow(dflt, REPO, STUB);
-  assert.match(readFileSync(join(dflt, SCHEDULER_WORKFLOW), 'utf8'), /cron: '\d+ 4,16 \* \* \*'/);
+  // A line this repo did not write is not preserved: it is replaced by the derivation.
+  const broken = mkdtempSync(join(tmpdir(), 'cw-fix-'));
+  mkdirSync(join(broken, '.github/workflows'), { recursive: true });
+  writeFileSync(join(broken, SCHEDULER_WORKFLOW), STUB);
+  convergeSchedulerWorkflow(broken, REPO, STUB);
+  assert.match(readFileSync(join(broken, SCHEDULER_WORKFLOW), 'utf8'),
+    new RegExp(`cron: '${hashedCron(REPO).replace(/[*]/g, '\\*')}'`));
 });
-
 
 // ── The canon's own copy against the stub it ships ──────────────────────────
 // THE HOME IS THE LAST REPO TO RECEIVE ITS OWN STUB CHANGES: every member gets
@@ -68,7 +72,7 @@ test("the canon's own scheduler run workflow has not drifted from the stub it sh
   // task modules at the repo root, carries its own resolved cron, and names its own
   // secrets where a member's converge would stamp them. The WHOLE cron expression is
   // repo-resolved now — the minute is hashed from the name and both hours come from the repo's
-  // `taskScheduler.dailyHour` (PRINCIPLES.md) — so structure-compare masks all of it, and the
+  // whatever hour that repo already carried (PRINCIPLES.md) — so structure-compare masks all of it, and the
   // assertion below pins the canon's own value to what the engine would compute.
   const structure = (text) => text
     .split('\n')
@@ -80,11 +84,12 @@ test("the canon's own scheduler run workflow has not drifted from the stub it sh
 
 
 // …and the value the mask hides. Masking the cron is what lets the structure compare survive two
-// repos on different anchors, so without this the canon's own cron could say anything at all.
+// repos on different hours, so without this the canon's own cron could say anything at all.
 test("the canon's own cron is what the engine computes for it", () => {
   const mine = readFileSync(join(CANON_ROOT, '.github/workflows/claudinite-scheduler.yml'), 'utf8');
   const config = JSON.parse(readFileSync(join(CANON_ROOT, '.claudinite-settings.json'), 'utf8'));
-  const expected = hashedCron('missingbulb/Claudinite', config.taskScheduler?.dailyHour);
+  // This repo's cron predates the hashed hour, and the converge preserves it.
+  const expected = '44 5,17 * * *';
   assert.match(mine, new RegExp(`cron: '${expected.replace(/[*]/g, '\\*')}'`),
     `the canon's workflow should carry cron '${expected}'`);
 });

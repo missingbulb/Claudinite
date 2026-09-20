@@ -77,7 +77,7 @@ test('parseDeclaration lifts the scalar fields', () => {
     preconditions: ['due:weekly', 'substantive-change'],
   }));
   assert.equal(d.id, 'ci-performance');
-  assert.deepEqual(d.preconditions, ['due:weekly', 'substantive-change']);
+  assert.deepEqual(d.preconditions, ['schedule:at-most-weekly', 'substantive-change']);
   assert.equal(d.agent_model, 'sonnet');
   assert.equal(d.expected_outcome, 'fresh_pr');
   assert.equal(d.has_precondition, true);
@@ -92,17 +92,17 @@ test('parseDeclaration lifts the declarative preconditions; a cadence term and `
     preconditions: ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/'],
     agent_model: 'sonnet',
   }));
-  assert.deepEqual(gated.preconditions, ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/']);
+  assert.deepEqual(gated.preconditions, ['schedule:at-most-weekly', 'substantive-change', 'commits-outside:.claudinite/']);
   assert.equal(gated.precondition_signals, undefined, 'the retired field is not modelled at all — the union is derived');
   assert.equal(gated.has_precondition, true);
 
   const cadenceOnly = parseDeclaration('{ "id": "update", "preconditions": ["due:daily"] }');
-  assert.deepEqual(cadenceOnly.preconditions, ['due:daily']);
+  assert.deepEqual(cadenceOnly.preconditions, ['schedule:at-most-daily']);
   assert.equal(cadenceOnly.has_precondition, false);
   assert.equal(parseDeclaration('{ "id": "x", "preconditions": ["none"] }').has_precondition, false);
   assert.equal(parseDeclaration('{ "id": "x", "preconditions": [] }').has_precondition, false);
   assert.equal(parseDeclaration('{ "id": "x" }').has_precondition, false, 'no conditions at all is no gate');
-  assert.equal(parseDeclaration('{ "id": "x", "preconditions": ["last-run-over:7d", "last-run-not-failed"] }').has_precondition, true,
+  assert.equal(parseDeclaration('{ "id": "x", "preconditions": ["schedule:at-most-weekly", "last-run-not-failed"] }').has_precondition, true,
     'a run-history gate is a gate; only the cadence term is exempt');
 });
 
@@ -111,7 +111,7 @@ test('parseDeclaration lifts the declarative preconditions; a cadence term and `
 // door makes of it: first in the list, the `none` beside it dropped, the field gone.
 test('a legacy `frequency` goes through the door', () => {
   const d = parseDeclaration('{ "id": "update", "frequency": "daily", "preconditions": ["none"] }');
-  assert.deepEqual(d.preconditions, ['due:daily']);
+  assert.deepEqual(d.preconditions, ['schedule:at-most-daily']);
   assert.equal(d.frequency, undefined, 'the field does not survive the door');
   assert.equal(d.has_precondition, false);
 });
@@ -131,7 +131,7 @@ test('parseDeclaration reads an absent `preconditions` as the empty expression, 
 test('parseDeclaration reads a task.json, defaults filled', () => {
   const d = parseDeclaration('{ "$schema": "x", "id": "improve-comments", "preconditions": ["due:weekly", "substantive-change"], "expected_outcome": "no_code_changes" }');
   assert.equal(d.id, 'improve-comments');
-  assert.deepEqual(d.preconditions, ['due:weekly', 'substantive-change']);
+  assert.deepEqual(d.preconditions, ['schedule:at-most-weekly', 'substantive-change']);
   assert.equal(d.agent_model, 'none');
   assert.equal(d.agent_execution_timeout, null);
   assert.equal(d.has_precondition, true);
@@ -154,14 +154,14 @@ test('the page\'s frequency and trigger doors agree with the contract\'s on ever
     { id: 'b', frequency: 'weekly', preconditions: ['none'] },
     { id: 'c', frequency: 'monthly', preconditions: [' none ', 'substantive-change'] },
     { id: 'd', frequency: 'manual', preconditions: ['substantive-change'] },
-    { id: 'e', frequency: 'daily', preconditions: ['due:daily', 'commits-outside:.claudinite/'] },
+    { id: 'e', frequency: 'daily', preconditions: ['schedule:at-most-daily', 'commits-outside:.claudinite/'] },
     { id: 'f', frequency: 'hourly' },
-    { id: 'g', preconditions: ['due:daily', 'none'] },
-    { id: 'h', preconditions: ['last-run-over:3d'] },
+    { id: 'g', preconditions: ['schedule:at-most-daily', 'none'] },
+    { id: 'h', preconditions: ['due:monthly'] },
     { id: 'i' },
     { id: 'j', frequency: 'manual' },
     // Stated, in both directions and against the shape the door would have read.
-    { id: 'k', trigger: 'schedule', preconditions: ['due:daily'] },
+    { id: 'k', trigger: 'schedule', preconditions: ['schedule:at-most-daily'] },
     { id: 'l', trigger: 'request', preconditions: [] },
     { id: 'm', trigger: 'request', preconditions: ['due:weekly', 'substantive-change'] },
     { id: 'n', trigger: 'schedule', preconditions: [] },
@@ -197,49 +197,34 @@ test('parseDeclaration survives a missing file', () => {
 
 // --- a task's cadence ---------------------------------------------------------------
 
-// The four shapes a declaration's cadence takes, kept apart from each other and from an
-// unreadable one: only a `due:` cadence is on the calendar, an elapsed one keeps a
-// period but no anchor, no-cadence keeps neither, and NO CONDITIONS is off the
-// schedule altogether.
+// The three shapes a declaration's cadence takes, kept apart from each other and from
+// an unreadable one: a stated cadence is on the calendar, no-cadence keeps a period
+// but no anchor, and NO CONDITIONS is off the schedule altogether.
 test('describeCadence reads each cadence shape off the preconditions', () => {
   const DAY = 86400e3;
-  const due = describeCadence(['due:weekly', 'substantive-change']);
+  const due = describeCadence(['schedule:at-most-weekly', 'substantive-change']);
   assert.equal(due.frequency, 'weekly');
-  assert.deepEqual(due.cadence, { kind: 'due', cadence: 'weekly' });
+  assert.deepEqual(due.cadence, { kind: 'period', cadence: 'weekly' });
   assert.equal(due.periodMs, 7 * DAY);
   assert.equal(due.scheduled, true);
 
-  const elapsed = describeCadence(['last-run-over:3d']);
-  assert.equal(elapsed.frequency, 'every 3d');
-  assert.equal(elapsed.cadence.kind, 'elapsed');
-  assert.equal(elapsed.periodMs, 3 * DAY);
-  assert.equal(elapsed.scheduled, true);
-  assert.match(elapsed.anchorNote, /newest run/);
+  // The retired spelling reads as the same cadence: the page lifts declarations out
+  // of GitHub as text, so it meets it on any member that has not converged.
+  const legacy = describeCadence(['due:weekly', 'substantive-change']);
+  assert.deepEqual(legacy.cadence, due.cadence);
+  assert.equal(legacy.periodMs, due.periodMs);
 
-  const unscheduled = describeCadence([]);
-  assert.equal(unscheduled.frequency, 'unscheduled');
-  assert.equal(unscheduled.cadence, null);
-  assert.equal(unscheduled.periodMs, null);
-  assert.equal(unscheduled.scheduled, false);
-  assert.match(unscheduled.anchorNote, /somebody creates/);
+  const none = describeCadence(['substantive-change']);
+  assert.equal(none.frequency, 'on movement');
+  assert.equal(none.cadence, null);
+  assert.equal(none.scheduled, true);
 
-  const movement = describeCadence(['substantive-change']);
-  assert.equal(movement.frequency, 'on movement');
-  assert.equal(movement.cadence, null);
-  assert.equal(movement.periodMs, null);
-  assert.equal(movement.scheduled, true);
-  assert.match(movement.anchorNote, /every tick/);
+  const off = describeCadence([]);
+  assert.equal(off.frequency, 'unscheduled');
+  assert.equal(off.scheduled, false);
 
-  // A movement term as one ALTERNATIVE widens a cadence rather than replacing it.
-  const widened = describeCadence(['due:daily || substantive-change']);
-  assert.equal(widened.frequency, 'daily');
-  assert.equal(widened.scheduled, true);
-
-  // Whether a failure park holds the lane is the declaration's own word, read the
-  // same way — and unknown where the declaration could not be read.
-  assert.equal(due.holdsOnFailure, false);
-  assert.equal(describeCadence(['due:daily', 'last-run-not-failed']).holdsOnFailure, true);
-  assert.equal(describeCadence(null).holdsOnFailure, null);
+  const unreadable = describeCadence(null);
+  assert.equal(unreadable.scheduled, null);
 });
 
 test('describeCadence keeps an unreadable declaration apart from one with no cadence term and from one with no conditions', () => {
@@ -434,21 +419,6 @@ test('a legacy `manual` declaration reads as an unscheduled task', () => {
   assert.doesNotMatch(JSON.stringify(row), /manual|woken/);
 });
 
-// An elapsed cadence keeps a period — the stale-ready rule counts in it — but no
-// anchor: it counts from the task's newest run, which the calendar does not know.
-test('an elapsed cadence has a period and a note, never an anchor', () => {
-  const [row] = buildRoster({
-    tasks: [{ pack: 'p', task: 'slow', declaration: { preconditions: ['last-run-over:3d', 'substantive-change'] } }],
-    items: [], now: NOW, schedule: SCHEDULE,
-  });
-  assert.equal(row.frequency, 'every 3d');
-  assert.equal(row.periodMs, 3 * 86400e3);
-  assert.equal(row.nextAnchor, null);
-  assert.equal(row.scheduled, true);
-  assert.equal(row.nextAsk.kind, 'note');
-  assert.match(row.nextAsk.note, /newest run/);
-});
-
 // No cadence term at all: the scheduler asks at every tick, so there is no next
 // instant to promise and no period to count stale-ready in.
 test('a task with no cadence term is scheduled, with no anchor and no period', () => {
@@ -463,16 +433,16 @@ test('a task with no cadence term is scheduled, with no anchor and no period', (
   assert.match(row.nextAsk.note, /every tick/);
 });
 
-test('with no schedule configured no anchor is guessed', () => {
-  const rows = buildRoster({ tasks, items: [], now: NOW, schedule: null });
-  assert.equal(rows[0].nextAnchor, null);
-  assert.match(rows[0].anchorNote, /no schedule/);
-});
-
-test('the next anchor is in the future and lands on the configured hour', () => {
+// THE ANCHOR NEEDS NO CONFIGURATION (#1995). A period opens at midnight UTC, so the
+// roster answers the same whether or not the repo declares anything at all.
+test('the next anchor is in the future, at a UTC period boundary, configured or not', () => {
   const [ci] = buildRoster({ tasks, items: [], now: NOW, schedule: SCHEDULE });
   assert.ok(ci.nextAnchor.getTime() > NOW);
-  assert.equal(ci.nextAnchor.getUTCHours(), SCHEDULE.dailyHour);
+  assert.equal(ci.nextAnchor.getUTCHours(), 0);
+  assert.equal(ci.nextAnchor.getUTCMinutes(), 0);
+  const [same] = buildRoster({ tasks, items: [], now: NOW, schedule: null });
+  assert.deepEqual(same.nextAnchor, ci.nextAnchor);
+  assert.equal(same.anchorNote, ci.anchorNote);
 });
 
 test('outcomeTally counts by the canonical words, and a closed item with no outcome', () => {
