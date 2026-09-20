@@ -1040,7 +1040,7 @@ export const FIXTURES = [
   },
   {
     name: 'references',
-    why: 'a local pack still on the retired references convention — numeric markers resolving to references.md entries, a check: entry, and unmarked rules; the provenance-marking record converts and marks it at converge, and the member-authored prose `provenance-integrity` (blocking, growth) then reads',
+    why: 'a local pack still on the retired references convention - numeric markers resolving to references.md entries, a check: entry, and unmarked rules; the provenance-marking record converts and marks it at converge, and the member-authored prose `provenance-integrity` (blocking, growth) then reads',
     files: {
       'README.md': '# fixture-references\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['claudinite-growth', 'local/fixture-references']),

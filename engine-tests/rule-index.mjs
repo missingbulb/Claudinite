@@ -34,8 +34,10 @@ const HEADING = /^(#{2,})\s+(.+?)\s*$/;
 const LEAD_IN = /\*\*([\s\S]+?)\*\*/;
 
 // The marker that ends a rule and names its provenance file is an id, not prose: it
-// is not counted, so marking a rule never moves its band.
-const PROVENANCE_MARKER = /\s*\([a-z][a-z0-9]*(?:-[a-z0-9]+)+\)\s*$/;
+// is not counted, so marking a rule never moves its band. It ends the rule's lead
+// paragraph, which a nested list or a fenced block may follow, so it is read at any
+// line's end and not only the block's.
+const PROVENANCE_MARKER = /\s*\([a-z][a-z0-9]*(?:-[a-z0-9]+)+\)\s*$/gm;
 const wordsIn = (lines) => lines.join('\n').replace(PROVENANCE_MARKER, '').split(/\s+/).filter(Boolean).length;
 
 const trimTrailingBlanks = (lines) => {

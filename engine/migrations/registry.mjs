@@ -599,19 +599,19 @@ export async function applyTaskSchedulingFields(migration, io) {
   return updateTaskSchedulingFields(taskDirsWithJson([LOCAL_PACK_ROOT], io), io);
 }
 
-// Write side — "this repo's local packs carry their provenance" (docs/provenance/DESIGN.md
+// Write side - "this repo's local packs carry their provenance" (docs/provenance/DESIGN.md
 // §6): every local pack's `references.md` converts into entries on the elements it keyed,
 // every rule and guideline ends with a marker, every skill declares its body, every
-// carrier has its file. A NAMED CODEMOD like the two above it — the record declares
+// carrier has its file. A NAMED CODEMOD like the two above it - the record declares
 // `markProvenance: true`, and the code ships with the engine
 // (engine/checks/helpers/provenance.mjs, the grammar every reader of a provenance folder
-// composes) — because which rules are unmarked and which skills are workflows is the
+// composes) - because which rules are unmarked and which skills are workflows is the
 // repo's own disk. Idempotent: a pack already on the convention is left as it is.
 //
 // Dates an entry by the conversion, not by git: the registry's io reads files, not
 // history, and the entry's title says so. Needs `listDir` like the task-fields op; a
 // caller without it marks nothing rather than half-marking, and `remove` for the doc it
-// retires — an io without that leaves the doc and reports it.
+// retires - an io without that leaves the doc and reports it.
 export async function applyProvenanceMarking(migration, io) {
   if (!migration.markProvenance) return [];
   if (typeof io.listDir !== 'function') return [];

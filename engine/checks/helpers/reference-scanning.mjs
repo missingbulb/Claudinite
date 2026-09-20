@@ -56,7 +56,7 @@ function normJoin(base, rel) {
 
 const isGlob = (t) => t.endsWith('/*') && !t.startsWith('*.');
 const globPrefix = (t) => t.slice(0, -2);
-// A carve-out one level below every child of a folder — `packs/*/provenance` — for a
+// A carve-out one level below every child of a folder - `packs/*/provenance` - for a
 // region that every sibling carries under its own name. Expanded against the real
 // tree like a "<folder>/*" glob: each child directory of the prefix, then the rest.
 const CHILD_GLOB = /^(.+?)\/\*\/([^*]+)$/;
@@ -344,7 +344,7 @@ function parseExcept(raw, at, errors) {
         const p = normPrefix(prefix);
         const r = normPrefix(rest);
         if (p === '' || r === '' || p.includes('*') || r.includes('*')) {
-          errors.push({ what: `${at}: carve-out "${e}" must read "<folder>/*/<name>" — a folder, its child directories, then the name each carries`, fix: 'name the folder whose children each carry the region, and the region\'s own name, with no other wildcard' });
+          errors.push({ what: `${at}: carve-out "${e}" must read "<folder>/*/<name>" - a folder, its child directories, then the name each carries`, fix: 'name the folder whose children each carry the region, and the region\'s own name, with no other wildcard' });
           return null;
         }
         carve.push(`${p}/*/${r}`);
@@ -352,7 +352,7 @@ function parseExcept(raw, at, errors) {
       }
       const p = normPrefix(s.endsWith('/*') ? s.slice(0, -2) : s);
       if (p === '' || p.includes('*')) {
-        errors.push({ what: `${at}: carve-out "${e}" must name a folder/file, a "<folder>/*" glob, a "<folder>/*/<name>" child glob, or a "*.suffix" pattern`, fix: 'remove the empty/malformed entry — an empty one would carve out everything' });
+        errors.push({ what: `${at}: carve-out "${e}" must name a folder/file, a "<folder>/*" glob, a "<folder>/*/<name>" child glob, or a "*.suffix" pattern`, fix: 'remove the empty/malformed entry - an empty one would carve out everything' });
         return null;
       }
       carve.push(s.endsWith('/*') ? `${p}/*` : p);
@@ -455,8 +455,8 @@ function edgeProblem(edge, at) {
 //   allow: a shared folder (or array) reachable despite the ban
 //   except: carve-out strings (folders, "<folder>/*" globs, "<folder>/*/<name>"
 //       child globs for a region every sibling carries under one name, "*.suffix"
-//       patterns — the `from: "."` helper) and/or reviewed exceptions
-//       { path, to?, reason } (a file's deliberate crossing — to pinned folders, or
+//       patterns - the `from: "."` helper) and/or reviewed exceptions
+//       { path, to?, reason } (a file's deliberate crossing - to pinned folders, or
 //       the whole file when `to` is omitted)
 //   matchNames: true opts into the bare-name layer; alsoMatchNames force-includes
 //       non-distinctive barred-folder names (see barrierFindings)

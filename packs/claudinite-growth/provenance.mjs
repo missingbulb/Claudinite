@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // The provenance log's one tool (the provenance design, #2136): every flow that
 // creates or changes an element appends through it, the marking pass runs through it,
-// and a maintainer checks a pack with it. Two roots — a canon's `packs/<id>` and a
-// member's `.claudinite/local/packs/<id>` — resolved from the id, or `--all` for every
+// and a maintainer checks a pack with it. Two roots - a canon's `packs/<id>` and a
+// member's `.claudinite/local/packs/<id>` - resolved from the id, or `--all` for every
 // pack under both. The grammar and the codemods are the engine helper's
 // (engine/checks/helpers/provenance.mjs); this is the command line over them, and
 // the parts that need git or a scrub.
@@ -16,8 +16,8 @@
 //
 // In a member the path is .claudinite/shared/packs/claudinite-growth/provenance.mjs; in
 // the canon, packs/claudinite-growth/provenance.mjs. The append reads one entry in the
-// file grammar from stdin — `## <date> · <kind> · <title>` and its `- **Field:** …`
-// lines — and refuses one that carries a secret, since a decision log is prose an
+// file grammar from stdin - `## <date> · <kind> · <title>` and its `- **Field:** …`
+// lines - and refuses one that carries a secret, since a decision log is prose an
 // agent writes and the one place nothing else scans.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -124,12 +124,12 @@ export function check(root, packs) {
     for (const m of a.markerInWorkflow) fault(m.file, m.line, `"${m.trigger}" carries a marker inside a workflow skill`);
     for (const e of a.parseErrors) fault(e.file, e.line, e.what);
     for (const e of a.entryFaults) fault(e.file, e.line, e.what);
-    if (a.referencesDoc) fault(a.referencesDoc, null, 'a references.md still exists — convert-references retires it');
+    if (a.referencesDoc) fault(a.referencesDoc, null, 'a references.md still exists - convert-references retires it');
   }
   return { lines, faults };
 }
 
-// The earliest commit that added a references key, as a YYYY-MM-DD date — what dates
+// The earliest commit that added a references key, as a YYYY-MM-DD date - what dates
 // a converted entry where git is there to read.
 export function referenceDateOf(root, doc) {
   return (key) => {
@@ -184,7 +184,7 @@ export function append(root, pack, elements, entryText, { kind = null, date = nu
   for (const element of elements) {
     const declined = element === DECLINED_KIND || element === '_declined';
     const file = `${pack}/${PROVENANCE_DIR}/${declined ? DECLINED_FILE : fileOfId(element)}`;
-    if (!declined && !io.exists(file)) return { problems: [`${file} does not exist — no carrier of ${pack} names an element "${element}" (run mark, or check the id)`] };
+    if (!declined && !io.exists(file)) return { problems: [`${file} does not exist - no carrier of ${pack} names an element "${element}" (run mark, or check the id)`] };
     const result = appendedText(io.read(file) ?? '', entry, declined ? { kinds: [DECLINED_KIND], firstKind: null } : {});
     if (result.problems.length) return { problems: result.problems.map((p) => `${file}: ${p}`) };
     io.write(file, result.text);
@@ -214,7 +214,7 @@ export function history(root, pack, element) {
   for (const f of files) {
     lines.push(`\n## commits touching ${f}`);
     const log = git(root, 'log', '--follow', '--format=%h %as %s', '--', f);
-    lines.push(log.trim() || '(none — is the clone shallow?)');
+    lines.push(log.trim() || '(none - is the clone shallow?)');
     note(log);
   }
   for (const t of triggers) {
@@ -246,7 +246,7 @@ export function history(root, pack, element) {
 
 export async function main(argv = process.argv.slice(2), { root = process.env.CLAUDE_PROJECT_DIR || process.cwd(), stdin = null } = {}) {
   if (typeof provenance.auditPack !== 'function') {
-    console.error('this engine predates the provenance helper — converge the mount first');
+    console.error('this engine predates the provenance helper - converge the mount first');
     return 2;
   }
   const [command, ...rest] = argv;

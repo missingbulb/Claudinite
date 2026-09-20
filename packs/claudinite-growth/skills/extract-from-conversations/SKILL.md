@@ -120,7 +120,7 @@ so there is nothing to post on and the rule simply lands without a comment):
 
 The rule's own file gets the same in the durable form: a `born` entry through `provenance.mjs
 append`, its `Source` the capture's date and session id, its `Reason` the paraphrase (a short
-quoted phrase at most), its `Mechanism` the carrier and why — the changing-pack-elements skill has
+quoted phrase at most), its `Mechanism` the carrier and why - the changing-pack-elements skill has
 the grammar. A candidate the run dropped for a reason worth remembering goes on `_declined.md`.
 
 **Summarize, never transcribe.** The dialogue itself is far too verbose for an issue — no pasted turns

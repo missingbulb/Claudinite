@@ -1,6 +1,6 @@
 ---
 name: writing-pack-prose
-description: How pack prose is written — RULES.md rules, SKILL.md bodies and check text in a Claudinite pack, local or canon — brevity, structure, triggerability, findability, the marker that names a rule's provenance file. Loaded for any edit of a pack's RULES.md or SKILL.md, and when landing a lesson as prose.
+description: How pack prose is written - RULES.md rules, SKILL.md bodies and check text in a Claudinite pack, local or canon - brevity, structure, triggerability, findability, the marker that names a rule's provenance file. Loaded for any edit of a pack's RULES.md or SKILL.md, and when landing a lesson as prose.
 metadata:
   force-load-on-file-edits-paths:
     - "**/packs/*/RULES.md"
@@ -103,43 +103,43 @@ forever, whether or not it ever applies — so prose is rationed, and the ration
 - **Rewriting an existing rule** — carry the source's own strength forward. A rewrite must not
   weaken a rule, and it must not strengthen one either.
 
-## The provenance log — where a rule's rationale lives
+## The provenance log - where a rule's rationale lives
 
 A pack keeps one file per element under `provenance/`, beside its `RULES.md`: an append-only
-log of the decisions behind the element, read by maintenance and review — the pass that asks
-whether a rule still earns its place needs the reason it was written — and never by a session.
+log of the decisions behind the element, read by maintenance and review - the pass that asks
+whether a rule still earns its place needs the reason it was written - and never by a session.
 No rule sends its reader there, nothing loads it, and it never vendors: a member mounting a
 canon pack receives the rules, not the reasoning behind them. The grammar, the kinds, the
 fields and the tool are [changing-pack-elements](../changing-pack-elements/SKILL.md)'s; what
 this skill adds is how a rule is written so the log can hold it.
 
-- **Ending a rule** — every rule in a `RULES.md`, and every guideline of a skill whose body is
-  `guidelines`, ends with the bare marker naming its file — `… never a filesystem walk.
-  (url-filter-host-operators)` — and nothing else: don't name the folder, don't link it, don't
+- **Ending a rule** - every rule in a `RULES.md`, and every guideline of a skill whose body is
+  `guidelines`, ends with the bare marker naming its file - `… never a filesystem walk.
+  (url-filter-host-operators)` - and nothing else: don't name the folder, don't link it, don't
   ask the reader to follow anything. The marker is the element's id: two to four hyphenated
   words for the guideline rather than its wording, chosen once and never renamed, so a
   rewording never touches it and a member's override can name it. A workflow skill's steps
   carry none; the skill is the element.
-- **Adding a rule** — write the brief rule and end it with its marker; create its file with a
+- **Adding a rule** - write the brief rule and end it with its marker; create its file with a
   `born` entry through `provenance.mjs append` (`mark` creates the file where none exists),
   and put the reason there, never in the rule. A consequence the reader needs under pressure
   earns its clause; rationale the reader doesn't need at act time is the entry's. Write the
-  entry so a future review can **reaffirm the rule from it** — `Retire when` is what would
+  entry so a future review can **reaffirm the rule from it** - `Retire when` is what would
   have to be true for the rule to go.
   - A **workaround** explains the issue with not using it, with the evidence (the failing run,
     the error, the measured cost).
   - A **technology guideline** cites the original documentation it derives from.
-  - An **owner decision** carries the language of the request that set it — in a member's
+  - An **owner decision** carries the language of the request that set it - in a member's
     local pack; a canon file carries the paraphrase, never the quote.
-- **Rewording, moving, splitting or converting a rule** — the entry is owed in the same
+- **Rewording, moving, splitting or converting a rule** - the entry is owed in the same
   change, and the forced skill names its kind.
-- **A check's rationale** — on the check's own file, named by its id (`cer/version-bumped` →
+- **A check's rationale** - on the check's own file, named by its id (`cer/version-bumped` →
   `cer-version-bumped.md`); nothing is added to the check.
-- **Removing a rule or check** — its file stays and gains a `retired` entry as its last, in
+- **Removing a rule or check** - its file stays and gains a `retired` entry as its last, in
   the same change.
 
-The `provenance-integrity` check holds the mechanism together — every carrier names a live
-file, every file parses — and `provenance-change-recorded` holds the change: a carrier that
+The `provenance-integrity` check holds the mechanism together - every carrier names a live
+file, every file parses - and `provenance-change-recorded` holds the change: a carrier that
 changed lands with its entry. A pack not yet on the convention is put there by
 `provenance.mjs mark`, and its history filled by the
 [backfilling-provenance](../backfilling-provenance/SKILL.md) skill; nothing here is done rule by
@@ -147,9 +147,9 @@ rule.
 
 ## Evidence
 
-The commit and its PR remain the archive — the story of the incident, quoted exchanges and
+The commit and its PR remain the archive - the story of the incident, quoted exchanges and
 session ids live there and in the capture, never in the rule and never in a canon's log. What
 an entry takes from them is only the **reaffirmable core**: `Source` and `Reason`, the minimum
 a future review needs to re-test the rule, and `Retire when`, the test it is reaffirmed
-against. Keep a measurement inline in the rule only where the number *is* the argument — a cost
+against. Keep a measurement inline in the rule only where the number *is* the argument - a cost
 the reader wouldn't believe stated qualitatively.

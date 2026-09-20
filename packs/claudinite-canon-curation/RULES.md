@@ -107,14 +107,14 @@
   module header and the pack `README.md`; rationale and history on the element's provenance
   file; a worker's policy belongs in the `task.md` it loads.
 
-- **Writing a pack's `README.md`** — how a repo uses the pack and its elements: when it
+- **Writing a pack's `README.md`** - how a repo uses the pack and its elements: when it
   activates, what each check demands, when a skill is reached for, what the task does. Never how
   an element came to be, what it replaced or how it is maintained: a date, a pull request
   number, an "until" or a "kept as it was" is an entry on the element's provenance file, and the
   maintainer's method is the growth skills'.
 
-- **Changing a carrier on the shelf** — a rule, a skill's trigger, a check's gate or severity, a
-  task's policy — lands with the entry on its provenance file in the same change; the forced
+- **Changing a carrier on the shelf** - a rule, a skill's trigger, a check's gate or severity, a
+  task's policy - lands with the entry on its provenance file in the same change; the forced
   `changing-pack-elements` skill names the kind.
 
 - **A documented multi-step procedure the agent re-derives every run** — mechanize it into a

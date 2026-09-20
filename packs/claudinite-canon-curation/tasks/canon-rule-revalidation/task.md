@@ -14,8 +14,8 @@ paid for once per session per member until it is re-probed here.
 ## The method lives in the skill
 
 How a claim is judged revalidatable, how it is probed, what the four verdicts mean, how an
-element's provenance file is reaffirmed and what the run appends to it — and how an empty file met
-on the way is filled first — are owned by the [**revalidating-rules**
+element's provenance file is reaffirmed and what the run appends to it - and how an empty file met
+on the way is filled first - are owned by the [**revalidating-rules**
 skill](../../../claudinite-growth/skills/revalidating-rules/SKILL.md). Follow it; don't re-derive it
 here. This worker frames the unattended run around it and names the corpus.
 

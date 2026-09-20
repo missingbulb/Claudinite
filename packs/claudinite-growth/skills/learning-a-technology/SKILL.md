@@ -56,7 +56,7 @@ lifted out of here without a rewrite. Every step below keeps the two apart.
 | Read by | any session in any repo that adopts the technology | this repo's executor and the sessions maintaining the worker |
 
 **Classify the task before writing it**, from the pack catalog — every canon pack, not only the
-mounted ones — and record the verdict in the task's provenance file (its `born` entry's `Mechanism`),
+mounted ones - and record the verdict in the task's provenance file (its `born` entry's `Mechanism`),
 where the promote stage reads it:
 
 - **Ad-hoc to this project** — a job only this repo has. It stays in the local pack, and

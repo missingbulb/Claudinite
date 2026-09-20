@@ -8,15 +8,15 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 // A person's preferences are a pack of one reader (the provenance design, #2136): each
 // preference is an element, and its file sits BESIDE the store, under
 // `<path>-provenance/<email>/`, because the store's own check keeps `<path>/` flat and
-// addresses nothing there but `<email>.md`. This check asserts existence only — every
-// preference bullet ends with a marker naming a file under that folder — and shares no
+// addresses nothing there but `<email>.md`. This check asserts existence only - every
+// preference bullet ends with a marker naming a file under that folder - and shares no
 // logic with the growth pack beyond the engine's own bullet reader: the grammar of the
 // file is judged by the growth tool's `check`, run by the session that edits the
 // preference.
 //
 // ADVISORY, like everything in this pack: the loss is a missing why for a preference,
 // never a broken repo. RELEVANCE-FIRST like its siblings: inert unless this repo IS the
-// store — only the one repo that holds `<path>/<email>.md` files has anything to judge.
+// store - only the one repo that holds `<path>/<email>.md` files has anything to judge.
 const PACK = 'claude-code-web-users-support';
 
 export const provenanceDirOf = (store) => `${store.path}-provenance`;

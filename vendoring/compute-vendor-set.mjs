@@ -70,7 +70,7 @@ export const REFERENCES_DOC = 'references.md';
 // A pack's `provenance/` is the decision log behind its elements (docs/provenance/DESIGN.md):
 // read by the growth and curation passes, a promote run and a maintainer, in the repo that
 // OWNS the pack, and by no session anywhere. A member mounting a canon pack receives the
-// guidelines, not the reasoning, and never another organisation's decision log — so the
+// guidelines, not the reasoning, and never another organisation's decision log - so the
 // folder stays canon-side like `references.md` before it, at the pack root only (a skill
 // below is free to ship a payload folder of the same name).
 export { PROVENANCE_DIR };

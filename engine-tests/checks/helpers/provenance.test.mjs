@@ -272,7 +272,7 @@ test('markPack marks every unmarked rule and guideline, declares every body, cre
       assert.equal(readFileSync(join(root, `packs/alpha/provenance/${f}.md`), 'utf8'), '', 'created empty — history is the backfill\'s');
     }
     assert.equal(readFileSync(join(root, 'packs/alpha/provenance/worker-absolute-paths.md'), 'utf8'), BORN, 'an existing file is untouched');
-    assert.ok(report.some((l) => /"Wanting import\/export" marked \(wanting-import-export\) — numeric marker \(3\) replaced/.test(l)), report.join('\n'));
+    assert.ok(report.some((l) => /"Wanting import\/export" marked \(wanting-import-export\) - numeric marker \(3\) replaced/.test(l)), report.join('\n'));
     assert.ok(report.some((l) => /nobody\/SKILL\.md: body: guidelines proposed/.test(l)));
 
     const after = auditPack('packs/alpha', io);
@@ -342,8 +342,8 @@ test('convertReferences writes each entry onto the element its key names, rewrit
     const check = readFileSync(join(root, 'packs/alpha/provenance/cer-coded-check.md'), 'utf8');
     assert.match(check, /Mechanism:\*\* a check/);
     assert.ok(!existsSync(join(root, 'packs/alpha/references.md')), 'the doc is deleted');
-    assert.ok(report.some((l) => /check:gone names no check the pack carries — dropped/.test(l)), report.join('\n'));
-    assert.ok(report.some((l) => /RULES-9 cited by no rule — dropped/.test(l)));
+    assert.ok(report.some((l) => /check:gone names no check the pack carries - dropped/.test(l)), report.join('\n'));
+    assert.ok(report.some((l) => /RULES-9 cited by no rule - dropped/.test(l)));
     assert.deepEqual(convertReferences('packs/alpha', io), [], 'nothing to convert twice');
     for (const f of ['wanting-import-export', 'doing-y', 'w', 'cer-coded-check']) assert.deepEqual(parseEntries(readFileSync(join(root, `packs/alpha/provenance/${f}.md`), 'utf8')).errors, []);
   } finally { removeTree(root); }

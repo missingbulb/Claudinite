@@ -53,11 +53,11 @@ Two rules bound it, and they bind every run whatever corpus it is working:
    outcome available: it is unfalsifiable afterwards, and it removes a capability from every future
    session.
 
-## The recorded reasons — reaffirm against the element's file
+## The recorded reasons - reaffirm against the element's file
 
 A pack's `provenance/` (the [writing-pack-prose](../writing-pack-prose/SKILL.md) convention: a rule
 ending `(slug)` names its file; a check's file is named by its id) widens what a revalidation can
-judge, because the file's entries record **what would retire the rule** — the one thing a probe
+judge, because the file's entries record **what would retire the rule** - the one thing a probe
 of the environment alone cannot know. For each element in the corpus, read its file's `Source`,
 `Reason` and `Retire when` before probing:
 
@@ -71,10 +71,10 @@ of the environment alone cannot know. For each element in the corpus, read its f
   in the repo's own record, and otherwise report it `doc-verified`.
 
 What the run writes back, through `provenance.mjs append` in the same change: `reaffirmed` only
-where the probe produced **new** evidence or changed `Retire when` — a rule found still true on the
+where the probe produced **new** evidence or changed `Retire when` - a rule found still true on the
 old evidence gets no entry, and the run's pull request body is its record; `reworded` or `retired`
 where the probe corrected the rule. An entry is never edited: a stale reason is answered by a new
-entry. An **empty** file met on the way — an element whose history is not yet written — is filled
+entry. An **empty** file met on the way - an element whose history is not yet written - is filled
 first, from `provenance.mjs history <pack> <element>`, source-first, as the
 [backfilling-provenance](../backfilling-provenance/SKILL.md) skill describes; that is how a
 member's local pack backfills on this cadence with no pass of its own.

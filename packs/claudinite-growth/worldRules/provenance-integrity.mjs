@@ -11,7 +11,7 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 // judged alike; the mount is never scanned (ctx.files excludes it).
 //
 // AGGREGATED PER FILE where a fault repeats: a RULES.md with twenty unmarked rules is
-// one finding naming the count and the first, not twenty — the fix is one command over
+// one finding naming the count and the first, not twenty - the fix is one command over
 // the pack either way. A dangling marker, an unnamed file, a bodyless skill and a
 // grammar fault are each their own finding, because each has its own line.
 //
@@ -56,7 +56,7 @@ const rule = {
       for (const d of a.dangling) {
         out.push(finding(rule, {
           file: d.file, line: d.line,
-          what: `${d.carrier} names ${dir}/${PROVENANCE_DIR}/${fileOfId(d.id)}, which is ${d.retired ? 'retired — its last entry retired the element' : 'not a file'}`,
+          what: `${d.carrier} names ${dir}/${PROVENANCE_DIR}/${fileOfId(d.id)}, which is ${d.retired ? 'retired - its last entry retired the element' : 'not a file'}`,
           fix: d.retired
             ? 'a retired element carries no live carrier: remove the carrier, or give the element a new file and a born entry'
             : `create the file the carrier names (\`node ${tool} mark ${id}\` creates every missing one), or fix the marker to the file it meant`,
@@ -87,7 +87,7 @@ const rule = {
         out.push(finding(rule, {
           file: e.file, line: e.line,
           what: e.what,
-          fix: 'write the entry in the file grammar — `## <YYYY-MM-DD> · <kind> · <one line>` and `- **Field:** …` lines, appended in date order, born first, Mechanism on every mechanism-bearing kind — through `append`, which validates it',
+          fix: 'write the entry in the file grammar - `## <YYYY-MM-DD> · <kind> · <one line>` and `- **Field:** …` lines, appended in date order, born first, Mechanism on every mechanism-bearing kind - through `append`, which validates it',
         }));
       }
       // Pending history is one line per pack, not one per file: it is the backfill's
@@ -96,7 +96,7 @@ const rule = {
         const ids = a.empty.map((e) => fileOfId(e.id)).sort();
         out.push(finding(rule, {
           file: `${dir}/${PROVENANCE_DIR}`, severity: 'advisory',
-          what: `${ids.length} provenance file${ids.length === 1 ? ' is' : 's are'} empty — elements whose history is not written yet (${ids.slice(0, 3).join(', ')}${ids.length > 3 ? ', …' : ''})`,
+          what: `${ids.length} provenance file${ids.length === 1 ? ' is' : 's are'} empty - elements whose history is not written yet (${ids.slice(0, 3).join(', ')}${ids.length > 3 ? ', …' : ''})`,
           fix: 'the backfill fills them from each carrier\'s history (the backfilling-provenance skill), one pack per pull request; nothing else is owed',
         }));
       }
@@ -105,7 +105,7 @@ const rule = {
         out.push(finding(rule, {
           file: a.referencesDoc, severity: 'advisory',
           what: 'a pack-root references.md is the retired rationale convention',
-          fix: `run \`node ${tool} convert-references ${id}\` — each entry becomes an entry on the element its key names, the numeric markers become slugs, and the doc goes`,
+          fix: `run \`node ${tool} convert-references ${id}\` - each entry becomes an entry on the element its key names, the numeric markers become slugs, and the doc goes`,
         }));
       }
     }

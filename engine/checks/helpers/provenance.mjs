@@ -7,15 +7,15 @@ import { PROSE_FILE, SKILLS_DIR, RULE_DIRS, PROVENANCE_DIR } from '../../pack_lo
 // rule to its file, how a pack's carriers are enumerated and which file each one
 // names, and the two codemods that put a pack onto the convention (`markPack`,
 // `convertReferences`). Every reader and writer of a `provenance/` folder composes
-// this — the growth pack's checks and CLI, the migration-registry op that marks a
-// member's local packs at converge — so the grammar is spelled once, here, and
+// this - the growth pack's checks and CLI, the migration-registry op that marks a
+// member's local packs at converge - so the grammar is spelled once, here, and
 // nothing below carries a rule's failure text or a command's wording (those are the
-// callers'). The convention itself — what an element is, what an entry records, what
-// is never vendored — is docs/provenance/DESIGN.md's; this module is what it says a
+// callers'). The convention itself - what an element is, what an entry records, what
+// is never vendored - is docs/provenance/DESIGN.md's; this module is what it says a
 // file looks like.
 //
-// io is injected everywhere — `{ read, write, exists, listDir, remove? }` over
-// repo-relative posix paths — so the same code runs over a checkout (the CLI) and
+// io is injected everywhere - `{ read, write, exists, listDir, remove? }` over
+// repo-relative posix paths - so the same code runs over a checkout (the CLI) and
 // inside the registry's record io (a member's converge) without a second
 // implementation.
 
@@ -38,8 +38,8 @@ export const DECLINED_KIND = 'declined';
 // numeric marker (`(3)`, `(3, 7)`) never read as one.
 export const SLUG_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+$/;
 const MARKER_AT_END = /\s*\(([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\)\s*$/;
-// The numeric marker the references convention used — `(3)`, `(3, 7)`, `(2a)`, and the
-// `(RULES-14)` spelling some rules took — read only so the conversion can replace it.
+// The numeric marker the references convention used - `(3)`, `(3, 7)`, `(2a)`, and the
+// `(RULES-14)` spelling some rules took - read only so the conversion can replace it.
 const NUMERIC_MARKER_AT_END = /\s*\((?:RULES-)?(\d+[a-z]?(?:\s*,\s*\d+[a-z]?)*)\)\s*$/;
 
 const RULE_BULLET = /^- \*\*/;
@@ -60,7 +60,7 @@ export const idOfFile = (name) => name.replace(/\.md$/, '');
 // Every entry of a provenance file, in file order, with its fields and the grammar
 // faults found on the way. A file is its entries and nothing else: a header, front
 // matter or prose outside an entry is a fault, since it is the one part of the file
-// that invites editing. `kinds` is the vocabulary the file admits — the element
+// that invites editing. `kinds` is the vocabulary the file admits - the element
 // kinds, or the declined log's one kind.
 export function parseEntries(text, { kinds = KINDS } = {}) {
   const entries = [];
@@ -89,14 +89,14 @@ export function parseEntries(text, { kinds = KINDS } = {}) {
     }
     if (!line.trim()) return;
     if (!current) {
-      errors.push({ line: n, what: 'text outside an entry — a file is its entries and nothing else' });
+      errors.push({ line: n, what: 'text outside an entry - a file is its entries and nothing else' });
       return;
     }
     const field = FIELD_LINE.exec(line);
     if (field) {
       const [, name, value] = field;
       if (!FIELDS.includes(name)) errors.push({ line: n, what: `field "${name}" is not in the vocabulary (${FIELDS.join(', ')})` });
-      if (!value.trim()) errors.push({ line: n, what: `field "${name}" is empty — a field with nothing behind it is omitted, never filled` });
+      if (!value.trim()) errors.push({ line: n, what: `field "${name}" is empty - a field with nothing behind it is omitted, never filled` });
       if (name in current.fields) errors.push({ line: n, what: `field "${name}" repeats within one entry` });
       current.fields[name] = value.trim();
       current.order.push(name);
@@ -193,9 +193,9 @@ export function parseEntryText(text) {
 // The top-level rule bullets of a prose file: `- **lead-in** …` and every line that
 // belongs to it (continuation, sub-bullets, blank lines inside the block), closed by
 // the next top-level bullet or a heading. With `plainBullets`, a top-level bullet with
-// no bold lead-in is a rule too — a guidelines skill's bullets are its rules whatever
-// their typography — and its trigger is the opening words. The marker ends the rule's
-// lead paragraph — its last line before a nested list or a blank line — or, where a
+// no bold lead-in is a rule too - a guidelines skill's bullets are its rules whatever
+// their typography - and its trigger is the opening words. The marker ends the rule's
+// lead paragraph - its last line before a nested list or a blank line - or, where a
 // rule was marked after its nested list, the block's last non-blank line; `lastLine`
 // is where it is, or where a writer puts one. `numeric` is the retired numeric marker,
 // read only so the conversion can replace it. Indices are 0-based.
@@ -242,19 +242,19 @@ export function ruleBlocks(text, { plainBullets = false } = {}) {
   return blocks;
 }
 
-export const normalizeLeadIn = (s) => s.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim().replace(/[—–-]$/, '').trim();
+export const normalizeLeadIn = (s) => s.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim().replace(/\p{Pd}$/u, '').trim();
 
 // A plain bullet's trigger: its first clause, or its first eight words.
 const openingWords = (s) => {
   const clean = normalizeLeadIn(s);
-  const clause = clean.split(/\s[—–:]\s|[.:;]\s|[.!?]$/)[0];
+  const clause = clean.split(/\s[\p{Pd}:]\s|[.:;]\s|[.!?]$/u)[0];
   return clause.split(' ').slice(0, 8).join(' ');
 };
 
 const stripMarkers = (line) => line.replace(MARKER_AT_END, '').replace(NUMERIC_MARKER_AT_END, '');
 
 // A rule's text as a decision reads it: the marker off, whitespace collapsed. Two
-// rules with the same normalized text were not reworded — a re-wrap, a marker added
+// rules with the same normalized text were not reworded - a re-wrap, a marker added
 // or renamed is not a change an entry is owed for.
 export function normalizeRuleText(block) {
   return String(block).split('\n').map(stripMarkers).join(' ').replace(/\s+/g, ' ').trim();
@@ -285,7 +285,7 @@ const isDir = (io, p) => io.listDir(p) !== null;
 const listDirs = (io, p) => (io.listDir(p) ?? []).filter((n) => !n.startsWith('.') && isDir(io, `${p}/${n}`)).sort();
 const listFiles = (io, p) => (io.listDir(p) ?? []).filter((n) => !isDir(io, `${p}/${n}`)).sort();
 
-// The `id:` a rule module declares — every string literal assigned to an `id` key,
+// The `id:` a rule module declares - every string literal assigned to an `id` key,
 // which is how every coded rule in the corpus spells it.
 export function checkIdsIn(source) {
   const out = [];
@@ -393,7 +393,7 @@ export function auditPack(packDir, io) {
     markerInWorkflow: [],  // a workflow skill's bullet ending with a marker: { file, line, trigger, slug }
     parseErrors: [],       // { file, line, what }
     entryFaults: [],       // { file, line, what }
-    empty: [],             // { file, id } — pending history
+    empty: [],             // { file, id } - pending history
     referencesDoc: io.exists(`${packDir}/references.md`) ? `${packDir}/references.md` : null,
   };
   const name = (id, carrier, at) => {
@@ -438,7 +438,7 @@ export function auditPack(packDir, io) {
 // is never a stop word; only articles, prepositions and pronouns are.
 const STOP = new Set('a an the of to in on for with and or that this its it is are by from at as into over under when whose which what your you own one two than then not no never every any some more most so if else where while about after before between through via per vs there here their them they he she we us our my me i how why who whom'.split(' '));
 
-// Two to four hyphenated words off the rule's lead-in — a proposal, refined by a
+// Two to four hyphenated words off the rule's lead-in - a proposal, refined by a
 // maintainer before the change lands, and unique within the pack.
 export function proposeSlug(trigger, taken = new Set()) {
   const words = String(trigger).toLowerCase().replace(/[`*_"'’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean);
@@ -455,7 +455,7 @@ export function proposeSlug(trigger, taken = new Set()) {
 // --- the codemods ------------------------------------------------------------------
 
 // Put the marker on a rule's last line, or on a continuation line of its own when the
-// line would pass `width` bytes — one appended line, so a marking diff reads as
+// line would pass `width` bytes - one appended line, so a marking diff reads as
 // exactly what it is. A retired numeric marker on that line goes.
 function markLine(lines, index, slug, width) {
   const base = lines[index].replace(NUMERIC_MARKER_AT_END, '').replace(/\s+$/, '');
@@ -482,7 +482,7 @@ export function withBody(source, body) {
 
 // Bring one pack onto the convention: every skill declares a body, every unmarked
 // rule and guideline gets a proposed marker and its file, every unnamed carrier an
-// empty file. Idempotent — a pack already marked is left exactly as it is — and it
+// empty file. Idempotent - a pack already marked is left exactly as it is - and it
 // never writes an entry: history is the backfill's. Returns the report lines.
 export function markPack(packDir, io, { width = 100 } = {}) {
   const report = [];
@@ -493,7 +493,7 @@ export function markPack(packDir, io, { width = 100 } = {}) {
     io.write(f, '');
     report.push(`${f}: created for ${why}`);
   };
-  // 1. Skills declare their body first — which bullets are guidelines depends on it.
+  // 1. Skills declare their body first - which bullets are guidelines depends on it.
   for (const s of packCarriers(packDir, io).skills) {
     if (!s.present || s.body) continue;
     io.write(s.file, withBody(io.read(s.file), s.proposed));
@@ -516,7 +516,7 @@ export function markPack(packDir, io, { width = 100 } = {}) {
       const slug = proposeSlug(r.trigger, taken);
       taken.add(slug);
       markLine(lines, r.lastLine - 1, slug, width);
-      report.push(`${file}:${r.line}: "${r.trigger}" marked (${slug})${r.numeric ? ` — numeric marker (${r.numeric}) replaced` : ''}`);
+      report.push(`${file}:${r.line}: "${r.trigger}" marked (${slug})${r.numeric ? ` - numeric marker (${r.numeric}) replaced` : ''}`);
       ensureFile(slug, `rule "${r.trigger}"`);
     }
     io.write(file, lines.join('\n'));
@@ -530,7 +530,7 @@ export function markPack(packDir, io, { width = 100 } = {}) {
   return report;
 }
 
-// Parse a references.md: [{ key, kind, target, n, text, line }] — RULES-n, <skill>-n
+// Parse a references.md: [{ key, kind, target, n, text, line }] - RULES-n, <skill>-n
 // and check:<id> entries, each with its full text (continuation lines joined).
 export function parseReferencesDoc(text) {
   const out = [];
@@ -572,7 +572,7 @@ const relinked = (text) => String(text).replace(LINK, (m, target) => `](../${tar
 
 // Convert a pack's references.md into entries on the elements its keys name, rewrite
 // each numeric marker to the slug its element takes (a workflow skill's markers leave
-// the step), and delete the doc. `dateOf(key)` dates an entry — the entry's adding
+// the step), and delete the doc. `dateOf(key)` dates an entry - the entry's adding
 // commit where the caller can read git, else the conversion's own date, which the
 // entry's title then says. Returns the report lines; a pack with no doc reports
 // nothing.
@@ -593,7 +593,7 @@ export function convertReferences(packDir, io, { dateOf = () => null, today = ne
     const existing = io.exists(f) ? io.read(f) : '';
     const kind = parseEntries(existing).entries.length === 0 ? 'born' : 'strengthened';
     const { problems, text } = appendedText(existing, { ...entry, kind });
-    if (problems.length) { report.push(`${f}: not written — ${problems.join('; ')}`); return; }
+    if (problems.length) { report.push(`${f}: not written - ${problems.join('; ')}`); return; }
     io.write(f, text);
     report.push(`${f}: ${kind} entry from references.md (${entry.key})`);
   };
@@ -618,16 +618,16 @@ export function convertReferences(packDir, io, { dateOf = () => null, today = ne
   for (const ref of refs) {
     if (ref.kind === 'rule') {
       const targets = cites(carriers.rules, ref.n);
-      if (!targets.length) { report.push(`${doc}:${ref.line}: ${ref.key} cited by no rule — dropped`); continue; }
+      if (!targets.length) { report.push(`${doc}:${ref.line}: ${ref.key} cited by no rule - dropped`); continue; }
       for (const b of targets) write(slugFor(b), entryFor(ref, 'prose'));
       continue;
     }
     if (ref.kind === 'skill') {
       const skill = skillsByName.get(ref.target);
-      if (!skill) { report.push(`${doc}:${ref.line}: ${ref.key} names no skill — dropped`); continue; }
+      if (!skill) { report.push(`${doc}:${ref.line}: ${ref.key} names no skill - dropped`); continue; }
       const targets = cites(skill.bullets, ref.n);
       if (skill.body === 'guidelines') {
-        if (!targets.length) { report.push(`${doc}:${ref.line}: ${ref.key} cited by no guideline — dropped`); continue; }
+        if (!targets.length) { report.push(`${doc}:${ref.line}: ${ref.key} cited by no guideline - dropped`); continue; }
         for (const b of targets) write(slugFor(b), entryFor(ref, `prose, a guideline of the ${skill.name} skill`));
       } else {
         for (const b of targets) planRewrite(b.file, b.lastLine, null);
@@ -638,16 +638,16 @@ export function convertReferences(packDir, io, { dateOf = () => null, today = ne
       continue;
     }
     if (ref.kind === 'check') {
-      if (!carriers.checks.some((c) => c.id === ref.target)) { report.push(`${doc}:${ref.line}: ${ref.key} names no check the pack carries — dropped`); continue; }
+      if (!carriers.checks.some((c) => c.id === ref.target)) { report.push(`${doc}:${ref.line}: ${ref.key} names no check the pack carries - dropped`); continue; }
       write(elementIdOf(ref.target), entryFor(ref, 'a check'));
       continue;
     }
     if (ref.kind === 'task') {
-      if (!carriers.tasks.some((t) => t.id === ref.target)) { report.push(`${doc}:${ref.line}: ${ref.key} names no task the pack carries — dropped`); continue; }
+      if (!carriers.tasks.some((t) => t.id === ref.target)) { report.push(`${doc}:${ref.line}: ${ref.key} names no task the pack carries - dropped`); continue; }
       write(ref.target, entryFor(ref, 'a task'));
       continue;
     }
-    report.push(`${doc}:${ref.line}: ${ref.key} is not a RULES-n, <skill>-n, check:<id> or task:<id> key — dropped`);
+    report.push(`${doc}:${ref.line}: ${ref.key} is not a RULES-n, <skill>-n, check:<id> or task:<id> key - dropped`);
   }
   for (const [file, plan] of rewrites) {
     const lines = io.read(file).split('\n');

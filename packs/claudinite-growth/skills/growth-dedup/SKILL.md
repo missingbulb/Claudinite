@@ -98,8 +98,8 @@ prune a duplicated prose line. The keep-test above is unchanged.
   `growth-write-scope` check ([growth-write-scope.mjs](../../workRules/growth-write-scope.mjs)) keys on the
   run's pinned `Claudinite growth: dedup local packs` title and reds any path outside that surface.
 - **Record each prune on the element's provenance file**, in the same change, through
-  `provenance.mjs append`: `retired` (superseded by the canon element it names) for a removal —
-  the file stays — `weakened` for a strip, `reworded` for a rephrase; the changing-pack-elements
+  `provenance.mjs append`: `retired` (superseded by the canon element it names) for a removal -
+  the file stays - `weakened` for a strip, `reworded` for a rephrase; the changing-pack-elements
   skill has the grammar.
 - If an edit touches something a test reads, run the repo's offline test suite and keep it green
   before delivering.

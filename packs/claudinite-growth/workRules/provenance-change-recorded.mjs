@@ -11,7 +11,7 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 // this says it again at the Stop hook when the session did not.
 //
 // What counts as a change an entry is owed for: a rule or guideline whose normalized
-// text differs from the base's (markers and whitespace off — the marking pass owes
+// text differs from the base's (markers and whitespace off - the marking pass owes
 // nothing), a skill whose description, load triggers or body text moved, a check
 // module or declaration whose non-comment content moved, a task's declaration or
 // worker, the manifest. A carrier with no file at all is the world half's finding, not
@@ -19,7 +19,7 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 //
 // A provenance file only grows: a changed file keeps every base line in place and adds
 // after the last entry. A carrier this change deleted named a file whose last entry
-// must now be `retired` — asserted from the tree's side, since a removed-lines check
+// must now be `retired` - asserted from the tree's side, since a removed-lines check
 // cannot see a deleted file.
 const rule = {
   id: 'provenance-change-recorded',
@@ -38,7 +38,7 @@ const rule = {
     const deleted = (work.deleted ?? []).map((f) => f.replace(/\\/g, '/'));
     const packs = packDirsIn([...changed, ...deleted]);
     if (!packs.length) return [];
-    // The head tree is everything tracked plus the run's untracked files — never the
+    // The head tree is everything tracked plus the run's untracked files - never the
     // changed set alone, which would read every untouched carrier as deleted.
     const headFiles = [...work.tracked, ...work.untracked];
     const head = { exists: (p) => work.exists(p), read: (p) => work.read(p), listDir: (p) => listFrom(headFiles, p) };
@@ -53,8 +53,8 @@ const rule = {
       const filesNow = provenanceFiles(dir, head);
       const filesBefore = provenanceFiles(dir, base);
       // A pack with no provenance folder at the base is being brought onto the
-      // convention by this change — the marking pass, or a member's first converge
-      // onto it — and its elements' history is the backfill's, not this change's.
+      // convention by this change - the marking pass, or a member's first converge
+      // onto it - and its elements' history is the backfill's, not this change's.
       if (!filesBefore.size) continue;
       const gained = (id) => {
         const h = filesNow.get(id);
@@ -67,7 +67,7 @@ const rule = {
         out.push(finding(rule, {
           file, line,
           what: `${what}, and ${dir}/${PROVENANCE_DIR}/${fileOfId(id)} gained no entry in this change`,
-          fix: `append the entry that records the decision — its kind (reworded, strengthened, weakened, moved, converted, trigger-changed, policy-changed, severity-changed, split, merged) and why — through \`node <path to claudinite-growth>/provenance.mjs append ${dir.slice(dir.lastIndexOf('/') + 1)} ${id}\`, reading the entry from stdin`,
+          fix: `append the entry that records the decision - its kind (reworded, strengthened, weakened, moved, converted, trigger-changed, policy-changed, severity-changed, split, merged) and why - through \`node <path to claudinite-growth>/provenance.mjs append ${dir.slice(dir.lastIndexOf('/') + 1)} ${id}\`, reading the entry from stdin`,
         }));
       };
 
@@ -117,7 +117,7 @@ const rule = {
         if (!h.text.startsWith(b.text.replace(/\s+$/, ''))) {
           out.push(finding(rule, {
             file: h.file,
-            what: `${fileOfId(id)} lost or altered a line it had at the base — a provenance file only grows`,
+            what: `${fileOfId(id)} lost or altered a line it had at the base - a provenance file only grows`,
             fix: 'restore the file to its base text and append what this change decides after the last entry; a wrong entry is corrected by a later entry, never edited',
           }));
         }
@@ -140,7 +140,7 @@ const rule = {
         out.push(finding(rule, {
           file: `${dir}/${PROVENANCE_DIR}/${fileOfId(g.id)}`,
           what: `${g.what} is gone from ${dir} in this change, and its file's last entry is not retired`,
-          fix: `append \`## <date> · retired · <why>\` to ${fileOfId(g.id)} in the same change — the decision to remove is a decision, and the file stays`,
+          fix: `append \`## <date> · retired · <why>\` to ${fileOfId(g.id)} in the same change - the decision to remove is a decision, and the file stays`,
         }));
       }
     }
