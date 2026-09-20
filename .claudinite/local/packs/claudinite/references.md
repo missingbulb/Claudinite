@@ -432,6 +432,27 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   six times, ~3 minutes, to collect faults one loop iteration would have reported together.
   Retire the rule if the repo stops carrying whole-shelf conformance tests.
 
+- **(RULES-95)** 2026-09-20's captures on #2116 and #2166 (sessions 4c6e24de and 0f7aecc4): three
+  owner rounds asked for the same missing thing before an approval. On #2116, *"Explain again about
+  the public folder, and contents. Describe specific files"* and later *"Now show me the final
+  public folder layout with all files"*; on #2136, *"You didn't annotate skills and rules on the
+  sample pack, just rules.md. I want to see how the pack will look after this transformation is
+  done"*, then *"Highlight aspects that I didn't comment on or didn't ask for, so I won't be
+  surprised by the solution"*. Each cost a round-trip on a proposal already written. Retire the rule
+  if the approval submission's own contract starts naming both (basics'
+  `writing-migration-plans` lists three things today: a line per step, the graph, the policy per
+  link).
+
+- **(check:migration-record-paths-resolve)** the fix in #2139: the `task-cadence-terms` record
+  probed `packs/claudinite-tasks/calendar.mjs`, which #1890 moved on 2026-09-14 leaving no shim, so
+  both arms of its two-root probe missed and `appliesTo` returned false every night for thirteen
+  days with nothing red — a member converging after the move never had its `frequency` rewrite. The
+  same sweep finds a second instance: the 2026-08-05 sheepdog record still materializes
+  `packs/sheepdog/stubs/workflows/fleet-baseline.yml`, a template the 2026-08-19 rename retired, and
+  `applyMaterializations` skips a template it cannot read. Both directions fail open by design, so
+  the pointer is the only thing that can be checked. Retire the check if migration records stop
+  naming canon paths as literals.
+
 - **(check:subagent-branch-named-git)** 2026-09-15's capture on #2074 (15:04:05–15:05:24): a
   worktree-isolated child was dispatched "on a branch named `perf/git-fixtures`" and could not
   create it — `git checkout -b`, `git switch -c`, a script wrapper, a `command -v g''it` splice,

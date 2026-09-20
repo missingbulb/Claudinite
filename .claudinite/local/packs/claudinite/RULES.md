@@ -89,6 +89,10 @@ Below are rules on how to work on this repo.
   sites first, since the owner picks the option *for* that reason: one that turns out false for a
   caller is this change's to make true, not a new decision to take back to them. (91)
 
+- **Putting a design, restructure or plan to the owner for approval** — render the end state
+  whole, every element kind it touches rather than the one easiest to show, and name the decisions
+  it took that they never asked about. (95)
+
 - **Being asked to generalise something, or to review it** — land the conversions or action points
   it unlocks in the same change. A capability ships with its first caller, an analysis with its
   first recommendation applied.
