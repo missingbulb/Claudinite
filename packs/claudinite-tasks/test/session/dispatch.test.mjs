@@ -4,7 +4,7 @@ import {
   dispatchTitle, dispatchTaskKey, parseDispatchTitle, isDispatchTitle,
   dispatchBody, deliveredLines, escalationLines, planDispatch, staleDispatchIssues, staleEscalationComment,
   rearmDispatchIssues, readyLabelOn, staleClaimedDispatchIssues, staleClaimComment,
-  READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN_LABEL, AGENT_RUNNING_LABEL,
+  READY_LABEL, READY_FLEET_LABEL, NEEDS_HUMAN, AGENT_RUNNING_LABEL,
   readyLabelForScope, SCHEDULER_LABELS, escalationLabel, ESCALATION_LABEL_PREFIX,
 } from '../../src/session/dispatch.mjs';
 import { LEGACY_BUILT_IN_TASK_PATH, LEGACY_BUILT_IN_TASK_PATH_MOUNTED } from '../legacy-protocol.mjs';
@@ -158,7 +158,7 @@ test('planDispatch suppresses a new filing while any slot of the task is still o
 test('planDispatch files the next slot while an escalated (needs-human) issue stays open', () => {
   const existing = [{
     number: 182, title: '[claudinite-task] basics/update d2026-08-13', state: 'open',
-    labels: [{ name: NEEDS_HUMAN_LABEL }],
+    labels: [{ name: NEEDS_HUMAN }],
   }];
   const v = planDispatch({ existing, pack: 'basics', task: 'update', slotId: 'd2026-08-14' });
   assert.equal(v.action, 'create');
@@ -181,7 +181,7 @@ test('planDispatch still suppresses on a live claim — agent-running, or a just
 test('planDispatch bounds the re-filing: escalations that accumulate unresolved stop the lane, and say so', () => {
   const escalated = (number, slotId) => ({
     number, title: `[claudinite-task] basics/update ${slotId}`, state: 'open',
-    labels: [{ name: NEEDS_HUMAN_LABEL }],
+    labels: [{ name: NEEDS_HUMAN }],
   });
   const existing = [escalated(182, 'd2026-08-13'), escalated(190, 'd2026-08-14')];
   const v = planDispatch({ existing, pack: 'basics', task: 'update', slotId: 'd2026-08-15' });
@@ -192,7 +192,7 @@ test('planDispatch bounds the re-filing: escalations that accumulate unresolved 
 
 test('planDispatch reports a live claim as a claim even when escalations are also open', () => {
   const existing = [
-    { number: 182, title: '[claudinite-task] basics/update d2026-08-13', state: 'open', labels: [{ name: NEEDS_HUMAN_LABEL }] },
+    { number: 182, title: '[claudinite-task] basics/update d2026-08-13', state: 'open', labels: [{ name: NEEDS_HUMAN }] },
     { number: 190, title: '[claudinite-task] basics/update d2026-08-14', state: 'open', labels: [{ name: AGENT_RUNNING_LABEL }] },
   ];
   const v = planDispatch({ existing, pack: 'basics', task: 'update', slotId: 'd2026-08-15' });
@@ -242,9 +242,9 @@ test('staleDispatchIssues escalates an issue once — an already-escalated one i
   const now = '2026-07-24T05:00:00Z';
   const old = { number: 7, title: '[claudinite-task] basics/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' };
   assert.deepEqual(staleDispatchIssues([old], now).map((i) => i.number), [7]); // first pass: escalate
-  const escalated = { ...old, labels: [{ name: NEEDS_HUMAN_LABEL }] };
+  const escalated = { ...old, labels: [{ name: NEEDS_HUMAN }] };
   assert.deepEqual(staleDispatchIssues([escalated], now), []);                 // every pass after: silent
-  assert.deepEqual(staleDispatchIssues([{ ...escalated, labels: [NEEDS_HUMAN_LABEL] }], now), []); // bare-string labels too
+  assert.deepEqual(staleDispatchIssues([{ ...escalated, labels: [NEEDS_HUMAN] }], now), []); // bare-string labels too
 });
 
 // The two sweeps overlapped on an old claimed issue, and the shell runs stale first
@@ -268,7 +268,7 @@ test('staleDispatchIssues leaves a CLAIMED issue to the claim sweep, which words
 test('staleEscalationComment names the task and the needs-human label', () => {
   const c = staleEscalationComment({ number: 1, title: '[claudinite-task] gcec/create-extractor h2026-07-22T09Z' });
   assert.match(c, /gcec\/create-extractor \(slot h2026-07-22T09Z\)/);
-  assert.match(c, new RegExp(NEEDS_HUMAN_LABEL));
+  assert.match(c, new RegExp(NEEDS_HUMAN));
 });
 
 // --- re-arming a lost trigger -----------------------------------------------
@@ -304,7 +304,7 @@ test('rearmDispatchIssues never re-arms an issue some session has already engage
   const now = '2026-07-22T02:00:00Z';
   const cases = [
     armed({ number: 2, labels: [{ name: AGENT_RUNNING_LABEL }] }),           // claimed
-    armed({ number: 3, labels: [{ name: READY_LABEL }, { name: NEEDS_HUMAN_LABEL }] }), // converged to triage
+    armed({ number: 3, labels: [{ name: READY_LABEL }, { name: NEEDS_HUMAN }] }), // converged to triage
     armed({ number: 4, comments: 1 }),                                       // a session commented
     armed({ number: 5, labels: [] }),                                        // not armed at all
     armed({ number: 6, title: 'an ordinary issue someone labelled by hand' }), // not a dispatch issue
@@ -334,7 +334,7 @@ test('staleClaimedDispatchIssues converges a claim left by a session that died m
   const open = [
     { number: 1, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z' }, // 10h idle
     { number: 2, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T11:00:00Z' }, // 1h idle → live
-    { number: 3, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }, { name: NEEDS_HUMAN_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z' }, // already triaged
+    { number: 3, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }, { name: NEEDS_HUMAN }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z' }, // already triaged
   ];
   assert.deepEqual(staleClaimedDispatchIssues(open, now).map((i) => i.number), [1]);
 });
@@ -350,7 +350,7 @@ test('staleClaimedDispatchIssues never touches a claim on an issue a TASK owns',
 test('staleClaimComment names the task and the needs-human label', () => {
   const c = staleClaimComment({ number: 1, title: '[claudinite-task] basics/baselining d2026-07-22' });
   assert.match(c, /basics\/baselining \(slot d2026-07-22\)/);
-  assert.match(c, new RegExp(NEEDS_HUMAN_LABEL));
+  assert.match(c, new RegExp(NEEDS_HUMAN));
   assert.match(c, new RegExp(AGENT_RUNNING_LABEL));
 });
 

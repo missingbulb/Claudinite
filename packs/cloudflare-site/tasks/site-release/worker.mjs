@@ -26,7 +26,8 @@ import { pathToFileURL } from 'node:url';
 // copy would be a second implementation of the one thing that must not have two. The
 // published `public/` seam is the only way a pack may reach another's code, and
 // the relative path resolves the same from the canon and from a member's mount.
-import { baseTip, readAt, remoteUrl, withTaskTrailer } from '../../../claudinite-tasks/public/delivery.mjs';
+import { baseTip, readAt, remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
+import { withTaskTrailer } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 import { BEACON_PLACEHOLDER, claimedHostnames, parseWranglerConfig, publishedDir, wranglerConfigPath } from '../../lib.mjs';
 import { preflight } from './preflight.mjs';
 

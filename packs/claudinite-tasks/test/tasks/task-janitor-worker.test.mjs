@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sweep } from '../../tasks/task-janitor/worker.mjs';
-import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, NEEDS_HUMAN_LABEL } from '../../src/session/dispatch.mjs';
+import { SCHEDULER_LABELS, READY_LABEL, READY_FLEET_LABEL, AGENT_RUNNING_LABEL, NEEDS_HUMAN } from '../../src/session/dispatch.mjs';
 import { HEARTBEAT_MARKER } from '../../src/items/heartbeat.mjs';
 
 // A fake gh that serves one search result set and records every write.
@@ -66,7 +66,7 @@ test('sweep escalates a stale issue and does NOT also re-arm it', async () => {
   // The ready label comes off, so an escalated issue stops being armed.
   assert.ok(calls.some((c) => c.method === 'DELETE' && c.path.endsWith(encodeURIComponent(READY_LABEL))));
   const add = calls.find((c) => c.method === 'POST' && c.path === '/repos/o/r/issues/21/labels');
-  assert.deepEqual(add.body.labels, [NEEDS_HUMAN_LABEL]);
+  assert.deepEqual(add.body.labels, [NEEDS_HUMAN]);
 });
 
 test('sweep reclaims a dead agent-running claim', async () => {
@@ -77,7 +77,7 @@ test('sweep reclaims a dead agent-running claim', async () => {
   assert.deepEqual(out.deadClaims, [31]);
   assert.ok(calls.some((c) => c.method === 'DELETE' && c.path.endsWith(AGENT_RUNNING_LABEL)));
   const add = calls.find((c) => c.method === 'POST' && c.path === '/repos/o/r/issues/31/labels');
-  assert.deepEqual(add.body.labels, [NEEDS_HUMAN_LABEL]);
+  assert.deepEqual(add.body.labels, [NEEDS_HUMAN]);
 });
 
 test('sweep ensures the labels before applying needs-human', async () => {

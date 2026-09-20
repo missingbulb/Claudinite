@@ -61,7 +61,7 @@ jobs:
           FLEET_GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
           CCR_ROUTINE_TOKEN: ${{ secrets.CCR_ROUTINE_TOKEN }}
           CCR_FLEET_ROUTINE_TOKEN: ${{ secrets.CCR_FLEET_ROUTINE_TOKEN }}
-        run: node packs/claudinite-tasks/public/executor.mjs
+        run: node packs/claudinite-tasks/src/execute/loop.mjs
 
   continue-the-chain:
     needs: execute
@@ -80,4 +80,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           CLAUDINITE_CONTINUATION_DEPTH: ${{ inputs.continuation_depth }}
-        run: node packs/claudinite-tasks/public/executor-continuation.mjs
+        run: node packs/claudinite-tasks/src/recover/continuation.mjs

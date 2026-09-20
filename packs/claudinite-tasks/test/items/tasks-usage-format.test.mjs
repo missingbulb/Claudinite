@@ -10,8 +10,9 @@ import {
   fieldsOf,
 } from '../../src/items/tasks-usage-format.mjs';
 import {
-  outcomeOf, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, PARK_KINDS,
-} from '../../src/items/work-item.mjs';
+  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, PARK_KINDS,
+} from '../../public/task-constants.mjs';
+import { outcomeOf } from '../../public/work-item-grammar.mjs';
 import { ALL_RUN_PHASES } from '../../src/items/run-record.mjs';
 
 test('the outcome words this file counts are exactly what a closed item decodes to', () => {

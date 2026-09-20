@@ -14,9 +14,9 @@ import dashboardPack from '../pack.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 import {
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_ACTION,
-  OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, TASK_DONE,
-} from '../../claudinite-tasks/public/work-items.mjs';
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, NEEDS_HUMAN, STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_DECISION,
+  STATUS_NEEDS_HUMAN_ACTION, OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE, STATUS_DONE,
+} from '../../claudinite-tasks/public/task-constants.mjs';
 
 const NOW = Date.parse('2026-08-17T12:00:00Z');
 const CANON = { repo: 'o/canon', ref: 'canonsha', engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 } };
@@ -37,7 +37,7 @@ const item = (over = {}) => ({
   title: '[claudinite-work] basics/task-janitor',
   body: 'packs/basics/tasks/task-janitor/task.md\n',
   state: 'open',
-  labels: [READY],
+  labels: [STATUS_READY],
   created_at: '2026-08-17T04:00:00Z',
   updated_at: '2026-08-17T04:00:00Z',
   closed_at: null,
@@ -101,13 +101,13 @@ test('an unclassified park is critical — it is a broken run', () => {
 
 test('an action or decision park is serious, and an approval park is a waiting PR', () => {
   const decision = summariseMember(
-    read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_DECISION] })] }), { now: NOW, canon: CANON },
+    read({ items: [item({ labels: [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_DECISION] })] }), { now: NOW, canon: CANON },
   );
   assert.equal(decision.level, 'serious');
   assert.match(decision.reasons[0].text, /parked for a person/);
 
   const approval = summariseMember(
-    read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON },
+    read({ items: [item({ labels: [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON },
   );
   assert.equal(approval.level, 'warning');
   assert.match(approval.reasons[0].text, /waiting for approval/);
@@ -116,7 +116,7 @@ test('an action or decision park is serious, and an approval park is a waiting P
 
 test('an item past its leash is serious, and counted apart from parked', () => {
   const stale = new Date(NOW - 5 * 3600e3).toISOString();
-  const s = summariseMember(read({ items: [item({ labels: [EXECUTING], updated_at: stale })] }), { now: NOW, canon: CANON });
+  const s = summariseMember(read({ items: [item({ labels: [STATUS_RUNNING_EXECUTOR], updated_at: stale })] }), { now: NOW, canon: CANON });
   assert.equal(s.level, 'serious');
   assert.equal(s.warned, 1);
   assert.equal(s.parked, 0);
@@ -392,7 +392,7 @@ test('taskSpread counts a closed item with no outcome as failed, and obsolete as
 test('outcomes decode every spelling to the canonical words', () => {
   const closed = (number, labels) => item({ number, state: 'closed', labels, closed_at: '2026-08-17T06:00:00Z' });
   const s = summariseMember(read({
-    items: [closed(1, [OUTCOME_DONE]), closed(2, [TASK_DONE]), closed(3, [OUTCOME_DELIVERED]), closed(4, [OUTCOME_OBSOLETE])],
+    items: [closed(1, [OUTCOME_DONE]), closed(2, [STATUS_DONE]), closed(3, [OUTCOME_DELIVERED]), closed(4, [OUTCOME_OBSOLETE])],
   }), { now: NOW, canon: CANON });
   assert.equal(s.outcomes.done, 2);
   assert.equal(s.outcomes.delivered, 1);
@@ -401,7 +401,7 @@ test('outcomes decode every spelling to the canonical words', () => {
 });
 
 test('taskSpread reads task:done as done', () => {
-  const reads = [{ repo: 'o/a', items: [item({ state: 'closed', labels: [TASK_DONE] })] }];
+  const reads = [{ repo: 'o/a', items: [item({ state: 'closed', labels: [STATUS_DONE] })] }];
   assert.equal(taskSpread(reads, NOW)[0].done, 1);
 });
 
@@ -414,16 +414,16 @@ test('taskSpread ignores issues that are not work items', () => {
 
 test('the open state mix is counted per state, with unknown states kept apart', () => {
   const items = [
-    item({ number: 1, labels: [BLOCKED] }),
-    item({ number: 2, labels: [READY] }),
-    item({ number: 3, labels: [AGENT] }),
+    item({ number: 1, labels: [STATUS_BLOCKED] }),
+    item({ number: 2, labels: [STATUS_READY] }),
+    item({ number: 3, labels: [STATUS_RUNNING_AGENT] }),
     item({ number: 4, labels: [] }),          // torn/unlabelled — a real repair case
   ];
   const s = summariseMember(read({ items }), { now: NOW, canon: CANON });
   assert.equal(s.open.total, 4);
-  assert.equal(s.open.byState[BLOCKED], 1);
-  assert.equal(s.open.byState[READY], 1);
-  assert.equal(s.open.byState[AGENT], 1);
+  assert.equal(s.open.byState[STATUS_BLOCKED], 1);
+  assert.equal(s.open.byState[STATUS_READY], 1);
+  assert.equal(s.open.byState[STATUS_RUNNING_AGENT], 1);
   assert.equal(s.open.byState.other, 1, 'an unlabelled item is not silently folded into a real state');
 });
 
@@ -531,7 +531,7 @@ test('a kind with nothing waiting on it is left out, not reported as zero', () =
 // function, so the two can never describe the same parks in different words.
 test('a member and the fleet reach the breakdown through the same counts', () => {
   const one = summariseMember(
-    read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON },
+    read({ items: [item({ labels: [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON },
   );
   assert.deepEqual(memberAttention(one),
     { broken: 0, decisions: 0, actions: 0, approvals: 1, tripping: 0, schedulersFailing: 0, schedulersNeverRan: 0 });
@@ -548,7 +548,7 @@ test('a member and the fleet reach the breakdown through the same counts', () =>
 
 test('the rollup carries the split the breakdown reads', () => {
   const roll = rollUp([
-    summariseMember(read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON }),
+    summariseMember(read({ items: [item({ labels: [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_APPROVAL] })] }), { now: NOW, canon: CANON }),
     summariseMember(read({ repo: 'o/b', items: [item({ labels: [NEEDS_HUMAN] })] }), { now: NOW, canon: CANON }),
   ]);
   assert.equal(roll.parkedApprovals, 1);
@@ -562,8 +562,8 @@ test('the rollup carries the split the breakdown reads', () => {
 test('the rollup splits an action park from a decision park', () => {
   const roll = rollUp([
     summariseMember(read({ items: [
-      item({ number: 1, labels: [NEEDS_HUMAN, NEEDS_HUMAN_ACTION] }),
-      item({ number: 2, labels: [NEEDS_HUMAN, NEEDS_HUMAN_DECISION] }),
+      item({ number: 1, labels: [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_ACTION] }),
+      item({ number: 2, labels: [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_DECISION] }),
       item({ number: 3, labels: [NEEDS_HUMAN] }),
     ] }), { now: NOW, canon: CANON }),
   ]);
@@ -631,7 +631,7 @@ test('a scheduler fault is not minutes of a person\'s time', () => {
 // reads every reason, and only the rendering filters by kind.
 test('every reason carries the kind that says where the row shows it', () => {
   const s = summariseMember(
-    read({ items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })] }),
+    read({ items: [item({ labels: [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_APPROVAL] })] }),
     { now: NOW, canon: { engineVersion: 99, packVersions: {} } },
   );
   assert.ok(s.reasons.length >= 2);

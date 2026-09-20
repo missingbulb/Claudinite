@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planSchedulerRun, planWake } from '../../src/schedule/run.mjs';
 import { mostRecentAnchor, nextAnchor, periodMs } from '../../src/items/anchors.mjs';
-import { parseWorkItemBody } from '../../src/items/work-item.mjs';
+import { parseWorkItemBody } from '../../public/work-item-grammar.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
 
 const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };

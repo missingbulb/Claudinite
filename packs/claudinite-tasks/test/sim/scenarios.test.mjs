@@ -15,7 +15,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeSim, T, tick, NH, READY, ORIGIN_AD_HOC } from './sim.mjs';
+import { makeSim, T, tick, NH, STATUS_READY, ORIGIN_AD_HOC } from './sim.mjs';
 
 function cast() {
   return [
@@ -708,7 +708,7 @@ test('S30 duplicate standing item: the next scheduler run self-heals (F16)', asy
   // The dedupe is the scheduler's own close: it adds the terminal label and the
   // status the twin waited in stays on — the shape the run history reads as
   // "never picked".
-  assert.ok(twin.labels.has(READY) && twin.labels.has('task:status:rejected'), 'the deduped twin wears both');
+  assert.ok(twin.labels.has(STATUS_READY) && twin.labels.has('task:status:rejected'), 'the deduped twin wears both');
   // F32: the survivor is judged at pick over its run history, and the deduped
   // twin — closed since the anchor but never picked — is NOT a run there, so the
   // survivor is the period's one run and runs.
@@ -1337,7 +1337,7 @@ test('S37 suspend-all: workflows exit at start, the queue freezes in place', asy
   // and the queue is frozen, not lost: every never-picked item still sits ready
   const openReady = sim.issues.filter((i) => !i.seeded && i.state === 'open');
   assert.equal(openReady.length, 5 - new Set(evaluated.map((e) => e.issue)).size, 'unpicked items all survived the hold');
-  for (const it of openReady) assert.ok(it.labels.has(READY), `#${it.number} froze as ready`);
+  for (const it of openReady) assert.ok(it.labels.has(STATUS_READY), `#${it.number} froze as ready`);
 });
 
 // ---- S38 — cancel + suspend, then resume: the user cancels a stalled run, then
@@ -1511,7 +1511,7 @@ test('S43 the human re-queue leaves no triage label behind', async () => {
   assert.ok(after, 'the re-queue ran');
   assert.deepEqual(after.filter((l) => l.startsWith('task:status:needs-human-')), [],
     'no sub-label survived the re-queue');
-  assert.ok(after.includes(READY), 'and it went back into the queue');
+  assert.ok(after.includes(STATUS_READY), 'and it went back into the queue');
 });
 
 // ---- S9 — invocation is at-most-once: one call per item, never retried. A
@@ -1832,7 +1832,7 @@ test('S64 the request labels: bare mark, adopted, running, in review — one iss
   await sim.run('2026-08-18T09:00Z', '2026-08-18T18:00Z');
 
   assert.deepEqual(seen[0], [ORIGIN_AD_HOC], 'the mark alone — no status is what adoption keys on');
-  assert.deepEqual(seen[1], [ORIGIN_AD_HOC, READY]);
+  assert.deepEqual(seen[1], [ORIGIN_AD_HOC, STATUS_READY]);
   assert.deepEqual(seen[2], [ORIGIN_AD_HOC, 'task:status:running-agent']);
   assert.deepEqual(labelsOf(sim.item(req.number)), [ORIGIN_AD_HOC, NH('approval')],
     'the approval park is the in-review state, beside the mark that never comes off');

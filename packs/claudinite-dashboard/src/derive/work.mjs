@@ -20,8 +20,8 @@
 // thing true of this repo.
 
 import {
-  BLOCKED, READY, EXECUTING, AGENT, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION,
-} from '../../../claudinite-tasks/public/work-items.mjs';
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_ACTION,
+} from '../../../claudinite-tasks/public/task-constants.mjs';
 // `PARKED` is the page's own state key, not a label — a park is four labels and the
 // page groups them into one (model.mjs).
 import { PARKED } from './model.mjs';
@@ -38,7 +38,7 @@ const levelRank = (l) => {
 
 // The machine states an item can be in and still be moving. Anything else an OPEN item
 // wears — a park, a torn label swap, no label at all — is a stop.
-const MOVING = new Set([BLOCKED, READY, EXECUTING, AGENT]);
+const MOVING = new Set([STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT]);
 
 // What is wrong with this row, worst first, or an empty list. Every entry mirrors
 // something the engine will actually act on (or has stopped acting on), never a display
@@ -50,7 +50,7 @@ export function troubles(row) {
   if (item) {
     if (item.state === PARKED) {
       out.push({
-        level: item.blockingPark ? 'critical' : (item.triage === NEEDS_HUMAN_APPROVAL ? 'warning' : 'serious'),
+        level: item.blockingPark ? 'critical' : (item.triage === STATUS_NEEDS_HUMAN_APPROVAL ? 'warning' : 'serious'),
         text: item.warnings.find((w) => w.text.startsWith('parked'))?.text ?? 'parked for a human',
       });
     }
@@ -157,10 +157,10 @@ export function attentionOf(open) {
   const parked = open.filter((i) => i.state === PARKED);
   return {
     broken: parked.filter((i) => i.blockingPark).length,
-    approvals: parked.filter((i) => !i.blockingPark && i.triage === NEEDS_HUMAN_APPROVAL).length,
-    actions: parked.filter((i) => !i.blockingPark && i.triage === NEEDS_HUMAN_ACTION).length,
+    approvals: parked.filter((i) => !i.blockingPark && i.triage === STATUS_NEEDS_HUMAN_APPROVAL).length,
+    actions: parked.filter((i) => !i.blockingPark && i.triage === STATUS_NEEDS_HUMAN_ACTION).length,
     decisions: parked.filter((i) => !i.blockingPark
-      && ![NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION].includes(i.triage)).length,
+      && ![STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_ACTION].includes(i.triage)).length,
     tripping: open.filter((i) => i.state !== PARKED && i.warnings.length).length,
   };
 }

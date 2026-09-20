@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isCovered, readFile, readDeclaration, putFile, isDormant, DECLARATION,
 } from '../fleet-api.mjs';
-import { isDormant as schedulerIsDormant } from '../../claudinite-tasks/public/dormancy.mjs';
+import { isDormant as schedulerIsDormant } from '../../claudinite-tasks/src/contract/dormancy.mjs';
 
 // The pack's shared cross-repo REST layer. Membership is the tracked declaration
 // file, the ONE probe every member carries whatever its mount shape
@@ -67,12 +67,14 @@ test('putFile: the ONE write, sha-guarded — a 403/404 names the missing scope,
   await assert.rejects(() => putFile(responder(500), 'o/m', { path: 'p', text: 'x', message: 'm' }), /returned 500/);
 });
 
-test('the sweeps decide dormancy with the SCHEDULER\'s predicate, not a private copy', async () => {
+test('the sweeps decide dormancy as the SCHEDULER\'s predicate does', async () => {
   // A sweep with its own notion of dormancy would nag exactly the repos that had
   // already opted out — the member's own scheduler and the enforcer must agree on the
-  // one test, so the pack re-exports the predicate published by the pack that owns the
-  // scheduler rather than re-implementing it.
-  assert.equal(isDormant, schedulerIsDormant);
+  // one test. The pack carries its own copy (packs share no code) and
+  // `dormancy-drift.test.mjs` holds it to the scheduler's; what is pinned here is that
+  // the sweeps' reader decides with it, over the declaration shapes a member writes.
+  const declared = '{"packs":[{"id":"claudinite-tasks","config":{"dormant":true}}]}';
+  assert.equal(isDormant(await readDeclaration(ghServing(declared), 'o/x')), schedulerIsDormant(JSON.parse(declared)));
   const asleep = '{"packs":[{"id":"claudinite-tasks","config":{"dormant":true}}]}';
   assert.equal(isDormant(await readDeclaration(ghServing(asleep), 'o/asleep')), true);
   assert.equal(isDormant(await readDeclaration(ghServing('{"packs":["claudinite-tasks"]}'), 'o/awake')), false);

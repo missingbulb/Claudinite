@@ -729,16 +729,19 @@ working site with an empty artifact.
 `serve.mjs` is for local use only: it binds loopback, serves the checkout read-only,
 and never talks to GitHub.
 
-## Why it imports the engine instead of restating it
+## Why it imports the queue's vocabulary instead of restating it
 
 The page states none of the queue's vocabulary. Labels, the title grammar, the leash
-constants and the anchor arithmetic all come from the modules that define them —
-[`work-item.mjs`](../claudinite-tasks/src/items/work-item.mjs),
-[`leases.mjs`](../claudinite-tasks/src/items/leases.mjs),
-[`anchors.mjs`](../claudinite-tasks/src/items/anchors.mjs) — so there is no second copy to drift
-from the mechanism being rendered.
+constants and the body fields all come from the two files that define them —
+[`task-constants.mjs`](../claudinite-tasks/public/task-constants.mjs) and
+[`work-item-grammar.mjs`](../claudinite-tasks/public/work-item-grammar.mjs), the tasks pack's
+published surface — so there is no second copy of a label or a parse to drift from the
+mechanism being rendered. What the page computes over that vocabulary — the anchor
+arithmetic, the substantive-commit test, dormancy, the declaration text reader, the
+closing-issue parse — is its own copy under `src/`, because packs share no code; each copy
+is held to the queue's by a drift-guard test that runs both over the same inputs.
 
-Those paths — `../../packs/claudinite-tasks/queue/…` — resolve identically in the canon
+Those paths — `../../packs/claudinite-tasks/public/…` — resolve identically in the canon
 (`packs/<id>/` beside `engine/`) and in a member's mount
 (`.claudinite/shared/packs/<id>/` beside `.claudinite/shared/engine/`), which is why
 the pack is readable straight out of the mount with nothing rewritten.
@@ -746,7 +749,7 @@ the pack is readable straight out of the mount with nothing rewritten.
 ES module imports are CORS-checked, which is the one consequence: the page needs an
 `http(s)://` origin and will not run from `file://`. Any static server satisfies it.
 
-The tests pin both halves: that those engine modules stay free of `node:` imports (a
+The tests pin both halves: that those published modules stay free of `node:` imports (a
 **browser-only** breakage the Node suite would otherwise never catch), and that this
 tool hardcodes no queue label of its own.
 

@@ -9,9 +9,9 @@ import {
   HEARTBEAT_MARKER, heartbeatComment, lastLivenessAt, withHeartbeat,
   agentBeatComment, withProgress, lastProgressAt,
 } from '../../src/items/heartbeat.mjs';
-import { parseProgressLines, parseContextLines } from '../../src/items/work-item.mjs';
+import { parseProgressLines, parseContextLines } from '../../public/work-item-grammar.mjs';
 import { planSchedulerRun } from '../../src/schedule/run.mjs';
-import { CLAIM_MARKER, EPISODE_MARKER } from '../../src/items/work-item.mjs';
+import { CLAIM_MARKER, EPISODE_MARKER } from '../../public/task-constants.mjs';
 
 const claim = (at, extra = '') => ({ created_at: at, body: `${CLAIM_MARKER}\nClaimed by executor \`E1\`.${extra}` });
 const beat = (at) => ({ created_at: at, body: heartbeatComment({ executor: 'E1', at, minutes: 15 }) });

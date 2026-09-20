@@ -2,9 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sweepQueue } from '../../tasks/task-janitor/queue-sweep.mjs';
 import {
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_FAILURE, HANDOFF_MARKER, TASK_DONE, TASK_OBSOLETE,
-  parkKindOf,
-} from '../../src/items/work-item.mjs';
+  STATUS_NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_DECISION, STATUS_NEEDS_HUMAN_FAILURE, HANDOFF_MARKER, STATUS_DONE,
+  STATUS_REJECTED,
+} from '../../public/task-constants.mjs';
+import { parkKindOf } from '../../public/work-item-grammar.mjs';
 import { SUPERSEDABLE_PARKS } from '../../src/recover/janitor-rules.mjs';
 
 // A fake GitHub that answers the two reads the sweep makes and records the writes.
@@ -56,7 +57,7 @@ test('a stale-ready item parks at action — the lane is not being drained, and 
   const { gh, added } = janitorGh([workItem(11, ['task:status:waiting-for-executor'], { created: '2026-07-01T00:00:00Z' })]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
   assert.deepEqual(out.staleReady, [11]);
-  assert.deepEqual(labelsOn(added, 11), [NEEDS_HUMAN_ACTION]);
+  assert.deepEqual(labelsOn(added, 11), [STATUS_NEEDS_HUMAN_ACTION]);
 });
 
 // A dead session is the machine noticing a corpse, not a person deciding anything.
@@ -70,14 +71,14 @@ test('a dead agent claim parks at failure — nothing here is a human\'s choice'
   );
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.deadAgents, [21]);
-  assert.deepEqual(labelsOn(added, 21), [NEEDS_HUMAN_FAILURE]);
+  assert.deepEqual(labelsOn(added, 21), [STATUS_NEEDS_HUMAN_FAILURE]);
 });
 
 // The reason the kind was wrong: rule E is what drains these once the thing that
 // broke is fixed, and it only ever looks at SUPERSEDABLE_PARKS. A rule B park
 // outside that set accumulates forever however many clean runs follow it.
 test('the kind rule B parks at is one rule E can supersede', () => {
-  assert.ok(SUPERSEDABLE_PARKS.includes(parkKindOf({ labels: [{ name: NEEDS_HUMAN_FAILURE }] })));
+  assert.ok(SUPERSEDABLE_PARKS.includes(parkKindOf({ labels: [{ name: STATUS_NEEDS_HUMAN_FAILURE }] })));
 });
 
 // Same reading as rule B: an item off the state machine is a label swap that TORE,
@@ -86,7 +87,7 @@ test('a stateless item parks at failure — a torn swap is breakage, not a judge
   const { gh, added } = janitorGh([workItem(31, [])]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.stateless, [31]);
-  assert.deepEqual(labelsOn(added, 31), [NEEDS_HUMAN_FAILURE]);
+  assert.deepEqual(labelsOn(added, 31), [STATUS_NEEDS_HUMAN_FAILURE]);
 });
 
 // The stuck-dependency rule is COMMENT ONLY on purpose — the item still proceeds
@@ -130,7 +131,7 @@ test('an item still stateless on the second read is repaired', async () => {
   const { gh, added } = janitorGh([workItem(43, [])]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.stateless, [43]);
-  assert.deepEqual(labelsOn(added, 43), [NEEDS_HUMAN_FAILURE]);
+  assert.deepEqual(labelsOn(added, 43), [STATUS_NEEDS_HUMAN_FAILURE]);
 });
 
 // The wiring the pure rules cannot cover: rule F now picks its comment from WHERE the
@@ -169,7 +170,7 @@ test('a park whose pull request MERGED closes done — the work landed', async (
   const { gh, added, patched } = janitorGh([parked(31, 133)], {}, { 133: pr(133, { merged: true }) });
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
   assert.deepEqual(out.ended, [31]);
-  assert.deepEqual(labelsOn(added, 31), [TASK_DONE]);
+  assert.deepEqual(labelsOn(added, 31), [STATUS_DONE]);
   assert.deepEqual(patched.filter((p) => p.issue === 31), [{ issue: 31, state: 'closed', state_reason: 'completed' }]);
 });
 
@@ -177,7 +178,7 @@ test('a park whose pull request was closed unmerged closes rejected — nothing 
   const { gh, added, patched } = janitorGh([parked(32, 134)], {}, { 134: pr(134) });
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
   assert.deepEqual(out.ended, [32]);
-  assert.deepEqual(labelsOn(added, 32), [TASK_OBSOLETE]);
+  assert.deepEqual(labelsOn(added, 32), [STATUS_REJECTED]);
   assert.deepEqual(patched.filter((p) => p.issue === 32), [{ issue: 32, state: 'closed', state_reason: 'not_planned' }]);
 });
 
@@ -202,7 +203,7 @@ test('an ended park on a marked issue whose PR merged closes it done', async () 
   const { gh, added, patched } = janitorGh([markedPark(34, 136)], {}, { 136: pr(136, { merged: true }) });
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
   assert.deepEqual(out.ended, [34]);
-  assert.deepEqual(labelsOn(added, 34), [TASK_DONE]);
+  assert.deepEqual(labelsOn(added, 34), [STATUS_DONE]);
   assert.deepEqual(patched, [{ issue: 34, state: 'closed', state_reason: 'completed' }]);
 });
 
@@ -213,7 +214,7 @@ test('an ended park on a marked issue whose PR was closed unmerged closes it rej
   const { gh, added, patched } = janitorGh([markedPark(35, 137)], {}, { 137: pr(137) });
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-10T00:00:00Z')));
   assert.deepEqual(out.ended, [35]);
-  assert.deepEqual(labelsOn(added, 35), [TASK_OBSOLETE]);
+  assert.deepEqual(labelsOn(added, 35), [STATUS_REJECTED]);
   assert.deepEqual(patched, [{ issue: 35, state: 'closed', state_reason: 'not_planned' }]);
 });
 
@@ -221,8 +222,8 @@ test('an ended park on a marked issue whose PR was closed unmerged closes it rej
 // because the terminal standing on the item was already the right one.
 test('an unclosed terminal is closed at its own outcome, with no relabelling', async () => {
   const { gh, added, patched } = janitorGh([
-    workItem(81, [TASK_DONE], { created: '2026-07-01T00:00:00Z' }),
-    workItem(82, [TASK_OBSOLETE], { created: '2026-07-01T00:00:00Z' }),
+    workItem(81, [STATUS_DONE], { created: '2026-07-01T00:00:00Z' }),
+    workItem(82, [STATUS_REJECTED], { created: '2026-07-01T00:00:00Z' }),
   ]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.unclosed, [81, 82]);
@@ -237,7 +238,7 @@ test('an unclosed terminal is closed at its own outcome, with no relabelling', a
 // The same second read the stateless repair makes, for the same reason: the
 // converge may have reached its own close in the seconds since the snapshot.
 test('a terminal that closed itself between the read and the write is left alone', async () => {
-  const item = workItem(83, [TASK_DONE], { created: '2026-07-01T00:00:00Z' });
+  const item = workItem(83, [STATUS_DONE], { created: '2026-07-01T00:00:00Z' });
   const { gh, patched } = janitorGh([item], {}, { 83: { ...item, state: 'closed' } });
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-07-02T00:00:00Z')));
   assert.deepEqual(out.unclosed, []);
@@ -258,14 +259,14 @@ test('a failure park nobody has answered past the bound closes obsolete', async 
   ]);
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-08-01T00:00:00Z'), { tasks: HEAD_TASKS }));
   assert.deepEqual(out.abandoned, [41]);
-  assert.deepEqual(labelsOn(added, 41), [TASK_OBSOLETE]);
+  assert.deepEqual(labelsOn(added, 41), [STATUS_REJECTED]);
   assert.deepEqual(patched.filter((p) => p.issue === 41).map((p) => p.state_reason), ['not_planned']);
 });
 
 // The park a person is still working through: their touch resets the bound, and the
 // second read is what sees it.
 test('a park touched between the sweep\'s read and its write is left standing', async () => {
-  const item = workItem(42, [NEEDS_HUMAN_FAILURE], { created: '2026-07-01T00:00:00Z' });
+  const item = workItem(42, [STATUS_NEEDS_HUMAN_FAILURE], { created: '2026-07-01T00:00:00Z' });
   const { gh, patched } = janitorGh([item], {}, { 42: { ...item, updated_at: '2026-07-31T00:00:00Z' } });
   const out = await quiet(() => sweepQueue(gh, 'o/r', at('2026-08-01T00:00:00Z'), { tasks: HEAD_TASKS }));
   assert.deepEqual(out.abandoned, []);
@@ -274,10 +275,10 @@ test('a park touched between the sweep\'s read and its write is left standing', 
 
 // Rule E names the run that answered the park, which says more than the clock does.
 test('a superseded park is closed as superseded, not as abandoned', async () => {
-  const { gh } = janitorGh([workItem(43, [NEEDS_HUMAN_FAILURE], { created: '2026-07-01T00:00:00Z' })]);
+  const { gh } = janitorGh([workItem(43, [STATUS_NEEDS_HUMAN_FAILURE], { created: '2026-07-01T00:00:00Z' })]);
   const withDone = async (path, opts = {}) => {
     if (opts.method === undefined && path.startsWith('/repos/o/r/issues?state=closed') && path.includes('page=1')) {
-      return { status: 200, json: [{ ...workItem(99, [TASK_DONE]), state: 'closed', closed_at: '2026-07-20T00:00:00Z', updated_at: '2026-07-20T00:00:00Z' }] };
+      return { status: 200, json: [{ ...workItem(99, [STATUS_DONE]), state: 'closed', closed_at: '2026-07-20T00:00:00Z', updated_at: '2026-07-20T00:00:00Z' }] };
     }
     return gh(path, opts);
   };

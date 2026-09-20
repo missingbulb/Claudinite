@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import declJson from '../../../tasks/fleet-pack-seeds/task.json' with { type: 'json' };
 import rosterJson from '../../../tasks/fleet-roster/task.json' with { type: 'json' };
-import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/public/task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/public/task-declaration.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const decl = normalizeTaskDeclaration(declJson);
 const roster = normalizeTaskDeclaration(rosterJson);

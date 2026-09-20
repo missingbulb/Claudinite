@@ -500,7 +500,7 @@ test('schedule_after / on_interrupt / invocation_endpoint are optional and valid
 // a livelock (every tenure reclaimed before it can finish), not one duplicate run.
 test('a code_work_timeout reaching the executing leash is rejected at author time (F17)', async () => {
   const { validateTaskDeclaration } = await import('../../src/contract/task-contract.mjs');
-  const { EXECUTING_LEASH_MS } = await import('../../src/items/leases.mjs');
+  const { EXECUTING_LEASH_MS } = await import('../../public/task-constants.mjs');
   const base = {
     id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
     expected_outcome: 'none', code_work: 'node w.mjs',
@@ -517,7 +517,7 @@ test('a code_work_timeout reaching the executing leash is rejected at author tim
 test('every task this repo carries declares a code_work bound under the leash', async () => {
   const { discoverTasks } = await import('../../src/contract/discover.mjs');
   const { loadConfig } = await import('../../../../engine/checks/helpers/repo-context.mjs');
-  const { EXECUTING_LEASH_MS } = await import('../../src/items/leases.mjs');
+  const { EXECUTING_LEASH_MS } = await import('../../public/task-constants.mjs');
   const root = process.cwd();
   const { tasks } = await discoverTasks(root, loadConfig(root));
   assert.ok(tasks.length > 0, 'the scan must actually reach this repo\'s tasks');

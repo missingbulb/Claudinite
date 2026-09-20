@@ -5,7 +5,9 @@ import {
   figure, totalsOf, pulseOf, memberWindow, machinePanel, hourKeysSince, fmtAge, fmtTokens,
   fleetLedger, SCHEDULER_CADENCE_MS,
 } from '../src/derive/fleet-ledger.mjs';
-import { WORK_PREFIX, OUTCOME_DONE, NEEDS_HUMAN_APPROVAL } from '../../claudinite-tasks/public/work-items.mjs';
+import {
+  WORK_PREFIX, OUTCOME_DONE, STATUS_NEEDS_HUMAN_APPROVAL,
+} from '../../claudinite-tasks/public/task-constants.mjs';
 
 const NOW = Date.parse('2026-09-02T12:00:00Z');
 const DAY = 86400e3;
@@ -109,7 +111,7 @@ test('stuck items are split by WHO clears them', () => {
   // The split is the point: a person clears a park and the janitor's leash clears the
   // rest, so only the first half is a claim on the reader's morning.
   const out = stuckItems([{ repo: 'o/a', items: [
-    item({ number: 1, labels: [{ name: NEEDS_HUMAN_APPROVAL }] }),
+    item({ number: 1, labels: [{ name: STATUS_NEEDS_HUMAN_APPROVAL }] }),
     item({ number: 2 }),
     item({ number: 3, updated_at: new Date(NOW - 1 * DAY).toISOString() }),
     item({ number: 4, state: 'closed' }),
@@ -124,7 +126,7 @@ test('closed items count what completed, and what completed untouched', () => {
   const closed = (over) => item({ state: 'closed', closed_at: `${day(2)}T00:00:00Z`, labels: [{ name: OUTCOME_DONE }], ...over });
   const out = closedItems([{ repo: 'o/a', items: [
     closed({ number: 1 }),
-    closed({ number: 2, labels: [{ name: OUTCOME_DONE }, { name: NEEDS_HUMAN_APPROVAL }] }),
+    closed({ number: 2, labels: [{ name: OUTCOME_DONE }, { name: STATUS_NEEDS_HUMAN_APPROVAL }] }),
     closed({ number: 3, closed_at: '2026-01-01T00:00:00Z' }),
   ] }], day(6), day(0));
   assert.equal(out.completed, 2, 'the one outside the window is not this window\'s');

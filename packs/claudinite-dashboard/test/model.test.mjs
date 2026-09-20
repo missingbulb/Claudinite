@@ -8,12 +8,12 @@ import {
   buildRoster, declaredPackDirs, describeItem, describeCadence, isWorkItem, outcomeTally, wakeStrip, WAKE_STRIP_HOURS,
   parseDeclaration, taskDeclarationPaths, warningsFor, commentKind,
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STUCK_BLOCKED_MS, DUE_SLACK_MS,
-  BLOCKED, READY, EXECUTING, AGENT,
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
 } from '../src/derive/model.mjs';
 import {
-  OUTCOME_DONE, OUTCOME_DELIVERED, TASK_DONE, NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN,
-} from '../../claudinite-tasks/public/work-items.mjs';
-import { normalizeTaskDeclaration } from '../../claudinite-tasks/public/task-contract.mjs';
+  OUTCOME_DONE, OUTCOME_DELIVERED, STATUS_DONE, STATUS_NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN,
+} from '../../claudinite-tasks/public/task-constants.mjs';
+import { normalizeTaskDeclaration } from '../../claudinite-tasks/public/task-declaration.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const NOW = Date.parse('2026-08-16T12:00:00Z');
@@ -261,12 +261,12 @@ test('isWorkItem keeps only the queue family', () => {
 
 test('describeItem reads state, outcome and the body fields', () => {
   const d = describeItem(item({
-    labels: [BLOCKED],
+    labels: [STATUS_BLOCKED],
     body: 'packs/basics/tasks/ci-performance\n\nNot-before: 2026-08-17T04:00:00Z\nBlocked-by: #12, #13\n',
   }), NOW);
   assert.equal(d.pack, 'basics');
   assert.equal(d.task, 'ci-performance');
-  assert.equal(d.state, BLOCKED);
+  assert.equal(d.state, STATUS_BLOCKED);
   assert.equal(d.notBefore, '2026-08-17T04:00:00Z');
   assert.deepEqual(d.blockedBy, [12, 13]);
   assert.equal(d.woken, null, 'the scheduler filed it — nobody woke it');
@@ -280,10 +280,10 @@ test('describeItem surfaces the Woken stamp', () => {
 });
 
 test('a closed item reports closed, and its outcome decodes to the canonical word', () => {
-  const d = describeItem(item({ state: 'closed', labels: [AGENT, OUTCOME_DELIVERED], closed_at: '2026-08-16T06:00:00Z' }), NOW);
+  const d = describeItem(item({ state: 'closed', labels: [STATUS_RUNNING_AGENT, OUTCOME_DELIVERED], closed_at: '2026-08-16T06:00:00Z' }), NOW);
   assert.equal(d.state, 'closed');
   assert.equal(d.outcome, 'delivered');
-  assert.equal(describeItem(item({ state: 'closed', labels: [TASK_DONE] }), NOW).outcome, 'done');
+  assert.equal(describeItem(item({ state: 'closed', labels: [STATUS_DONE] }), NOW).outcome, 'done');
 });
 
 // The roll keeps its record on the item (executor `rollBody`); the page surfaces it
@@ -292,7 +292,7 @@ test('describeItem surfaces the roll\'s last verdict', () => {
   const body = 'p/t\n\nNot-before: 2026-08-17T04:00:00Z\n\n### Last verdict\n\n'
     + '- 2026-08-16T05:00:00Z — the precondition declined: no signals in window\n'
     + '- Asked again at 2026-08-17T04:00:00Z.\n';
-  const d = describeItem(item({ labels: [BLOCKED], body }), NOW);
+  const d = describeItem(item({ labels: [STATUS_BLOCKED], body }), NOW);
   assert.equal(d.lastVerdict.reason, 'no signals in window');
   assert.equal(describeItem(item(), NOW).lastVerdict, null);
 });
@@ -301,7 +301,7 @@ test('describeItem surfaces the roll\'s last verdict', () => {
 // states here rather than being folded into a neighbour that looks healthy.
 test('an open item with no state label reads as unlabelled, not blocked', () => {
   assert.equal(describeItem(item({ labels: [] }), NOW).state, 'unlabelled');
-  assert.equal(describeItem(item({ labels: [READY, EXECUTING] }), NOW).state, 'torn');
+  assert.equal(describeItem(item({ labels: [STATUS_READY, STATUS_RUNNING_EXECUTOR] }), NOW).state, 'torn');
 });
 
 // --- warnings mirror the engine's own recovery thresholds ----------------------
@@ -309,19 +309,19 @@ test('an open item with no state label reads as unlabelled, not blocked', () => 
 test('executing past the leash warns, and just under it does not', () => {
   const overdue = new Date(NOW - EXECUTING_LEASH_MS - 60e3).toISOString();
   const fresh = new Date(NOW - EXECUTING_LEASH_MS + 60e3).toISOString();
-  assert.equal(warningsFor(item({ labels: [EXECUTING], updated_at: overdue }), NOW).length, 1);
-  assert.equal(warningsFor(item({ labels: [EXECUTING], updated_at: fresh }), NOW).length, 0);
+  assert.equal(warningsFor(item({ labels: [STATUS_RUNNING_EXECUTOR], updated_at: overdue }), NOW).length, 1);
+  assert.equal(warningsFor(item({ labels: [STATUS_RUNNING_EXECUTOR], updated_at: fresh }), NOW).length, 0);
 });
 
 test('an agent claim past its own leash warns', () => {
   const overdue = new Date(NOW - AGENT_LEASH_MS - 60e3).toISOString();
-  assert.match(warningsFor(item({ labels: [AGENT], updated_at: overdue }), NOW)[0].text, /agent claim/);
+  assert.match(warningsFor(item({ labels: [STATUS_RUNNING_AGENT], updated_at: overdue }), NOW)[0].text, /agent claim/);
 });
 
 test('stale ready counts in the task\'s own periods', () => {
   const day = 86400e3;
   const updated = new Date(NOW - 3 * day).toISOString();
-  const readyItem = item({ labels: [READY], updated_at: updated });
+  const readyItem = item({ labels: [STATUS_READY], updated_at: updated });
   // Weekly: 3 days is well inside two of its periods — no warning.
   assert.equal(warningsFor(readyItem, NOW, { periodFor: () => 7 * day }).length, 0);
   // Hourly: 3 days is far past two — warned.
@@ -333,7 +333,7 @@ test('stale ready counts in the task\'s own periods', () => {
 // a week — and flagging it taught the reader to ignore the queue's warnings.
 test('an item waiting out a future Not-before is healthy, however long it has sat', () => {
   const rolled = item({
-    labels: [BLOCKED],
+    labels: [STATUS_BLOCKED],
     updated_at: new Date(NOW - 20 * 86400e3).toISOString(),
     body: 'p/t\n\nNot-before: 2026-08-23T04:00:00Z\n',
   });
@@ -344,7 +344,7 @@ test('an item waiting out a future Not-before is healthy, however long it has sa
 // long past it means the scheduler run is not running — the fault the old "blocked too long"
 // warning could never distinguish from a quiet week.
 test('an item due past the scheduler run slack is flagged as the scheduler run\'s fault', () => {
-  const at = (msAgo) => item({ labels: [BLOCKED], body: `p/t\n\nNot-before: ${new Date(NOW - msAgo).toISOString()}\n` });
+  const at = (msAgo) => item({ labels: [STATUS_BLOCKED], body: `p/t\n\nNot-before: ${new Date(NOW - msAgo).toISOString()}\n` });
   const [w] = warningsFor(at(DUE_SLACK_MS + 60e3), NOW);
   assert.equal(w.level, 'serious');
   assert.match(w.text, /due but not readied/);
@@ -355,16 +355,16 @@ test('unresolved dependencies warn past the janitor threshold; unknown ones are 
   const stuck = new Date(NOW - STUCK_BLOCKED_MS - 60e3).toISOString();
   const body = 'p/t\n\nBlocked-by: #12\n';
   const depsOpen = { isOpen: () => true };
-  const [w] = warningsFor(item({ labels: [BLOCKED], body, updated_at: stuck }), NOW, depsOpen);
+  const [w] = warningsFor(item({ labels: [STATUS_BLOCKED], body, updated_at: stuck }), NOW, depsOpen);
   assert.match(w.text, /janitor/);
-  assert.equal(warningsFor(item({ labels: [BLOCKED], body }), NOW, depsOpen).length, 0, 'under the threshold is a normal wait');
-  assert.equal(warningsFor(item({ labels: [BLOCKED], body, updated_at: stuck }), NOW).length, 0,
+  assert.equal(warningsFor(item({ labels: [STATUS_BLOCKED], body }), NOW, depsOpen).length, 0, 'under the threshold is a normal wait');
+  assert.equal(warningsFor(item({ labels: [STATUS_BLOCKED], body, updated_at: stuck }), NOW).length, 0,
     'a blocker outside the fetched window is unknown — absence is a state, not an alarm');
 });
 
 test('a park\'s severity follows its triage lane', () => {
   assert.equal(warningsFor(item({ labels: [NEEDS_HUMAN] }), NOW)[0].level, 'critical');
-  const [w] = warningsFor(item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] }), NOW);
+  const [w] = warningsFor(item({ labels: [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_APPROVAL] }), NOW);
   assert.equal(w.level, 'warning');
   assert.match(w.text, /PR to approve/);
 });
@@ -385,7 +385,7 @@ test('every declared task gets a row, including one that has never run', () => {
 
 test('a row picks up its open item and its closed history', () => {
   const items = [
-    item({ number: 900, labels: [READY] }),
+    item({ number: 900, labels: [STATUS_READY] }),
     item({ number: 880, state: 'closed', labels: [OUTCOME_DONE], created_at: '2026-08-09T04:00:00Z', closed_at: '2026-08-09T06:00:00Z' }),
     item({ number: 860, state: 'closed', labels: [OUTCOME_DELIVERED], created_at: '2026-08-02T04:00:00Z', closed_at: '2026-08-02T06:00:00Z' }),
     item({ number: 700, title: '[claudinite-work] claudinite-lifecycle/update', state: 'closed', labels: [OUTCOME_DONE] }),
@@ -478,7 +478,7 @@ test('the next anchor is in the future and lands on the configured hour', () => 
 test('outcomeTally counts by the canonical words, and a closed item with no outcome', () => {
   const items = [
     item({ number: 1, state: 'closed', labels: [OUTCOME_DONE] }),
-    item({ number: 2, state: 'closed', labels: [TASK_DONE] }),
+    item({ number: 2, state: 'closed', labels: [STATUS_DONE] }),
     item({ number: 3, state: 'closed', labels: [] }),
   ];
   const tally = outcomeTally(buildRoster({ tasks, items, now: NOW, schedule: SCHEDULE }));
@@ -493,7 +493,7 @@ test('outcomeTally counts by the canonical words, and a closed item with no outc
 // scheduling fact an item carries and it wins over the computed anchor
 // (S28: a cadence change takes effect at the wake already stamped).
 test('a rolled item\'s stamped wake outranks the computed anchor', () => {
-  const rolled = item({ labels: [BLOCKED], body: 'p/t\n\nNot-before: 2026-08-20T09:30:00Z\n' });
+  const rolled = item({ labels: [STATUS_BLOCKED], body: 'p/t\n\nNot-before: 2026-08-20T09:30:00Z\n' });
   const [ci] = buildRoster({ tasks, items: [rolled], now: NOW, schedule: SCHEDULE });
   assert.equal(ci.nextAsk.kind, 'wake');
   assert.equal(ci.nextAsk.at.toISOString(), '2026-08-20T09:30:00.000Z');
@@ -516,15 +516,15 @@ test('a failure park holds the schedule only where the declaration says so', () 
   assert.equal(around.nextAsk.at.getTime(), around.nextAnchor.getTime());
 
   const approval = buildRoster({
-    tasks: holding, items: [item({ labels: [NEEDS_HUMAN, NEEDS_HUMAN_APPROVAL] })], now: NOW, schedule: SCHEDULE,
+    tasks: holding, items: [item({ labels: [NEEDS_HUMAN, STATUS_NEEDS_HUMAN_APPROVAL] })], now: NOW, schedule: SCHEDULE,
   })[0];
   assert.equal(approval.nextAsk.kind, 'anchor');
   assert.equal(approval.nextAsk.at.getTime(), approval.nextAnchor.getTime());
 });
 
 test('ready and running items are their own answer', () => {
-  assert.equal(buildRoster({ tasks, items: [item({ labels: [READY] })], now: NOW, schedule: SCHEDULE })[0].nextAsk.kind, 'ready');
-  assert.equal(buildRoster({ tasks, items: [item({ labels: [AGENT] })], now: NOW, schedule: SCHEDULE })[0].nextAsk.kind, 'running');
+  assert.equal(buildRoster({ tasks, items: [item({ labels: [STATUS_READY] })], now: NOW, schedule: SCHEDULE })[0].nextAsk.kind, 'ready');
+  assert.equal(buildRoster({ tasks, items: [item({ labels: [STATUS_RUNNING_AGENT] })], now: NOW, schedule: SCHEDULE })[0].nextAsk.kind, 'running');
 });
 
 test('with no open item the calendar answers, and an unscheduled task has only its note', () => {

@@ -13,27 +13,26 @@
 // so the dashboard sits beside the mechanism it renders rather than reaching across
 // the tree at it.
 
-import { parseTaskDeclaration, applyTaskDefaults } from '../../../claudinite-tasks/public/task-declaration.mjs';
+import { parseTaskDeclaration, applyTaskDefaults } from './declaration-text.mjs';
 import {
   mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, holdsOnFailure, holdsOnAnyPark, statesConditions,
   DUE_TERM, ELAPSED_TERM,
-} from '../../../claudinite-tasks/public/anchors.mjs';
+} from './task-calendar.mjs';
 import {
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STALE_READY_PERIODS, STUCK_BLOCKED_MS,
-} from '../../../claudinite-tasks/public/work-items.mjs';
+} from '../../../claudinite-tasks/public/task-constants.mjs';
 import {
-  WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT,
-  outcomeOf as decodeOutcome,
-  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
-  statusesOn, isParked, parkKindOf, triageLabelFor,
-  NEEDS_HUMAN_ACTION, NEEDS_HUMAN_DECISION, NEEDS_HUMAN_APPROVAL,
-  NEEDS_HUMAN_FAILURE, isBlockingPark, parseLastVerdict,
-  CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
-  parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, hasLabel, labelNames,
-} from '../../../claudinite-tasks/public/work-items.mjs';
+  WORK_PREFIX, STATUS_BLOCKED, STATUS_READY, URGENT, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, 
+  STATUS_NEEDS_HUMAN_ACTION, STATUS_NEEDS_HUMAN_DECISION,
+  STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_FAILURE, CLAIM_MARKER, HANDOFF_MARKER, EPISODE_MARKER,
+} from '../../../claudinite-tasks/public/task-constants.mjs';
+import {
+  outcomeOf as decodeOutcome, statusesOn, isParked, parkKindOf, triageLabelFor, isBlockingPark,
+  parseLastVerdict, parseWorkItemTitle, parseWorkItemBody, taskIdFromPath, hasLabel, labelNames,
+} from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 
 export {
-  WORK_PREFIX, BLOCKED, READY, URGENT, EXECUTING, AGENT,
+  WORK_PREFIX, STATUS_BLOCKED, STATUS_READY, URGENT, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT,
   EXECUTING_LEASH_MS, AGENT_LEASH_MS, STUCK_BLOCKED_MS, STALE_READY_PERIODS,
   parseWorkItemTitle, nextAnchor, mostRecentAnchor, periodMs,
 };
@@ -232,15 +231,15 @@ export function describeCadence(preconditions, trigger) {
 // An item is a filed `[claudinite-work]` issue OR an adopted marked issue — the
 // one-issue request model's other shape, which keeps the person's own title
 // One definition, shared with the queue's own reader.
-export { isQueueItem as isWorkItem } from '../../../claudinite-tasks/public/work-items.mjs';
+export { isQueueItem as isWorkItem } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 
 // THE PAGE'S FIVE STATE KEYS. Four are the engine's own status labels; the fifth is
 // this page's own word, because a park is four labels and the page groups them into
 // one column, routing by kind separately (`triageOf`). It is a display key and never
 // a label: nothing writes `parked` to an issue.
 const STATE_KEY = new Map([
-  [STATUS_BLOCKED, BLOCKED], [STATUS_READY, READY],
-  [STATUS_RUNNING_EXECUTOR, EXECUTING], [STATUS_RUNNING_AGENT, AGENT],
+  [STATUS_BLOCKED, STATUS_BLOCKED], [STATUS_READY, STATUS_READY],
+  [STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_EXECUTOR], [STATUS_RUNNING_AGENT, STATUS_RUNNING_AGENT],
 ]);
 
 // The one state an open item is in, decoded from whatever spelling filed it, or
@@ -264,10 +263,10 @@ export function stateOf(item) {
 export const triageOf = (item) => (isParked(item) ? triageLabelFor(parkKindOf(item)) : null);
 
 const TRIAGE_TEXT = {
-  [NEEDS_HUMAN_APPROVAL]: 'a PR to approve',
-  [NEEDS_HUMAN_ACTION]: 'something to change outside the code',
-  [NEEDS_HUMAN_DECISION]: 'a decision to make',
-  [NEEDS_HUMAN_FAILURE]: 'a break to diagnose',
+  [STATUS_NEEDS_HUMAN_APPROVAL]: 'a PR to approve',
+  [STATUS_NEEDS_HUMAN_ACTION]: 'something to change outside the code',
+  [STATUS_NEEDS_HUMAN_DECISION]: 'a decision to make',
+  [STATUS_NEEDS_HUMAN_FAILURE]: 'a break to diagnose',
 };
 
 // The outcome as its canonical word ('done' | 'delivered' | 'obsolete' | null) —
@@ -288,17 +287,17 @@ export function warningsFor(item, now, { periodFor = () => null, isOpen = () => 
   const out = [];
   const state = stateOf(item);
   const idle = idleMs(item, now);
-  if (state === EXECUTING && idle >= EXECUTING_LEASH_MS) {
+  if (state === STATUS_RUNNING_EXECUTOR && idle >= EXECUTING_LEASH_MS) {
     out.push({ level: 'serious', text: 'executing past the leash — the next scheduler run reclaims it' });
   }
-  if (state === AGENT && idle >= AGENT_LEASH_MS) {
+  if (state === STATUS_RUNNING_AGENT && idle >= AGENT_LEASH_MS) {
     out.push({ level: 'serious', text: 'agent claim past the leash — the janitor reclaims it' });
   }
-  if (state === READY) {
+  if (state === STATUS_READY) {
     const per = periodFor(`${parseWorkItemTitle(item.title)?.pack}/${parseWorkItemTitle(item.title)?.task}`) ?? 86400e3;
     if (idle >= STALE_READY_PERIODS * per) out.push({ level: 'serious', text: 'ready but unpicked for ~2 periods' });
   }
-  if (state === BLOCKED) {
+  if (state === STATUS_BLOCKED) {
     // The standing-item model: blocked is the queue's healthy quiet state, not a
     // fault. A rolled item waiting out its Not-before never warns; what does warn is
     // the two things the engine would actually act on — dependencies unresolved past
@@ -469,15 +468,15 @@ export function buildRoster({ tasks = [], items = [], now, schedule, isOpen }) {
 //     the lane open, so the next anchor stands beside it.
 function nextAskOf(current, anchor, anchorNote, holdsOnFailure, holdsOnAnyPark) {
   if (!current) return anchor ? { kind: 'anchor', at: anchor } : { kind: 'note', note: anchorNote };
-  if (current.state === READY) return { kind: 'ready', urgent: current.urgent };
-  if (current.state === EXECUTING || current.state === AGENT) {
-    return { kind: 'running', phase: current.state === AGENT ? 'agent' : 'executor' };
+  if (current.state === STATUS_READY) return { kind: 'ready', urgent: current.urgent };
+  if (current.state === STATUS_RUNNING_EXECUTOR || current.state === STATUS_RUNNING_AGENT) {
+    return { kind: 'running', phase: current.state === STATUS_RUNNING_AGENT ? 'agent' : 'executor' };
   }
   if (current.state === PARKED) {
     if (holdsOnAnyPark === true || (current.blockingPark && holdsOnFailure === true)) return { kind: 'held' };
     return anchor ? { kind: 'anchor', at: anchor } : { kind: 'note', note: anchorNote };
   }
-  if (current.state === BLOCKED) {
+  if (current.state === STATUS_BLOCKED) {
     if (current.notBefore) return { kind: 'wake', at: new Date(current.notBefore) };
     return current.blockedBy.length ? { kind: 'deps', on: current.blockedBy } : { kind: 'ready-soon' };
   }

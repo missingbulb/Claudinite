@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import declJson from '../../../tasks/fleet-baseline/task.json' with { type: 'json' };
-import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/public/task-contract.mjs';
+import { normalizeTaskDeclaration } from '../../../../claudinite-tasks/public/task-declaration.mjs';
 // The loader's door: the JSON says what is particular to the task, the defaults are the contract's.
 const decl = normalizeTaskDeclaration(declJson);
 

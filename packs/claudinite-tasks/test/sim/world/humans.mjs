@@ -13,11 +13,11 @@
 // the run a label edit would have triggered, and the GitHub fake's dropped-event
 // fault is what makes it answer no.
 //
-// The labels are IMPORTED from `src/items/work-item.mjs`. A person applies the
+// The labels are IMPORTED from `public/task-constants.mjs`. A person applies the
 // engine's own vocabulary — that is the point of a mark — so a fake spelling its
 // own copy would keep passing after the vocabulary moved.
 
-import { ORIGIN_AD_HOC, READY, STATUS_LABELS } from '../../../src/items/work-item.mjs';
+import { ORIGIN_AD_HOC, STATUS_READY, STATUS_LABELS } from '../../../public/task-constants.mjs';
 
 export function makeHumans({ clock, github, repo = 'o/r', login = 'owner' } = {}) {
   // Run now, or book it for an instant. `at` is the only option every action
@@ -54,7 +54,7 @@ export function makeHumans({ clock, github, repo = 'o/r', login = 'owner' } = {}
       for (const l of issue.labels.filter((x) => STATUS_LABELS.includes(x))) {
         await github.port.removeLabel(null, repo, number, l);
       }
-      return github.port.addLabel(null, repo, number, READY);
+      return github.port.addLabel(null, repo, number, STATUS_READY);
     }),
 
     comment: (number, body, { at } = {}) => doIt(at, () => github.port.comment(null, repo, number, body)),

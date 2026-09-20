@@ -25,14 +25,14 @@
 //   repo or a rate-limit stumble cannot blank the page.
 
 import { stripComments } from '../../../../engine/checks/helpers/code-scanning.mjs';
-import { periodMs } from '../../../claudinite-tasks/public/anchors.mjs';
+import { periodMs } from './task-calendar.mjs';
 import {
-  BLOCKED, READY, EXECUTING, AGENT, URGENT,
-  NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION, outcomeOf, isParked,
-} from '../../../claudinite-tasks/public/work-items.mjs';
+  STATUS_BLOCKED, STATUS_READY, STATUS_RUNNING_EXECUTOR, STATUS_RUNNING_AGENT, URGENT, STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_ACTION,
+} from '../../../claudinite-tasks/public/task-constants.mjs';
+import { outcomeOf, isParked } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 import { installedVersions } from '../../../../engine/installed-versions.mjs';
 import { VERSION_SOURCE, versionFromLiteral, isVersion, versionAbove } from '../../../../engine/version.mjs';
-import { isDormant } from '../../../claudinite-tasks/public/dormancy.mjs';
+import { isDormant } from '../read/dormancy.mjs';
 import { describeItem, isWorkItem, parseWorkItemTitle, taskDeclarationPaths, PARKED } from './model.mjs';
 import { commitDays, commitClasses, DAY_MS } from './activity.mjs';
 import { itemCandidate, pickCandidate } from './next-work.mjs';
@@ -229,7 +229,7 @@ export function summariseMember(read, { now, canon = null } = {}) {
   const periodFor = () => null;   // the fleet row needs no per-task cadence
   const described = open.map((i) => describeItem(i, now, { periodFor }));
 
-  const byState = { [BLOCKED]: 0, [READY]: 0, [EXECUTING]: 0, [AGENT]: 0, [PARKED]: 0, other: 0 };
+  const byState = { [STATUS_BLOCKED]: 0, [STATUS_READY]: 0, [STATUS_RUNNING_EXECUTOR]: 0, [STATUS_RUNNING_AGENT]: 0, [PARKED]: 0, other: 0 };
   for (const d of described) {
     if (byState[d.state] === undefined) byState.other += 1;
     else byState[d.state] += 1;
@@ -243,13 +243,13 @@ export function summariseMember(read, { now, canon = null } = {}) {
   // SUCCEEDED and waits on a merge. Three different alarms, because a page that
   // rings identically for all four teaches the reader to ignore the ring.
   const holding = parked.filter((d) => d.blockingPark);
-  const approvals = parked.filter((d) => !d.blockingPark && d.triage === NEEDS_HUMAN_APPROVAL);
+  const approvals = parked.filter((d) => !d.blockingPark && d.triage === STATUS_NEEDS_HUMAN_APPROVAL);
   // The person's inbox, split by remedy because the two cost differently (`PARK_MINUTES`):
   // an action is a thing to change outside the code, a decision is a call to make. A park
   // that is neither, and is not blocking, cannot occur — `parkOf` sends every kind it
   // cannot decode to `failure` — so `decisions` is the residue rather than a third lane.
-  const actions = parked.filter((d) => !d.blockingPark && d.triage === NEEDS_HUMAN_ACTION);
-  const decisions = parked.filter((d) => !d.blockingPark && ![NEEDS_HUMAN_APPROVAL, NEEDS_HUMAN_ACTION].includes(d.triage));
+  const actions = parked.filter((d) => !d.blockingPark && d.triage === STATUS_NEEDS_HUMAN_ACTION);
+  const decisions = parked.filter((d) => !d.blockingPark && ![STATUS_NEEDS_HUMAN_APPROVAL, STATUS_NEEDS_HUMAN_ACTION].includes(d.triage));
   const inbox = [...actions, ...decisions];
   const warned = described.filter((d) => d.state !== PARKED && d.warnings.length);
 
@@ -591,8 +591,8 @@ export function parkMinutes(park) {
   if (!park) return null;
   // An undecodable park is priced as the thing it is treated as everywhere else.
   if (park.blocking || !park.triage) return PARK_MINUTES.broken;
-  if (park.triage === NEEDS_HUMAN_APPROVAL) return approvalMinutes();
-  if (park.triage === NEEDS_HUMAN_ACTION) return PARK_MINUTES.actions;
+  if (park.triage === STATUS_NEEDS_HUMAN_APPROVAL) return approvalMinutes();
+  if (park.triage === STATUS_NEEDS_HUMAN_ACTION) return PARK_MINUTES.actions;
   return PARK_MINUTES.decisions;
 }
 
@@ -600,7 +600,7 @@ export function parkMinutes(park) {
 // page never reads a PR's size, so an approval is charged the rate's floor and its
 // figure can only be low. The same sentence `estimateNote` appends to a total.
 export const parkMinutesNote = (park) =>
-  (parkMinutes(park) != null && !park.blocking && park.triage === NEEDS_HUMAN_APPROVAL
+  (parkMinutes(park) != null && !park.blocking && park.triage === STATUS_NEEDS_HUMAN_APPROVAL
     ? 'PR size unread, so a lower bound'
     : null);
 

@@ -11,7 +11,7 @@ import { settingsPath } from '../../../engine/settings-file.mjs';
 import { installedVersions, hasInstalledMount, withInstalledVersions } from '../../../engine/installed-versions.mjs';
 import { loadMigrations, applyMigration } from '../../../engine/migrations/registry.mjs';
 import { convergeWiring } from '../../../engine/converge-wiring.mjs';
-import { NEEDS_HUMAN_LABEL } from '../../claudinite-tasks/public/work-items.mjs';
+import { NEEDS_HUMAN as QUEUE_NEEDS_HUMAN } from '../../claudinite-tasks/public/task-constants.mjs';
 
 // THE ENGINE UPDATE FLOW (docs/versioned-updates/DESIGN.md §2): move one repo from
 // the engine version it has installed to the one this canon tree ships. Fully
@@ -76,7 +76,7 @@ export function engineRecordsInGap(installed, { today } = {}) {
 // because the only thing waiting on the other side of a stop is a person. It is
 // the scheduler's existing label, not a second spelling of the same idea: a repo
 // with two "a human is needed" labels has neither.
-export const NEEDS_HUMAN = NEEDS_HUMAN_LABEL;
+export const NEEDS_HUMAN = QUEUE_NEEDS_HUMAN;
 
 // THE SELF-TEST GATE (DESIGN §2.5). The converged tree is asked "can Claudinite
 // still run here?" before anything merges. It exists because of #555, where an
