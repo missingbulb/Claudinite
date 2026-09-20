@@ -46,11 +46,12 @@ per rule, two to three times what a numeric marker costs — on the order of a t
 across a member that loads two hundred rules, out of a budget of fifteen thousand — and nothing
 cheaper carries both the reference and the id.
 
-One file normally covers one carrier. It covers several when they are one guideline — a prose rule
-and the check that enforces its checkable half, a rule and the skill it delegates to — and then
-the file is named by the check or the skill, and the rule's marker cites that name. Independence
-where it is real, one file where it is not; a carrier names exactly one live file, and a check or
-a skill is never split across files.
+One file normally covers one carrier. It covers several when they are one guideline - a prose rule
+and the check that enforces its checkable half, a rule and the skill it delegates to, two rules
+whose history is one - and then the file is named by the check or the skill, or by the slug the
+rules share, and each rule's marker cites that name. A shared file splits into more when the
+histories diverge, and only then. Independence where it is real, one file where it is not; a
+carrier names exactly one live file, and a check or a skill is never split across files.
 
 A skill is a carrier of one of two shapes, and it says which in its frontmatter, under
 `metadata`, as `body: workflow` or `body: guidelines` — declared, never inferred, because the two
@@ -58,13 +59,15 @@ look alike from outside (a workflow carries bold-trigger bullets too) and a skil
 and gotchas is classified by its author, not by a count. A **workflow** skill is one element,
 named by its directory: its steps and their gotchas change as the procedure changes, every
 decision about them is a titled entry on the skill's file, and no step or bullet carries a marker
-or has a file. A **guidelines** skill is a `RULES.md` behind a trigger: every top-level bullet is
-an element with its own marker and file, exactly as a rule is, and the skill's own file — its
-directory name — holds what is the skill's and no guideline's: why a skill rather than prose, why
-these `force-load-on-*` triggers and these paths rather than others, why the description names
-the moments it names. In both shapes the skill's file is where its **mechanism** is accounted
-for. Provenance is extracted for the independent elements, the rules and the guidelines, and
-never for the paragraphs of a procedure.
+or has a file. A **guidelines** skill is a `RULES.md` behind a trigger: its top-level bullets are
+elements, and the skill's own file - its directory name - is theirs by default, holding the
+skill's own decisions (why a skill rather than prose, why these `force-load-on-*` triggers and
+these paths rather than others, why the description names the moments it names) and the
+bullets' alike, so the skill's provenance is denoted once and not per line. A bullet whose
+history diverges from the skill's takes a marker and a file of its own, exactly as a rule has,
+and only then. In both shapes the skill's file is where its **mechanism** is accounted for.
+Provenance is extracted for the independent elements, the rules and the guidelines, and never
+for the paragraphs of a procedure.
 
 ### What is not an element, and where its decision lives
 
@@ -75,7 +78,7 @@ that element's file, or an artifact whose decision is the pack's, or evidence:
 |---|---|
 | a check's `severity`, `scope`, `relevantWhen` gate, `since` date, `failureMessage` and `fix` text | the check's file (`born`, `severity-changed`, `reworded`) |
 | a skill's `description` and every `force-load-on-*` trigger | the skill's file (`trigger-changed`) |
-| a skill's `body` declaration | the skill's file: a workflow re-declared as guidelines is a `split` there and a `born` per bullet citing it; the reverse is a `merged` there and a `retired` on each bullet's file |
+| a skill's `body` declaration | the skill's file: a workflow re-declared as guidelines changes nothing there until a bullet takes a file of its own, a `split` there and a `born` on the bullet's; the reverse is a `merged` there and a `retired` on each bullet's own file |
 | a task's preconditions, `expected_outcome`, `automerge`, `agent_model`, worker | the task's file (`policy-changed`) |
 | the manifest: `detect`/`marker`, `requires`, `ruleRoutingGuidance`, `seededByDefault`, `hidden`, `env`, adoption `questions`, `adoptionHandover`, `contributes` and `contributedRules`, `merge-rules.json`, the badge | `_pack` |
 | the pack's own existence, name, split or collapse; a rename-map entry for an absorbed pack | `_pack` of the pack that exists afterwards |
@@ -125,8 +128,9 @@ covers, because what it covers is derived: the carriers that name it, by id or b
 ```
 
 An **entry** opens `## <YYYY-MM-DD> · <kind> · <one line>` and carries bold-labelled fields, one
-per bullet, continuation lines indented. Entries are appended in date order and never edited. An
-element whose last entry is `retired` is retired; nothing else says so.
+per bullet, continuation lines indented. Entries are appended in date order; a wrong entry is
+answered by a later entry, never edited. An element whose last entry is `retired` is retired;
+nothing else says so.
 
 The **kinds** are closed: `born`, `reworded`, `strengthened`, `weakened`, `split`, `merged`,
 `moved` (a carrier change — rule to skill, pack to pack), `converted` (prose to check),
@@ -384,8 +388,9 @@ bold trigger wrap), over both roots, replacing `references-integrity`.
 World scope, blocking:
 
 1. every check, skill and task id, and the manifest, names a live file; every `SKILL.md`
-   declares its `body`; every top-level bullet of a `RULES.md` or of a guidelines skill ends
-   with a marker naming a live file, and no bullet of a workflow skill carries one; a skill
+   declares its `body`; every top-level bullet of a `RULES.md` ends with a marker naming a
+   live file, a guidelines skill's bullet ends with one only where it has a file of its own
+   and is the skill's otherwise, and no bullet of a workflow skill carries one; a skill
    with no `body`, a rule with no marker, a marker where the body refuses one, a marker naming
    no live file, and a live file no carrier names are each a finding naming the carrier or the
    file. A live file is one whose last entry is not `retired`;
@@ -400,11 +405,13 @@ Work scope, blocking:
 
 5. a carrier whose normalized text changed in this change names a file that gained an entry in
    this change — comments stripped, whitespace collapsed, the marking pass exempt by its `since`;
+   an unmarked guideline names its skill's file;
 6. a provenance file changed in this change lost no line, and its new lines follow the last
-   existing entry;
+   existing entry - at advisory: a rewrite that is the correct history (the backfill replacing
+   what the conversion wrote) is the diff's to show, not the check's to refuse;
 7. a carrier deleted in this change named a file that gained a `retired` entry as its last in the
-   same change — a removed-lines check cannot see a deleted file, so the deletion is asserted from
-   the tree's side.
+   same change, or any entry where a live carrier still names that file; a removed-lines check
+   cannot see a deleted file, so the deletion is asserted from the tree's side.
 
 The work-scope half is what makes the convention hold for a hand edit: the skill says append, and
 the Stop hook says so again when the session did not.
@@ -419,7 +426,9 @@ judged by the helper's `check`, run by the session that edits the preference.
 
 1. Every live carrier names exactly one live provenance file, and every live file is named by at
    least one live carrier.
-2. A provenance file only grows. Nothing in it is ever edited or removed.
+2. A provenance file is meant to grow: a wrong entry is answered by a later entry, never edited.
+   A line lost or altered is advised against, not refused; the one rewrite that is right is the
+   backfill replacing what the conversion wrote with the element's derived history, once.
 3. No entry describes the current rule. The carrier is the description; the entry is the
    decision, and its `Mechanism` is why the carrier is the carrier.
 4. Nothing under `provenance/` reaches a session, a member's mount, a barrier scan, or a check that
@@ -502,15 +511,17 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
   reason. A session that needs the reason to apply a rule has a rule that lacks its consequence
   clause, which is the prose's defect to fix; and a member's mount would carry every organisation's
   decision log, which is the privacy failure §4 exists to prevent.
-- **A skill declares its body, and only a guidelines skill's bullets are elements** — over one
-  element per skill always, over a file per bullet always, over a marker on whichever bullet has
-  a history of its own, and over reading the shape off the text. A workflow is procedure and
+- **A skill declares its body; a workflow's bullets are never elements, and a guidelines skill's
+  bullets are the skill's file's until one diverges** - over one element per skill always, over a
+  file per bullet always, and over reading the shape off the text. A workflow is procedure and
   changes as a whole, so thirty files for one skill is noise; a guidelines skill is a rules file
-  behind a trigger, and its bullets are as independent as any rule's. A per-bullet opt-in leaves
-  an unmarked bullet ambiguous — never decided, or decided against — and a marker inside a
-  procedure names a file for a paragraph; a structural read fails on the skill that mixes steps
-  and gotchas, which most procedures do. The declaration costs one frontmatter line the harness
-  ignores.
+  behind a trigger, but its bullets mostly share one history with the skill (the file-placement
+  skill's 28 definitions and options are one method, decided together), so its provenance is
+  denoted once and a bullet takes a marker and a file of its own only when its history has
+  diverged. An unmarked bullet is not ambiguous, because the body decides it: in a guidelines
+  skill it is the skill's, in a workflow it is a step. A structural read fails on the skill that
+  mixes steps and gotchas, which most procedures do. The declaration costs one frontmatter line
+  the harness ignores.
 - **`_declined.md` per pack** — over a tracker issue's comment feed. A comment feed is one
   scrollable history for every candidate in the corpus; a per-pack file is read by the pass that
   is about to re-nominate in that pack, which is the read that prevents the rework.
@@ -584,7 +595,8 @@ on `main`; a second reading a week after the shelf's last empty file fills.
   in the usage fold: a firing that the session then fixed is the check working; a firing rate near
   zero with carrier edits flowing means sessions append unprompted). Every `trigger-changed` and
   `policy-changed` entry carries a `Mechanism` that names the alternative it beat.
-- **Misuse.** An entry that restates the rule; an edited or removed line, which the check reports;
+- **Misuse.** An entry that restates the rule; an edited or removed line, which the check reports
+  at advisory;
   a README edit made without the forced skill (the hook's `skill-not-loaded` count for
   `changing-pack-elements`); a history sentence written into a README after its trim;
   an `Actor` that is an email; a marker on a workflow skill's step; a session id or a quote in a

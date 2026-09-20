@@ -37,6 +37,11 @@ const clean = {
 // pending-history advisories beside it.
 const filled = Object.fromEntries(Object.entries(clean).map(([k, v]) => [k, v === '' ? BORN : v]));
 const notAdvisory = (findings) => findings.filter((f) => f.severity !== 'advisory');
+// A guidelines skill whose bullets share the skill's file but for the one that has its own,
+// and a RULES.md where two rules name one file: one history, one file (the owner's call of
+// 2026-09-20), split only when the histories diverge.
+const GUIDELINES = '---\nname: rules\nmetadata:\n  body: guidelines\n---\n\n- **Guideline one** — do it. (guideline-one)\n- **Guideline two** — do it too.\n- **Guideline three** — and this.\n';
+const SHARED_RULES = '- **Doing a thing** — the settled way. (doing-thing)\n\n- **Doing it again** — the same way. (doing-thing)\n\n- **Doing another** — plainly.\n  (doing-another)\n';
 
 test('provenance-integrity: a repo with no pack under either root is inert', () => {
   const root = makeRepo({ changed: { 'src/app.js': 'x\n', 'packs/README.md': 'not a pack\n' } });
@@ -52,6 +57,11 @@ test('provenance-integrity: a marked pack is clean but for its empty files, whic
     assert.match(findings[0].what, /^8 provenance files are empty .*\(_pack\.md, declared-one\.md, doing-another\.md, …\)/);
     assert.equal(findings[0].file, `${PACK}provenance`);
   } finally { cleanup(root); }
+});
+
+test('provenance-integrity: a guidelines skill\'s unmarked bullets are the skill\'s, and two rules may name one file', () => {
+  const root = makeRepo({ changed: { ...filled, [`${PACK}skills/rules/SKILL.md`]: GUIDELINES, [`${PACK}RULES.md`]: SHARED_RULES } });
+  try { assert.deepEqual(runRule(worldRule, buildContext({ root, mode: 'all' })), []); } finally { cleanup(root); }
 });
 
 ruleTester(worldRule, {
@@ -148,11 +158,34 @@ test('provenance-change-recorded: a new rule, a changed skill body, a changed ch
   }), [], 'a comment is not a decision');
 });
 
-test('provenance-change-recorded: a provenance file only grows', () => {
+test('provenance-change-recorded: a provenance file is meant to grow, and a lost or altered line is advised against, never refused', () => {
   const edited = runWork({ [`${PACK}provenance/doing-thing.md`]: BORN.replace('failed twice', 'failed thrice') });
   assert.equal(edited.length, 1);
+  assert.equal(edited[0].severity, 'advisory', 'a rewrite that is the correct history is the diff\'s to show, not the check\'s to refuse');
   assert.match(edited[0].what, /lost or altered a line it had at the base/);
+  assert.match(edited[0].fix, /leave it where the rewrite is the correct history/);
   assert.deepEqual(runWork({ [`${PACK}provenance/doing-thing.md`]: BORN + REWORDED }), []);
+});
+
+test('provenance-change-recorded: a guidelines skill\'s unmarked bullets are the skill\'s - a change or a removal owes an entry on the skill\'s file, not a retired one', () => {
+  const base = { ...filled, [`${PACK}skills/rules/SKILL.md`]: GUIDELINES };
+  const reworded = runWork({ [`${PACK}skills/rules/SKILL.md`]: GUIDELINES.replace('do it too', 'do it as well') }, base);
+  assert.equal(reworded.length, 1, JSON.stringify(reworded, null, 2));
+  assert.match(reworded[0].what, /"Guideline two" reads differently from the base, and .*provenance\/rules\.md gained no entry/);
+  const withoutThree = GUIDELINES.replace('- **Guideline three** — and this.\n', '');
+  const removed = runWork({ [`${PACK}skills/rules/SKILL.md`]: withoutThree }, base);
+  assert.equal(removed.length, 1, JSON.stringify(removed, null, 2));
+  assert.match(removed[0].what, /guideline "Guideline three" is gone from .*mypack in this change, and .*provenance\/rules\.md gained no entry/);
+  assert.deepEqual(runWork({ [`${PACK}skills/rules/SKILL.md`]: withoutThree, [`${PACK}provenance/rules.md`]: BORN + REWORDED }, base), [], 'one entry on the skill\'s file clears it');
+});
+
+test('provenance-change-recorded: two rules sharing one file - removing one owes an entry on the file the other still names, not a retired one', () => {
+  const base = { ...filled, [`${PACK}RULES.md`]: SHARED_RULES };
+  const kept = '- **Doing a thing** — the settled way. (doing-thing)\n\n- **Doing another** — plainly.\n  (doing-another)\n';
+  const removed = runWork({ [`${PACK}RULES.md`]: kept }, base);
+  assert.equal(removed.length, 1, JSON.stringify(removed, null, 2));
+  assert.match(removed[0].what, /rule "Doing it again" is gone from .*mypack in this change, and .*provenance\/doing-thing\.md gained no entry/);
+  assert.deepEqual(runWork({ [`${PACK}RULES.md`]: kept, [`${PACK}provenance/doing-thing.md`]: BORN + REWORDED }, base), []);
 });
 
 test('provenance-change-recorded: a deleted carrier\'s file ends with retired, or the change is refused', () => {

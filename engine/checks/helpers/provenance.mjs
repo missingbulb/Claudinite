@@ -197,8 +197,9 @@ export function parseEntryText(text) {
 // their typography - and its trigger is the opening words. The marker ends the rule's
 // lead paragraph - its last line before a nested list or a blank line - or, where a
 // rule was marked after its nested list, the block's last non-blank line; `lastLine`
-// is where it is, or where a writer puts one. `numeric` is the retired numeric marker,
-// read only so the conversion can replace it. Indices are 0-based.
+// is where it is, or where a writer puts one, and `end` is the block's last non-blank
+// line. `numeric` is the retired numeric marker, read only so the conversion can
+// replace it. Indices are 0-based.
 export function ruleBlocks(text, { plainBullets = false } = {}) {
   const lines = String(text ?? '').split('\n');
   const blocks = [];
@@ -222,7 +223,7 @@ export function ruleBlocks(text, { plainBullets = false } = {}) {
     const body = lines.slice(cur.start, end + 1).map((l, i) => (cur.start + i === lastLine ? stripMarkers(l) : l)).join('\n');
     const lead = RULE_BULLET.test(lines[cur.start]) ? /\*\*([\s\S]+?)\*\*/.exec(body) : null;
     blocks.push({
-      start: cur.start, lastLine, slug: at.slug, numeric: at.numeric,
+      start: cur.start, end, lastLine, slug: at.slug, numeric: at.numeric,
       trigger: lead ? normalizeLeadIn(lead[1]) : openingWords(stripMarkers(lines[cur.start]).replace(/^- /, '')),
       text: normalizeRuleText(body),
     });
@@ -320,7 +321,7 @@ export function packCarriers(packDir, io) {
       const shape = skillShape(io.read(file));
       skill.body = shape.body;
       skill.proposed = shape.proposed;
-      skill.bullets = shape.bullets.map((b) => ({ file, skill: name, line: shape.bodyOffset + b.start + 1, lastLine: shape.bodyOffset + b.lastLine + 1, trigger: b.trigger, slug: b.slug, numeric: b.numeric, text: b.text }));
+      skill.bullets = shape.bullets.map((b) => ({ file, skill: name, line: shape.bodyOffset + b.start + 1, lastLine: shape.bodyOffset + b.lastLine + 1, endLine: shape.bodyOffset + b.end + 1, trigger: b.trigger, slug: b.slug, numeric: b.numeric, text: b.text }));
     }
     skills.push(skill);
     if (skill.body === 'guidelines') guidelines.push(...skill.bullets);
@@ -386,7 +387,7 @@ export function auditPack(packDir, io) {
   const named = new Set();
   const out = {
     packDir, carriers, files,
-    unmarked: [],          // a rule or guideline with no marker: { file, line, trigger }
+    unmarked: [],          // a RULES.md rule with no marker: { file, line, trigger }
     dangling: [],          // a marker or id naming no live file: { file, line, id, carrier, retired }
     unnamed: [],           // a live file no carrier names: { file, id }
     noBody: [],            // a skill declaring no body: { file, skill }
@@ -405,9 +406,10 @@ export function auditPack(packDir, io) {
     if (!r.slug) out.unmarked.push({ file: r.file, line: r.line, trigger: r.trigger });
     else name(r.slug, `rule "${r.trigger}"`, { file: r.file, line: r.lastLine });
   }
+  // A guidelines skill's bullet names a file of its own only where its history has
+  // diverged from the skill's; unmarked, it is the skill's, whose file the skill names.
   for (const g of carriers.guidelines) {
-    if (!g.slug) out.unmarked.push({ file: g.file, line: g.line, trigger: g.trigger });
-    else name(g.slug, `guideline "${g.trigger}"`, { file: g.file, line: g.lastLine });
+    if (g.slug) name(g.slug, `guideline "${g.trigger}"`, { file: g.file, line: g.lastLine });
   }
   for (const s of carriers.skills) {
     if (!s.present) continue;
@@ -481,9 +483,10 @@ export function withBody(source, body) {
 }
 
 // Bring one pack onto the convention: every skill declares a body, every unmarked
-// rule and guideline gets a proposed marker and its file, every unnamed carrier an
-// empty file. Idempotent - a pack already marked is left exactly as it is - and it
-// never writes an entry: history is the backfill's. Returns the report lines.
+// RULES.md rule gets a proposed marker and its file, every unnamed carrier an empty
+// file; a guidelines skill's bullets stay the skill's. Idempotent - a pack already
+// marked is left exactly as it is - and it never writes an entry: history is the
+// backfill's. Returns the report lines.
 export function markPack(packDir, io, { width = 100 } = {}) {
   const report = [];
   const provDir = `${packDir}/${PROVENANCE_DIR}`;
@@ -503,9 +506,11 @@ export function markPack(packDir, io, { width = 100 } = {}) {
   const taken = new Set(provenanceFiles(packDir, io).keys());
   const prose = [...carriers.rules, ...carriers.guidelines];
   for (const r of prose) if (r.slug) taken.add(r.slug);
-  // 2. Markers, file by file, bottom-up so line numbers hold while lines are inserted.
+  // 2. Markers on RULES.md rules, file by file, bottom-up so line numbers hold while
+  // lines are inserted. A guidelines skill's bullets are the skill's file's, and stay
+  // unmarked until one has a history of its own.
   const byFile = new Map();
-  for (const r of prose) {
+  for (const r of carriers.rules) {
     if (r.slug) continue;
     if (!byFile.has(r.file)) byFile.set(r.file, []);
     byFile.get(r.file).push(r);

@@ -29,13 +29,15 @@ any edit under a pack.
 Every change to what a carrier decides lands with an entry on the element's file, and the
 `provenance-change-recorded` check says so again at the Stop hook when it did not. Which
 file: the marker that ends a rule or guideline names it (`(url-filter-host-operators)` →
-`provenance/url-filter-host-operators.md`); a skill's is its directory name; a check's its
-id with `/` as `-`; a task's its id; the manifest's `_pack.md`. Which kind:
+`provenance/url-filter-host-operators.md`), and two carriers may name one file while their
+history is one; an unmarked guideline's is its skill's; a skill's is its directory name; a
+check's its id with `/` as `-`; a task's its id; the manifest's `_pack.md`. Which kind:
 
 | The change | Kind |
 |---|---|
 | a rule, guideline, skill body or step reads differently | `reworded` - or `strengthened` / `weakened` when the modality moved |
 | a rule split in two, or two folded into one | `split` / `merged` (an entry on every file involved) |
+| a guideline given a file of its own, its history having diverged from its skill's | `split` on the skill's file, `born` on the bullet's, with `Mechanism` |
 | a rule moved to another carrier or pack | `moved`, with `Mechanism` |
 | prose turned into a check | `converted`, with `Mechanism` and the deletion-test verdict |
 | a skill's description or `force-load-on-*` trigger | `trigger-changed`, with `Mechanism` |
@@ -71,6 +73,10 @@ email), `Model`, `Mechanism` (the carrier and its trigger, and why - required on
 `Retire when`, `Landed`. An entry never restates the rule: the carrier is the description,
 the entry is the decision. A candidate turned down goes on `_declined.md` the same way, kind
 `declined`, with `Source`, `Reason` and `Actor`.
+
+A file is meant to grow: a wrong entry is answered by a later one. The check advises against a
+line lost or altered and refuses nothing; the one rewrite that is right is the backfill replacing
+what the conversion wrote with the element's derived history, once.
 
 ## 2. The README carries use, never history
 

@@ -42,10 +42,10 @@ forever, whether or not it ever applies — so prose is rationed, and the ration
   a moment no file edit predicts stays prose, however activity-shaped it reads. (moving-rule-out)
 - **Starting a `SKILL.md`, or editing one that declares no body** — say under its frontmatter
   `metadata` what the body is: `body: workflow` for a procedure, whose steps and their gotchas
-  change as one, or `body: guidelines` for rules behind a trigger, each as independent as a
-  `RULES.md` bullet. A skill that mixes the two declares the shape of its greater part. The
-  harness ignores the key; the corpus's own maintenance reads it, and never infers it.
-  (starting-skill-md)
+  change as one, or `body: guidelines` for rules behind a trigger, kept on the skill's one file
+  until one has a history of its own. A skill that mixes the two declares the shape of its
+  greater part. The harness ignores the key; the corpus's own maintenance reads it, and never
+  infers it. (starting-skill-md)
 
 ## Shape a rule so it fires
 
@@ -123,13 +123,14 @@ canon pack receives the rules, not the reasoning behind them. The grammar, the k
 fields and the tool are [changing-pack-elements](../changing-pack-elements/SKILL.md)'s; what
 this skill adds is how a rule is written so the log can hold it.
 
-- **Ending a rule** - every rule in a `RULES.md`, and every guideline of a skill whose body is
-  `guidelines`, ends with the bare marker naming its file - `… never a filesystem walk.
-  (url-filter-host-operators)` - and nothing else: don't name the folder, don't link it, don't
-  ask the reader to follow anything. The marker is the element's id: two to four hyphenated
-  words for the guideline rather than its wording, chosen once and never renamed, so a
-  rewording never touches it and a member's override can name it. A workflow skill's steps
-  carry none; the skill is the element. (ending-rule)
+- **Ending a rule** - every rule in a `RULES.md` ends with the bare marker naming its file -
+  `… never a filesystem walk. (url-filter-host-operators)` - and nothing else: don't name the
+  folder, don't link it, don't ask the reader to follow anything. The marker is the element's
+  id: two to four hyphenated words for the guideline rather than its wording, chosen once and
+  never renamed, so a rewording never touches it and a member's override can name it. Two
+  rules whose history is one may share a marker. A guidelines skill's bullets are the skill's
+  file's and carry none, until one's history diverges and it takes a marker and a file of its
+  own; a workflow skill's steps carry none, the skill being the element. (ending-rule)
 - **Adding a rule** - write the brief rule and end it with its marker; create its file with a
   `born` entry through `provenance.mjs append` (`mark` creates the file where none exists),
   and put the reason there, never in the rule. A consequence the reader needs under pressure

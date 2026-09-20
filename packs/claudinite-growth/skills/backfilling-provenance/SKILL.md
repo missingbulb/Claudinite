@@ -15,8 +15,9 @@ evidence carries and which it does not.
 ## The run, per pack
 
 1. **Take one pack** and list what is owed: `node packs/claudinite-growth/provenance.mjs
-   check <pack>` prints what each file is named by and which are empty (in a member the
-   tool is `.claudinite/shared/packs/claudinite-growth/provenance.mjs`).
+   check <pack>` prints what each file is named by and which are empty; a file holding only
+   the conversion's entry is owed too (in a member the tool is
+   `.claudinite/shared/packs/claudinite-growth/provenance.mjs`).
 2. **Gather the evidence per element, source-first**: `provenance.mjs history <pack>
    <element>` prints the carrier's commits through every rename, a pickaxe on the rule's
    lead-in, the pull requests those commits name, the `VERSIONS.md` rows naming them and the
@@ -27,7 +28,10 @@ evidence carries and which it does not.
    says what it says, who decided, the carrier and its trigger and why (`Mechanism`), what
    lost (`Rejected`), what would retire it, and `Landed` as the pull request and pack
    version. Then one entry per decision the history shows: a rewording, a split, a move
-   into a skill, a conversion to a check, a severity change, a policy change.
+   into a skill, a conversion to a check, a severity change, a policy change. A file the
+   conversion filled from `references.md` is written the same way, its converted entry read as
+   evidence: the `Reason` and `Retire when` go on the entries they evidence, and the
+   placeholder `born` dated by the references write goes with the rest of the file.
 4. **Write only what the evidence carries.** A field with nothing behind it is omitted,
    never filled with a placeholder or a plausible guess: a fabricated rationale lets a
    future review reaffirm a rule on false grounds, which is worse than no rationale. An

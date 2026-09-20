@@ -17,9 +17,18 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 // worker, the manifest. A carrier with no file at all is the world half's finding, not
 // this one's.
 //
-// A provenance file only grows: a changed file keeps every base line in place and adds
-// after the last entry. A carrier this change deleted named a file whose last entry
-// must now be `retired` - asserted from the tree's side, since a removed-lines check
+// A provenance file is meant to grow: a changed file keeps every base line in place and
+// adds after the last entry. ONE ADVISORY BRANCH inside a blocking rule says so where a
+// line was lost or altered, and refuses nothing (the owner's call, 2026-09-20): a wrong
+// entry is answered by a later entry, and the one rewrite that is right, the backfill
+// replacing what the conversion wrote with the element's derived history, is the diff's
+// to show.
+//
+// SEVERAL CARRIERS MAY NAME ONE FILE while their history is one: a guidelines skill's
+// unmarked bullets are the skill's file's, and two rules may cite one slug. A change to
+// such a carrier owes its entry on the shared file; a carrier deleted while another
+// still names the file owes any entry there, and only a file no live carrier names any
+// more must end `retired` - asserted from the tree's side, since a removed-lines check
 // cannot see a deleted file.
 const rule = {
   id: 'provenance-change-recorded',
@@ -27,12 +36,12 @@ const rule = {
   scope: 'work',
   since: '2026-09-20',
   doc: 'packs/claudinite-growth/skills/changing-pack-elements/SKILL.md',
-  description: 'A change to a pack carrier lands with an entry on its provenance file, and a provenance file only grows',
+  description: 'A change to a pack carrier lands with an entry on its provenance file, and a provenance file is meant to grow',
   why: 'the decision behind a change exists only in the head of whoever made it, at the moment they made it; a log appended later is a reconstruction',
 
   run(work) {
     if (typeof provenance.packCarriers !== 'function') return []; // an engine that predates the helper
-    const { packCarriers, provenanceFiles, packDirsIn, fileOfId, elementIdOf, PROVENANCE_DIR, PACK_ELEMENT } = provenance;
+    const { packCarriers, provenanceFiles, packDirsIn, fileOfId, elementIdOf, skillShape, PROVENANCE_DIR, PACK_ELEMENT } = provenance;
     if (work.onDefaultBranch()) return [];
     const changed = work.changedFiles.map((f) => f.replace(/\\/g, '/'));
     const deleted = (work.deleted ?? []).map((f) => f.replace(/\\/g, '/'));
@@ -71,20 +80,26 @@ const rule = {
         }));
       };
 
-      // Rules and guidelines: by trigger, text compared marker-free.
-      const wasByTrigger = new Map([...before.rules, ...before.guidelines].map((r) => [r.trigger, r]));
+      // Rules and guidelines: by trigger, text compared marker-free. An unmarked guideline
+      // owes on its skill's file. The base's bullets are read whatever their skill's body
+      // said then, so a body declared in this change makes no bullet "new".
+      const wasByTrigger = new Map([...before.rules, ...before.skills.flatMap((s) => s.bullets)].map((r) => [r.trigger, r]));
       for (const r of [...now.rules, ...now.guidelines]) {
-        if (!r.slug || !touched(r.file)) continue;
+        const id = r.slug ?? r.skill;
+        if (!id || !touched(r.file)) continue;
         const was = wasByTrigger.get(r.trigger);
-        if (!was) owes(r.slug, r.file, r.line, `"${r.trigger}" is new`);
-        else if (was.text !== r.text) owes(r.slug, r.file, r.line, `"${r.trigger}" reads differently from the base`);
+        if (!was) owes(id, r.file, r.line, `"${r.trigger}" is new`);
+        else if (was.text !== r.text) owes(id, r.file, r.line, `"${r.trigger}" reads differently from the base`);
       }
-      // Skills: the file changed beyond whitespace.
+      // Skills: the file changed beyond whitespace. A guidelines skill's bullets are judged
+      // one by one above, so the skill itself owes only for what moved outside them.
       for (const s of now.skills) {
         if (!s.present || !touched(s.file)) continue;
         const b = base.read(s.file);
-        if (b !== null && normalize(b) === normalize(head.read(s.file))) continue;
-        if (b !== null && skillOnlyMarkedOrBodied(b, head.read(s.file))) continue;
+        const h = head.read(s.file);
+        if (b !== null && normalize(b) === normalize(h)) continue;
+        if (b !== null && skillOnlyMarkedOrBodied(b, h)) continue;
+        if (b !== null && s.body === 'guidelines' && sansBullets(b, skillShape) === sansBullets(h, skillShape)) continue;
         owes(s.name, s.file, null, `skill ${s.name} changed`);
       }
       // Checks, tasks, the manifest: non-comment content moved.
@@ -109,31 +124,41 @@ const rule = {
         if (!(b !== null && commentOnly(`${dir}/pack.mjs`, b, head.read(`${dir}/pack.mjs`)))) owes(PACK_ELEMENT, `${dir}/pack.mjs`, null, 'the manifest changed');
       }
 
-      // A provenance file only grows.
+      // A provenance file is meant to grow - advised, never refused.
       for (const [id, h] of filesNow) {
         if (!touched(h.file)) continue;
         const b = filesBefore.get(id);
         if (!b || b.text.trim() === '') continue;
         if (!h.text.startsWith(b.text.replace(/\s+$/, ''))) {
           out.push(finding(rule, {
-            file: h.file,
-            what: `${fileOfId(id)} lost or altered a line it had at the base - a provenance file only grows`,
-            fix: 'restore the file to its base text and append what this change decides after the last entry; a wrong entry is corrected by a later entry, never edited',
+            file: h.file, severity: 'advisory',
+            what: `${fileOfId(id)} lost or altered a line it had at the base - a provenance file is meant to grow`,
+            fix: 'a wrong entry is answered by a later entry: restore the base text and append what this change decides after the last entry, or leave it where the rewrite is the correct history (the backfill replacing what the conversion wrote) and let the diff be the record',
           }));
         }
       }
 
-      // A deleted carrier's file ends with retired.
+      // A deleted carrier's file ends with retired - unless a live carrier still names it,
+      // when the deletion owes an entry there like any other decision.
       const gone = [];
       const nowTriggers = new Set([...now.rules, ...now.guidelines].map((r) => r.trigger));
-      for (const r of [...before.rules, ...before.guidelines]) if (r.slug && !nowTriggers.has(r.trigger)) gone.push({ id: r.slug, what: `rule "${r.trigger}"` });
+      for (const r of [...before.rules, ...before.guidelines]) {
+        const id = r.slug ?? r.skill;
+        if (id && !nowTriggers.has(r.trigger)) gone.push({ id, what: `${r.skill ? 'guideline' : 'rule'} "${r.trigger}"` });
+      }
       const nowSkills = new Set(now.skills.filter((s) => s.present).map((s) => s.name));
       for (const s of before.skills) if (s.present && !nowSkills.has(s.name)) gone.push({ id: s.name, what: `skill ${s.name}` });
       const nowChecks = new Set(now.checks.map((c) => c.id));
       for (const c of before.checks) if (!nowChecks.has(c.id)) gone.push({ id: elementIdOf(c.id), what: `check ${c.id}` });
       const nowTasks = new Set(now.tasks.map((t) => t.id));
       for (const t of before.tasks) if (!nowTasks.has(t.id)) gone.push({ id: t.id, what: `task ${t.id}` });
+      const namedNow = new Set([
+        ...[...now.rules, ...now.guidelines].filter((r) => r.slug).map((r) => r.slug),
+        ...[...nowSkills], ...now.checks.map((c) => elementIdOf(c.id)), ...[...nowTasks],
+        ...(now.manifest ? [PACK_ELEMENT] : []),
+      ]);
       for (const g of gone) {
+        if (namedNow.has(g.id)) { owes(g.id, `${dir}/${PROVENANCE_DIR}/${fileOfId(g.id)}`, null, `${g.what} is gone from ${dir} in this change`); continue; }
         const f = filesNow.get(g.id);
         const retiredNow = f && f.entries.length && f.entries[f.entries.length - 1].kind === 'retired' && (filesBefore.get(g.id)?.status !== 'retired');
         if (retiredNow) continue;
@@ -149,6 +174,16 @@ const rule = {
 };
 
 const normalize = (t) => String(t ?? '').replace(/\s+/g, ' ').trim();
+
+// A skill's text with its top-level bullet blocks cut out: what a guidelines skill says
+// of itself, beside the bullets judged one by one. An engine whose blocks carry no end
+// cuts nothing, and the skill then owes for a bullet change as it did before.
+function sansBullets(text, shape) {
+  const s = shape(text);
+  const drop = new Set();
+  for (const b of s.bullets) for (let i = b.start; i <= (b.end ?? -1); i++) drop.add(s.bodyOffset + i);
+  return normalize(String(text).split('\n').filter((_, i) => !drop.has(i)).join('\n'));
+}
 
 // The marking pass's own edits to a skill: a `body:` line and markers on guideline
 // bullets. Neither is a decision, so a skill that changed only so owes nothing.
