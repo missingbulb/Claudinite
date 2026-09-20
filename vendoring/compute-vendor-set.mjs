@@ -57,22 +57,12 @@ export const UPDATES_DIR = 'updates';
 export const DOCS_DIR = 'docs';
 const isTest = (name) => name.endsWith('.test.mjs');
 
-// A pack's rationale doc (the writing-pack-prose convention) records WHY each rule
-// and check exists and what would retire it — the evidence a canon revalidation pass
-// reaffirms them against, read in the repo that OWNS the pack. A member that merely
-// mounts the pack never reads it: `references-integrity` scans the repo's own packs
-// and never the vendored mount, and `rule-revalidation` scopes to the repo's own
-// packs too. So it is maintainer reference like an engine doc, and stays canon-side.
-// The convention puts one beside the pack's RULES.md, and that pack-root position is
-// the rule — a skill below it is free to ship a payload doc of the same name.
-export const REFERENCES_DOC = 'references.md';
-
 // A pack's `provenance/` is the decision log behind its elements (docs/provenance/DESIGN.md):
 // read by the growth and curation passes, a promote run and a maintainer, in the repo that
 // OWNS the pack, and by no session anywhere. A member mounting a canon pack receives the
 // guidelines, not the reasoning, and never another organisation's decision log - so the
-// folder stays canon-side like `references.md` before it, at the pack root only (a skill
-// below is free to ship a payload folder of the same name).
+// folder stays canon-side, at the pack root only (a skill below is free to ship a payload
+// folder of the same name).
 export { PROVENANCE_DIR };
 
 // THE TASK SURFACE IS A PACK, and a pack's own .md files are payload rather than
@@ -143,7 +133,6 @@ function walk(relDir, files, errors, { engine = false, today, installed = null, 
       // documents a consumer reads from its own mount are the tasks pack's, and ride
       // the pack walk.
       if (engine && entry.name.endsWith('.md')) continue;
-      if (relDir === packRoot && entry.name === REFERENCES_DOC) continue;
       files.add(rel);
     }
   }
