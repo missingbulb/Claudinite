@@ -392,6 +392,7 @@ recorded as *not sampled*; the rules still evaluate from the fold.
 | **Window** | the trailing 28 days: closed ISO weeks from the fold's week rows, the current week from its day rows; compared with the 28 before |
 | **Scope** | every subject the repo mounts — its local packs **and** the vendored canon; a finding about a canon subject is evidence the repo cannot act on, and it carries it upward (§6) |
 | **Performs** | code, entirely: the evaluator over the rule file, the fold, the live reads, and the digests |
+| **Triage** | `usage-triage`, weekly, `agent_model: opus`, precondition: at least one finding whose `since` is 14 days old with cause `known` or `probable` and no open triage PR for its subject; a `claudinite-canon-curation` task over `packs/` in the canon, the same skill (`triaging-usage-findings`, in `claudinite-growth`) over local packs elsewhere; `expected_outcome: fresh_pr`, automerge `nothing` |
 | **Writes** | `.claudinite/local/usage-review.GENERATED.json` — `window` (both windows' bounds and denominators), `notEvaluated` (rule, floor, figure), `unstated` (skills with no `usage` block), `findings` sorted by rule then subject (rule, subject, pack, figures for both windows, cause, sentences, digests, and `since`, the first review date the finding appeared) — delivered by the shared generated-file helper on one accumulating auto-merged PR whose body renders the findings as a table per cause confidence; the unchanged-compare ignores the stamp alone, so a day that changes no finding opens nothing |
 
 `since` is what makes a finding's age readable without diffing history, and it is what the
@@ -442,8 +443,8 @@ the review acts on it. The proposal for what does:
       what it read and what would settle it, and open no PR.
    In the canon it is a `claudinite-canon-curation` task over `packs/`; in a member the same
    skill runs in `claudinite-growth` over the local packs. It cites the `observed` entry and the
-   usage rule in the mitigation's provenance entry (§7). This task is a proposal in this design
-   and waits on the owner's decision.
+   usage rule in the mitigation's provenance entry (§7). It is the one agentic stage of the
+   loop, and its cost is bounded by the gate: a week with no lasting finding opens no session.
 
 5. **Existing agentic runs read it, and change nothing because of it.** `growth-extract` and
    the curation sweeps may cite a finding as evidence when they land a lesson they found on
@@ -575,6 +576,10 @@ Owed once the review has landed in this repository and lived four weeks.
   worth reading, and the rules are revisited.
 - **Expectations declared.** Every canon skill carries a `usage` block within a month (the
   `unstated` list empties); read from the review file.
+- **Triage.** One PR per subject and never two open at once; each PR body names the cause
+  settled and the provenance fields read; a proposal the owner closes unmerged gets a
+  `_declined.md` entry naming the rule, so the next triage does not re-propose it; expected
+  one to three proposals a month here, read from PRs titled `Claudinite canon: usage triage`.
 - **Provenance.** `observed` entries equal the `usage-finding` issues filed, never more (one per
   finding); zero entries on elements the review found healthy; every mitigation entry landed
   from a finding names its `observed` entry and its usage rule in `Source`; read by grepping
