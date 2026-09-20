@@ -140,7 +140,7 @@
     "id": "test-suite-command-form",
     "severity": "advisory",
     "scope": "action",
-    "failureMessage": "a bash glob without globstar reached 37 of 65 files and said nothing; node --test <dir> at least fails outright with Cannot find module",
+    "failureMessage": "a bash glob without globstar runs green over a subset — packs/*/test/*.test.mjs reaches 125 of 314 files and says nothing; node --test <dir> at least fails outright with Cannot find module",
     "fix": "node --test $(git ls-files '*.test.mjs')",
     "guardToolCalls": [
       {

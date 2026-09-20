@@ -167,8 +167,12 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
 - **(running-the-suite-4)** Probed 2026-09-06 on node v22.22.2: `node --test <dir>` exits 1 with
   `Error: Cannot find module <dir>` — it treats the path as an entry module rather than silently
   under-running. The rule previously grouped it with the bash glob as an equally silent trap,
-  which understates the glob: only the glob produces a green run over a subset. Retire the
-  distinction if `node --test <dir>` starts recursing, or starts failing quietly.
+  which understates the glob: only the glob produces a green run over a subset. Re-probed
+  2026-09-20 on the same node: the directory error is unchanged, and node expands a glob argument
+  itself, so the unmatched `*.test.mjs` the repo root now yields runs zero tests and exits 1 —
+  which leaves a glob matching a subset (`packs/*/test/*.test.mjs`, 125 of 314 tracked files) as
+  the only silent shape. Retire the distinction if `node --test <dir>` starts recursing, or
+  starts failing quietly.
 - **(running-the-suite-5)** 2026-09-16's capture on #2089 (session 2f6cc995, 20:37–20:47): the run
   edited six packs' prose, then cleared `check_the_world`, `check_the_work`, the edited pack's own
   suite and `engine-tests/pattern-rules.test.mjs` before pushing — none of which reads a README's
