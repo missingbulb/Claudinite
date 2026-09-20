@@ -85,7 +85,13 @@ holds, the cause is this well known, and this is what it usually means.* The voc
   `a >= n` — over the counters of §4, with `median(a)` and `previous.` where a rule compares
   windows, and an optional `and` naming a live predicate. Nothing else; a rule that needs more
   is a coded rule, and there are none.
-- `cause`: `known` | `probable` | `unknown`.
+- `cause`: `known` | `probable` | `unknown` — how well the record alone settles the cause.
+- `causes`: the possible causes in likelihood order, each with the discriminator that tells it
+  apart where one exists — a counter, a digest, a line in the sample. For a `known` rule the
+  list is what the arithmetic already settled; for `probable` and `unknown` it is the search
+  order a reader works through.
+- `open`: `true` where the list is only what its authors thought of, so a reader may find a
+  cause not on it and says so; `false` where the list is closed by the mechanism.
 - `finding` and `recommendation`: the sentences a person reads.
 
 The evaluator prints each rule as the sentence its fields spell.
@@ -98,6 +104,11 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "skill", "window": "28 days", "floor": { "sessions": 10 },
     "when": "skillSessions / sessions >= 0.75",
     "cause": "known",
+    "causes": [
+      "its body is guidance every session needs — discriminator: most loads are voluntary (`skillLoadsBy`)",
+      "a force-load pattern matches most edits or calls — discriminator: most loads are blocked"
+    ],
+    "open": false,
     "finding": "loads in three of every four sessions — it is context wearing a skill's clothes",
     "recommendation": "move its body to the owning pack's RULES.md; the cost either way is stated: tokens × sessions loaded against tokens × all sessions" },
 
@@ -105,6 +116,13 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "skill", "expect": "adoption", "window": "adoption", "floor": { "sessions": 3 },
     "when": "skillLoads = 0",
     "cause": "unknown",
+    "causes": [
+      "the description does not name the adoption moment — digests show the step being done",
+      "the step was done another way, by prose or by hand — digests show it without the skill",
+      "the step was skipped — digests show no such step",
+      "the pack was declared before its skill was mounted — the declaration commit predates the mount stamp"
+    ],
+    "open": true,
     "finding": "the pack was declared and its adoption-time skill never loaded while the adoption was live",
     "recommendation": "read the adoption sessions' digests: was the step done another way, skipped, or did the description not name it" },
 
@@ -112,6 +130,13 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "skill", "expect": "routine", "window": "28 days", "floor": { "sessions": 10 },
     "when": "skillSessions / sessions <= declaredRate / 2",
     "cause": "unknown",
+    "causes": [
+      "the description does not name its moment — digests of non-loading sessions fall under it",
+      "the declared rate is wrong — digests do not fall under it",
+      "the window's work mix never raised the moment — the previous window's rate was near the declared one",
+      "a sibling skill or a RULES.md line already carries what it says — that sibling loads where this one does not"
+    ],
+    "open": true,
     "finding": "loads at under half the rate it declares for itself",
     "recommendation": "read the digests of sessions where it did not load: if their activity fell under its description, the description does not name its moment; if not, the declared rate is wrong" },
 
@@ -119,6 +144,12 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "skill", "expect": "triggered", "window": "28 days", "floor": { "moments": 5 },
     "when": "skillLoads / moments <= 0.5",
     "cause": "known",
+    "causes": [
+      "the trigger pattern does not match the real call or path shape — the moments counted by the hook resolver differ from the declaration's intent",
+      "the hook failed or timed out — `deadline` or `hook-failed` lines in the window",
+      "once-per-session semantics: the skill loaded once and later moments in the session are counted unloaded — a counting artifact, discriminator: `skillSessions` near the sessions with moments"
+    ],
+    "open": false,
     "finding": "its declared moments occurred and the skill was not loaded for most of them",
     "recommendation": "the trigger is mechanical, so this is a fault in the declaration or the hook: reproduce one moment against the guard" },
 
@@ -126,6 +157,10 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "skill", "window": "28 days", "floor": { "skillLoads": 5 },
     "when": "skillBlocks / skillLoads >= 0.9", "and": "tokens <= 300",
     "cause": "known",
+    "causes": [
+      "the guard does the loading and the description never triggers a voluntary load — the one cause; the question is only whether the lines are worth a block"
+    ],
+    "open": false,
     "finding": "it is only ever loaded because a guard held a call for it, and each block is a tool call spent to read a few lines",
     "recommendation": "carry the lines in context or in the guard's own block text" },
 
@@ -133,6 +168,12 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "skill", "window": "28 days", "floor": { "triggerFired": 5 },
     "when": "triggerFollowed / triggerFired <= 0.5",
     "cause": "probable",
+    "causes": [
+      "the pattern matches text that merely mentions the symptom — the fire contexts show prose, not a tool's own result",
+      "the session judged the symptom irrelevant and moved on — the contexts show a real symptom and a next step that ignores it",
+      "the context landed in a subagent stream that had already returned — the fire is on a sidechain entry"
+    ],
+    "open": true,
     "finding": "its result or prompt trigger fires and the skill is not loaded afterwards",
     "recommendation": "usually a pattern matching text that merely mentions the symptom — tighten it to the tool's own result shape; the fires' contexts are in the finding" },
 
@@ -140,6 +181,12 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "skill", "window": "28 days", "floor": { "toolCalls": 10 },
     "when": "triggerFired / toolCalls >= 0.5",
     "cause": "probable",
+    "causes": [
+      "the advice is about making the call, so it belongs before it — the skill's text reads as a how-to",
+      "the tool is misused in a way the symptom reports — the skill's text reads as a diagnosis",
+      "the pattern is too broad and matches normal output — the fire contexts show no symptom"
+    ],
+    "open": false,
     "finding": "the symptom its result trigger names follows most calls of that tool",
     "recommendation": "if the skill's advice is about making the call, load on the call instead (force-load-on-tool-calls); if it is about the symptom, the tool is being misused and that is the lesson" },
 
@@ -147,6 +194,13 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "skill", "window": "28 days", "floor": { "skillSessions": 5 },
     "when": "skillCaught / skillSessions >= 0.3",
     "cause": "unknown",
+    "causes": [
+      "the skill's text does not state the rule its check enforces — the rule is absent from the body",
+      "the rule is stated but buried — it is present, past the first screen",
+      "the skill loaded after the edits it governs — the load follows the caught edits in the session",
+      "the check is stricter than the skill says — the finding's fix text names something the skill does not"
+    ],
+    "open": true,
     "finding": "sessions that loaded it were still caught by a check the skill owns",
     "recommendation": "none yet — evidence carried forward; repeated across windows it is the case for putting the rule in the skill's first lines" }
 ]
@@ -160,6 +214,12 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "check", "window": "28 days", "floor": { "runs": 20 },
     "when": "checkFindings = 0", "and": "proseTwin",
     "cause": "probable",
+    "causes": [
+      "the prose pre-empts every violation — sessions loading the pack do the thing the check guards",
+      "the check is unreachable — its scan pattern or scope selects nothing in this tree",
+      "nobody does the thing at all here — the guarded files or calls are absent from the window"
+    ],
+    "open": false,
     "finding": "never fires, and a RULES.md line states the same rule",
     "recommendation": "a candidate for the prose-removal experiment: delete the prose, keep the check, read this counter one window later — at most one firing means the check alone suffices; more means the prose was doing the work" },
 
@@ -167,6 +227,13 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "check", "window": "28 days", "floor": { "runs": 20 },
     "when": "checkFindings = 0",
     "cause": "unknown",
+    "causes": [
+      "nobody does the thing at all here — the guarded files or calls are absent from the window",
+      "the check is unreachable — its scan pattern or scope selects nothing in this tree",
+      "a sibling check catches the violation first — a check with overlapping scope fires instead",
+      "the check's fixture is the only violator it has ever seen — a test that passes and nothing else"
+    ],
+    "open": true,
     "finding": "never fires and has no prose twin",
     "recommendation": "none — a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named" },
 
@@ -174,6 +241,13 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "check", "window": "28 days", "floor": { "sessions": 10 },
     "when": "checkSessions / sessions >= 0.5",
     "cause": "probable",
+    "causes": [
+      "the lesson is not carried before the work — every firing is fixed the same way and the fix is the rule",
+      "the check is wrong or too broad — the sample shows findings the session argued with or accepted",
+      "a pre-edit guard is missing — the violation is a call shape a PreToolUse guard could hold",
+      "one session's habit — the firings cluster in one session id"
+    ],
+    "open": true,
     "finding": "fires blocking in half the sessions or more",
     "recommendation": "usually the lesson belongs before the work (a RULES.md line, a pre-edit trigger) with the check kept as the net; if the findings were argued with, the check is wrong — a sample of the findings is attached" },
 
@@ -181,6 +255,12 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "check", "window": "28 days", "floor": { "advisory": 10 },
     "when": "advisoryPersisted / advisory >= 0.8",
     "cause": "known",
+    "causes": [
+      "it names a bias, not a defect — nothing to fix, so nothing is fixed",
+      "it names a defect but its fix text is not actionable — sessions try and the pair persists",
+      "it fires on files the session cannot edit — generated files or the mount"
+    ],
+    "open": false,
     "finding": "an advisory nobody acts on, printed at every Stop",
     "recommendation": "promote it to blocking if it names a defect, delete it if it names a bias — the choice is the owner's" },
 
@@ -188,6 +268,12 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "check", "window": "28 days", "floor": {},
     "when": "relent >= 1",
     "cause": "probable",
+    "causes": [
+      "the condition cannot be satisfied by following the fix text — the relent's block shows the same finding after a fix attempt on the named file",
+      "the finding is on a file the session cannot edit — generated or mounted",
+      "two different fixes each cleared one finding and raised another — the two blocks differ"
+    ],
+    "open": false,
     "finding": "a session could not clear it in two attempts and the Stop hook let it through",
     "recommendation": "usually a condition the fix text cannot satisfy; the relent's findings block is attached" },
 
@@ -195,6 +281,11 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "check", "window": "now", "floor": {},
     "when": "acceptances >= 3",
     "cause": "known",
+    "causes": [
+      "the rule is mis-scoped for this tree — the acceptance reasons name a structural class of file",
+      "the files are genuinely exceptional — the reasons name one-off circumstances"
+    ],
+    "open": false,
     "finding": "carries three or more acceptances or an override to advisory",
     "recommendation": "encode the exemption structurally, or demote; the acceptance reasons are listed together" },
 
@@ -202,6 +293,12 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "checks", "window": "28 days", "floor": {},
     "when": "errors >= 1",
     "cause": "known",
+    "causes": [
+      "an engine module failed to load — the hook log names the module",
+      "a pack failed to load — the hook log names the pack",
+      "the runtime is missing or wrong — the launch error names node"
+    ],
+    "open": false,
     "finding": "the check runner failed to launch in a session — enforcement was silently off",
     "recommendation": "a defect; the hook log line it was counted from is attached" },
 
@@ -209,6 +306,12 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "checks", "window": "28 days", "floor": { "runs": 20, "previous.runs": 20 },
     "when": "median(stopMs) / previous.median(stopMs) >= 1.25", "and": "median(stopMs) >= 2000",
     "cause": "known",
+    "causes": [
+      "one rule regressed — the timing record's slowest rule moved",
+      "the catalog grew — more rules, none slower",
+      "the tree grew — every scanning rule slower in proportion"
+    ],
+    "open": false,
     "finding": "the Stop hook's checks take a quarter longer than the window before",
     "recommendation": "the timing record names the slowest rules; they are listed" },
 
@@ -216,6 +319,12 @@ The evaluator prints each rule as the sentence its fields spell.
     "over": "guard", "window": "28 days", "floor": { "sessions": 10 },
     "when": "guardAdvisory / sessions >= 0.5",
     "cause": "probable",
+    "causes": [
+      "the guard matches calls it was not written for — the sample's calls do not exhibit the bias",
+      "the bias is not one sessions hold — the calls exhibit it and proceed",
+      "the guard's text does not say what to do instead — the calls proceed unchanged after it"
+    ],
+    "open": true,
     "finding": "an advisory guard fires in most sessions and the call runs anyway",
     "recommendation": "usually a guard matching calls it was not written for — narrow it; a sample of the calls is attached" }
 ]
@@ -316,7 +425,27 @@ the review acts on it. The proposal for what does:
    a member of itself, so its own review file is the first evidence canon curation reads —
    when the owner asks it to, not on a schedule.
 
-4. **Existing agentic runs read it, and change nothing because of it.** `growth-extract` and
+4. **The reader that proposes a change — agentic, owner-gated.** Where the owner wants
+   findings turned into proposals without waiting for a person, one task, `usage-triage`, runs
+   weekly over the lasting findings (`known` or `probable`, 14 days old) and opens **one PR per
+   subject with automerge `nothing`**: the review changes nothing, the triage proposes, the owner
+   decides. Its order is fixed:
+   1. read the subject's provenance file first — `Rejected` (was this cause already considered
+      and refused), `Source` (what the element was born from, so the proposal undoes no lesson
+      it never read), `Mechanism` (why this rung, so a refused rung is not re-proposed without
+      new evidence), any earlier `observed` entry and what followed it (a recurring finding after
+      a mitigation is a different case from a first one), and `Retire when` (the test the
+      finding may now satisfy);
+   2. work the rule's `causes` in order against the finding's figures, digests and samples,
+      and name the one it settles on, or the one it adds where the list is `open`;
+   3. write the change only where a cause is settled; otherwise comment the finding's issue with
+      what it read and what would settle it, and open no PR.
+   In the canon it is a `claudinite-canon-curation` task over `packs/`; in a member the same
+   skill runs in `claudinite-growth` over the local packs. It cites the `observed` entry and the
+   usage rule in the mitigation's provenance entry (§7). This task is a proposal in this design
+   and waits on the owner's decision.
+
+5. **Existing agentic runs read it, and change nothing because of it.** `growth-extract` and
    the curation sweeps may cite a finding as evidence when they land a lesson they found on
    their own grounds; the review's recommendation is not an instruction to them. That keeps
    the review honest about remedies it was never in a position to test.
