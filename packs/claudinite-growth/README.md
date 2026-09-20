@@ -106,15 +106,14 @@ GitHub MCP tools.
    **200-word-max** summary of the slice of conversation that caused it — the dialogue itself is
    never pasted there, it is far too verbose for an issue —
    **extraction is the only path to permanence**: a log that yields no rule gets no comment,
-   and its conversation is gone once somebody runs the prune over it (a deliberate owner call).
+   and its conversation is gone once retention deletes it (a deliberate owner call).
 3. **Deletion — the agentless `logs-prune` task**
-   ([tasks/logs-prune/worker.mjs](tasks/logs-prune/worker.mjs)), **on request only** (`trigger:
-   'request'` — no tick asks it, so nothing is deleted until a person wakes it), over the same
-   branch: every capture past `config.retention_days` is removed, on the stamp in its filename
-   alone. What makes that safe without an agent is the reading window above — the extract run reads
-   from the oldest end of the branch on every run, so a capture reaches retention having been read.
-   **An undeclared retention takes the pack's 10-day default**; `retention_days: 0` is the explicit
-   capture-only opt-out, and a declaration the worker cannot read prunes nothing.
+   ([tasks/logs-prune/worker.mjs](tasks/logs-prune/worker.mjs)), on request only, over the same branch: every
+   capture past `config.retention_days` is removed, on the stamp in its filename alone. What makes
+   that safe without an agent is the reading window above — the extract run reads from the oldest end
+   of the branch on every run, so a capture reaches retention having been read. **An undeclared
+   retention takes the pack's 10-day default**; `retention_days: 0` is the explicit capture-only
+   opt-out, and a declaration the worker cannot read prunes nothing.
 
 No adoption question over it — the pack's own `DEFAULT_RETENTION_DAYS` (10, the floor it had
 recommended in prose all along) applies to every member that says nothing, and a project
