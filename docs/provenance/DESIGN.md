@@ -57,9 +57,24 @@ bullet is the skill's, and the skill's file records their decisions as titled en
 what keeps a long procedure from minting thirty files while letting the one bullet that was
 fought over keep its own log.
 
-Stubs and migrations are not elements: their rationale is their own module header, and the
-decision to ship them is a `pack` entry. Contributed rules, merge rules and adoption questions are
-manifest-level and belong to `pack` too.
+### What is not an element, and where its decision lives
+
+Everything else a pack directory holds is either a property of an element, whose decisions go on
+that element's file, or an artifact whose decision is the pack's, or evidence:
+
+| Artifact | Its decision is recorded on |
+|---|---|
+| a check's `severity`, `scope`, `relevantWhen` gate, `since` date, `failureMessage` and `fix` text | the check's file (`born`, `severity-changed`, `reworded`) |
+| a skill's `description` and every `force-load-on-*` trigger | the skill's file (`trigger-changed`) |
+| a task's preconditions, `expected_outcome`, `automerge`, `agent_model`, worker | the task's file (`policy-changed`) |
+| the manifest: `detect`/`marker`, `requires`, `ruleRoutingGuidance`, `seededByDefault`, `hidden`, `env`, adoption `questions`, `adoptionHandover`, `contributes` and `contributedRules`, `merge-rules.json`, the badge | `pack` |
+| the pack's own existence, name, split or collapse; a rename-map entry for an absorbed pack | `pack` of the pack that exists afterwards |
+| stubs and migrations | their own module headers, plus a `pack` entry for the decision to ship them |
+| tests and fixtures | nothing — a fixture is evidence, cited from the check's entry |
+| `README.md` | nothing — it describes; its "distilled from" paragraph moves to `pack` (§6) |
+| `VERSIONS.md`, `directory.GENERATED.md`, the rule inventory | nothing — derived, never decided |
+| a member's `accept` waiver, severity override or `disabledTasks` entry | the member's settings file, whose `reason` is the record; no provenance file |
+| a design doc, a capture on the conversation-logs branch, a tracker comment, a pull request body | evidence — cited by an entry, never copied into one |
 
 ### The file
 
@@ -201,7 +216,7 @@ What must not leave the repo is rewritten before the copy lands:
 | In the local pack (stays as written) | In the canon (after `reduce`) |
 |---|---|
 | `Actor` — a GitHub handle or a role | a role only |
-| a session link | dropped |
+| a session id or link | dropped |
 | a quoted phrase (at most one sentence, as the extraction skills already limit) | dropped; the paraphrase stays |
 | `owner/repo#n` references | kept when the canon repository is private; `a member repository` when it is public — read from the API at promote time, never a setting |
 | product, file and path names in `Source` | generalized, as the promoted rule itself is |
@@ -224,10 +239,15 @@ reduction is not built to see: a product name inside a `Reason`.
 | process and rules-of-thumb packs (`basics`, testing, git) | as a canon pack; `Source` cites the practice, book or incident; `Retire when` may be a judgment ("the practice is abandoned corpus-wide") and says so | role | as a canon pack |
 | a pack minted from project evidence | `pack`'s `born` cites the evidence set or the dated sources | role | as a canon pack |
 | a stub pack with no rules | `pack` only | role | as a canon pack |
-| personal preferences (`<email>.md` in the store) | not a pack: the person is the actor and the request is the reason; an optional per-person log in a sibling folder of the store, never promoted, never required | the person | never |
+| personal preferences — a pack of one reader, whose rules file is the person's `<email>.md` in the store | each preference is an element with a marker; its files sit **beside** the store, at `<path>-provenance/<email>/`, because the store's own check keeps `<path>/` flat and addresses nothing but `<email>.md` there; written by the session that edits the preference; coverage advisory, as everything in that pack is | the person | never — a preference is never promoted, by the extraction rules that already bar it |
 
 A consumer that forks an element from a canon into its local pack (an override) writes a `born`
 entry citing the canon element by its id; the canon's file is not copied down.
+
+Preferences pay the marker like any rules file — a few tokens per preference in the injected
+text — and their entries are the shortest the log holds: the person is the actor, the request is
+the reason, and what the file answers months later is when a preference was set or changed and
+what prompted it.
 
 ## 6. Backfill, conversion, and the standing mechanism
 
@@ -255,7 +275,9 @@ all. The task's pull request is one pack's backfill, reviewed as such.
 the element it keys — `RULES-n` resolves through the rule carrying the marker `(n)`, `<skill>-n`
 to that skill, `check:<id>` to that check — as a `born` entry dated by the entry's own adding
 commit, its reaffirmation sentence as `Retire when`, the rest as `Reason` and `Evidence`; then
-rewrites each numeric marker to the slug its element takes and deletes the file. A pack-root
+rewrites each numeric marker to the slug its element takes and deletes the file. A skill bullet
+that carries a numeric marker today has a recorded history, so it becomes an element of its own
+with a slug marker and a file — about fifty bullets across twenty skills. A pack-root
 `references.md` that still exists is a finding: advisory through the conversion window the
 migration states, blocking after it, with the command in the fix text. In a member, the backfill
 task runs the conversion as its first step.
@@ -270,9 +292,11 @@ bold trigger wrap), over both roots, replacing `references-integrity`.
 
 World scope, blocking:
 
-1. every check, skill and task id, and the manifest, names a live file; every rule bullet ends
-   with a marker, and the marker names a live file; a rule with no marker, a marker naming no live
-   file, and a live file no carrier names are each a finding naming the carrier or the file;
+1. every check, skill and task id, and the manifest, names a live file; every `RULES.md` bullet
+   ends with a marker, and every marker — in a `RULES.md`, where it is required, or in a
+   `SKILL.md`, where it is optional — names a live file; a rule with no marker, a marker naming
+   no live file, and a live file no carrier names are each a finding naming the carrier or the
+   file;
 2. every file parses: the one-line header, the entry grammar, a kind in the vocabulary, dates in
    order;
 3. a file with entries opens with `born`; a header-only file is reported as pending history, at
@@ -291,6 +315,12 @@ Work scope, blocking:
 
 The work-scope half is what makes the convention hold for a hand edit: the skill says append, and
 the Stop hook says so again when the session did not.
+
+The preferences store is not under either root, so the preferences pack carries its own advisory
+check, relevance-first like its siblings (inert unless this repo *is* the store): every preference
+bullet ends with a marker naming a file under `<path>-provenance/<email>/`. It asserts existence
+only — self-describing data, so nothing is shared between the two packs — and the grammar is
+judged by the helper's `check`, run by the session that edits the preference.
 
 ## 8. Invariants
 
@@ -413,8 +443,9 @@ on `main`; a second reading a week after the backfill task's precondition first 
   two weeks, weekly inside a season. Growth flows: a handful of `born` entries a week fleet-wide,
   read from the extract pull requests' diffs; zero `reaffirmed` entries from a revalidation run
   that found everything still true. `references.md` files on the shelf: 21 before the conversion,
-  0 after; in members' local packs the same fall on each member's first backfill run. The
-  session-start summary's prose token weight rises by the marker count and no more.
+  0 after; in members' local packs the same fall on each member's first backfill run. About
+  fifty skill bullets with numeric markers today become elements of their own. The session-start
+  summary's prose token weight rises by the marker count and no more.
 - **Expected behaviours.** Every promote pull request carries a reduced provenance file and a
   marker per promoted lesson (read from the promote PR's diff). A hand edit of a carrier in an
   attended session appends in the same commit (read from the `provenance-integrity` firing counts
