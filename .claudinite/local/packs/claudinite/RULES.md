@@ -12,10 +12,6 @@ Below are rules on how to work on this repo.
   wearing one is a torn write rather than a resting state, and the re-ask is clearing the
   status. (77)
 
-- **Writing a `docs/<initiative>/DESIGN.md`** — the end state and its rationale only, with
-  alternatives and their drawbacks. Never requests, prior-state narrative, or owner opinions.
-
-
 - **A `docs/<initiative>/DESIGN.md` whose system is now built** — delete it whole rather than trim
   it. Verify each section already lives in a module header or pack `README.md` first, and move an
   owner-decision record with its rationale. Leave a doc describing work in flight alone. (4)
@@ -26,9 +22,8 @@ Below are rules on how to work on this repo.
 - **Having a deferred direction, blocked proposal or status to record** — `docs/`, pointed at from
   the issue or PR. Never a pack file: `docs/` is outside the vendor set.
 
-- **Ending a session on unfinished work** — write the state into the PR, or into the tracking
-  issue when the work has one; the owner's opener is `continue work on #<n>`. Never compose a
-  hand-off prompt.
+- **Ending a session on unfinished work** — never compose a hand-off prompt; the owner's opener
+  is `continue work on #<n>`.
 
 
 - **Designing anything that spans repos** — split it: a self-contained per-repo half in the canon,
@@ -431,11 +426,6 @@ Below are rules on how to work on this repo.
 - **Building a dedup or mutex over work items** — key the guard on the target the write lands on,
   never the requester's phrasing. A same-title match is blind to two items writing one target under
   different titles; `Blocked-by:` is what serializes them. (54)
-
-- **Converging a work item from a session** — `converge-item.mjs` prints the calls; making them
-  verbatim with your own GitHub tools is the whole path, on every session, with or without a REST
-  route. Hand-fabricating the transition is how an item ends up closed wearing a live status, or
-  labelled `done` and left open. (2)
 
 - **Choosing a recurring task's `expected_outcome`** — prefer `amend_existing_or_create_new_pr`
   wherever each run recomputes the whole answer, so one pull request accumulates the review;

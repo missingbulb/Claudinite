@@ -11,10 +11,6 @@ end-of-line `(n)` marker in `RULES.md` cites `RULES-n`, one in a skill cites
   scope only. The coded form has the same wall for anything but a public unauthenticated URL, which
   #1790 crossed with an `api.github.com` probe (#1792), so the guard watches the probe lines too.
   Retire the rule only if executor sessions gain cross-repo scope and probes gain a credential.
-- **(RULES-2)** Hand-fabricated queue transitions produced an item closed wearing a live status
-  (#1220) and one labelled `done` but left open (#1265); `converge-item.mjs` printing the exact
-  calls is what makes the sequence reproducible on any session. Retire the rule only if the
-  queue's transition is enforced server-side.
 - **(RULES-3)** During the #1119 rename sweep, a file rewritten after the sweep started reinvented the
   retired constant as a comparison key, and the state comparison failed silently — a wrong
   count, no error, no failing test. Retire the rule only if a drift guard pins every comparison
