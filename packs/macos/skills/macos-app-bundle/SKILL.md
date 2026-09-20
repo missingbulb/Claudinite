@@ -11,7 +11,8 @@ metadata:
 # The app bundle is assembled, not built
 
 - **A menu-bar-only app is `LSUIElement: true`** in `Info.plist` — that, not code, is what removes
-  the Dock icon and the main window.
+  the Dock icon and the main window. (menu-bar-only)
 
 - **Pin `LSMinimumSystemVersion` to the same OS version the package's `platforms:` declares.** They
   are two independent claims about the same floor, and only one of them is enforced at launch.
+  (pin-lsminimumsystemversion-same)

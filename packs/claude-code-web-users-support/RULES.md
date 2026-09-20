@@ -5,12 +5,14 @@
   entry on the preference's provenance file beside the store (`<path>-provenance/<email>/`),
   the person the actor; a project convention in disguise belongs in the pack owning its
   subject, and a preference triggering a command owns only the trigger phrase.
+  (person-asking-change)
 
 - **A person asking to record their personal preferences with no file yet** — create it in that
   store repo, named for their exact identity plus `.md`, case included: the reader opens
   `<path>/<email>.md` and nothing else, so any other name is silently never read.
+  (person-asking-record)
 
 - **A web session halt-gated on a missing toolchain requirement** — re-paste
   [`environment-setup-command.sh`](environment-setup-command.sh) whole and unedited into the
   environment's Setup script field, then rebuild; a project-specific step belongs in its own
-  pack's `env` declaration, never in that body.
+  pack's `env` declaration, never in that body. (web-session-halt)

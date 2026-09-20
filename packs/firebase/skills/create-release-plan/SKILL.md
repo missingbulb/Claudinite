@@ -68,4 +68,4 @@ treating it as settled canon.
   `.firebase/` gitignored.
 - **Commit `.firebaserc` with named aliases and make the default the safe target** (§1 above is
   the full environment discipline). Deploy commands in docs always name
-  what they deploy (`--only functions,firestore`). (4)
+  what they deploy (`--only functions,firestore`).

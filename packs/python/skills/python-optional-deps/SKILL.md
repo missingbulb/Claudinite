@@ -21,4 +21,4 @@ Declare heavy/native packages under `[project.optional-dependencies]`, wire the 
 - **Adding a heavy, native or ML dependency to a Python package** — declare it under a named
   `[project.optional-dependencies]` extra, never in base `dependencies`: the core (logic, storage,
   CLI, any web layer) must import, run and be fully testable on a bare `pip install <pkg>` with the
-  standard library alone.
+  standard library alone. (adding-heavy-native)

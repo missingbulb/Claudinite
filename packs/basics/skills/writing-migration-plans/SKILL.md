@@ -166,7 +166,7 @@ review pass (**2. Review and authorization gates** above), and a step added afte
 new ask, not a detail of an approved one (basics' *Acting on an approval to merge, ship or
 proceed*). Where the plan changes before implementation starts because the owner says it misreads
 what they asked for, that is a correction to the draft, handled as **Working through the plan**
-below sets out. (2)
+below sets out.
 
 ## The chain
 
@@ -238,7 +238,7 @@ per link, at plan time, and record the answers in the tracking issue:
   same files, under the same policy, proven by the same test have none of that: they are one link
   written twice, and the second one's issue, brief, rebase and converge are pure toil. Split where
   the halves sit in different parts of the system and can be judged apart; keep them together
-  where the only difference between them is how much work each is. (3)
+  where the only difference between them is how much work each is.
 - **What the diff will touch.** Name the folders and kinds, and the size. Then the policy is
   that prediction, written narrow (basics' *Choosing an automerge policy*): `under:<folder>`
   intersected with the kind where the kind is known, the same folder's `test-changes` and
@@ -249,7 +249,7 @@ per link, at plan time, and record the answers in the tracking issue:
   landed and a test pins its fold line.
 - **How many human gates the chain expects.** Count the `nothing` links and add the parks you
   expect from widening. That count is the plan's honest prediction of the owner's workload, and
-  it is what the owner is approving when they approve the plan. (1)
+  it is what the owner is approving when they approve the plan.
 
 ## When automerge fails: how the chain survives
 

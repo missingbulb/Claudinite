@@ -167,7 +167,7 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   bound is best-effort: the hand-off surfaces it into the session's brief ("fail
   after N minutes") and the agent leash catches a session that never converges its
   item. Set it generously — extreme protection against a runaway, not a scheduling
-  knob. (1)
+  knob.
 
 - **A task says which repo secrets it needs.** Code-work runs Action-side, so repo
   Actions secrets are reachable there and nowhere else in a task's life (an agent

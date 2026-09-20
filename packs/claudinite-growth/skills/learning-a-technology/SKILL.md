@@ -37,7 +37,7 @@ lifted out of here without a rewrite. Every step below keeps the two apart.
   session, or accept a skill written from memory. Never take the second road silently — a
   technology skill is a document later sessions trust as verified, so one written from memory
   says under `## Verified` that nothing was, and the date egress was blocked, and its reader
-  knows every claim is unconfirmed. (1)
+  knows every claim is unconfirmed.
 
 - **Verify the credential before writing anything against it.** Find where the session or the
   Action holds it (an environment variable named in the environment's setup; a repo secret
@@ -71,7 +71,7 @@ where the promote stage reads it:
 
 A technology never mints a local pack of its own —
 [extracting-lessons.md](../../extracting-lessons.md) owns that bar and the ladder the lesson
-descends. (2)
+descends.
 
 ## 3. Research: live documentation, exact bytes, a real run
 
@@ -124,7 +124,7 @@ get wrong:
   sessions that maintain the worker, so the task's `README.md` names it.
 - **The worker reaches the skill's code through one path constant at its top**, and nothing else
   in the task spells that path: promotion moves the skill's folder, and this is the one line that
-  changes. (3)
+  changes.
 - **The job's parameters ride the pack entry's config or the item's Context**, never the
   technology code — which is what keeps the code liftable.
 - **Take the owner's cadence and gating at their word** — a nightly send the owner wants

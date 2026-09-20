@@ -14,4 +14,4 @@ metadata:
   An app commits its lockfile (only a *library* package gitignores it), so the file is tracked on
   purpose — the thing to keep out of the diff is the churn a local `flutter pub get` produces when
   the installed SDK resolves differently from CI's. Unless you deliberately ran an upgrade, revert
-  it: `git checkout -- pubspec.lock`.
+  it: `git checkout -- pubspec.lock`. (pubspec-lock-moving)

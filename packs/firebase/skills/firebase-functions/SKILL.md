@@ -14,18 +14,19 @@ metadata:
 - **Rate limits need a transaction.** A read-check-write cooldown is bypassable by firing calls
   concurrently; run the read + check + stamp inside `runTransaction` so concurrent invocations
   serialize. A thrown `HttpsError` inside the transaction aborts it and propagates unchanged.
+  (rate-limits-need)
 
 - **Chunk batched writes well under the 500-op limit** and treat multi-batch fan-out as
   at-least-once: a mid-sequence crash plus client retry duplicates the early batches. Document
-  the idempotency-key escape hatch even if v1 doesn't implement it.
+  the idempotency-key escape hatch even if v1 doesn't implement it. (chunk-batched-writes)
 
 - **Push is best-effort by construction**: notification failures must never fail the triggering
   call; clean up dead tokens on the *actual* error codes
   (`messaging/registration-token-not-registered` — verify codes against the installed
-  firebase-admin, not memory or old blog posts).
+  firebase-admin, not memory or old blog posts). (push-best-effort)
 
 ## The built entrypoint
 
 - **Smoke-load the built entrypoint in the test lane** (`node -e "require('./lib/index.js')"`).
   A Node-major skew between build and runtime, or a bad build, surfaces as a module crash the
-  first time the deployed function is invoked. (6)
+  first time the deployed function is invoked. (smoke-load-built)

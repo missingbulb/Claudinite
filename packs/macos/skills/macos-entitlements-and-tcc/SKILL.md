@@ -15,12 +15,12 @@ metadata:
   Capabilities that feel like one feature take separate keys — an app that listens *and*
   transcribes needs `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`, or
   is killed at whichever it forgot — and only *some* resources also need a codesign entitlement,
-  and only under the Hardened Runtime.
+  and only under the Hardened Runtime. (reaching-protected-resource)
 
 - **Capabilities gated purely by TCC plus their usage string need no entitlement at all** (speech
   recognition is the worked example). Adding one you don't need is noise; omitting one you do need
-  is a runtime failure no build step catches.
+  is a runtime failure no build step catches. (capabilities-gated-purely)
 
 - **Do not enable the App Sandbox on the Developer ID track.** The sandbox belongs to the Mac App
   Store lane, needs a different (Apple Distribution) certificate, and silently removes
-  capabilities the direct-download build has — distributed notifications, for one.
+  capabilities the direct-download build has — distributed notifications, for one. (do-enable-app)
