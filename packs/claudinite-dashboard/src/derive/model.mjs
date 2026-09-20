@@ -3,15 +3,14 @@
 // claims is testable in Node and shared verbatim with the browser.
 //
 // It states NONE of the queue's vocabulary itself. The label set, the title
-// grammar, the leash constants and the anchor arithmetic are imported from the
-// engine modules that define them, which is what makes a dashboard that cannot
-// drift from the mechanism it renders: there is no second copy to drift.
+// grammar and the leash constants are imported from the queue's published
+// `public/`, so for those there is no second copy to drift. The anchor arithmetic
+// is the exception: packs share no code, so `task-calendar.mjs` beside this file
+// carries the dashboard's own copy and its drift test holds the two together.
 //
-// Those engine modules are pure ESM with no `node:` imports, which is the property
-// this file depends on and `browser-graph.test.mjs` pins across the page's whole
-// import graph. Living inside `packs/claudinite-tasks/` makes the queue modules siblings,
-// so the dashboard sits beside the mechanism it renders rather than reaching across
-// the tree at it.
+// Everything this file imports is pure ESM with no `node:` imports, which is the
+// property it depends on and `browser-graph.test.mjs` pins across the page's whole
+// import graph.
 
 import { parseTaskDeclaration, applyTaskDefaults } from './declaration-text.mjs';
 import {
@@ -229,8 +228,8 @@ export function describeCadence(preconditions, trigger) {
 // --- work items ----------------------------------------------------------------
 
 // An item is a filed `[claudinite-work]` issue OR an adopted marked issue — the
-// one-issue request model's other shape, which keeps the person's own title
-// One definition, shared with the queue's own reader.
+// one-issue request model's other shape, which keeps the person's own title. One
+// definition, shared with the queue's own reader.
 export { isQueueItem as isWorkItem } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 
 // THE PAGE'S FIVE STATE KEYS. Four are the engine's own status labels; the fifth is

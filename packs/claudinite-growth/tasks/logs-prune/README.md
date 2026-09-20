@@ -25,8 +25,8 @@ the oldest end of the branch on every run, against a retention measured in days,
 so a capture reaches retention having been read. The extract-from-conversations
 skill owns that window; this task owns the arithmetic.
 
-The whole contract is this default export; the retention arithmetic it names is
-in preconditions.mjs beside it.
+The whole contract is the `task.json` beside this file; the retention arithmetic
+its precondition term names is in `preconditions.mjs` beside that.
 NOTHING ASKS IT (owner, 2026-09-19): a capture the calendar decided to delete is
 data loss nobody asked for, so the branch is pruned only when somebody wakes the
 task. The term beside this file is the content gate on that wake, and it grants a

@@ -21,8 +21,8 @@
 // a fleet's raw issue JSON is tens of megabytes and the quota is ~5, so what goes
 // in is only the fields the model reads back out.
 
-// The queue's published surface, the one place a cross-pack import is sanctioned: the
-// projection below has to find a PR's closing issue by the same rule the fold does.
+// The projection below has to find a PR's closing issue by the same rule the fold
+// does, so it reads this pack's own copy of that parse rather than restating it.
 import { closesIssueIn } from './pr-fields.mjs';
 
 const NS = 'claudinite-dashboard';
@@ -178,7 +178,7 @@ export const rateState = {
 // of that for a CLOSED item, and for an open one it needs only the body's two
 // scheduling fields — which are near the top, so a truncated body still parses.
 //
-// `truncateBody` is why a fleet's history fits in the quota at all.
+// Dropping and truncating the body is why a fleet's history fits in the quota at all.
 const BODY_KEEP = 600;
 
 export const projectIssue = (i) => ({

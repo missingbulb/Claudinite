@@ -1,9 +1,9 @@
 import { resolveRetentionDays } from './prune-logs.mjs';
 
-// logs-prune's own precondition term. The prune's trigger is a CLOCK crossing a
-// boundary — the oldest capture aged past this repo's retention — and
-// no built-in movement condition can say that: it must keep firing on exactly the
-// repos that went quiet, which is where logs sit long enough to expire.
+// logs-prune's own precondition term. What it reads is a CLOCK crossing a boundary
+// — the oldest capture aged past this repo's retention — and no built-in movement
+// condition can say that: the repos holding logs old enough to expire are exactly
+// the ones that went quiet, so repo movement is the wrong signal here.
 
 export const terms = {
   'log-past-retention': {
