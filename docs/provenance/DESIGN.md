@@ -211,10 +211,11 @@ Every flow that creates or changes an element appends, in the same change:
 | `growth-extract` (activity and conversations) | `born` per landed lesson, and the marker on the rule; a conversation-born lesson's `Source` names the capture's date and session id; `_declined.md` for a candidate dropped for a reason worth keeping |
 | `prose-to-checks` and `canon-prose-to-checks` | `converted` on the element, carrying the deletion-test verdict (prose deleted, or kept and why); `_declined.md` for a rule judged not checkable, dated |
 | `growth-dedup` | `retired` (superseded by the canon element it names), `weakened` (a strip), `reworded` |
-| `rule-revalidation`, `canon-rule-revalidation`, `revalidate-from-source` | `reaffirmed` only with new evidence or a changed `Retire when`; `reworded` or `retired` for a correction |
+| `rule-revalidation`, `canon-rule-revalidation`, `revalidate-from-source` | `reaffirmed` only with new evidence or a changed `Retire when`; `reworded` or `retired` for a correction; an empty file it meets is filled from `history` first, which is how a member's local pack backfills with no task of its own |
 | `growth-promote` | on the canon side the local file, reduced (§4), a `promoted` entry, and the marker on the promoted rule; the local file stays until dedup retires it |
 | `generate-project-instructions`, `learning-a-technology` | `_pack` and one `born` per element, citing the evidence set or the dated sources |
 | an attended session editing a carrier or a README | `changing-pack-elements`, the skill forced on every pack file (below), which ends with the append |
+| the backfill of an existing pack, by hand from a session | `backfilling-provenance`, the growth skill that owns the method (§6), one pack per pull request |
 
 The mechanics are one helper, `provenance.mjs` in `claudinite-growth`, vendored so a member runs it
 from the mount and the canon from the repo root:
@@ -337,10 +338,10 @@ task cuts every touched pack's version once the pass lands, and the nightly conv
 prose-only change the way it delivers any other. From that commit every carrier names a file, the
 integrity check (§7) holds, and the only thing missing is history.
 
-**Filling is a task, one pack per run, until no empty file remains.** The backfill task —
-`provenance-backfill` in `claudinite-growth` over a member's local packs, its twin in
-`claudinite-canon-curation` over the shelf — has the precondition "an empty provenance file exists
-under the corpus", runs weekly and is woken by hand for the first pass. Each run takes one pack:
+**Filling is a one-off, done by hand here, one pack per pull request.** The method is a skill,
+`backfilling-provenance` in `claudinite-growth`, loaded by the session that takes a pack; no task
+carries it, because the work ends when the last empty file fills, and a task with an ending is
+a phase someone must remember to close. Each pack's run:
 `history` gathers the evidence per element, the agent derives the `born` entry and the
 decision-bearing entries from that source **before** re-reading the rule, then diffs against what
 the rule implied. A field the evidence does not carry is left out; a fabricated rationale would
@@ -350,7 +351,7 @@ what is known — the date and commit it first appears in — and stays as short
 run trims the pack's README: each sentence of history it holds — the "distilled from" paragraph,
 the "until #n", the "kept as it was", the mechanism's reasons — is evidence the run has already
 read, so it moves onto the entry it evidences and leaves the README, which keeps only what §1
-says a README carries. The task's pull request is one pack's backfill and one README's trim,
+says a README carries. The pull request is one pack's backfill and one README's trim,
 reviewed as such; the README is the one vendored file the run touches, so the pack's version is
 cut once by automation as for any prose change.
 
@@ -366,8 +367,10 @@ About fifty such bullets sit across twenty skills; by the shapes those skills ha
 thirty are guidelines and twenty are steps, and the `body` the maintainer confirms at marking
 is what decides. A pack-root
 `references.md` that still exists is a finding: advisory through the conversion window the
-migration states, blocking after it, with the command in the fix text. In a member, the backfill
-task runs the conversion as its first step.
+migration states, blocking after it, with the command in the fix text. In a member, a migration
+record in `claudinite-lifecycle` runs `mark` and `convert-references` over the local packs at the
+next converge, so every member is marked without a session; its empty files fill on
+`rule-revalidation`'s cadence (§3), which reads each element's history anyway.
 
 **No README is trimmed by the marking pass.** Which sentence of a README is history is a
 judgment made with the element's evidence in hand, so it belongs to the backfill run and not to
@@ -389,8 +392,8 @@ World scope, blocking:
 2. every file parses: the entry grammar, a kind in the vocabulary, dates in order, a field
    vocabulary the entry keeps to;
 3. a file with entries opens with `born`, and the mechanism-bearing kinds carry `Mechanism`; an
-   empty file is reported as pending history, at advisory, since it is the backfill task's
-   worklist and not a defect;
+   empty file is reported as pending history, at advisory, since it is the backfill's worklist
+   and not a defect;
 4. a pack-root `references.md` is the migration finding above.
 
 Work scope, blocking:
@@ -558,16 +561,16 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
 ## 12. Retrospective brief
 
 Filed at the merge that completes the mechanism, horizon one week after the marking pass lands
-on `main`; a second reading a week after the backfill task's precondition first reads false.
+on `main`; a second reading a week after the shelf's last empty file fills.
 
 - **Expected amounts.** One marking commit creating an empty file per unnamed carrier and a marker
   per unmarked rule (about 850 files on the shelf, 185 in the home's local pack; the count is
   `mark`'s own report and the file count under `provenance/`). Backfill: one pull request per
-  run, one pack each, so about 36 canon runs and one local; forced daily the shelf completes inside
-  two weeks, weekly inside a season. Growth flows: a handful of `born` entries a week fleet-wide,
+  pack, 36 on the shelf and one local, by hand; a member's local packs fill on the revalidation
+  cadence. Growth flows: a handful of `born` entries a week fleet-wide,
   read from the extract pull requests' diffs; zero `reaffirmed` entries from a revalidation run
   that found everything still true. `references.md` files on the shelf: 21 before the conversion,
-  0 after; in members' local packs the same fall on each member's first backfill run. About
+  0 after; in members' local packs the same fall at the converge that runs the migration record. About
   The session-start
   summary's prose token weight rises by the marker count and no more. Every skill declares a
   `body` (a frontmatter grep against the skill count); of the fifty skill bullets with numeric
@@ -609,7 +612,7 @@ on `main`; a second reading a week after the backfill task's precondition first 
   knowing who took it, or a name in a public canon that should not have been there. One forced
   skill: sessions that loaded it on a README edit and changed nothing the skill speaks to (a
   typo, a link), often enough that the load is the cost and the README should leave the list.
-- **Cheap to re-examine:** the backfill cadence and its one-pack-per-run size, the conversion
+- **Cheap to re-examine:** the backfill's one-pack-per-pull-request size, the conversion
   window's date, the advisory grade on empty files, the entry-field vocabulary, the slug length,
   the forced skill's path list, the shape `mark` proposes a body from.
   **Expensive:** the file grammar, the id rule (a marker is the id and never changes), the
@@ -618,6 +621,6 @@ on `main`; a second reading a week after the backfill task's precondition first 
   'packs/*/provenance/*.md'` and a grep for `^## ` on the shelf. Marker counts: a grep for the
   marker pattern over `packs/*/RULES.md`. Firing counts for `provenance-integrity`: the usage
   fold's per-check series. Promote coverage: the diffs of the pull requests the `Claudinite
-  tracker: Promote to Canon` issue's comments name. Backfill progress: the task's run records and
-  the empty-file count `mark` reports. Conflict resolutions: commits touching `provenance/` whose
+  tracker: Promote to Canon` issue's comments name. Backfill progress: the empty-file count `mark`
+  reports. Conflict resolutions: commits touching `provenance/` whose
   parents both touched the same file.
