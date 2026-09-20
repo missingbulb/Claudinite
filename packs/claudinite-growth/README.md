@@ -121,8 +121,8 @@ overrides it by setting `config.retention_days`. Absence used to mean "capture-o
 as fail-safe and behaved as an unbounded leak: twelve of fourteen members had never pruned a
 capture, one of them holding 67 MB across 73 logs (#1620). A project that genuinely wants
 capture-only now declares `retention_days: 0`, so the decision is written down rather than
-inferred from a missing key. Nothing else to schedule, since both tasks ride the fleet's one
-daily run like the other growth tasks.
+inferred from a missing key. Nothing else to schedule: the retention window is a config value,
+and the prune that reads it runs only when somebody wakes it.
 
 ## Skill-usage metrics — what the mounted skills actually do
 

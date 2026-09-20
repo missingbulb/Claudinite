@@ -360,14 +360,14 @@ export function summariseMember(read, { now, canon = null } = {}) {
     runs: runSummary,
     ci,
     stars,
-    // What this member's own packs report, straight through from the read: the
-    // summary judges nothing about it. A contribution never feeds a reason, a level
-    // or the ranking — attention is earned by what the engine can defend, and a pack
-    // cannot rank across a fleet it does not know.
     // The one item of this member's worth prodding a reader about, ranked by the same
     // rules the repo page's work table ranks by. Computed here because this is the only
     // place the described items exist, and nothing above re-reads them.
     top: pickCandidate(described.map((d) => itemCandidate(repo, d))),
+    // What this member's own packs report, straight through from the read: the
+    // summary judges nothing about it. A contribution never feeds a reason, a level
+    // or the ranking — attention is earned by what the engine can defend, and a pack
+    // cannot rank across a fleet it does not know.
     contributions: read.contributions ?? null,
     live: read.live ?? null,
     lastCommit: head?.committedAt ? ms(head.committedAt) : null,
