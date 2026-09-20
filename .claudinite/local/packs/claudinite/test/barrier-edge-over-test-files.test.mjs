@@ -45,8 +45,19 @@ test('barrier-edge-over-test-files: a *.test.mjs endpoint is reported', () => {
   try { assert.equal(run(root).length, 1); } finally { cleanup(root); }
 });
 
-// An `except` carve-out naming test files is the shape the engine already
-// implements by itself — redundant, never the silent false green.
+// A reviewed exception pins its own `to`, so the key an edge is read by turns up
+// again inside `except` — where it narrows the barrier and never widens it.
+test('barrier-edge-over-test-files: an except entry pinning a test path is not an edge', () => {
+  const root = declaring(barrier({
+    from: 'engine',
+    to: 'packs/p',
+    except: [{ path: 'engine/x.mjs', to: ['packs/p/test'], reason: 'it seeds the fixtures' }],
+    reason: 'stay apart',
+  }));
+  try { assert.deepEqual(run(root), []); } finally { cleanup(root); }
+});
+
+// A structural carve-out is a bare string under `except`, carrying no endpoint key.
 test('barrier-edge-over-test-files: a test name in an except carve-out is not an edge', () => {
   const root = declaring(barrier({ from: 'engine', to: 'packs/p', except: ['*.test.mjs'], reason: 'stay apart' }));
   try { assert.deepEqual(run(root), []); } finally { cleanup(root); }

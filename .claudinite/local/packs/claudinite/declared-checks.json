@@ -448,5 +448,27 @@
         "fix": "move a request or a plan to the tracking issue and drop the rest \u2014 a DESIGN.md is the end state, its rationale, and the alternatives with their drawbacks"
       }
     ]
+  },
+  {
+    "id": "barrier-edge-over-test-files",
+    "severity": "blocking",
+    "since": "2026-09-20",
+    "failureMessage": "the reference scanner drops every *.test.mjs before it reads a tree, so a barrier edge over test files passes clean on a surface it never scanned",
+    "scanFiles": "/(^|\\/)(?:declared-checks\\.json|\\.claudinite-settings\\.json)$/",
+    "scanTracked": true,
+    "fix": "express the boundary as a matchLines check over the test files, which the line scanner does read",
+    "matchLines": [
+      {
+        "match": "/\"(?:from|to|between|siblings)\"\\s*:[^\\n]*\"(?:(?:[^\"]*\\/)?(?:tests?|__tests__|spec)(?:\\/[^\"]*)?|[^\"]*\\.(?:test|spec)\\.[cm]?jsx?)\"/",
+        "unlessWithinBlockOpenedBy": "/\"(?:except|allow)\"\\s*:/",
+        "what": "a barrier edge over test files: {match}"
+      },
+      {
+        "match": "/\"(?:from|to|between|siblings)\"\\s*:\\s*\\[\\s*$/",
+        "andIndentedBlockBelowMatches": "/\"(?:(?:[^\"]*\\/)?(?:tests?|__tests__|spec)(?:\\/[^\"]*)?|[^\"]*\\.(?:test|spec)\\.[cm]?jsx?)\"/",
+        "unlessWithinBlockOpenedBy": "/\"(?:except|allow)\"\\s*:/",
+        "what": "a barrier edge listing a test surface: {match}"
+      }
+    ]
   }
 ]
