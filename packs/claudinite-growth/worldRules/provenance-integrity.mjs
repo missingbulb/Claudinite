@@ -19,6 +19,11 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 // backfill's worklist and not a defect; a pack-root references.md is the retired
 // convention still in place, tolerated at advisory through the conversion window.
 //
+// A GUIDELINES SKILL'S BULLET carries a marker only where its history has a file of its
+// own; unmarked, it is the skill's, covered by the file the skill names, so the unmarked
+// finding names RULES.md rules alone. Two carriers may name one file while their history
+// is one (the owner's call, 2026-09-20).
+//
 // RELEVANCE-FIRST: inert in a repo that carries no pack under either root.
 const PACK = 'claudinite-growth';
 const toolPath = (ctx) => (ctx.exists(`packs/${PACK}/provenance.mjs`) ? `packs/${PACK}/provenance.mjs` : `.claudinite/shared/packs/${PACK}/provenance.mjs`);

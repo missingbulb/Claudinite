@@ -216,7 +216,7 @@ test('auditPack reports every fact the integrity check judges, and nothing a cle
   const root = repo(PACK);
   try {
     const a = auditPack('packs/alpha', checkoutIo(root));
-    assert.deepEqual(a.unmarked.map((u) => u.trigger), ['Wanting import/export', 'Assembling a shared global', 'Doing Y']);
+    assert.deepEqual(a.unmarked.map((u) => u.trigger), ['Wanting import/export', 'Assembling a shared global'], 'skill g\'s unmarked bullet "Doing Y" is the skill\'s, not a fault');
     assert.deepEqual(a.dangling.map((d) => [d.carrier, d.id, d.retired]).sort(), [
       ['check cer/coded-check', 'cer-coded-check', false], ['check declared-check', 'declared-check', false],
       ['guideline "Doing X"', 'doing-x', false], ['skill g', 'g', false], ['skill nobody', 'nobody', false], ['skill w', 'w', false],
@@ -251,7 +251,7 @@ test('withBody puts the body under metadata, creating the block where the frontm
   assert.equal(skillShape(withBody('# x\n\n- **A** — b.\n', 'guidelines')).body, 'guidelines');
 });
 
-test('markPack marks every unmarked rule and guideline, declares every body, creates every missing file — and does nothing twice', () => {
+test('markPack marks every unmarked rule, declares every body, creates every missing file - and does nothing twice', () => {
   const root = repo(PACK);
   try {
     const io = checkoutIo(root);
@@ -261,16 +261,17 @@ test('markPack marks every unmarked rule and guideline, declares every body, cre
     assert.match(rules, /says why\.\n  \(assembling-shared-global\)\n/, 'a marker the line cannot hold within the width takes a continuation line');
     assert.match(rules, /\(worker-absolute-paths\)\n/, 'a marked rule is untouched');
     const g = readFileSync(join(root, 'packs/alpha/skills/g/SKILL.md'), 'utf8');
-    assert.match(g, /Doing Y\*\* — do it\. \(doing-y\)\n/);
+    assert.match(g, /Doing Y\*\* — do it\. \(7\)\n/, 'a guidelines skill\'s unmarked bullet is the skill\'s, and its numeric marker is the conversion\'s to resolve');
     const nobody = readFileSync(join(root, 'packs/alpha/skills/nobody/SKILL.md'), 'utf8');
     assert.match(nobody, /^---\nname: nobody\nmetadata:\n  body: guidelines\n---\n/);
-    assert.match(nobody, /\(unmarked-guideline\)\n/, 'a skill whose body is proposed as guidelines has its bullets marked in the same pass');
+    assert.ok(!/\(unmarked-guideline\)/.test(nobody), 'a skill whose body is proposed as guidelines keeps its bullets unmarked: they are the skill\'s until one earns a file of its own');
     const w = readFileSync(join(root, 'packs/alpha/skills/w/SKILL.md'), 'utf8');
     assert.ok(!/\(a-gotcha\)/.test(w) && /\(2\)/.test(w), 'a workflow skill\'s bullets are not marked and its numeric marker is the conversion\'s to remove');
-    for (const f of ['wanting-import-export', 'assembling-shared-global', 'doing-y', 'unmarked-guideline', 'g', 'w', 'nobody', 'cer-coded-check', 'declared-check', 'store-release']) {
+    for (const f of ['wanting-import-export', 'assembling-shared-global', 'g', 'w', 'nobody', 'cer-coded-check', 'declared-check', 'store-release']) {
       assert.ok(existsSync(join(root, `packs/alpha/provenance/${f}.md`)), `${f}.md created`);
-      assert.equal(readFileSync(join(root, `packs/alpha/provenance/${f}.md`), 'utf8'), '', 'created empty — history is the backfill\'s');
+      assert.equal(readFileSync(join(root, `packs/alpha/provenance/${f}.md`), 'utf8'), '', 'created empty - history is the backfill\'s');
     }
+    for (const f of ['doing-y', 'unmarked-guideline']) assert.ok(!existsSync(join(root, `packs/alpha/provenance/${f}.md`)), `${f}.md not created - the bullet is its skill\'s`);
     assert.equal(readFileSync(join(root, 'packs/alpha/provenance/worker-absolute-paths.md'), 'utf8'), BORN, 'an existing file is untouched');
     assert.ok(report.some((l) => /"Wanting import\/export" marked \(wanting-import-export\) - numeric marker \(3\) replaced/.test(l)), report.join('\n'));
     assert.ok(report.some((l) => /nobody\/SKILL\.md: body: guidelines proposed/.test(l)));
