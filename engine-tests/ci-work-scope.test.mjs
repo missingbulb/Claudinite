@@ -149,7 +149,7 @@ test('the push\'s OWN base is judged, not merely the previous commit', () => {
 // The pushed commit is HEAD, but the base branch has moved past it by the time the
 // step fetches it: on a busy trunk two merges and a version bump land in the minute
 // between a push and its CI step. HEAD is then an ANCESTOR of the base, not equal
-// to it, and a three-dot diff from the base is empty — the push must still be
+// to it, and a three-dot diff from the base is empty. The push must still be
 // judged against what the branch held before it.
 test('a push overtaken on the base branch by later pushes is still judged against its own before', () => {
   const { root, eventPath } = pushedRepo();

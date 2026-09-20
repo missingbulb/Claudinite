@@ -26,7 +26,7 @@
 //   branch held BEFORE the push, it is an ordinary work scope. "On the base
 //   branch" is CONTAINMENT, not equality: by the time this step fetches the base,
 //   a busy trunk has often taken two more merges and a version bump, so HEAD is
-//   an ancestor of the base — and a three-dot diff from a base that already holds
+//   an ancestor of the base, and a three-dot diff from a base that already holds
 //   HEAD is empty, which read as a refused empty scope and failed every overtaken
 //   push.
 //
@@ -112,7 +112,7 @@ export function decide(root, { branch, fetch = true, eventPath = process.env.GIT
   if (onBase) {
     const pushed = pushedFrom(root, { eventPath });
     if (!pushed) {
-      return { run: false, code: 0, say: `work scope: skipped — HEAD is on ${base}, so there is no change to judge` };
+      return { run: false, code: 0, say: `work scope: skipped, HEAD is on ${base} so there is no change to judge` };
     }
     base = pushed;
   }
