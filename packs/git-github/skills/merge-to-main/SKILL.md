@@ -32,7 +32,7 @@ points below (merge method, CI gating). Don't go hunting for one it doesn't name
 
 Don't re-read an issue to confirm it closed — `Closes #<issue>` does that on merge.
 
-The merge leaves the local checkout on the branch it squashed, and no step here syncs `main` — the
+The merge leaves the local checkout on the branch it squashed, and no step here syncs `main`; the
 merge is usually a session's last act. Only if you go on to start further work in this session,
 sync first, before branching off anything:
 
