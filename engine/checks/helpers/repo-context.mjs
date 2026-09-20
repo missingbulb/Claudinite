@@ -231,9 +231,9 @@ const SCHEDULE_KEYS = ['dailyHour', 'weeklyDay', 'monthlyDay', 'dispatch', 'agen
 // at scaffold, so nothing reads these three. They stay ACCEPTED rather than becoming
 // unknown keys, because an unknown key is a blocking settings error and every member
 // still carries them until its own converge runs the record that strips them out;
-// `legacy-shape-in-use` is the advisory that tells each holder, and #2178 takes them
+// `legacy-shape-in-use` is the advisory that tells each holder, and #2181 takes them
 // off SCHEDULE_KEYS once the record has had its window.
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#2178
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#2181
 export const RETIRED_SCHEDULE_KEYS = ['dailyHour', 'weeklyDay', 'monthlyDay'];
 
 // What the endpoint map is called. `endpoints` said nothing about WHICH endpoints —

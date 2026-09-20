@@ -79,7 +79,7 @@ export default {
 
   // The telemetry hook cannot list directories, so the local-pack half is invisible to
   // it; the declaration half is what `legacy-shape-in-use` reports in each holder's own
-  // repo, and #2178 takes the keys off the accepted list once that advisory has had its
+  // repo, and #2181 takes the keys off the accepted list once that advisory has had its
   // convergence window.
   legacyPresent: async () => false,
 };
