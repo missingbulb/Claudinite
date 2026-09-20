@@ -39,6 +39,11 @@ forever, whether or not it ever applies — so prose is rationed, and the ration
   `force-load-on-file-edits-paths` covers *every* moment the rule is needed. A skill whose only
   trigger is its description is picked by the model, not the harness, so a rule that must fire at
   a moment no file edit predicts stays prose, however activity-shaped it reads. (2)
+- **Starting a `SKILL.md`, or editing one that declares no body** — say under its frontmatter
+  `metadata` what the body is: `body: workflow` for a procedure, whose steps and their gotchas
+  change as one, or `body: guidelines` for rules behind a trigger, each as independent as a
+  `RULES.md` bullet. A skill that mixes the two declares the shape of its greater part. The
+  harness ignores the key; the corpus's own maintenance reads it, and never infers it. (3)
 
 ## Shape a rule so it fires
 

@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { globToRegExp, expandBraces, pathScopedSkills, missingSkillsFor, triggeredSkills, missingSkillsForCall, missingSkillsForPrompt, missingSkillsForResult } from '../../engine/pack_loader/path-scoped-skills.mjs';
-import { parseFrontmatter, skillMetadata, forceLoadPathsOf, parseToolTrigger } from '../../engine/pack_loader/skill-frontmatter.mjs';
+import { parseFrontmatter, skillMetadata, forceLoadPathsOf, parseToolTrigger, bodyOf } from '../../engine/pack_loader/skill-frontmatter.mjs';
 import { skillLoads } from '../../engine/checks/helpers/session-transcript.mjs';
 import { commandName } from '../../packs/claudinite-tasks/tasks/usage-fold/fold-usage.mjs';
 import { removeTree } from '../../engine/remove-tree.mjs';
@@ -46,7 +46,7 @@ test('pathScopedSkills reads each active pack\'s bundled skills\' forced scope; 
     skill('a', 's1', '---\nname: s1\ndescription: d\nmetadata:\n  force-load-on-file-edits-paths: wiki/**, wiki/*.md\n---\n');
     skill('a', 'plain', '---\nname: plain\ndescription: unscoped\n---\n');
     skill('b', 's2', '---\nname: s2\ndescription: d\nmetadata:\n  force-load-on-file-edits-paths:\n    - wiki/**\n---\n');
-    assert.deepEqual(skillMetadata(join(root, 'a', 'skills', 's1')), { name: 's1', description: 'd', forceLoadPaths: ['wiki/**', 'wiki/*.md'], toolCallTriggers: [], promptTriggers: [], toolResultTriggers: [] });
+    assert.deepEqual(skillMetadata(join(root, 'a', 'skills', 's1')), { name: 's1', description: 'd', body: null, forceLoadPaths: ['wiki/**', 'wiki/*.md'], toolCallTriggers: [], promptTriggers: [], toolResultTriggers: [] });
     const decls = pathScopedSkills([
       { id: 'a', dir: join(root, 'a'), skills: ['s1', 'plain'] },
       { id: 'b', dir: join(root, 'b'), skills: ['s2'] },
@@ -145,4 +145,17 @@ test('triggeredSkills reads the three trigger kinds off a pack\'s skills, and ea
     assert.deepEqual(names(missingSkillsForResult({ name: 'WebFetch', input: {} }, { status: 200 }, decl, [])), []);
     assert.deepEqual(names(missingSkillsForResult({ name: 'Bash', input: {} }, '403', decl, [])), [], 'a result trigger names its tool');
   } finally { removeTree(root); }
+});
+
+test('bodyOf reads the body a skill declares under metadata — workflow or guidelines — and null for anything else', () => {
+  assert.equal(bodyOf(parseFrontmatter('---\nname: x\nmetadata:\n  body: guidelines\n---\n')), 'guidelines');
+  assert.equal(bodyOf(parseFrontmatter('---\nmetadata:\n  body: workflow\n  force-load-on-file-edits-paths: [a/**]\n---\n')), 'workflow');
+  assert.equal(bodyOf(parseFrontmatter('---\nmetadata:\n  body: procedure\n---\n')), null, 'a value outside the vocabulary is undeclared, never a default');
+  assert.equal(bodyOf(parseFrontmatter('---\nname: x\n---\n')), null, 'absent is undeclared');
+  assert.equal(bodyOf(parseFrontmatter('---\nbody: workflow\n---\n')), null, 'the key lives under metadata, never at the top level the harness owns');
+  const dir = mkdtempSync(join(tmpdir(), 'claudinite-body-'));
+  writeFileSync(join(dir, 'SKILL.md'), '---\nname: y\ndescription: d\nmetadata:\n  body: workflow\n---\n# y\n');
+  assert.equal(skillMetadata(dir).body, 'workflow');
+  assert.equal(skillMetadata(mkdtempSync(join(tmpdir(), 'claudinite-nobody-'))).body, null, 'no SKILL.md is empty metadata, body included');
+  removeTree(dir);
 });
