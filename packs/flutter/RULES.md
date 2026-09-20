@@ -21,9 +21,6 @@
   identically by `main.dart` (adapters) and the test harness (fakes). Tests must never rebuild a
   parallel MaterialApp — actuals come from the shipped shell.
 
-- **Inject the clock.** Any widget that formats or compares times takes a `Clock` port; relative
-  time rendered from `DateTime.now()` is untestable and drifts goldens.
-
 ## Widget tests and goldens
 
 - **Anything that fetches must be injectable**: map tile providers, avatar images. Widget tests

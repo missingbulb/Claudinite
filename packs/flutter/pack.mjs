@@ -1,4 +1,10 @@
-// Prose + one environment requirement. Fingerprint: a pubspec.yaml at the repo
+// Prose, two checks and one environment requirement. Both checks are forbidden
+// patterns over the shipped Dart tree — a fetch the widget tree performs itself,
+// and a time read off the device clock — declared beside this manifest because
+// their whole logic is patterns over files. Everything else here stays prose: the
+// import boundary needs a project-supplied list of forbidden plugin prefixes, and
+// the rest is golden and toolchain judgment no scan can separate from healthy
+// code. Fingerprint: a pubspec.yaml at the repo
 // root OR one directory down (a monorepo's app/ or client/ dir) — but never
 // deeper, so a stray pubspec.yaml in a nested example/fixture tree can't trip
 // detection.
