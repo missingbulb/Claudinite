@@ -51,7 +51,7 @@
       {
         "require": "/packs\\/claudinite-tasks\\/src\\/schedule\\/run\\.mjs/",
         "what": "does not run the vendored scheduler entry",
-        "fix": "run the vendored scheduler entry — node .claudinite/shared/packs/claudinite-tasks/src/schedule/run.mjs"
+        "fix": "run the vendored scheduler entry: node .claudinite/shared/packs/claudinite-tasks/src/schedule/run.mjs"
       },
       {
         "require": "/^\\s*contents:\\s*write\\b/m",
