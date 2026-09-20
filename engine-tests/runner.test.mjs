@@ -52,16 +52,13 @@ test('exit 1 with a rendered finding on a blocking violation; exit 0 when clean'
 
 test('advisory findings alone do not fail the run', async () => {
   const root = makeRepo({
-    base: {
-      'deep/far/util.mjs': 'export const x = 1;\n',
-      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
-    },
-    changed: { 'src/mod.mjs': "import { x } from '../deep/far/util.mjs';\nexport { x };\n" },
+    base: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) },
+    changed: { 'packs/demo/RULES.md': `- ${'x'.repeat(120)}\n` },
   });
   try {
     const r = await world(root);
     assert.equal(r.status, 0);
-    assert.match(r.stdout, /file-placement/);
+    assert.match(r.stdout, /rules-line-length/);
   } finally { cleanup(root); }
 });
 
@@ -262,7 +259,7 @@ test('--list emits the machine-readable rule catalog', () => {
     // explanation of why is thrown away.
     assert.equal(r.status, 0, `--list failed (signal ${r.signal}); stderr was:\n${r.stderr}`);
     for (const id of ['reference-integrity', 'markdown-link-labels',
-                      'warning-suppression', 'file-placement',
+                      'warning-suppression',
                       'squash-merge-history']) {
       assert.match(r.stdout, new RegExp(`^${id}\t`, 'm'),
         `${id} is absent from the catalog. stderr was:\n${r.stderr}`);

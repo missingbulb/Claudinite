@@ -7,7 +7,6 @@ import referenceIntegrity from '../workRules/reference-integrity.mjs';
 import commentClassificationForm from '../workRules/comment-classification-form.mjs';
 import workRequestNotStarted from '../workRules/work-request-not-started.mjs';
 import linkLabels from '../worldRules/markdown-link-labels.mjs';
-import filePlacement from '../worldRules/file-placement.mjs';
 import sharedConstants from '../worldRules/shared-constants.mjs';
 
 const squashMergeHistory = declaredCheck('packs/basics', 'squash-merge-history');
@@ -309,36 +308,6 @@ test('rules-line-length: one advisory per RULES.md whose lines run past 100 byte
     const findings = rulesLineLength.run(buildContext({ root, mode: 'all' }));
     assert.deepEqual(findings.map((f) => [f.file, f.line]), [['packs/demo/RULES.md', 2]]);
     assert.match(findings[0].what, /1 line\(s\) over 100 bytes, longest 122/);
-  } finally { cleanup(root); }
-});
-
-test('file-placement: flags a distance-3+ reference, exempts tests and mandated locations', () => {
-  const bad = makeRepo({
-    base: { 'deep/far/util.mjs': 'export const x = 1;\n' },
-    changed: { 'src/mod.mjs': "import { x } from '../deep/far/util.mjs';\nexport { x };\n" },
-  });
-  const exempt = makeRepo({
-    base: { 'deep/far/util.mjs': 'export const x = 1;\n' },
-    changed: {
-      'test/deep/mod.test.mjs': "import { x } from '../../deep/far/util.mjs';\n",
-      '.github/workflows/helper.mjs': "import { x } from '../../deep/far/util.mjs';\n",
-    },
-  });
-  try {
-    const findings = run(filePlacement, bad);
-    assert.equal(findings.length, 1);
-    assert.match(findings[0].what, /distance 3/);
-    assert.equal(run(filePlacement, exempt).length, 0);
-  } finally { cleanup(bad); cleanup(exempt); }
-});
-
-test('file-placement: does not flag markdown prose links (code metric only)', () => {
-  const root = makeRepo({
-    base: { 'deep/far/other.md': 'x\n' },
-    changed: { 'doc.md': 'see [other](../deep/far/other.md)\n' },
-  });
-  try {
-    assert.equal(run(filePlacement, root).length, 0);
   } finally { cleanup(root); }
 });
 
