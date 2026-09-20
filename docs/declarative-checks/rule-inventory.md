@@ -163,7 +163,7 @@ the `checkParsedFiles` keys a row names carry only what a schema cannot state.
 | # | Rule | Class | Signature / trigger / derived set | Needs |
 |---|---|---|---|---|
 | 1 | Rule about what `packs/` may reference → barriers | G | — | — |
-| 2 | Writing `docs/<initiative>/DESIGN.md` — end state only | A/F | headings like `## Migration`/`## Status`/`## Request` in `docs/*/DESIGN.md`; Write of that path | `matchLines` (advisory) + path-scoped force-load |
+| 2 | Writing `docs/<initiative>/DESIGN.md` — end state only | A/F | headings like `## Migration`/`## Status`/`## Request` in `docs/*/DESIGN.md`; Write of that path | `matchLines` (advisory) — → `design-doc-end-state-only` (2026-09-20), over the heading a banned section leads with; the path-scoped force-load half is unconverted |
 | 3 | Migration plan is the issue, never `MIGRATION.md` | A | a tracked `docs/**/MIGRATION.md` | `forbidPaths` (path-only forbid) — → `migration-record-in-docs` (2026-09-06; the one standing hit is #1775) |
 | 4 | Built design doc — delete whole | F | merge completing a design-doc'd element | tool-call-triggered skill |
 | 5 | Sweeping a deleted doc's `§` pointers | B | set of `§N` pointers naming a doc → each resolves | derive captures → assert resolves — logged 2026-09-06: which doc a § pointer names is not derivable (G) |

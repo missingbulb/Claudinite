@@ -432,5 +432,21 @@
         "fix": "name the branch without the word git (perf/fixtures, not perf/git-fixtures) \u2014 the child cannot rename it afterwards either"
       }
     ]
+  },
+  {
+    "id": "design-doc-end-state-only",
+    "severity": "advisory",
+    "since": "2026-09-20",
+    "failureMessage": "a DESIGN.md reads as the description of a system, so a request, a narrative of the state it replaced, or a record of who said what reads as current design",
+    "scanFiles": "/(^|\\/)docs\\/[^/]+\\/DESIGN\\.md$/",
+    "scanTracked": true,
+    "scanIgnoringMarkdownFences": true,
+    "matchLines": [
+      {
+        "match": "/^#{2,4} +(?:\\d+(?:\\.\\d+)*\\.? +)?(?:the +(?:request|ask)|requests?|background|history|prior +\\w+|current +\\w+|today|status|why +(?:the|we|it) +\\w+|owner|decisions?|migration)\\b.*/i",
+        "what": "a section that is not the end state: \"{match}\"",
+        "fix": "move a request or a plan to the tracking issue and drop the rest \u2014 a DESIGN.md is the end state, its rationale, and the alternatives with their drawbacks"
+      }
+    ]
   }
 ]
