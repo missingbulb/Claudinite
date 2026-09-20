@@ -93,7 +93,7 @@ Apply the same narrowness as the other two:
 
 Take the surface from wherever the framework already defines it, rather than restating it. If some other rule enforces "an extension may import only X," that same X is what placement should exempt — one definition, so the two can't drift apart and disagree about the same import.
 
-In this corpus that means a pack module under `packs/` or `.claudinite/local/packs/` importing the engine surface (everything under `engine/` — `engineSurface()` in `engine/checks/helpers/module-imports.mjs`, the allow list the `pack-independence` barrier enforces; vendored under `.claudinite/shared/` in a consuming repo). The `basics/file-placement` check implements this exemption, so a pack rule's `findings.mjs` import is never flagged at all. A pack reaching into *another* pack, or deep into its own subtree, is judged normally.
+In this corpus that means a pack module under `packs/` or `.claudinite/local/packs/` importing the engine surface (everything under `engine/` — `engineSurface()` in `engine/checks/helpers/module-imports.mjs`, the allow list the `pack-independence` barrier enforces; vendored under `.claudinite/shared/` in a consuming repo). A pack rule's `findings.mjs` import is therefore never a reach. A pack reaching into *another* pack, or deep into its own subtree, is judged normally.
 
 ## Tooling acts on paths: encode act-on-able distinctions structurally
 

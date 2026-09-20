@@ -114,10 +114,9 @@ both need moves *down* rather than sideways. The one edge that crosses back is
 `read/contributions.mjs` reaching `render/ui.mjs` for `duration`, which its own header
 explains — the layout leaves that visible rather than hiding it.
 
-Depth stops at one level under `src/`. The `file-placement` rule counts a reference at
-folder distance three or more as a reach, and sibling layer folders are distance two; a
-second level would make every cross-folder import a finding and add another `../` to the
-climbs into `engine/`.
+Depth stops at one level under `src/`: sibling layer folders sit at folder distance two
+of each other, and a second level would turn every cross-folder import into a reach and add
+another `../` to the climbs into `engine/`.
 
 Everything the browser loads is under `src/`, which is how the site build decides what to
 publish — a directory the tree already names, rather than a list of filenames to keep in
