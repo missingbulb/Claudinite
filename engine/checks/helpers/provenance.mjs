@@ -565,6 +565,11 @@ function splitReaffirmation(text) {
   return { reason: rest.join(' ').trim(), retire: retire.join(' ').trim() };
 }
 
+// A references doc sat at the pack root and its text linked relative to it; the entry
+// sits one folder down, so every relative link gains the `../` that keeps it resolving.
+const LINK = /\]\((?![a-z][a-z0-9+.-]*:|#|\/)([^)\s]+)\)/g;
+const relinked = (text) => String(text).replace(LINK, (m, target) => `](../${target})`);
+
 // Convert a pack's references.md into entries on the elements its keys name, rewrite
 // each numeric marker to the slug its element takes (a workflow skill's markers leave
 // the step), and delete the doc. `dateOf(key)` dates an entry — the entry's adding
@@ -593,7 +598,7 @@ export function convertReferences(packDir, io, { dateOf = () => null, today = ne
     report.push(`${f}: ${kind} entry from references.md (${entry.key})`);
   };
   const entryFor = (ref, mechanism) => {
-    const { reason, retire } = splitReaffirmation(ref.text);
+    const { reason, retire } = splitReaffirmation(relinked(ref.text));
     const dated = dateOf(ref.key);
     return {
       key: ref.key, date: dated ?? today,

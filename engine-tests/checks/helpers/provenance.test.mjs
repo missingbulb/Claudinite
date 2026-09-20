@@ -396,6 +396,21 @@ test('the RULES-n marker spelling, a suffixed key, a task key and a guidelines s
   } finally { removeTree(root); }
 });
 
+test('a converted entry\'s relative links gain the ../ that keeps them resolving from provenance/', () => {
+  const root = repo({
+    'packs/p/pack.mjs': 'export default {};\n',
+    'packs/p/RULES.md': '- **Doing X** — see the doc. (3)\n',
+    'packs/p/references.md': '- **(RULES-3)** The method is [extracting-lessons.md](extracting-lessons.md); the issue is [#12](https://example.com/12) and the anchor [here](#x).\n',
+  });
+  try {
+    convertReferences('packs/p', checkoutIo(root), { today: '2026-09-21' });
+    const text = readFileSync(join(root, 'packs/p/provenance/doing-x.md'), 'utf8');
+    assert.match(text, /\[extracting-lessons\.md\]\(\.\.\/extracting-lessons\.md\)/);
+    assert.match(text, /\[#12\]\(https:\/\/example\.com\/12\)/, 'an absolute URL is untouched');
+    assert.match(text, /\[here\]\(#x\)/, 'an anchor is untouched');
+  } finally { removeTree(root); }
+});
+
 // --- the reduction ----------------------------------------------------------------
 
 test('reduceText drops session ids and quotes everywhere, and handles and member locators only for a public canon', () => {

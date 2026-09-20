@@ -164,6 +164,12 @@ test('provenance-change-recorded: a deleted carrier\'s file ends with retired, o
   assert.deepEqual(runWork({ ...withoutRule, [`${PACK}provenance/doing-thing.md`]: `${BORN}\n## 2026-09-01 · retired · superseded by the canon\n- **Actor:** @x (owner).\n` }), []);
 });
 
+test('provenance-change-recorded: a pack with no provenance folder at the base is the marking pass\'s, and owes nothing', () => {
+  const unmarked = Object.fromEntries(Object.entries(filled).filter(([k]) => !k.includes('/provenance/')));
+  const base = { ...unmarked, [`${PACK}RULES.md`]: '- **Doing a thing** — the settled way.\n\n- **Doing another** — plainly.\n' };
+  assert.deepEqual(runWork(clean, base), [], 'markers, bodies and empty files arriving together owe no entry');
+});
+
 test('provenance-change-recorded: inert on the default branch and outside pack directories', () => {
   const root = makeRepo({ base: filled, changed: { 'src/app.js': 'y\n' } });
   try { assert.deepEqual(runRule(workRule, buildContext({ root })), []); } finally { cleanup(root); }
