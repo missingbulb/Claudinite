@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR, PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
+import { PROVENANCE_DIR } from '../engine/pack_loader/pack-conventions.mjs';
 import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../engine/checks/helpers/module-imports.mjs';
 import { migrationApplies, MIGRATIONS_SUBDIR } from '../engine/checks/helpers/active-migrations.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
@@ -66,6 +67,14 @@ const isTest = (name) => name.endsWith('.test.mjs');
 // the rule — a skill below it is free to ship a payload doc of the same name.
 export const REFERENCES_DOC = 'references.md';
 
+// A pack's `provenance/` is the decision log behind its elements (docs/provenance/DESIGN.md):
+// read by the growth and curation passes, a promote run and a maintainer, in the repo that
+// OWNS the pack, and by no session anywhere. A member mounting a canon pack receives the
+// guidelines, not the reasoning, and never another organisation's decision log - so the
+// folder stays canon-side like `references.md` before it, at the pack root only (a skill
+// below is free to ship a payload folder of the same name).
+export { PROVENANCE_DIR };
+
 // THE TASK SURFACE IS A PACK, and a pack's own .md files are payload rather than
 // maintainer reference, so the operational documents a consumer session reads out of
 // its own mount at runtime — the executor's instructions, the work-item session's
@@ -123,6 +132,7 @@ function walk(relDir, files, errors, { engine = false, today, installed = null, 
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (entry.isDirectory()) {
       if (entry.name === TEST_DIR || entry.name === UPDATES_DIR || entry.name === DOCS_DIR) continue;
+      if (relDir === packRoot && entry.name === PROVENANCE_DIR) continue;
       if (!tasks && entry.name === TASKS_SUBDIR) continue;
       const rel = `${relDir}/${entry.name}`;
       if (isRecordOfFlow(relDir, entry.name) && !migrationApplies(rel, { installed, today })) continue;

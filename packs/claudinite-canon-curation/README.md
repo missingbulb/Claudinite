@@ -86,6 +86,8 @@ What a canon session follows when it names, configures, writes or polices a pack
 | Grep a named directory before shipping | medium | correctness | prose: <50 words |
 | Measure whether a check earns its keep | low | performance | prose: <50 words |
 | RULES.md instructs, never describes | medium | complexity | prose: <100 words |
+| A pack README carries use, never history | medium | complexity | prose: <100 words |
+| A shelf carrier change carries its entry | medium | correctness | prose: <50 words |
 | Mechanize a re-derived procedure | low | performance | prose: <50 words |
 
 ### Checks

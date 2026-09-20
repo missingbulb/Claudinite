@@ -446,6 +446,24 @@ test('a "<dir>/*" glob bars only child directories, not files directly under the
   assert.match(f[0].what, /content\/alpha\/mod\.js/);
 });
 
+// A region every sibling carries under one name — a pack's `provenance/` — is carved
+// out of every child of the folder at once, so a decision log may name what it
+// explains without the pack it sits in crossing anything.
+test('a "<folder>/*/<name>" carve-out removes that child of every sibling from the guarded set', () => {
+  const f = runCheck({ rules: [{ siblings: 'packs', to: 'docs', except: ['packs/*/provenance'] }] }, {
+    'packs/alpha/provenance/some-rule.md': 'evidence: docs/DESIGN.md decided it\n',
+    'packs/alpha/RULES.md': 'a rule citing docs/DESIGN.md\n',
+    'packs/beta/provenance/_pack.md': 'born of docs/DESIGN.md\n',
+    'packs/beta/skills/s/provenance/payload.md': 'a skill payload naming docs/DESIGN.md\n',
+    'docs/DESIGN.md': 'the design\n',
+  });
+  assert.deepEqual(f.map((x) => x.file).sort(), ['packs/alpha/RULES.md', 'packs/beta/skills/s/provenance/payload.md'],
+    'the pack-root folder is carved out of each sibling; a deeper folder of the same name is not');
+  const bad = runCheck({ rules: [{ siblings: 'packs', to: 'docs', except: ['packs/*/*'] }] }, { 'packs/alpha/RULES.md': 'x\n', 'docs/D.md': 'y\n' });
+  assert.equal(bad.length, 1);
+  assert.match(bad[0].what, /carve-out "packs\/\*\/\*" must name a folder\/file/);
+});
+
 test('a repo-root "from" whose targets are not excepted is a config error', () => {
   const f = runCheck({ rules: [{ from: '.', to: 'server' }] }, {
     'core/a.js': '1\n',

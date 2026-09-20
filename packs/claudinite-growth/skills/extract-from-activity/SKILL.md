@@ -64,5 +64,11 @@ one. Declare `since: '<today>'` on it — a `blocking` check is enforced as advi
 so a check whose backlog the tree still carries can land now and bite later. A rule that cannot be made
 confident lands as prose instead — never as a broken check.
 
+Every lesson landed gets its `born` entry on its provenance file in the same change - the marker on
+the rule, the file, and `provenance.mjs append` with `Source` (the commit, issue or pull request the
+lesson came from), `Reason` and `Mechanism`; the changing-pack-elements skill has the grammar. A
+candidate dropped for a reason worth keeping goes on the pack's `_declined.md`, so the next pass
+reads it before nominating again.
+
 Finding nothing is a perfectly good and common outcome; a duplicate or invented "lesson" is worse than
 adding nothing.

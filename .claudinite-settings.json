@@ -77,7 +77,8 @@
               "to": ["docs", "packs/claudinite-tasks/docs"],
               "reason": "docs/ is outside the vendor set, so a pack file's reference to it resolves to nothing in every consumer (#424) — cite the doc from the issue or PR instead; a pack's updates/ is carved out because no vendor set carries that either, so the premise cannot arise there (#1317). packs/claudinite-tasks/docs/ joined it on the same footing (#1755): a pack's own docs/ is maintainer reference cited by § from code comments, never vendored, so another pack's file referencing it by path is exactly the same dangling crossing",
               "except": [
-                "packs/claudinite-lifecycle/updates"
+                "packs/claudinite-lifecycle/updates",
+                "packs/*/provenance"
               ]
             }
           ]

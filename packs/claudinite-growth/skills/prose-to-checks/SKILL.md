@@ -187,6 +187,13 @@ while an `extension-test/` mirror bullet stayed, because the check beside it enf
 Whether a check covers a rule is a judgment about meaning, so this test is applied by a
 **reader**, not mechanized.
 
+The verdict is recorded where the next pass reads it: a `converted` entry on the element's
+provenance file, its `Mechanism` the check and why coded or declared, its `Reason` the deletion
+test's outcome (prose deleted, or kept and what it still carries), through `provenance.mjs
+append` in the same change; the new check's file is the same element's where the rule and the
+check are one guideline, or its own where they are not. A rule judged **not checkable** goes on
+the pack's `_declined.md`, dated, so no later pass re-derives the verdict.
+
 ## Bounds
 
 - **One PR, bounded surface** — the new rule module, its `pack.mjs` line, its fixture, and the

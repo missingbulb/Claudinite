@@ -156,9 +156,14 @@ rephrase, the keep-test, and the shrink-only discipline.
 counts as a claim whose truth lives outside the repo, the two probe rules, and the four verdicts a
 run reports.
 [**writing-pack-prose**](skills/writing-pack-prose/SKILL.md) owns how pack prose is *written* —
-the rule format, findability, and the per-pack `references.md` that carries each rule's
-reaffirmable rationale behind an end-of-line `(n)` marker (checks join via `check:<id>` entries);
-`references-integrity` below is its machine half, and `rule-revalidation` its consumer. The pack
+the rule format, findability, and the slug marker that ends every rule and names its provenance
+file; [**changing-pack-elements**](skills/changing-pack-elements/SKILL.md), forced on every pack
+file, says which entry an edit owes and how the pack's `README.md` stays about use;
+[**backfilling-provenance**](skills/backfilling-provenance/SKILL.md) is the method for filling a
+pack's empty files from its history, one pack per pull request. `provenance.mjs` beside this
+README is the one tool all three name - `mark`, `append`, `check`, `convert-references`,
+`reduce`, `history` - and `provenance-integrity` and `provenance-change-recorded` below are the
+convention's machine halves. The pack
 also bundles
 [unattended-agents](skills/unattended-agents/SKILL.md) and
 [**writing-tasks**](skills/writing-tasks/SKILL.md) — the contract a `tasks/<name>/task.json` and
@@ -277,7 +282,8 @@ made the change, and is one sweep away from being closed as stale.
 | `technology-skill-cites-dated-sources` | high | correctness | check: blocking |
 | `technology-skill-links-inside-its-folder` | medium | complexity | check: blocking |
 | `technology-skill-code-imports-inside-its-folder` | medium | complexity | check: blocking |
-| `references-integrity` | high | correctness | check: blocking |
+| `provenance-integrity` | high | correctness | check: blocking |
+| `provenance-change-recorded` | high | correctness | check: blocking |
 | `routine-structure` | medium | complexity | check: blocking |
 | `task-declaration-matches-folder` | high | correctness | check: blocking |
 | `task-md-only-when-agentic` | high | correctness | check: blocking |
