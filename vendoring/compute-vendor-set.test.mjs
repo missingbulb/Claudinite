@@ -507,6 +507,32 @@ test("no canon pack ships its docs/ — over the real corpus, not a fixture", as
   assert.ok(docsFiles.length > 5, `only ${docsFiles.length} pack docs files tracked — this assertion has lost its subject`);
 });
 
+// A pack's `provenance/` is its decision log, read in the repo that owns the pack and by
+// no session: a member receives the guidelines, never the reasoning behind them, and
+// never another organisation's log. Pack root only — a skill's own folder of that name
+// is payload — and pinned over the real corpus below so the exclusion cannot go vacuous
+// (the marking pass is what puts a `provenance/` under every shelf pack; until it lands
+// the real-corpus half asserts the absence alone).
+test("a pack's provenance/ never vendors — a skill's folder of that name still does", async () => {
+  const root = makeCanon({ packs: [{ id: 'alpha', version: 4, skills: ['s1'], extraFiles: [
+    'RULES.md', 'provenance/_pack.md', 'provenance/some-rule.md', 'provenance/_declined.md', 'skills/s1/provenance/payload.md',
+  ] }] });
+  const { files, errors } = await vendorAt(root, ['alpha']);
+  assert.deepEqual(errors, []);
+  assert.ok(files.includes('packs/alpha/RULES.md'));
+  assert.deepEqual(files.filter((f) => f.startsWith('packs/alpha/provenance/')), []);
+  assert.ok(files.includes('packs/alpha/skills/s1/provenance/payload.md'));
+});
+
+test('no canon pack ships its provenance/ — over the real corpus, not a fixture', async () => {
+  const { computeVendorSet } = await import(pathToFileURL(join(MOUNT_DIR, 'compute-vendor-set.mjs')));
+  const { loadPacks } = await import(pathToFileURL(join(REPO_ROOT, 'engine/pack_loader/pack-registry.mjs')));
+  const ids = (await loadPacks()).map((p) => p.id);
+  const { files, errors } = await computeVendorSet(ids, { today: '2026-01-01' });
+  assert.deepEqual(errors, []);
+  assert.deepEqual(files.filter((f) => /^packs\/[^/]+\/provenance\//.test(f)), []);
+});
+
 // The exclusion is the convention's location, not the name anywhere: a skill is
 // free to ship a payload doc of that name, and it rides the pack walk like every
 // other skill file.

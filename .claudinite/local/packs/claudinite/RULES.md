@@ -14,7 +14,8 @@ Below are rules on how to work on this repo.
 
 - **A `docs/<initiative>/DESIGN.md` whose system is now built** — delete it whole rather than trim
   it. Verify each section already lives in a module header or pack `README.md` first, and move an
-  owner-decision record with its rationale. Leave a doc describing work in flight alone. (4)
+  owner-decision record with its rationale onto the element's provenance file. Leave a doc
+  describing work in flight alone. (4)
 
 - **Sweeping a deleted design doc's `§`-numbered pointers** — re-point each at a pack README, or
   drop it where the sentence only cited itself.

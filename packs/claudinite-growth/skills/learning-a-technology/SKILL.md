@@ -56,8 +56,8 @@ lifted out of here without a rewrite. Every step below keeps the two apart.
 | Read by | any session in any repo that adopts the technology | this repo's executor and the sessions maintaining the worker |
 
 **Classify the task before writing it**, from the pack catalog — every canon pack, not only the
-mounted ones — and record the verdict in the pack's `references.md` entry for the task, where the
-promote stage reads it:
+mounted ones — and record the verdict in the task's provenance file (its `born` entry's `Mechanism`),
+where the promote stage reads it:
 
 - **Ad-hoc to this project** — a job only this repo has. It stays in the local pack, and
   promotion lifts the skill alone.
@@ -110,8 +110,9 @@ descends. (2)
   `declared-checks.json`, each with a fixture beside it — a required header or field, a forbidden
   default, a size or rate limit, a format the API rejects: anything whose violation leaves a mark
   in the tree.
-- **Rationale**: entries keyed `<technology>-n` in the pack's `references.md`, each citing the
-  document it derives from; they lift with the skill.
+- **Rationale**: the skill's provenance file, a `born` entry whose `Source` cites the dated documents
+  it derives from and whose `Mechanism` says why a skill and what forces it; it lifts with the
+  skill.
 
 ## 5. Author the task
 

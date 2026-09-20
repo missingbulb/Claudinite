@@ -45,3 +45,4 @@ Both are advisory: a preference store is a nice-to-have, and nothing here may bl
 |---|---|---|---|
 | `preferences-store-configured` | medium | complexity | check: advisory |
 | `preferences-store-file-names` | high | correctness | check: advisory |
+| `preferences-provenance` | low | complexity | check: advisory |

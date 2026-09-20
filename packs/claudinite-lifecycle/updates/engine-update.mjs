@@ -193,7 +193,8 @@ export async function engineUpdate(targetRoot, {
   // Beyond the classic set, for the scheduling-fields codemod (the registry says
   // why it is inert without it).
   const listDir = (p) => { try { return readdirSync(join(targetRoot, p)); } catch { return null; } };
-  const io = { exists, move, read, write, readTemplate, listDir, env: {} };
+  const remove = (p) => rmSync(join(targetRoot, p), { force: true });
+  const io = { exists, move, read, write, readTemplate, listDir, remove, env: {} };
   const applied = [];
   for (const m of specs) applied.push(...(await applyMigration(m, io)));
 
