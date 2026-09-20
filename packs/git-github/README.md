@@ -2,9 +2,9 @@
 
 The git/GitHub side of the task lifecycle, bundled as skills: the advanced procedures
 ([git-github-advanced](skills/git-github-advanced/SKILL.md) — commit layering, squash-merge
-recovery, CI-trigger rules, merge-relocation traps), the owner's merge command
-([merge-to-main](skills/merge-to-main/SKILL.md) — "LGTM"), and the scheduling behaviour that is
-judgment rather than shape — what a `schedule:` trigger actually guarantees
+recovery, CI-trigger rules, merge-relocation traps), the merge itself
+([merge-to-main](skills/merge-to-main/SKILL.md) — squash, capture, verify), and the scheduling
+behaviour that is judgment rather than shape — what a `schedule:` trigger actually guarantees
 ([github-actions-scheduling](skills/github-actions-scheduling/SKILL.md)).
 
 No prose of its own — the lifecycle checks (`task-lifecycle`, `squash-merge-history`) stay in

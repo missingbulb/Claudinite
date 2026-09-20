@@ -16,3 +16,14 @@
   on to more work, which is all that case needs.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5
+
+## 2026-09-20 · trigger-changed · the LGTM prompt trigger was never the skill's to declare
+- **Reason:** "LGTM" is one person's own approval word, recorded in their preferences store, which
+  already names this skill as what the phrase reaches for. A canon skill declaring the same regex
+  forced itself on every member of the fleet for a phrase nobody there chose, and gave the word two
+  owners. The description no longer quotes it either.
+- **Mechanism:** the skill keeps its shape-based trigger — `force-load-on-tool-calls` on
+  `mcp__github__merge_pull_request`, true for anyone merging however they asked for it — plus the
+  description the model matches. The phrase stays the preference's.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5

@@ -175,8 +175,10 @@ A skill's frontmatter `metadata` names the moments it must be loaded for, beside
   a pull request, filing an issue, committing, merging, dispatching a workflow and fetching from
   the web each name their call.
 - `force-load-on-prompts-matching` — `[regex]`: a UserPromptSubmit hook, on an owner turn the
-  pattern hits, injects the instruction to load the skill before acting. The owner's command
-  phrases (`LGTM`, `bump version`, `/do-later`) are this.
+  pattern hits, injects the instruction to load the skill before acting. A command phrase the
+  corpus itself defines (`/do-later`, "after this lands") is this. One person's own trigger word
+  is not: it lives in their preferences file, which names the skill the phrase reaches for, and a
+  skill declaring it too would force itself on everyone who never chose the phrase.
 - `force-load-on-tool-results-matching` — `[{ tool, outputMatching }]`: a PostToolUse hook, on a
   result the pattern hits, injects the same instruction. A `Cannot find module`, a proxy `403`, an
   `EGRESS_BLOCKED`, a build warning are this — the moment a diagnosis rule applies is the moment
