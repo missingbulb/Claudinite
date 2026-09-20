@@ -74,7 +74,7 @@ test('a codemod already declared at the base is not re-flagged when the record i
 });
 
 test('a file that is not a dated migration record is out of scope', () => {
-  const other = 'packs/claudinite-tasks/public/executor.mjs';
+  const other = 'packs/claudinite-tasks/src/execute/loop.mjs';
   assert.deepEqual(recordsMissingApplyStage([other], () => record(), () => null), []);
   const undated = 'packs/claudinite-tasks/migrations/registry.mjs';
   assert.deepEqual(recordsMissingApplyStage([undated], () => record(), () => null), []);

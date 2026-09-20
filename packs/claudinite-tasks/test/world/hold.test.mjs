@@ -53,8 +53,7 @@ test('every workflow stamps the hold, and every entry point exits on it before r
   // FIRST ACT means before the config load and before the first API call: with no
   // token and no repository in the environment, a run that read anything would fail
   // — a held one exits clean, saying why.
-  for (const entry of ['packs/claudinite-tasks/public/scheduler-run.mjs', 'packs/claudinite-tasks/public/executor.mjs',
-    'packs/claudinite-tasks/src/schedule/run.mjs', 'packs/claudinite-tasks/src/execute/loop.mjs']) {
+  for (const entry of ['packs/claudinite-tasks/src/schedule/run.mjs', 'packs/claudinite-tasks/src/execute/loop.mjs']) {
     const env = { ...process.env, [SUSPEND_ALL_VAR]: 'true', GITHUB_TOKEN: '', GITHUB_REPOSITORY: '' };
     const r = spawnSync(process.execPath, [join(CANON, entry)], { encoding: 'utf8', env });
     assert.equal(r.status, 0, `${entry}: ${r.stdout}${r.stderr}`);

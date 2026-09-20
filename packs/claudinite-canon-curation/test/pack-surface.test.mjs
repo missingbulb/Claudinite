@@ -83,10 +83,10 @@ test('the pack reached through the mount is still the pack itself', () => {
   assert.equal(consumerBucket('.claudinite/local/packs/other/worker.mjs', PACK_DIR), 'pack');
 
   const files = new Map([
-    [`${PACK_DIR}/public/executor.mjs`, "export { runExecutor } from '../src/execute/loop.mjs';"],
-    [`.claudinite/shared/${PACK_DIR}/src/execute/loop.mjs`, "import { runExecutor } from '../../public/executor.mjs';"],
+    [`${PACK_DIR}/public/delivery.mjs`, "export { landDelivery } from '../src/deliver/land-pr.mjs';"],
+    [`.claudinite/shared/${PACK_DIR}/src/execute/loop.mjs`, "import { landDelivery } from '../../public/delivery.mjs';"],
   ]);
-  const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('executor.mjs');
+  const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('delivery.mjs');
   assert.deepEqual([...mod.consumers.keys()], [], 'the pack is not a consumer of itself under any spelling');
   assert.deepEqual([...mod.used], [], 'nor does its own import count as a name taken');
 });
@@ -96,18 +96,18 @@ test('the pack reached through the mount is still the pack itself', () => {
 // undercounts exactly the consumers that cannot be rewritten from here.
 test('readSurfaceUse counts every spelling of the same module, and ignores the pack itself', () => {
   const files = new Map([
-    [`${PACK_DIR}/public/work-items.mjs`, "export { isQueueItem, unreadName } from '../src/items/work-item.mjs';"],
-    ['packs/claudinite-dashboard/src/derive/board.mjs', "import { isQueueItem } from '../../../claudinite-tasks/public/work-items.mjs';"],
-    ['packs/other/test/a.test.mjs', "import { isQueueItem } from '../../claudinite-tasks/public/work-items.mjs';"],
-    ['docs/guide.md', 'node .claudinite/shared/packs/claudinite-tasks/public/work-items.mjs'],
-    [`${PACK_DIR}/src/execute/loop.mjs`, "import { unreadName } from '../../public/work-items.mjs';"],
+    [`${PACK_DIR}/public/work-item-grammar.mjs`, "export { isQueueItem, unreadName } from '../src/items/work-item.mjs';"],
+    ['packs/claudinite-dashboard/src/derive/board.mjs', "import { isQueueItem } from '../../../claudinite-tasks/public/work-item-grammar.mjs';"],
+    ['packs/other/test/a.test.mjs', "import { isQueueItem } from '../../claudinite-tasks/public/work-item-grammar.mjs';"],
+    ['docs/guide.md', 'node .claudinite/shared/packs/claudinite-tasks/public/work-item-grammar.mjs'],
+    [`${PACK_DIR}/src/execute/loop.mjs`, "import { unreadName } from '../../public/work-item-grammar.mjs';"],
   ]);
-  const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('work-items.mjs');
+  const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('work-item-grammar.mjs');
   assert.deepEqual([...mod.consumers.keys()].sort(), ['canon', 'pack', 'pack (test)']);
   assert.deepEqual([...mod.used], ['isQueueItem'], 'a name only the pack itself imports is not taken from outside');
 
   const rendered = renderSurfaceReport({ packDir: PACK_DIR, files });
-  assert.match(rendered, /\| `work-items\.mjs` \| 2 \| 1 \| `unreadName` \|/, 'the unread name is named in its own column');
+  assert.match(rendered, /\| `work-item-grammar\.mjs` \| 2 \| 1 \| `unreadName` \|/, 'the unread name is named in its own column');
   assert.match(rendered, /pack: claudinite-dashboard/);
 });
 
@@ -116,12 +116,12 @@ test('readSurfaceUse counts every spelling of the same module, and ignores the p
 // canon — a `//` comment in code, a remedy sentence in a declared check — are mentions.
 test('a path named only in prose is a mention, never a reader', () => {
   const files = new Map([
-    [`${PACK_DIR}/public/executor.mjs`, "export { runExecutor } from '../src/execute/loop.mjs';"],
-    ['packs/other/worker.mjs', '// hands off to the executor (packs/claudinite-tasks/public/executor.mjs) instead'],
-    ['packs/other/declared-checks.json', '"fix": "run node .claudinite/shared/packs/claudinite-tasks/public/executor.mjs"'],
-    ['.github/workflows/x.yml', '        run: node packs/claudinite-tasks/public/executor.mjs'],
+    [`${PACK_DIR}/public/delivery.mjs`, "export { landDelivery } from '../src/deliver/land-pr.mjs';"],
+    ['packs/other/worker.mjs', '// hands off to the landing lane (packs/claudinite-tasks/public/delivery.mjs) instead'],
+    ['packs/other/declared-checks.json', '"fix": "run node .claudinite/shared/packs/claudinite-tasks/public/delivery.mjs"'],
+    ['.github/workflows/x.yml', '        run: node packs/claudinite-tasks/public/delivery.mjs'],
   ]);
-  const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('executor.mjs');
+  const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('delivery.mjs');
   assert.deepEqual([...mod.consumers.keys()], ['workflow'], 'only the workflow actually runs it');
   assert.equal(mod.mentions.size, 2, 'the code comment and the quoted remedy are both mentions');
   assert.match(renderSurfaceReport({ packDir: PACK_DIR, files }), /workflow: \.github; 2 prose mentions/);

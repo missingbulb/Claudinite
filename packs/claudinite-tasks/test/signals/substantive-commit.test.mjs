@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { isSubstantiveCommit } from '../../src/signals/substantive-commit.mjs';
-import * as published from '../../public/substantive-commit.mjs';
 
 // The one test for "did the project move, or was that the machinery" — published
 // because a cross-repo reader (the dashboard's sleepy mark) must classify a member's
@@ -40,8 +39,4 @@ test('an empty file list is unknown, not "touched only the corpus"', () => {
 test('the listing shape — a flat author login and message — classifies identically', () => {
   assert.equal(isSubstantiveCommit({ message: 'Add a feature', author: 'a-person' }), true);
   assert.equal(isSubstantiveCommit({ message: 'Add a feature', author: 'x[bot]' }), false);
-});
-
-test('the published surface is the same function', () => {
-  assert.equal(published.isSubstantiveCommit, isSubstantiveCommit);
 });

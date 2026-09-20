@@ -27,7 +27,8 @@ import { pathToFileURL } from 'node:url';
 // executor does are claudinite-tasks' to own; the published `public/` seam is the
 // only way a pack may reach another's code, and the relative path resolves the same
 // from the canon and from a member's mount.
-import { baseTip, readAt, remoteUrl, withTaskTrailer } from '../../../claudinite-tasks/public/delivery.mjs';
+import { baseTip, readAt, remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
+import { withTaskTrailer } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 import { dispatchWorkflow, listWorkflowRuns, makeGh, readPagesSite, readWorkflowRun } from '../../../claudinite-tasks/public/github.mjs';
 import { CONFIG_PATH, DEPLOY_WORKFLOW_FILE, DEPLOY_WORKFLOW_PATH, parseConfig, publishSet } from '../../lib.mjs';
 
