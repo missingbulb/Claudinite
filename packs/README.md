@@ -26,6 +26,7 @@ declares `hidden: true` and is withheld from that catalog; this table still carr
 | <img src="chrome-extension/badge.svg" width="18" height="18" alt=""> [chrome-extension](chrome-extension/README.md) | manifest_version manifest | 10 | 22 (+ 2 skills: chrome-store-releases, extension-host-permissions) |
 | <img src="node/badge.svg" width="18" height="18" alt=""> [node](node/README.md) | root package.json | 0 | 4 (+ 1 skill: node-test-discovery) |
 | <img src="python/badge.svg" width="18" height="18" alt=""> [python](python/README.md) | pyproject.toml near root | 0 (2 in its skill) | 2 (+ 1 skill: python-optional-deps) |
+| <img src="numpy-image-processing/badge.svg" width="18" height="18" alt=""> [numpy-image-processing](numpy-image-processing/README.md) | numpy + scipy named together in a near-root manifest | 0 | 9 |
 | <img src="web-speech/badge.svg" width="18" height="18" alt=""> [web-speech](web-speech/README.md) | speech API in JS/TS source | 6 (+ 3 in its skill) | 17 |
 | <img src="leaflet/badge.svg" width="18" height="18" alt=""> [leaflet](leaflet/README.md) | Leaflet reference in HTML/JS source | 2 | 4 |
 | <img src="headless-browser/badge.svg" width="18" height="18" alt=""> [headless-browser](headless-browser/README.md) | driver reference in JS/TS source | 0 | 18 |
