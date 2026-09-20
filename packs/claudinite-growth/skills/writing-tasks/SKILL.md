@@ -302,13 +302,11 @@ history (its unqualified `[claudinite-work]` items over the last 40 days), and t
 are judged before anything else is collected, so a task whose cadence declines costs
 no read:
 
-- `schedule:at-most-<daily|weekly|monthly>`: no run created or closed since the
-  current UTC period opened: midnight, the Sunday that opened the week, the 1st of
-  the month. Nothing a repo configures moves those boundaries, so two repos asked
-  at the same moment get the same answer. The name says what the term is: a rate
-  limit on the scheduler's asking, never a statement that there is work to do.
-  (`due:<cadence>` is the same term under its old name, still accepted on a
-  declaration that carries it, and never written into a new one.)
+- `schedule:at-most-<daily|weekly|monthly>`, which holds while no run has been
+  created or closed since the current UTC period opened: midnight, the Sunday that
+  opened the week, the 1st of the month. A rate limit on the scheduler's asking,
+  never a claim that there is work to do. `due:<cadence>` is the same term under its
+  old name, read on a declaration that carries it and never written into a new one.
 - `last-run-not-failed` — the newest run does not stand at a failure park.
   Declare it where a run past the task's own failure would repeat the fault;
   absent it, the next occurrence is filed beside the park.
