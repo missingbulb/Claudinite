@@ -3,7 +3,7 @@
 // Stub — no rules captured yet, so no RULES.md; durable, project-agnostic practices
 // earn one as they are captured. Expected first source: missingbulb/ShoutsAndWhispers.
 export default {
-  version: '60903.1',
+  version: '60920.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'shipping to the Apple App Store: App Store Connect, provisioning, App Attest, TestFlight, review guidelines, release cadence',
