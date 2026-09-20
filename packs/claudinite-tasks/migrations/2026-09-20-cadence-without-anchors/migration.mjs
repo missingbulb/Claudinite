@@ -41,12 +41,13 @@ export default {
   id: 'cadence-without-anchors',
   landed: '2026-09-20',
   // The version is cut on main after the merge, so a record cannot name it exactly:
-  // this is the next number the bump would cut for the pack at 60920.2, above every
+  // this is the next number the bump would cut for the pack at 60920.3, above every
   // member's installed version, so the gap holds the record, and never above the number
   // cut, so a converged member does not re-apply it. RE-CHECK IT AGAINST `pack.mjs` ON
   // EVERY REBASE: main cuts versions while a branch waits, and a record that falls at or
-  // below the installed version is silently already done.
-  version: '60920.3',
+  // below the installed version is silently already done. It has happened once on this
+  // branch already, main cutting 60920.3 while it sat.
+  version: '60920.4',
   summary: 'the retired taskScheduler anchor keys come out of a member\'s declaration, and its own task files restate `due:<cadence>` as `schedule:at-most-<cadence>` (#1995)',
 
   appliesTo: mountStatesPeriods,
