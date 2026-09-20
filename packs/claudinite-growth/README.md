@@ -20,7 +20,7 @@ scheduler (`packs/claudinite-tasks/discover.mjs`) wherever the pack is declared:
 | `prose-to-checks-sweep` ([tasks/prose-to-checks-sweep/task.md](tasks/prose-to-checks-sweep/task.md)) | weekly (no-ops cheaply on a quiet corpus) | a PR converting always-testable pack prose into checks |
 | `rule-revalidation` ([tasks/rule-revalidation/task.md](tasks/rule-revalidation/task.md)) | weekly | corrections to rules whose environment claim no longer probes true, in the repo's own local packs |
 
-(Plus `logs-prune`, agentless — retention over the conversation-logs branch,
+(Plus `logs-prune`, agentless and on request only — retention over the conversation-logs branch,
 [tasks/logs-prune/worker.mjs](tasks/logs-prune/worker.mjs). The hourly
 [usage-fold](../claudinite-tasks/tasks/usage-fold/README.md) reads that same branch and is
 described below, but it is the claudinite-tasks pack's task, not this one's.)
@@ -108,7 +108,7 @@ GitHub MCP tools.
    **extraction is the only path to permanence**: a log that yields no rule gets no comment,
    and its conversation is gone once retention deletes it (a deliberate owner call).
 3. **Deletion — the agentless `logs-prune` task**
-   ([tasks/logs-prune/worker.mjs](tasks/logs-prune/worker.mjs)), daily, over the same branch: every
+   ([tasks/logs-prune/worker.mjs](tasks/logs-prune/worker.mjs)), on request only, over the same branch: every
    capture past `config.retention_days` is removed, on the stamp in its filename alone. What makes
    that safe without an agent is the reading window above — the extract run reads from the oldest end
    of the branch on every run, so a capture reaches retention having been read. **An undeclared

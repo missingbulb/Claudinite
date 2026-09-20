@@ -9,7 +9,14 @@ export const terms = {
   'log-past-retention': {
     signals: ['conversationLogs'],
     holds(signals) {
-      const logs = signals.conversationLogs ?? {};
+      // NO READING IS NOT A DECLINE. Nothing asks this task, so its item exists only
+      // because a person created one, and a decline closes that item unrun — a term
+      // that cannot hold on a bare item is a lever that cannot be pulled. The worker
+      // reads the branch and the declaration first-hand, so it decides here.
+      const logs = signals.conversationLogs;
+      if (logs === undefined || logs === null) {
+        return { holds: true, reason: 'no conversation-logs reading — the worker decides what is deletable' };
+      }
       if (logs.present !== true) {
         return { holds: false, reason: 'no conversation-logs branch — nothing captured yet' };
       }

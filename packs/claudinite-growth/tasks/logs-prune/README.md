@@ -27,8 +27,10 @@ skill owns that window; this task owns the arithmetic.
 
 The whole contract is this default export; the retention arithmetic it names is
 in preconditions.mjs beside it.
-A CLOCK crossing a boundary, not repo movement (the term beside this file):
-the prune must keep firing on exactly the repos that went quiet.
+NOTHING ASKS IT (owner, 2026-09-19): a capture the calendar decided to delete is
+data loss nobody asked for, so the branch is pruned only when somebody wakes the
+task. The term beside this file is the content gate on that wake, and it grants a
+bare item — a decline would close the item unrun, leaving no lever at all.
 It opens no PR: its whole write is remove commits on the non-default logs
 branch, which is outside the outcome taxonomy.
 One ls-remote, one fetch, one tree read, at most one push — against a branch
