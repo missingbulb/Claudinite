@@ -1,16 +1,4 @@
-## 2026-07-11 · born · as one `RULES.md` rule, promoted from two members' local docs (#222)
-- **Source:** gRatio and TLDR: running a content script on arbitrary sites without the install-time host warning, and a grant revoked from `chrome://extensions` out from under the worker.
-- **Reason:** a static host permission for arbitrary origins is an install-time warning; `optional_host_permissions` plus `chrome.permissions.request()` inside a real user gesture plus `registerContentScripts()` avoids it, and the grant must be reconciled on every worker start because it can be revoked.
-- **Actor:** the growth-promote run, merged by @missingbulb (owner).
-- **Mechanism:** prose.
-- **Retire when:** Chrome grants a static `content_scripts` entry at runtime without the install-time warning.
-- **Landed:** #222 (Refs #99) · pack version 1.
-
-## 2026-08-12 · split · two rules: the runtime request, and the reconcile-on-start (#775)
-- **Actor:** @missingbulb (owner).
-- **Landed:** #775 · pack version 2.
-
-## 2026-09-05 · moved · both rules leave `RULES.md` for this skill, forced for any `manifest.json` edit (#1667)
+## 2026-09-05 · born · a path-forced skill carrying the two host-permission rules out of `RULES.md` (#1667)
 - **Source:** the audit of every pack's `RULES.md` for rules that only matter while editing a nameable file class (#1662): these two matter when a manifest's permission arrays change, and every session in every declaring repo was paying for them.
 - **Reason:** a rule leaves `RULES.md` for a skill only where a load trigger covers every moment it is needed; here the moment is an edit of the manifest, which a path can name.
 - **Actor:** @missingbulb (owner).

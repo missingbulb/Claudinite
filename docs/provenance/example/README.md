@@ -10,13 +10,15 @@ file goes with the rest of `docs/provenance/`.
 | Rendered here | What the transformation did to it |
 |---|---|
 | `RULES.md` | every one of its 22 rules ends with a marker naming its provenance file; nothing else changes (one link is repointed at the real skill and rewrapped so it resolves from this folder; in the pack it stays relative) |
-| `README.md` | trimmed to how the pack is used: the paragraph on the release pack's split and collapse, the sentence on the kept `cer/` ids, the drift-guard note with its issue number, the reason the stubs vendor, and the cron the task absorbed all leave — each onto the entry it was evidence for (`pack.md`, `store-release.md`, `cer-version-bumped.md`); what stays is when the pack applies, what each check demands, when a skill is reached for and what the task does (two stub links are repointed so they resolve from here) |
-| `skills/chrome-store-releases/SKILL.md`, `skills/extension-host-permissions/SKILL.md` | unchanged: a skill is named by its directory, so its file, its description and its `force-load-on-file-edits-paths` gain nothing — their history, the load triggers' above all, is on the skill's provenance file (the release skill's relative links are repointed here for the same reason as the rules file's) |
+| `README.md` | trimmed to how the pack is used: the paragraph on the release pack's split and collapse, the sentence on the kept `cer/` ids, the drift-guard note with its issue number, the reason the stubs vendor, and the cron the task absorbed all leave — each onto the entry it was evidence for (`_pack.md`, `store-release.md`, `cer-version-bumped.md`); what stays is when the pack applies, what each check demands, when a skill is reached for and what the task does (two stub links are repointed so they resolve from here) |
+| `skills/chrome-store-releases/SKILL.md` | declares `body: workflow` in its frontmatter and nothing else changes: the release procedure is one element named by the skill's directory, no step carries a marker, and every decision about the procedure, the load triggers' above all, is an entry on the skill's file (its relative links are repointed here for the same reason as the rules file's) |
+| `skills/extension-host-permissions/SKILL.md` | declares `body: guidelines`, and each of its two bullets ends with a marker naming its own file, exactly as a rule does; the skill's own file, named by the directory, keeps what is the skill's — why a skill, why `**/manifest.json`, why the description reads as it does |
 | the four coded checks, seven declared checks, the task and the manifest | unchanged and not copied: each is named by the id it already carries |
-| `provenance/` | 36 element files and `declined.md`, for 37 carriers: 22 rules, 2 skills, 4 coded checks, 7 declared checks, 1 task, the manifest. `content-script-module-syntax.md` covers two — the classic-content-script rule and the check converted from it — so the file takes the check's name and the rule's marker cites it |
+| `provenance/` | 38 element files and `_declined.md`, for 39 carriers: 22 rules, 2 guidelines in a skill, 2 skills, 4 coded checks, 7 declared checks, 1 task, the manifest (`_pack.md`, sorted first with the declined log by its underscore). `content-script-module-syntax.md` covers two — the classic-content-script rule and the check converted from it — so the file takes the check's name and the rule's marker cites it |
 
 Every file was created by the marking pass (a dry run of `mark` over the real pack, which proposes
-a slug per rule; the slugs here are the refined ones a maintainer would land). Fifteen were then
+a slug per rule, and a `body` per skill; the slugs here are the refined ones a maintainer would
+land). Seventeen were then
 filled by hand from the pack's git history, its pull requests and the two issues behind the skill
 triggers, following the backfill method the design states — each entry derived from the adding
 commit, its pull request and the `VERSIONS.md` row **before** re-reading the rule, and a field
@@ -28,10 +30,11 @@ the real pack resolves every marker and id to a live file, finds every file name
 
 | Filled | What it shows |
 |---|---|
-| `pack.md` | pack-level mechanism decisions: the manifest fingerprint, the split into an opt-in release pack and why it collapsed back into a structural gate, the kept `cer/` ids, why the release set vendors as stubs — the README's history, now where a reader who asks "why" looks |
-| `extension-host-permissions.md` | a rule that became a path-forced skill: why `**/manifest.json` and not a source glob, why the description names two moments, the description-only alternative the owner rejected and where that call is recorded |
+| `_pack.md` | pack-level mechanism decisions: the manifest fingerprint, the split into an opt-in release pack and why it collapsed back into a structural gate, the kept `cer/` ids, why the release set vendors as stubs — the README's history, now where a reader who asks "why" looks |
+| `extension-host-permissions.md` | the skill's own file: why two rules became a path-forced skill, why `**/manifest.json` and not a source glob, why the description names two moments, the description-only alternative the owner rejected and where that call is recorded |
+| `runtime-host-request.md`, `reconcile-grant-on-start.md` | the two guidelines inside that skill: born as one `RULES.md` rule by promotion, split, then moved into the skill — the move a one-line entry on each, citing the skill's file for the why |
 | `chrome-store-releases.md` | a skill's life — standard, opt-in pack, vendoring, skill, path trigger — with the trigger entry saying which files are forced, which are deliberately not, and what the guard and its backstop do |
-| `declined.md` | the three extractions the audit proposed for this pack and the owner declined, each with the reason a later pass can re-derive against |
+| `_declined.md` | the three extractions the audit proposed for this pack and the owner declined, each with the reason a later pass can re-derive against |
 | `content-script-module-syntax.md` | one element covering a rule **and** the check converted from it: parsed-not-grepped, why coded rather than declared, the deletion-test verdict (prose kept, and why), a later split |
 | `declarative-content-set-icon.md` | a check whose prose was deleted on conversion; the README-drift correction; the retire test |
 | `cer-permission-added-store-issue.md`, `cer-privacy-permission-alignment.md` | two declared checks born of one decision, one advisory and one blocking, with the severity reasoned from where the fix lives |

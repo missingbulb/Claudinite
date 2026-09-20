@@ -33,8 +33,8 @@ every override that cites it). The id is also how each carrier references the fi
 | a coded or declared check | its check id; a slash becomes a hyphen (`cer/version-bumped` → `cer-version-bumped.md`) |
 | a skill — the body, the description, every `force-load-on-*` trigger | its directory name |
 | a task — the declaration, its preconditions, `expected_outcome`, `automerge`, the worker | its task id |
-| the manifest — fingerprint, `requires`, routing guidance, seeding, the pack's own existence and name | `pack` |
-| a prose rule — a top-level bullet of `RULES.md`, or of a `SKILL.md` where the bullet has a history of its own | a **marker** ending the rule: `… never a filesystem walk. (url-filter-host-operators)` |
+| the manifest — fingerprint, `requires`, routing guidance, seeding, the pack's own existence and name | `_pack`; the underscore sorts the pack's own file, and `_declined.md`, ahead of every element |
+| a prose rule — a top-level bullet of `RULES.md`, or of a `SKILL.md` that declares its body a set of guidelines | a **marker** ending the rule: `… never a filesystem walk. (url-filter-host-operators)` |
 
 A check, a skill and a task already carry a stable id, so their files are named by it and nothing
 is added to them. A prose rule has none, and the marker gives it one: the reference from the prose
@@ -52,13 +52,19 @@ the file is named by the check or the skill, and the rule's marker cites that na
 where it is real, one file where it is not; a carrier names exactly one live file, and a check or
 a skill is never split across files.
 
-A skill is one element, named by its directory, and its file is where the skill's **mechanism** is
-accounted for: why a skill rather than prose, why these `force-load-on-*` triggers and these
-paths rather than others, why the description names the moments it names. A bullet inside a skill
-earns an element of its own — its own marker and file — only where it has a decision history of
-its own; every other bullet is the skill's, and the skill's file records their decisions as titled
-entries. That is what keeps a long procedure from minting thirty files while letting the one
-bullet that was fought over keep its own log.
+A skill is a carrier of one of two shapes, and it says which in its frontmatter, under
+`metadata`, as `body: workflow` or `body: guidelines` — declared, never inferred, because the two
+look alike from outside (a workflow carries bold-trigger bullets too) and a skill that mixes steps
+and gotchas is classified by its author, not by a count. A **workflow** skill is one element,
+named by its directory: its steps and their gotchas change as the procedure changes, every
+decision about them is a titled entry on the skill's file, and no step or bullet carries a marker
+or has a file. A **guidelines** skill is a `RULES.md` behind a trigger: every top-level bullet is
+an element with its own marker and file, exactly as a rule is, and the skill's own file — its
+directory name — holds what is the skill's and no guideline's: why a skill rather than prose, why
+these `force-load-on-*` triggers and these paths rather than others, why the description names
+the moments it names. In both shapes the skill's file is where its **mechanism** is accounted
+for. Provenance is extracted for the independent elements, the rules and the guidelines, and
+never for the paragraphs of a procedure.
 
 ### What is not an element, and where its decision lives
 
@@ -69,10 +75,11 @@ that element's file, or an artifact whose decision is the pack's, or evidence:
 |---|---|
 | a check's `severity`, `scope`, `relevantWhen` gate, `since` date, `failureMessage` and `fix` text | the check's file (`born`, `severity-changed`, `reworded`) |
 | a skill's `description` and every `force-load-on-*` trigger | the skill's file (`trigger-changed`) |
+| a skill's `body` declaration | the skill's file: a workflow re-declared as guidelines is a `split` there and a `born` per bullet citing it; the reverse is a `merged` there and a `retired` on each bullet's file |
 | a task's preconditions, `expected_outcome`, `automerge`, `agent_model`, worker | the task's file (`policy-changed`) |
-| the manifest: `detect`/`marker`, `requires`, `ruleRoutingGuidance`, `seededByDefault`, `hidden`, `env`, adoption `questions`, `adoptionHandover`, `contributes` and `contributedRules`, `merge-rules.json`, the badge | `pack` |
-| the pack's own existence, name, split or collapse; a rename-map entry for an absorbed pack | `pack` of the pack that exists afterwards |
-| stubs and migrations | their own module headers, plus a `pack` entry for the decision to ship them |
+| the manifest: `detect`/`marker`, `requires`, `ruleRoutingGuidance`, `seededByDefault`, `hidden`, `env`, adoption `questions`, `adoptionHandover`, `contributes` and `contributedRules`, `merge-rules.json`, the badge | `_pack` |
+| the pack's own existence, name, split or collapse; a rename-map entry for an absorbed pack | `_pack` of the pack that exists afterwards |
+| stubs and migrations | their own module headers, plus a `_pack` entry for the decision to ship them |
 | tests and fixtures | nothing — a fixture is evidence, cited from the check's entry |
 | `README.md` | nothing — it says how the pack is used (below), and every sentence of history in it moves onto the entry it is evidence for (§6) |
 | `VERSIONS.md`, `directory.GENERATED.md`, the rule inventory | nothing — derived, never decided |
@@ -87,7 +94,7 @@ and what satisfies it, when a skill is the thing to load, what the task does to 
 and the catalog of what the pack carries. It never carries how an element came to be, what it
 replaced, why its id reads as it does, what an earlier shape did, or how the pack is maintained.
 The test is the sentence: a date, a pull request number, an "until", a "was", a "kept as it was"
-or a "distilled from" is a decision, and a decision is an entry on the element's file — `pack`
+or a "distilled from" is a decision, and a decision is an entry on the element's file — `_pack`
 for the pack's own shape, the element's own file for the rest. The maintainer's procedure is not
 the README's either: it is the growth skills', forced when a pack file is edited (§3), and the
 provenance those skills append to. What is left is shorter, and it is read by the one reader a
@@ -167,7 +174,7 @@ element, one line each, citing the decision once where it was made — which is 
 change: the rule that states the guideline (in `basics` or `claudinite-growth`) carries the full
 entry, and every moved or reworded element cites it.
 
-### `declined.md`
+### `_declined.md`
 
 Beside the element files, a pack keeps one unbound log of the candidates it turned down: each
 entry `## <date> · declined · <the candidate in a few words>` with `Source`, `Reason` and
@@ -201,12 +208,12 @@ Every flow that creates or changes an element appends, in the same change:
 
 | Flow | Appends |
 |---|---|
-| `growth-extract` (activity and conversations) | `born` per landed lesson, and the marker on the rule; a conversation-born lesson's `Source` names the capture's date and session id; `declined.md` for a candidate dropped for a reason worth keeping |
-| `prose-to-checks` and `canon-prose-to-checks` | `converted` on the element, carrying the deletion-test verdict (prose deleted, or kept and why); `declined.md` for a rule judged not checkable, dated |
+| `growth-extract` (activity and conversations) | `born` per landed lesson, and the marker on the rule; a conversation-born lesson's `Source` names the capture's date and session id; `_declined.md` for a candidate dropped for a reason worth keeping |
+| `prose-to-checks` and `canon-prose-to-checks` | `converted` on the element, carrying the deletion-test verdict (prose deleted, or kept and why); `_declined.md` for a rule judged not checkable, dated |
 | `growth-dedup` | `retired` (superseded by the canon element it names), `weakened` (a strip), `reworded` |
 | `rule-revalidation`, `canon-rule-revalidation`, `revalidate-from-source` | `reaffirmed` only with new evidence or a changed `Retire when`; `reworded` or `retired` for a correction |
 | `growth-promote` | on the canon side the local file, reduced (§4), a `promoted` entry, and the marker on the promoted rule; the local file stays until dedup retires it |
-| `generate-project-instructions`, `learning-a-technology` | `pack` and one `born` per element, citing the evidence set or the dated sources |
+| `generate-project-instructions`, `learning-a-technology` | `_pack` and one `born` per element, citing the evidence set or the dated sources |
 | an attended session editing a carrier or a README | `changing-pack-elements`, the skill forced on every pack file (below), which ends with the append |
 
 The mechanics are one helper, `provenance.mjs` in `claudinite-growth`, vendored so a member runs it
@@ -214,7 +221,7 @@ from the mount and the canon from the repo root:
 
 | Command | Does |
 |---|---|
-| `mark <pack>` | creates an empty file for every check, skill, task and the manifest that none names, and for every unmarked rule appends a proposed marker to the rule and creates the file it names — the slugs are proposals a maintainer refines before the change lands |
+| `mark <pack>` | creates an empty file for every check, skill, task and the manifest that none names; proposes a `body` for every skill that declares none (bold-trigger bullets and no numbered steps read as guidelines, anything else as a workflow); and for every unmarked rule — in `RULES.md` or a guidelines skill — appends a proposed marker and creates the file it names. The bodies and the slugs are proposals a maintainer refines before the change lands |
 | `append <pack> <element> --kind <kind> [--changed]` | validates and appends the entry read from stdin; `--changed` appends the same entry to every element the working tree's diff touched |
 | `check <pack>` | the parser the check uses, run by hand; prints what each file is named by |
 | `convert-references <pack>` | the migration of a `references.md` (§6) |
@@ -241,8 +248,8 @@ already uses (`**/packs/*/…` matches `.claudinite/local/packs/<pack>/` in a me
 | `README.md` | the one file with no skill today, and the one that history creeps back into |
 | `provenance/**` | a hand edit of a file that is otherwise appended by the helper |
 
-The skill is short and states three things: which kind of entry this edit owes and the `append`
-command that writes it; what the README carries and what it does not (the paragraph above, in
+The skill is short and states three things: which kind of entry this edit owes, on which file (a
+workflow skill's steps owe it to the skill's file) and the `append` command that writes it; what the README carries and what it does not (the paragraph above, in
 the imperative); and that a file under `.claudinite/shared/` is never edited, which the lifecycle
 pack's rule already says. It names no corpus, as a growth skill must, so the same skill serves the
 shelf; `claudinite-canon-curation` adds no twin, only the rules below. The skills that already
@@ -250,7 +257,9 @@ load on these edits keep their subjects — `writing-pack-prose` the prose, `wri
 contract, `writing-repo-scanning-checks` the check — and none of them learns the append:
 `writing-repo-scanning-checks` is the basics pack's, and a growth mechanism written into another
 pack's skill is the pack-to-pack dependency the curation rules refuse. The cost is a second skill
-loaded on a prose, task or check edit, and the first skill ever loaded on a README edit.
+loaded on a prose, task or check edit, and the first skill ever loaded on a README edit. One
+line does go into `writing-pack-prose`, which already loads on every `SKILL.md` edit: a new skill
+declares its `body` at birth, and what each shape means for its bullets.
 
 ### The rules that say so
 
@@ -304,8 +313,8 @@ guard on what the reduction is not built to see: a product name inside a `Reason
 | organisation pack (a second canon in the organisation's registry) | as a canon pack; the organisation's release task is a promote target and source like any other | as a canon pack |
 | vendor-authored pack | as a canon pack in the vendor's repository; a consumer never receives it; a consumer's decision *about* it — an `accept` waiver with its `reason`, an override naming the element's id — lives where it is declared and needs no file | never |
 | process and rules-of-thumb packs (`basics`, testing, git) | as a canon pack; `Source` cites the practice, book or incident; `Retire when` may be a judgment ("the practice is abandoned corpus-wide") and says so | as a canon pack |
-| a pack minted from project evidence | `pack`'s `born` cites the evidence set or the dated sources | as a canon pack |
-| a stub pack with no rules | `pack` only | as a canon pack |
+| a pack minted from project evidence | `_pack`'s `born` cites the evidence set or the dated sources | as a canon pack |
+| a stub pack with no rules | `_pack` only | as a canon pack |
 | personal preferences — a pack of one reader, whose rules file is the person's `<email>.md` in the store | each preference is an element with a marker; its files sit **beside** the store, at `<path>-provenance/<email>/`, because the store's own check keeps `<path>/` flat and addresses nothing but `<email>.md` there; written by the session that edits the preference; the person is the actor; coverage advisory, as everything in that pack is | never — a preference is never promoted, by the extraction rules that already bar it |
 
 A consumer that forks an element from a canon into its local pack (an override) writes a `born`
@@ -350,8 +359,12 @@ the element it keys — `RULES-n` resolves through the rule carrying the marker 
 to that skill, `check:<id>` to that check — as a `born` entry dated by the entry's own adding
 commit, its reaffirmation sentence as `Retire when`, the rest as `Reason` and `Landed`; then
 rewrites each numeric marker to the slug its element takes and deletes the file. A skill bullet
-that carries a numeric marker today has a recorded history, so it becomes an element of its own
-with a slug marker and a file — about fifty bullets across twenty skills. A pack-root
+that carries a numeric marker today converts by its skill's declared body: in a guidelines skill
+it becomes an element with a slug marker and a file, as a rule does; in a workflow skill its
+entry becomes a titled entry on the skill's own file and the numeric marker leaves the step.
+About fifty such bullets sit across twenty skills; by the shapes those skills have today roughly
+thirty are guidelines and twenty are steps, and the `body` the maintainer confirms at marking
+is what decides. A pack-root
 `references.md` that still exists is a finding: advisory through the conversion window the
 migration states, blocking after it, with the command in the fix text. In a member, the backfill
 task runs the conversion as its first step.
@@ -367,9 +380,10 @@ bold trigger wrap), over both roots, replacing `references-integrity`.
 
 World scope, blocking:
 
-1. every check, skill and task id, and the manifest, names a live file; every `RULES.md` bullet
-   ends with a marker, and every marker — in a `RULES.md`, where it is required, or in a
-   `SKILL.md`, where it is optional — names a live file; a rule with no marker, a marker naming
+1. every check, skill and task id, and the manifest, names a live file; every `SKILL.md`
+   declares its `body`; every top-level bullet of a `RULES.md` or of a guidelines skill ends
+   with a marker naming a live file, and no bullet of a workflow skill carries one; a skill
+   with no `body`, a rule with no marker, a marker where the body refuses one, a marker naming
    no live file, and a live file no carrier names are each a finding naming the carrier or the
    file. A live file is one whose last entry is not `retired`;
 2. every file parses: the entry grammar, a kind in the vocabulary, dates in order, a field
@@ -438,6 +452,11 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
   never renamed.
 - **A whole element is deleted.** The file stays, its last entry `retired`: the decision to remove
   is a decision. A retired file is named by nothing and costs nothing.
+- **A skill's body is declared against its shape.** A workflow whose one gotcha bullet keeps
+  earning entries of its own on the skill's file is a guidelines skill in part, and the fix is
+  the re-declaration §1 names, a `split` on the skill's file and a `born` per bullet; the
+  reverse is a `merged` and a `retired` per bullet. Neither is the check's call: it holds only
+  that the markers match the declared body.
 - **Private text reaches the canon.** The reduction removes what it is built to see; the
   owner-gated promote pull request is the guard for what it is not; the scrub refuses a secret at
   append time.
@@ -480,10 +499,16 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
   reason. A session that needs the reason to apply a rule has a rule that lacks its consequence
   clause, which is the prose's defect to fix; and a member's mount would carry every organisation's
   decision log, which is the privacy failure §4 exists to prevent.
-- **A skill is one element** — over binding every skill bullet. A long skill is procedure, and
-  procedure changes as a whole; thirty files for one skill is noise, and a bullet with its own
-  history takes its own marker only when it has one.
-- **`declined.md` per pack** — over a tracker issue's comment feed. A comment feed is one
+- **A skill declares its body, and only a guidelines skill's bullets are elements** — over one
+  element per skill always, over a file per bullet always, over a marker on whichever bullet has
+  a history of its own, and over reading the shape off the text. A workflow is procedure and
+  changes as a whole, so thirty files for one skill is noise; a guidelines skill is a rules file
+  behind a trigger, and its bullets are as independent as any rule's. A per-bullet opt-in leaves
+  an unmarked bullet ambiguous — never decided, or decided against — and a marker inside a
+  procedure names a file for a paragraph; a structural read fails on the skill that mixes steps
+  and gotchas, which most procedures do. The declaration costs one frontmatter line the harness
+  ignores.
+- **`_declined.md` per pack** — over a tracker issue's comment feed. A comment feed is one
   scrollable history for every candidate in the corpus; a per-pack file is read by the pass that
   is about to re-nominate in that pack, which is the read that prevents the rework.
 - **One forced skill for the append and the README scope** — over teaching every editing skill
@@ -508,7 +533,7 @@ deletion removes its folder; git keeps the history, as it keeps everything else.
   beat, so the next person to touch the trigger knows what it was for.
 - **Revalidation reads `Retire when` per element, with the history behind it**, rather than one
   sentence that was overwritten at the last correction.
-- **Conversion passes stop re-deriving**: `declined.md` and `converted` entries are the memory the
+- **Conversion passes stop re-deriving**: `_declined.md` and `converted` entries are the memory the
   prose-to-checks skill already asks for.
 - **Promotion carries strength**: a canon reviewer reads that a lesson was born in one member,
   reaffirmed in another, and converted to a check in a third.
@@ -543,8 +568,11 @@ on `main`; a second reading a week after the backfill task's precondition first 
   read from the extract pull requests' diffs; zero `reaffirmed` entries from a revalidation run
   that found everything still true. `references.md` files on the shelf: 21 before the conversion,
   0 after; in members' local packs the same fall on each member's first backfill run. About
-  fifty skill bullets with numeric markers today become elements of their own. The session-start
-  summary's prose token weight rises by the marker count and no more. README bytes on the shelf:
+  The session-start
+  summary's prose token weight rises by the marker count and no more. Every skill declares a
+  `body` (a frontmatter grep against the skill count); of the fifty skill bullets with numeric
+  markers today, roughly thirty sit in guidelines skills and become elements of their own, and
+  the rest fold into their workflow skill's file. README bytes on the shelf:
   about 230 KB across 37 files before the backfill; each run's pull request reports the pack's
   before and after, and the shelf total falls as the runs come.
 - **Expected behaviours.** Every promote pull request carries a reduced provenance file and a
@@ -556,11 +584,12 @@ on `main`; a second reading a week after the backfill task's precondition first 
 - **Misuse.** An entry that restates the rule; an edited or removed line, which the check reports;
   a README edit made without the forced skill (the hook's `skill-not-loaded` count for
   `changing-pack-elements`); a history sentence written into a README after its trim;
-  an `Actor` that is an email; a session id or a quote in a canon file; a provenance path in a
+  an `Actor` that is an email; a marker on a workflow skill's step; a session id or a quote in a
+  canon file; a provenance path in a
   member's mount; a rule whose marker names a file and whose file says nothing about that rule; a
   placeholder value where a field should have been omitted.
 - **Overuse.** `reaffirmed` entries with no new evidence; sweep entries longer than a line; a
-  `declined.md` that grows by more than a few entries a week in one pack; backfill runs that
+  `_declined.md` that grows by more than a few entries a week in one pack; backfill runs that
   produce one-line `born` entries for a pack whose history is plainly in git.
 - **Underuse.** Elements still empty a season after marking; extract runs whose diff adds a rule
   and no entry (only possible outside a Stop hook — a direct API write — and the check on the
@@ -572,15 +601,17 @@ on `main`; a second reading a week after the backfill task's precondition first 
   weight rising by more than the marker count predicts, or markers dropped in reword sweeps more
   than once each — the marker was noisier than rationed, and a number or nothing was cheaper. One
   file per element: conflict resolutions on `provenance/` files more than once a month — the
-  collision was not rare. Skill as one element: entries on a skill file that name bullets more
-  often than the skill, month after month. No header: a check or a reader that needed coverage
+  collision was not rare. Body per skill: workflow files whose entries name one step month
+  after month (that step was a guideline), guidelines bullets whose files hold nothing but
+  one-line entries citing the skill (the bullets were the skill's after all), or
+  re-declarations more than a few a season. No header: a check or a reader that needed coverage
   written down after all. Handles by visibility: a review that could not judge a decision without
   knowing who took it, or a name in a public canon that should not have been there. One forced
   skill: sessions that loaded it on a README edit and changed nothing the skill speaks to (a
   typo, a link), often enough that the load is the cost and the README should leave the list.
 - **Cheap to re-examine:** the backfill cadence and its one-pack-per-run size, the conversion
   window's date, the advisory grade on empty files, the entry-field vocabulary, the slug length,
-  the forced skill's path list.
+  the forced skill's path list, the shape `mark` proposes a body from.
   **Expensive:** the file grammar, the id rule (a marker is the id and never changes), the
   never-vendored and never-loaded properties, the reduction's boundary rule.
 - **Metrics the review needs, and the read.** File and entry counts: `git ls-files
