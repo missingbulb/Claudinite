@@ -22,7 +22,7 @@ const servesASite = (ctx) => {
 };
 
 export default {
-  version: '60920.2',
+  version: '60920.3',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'serving a static site from Cloudflare: the published tree, custom domains, the nightly release that uploads it',
