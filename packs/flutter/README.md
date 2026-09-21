@@ -1,13 +1,12 @@
 # flutter pack
 
-Active when the repo has `pubspec.yaml`. Durable, project-agnostic Flutter practices in
-`RULES.md`, earned in missingbulb/ShoutsAndWhispers: ports-and-adapters out of the widget tree
-(with the committed import-boundary test and the shipped fake world), widget-test/golden mechanics
-(real fonts, no `pumpAndSettle` on spinners, injectable fetchers, fixed viewport, the async-epoch
-guard), and toolchain habits (pub-cache API verification, zero-issue analyze, stall-robust test
-runners for sandboxes). Prose, two checks and two skills — the enforceable pieces the pack cannot
-judge from outside (import scan, coverage gates) live as committed tests inside the consuming
-project.
+Active when the repo has `pubspec.yaml` at its root or one directory down. Durable,
+project-agnostic Flutter practices in `RULES.md`: ports-and-adapters out of the widget tree (with
+the committed import-boundary test and the shipped fake world), widget-test/golden mechanics (real
+fonts, no `pumpAndSettle` on spinners, injectable fetchers, fixed viewport, the async-epoch guard),
+and toolchain habits (pub-cache API verification, zero-issue analyze, stall-robust test runners for
+sandboxes). Prose, two checks and two skills — the import scan and the coverage gates the pack asks
+for live as committed tests inside the consuming project.
 
 ## Rules (`RULES.md`)
 
@@ -31,8 +30,10 @@ project.
 | `flutter/network-fetch-in-widget-tree` | medium | complexity | check: blocking |
 | `flutter/device-clock-not-injected` | high | correctness | check: blocking |
 
-`flutter/device-clock-not-injected` stands where a prose rule used to: the clock is already named
-as a port by the architecture rule above it, so the check and its fix line carry the rest.
+`flutter/device-clock-not-injected` scans `lib/**.dart` outside `lib/testing/` for an
+argument-less `DateTime.now()`; a file declaring a `class …Clock` is exempt.
+`flutter/network-fetch-in-widget-tree` scans `lib/ui|screens|widgets/**.dart` for a tree
+constructing its own network image or tile provider.
 
 The golden mechanics are the [`flutter-golden-tests`](skills/flutter-golden-tests/SKILL.md) skill
 and lockfile skew is [`flutter-pubspec`](skills/flutter-pubspec/SKILL.md); each forces itself for
@@ -49,8 +50,8 @@ the files it concerns.
 
 The Claude Code web sandbox boots without a Flutter SDK, so `flutter test`, `flutter analyze` and
 golden regeneration can't run until it is installed. The install belongs in the environment
-**image** (built once, snapshotted, reused), never a per-session hook that reinstalls every start:
-this pack declares that need in its `env` block ([pack.mjs](pack.mjs)), and a project pastes one
+**image**, built once and snapshotted: this pack declares that need in its `env` block
+([pack.mjs](pack.mjs)), and a project pastes one
 generic `environment-setup-command.sh` that runs every active pack's requirement via
 [engine/pack_loader/env-requirements.mjs](../../engine/pack_loader/env-requirements.mjs) and asserts
 it at session start (see [bootstrap.md](../../bootstrap.md) Part 9).
