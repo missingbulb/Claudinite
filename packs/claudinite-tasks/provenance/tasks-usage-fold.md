@@ -1,0 +1,20 @@
+## 2026-09-15 · born · Measure the machinery: run-cost records and the tasks-usage fold (#2046)
+- **Source:** link M1 of #1869, against the ask in #1872.
+- **Reason:** the queue had never known what it costs to run - how often the scheduler and the
+  executor ran, what those runs were billed, what they spent in API calls and wall time, and how
+  long an occurrence took to travel from a tick to a converged item. It is the machinery's own
+  past-data plane, kept beside the session fold's rather than inside it. Every tier is appended
+  once, because every source is a watermarked REST listing rather than a file re-read for free, so a
+  counting fix applies forward only; the week tier drops the per-run map, whose keys would grow the
+  file a row a week with nothing pruning it. Where the pack config carries no Actions minute rate
+  there is no spend key anywhere, never a zero, and the rate a file was priced at is written beside
+  the numbers so a later rate cannot silently re-price frozen rows.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Mechanism:** a task with no agent and a code-work worker delivered through the generated-file
+  lane, gated on a precondition reading the fold's own watermark against the scheduler's most recent
+  anchor - the mark's own movement, and no API call, which matters on a term asked at every tick. No
+  built-in movement term can see the machinery: they all read the project's commits, issues, pull
+  requests and captures, and a repo whose only activity is its own queue is silent by all four.
+- **Landed:** #2046 (Refs #1869, #1872; it closes nothing by design, since #1872's own converge owns
+  its state and #1869 is a tracking issue) · pack version 60915.4.

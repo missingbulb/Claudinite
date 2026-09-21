@@ -1,9 +1,13 @@
-## 2026-09-21 · born · the file starts here; the check's earlier history is not backfilled yet
-- **Reason:** this file was empty when the change below was made, and the clone it was made from
-  carries too little history to derive the check's origin. The backfill that fills it is its own
-  pull request and replaces this entry with the derived history.
+## 2026-09-20 · born · Provenance: the mechanism - the grammar, the tool, the checks, the forced skill, the record (#2176)
+- **Source:** step 1 of the provenance plan, #2169.
+- **Reason:** a person's own rules earn the same record every other pack element gets - why the rule
+  reads as it does, and who decided - so the store carries a provenance file per rule beside the
+  person's own prose.
 - **Actor:** @missingbulb (owner).
-- **Mechanism:** a coded check in the pack's worldRules.
+- **Model:** Claude Fable 5.1, per the commit trailer.
+- **Mechanism:** a world check in this pack, advisory, carrying `since: 2026-09-20` so the existing
+  unmarked backlog reads as advisory rather than failing the repos that hold a store.
+- **Landed:** #2176 (Refs #2169) · pack version 60920.1.
 
 ## 2026-09-21 · severity-changed · a person's provenance moved inside their own pack (#2188)
 - **Reason:** the sidecar `<path>-provenance/<email>/` existed because the store was flat and could

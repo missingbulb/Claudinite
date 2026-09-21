@@ -1,44 +1,13 @@
 // claudinite-dashboard — a browser view of what a repo's (or a fleet's) Claudinite
 // scheduler is doing, published as a static site.
 //
-// WHY A PACK AND NOT ENGINE CODE. The dashboard is not part of running the scheduler:
-// nothing converges, scheduler runs or executes because it exists, and a member that never
-// looks at it should not carry it. Engine code is what every member runs; this is
-// content a member OPTS INTO, and adoptable content in this corpus is a pack. That
-// also buys it the things a pack has and engine code does not — its own version and
-// migration lane, a declaration that gates it, and an adoption moment at which its
-// deployment can be wired.
-//
-// WHAT IT READS. Only the queue's own vocabulary and the task declarations at HEAD,
-// through the tasks pack's published `public/`, so the page cannot drift from the
-// mechanism it renders. Those relative paths resolve identically in the canon (`packs/<id>/`
-// beside its siblings) and in a member's mount (`.claudinite/shared/packs/<id>/`), which is
-// why the pack can be read straight out of the mount with nothing rewritten.
-//
-// NO PROSE. There is no way to write the dashboard wrongly in a consuming repo — it is
-// a page, not a practice — and prose here would cost every session in every declaring
-// repo tokens for something no session acts on. Its README carries the explanation
-// instead and `prose` stays null.
-//
-// PACKS CONTRIBUTE TO THIS PAGE, as data and never as code. A pack ships a descriptor
-// (`packs/<id>/dashboard.json`, found by path convention — nothing registers it) naming
-// what it has to say; its values come either from its own generated file in the
-// member's tree or from one of the two platform facts the page already reads for every
-// member. `descriptor-usable`, this pack's one check, holds a descriptor to what the
-// page's OWN reader accepts, which the JSON Schema beside it structurally cannot,
-// because the failure is silent — a rejected descriptor renders as one apologetic line
-// in someone else's browser and nothing goes red where the author is looking.
-//
-// PUBLISHING IS A TASK, AND A FOUR-STEP WORKFLOW. `.github/workflows/` is the one
-// directory the nightly update can never push to (the Action's `GITHUB_TOKEN` is
-// refused there), so whatever the deploy keeps there is frozen at adoption. It keeps
-// the least it can: a Pages deploy with source "GitHub Actions" is marketplace actions
-// that only workflow YAML can invoke, so the seeded workflow (`seedOps`, below) holds
-// exactly those — checkout of `gh-pages`, configure, upload, deploy — and nothing that
-// could ever need to change. The `publish-pages` task owns the rest: when to run, the
-// build, the push of the built tree to `gh-pages`, the dispatch, the follow-through.
-// What adoption cannot do is enable Pages — the handover step below.
-
+// It reads only the queue's own vocabulary and the task declarations at HEAD, through the
+// tasks pack's published `public/`. Those relative paths resolve identically in the canon
+// (`packs/<id>/` beside its siblings) and in a member's mount
+// (`.claudinite/shared/packs/<id>/`), so the pack is read straight out of the mount with
+// nothing rewritten. A pack contributes to this page as data and never as code, through a
+// descriptor at `packs/<id>/dashboard.json`. Publishing is the `publish-pages` task plus the
+// four-step workflow `seedOps` writes below; what a repo does with the pack is its README.
 export default {
   version: '60920.5',
   minEngineVersion: '60822.1',

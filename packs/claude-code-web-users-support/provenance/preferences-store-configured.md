@@ -1,9 +1,11 @@
-## 2026-09-21 · born · the file starts here; the check's earlier history is not backfilled yet
-- **Reason:** this file was empty when the change below was made, and the clone it was made from
-  carries too little history to derive the check's origin. The backfill that fills it is its own
-  pull request and replaces this entry with the derived history.
+## 2026-08-08 · born · Personal preferences as a pack, and one general primitive: a pack's own session-start step (#567)
+- **Reason:** the pack is seeded by default and carries an address rather than content, so a repo
+  can declare it and never answer the adoption question - leaving the feature silently inert with
+  nothing saying so.
 - **Actor:** @missingbulb (owner).
-- **Mechanism:** a coded check in the pack's worldRules.
+- **Mechanism:** a world check, advisory: the loss is a nicety no other check or task depends on,
+  and nothing here may block a session.
+- **Landed:** #567 · pack version 1.
 
 ## 2026-09-21 · reworded · it reads the store's address from its new home (#2189)
 - **Reason:** the address resolver moved from `store.mjs` to `user_pack_address.mjs`; the check's
