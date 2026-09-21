@@ -25,7 +25,7 @@ test('the deprecated field is still validated, never silently ignored', () => {
   // A typo that routed nowhere would strand the dispatch with an executor that
   // declines it, re-armed hourly forever — the contract keeps rejecting it loudly.
   const base = {
-    id: 't', frequency: 'weekly', preconditions: ['none'], agent_model: 'none',
+    id: 't', trigger: 'schedule', frequency: 'weekly', preconditions: ['none'], agent_model: 'none',
     expected_outcome: 'no_code_changes', code_work: 'node worker.mjs', code_work_timeout: 60,
   };
   assert.deepEqual(validateTaskDeclaration({ ...base, session_scope: 'fleet' }), []);

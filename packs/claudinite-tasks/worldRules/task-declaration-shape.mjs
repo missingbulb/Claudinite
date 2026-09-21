@@ -47,7 +47,7 @@ function siblingTerms(ctx, taskFile) {
 const rule = {
   id: 'task-declaration-shape',
   severity: 'blocking',
-  description: 'A tasks/<name>/task.json carries the task contract (id, description, preconditions, expected_outcome) with legal enum values and a well-formed precondition expression stating when the task runs; an agentic task names its worker file and bounds its run, and any code_work carries a timeout and stays task-local',
+  description: 'A tasks/<name>/task.json carries the task contract (id, description, trigger, preconditions, expected_outcome) with legal enum values, a stated trigger saying who mints an occurrence and a well-formed precondition expression stating when the task runs; an agentic task names its worker file and bounds its run, and any code_work carries a timeout and stays task-local',
   doc: 'packs/claudinite-tasks/README.md',
   why: 'the scheduler run and executor read agent_model/expected_outcome/preconditions from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
@@ -85,14 +85,19 @@ const rule = {
           : `write it as the first condition — "preconditions": [${JSON.stringify(term)}, …] — and drop a "none" beside it; the field reads as exactly that today`);
       }
       // `trigger` says whether the scheduler asks this task at every tick, and is
-      // OPTIONAL for one convergence window (#1789) — absent, the door reads it off
-      // the shape of the conditions, and `legacy-task-fields` is what says so. What
-      // is checked here is a STATED one: the value, and the one pairing that cannot
-      // work. A `schedule` task whose expression reads the ITEM has nothing to be
-      // judged against at a tick — the scheduler's own ask carries no item — so the
-      // term errors on every tick and the task's lane fills with failed runs rather
-      // than ever declining.
-      if (decl.has('trigger')) {
+      // REQUIRED: nothing derives it from the shape of the conditions any more, so a
+      // declaration stating none fails contract validation and the task never runs.
+      // Blocking here is what turns that into an edit an author can make, at the line
+      // the field goes on, rather than a silent absence from the scheduler's roster.
+      //
+      // Beside the value, one pairing cannot work: a `schedule` task whose expression
+      // reads the ITEM has nothing to be judged against at a tick — the scheduler's
+      // own ask carries no item — so the term errors on every tick and the task's lane
+      // fills with failed runs rather than ever declining.
+      if (!decl.has('trigger')) {
+        flag('declares no "trigger"',
+          `add "trigger": one of ${TRIGGERS.join(', ')}. "${TRIGGER_SCHEDULE}" is asked by the scheduler at every tick, "${TRIGGER_REQUEST}" runs only from an item somebody creates`);
+      } else {
         const trigger = str('trigger');
         if (trigger === null || !TRIGGERS.includes(trigger)) {
           flag(`"trigger" is ${JSON.stringify(decl.scalar('trigger') ?? null)}, not a legal value`,

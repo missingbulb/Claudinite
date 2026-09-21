@@ -10,8 +10,8 @@ import {
   LOCAL_PACK_ROOT, CANON_PACK_ROOT,
 } from '../engine/migrations/task-declarations-to-json.mjs';
 import { applyTaskSchedulingFields, applyMigration, loadMigrations } from '../engine/migrations/registry.mjs';
-import { ACCEPTED_FREQUENCIES } from '../packs/claudinite-tasks/src/contract/calendar.mjs';
-import { normalizeTaskDeclaration } from '../packs/claudinite-tasks/src/contract/task-contract.mjs';
+import { ACCEPTED_FREQUENCIES, statesConditions } from '../packs/claudinite-tasks/src/contract/calendar.mjs';
+import { normalizeTaskDeclaration, validateTaskDeclaration } from '../packs/claudinite-tasks/src/contract/task-contract.mjs';
 import { parseTaskDeclaration } from '../packs/claudinite-tasks/src/contract/task-declaration.mjs';
 
 const repo = (files) => {
@@ -135,15 +135,27 @@ test('stateTriggerText writes the answer the conditions already gave, keeping th
   assert.equal(stateTriggerText('{\n  "id": "x"\n}\n'), null, 'no anchor to place it against');
 });
 
-test('stateTriggerText agrees with the contract\'s door on every shape of expression', () => {
-  // Two spellings of one rule: the engine cannot import the pack, so what it writes
-  // is pinned to what the door derives (`statesConditions`).
+test('stateTriggerText agrees with the pack\'s own read of "states any condition"', () => {
+  // Two spellings of one rule: the engine cannot import the pack, so what this writes
+  // is pinned to the pack's `statesConditions`. It is pinned to THAT and no longer to
+  // `normalizeTaskDeclaration`, because the contract's door has stopped deriving a
+  // trigger at all (#1789) — this rewrite is the last place the reading survives, and
+  // deliberately so: a member's own file is where the answer now has to be written
+  // down, and this is what writes it there.
   const shapes = [undefined, [], ['schedule:at-most-daily'], ['substantive-change'], ['||'], ['', ' '], ['a || b'], ['schedule:at-most-weekly', 'repo-active']];
+  let derived = 0;
   for (const preconditions of shapes) {
     const decl = { id: 'x', expected_outcome: 'fresh_pr', ...(preconditions === undefined ? {} : { preconditions }) };
     const patched = stateTriggerText(`${JSON.stringify(decl, null, 2)}\n`);
-    assert.equal(patched.trigger, normalizeTaskDeclaration(decl).trigger, JSON.stringify(preconditions));
+    assert.equal(patched.trigger, statesConditions(preconditions) ? 'schedule' : 'request', JSON.stringify(preconditions));
+    // …and what it writes settles the contract's own question about the field, where
+    // before the door answered that question by itself. (Only that question: two of
+    // these shapes state conditions nothing can judge, which is its own complaint.)
+    const problems = validateTaskDeclaration(parseTaskDeclaration(patched.text)).map((p) => p.what);
+    assert.deepEqual(problems.filter((w) => w.includes('trigger')), [], JSON.stringify(preconditions));
+    derived += 1;
   }
+  assert.equal(derived, shapes.length, 'every shape reached both assertions');
 });
 
 test('updateTaskSchedulingFields brings every local task.json up to the vocabulary, and reports each', async () => {

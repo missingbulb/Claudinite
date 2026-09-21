@@ -35,6 +35,7 @@ const OK = 0, USAGE = 2, NO_TRIGGER = 12, SCOPE_MISMATCH = 15;
 
 const taskJson = (id) => `${JSON.stringify({
   id,
+  trigger: 'schedule',
   frequency: 'daily',
   preconditions: ['none'],
   agent_model: 'sonnet',

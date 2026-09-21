@@ -30,3 +30,13 @@
   author needs while writing a task.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #2182
+
+## 2026-09-21 · reworded · the trigger is stated, never derived (#1789)
+- **Reason:** the paragraph told an author that a declaration stating no `trigger` has one derived
+  from the shape of its conditions, and that a `frequency` field arrives at the door carrying one.
+  Both stopped being true when the derivation was retired, and this is the page an author reads
+  while writing the declaration, so the stale reading would have produced a task file that does not
+  load at all. The `frequency` half stands on its own window (#1732) and is left as it was.
+- **Actor:** the `engine/implement-request` run on work item missingbulb/Claudinite#1789.
+- **Model:** claude-opus-5
+- **Landed:** #1789

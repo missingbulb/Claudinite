@@ -4,7 +4,7 @@ import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { discoverTasks } from '../../src/contract/discover.mjs';
 
 const packMjs = (id) => `export default { id: '${id}' };\n`;
-const taskJson = (id, over = {}) => `${JSON.stringify({ id, preconditions: ['schedule:at-most-daily'], expected_outcome: 'no_code_changes', ...over })}\n`;
+const taskJson = (id, over = {}) => `${JSON.stringify({ id, trigger: 'schedule', preconditions: ['schedule:at-most-daily'], expected_outcome: 'no_code_changes', ...over })}\n`;
 
 test('discoverTasks finds a declared local pack\'s tasks with the repo-relative task path', async () => {
   const root = makeRepo({ changed: {

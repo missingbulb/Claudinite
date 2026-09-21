@@ -10,12 +10,13 @@ const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 // A task's "when" is its own expression (PRINCIPLES.md): `['schedule:at-most-daily']` is a task on
 // the schedule, `[]` one that runs only when somebody asks.
 // Through the door, the way a declaration reaches the scheduler in production: the
-// loader normalizes at discovery, and `trigger` is derived there for a fixture that
-// states none — so a fixture assembling a raw declaration would be testing a shape
-// the scheduler is never handed.
+// loader normalizes at discovery, so a fixture assembling a raw declaration would be
+// testing a shape the scheduler is never handed. `trigger` is stated, never derived
+// from the expression — `schedule` here, since that is what most of these cases are
+// about, and the few that are not say `trigger: 'request'` for themselves.
 const task = (id, preconditions, extra = {}, terms = new Map()) => ({
   pack: 'p', id, taskPath: `packs/p/tasks/${id}/task.md`,
-  decl: normalizeTaskDeclaration({ id, preconditions, ...extra }, terms),
+  decl: normalizeTaskDeclaration({ id, trigger: 'schedule', preconditions, ...extra }),
   terms,
 });
 // The ask, as a fixture answers it. `planSchedulerRun` never decides for a task:
@@ -91,9 +92,9 @@ test('an ask the scheduler cannot decide fails OPEN: the item is filed and the e
 
 test('every task on the schedule is asked, in declaration order; one stating no condition, or one reading the item, never is', async () => {
   const { seen, evaluate } = askedIds();
-  const aboutItem = task('request', ['about-the-item'], {}, new Map([['about-the-item', { signals: [], needsItem: true, holds: () => ({ holds: true }) }]]));
+  const aboutItem = task('request', ['about-the-item'], { trigger: 'request' }, new Map([['about-the-item', { signals: [], needsItem: true, holds: () => ({ holds: true }) }]]));
   const { ops } = await planSchedulerRun({
-    tasks: [task('daily1', ['schedule:at-most-daily']), task('lever', []), task('mover', ['substantive-change']), aboutItem, task('weekly1', ['schedule:at-most-weekly', 'repo-active'])],
+    tasks: [task('daily1', ['schedule:at-most-daily']), task('lever', [], { trigger: 'request' }), task('mover', ['substantive-change']), aboutItem, task('weekly1', ['schedule:at-most-weekly', 'repo-active'])],
     items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, evaluate,
   });
   assert.deepEqual(seen, ['daily1', 'mover', 'weekly1'], 'an unscheduled task runs only from an item somebody created');
@@ -108,7 +109,7 @@ test('a brand-new task is asked at the first run like any other — there is no 
 test('a run with a task to ask and no seam is a fixture that has not said what the task answers', async () => {
   await assert.rejects(planSchedulerRun({ tasks: [task('daily1', ['schedule:at-most-daily'])], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE }), /no evaluate seam/);
   // …while a run with nothing to ask needs none.
-  const { ops } = await planSchedulerRun({ tasks: [task('lever', [])], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
+  const { ops } = await planSchedulerRun({ tasks: [task('lever', [], { trigger: 'request' })], items: [], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE });
   assert.deepEqual(ops, []);
 });
 
@@ -162,7 +163,7 @@ test('ad-hoc items neither suppress nor consume a scheduled occurrence (§3)', a
   const fanOut = item({ task: 'daily1', qualifier: 'member-x', labels: ['task:status:waiting-for-executor'], created_at: '2026-08-14T09:00:00Z' });
   const lever = item({ task: 'lever', labels: ['task:status:waiting-for-executor'], created_at: '2026-08-14T09:00:00Z' });
   const { ops } = await planSchedulerRun({
-    tasks: [task('daily1', ['schedule:at-most-daily']), task('lever', [])],
+    tasks: [task('daily1', ['schedule:at-most-daily']), task('lever', [], { trigger: 'request' })],
     items: [fanOut, lever], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, evaluate: yes,
   });
   const creates = kinds(ops, 'create');
@@ -326,7 +327,7 @@ test('an UNSCHEDULED task is never minted by a force — it wakes the items rout
   // An unscheduled task has no standing item to stand in for: an item exists only
   // because an issue named the task, and a bare one carries nothing its worker can
   // read (#1721).
-  const lever = task('lever', []);
+  const lever = task('lever', [], { trigger: 'request' });
   const none = planWake('lever', [...wakeTasks, lever], []);
   assert.deepEqual(none.create, []);
   assert.deepEqual(none.wake, []);

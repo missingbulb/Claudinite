@@ -24,6 +24,7 @@ test('resolveModel maps every family and rejects unknowns; none is agentless', (
 // --- task-contract ---
 const validTask = {
   id: 'growth-extract',
+  trigger: 'schedule',
   frequency: 'daily',
   agent_model: 'opus',
   expected_outcome: 'fresh_pr',
@@ -72,7 +73,7 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
 // (PRINCIPLES.md): the expression is the whole of when a task runs, and the retired
 // `frequency` here arrives as the cadence term it meant.
 test('normalizeTaskDeclaration fills the defaults, and only where absent', () => {
-  const minimal = { id: 't', frequency: 'daily', expected_outcome: 'pr' };
+  const minimal = { id: 't', trigger: 'schedule', frequency: 'daily', expected_outcome: 'pr' };
   const filled = normalizeTaskDeclaration(minimal);
   assert.deepEqual(filled.preconditions, ['schedule:at-most-daily']);
   assert.equal(filled.frequency, undefined, 'the field does not survive the door');
@@ -451,7 +452,7 @@ test('normalizeTaskDeclaration maps legacy agent_preprocessing names to code_wor
 test('a legacy-named agentless declaration validates clean — the rename is not a breaking change', async () => {
   const { validateTaskDeclaration } = await import('../../src/contract/task-contract.mjs');
   const problems = validateTaskDeclaration({
-    id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
+    id: 't', trigger: 'schedule', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
     expected_outcome: 'none',
     agent_preprocessing: 'node worker.mjs', agent_preprocessing_timeout: 120,
   });
@@ -466,7 +467,7 @@ test('a legacy-named agentless declaration validates clean — the rename is not
 test('schedule_after / on_interrupt / invocation_endpoint are optional and validated when present', async () => {
   const { validateTaskDeclaration } = await import('../../src/contract/task-contract.mjs');
   const base = {
-    id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
+    id: 't', trigger: 'schedule', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
     expected_outcome: 'none',
     code_work: 'node w.mjs', code_work_timeout: 60,
   };
@@ -502,7 +503,7 @@ test('a code_work_timeout reaching the executing leash is rejected at author tim
   const { validateTaskDeclaration } = await import('../../src/contract/task-contract.mjs');
   const { EXECUTING_LEASH_MS } = await import('../../public/task-constants.mjs');
   const base = {
-    id: 't', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
+    id: 't', trigger: 'schedule', frequency: 'daily', preconditions: ['none'], agent_model: 'none',
     expected_outcome: 'none', code_work: 'node w.mjs',
   };
   const seconds = EXECUTING_LEASH_MS / 1000;
@@ -559,7 +560,7 @@ test('the retired frequency field reads as the cadence term it meant, first in t
 
 test('a declaration carrying an unknown frequency is reported as the illegal condition it becomes', () => {
   const decl = {
-    id: 'legacy', frequency: 'hourly', agent_model: 'sonnet', agent_instructions: 'task.md',
+    id: 'legacy', trigger: 'schedule', frequency: 'hourly', agent_model: 'sonnet', agent_instructions: 'task.md',
     expected_outcome: 'none', preconditions: ['none'], agent_execution_timeout: 600,
   };
   const findings = validateTaskDeclaration(decl);
@@ -567,8 +568,11 @@ test('a declaration carrying an unknown frequency is reported as the illegal con
   assert.match(findings[0].what, /"schedule" takes one of at-most-daily, at-most-weekly, at-most-monthly, not "at-most-hourly"/);
 });
 
-test('a declaration with no frequency and no preconditions is off the schedule, and says so by absence', () => {
-  const { frequency, preconditions, ...silent } = validTask;
+// Stating no conditions is a task that REQUIRES nothing, which is a different claim
+// from being off the schedule — `trigger` makes the second one, and the declaration
+// below makes both at once rather than one standing in for the other (#1789).
+test('a declaration with no frequency and no preconditions requires nothing, and states its own trigger', () => {
+  const { frequency, preconditions, ...silent } = { ...validTask, trigger: 'request' };
   assert.deepEqual(validateTaskDeclaration(silent), []);
   assert.equal(isScheduledTask(normalizeTaskDeclaration(silent)), false);
   // …and `none` is a second spelling of that absence, which is what retires it.

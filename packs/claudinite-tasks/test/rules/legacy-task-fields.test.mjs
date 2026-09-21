@@ -9,34 +9,19 @@ const ctx = (files) => ({ files: Object.keys(files), read: (f) => files[f] ?? nu
 const TASK = 'packs/own/tasks/sweep/task.json';
 const run = (source, { path = TASK } = {}) => rule.run(ctx({ [path]: source }));
 
-// Every fixture states a trigger unless the trigger IS its subject: the absence is
-// itself reported, so a fixture silent on it would carry a second finding into every
-// other case here.
-const declaration = (body, { trigger = '  "trigger": "request",\n' } = {}) => `{\n  "id": "sweep",\n${trigger}${body}}\n`;
+// Every fixture states a trigger, as a real declaration now must. What this rule
+// reports is always a retired SPELLING sitting on a line an author can edit — never a
+// field that is simply absent, which is the contract's own refusal (#1789).
+const declaration = (body) => `{\n  "id": "sweep",\n  "trigger": "request",\n${body}}\n`;
 
 test('legacy-task-fields: silent on a declaration in the current vocabulary', () => {
   assert.deepEqual(run(declaration('  "code_work": "run.mjs",\n  "schedule_after": "other",\n  "expected_outcome": "fresh_pr"\n')), []);
 });
 
-// The trigger is DERIVED for a declaration that states none, so unlike every other
-// entry here the thing reported is an ABSENCE — nothing on the page is wrong, and
-// nothing goes red when the derivation is dropped (#1789) except the task not running.
-test('legacy-task-fields: a declaration stating no trigger is reported at the line it belongs on', () => {
-  const none = { trigger: '' };
-  const listed = run(declaration('  "preconditions": ["schedule:at-most-daily"],\n  "expected_outcome": "fresh_pr"\n', none));
-  assert.equal(listed.length, 1);
-  assert.match(listed[0].what, /states no `trigger`/);
-  assert.match(listed[0].fix, /"trigger": "schedule"/, 'the value its own conditions imply');
-  assert.equal(listed[0].line, 3, 'the `preconditions` line, where the field goes');
-
-  // With no conditions the implied value flips, and the anchor falls to the field
-  // the contract requires — the same two anchors the nightly rewrite uses.
-  const bare = run(declaration('  "expected_outcome": "fresh_pr"\n', none));
-  assert.match(bare[0].fix, /"trigger": "request"/);
-  assert.equal(bare[0].line, 3);
-
-  // No second finding once it is stated.
-  assert.deepEqual(run(declaration('  "preconditions": ["schedule:at-most-daily"],\n')), []);
+// The absence the rule used to report is now a blocking `task-declaration-shape`
+// finding, so an advisory here would be the same edit asked for twice.
+test('legacy-task-fields: an unstated trigger is not its business', () => {
+  assert.deepEqual(run('{\n  "id": "sweep",\n  "preconditions": ["schedule:at-most-daily"],\n  "expected_outcome": "fresh_pr"\n}\n'), []);
 });
 
 test('legacy-task-fields: reads task declarations only', () => {
