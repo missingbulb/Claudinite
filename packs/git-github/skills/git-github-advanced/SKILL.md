@@ -3,6 +3,9 @@ name: git-github-advanced
 description: Git/GitHub procedures beyond the baseline lifecycle. Use for commit layering, recovering a branch after a squash-merge, CI-trigger rules, GitHub Actions gotchas, or merge-relocation traps.
 metadata:
   body: workflow
+  usage:
+    expect: routine
+    loads-per-sessions: 1 in 15
 ---
 
 # Portable git & GitHub procedures

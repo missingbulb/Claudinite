@@ -3,6 +3,8 @@ name: running-the-suite
 description: Running this repo's test suite — the one command that covers it, reading a run's output from a file instead of re-running it, iterating on the tests an edit touches, and staging a new test file before certifying a run. Use before any node --test.
 metadata:
   body: guidelines
+  usage:
+    expect: triggered
   force-load-on-tool-calls:
     - 'Bash.command /\bnode\s+--test\b/'
 ---

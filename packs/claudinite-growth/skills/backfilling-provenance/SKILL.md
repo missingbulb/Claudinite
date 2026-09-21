@@ -3,6 +3,8 @@ name: backfilling-provenance
 description: Filling a pack's empty provenance files from its history - each entry derived from the adding commit, its pull request and the version log before the rule is re-read, every commit that touched the pack weighed whether or not a draft covers it, and the README and manifest trimmed to use in the same change. Use when a pack under packs/ or .claudinite/local/packs/ carries empty provenance files, or when asked to backfill or write a pack's provenance.
 metadata:
   body: workflow
+  usage:
+    expect: rare
 ---
 
 # Backfilling a pack's provenance

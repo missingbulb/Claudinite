@@ -3,6 +3,9 @@ name: repo-text-sweeps
 description: Mechanics for grep/sed sweeps, renames, and path relocations across a repo. Use before a bulk find-replace, a rename, or moving files — and after one, to catch silently broken references.
 metadata:
   body: workflow
+  usage:
+    expect: routine
+    loads-per-sessions: 1 in 20
 ---
 
 # Text & file manipulation
