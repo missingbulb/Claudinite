@@ -20,6 +20,12 @@
 // scratch repository and the workers against the real one.
 
 import { LOCAL_PACKS_SUBDIR } from '../../engine/pack_loader/pack-registry.mjs';
+// A namespace import: the pack and engine lanes deliver on separate cadences, and a
+// member whose engine predates the constant must still load this pack.
+import * as conventions from '../../engine/pack_loader/pack-conventions.mjs';
+
+const { PROVENANCE_DIR } = conventions;
+const VERSIONS_FILE = conventions.VERSIONS_FILE ?? 'VERSIONS.md';
 import {
   VERSION_SOURCE, versionFromLiteral, compareVersions, versionsEqual, nextVersion, versionAbove,
 } from '../../engine/version.mjs';
@@ -30,8 +36,10 @@ import {
 export const SHELF = 'packs';
 const LOCAL_ROOT = `${LOCAL_PACKS_SUBDIR}/`;
 
-// Each pack's version-history record, next to its manifest.
-export const VERSIONS_FILENAME = 'VERSIONS.md';
+// Each pack's version-history record, under its `provenance/` with the rest of what is
+// read by maintenance and never by a session or a member.
+export const VERSIONS_FILENAME = VERSIONS_FILE;
+export const versionsPath = (id) => `${SHELF}/${id}/${PROVENANCE_DIR}/${VERSIONS_FILENAME}`;
 
 // The task that writes bump commits, named where the commit is stamped and where the
 // history reads the stamp back: a bump commit moves only version numbers, so it is
@@ -39,13 +47,13 @@ export const VERSIONS_FILENAME = 'VERSIONS.md';
 export const BUMP_TASK = 'claudinite-canon-curation/pack-version-bump';
 
 // Does this path ride a pack's directory copy to a member? A pack's tests sit beside
-// the files they cover and are the one thing in that directory no vendor set carries
-// (compute-vendor-set drops `*.test.mjs`), so nobody is waiting on them. `VERSIONS.md`
-// is the record OF versions, not content a version ships, so a row landing must never
-// itself demand another version.
+// the files they cover and its pack-root `provenance/` is its decision log, and neither
+// reaches a member (compute-vendor-set drops `*.test.mjs` and that folder), so nobody
+// is waiting on them: a backfilled entry, or a version-record row, must never itself
+// demand another version.
 export function isShippingFile(path) {
   if (path.startsWith(LOCAL_ROOT)) return false;
-  if (path.endsWith('.test.mjs') || path.endsWith(`/${VERSIONS_FILENAME}`)) return false;
+  if (path.endsWith('.test.mjs') || new RegExp(`^${SHELF}/[^/]+/${PROVENANCE_DIR}/`).test(path)) return false;
   return /^packs\/[^/]+\//.test(path);
 }
 
@@ -232,7 +240,7 @@ export function renderHistory(id, existingText, history) {
 export function planHistory(git, ref) {
   const files = {};
   for (const id of shelfPacks(git, ref)) {
-    const path = `${SHELF}/${id}/${VERSIONS_FILENAME}`;
+    const path = versionsPath(id);
     const before = fileAt(git, ref, path);
     const after = renderHistory(id, before, versionHistory(git, ref, id));
     if (after !== before) files[path] = after;

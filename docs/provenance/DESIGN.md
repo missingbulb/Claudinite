@@ -85,7 +85,7 @@ that element's file, or an artifact whose decision is the pack's, or evidence:
 | stubs and migrations | their own module headers, plus a `_pack` entry for the decision to ship them |
 | tests and fixtures | nothing — a fixture is evidence, cited from the check's entry |
 | `README.md` | nothing — it says how the pack is used (below), and every sentence of history in it moves onto the entry it is evidence for (§6) |
-| `VERSIONS.md`, `directory.GENERATED.md`, the rule inventory | nothing — derived, never decided |
+| `provenance/VERSIONS.md`, `directory.GENERATED.md`, the rule inventory | nothing - derived, never decided; the version log sits under `provenance/` because it too is read by maintenance and never by a session or a member, and is no element |
 | a member's `accept` waiver, severity override or `disabledTasks` entry | the member's settings file, whose `reason` is the record; no provenance file |
 | a design doc, a capture on the conversation-logs branch, a tracker comment, a pull request body | evidence — cited by an entry, never copied into one |
 

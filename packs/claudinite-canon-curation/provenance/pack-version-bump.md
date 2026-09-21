@@ -18,3 +18,14 @@
   nothing here is a compatibility deadline.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #2182
+
+## 2026-09-21 · policy-changed · a pack's `provenance/` never counts as a shipping change
+- **Source:** d63f99c6, which cut chrome-extension 60920.2 for #2180, a pull request touching only
+  the pack's provenance files and README.
+- **Reason:** the pack-root `provenance/` reaches no member (the vendor set drops it), so a
+  backfilled entry or a version-log row changes nothing a version ships; the version log now lives
+  there too, so the one exclusion covers both.
+- **Actor:** @missingbulb (owner) moved the log; the session that landed it widened the exclusion.
+- **Model:** Claude Fable 5.1, per the commit trailer.
+- **Mechanism:** `isShippingFile` excludes `packs/<id>/provenance/` whole, structurally, and a
+  skill's folder of the same name still ships.

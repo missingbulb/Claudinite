@@ -50,7 +50,10 @@ const NUMBERED_STEP = /^\d+\.\s/;
 const ENTRY_HEAD = /^## (\d{4}-\d{2}-\d{2}) · ([a-z-]+) · (.+?)\s*$/;
 const FIELD_LINE = /^- \*\*([A-Z][A-Za-z ]*?):\*\*\s*(.*)$/;
 
-// A check's id becomes a file name with its slash as a hyphen (`cer/x` → `cer-x.md`).
+// A check's id becomes a file name with its slash as a hyphen (`cer/x` → `cer-x.md`);
+// every element file is its id and `.md`, the pack's own and the declined log leading
+// with an underscore.
+const ELEMENT_FILE = /^_?[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 export const elementIdOf = (id) => String(id).replace(/\//g, '-');
 export const fileOfId = (id) => `${elementIdOf(id)}.md`;
 export const idOfFile = (name) => name.replace(/\.md$/, '');
@@ -350,7 +353,9 @@ export function provenanceFiles(packDir, io) {
   const dir = `${packDir}/${PROVENANCE_DIR}`;
   const out = new Map();
   for (const name of listFiles(io, dir)) {
-    if (!name.endsWith('.md') || name === DECLINED_FILE) continue;
+    // An element's file is named by its id; a record kept beside them under another
+    // name (a pack's version log) is not an element and is parsed by nobody here.
+    if (!ELEMENT_FILE.test(name) || name === DECLINED_FILE) continue;
     const file = `${dir}/${name}`;
     const text = io.read(file) ?? '';
     const { entries, errors } = parseEntries(text);

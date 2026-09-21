@@ -22,3 +22,15 @@
 - **Model:** Claude, per the commit trailer.
 - **Mechanism:** the audit names only a marked guideline's file, and `mark` no longer proposes
   per-bullet slugs for a guidelines skill.
+
+## 2026-09-21 · severity-changed · a file under `provenance/` not named as an element id is no element
+- **Source:** the owner's call, on #2190's review, that a pack's version log belongs under
+  `provenance/` beside the decision log: both are read by maintenance and never by a session or a
+  member.
+- **Reason:** the audit read every `.md` in the folder as an element's file, so a record kept there
+  under another name would parse as a grammar fault and an unnamed file.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5.1, per the commit trailer.
+- **Mechanism:** the helper lists only files named `<id>.md` - an id being hyphenated lowercase
+  words, the pack's own and the declined log leading with an underscore - so the scope is structural
+  and names no record.
