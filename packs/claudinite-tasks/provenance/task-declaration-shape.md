@@ -1,0 +1,101 @@
+## 2026-07-22 · born · Per-project scheduling - Phase 0: engine/scheduler, groundwork, checks, task conversions (#396)
+- **Source:** Phase 0 of the per-project maintenance scheduling design (#394).
+- **Reason:** a declaration the scheduler reads is member-owned data no vendoring pass rewrites, so
+  an incomplete or illegal one is caught where it is written rather than when the task fails to fire
+  or fires wrong.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** a world check, `packs/basics/task-declaration-shape.mjs`.
+- **Landed:** #396 (Refs #394).
+
+## 2026-08-07 · reworded · Three-responsibility task machinery: janitor split, precondition-only gating, prework rename, exec-status distillation (#675)
+- **Source:** owner requirements 16-17 of 2026-08-06.
+- **Reason:** the "pre-agent preprocessing" framing went - execution is two similar consecutive
+  phases, prework then agentic work - so the check flags the legacy field names the contract's door
+  normalizes away.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #675.
+
+## 2026-08-18 · reworded · Retire the slot scheduler: delete run.mjs, the slot half of slots.mjs, the slot stub and FORCE_TASKS (#993)
+- **Reason:** the frequency vocabulary and the anchor arithmetic moved to `calendar.mjs`, and the
+  check reads the vocabulary from there rather than from the retired slot module.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #993 (Closes #974).
+
+## 2026-08-19 · moved · Rename core to claudinite-lifecycle, grow_with_claudinite to claudinite-growth, and move the scheduled-task contract between them (#1029)
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the check follows the scheduled-task contract into claudinite-growth.
+- **Landed:** #1029.
+
+## 2026-08-23 · reworded · Collapse the frequency vocabulary and take the cron to two ticks a day (#1230)
+- **Reason:** `hourly` cannot mean anything under a cron that fires twice a day, and the `daily±Nh`
+  offsets staggered dependent tasks by clock hour where `after:` declares the same intent and
+  enforces it. The retired tokens normalize permanently at the declaration-load door, because a task
+  declaration is member-owned data no vendoring pass rewrites; this author-time check is what stops
+  a NEW declaration naming one.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Landed:** #1230 (Refs #1225, #1231).
+
+## 2026-08-24 · moved · Extract the task surface into claudinite-tasks, move the update flows, split the wiring converge (#1326)
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Mechanism:** the check moves into the pack whose contract it validates,
+  `packs/claudinite-tasks/worldRules/task-declaration-shape.mjs`.
+- **Landed:** #1326 (Closes #1325) · pack version 60824.1.
+
+## 2026-08-30 · reworded · Auto-merge policies: expected_outcome 'none'/'pr' plus a granular, built-ins-first automerge field (#1464)
+- **Reason:** `expected_outcome` collapsed to `none`/`pr` with the merge decision in its own
+  `automerge` field, and the retired `open-pr`/`merged-pr` spellings normalize at the one door - so
+  the rename is an advisory at author time, never red CI on a member file nobody edited.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5, per the commit trailer.
+- **Landed:** #1464 (Closes #1459) · pack version 60830.5.
+
+## 2026-09-02 · reworded · Declarative task preconditions, and the repo-active silence gate (#1583)
+- **Reason:** with the gate declared as a list of named conditions rather than written as code, the
+  check can report an unknown term or a malformed argument at author time, and can enforce that a
+  declaration carries exactly one of the two forms.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #1583 · pack version 60902.1.
+
+## 2026-09-02 · reworded · Retire the precondition() function form - one gate mechanism (#1622)
+- **Reason:** two gate forms meant every reader, every check and the evaluator itself had to ask
+  which one was the gate. Both retired spellings are rejected BY NAME here as well as in the
+  contract, so a declaration carrying one is told what replaced it instead of reading as a task that
+  simply forgot its gate.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Landed:** #1622 (Refs #1617) · pack version 60902.8.
+
+## 2026-09-03 · reworded · Task declarations move from task.mjs to task.json (#1636)
+- **Reason:** a task declaration is data, so it became `tasks/<name>/task.json` against a schema.
+  The retired module form still loaded at the door with an advisory naming the conversion, so a
+  member's own local-pack tasks kept running until its nightly update converted them; a missing
+  `description` is asked for as an advisory for the same reason, since a converted task carries
+  none.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5.1, per the commit trailer.
+- **Landed:** #1636 (Closes #1635, Refs #1633) · pack version 60902.10.
+
+## 2026-09-05 · reworded · A task declares what its run does to pull requests, and the executor resolves the target once (#1707)
+- **Reason:** `expected_outcome` grew from the two-word ceiling to four words that also carry the
+  target policy, and the retired `none`/`pr` normalize at the door beside `open-pr`/`merged-pr`, so
+  the check advises the rename rather than failing an unedited member file.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #1707 · pack version 60905.1.
+
+## 2026-09-06 · reworded · Scheduling is the task's own precondition; the scheduler keeps no state (#1733)
+- **Reason:** a task declares `trigger` - who mints an occurrence - and `preconditions` says only
+  what must then hold, judged identically whichever asked; the cadence became a term over the task's
+  own run history, so `frequency` retired behind a door and the check validates the new pair.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Landed:** #1733 (Closes #1731, Refs #1725) · pack version 60906.9.
+
+## 2026-09-06 · reworded · Retire the task.mjs module form of a task declaration (#1795)
+- **Reason:** the conversion had run everywhere the advisory would have caught a straggler, so the
+  retired-module-form branch and the precondition-function scan come out and `task.json` is the only
+  declaration a task folder may carry.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Landed:** #1795 (Refs #1656, #1633) · pack version 60906.15.

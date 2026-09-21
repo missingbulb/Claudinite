@@ -9,14 +9,6 @@ repo's own page — or `"fleet"` — the overview across a roster. It is the one
 a mode that contradicts the rest of the config (`fleet` naming no roster source,
 `repo` naming one).
 
-It used to be inferred: a config that named where more than one member came from was a
-fleet, and silence was a repo page. That reads fine until a fleet deployment loses its
-roster source — a dropped key, a renamed artifact, an enumeration that was never
-configured — and publishes a one-repo dashboard that looks entirely intentional. An
-inference cannot tell "this repo only" from "the fleet, whose members went missing";
-a stated mode can, and the disagreement becomes a failed build instead of a quietly
-wrong site.
-
 The end-state specification of both pages, the fields the fold gains for them and the
 visual identity is [docs/](docs/README.md); this file describes what a reader of the
 pages sees.
@@ -55,14 +47,6 @@ Everything else is optional `config` on the declaration:
 | `redirectUri` | the page's URL | Override when the callback differs |
 | `defaultRepo` | this repo | Which repo a single-repo deployment shows |
 | `rates` | — | USD per **million** tokens, per model, per counter: `{ "claude-opus-5": { "in": 15, "cacheRead": 1.5, "out": 75 } }`. `cacheWrite` is optional and falls back to `in`. Unset is a supported deployment, not a broken one — every dollar figure then reads *unpriced* and names this key, and the token counts stand; a model the table does not name is an unpriced remainder, counted in tokens and never folded into the sum |
-
-## Why a pack and not engine code
-
-Nothing converges, scheduler runs or executes because the dashboard exists, and a member that
-never looks at it should not carry it. Engine code is what every member *runs*; this
-is content a member opts into. Being a pack also buys it a version and migration
-lane, a declaration that gates it, and an adoption moment at which the deploy can be
-wired — none of which engine code has.
 
 It has **two views**, and which one you land on is the URL:
 
@@ -485,9 +469,7 @@ the gate; signing in lands on the view it named.
 One way to get one: **Sign in with GitHub** — a button, no typing, which needs the
 deployment to have configured `clientId` and `exchangeUrl`. There is no second route.
 A deployment that has not configured them cannot sign anybody in, and the gate says so,
-naming the two variables its owner sets: it is not finished being set up. The paste box
-that used to stand there asked every viewer to go and mint a PAT, which is worse than
-the thing sign-in replaced, and it was what a deployment shipped with by default.
+naming the two variables its owner sets: it is not finished being set up.
 
 **Locally**, `tooling/serve.mjs` takes the developer's own token out of the environment
 (`DASHBOARD_DEV_TOKEN`, else `GITHUB_TOKEN`/`GH_TOKEN`) and hands it to the page in the

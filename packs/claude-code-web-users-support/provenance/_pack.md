@@ -1,10 +1,40 @@
-## 2026-09-21 · born · the file starts here; the pack's earlier history is not backfilled yet
-- **Reason:** this file was empty when the change below was made, and the clone it was made from
-  carries too little history to derive the pack's origin. The backfill that fills it is its own pull
-  request and replaces this entry with the derived history.
+## 2026-08-08 · born · Personal preferences as a pack, and one general primitive: a pack's own session-start step (#567)
+- **Source:** `preferences/<email>.md` sitting in the canon itself, with the session-start step
+  falling back to a hardcoded raw URL into this repository.
+- **Reason:** personal interaction preferences are the concern of one fleet's people, and the canon
+  is mounted by every fleet that adopts Claudinite - which makes it both the wrong host for one
+  group's preferences and the wrong authority on where they live. The pack is named for the SURFACE
+  rather than for the feature: a Claude Code web session runs for a signed-in person in a managed
+  container and a terminal session does neither, so the whole class of capability that has to know
+  who is here belongs together behind one declaration a project makes once, and preferences are only
+  its first member.
 - **Actor:** @missingbulb (owner).
-- **Mechanism:** the pack's manifest, which carries its adoption question and the address of the
-  store.
+- **Mechanism:** the pack manifest, seeded by default and carrying the adoption question that asks
+  where the store is. The pack holds an ADDRESS and not the content, so its entry config names a
+  repository and a path inside it. The engine runs the pack's session-start step because the file is
+  there, through the structural pack-session-start runner this change added as the symmetric half of
+  the session-end one, and learns nothing about what the step does - which is what lets this be a
+  pack at all rather than a special case wired into every repo's session-start machinery.
+- **Landed:** #567 · pack version 1.
+
+## 2026-08-17 · reworded · Move the environment setup script into the web pack, and converge the clone's git config at session start (#956)
+- **Reason:** pasting a body into an environment's Setup script field is a capability of the managed
+  container a web session runs in, not engine machinery, so the script belongs on this pack's
+  surface; the engine's part, aggregating the active packs' `env` declarations, stays where it is.
+  The per-clone git config the script also carried went the other way, to the session-start
+  orchestrator, because it ran once at image-build time and only where somebody had pasted the
+  script - a terminal clone never had it and a re-cloned checkout lost it.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #956 (Fixes #955) · pack version 2.
+
+## 2026-09-13 · policy-changed · Load personal preferences only into attended sessions (#1992)
+- **Reason:** a routine fired under a person's account carries their identity but not their
+  presence, so a scheduled run was loading somebody's interaction preferences into a session they
+  were not in.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** the pack's session-start step reads the harness's attended flag; unset still loads,
+  so a harness that does not set it behaves as before.
+- **Landed:** #1992 (Closes #1991) · pack version 60913.1.
 
 ## 2026-09-21 · policy-changed · a person brings a pack, not a preferences file (#2188)
 - **Reason:** the store held one `<email>.md` per person, so the only thing a person could carry was
