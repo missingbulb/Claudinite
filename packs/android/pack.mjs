@@ -1,7 +1,7 @@
 // Technology stub pack: Android app development (Gradle/AGP, manifests, permissions, signing, flavors).
 // No rules captured yet, so no RULES.md.
 export default {
-  version: '60920.1',
+  version: '60921.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'gradle/AGP builds, AndroidManifest, permissions, signing configs, product flavors and emulator workflows for an Android app module',
