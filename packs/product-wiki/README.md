@@ -1,10 +1,10 @@
 # product-wiki pack
 
 The self-growing product research wiki standard: a repo keeps its
-market/user/competitor research as agent-maintained wikis under `product-wiki/`
-(Karpathy's LLM-wiki pattern — compile findings once, refine in place, cite
-everything), walled off from the code so nothing can silently depend on
-unreviewed research, with one human-reviewed crossing point. Declared by the
+market/user/competitor research as agent-maintained wikis under `product-wiki/` -
+compile findings once, refine in place, cite everything - walled off from the code
+so nothing can silently depend on unreviewed research, with one human-reviewed
+crossing point. Declared by the
 project (fingerprint: `product-wiki/product-requirements/README.md` — the sink is
 the standard's one structural constant). Takes **no config**: the layout is the
 standard.
@@ -65,20 +65,15 @@ another way. The weekly task loads it by name.
 `product-wiki-key-insights` enforces the header's **shape** — it leads every other
 section, it is bullets only, it carries at least one and at most seven, and no
 bullet runs past **140 characters**, about one line (a bullet's indented
-continuation lines count as part of it, so hard-wrapping is free). The tight cap
-is the point: a header is worth having only if it is faster to read than the
-page, and the failure mode in practice is a bullet that keeps qualifying itself.
+continuation lines count as part of it, so hard-wrapping is free).
 *Which* insights lead, how plainly they are worded, and keeping them true as
 research moves is judgment — that lives in RULES.md and the growth worker, and
 no check can score it. The missing heading itself is
 `product-wiki-page-sections`' finding, never double-reported.
 
-`product-wiki-freshness` is advisory **by design**, not as a maturity stage: it
-is time-driven (a repo goes stale with no change to its tree), and a
-wall-clock-dependent finding must never block a Stop or fail CI. It fires per
-page after 45 days without a growth-log entry — the in-repo observer for "the
-unattended growth channel silently stopped firing". Silence it with
-`rules: {"product-wiki-freshness": "off"}`.
+`product-wiki-freshness` is advisory: it fires per page after 45 days without a
+growth-log entry, the in-repo observer for a growth channel that has stopped
+firing. Silence it with `rules: {"product-wiki-freshness": "off"}`.
 
 ## Skill
 
@@ -157,9 +152,6 @@ config absence means "nothing declared").
   user-research page is sourced from public proxies — review sites, forum threads, competitors'
   testimonials — which satisfies every check while describing other people's customers. The
   remedy is honest labelling, in [`writing-wiki-pages`](skills/writing-wiki-pages/SKILL.md).
-  A raw evidence layer was considered and declined: no repo has qualitative input waiting, a
-  committed transcript puts customer PII in git history permanently, and the layer's central
-  "immutable" promise is unenforceable by checks that read the tracked tree rather than history.
 
 - The barrier engine never scans `*.test.mjs`/test files as sources, so a test
   importing from wiki space is invisible to `product-wiki-isolation` — covered

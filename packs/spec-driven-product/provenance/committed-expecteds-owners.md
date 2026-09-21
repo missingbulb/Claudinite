@@ -1,9 +1,31 @@
-## 2026-09-01 · born · converted from references.md (RULES-4)
-- **Reason:** A case's success criterion encodes what the owner accepted, which is exactly what
-  makes a green suite meaningful sign-off rather than self-grading — the expecteds are an approval
-  record, so their authorship is the whole property. Recovered from the rule's own pre-#467 text
-  (cut by 2f3e4e9a as “consequence prose arguing for a rule rather than enabling it”, before
-  this pack had a references.md to hold it).
-- **Mechanism:** prose
-- **Retire when:** Reaffirm while the owner approves expecteds; retire if sign-off moves to another
+## 2026-07-07 · born · Rewrite generate-project-instructions around facet extraction; seed spec-driven-product (#162)
+- **Source:** the class's two worked examples in the owner's fleet -
+  missingbulb/GoogleCalendarEventCreator's executable-requirements methodology, the origin, and
+  missingbulb/TLDR's adaptation of it, which adds the cross-tier server kind.
+- **Reason:** a case's success criterion encodes what the owner accepted, which is exactly what
+  makes a green suite meaningful sign-off rather than self-grading - the expecteds are an approval
+  record, so their authorship is the whole property.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5, per the commit trailer.
+- **Mechanism:** a RULES.md rule, triggered on "The committed expecteds are the owner's approval
+  record of the product.".
+- **Landed:** #162 (Closes #161) · pack version 1.
+
+## 2026-07-27 · reworded · Tighten every RULES.md to when + what + one non-obvious fact (#467)
+- **Reason:** every rule is cut back to trigger plus instruction plus at most one clause of why;
+  what went was consequence prose arguing for the rule rather than enabling it. No rule was merged
+  or dropped and the structure maps one to one onto the original.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Landed:** #467 (Closes #466).
+
+## 2026-09-01 · reaffirmed · Recover the rationale #467 cut from the shared packs into references.md (#1575)
+- **Reason:** #467's cut predated any place in the pack that could hold a rule's rationale, so
+  recovering it completes that decision rather than undoing it: the rule line stays exactly as #467
+  left it and the reason moves to the doc built for it. Only clauses carrying a failure mode, cost,
+  frequency or authority were taken back.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Retire when:** reaffirm while the owner approves expecteds; retire if sign-off moves to another
   artifact.
+- **Landed:** #1575 (Closes #1571) · pack version 60901.1.
