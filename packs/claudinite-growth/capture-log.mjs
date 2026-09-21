@@ -442,5 +442,5 @@ async function main() {
 
 const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (invokedDirectly) {
-  main().catch((e) => { console.error(e.message); process.exit(1); });
+  main().catch((e) => { console.error(e.message); process.exitCode = 1; });
 }

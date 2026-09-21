@@ -762,5 +762,5 @@ export async function runExecutorJob() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  runExecutorJob().catch((e) => { console.error(e); process.exit(1); });
+  runExecutorJob().catch((e) => { console.error(e); process.exitCode = 1; });
 }

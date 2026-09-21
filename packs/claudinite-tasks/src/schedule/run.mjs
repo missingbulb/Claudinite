@@ -882,7 +882,7 @@ async function main() {
 // Run only when invoked directly (the workflow's `node run.mjs`), never on import.
 export { main as runSchedulerRun };
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(e); process.exit(1); });
+  main().catch((e) => { console.error(e); process.exitCode = 1; });
 }
 
 export { parseWorkItemTitle };

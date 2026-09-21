@@ -18,3 +18,13 @@
   requests and captures, and a repo whose only activity is its own queue is silent by all four.
 - **Landed:** #2046 (Refs #1869, #1872; it closes nothing by design, since #1872's own converge owns
   its state and #1869 is a tracking issue) · pack version 60915.4.
+
+## 2026-09-21 · policy-changed · entry points set exitCode instead of exiting hard
+- **Reason:** `process.exit(1)` in an entry point's catch discards whatever stdout has not drained;
+  measured here, a run piped to a slow reader delivered 309 of 200,000 lines, while
+  `process.exitCode = 1` delivered all of them. The exit status is unchanged; only the output
+  survives.
+- **Mechanism:** the guard already runs as the module's entry point, so letting the process end
+  naturally is enough; nothing waits on the event loop after the catch.
+- **Actor:** @missingbulb (owner), replacing #2082 whose diff predated the src/ layout move.
+- **Model:** Opus 5
