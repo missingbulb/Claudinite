@@ -34,3 +34,11 @@
 - **Mechanism:** the helper lists only files named `<id>.md` - an id being hyphenated lowercase
   words, the pack's own and the declined log leading with an underscore - so the scope is structural
   and names no record.
+
+## 2026-09-21 · reworded · the empty-files remedy stops stating the run's shape (#2169)
+- **Reason:** it said "one pack per pull request", which the backfilling-provenance skill also said
+  and the owner has since relaxed to a default; a remedy that restates a sizing rule it does not own
+  goes stale the moment the skill's does. It now points at the skill for how a run is sized.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5.
+- **Landed:** #2207 (Refs #2169)
