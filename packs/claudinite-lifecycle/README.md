@@ -61,10 +61,7 @@ The **task contract** and its checks are deliberately NOT here. Those ask whethe
 this repo. They live with the rest of the authoring surface.
 
 The scope cuts the other way too: a rule about how the **canon's own** content is maintained is not
-this pack's, however much it looks like one. `catalog-completeness` — `packs/README.md` lists every
-`packs/<name>/` — reads as Claudinite machinery and is not: it can only fire in the corpus repo, and
-what it guards is a hand-maintained index, not a member's status. It stays with the other
-doc-integrity rules.
+this pack's, however much it looks like one.
 
 `skill-loaded-before-editing` is the Stop-time half of **path-scoped skills**: a skill names
 the files it must be loaded for under `force-load-on-file-edits-paths` in its SKILL.md frontmatter
@@ -102,6 +99,4 @@ against each declared pack's questions:
 `update` is the per-repo self-refresh — the task that converges a member's mount and stamps it. It
 is why `claudinite-lifecycle-declared` is blocking: a member runs `update` from its **vendored** copy, and
 `discoverTasks` finds only a literally-declared pack's tasks, so a repo that loses this pack's entry
-loses its self-refresh, and nothing is left that could deliver it one. That is also why the task
-arrived here a change later than the rest of the pack — it moved only once every non-dormant member's
-declaration had been read back and confirmed to carry `core`.
+loses its self-refresh, and nothing is left that could deliver it one.
