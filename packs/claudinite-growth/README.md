@@ -160,7 +160,7 @@ the rule format, findability, and the slug marker that ends every rule and names
 file; [**changing-pack-elements**](skills/changing-pack-elements/SKILL.md), forced on every pack
 file, says which entry an edit owes and how the pack's `README.md` stays about use;
 [**backfilling-provenance**](skills/backfilling-provenance/SKILL.md) is the method for filling a
-pack's empty files from its history, one pack per pull request. `provenance.mjs` beside this
+pack's empty files from its history. `provenance.mjs` beside this
 README is the one tool all three name - `mark`, `append`, `check`, `convert-references`,
 `reduce`, `history`, and the backfill's `brief` and `apply` - and `provenance-integrity` and
 `provenance-change-recorded` below are the
