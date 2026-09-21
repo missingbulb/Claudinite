@@ -9,7 +9,7 @@ const NUMPY = /\bnumpy\b/i;
 const SCIPY = /\bscipy\b/i;
 
 export default {
-  version: '60920.2',
+  version: '60921.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs:
