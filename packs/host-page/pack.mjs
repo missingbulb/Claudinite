@@ -9,11 +9,7 @@
 // about what to do once it is there; headless-browser drives a browser you own
 // from outside it.
 //
-// Declared by hand. There is no honest fingerprint: the shapes that would
-// suggest the pack — a content script, a `dispatchEvent`, a `MutationObserver` —
-// are equally the shapes of code running on its own page, and a marker that
-// cannot tell a guest from a host would suspect the pack in every DOM repo in
-// the fleet.
+// Declared by hand; it has no fingerprint.
 export default {
   version: '60920.1',
   minEngineVersion: '60822.1',
@@ -23,9 +19,5 @@ export default {
   },
   // Three checks, each on a contract whose breach is SILENT — an observer that
   // outlives its feature, an event that does not bubble, an event aimed outside
-  // the app root. All three leave `dispatchEvent` returning true and the page
-  // simply not responding, which is why they are worth a scan rather than prose:
-  // the reader cannot tell them apart from "the app ignores untrusted events".
-  // Everything else in RULES.md stays prose — judgment about a host you cannot
-  // see from here.
+  // the app root. Everything else in RULES.md stays prose.
 };
