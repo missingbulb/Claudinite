@@ -372,3 +372,27 @@ const SCHEDULER_STUB = "name: Claudinite scheduler\non:\n  schedule:\n    - cron
 
 const EXECUTOR_STUB_TEXT = "name: Claudinite executor\non:\n  issues:\n    types: [labeled]\n"
   + "jobs:\n  execute:\n    steps:\n      - env:\n          GITHUB_TOKEN: ${{ github.token }}\n          CLAUDINITE_SECRETS: ${{ toJSON(secrets) }}\n        run: node executor.mjs\n";
+
+test('ensureHooks: the canon home registers its hooks at the repo root, not through a mount it does not have', () => {
+  // The canon runs the same engine from its own tree: there is no .claudinite/shared/
+  // here, so a mount-spelled command resolves to nothing and fails every turn.
+  const root = mkRepo();
+  mkdirSync(join(root, 'engine/hooks'), { recursive: true });
+  writeFileSync(join(root, 'engine/hooks/session-start-command.sh'), '');
+  ensureHooks(root);
+  const settings = JSON.parse(readFileSync(join(root, SETTINGS_PATH), 'utf8'));
+  assert.equal(settings.hooks.SessionStart[0].hooks[0].command, 'bash $CLAUDE_PROJECT_DIR/engine/hooks/session-start-command.sh');
+  assert.equal(settings.hooks.Stop[0].hooks[0].command, 'node $CLAUDE_PROJECT_DIR/engine/hooks/stop-command.mjs');
+  // and it must not then append a second, mount-spelled group on every later run
+  assert.deepEqual(ensureHooks(root).added, [], 'idempotent in the canon home');
+  const again = JSON.parse(readFileSync(join(root, SETTINGS_PATH), 'utf8'));
+  assert.equal(again.hooks.SessionStart.length, 1, 'one SessionStart group, not one per run');
+});
+
+test('ensureHooks: a member keeps the mount spelling even once its engine is vendored', () => {
+  const root = mkRepo();
+  mkdirSync(join(root, '.claudinite/shared/engine/hooks'), { recursive: true });
+  ensureHooks(root);
+  const settings = JSON.parse(readFileSync(join(root, SETTINGS_PATH), 'utf8'));
+  assert.equal(settings.hooks.SessionStart[0].hooks[0].command, 'bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start-command.sh');
+});
