@@ -172,7 +172,7 @@ scanning. The [barrier guide](../basics/barriers.md) documents the edge vocabula
   write only under the corpus roots above. The canon's own CI invokes its `runCli`, keyed on the
   promote branch prefix; nothing in a tree marks a diff as a promote run, so the gate cannot
   self-gate.
-- **[skills/generate-project-instructions/](skills/generate-project-instructions/SKILL.md)** — the
+- **[skills/extract-packs-from-a-project/](skills/extract-packs-from-a-project/SKILL.md)** — the
   pack-writing method both tasks above apply: decompose a project into its facets, sort its rules to
   the one owner each, author the packs those facets earn. Whether a project's insight becomes a pack
   every repo can declare is the canon's call, so the method sits with the stages that make it rather
