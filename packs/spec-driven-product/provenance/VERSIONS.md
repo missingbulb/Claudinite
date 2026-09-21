@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60920.1 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
+| 60913.2 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.1 | 2026-09-13 | Claudinite: pack version history (#1730); Wrap RULES.md prose at 100 columns and separate every pack's rules (#1998) |
 | 60903.1 | 2026-09-03 | The golden-image pointer moves from `RULES.md` to the README (#1662). |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60901.1 | 2026-09-01 | Recovers the rationale #467 cut from six rules into a new `references.md` — id reuse rebinding history, doc-first as the anti-wishfulness mechanism, and expected-ownership transfer (#1571). |

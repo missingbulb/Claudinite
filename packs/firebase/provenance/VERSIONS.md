@@ -7,6 +7,8 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60920.1 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
+| 60913.1 | 2026-09-13 | Claudinite: pack version history (#1730); State a rule's prose size as a band, not an exact word count (#2009) |
 | 60903.2 | 2026-09-03 | The security-rules rules move into the new `firestore-security-rules` skill (forced for `**/firestore.rules`, `**/storage.rules`), the function-side limits and the smoke-load into the new `firebase-functions` skill (forced for `functions/**`), and the deploy layout into `create-release-plan` (now forced for `firebase.json`, `.firebaserc`); `RULES.md` shrinks to the five always-on rules (#1662). |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |

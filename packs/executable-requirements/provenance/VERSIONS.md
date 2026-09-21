@@ -7,6 +7,9 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60920.1 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
+| 60913.2 | 2026-09-13 | State a rule's prose size as a band, not an exact word count (#2009) |
+| 60913.1 | 2026-09-13 | Claudinite: pack version history (#1730); Wrap RULES.md prose at 100 columns and separate every pack's rules (#1998) |
 | 60903.1 | 2026-09-03 | The leaf-line convention and kind vocabulary move into the `write-a-requirement-leaf` skill (forced for `dev/requirements/requirements.md`), sagas into `write-a-saga` (forced for `dev/requirements/saga/**`), determinism and the per-stack rendering recipes into `deterministic-expecteds` (forced for `dev/requirements/**/cases/**` and `dev/requirements/shared/**`); the describe-only mechanism prose (line regex, gate inventory, registry enforcement) moves to the README, and `RULES.md` shrinks to the always-on layout, gallery and refresh rules (#1662). |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60822.1 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |
