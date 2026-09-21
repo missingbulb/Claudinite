@@ -37,3 +37,14 @@
   that changes only a version line).
 - **Retire when:** the shelf's last empty file fills and no member's local pack is left to backfill;
   the commands then serve a pack that joins later, or go with the skill.
+
+## 2026-09-21 · reworded · `_pack.md` holds the pack's shape, and the manifest's header is trimmed like the README
+- **Source:** the owner's review of #2190, on the brief drafting every manifest commit onto `_pack`.
+- **Reason:** a `_pack` entry is a decision about the pack - what its `pack.mjs` header comment
+  already records: why it exists, why it fingerprints so, what it carries - never every change in
+  the pack's scope; so the brief drafts the pack's birth only, quotes the header as the evidence,
+  and lists the manifest's later commits for the session to judge, and the run trims the header once
+  its decisions are entries.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5.1, per the commit trailer.
+- **Landed:** #2190.

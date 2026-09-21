@@ -348,7 +348,7 @@ function fileEvents(root, path, { follow = true } = {}) {
   if (!commits.length) return [];
   const bump = (c) => {
     const changed = git(root, 'show', '--format=', c.sha, '--', c.path).split('\n').filter((l) => /^[-+](?![-+])/.test(l));
-    return changed.length > 0 && changed.every((l) => /version/i.test(l));
+    return changed.length > 0 && changed.every((l) => /^[-+]\s*version:\s*['"]?[\d.]+['"]?,?\s*$/.test(l));
   };
   return [...commits.slice(0, -1).filter((c) => !bump(c)).map((c) => ({ kind: 'reworded', sha: c.sha })), { kind: 'born', sha: commits[commits.length - 1].sha }];
 }
@@ -400,10 +400,29 @@ function packElements(root, pack, io, wanted) {
     else if (skill) out.push({ id, mechanism: `the ${id} skill, body ${skill.body ?? skill.proposed}, reached by its description.`, events: fileEvents(root, skill.file) });
     else if (check) out.push({ id, mechanism: `check ${check.id}, in ${check.file}.`, events: fileEvents(root, check.file) });
     else if (task) out.push({ id, mechanism: `task ${id}.`, events: fileEvents(root, task.dir, { follow: false }) });
-    else if (id === PACK_ELEMENT) out.push({ id, mechanism: 'the pack manifest.', events: fileEvents(root, `${pack}/pack.mjs`) });
-    else out.push({ id, mechanism: null, events: [] });
+    else if (id === PACK_ELEMENT) {
+      // `_pack` records decisions about the pack's shape - what its header comment
+      // carries - never every commit in its scope, so only its birth is drafted and
+      // the manifest's later commits are listed for the session to judge.
+      const events = fileEvents(root, `${pack}/pack.mjs`);
+      out.push({ id, mechanism: 'the pack manifest.', events: events.filter((e) => e.kind === 'born'), later: events.filter((e) => e.kind !== 'born') });
+    } else out.push({ id, mechanism: null, events: [] });
   }
   return out;
+}
+
+// The manifest's leading comment block: the pack-level decisions written where a
+// reader of the code finds them, and the `_pack` entries' evidence.
+function manifestHeader(io, pack) {
+  const lines = [];
+  for (const l of (io.read(`${pack}/pack.mjs`) ?? '').split('\n')) {
+    if (/^\s*\/\//.test(l)) { lines.push(l.replace(/^\s*\/\/ ?/, '')); continue; }
+    if (l.trim() === '' && !lines.length) continue;
+    if (l.trim() === '') { lines.push(''); continue; }
+    break;
+  }
+  while (lines.length && lines[lines.length - 1] === '') lines.pop();
+  return lines;
 }
 
 // The fields every entry of one commit shares, written once per commit as the
@@ -456,6 +475,13 @@ export function brief(root, pack, wanted = []) {
   for (const [sha, ids] of sweeps) { const i = cache.get(sha); lines.push(`- ${i.pr ? `#${i.pr}` : i.short} ${i.date} ${i.title} - touched ${ids.join(', ')}`); }
   if (!sweeps.size) lines.push('(none)');
   if (unknown.length) { lines.push('', '## no history found', `git holds no commit for: ${unknown.join(', ')} (is the clone shallow?)`); }
+  const manifest = elements.find((el) => el.id === PACK_ELEMENT);
+  if (manifest) {
+    lines.push('', `## the manifest, ${pack}/pack.mjs`, 'its header comment is the pack-level record the _pack entries are written from, and is trimmed like the README once they are; a _pack entry is a decision about the pack\'s shape, never every change in its scope, so the manifest\'s later commits are listed here and not drafted');
+    const header = manifestHeader(io, pack);
+    lines.push(...(header.length ? header.map((l) => (l ? `> ${l}` : '>')) : ['(no header comment)']));
+    for (const ev of manifest.later) { const i = commitInfo(root, ev.sha, cache); lines.push(`- ${i.pr ? `#${i.pr}` : i.short} ${i.date} ${i.title}${i.sweep ? ' (sweep)' : ''}`); }
+  }
   const readme = io.read(`${pack}/README.md`);
   if (readme) {
     lines.push('', '## README sentences that read as history', 'each moves onto the entry it evidences and leaves the README');

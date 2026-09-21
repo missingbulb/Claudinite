@@ -201,7 +201,7 @@ const briefRepo = () => {
     ...FILES,
     'packs/alpha/provenance/doing-thing.md': '',
     'packs/alpha/provenance/doing-another.md': '',
-    'packs/alpha/pack.mjs': 'export default { version: 2 };\n',
+    'packs/alpha/pack.mjs': '// alpha: the pack for doing things.\n//\n// No fingerprint: a thing is declared.\n\nexport default {\n  version: 2,\n};\n',
     'packs/alpha/RULES.md': '- **Doing a thing** — the settled way. (doing-thing)\n\n- **Doing another** — plainly. (doing-another)\n',
     'packs/alpha/VERSIONS.md': '| Version | Date | What changed |\n|---|---|---|\n| 2 | 2026-08-02 | Said better (#8) |\n| 1 | 2026-07-01 | seed (#7) |\n',
   });
@@ -218,8 +218,10 @@ const briefRepo = () => {
   writeFileSync(join(root, 'packs/alpha/skills/doing-it/SKILL.md'), '---\nname: doing-it\ndescription: Do it. Use when doing it.\nmetadata:\n  body: workflow\n---\n\n1. Do it.\n');
   writeFileSync(join(root, 'packs/alpha/provenance/doing-it.md'), '');
   commitAs(root, 'A skill for doing it (#10)');
-  writeFileSync(join(root, 'packs/alpha/pack.mjs'), 'export default { version: 3 };\n');
+  writeFileSync(join(root, 'packs/alpha/pack.mjs'), '// alpha: the pack for doing things.\n//\n// No fingerprint: a thing is declared.\n\nexport default {\n  version: 3,\n};\n');
   commitAs(root, 'Bump pack versions: alpha 3 (#11)');
+  writeFileSync(join(root, 'packs/alpha/pack.mjs'), '// alpha: the pack for doing things.\n//\n// No fingerprint: a thing is declared.\n\nexport default {\n  version: 3,\n  hidden: true,\n};\n');
+  commitAs(root, 'Hide alpha (#12)');
   return root;
 };
 
@@ -241,7 +243,9 @@ test('brief reads each element\'s events from its carrier\'s history, sets a swe
     assert.match(out, /## PR #8 · [^\n]*Said better[\s\S]*?> The old wording hid the point\./, 'the body is quoted once, under its pull request');
     assert.doesNotMatch(out, /Claude-Session/, 'trailers are stripped');
     assert.match(out, /- It was split from beta until #99 folded it back\./);
-    assert.doesNotMatch(out, /```entry _pack\n## [^\n]* · reworded · Hyphens/, 'a sweep that touched no manifest is not drafted onto _pack either');
+    assert.match(out, /## the manifest, packs\/alpha\/pack\.mjs\n[^\n]*\n> alpha: the pack for doing things\.\n>\n> No fingerprint: a thing is declared\.\n- #12 \d{4}-\d{2}-\d{2} Hide alpha\n/, 'the header comment is quoted and the manifest\'s later commits are listed, the bump left out');
+    assert.match(out, /```entry _pack\n## 2026-\d{2}-\d{2} · born · seed \(#7\)/);
+    assert.doesNotMatch(out, /```entry _pack\n## [^\n]* · reworded/, '_pack drafts its birth only');
   } finally { removeTree(root); }
 });
 

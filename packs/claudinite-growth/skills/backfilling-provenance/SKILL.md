@@ -53,11 +53,15 @@ evidence carries and which it does not.
    pack shares across elements - why a skill loads on these paths, why the release set
    vendors as stubs - is written once, on the element that owns it, and cited from the
    others.
-6. **Trim the README in the same change.** Each sentence of history it holds (the
-   "distilled from" paragraph, the "until #n", the "kept as it was", a mechanism's reasons)
-   is evidence this run has already read, so it moves onto the entry it evidences and
-   leaves the README, which keeps only what a person adopting the pack does with it.
-   Report the README's bytes before and after in the pull request body.
+6. **Trim the README and the manifest's header comment in the same change.** Each sentence
+   of history the README holds (the "distilled from" paragraph, the "until #n", the "kept
+   as it was", a mechanism's reasons) is evidence this run has already read, so it moves
+   onto the entry it evidences and leaves the README, which keeps only what a person
+   adopting the pack does with it. The header comment of `pack.mjs` is the pack-level
+   record `_pack.md` is written from - why the pack exists, why it fingerprints as it does
+   or not at all, what it carries and why - so its decisions become `_pack` entries and the
+   header keeps what a reader of the code needs: what the pack is, in a few lines. Report
+   both files' bytes before and after in the pull request body.
 7. **Candidates the history shows were turned down** - an extraction the owner declined, a
    conversion judged not checkable - go on `_declined.md`, kind `declined`, with `Source`,
    `Reason` and `Actor`, so the next pass reads them before nominating.
