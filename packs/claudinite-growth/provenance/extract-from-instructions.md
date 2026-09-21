@@ -1,4 +1,4 @@
-## 2026-09-21 · born · a repo adopting with a CLAUDE.md had no method for it (#2190)
+## 2026-09-21 · born · a repo adopting with a CLAUDE.md had no method for it (#2191)
 - **Source:** the owner, asking whether a skill existed to take a CLAUDE.md prose file and convert
   it into a pack using the pack system's carriers; a survey of the mounted skills found none -
   `extract-packs-from-a-project` is canon-side and not seeded into a member, and the two extraction
@@ -18,4 +18,4 @@
   which a member has no standing to do.
 - **Retire when:** members stop arriving with instruction prose written outside the pack system, or
   the routing becomes mechanical enough for a check.
-- **Landed:** #2190
+- **Landed:** #2191

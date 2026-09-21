@@ -3,7 +3,7 @@
   repo README is the only place a new pack kind is announced.
 - **Mechanism:** a step of the generate-project-instructions skill, a workflow
 
-## 2026-09-21 · trigger-changed · renamed from generate-project-instructions (#2190)
+## 2026-09-21 · trigger-changed · renamed from generate-project-instructions (#2191)
 - **Reason:** the name said the deliverable was a project instructions document; the skill's own
   opening says the deliverable is packs, never such a document, and names producing one as the
   failure mode it exists to prevent. With a member-side sibling landing beside it, a session picking
@@ -16,4 +16,4 @@
   with no decode-side rename, so the old name's historical weeks stay under the old key and the new
   name reads as never-loaded until it next loads - left as true history rather than answered with
   rename machinery for one cosmetic discontinuity.
-- **Landed:** #2190
+- **Landed:** #2191

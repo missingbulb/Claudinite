@@ -4,11 +4,11 @@
   step.
 - **Mechanism:** a step of the adopt-claudinite skill, a workflow
 
-## 2026-09-21 · reworded · adoption now offers to convert the instructions already written (#2190)
+## 2026-09-21 · reworded · adoption now offers to convert the instructions already written (#2191)
 - **Reason:** a repo adopting usually arrives with a CLAUDE.md, and nothing asked about it, so its
   rules were either left loading in every session forever or copied into a pack by hand by a later
   run. Adoption is the one moment the owner is present by construction and the conversion can ride
   the interview's existing batched pass and land in the same PR.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5
-- **Landed:** #2190
+- **Landed:** #2191
