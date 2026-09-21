@@ -23,7 +23,7 @@
 // IDEMPOTENT by construction: a task.json with no `frequency` line and a stated
 // `trigger` is nothing to rewrite. No apply stage: the rewrite is text, and a
 // session has nothing to add.
-const CALENDAR = 'packs/claudinite-tasks/calendar.mjs';
+const CALENDAR = 'packs/claudinite-tasks/src/contract/calendar.mjs';
 const SCHEMA = 'packs/claudinite-tasks/task.schema.json';
 const twoRoot = async (read, file) => (await read(`.claudinite/shared/${file}`)) ?? (await read(file));
 const mountReadsBothFields = async (read) => {

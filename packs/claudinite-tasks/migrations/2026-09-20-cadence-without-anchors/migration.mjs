@@ -14,7 +14,7 @@
 // `.claudinite/local/packs/<pack>/tasks/<name>/task.json` has its `due:<cadence>`
 // restated as `schedule:at-most-<cadence>`, as anchored text so the file's own layout
 // survives. The engine reads the old spelling permanently
-// (packs/claudinite-tasks/calendar.mjs, DUE_TERM), so that second rewrite repairs
+// (packs/claudinite-tasks/src/contract/calendar.mjs, DUE_TERM), so that second rewrite repairs
 // nothing: it is what stops the fleet carrying two spellings of one term forever.
 //
 // GATED ON THE MOUNT, BY CONTENT. Dropping the keys is safe on an older engine, whose
