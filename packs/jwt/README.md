@@ -1,17 +1,13 @@
 # jwt pack
 
 For projects that **mint or validate JSON Web Tokens** — fingerprinted by a JWT library
-(`jsonwebtoken` / `jose` / PyJWT / …) referenced in JS/TS/Python source. **Prose-free:** the pack
-mounts two action skills, [`jwt-minting`](skills/jwt-minting/SKILL.md) and
-[`jwt-validation`](skills/jwt-validation/SKILL.md), whose check-the-world rules run at every Stop
-and in CI — each failure message is the rule. What a static sweep cannot judge (key-type/API
-discipline, nested-JWT validation, JWE vs JWS guarantees) lives in the skills, read at usage time.
+(`jsonwebtoken` / `jose` / PyJWT / …) referenced in JS/TS/Python source. It contributes no
+session-start prose: its five checks run at every Stop and in CI, and its two action skills,
+[`jwt-minting`](skills/jwt-minting/SKILL.md) and [`jwt-validation`](skills/jwt-validation/SKILL.md),
+are read when token-issuing or verification code is being added or changed.
 
 Scope: generic JWT practice — not the Google-issuer validator's own config, and not OAuth
 token acquisition in a browser client.
-
-_Provenance: distilled from **The JWT Handbook** (Sebastián E. Peyrott, Auth0) — chapters
-2–6 (applications, JWS/JWE/JWK structure) and Annex A (pitfalls, attacks, best current practices)._
 
 ## Checks
 
@@ -34,5 +30,5 @@ repo reads nothing here.
 - **GitHub Advisory Database, JWT libraries** — https://github.com/advisories?query=type%3Areviewed+jwt
   — reconciled through 2026-09-01, for the *classes* of flaw the skills teach against (algorithm
   confusion, unverified signatures, key confusion), never a member's own resolved versions
-- **The JWT Handbook**, this pack's provenance above — https://auth0.com/resources/ebooks/jwt-handbook
+- **The JWT Handbook** (Sebastián E. Peyrott, Auth0), this pack's source - https://auth0.com/resources/ebooks/jwt-handbook
   — reconciled through v0.14.2 (chapters 2–6 and Annex A)

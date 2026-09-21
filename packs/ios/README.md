@@ -2,8 +2,8 @@
 
 Active when the repo has `ios/Runner/Info.plist`. Durable, project-agnostic iOS app-development
 practices in `RULES.md`: Xcode project mechanics, Info.plist usage-description strings,
-entitlements, code signing and provisioning, and simulator/device workflows. Prose-only, filled
-from worked examples as a project first exercises this for real.
+entitlements, code signing and provisioning, and simulator/device workflows. Prose-only: the pack
+carries no checks and no skills.
 
 ## Rules (`RULES.md`)
 
