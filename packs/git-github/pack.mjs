@@ -4,7 +4,7 @@
 // Actions-runner rules — the `gha/` declared checks and the
 // skills/github-actions-scheduling skill. Universal reach comes from basics
 // naming it in `requires`, so the closure materializes it into every
-// declaration — never seeded directly, and the pack carries no fingerprint.
+// declaration - never seeded directly, and the pack carries no fingerprint.
 export default {
   version: '60921.2',
   minEngineVersion: '60822.1',
