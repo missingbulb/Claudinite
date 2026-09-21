@@ -490,5 +490,25 @@
         "fix": "use a hyphen, a comma or a full stop; a line the change merely moved keeps its text, so re-add it as it was"
       }
     ]
+  },
+  {
+    "id": "fixture-git-housekeeping",
+    "severity": "blocking",
+    "since": "2026-09-21",
+    "failureMessage": "git's auto-gc detaches and keeps writing under .git after the command returns, so the fixture's removal races it: the suite passes locally and CI fails with ENOTEMPTY",
+    "scanFiles": "/\\.test\\.mjs$/",
+    "scanTracked": true,
+    "scanIgnoringComments": true,
+    "checkEachFile": [
+      {
+        "whenFileMatches": [
+          "/(?:execFileSync|execSync|spawnSync|execFile|spawn)\\(\\s*'git'/",
+          "/'(?:init|clone)'/"
+        ],
+        "require": "/gc\\.autoDetach/",
+        "what": "builds a throwaway git repo with a spawn of its own, so git's housekeeping outlives the command that started it",
+        "fix": "call the shared runner - `import { git } from '<relative>/engine-tests/helpers.mjs'`, then `git(root, 'init', '-q')` - or spawn with its GIT_CONFIG env, which holds gc.autoDetach and maintenance.auto off"
+      }
+    ]
   }
 ]
