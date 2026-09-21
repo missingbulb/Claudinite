@@ -16,7 +16,7 @@ import { adoptedPages, CONFIG_PATH } from './lib.mjs';
 // Fingerprinted by the site config, the pack's own central artifact — declaring is
 // still what activates the pack.
 export default {
-  version: '60920.3',
+  version: '60921.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'serving a site from GitHub Pages: the nightly release, the vendored deploy workflow, site.config, the serving subpath',
