@@ -13,12 +13,12 @@
 // reviewed `accept`. So the rename travels the way declaration changes are supposed
 // to: one version-ranged record, applied once, idempotent thereafter.
 //
-// THE ENGINE STILL ANSWERS TO BOTH NAMES while this record drains
-// (engine/served-by.mjs, `LEGACY_MECHANISM`). A member reads its own declaration with
-// the engine it currently has, which is one cycle behind this record — so if the old
-// spelling stopped parsing the moment the record landed, a correctly-declared repo
-// would read as `invalid` for exactly one cycle and be reported as misdeclared. The
-// vocabulary loses `updates` a release later, once no member carries it.
+// THE ENGINE ANSWERED TO BOTH NAMES while this record drained, because a member
+// reads its own declaration with the engine it currently has, which is one cycle
+// behind this record — so if the old spelling had stopped parsing the moment the
+// record landed, a correctly-declared repo would have read as `invalid` for exactly
+// one cycle and been reported as misdeclared. The vocabulary lost `updates` a
+// convergence window later (#1643, engine/served-by.mjs).
 export default {
   id: 'mechanism-versioned',
   landed: '2026-08-13',

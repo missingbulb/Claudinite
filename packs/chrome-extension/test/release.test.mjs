@@ -7,7 +7,10 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
 import pack from '../pack.mjs';
-import releaseWorkflows, { shipsReleasePipeline, SHIPS_PIPELINE_PATH_RE, SHIPS_PIPELINE_TEXT_RE } from '../worldRules/release-workflows.mjs';
+import releaseWorkflows, {
+  shipsReleasePipeline, SHIPS_PIPELINE_PATH_RE, SHIPS_PIPELINE_TEXT_RE,
+  ORCHESTRATOR_CALLS, VENDORED_WORKFLOWS,
+} from '../worldRules/release-workflows.mjs';
 
 const templateTokens = declaredCheck('packs/chrome-extension', 'cer/template-tokens');
 const releaseConfig = declaredCheck('packs/chrome-extension', 'cer/release-config');
@@ -207,23 +210,24 @@ jobs:
   } finally { cleanup(cutOverStillCron); cleanup(cutOverDeCron); }
 });
 
-test('release-workflows: the pre-vendoring @main shape is advisory while the migration is live, blocking once it retires', () => {
+test('release-workflows: the pre-vendoring @main shape is flagged for every vendored file it lacks', () => {
+  // The tolerance that held this shape advisory retired with #1643. A repo still
+  // calling Claudinite's core workflows @main names none of the local reusables and
+  // carries none of the vendored files, so what it hears is exactly what is missing.
   const files = { ...CONFORMANT, '.github/workflows/chrome-extension-release.yml': LEGACY_ORCHESTRATOR };
-  // A legacy repo need not carry the vendored reusables yet.
   for (const p of Object.keys(VENDORED)) if (p !== '.github/workflows/chrome-extension-release.yml') delete files[p];
   const root = makeRepo({ changed: files });
   try {
-    // In flight: baselining will vendor it, so nothing blocks — but the repo
-    // holding the shape is told, since the removal is gated on it letting go.
-    const tolerated = run(releaseWorkflows, root, { tolerateLegacy: true });
-    assert.equal(tolerated.length, 1);
-    assert.equal(tolerated[0].severity, 'advisory');
-    assert.match(tolerated[0].fix, /baselining vendor/);
-    // Retired: the canon workflows are gone, so a repo still on @main is flagged.
-    const flagged = run(releaseWorkflows, root, { tolerateLegacy: false });
-    assert.equal(flagged.length, 1);
-    assert.equal(flagged[0].severity, 'blocking');
-    assert.match(flagged[0].what, /still calls Claudinite's core release workflows @main/);
+    const flagged = run(releaseWorkflows, root);
+    assert.ok(flagged.every((f) => f.severity !== 'advisory'), 'nothing here is advisory any more');
+    // The three calls the vendoring repointed; the bump call was local all along.
+    for (const call of ORCHESTRATOR_CALLS.filter((c) => !LEGACY_ORCHESTRATOR.includes(`./.github/workflows/${c}`))) {
+      assert.ok(flagged.some((f) => f.what.includes(`does not call the local reusable workflow ./.github/workflows/${call}`)), call);
+    }
+    for (const wf of VENDORED_WORKFLOWS) {
+      if (wf === 'chrome-extension-release.yml') continue; // the orchestrator itself is present
+      assert.ok(flagged.some((f) => f.file === `.github/workflows/${wf}`), wf);
+    }
   } finally { cleanup(root); }
 });
 
