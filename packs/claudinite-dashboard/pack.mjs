@@ -9,7 +9,7 @@
 // descriptor at `packs/<id>/dashboard.json`. Publishing is the `publish-pages` task plus the
 // four-step workflow `seedOps` writes below; what a repo does with the pack is its README.
 export default {
-  version: '60921.1',
+  version: '60921.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'the browser dashboard over Claudinite scheduler state and the site that publishes it',
