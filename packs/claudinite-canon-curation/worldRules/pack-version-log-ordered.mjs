@@ -1,5 +1,6 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
 import { parseVersion, compareVersions } from '../../../engine/version.mjs';
+import { PROVENANCE_DIR } from '../../../engine/pack_loader/pack-conventions.mjs';
 import { VERSIONS_FILENAME, rowVersions } from '../pack-versions.mjs';
 
 // VERSIONS.md ROWS RUN NEWEST-FIRST — a new row goes at the top, immediately
@@ -7,8 +8,8 @@ import { VERSIONS_FILENAME, rowVersions } from '../pack-versions.mjs';
 // a person adds by hand lands wherever the writing session put it, and until
 // that task next runs the tail reads out of sequence: a reader can no longer
 // tell whether a number near the bottom is old or merely misplaced.
-// `packs/claudinite-tasks/VERSIONS.md` carried exactly that shape — descending
-// from 60831.9 to 60824.1, then four rows trailing out of order (#1542).
+// The claudinite-tasks pack's log carried exactly that shape — descending from
+// 60831.9 to 60824.1, then four rows trailing out of order (#1542).
 //
 // WORLD SCOPE, because ordering is a property of the whole file, not of any
 // one diff: a session appending one row in the right place cannot see that an
@@ -23,8 +24,10 @@ const rule = {
 
   run(ctx) {
     const findings = [];
-    const logs = ctx.files.filter((f) => f.startsWith('packs/')
-      && f.endsWith(`/${VERSIONS_FILENAME}`) && f.split('/').length === 3);
+    const logs = ctx.files.filter((f) => {
+      const parts = f.split('/');
+      return parts.length === 4 && parts[0] === 'packs' && parts[2] === PROVENANCE_DIR && parts[3] === VERSIONS_FILENAME;
+    });
     for (const file of logs) {
       // Row by row rather than over the whole text: `rowVersions` reads a record's
       // rows without their positions, and a finding has to name the line the

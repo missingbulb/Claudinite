@@ -88,7 +88,7 @@ test('pack-version-bump: the canon\'s push-to-main workflow runs the very worker
 
 test('pack-version-history: lands itself under a policy that covers only the version records', () => {
   // The policy names the pack's own declared class, and that class covers exactly a
-  // shelf pack's VERSIONS.md — a manifest or a rule in the same diff parks the run.
+  // shelf pack's provenance/VERSIONS.md — a manifest, a rule or an entry in the same diff parks the run.
   const { rules, errors } = declaredMergeRules([{ id: 'claudinite-canon-curation', dir: PACK_DIR }], { packs: ['claudinite-canon-curation'] });
   assert.deepEqual(errors, []);
   const verdict = (files) => policyVerdict({
@@ -96,7 +96,7 @@ test('pack-version-history: lands itself under a policy that covers only the ver
     entries: files.map((file) => ({ file, before: 'a\n', after: 'b\n' })),
     declaredRules: rules,
   });
-  assert.equal(verdict(['packs/basics/VERSIONS.md', 'packs/leaflet/VERSIONS.md']).mergeable, true);
-  assert.equal(verdict(['packs/basics/VERSIONS.md', 'packs/basics/pack.mjs']).mergeable, false);
-  assert.equal(verdict(['.claudinite/local/packs/x/VERSIONS.md']).mergeable, false);
+  assert.equal(verdict(['packs/basics/provenance/VERSIONS.md', 'packs/leaflet/provenance/VERSIONS.md']).mergeable, true);
+  assert.equal(verdict(['packs/basics/provenance/VERSIONS.md', 'packs/basics/pack.mjs']).mergeable, false);
+  assert.equal(verdict(['.claudinite/local/packs/x/provenance/VERSIONS.md']).mergeable, false);
 });

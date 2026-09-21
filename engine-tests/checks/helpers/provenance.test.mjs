@@ -183,6 +183,7 @@ const PACK = {
   'packs/alpha/provenance/worker-absolute-paths.md': BORN,
   'packs/alpha/provenance/cdp-worker-value.md': '',
   'packs/alpha/provenance/orphan.md': BORN,
+  'packs/alpha/provenance/VERSIONS.md': '| Version | Date | What changed |\n|---|---|---|\n| 1 | 2026-08-01 | seed |\n',
   'packs/alpha/provenance/retired-one.md': `${BORN}\n## 2026-08-01 · retired · gone\n- **Actor:** @x (owner).\n`,
   'packs/alpha/provenance/_pack.md': '',
   'packs/alpha/provenance/_declined.md': '## 2026-08-01 · declined · a candidate\n- **Reason:** it restated a canon rule.\n- **Actor:** @x (owner).\n',
@@ -201,7 +202,7 @@ test('packCarriers enumerates rules, guidelines, skills with bodies, checks by i
     assert.equal(c.manifest, true);
     assert.equal(elementIdOf('cer/coded-check'), 'cer-coded-check');
     const files = provenanceFiles('packs/alpha', checkoutIo(root));
-    assert.deepEqual([...files.keys()].sort(), ['_pack', 'cdp-worker-value', 'orphan', 'retired-one', 'worker-absolute-paths'], 'the declined log is not an element');
+    assert.deepEqual([...files.keys()].sort(), ['_pack', 'cdp-worker-value', 'orphan', 'retired-one', 'worker-absolute-paths'], 'neither the declined log nor the version log is an element');
     assert.equal(files.get('retired-one').status, 'retired');
     assert.equal(files.get('cdp-worker-value').empty, true);
   } finally { removeTree(root); }

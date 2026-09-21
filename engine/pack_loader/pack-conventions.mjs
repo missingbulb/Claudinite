@@ -39,6 +39,9 @@ export const SKILLS_DIR = 'skills';
 // conventional names because two readers with nothing else in common agree on it:
 // the vendor set drops the folder from every mount, and the checks judge it.
 export const PROVENANCE_DIR = 'provenance';
+// A shelf pack's version log, kept under its provenance folder: derived by the canon's
+// own task, read by maintenance, never an element and never vendored.
+export const VERSIONS_FILE = 'VERSIONS.md';
 
 // A rule's scope is its PLACEMENT — which was always true, and used to mean the
 // manifest list it sat in. It now means the directory it sits in, one rung out:

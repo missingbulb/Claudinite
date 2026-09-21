@@ -18,7 +18,7 @@ ruleTester(check('pack-directory-kebab-case'), {
 ruleTester(check('corpus-count-in-prose'), {
   clean: {
     'how to count, a version row, and a fenced example': {
-      files: { 'packs/p/RULES.md': 'count them with the script.\n\n```\n3 rules\n```\n', 'packs/p/VERSIONS.md': '| 1 | now 12 rules |\n' },
+      files: { 'packs/p/RULES.md': 'count them with the script.\n\n```\n3 rules\n```\n', 'packs/p/provenance/VERSIONS.md': '| 1 | now 12 rules |\n' },
     },
   },
   flagged: {

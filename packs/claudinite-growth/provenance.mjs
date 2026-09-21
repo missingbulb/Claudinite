@@ -29,7 +29,11 @@ import { pathToFileURL } from 'node:url';
 // cadences, and a mount whose engine predates the helper must say so rather than fault
 // on a missing named export.
 import * as provenance from '../../engine/checks/helpers/provenance.mjs';
+import * as conventions from '../../engine/pack_loader/pack-conventions.mjs';
 import { scrub } from './capture-log.mjs';
+
+// The version log's name, with the same lane-skew fallback as the helper import above.
+const VERSIONS_FILE = conventions.VERSIONS_FILE ?? 'VERSIONS.md';
 
 const {
   checkoutIo, auditPack, markPack, convertReferences, appendedText, parseEntryText, packCarriers,
@@ -229,7 +233,7 @@ export function history(root, pack, element) {
   }
   lines.push('\n## pull requests those commits name');
   lines.push(prs.size ? [...prs].sort((a, b) => a - b).map((n) => `#${n}`).join(' ') : '(none)');
-  const versions = io.read(`${pack}/VERSIONS.md`);
+  const versions = io.read(`${pack}/${PROVENANCE_DIR}/${VERSIONS_FILE}`);
   if (versions) {
     lines.push('\n## VERSIONS.md rows naming them');
     const rows = versions.split('\n').filter((l) => l.startsWith('|') && [...prs].some((n) => l.includes(`#${n}`)));
@@ -357,7 +361,7 @@ function fileEvents(root, path, { follow = true } = {}) {
 // the manifest's own history - the version the commit itself set, or the first cut
 // after it - since the weekly history task writes the rows late.
 function versionRows(io, pack) {
-  return (io.read(`${pack}/VERSIONS.md`) ?? '').split('\n')
+  return (io.read(`${pack}/${PROVENANCE_DIR}/${VERSIONS_FILE}`) ?? '').split('\n')
     .map((l) => /^\|\s*([^|]+?)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(.*?)\s*\|\s*$/.exec(l))
     .filter(Boolean)
     .map(([, version, date, what]) => ({ version, date, what }));

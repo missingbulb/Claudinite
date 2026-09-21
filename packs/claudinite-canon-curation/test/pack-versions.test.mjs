@@ -102,7 +102,9 @@ test('isShippingFile: pack content ships; tests, the record and a repo\'s own pa
   assert.equal(isShippingFile('packs/alpha/pack.mjs'), true);
   assert.equal(isShippingFile('packs/alpha/skills/x/SKILL.md'), true);
   assert.equal(isShippingFile('packs/alpha/test/alpha.test.mjs'), false);
-  assert.equal(isShippingFile('packs/alpha/VERSIONS.md'), false);
+  assert.equal(isShippingFile('packs/alpha/provenance/VERSIONS.md'), false);
+  assert.equal(isShippingFile('packs/alpha/provenance/some-rule.md'), false, 'a decision log entry ships to nobody');
+  assert.equal(isShippingFile('packs/alpha/skills/x/provenance/payload.md'), true, "a skill's folder of that name is payload");
   assert.equal(isShippingFile('.claudinite/local/packs/mine/RULES.md'), false);
   assert.equal(isShippingFile('packs/README.md'), false);
   assert.equal(isShippingFile('engine/version.mjs'), false);
@@ -281,8 +283,8 @@ test('planHistory returns only the records that would change, and nothing once t
     sh(work, 'pull', '--quiet', 'origin', 'main');
     const git = makeGit(work);
     const files = planHistory(git, 'HEAD');
-    assert.deepEqual(Object.keys(files).sort(), ['packs/alpha/VERSIONS.md', 'packs/beta/VERSIONS.md']);
-    assert.match(files['packs/alpha/VERSIONS.md'], /^\| 60905\.1 \| 2026-09-05 \| Teach alpha a rule \(#10\) \|$/m);
+    assert.deepEqual(Object.keys(files).sort(), ['packs/alpha/provenance/VERSIONS.md', 'packs/beta/provenance/VERSIONS.md']);
+    assert.match(files['packs/alpha/provenance/VERSIONS.md'], /^\| 60905\.1 \| 2026-09-05 \| Teach alpha a rule \(#10\) \|$/m);
     land(work, 'Record the versions (#40)', files, { date: '2026-09-05T17:00:00Z', trailer: 'claudinite-canon-curation/pack-version-history' });
     assert.deepEqual(planHistory(git, 'HEAD'), {});
     // The record landing is not content: no version moves for it.

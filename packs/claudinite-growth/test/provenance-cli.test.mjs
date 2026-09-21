@@ -203,7 +203,7 @@ const briefRepo = () => {
     'packs/alpha/provenance/doing-another.md': '',
     'packs/alpha/pack.mjs': '// alpha: the pack for doing things.\n//\n// No fingerprint: a thing is declared.\n\nexport default {\n  version: 2,\n};\n',
     'packs/alpha/RULES.md': '- **Doing a thing** — the settled way. (doing-thing)\n\n- **Doing another** — plainly. (doing-another)\n',
-    'packs/alpha/VERSIONS.md': '| Version | Date | What changed |\n|---|---|---|\n| 2 | 2026-08-02 | Said better (#8) |\n| 1 | 2026-07-01 | seed (#7) |\n',
+    'packs/alpha/provenance/VERSIONS.md': '| Version | Date | What changed |\n|---|---|---|\n| 2 | 2026-08-02 | Said better (#8) |\n| 1 | 2026-07-01 | seed (#7) |\n',
   });
   writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing a thing** — the settled way, said better. (doing-thing)\n\n- **Doing another** — plainly. (doing-another)\n');
   commitAs(root, 'Said better (#8)\n\nThe old wording hid the point.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nClaude-Session: https://example.invalid/s', { email: '1+tester@users.noreply.github.com' });

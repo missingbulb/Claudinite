@@ -52,7 +52,7 @@ why.
 | `growth-discover-packs` | weekly, over every covered member | a PR against the canon's default branch, plus an adopt issue in each member that evidenced the pack |
 | `revalidate-from-source` | monthly, over the packs that declared an upstream source | a PR against the canon's default branch, superseding the month before's if it is still open |
 | `pack-version-bump` | daily when commits landed under `packs/`, and on every push to the canon's default branch (its workflow) | a commit straight onto the canon's default branch |
-| `pack-version-history` | weekly, when commits landed under `packs/` | a self-landing PR touching only `packs/*/VERSIONS.md` |
+| `pack-version-history` | weekly, when commits landed under `packs/` | a self-landing PR touching only `packs/*/provenance/VERSIONS.md` |
 | `canon-prose-to-checks` | weekly, on a canon somebody worked in that week | a PR converting the shelf's always-testable prose into checks |
 | `canon-rule-revalidation` | weekly | corrections to shelf rules whose environment claim no longer probes true |
 
