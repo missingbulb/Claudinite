@@ -1,11 +1,11 @@
 ---
-name: generate-project-instructions
+name: extract-packs-from-a-project
 description: Decompose a project into its pack facets (working-style class, technology, aspect, domain) and author the canon packs those facets earn. Use from a canon when a project's evidence shows a facet its shelf does not yet home — the curation stages' pack-writing method, and an owner's when asking what a project has taught the shelf.
 metadata:
   body: workflow
 ---
 
-# Generate project instructions — extract packs, not a project doc
+# Extract packs from a project — the canon side
 
 Grow the canon's pack library using a project as the evidence, and decide here — never in the project —
 whether an insight becomes a pack every repo can declare. Projects recur **along axes**, not as wholes:
@@ -191,7 +191,9 @@ docs) — it does **not** `@import` the pack prose; the pack system injects the 
 - **Every canon pack seed or refinement → a PR against the canon.** Minting or changing a pack every
   repo can declare is the owner's call, and the PR is that gate — no corpus change lands unattended.
 - **Write nothing in the project.** Its residue is its own to keep and its own runs to write; this
-  method reads a project and delivers to the canon.
+  method reads a project and delivers to the canon. Where the project's own session is the one
+  holding the residue - its `CLAUDE.md` already written out, waiting to become its local pack —
+  that is the growth pack's `extract-from-instructions`, run from the member, not this skill.
 - **A project declares a new canon pack** only once it has merged and that repo's mount re-synced —
   declaring a canon id the mounted registry doesn't know is an unknown-pack settings error. Tell the
   project, don't do it for it.

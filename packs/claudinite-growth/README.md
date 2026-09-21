@@ -177,6 +177,13 @@ arrives as one job but is two: teaching a repo a technology nobody there has use
 own. It keeps the portable half separable from the project's own parameters — the egress probe that
 settles whether the vendor was actually read, the split between the technology skill and the task
 beside it, and the three checks that keep such a skill liftable.
+[**extract-from-instructions**](skills/extract-from-instructions/SKILL.md) is the one extraction
+method with no window and no task behind it: the rules are already written, as a repo's
+`CLAUDE.md` or a person's machine-local one, and the work is routing each to its owner - the
+repo's local pack, that person's own pack, or neither - and onto a rung above prose. Reach for it
+when a repo adopting Claudinite already carries a `CLAUDE.md`, or when somebody wants their
+machine-local instructions carried properly; `adopt-claudinite` offers it during the adoption
+interview.
 Adoption itself — `adopt-claudinite`, `adopt-pack` and the `adopt-requested-packs` task — is not
 here: its subject is Claudinite's own surface, not lesson capture.
 

@@ -38,7 +38,9 @@ interview waits on a human. Don't re-enact the parts below by hand — they are 
    is the floor on a fresh project**, not a failure: declaring a class pack pulls in its `requires`
    closure, whose questions cannot exist until it is declared. Every pass after those two is
    waste — an answer is recorded *verbatim*, so an ambiguous or open-ended one is already a valid
-   answer and never earns a clarifying popup.
+   answer and never earns a clarifying popup. Fold in the instruction-conversion offers too
+   (Part 2) wherever the repo has a `CLAUDE.md` or the session can see a machine-local one, and
+   run the conversion into this same PR.
 4. **Create the executor routine** (Part 6) — before the commit, so its endpoint lands in the
    adoption PR rather than a second one.
 5. **Land it** (Part 8): clear or accept what the world sweep reported, commit the adoption as
@@ -78,6 +80,23 @@ bootstrap the same gap only ever surfaces as a mild SessionStart note —
 [packs/README.md](packs/README.md#adoption-interview-questions)). Each answer is recorded
 **verbatim** on that pack's entry as `answers: { "<question-id>": "<answer>" }` ("n/a — none
 wanted" is a valid answer); `--answer` does exactly that.
+
+### The instructions already written
+
+Most repos arrive with a `CLAUDE.md`, and adoption is the moment to convert it rather than let a
+later run copy its rules into a pack by hand. Fold these into the same batched pass, asked only
+where the file in question is actually there:
+
+- **A `CLAUDE.md` in the repo** - convert it into the repo's local pack? And if so, trim the
+  converted rules out of it, leaving a routing map? Two questions: a declined trim still leaves a
+  correct conversion, with each rule loading twice until somebody cuts it.
+- **A machine-local `~/.claude/CLAUDE.md`** - convert that too, routing each of its rules to
+  whichever owner it belongs to? Ask only after reading that the file exists, which it does not in
+  a web or unattended session. A trimmed version is *offered back in the session* for the person to
+  paste: nothing writes that file.
+
+The `extract-from-instructions` skill is the method for every yes, and the conversion lands in the
+adoption PR with the rest.
 
 ## Part 3 — vendor the snapshot
 

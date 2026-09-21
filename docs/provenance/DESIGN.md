@@ -217,7 +217,8 @@ Every flow that creates or changes an element appends, in the same change:
 | `growth-dedup` | `retired` (superseded by the canon element it names), `weakened` (a strip), `reworded` |
 | `rule-revalidation`, `canon-rule-revalidation`, `revalidate-from-source` | `reaffirmed` only with new evidence or a changed `Retire when`; `reworded` or `retired` for a correction; an empty file it meets is filled from `history` first, which is how a member's local pack backfills with no task of its own |
 | `growth-promote` | on the canon side the local file, reduced (§4), a `promoted` entry, and the marker on the promoted rule; the local file stays until dedup retires it |
-| `generate-project-instructions`, `learning-a-technology` | `_pack` and one `born` per element, citing the evidence set or the dated sources |
+| `extract-packs-from-a-project`, `learning-a-technology` | `_pack` and one `born` per element, citing the evidence set or the dated sources |
+| `extract-from-instructions` | one `born` per element, citing the instruction file and line the rule was read from, in whichever pack the routing sent it to |
 | an attended session editing a carrier or a README | `changing-pack-elements`, the skill forced on every pack file (below), which ends with the append |
 | the backfill of an existing pack, by hand from a session | `backfilling-provenance`, the growth skill that owns the method (§6), one pack per pull request |
 
