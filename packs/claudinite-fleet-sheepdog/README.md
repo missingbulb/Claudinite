@@ -1,14 +1,13 @@
 # claudinite-fleet-sheepdog
 
 The fleet **enforcer** marker — declaring it makes a repo the one that covers and maintains every repo
-under an owner. Opt-in (a dedicated claudinite-fleet-sheepdog repo declares it; **not** seeded by `--init`). It
-standardizes the fleet coverage that used to be bespoke Claudinite infrastructure into a declaration.
+under an owner. Opt-in (a dedicated claudinite-fleet-sheepdog repo declares it; **not** seeded by `--init`).
 
 Thin by design: prose + the config schema (the claudinite-fleet-sheepdog pack entry's `config` = `{ owner, kind, exclude,
 canonRepo, packSeeds }`) + five cross-repo **sweeps/levers**, each a
 scheduled task whose sweep is its `code_work`. The pack carries **no workflow**, and nothing agentic
 happens *here* — it happens in the *member*, on the fan-out model
-([#749](https://github.com/missingbulb/Claudinite/issues/749)) — the enforcer dispatches, the
+where the enforcer dispatches and the
 member executes:
 
 | sweep | task | asks |
@@ -18,15 +17,12 @@ member executes:
 | [check-fleet-pack-seeds.mjs](tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs) | [fleet-pack-seeds](tasks/fleet-pack-seeds/README.md) (daily) | does a member declare what this fleet **standardizes on**? → the declaration, written |
 | [force-fleet-baseline.mjs](tasks/fleet-baseline/force-fleet-baseline.mjs) | [fleet-baseline](tasks/fleet-baseline/README.md) (`manual` — forced runs only) | make every member baseline **now**, then follow each to canon's published versions → an outcome table, not a dispatch count |
 
-**The roster carries two questions** because they are asked of the same repos from the same walk
-([#788](https://github.com/missingbulb/Claudinite/issues/788)). The freshness half exists because
+**The roster carries two questions** because they are asked of the same repos from the same walk.
+The freshness half exists because
 per-project scheduling made every member maintain itself and, in doing so, removed the last thing that
-looked at a member from the **outside** — self-maintenance cannot detect its own absence. It used to be
-its own weekly task with its own enumeration, and re-derived the coverage it claimed to take as given;
-the two then classified the same repo differently (an excluded repo carrying a declaration read
-*covered* to one and *out of scope* to the other), and each half's `unknown` failed its own run knowing
-nothing of the other's. What is still split is the two **issue families** — they close on unrelated
-conditions — not the walk.
+looked at a member from the **outside**: self-maintenance cannot detect its own absence.
+What is still split is the two **issue families**, which close on unrelated
+conditions, and not the walk.
 
 **Missing-packs** exists because a pack's `detect` fingerprint is consulted **once**, at
 bootstrap's `--init`: baselining backfills the seeded packs and each declared pack's `requires`
@@ -49,9 +45,7 @@ already carries a config for it, keeps both. The fleet's list is a floor, and a 
 a decision the sweep cannot second-guess.
 
 That is also why the enforcer states a seeded pack's config **twice** — in `packSeeds`, and in its
-own entry for that pack — and why `seeds-agree` holds the two to each other. Nothing compares them at
-seed time, and a member has no way to know what the enforcer kept for itself, so an enforcer running
-one configuration while the fleet runs another is silent until someone looks.
+own entry for that pack, and why `seeds-agree` holds the two to each other.
 
 A pack arriving *with* canon reaches the fleet that already exists through a **baseline migration**
 instead — a `declarePacks` op applied by each member's own update run, in the same transactional
@@ -68,18 +62,17 @@ stays in the agentless `code_work`, and the agent is reached only for the part t
 judgment. Here it is a judgment plus a repo edit — confirming the
 suspicion and running the [adopt-pack](../claudinite-lifecycle/skills/adopt-pack/SKILL.md) skill against the member —
 while enumerate, fingerprint and converge-the-issues stay in code. That one opens the PR and lands it
-unattended there (#1453): declaring a pack switches on conformance checks that run in that member's
+unattended there: declaring a pack switches on conformance checks that run in that member's
 CI from the moment they land, and gate the merge.
 
 **No agent anywhere here reaches another repo**, and that is the trust model rather than an
-implementation detail ([#749](https://github.com/missingbulb/Claudinite/issues/749)). The first
-missing-packs design ended in an enforcer-side agent stage, and its very first production run parked because the enforcer's executor is — correctly — scoped to the enforcer repo alone.
+implementation detail.
 What crosses a repo boundary is an issue and a `workflow_dispatch`, both over `FLEET_GITHUB_TOKEN`;
 the deprecated task-level `session_scope` ([the writing-tasks skill](../claudinite-growth/skills/writing-tasks/SKILL.md)) has no
 place here.
 
 A member whose **scheduler is dormant** (`dormant` on its own `claudinite-tasks` pack entry) is out of
-**every upkeep question this pack asks** (owner, 2026-09-13): out of the fit sweep, out of the usage
+**every upkeep question this pack asks**: out of the fit sweep, out of the usage
 denominator, never written to by the pack-seed sweep, not measured by the roster's freshness half, and
 dispatched by no fleet-wide operation. Its silence says nothing about any skill; recommending it a pack
 would be recommending work it has declared it is not doing; a commit landed in it from outside is the
@@ -129,23 +122,17 @@ an item the owner creates by hand — `create-work-item claudinite-fleet-sheepdo
 standing `update` item so the fleet picks canon up now instead of over the next day. A forced
 fleet-add-missing-packs item is the second lever, same command, its own Context.
 
-**`fleet-baseline` reports outcomes, not dispatches**
-([#1293](https://github.com/missingbulb/Claudinite/issues/1293)). A dispatch POST returning 204 says a
+**`fleet-baseline` reports outcomes, not dispatches.** A dispatch POST returning 204 says a
 run was queued and nothing more, and a report built from those 204s describes the sweep's own outgoing
-calls while reading as fleet-wide delivery — a run announced `13 fired, 0 failed` where 9 of the 13 took
-nothing ([#1292](https://github.com/missingbulb/Claudinite/issues/1292)). So after firing, the sweep
+calls while reading as fleet-wide delivery. So after firing, the sweep
 follows each member until its own declaration stamps the engine and every declared pack at the versions
 canon publishes, and reports each as `converged`, `already-current`, `did-not-converge`, `never-started`
 or `unknown`. A member already at canon's versions is a success in its own right: its update correctly
 declines, and it does no work. *Current* is a claim about **published version numbers** — canon content
 that shipped without a version bump moves no number and is invisible to it, which the report says itself.
 
-This is not the 2026-08-11 follow returning. That one was a blind fixed wait every run paid whatever the
-fleet was doing, and it forced the lever to be a standalone workflow with a `.github/` managed copy
-([#749](https://github.com/missingbulb/Claudinite/issues/749),
-[`2026-08-11-fleet-baseline-task`](migrations/2026-08-11-fleet-baseline-task/migration.mjs)).
-[follow-to-current.mjs](tasks/fleet-baseline/follow-to-current.mjs) polls a real terminal condition
-instead: each member leaves the loop the moment it reads current, so an already-current fleet finishes
+[follow-to-current.mjs](tasks/fleet-baseline/follow-to-current.mjs) polls a real terminal condition:
+each member leaves the loop the moment it reads current, so an already-current fleet finishes
 on the first pass in seconds, and the lever stays an ordinary queue task.
 
 Each sweep lives **inside its task's folder**, because nothing outside that task uses it. Only what
@@ -201,7 +188,7 @@ which makes daily mean "the next morning".
 
 Every ceiling here is `none`. The pack-seed sweep's write goes to **other** repos, and the ceiling
 describes what a task may do to its own. What only a repo edit can finish is the member's own
-adopt-requested-packs task's, which opens the PR and lands it unattended *there* (#1453).
+adopt-requested-packs task's, which opens the PR and lands it unattended *there*.
 
 There is **no coverage workflow**: preprocessing runs Action-side inside the repo's one scheduler
 workflow, where the Actions secret is already reachable, and each task's
