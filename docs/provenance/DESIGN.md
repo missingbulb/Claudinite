@@ -231,7 +231,9 @@ from the mount and the canon from the repo root:
 | `check <pack>` | the parser the check uses, run by hand; prints what each file is named by |
 | `convert-references <pack>` | the migration of a `references.md` (§6) |
 | `reduce <file>` | the promotion reduction (§4) |
-| `history <pack> <element>` | the backfill brief: the carrier's commits through every rename, a pickaxe on the rule's text, the pull requests those commits name, the `VERSIONS.md` rows naming them, the README's history sentences, the tracker comments |
+| `history <pack> <element>` | one element's raw evidence: the carrier's commits through every rename, a pickaxe on the rule's text, the pull requests those commits name, the `VERSIONS.md` rows naming them, the README's history sentences, the tracker comments |
+| `brief <pack> [<element>…]` | the backfill brief, pull request first: each commit's body once, a draft entry per element and event with the fields git vouches for, the commit's shared fields in one `entry-defaults` fence, sweeps set aside |
+| `apply <pack> <brief.md>` | appends every drafted entry of an edited brief, each once and under its defaults, none while one is refused |
 
 `append` refuses an entry that matches the capture scrub's secret patterns: a decision log is prose
 an agent writes, and the one place a token could land is the one place nothing else scans.

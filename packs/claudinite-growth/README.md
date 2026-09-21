@@ -162,7 +162,8 @@ file, says which entry an edit owes and how the pack's `README.md` stays about u
 [**backfilling-provenance**](skills/backfilling-provenance/SKILL.md) is the method for filling a
 pack's empty files from its history, one pack per pull request. `provenance.mjs` beside this
 README is the one tool all three name - `mark`, `append`, `check`, `convert-references`,
-`reduce`, `history` - and `provenance-integrity` and `provenance-change-recorded` below are the
+`reduce`, `history`, and the backfill's `brief` and `apply` - and `provenance-integrity` and
+`provenance-change-recorded` below are the
 convention's machine halves. The pack
 also bundles
 [unattended-agents](skills/unattended-agents/SKILL.md) and

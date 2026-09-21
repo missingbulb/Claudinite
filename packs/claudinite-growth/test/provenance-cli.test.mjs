@@ -187,3 +187,104 @@ test('reduce prints the reduced file; an unknown command prints the usage and ex
     assert.match(usage.err, /usage: provenance\.mjs/);
   } finally { removeTree(root); }
 });
+
+// The backfill's brief and its apply: a rule's events are read from the carrier's own
+// history (born where it first appears, reworded where its text changed), a commit that
+// touched many packs is a sweep - listed, never drafted onto an element - and apply
+// appends every drafted entry once, refusing the whole brief on one bad entry.
+const commitAs = (root, message, { email = 't@t' } = {}) => {
+  git(root, 'add', '-A');
+  execFileSync('git', ['-c', `user.email=${email}`, '-c', 'user.name=t', 'commit', '-q', '-m', message], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+};
+const briefRepo = () => {
+  const root = repo({
+    ...FILES,
+    'packs/alpha/provenance/doing-thing.md': '',
+    'packs/alpha/provenance/doing-another.md': '',
+    'packs/alpha/pack.mjs': '// alpha: the pack for doing things.\n//\n// No fingerprint: a thing is declared.\n\nexport default {\n  version: 2,\n};\n',
+    'packs/alpha/RULES.md': '- **Doing a thing** — the settled way. (doing-thing)\n\n- **Doing another** — plainly. (doing-another)\n',
+    'packs/alpha/VERSIONS.md': '| Version | Date | What changed |\n|---|---|---|\n| 2 | 2026-08-02 | Said better (#8) |\n| 1 | 2026-07-01 | seed (#7) |\n',
+  });
+  writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing a thing** — the settled way, said better. (doing-thing)\n\n- **Doing another** — plainly. (doing-another)\n');
+  commitAs(root, 'Said better (#8)\n\nThe old wording hid the point.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nClaude-Session: https://example.invalid/s', { email: '1+tester@users.noreply.github.com' });
+  for (const p of ['beta', 'gamma', 'delta', 'epsilon']) {
+    mkdirSync(join(root, `packs/${p}`), { recursive: true });
+    writeFileSync(join(root, `packs/${p}/RULES.md`), '- **Elsewhere** — so.\n');
+  }
+  writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing a thing** - the settled way, said better. (doing-thing)\n\n- **Doing another** - plainly. (doing-another)\n\n- **Born in a sweep** - so. (born-in-sweep)\n');
+  writeFileSync(join(root, 'packs/alpha/provenance/born-in-sweep.md'), '');
+  commitAs(root, 'Hyphens everywhere (#9)');
+  mkdirSync(join(root, 'packs/alpha/skills/doing-it'), { recursive: true });
+  writeFileSync(join(root, 'packs/alpha/skills/doing-it/SKILL.md'), '---\nname: doing-it\ndescription: Do it. Use when doing it.\nmetadata:\n  body: workflow\n---\n\n1. Do it.\n');
+  writeFileSync(join(root, 'packs/alpha/provenance/doing-it.md'), '');
+  commitAs(root, 'A skill for doing it (#10)');
+  writeFileSync(join(root, 'packs/alpha/pack.mjs'), '// alpha: the pack for doing things.\n//\n// No fingerprint: a thing is declared.\n\nexport default {\n  version: 3,\n};\n');
+  commitAs(root, 'Bump pack versions: alpha 3 (#11)');
+  writeFileSync(join(root, 'packs/alpha/pack.mjs'), '// alpha: the pack for doing things.\n//\n// No fingerprint: a thing is declared.\n\nexport default {\n  version: 3,\n  hidden: true,\n};\n');
+  commitAs(root, 'Hide alpha (#12)');
+  return root;
+};
+
+test('brief reads each element\'s events from its carrier\'s history, sets a sweep aside, and drafts entries from the commit', async () => {
+  const root = briefRepo();
+  try {
+    const { code, out } = await capture(['brief', 'alpha'], root);
+    assert.equal(code, 0);
+    assert.match(out, /5 empty files · 4 pack-local commits · 1 sweep/);
+    assert.match(out, /```entry born-in-sweep\n## 2026-\d{2}-\d{2} · born · Hyphens everywhere \(#9\)/, 'the element a sweep bore is born there all the same');
+    assert.match(out, /## sweeps[\s\S]*#9/, 'the five-pack commit is a sweep');
+    assert.doesNotMatch(out, /```entry doing-thing\n## \d{4}-\d{2}-\d{2} · reworded · Hyphens/, 'a sweep is never drafted onto an element');
+    assert.match(out, /```entry doing-thing\n## 2026-\d{2}-\d{2} · born · seed \(#7\)/);
+    assert.match(out, /```entry-defaults\n- \*\*Actor:\*\* @tester\.\n- \*\*Model:\*\* Claude Opus 5, per the commit trailer\.\n- \*\*Landed:\*\* #8 · pack version 2\.\n```\n```entry doing-thing\n## 2026-\d{2}-\d{2} · reworded · Said better \(#8\)\n```/, 'the commit\'s shared fields are written once, ahead of its entries');
+    assert.doesNotMatch(out, /## PR #11/, 'a commit that only bumped the version is no event');
+    assert.match(out, /```entry doing-another\n## 2026-\d{2}-\d{2} · born · seed \(#7\)[\s\S]*?- \*\*Mechanism:\*\* a RULES\.md rule, triggered on "Doing another"/);
+    assert.doesNotMatch(out, /```entry doing-another\n## [^\n]* · reworded/, 'a rule whose text never changed has one event');
+    assert.match(out, /```entry doing-it\n## 2026-\d{2}-\d{2} · born · A skill for doing it \(#10\)/);
+    assert.match(out, /## PR #8 · [^\n]*Said better[\s\S]*?> The old wording hid the point\./, 'the body is quoted once, under its pull request');
+    assert.doesNotMatch(out, /Claude-Session/, 'trailers are stripped');
+    assert.match(out, /- It was split from beta until #99 folded it back\./);
+    assert.match(out, /## the manifest, packs\/alpha\/pack\.mjs\n[^\n]*\n> alpha: the pack for doing things\.\n>\n> No fingerprint: a thing is declared\.\n- #12 \d{4}-\d{2}-\d{2} Hide alpha\n/, 'the header comment is quoted and the manifest\'s later commits are listed, the bump left out');
+    assert.match(out, /```entry _pack\n## 2026-\d{2}-\d{2} · born · seed \(#7\)/);
+    assert.doesNotMatch(out, /```entry _pack\n## [^\n]* · reworded/, '_pack drafts its birth only');
+  } finally { removeTree(root); }
+});
+
+test('apply appends every drafted entry once, refuses the whole brief on one bad entry, and a second apply writes nothing', async () => {
+  const root = briefRepo();
+  try {
+    const brief = (await capture(['brief', 'alpha'], root)).out;
+    const path = join(root, 'brief.md');
+    writeFileSync(path, brief);
+    const first = await capture(['apply', 'alpha', path], root);
+    assert.equal(first.code, 0, first.err);
+    const thing = parseEntries(readFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), 'utf8'));
+    assert.deepEqual(thing.errors, []);
+    assert.deepEqual(thing.entries.map((e) => e.kind), ['born', 'reworded']);
+    assert.deepEqual(thing.entries[1].fields, { Actor: '@tester.', Model: 'Claude Opus 5, per the commit trailer.', Landed: '#8 · pack version 2.' }, 'the defaults fence lands under the entry');
+    assert.deepEqual(thing.entries[1].order, ['Actor', 'Model', 'Landed']);
+    assert.deepEqual(parseEntries(readFileSync(join(root, 'packs/alpha/provenance/doing-it.md'), 'utf8')).entries.map((e) => e.kind), ['born']);
+
+    const again = await capture(['apply', 'alpha', path], root);
+    assert.equal(again.code, 0, again.err);
+    assert.match(again.out, /nothing to append/);
+    assert.deepEqual(parseEntries(readFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), 'utf8')).entries.map((e) => e.kind), ['born', 'reworded']);
+
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), '');
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-another.md'), '');
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), '');
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-another.md'), '');
+    writeFileSync(path, brief.replace(/```entry-defaults\n- \*\*Actor:\*\* @tester\.\n/, '```entry-defaults\n- **Actor:** @tester.\n- **Reason:** shared.\n'));
+    const merged = await capture(['apply', 'alpha', path], root);
+    assert.equal(merged.code, 0, merged.err);
+    assert.equal(parseEntries(readFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), 'utf8')).entries[1].fields.Reason, 'shared.', 'a field added to the defaults reaches every entry under them');
+    assert.equal(parseEntries(readFileSync(join(root, 'packs/alpha/provenance/doing-another.md'), 'utf8')).entries[0].fields.Reason, undefined, 'an entry under another commit\'s defaults is untouched');
+
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), '');
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-another.md'), '');
+    writeFileSync(path, brief.replace('```entry doing-another\n## ', '```entry doing-another\n## 1999-13-45 · '));
+    const bad = await capture(['apply', 'alpha', path], root);
+    assert.equal(bad.code, 1);
+    assert.match(bad.err, /doing-another/);
+    assert.equal(readFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), 'utf8'), '', 'one bad entry and nothing is written');
+  } finally { removeTree(root); }
+});

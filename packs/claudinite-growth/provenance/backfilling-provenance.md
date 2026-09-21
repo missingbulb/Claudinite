@@ -18,3 +18,33 @@
   the converted text is evidence for the entries it becomes, never dropped.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude, per the commit trailer.
+
+## 2026-09-21 · reworded · the run starts from a brief the tool derives, not from evidence read per element
+- **Source:** step 4 of #2169, 37 packs and 692 empty files after chrome-extension; the survey
+  behind the change found that a squash commit here carries the pull request's body and model
+  trailer, that 82 corpus-wide sweeps dominated every element's raw history, and that 305 of the 692
+  elements had one pack-local commit.
+- **Reason:** the judgment the pass exists for is per decision, and a decision is a commit; reading
+  evidence per element re-derives each commit once per element it touched and pays the sweeps' noise
+  every time. `brief` writes the commit once with every field git vouches for and `apply` fans the
+  decision out, so a session spends its attention on Reason and Rejected and a giant pack fits one
+  session.
+- **Actor:** @missingbulb (owner) asked for the tooling before any further backfill; the session
+  that wrote it landed it.
+- **Model:** Claude Fable 5.1, per the commit trailer.
+- **Rejected:** a sweep ledger shared across packs (a canon-only concern the tool need not know);
+  filtering version-bump commits by their subject (the bump is detected structurally, from a diff
+  that changes only a version line).
+- **Retire when:** the shelf's last empty file fills and no member's local pack is left to backfill;
+  the commands then serve a pack that joins later, or go with the skill.
+
+## 2026-09-21 · reworded · `_pack.md` holds the pack's shape, and the manifest's header is trimmed like the README
+- **Source:** the owner's review of #2190, on the brief drafting every manifest commit onto `_pack`.
+- **Reason:** a `_pack` entry is a decision about the pack - what its `pack.mjs` header comment
+  already records: why it exists, why it fingerprints so, what it carries - never every change in
+  the pack's scope; so the brief drafts the pack's birth only, quotes the header as the evidence,
+  and lists the manifest's later commits for the session to judge, and the run trims the header once
+  its decisions are entries.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5.1, per the commit trailer.
+- **Landed:** #2190.
