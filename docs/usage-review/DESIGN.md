@@ -7,12 +7,12 @@ on the promotion ladder by judgment at authoring time, and nothing reads back wh
 placement held. This document specifies the loop that does: each skill **declares what usage it
 expects of itself**, the record **observes** what happened, a small set of **readable rules**
 compares the two, and every finding carries how well its **cause** is known and what a fix would
-likely be. The review **changes nothing**. It is an analysis with a recommendation attached, run
-by code alone, and what is done about a finding is a separate decision made by whoever reads it
-(§6). Its one write outside its own file is an evidence entry on the provenance of an element a
-lasting finding recommends changing (§7), so the decision log holds what the record showed
-before anyone decided. Separating the two keeps the review cheap — no agent phase — and means the review does not
-have to be right about the remedy to be right about the finding.
+likely be. The review **changes nothing and writes nothing outside its own file** — not a pack
+element, not a provenance log. It is an analysis with a recommendation attached, run by code
+alone. A separate weekly stage, `usage-triage`, turns a finding that has lasted into a proposed
+change, as a pull request that **merges only when the owner merges it** (§6); the element's
+provenance records that change, and only if it lands (§7). Nothing in the loop merges on its own,
+so a rule in §3 that turns out to be wrong costs a declined pull request and leaves no trace.
 
 Companion: [skill-usage-metrics](../skill-usage-metrics/DESIGN.md) specifies the fold whose
 counters this loop reads; its §7 names canon curation as a consumer of the fold "in both
@@ -392,8 +392,8 @@ recorded as *not sampled*; the rules still evaluate from the fold.
 | **Window** | the trailing 28 days: closed ISO weeks from the fold's week rows, the current week from its day rows; compared with the 28 before |
 | **Scope** | every subject the repo mounts — its local packs **and** the vendored canon; a finding about a canon subject is evidence the repo cannot act on, and it carries it upward (§6) |
 | **Performs** | code, entirely: the evaluator over the rule file, the fold, the live reads, and the digests |
-| **Triage** | `usage-triage`, weekly, `agent_model: opus`, precondition: at least one finding whose `since` is 14 days old with cause `known` or `probable` and no open triage PR for its subject; a `claudinite-canon-curation` task over `packs/` in the canon, the same skill (`triaging-usage-findings`, in `claudinite-growth`) over local packs elsewhere; `expected_outcome: fresh_pr`, automerge `nothing` |
-| **Writes** | `.claudinite/local/usage-review.GENERATED.json` — `window` (both windows' bounds and denominators), `notEvaluated` (rule, floor, figure), `unstated` (skills with no `usage` block), `findings` sorted by rule then subject (rule, subject, pack, figures for both windows, cause, sentences, digests, and `since`, the first review date the finding appeared) — delivered by the shared generated-file helper on one accumulating auto-merged PR whose body renders the findings as a table per cause confidence; the unchanged-compare ignores the stamp alone, so a day that changes no finding opens nothing |
+| **Triage** | `usage-triage`, weekly, `agent_model: opus`, the only stage that changes anything; precondition: at least one finding whose `since` is 14 days old with cause `known` or `probable` and no open triage PR for its subject; a `claudinite-canon-curation` task over `packs/` in the canon, the same skill (`triaging-usage-findings`, in `claudinite-growth`) over local packs elsewhere; `expected_outcome: fresh_pr`, automerge `nothing` |
+| **Writes** | `.claudinite/local/usage-review.GENERATED.json` — `window` (both windows' bounds and denominators), `notEvaluated` (rule, floor, figure), `unstated` (skills with no `usage` block), `findings` sorted by rule then subject (rule, subject, pack, figures for both windows, cause, sentences, digests, and `since`, the first review date the finding appeared) — delivered by the shared generated-file helper on one accumulating PR, automerge `nothing`, whose body renders the findings as a table per cause confidence; the unchanged-compare ignores the stamp alone, so a day that changes no finding opens nothing |
 
 `since` is what makes a finding's age readable without diffing history, and it is what the
 consumers below key on.
@@ -416,8 +416,8 @@ the review acts on it. The proposal for what does:
    with an `unknown` cause never files; it stays in the file and on the dashboard. This is the
    one place a person is asked for attention, and it is asked only for a finding that stayed
    two weeks with a recommendation worth reading. The queue does not pick these up: they carry
-   no `task:` marks, so they are a person's inbox, not a run's. The same moment appends the
-   finding's one provenance entry (§7); the issue and the entry cite each other.
+   no `task:` marks, so they are a person's inbox, not a run's. Nothing is written into
+   provenance at this moment: an issue is a finding, and a finding is not a decision (§7).
 
 3. **Canon evidence, upward.** A finding about a canon skill or check in this repository is
    the canon's business, not the member's. The fleet half is Shepherd's, per the
@@ -426,94 +426,72 @@ the review acts on it. The proposal for what does:
    a member of itself, so its own review file is the first evidence canon curation reads —
    when the owner asks it to, not on a schedule.
 
-4. **The reader that proposes a change — agentic, owner-gated.** Where the owner wants
-   findings turned into proposals without waiting for a person, one task, `usage-triage`, runs
+4. **The stage that makes the change — agentic, owner-gated.** One task, `usage-triage`, runs
    weekly over the lasting findings (`known` or `probable`, 14 days old) and opens **one PR per
-   subject with automerge `nothing`**: the review changes nothing, the triage proposes, the owner
-   decides. Its order is fixed:
+   subject with automerge `nothing`**, carrying the edit itself — the moved lines, the changed
+   trigger, the demoted severity — not a description of it. The review changes nothing, the
+   triage writes the change, the owner merges or declines it. A proposal is only worth as much
+   as the diff it can be read against, and a decline costs a close. Its order is fixed:
    1. read the subject's provenance file first — `Rejected` (was this cause already considered
       and refused), `Source` (what the element was born from, so the proposal undoes no lesson
       it never read), `Mechanism` (why this rung, so a refused rung is not re-proposed without
-      new evidence), any earlier `observed` entry and what followed it (a recurring finding after
-      a mitigation is a different case from a first one), and `Retire when` (the test the
-      finding may now satisfy);
+      new evidence), any entry recording a change already made after an earlier finding on
+      this element (a finding that returns after a mitigation is a different case from a first
+      one), and `Retire when` (the test the finding may now satisfy);
    2. work the rule's `causes` in order against the finding's figures, digests and samples,
       and name the one it settles on, or the one it adds where the list is `open`;
    3. write the change only where a cause is settled; otherwise comment the finding's issue with
-      what it read and what would settle it, and open no PR.
+      what it read and what would settle it, and open no PR. Where the change lands, the PR
+      carries the element's provenance entry for it in the same diff (§7) — the only provenance
+      this design writes.
    In the canon it is a `claudinite-canon-curation` task over `packs/`; in a member the same
-   skill runs in `claudinite-growth` over the local packs. It cites the `observed` entry and the
-   usage rule in the mitigation's provenance entry (§7). It is the one agentic stage of the
-   loop, and its cost is bounded by the gate: a week with no lasting finding opens no session.
+   skill runs in `claudinite-growth` over the local packs. It is the one agentic stage of the
+   loop and the only writer in it, and its cost is bounded by the gate: a week with no lasting
+   finding opens no session.
 
 5. **Existing agentic runs read it, and change nothing because of it.** `growth-extract` and
    the curation sweeps may cite a finding as evidence when they land a lesson they found on
    their own grounds; the review's recommendation is not an instruction to them. That keeps
    the review honest about remedies it was never in a position to test.
 
-What is deliberately **not** proposed: an acting task, a chain of experiments, or a retrospective
-per finding. A finding that turns out to deserve a fix gets it the ordinary way — a person, or a
-`/do-later`, or an owner asking a session — with the finding as its brief.
+What is deliberately **not** proposed: a chain of experiments, or a retrospective per finding.
+And nothing anywhere in the loop merges on its own — not the review's own findings file, not the
+triage's change. The loop's whole output is two pull requests a person reads: one saying what the
+record shows, one saying what it would do about it.
 
-## 7. What the review writes into provenance
+## 7. What reaches provenance
 
-[Provenance](../provenance/DESIGN.md) is the decision log per element, and a usage finding is
-not a decision — it is evidence that a decision may be due. So the review appends **evidence,
-once per finding, and only for a finding that recommends a change**. Nothing is written for a
-clean result, for a finding under its floor, for a finding whose cause is `unknown` (it
-recommends reading, not changing), or for the same finding on any later day.
+[Provenance](../provenance/DESIGN.md) is the decision log per element, and a usage finding is not
+a decision — it is evidence that one may be due. So **the review writes no provenance at all**.
+Not for a clean result, not for a finding under its floor, not for a lasting finding, not for one
+whose recommendation is never taken. A log that records what was merely noticed is a log nobody
+finishes reading, and the review's findings already live in a file, on the dashboard and in an
+issue.
 
-**The kind.** The provenance vocabulary gains one kind, `observed`: the usage record contradicted
-what the element's placement assumes. Its fields:
+The one provenance write in this loop is the ordinary one: when `usage-triage` changes an element,
+that edit is a decision, and the forced `changing-pack-elements` skill already owes it an entry in
+the existing vocabulary (`trigger-changed`, `moved`, `converted`, `severity-changed`, `weakened`,
+…). The entry lands **in the triage's own PR**, so it merges only if the change does — a declined
+proposal leaves the element's log untouched, which is the correct record of a decision not taken.
+The provenance vocabulary gains no new kind.
+
+What this design adds is what that entry's `Source` must name: the usage rule that produced the
+finding, by id, and the finding's issue, by number.
 
 ```
-## 2026-10-04 · observed · usage review: skill-forced-only-small
-- **Source:** the usage review of 2026-10-04, rule `skill-forced-only-small`, window
-  2026-09-06..2026-10-03 against the 28 days before: 31 loads, 30 by guard block; 212 tokens.
-- **Reason:** it is only ever loaded because a guard held a call for it, and each block is a
-  tool call spent to read a few lines.
-- **Actor:** the usage-review run.
-- **Retire when:** loads by guard fall under nine in ten, or the lines move into context.
-- **Landed:** #<the usage-finding issue>.
+- **Source:** usage review rule `skill-forced-only-small`, #<issue> — 31 loads in the 28 days to
+  2026-10-03, 30 of them held by a guard; 212 tokens.
 ```
 
-`Mechanism` is omitted: nothing changed. `Reason` is the rule's finding sentence and `Retire
-when` is the rule's own threshold read backwards, so the entry is generated from the rule file and
-the figures and carries no prose of the run's own. The `observed` kind lets a reader of the file
-see, between two decisions, what the record said, and lets a `reaffirmed` entry cite the
-observation it answers.
+So a reader tracing a mechanism change backwards lands on the rule that thought so and the figures
+it thought it from. The usage rules are elements of the growth pack in their own right — each rule
+in `usage-rules.json` has its own file, `packs/claudinite-growth/provenance/<rule id>.md`, born
+with the rule and carrying its threshold's reasoning — and a rule whose proposals keep being
+declined is visible as one cited by `_declined.md` entries and by nothing else. That is the rule's
+own feedback loop, and it needs no observation entries to close.
 
-**The gate is the issue's.** The append happens exactly when §6 files the finding's issue: the
-finding is 14 days old and its cause is `known` or `probable`. One finding, one entry: the review
-file carries `recorded: <date>` on the finding from then on, read back from the base branch like
-`since`, so a daily run never appends twice. A finding that clears and later returns is a new
-finding with a new `since`, and earns a new entry only if it lasts again — by then something
-changed in between, which is what the second entry records.
-
-**Where it can write.** The subject's own file, wherever the run's tree owns it: a local pack's
-element under `.claudinite/local/packs/<pack>/provenance/`, and in the canon — a member of
-itself, running from the repo root — a shelf element under `packs/<pack>/provenance/`. The mount
-is never written, so in a member a finding about a canon element records nowhere in provenance
-and reaches the canon only through the review file and Shepherd's sum (§6). The growth
-write-scope rule gains the one carve-out this needs: the run titled `Claudinite growth: usage
-review` may touch `provenance/` files under `packs/` and nothing else there — a file never
-vendored, never loaded and never enforced, so the blast-radius argument the rule protects is
-untouched.
-
-**The mitigation cites the observation.** Whoever acts on a finding — a person, a `/do-later`, a
-session — edits a carrier, and the forced `changing-pack-elements` skill already owes that edit
-its entry (`trigger-changed`, `moved`, `converted`, `severity-changed`, `weakened`, …). This
-design adds what that entry's `Source` names: the `observed` entry it answers, by date, and the
-usage rule that produced it, by id. The usage rules are elements of the growth pack in their own
-right — each rule in `usage-rules.json` has its file, `packs/claudinite-growth/provenance/<rule
-id>.md`, born with the rule and carrying its threshold's reasoning — so a mechanism change traced
-back through the log lands on why the review thought so, and a rule whose findings keep being
-declined is visible as one whose file is cited by `_declined.md` entries and by nothing else.
-
-**What is not written.** No entry on the review's own task file per run; no `reaffirmed` for an
-element the review found healthy; no entry on a check for a finding about a skill that owns it
-(the subject is the skill); nothing for `unstated` skills — the nudge to declare is the list, not
-an entry.
+The growth write-scope rule needs no carve-out: the triage run edits pack elements, which is what
+it is scoped to do, and writes the entry beside the change.
 
 ## 8. Alternatives, and why not
 
@@ -524,23 +502,22 @@ an entry.
 - **An agent phase for the "should it have loaded" judgment**: it spends a session a day on a
   question the digest lets a reader answer in a minute, and the answer only matters once the
   finding has lasted.
-- **Acting on findings automatically**: the review cannot test its own remedies, and a skill
-  that did not load has several causes of which only one is the description; a fix on a guess
-  rewrites content that was right.
+- **Acting on findings automatically**, or letting any stage of the loop merge itself: the
+  review cannot test its own remedies, and a skill that did not load has several causes of which
+  only one is the description; a fix on a guess rewrites content that was right. The owner's
+  merge is what proves a rule in this doc was worth writing, so it is also the only thing that
+  lets one take effect.
 - **No declared expectation**: rates against sessions alone cannot separate rare-and-healthy
   from never-and-broken, which is the distinction the review exists to draw.
 - **An issue per finding on first sight**: most findings on a young window are floor noise
   or a single week's weather; two weeks of persistence is what earns attention.
 - **Longer retention for the digests**: ten days already covers a daily sample; more raw logs
   buy nothing the rules read.
-- **An entry per review run**, or a `reaffirmed` for every healthy element: the data explosion
-  the provenance design refuses; a log that says "still fine" daily is unreadable exactly where
-  the one interesting entry sits.
-- **Reusing an existing kind** for the observation (`reaffirmed`, `weakened`): each names a
-  decision taken; an observation is what precedes one, and a reader must be able to tell the two
-  apart.
-- **The issue as the only record**: an issue closes and leaves the element's history; the file
-  is what the next revalidation of that element reads.
+- **An `observed` kind recording every lasting finding**, whether or not anything came of it:
+  the data explosion the provenance design refuses, in its subtler form — not "still fine" daily,
+  but a permanent line on an element's log written by a threshold that may itself be wrong, and
+  append-only, so a bad rule's residue outlives the rule. The finding's issue and the review file
+  carry the observation; only the change carries a log entry.
 
 ## 9. Failure modes, stated
 
@@ -555,10 +532,12 @@ an entry.
   review date it was last confirmed on, so staleness is readable.
 - A rule whose signature nothing in the record produces never fires; the retrospective reads
   the per-rule firing history and names it.
-- Two appends to one element the same night (the review's and a growth run's) conflict at the
-  file's end; the resolution keeps both in date order, as the provenance design states.
-- A `recorded` mark lost with a rewritten review file re-appends once; the entry's `Source`
-  names the same review date, so the duplicate is visible and the second is removed by hand.
+- A triage PR left open for weeks holds its subject against a second proposal (the precondition
+  excludes a subject with an open PR); a finding that worsens meanwhile shows it on the dashboard
+  and in the issue, and the stale PR is closed rather than amended.
+- A triage PR merged long after it was written lands a change against figures that have since
+  moved; its body carries the window it was written from, and the next review re-judges the
+  element on the record as it now is.
 
 ## 10. Retrospective brief
 
@@ -571,24 +550,27 @@ Owed once the review has landed in this repository and lived four weeks.
   rule that never fires is re-examined before it is trusted.
 - **Issues.** Between one and five `usage-finding` issues open at a time; each closed by the
   review or by a person within a month; read from the label.
-- **Acted on.** At least one finding cited as the brief of a change (a PR body or `/do-later`
-  naming the rule and subject) in the first two months; zero means the recommendations are not
-  worth reading, and the rules are revisited.
+- **Acted on.** At least one triage PR merged in the first two months; zero merged out of
+  several opened means the recommendations are not worth acting on and the rules are revisited,
+  zero opened means the gate is too tight.
 - **Expectations declared.** Every canon skill carries a `usage` block within a month (the
   `unstated` list empties); read from the review file.
 - **Triage.** One PR per subject and never two open at once; each PR body names the cause
   settled and the provenance fields read; a proposal the owner closes unmerged gets a
   `_declined.md` entry naming the rule, so the next triage does not re-propose it; expected
   one to three proposals a month here, read from PRs titled `Claudinite canon: usage triage`.
-- **Provenance.** `observed` entries equal the `usage-finding` issues filed, never more (one per
-  finding); zero entries on elements the review found healthy; every mitigation entry landed
-  from a finding names its `observed` entry and its usage rule in `Source`; read by grepping
-  `provenance/` for `· observed ·` and `usage review`.
+- **Provenance.** Entries landed from this loop equal triage PRs **merged**, never more — zero
+  on a declined proposal, zero on an element the review only observed; each names its usage rule
+  and its finding's issue in `Source`; read by grepping `provenance/` for `usage review rule`.
 - **Underuse.** A `known`-cause finding older than 60 days with no citing change; expected zero.
 - **Overuse.** Review PRs moving daily with no finding change (a stamp leak); agent-free by
-  construction, so no session cost to watch.
+  construction, so no session cost to watch. And the review PR itself left unmerged for weeks —
+  it accumulates rather than superseding, so a stale one costs nothing but says the findings are
+  going unread.
 - **Cost.** The Stop hook's median `stopMs` rises by no more than the timing line's own cost,
   under 5 ms, read from `checkTiming` across the runner change.
 - **Cheap to re-examine:** every threshold and floor, the cause of any rule, the window, the
   sample size, the twin definition, the 14-day issue threshold. **Expensive:** the counter
-  shapes in the fold header, the `usage` frontmatter vocabulary, the timing line's format.
+  shapes in the fold header, the `usage` frontmatter vocabulary, the timing line's format. Nothing
+  here is expensive to *undo*: no stage of the loop leaves a record behind unless the owner merged
+  the change that record describes.
