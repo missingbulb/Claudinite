@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
-import { discoverPacks, resolveDeclaredPacks, packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
+import { resolveDeclaredPacks, packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
+// Discovery through the namespace, because its signature is what this pack's rules follow
+// and the two lanes deliver on separate cadences.
+import * as registry from '../../../engine/pack_loader/pack-registry.mjs';
 import { loadDeclaredChecks } from '../../../engine/checks/helpers/pattern-rules.mjs';
 import corePack from '../pack.mjs';
 
@@ -31,7 +34,7 @@ const coreDeclared = loadDeclaredChecks(
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 test('the requires closure materializes core into a declaration that names only basics', async () => {
-  const { packs } = await discoverPacks({ localRoot: REPO });
+  const { packs } = await registry.discoverPacks({ localRoot: REPO });
   const resolved = resolveDeclaredPacks(['basics'], packs).map(packEntryId);
   assert.ok(resolved.includes('claudinite-lifecycle'), `resolving ["basics"] gave ${JSON.stringify(resolved)} — core must be in the closure`);
 });

@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 import {
   rulesIndexContent, rulesIndexImports, RULES_INDEX_FILE, RULES_INDEX_IMPORT,
 } from '../engine/pack_loader/generate-rules-index.mjs';
-import { loadPacks, isActive, packEntryId } from '../engine/pack_loader/pack-registry.mjs';
+import { loadPacks, isActive, packEntryId, SESSION_USER_PACK } from '../engine/pack_loader/pack-registry.mjs';
+import { shipsPrepareStep } from '../engine/pack_loader/pack-conventions.mjs';
 
 // The canon's OWN copy of the CLAUDE.md channel (#807).
 //
@@ -44,9 +45,15 @@ test('the index names exactly the active packs — no more, no fewer', async () 
   // answer rather than the declaration alone, because the `requires` closure legally
   // adds packs the declaration never names.
   const packs = await loadPacks({ localRoot: ROOT });
-  const expected = packs
-    .filter((p) => isActive(p, { packs: declaredIds() }) && p.prose)
+  const active = packs.filter((p) => isActive(p, { packs: declaredIds() }));
+  const expected = active
+    .filter((p) => p.prose)
     .map((p) => p.id)
+    // The pack copied for the person in front of the session is not a pack this repo
+    // declares and cannot be: it is written at session start, for whoever is here. The
+    // index names it by a literal wherever a declared pack copies, so it is expected here
+    // on the same condition.
+    .concat(active.some(shipsPrepareStep) ? [SESSION_USER_PACK] : [])
     .sort();
 
   const text = readFileSync(join(ROOT, RULES_INDEX_FILE), 'utf8');
@@ -70,7 +77,12 @@ test('every import in the committed index resolves to a file that exists', () =>
   const text = readFileSync(join(ROOT, RULES_INDEX_FILE), 'utf8');
   const paths = text.split('\n').filter((l) => l.startsWith('@')).map((l) => l.slice(1));
   assert.ok(paths.length, 'the index imports nothing');
-  for (const rel of paths) {
+  // Every import but one names a tracked file. The exception is the pack copied for the
+  // person in front of the session, which no checkout carries and every session writes —
+  // the step runner guarantees it, even empty, before anything reads the index.
+  const committed = paths.filter((rel) => !rel.startsWith('temp/'));
+  assert.equal(committed.length, paths.length - 1, 'exactly one import is a session-written path');
+  for (const rel of committed) {
     assert.ok(existsSync(join(ROOT, '.claudinite', rel)), `dangling import in ${RULES_INDEX_FILE}: @${rel}`);
   }
 });

@@ -5,3 +5,4 @@
 @../packs/claudinite-growth/RULES.md
 @../packs/claudinite-lifecycle/RULES.md
 @local/packs/claudinite/RULES.md
+@temp/packs/current_user/RULES.md

@@ -40,7 +40,9 @@ function run(corpus, projectDir, env = {}) {
 
 test('orchestrator runs steps in order, forwards only step stdout, logs the lifecycle, exits 0', () => {
   const corpus = makeCorpus({
-    packStart: 'process.stdout.write("PACKSTEP\\n");',
+    // One script serves both phases; --prepare is the earlier one, and what it writes is
+    // a diagnostic rather than session context.
+    packStart: 'process.stdout.write(process.argv.includes("--prepare") ? "PREPARED\\n" : "PACKSTEP\\n");',
     summary: 'process.stdout.write("SUMMARY\\n");',
   });
   const projectDir = mkdtempSync(join(tmpdir(), 'claudinite-proj-'));
@@ -50,7 +52,7 @@ test('orchestrator runs steps in order, forwards only step stdout, logs the life
   // order, followed by the one-line confirmation footer; the timestamped log
   // goes to stderr + the file, never stdout.
   assert.ok(r.stdout.startsWith('PACKSTEP\nSUMMARY\n'), r.stdout);
-  assert.match(r.stdout, /^Claudinite session-start: ran 7 steps \(git-config, mount-skills, selftest, pack-session-start, env-check, interview-check, session-summary\) at .+\.$/m);
+  assert.match(r.stdout, /^Claudinite session-start: ran 8 steps \(git-config, pack-session-prepare, mount-skills, selftest, pack-session-start, env-check, interview-check, session-summary\) at .+\.$/m);
   // No prose step, and none may come back (#807): static pack prose rides CLAUDE.md,
   // on a channel that does not truncate. This hook carries only what a session can
   // learn at session time.
