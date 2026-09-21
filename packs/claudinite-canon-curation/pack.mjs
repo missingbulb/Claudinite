@@ -6,18 +6,10 @@
 // home, keeping what the shelf already teaches current with those technologies,
 // and policing the shelf's own content.
 //
-// NOTHING HERE NAMES A PARTICULAR CANON. The shelf is `packs/` because that is
-// where the engine reads a canon's packs from (engine/pack_loader/pack-registry.mjs),
-// so every rule and task below is anchored there and is inert in a repo that
-// keeps no shelf. The one thing a canon can differ on — a second corpus root
-// beside `packs/` — is this pack entry's optional `write_paths` config, read by
-// canon-config.mjs.
-//
-// Declaration cardinality is what makes the tasks central-once: a pack's tasks run
-// per DECLARING repo, so a canon declared by its one home repo yields exactly one
-// work item per task per occurrence, with no orchestrator step. Un-declaring the
-// pack freezes canon absorption without touching the members' side
-// (claudinite-growth). The tasks are discovered structurally from this pack's own
+// Nothing here names a particular canon. The shelf is `packs/`, where the engine
+// reads a canon's packs from (engine/pack_loader/pack-registry.mjs); a second
+// corpus root beside it is this pack entry's optional `write_paths` config, read
+// by canon-config.mjs. The tasks are discovered structurally from this pack's own
 // `tasks/<name>/task.json` (packs/claudinite-tasks/discover.mjs), so none is declared here.
 export default {
   version: '60921.2',
