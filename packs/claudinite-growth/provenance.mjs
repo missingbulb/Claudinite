@@ -293,14 +293,16 @@ function commitInfo(root, sha, cache) {
   const pr = PR_AT_END.exec(subject ?? '')?.[1] ?? null;
   const refs = [...new Set([...(body ?? '').matchAll(REFERENCED)].map((m) => m[1]).filter((n) => n !== pr))];
   const packs = new Set();
+  const files = [];
   for (const f of git(root, 'diff-tree', '--root', '-r', '-m', '--first-parent', '--no-commit-id', '--name-only', sha).split('\n')) {
+    if (f) files.push(f);
     const m = /^(?:\.claudinite\/local\/)?packs\/([^/]+)\//.exec(f);
     if (m) packs.add(m[1]);
   }
   // GitHub's own squash line names a bare "Claude" beside the session's trailer.
   if (models.size > 1) models.delete('Claude');
   const info = {
-    sha: full, short, date, subject, pr, refs, models: [...models],
+    sha: full, short, date, subject, pr, refs, models: [...models], files,
     title: (subject ?? '').replace(PR_AT_END, '').trim(),
     handle: /^\d+\+([^@]+)@users\.noreply\.github\.com$/.exec(email ?? '')?.[1] ?? null,
     body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
@@ -382,6 +384,25 @@ function versionReader(root, pack) {
     return null;
   };
 }
+// Every commit that touched the pack at all, oldest first. The drafted events are a subset:
+// a commit can decide something the carrier text does not show - a manifest field, a rule's
+// rationale moving to the README - and a brief that listed only what it drafted would hand
+// the session a history it has to re-derive from git before it can trust the drafts.
+function packCommits(root, pack, cache) {
+  const shas = git(root, 'log', '--format=%H', '--reverse', '--', pack).split('\n').filter(Boolean);
+  return shas.map((sha) => commitInfo(root, sha, cache));
+}
+const filesUnder = (info, pack) => info.files.filter((f) => f.startsWith(`${pack}/`)).map((f) => f.slice(pack.length + 1));
+
+// A version row's own text is the decision the version was cut for, and it names the pull
+// request that made it - not always the one the commit subject carries, so the commit's own
+// Refs count as a claim too. Never the date: several commits land on one day and a row
+// attached to the wrong one reads as evidence, which is worse than the row going unclaimed.
+const names = (what, n) => what.includes(`#${n}`) && !new RegExp(`#${n}\\d`).test(what);
+function rowFor(rows, info) {
+  return rows.find((r) => [info.pr, ...info.refs].some((n) => n && names(r.what, n))) ?? null;
+}
+
 function versionFor(rows, info, fromManifest) {
   const byPr = info.pr && rows.find((r) => r.what.includes(`#${info.pr}`) && !new RegExp(`#${info.pr}\\d`).test(r.what));
   return byPr ? byPr.version : fromManifest(info);
@@ -474,10 +495,26 @@ export function brief(root, pack, wanted = []) {
   const count = (n, what) => `${n} ${what}${n === 1 ? '' : 's'}`;
   lines.push(`${count(elements.length, wanted.length ? 'element' : 'empty file')} · ${count(order.length, 'pack-local commit')} · ${count(sweeps.size, 'sweep')}`);
   lines.push('');
-  lines.push('## sweeps');
-  lines.push(`commits touching ${SWEEP_PACKS} or more packs, set aside: a sweep goes on _pack.md where it changed the pack's shape, never on an element it re-wrapped`);
-  for (const [sha, ids] of sweeps) { const i = cache.get(sha); lines.push(`- ${i.pr ? `#${i.pr}` : i.short} ${i.date} ${i.title} - touched ${ids.join(', ')}`); }
-  if (!sweeps.size) lines.push('(none)');
+  lines.push('## every commit that touched this pack');
+  lines.push('oldest first, each with the files it touched under the pack, the version row that claims it, and what it drafts below. a row reading NOTHING DRAFTED decided nothing, re-wrapped, or decided something no carrier\'s text shows - read its files before passing it');
+  lines.push(`a commit touching ${SWEEP_PACKS} or more packs is marked "sweep": it goes on _pack.md where it changed the pack's shape, and on an element only where it decided something about that one - never where it merely re-wrapped it`);
+  const claimed = new Set();
+  for (const i of packCommits(root, pack, cache)) {
+    const drafts = (byCommit.get(i.sha) ?? []).map(({ el, ev }) => `${el.id} (${ev.kind})`);
+    const swept = sweeps.get(i.sha) ?? [];
+    const row = rowFor(rows, i);
+    if (row) claimed.add(row.version);
+    const parts = [filesUnder(i, pack).join(', ') || '(nothing under the pack)'];
+    if (row) parts.push(`version ${row.version} "${row.what}"`);
+    if (i.sweep) parts.push('sweep');
+    parts.push([...drafts, ...swept.map((id) => `${id} (set aside)`)].join(', ') || 'NOTHING DRAFTED');
+    lines.push(`- ${i.pr ? `#${i.pr}` : i.short} ${i.date} ${i.title} · ${parts.join(' · ')}`);
+  }
+  const orphans = rows.filter((r) => !claimed.has(r.version));
+  if (orphans.length) {
+    lines.push('', '## version rows no commit here claims', 'the row names the decision and the pull request that made it; neither reached a commit subject, so this is history the drafts below cannot carry');
+    for (const r of orphans) lines.push(`- ${r.version} ${r.date} ${r.what}`);
+  }
   if (unknown.length) { lines.push('', '## no history found', `git holds no commit for: ${unknown.join(', ')} (is the clone shallow?)`); }
   const manifest = elements.find((el) => el.id === PACK_ELEMENT);
   if (manifest) {
@@ -492,6 +529,17 @@ export function brief(root, pack, wanted = []) {
     const prose = readme.split('\n').filter((l) => !l.startsWith('|') && !l.startsWith('#')).join('\n');
     const tells = prose.split(/(?<=[.!?])\s+/).filter((s) => /#\d+|\buntil\b|\bdistilled from\b|\bkept as\b|\breplaced\b|\babsorbed\b|\b20\d\d-\d\d-\d\d\b/.test(s));
     lines.push(tells.map((s) => `- ${s.replace(/\s+/g, ' ').trim()}`).join('\n') || '(none)');
+    // The sentence tells find history that dates or numbers itself. A section that explains
+    // WHY an element reads as it does carries neither, so the headings go up whole and the
+    // session judges each: prose the adopter uses stays, the rest is an entry's Reason.
+    lines.push('', '## README sections', 'every heading and the prose under it, tables excluded. a section explaining why an element reads as it does is an entry\'s Reason, not the README\'s - the adopter\'s half is what the pack activates on, what each element demands, and when to reach for it');
+    const sections = [];
+    for (const l of readme.split('\n')) {
+      if (/^#{1,6} /.test(l)) { sections.push({ heading: l, bytes: 0 }); continue; }
+      if (!sections.length || l.startsWith('|')) continue;
+      sections[sections.length - 1].bytes += l.trim().length;
+    }
+    for (const s of sections) lines.push(`- ${s.heading} · ${s.bytes} bytes of prose`);
   }
   for (const info of order) {
     const drafts = byCommit.get(info.sha);

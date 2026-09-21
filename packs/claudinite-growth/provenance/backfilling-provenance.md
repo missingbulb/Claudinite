@@ -48,3 +48,17 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Fable 5.1, per the commit trailer.
 - **Landed:** #2190.
+
+## 2026-09-21 · reworded · the brief carries the evidence the first backfill derived by hand (#2169)
+- **Source:** the first pack run under the skill, web-scraping (#2205): four of the pack's decisions
+  were invisible to the brief and cost roughly as much git archaeology to find as reading its pull
+  requests cost in total.
+- **Reason:** the drafts cover what a carrier's own text shows changing, which is less than the
+  pack's history; the steps now work the commit inventory, the version rows and the README's
+  sections, which is where the rest of it was. The run also learned three things no step carried:
+  load changing-pack-elements up front, since apply writes past the pre-edit guard and nothing holds
+  the run until Stop; write the entries in hyphens, since no-new-long-dashes otherwise fires once
+  per file; and split a per-element Source no finer than the evidence names.
+- **Actor:** @missingbulb (owner), who asked what the first run had taught the skill.
+- **Model:** Claude Opus 5.
+- **Landed:** #2169

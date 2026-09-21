@@ -232,7 +232,7 @@ test('brief reads each element\'s events from its carrier\'s history, sets a swe
     assert.equal(code, 0);
     assert.match(out, /5 empty files · 4 pack-local commits · 1 sweep/);
     assert.match(out, /```entry born-in-sweep\n## 2026-\d{2}-\d{2} · born · Hyphens everywhere \(#9\)/, 'the element a sweep bore is born there all the same');
-    assert.match(out, /## sweeps[\s\S]*#9/, 'the five-pack commit is a sweep');
+    assert.match(out, /- #9 [^\n]* · sweep · /, 'the five-pack commit is marked a sweep on its row');
     assert.doesNotMatch(out, /```entry doing-thing\n## \d{4}-\d{2}-\d{2} · reworded · Hyphens/, 'a sweep is never drafted onto an element');
     assert.match(out, /```entry doing-thing\n## 2026-\d{2}-\d{2} · born · seed \(#7\)/);
     assert.match(out, /```entry-defaults\n- \*\*Actor:\*\* @tester\.\n- \*\*Model:\*\* Claude Opus 5, per the commit trailer\.\n- \*\*Landed:\*\* #8 · pack version 2\.\n```\n```entry doing-thing\n## 2026-\d{2}-\d{2} · reworded · Said better \(#8\)\n```/, 'the commit\'s shared fields are written once, ahead of its entries');
@@ -246,6 +246,40 @@ test('brief reads each element\'s events from its carrier\'s history, sets a swe
     assert.match(out, /## the manifest, packs\/alpha\/pack\.mjs\n[^\n]*\n> alpha: the pack for doing things\.\n>\n> No fingerprint: a thing is declared\.\n- #12 \d{4}-\d{2}-\d{2} Hide alpha\n/, 'the header comment is quoted and the manifest\'s later commits are listed, the bump left out');
     assert.match(out, /```entry _pack\n## 2026-\d{2}-\d{2} · born · seed \(#7\)/);
     assert.doesNotMatch(out, /```entry _pack\n## [^\n]* · reworded/, '_pack drafts its birth only');
+  } finally { removeTree(root); }
+});
+
+test('brief inventories every commit that touched the pack, so one it drafts nothing for is still read', async () => {
+  const root = briefRepo();
+  try {
+    const { code, out } = await capture(['brief', 'alpha'], root);
+    assert.equal(code, 0);
+    assert.match(out, /## every commit that touched this pack/);
+    assert.match(out, /- #12 \d{4}-\d{2}-\d{2} Hide alpha · pack\.mjs · NOTHING DRAFTED/, 'a commit no element drafts is named, not silently dropped');
+    assert.match(out, /- #9 \d{4}-\d{2}-\d{2} Hyphens everywhere · RULES\.md, [^·]*· sweep · born-in-sweep \(born\), doing-another \(set aside\)/, 'a sweep is a row of the same table, carrying the files it touched under this pack and the elements it was set aside for');
+    assert.match(out, /- #11 \d{4}-\d{2}-\d{2} Bump pack versions[^\n]*NOTHING DRAFTED/, 'a version bump is a row too - the session judges it, the brief does not');
+    assert.match(out, /- #8 \d{4}-\d{2}-\d{2} Said better · RULES\.md · version 2 "Said better \(#8\)" · doing-thing/, 'the version row that names the commit rides with it');
+  } finally { removeTree(root); }
+});
+
+test('brief lists a version row whose pull request no commit in the pack names', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/provenance/VERSIONS.md'), '| Version | Date | What changed |\n|---|---|---|\n| 3 | 2026-08-03 | The rationale moved out of the rule (#88). |\n| 2 | 2026-08-02 | Said better (#8) |\n| 1 | 2026-07-01 | seed (#7) |\n');
+    commitAs(root, 'Record version 3 (#13)');
+    const { out } = await capture(['brief', 'alpha'], root);
+    assert.match(out, /## version rows no commit here claims[\s\S]*?- 3 2026-08-03 The rationale moved out of the rule \(#88\)\./, 'a row naming a pull request the subjects never carry is the decision the brief would otherwise lose');
+  } finally { removeTree(root); }
+});
+
+test('brief inventories the README\'s sections, so history without a date or a number is still weighed', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/README.md'), '# alpha pack\n\nDeclared by a project doing things.\n\n## Rules\n\n| Rule |\n|---|\n| Doing a thing |\n\n### Why a thing is done this way\n\nBecause the other way cost us a rewrite, twice over, and nobody wanted a third.\n');
+    commitAs(root, 'A README for alpha (#14)');
+    const { out } = await capture(['brief', 'alpha'], root);
+    assert.match(out, /## README sections/);
+    assert.match(out, /- ### Why a thing is done this way · \d+ bytes of prose/, 'a section with no date and no number is still put in front of the session');
   } finally { removeTree(root); }
 });
 
