@@ -2,13 +2,8 @@ import { isPage, STAMP } from './public/version.mjs';
 
 // Being a public website, whatever serves it: the version the site carries and the
 // stamp its pages show, and the ways a page that fetches its own data goes quietly
-// stale. Nothing here builds, serves or releases a site — that is a hosting pack's,
-// one per host, declared beside this one — and nothing here names one: a hosting
-// pack's release reaches this pack's `public/version.mjs` to advance the version as
-// part of cutting a release, and goes out without a bump when the file is absent.
-//
-// Fingerprinted by a page carrying the version stamp, the pack's own artifact —
-// declaring is still what activates the pack.
+// stale. A hosting pack's release reaches `public/version.mjs` to advance the version
+// as part of cutting a release, and goes out without a bump when the file is absent.
 const carriesAStamp = (ctx) => ctx.tracked.some((f) => isPage(f) && new RegExp(STAMP.source).test(ctx.read(f) ?? ''));
 
 export default {

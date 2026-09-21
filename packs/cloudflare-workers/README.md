@@ -31,14 +31,3 @@ repo reads nothing here.
   `src/content/docs/<product>/platform/limits.mdx`) — reconciled through 2026-09-15, against the
   request-body, D1, R2, Vectorize dimension-immutability, and Workflow step-result-size limits
   this pack's rules cite.
-
-Provenance: distilled from two fleet members each shipping a Cloudflare Workers backend.
-
-| Member | What it evidenced |
-|---|---|
-| `missingbulb/hitbut` | `dev/gates/schema-migrations.ts` + `.test.ts` (the expand/migrate/contract hazard classifier, keyed on `-- expand:`/`-- contract-of:` markers), `dev/tools/cloudflare.ts` + `dev/gates/provisioning.test.ts` (the present/missing/unknown split, and the Vectorize dimension refusal), `dev/tools/origins.ts` (reading a Pages/Worker production hostname off the platform's own listing rather than a deploy's per-deployment alias), and `docs/architecture/DESIGN.md` (one Worker + one Workflow over D1/R2/Vectorize, bindings touched from a single module) |
-| `missingbulb/WIP` (`backend/`) | `backend/package.json` + `dev/design/architecture.md` (the Worker request-body cap routed around via a presigned R2 PUT validated after the upload-complete callback, the Workflow step-result cap and its per-step-CPU-vs-unlimited-wall-clock budget, the Workers-runtime-can't-run-native-binaries boundary with a Container carrying ffmpeg as its one job, `aws4fetch` signing the R2 presigned PUT, and its own local pack recording the `developers.cloudflare.com` egress block and its `raw.githubusercontent.com/cloudflare/cloudflare-docs` mirror) |
-
-Every rule above is backed by at least one member's real, working code or its own coded gate —
-the D1 migration discipline and the missing/unknown provisioning split each ride a committed
-test, not narrative alone.

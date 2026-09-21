@@ -1,10 +1,33 @@
-## 2026-09-18 · born · converted from references.md (RULES-4)
-- **Reason:** A stale file carries a perfectly valid hash *of itself*, and an internal `"version"`
-  field states which generation it is, never whether that generation is current — so caching the
-  manifest does not save a round-trip, it moves the staleness up a level and hides it better. On
-  length: a correction applied uniformly across a file is routinely byte-length-neutral — a
-  timezone fix rewriting every `16:25` to `17:25` moved **0 bytes** of a 3.1 MB catalogue while
-  changing the meaning of every record in it. Record the manifest's hash beside the entry as you
-  write it, so the check is a string compare rather than megabytes through a digest on the critical
-  path of every load.
-- **Mechanism:** prose
+## 2026-08-09 · born · static-website: four rules for the data the page fetches (#727)
+- **Source:** missingbulb/EdFringeNow#309, fixed in missingbulb/EdFringeNow#310: an events site drew
+  all 4,122 of its listings as sold out, mid-season. Its catalogue and its ticket-availability
+  sidecar were split so each could cache on its own clock, four days and one; a commit in between
+  corrected every performance time by an hour, moving every key in the sidecar. A visitor holding
+  the older catalogue joined 3,751 of 60,115 statuses, and the 94% that missed came back
+  status-unknown, which every consumer read as not-bookable. Nothing failed: no error, no console
+  line, and, both files being inside their TTLs, no network request at all.
+- **Reason:** a stale file carries a perfectly valid hash of itself, and an internal `"version"`
+  field states which generation it is, never whether that generation is current, so caching the
+  manifest does not save a round-trip: it moves the staleness up a level and hides it better. Nor is
+  length a stand-in for a hash, since a correction applied uniformly across a file is routinely
+  byte-length-neutral: the timezone fix rewriting every `16:25` to `17:25` moved 0 bytes of a 3.1 MB
+  catalogue while changing the meaning of every record in it. Record the manifest's hash beside the
+  entry as it is written, so the check is a string compare rather than megabytes through a digest on
+  the critical path of every load.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Mechanism:** prose.
+- **Rejected:** a check for any of the four. They are judgements about a design rather than shapes a
+  check can read off a tree.
+- **Landed:** #727 · pack version 2.
+
+## 2026-09-18 · reworded · Cut both packs' rules to the ration, evidence into references.md (#2101)
+- **Reason:** every rule ran 150 to 200 words where the format asks for one sentence near 40, and
+  several opened on a state of the world rather than on the act that brings a reader to them. Each
+  is now keyed to what the reader is doing and carries only the consequence needed to apply it under
+  pressure. Nothing is weakened and nothing is strengthened: the rationale and the evidence move to
+  the pack's `references.md`, which no session loads, so a later pass can reaffirm or retire a rule
+  from its recorded reason.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Landed:** #2101 · pack version 60913.2.

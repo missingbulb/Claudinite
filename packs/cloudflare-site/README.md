@@ -1,6 +1,6 @@
 # cloudflare-site pack
 
-Active when a near-root `wrangler.json`/`.jsonc` declares `assets.directory` — a repo whose
+Active when a near-root `wrangler.json`/`.jsonc` declares `assets.directory`: a repo whose
 wrangler config describes a *site* rather than a Worker backend. It brings the nightly
 `site-release` task (advance the version where public-website is declared, push the bump,
 upload the tree, report what the domain answered and whether it shows that version), and the
@@ -10,16 +10,14 @@ honest.
 ## What this pack does not own
 
 The version. [public-website](../public-website/README.md) owns the scheme and the page stamp,
-and the release reaches that pack's `public/version.mjs` to advance it when the pack is declared
-— a repo that declares only this one is uploaded unversioned. No other host is named here: a site
-is served from Cloudflare or from something else, never both.
+and the release reaches that pack's `public/version.mjs` to advance it when the pack is declared;
+a repo that declares only this one is uploaded unversioned.
 
-The Cloudflare account's own steps — the zone, the account id, the API token — are the pack's
+The Cloudflare account's own steps, the zone, the account id and the API token, are the pack's
 `adoptionHandover`, filed as a tracking issue when the pack is adopted. What a previous host
 left behind is **not** on that list: an inherited DNS record on a claimed hostname is resolved
 in public DNS by the release before it consumes a version number, and a workflow or `CNAME` file
-still publishing is a check's finding. A checklist of steps that are no-ops for most adopters
-teaches its reader to skim it.
+still publishing is a check's finding.
 
 ## Rules (`RULES.md`)
 
@@ -33,7 +31,7 @@ teaches its reader to skim it.
 
 | Skill | Trigger |
 |---|---|
-| [`releasing-a-cloudflare-site`](skills/releasing-a-cloudflare-site/SKILL.md) | any edit of a `wrangler.json`/`.jsonc` or the release task — held by the guard until loaded |
+| [`releasing-a-cloudflare-site`](skills/releasing-a-cloudflare-site/SKILL.md) | any edit of a `wrangler.json`/`.jsonc` or the release task, held by the guard until loaded |
 
 ## Checks
 

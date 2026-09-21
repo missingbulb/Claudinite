@@ -1,19 +1,9 @@
 // Technology-plus-aspect pack: a static tree served from Cloudflare Workers static
-// assets on its own domain — the nightly release that uploads it, the boundary of what
+// assets on its own domain, the nightly release that uploads it, the boundary of what
 // reaches a public URL, and the parts of the deployment only a person holding the
-// Cloudflare account can do.
-//
-// WHAT IS NOT HERE: the version. public-website owns the scheme and the page stamp,
-// and the release reaches that pack's `public/version.mjs` to advance it — when the
-// pack is declared. A repo that declares only this one is uploaded unversioned. And
-// nothing here knows any other host: a site is served from Cloudflare or from
-// something else, never both, so no other hosting pack is named.
-//
-// Fingerprint: a near-root JSON wrangler config that declares `assets.directory`.
-// The sibling cloudflare-workers pack fingerprints on a wrangler config of any
-// shape (it is about the runtime and its bindings); a config declaring a published
-// directory is a site, which is what this pack is about — so a Worker backend with
-// no assets carries none of this.
+// Cloudflare account can do. The version is not here: public-website owns the scheme
+// and the page stamp, and the release reaches that pack's `public/version.mjs` to
+// advance it when the pack is declared.
 import { parseWranglerConfig, wranglerConfigPath } from './lib.mjs';
 
 const servesASite = (ctx) => {
