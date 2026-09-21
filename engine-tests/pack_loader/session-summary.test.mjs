@@ -190,18 +190,18 @@ test('a repo that declares no pack runs no Claudinite, and hears nothing', () =>
   } finally { removeTree(corpus); removeTree(project); }
 });
 
-test('a pack poured for this session is left out of every count', () => {
-  // What it loaded is already stated, by the step that poured it, on the facet channel
+test('a pack copied for this session is left out of every count', () => {
+  // What it loaded is already stated, by the step that copied it, on the facet channel
   // this line folds in — so counting it here would state one set of rules twice, under
   // two names, and tell a reader their corpus grew when it did not.
   const corpus = makeCorpus({ alpha: { proseText: Array.from({ length: 150 }, (_, i) => `w${i}`).join(' ') } });
   const project = makeProject({ packs: ['alpha'] });
-  const poured = join(project, '.claudinite', 'temp', 'packs', 'current_user');
+  const copied = join(project, '.claudinite', 'temp', 'packs', 'current_user');
   try {
     const before = run(corpus, project);
-    mkdirSync(poured, { recursive: true });
-    writeFileSync(join(poured, 'pack.mjs'), 'export default { ruleRoutingGuidance: { belongs: "a person", excludes: "a project" } };\n');
-    writeFileSync(join(poured, 'RULES.md'), Array.from({ length: 900 }, (_, i) => `x${i}`).join(' '));
-    assert.equal(run(corpus, project), before, 'the poured pack moves neither the pack count nor the token weight');
+    mkdirSync(copied, { recursive: true });
+    writeFileSync(join(copied, 'pack.mjs'), 'export default { ruleRoutingGuidance: { belongs: "a person", excludes: "a project" } };\n');
+    writeFileSync(join(copied, 'RULES.md'), Array.from({ length: 900 }, (_, i) => `x${i}`).join(' '));
+    assert.equal(run(corpus, project), before, 'the copied pack moves neither the pack count nor the token weight');
   } finally { removeTree(corpus); removeTree(project); }
 });

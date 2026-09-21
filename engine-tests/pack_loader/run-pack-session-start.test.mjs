@@ -204,7 +204,7 @@ test('no channel configured drops the facet and leaves the contribution whole', 
 // THE PREPARE PHASE — the same runner, one phase earlier, for a pack that has to PUT
 // SOMETHING THERE before the steps that read the session's pack set (the skill mount, the
 // self-test, the rules index) go looking. The contract stays generic: core never learns
-// what a step pours, only that a pack shipped one.
+// what a step copies, only that a pack shipped one.
 
 test('--prepare runs session-prepare.mjs and leaves session-start.mjs alone', () => {
   const corpus = makeCorpus({
@@ -240,29 +240,29 @@ test('a prepare step is bounded and fail-soft exactly like a start step', () => 
   } finally { removeTree(corpus); removeTree(project); }
 });
 
-test('the prepare phase leaves the poured-prose file the rules index imports', () => {
-  // The index carries a literal import of it wherever a pack that pours exists, and an
+test('the prepare phase leaves the copied-prose file the rules index imports', () => {
+  // The index carries a literal import of it wherever a pack that copies one in exists, and an
   // import with no file behind it has no defined behavior on the memory channel. So the
   // runner writes the empty answer rather than leave the question open.
-  const withPour = makeCorpus({ alpha: { prepare: 'process.stdout.write("x\\n");' } });
+  const withCopy = makeCorpus({ alpha: { prepare: 'process.stdout.write("x\\n");' } });
   const project = makeProject({ packs: ['alpha'] });
   try {
-    run(withPour, project, {}, ['--prepare']);
+    run(withCopy, project, {}, ['--prepare']);
     const file = join(project, '.claudinite', 'temp', 'packs', 'current_user', 'RULES.md');
     assert.match(readFileSync(file, 'utf8'), /No personal pack/);
 
-    // And a step that poured for real owns the file — the runner never writes over it.
+    // And a step that copied for real owns the file — the runner never writes over it.
     writeFileSync(file, 'MINE\n');
-    run(withPour, project, {}, ['--prepare']);
+    run(withCopy, project, {}, ['--prepare']);
     assert.equal(readFileSync(file, 'utf8'), 'MINE\n');
-  } finally { removeTree(withPour); removeTree(project); }
+  } finally { removeTree(withCopy); removeTree(project); }
 });
 
-test('a repo whose packs pour nothing ends the session with no poured directory at all', () => {
-  const noPour = makeCorpus({ alpha: { step: 'process.stdout.write("x\\n");' } });
+test('a repo whose packs copy nothing ends the session with no copied directory at all', () => {
+  const noCopy = makeCorpus({ alpha: { step: 'process.stdout.write("x\\n");' } });
   const project = makeProject({ packs: ['alpha'] });
   try {
-    run(noPour, project, {}, ['--prepare']);
+    run(noCopy, project, {}, ['--prepare']);
     assert.equal(existsSync(join(project, '.claudinite', 'temp')), false);
-  } finally { removeTree(noPour); removeTree(project); }
+  } finally { removeTree(noCopy); removeTree(project); }
 });

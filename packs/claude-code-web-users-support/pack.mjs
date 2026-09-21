@@ -16,7 +16,7 @@
 // adopts Claudinite, so it is both the wrong host for one group's people and the wrong
 // authority on where they live.
 //
-// IT IS LITERALLY A PACK, `<path>/<email>/` in the store, poured into the session's own
+// IT IS LITERALLY A PACK, `<path>/<email>/` in the store, copied into the session's own
 // pack root by `session-prepare.mjs` and loaded by the same engine that loads this one.
 // That is what makes it more than prose: every carrier a pack has is a carrier a person
 // has, with no second delivery path per capability.

@@ -8,3 +8,10 @@
   whether a person's pack holds a project convention is a judgment about content in another
   repository, which nothing here can read.
 - **Landed:** #2188
+
+## 2026-09-21 · weakened · it no longer promises an `env` declaration will be installed (#2189)
+- **Reason:** a pack's `env` is installed when the container is built, from the repository's own
+  declared packs. A pack that arrives at session start has missed that, so the rule was offering
+  something the mechanism cannot do.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #2189

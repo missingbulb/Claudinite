@@ -1,8 +1,8 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { resolveStore, isUsableIdentity } from '../store.mjs';
+import { resolveStore, isUsableIdentity } from '../user_pack_address.mjs';
 
-// A person's pack is addressed by their IDENTITY and nothing else: store.mjs builds
-// `<path>/<email>` from CLAUDE_CODE_USER_EMAIL, and session-prepare.mjs pours exactly that
+// A person's pack is addressed by their IDENTITY and nothing else: user_pack_address.mjs builds
+// `<path>/<email>` from CLAUDE_CODE_USER_EMAIL, and session-prepare.mjs copies exactly that
 // directory (locally when this tree is the store, over the network otherwise). There is no
 // index, no registry and no fallback - a directory whose name is not a usable identity is
 // simply never opened by anyone.
@@ -15,7 +15,7 @@ import { resolveStore, isUsableIdentity } from '../store.mjs';
 // notices only by the absence of behavior they were expecting.
 //
 // THIS IS A PROPERTY OF BEING A STORE, not of any one fleet's store repo, which is why it
-// sits here beside store.mjs rather than in the store repo's own local pack: it imports the
+// sits here beside user_pack_address.mjs rather than in the store repo's own local pack: it imports the
 // reader's `resolveStore`/`isUsableIdentity` as siblings, so the check can never be stricter
 // or looser than the code that does the opening.
 //
@@ -32,7 +32,7 @@ const rule = {
   severity: 'advisory',
   description: 'Every entry in a personal-pack store this repo holds is README.md or an <identity>/ pack directory',
   doc: 'packs/claude-code-web-users-support/RULES.md',
-  why: 'the reader pours a person\'s pack from <path>/<email>/ and fails soft on a miss, so a differently-named directory is never opened and nothing ever reports it',
+  why: 'the reader copies a person\'s pack from <path>/<email>/ and fails soft on a miss, so a differently-named directory is never opened and nothing ever reports it',
 
   // `ctx.files` is the tracked, non-vendored set - the store is committed content, and an
   // uncommitted file is not published to the fleet yet anyway.
@@ -63,7 +63,7 @@ const rule = {
       if (isUsableIdentity(top)) return [];
       return [finding(rule, {
         file: `${prefix}${top}`,
-        what: `is not an identity the reader can address - it pours ${store.path}/<email>/ for the exact CLAUDE_CODE_USER_EMAIL the harness supplies`,
+        what: `is not an identity the reader can address - it copies ${store.path}/<email>/ for the exact CLAUDE_CODE_USER_EMAIL the harness supplies`,
         fix: `rename it to that person's exact identity, case included, or move it out of ${store.path}/`,
       })];
     });

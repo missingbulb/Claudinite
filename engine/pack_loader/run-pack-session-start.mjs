@@ -49,15 +49,15 @@ import { settingsPath } from '../settings-file.mjs';
 import { TEMP_PACKS_SUBDIR, SESSION_USER_PACK } from './pack-registry.mjs';
 import { PREPARE_FILE, shipsPrepareStep } from './pack-conventions.mjs';
 
-// The rules index imports the poured user pack's prose by a literal path, so that path
-// must resolve in every session - including the ones where nothing was poured, which is
-// every session in a repo whose packs pour nothing for this person. An import with no
+// The rules index imports the copied user pack's prose by a literal path, so that path
+// must resolve in every session - including the ones where nothing was copied, which is
+// every session in a repo whose packs copy nothing for this person. An import with no
 // file behind it has no defined behavior on the memory channel and no way to report one,
 // so the runner writes the empty answer rather than leave the question open.
 //
-// Written ONLY where a step exists that could pour: the index only carries the import
+// Written ONLY where a step exists that could copy: the index only carries the import
 // there, and a repo with no such pack should end the session with no such directory.
-// Never over content - a step that has already poured this session owns the file.
+// Never over content - a step that has already copied this session owns the file.
 function ensureSessionUserProse(projectRoot, packs) {
   if (!packs.some(shipsPrepareStep)) return;
   const dir = join(projectRoot, TEMP_PACKS_SUBDIR, SESSION_USER_PACK);
@@ -65,7 +65,7 @@ function ensureSessionUserProse(projectRoot, packs) {
   if (existsSync(file)) return;
   try {
     mkdirSync(dir, { recursive: true });
-    writeFileSync(file, '<!-- No personal pack was poured into this session. -->\n');
+    writeFileSync(file, '<!-- No personal pack was copied into this session. -->\n');
   } catch { /* an unwritable temp root is the step's problem to report, not the runner's */ }
 }
 
@@ -75,9 +75,9 @@ export const STEP_FILE = 'session-start.mjs';
 
 // THE EARLIER PHASE this runner also serves, under `--prepare`: the steps that run before
 // anything reads the session's pack set - the skill mount, the self-test, the rules index.
-// A pack that must PUT SOMETHING THERE for those to find (a pack poured into the session's
+// A pack that must PUT SOMETHING THERE for those to find (a pack copied into the session's
 // temp root, a file the mount will link) cannot do it from session-start.mjs, which runs
-// after all of them have already looked. The file name and the "does this pack pour?"
+// after all of them have already looked. The file name and the "does this pack copy?"
 // predicate are pack-conventions.mjs's, with every other structural answer about a pack
 // directory.
 //

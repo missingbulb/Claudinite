@@ -1,5 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { resolveStore, isUsableIdentity } from '../store.mjs';
+import { resolveStore, isUsableIdentity } from '../user_pack_address.mjs';
 // A namespace import, guarded in `run`: the pack and engine lanes deliver on separate
 // cadences, and a member whose engine predates the helper must load this pack rather
 // than fault on a missing named export.
@@ -18,10 +18,12 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 const PACK = 'claude-code-web-users-support';
 
 // @deprecated The sidecar folder a person's provenance sat in while the store was flat and
-// could hold nothing but `<email>.md`. A member's own local pack may import it, and the two
-// lanes deliver on separate cadences, so the name stays until the tolerance in store.mjs goes.
-// @legacy-tolerance advisory:person-asking-change retire:#2188
+// could hold nothing but `<email>.md`. Nothing here calls it and no layout has it any more; it
+// stays only because a member's own local pack may have imported it, and the pack and engine
+// lanes deliver on separate cadences.
+// @legacy-tolerance advisory:none retire:#2188
 export const provenanceDirOf = (store) => `${store.path}-provenance`;
+
 
 const rule = {
   id: 'preferences-provenance',

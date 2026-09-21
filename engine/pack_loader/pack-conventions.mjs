@@ -120,8 +120,8 @@ export function applyPackConventions(mod, packDir, name) {
 // convention here - a pack contributes one by shipping the file.
 //
 // The name and the predicate live in this module, not with the runner that spawns it,
-// because the rules index also has to ask the question (a repo whose packs pour nothing
-// imports nothing poured) and the runner is a CLI entry point: importing it to borrow one
+// because the rules index also has to ask the question (a repo whose packs copy nothing
+// imports nothing copied) and the runner is a CLI entry point: importing it to borrow one
 // constant runs it.
 export const PREPARE_FILE = 'session-prepare.mjs';
 

@@ -29,7 +29,7 @@ export const localPacksDir = (root) => join(resolve(root), LOCAL_PACKS_SUBDIR);
 // @legacy-tolerance advisory:none retire:#1640
 export const LEGACY_LOCAL_PACKS_SUBDIR = join('.claudinite', 'local_packs');
 
-// A pack POURED INTO THE SESSION rather than tracked: `.claudinite/temp/packs/<name>/`,
+// A pack COPIED INTO THE SESSION rather than tracked: `.claudinite/temp/packs/<name>/`,
 // written at session start by some pack's session-prepare step and gone with the
 // container. It is the root for content that belongs to the PERSON in front of the
 // session rather than to the repository - which no tracked tree can carry, because the
@@ -41,7 +41,7 @@ export const LEGACY_LOCAL_PACKS_SUBDIR = join('.claudinite', 'local_packs');
 //
 // ACTIVATION IS PRESENCE. A tracked pack is activated by the repo's declaration, which
 // is how a repository chooses what governs it. Nothing here is the repository's to
-// declare: the step that poured the directory already decided, for this session and this
+// declare: the step that copied the directory already decided, for this session and this
 // person, and a declaration naming a person would put one session's identity in a file
 // every other person reads.
 export const TEMP_PACKS_SUBDIR = join('.claudinite', 'temp', 'packs');
@@ -50,7 +50,7 @@ export const tempPacksDir = (root) => join(resolve(root), TEMP_PACKS_SUBDIR);
 // The one directory under that root whose prose reaches the session through the memory
 // channel: the rules index carries a literal import of it (generate-rules-index.mjs), so
 // the name is fixed rather than discovered - an index written at converge time cannot see
-// a directory a session will pour hours later. One name, one import, one pack: a person
+// a directory a session will copy hours later. One name, one import, one pack: a person
 // brings a pack, not a shelf.
 export const SESSION_USER_PACK = 'current_user';
 
@@ -285,11 +285,11 @@ async function scanPackDir(dir, { local, temp, subdir }, errors) {
       workRules: [...(mod.workRules ?? scanned.workRules ?? []), ...declared.filter((r) => r.scope === 'work' || r.scope === 'action')],
     }), dir: packDir, local: Boolean(local), temp: Boolean(temp) };
     // A task is scheduled work over a repository, picked up by a runner reading the
-    // repo's tracked packs. A poured pack is neither tracked nor there tomorrow, so a
+    // repo's tracked packs. A copied pack is neither tracked nor there tomorrow, so a
     // task it declares can never be picked up - report it rather than run half of it.
     if (temp && existsSync(join(packDir, 'tasks'))) {
       errors.push({
-        what: `the poured pack in ${rel} ships tasks/, which nothing will ever run`,
+        what: `the copied pack in ${rel} ships tasks/, which nothing will ever run`,
         fix: 'remove tasks/ from the pack - scheduled work belongs to a tracked pack in the repository it runs over',
         dir: packDir,
       });
@@ -352,14 +352,14 @@ export async function discoverPacks({ localRoot, session = false } = {}) {
   const local = localRoot
     ? await scanPackDir(localPacksDir(localRoot), { local: true, subdir: LOCAL_PACKS_SUBDIR }, errors)
     : [];
-  // ASKED FOR, never assumed. A poured pack governs the SESSION - its prose, its skills,
+  // ASKED FOR, never assumed. A copied pack governs the SESSION - its prose, its skills,
   // its checks - and says nothing about the repository: a conformance sweep over the
   // shelf, a vendoring pass, a catalog generator would all read one person's pack as a
   // pack the repo carries. So the session-time readers opt in and everything else is
   // answered as if the directory were not there, which in their checkout it usually is not.
   //
-  // Poured last, so a name already taken by the canon or by the repo's own packs keeps its
-  // tracked owner: what a session pours extends the repository, exactly as a local pack
+  // Copied last, so a name already taken by the canon or by the repo's own packs keeps its
+  // tracked owner: what a session copies extends the repository, exactly as a local pack
   // extends the canon, and may not silently replace either.
   const temp = session && localRoot
     ? await scanPackDir(tempPacksDir(localRoot), { temp: true, subdir: TEMP_PACKS_SUBDIR }, errors)
@@ -369,11 +369,11 @@ export async function discoverPacks({ localRoot, session = false } = {}) {
   for (const pack of [...canon, ...local, ...temp]) {
     if (byId.has(pack.id)) {
       const first = byId.get(pack.id);
-      const origin = (p) => (p.temp ? 'a poured pack' : p.local ? 'a local pack' : 'the canon');
+      const origin = (p) => (p.temp ? 'a copied pack' : p.local ? 'a local pack' : 'the canon');
       errors.push({
         what: `pack id "${pack.id}" is declared twice - by ${origin(first)} and ${origin(pack)}`,
         fix: pack.temp
-          ? `rename the poured pack in ${TEMP_PACKS_SUBDIR}/ - it may not shadow a pack this repository tracks`
+          ? `rename the copied pack in ${TEMP_PACKS_SUBDIR}/ - it may not shadow a pack this repository tracks`
           : `rename the local pack in ${LOCAL_PACKS_SUBDIR}/ - a local pack id must be unique and may not shadow a canon pack`,
         dir: pack.dir,
       });
@@ -447,7 +447,7 @@ export const packEntryId = (entry) => {
 // No TRACKED pack is active by default. Activation is exactly the project's declaration
 // in .claudinite-settings.json (bootstrap's --init seeds the default-on packs).
 //
-// A POURED pack is active by being there. Its directory was written this session, by a
+// A COPIED pack is active by being there. Its directory was written this session, by a
 // step the repo's declaration already activated, for the person the session belongs to -
 // so the declaration that would govern it has been made, one level up, and repeating it
 // per person in a shared file is the thing that shape exists to avoid.

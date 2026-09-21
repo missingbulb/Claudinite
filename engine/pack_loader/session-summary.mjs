@@ -72,8 +72,8 @@ try {
 
   const { loadPacks, isActive, bundledSkillSources } = await import(join(loaderDir, 'pack-registry.mjs'));
   const packs = await loadPacks({ localRoot: projectRoot, session: true });
-  // A pack POURED for the person in this session is left out of every count here. What it
-  // loaded is already stated, by the step that poured it, on the facet channel this line
+  // A pack COPIED for the person in this session is left out of every count here. What it
+  // loaded is already stated, by the step that copied it, on the facet channel this line
   // folds in - counting it again would state one set of rules twice, under two names.
   const active = packs.filter((pack) => isActive(pack, { packs: declared }) && !pack.temp);
   // Nothing active means this repo runs no Claudinite. Nothing loaded, so there

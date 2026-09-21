@@ -49,9 +49,9 @@ test('the index names exactly the active packs — no more, no fewer', async () 
   const expected = active
     .filter((p) => p.prose)
     .map((p) => p.id)
-    // The pack poured for the person in front of the session is not a pack this repo
+    // The pack copied for the person in front of the session is not a pack this repo
     // declares and cannot be: it is written at session start, for whoever is here. The
-    // index names it by a literal wherever a declared pack pours, so it is expected here
+    // index names it by a literal wherever a declared pack copies, so it is expected here
     // on the same condition.
     .concat(active.some(shipsPrepareStep) ? [SESSION_USER_PACK] : [])
     .sort();
@@ -77,7 +77,7 @@ test('every import in the committed index resolves to a file that exists', () =>
   const text = readFileSync(join(ROOT, RULES_INDEX_FILE), 'utf8');
   const paths = text.split('\n').filter((l) => l.startsWith('@')).map((l) => l.slice(1));
   assert.ok(paths.length, 'the index imports nothing');
-  // Every import but one names a tracked file. The exception is the pack poured for the
+  // Every import but one names a tracked file. The exception is the pack copied for the
   // person in front of the session, which no checkout carries and every session writes —
   // the step runner guarantees it, even empty, before anything reads the index.
   const committed = paths.filter((rel) => !rel.startsWith('temp/'));

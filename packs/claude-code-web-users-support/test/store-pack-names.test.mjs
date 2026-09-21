@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import rule from '../worldRules/store-file-names.mjs';
-import { folderFor, resolveStore } from '../store.mjs';
+import { packDirFor, resolveStore } from '../user_pack_address.mjs';
 
 // See-it-fail proof for preferences-store-file-names. The violating fixtures are
-// directories the reader provably never opens; the clean one is exactly what store.mjs
+// directories the reader provably never opens; the clean one is exactly what user_pack_address.mjs
 // addresses — asserted against the real reader rather than restated, so the test cannot
 // agree with a check that has drifted away from the code doing the opening.
 const STORE = { repo: 'owner/store' };
@@ -23,18 +23,18 @@ test('a directory not named for an identity is found — and really is unaddress
   assert.match(found[0].what, /not an identity the reader can address/);
   // the defect the finding claims, demonstrated against the real reader
   const store = resolveStore(STORE);
-  assert.equal(folderFor(store, 'arielra@gmail.com'), 'preferences/arielra@gmail.com');
-  assert.notEqual(folderFor(store, 'arielra@gmail.com'), 'preferences/ariel');
+  assert.equal(packDirFor(store, 'arielra@gmail.com'), 'preferences/arielra@gmail.com');
+  assert.notEqual(packDirFor(store, 'arielra@gmail.com'), 'preferences/ariel');
 });
 
-test('the identity form is clean — and is exactly what the reader pours', () => {
+test('the identity form is clean — and is exactly what the reader copies', () => {
   const files = [
     'preferences/README.md',
     'preferences/arielra@gmail.com/RULES.md',
     'preferences/arielra@gmail.com/skills/pep-talk/SKILL.md',
   ];
   assert.deepEqual(rule.run(ctx(files)), []);
-  assert.ok(files[1].startsWith(`${folderFor(resolveStore(STORE), 'arielra@gmail.com')}/`));
+  assert.ok(files[1].startsWith(`${packDirFor(resolveStore(STORE), 'arielra@gmail.com')}/`));
 });
 
 test('a file loose in the store is found — a person is a directory now', () => {

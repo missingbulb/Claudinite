@@ -8,14 +8,14 @@
 
 - **A person asking to record their personal rules with nothing there yet** - create
   `<path>/<email>/RULES.md` in that store repo, the directory named for their exact identity,
-  case included: the reader pours `<path>/<email>/` and nothing else, so any other name is
-  silently never poured. (person-asking-record)
+  case included: the reader copies `<path>/<email>/` and nothing else, so any other name is
+  silently never copied. (person-asking-record)
 
-- **A person wanting a skill, check or toolchain of their own, not just rules** - put it in that
-  same directory, which is an ordinary pack: `skills/<name>/SKILL.md`, `worldRules/`,
-  `declared-checks.json`, an `env` declaration in a `pack.mjs` that sets neither `id` nor
-  `version`. It is poured into every session they open on a project declaring this pack, so it
-  may hold nothing a project owns. (person-wanting-skill)
+- **A person wanting a skill or a check of their own, not just rules** - put it in that same
+  directory, which is an ordinary pack: `skills/<name>/SKILL.md`, `worldRules/`,
+  `declared-checks.json`, and a `pack.mjs` setting neither `id` nor `version` where one is
+  needed at all. It is copied into every session they open on a project declaring this pack, so
+  it may hold nothing a project owns. (person-wanting-skill)
 
 - **A web session halt-gated on a missing toolchain requirement** — re-paste
   [`environment-setup-command.sh`](environment-setup-command.sh) whole and unedited into the

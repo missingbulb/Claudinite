@@ -47,7 +47,7 @@ export const RULES_INDEX_IMPORT = '@.claudinite/claudinite-rules.GENERATED.md';
 // `@` paths are POSIX in a memory file whatever the host separator is.
 const posix = (p) => p.split(sep).join('/');
 
-// The prose of the pack poured for the person in front of the session, as the index
+// The prose of the pack copied for the person in front of the session, as the index
 // addresses it. A literal, because the index is written when a repo converges and the
 // directory is written when a session starts: the generator has never seen it and cannot
 // discover it.
@@ -105,7 +105,7 @@ const prosePathIn = (pack, corpusRoot) => (
 export function ruleImports(active, { indexDir, corpusRoot }) {
   const imports = [];
   for (const pack of active) {
-    if (pack.temp) continue; // poured content rides the literal line below, never a discovered one
+    if (pack.temp) continue; // copied content rides the literal line below, never a discovered one
     if (!pack.prose) continue;
     const prosePath = prosePathIn(pack, corpusRoot);
     if (!existsSync(prosePath)) continue;
@@ -114,7 +114,7 @@ export function ruleImports(active, { indexDir, corpusRoot }) {
   }
   // LAST, and unconditional on anything being there: a person's own rules are read
   // against the project's, so they follow them. The import appears only where a pack
-  // that pours exists to fill it, and the step runner guarantees the file (even empty)
+  // that copies exists to fill it, and the step runner guarantees the file (even empty)
   // in every session of such a repo.
   if (active.some(shipsPrepareStep)) imports.push({ id: SESSION_USER_PACK, path: SESSION_USER_PROSE });
   return imports;

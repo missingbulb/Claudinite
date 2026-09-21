@@ -358,13 +358,13 @@ test('discoverPacks: a mounted pack still announcing its old id activates under 
   } finally { removeTree(root); }
 });
 
-// THE POURED ROOT — `.claudinite/temp/packs/`, written at session start by some pack's
+// THE COPIED ROOT — `.claudinite/temp/packs/`, written at session start by some pack's
 // prepare step and gone with the container. It is where content belonging to the PERSON in
 // front of the session lives, which no tracked tree can carry, and it is a pack root rather
 // than a bespoke channel so that everything a pack already gets — prose, skills, checks, an
 // `env` — is what that content gets.
 function makeTempRoot(packs, { local = {} } = {}) {
-  const root = mkdtempSync(join(tmpdir(), 'claudinite-poured-'));
+  const root = mkdtempSync(join(tmpdir(), 'claudinite-copied-'));
   for (const [name, files] of Object.entries(packs)) {
     for (const [rel, body] of Object.entries(files)) {
       const target = join(root, '.claudinite', 'temp', 'packs', name, rel);
@@ -382,7 +382,7 @@ function makeTempRoot(packs, { local = {} } = {}) {
 
 const MANIFEST = 'export default { ruleRoutingGuidance: { belongs: "a person", excludes: "a project" } };\n';
 
-test('discoverPacks: a poured pack is found, stamped temp, with its own prose and skills', async () => {
+test('discoverPacks: a copied pack is found, stamped temp, with its own prose and skills', async () => {
   const root = makeTempRoot({
     current_user: {
       'pack.mjs': MANIFEST,
@@ -393,34 +393,34 @@ test('discoverPacks: a poured pack is found, stamped temp, with its own prose an
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root, session: true });
     assert.deepEqual(errors.filter((e) => String(e.dir).includes('temp')), []);
-    const poured = packs.find((p) => p.temp);
-    assert.equal(poured.id, 'current_user');
-    assert.equal(poured.local, false);
-    assert.equal(poured.prose, 'RULES.md');
-    assert.deepEqual(poured.skills, ['pep-talk']);
-    assert.equal(poured.dir, join(root, '.claudinite', 'temp', 'packs', 'current_user'));
+    const copied = packs.find((p) => p.temp);
+    assert.equal(copied.id, 'current_user');
+    assert.equal(copied.local, false);
+    assert.equal(copied.prose, 'RULES.md');
+    assert.deepEqual(copied.skills, ['pep-talk']);
+    assert.equal(copied.dir, join(root, '.claudinite', 'temp', 'packs', 'current_user'));
     // Every tracked pack is stamped false, so nothing else is swept up by the flag.
     assert.ok(packs.filter((p) => p.id !== 'current_user').every((p) => p.temp === false));
   } finally { removeTree(root); }
 });
 
-test('isActive: a poured pack is active by being there, and needs no declaration', async () => {
-  // Nothing about it is the repository's to declare: the step that poured it already
+test('isActive: a copied pack is active by being there, and needs no declaration', async () => {
+  // Nothing about it is the repository's to declare: the step that copied it already
   // decided, for this session and this person, and a declaration naming a person would put
   // one session's identity in a file every other person reads.
   const root = makeTempRoot({ current_user: { 'pack.mjs': MANIFEST, 'RULES.md': '# Mine\n' } });
   try {
     const packs = await loadPacks({ localRoot: root, session: true });
-    const poured = packs.find((p) => p.temp);
-    assert.ok(isActive(poured, { packs: [] }));
-    assert.ok(isActive(poured, {}));
+    const copied = packs.find((p) => p.temp);
+    assert.ok(isActive(copied, { packs: [] }));
+    assert.ok(isActive(copied, {}));
     // and the flag alone carries it — no declaration of that id is what does the work
     assert.ok(!isActive({ id: 'current_user' }, { packs: [] }));
   } finally { removeTree(root); }
 });
 
-test('discoverPacks: a poured pack may not shadow a pack the repository tracks', async () => {
-  // What a session pours extends the repository, exactly as a local pack extends the
+test('discoverPacks: a copied pack may not shadow a pack the repository tracks', async () => {
+  // What a session copies extends the repository, exactly as a local pack extends the
   // canon, and may not silently replace either.
   const root = makeTempRoot(
     { basics: { 'pack.mjs': MANIFEST }, mine: { 'pack.mjs': MANIFEST } },
@@ -430,13 +430,13 @@ test('discoverPacks: a poured pack may not shadow a pack the repository tracks',
     const { packs, errors } = await discoverPacks({ localRoot: root, session: true });
     assert.equal(packs.filter((p) => p.id === 'basics' && p.temp).length, 0, 'the canon keeps its name');
     assert.equal(packs.find((p) => p.id === 'mine').local, true, 'the repo keeps its name');
-    assert.equal(errors.filter((e) => /poured pack/.test(e.what)).length, 2);
+    assert.equal(errors.filter((e) => /copied pack/.test(e.what)).length, 2);
   } finally { removeTree(root); }
 });
 
-test('discoverPacks: a poured pack declaring tasks is reported, since nothing can ever run them', async () => {
+test('discoverPacks: a copied pack declaring tasks is reported, since nothing can ever run them', async () => {
   // A task is scheduled work over a repository, picked up by a runner reading the repo's
-  // tracked packs. A poured pack is neither tracked nor there tomorrow.
+  // tracked packs. A copied pack is neither tracked nor there tomorrow.
   const root = makeTempRoot({
     current_user: { 'pack.mjs': MANIFEST, 'tasks/nightly/task.json': '{}\n' },
   });
@@ -446,7 +446,7 @@ test('discoverPacks: a poured pack declaring tasks is reported, since nothing ca
   } finally { removeTree(root); }
 });
 
-test('discoverPacks: a poured pack claiming an id other than its directory is reported', async () => {
+test('discoverPacks: a copied pack claiming an id other than its directory is reported', async () => {
   // The directory is the session's, not the store's: the address the rules index imports
   // is fixed, so a pack that renamed itself is a pack nothing would find.
   const root = makeTempRoot({
@@ -459,8 +459,8 @@ test('discoverPacks: a poured pack claiming an id other than its directory is re
   } finally { removeTree(root); }
 });
 
-test('discoverPacks: the poured root is opt-in — a reader that did not ask never sees it', async () => {
-  // A poured pack governs the SESSION and says nothing about the repository, so a
+test('discoverPacks: the copied root is opt-in — a reader that did not ask never sees it', async () => {
+  // A copied pack governs the SESSION and says nothing about the repository, so a
   // conformance sweep over the shelf, a vendoring pass or a catalog generator must be
   // answered as if the directory were not there.
   const root = makeTempRoot({ current_user: { 'pack.mjs': MANIFEST, 'RULES.md': '# Mine\n' } });

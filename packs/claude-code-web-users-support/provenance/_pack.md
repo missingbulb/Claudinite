@@ -23,3 +23,16 @@
   where git against the same repository is not. A shallow blob-filtered sparse clone is what reaches
   a private store at all.
 - **Landed:** #2188
+
+## 2026-09-21 · policy-changed · the metaphor went, and the single-file store with it (#2189)
+- **Reason:** the owner read the module's own summary back and named what it should have been
+  called: it copies a directory into a repo. "Pour" was a metaphor doing no work, and a file called
+  `store.mjs` said where something lived without saying what lived there. The legacy single-file
+  tolerance went at the same ask: converting the one store that exists is cheaper than carrying a
+  second address forever, and a window where an unconverged member loads nobody's rules is
+  acceptable.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** `pour.mjs` is `copy_user_pack_to_repo.mjs` and `store.mjs` is
+  `user_pack_address.mjs`, each named for what it does rather than for the shape it sits in. The
+  store's own conversion is missingbulb/Shepherd#698.
+- **Landed:** #2189
