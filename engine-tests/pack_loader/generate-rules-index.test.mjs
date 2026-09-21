@@ -162,3 +162,45 @@ test('the index names exactly the packs a repo declares, and every import resolv
     'the imports and the resolved active set must name the same packs',
   );
 });
+
+// THE POURED USER PACK'S LINE. A pack may pour another pack into the session — content
+// belonging to the person in front of it — and that pack's prose has to reach the session
+// on this channel rather than on hook stdout, which is what #807 measured being truncated.
+// The index cannot discover it: an index is written when a repo converges, and the
+// directory is written when a session starts, hours later and on another machine. So the
+// line is literal, and it appears exactly where a pack that pours exists to fill it.
+const pouring = (id, dir) => ({ ...pack(id, { dir }), dir });
+
+test('the index carries the poured pack\'s prose when, and only when, a pack pours', () => {
+  const root = makeMember({ canon: ['basics', 'web'] });
+  const plain = join(root, '.claudinite', 'shared', 'packs', 'basics');
+  const pours = join(root, '.claudinite', 'shared', 'packs', 'web');
+  writeFileSync(join(pours, 'session-prepare.mjs'), 'process.exit(0);\n');
+
+  const without = imports(root, [pack('basics', { dir: plain })]).map((i) => i.id);
+  assert.ok(!without.includes('current_user'), 'a repo whose packs pour nothing imports nothing poured');
+
+  const withPour = imports(root, [pack('basics', { dir: plain }), pouring('web', pours)]);
+  const line = withPour.at(-1);
+  assert.equal(line.id, 'current_user');
+  // LAST: a person's own rules are read against the project's, so they follow them.
+  assert.equal(line.path, 'temp/packs/current_user/RULES.md');
+});
+
+test('a poured pack discovered mid-session is not imported twice', () => {
+  // The index must render the same in CI, where nothing has been poured, and in a live
+  // session, where the registry does find the poured directory. Only the literal line
+  // carries it.
+  const root = makeMember({ canon: ['web'] });
+  const pours = join(root, '.claudinite', 'shared', 'packs', 'web');
+  writeFileSync(join(pours, 'session-prepare.mjs'), 'process.exit(0);\n');
+  const poured = join(root, '.claudinite', 'temp', 'packs', 'current_user');
+  mkdirSync(poured, { recursive: true });
+  writeFileSync(join(poured, 'RULES.md'), '# Mine\n');
+
+  const ids = imports(root, [
+    pouring('web', pours),
+    { ...pack('current_user', { dir: poured }), temp: true },
+  ]).map((i) => i.id);
+  assert.deepEqual(ids, ['web', 'current_user'], 'the discovered copy adds no second import');
+});

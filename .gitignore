@@ -4,3 +4,6 @@
 .claudinite-hooks.log.tmp
 # Isolated agent worktrees the harness creates/removes for parallel subagent runs.
 .claude/worktrees/
+# Session state: packs poured for the person this session belongs to, and
+# whatever else a session materializes. Written by the engine every session start.
+.claudinite/temp/

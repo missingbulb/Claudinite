@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveStore, fileFor, isUsableIdentity, DEFAULT_PATH } from '../store.mjs';
+import { resolveStore, folderFor, legacyFileFor, isUsableIdentity, DEFAULT_PATH } from '../store.mjs';
 
-// The pack's ONE reader of its own entry config, shared by the session-start step and
-// the conformance rule. Its tests are here for the same reason it is a module rather
+// The pack's ONE reader of its own entry config, shared by the pour and the conformance
+// rules. Its tests are here for the same reason it is a module rather
 // than two copies: the step and the rule must never disagree about what "configured"
 // means — one would then fetch nothing while the other reported everything fine.
 
@@ -29,9 +29,16 @@ test('resolveStore: nothing usable is null — "unset" and "wrong" collapse on p
   assert.equal(resolveStore({ repo: 'o/n', path: 7 }), null);
 });
 
-test('fileFor: one file per person, named for their identity', () => {
-  assert.equal(fileFor({ repo: 'o/n', path: 'preferences' }, 'me@example.com'), 'preferences/me@example.com.md');
-  assert.equal(fileFor({ repo: 'o/n', path: 'team/people' }, 'me@example.com'), 'team/people/me@example.com.md');
+test('folderFor: one pack per person, in a directory named for their identity', () => {
+  assert.equal(folderFor({ repo: 'o/n', path: 'preferences' }, 'me@example.com'), 'preferences/me@example.com');
+  assert.equal(folderFor({ repo: 'o/n', path: 'team/people' }, 'me@example.com'), 'team/people/me@example.com');
+});
+
+test('legacyFileFor: the retired address is that directory plus .md, never something else', () => {
+  // The two must stay one keystroke apart in exactly this way: the pour looks for the
+  // directory, then for this, and a third spelling would be an address nobody writes.
+  const store = { repo: 'o/n', path: 'preferences' };
+  assert.equal(legacyFileFor(store, 'me@example.com'), `${folderFor(store, 'me@example.com')}.md`);
 });
 
 test('isUsableIdentity: an identity becomes a path and a URL, so an implausible one is refused', () => {

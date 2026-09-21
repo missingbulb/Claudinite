@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  mkdtempSync, mkdirSync, writeFileSync, cpSync, readFileSync,
+  mkdtempSync, mkdirSync, writeFileSync, cpSync, readFileSync, existsSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -41,6 +41,7 @@ function makeCorpus(packs) {
     // A pack contributes a step by SHIPPING THE FILE — no manifest field, exactly
     // as session-end.mjs is discovered. A pack with no step writes none.
     if (step !== undefined) writeFileSync(join(root, 'packs', id, 'session-start.mjs'), step);
+    if (manifest.prepare !== undefined) writeFileSync(join(root, 'packs', id, 'session-prepare.mjs'), manifest.prepare);
   }
   return root;
 }
@@ -51,8 +52,8 @@ function makeProject(declaration) {
   return root;
 }
 
-function run(corpus, project, env = {}) {
-  const r = spawnSync('node', [join(corpus, 'engine', 'pack_loader', 'run-pack-session-start.mjs')], {
+function run(corpus, project, env = {}, argv = []) {
+  const r = spawnSync('node', [join(corpus, 'engine', 'pack_loader', 'run-pack-session-start.mjs'), ...argv], {
     encoding: 'utf8',
     env: { ...process.env, CLAUDE_PROJECT_DIR: project, ...env },
   });
@@ -198,4 +199,70 @@ test('no channel configured drops the facet and leaves the contribution whole', 
     assert.match(out, /KEPT/);
     assert.doesNotMatch(out, /grail/);
   } finally { removeTree(corpus); removeTree(project); }
+});
+
+// THE PREPARE PHASE — the same runner, one phase earlier, for a pack that has to PUT
+// SOMETHING THERE before the steps that read the session's pack set (the skill mount, the
+// self-test, the rules index) go looking. The contract stays generic: core never learns
+// what a step pours, only that a pack shipped one.
+
+test('--prepare runs session-prepare.mjs and leaves session-start.mjs alone', () => {
+  const corpus = makeCorpus({
+    alpha: { prepare: 'process.stdout.write("PREPARED\\n");', step: 'process.stdout.write("STARTED\\n");' },
+  });
+  const project = makeProject({ packs: ['alpha'] });
+  try {
+    const prepared = run(corpus, project, {}, ['--prepare']);
+    // A prepare step is DOING something, not saying it: its output is a diagnostic, and
+    // putting it on this hook's stdout would spend the session's context on it.
+    assert.doesNotMatch(prepared, /PREPARED/);
+    assert.doesNotMatch(prepared, /STARTED/, 'the start step belongs to the other phase');
+
+    const started = run(corpus, project);
+    assert.match(started, /STARTED/);
+    assert.doesNotMatch(started, /PREPARED/);
+  } finally { removeTree(corpus); removeTree(project); }
+});
+
+test('a prepare step is bounded and fail-soft exactly like a start step', () => {
+  const corpus = makeCorpus({
+    broken: { prepare: 'process.exit(3);' },
+    fine: { prepare: 'import { writeFileSync } from "node:fs"; writeFileSync(process.env.CLAUDINITE_PROOF, "ok");' },
+  });
+  const project = makeProject({ packs: ['broken', 'fine'] });
+  const proof = join(project, 'proof');
+  try {
+    const out = run(corpus, project, { CLAUDINITE_PROOF: proof }, ['--prepare']);
+    // The note names the failing pack, and says nothing on the context channel about the
+    // one that worked — a prepare step's success is invisible by design.
+    assert.match(out, /PACK STEP: the "broken" pack's session-prepare\.mjs failed/);
+    assert.equal(readFileSync(proof, 'utf8'), 'ok', 'a broken neighbour does not stop the rest');
+  } finally { removeTree(corpus); removeTree(project); }
+});
+
+test('the prepare phase leaves the poured-prose file the rules index imports', () => {
+  // The index carries a literal import of it wherever a pack that pours exists, and an
+  // import with no file behind it has no defined behavior on the memory channel. So the
+  // runner writes the empty answer rather than leave the question open.
+  const withPour = makeCorpus({ alpha: { prepare: 'process.stdout.write("x\\n");' } });
+  const project = makeProject({ packs: ['alpha'] });
+  try {
+    run(withPour, project, {}, ['--prepare']);
+    const file = join(project, '.claudinite', 'temp', 'packs', 'current_user', 'RULES.md');
+    assert.match(readFileSync(file, 'utf8'), /No personal pack/);
+
+    // And a step that poured for real owns the file — the runner never writes over it.
+    writeFileSync(file, 'MINE\n');
+    run(withPour, project, {}, ['--prepare']);
+    assert.equal(readFileSync(file, 'utf8'), 'MINE\n');
+  } finally { removeTree(withPour); removeTree(project); }
+});
+
+test('a repo whose packs pour nothing ends the session with no poured directory at all', () => {
+  const noPour = makeCorpus({ alpha: { step: 'process.stdout.write("x\\n");' } });
+  const project = makeProject({ packs: ['alpha'] });
+  try {
+    run(noPour, project, {}, ['--prepare']);
+    assert.equal(existsSync(join(project, '.claudinite', 'temp')), false);
+  } finally { removeTree(noPour); removeTree(project); }
 });

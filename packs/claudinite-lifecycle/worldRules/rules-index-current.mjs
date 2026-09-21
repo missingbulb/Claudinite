@@ -1,7 +1,13 @@
 import { posix } from 'node:path';
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
+import { packEntryId, TEMP_PACKS_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
 import { RULES_INDEX_FILE, RULES_INDEX_IMPORT } from '../../../engine/pack_loader/generate-rules-index.mjs';
+
+// The session's own pack root as this rule spells repo paths: POSIX, whatever host the
+// engine's constant was joined on. A member whose engine predates the constant reads it as
+// undefined, and the guard below then matches nothing — which is the right answer there,
+// since such an engine writes no such import either.
+const POURED_ROOT = String(TEMP_PACKS_SUBDIR ?? '\u0000').split(/[\\/]/).join('/');
 
 // The rules index is the ONLY channel a pack's prose reaches a session on (#807). The
 // SessionStart prose step that used to carry it is gone, deliberately — one channel, so
@@ -80,7 +86,13 @@ const rule = {
         // `..`, so this has to normalize rather than concatenate. A dangling import is
         // #807 in a new costume: the channel works, the rules still do not arrive, and
         // nothing says so.
-        if (!ctx.exists(posix.normalize(posix.join('.claudinite', rel)))) {
+        const path = posix.normalize(posix.join('.claudinite', rel));
+        // Except for the one import no checkout can satisfy: the pack poured for the
+        // person in front of the session, which the step runner writes every session and
+        // nobody tracks. Judged against the committed tree it would read as dangling in
+        // every repo that has the feature at all.
+        if (path.startsWith(`${POURED_ROOT}/`)) continue;
+        if (!ctx.exists(path)) {
           findings.push(finding(rule, {
             file: RULES_INDEX_FILE,
             what: `the index imports \`${rel}\`, which does not exist — that pack's rules load as nothing`,
