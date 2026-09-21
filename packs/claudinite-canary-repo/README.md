@@ -4,22 +4,13 @@ The canon's live proof that it can deliver a file into a member's `.github/workf
 
 ## Why it exists
 
-`.github/workflows/` is the one directory the nightly update can never push to. The update
-commits with the Action's `GITHUB_TOKEN`, GitHub refuses that token under that path, and the
-refusal rejects the **whole ref** — so a single workflow write does not fail one file, it fails
-the entire converge and everything riding it. #649 is that problem.
-
-The answer is the **withhold lane** in the pack update flow:
-every write bound for `.github/workflows/` is diverted to `.claudinite/pending-workflows/`, a path
-the Action token *can* push. It rides the maintenance PR as an ordinary added file — reviewable in
-the diff, recoverable if nothing else runs — and the update ends at `apply-stage` until a session
-holding an MCP credential moves it into place.
-
-That lane shipped with **one** exercised caller: the scheduler workflow's own convergence. A
-record's `materialize` goes through the same `write`, and had never run against a live member —
-the residual #649 was reopened for, and the last item left on #768. Proving it needs a record that
-materializes a workflow into a repo that really runs the update flow, and nothing in the corpus
-was one. This pack is that.
+The nightly update commits with the Action's `GITHUB_TOKEN`, which GitHub refuses under
+`.github/workflows/`, and the refusal rejects the **whole ref** rather than the one file. The pack
+update flow answers that with the **withhold lane**: every write bound for that directory is
+diverted to `.claudinite/pending-workflows/`, a path the Action token can push. It rides the
+maintenance PR as an ordinary added file and the update ends at `apply-stage` until a session
+holding an MCP credential moves it into place. This pack is the probe that exercises that route
+end to end against a real member.
 
 ## What it ships
 
@@ -38,8 +29,7 @@ workflow rather than create one — the exact shape a fleet-wide workflow fix wo
 
 `seededByDefault: false`, `detect: null`, `marker: null`. `--init` never seeds it, the fleet's
 pack scan never suspects it, and a repo carries it only because someone declared it by hand. The
-intended holder is **the canary** and nothing else: a probe belongs on the repo that exists to be
-converged against candidate refs and is disposable by construction.
+intended holder is **the canary** and nothing else.
 
 ## Reading the result
 

@@ -1,6 +1,5 @@
 // Technology stub pack: Android app development (Gradle/AGP, manifests, permissions, signing, flavors).
-// Stub — no rules captured yet, so no RULES.md; durable, project-agnostic practices
-// earn one as they are captured. Expected first source: missingbulb/ShoutsAndWhispers.
+// No rules captured yet, so no RULES.md.
 export default {
   version: '60920.1',
   minEngineVersion: '60822.1',
