@@ -93,6 +93,8 @@ Two tells: a check stuck `queued` that auto-cancels around 15 minutes with its j
 
 A GitHub API/UI (or any remote-side) merge does **not** advance your local `origin/main` — it stays at the pre-merge commit until you `git fetch`. Branching off `origin/main` immediately after a remote merge forks the pre-merge state, silently missing the just-merged work; symptoms surface later as a missing file or a failed `git mv` on the new branch. Fix: `git fetch origin main` before creating the branch.
 
+The same fix, for a worse version of the same mistake: never branch from the bare local `main` (`git checkout -b <branch> main` / `git branch <branch> main`) in a checkout nothing keeps current — a long-lived clone in an unattended agent's workspace can sit with local `main` pinned at whatever commit it was cloned at, arbitrarily stale rather than merely one merge behind, because nothing ever fast-forwards a ref nobody checks into. `git fetch origin main` first, then branch from `origin/main` explicitly, every time — not only right after a merge you just watched happen.
+
 ## `git pull` failing "refusing to merge unrelated histories" usually means upstream re-rooted
 
 When syncing a long-lived local clone's default branch fails with `refusing to merge unrelated histories` (often alongside `ahead N, behind M`), the usual cause is that upstream **re-rooted** the branch — a history rewrite replaced the root commit — not repository corruption. Do **not** reach for `--allow-unrelated-histories`: that "fix" welds the two histories together into a merge nobody wants. Instead inspect what the local side uniquely holds (`git log origin/<branch>..<branch>` — typically just the old root), keep anything real by rebasing it onto the new history, then `git reset --hard origin/<branch>`. A work branch created from *fetched* refs is unaffected; only stale local refs from before the rewrite hit this.
@@ -159,7 +161,7 @@ Resolve the wait through exactly one path — a `Monitor` until-loop, **or** dir
 
 ## A run artifact resolves to a blob-storage URL a sandboxed session can't reach
 
-`actions_get`'s `download_workflow_run_artifact` hands back a `*.blob.core.windows.net`-style URL that a sandbox's egress proxy denies at CONNECT, so chasing it burns a call for nothing. Read `get_job_logs` with a generous `tail_lines` to learn which step or case failed, then reproduce it locally.
+`actions_get`'s `download_workflow_run_artifact` hands back a `*.blob.core.windows.net`-style URL that a sandbox's egress proxy denies at CONNECT, so chasing it burns a call for nothing. Read `get_job_logs` with a generous `tail_lines` to learn which step or case failed, then reproduce it locally — but "generous" has a ceiling: `tail_lines` is unbounded on the request side, and a guessed-large value can itself blow the tool's own token limit on the way back, failing the exact call meant to diagnose the failure. Start with a small `tail_lines` instead; the error names the log's saved-to-disk path either way, and `grep`ing that file for the failure marker (`not ok`, `FAIL`, the step name) works whether or not the small call already showed it.
 
 ## A long-running workflow that commits generated files will race a more-frequent scheduled writer
 
