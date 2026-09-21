@@ -1657,7 +1657,7 @@ fi
   },
   {
     name: 'mount-with-local-override',
-    why: 'a member keeping its own difference in .claudinite/local/packs/, beside the mount rather than inside it — proving the vendored shared-tree-immutable rule (blocking, work scope) loads and leaves the world sweep green; the rehearsal never runs check_the_work, so it does not prove the rule fires',
+    why: 'a member keeping its own difference in .claudinite/local/packs/, beside the mount rather than inside it — proving the vendored shared-tree-immutable rule (advisory, work scope) loads and leaves the world sweep green; the rehearsal never runs check_the_work, so it does not prove the rule fires',
     files: {
       'README.md': '# fixture-mount-with-local-override\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics', 'claudinite-lifecycle', 'local/fixture-local']),

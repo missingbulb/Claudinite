@@ -6,11 +6,12 @@ import { runRule } from '../../../engine/checks/helpers/work.mjs';
 import sharedTreeImmutable from '../workRules/shared-tree-immutable.mjs';
 
 // The work-scope backstop, over a branch that really committed the file.
-const onBranch = (changed, commitMsg) => {
+const findings = (changed, commitMsg) => {
   const root = makeRepo({ changed, ...(commitMsg ? { commitMsg } : {}) });
-  try { return runRule(sharedTreeImmutable, buildContext({ root, mode: 'changed' })).map((f) => f.file); }
+  try { return runRule(sharedTreeImmutable, buildContext({ root, mode: 'changed' })); }
   finally { cleanup(root); }
 };
+const onBranch = (changed, commitMsg) => findings(changed, commitMsg).map((f) => f.file);
 
 test('shared-tree-immutable flags a branch commit inside the mount', () => {
   assert.deepEqual(onBranch({
@@ -24,6 +25,13 @@ test('shared-tree-immutable exempts the update flow, which owns that tree', () =
     { '.claudinite/shared/packs/basics/RULES.md': '# converged\n' },
     'Claudinite update: engine v1 → v2 and 1 pack upgraded',
   ), []);
+});
+
+// Advisory, not blocking: rewriting this tree whole is the update task's own
+// operation, so a branch doing it under another title is usually right.
+test('shared-tree-immutable advises rather than blocks', () => {
+  const [f] = findings({ '.claudinite/shared/packs/basics/RULES.md': '# edited\n' });
+  assert.equal(f.severity, 'advisory');
 });
 
 test('shared-tree-immutable leaves the local packs beside the mount alone', () => {
