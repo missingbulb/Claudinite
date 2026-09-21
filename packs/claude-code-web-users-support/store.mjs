@@ -10,14 +10,14 @@
 //
 //   { "id": "claude-code-web-users-support", "config": { "repo": "owner/name", "path": "preferences" } }
 //
-// `repo` is required — the store is a repository, because what a person carries belongs
+// `repo` is required - the store is a repository, because what a person carries belongs
 // to them rather than to any one project, and a repo is the smallest thing that can hold
 // it for a whole fleet without living inside any member of it. `path` is where the people
 // sit in that repo and defaults to `preferences`.
 //
 // ONE DIRECTORY PER PERSON, AND IT IS A PACK. `<path>/<email>/` is an ordinary pack
-// directory — `RULES.md`, `pack.mjs`, `skills/`, `worldRules/`, `declared-checks.json`,
-// `provenance/` — poured into the session's own pack root and loaded by the same engine
+// directory - `RULES.md`, `pack.mjs`, `skills/`, `worldRules/`, `declared-checks.json`,
+// `provenance/` - poured into the session's own pack root and loaded by the same engine
 // that loads the canon and the repo's own packs. A person who wants a rule enforced, a
 // skill mounted or a requirement installed writes it the way every other pack is written,
 // rather than in whatever a bespoke preferences format happened to support.
@@ -44,7 +44,7 @@ export function resolveStore(config) {
 }
 
 // Where one person's pack sits inside the store, as a repo-relative directory path. An
-// address only — whether it is read from a working tree or fetched over the network is
+// address only - whether it is read from a working tree or fetched over the network is
 // the caller's business.
 export function folderFor(store, email) {
   return `${store.path}/${email}`;
@@ -53,11 +53,17 @@ export function folderFor(store, email) {
 // The pre-folder address: one Markdown file per person, holding prose and nothing else.
 // Read for one convergence window so a person whose file has not been converted yet is
 // not silently left without their rules; the advisory the prepare step raises is what
-// gets it converted, and #REMOVAL takes both back out.
+// gets it converted, and #2188 takes both back out.
 // @legacy-tolerance advisory:person-asking-record retire:#2188
 export function legacyFileFor(store, email) {
   return `${store.path}/${email}.md`;
 }
+
+// @deprecated The name this address went by while it was the only one. A member's own local
+// pack may import it, and the two lanes deliver on separate cadences, so it stays as a
+// re-export until the tolerance above goes.
+// @legacy-tolerance advisory:person-asking-record retire:#2188
+export const fileFor = legacyFileFor;
 
 // Is this string usable as the name of a person's pack? It becomes both a path
 // segment and a URL component, so an implausible one is refused rather than

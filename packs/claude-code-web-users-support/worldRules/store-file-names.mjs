@@ -4,11 +4,11 @@ import { resolveStore, isUsableIdentity } from '../store.mjs';
 // A person's pack is addressed by their IDENTITY and nothing else: store.mjs builds
 // `<path>/<email>` from CLAUDE_CODE_USER_EMAIL, and session-prepare.mjs pours exactly that
 // directory (locally when this tree is the store, over the network otherwise). There is no
-// index, no registry and no fallback — a directory whose name is not a usable identity is
+// index, no registry and no fallback - a directory whose name is not a usable identity is
 // simply never opened by anyone.
 //
 // And nothing says so. Every miss on the reading side is fail-soft on purpose: no identity,
-// no store, no pack, a failed fetch — each is one note in the session context and the
+// no store, no pack, a failed fetch - each is one note in the session context and the
 // session carries on with default behavior. So a directory named `ariel`, or
 // `Ariel@Gmail.com` for an identity the harness supplies in lower case, or a person's files
 // parked loose in the store root, look perfectly fine in the tree and are dead. The person
@@ -23,7 +23,7 @@ import { resolveStore, isUsableIdentity } from '../store.mjs';
 // nicety, no other check or task depends on it, and the fix is a rename.
 //
 // RELEVANCE-FIRST. It is inert unless this repo actually carries the store directory its own
-// declaration names — which is every member of a fleet: they declare the pack to READ a store
+// declaration names - which is every member of a fleet: they declare the pack to READ a store
 // that lives somewhere else. Only the one repo that IS the store has anything to judge.
 const PACK = 'claude-code-web-users-support';
 
@@ -34,7 +34,7 @@ const rule = {
   doc: 'packs/claude-code-web-users-support/RULES.md',
   why: 'the reader pours a person\'s pack from <path>/<email>/ and fails soft on a miss, so a differently-named directory is never opened and nothing ever reports it',
 
-  // `ctx.files` is the tracked, non-vendored set — the store is committed content, and an
+  // `ctx.files` is the tracked, non-vendored set - the store is committed content, and an
   // uncommitted file is not published to the fleet yet anyway.
   run(ctx) {
     const store = resolveStore(ctx.config.packConfig?.[PACK] ?? null);
@@ -56,14 +56,14 @@ const rule = {
         if (top === 'README.md') return []; // the store's own doc, deliberately not an identity
         return [finding(rule, {
           file: f,
-          what: `sits loose in ${store.path}/ — a person's pack is only ever addressed as ${store.path}/<email>/`,
+          what: `sits loose in ${store.path}/ - a person's pack is only ever addressed as ${store.path}/<email>/`,
           fix: `move it into ${store.path}/<email>/, as that pack's RULES.md or one of its files, or out of the store entirely if it is not one person's pack`,
         })];
       }
       if (isUsableIdentity(top)) return [];
       return [finding(rule, {
         file: `${prefix}${top}`,
-        what: `is not an identity the reader can address — it pours ${store.path}/<email>/ for the exact CLAUDE_CODE_USER_EMAIL the harness supplies`,
+        what: `is not an identity the reader can address - it pours ${store.path}/<email>/ for the exact CLAUDE_CODE_USER_EMAIL the harness supplies`,
         fix: `rename it to that person's exact identity, case included, or move it out of ${store.path}/`,
       })];
     });

@@ -50,14 +50,14 @@ import { TEMP_PACKS_SUBDIR, SESSION_USER_PACK } from './pack-registry.mjs';
 import { PREPARE_FILE, shipsPrepareStep } from './pack-conventions.mjs';
 
 // The rules index imports the poured user pack's prose by a literal path, so that path
-// must resolve in every session — including the ones where nothing was poured, which is
+// must resolve in every session - including the ones where nothing was poured, which is
 // every session in a repo whose packs pour nothing for this person. An import with no
 // file behind it has no defined behavior on the memory channel and no way to report one,
 // so the runner writes the empty answer rather than leave the question open.
 //
 // Written ONLY where a step exists that could pour: the index only carries the import
 // there, and a repo with no such pack should end the session with no such directory.
-// Never over content — a step that has already poured this session owns the file.
+// Never over content - a step that has already poured this session owns the file.
 function ensureSessionUserProse(projectRoot, packs) {
   if (!packs.some(shipsPrepareStep)) return;
   const dir = join(projectRoot, TEMP_PACKS_SUBDIR, SESSION_USER_PACK);
@@ -74,14 +74,14 @@ function ensureSessionUserProse(projectRoot, packs) {
 export const STEP_FILE = 'session-start.mjs';
 
 // THE EARLIER PHASE this runner also serves, under `--prepare`: the steps that run before
-// anything reads the session's pack set — the skill mount, the self-test, the rules index.
+// anything reads the session's pack set - the skill mount, the self-test, the rules index.
 // A pack that must PUT SOMETHING THERE for those to find (a pack poured into the session's
 // temp root, a file the mount will link) cannot do it from session-start.mjs, which runs
 // after all of them have already looked. The file name and the "does this pack pour?"
 // predicate are pack-conventions.mjs's, with every other structural answer about a pack
 // directory.
 //
-// A prepare step's stdout is NOT session context — that is the whole difference. It is
+// A prepare step's stdout is NOT session context - that is the whole difference. It is
 // doing something, not saying something, and its output is diagnostics: the orchestrator
 // logs it and moves on. A pack with something to SAY still says it from session-start.mjs,
 // where the cap and the truncation notice apply.
@@ -143,14 +143,14 @@ async function main({ stepFile, forward }) {
     // buffer also kills the child, which would otherwise read as a timeout.
     const overflowed = run.error?.code === 'ENOBUFS';
     if (!overflowed && (run.error?.code === 'ETIMEDOUT' || run.signal)) {
-      note(`the "${pack.id}" pack's ${stepFile} did not finish in ${Math.round(TIMEOUT_MS / 1000)}s and was stopped — continuing without what it would have said.`);
+      note(`the "${pack.id}" pack's ${stepFile} did not finish in ${Math.round(TIMEOUT_MS / 1000)}s and was stopped - continuing without what it would have said.`);
       continue;
     }
     if (!overflowed && run.status !== 0) {
       // Its output is not injected: a step that exited non-zero has said something
       // unfinished, and half a contribution read as a whole one is worse than none.
       const why = (run.stderr || '').trim().split('\n').pop() || `exit ${run.status}`;
-      note(`the "${pack.id}" pack's ${stepFile} failed (${why}) — continuing without what it would have said.`);
+      note(`the "${pack.id}" pack's ${stepFile} failed (${why}) - continuing without what it would have said.`);
       continue;
     }
 
@@ -174,7 +174,7 @@ async function main({ stepFile, forward }) {
     // which the orchestrator logs, and never into the session's context.
     if (!forward) { process.stderr.write(`${pack.id}/${stepFile}: ${text}\n`); continue; }
     if (overflowed || Buffer.byteLength(text, 'utf8') > MAX_BYTES) {
-      text = `${Buffer.from(text, 'utf8').subarray(0, MAX_BYTES).toString('utf8')}\n\n[truncated at ${MAX_BYTES} bytes — the "${pack.id}" pack's ${stepFile} produced more session context than a step may contribute]`;
+      text = `${Buffer.from(text, 'utf8').subarray(0, MAX_BYTES).toString('utf8')}\n\n[truncated at ${MAX_BYTES} bytes - the "${pack.id}" pack's ${stepFile} produced more session context than a step may contribute]`;
     }
     // The same marker the prose injector uses, so a reader can tell which pack is
     // talking whether the text came from a file or from a step.
@@ -190,6 +190,6 @@ async function main({ stepFile, forward }) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const prepare = process.argv.includes('--prepare');
   main(prepare ? { stepFile: PREPARE_FILE, forward: false } : { stepFile: STEP_FILE, forward: true })
-    .catch((e) => note(`the pack session-${prepare ? 'prepare' : 'start'} runner could not complete (${e.message}) — continuing.`))
+    .catch((e) => note(`the pack session-${prepare ? 'prepare' : 'start'} runner could not complete (${e.message}) - continuing.`))
     .finally(() => process.exit(0));
 }

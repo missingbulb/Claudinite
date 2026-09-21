@@ -8,7 +8,7 @@
 // cost.
 //
 // SO IT EMITS NO RULES. Prose on this channel is prose the harness may truncate on the
-// way in, with nothing on either side able to tell (#807) — which is exactly why the
+// way in, with nothing on either side able to tell (#807) - which is exactly why the
 // poured pack rides the memory channel instead. A step that also printed the rules would
 // be spending the session's context twice for one set of rules.
 //
@@ -28,7 +28,7 @@ const safe = (s) => String(s).replace(/["\\]/g, '');
 const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 const path = receiptIn(root);
 
-// NO RECEIPT MEANS NO PREPARE PHASE — an engine older than the phase, which every member
+// NO RECEIPT MEANS NO PREPARE PHASE - an engine older than the phase, which every member
 // holds for the window between the two lanes' deliveries. Pour here instead. It is too late
 // for the skill mount and the rules index, which have already read the session's pack set,
 // so this branch alone also injects the person's rules the way this step used to: over
@@ -40,7 +40,7 @@ if (existsSync(path)) {
   try {
     receipt = JSON.parse(readFileSync(path, 'utf8'));
   } catch (e) {
-    note(`the pour left an unreadable receipt (${e.message}) — proceeding with default interaction behavior.`);
+    note(`the pour left an unreadable receipt (${e.message}) - proceeding with default interaction behavior.`);
   }
 } else {
   late = true;
@@ -49,38 +49,38 @@ if (existsSync(path)) {
   try {
     receipt = pour({ root, config, env: process.env });
   } catch (e) {
-    note(`this person's pack could not be poured (${e.message}) — proceeding with default interaction behavior.`);
+    note(`this person's pack could not be poured (${e.message}) - proceeding with default interaction behavior.`);
   }
 }
 
 const where = safe(receipt.where ?? 'the store');
 switch (receipt.outcome) {
   case 'no-store':
-    note('this project declares no store for personal packs (the pack entry\'s "config": { "repo": … }) — proceeding with default interaction behavior.');
+    note('this project declares no store for personal packs (the pack entry\'s "config": { "repo": … }) - proceeding with default interaction behavior.');
     break;
   case 'unattended':
-    note('the session is unattended (CLAUDE_CODE_SESSION_ATTENDED=0) — a personal pack is for a present person; proceeding with default interaction behavior.');
+    note('the session is unattended (CLAUDE_CODE_SESSION_ATTENDED=0) - a personal pack is for a present person; proceeding with default interaction behavior.');
     break;
   case 'no-identity':
-    note('CLAUDE_CODE_USER_EMAIL is not set — proceeding with default interaction behavior.');
+    note('CLAUDE_CODE_USER_EMAIL is not set - proceeding with default interaction behavior.');
     break;
   case 'unusable-identity':
-    note(`CLAUDE_CODE_USER_EMAIL (${safe(receipt.identity)}) is not a usable directory name — proceeding with default interaction behavior.`);
+    note(`CLAUDE_CODE_USER_EMAIL (${safe(receipt.identity)}) is not a usable directory name - proceeding with default interaction behavior.`);
     break;
   case 'no-pack':
-    note(`${where} holds no pack for this person — proceeding with default interaction behavior.`);
+    note(`${where} holds no pack for this person - proceeding with default interaction behavior.`);
     break;
   case 'nothing-pourable':
-    note(`this person's directory in ${where} holds no Markdown, module or JSON file — proceeding with default interaction behavior.`);
+    note(`this person's directory in ${where} holds no Markdown, module or JSON file - proceeding with default interaction behavior.`);
     break;
   case 'too-many-files':
-    note(`this person's pack in ${where} holds ${receipt.files} files, past the ${receipt.limit} a session pours — proceeding with default interaction behavior.`);
+    note(`this person's pack in ${where} holds ${receipt.files} files, past the ${receipt.limit} a session pours - proceeding with default interaction behavior.`);
     break;
   case 'too-large':
-    note(`this person's pack in ${where} is past the ${receipt.limit} bytes a session pours — proceeding with default interaction behavior.`);
+    note(`this person's pack in ${where} is past the ${receipt.limit} bytes a session pours - proceeding with default interaction behavior.`);
     break;
   case 'unreadable':
-    note(`this person's pack could not be read from ${where} (${safe(receipt.why ?? 'no reason given')}) — proceeding with default interaction behavior.`);
+    note(`this person's pack could not be read from ${where} (${safe(receipt.why ?? 'no reason given')}) - proceeding with default interaction behavior.`);
     break;
   default:
     break;
@@ -92,7 +92,7 @@ switch (receipt.outcome) {
 // that can weigh it: what it weighs lives in another repository.
 //
 // Words at the standard English ratio, the same estimate the summary line makes of the
-// corpus prose — a character count is thrown off by exactly what these files are full of,
+// corpus prose - a character count is thrown off by exactly what these files are full of,
 // punctuation-dense Markdown. Rounded to 10 where the corpus rounds to 500, because this
 // is hundreds of tokens against its tens of thousands.
 const tokens = Math.round((receipt.words ?? 0) / 0.75 / 10) * 10;
@@ -105,7 +105,7 @@ if (late) {
     const prose = readFileSync(proseIn(root), 'utf8').trim();
     if (prose) process.stdout.write(`${prose}\n`);
   } catch (e) {
-    note(`this person's pack was poured but its rules could not be read (${e.message}) — proceeding with default interaction behavior.`);
+    note(`this person's pack was poured but its rules could not be read (${e.message}) - proceeding with default interaction behavior.`);
   }
 }
 

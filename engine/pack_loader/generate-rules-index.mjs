@@ -53,7 +53,7 @@ const posix = (p) => p.split(sep).join('/');
 // discover it.
 //
 // Spelled by hand rather than through `relative()`, which resolves a relative path against
-// `process.cwd()` and so reaches for a working directory at import time — in a process
+// `process.cwd()` and so reaches for a working directory at import time - in a process
 // whose cwd has been deleted that throws `uv_cwd` and faults the module. Both operands are
 // repo-relative constants under the index's own directory, so the arithmetic is a prefix.
 const SESSION_USER_PROSE = (() => {

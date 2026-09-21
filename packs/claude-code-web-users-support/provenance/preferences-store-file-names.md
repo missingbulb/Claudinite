@@ -10,7 +10,7 @@
   will ever open. The reader now pours `<path>/<email>/`, so a flat file in the store is the
   unaddressable shape and a directory named for an identity is the clean one.
 - **Actor:** @missingbulb (owner).
-- **Mechanism:** unchanged carrier and severity — advisory, relevance-gated on this repo actually
+- **Mechanism:** unchanged carrier and severity - advisory, relevance-gated on this repo actually
   holding the store. What moved is its scope: one finding per top-level entry rather than per file,
   because a misnamed directory holding a whole pack is one mistake with one fix.
 - **Landed:** #2188

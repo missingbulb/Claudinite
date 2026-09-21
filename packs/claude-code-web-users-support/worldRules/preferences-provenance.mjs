@@ -17,6 +17,12 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 // only the one repo that holds `<path>/<email>/` packs has anything to judge.
 const PACK = 'claude-code-web-users-support';
 
+// @deprecated The sidecar folder a person's provenance sat in while the store was flat and
+// could hold nothing but `<email>.md`. A member's own local pack may import it, and the two
+// lanes deliver on separate cadences, so the name stays until the tolerance in store.mjs goes.
+// @legacy-tolerance advisory:person-asking-change retire:#2188
+export const provenanceDirOf = (store) => `${store.path}-provenance`;
+
 const rule = {
   id: 'preferences-provenance',
   severity: 'advisory',
@@ -30,7 +36,7 @@ const rule = {
     const store = resolveStore(ctx.config.packConfig?.[PACK] ?? null);
     if (!store) return [];
     const prefix = `${store.path}/`;
-    // One prose file per person, at the pack's own `RULES.md` — the only file in a person's
+    // One prose file per person, at the pack's own `RULES.md` - the only file in a person's
     // directory this check has anything to say about.
     const held = (ctx.files ?? []).filter((f) => {
       const rest = f.startsWith(prefix) ? f.slice(prefix.length) : null;

@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup, makeTranscript } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { runRule } from '../../../engine/checks/helpers/work.mjs';
-import { discoverPacks } from '../../../engine/pack_loader/pack-registry.mjs';
+// Discovery through the namespace, because its signature is what this pack's rules follow
+// and the two lanes deliver on separate cadences.
+import * as registry from '../../../engine/pack_loader/pack-registry.mjs';
 import rule from '../workRules/skill-loaded-before-editing.mjs';
 
 // The tool-call half of the Stop-time rule: a call a skill forces itself for,
@@ -33,7 +35,7 @@ async function judge(entries) {
   const session = makeTranscript(entries);
   try {
     const ctx = buildContext({ root, mode: 'all', transcriptPath: session.path });
-    ctx.packs = (await discoverPacks({ localRoot: root })).packs;
+    ctx.packs = (await registry.discoverPacks({ localRoot: root })).packs;
     return runRule(rule, ctx).map((f) => [f.file, f.what]);
   } finally { cleanup(root); session.cleanup(); }
 }

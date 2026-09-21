@@ -8,8 +8,8 @@
 
 ## 2026-09-21 · policy-changed · a person brings a pack, not a preferences file (#2188)
 - **Reason:** the store held one `<email>.md` per person, so the only thing a person could carry was
-  prose. What people wanted to carry — a skill they reach for, a check for the mistake they keep
-  making, a toolchain their own tools need — already has a carrier with an engine behind it, and
+  prose. What people wanted to carry - a skill they reach for, a check for the mistake they keep
+  making, a toolchain their own tools need - already has a carrier with an engine behind it, and
   pouring a pack gets all of them at once where the alternative was a second delivery path per
   capability.
 - **Actor:** @missingbulb (owner), who set the shape: one pack per person, poured into a fixed

@@ -87,7 +87,7 @@ git_config() {
 hooklog orchestrator "start"
 run_step git-config git_config
 # BEFORE EVERYTHING THAT READS THE SESSION'S PACK SET. A pack may POUR another pack into
-# the session — content belonging to the person in front of it rather than to the
+# the session - content belonging to the person in front of it rather than to the
 # repository, which no tracked tree can carry. The mount below, the self-test after it and
 # the rules index all read that set, so a pour arriving later is a pour nothing sees.
 #

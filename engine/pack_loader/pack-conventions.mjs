@@ -117,7 +117,7 @@ export function applyPackConventions(mod, packDir, name) {
 // THE SESSION-PREPARE STEP a pack may ship: the phase that runs before anything reads the
 // session's pack set, for a pack that has to PUT SOMETHING THERE for those readers to find
 // (run-pack-session-start.mjs states the phase). Discovered structurally, like every other
-// convention here — a pack contributes one by shipping the file.
+// convention here - a pack contributes one by shipping the file.
 //
 // The name and the predicate live in this module, not with the runner that spawns it,
 // because the rules index also has to ask the question (a repo whose packs pour nothing

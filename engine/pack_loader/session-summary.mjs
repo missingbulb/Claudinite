@@ -74,7 +74,7 @@ try {
   const packs = await loadPacks({ localRoot: projectRoot, session: true });
   // A pack POURED for the person in this session is left out of every count here. What it
   // loaded is already stated, by the step that poured it, on the facet channel this line
-  // folds in — counting it again would state one set of rules twice, under two names.
+  // folds in - counting it again would state one set of rules twice, under two names.
   const active = packs.filter((pack) => isActive(pack, { packs: declared }) && !pack.temp);
   // Nothing active means this repo runs no Claudinite. Nothing loaded, so there
   // is nothing to state — the same silence the prose injector keeps.

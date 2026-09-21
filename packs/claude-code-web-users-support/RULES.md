@@ -1,17 +1,17 @@
 # claude-code-web-users-support — working from Claude Code on the web
 
-- **A person asking to change one of their personal rules** — edit the pack that travels with
+- **A person asking to change one of their personal rules** - edit the pack that travels with
   them, `<path>/<email>/` in the store repo this pack names, never here and never in the canon,
   and append the entry on the rule's provenance file inside that pack, the person the actor; a
   project convention in disguise belongs in the pack owning its subject, and a rule triggering a
   command owns only the trigger phrase. (person-asking-change)
 
-- **A person asking to record their personal rules with nothing there yet** — create
+- **A person asking to record their personal rules with nothing there yet** - create
   `<path>/<email>/RULES.md` in that store repo, the directory named for their exact identity,
   case included: the reader pours `<path>/<email>/` and nothing else, so any other name is
   silently never poured. (person-asking-record)
 
-- **A person wanting a skill, check or toolchain of their own, not just rules** — put it in that
+- **A person wanting a skill, check or toolchain of their own, not just rules** - put it in that
   same directory, which is an ordinary pack: `skills/<name>/SKILL.md`, `worldRules/`,
   `declared-checks.json`, an `env` declaration in a `pack.mjs` that sets neither `id` nor
   `version`. It is poured into every session they open on a project declaring this pack, so it

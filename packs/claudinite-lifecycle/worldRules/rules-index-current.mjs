@@ -1,13 +1,19 @@
 import { posix } from 'node:path';
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { packEntryId, TEMP_PACKS_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
+import { packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
+// A namespace import for the session pack root, which this pack started reading before any
+// member's engine exported it: the two lanes deliver on separate cadences, and a named
+// import of an export the member's engine lacks is a link-time SyntaxError that faults the
+// whole pack rather than one rule.
+import * as registry from '../../../engine/pack_loader/pack-registry.mjs';
 import { RULES_INDEX_FILE, RULES_INDEX_IMPORT } from '../../../engine/pack_loader/generate-rules-index.mjs';
 
-// The session's own pack root as this rule spells repo paths: POSIX, whatever host the
-// engine's constant was joined on. A member whose engine predates the constant reads it as
-// undefined, and the guard below then matches nothing — which is the right answer there,
-// since such an engine writes no such import either.
-const POURED_ROOT = String(TEMP_PACKS_SUBDIR ?? '\u0000').split(/[\\/]/).join('/');
+// That root as this rule spells repo paths: POSIX, whatever host the constant was joined on.
+// An engine without it leaves a sentinel no path can start with, so the exemption below
+// matches nothing there, which is the right answer: such an engine writes no such import.
+const POURED_ROOT = typeof registry.TEMP_PACKS_SUBDIR === 'string'
+  ? registry.TEMP_PACKS_SUBDIR.split(/[\\/]/).join('/')
+  : '\u0000';
 
 // The rules index is the ONLY channel a pack's prose reaches a session on (#807). The
 // SessionStart prose step that used to carry it is gone, deliberately — one channel, so
