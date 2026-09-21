@@ -4,6 +4,6 @@
   survives review.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Sonnet 5, Claude Opus 5, per the commit trailer.
-- **Mechanism:** a RULES.md rule, triggered on "Taking a "now"" — separated from the timestamp
+- **Mechanism:** a RULES.md rule, triggered on "Taking a "now"" - separated from the timestamp
   conversion because a reader can arrive at it without that rule.
 - **Landed:** #739 (Refs #717) · pack version 1.

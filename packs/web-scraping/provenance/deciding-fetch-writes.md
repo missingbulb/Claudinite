@@ -1,7 +1,7 @@
 ## 2026-08-12 · born · Claudinite growth: discover canon pack web-scraping (#739)
 - **Source:** EdFringeAllocator's `edfringe/fetch.py` and `edfringe/extract.py`, which already split
   a git-ignored HTML cache from a committed raw record.
-- **Reason:** the split buys three things at once — re-deriving the normalized output becomes an
+- **Reason:** the split buys three things at once. Re-deriving the normalized output becomes an
   offline operation, so a parser change costs no requests; the committed record doubles as the
   fixture for a self-test of the transform that needs no network; and a field you didn't parse this
   month is still there next month, because the whole object was kept rather than the subset needed
