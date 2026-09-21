@@ -9,9 +9,6 @@ check-the-work rules run at every Stop and in CI — each failure message is the
 Scope: the **validator** side of Google auth — not obtaining the ID token in a browser or
 extension client.
 
-_Provenance: distilled from missingbulb/TLDR — its backend authenticates users with Google ID
-tokens validated at an API Gateway JWT authorizer._
-
 ## Checks
 
 | Check | Severity | Reason | Enforcement |
