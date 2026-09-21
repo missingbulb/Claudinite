@@ -1,5 +1,5 @@
 ## 2026-08-11 · born · the member adopts what the fleet asked it for (#750)
-- **Source:** the enforcer-side agent stage that stopped at `needs-human`, because a session scoped
+- **Source:** the enforcer-side agent stage that parked for a human, because a session scoped
   to the enforcer repo cannot act on four member repos.
 - **Reason:** the fan-out model is the answer: what crosses a repo boundary is an issue and a
   workflow dispatch, and the agent that adopts runs inside the member, on the ordinary Action token,

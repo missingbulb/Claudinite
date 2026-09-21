@@ -1,5 +1,5 @@
 ## 2026-08-11 · born · the operator's lever to force every member to baseline now (#750)
-- **Source:** `fleet-add-missing-packs`' first real run stopped at `needs-human`, because its
+- **Source:** `fleet-add-missing-packs`' first real run parked for a human, because its
   dispatch asked the enforcer's own executor to act on four member repos and that session is
   correctly scoped to the enforcer alone.
 - **Reason:** the fan-out model is what works: the enforcer presses each member's own scheduler
