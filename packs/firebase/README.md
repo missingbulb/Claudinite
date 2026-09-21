@@ -2,12 +2,12 @@
 
 Active when the repo has `firebase.json` at its root or one directory down (a Firebase project
 root is the directory that holds `firebase.json`, not necessarily the repo root). Durable
-practices for building on Firebase — Firestore
+practices for building on Firebase - Firestore
 security-rules discipline (merge semantics, server-owned fields, default-deny), callable Cloud
 Function patterns (verified-token identity, validation, transactional rate limits, batched
 fan-out), testing without live infrastructure (pure-logic extraction, the rules emulator when rules
 themselves are under test), and deploy layout (predeploy build hooks, committed project aliases).
-Mostly prose — the two mechanical halves of the deploy layout are checks.
+Mostly prose - the two mechanical halves of the deploy layout are checks.
 
 Environment separation and store gating are the release standard, and load only when a project is
 planning one: [create-release-plan](skills/create-release-plan/SKILL.md) — two fully separate

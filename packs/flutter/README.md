@@ -5,7 +5,7 @@ project-agnostic Flutter practices in `RULES.md`: ports-and-adapters out of the 
 the committed import-boundary test and the shipped fake world), widget-test/golden mechanics (real
 fonts, no `pumpAndSettle` on spinners, injectable fetchers, fixed viewport, the async-epoch guard),
 and toolchain habits (pub-cache API verification, zero-issue analyze, stall-robust test runners for
-sandboxes). Prose, two checks and two skills — the import scan and the coverage gates the pack asks
+sandboxes). Prose, two checks and two skills - the import scan and the coverage gates the pack asks
 for live as committed tests inside the consuming project.
 
 ## Rules (`RULES.md`)

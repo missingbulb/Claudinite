@@ -20,5 +20,5 @@ export default {
   detect: (ctx) => hasMarkerNearRoot(ctx, 'firebase.json'),
   // The deploy-layout guards live beside this manifest: functions-predeploy-build
   // in worldRules/, functions-node-pin in declared-checks.json. Both are
-  // relevance-first — see README.md.
+  // relevance-first - see README.md.
 };
