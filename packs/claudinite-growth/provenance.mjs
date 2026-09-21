@@ -13,6 +13,8 @@
 //   node <path-to-this-file> append <pack> <element> [--kind <kind>] [--date <YYYY-MM-DD>] [--changed] < entry.md
 //   node <path-to-this-file> reduce <file> [--public]
 //   node <path-to-this-file> history <pack> <element>
+//   node <path-to-this-file> brief <pack> [<element>…]
+//   node <path-to-this-file> apply <pack> <brief.md>
 //
 // In a member the path is .claudinite/shared/packs/claudinite-growth/provenance.mjs; in
 // the canon, packs/claudinite-growth/provenance.mjs. The append reads one entry in the
@@ -31,7 +33,7 @@ import { scrub } from './capture-log.mjs';
 
 const {
   checkoutIo, auditPack, markPack, convertReferences, appendedText, parseEntryText, packCarriers,
-  provenanceFiles, reduceFile, fileOfId, elementIdOf,
+  provenanceFiles, reduceFile, fileOfId, elementIdOf, ruleBlocks, skillShape, parseEntries, renderEntry,
   PACK_ROOTS, PROVENANCE_DIR, DECLINED_FILE, DECLINED_KIND, PACK_ELEMENT,
 } = provenance;
 
@@ -41,7 +43,9 @@ const USAGE = `usage: provenance.mjs <command> …
   convert-references <pack>|--all        the references.md of a pack into its elements' files
   append <pack> <element> [--kind K] [--date D] [--changed] < entry.md
   reduce <file> [--public]               the promotion reduction, to stdout
-  history <pack> <element>               the backfill brief from git, VERSIONS.md and the README`;
+  history <pack> <element>               one element's raw evidence from git, VERSIONS.md and the README
+  brief <pack> [<element>…]              the backfill brief: every pull request once, a draft entry per event
+  apply <pack> <brief.md>                append every drafted entry of an edited brief, each once`;
 
 // --- packs and roots ---------------------------------------------------------------
 
@@ -242,6 +246,297 @@ export function history(root, pack, element) {
   return lines;
 }
 
+// --- the backfill brief and its apply -----------------------------------------------
+//
+// A pack's history is a sequence of pull requests, each bearing or changing several
+// elements, so the brief is written pull request first: the squash commit's body once
+// (a merge here carries the whole review conversation's conclusion in it), then one
+// draft entry per element and event with every field git can vouch for - the date, the
+// kind, the actor by handle, the model from the trailer, the carrier as Mechanism, and
+// Landed with the version VERSIONS.md cut for it. What git cannot vouch for - Source,
+// Reason, Rejected, Retire when - is left out, never filled: the draft is a fact the
+// session extends with the decision, or deletes where the commit was not one.
+//
+// An element's events are read from the carrier's own history rather than a pickaxe: a
+// rule is walked back through every commit of its file - by slug, then by trigger, then
+// by text - and is born where it first appears and reworded where its normalized text
+// changed; a skill, a check, a task and the manifest are born at the oldest commit of
+// their file and every later commit is a candidate the session judges. A commit that
+// touched many packs is a sweep - a re-wrap, a rename, a marking pass - and is listed
+// once, never drafted onto an element: the precedent records a sweep on `_pack.md`, and
+// only where it changed the pack's shape.
+
+const SWEEP_PACKS = 5;
+const TRAILER = /^(?:co-authored-by|claude-session|signed-off-by|reviewed-by|refs|fixes|closes|resolves):?\s/i;
+const MODEL_TRAILER = /^co-authored-by:\s*(Claude\b[^<]*?)\s*</i;
+const REFERENCED = /\b(?:Refs|Fixes|Closes|Resolves)\s*:?\s*#(\d+)/gi;
+const PR_AT_END = /\s*\(#(\d+)\)\s*$/;
+const ENTRY_FENCE = /^```entry (\S+)\s*$/;
+const BODY_LINES = 60;
+
+// One commit, read once: what the squash merge carried, and how many packs it touched.
+function commitInfo(root, sha, cache) {
+  if (cache.has(sha)) return cache.get(sha);
+  const [full, short, date, email, subject, body = ''] = git(root, 'show', '-s', '--format=%H%x00%h%x00%as%x00%ae%x00%s%x00%b', sha).split('\0');
+  const models = new Set();
+  const lines = [];
+  for (const l of (body ?? '').split('\n')) {
+    const m = MODEL_TRAILER.exec(l.trim());
+    if (m) { models.add(m[1].trim()); continue; }
+    if (TRAILER.test(l.trim())) continue;
+    lines.push(l.trimEnd());
+  }
+  const pr = PR_AT_END.exec(subject ?? '')?.[1] ?? null;
+  const refs = [...new Set([...(body ?? '').matchAll(REFERENCED)].map((m) => m[1]).filter((n) => n !== pr))];
+  const packs = new Set();
+  for (const f of git(root, 'diff-tree', '--root', '-r', '-m', '--first-parent', '--no-commit-id', '--name-only', sha).split('\n')) {
+    const m = /^(?:\.claudinite\/local\/)?packs\/([^/]+)\//.exec(f);
+    if (m) packs.add(m[1]);
+  }
+  // GitHub's own squash line names a bare "Claude" beside the session's trailer.
+  if (models.size > 1) models.delete('Claude');
+  const info = {
+    sha: full, short, date, subject, pr, refs, models: [...models],
+    title: (subject ?? '').replace(PR_AT_END, '').trim(),
+    handle: /^\d+\+([^@]+)@users\.noreply\.github\.com$/.exec(email ?? '')?.[1] ?? null,
+    body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+    sweep: packs.size >= SWEEP_PACKS,
+  };
+  cache.set(sha, info);
+  return info;
+}
+
+const repoOwner = (root) => /github\.com[:/]([^/]+)\//.exec(git(root, 'remote', 'get-url', 'origin'))?.[1] ?? null;
+
+// The commits touching a path, newest first, each with the path it had then.
+function commitsOf(root, path, { follow = true } = {}) {
+  const out = [];
+  let sha = null;
+  for (const line of git(root, 'log', ...(follow ? ['--follow'] : []), '--format=%x01%H', '--name-only', '--', path).split('\n')) {
+    if (line.startsWith('\x01')) { sha = line.slice(1); out.push({ sha, path }); continue; }
+    if (line.trim() && sha) out[out.length - 1].path = line.trim();
+  }
+  return out;
+}
+
+// A rule's events, walked back through its file: born where it is first found,
+// reworded at each commit after which its text differs.
+function ruleEvents(root, file, rule, blocksOf) {
+  let state = rule;
+  let newer = null;
+  const events = [];
+  for (const { sha, path } of commitsOf(root, file)) {
+    const text = git(root, 'show', `${sha}:${path}`);
+    const blocks = text ? blocksOf(text) : [];
+    const found = (state.slug && blocks.find((b) => b.slug === state.slug))
+      || blocks.find((b) => b.trigger === state.trigger)
+      || blocks.find((b) => b.text === state.text);
+    if (!found) break;
+    if (newer && found.text !== state.text) events.push({ kind: 'reworded', sha: newer });
+    state = found;
+    newer = sha;
+  }
+  if (newer) events.push({ kind: 'born', sha: newer });
+  return events;
+}
+
+// A file-borne element's events: born at the oldest commit of its path, every later
+// commit a reworded candidate - except one that changed nothing but a version line,
+// which is the bump no entry is owed for.
+function fileEvents(root, path, { follow = true } = {}) {
+  const commits = commitsOf(root, path, { follow });
+  if (!commits.length) return [];
+  const bump = (c) => {
+    const changed = git(root, 'show', '--format=', c.sha, '--', c.path).split('\n').filter((l) => /^[-+](?![-+])/.test(l));
+    return changed.length > 0 && changed.every((l) => /version/i.test(l));
+  };
+  return [...commits.slice(0, -1).filter((c) => !bump(c)).map((c) => ({ kind: 'reworded', sha: c.sha })), { kind: 'born', sha: commits[commits.length - 1].sha }];
+}
+
+// The version a commit landed in: the VERSIONS.md row naming its pull request, else
+// the manifest's own history - the version the commit itself set, or the first cut
+// after it - since the weekly history task writes the rows late.
+function versionRows(io, pack) {
+  return (io.read(`${pack}/VERSIONS.md`) ?? '').split('\n')
+    .map((l) => /^\|\s*([^|]+?)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(.*?)\s*\|\s*$/.exec(l))
+    .filter(Boolean)
+    .map(([, version, date, what]) => ({ version, date, what }));
+}
+function versionReader(root, pack) {
+  const at = new Map();
+  const versionAt = (sha) => {
+    if (!at.has(sha)) at.set(sha, /\bversion:\s*['"]?([\d.]+)/.exec(git(root, 'show', `${sha}:${pack}/pack.mjs`))?.[1] ?? null);
+    return at.get(sha);
+  };
+  return (info) => {
+    const own = versionAt(info.sha);
+    if (own && own !== versionAt(`${info.sha}^`)) return own;
+    for (const sha of git(root, 'log', '--reverse', '--format=%H', `${info.sha}..HEAD`, '--', `${pack}/pack.mjs`).split('\n').filter(Boolean)) {
+      const v = versionAt(sha);
+      if (v && v !== own) return v;
+    }
+    return null;
+  };
+}
+function versionFor(rows, info, fromManifest) {
+  const byPr = info.pr && rows.find((r) => r.what.includes(`#${info.pr}`) && !new RegExp(`#${info.pr}\\d`).test(r.what));
+  return byPr ? byPr.version : fromManifest(info);
+}
+
+// Every element the brief covers, with its carrier and its events.
+function packElements(root, pack, io, wanted) {
+  const c = packCarriers(pack, io);
+  const files = provenanceFiles(pack, io);
+  const ids = wanted.length ? wanted : [...files].filter(([, f]) => f.empty).map(([id]) => id);
+  const out = [];
+  for (const id of ids) {
+    const rule = c.rules.find((r) => r.slug === id);
+    const guideline = c.guidelines.find((r) => r.slug === id);
+    const skill = c.skills.find((s) => s.name === id && s.present);
+    const check = c.checks.find((x) => elementIdOf(x.id) === id);
+    const task = c.tasks.find((t) => t.id === id);
+    if (rule) out.push({ id, mechanism: `a RULES.md rule, triggered on "${rule.trigger}".`, events: ruleEvents(root, rule.file, rule, (t) => ruleBlocks(t)) });
+    else if (guideline) out.push({ id, mechanism: `a guideline of the ${guideline.skill} skill, triggered on "${guideline.trigger}".`, events: ruleEvents(root, guideline.file, guideline, (t) => skillShape(t).bullets) });
+    else if (skill) out.push({ id, mechanism: `the ${id} skill, body ${skill.body ?? skill.proposed}, reached by its description.`, events: fileEvents(root, skill.file) });
+    else if (check) out.push({ id, mechanism: `check ${check.id}, in ${check.file}.`, events: fileEvents(root, check.file) });
+    else if (task) out.push({ id, mechanism: `task ${id}.`, events: fileEvents(root, task.dir, { follow: false }) });
+    else if (id === PACK_ELEMENT) out.push({ id, mechanism: 'the pack manifest.', events: fileEvents(root, `${pack}/pack.mjs`) });
+    else out.push({ id, mechanism: null, events: [] });
+  }
+  return out;
+}
+
+// The fields every entry of one commit shares, written once per commit as the
+// defaults fence apply merges under each entry's own fields.
+function sharedFields(info, version, owner) {
+  const at = info.pr ? `#${info.pr}` : `commit ${info.short}`;
+  const refs = info.refs.length ? ` (Refs ${info.refs.map((n) => `#${n}`).join(', ')})` : '';
+  return {
+    Actor: info.handle ? `@${info.handle}${info.handle === owner ? ' (owner)' : ''}.` : null,
+    Model: info.models.length ? `${info.models.join(', ')}, per the commit trailer.` : null,
+    Landed: `${at}${refs}${version ? ` · pack version ${version}` : ''}.`,
+  };
+}
+const fieldLines = (fields) => Object.entries(fields).filter(([, v]) => v).map(([k, v]) => `- **${k}:** ${v}`);
+
+function draftEntry(el, ev, info) {
+  const fields = ev.kind === 'born' ? { Mechanism: el.mechanism } : {};
+  return renderEntry({ date: info.date, kind: ev.kind, title: `${info.title} (${info.pr ? `#${info.pr}` : info.short})`, fields });
+}
+
+export function brief(root, pack, wanted = []) {
+  const io = checkoutIo(root);
+  const cache = new Map();
+  const owner = repoOwner(root);
+  const rows = versionRows(io, pack);
+  const fromManifest = versionReader(root, pack);
+  const elements = packElements(root, pack, io, wanted);
+  const byCommit = new Map();  // sha → [{ el, ev }], in date order
+  const sweeps = new Map();    // sha → element ids it touched
+  const unknown = [];
+  for (const el of elements) {
+    if (!el.events.length) { unknown.push(el.id); continue; }
+    for (const ev of el.events) {
+      const info = commitInfo(root, ev.sha, cache);
+      // A sweep re-wraps what it touches; the element it bore is still born there.
+      if (info.sweep && ev.kind !== 'born' && el.id !== PACK_ELEMENT) { if (!sweeps.has(ev.sha)) sweeps.set(ev.sha, []); sweeps.get(ev.sha).push(el.id); continue; }
+      if (!byCommit.has(ev.sha)) byCommit.set(ev.sha, []);
+      byCommit.get(ev.sha).push({ el, ev });
+    }
+  }
+  // Oldest first in the history's own order: a date ties every commit of one day.
+  const position = new Map(git(root, 'rev-list', '--reverse', '--topo-order', 'HEAD').split('\n').map((sha, i) => [sha, i]));
+  const order = [...byCommit.keys()].map((sha) => cache.get(sha)).sort((a, b) => (position.get(a.sha) ?? 0) - (position.get(b.sha) ?? 0));
+  const lines = [`# ${pack} · backfill brief`, ''];
+  const count = (n, what) => `${n} ${what}${n === 1 ? '' : 's'}`;
+  lines.push(`${count(elements.length, wanted.length ? 'element' : 'empty file')} · ${count(order.length, 'pack-local commit')} · ${count(sweeps.size, 'sweep')}`);
+  lines.push('');
+  lines.push('## sweeps');
+  lines.push(`commits touching ${SWEEP_PACKS} or more packs, set aside: a sweep goes on _pack.md where it changed the pack's shape, never on an element it re-wrapped`);
+  for (const [sha, ids] of sweeps) { const i = cache.get(sha); lines.push(`- ${i.pr ? `#${i.pr}` : i.short} ${i.date} ${i.title} - touched ${ids.join(', ')}`); }
+  if (!sweeps.size) lines.push('(none)');
+  if (unknown.length) { lines.push('', '## no history found', `git holds no commit for: ${unknown.join(', ')} (is the clone shallow?)`); }
+  const readme = io.read(`${pack}/README.md`);
+  if (readme) {
+    lines.push('', '## README sentences that read as history', 'each moves onto the entry it evidences and leaves the README');
+    const prose = readme.split('\n').filter((l) => !l.startsWith('|') && !l.startsWith('#')).join('\n');
+    const tells = prose.split(/(?<=[.!?])\s+/).filter((s) => /#\d+|\buntil\b|\bdistilled from\b|\bkept as\b|\breplaced\b|\babsorbed\b|\b20\d\d-\d\d-\d\d\b/.test(s));
+    lines.push(tells.map((s) => `- ${s.replace(/\s+/g, ' ').trim()}`).join('\n') || '(none)');
+  }
+  for (const info of order) {
+    const drafts = byCommit.get(info.sha);
+    lines.push('', `## ${info.pr ? `PR #${info.pr}` : `commit ${info.short}`} · ${info.date} · ${info.title}`);
+    const version = versionFor(rows, info, fromManifest);
+    const facts = [info.handle ? `by @${info.handle}` : null, info.models.length ? `model ${info.models.join(', ')}` : null, info.refs.length ? `refs ${info.refs.map((n) => `#${n}`).join(', ')}` : null, version ? `pack version ${version}` : null].filter(Boolean);
+    if (facts.length) lines.push(`- ${facts.join(' · ')}`);
+    lines.push(`- ${drafts.map(({ el, ev }) => `${el.id} (${ev.kind})`).join(', ')}`);
+    if (info.body) {
+      const body = info.body.split('\n');
+      lines.push('', ...body.slice(0, BODY_LINES).map((l) => (l ? `> ${l}` : '>')));
+      if (body.length > BODY_LINES) lines.push(`> (… ${body.length - BODY_LINES} more lines: git show ${info.short})`);
+    }
+    lines.push('', 'the defaults go under every entry below them; fill Source, Reason, Rejected and Retire when where the evidence carries them, there or on one entry; delete a draft the commit did not decide');
+    lines.push('```entry-defaults', ...fieldLines(sharedFields(info, version, owner)), '```');
+    for (const { el, ev } of drafts) lines.push(`\`\`\`entry ${el.id}`, draftEntry(el, ev, info).trimEnd(), '```');
+  }
+  return lines;
+}
+
+const DEFAULTS_FENCE = /^```entry-defaults\s*$/;
+const FIELDS_ORDER = provenance.FIELDS ?? [];
+const orderedFields = (fields) => Object.fromEntries(Object.entries(fields).sort(([a], [b]) => FIELDS_ORDER.indexOf(a) - FIELDS_ORDER.indexOf(b)));
+
+// Apply an edited brief: every entry fence in it, validated as one batch against the
+// files it would join, appended each once - a heading already in its file is skipped,
+// so a second apply writes nothing - and none written while any one is refused.
+export function apply(root, pack, text) {
+  const io = checkoutIo(root);
+  const fences = [];
+  const problems = [];
+  let cur = null;
+  let defaults = {};
+  for (const line of String(text).split('\n')) {
+    if (!cur) {
+      if (DEFAULTS_FENCE.test(line)) { cur = { element: null, lines: [] }; continue; }
+      const m = ENTRY_FENCE.exec(line);
+      if (m) cur = { element: m[1], lines: [] };
+      continue;
+    }
+    if (!line.startsWith('```')) { cur.lines.push(line); continue; }
+    if (cur.element) fences.push({ element: cur.element, text: `${cur.lines.join('\n')}\n`, defaults });
+    else {
+      const parsed = parseEntryText(`## 2000-01-01 · born · defaults\n${cur.lines.join('\n')}\n`);
+      if (parsed.problems.length) problems.push(...parsed.problems.map((p) => `a defaults fence: ${p}`));
+      else defaults = parsed.entry.fields;
+    }
+    cur = null;
+  }
+  const pending = new Map();  // file → text after every append so far
+  const skipped = [];
+  // A file's entries go in date order whatever order the brief was edited into; a stable
+  // sort keeps the brief's order within one day.
+  const dated = fences.map((f, i) => ({ ...f, i, date: /^## (\d{4}-\d{2}-\d{2})/.exec(f.text)?.[1] ?? '' }))
+    .sort((a, b) => a.element.localeCompare(b.element) || a.date.localeCompare(b.date) || a.i - b.i);
+  for (const f of dated) {
+    const declined = f.element === '_declined';
+    const file = `${pack}/${PROVENANCE_DIR}/${declined ? DECLINED_FILE : fileOfId(f.element)}`;
+    if (!declined && !io.exists(file)) { problems.push(`${f.element}: ${file} does not exist`); continue; }
+    const parsed = parseEntryText(f.text);
+    if (parsed.problems.length) { problems.push(...parsed.problems.map((p) => `${f.element}: ${p}`)); continue; }
+    const entry = { ...parsed.entry, fields: orderedFields({ ...f.defaults, ...parsed.entry.fields }) };
+    if (scrub(renderEntry(entry)) !== renderEntry(entry)) { problems.push(`${f.element}: the entry carries what reads as a secret`); continue; }
+    const existing = pending.has(file) ? pending.get(file) : (io.read(file) ?? '');
+    const heading = renderEntry(entry).split('\n')[0];
+    if (existing.split('\n').includes(heading)) { skipped.push(f.element); continue; }
+    const result = appendedText(existing, entry, declined ? { kinds: [DECLINED_KIND], firstKind: null } : {});
+    if (result.problems.length) { problems.push(...result.problems.map((p) => `${f.element}: ${p}`)); continue; }
+    pending.set(file, result.text);
+  }
+  if (problems.length) return { problems, written: [], skipped };
+  for (const [file, content] of pending) io.write(file, content);
+  return { problems: [], written: [...pending.keys()], skipped };
+}
+
 // --- main ---------------------------------------------------------------------------
 
 export async function main(argv = process.argv.slice(2), { root = process.env.CLAUDE_PROJECT_DIR || process.cwd(), stdin = null } = {}) {
@@ -300,6 +595,21 @@ export async function main(argv = process.argv.slice(2), { root = process.env.CL
       const packs = packsFor(positional[0]); if (!packs) return 2;
       if (!positional[1]) { console.error('history needs an element id'); return 2; }
       console.log(history(root, packs[0], positional[1]).join('\n'));
+      return 0;
+    }
+    case 'brief': {
+      const packs = packsFor(positional[0]); if (!packs) return 2;
+      console.log(brief(root, packs[0], positional.slice(1)).join('\n'));
+      return 0;
+    }
+    case 'apply': {
+      const packs = packsFor(positional[0]); if (!packs) return 2;
+      const file = positional[1];
+      if (!file) { console.error('apply needs the brief file'); return 2; }
+      const { problems, written, skipped } = apply(root, packs[0], readFileSync(file, 'utf8'));
+      if (problems.length) { console.error(problems.join('\n')); return 1; }
+      console.log(written.length ? written.map((f) => `${f}: appended`).join('\n') : 'nothing to append');
+      if (skipped.length) console.log(`already in its file, skipped: ${[...new Set(skipped)].join(', ')}`);
       return 0;
     }
     default:

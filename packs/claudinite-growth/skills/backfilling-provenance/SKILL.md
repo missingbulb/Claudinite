@@ -18,11 +18,16 @@ evidence carries and which it does not.
    check <pack>` prints what each file is named by and which are empty; a file holding only
    the conversion's entry is owed too (in a member the tool is
    `.claudinite/shared/packs/claudinite-growth/provenance.mjs`).
-2. **Gather the evidence per element, source-first**: `provenance.mjs history <pack>
-   <element>` prints the carrier's commits through every rename, a pickaxe on the rule's
-   lead-in, the pull requests those commits name, the `VERSIONS.md` rows naming them and the
-   README's history sentences. Read the tracker comments and the issues it names on GitHub.
-   A shallow clone reads as no history: unshallow before trusting an empty log.
+2. **Write the brief**, source-first: `provenance.mjs brief <pack> > brief.md` (an element
+   list after the pack narrows it to those files) reads every empty file's history out of
+   git, pull request first: each commit's body once, then a draft entry per element it bore
+   or changed with the fields git vouches for - the date, the kind, the actor, the model,
+   the carrier as `Mechanism`, `Landed` with the version - and the commit's shared fields in
+   one `entry-defaults` fence ahead of its entries. A commit that touched many packs is a
+   sweep, listed at the top and never drafted onto an element. Read the tracker comments and
+   the issues each body names on GitHub; `history <pack> <element>` prints one element's raw
+   evidence where the brief's derivation looks wrong. A shallow clone reads as no history:
+   unshallow before trusting an empty brief.
 3. **Derive the entries from that evidence before re-reading the rule**, then diff against
    what the rule implied. The first entry is `born` - where the lesson came from, why it
    says what it says, who decided, the carrier and its trigger and why (`Mechanism`), what
@@ -37,10 +42,17 @@ evidence carries and which it does not.
    future review reaffirm a rule on false grounds, which is worse than no rationale. An
    element whose history the evidence does not reach gets a `born` entry that says only
    what is known - the date and commit it first appears in - and stays as short as that.
-5. **Append each entry through the tool** (`provenance.mjs append <pack> <element>`, the
-   entry on stdin), which validates the grammar and the order. A mechanism the pack shares
-   across elements - why a skill loads on these paths, why the release set vendors as
-   stubs - is written once, on the element that owns it, and cited from the others.
+5. **Edit the brief, then apply it**: `Source`, `Reason`, `Rejected` and `Retire when` go on
+   the commit's defaults fence where every element it bore shares them, and on one entry
+   where they are its own; a draft the commit did not decide is deleted, and the kind a
+   draft guessed (`reworded` for any later commit) is corrected to what the change was.
+   `provenance.mjs apply <pack> brief.md` validates every entry as one batch, appends each
+   once under its defaults, and writes nothing while any one is refused; run twice it
+   appends nothing. An entry the brief cannot carry - a split across files, a declined
+   candidate - goes through `append <pack> <element>`, the entry on stdin. A mechanism the
+   pack shares across elements - why a skill loads on these paths, why the release set
+   vendors as stubs - is written once, on the element that owns it, and cited from the
+   others.
 6. **Trim the README in the same change.** Each sentence of history it holds (the
    "distilled from" paragraph, the "until #n", the "kept as it was", a mechanism's reasons)
    is evidence this run has already read, so it moves onto the entry it evidences and
