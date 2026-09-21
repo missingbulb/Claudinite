@@ -18,3 +18,14 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude, per the commit trailer.
 - **Landed:** #1634 (Refs #1632) · pack version 60902.1.
+
+## 2026-09-21 · reaffirmed · the entries above cite Refs where each pull request closed its issue
+- **Source:** the pull request bodies, read directly rather than through the commit trailer: #128
+  opens `Closes #127` and `Closes #131`, #1634 `Closes #1632`.
+- **Reason:** the backfill took each linkage from the commit trailer, which says `Refs` in both, and
+  the brief derives it the same way. `Closes` is what filled GitHub's development panel and resolved
+  the issue, so the entries above send a reader tracing this pack's closed work to a cross-reference
+  instead. Nothing else in them changes.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5
+- **Landed:** #2213.

@@ -28,3 +28,14 @@
 - **Model:** Claude Fable 5.1, per the commit trailer.
 - **Mechanism:** the pack README; the pack declares no prose file at all.
 - **Landed:** #1667 (Refs #1662) · pack version 60903.1.
+
+## 2026-09-21 · reaffirmed · the entries above cite Refs where each pull request closed its issue
+- **Source:** the pull request bodies, read directly rather than through the commit trailer: #165
+  opens `Closes #180`, #1634 `Closes #1632`, #1667 `Closes #1662`.
+- **Reason:** the backfill took each linkage from the commit trailer, which says `Refs` in all
+  three, and the brief derives it the same way. `Closes` is what filled GitHub's development panel
+  and resolved the issue, so the entries above send a reader tracing this pack's closed work to a
+  cross-reference instead. Nothing else in them changes.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5
+- **Landed:** #2213.
