@@ -1,22 +1,19 @@
 # firebase pack
 
-Active when the repo has `firebase.json`. Durable practices for building on Firebase — Firestore
+Active when the repo has `firebase.json` at its root or one directory down (a Firebase project
+root is the directory that holds `firebase.json`, not necessarily the repo root). Durable
+practices for building on Firebase — Firestore
 security-rules discipline (merge semantics, server-owned fields, default-deny), callable Cloud
 Function patterns (verified-token identity, validation, transactional rate limits, batched
 fan-out), testing without live infrastructure (pure-logic extraction, the rules emulator when rules
 themselves are under test), and deploy layout (predeploy build hooks, committed project aliases).
-Mostly prose — the two mechanical halves of the deploy layout are checks. Earned in
-missingbulb/ShoutsAndWhispers (Firestore + Functions + FCM + Google sign-in).
+Mostly prose — the two mechanical halves of the deploy layout are checks.
 
 Environment separation and store gating are the release standard, and load only when a project is
 planning one: [create-release-plan](skills/create-release-plan/SKILL.md) — two fully separate
 dev/prod projects with everything committed pointing at dev, prod config injected by the release
 pipeline alone, and App Check attestation so only store-installed builds reach the prod backend.
-
-> **Status: the release standard was decided ahead of first exercise.** Distilled from
-> missingbulb/TLDR's worked AWS split and decided for Firebase in missingbulb/ShoutsAndWhispers;
-> no project has run a release through it yet. Expect refinement — and conformance checks — when
-> the first release exercises it.
+No project has run a release through it yet, so expect it to move once one does.
 
 ## Rules (`RULES.md`)
 
@@ -42,6 +39,12 @@ deploy layout (a self-contained project root, committed `.firebaserc` aliases) j
 `.firebaserc`.
 
 ## Checks
+
+Both are relevance-first: they say nothing until `firebase.json` declares a functions codebase
+whose `package.json` is in the checkout, so a rules-only or hosting-only Firebase repo hears from
+neither. `firebase/functions-node-pin` demands `engines.node` in each declared codebase's
+`package.json`; `firebase/functions-predeploy-build` demands that a codebase with a `build` script
+wires that build as a `predeploy` hook in `firebase.json`.
 
 | Check | Severity | Reason | Enforcement |
 |---|---|---|---|
