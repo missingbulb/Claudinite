@@ -24,6 +24,7 @@ still publishing is a check's finding.
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | Only the published tree reaches the site | high | correctness | prose: <100 words |
+| Internal links omit `.html` | low | performance | prose: <50 words |
 | One path to production | high | correctness | prose: <50 words + check (`cloudflare-site/no-second-publisher`) |
 | What a parked release is asking for | medium | correctness | prose: <100 words |
 

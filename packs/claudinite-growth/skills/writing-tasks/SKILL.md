@@ -463,6 +463,25 @@ priority hint, and never describe it as a `Blocked-by` edge — that is a differ
 field with different semantics. A yielded item is not spent: it waits, and runs in
 the same cycle once the upstream is out of the way.
 
+## A worker that commits or pushes restores `main` first
+
+One executor run drains several due items through **one** checkout, in whatever
+order the scheduler picked them. A worker that delivers by switching branches (a
+`git checkout -B` for its own maintenance commit, say) and never switches back
+hands the *next* item in that run a tree it never asked for — a task ordered
+after it inherits the departed worker's branch, not `main`. From there a plain
+`git commit`/`git push` either lands on the wrong branch silently, or aborts with
+exit 128 for want of an upstream, and either failure can go unnoticed for days:
+nothing about the *next* task's own logic is wrong, so its own tests and checks
+stay green while it quietly does nothing (or the wrong thing) run after run.
+
+So any worker script that ends in a commit or a push starts by restoring `main`
+— `git fetch origin main && git checkout main` (or `git switch main`), *before*
+the write, not after. Never repair this by pushing straight to `main`
+(`git push origin HEAD:main`) as a workaround for a stray branch: that can push
+an unreviewed commit past its own review surface. Restoring first is what keeps
+one task's delivery from becoming the next task's silent starting state.
+
 ## The queue labels are the item's state, and only the queue writes them
 
 A work item's **state is its labels**, and there is exactly one state label on it
