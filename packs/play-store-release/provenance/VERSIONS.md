@@ -7,6 +7,7 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60920.1 | 2026-09-20 | Claudinite: pack version history (#1730) |
 | 60903.1 | 2026-09-03 | The stub note moves to the pack README and `RULES.md` is gone: an absent prose file contributes nothing, where the note cost every session four lines (#1662). |
 | 60902.1 | 2026-09-02 | `RULES.md` drops the descriptive framing the pack README already carries — the file carries rules only. |
 | 60822.1 | 2026-08-22 | The manifest stops restating its own tree (#1246): `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the pack directory and an absent `detect`/`marker` means no fingerprint. Coded rules move into `worldRules/`/`workRules/` and tests into `test/`, which no vendor set ships. `minEngineVersion` rises to the engine release that reads all of it. |

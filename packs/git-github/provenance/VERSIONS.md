@@ -7,6 +7,16 @@ a version is missing and leaves every row that already stands.
 
 | Version | Date | What changed |
 |---|---|---|
+| 60921.1 | 2026-09-21 | merge-to-main: conditional main sync, and drop the LGTM prompt trigger (#2186) |
+| 60920.2 | 2026-09-20 | Provenance: the marking pass, every rule marked and every references.md converted (#2178) |
+| 60920.1 | 2026-09-20 | Claudinite canon: rule revalidation (#2157) |
+| 60915.2 | 2026-09-15 | Claudinite canon: rule revalidation (#2058) |
+| 60915.1 | 2026-09-15 | Track a change worked on now by its PR, not an issue (#2016) |
+| 60913.1 | 2026-09-13 | Member-facing Actions cache advice: node setup step, CI profiling split, scoping gotchas (#2022) |
+| 60907.1 | 2026-09-07 | claudinite-tasks: PRINCIPLES.md as the spec, the two-way claim guard, seven design docs deleted (#1887) |
+| 60906.4 | 2026-09-06 | Promote the validated survivors of four growth-promote PRs (#1828) |
+| 60906.3 | 2026-09-06 | Rule revalidation: re-probe five harness claims at their live addresses (#1782) |
+| 60906.2 | 2026-09-06 | Claudinite: pack version history (#1776); Promote the reviewed survivors of nine growth-promote PRs (#1671) |
 | 60906.1 | 2026-09-06 | Declared checks at every moment: schema rung, work and action scopes, skill triggers, and the creation path (#1711) |
 | 60903.1 | 2026-09-03 | A skill's `SKILL.md` opens on what to do, not on what the skill is: the self-describing framing and the pointers to prose the reader already holds are gone. |
 | 60902.1 | 2026-09-02 | Eight of the `gha/*` checks scan `packs/<pack>/stubs/workflows/` as well as `.github/workflows/`. A stub is copied verbatim into every adopting repo, so a defect there shipped fleet-wide while being visible in no repo until after seeding — which is how `claudinite-dashboard`'s Pages stub carried a piped `run:` with no bash default until a member re-seeded it. `gha/no-scheduled-fleet-executor` and `gha/scheduled-failure-escalation` stay repo-only: each asserts a fact about an adopting repo rather than about the file (#1596). |
