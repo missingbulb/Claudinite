@@ -312,6 +312,7 @@ export function packCarriers(packDir, io) {
   const skills = [];
   const checks = [];
   const tasks = [];
+  const declarations = [];
   const prose = `${packDir}/${PROSE_FILE}`;
   if (io.exists(prose)) {
     for (const b of ruleBlocks(io.read(prose))) rules.push({ file: prose, line: b.start + 1, lastLine: b.lastLine + 1, trigger: b.trigger, slug: b.slug, numeric: b.numeric, text: b.text });
@@ -345,7 +346,17 @@ export function packCarriers(packDir, io) {
     const dir = `${packDir}/tasks/${t}`;
     if (io.exists(`${dir}/task.json`) || io.exists(`${dir}/task.md`)) tasks.push({ id: t, dir, file: `${dir}/${io.exists(`${dir}/task.json`) ? 'task.json' : 'task.md'}` });
   }
-  return { rules, guidelines, skills, checks, tasks, manifest: io.exists(`${packDir}/pack.mjs`) };
+  // A pack may declare a set of elements as DATA rather than as prose or code -
+  // `<something>-rules.json` at the pack root, `{ "rules": [{ "id" }, …] }`. Each
+  // entry is a carrier like any other: it decides something, so it has a file and
+  // a log. Read by shape rather than by filename, the way declared-checks.json
+  // already is, so the engine learns no one pack's vocabulary.
+  for (const f of listFiles(io, packDir)) {
+    if (!f.endsWith('-rules.json')) continue;
+    const doc = readJson(io, `${packDir}/${f}`);
+    for (const d of doc?.rules ?? []) if (typeof d?.id === 'string') declarations.push({ id: d.id, file: `${packDir}/${f}` });
+  }
+  return { rules, guidelines, skills, checks, tasks, declarations, manifest: io.exists(`${packDir}/pack.mjs`) };
 }
 
 // The provenance files of a pack: id → { file, text, entries, errors, status, empty }.
@@ -424,6 +435,7 @@ export function auditPack(packDir, io) {
   }
   for (const c of carriers.checks) name(elementIdOf(c.id), `check ${c.id}`, { file: c.file, line: null });
   for (const t of carriers.tasks) name(t.id, `task ${t.id}`, { file: t.file, line: null });
+  for (const d of carriers.declarations) name(d.id, `declared rule ${d.id}`, { file: d.file, line: null });
   if (carriers.manifest) name(PACK_ELEMENT, 'the manifest', { file: `${packDir}/pack.mjs`, line: null });
   for (const [id, f] of files) {
     for (const e of f.errors) out.parseErrors.push({ file: f.file, line: e.line, what: e.what });
@@ -535,6 +547,7 @@ export function markPack(packDir, io, { width = 100 } = {}) {
   for (const r of prose) if (r.slug) ensureFile(r.slug, `rule "${r.trigger}"`);
   for (const s of carriers.skills) if (s.present) ensureFile(s.name, `skill ${s.name}`);
   for (const c of carriers.checks) ensureFile(elementIdOf(c.id), `check ${c.id}`);
+  for (const d of carriers.declarations) ensureFile(d.id, `declared rule ${d.id}`);
   for (const t of carriers.tasks) ensureFile(t.id, `task ${t.id}`);
   if (carriers.manifest) ensureFile(PACK_ELEMENT, 'the manifest');
   return report;

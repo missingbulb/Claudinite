@@ -3,8 +3,15 @@ import assert from 'node:assert/strict';
 import {
   hookMarks, readMark, countCorpusUse, countMoments, countToolCalls, countCheckTiming, parseTiming, LOAD_CAUSES,
 } from '../../../tasks/usage-fold/corpus-use.mjs';
-import { renderTiming } from '../../../../../engine/checks/check-timing.mjs';
-import { hitsCall, hitsPrompt, hitsPath, globToRegExp } from '../../../../../engine/pack_loader/path-scoped-skills.mjs';
+// Namespace imports for the same reason the pack's own modules use them: these
+// engine exports are newer than this pack's delivery of the counters that read
+// them, and the two lanes ship apart. The probe is what the fold itself does, and
+// asserting it here is asserting the real shape rather than a convenience.
+import * as timing from '../../../../../engine/checks/check-timing.mjs';
+import * as scoped from '../../../../../engine/pack_loader/path-scoped-skills.mjs';
+
+const { renderTiming } = timing;
+const { hitsCall, hitsPrompt, hitsPath, globToRegExp } = scoped;
 
 // The entry shapes are the real ones — a hook's stderr reaches the transcript as a
 // meta user turn, and every load is a tool_use block.

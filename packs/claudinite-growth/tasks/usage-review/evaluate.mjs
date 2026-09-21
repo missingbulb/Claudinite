@@ -1,4 +1,4 @@
-// The evaluator the usage review's rules are read by — the ONE piece of code that
+// The evaluator the usage review's rules are read by - the ONE piece of code that
 // turns a declaration in usage-rules.json into a finding. It knows the grammar and
 // nothing else: not what a counter means, not where a figure comes from, not what
 // a subject is. The caller supplies those as three functions, which is what keeps a
@@ -10,7 +10,7 @@
 //   <term> := <atom> | <atom> '/' <atom>
 //   <atom> := ['previous.'] ['median('] <name> [')']  |  <number>
 //
-// Four shapes fall out of it — `a / b >= n`, `a / b <= n`, `a = 0`, `a >= n` — and
+// Four shapes fall out of it - `a / b >= n`, `a / b <= n`, `a = 0`, `a >= n` - and
 // nothing else parses. A rule that needs more than this is not a rule; it is code,
 // and the design has none.
 //
@@ -45,7 +45,7 @@ const atomValue = (atom, read) => (atom.value !== undefined
   ? atom.value
   : read(atom.name, { previous: atom.previous, median: atom.median }));
 
-// A term's value: one atom, or a quotient. A null anywhere is a null throughout —
+// A term's value: one atom, or a quotient. A null anywhere is a null throughout -
 // and so is a zero denominator, which is a ratio nobody can state rather than an
 // infinite one.
 function termValue(atoms, read) {
@@ -67,7 +67,7 @@ export function holds(comparison, read) {
 }
 
 // The figures a rule's floor demands, each against the count the floor names. Returns
-// the first one that is under — `{ name, need, have }` — or null where all of them
+// the first one that is under - `{ name, need, have }` - or null where all of them
 // hold. A floor figure that is not recorded is under the floor by construction: a
 // rule cannot be judged on a window that does not carry what it reads.
 export function underFloor(floor, read) {
@@ -88,7 +88,7 @@ export function ruleSentence(rule) {
     rule.window === 'now' ? 'as the tree stands' : `in the ${rule.window} window`,
     floor ? `where ${floor}` : 'with no floor',
     `flag ${rule.when}${rule.and ? ` and ${rule.and}` : ''}`,
-    `— cause ${rule.cause}`,
+    `- cause ${rule.cause}`,
   ].join(', ');
 }
 
@@ -149,7 +149,7 @@ export function evaluateRules(rules, { subjectsOf, figureOf, predicateOf }) {
 }
 
 // Every figure the rule's own expressions named, both windows where it asked for
-// both — the evidence the finding carries, so a reader never goes back to the file
+// both - the evidence the finding carries, so a reader never goes back to the file
 // the number came from.
 function figuresOf(rule, read) {
   const out = {};

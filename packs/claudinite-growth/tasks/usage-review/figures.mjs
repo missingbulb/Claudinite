@@ -1,4 +1,4 @@
-// What each figure name in a rule's `when`, `and` or `floor` MEANS — the one place
+// What each figure name in a rule's `when`, `and` or `floor` MEANS - the one place
 // the review's vocabulary meets the record's. The evaluator knows the grammar and
 // nothing else; this knows the counters and nothing about rules.
 //
@@ -13,7 +13,7 @@
 // apart. Same reason the dashboard reads it that way.
 
 // A day row's bare map, summed across the window for one key. `null` where no day
-// in the window carried the map at all — which is the shape a counter has before
+// in the window carried the map at all - which is the shape a counter has before
 // the fold that writes it has run anywhere in the window.
 function sumBare(days, map, key) {
   let total = null;
@@ -46,7 +46,7 @@ function sumScalar(days, field) {
   return total;
 }
 
-// Every key of a group, summed — the scope totals, for the rules that judge the
+// Every key of a group, summed - the scope totals, for the rules that judge the
 // checks as a whole rather than one rule of them.
 function sumEveryKey(days, group, field) {
   let total = null;
@@ -66,7 +66,7 @@ export function median(values) {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-// What one Stop sweep cost, per day — the mean over that day's runs, which is what
+// What one Stop sweep cost, per day - the mean over that day's runs, which is what
 // a median across the window is then taken of. A day whose sweeps left no timing
 // record contributes nothing rather than a zero.
 export function dailyStopMs(days) {
@@ -83,7 +83,7 @@ export function dailyStopMs(days) {
 //
 // `window` is `{ days: [row] }` for whichever of the two windows the atom named;
 // `live` is the tree as it stands. A rule naming a figure absent from this map
-// never fires, silently — which is what the evaluator's own suite refuses.
+// never fires, silently - which is what the evaluator's own suite refuses.
 export const FIGURES = new Map(Object.entries({
   // --- denominators every subject kind shares ---
   sessions: (subject, w) => sumScalar(w.days, 'sessions'),
@@ -96,7 +96,7 @@ export const FIGURES = new Map(Object.entries({
   skillCaught: (s, w) => sumBare(w.days, 'skillCaught', s.id),
   triggerFired: (s, w) => sumGroup(w.days, 'triggerFires', s.id, 'fired'),
   triggerFollowed: (s, w) => sumGroup(w.days, 'triggerFires', s.id, 'followed'),
-  // The calls of the tools this skill's own result triggers name — the denominator
+  // The calls of the tools this skill's own result triggers name - the denominator
   // "does the symptom follow most calls of that tool" is asked against. A skill
   // naming no tool has no such denominator, which is not a zero.
   toolCalls: (s, w) => (s.tools?.length
@@ -117,7 +117,7 @@ export const FIGURES = new Map(Object.entries({
   checkFindings: (s, w) => {
     const blocking = sumGroup(w.days, 'checkFindings', s.id, 'blocking');
     const advisory = sumGroup(w.days, 'checkFindings', s.id, 'advisory');
-    // A rule the window recorded nothing about fired nothing — the check counters
+    // A rule the window recorded nothing about fired nothing - the check counters
     // cover every session in the window, so absence here IS zero, unlike a counter
     // that may simply not have existed yet.
     if (blocking === null && advisory === null) return w.carriesCheckFindings ? 0 : null;

@@ -1,4 +1,4 @@
-# Usage triage — this repo's own packs
+# Usage triage - this repo's own packs
 
 The corpus that reaches a session is placed on the promotion ladder by judgment at
 authoring time. The usage review reads back whether the placement held, and hands
@@ -7,12 +7,12 @@ can read as a diff.
 
 Load [triaging-usage-findings](../../skills/triaging-usage-findings/SKILL.md) and
 follow it. It owns the order: the element's provenance file first, then the rule's
-causes worked in order, then the edit — and no edit at all where no cause is
+causes worked in order, then the edit - and no edit at all where no cause is
 settled.
 
 ## Scope
 
-`.claudinite/local/packs/` — this repo's own packs, and nothing else. A finding
+`.claudinite/local/packs/` - this repo's own packs, and nothing else. A finding
 about a subject that arrived from a canon is not this repo's to change: it belongs
 to whoever maintains that shelf, and the review's file is the evidence they read.
 Leave it, and say so on its issue.

@@ -9,11 +9,11 @@
       "when": "skillSessions / sessions >= 0.75",
       "cause": "known",
       "causes": [
-        "its body is guidance every session needs — discriminator: most loads are voluntary (`skillLoadsBy`)",
-        "a force-load pattern matches most edits or calls — discriminator: most loads are blocked"
+        "its body is guidance every session needs - discriminator: most loads are voluntary (`skillLoadsBy`)",
+        "a force-load pattern matches most edits or calls - discriminator: most loads are blocked"
       ],
       "open": false,
-      "finding": "loads in three of every four sessions — it is context wearing a skill's clothes",
+      "finding": "loads in three of every four sessions - it is context wearing a skill's clothes",
       "recommendation": "move its body to the owning pack's RULES.md; the cost either way is stated: tokens × sessions loaded against tokens × all sessions"
     },
     {
@@ -25,10 +25,10 @@
       "when": "skillLoads = 0",
       "cause": "unknown",
       "causes": [
-        "the description does not name the adoption moment — digests show the step being done",
-        "the step was done another way, by prose or by hand — digests show it without the skill",
-        "the step was skipped — digests show no such step",
-        "the pack was declared before its skill was mounted — the declaration commit predates the mount stamp"
+        "the description does not name the adoption moment - digests show the step being done",
+        "the step was done another way, by prose or by hand - digests show it without the skill",
+        "the step was skipped - digests show no such step",
+        "the pack was declared before its skill was mounted - the declaration commit predates the mount stamp"
       ],
       "open": true,
       "finding": "the pack was declared and its adoption-time skill never loaded while the adoption was live",
@@ -43,10 +43,10 @@
       "when": "skillSessions / sessions <= declaredRate / 2",
       "cause": "unknown",
       "causes": [
-        "the description does not name its moment — digests of non-loading sessions fall under it",
-        "the declared rate is wrong — digests do not fall under it",
-        "the window's work mix never raised the moment — the previous window's rate was near the declared one",
-        "a sibling skill or a RULES.md line already carries what it says — that sibling loads where this one does not"
+        "the description does not name its moment - digests of non-loading sessions fall under it",
+        "the declared rate is wrong - digests do not fall under it",
+        "the window's work mix never raised the moment - the previous window's rate was near the declared one",
+        "a sibling skill or a RULES.md line already carries what it says - that sibling loads where this one does not"
       ],
       "open": true,
       "finding": "loads at under half the rate it declares for itself",
@@ -61,9 +61,9 @@
       "when": "skillLoads / moments <= 0.5",
       "cause": "known",
       "causes": [
-        "the trigger pattern does not match the real call or path shape — the moments counted by the hook resolver differ from the declaration's intent",
-        "the hook failed or timed out — `deadline` or `hook-failed` lines in the window",
-        "once-per-session semantics: the skill loaded once and later moments in the session are counted unloaded — a counting artifact, discriminator: `skillSessions` near the sessions with moments"
+        "the trigger pattern does not match the real call or path shape - the moments counted by the hook resolver differ from the declaration's intent",
+        "the hook failed or timed out - `deadline` or `hook-failed` lines in the window",
+        "once-per-session semantics: the skill loaded once and later moments in the session are counted unloaded - a counting artifact, discriminator: `skillSessions` near the sessions with moments"
       ],
       "open": false,
       "finding": "its declared moments occurred and the skill was not loaded for most of them",
@@ -78,7 +78,7 @@
       "and": "tokens <= 300",
       "cause": "known",
       "causes": [
-        "the guard does the loading and the description never triggers a voluntary load — the one cause; the question is only whether the lines are worth a block"
+        "the guard does the loading and the description never triggers a voluntary load - the one cause; the question is only whether the lines are worth a block"
       ],
       "open": false,
       "finding": "it is only ever loaded because a guard held a call for it, and each block is a tool call spent to read a few lines",
@@ -92,13 +92,13 @@
       "when": "triggerFollowed / triggerFired <= 0.5",
       "cause": "probable",
       "causes": [
-        "the pattern matches text that merely mentions the symptom — the fire contexts show prose, not a tool's own result",
-        "the session judged the symptom irrelevant and moved on — the contexts show a real symptom and a next step that ignores it",
-        "the context landed in a subagent stream that had already returned — the fire is on a sidechain entry"
+        "the pattern matches text that merely mentions the symptom - the fire contexts show prose, not a tool's own result",
+        "the session judged the symptom irrelevant and moved on - the contexts show a real symptom and a next step that ignores it",
+        "the context landed in a subagent stream that had already returned - the fire is on a sidechain entry"
       ],
       "open": true,
       "finding": "its result or prompt trigger fires and the skill is not loaded afterwards",
-      "recommendation": "usually a pattern matching text that merely mentions the symptom — tighten it to the tool's own result shape; the fires' contexts are in the finding"
+      "recommendation": "usually a pattern matching text that merely mentions the symptom - tighten it to the tool's own result shape; the fires' contexts are in the finding"
     },
     {
       "id": "result-trigger-follows-every-call",
@@ -108,9 +108,9 @@
       "when": "triggerFired / toolCalls >= 0.5",
       "cause": "probable",
       "causes": [
-        "the advice is about making the call, so it belongs before it — the skill's text reads as a how-to",
-        "the tool is misused in a way the symptom reports — the skill's text reads as a diagnosis",
-        "the pattern is too broad and matches normal output — the fire contexts show no symptom"
+        "the advice is about making the call, so it belongs before it - the skill's text reads as a how-to",
+        "the tool is misused in a way the symptom reports - the skill's text reads as a diagnosis",
+        "the pattern is too broad and matches normal output - the fire contexts show no symptom"
       ],
       "open": false,
       "finding": "the symptom its result trigger names follows most calls of that tool",
@@ -124,14 +124,14 @@
       "when": "skillCaught / skillSessions >= 0.3",
       "cause": "unknown",
       "causes": [
-        "the skill's text does not state the rule its check enforces — the rule is absent from the body",
-        "the rule is stated but buried — it is present, past the first screen",
-        "the skill loaded after the edits it governs — the load follows the caught edits in the session",
-        "the check is stricter than the skill says — the finding's fix text names something the skill does not"
+        "the skill's text does not state the rule its check enforces - the rule is absent from the body",
+        "the rule is stated but buried - it is present, past the first screen",
+        "the skill loaded after the edits it governs - the load follows the caught edits in the session",
+        "the check is stricter than the skill says - the finding's fix text names something the skill does not"
       ],
       "open": true,
       "finding": "sessions that loaded it were still caught by a check the skill owns",
-      "recommendation": "none yet — evidence carried forward; repeated across windows it is the case for putting the rule in the skill's first lines"
+      "recommendation": "none yet - evidence carried forward; repeated across windows it is the case for putting the rule in the skill's first lines"
     },
     {
       "id": "check-never-fires-with-prose-twin",
@@ -142,13 +142,13 @@
       "and": "proseTwin",
       "cause": "probable",
       "causes": [
-        "the prose pre-empts every violation — sessions loading the pack do the thing the check guards",
-        "the check is unreachable — its scan pattern or scope selects nothing in this tree",
-        "nobody does the thing at all here — the guarded files or calls are absent from the window"
+        "the prose pre-empts every violation - sessions loading the pack do the thing the check guards",
+        "the check is unreachable - its scan pattern or scope selects nothing in this tree",
+        "nobody does the thing at all here - the guarded files or calls are absent from the window"
       ],
       "open": false,
       "finding": "never fires, and a RULES.md line states the same rule",
-      "recommendation": "a candidate for the prose-removal experiment: delete the prose, keep the check, read this counter one window later — at most one firing means the check alone suffices; more means the prose was doing the work"
+      "recommendation": "a candidate for the prose-removal experiment: delete the prose, keep the check, read this counter one window later - at most one firing means the check alone suffices; more means the prose was doing the work"
     },
     {
       "id": "check-never-fires",
@@ -158,14 +158,14 @@
       "when": "checkFindings = 0",
       "cause": "unknown",
       "causes": [
-        "nobody does the thing at all here — the guarded files or calls are absent from the window",
-        "the check is unreachable — its scan pattern or scope selects nothing in this tree",
-        "a sibling check catches the violation first — a check with overlapping scope fires instead",
-        "the check's fixture is the only violator it has ever seen — a test that passes and nothing else"
+        "nobody does the thing at all here - the guarded files or calls are absent from the window",
+        "the check is unreachable - its scan pattern or scope selects nothing in this tree",
+        "a sibling check catches the violation first - a check with overlapping scope fires instead",
+        "the check's fixture is the only violator it has ever seen - a test that passes and nothing else"
       ],
       "open": true,
       "finding": "never fires and has no prose twin",
-      "recommendation": "none — a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named"
+      "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named"
     },
     {
       "id": "check-fires-most-sessions",
@@ -175,14 +175,14 @@
       "when": "checkSessions / sessions >= 0.5",
       "cause": "probable",
       "causes": [
-        "the lesson is not carried before the work — every firing is fixed the same way and the fix is the rule",
-        "the check is wrong or too broad — the sample shows findings the session argued with or accepted",
-        "a pre-edit guard is missing — the violation is a call shape a PreToolUse guard could hold",
-        "one session's habit — the firings cluster in one session id"
+        "the lesson is not carried before the work - every firing is fixed the same way and the fix is the rule",
+        "the check is wrong or too broad - the sample shows findings the session argued with or accepted",
+        "a pre-edit guard is missing - the violation is a call shape a PreToolUse guard could hold",
+        "one session's habit - the firings cluster in one session id"
       ],
       "open": true,
       "finding": "fires blocking in half the sessions or more",
-      "recommendation": "usually the lesson belongs before the work (a RULES.md line, a pre-edit trigger) with the check kept as the net; if the findings were argued with, the check is wrong — a sample of the findings is attached"
+      "recommendation": "usually the lesson belongs before the work (a RULES.md line, a pre-edit trigger) with the check kept as the net; if the findings were argued with, the check is wrong - a sample of the findings is attached"
     },
     {
       "id": "advisory-ignored",
@@ -192,13 +192,13 @@
       "when": "advisoryPersisted / advisory >= 0.8",
       "cause": "known",
       "causes": [
-        "it names a bias, not a defect — nothing to fix, so nothing is fixed",
-        "it names a defect but its fix text is not actionable — sessions try and the pair persists",
-        "it fires on files the session cannot edit — generated files or the mount"
+        "it names a bias, not a defect - nothing to fix, so nothing is fixed",
+        "it names a defect but its fix text is not actionable - sessions try and the pair persists",
+        "it fires on files the session cannot edit - generated files or the mount"
       ],
       "open": false,
       "finding": "an advisory nobody acts on, printed at every Stop",
-      "recommendation": "promote it to blocking if it names a defect, delete it if it names a bias — the choice is the owner's"
+      "recommendation": "promote it to blocking if it names a defect, delete it if it names a bias - the choice is the owner's"
     },
     {
       "id": "check-unsatisfiable",
@@ -208,9 +208,9 @@
       "when": "relent >= 1",
       "cause": "probable",
       "causes": [
-        "the condition cannot be satisfied by following the fix text — the relent's block shows the same finding after a fix attempt on the named file",
-        "the finding is on a file the session cannot edit — generated or mounted",
-        "two different fixes each cleared one finding and raised another — the two blocks differ"
+        "the condition cannot be satisfied by following the fix text - the relent's block shows the same finding after a fix attempt on the named file",
+        "the finding is on a file the session cannot edit - generated or mounted",
+        "two different fixes each cleared one finding and raised another - the two blocks differ"
       ],
       "open": false,
       "finding": "a session could not clear it in two attempts and the Stop hook let it through",
@@ -224,8 +224,8 @@
       "when": "acceptances >= 3",
       "cause": "known",
       "causes": [
-        "the rule is mis-scoped for this tree — the acceptance reasons name a structural class of file",
-        "the files are genuinely exceptional — the reasons name one-off circumstances"
+        "the rule is mis-scoped for this tree - the acceptance reasons name a structural class of file",
+        "the files are genuinely exceptional - the reasons name one-off circumstances"
       ],
       "open": false,
       "finding": "carries three or more acceptances or an override to advisory",
@@ -239,12 +239,12 @@
       "when": "errors >= 1",
       "cause": "known",
       "causes": [
-        "an engine module failed to load — the hook log names the module",
-        "a pack failed to load — the hook log names the pack",
-        "the runtime is missing or wrong — the launch error names node"
+        "an engine module failed to load - the hook log names the module",
+        "a pack failed to load - the hook log names the pack",
+        "the runtime is missing or wrong - the launch error names node"
       ],
       "open": false,
-      "finding": "the check runner failed to launch in a session — enforcement was silently off",
+      "finding": "the check runner failed to launch in a session - enforcement was silently off",
       "recommendation": "a defect; the hook log line it was counted from is attached"
     },
     {
@@ -256,9 +256,9 @@
       "and": "median(stopMs) >= 2000",
       "cause": "known",
       "causes": [
-        "one rule regressed — the timing record's slowest rule moved",
-        "the catalog grew — more rules, none slower",
-        "the tree grew — every scanning rule slower in proportion"
+        "one rule regressed - the timing record's slowest rule moved",
+        "the catalog grew - more rules, none slower",
+        "the tree grew - every scanning rule slower in proportion"
       ],
       "open": false,
       "finding": "the Stop hook's checks take a quarter longer than the window before",
@@ -272,13 +272,13 @@
       "when": "guardAdvisory / sessions >= 0.5",
       "cause": "probable",
       "causes": [
-        "the guard matches calls it was not written for — the sample's calls do not exhibit the bias",
-        "the bias is not one sessions hold — the calls exhibit it and proceed",
-        "the guard's text does not say what to do instead — the calls proceed unchanged after it"
+        "the guard matches calls it was not written for - the sample's calls do not exhibit the bias",
+        "the bias is not one sessions hold - the calls exhibit it and proceed",
+        "the guard's text does not say what to do instead - the calls proceed unchanged after it"
       ],
       "open": true,
       "finding": "an advisory guard fires in most sessions and the call runs anyway",
-      "recommendation": "usually a guard matching calls it was not written for — narrow it; a sample of the calls is attached"
+      "recommendation": "usually a guard matching calls it was not written for - narrow it; a sample of the calls is attached"
     }
   ]
 }

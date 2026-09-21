@@ -6,8 +6,8 @@
 // drift guard is a test asserting the two files agree.
 //
 // A finding earns a proposal only once it has stood two weeks AND its cause is
-// well enough known that a diff can argue from it. Everything else — a young
-// finding, a finding whose cause the record cannot settle — stays in the review
+// well enough known that a diff can argue from it. Everything else - a young
+// finding, a finding whose cause the record cannot settle - stays in the review
 // file and on the dashboard, where evidence belongs until it is more than
 // evidence. A week with none opens no session at all, which is what bounds this
 // stage's cost.

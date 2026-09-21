@@ -7,7 +7,7 @@
 // most wants to read one. A counter this code has never heard of arrives named and
 // usable; one that was retired reads back as what it meant.
 //
-// A day inside the window that the file does not carry is not a day of zeroes — it
+// A day inside the window that the file does not carry is not a day of zeroes - it
 // is a day the record says nothing about, and every reader in figures.mjs treats a
 // map that no day carried as *not recorded*.
 import { readFileSync } from 'node:fs';
@@ -64,7 +64,7 @@ export function windowDates(today, offset = 0) {
 // reader needs to judge the figures against.
 //
 // The day tier alone, deliberately. The week rows are the same days summed, and the
-// fold only freezes a week once its days have aged out of the raw window — so a
+// fold only freezes a week once its days have aged out of the raw window - so a
 // window built from both would double-count its overlap. What that costs is reach:
 // the review sees as far back as the fold's day retention, and says so in `days`,
 // which is how a reader tells a quiet window from a short one.
@@ -78,14 +78,14 @@ export function buildWindow(file, today, offset = 0) {
     to: dates.at(-1),
     days,
     daysCovered: days.length,
-    // Whether the window carries the check-findings counter at all — the one figure
+    // Whether the window carries the check-findings counter at all - the one figure
     // whose absence genuinely means "nothing fired" rather than "not recorded", since
     // the check counters cover every session the fold saw.
     carriesCheckFindings: days.some((d) => d.checkFindings && typeof d.checkFindings === 'object'),
   };
 }
 
-// Both windows, and the fold's own watermark — which is what the precondition
+// Both windows, and the fold's own watermark - which is what the precondition
 // compares to decide whether there is anything new to review.
 export function readWindows(root, today) {
   const file = readUsageFile(root);

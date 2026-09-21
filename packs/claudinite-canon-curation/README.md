@@ -55,6 +55,7 @@ why.
 | `pack-version-history` | weekly, when commits landed under `packs/` | a self-landing PR touching only `packs/*/provenance/VERSIONS.md` |
 | `canon-prose-to-checks` | weekly, on a canon somebody worked in that week | a PR converting the shelf's always-testable prose into checks |
 | `canon-rule-revalidation` | weekly | corrections to shelf rules whose environment claim no longer probes true |
+| `usage-triage` | weekly, when a usage-review finding has stood two weeks with a cause a diff can argue from | one PR per subject carrying the proposed edit to the shelf, automerge `nothing` |
 
 ### Rules (`RULES.md`)
 

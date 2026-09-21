@@ -1,5 +1,5 @@
 // The LIVE half of the review's inputs: what the tree says right now, which no
-// window applies to. Three questions the record cannot answer —
+// window applies to. Three questions the record cannot answer -
 //
 //   what does each mounted skill declare about itself, and what does its body cost;
 //   what does each active rule enforce, and does a RULES.md line say the same thing;
@@ -17,7 +17,7 @@ const engine = (root, mod) => {
 
 const read = (path) => { try { return readFileSync(path, 'utf8'); } catch { return ''; } };
 
-// The tools a skill's result triggers name — the denominator
+// The tools a skill's result triggers name - the denominator
 // `result-trigger-follows-every-call` is asked against. A trigger matching tools by
 // regex names no one tool, so it contributes none and the rule reads *not recorded*
 // rather than guessing which tool it meant.
@@ -39,7 +39,7 @@ export async function readSkills(root, packs) {
         id: name,
         pack: pack.id,
         dir,
-        // The body past its frontmatter — what a load actually costs the session.
+        // The body past its frontmatter - what a load actually costs the session.
         tokens: estimateTokensOf(body.replace(/^---[\s\S]*?\n---\n/, '')),
         expect: meta.usage?.expect ?? null,
         declaredRate: meta.usage?.declaredRate ?? null,
@@ -97,13 +97,13 @@ export function acceptanceReader(config) {
   };
 }
 
-// The reasons behind those acceptances, for the finding's evidence — listed
+// The reasons behind those acceptances, for the finding's evidence - listed
 // together is what makes a structural exemption visible as one.
 export const acceptanceReasons = (config, ruleId) => (Array.isArray(config?.accept) ? config.accept : [])
   .filter((a) => a?.rule === ruleId)
   .map((a) => ({ file: a.file ?? a.path ?? null, reason: a.reason ?? a.why ?? null }));
 
-// When this repo first declared a pack — the adoption window's start. Read from the
+// When this repo first declared a pack - the adoption window's start. Read from the
 // settings file's own history, deepened as far as the checkout reaches. A shallow
 // clone that does not reach it answers null, and the `adoption` rules then read
 // *not recorded* rather than judging against a date that is really the clone's.
@@ -119,7 +119,7 @@ export function packDeclaredAt(root, packId) {
 export const ADOPTION_WEEKS = 4;
 
 // Is the pack's adoption window still open, closed, or unknowable? A skill expecting
-// `adoption` is judged only once the window has CLOSED — inside it, a skill that has
+// `adoption` is judged only once the window has CLOSED - inside it, a skill that has
 // not loaded yet may simply not have been reached.
 export function adoptionWindow(declaredAt, now) {
   if (!declaredAt) return null;

@@ -16,7 +16,7 @@ export const TIMING_RULES = 8;
 
 const RE_LINE = new RegExp(`(?:^|\\s)${TIMING_PREFIX} ${TIMING_VERSION} (\\S+) total=(\\d+)((?: [^\\s=]+=\\d+)*)\\s*$`, 'm');
 
-// `timings` is [{ id, ms }], one entry per rule run — several for a rule the
+// `timings` is [{ id, ms }], one entry per rule run - several for a rule the
 // runner ran more than once, which are summed here rather than at the call site.
 export function renderTiming(scope, totalMs, timings) {
   const byRule = new Map();
@@ -32,7 +32,7 @@ export function renderTiming(scope, totalMs, timings) {
 }
 
 // The record a line carries: { scope, totalMs, rules: [{ id, ms }] }, or null
-// where the text holds no record — an older engine's report, or any other line.
+// where the text holds no record - an older engine's report, or any other line.
 export function parseTiming(text) {
   const m = RE_LINE.exec(String(text ?? ''));
   if (!m) return null;
@@ -43,7 +43,7 @@ export function parseTiming(text) {
   return { scope: m[1], totalMs: Number(m[2]), rules };
 }
 
-// The record lines in a block of text, in the order they were written — a
+// The record lines in a block of text, in the order they were written - a
 // transcript entry holds one per runner that reported into it.
 export function parseTimings(text) {
   return String(text ?? '').split('\n').map(parseTiming).filter(Boolean);

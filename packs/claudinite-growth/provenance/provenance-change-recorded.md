@@ -37,3 +37,16 @@
 - **Mechanism:** an unmarked guideline owes on its skill's file, and the skill owes nothing for the
   bullet itself; a carrier deleted while a live carrier still names its file owes any entry there,
   and only a file no carrier names must end retired.
+
+## 2026-09-21 · weakened · a declared usage expectation is not a decision about the skill (#2214)
+- **Reason:** every skill gained a frontmatter `metadata.usage` block, and the check read each one
+  as a carrier change owing an entry - 63 entries recording that a declaration was written, which
+  is the log nobody finishes reading. The block declares what usage the skill expects of itself,
+  read only by the corpus's own maintenance and ignored by the harness, exactly like the `body:`
+  line the exemption already covered.
+- **Mechanism:** the existing marking-pass exemption widened to strip the block, so the check still
+  fires on a skill whose description, triggers or body moved and stays silent on one that only
+  declared itself.
+- **Retire when:** the block starts deciding something a session acts on - then it is a carrier
+  and the exemption is wrong.
+- **Landed:** #2214

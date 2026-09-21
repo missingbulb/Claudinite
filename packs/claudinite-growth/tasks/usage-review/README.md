@@ -15,11 +15,11 @@ that merges only when a person merges it:
 | | |
 |---|---|
 | `window` | both windows' bounds, how many days of record each holds, and how many subjects were judged |
-| `findings` | one per (rule, subject): the figures both windows carried, how well the cause is known, the possible causes in order, the sentences a person reads, and `since` — the first review it appeared in |
+| `findings` | one per (rule, subject): the figures both windows carried, how well the cause is known, the possible causes in order, the sentences a person reads, and `since` - the first review it appeared in |
 | `notEvaluated` | the rule/subject pairs held back by a floor, with the figure that fell short. *No findings* means something only when this is empty |
 | `unstated` | the skills declaring no expectation. Only *always loaded* is evaluated for those, and the list is the nudge to declare |
 
-Beside it, `.claudinite/local/dashboard/claudinite-growth.GENERATED.json` — the
+Beside it, `.claudinite/local/dashboard/claudinite-growth.GENERATED.json` - the
 values for the two widgets [dashboard.json](../../dashboard.json) declares.
 
 ## The rules
@@ -27,7 +27,7 @@ values for the two widgets [dashboard.json](../../dashboard.json) declares.
 [`usage-rules.json`](../../usage-rules.json), validated by its own schema, each rule
 readable as a sentence: *over these subjects, in this window, above this floor, when
 this holds, the cause is this well known, and this is what it usually means.* A local
-pack may add its own in the same vocabulary. There are no coded rules — a gate the
+pack may add its own in the same vocabulary. There are no coded rules - a gate the
 vocabulary cannot express is not a rule.
 
 A rule's `cause` says what its recommendation is worth. `known` means the arithmetic
@@ -37,7 +37,7 @@ the finding is evidence and nothing more.
 ## When it runs
 
 Daily, after the fold, and only when the fold has moved past what the last review
-read and the window holds at least ten sessions — under that, a rate says more about
+read and the window holds at least ten sessions - under that, a rate says more about
 the window than about its subject.
 
 ## What happens to a finding

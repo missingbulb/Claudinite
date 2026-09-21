@@ -144,6 +144,27 @@ key), which is what makes "never loads" visible: diff the file against the repo'
 Fleet-wide aggregation is deliberately **not** here — the canon knows mechanisms, never repos, so
 it belongs to the fleet-enforcer repo, the only place that knows who the members are.
 
+## Usage review - was the placement right?
+
+The fold says what happened; it cannot say whether that was right. Every skill declares what usage
+it expects of itself, under its frontmatter `metadata.usage` - `adoption`, `routine` at a stated
+rate, `triggered`, or `rare` - and [usage-review](tasks/usage-review/README.md) compares the
+declaration against the record daily, by [`usage-rules.json`](usage-rules.json): rule declarations
+a person can read in a sitting, evaluated by one generic evaluator. A local pack may add its own
+rules in the same vocabulary.
+
+Without a declared expectation the comparison cannot be made at all: a version-bump skill and a
+broken one both read zero loads. Each finding carries how well its **cause** is known, the causes
+in likelihood order with the discriminator that tells each apart, and what a fix would likely be.
+The review changes nothing and writes nothing outside its own file.
+
+[usage-triage](tasks/usage-triage/README.md) is the one stage that changes anything: weekly, over
+findings that have stood two weeks with a cause a diff can argue from, it opens one pull request
+per subject carrying the edit itself, with automerge `nothing`. The same method over a canon's own
+shelf is `claudinite-canon-curation`'s task of that name; both load
+[triaging-usage-findings](skills/triaging-usage-findings/SKILL.md), which states the method and
+names no corpus.
+
 ## Skills
 
 Each stage's **method** lives in a skill, so the task doc frames the unattended run and the same

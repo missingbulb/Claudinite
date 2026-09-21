@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "usage-rules.schema.json",
   "title": "Usage review rules",
-  "description": "Declarations the usage review evaluates against the record. Each rule is a sentence a person can read in a sitting: over these subjects, in this window, above this floor, when this holds, the cause is this well known, and this is what it usually means. A gate the vocabulary cannot express is not a rule — there are no coded rules.",
+  "description": "Declarations the usage review evaluates against the record. Each rule is a sentence a person can read in a sitting: over these subjects, in this window, above this floor, when this holds, the cause is this well known, and this is what it usually means. A gate the vocabulary cannot express is not a rule - there are no coded rules.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -52,7 +52,7 @@
               "triggered",
               "rare"
             ],
-            "description": "Narrows a skill rule to skills declaring that expectation of themselves. Absent, the rule judges every skill — including the ones that declare nothing."
+            "description": "Narrows a skill rule to skills declaring that expectation of themselves. Absent, the rule judges every skill - including the ones that declare nothing."
           },
           "window": {
             "enum": [
@@ -71,12 +71,12 @@
           },
           "when": {
             "type": "string",
-            "description": "One comparison, in four shapes: `a / b >= n`, `a / b <= n`, `a = 0`, `a >= n`. `median(a)` takes the median across the window's days and `previous.` reads the window before. Nothing else — a rule needing more is not a rule.",
+            "description": "One comparison, in four shapes: `a / b >= n`, `a / b <= n`, `a = 0`, `a >= n`. `median(a)` takes the median across the window's days and `previous.` reads the window before. Nothing else - a rule needing more is not a rule.",
             "pattern": "^(previous\\.)?(median\\()?[A-Za-z][A-Za-z0-9]*\\)?( / (previous\\.)?(median\\()?[A-Za-z][A-Za-z0-9]*\\)?)? (>=|<=|=) [A-Za-z0-9./ ]+$"
           },
           "and": {
             "type": "string",
-            "description": "A live predicate the record cannot answer — a name (`proseTwin`) or one more comparison against a live figure (`tokens <= 300`). Both sides must hold."
+            "description": "A live predicate the record cannot answer - a name (`proseTwin`) or one more comparison against a live figure (`tokens <= 300`). Both sides must hold."
           },
           "cause": {
             "enum": [

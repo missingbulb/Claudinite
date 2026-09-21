@@ -1,17 +1,17 @@
 // How one session USED the corpus: which skills loaded and what made them load,
 // which guards fired, how many moments a triggered skill's declaration actually
-// had, and what the checks cost. The other half of a capture file's counting —
+// had, and what the checks cost. The other half of a capture file's counting -
 // fold-usage.mjs counts what the session produced, this counts what the corpus did
-// to it — and the record the usage review's rules are evaluated against.
+// to it - and the record the usage review's rules are evaluated against.
 //
 // EVERY COUNTER HERE IS A FLOOR. The marks are the hooks' own `hooklog` lines,
 // which reach the transcript because hooklog mirrors to stderr and the harness
 // records hook stderr. A hook killed before it logged, or a line the harness
-// dropped, is invisible, and what that leaves is an under-count — the same bound
+// dropped, is invisible, and what that leaves is an under-count - the same bound
 // the check counters already state for themselves.
 import { isUserMessage, commandName, skillToolLoads, toolCalls, entryText } from './capture-entries.mjs';
 
-// A hooklog line — `<iso> run=<id> <hook>: <message>`, the format hook-log.mjs
+// A hooklog line - `<iso> run=<id> <hook>: <message>`, the format hook-log.mjs
 // writes and session-start-command.sh mirrors. Deduped on the whole line: the
 // timestamp is to the second and the run id is per hook execution, so two
 // recordings of one emission collapse and two real emissions do not.
@@ -50,8 +50,8 @@ export function readMark({ hook, message }) {
     return null;
   }
   // A PostToolUse trigger names its tool before its skills; a UserPromptSubmit one
-  // carries the skills alone. The same event either way — a declared trigger fired
-  // and the session was told to load — counted apart only by what caused it.
+  // carries the skills alone. The same event either way - a declared trigger fired
+  // and the session was told to load - counted apart only by what caused it.
   if (hook === 'PostToolUse' && (m = RE_TRIGGER_RESULT.exec(message))) {
     return { kind: 'trigger', cause: 'resultTrigger', skills: m[1].split(',') };
   }
@@ -69,7 +69,7 @@ export function readMark({ hook, message }) {
 // renders it: the engine and this pack land on separate cycles, so every member
 // spends a window holding an older engine beside this pack, and a static import of
 // a module that engine does not carry fails the whole mount's self-test. The drift
-// guard is a test — `corpus-use.test.mjs` drives the ENGINE's real renderer and
+// guard is a test - `corpus-use.test.mjs` drives the ENGINE's real renderer and
 // fails if this reader stops reading what it writes.
 const RE_TIMING = /claudinite-check-timing v1 (\S+) total=(\d+)((?: [^\s=]+=\d+)*)\s*$/;
 export function parseTiming(text) {
@@ -85,7 +85,7 @@ export function parseTiming(text) {
 // What the checks cost this session: the timing record each Stop sweep prints,
 // keyed `<scope>` for the whole sweep and `<scope>/<rule>` for one rule in it.
 // The record names only its slowest rules, so the per-rule keys do not sum to the
-// scope's total — which is why the total is carried as a key of its own rather
+// scope's total - which is why the total is carried as a key of its own rather
 // than derived.
 export function countCheckTiming(entries) {
   const out = {};
@@ -116,7 +116,7 @@ export const LOAD_CAUSES = Object.freeze([
 
 const emptyCauses = () => Object.fromEntries(LOAD_CAUSES.map((c) => [c, 0]));
 
-// A `Read` of a mounted skill's own SKILL.md — the third way a body enters a
+// A `Read` of a mounted skill's own SKILL.md - the third way a body enters a
 // session, and the one every guard's block text offers as the alternative to the
 // Skill tool, so it is a load like the others.
 const RE_SKILL_MD = /(?:^|\/)skills\/([a-z0-9][a-z0-9-]*)\/SKILL\.md$/;
@@ -125,7 +125,7 @@ const readLoads = (entry, mounted) => toolCalls(entry)
   .map((c) => RE_SKILL_MD.exec(c.input.file_path)?.[1])
   .filter((name) => name && mounted.has(name));
 
-// Every tool_use block's name, sidechains included — a subagent's call is a call.
+// Every tool_use block's name, sidechains included - a subagent's call is a call.
 // The denominator the result-trigger rules read: how often the tool was used at
 // all, against how often its trigger fired.
 export function countToolCalls(entries) {
@@ -148,7 +148,7 @@ export function countCorpusUse(entries, mounted = new Set()) {
   const guardFires = {};
   const seen = new Set();
   // The mark that would cause the NEXT load of each skill, cleared as that load
-  // consumes it — which is what "since its last load" means operationally.
+  // consumes it - which is what "since its last load" means operationally.
   const pending = new Map();
   const unfollowed = new Map(); // skill → fires not yet followed by a load
 
@@ -192,7 +192,7 @@ export function countCorpusUse(entries, mounted = new Set()) {
 
 // The moments a triggered skill's own declarations had in this session, counted
 // with the resolver the hooks match with rather than a second reading of the same
-// patterns. `hits` is `{ path, call, prompt }` — the engine's predicates, passed in
+// patterns. `hits` is `{ path, call, prompt }` - the engine's predicates, passed in
 // by the caller, so an engine too old to export them records NO key at all, which
 // reads as *not recorded* rather than as zero moments.
 //

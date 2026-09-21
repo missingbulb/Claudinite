@@ -42,7 +42,7 @@ export const TOOL_RESULT_KEY = 'force-load-on-tool-results-matching';
 export const BODY_KEY = 'body';
 export const BODIES = Object.freeze(['workflow', 'guidelines']);
 
-// What usage the skill expects of itself, under `metadata` too — the declaration
+// What usage the skill expects of itself, under `metadata` too - the declaration
 // the usage review compares the record against, since without it zero loads is
 // equally "exactly right" and "broken":
 //   usage:
@@ -102,7 +102,7 @@ export function parseFrontmatter(text) {
   // opens one, and a line indented no further than the key that opened it closes
   // it. A container starts as a list and becomes a map the first time a key lands
   // inside it, which is what lets `metadata` hold both lists and nested maps, to
-  // whatever depth they are written — `metadata.usage.expect` is three.
+  // whatever depth they are written - `metadata.usage.expect` is three.
   const stack = []; // [{ key, indent, parent }]
   for (const line of lines) {
     if (!line.trim()) continue;
@@ -144,8 +144,8 @@ export function bodyOf(fm) {
   return typeof v === 'string' && BODIES.includes(v.trim()) ? v.trim() : null;
 }
 
-// The declared `usage` block: null where there is none — undeclared is a state of
-// its own, which the review lists rather than judges — else
+// The declared `usage` block: null where there is none - undeclared is a state of
+// its own, which the review lists rather than judges - else
 // { expect, perSessions, declaredRate, problems }. A mis-declaration keeps its
 // place here with `problems` naming what is wrong, so the authoring-time check and
 // the review read one vocabulary instead of two: the check reports the problems,
@@ -159,7 +159,7 @@ export function usageOf(fm) {
   const problems = [];
   const expect = typeof v.expect === 'string' ? v.expect.trim() : '';
   if (!EXPECTS.includes(expect)) {
-    problems.push(expect ? `expect: ${expect} is outside ${EXPECTS.join(' | ')}` : `expect is missing — one of ${EXPECTS.join(' | ')}`);
+    problems.push(expect ? `expect: ${expect} is outside ${EXPECTS.join(' | ')}` : `expect is missing - one of ${EXPECTS.join(' | ')}`);
   }
   const raw = typeof v[RATE_KEY] === 'string' ? v[RATE_KEY].trim() : '';
   const m = RE_RATE.exec(raw);

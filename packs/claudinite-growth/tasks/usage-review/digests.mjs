@@ -2,9 +2,9 @@
 // judge a finding against without opening a transcript.
 //
 // Two rules ask whether a skill SHOULD have loaded in a session where it did not,
-// and that judgment is deliberately not made here. The review stops at the digest —
+// and that judgment is deliberately not made here. The review stops at the digest -
 // the owner's prompts, the tools called with their targets, the files edited, the
-// commands run — and leaves the question to whoever reads the finding, human or
+// commands run - and leaves the question to whoever reads the finding, human or
 // agent, with the digest and the skill's description side by side. An agent phase
 // would spend a session a day on a question a reader answers in a minute, and only
 // once the finding has lasted.
@@ -19,7 +19,7 @@ export const LOGS_BRANCH = 'conversation-logs';
 
 const firstLine = (text) => String(text ?? '').trim().split('\n')[0].slice(0, 200);
 
-// The target a call names, in one short phrase — what a reader needs to tell what
+// The target a call names, in one short phrase - what a reader needs to tell what
 // the session was doing, never the call's whole input.
 export function callTarget(call) {
   const input = call?.input ?? {};
@@ -60,7 +60,7 @@ export function digestOf(entries) {
 }
 
 // The capture files on the logs branch, newest first, with the date and session each
-// name carries. A repo whose retention is zero — capture-only — has none, and every
+// name carries. A repo whose retention is zero - capture-only - has none, and every
 // digest below is then *not sampled*, which the review states rather than hides.
 export function captureFiles(root, branch = LOGS_BRANCH) {
   try {
@@ -84,7 +84,7 @@ export function readCapture(root, name, branch = LOGS_BRANCH) {
 }
 
 // Up to five digests from inside the window, newest first. `select` narrows the
-// files to the ones a finding wants — the sessions where a skill did NOT load, for
+// files to the ones a finding wants - the sessions where a skill did NOT load, for
 // the two rules that ask about those.
 export function sampleDigests(root, files, { from, to, select = () => true, limit = SAMPLES } = {}) {
   const out = [];

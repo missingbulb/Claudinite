@@ -1,6 +1,6 @@
 // The usage review's I/O shell: read the record, read the tree, evaluate the rules,
 // write the file, move the dashboard and the issues. Every decision is in a
-// declaration or in a tested pure function — this file only moves data between them.
+// declaration or in a tested pure function - this file only moves data between them.
 //
 // It changes NOTHING it reviews. Not a pack element, not a provenance log, not a
 // severity. The file it writes and the issues it files are an analysis with a
@@ -29,7 +29,7 @@ const engineOrLocal = async (mod) => {
   try { return await import(engine(mod)); } catch { return import(join(root, 'engine', mod)); }
 };
 
-// The findings whose rules want a sample of what the sessions were doing — the two
+// The findings whose rules want a sample of what the sessions were doing - the two
 // that ask whether a skill should have loaded, and the ones whose recommendation
 // says the evidence is attached.
 const WANTS_DIGESTS = new Set(['skill-adoption-not-reached', 'skill-routine-under-rate']);
@@ -42,7 +42,7 @@ async function main() {
 
   const today = new Date().toISOString().slice(0, 10);
   const record = readWindows(root, today);
-  if (!record) { log('no usage fold to review yet — nothing to do'); return; }
+  if (!record) { log('no usage fold to review yet - nothing to do'); return; }
 
   const skills = await readSkills(root, packs);
   const { check, guard } = readRules(packs, packRules(packs));
@@ -72,7 +72,7 @@ async function main() {
     predicateOf: (subject, name) => (name === 'proseTwin' ? subject.proseTwin ?? null : null),
   });
 
-  // `since` — the first review this finding appeared in — comes from the PRIOR file
+  // `since` - the first review this finding appeared in - comes from the PRIOR file
   // at the base tip, never from local HEAD: the checkout may be sitting on this
   // task's own open pull request, and the base is the only authority on what has
   // already been reviewed.
@@ -84,7 +84,7 @@ async function main() {
 
   // The evidence, attached: a reader never goes back to a transcript to judge one.
   const captures = captureFiles(root);
-  if (!captures.length) log('no capture branch — digests recorded as not sampled');
+  if (!captures.length) log('no capture branch - digests recorded as not sampled');
   for (const finding of findings) {
     if (!WANTS_DIGESTS.has(finding.rule)) continue;
     finding.digests = captures.length
@@ -105,7 +105,7 @@ async function main() {
   writeFileSync(join(root, DASHBOARD_PATH), dashboard);
   log(`${findings.length} findings, ${notEvaluated.length} not evaluated, ${unstated.length} skills unstated`);
 
-  if (!token || !repo) { log('no token — the file is written, nothing delivered'); return; }
+  if (!token || !repo) { log('no token - the file is written, nothing delivered'); return; }
 
   await deliverGenerated({
     root, repo, base, token,
@@ -146,10 +146,10 @@ async function syncIssues(file) {
     const body = issueBody(finding, file);
     if (existing) {
       await api(`/repos/${repo}/issues/${existing.number}`, { method: 'PATCH', body: { body } });
-      log(`updated #${existing.number} — ${title}`);
+      log(`updated #${existing.number} - ${title}`);
     } else {
       const { json } = await api(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: ['usage-finding'] } });
-      log(`filed #${json?.number ?? '?'} — ${title}`);
+      log(`filed #${json?.number ?? '?'} - ${title}`);
     }
   }
   for (const stale of closuresFor(file, [...byTitle.keys()])) {
@@ -157,10 +157,10 @@ async function syncIssues(file) {
     if (!issue) continue;
     await api(`/repos/${repo}/issues/${issue.number}/comments`, { method: 'POST', body: { body: closingComment(stale, file) } });
     await api(`/repos/${repo}/issues/${issue.number}`, { method: 'PATCH', body: { state: 'closed', state_reason: 'completed' } });
-    log(`closed #${issue.number} — the finding cleared`);
+    log(`closed #${issue.number} - the finding cleared`);
   }
 }
 
 if (process.argv[1] && process.argv[1].endsWith('worker.mjs')) {
-  main().catch((e) => { console.error(`claudinite-needs-human: failure — ${e.message}`); process.exit(1); });
+  main().catch((e) => { console.error(`claudinite-needs-human: failure - ${e.message}`); process.exit(1); });
 }

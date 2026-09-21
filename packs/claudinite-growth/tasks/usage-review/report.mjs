@@ -10,7 +10,7 @@ export const LASTING_DAYS = 14;
 export const REVIEW_PATH = '.claudinite/local/usage-review.GENERATED.json';
 export const DASHBOARD_PATH = '.claudinite/local/dashboard/claudinite-growth.GENERATED.json';
 
-// A finding's identity is the pair it is about, and nothing else — not the figures,
+// A finding's identity is the pair it is about, and nothing else - not the figures,
 // which move every day, and not the sentence, which an author may reword. That is
 // what lets `since` survive a rule's prose being improved.
 export const findingKey = (finding) => `${finding.rule}\u0000${finding.subject}`;
@@ -91,30 +91,30 @@ export function prBody(file) {
   for (const cause of CAUSES) {
     const rows = file.findings.filter((f) => f.cause === cause);
     if (!rows.length) continue;
-    out.push('', `## Cause ${cause} — ${rows.length}`, '');
+    out.push('', `## Cause ${cause} - ${rows.length}`, '');
     out.push(table(rows.map((f) => [
       `\`${f.subject}\``,
       `\`${f.rule}\``,
       f.finding,
-      Object.entries(f.figures).map(([k, v]) => `${k} ${v ?? '—'}`).join(', '),
+      Object.entries(f.figures).map(([k, v]) => `${k} ${v ?? '-'}`).join(', '),
       f.since + (f.lasting ? ' ⏳' : ''),
     ]), ['subject', 'rule', 'finding', 'figures', 'since']));
   }
   if (!file.findings.length) {
     out.push('', file.notEvaluated.length
-      ? `No findings — but ${file.notEvaluated.length} rule/subject pairs were **not evaluated**, so this is not yet a clean window.`
+      ? `No findings - but ${file.notEvaluated.length} rule/subject pairs were **not evaluated**, so this is not yet a clean window.`
       : 'No findings, and every rule was evaluated.');
   }
   if (file.notEvaluated.length) {
     const short = file.notEvaluated.slice(0, 20);
-    out.push('', `## Not evaluated — ${file.notEvaluated.length}`, '');
+    out.push('', `## Not evaluated - ${file.notEvaluated.length}`, '');
     out.push(table(short.map((n) => [
-      `\`${n.subject}\``, `\`${n.rule}\``, n.name, n.need ?? '—', n.have ?? '*not recorded*',
+      `\`${n.subject}\``, `\`${n.rule}\``, n.name, n.need ?? '-', n.have ?? '*not recorded*',
     ]), ['subject', 'rule', 'figure', 'needs', 'has']));
     if (file.notEvaluated.length > short.length) out.push('', `…and ${file.notEvaluated.length - short.length} more, in the file.`);
   }
   if (file.unstated.length) {
-    out.push('', `## Skills stating no expectation — ${file.unstated.length}`, '',
+    out.push('', `## Skills stating no expectation - ${file.unstated.length}`, '',
       file.unstated.map((u) => `\`${u.skill}\``).join(', '),
       '', 'Only *always loaded* is evaluated for these. A `usage` block in the frontmatter is what the rest reads.');
   }

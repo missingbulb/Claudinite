@@ -2,7 +2,7 @@
 //
 // Neither is expressible in the built-in vocabulary: the movement conditions read
 // the project's commits, issues, pull requests and captures, and this review's
-// trigger is neither — it is the FOLD having moved, which is machinery, and the
+// trigger is neither - it is the FOLD having moved, which is machinery, and the
 // window holding enough sessions to say anything at all. Both read files the
 // checkout already carries, so they cost no API call on a term asked every tick.
 import { readFileSync } from 'node:fs';
@@ -19,7 +19,7 @@ const reviewedThrough = (root) => {
   catch { return null; }
 };
 
-// The sessions the fold carries for the trailing window — the denominator every
+// The sessions the fold carries for the trailing window - the denominator every
 // rate rule divides by. Under ten, a rate says more about the window than about the
 // subject, so the review declines rather than publishing findings nobody should act
 // on.
@@ -45,7 +45,7 @@ export const terms = {
     holds() {
       const root = repoRoot();
       const fold = foldedThrough(root);
-      if (!fold) return { holds: false, reason: `no ${USAGE_PATH} yet — there is no record to review` };
+      if (!fold) return { holds: false, reason: `no ${USAGE_PATH} yet - there is no record to review` };
       const reviewed = reviewedThrough(root);
       if (!reviewed) return { holds: true, reason: `folded through ${fold} and never reviewed` };
       return fold > reviewed

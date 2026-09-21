@@ -281,7 +281,7 @@ export function countChecks(entries) {
   const scope = (name) => (checks[name] ??= emptyScope());
   const emptyFinding = () => Object.fromEntries(USAGE_FIELDS.checkFindings.map((f) => [f, 0]));
   const finding = (rule, severity) => { (checkFindings[rule] ??= emptyFinding())[severity] += 1; };
-  // The findings each Stop sweep printed, in order — `persisted` reads the last
+  // The findings each Stop sweep printed, in order - `persisted` reads the last
   // one (what the session left standing), `relent` the one before a sweep that
   // gave up, which prints its reason instead of its findings.
   const blocks = [];
@@ -298,7 +298,7 @@ export function countChecks(entries) {
         work.runs += 1;
         if (run.reason === 'runner-error') work.errors += 1;
         // A relent prints the reason instead of the findings, so its failure is
-        // visible here and nowhere else — and the sweep it gave up on is the last
+        // visible here and nowhere else - and the sweep it gave up on is the last
         // one that printed any, which is the block its rules are read from.
         if (run.reason === 'loop-guard-relent') {
           work.failures += 1;
@@ -340,7 +340,7 @@ export function countChecks(entries) {
     }
     for (const f of findingHeaders(text)) finding(f.rule, f.severity);
   }
-  // A rule this capture file saw at all was seen in one session — the day tier
+  // A rule this capture file saw at all was seen in one session - the day tier
   // reduces these to distinct sessions, which is the denominator the "fires in most
   // sessions" rule reads.
   for (const row of Object.values(checkFindings)) row.sessions = 1;
@@ -542,9 +542,9 @@ export const ruleTokensIn = () => null;
 export const ruleTokensByPackIn = () => null;
 
 // `corpus` is what the mounted corpus offers this repo, for the counters that need
-// to know it: `{ mounted, declarations, hits, ownerOf }`. Absent — a caller that
+// to know it: `{ mounted, declarations, hits, ownerOf }`. Absent - a caller that
 // only wants the production counters, or an engine too old to resolve the
-// declarations — the counters that depend on it record no key rather than a zero.
+// declarations - the counters that depend on it record no key rather than a zero.
 export function countEntries(entries, corpus = {}) {
   const mounted = corpus instanceof Set ? corpus : (corpus.mounted ?? new Set());
   const skillLoads = {};
@@ -580,7 +580,7 @@ export function countEntries(entries, corpus = {}) {
 }
 
 // The skills that loaded and were then caught anyway by a check they own. Per
-// capture file, so the day tier's count is sessions rather than findings — a
+// capture file, so the day tier's count is sessions rather than findings - a
 // session caught three times by one rule is one session the skill did not save.
 // `ownerOf` maps a rule id to the skill that owns it; without it no key is written.
 export function caughtSkills(loaded, checkFindings, ownerOf) {
@@ -1112,7 +1112,7 @@ export async function mountedSkillNames(root, config) {
 // and the two lanes land on separate cycles, so every member spends a window
 // holding an older engine beside this pack. A namespace import that comes back
 // without them leaves `hits`/`ownerOf` unset, and the counters reading them write
-// NO KEY — *not recorded*, which is the honest answer, where a zero would report a
+// NO KEY - *not recorded*, which is the honest answer, where a zero would report a
 // skill whose moments could not be resolved as one whose moments never came.
 export async function mountedCorpus(root, config) {
   const empty = { mounted: new Set(), declarations: [], hits: {}, ownerOf: null };

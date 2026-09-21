@@ -1288,6 +1288,24 @@ module.exports = { issue, check };
       'packs/fixture-shelf/provenance/VERSIONS.md': '# Version history\n\n| Version | Date | What changed |\n|---|---|---|\n'
         + '| 60831.1 | 2026-08-31 | Second version. |\n| 60830.1 | 2026-08-30 | First version. |\n',
       'packs/fixture-shelf/README.md': '# fixture-shelf\n\nA rehearsal fixture pack on a fixture canon\'s shelf.\n',
+      // A skill on that shelf, because the curation pack's skill rules are the half
+      // a shelf without one never exercises: `skill-usage-declared` is blocking and
+      // scans exactly this path, so a shelf carrying no skill proves nothing about
+      // it. Conforming - a declared expectation, and a body that narrates no
+      // enforcement of its own.
+      'packs/fixture-shelf/skills/fixture-shelf-skill/SKILL.md': [
+        '---',
+        'name: fixture-shelf-skill',
+        'description: Publishing a pack to this fixture shelf. Use when adding one.',
+        'metadata:',
+        '  body: workflow',
+        '  usage:',
+        '    expect: rare',
+        '---',
+        '',
+        'Say what the pack is for, then publish it.',
+        '',
+      ].join('\n'),
     },
   },
   {

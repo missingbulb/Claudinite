@@ -121,6 +121,7 @@ export function check(root, packs) {
     for (const s of a.carriers.skills) if (s.present) name(s.name, `skill ${s.name} (${s.body ?? 'no body'})`);
     for (const c of a.carriers.checks) name(elementIdOf(c.id), `check ${c.id}`);
     for (const t of a.carriers.tasks) name(t.id, `task ${t.id}`);
+    for (const d of a.carriers.declarations) name(d.id, `declared rule ${d.id}`);
     if (a.carriers.manifest) name(PACK_ELEMENT, 'the manifest');
     lines.push(`${pack}/${PROVENANCE_DIR}/`);
     for (const [id, f] of [...a.files].sort()) lines.push(`  ${fileOfId(id)} ← ${(namedBy.get(id) ?? ['nothing']).join(', ')}${f.status === 'retired' ? ' (retired)' : f.empty ? ' (empty)' : ''}`);

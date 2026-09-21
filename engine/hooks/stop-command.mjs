@@ -52,7 +52,7 @@ const run = spawnSync(process.execPath, [workRunner, ...(transcriptPath ? ['--tr
 // The runner's timing record is a measurement, not a finding. Lift it off stdout
 // before anything reads the report: it goes to the hook log, where the usage
 // review's fold reads it from the transcript, and the loop guard below hashes
-// findings alone — a millisecond that moves every run would make every stop look
+// findings alone - a millisecond that moves every run would make every stop look
 // like a new one, so the guard would never relent.
 const reported = (run.stdout ?? '').trim().split('\n');
 const timing = reported.find((line) => line.includes(TIMING_PREFIX)) ?? null;

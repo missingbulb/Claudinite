@@ -51,9 +51,13 @@ test('an issue is filed only for a lasting finding whose cause is worth reading'
 
 test('an issue that no longer has a finding is closed, and an unrelated issue is left alone', () => {
   const file = build([finding({ subject: 'still-here' })]);
-  const open = [issueTitle(finding({ subject: 'still-here' })), 'Usage: check-never-fires — gone-check', 'Something else entirely'];
+  // Built through the renderer, not spelled out: the title is a wire format between
+  // this run and the issues an earlier one filed, so a test that spells it a second
+  // way can agree with itself while the two halves drift apart.
+  const gone = issueTitle({ rule: 'check-never-fires', subject: 'gone-check' });
+  const open = [issueTitle(finding({ subject: 'still-here' })), gone, 'Something else entirely'];
   assert.deepEqual(closuresFor(file, open).map((c) => c.subject), ['gone-check']);
-  assert.deepEqual(parseTitle('Usage: check-never-fires — gone-check'), { rule: 'check-never-fires', subject: 'gone-check' });
+  assert.deepEqual(parseTitle(gone), { rule: 'check-never-fires', subject: 'gone-check' });
 });
 
 test('the issue body carries the figures, the causes and what it is not', () => {

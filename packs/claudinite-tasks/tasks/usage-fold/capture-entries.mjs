@@ -1,4 +1,4 @@
-// Reading ONE transcript entry — the shapes every counter in this task asks
+// Reading ONE transcript entry - the shapes every counter in this task asks
 // about, in the one place that knows them. Both counting passes read entries
 // (fold-usage.mjs counts what the session produced, corpus-use.mjs what the
 // corpus did to it), and a shape spelled twice would let the two disagree about
@@ -6,10 +6,10 @@
 
 // A genuine human turn. POSITIVE test, deliberately: the transcript stamps a
 // typed-by-a-person turn with `origin: { kind: 'human' }`, and everything else a
-// user-role entry can be — a tool result, an injected/meta turn, a subagent's
+// user-role entry can be - a tool result, an injected/meta turn, a subagent's
 // sidechain traffic, a compaction summary, a slash-command expansion, and (the one
 // that matters most here) a scheduled-task firing, which carries
-// `origin: { kind: 'task-notification', subkind: 'scheduled-trigger' }` — simply
+// `origin: { kind: 'task-notification', subkind: 'scheduled-trigger' }` - simply
 // lacks that stamp. Testing FOR the human marker rather than against a list of
 // automated ones means a new automated entry shape is excluded the day it appears
 // instead of silently inflating the denominator.
@@ -23,7 +23,7 @@ export function isUserMessage(entry) {
 }
 
 // A user-typed slash command. The harness expands `/name args` into a user entry
-// whose string content opens with a `<command-name>` tag — the tag is the marker,
+// whose string content opens with a `<command-name>` tag - the tag is the marker,
 // so prose that merely mentions a slash command never counts. Returns the bare
 // command name (no leading slash), or null.
 const COMMAND_RE = /<command-name>\s*\/?([A-Za-z0-9:_-]+)\s*<\/command-name>/;
@@ -35,7 +35,7 @@ export function commandName(entry) {
 }
 
 // Skill names loaded by an assistant entry: every `Skill` tool_use block's
-// `input.skill`. Sidechain (subagent) entries are included by the caller — a
+// `input.skill`. Sidechain (subagent) entries are included by the caller - a
 // subagent loading a skill is a load.
 export function skillToolLoads(entry) {
   if (entry?.type !== 'assistant') return [];
@@ -54,7 +54,7 @@ export function toolCalls(entry) {
     .map((b) => ({ name: b.name, input: b.input ?? {}, id: b.id }));
 }
 
-// Every string value anywhere in one entry, newline-joined — the haystack the
+// Every string value anywhere in one entry, newline-joined - the haystack the
 // executor's exec records and the hooks' own log lines are fished out of. They are
 // printed by code into tool results, but the model may also quote one back, and the
 // harness records both, so every caller dedupes on the record it read rather than

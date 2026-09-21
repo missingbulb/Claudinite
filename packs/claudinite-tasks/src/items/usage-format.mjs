@@ -85,16 +85,16 @@ export const USAGE_FIELDS = Object.freeze({
   // merely printed at it.
   checkFindings: Object.freeze(['blocking', 'advisory', 'sessions', 'persisted', 'relent']),
   // Keyed by SKILL. Why the skill's body entered the session, in the order
-  // corpus-use.mjs's LOAD_CAUSES spells them — `voluntary` is the session
+  // corpus-use.mjs's LOAD_CAUSES spells them - `voluntary` is the session
   // reaching for it, every other slot names the thing that made it load.
   skillLoadsBy: Object.freeze([
     'voluntary', 'blockedEdit', 'blockedCall', 'resultTrigger', 'promptTrigger', 'command', 'read',
   ]),
   // Keyed by SKILL. A declared trigger that fired, and whether a load followed it
-  // in the same session — a fire nobody followed is a pattern matching the wrong
+  // in the same session - a fire nobody followed is a pattern matching the wrong
   // thing, or advice wanted before the call rather than after it.
   triggerFires: Object.freeze(['fired', 'followed']),
-  // Keyed by RULE — an action guard's firings, by what the call was told.
+  // Keyed by RULE - an action guard's firings, by what the call was told.
   guardFires: Object.freeze(['blocking', 'advisory']),
   // Keyed by `<scope>` for a whole sweep and `<scope>/<rule>` for one rule in it.
   // `maxMs` beside the total because a median over days answers "is the sweep
@@ -151,7 +151,7 @@ export const COUNTER_GROUPS = Object.freeze([
 // written and read as they stand. Keyed by a name that varies (a skill, a pack), like
 // the counter groups beside them.
 // `skillSessions` counts distinct sessions per DAY, so a window figure summed
-// from them is a ceiling on distinct sessions rather than a count — a session
+// from them is a ceiling on distinct sessions rather than a count - a session
 // spanning midnight is two. `moments` carries no key at all where the engine
 // running the fold could not resolve the declarations, which reads as *not
 // recorded* rather than as none. `skillCaught` is sessions that loaded the skill

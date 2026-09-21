@@ -1,6 +1,12 @@
 # Usage review — expectations, observations, and the rules between them (design)
 
-> **Status: not implemented.** The end state below is under review; the rules in §3 are the part to agree on first.
+> **Status: built, not yet proven in production.** Every section below is implemented - the
+> counters in [usage-fold](../../packs/claudinite-tasks/tasks/usage-fold/README.md), the rules in
+> [`usage-rules.json`](../../packs/claudinite-growth/usage-rules.json), the review and the triage in
+> [claudinite-growth](../../packs/claudinite-growth/README.md). What no test can show is the part
+> only a scheduled run can: that the task opens its pull request, files its issues and closes them
+> the day a finding clears. This doc goes once that reads back true, its sections already living in
+> those READMEs and its decisions on the elements' provenance files.
 
 The corpus that reaches a session — mounted skills, the checks and guards, the prose — is placed
 on the promotion ladder by judgment at authoring time, and nothing reads back whether the
@@ -377,9 +383,10 @@ recorded as *not sampled*; the rules still evaluate from the fold.
 - the mounted skill catalog: each skill's estimated tokens (the session summary's estimator),
   its `usage` block, its triggers;
 - the active rule catalog (`packRules`): severity, scope, owning skill, and the **prose twin** —
-  a `RULES.md` bullet in the same pack naming the rule id in backticks, or a `references.md`
-  `check:<id>` entry citing a `RULES-n` the bullets carry; a twin expressed any other way is
-  not seen, and the report counts the rules judged twin-less;
+  a `RULES.md` bullet in the same pack naming the rule id in backticks. A twin expressed any
+  other way is not seen, and the report counts the rules judged twin-less, because the
+  definition is deliberately narrow and a reader weighing the finding needs to know how much
+  it missed - on this shelf it sees two twins in ninety-five checks;
 - the settings file: `accept` entries and `rules` overrides per rule, barrier `except` entries;
 - the pack declaration commits, for the adoption window.
 

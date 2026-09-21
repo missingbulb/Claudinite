@@ -1,4 +1,4 @@
-# Usage triage — the shelf
+# Usage triage - the shelf
 
 The corpus that reaches a session is placed on the promotion ladder by judgment at
 authoring time. The usage review reads back whether the placement held, and hands
@@ -7,12 +7,12 @@ can read as a diff.
 
 Load [triaging-usage-findings](../../../claudinite-growth/skills/triaging-usage-findings/SKILL.md)
 and follow it. It owns the order: the element's provenance file first, then the
-rule's causes worked in order, then the edit — and no edit at all where no cause is
+rule's causes worked in order, then the edit - and no edit at all where no cause is
 settled.
 
 ## Scope
 
-`packs/` — the shelf. One pull request per subject, carrying the edit itself and
+`packs/` - the shelf. One pull request per subject, carrying the edit itself and
 the element's provenance entry for it in the same diff.
 
 The Context section is binding scope: propose about the subjects it names, and do
