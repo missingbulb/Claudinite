@@ -4,7 +4,7 @@ description: Mine one given URL for product, market, usage and pricing insights 
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # /explore-link — fold one link into a wiki

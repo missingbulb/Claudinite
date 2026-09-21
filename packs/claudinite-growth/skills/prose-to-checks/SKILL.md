@@ -4,7 +4,7 @@ description: Mine pack prose (RULES.md, SKILL.md) for always-testable rules that
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Convert existing prose to checks

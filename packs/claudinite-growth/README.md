@@ -147,16 +147,19 @@ it belongs to the fleet-enforcer repo, the only place that knows who the members
 ## Usage review - was the placement right?
 
 The fold says what happened; it cannot say whether that was right. Every skill declares what usage
-it expects of itself, under its frontmatter `metadata.usage` - `adoption`, `routine` at a stated
-rate, `triggered`, or `rare` - and [usage-review](tasks/usage-review/README.md) compares the
-declaration against the record daily, by [`usage-rules.json`](usage-rules.json): rule declarations
-a person can read in a sitting, evaluated by one generic evaluator. A local pack may add its own
-rules in the same vocabulary.
+it expects of itself, under its frontmatter `metadata.usage` - `adoption`, `triggered` or
+`judgment`, each naming HOW it is reached rather than how often - and
+[usage-review](tasks/usage-review/README.md) compares the declaration against the record daily,
+by [`usage-rules.json`](usage-rules.json): rule declarations a person can read in a sitting,
+evaluated by one generic evaluator. A local pack may add its own rules in the same vocabulary.
 
 Without a declared expectation the comparison cannot be made at all: a version-bump skill and a
-broken one both read zero loads. Each finding carries how well its **cause** is known, the causes
-in likelihood order with the discriminator that tells each apart, and what a fix would likely be.
-The review changes nothing and writes nothing outside its own file.
+broken one both read zero loads. A declared *rate* would not help - a number an author guesses
+is one the record can never contradict, so a finding against it would report on the guess.
+
+Each finding carries how well its **cause** is known, the causes in likelihood order with the
+discriminator that tells each apart, and what a fix would likely be. The review changes nothing
+and writes nothing outside its own file.
 
 [usage-triage](tasks/usage-triage/README.md) is the one stage that changes anything: weekly, over
 findings that have stood two weeks with a cause a diff can argue from, it opens one pull request

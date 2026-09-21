@@ -54,26 +54,32 @@ Under the frontmatter `metadata` every skill already carries its triggers in
 ```yaml
 metadata:
   usage:
-    expect: routine            # adoption | routine | triggered | rare
-    loads-per-sessions: 1 in 5 # routine only: about one load in that many sessions
+    expect: triggered          # adoption | triggered | judgment
 ```
+
+Each value names **how** the skill expects to be reached, never how often. A rate an author
+states is a guess about the future: the record cannot contradict it, so a finding computed
+against one measures the guess rather than the skill. The three below are each a claim about a
+mechanism, which the record can and does contradict.
 
 | `expect` | The skill says of itself | What zero loads means |
 |---|---|---|
-| `adoption` | it is used while a pack is being adopted or set up — a few loads in the weeks after the pack's declaration, then nothing | fine once the adoption window (4 weeks from the pack's declaration commit) has passed; a finding inside it |
-| `routine` | ordinary work reaches for it at about the declared rate | a finding when the observed rate falls under half the declared one; the cause is `unknown` — the description may not name the moment, or the moment may not have arisen — and the finding carries the digests that let a reader tell which |
+| `adoption` | it is used while a pack is being adopted or set up - a few loads in the weeks after the pack's declaration, then nothing | fine once the adoption window (4 weeks from the pack's declaration commit) has passed; a finding inside it |
 | `triggered` | its declared `force-load-on-*` moments are when it loads, and it expects nothing else | judged against **moments**, not sessions: the calls of the named tool, the edits under the named paths, the prompts matching the named pattern, all counted from the record; loads far under moments has a `known` cause, a mechanical fault |
-| `rare` | it is wanted seldom and says nothing about how seldom | never a finding; only the *always loaded* rule applies |
+| `judgment` | it is loaded when the model judges its description fits the work | nothing follows from a count either way; only the *always loaded* rule applies |
 | *(undeclared)* | | the review lists the skill under `unstated` and evaluates only *always loaded*; the list is itself the nudge to declare |
 
-The pack's declaration commit — the first commit naming the pack in the settings file — is read
+The pack's declaration commit - the first commit naming the pack in the settings file - is read
 from git history, deepened as the fold already deepens it; where history does not reach it,
 `adoption` rules read *not recorded*.
 
-The block is validated by the skill-frontmatter schema (a closed `expect` set;
-`loads-per-sessions` only with `routine`, as `"1 in N"`), so a mis-declared expectation is a
-`check_the_world` finding at authoring time, not a silent `unstated`. Checks and guards declare
-nothing: their signal is their own firing.
+`expect` is the block's only key, and a second one is refused rather than ignored: the block
+exists so a reader can tell what a zero means, and a key nothing reads is a claim the record
+never tests. The check also settles the one half of an expectation a file can contradict - a
+skill expecting `triggered` while declaring no force-load trigger has no moments to be judged
+against. The converse is deliberately allowed: a skill may carry a trigger and still expect most
+of its loads by judgment, which is a real claim about itself. Checks and guards declare nothing:
+their signal is their own firing.
 
 ## 3. The rules
 
@@ -131,20 +137,6 @@ The evaluator prints each rule as the sentence its fields spell.
     "open": true,
     "finding": "the pack was declared and its adoption-time skill never loaded while the adoption was live",
     "recommendation": "read the adoption sessions' digests: was the step done another way, skipped, or did the description not name it" },
-
-  { "id": "skill-routine-under-rate",
-    "over": "skill", "expect": "routine", "window": "28 days", "floor": { "sessions": 10 },
-    "when": "skillSessions / sessions <= declaredRate / 2",
-    "cause": "unknown",
-    "causes": [
-      "the description does not name its moment — digests of non-loading sessions fall under it",
-      "the declared rate is wrong — digests do not fall under it",
-      "the window's work mix never raised the moment — the previous window's rate was near the declared one",
-      "a sibling skill or a RULES.md line already carries what it says — that sibling loads where this one does not"
-    ],
-    "open": true,
-    "finding": "loads at under half the rate it declares for itself",
-    "recommendation": "read the digests of sessions where it did not load: if their activity fell under its description, the description does not name its moment; if not, the declared rate is wrong" },
 
   { "id": "skill-triggered-missing-moments",
     "over": "skill", "expect": "triggered", "window": "28 days", "floor": { "moments": 5 },
@@ -514,8 +506,12 @@ it is scoped to do, and writes the entry beside the change.
   only one is the description; a fix on a guess rewrites content that was right. The owner's
   merge is what proves a rule in this doc was worth writing, so it is also the only thing that
   lets one take effect.
-- **No declared expectation**: rates against sessions alone cannot separate rare-and-healthy
+- **No declared expectation**: a count against sessions alone cannot separate seldom-and-healthy
   from never-and-broken, which is the distinction the review exists to draw.
+- **A declared RATE** (`loads-per-sessions: 1 in N`), and the rule that divided by it: the
+  number is an author's guess, so a finding computed against it reports on the guess rather than
+  on the skill, and the record can never contradict it. An expectation earns its place only by
+  naming something the record can prove wrong.
 - **An issue per finding on first sight**: most findings on a young window are floor noise
   or a single week's weather; two weeks of persistence is what earns attention.
 - **Longer retention for the digests**: ten days already covers a daily sample; more raw logs

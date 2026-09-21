@@ -4,7 +4,7 @@ description: Decompose a project into its pack facets (working-style class, tech
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Extract packs from a project — the canon side

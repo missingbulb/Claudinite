@@ -4,8 +4,8 @@ description: Mechanics for grep/sed sweeps, renames, and path relocations across
 metadata:
   body: workflow
   usage:
-    expect: routine
-    loads-per-sessions: 1 in 20
+    expect: judgment
+
 ---
 
 # Text & file manipulation

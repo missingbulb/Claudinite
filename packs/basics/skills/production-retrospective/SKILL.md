@@ -4,7 +4,7 @@ description: Design and file the review that comes back on its own once a larger
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Production retrospective

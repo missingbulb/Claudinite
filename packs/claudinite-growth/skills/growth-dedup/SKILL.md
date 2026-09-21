@@ -4,7 +4,7 @@ description: Prune a repo's local packs of items the mounted Claudinite canon no
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Dedup local packs against the canon

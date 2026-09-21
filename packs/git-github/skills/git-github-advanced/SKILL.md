@@ -4,8 +4,8 @@ description: Git/GitHub procedures beyond the baseline lifecycle. Use for commit
 metadata:
   body: workflow
   usage:
-    expect: routine
-    loads-per-sessions: 1 in 15
+    expect: judgment
+
 ---
 
 # Portable git & GitHub procedures

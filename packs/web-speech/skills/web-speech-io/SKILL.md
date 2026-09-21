@@ -4,7 +4,7 @@ description: Wiring browser voice I/O — speech-to-text (webkitSpeechRecognitio
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Web-speech I/O

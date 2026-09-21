@@ -4,7 +4,7 @@ description: Reconnaissance on a website you want data from but don't control â€
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Map a data source before you parse it

@@ -29,10 +29,9 @@ const engineOrLocal = async (mod) => {
   try { return await import(engine(mod)); } catch { return import(join(root, 'engine', mod)); }
 };
 
-// The findings whose rules want a sample of what the sessions were doing - the two
-// that ask whether a skill should have loaded, and the ones whose recommendation
-// says the evidence is attached.
-const WANTS_DIGESTS = new Set(['skill-adoption-not-reached', 'skill-routine-under-rate']);
+// The findings whose rules want a sample of what the sessions were doing: the one
+// that asks whether a skill should have loaded in a window where it did not.
+const WANTS_DIGESTS = new Set(['skill-adoption-not-reached']);
 
 async function main() {
   const config = JSON.parse(readFileSync(join(root, '.claudinite-settings.json'), 'utf8'));

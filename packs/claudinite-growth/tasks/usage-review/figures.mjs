@@ -106,8 +106,11 @@ export const FIGURES = new Map(Object.entries({
     }, null)
     : null),
 
-  // --- a skill against its own declaration and its body ---
-  declaredRate: (s) => s.declaredRate ?? null,
+  // --- a skill's own body ---
+  // What a load costs the session. The declaration beside it says how the skill
+  // expects to be REACHED, never how often, so there is no declared rate to read:
+  // a rate an author states is a guess, and a finding computed against one
+  // measures the guess rather than the skill.
   tokens: (s) => s.tokens ?? null,
 
   // --- a check ---

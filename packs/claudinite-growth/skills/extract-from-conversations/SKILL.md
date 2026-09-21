@@ -4,7 +4,7 @@ description: Mine an agent-user conversation — a captured conversation log or 
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Extract lessons from a conversation

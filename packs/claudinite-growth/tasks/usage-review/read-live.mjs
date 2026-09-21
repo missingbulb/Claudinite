@@ -42,7 +42,6 @@ export async function readSkills(root, packs) {
         // The body past its frontmatter - what a load actually costs the session.
         tokens: estimateTokensOf(body.replace(/^---[\s\S]*?\n---\n/, '')),
         expect: meta.usage?.expect ?? null,
-        declaredRate: meta.usage?.declaredRate ?? null,
         usageProblems: meta.usage?.problems ?? [],
         tools: toolsNamedBy(meta.toolResultTriggers),
         triggers: meta.forceLoadPaths.length + meta.toolCallTriggers.length

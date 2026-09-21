@@ -4,7 +4,7 @@ description: Issuing or signing JWTs — choosing the algorithm, generating keys
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # JWT minting

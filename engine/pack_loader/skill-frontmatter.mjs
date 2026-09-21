@@ -46,15 +46,21 @@ export const BODIES = Object.freeze(['workflow', 'guidelines']);
 // the usage review compares the record against, since without it zero loads is
 // equally "exactly right" and "broken":
 //   usage:
-//     expect: routine            # adoption | routine | triggered | rare
-//     loads-per-sessions: 1 in 5 # routine only
-// `adoption` expects loads while its pack is being adopted and none after,
-// `routine` at about the rate it states, `triggered` at its own force-load
-// moments and nowhere else, `rare` says only that it is wanted seldom.
+//     expect: triggered          # adoption | triggered | judgment
+//
+// Each value names HOW the skill expects to be reached, never how often. A rate
+// an author states is a guess about the future, and a finding computed against
+// one measures the guess rather than the skill; the three below are each a claim
+// about a mechanism, which the record can actually contradict:
+//
+//   adoption   loaded while its pack is being adopted, and not after. Zero inside
+//              that window is a finding; zero after it is the expectation met.
+//   triggered  loaded by its own force-load declarations and nowhere else, so its
+//              loads are judged against the moments those declarations named.
+//   judgment   loaded when the model judges its description fits. Nothing follows
+//              from a count either way, and only the always-loaded rule applies.
 export const USAGE_KEY = 'usage';
-export const EXPECTS = Object.freeze(['adoption', 'routine', 'triggered', 'rare']);
-export const RATE_KEY = 'loads-per-sessions';
-const RE_RATE = /^1\s+in\s+(\d+)$/;
+export const EXPECTS = Object.freeze(['adoption', 'triggered', 'judgment']);
 
 const RE_FORM = /^\/(.*)\/([a-z]*)$/s;
 const toRegExp = (s) => { const m = RE_FORM.exec(String(s).trim()); try { return m ? new RegExp(m[1], m[2]) : null; } catch { return null; } };
@@ -146,33 +152,28 @@ export function bodyOf(fm) {
 
 // The declared `usage` block: null where there is none - undeclared is a state of
 // its own, which the review lists rather than judges - else
-// { expect, perSessions, declaredRate, problems }. A mis-declaration keeps its
-// place here with `problems` naming what is wrong, so the authoring-time check and
-// the review read one vocabulary instead of two: the check reports the problems,
-// the review evaluates a block only when there are none.
+// { expect, problems }. A mis-declaration keeps its place here with `problems`
+// naming what is wrong, so the authoring-time check and the review read one
+// vocabulary instead of two: the check reports the problems, the review evaluates
+// a block only when there are none.
+//
+// `expect` is the block's only key. A second key is refused rather than ignored:
+// the block exists so a reader can tell what a zero means, and a key nothing reads
+// would be a claim the record never tests.
 export function usageOf(fm) {
   const md = fm?.metadata;
   const v = md && typeof md === 'object' && !Array.isArray(md) ? md[USAGE_KEY] : undefined;
   if (v === undefined) return null;
-  const none = { expect: null, perSessions: null, declaredRate: null };
-  if (!v || typeof v !== 'object' || Array.isArray(v)) return { ...none, problems: [`${USAGE_KEY} is not a block of keys`] };
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return { expect: null, problems: [`${USAGE_KEY} is not a block of keys`] };
   const problems = [];
   const expect = typeof v.expect === 'string' ? v.expect.trim() : '';
   if (!EXPECTS.includes(expect)) {
     problems.push(expect ? `expect: ${expect} is outside ${EXPECTS.join(' | ')}` : `expect is missing - one of ${EXPECTS.join(' | ')}`);
   }
-  const raw = typeof v[RATE_KEY] === 'string' ? v[RATE_KEY].trim() : '';
-  const m = RE_RATE.exec(raw);
-  if (raw && !m) problems.push(`${RATE_KEY}: ${raw} is not "1 in N"`);
-  if (raw && expect !== 'routine') problems.push(`${RATE_KEY} belongs to expect: routine alone`);
-  if (!raw && expect === 'routine') problems.push(`expect: routine states its rate as ${RATE_KEY}: 1 in N`);
-  const perSessions = m && expect === 'routine' ? Number(m[1]) : null;
-  return {
-    expect: EXPECTS.includes(expect) ? expect : null,
-    perSessions,
-    declaredRate: perSessions ? 1 / perSessions : null,
-    problems,
-  };
+  for (const key of Object.keys(v)) {
+    if (key !== 'expect') problems.push(`${key} is not a key of the usage block, whose only key is expect`);
+  }
+  return { expect: EXPECTS.includes(expect) ? expect : null, problems };
 }
 
 // The metadata of the skill at `dir`: { name, description, body, usage, forceLoadPaths,

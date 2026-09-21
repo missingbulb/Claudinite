@@ -18,3 +18,15 @@
 - **Retire when:** every skill on every shelf carries a block and the review's `unstated` list has
   been empty for two months - the check is then holding a convention nobody breaks.
 - **Landed:** #2214
+
+## 2026-09-21 · strengthened · the check settles the half of the expectation a file can (#2214)
+- **Source:** the usage vocabulary losing its rate keys (#2214), and the sweep that set 17 skills to
+  a bulk default the owner caught on the first one they opened.
+- **Reason:** with the rate gone the check had only a closed set to police, which a typo breaks and
+  nothing else. `triggered` claims the skill's own force-load declarations are when it loads, and a
+  skill declaring none has no such moments - a claim its own file contradicts, and the one half of
+  an expectation a check can settle rather than take on trust.
+- **Mechanism:** the same blocking check, widened; the converse is deliberately NOT a fault, since a
+  skill may carry a trigger and still expect most loads by judgment, which is a real claim about
+  itself rather than a contradiction.
+- **Landed:** #2214

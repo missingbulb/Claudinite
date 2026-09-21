@@ -4,7 +4,7 @@ description: Mine a window of a repo's commits, merged PRs and issue activity fo
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Extract lessons from repo activity

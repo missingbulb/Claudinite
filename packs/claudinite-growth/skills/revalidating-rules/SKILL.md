@@ -4,7 +4,7 @@ description: Re-probe the pack rules whose truth lives outside the repository â€
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Revalidating a rule against the world

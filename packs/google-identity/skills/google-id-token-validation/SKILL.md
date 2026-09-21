@@ -4,7 +4,7 @@ description: Wiring server-side validation of Google Sign-In ID tokens — a JWT
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Google ID-token validation

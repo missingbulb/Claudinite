@@ -12,3 +12,14 @@
   have produced no merged proposal - either says the threshold is wrong or the rule is not worth
   the reading.
 - **Landed:** #2214
+
+## 2026-09-21 · retired · the rate it divided by was a guess, not a record (#2214)
+- **Source:** the owner, on reading `loads-per-sessions: 1 in 20` on bug-investigation: a skill
+  should not predict its own usage.
+- **Reason:** the rule compared observed loads against a number the skill's author invented. A
+  finding from it read as evidence about the skill while the only thing it measured was the guess,
+  and its cause was `unknown`, so by the loop's own gate it could never file an issue either. The
+  declaration it depended on goes with it.
+- **Retire when:** already retired. If a rate ever returns it must be one the record produces, never
+  one an author states.
+- **Landed:** #2214

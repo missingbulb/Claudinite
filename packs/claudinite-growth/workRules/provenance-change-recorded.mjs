@@ -195,7 +195,10 @@ function skillOnlyMarkedOrBodied(before, after) {
     .replace(/^\s*body:\s*(workflow|guidelines)\s*$/gm, '')
     .replace(/^\s*usage:\s*$/gm, '')
     .replace(/^\s*expect:\s*[a-z]+\s*$/gm, '')
-    .replace(/^\s*loads-per-sessions:\s*1 in \d+\s*$/gm, '')
+    // A retired key of that block, stripped on both sides so its REMOVAL is as
+    // exempt as its writing was - a sweep that drops a key nothing reads decides
+    // nothing about the skill.
+    .replace(/^\s*loads-per-sessions:\s*.*$/gm, '')
     .replace(/^metadata:\s*$/gm, '') // the block `mark` opens to hold the body
     .replace(/\s*\([a-z][a-z0-9]*(?:-[a-z0-9]+)+\)\s*$/gm, '')
     .replace(/\s*\(\d+(?:\s*,\s*\d+)*\)\s*$/gm, ''));

@@ -4,7 +4,7 @@ description: Turn a usage-review finding that has lasted into a proposed change 
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Triaging a usage finding

@@ -14,11 +14,21 @@ const doc = (...metadata) => ['---', 'name: demo', 'description: does the thing.
 const whatsOf = (root) => { try { return run(root).map((f) => f.what); } finally { cleanup(root); } };
 const fixture = (...metadata) => makeRepo({ changed: { [SKILL]: doc(...metadata) } });
 
-test('skill-usage-declared: each of the four expectations passes on its own', () => {
-  for (const expect of ['adoption', 'triggered', 'rare']) {
+test('skill-usage-declared: each expectation passes on a skill whose file bears it out', () => {
+  for (const expect of ['adoption', 'judgment']) {
     assert.deepEqual(whatsOf(fixture('  usage:', `    expect: ${expect}`)), [], expect);
   }
-  assert.deepEqual(whatsOf(fixture('  usage:', '    expect: routine', '    loads-per-sessions: 1 in 5')), []);
+  assert.deepEqual(whatsOf(fixture('  usage:', '    expect: triggered',
+    '  force-load-on-file-edits-paths:', "    - 'wiki/**'")), []);
+});
+
+test('skill-usage-declared: "triggered" is refused where the file declares no trigger', () => {
+  assert.match(whatsOf(fixture('  usage:', '    expect: triggered'))[0], /no force-load trigger/,
+    'the claim is one the skill\'s own file contradicts');
+  // The converse is a real claim, not a fault: a skill may carry a trigger and
+  // still expect most of its loads to come by judgment.
+  assert.deepEqual(whatsOf(fixture('  usage:', '    expect: judgment',
+    '  force-load-on-file-edits-paths:', "    - 'wiki/**'")), []);
 });
 
 test('skill-usage-declared: a skill that declares nothing is named, with what to add', () => {
@@ -33,10 +43,12 @@ test('skill-usage-declared: a skill that declares nothing is named, with what to
 
 test('skill-usage-declared: the mis-declarations are named one by one, not lumped as invalid', () => {
   assert.match(whatsOf(fixture('  usage:', '    expect: sometimes'))[0], /outside/);
-  assert.match(whatsOf(fixture('  usage:', '    expect: routine'))[0], /1 in N/);
-  assert.match(whatsOf(fixture('  usage:', '    expect: rare', '    loads-per-sessions: 1 in 5'))[0], /routine/);
-  assert.match(whatsOf(fixture('  usage:', '    expect: routine', '    loads-per-sessions: weekly'))[0], /not "1 in N"/);
-  assert.match(whatsOf(fixture('  usage: routine'))[0], /block of keys/);
+  assert.match(whatsOf(fixture('  usage:', '    expect:'))[0], /expect is missing/);
+  // A retired key is not silently ignored: the block exists so a reader can tell
+  // what a zero means, and a key nothing reads is a claim the record never tests.
+  assert.match(whatsOf(fixture('  usage:', '    expect: judgment', '    loads-per-sessions: 1 in 5'))[0],
+    /loads-per-sessions is not a key of the usage block/);
+  assert.match(whatsOf(fixture('  usage: judgment'))[0], /block of keys/);
 });
 
 test('skill-usage-declared: a skill outside a pack\'s skills/ is not its business', () => {

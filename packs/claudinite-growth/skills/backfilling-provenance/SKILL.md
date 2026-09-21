@@ -4,7 +4,7 @@ description: Filling a pack's empty provenance files from its history - each ent
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Backfilling a pack's provenance

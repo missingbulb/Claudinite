@@ -4,8 +4,8 @@ description: Where a file should live — the reference-distance metric, the hig
 metadata:
   body: guidelines
   usage:
-    expect: routine
-    loads-per-sessions: 1 in 15
+    expect: judgment
+
 ---
 
 # File placement

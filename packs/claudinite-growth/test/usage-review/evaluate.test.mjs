@@ -24,8 +24,8 @@ test('the grammar parses the four shapes and refuses anything outside them', () 
   assert.deepEqual(windows.left[0], { name: 'stopMs', previous: false, median: true });
   assert.deepEqual(windows.left[1], { name: 'stopMs', previous: true, median: true });
   assert.deepEqual(windows.right, [{ value: 1.25 }]);
-  // The right side is a term too, which is what lets a rule compare against a rate.
-  assert.equal(parseComparison('skillSessions / sessions <= declaredRate / 2').right.length, 2);
+  // The right side is a term too, so a rule may compare one ratio against another.
+  assert.equal(parseComparison('skillCaught / skillSessions <= advisory / runs').right.length, 2);
   for (const not of ['a > 3', 'a and b >= 1', 'a >= 3 or b >= 2', '', 'a +']) {
     assert.throws(() => parseComparison(not), `${not} is outside the grammar`);
   }
@@ -108,7 +108,7 @@ test('a live predicate is the other half of the pair, and one that cannot be rea
 });
 
 test('every shipped rule parses, and its sentence names the subject it judges', () => {
-  assert.ok(shipped.length >= 17, 'the shelf ships the whole declared set');
+  assert.ok(shipped.length >= 16, 'the shelf ships the whole declared set');
   for (const rule of shipped) {
     assert.doesNotThrow(() => parseComparison(rule.when), `${rule.id}: ${rule.when}`);
     if (rule.and && /(>=|<=|=)/.test(rule.and)) assert.doesNotThrow(() => parseComparison(rule.and), rule.id);

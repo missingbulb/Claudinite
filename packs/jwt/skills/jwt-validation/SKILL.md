@@ -4,7 +4,7 @@ description: Wiring or changing JWT verification — pinning algorithms, validat
 metadata:
   body: guidelines
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # JWT validation

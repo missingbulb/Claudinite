@@ -5,7 +5,9 @@
       "id": "skill-always-loaded",
       "over": "skill",
       "window": "28 days",
-      "floor": { "sessions": 10 },
+      "floor": {
+        "sessions": 10
+      },
       "when": "skillSessions / sessions >= 0.75",
       "cause": "known",
       "causes": [
@@ -21,7 +23,9 @@
       "over": "skill",
       "expect": "adoption",
       "window": "adoption",
-      "floor": { "sessions": 3 },
+      "floor": {
+        "sessions": 3
+      },
       "when": "skillLoads = 0",
       "cause": "unknown",
       "causes": [
@@ -35,29 +39,13 @@
       "recommendation": "read the adoption sessions' digests: was the step done another way, skipped, or did the description not name it"
     },
     {
-      "id": "skill-routine-under-rate",
-      "over": "skill",
-      "expect": "routine",
-      "window": "28 days",
-      "floor": { "sessions": 10 },
-      "when": "skillSessions / sessions <= declaredRate / 2",
-      "cause": "unknown",
-      "causes": [
-        "the description does not name its moment - digests of non-loading sessions fall under it",
-        "the declared rate is wrong - digests do not fall under it",
-        "the window's work mix never raised the moment - the previous window's rate was near the declared one",
-        "a sibling skill or a RULES.md line already carries what it says - that sibling loads where this one does not"
-      ],
-      "open": true,
-      "finding": "loads at under half the rate it declares for itself",
-      "recommendation": "read the digests of sessions where it did not load: if their activity fell under its description, the description does not name its moment; if not, the declared rate is wrong"
-    },
-    {
       "id": "skill-triggered-missing-moments",
       "over": "skill",
       "expect": "triggered",
       "window": "28 days",
-      "floor": { "moments": 5 },
+      "floor": {
+        "moments": 5
+      },
       "when": "skillLoads / moments <= 0.5",
       "cause": "known",
       "causes": [
@@ -73,7 +61,9 @@
       "id": "skill-forced-only-small",
       "over": "skill",
       "window": "28 days",
-      "floor": { "skillLoads": 5 },
+      "floor": {
+        "skillLoads": 5
+      },
       "when": "skillBlocks / skillLoads >= 0.9",
       "and": "tokens <= 300",
       "cause": "known",
@@ -88,7 +78,9 @@
       "id": "trigger-fires-unfollowed",
       "over": "skill",
       "window": "28 days",
-      "floor": { "triggerFired": 5 },
+      "floor": {
+        "triggerFired": 5
+      },
       "when": "triggerFollowed / triggerFired <= 0.5",
       "cause": "probable",
       "causes": [
@@ -104,7 +96,9 @@
       "id": "result-trigger-follows-every-call",
       "over": "skill",
       "window": "28 days",
-      "floor": { "toolCalls": 10 },
+      "floor": {
+        "toolCalls": 10
+      },
       "when": "triggerFired / toolCalls >= 0.5",
       "cause": "probable",
       "causes": [
@@ -120,7 +114,9 @@
       "id": "skill-loaded-still-caught",
       "over": "skill",
       "window": "28 days",
-      "floor": { "skillSessions": 5 },
+      "floor": {
+        "skillSessions": 5
+      },
       "when": "skillCaught / skillSessions >= 0.3",
       "cause": "unknown",
       "causes": [
@@ -137,7 +133,9 @@
       "id": "check-never-fires-with-prose-twin",
       "over": "check",
       "window": "28 days",
-      "floor": { "runs": 20 },
+      "floor": {
+        "runs": 20
+      },
       "when": "checkFindings = 0",
       "and": "proseTwin",
       "cause": "probable",
@@ -154,7 +152,9 @@
       "id": "check-never-fires",
       "over": "check",
       "window": "28 days",
-      "floor": { "runs": 20 },
+      "floor": {
+        "runs": 20
+      },
       "when": "checkFindings = 0",
       "cause": "unknown",
       "causes": [
@@ -171,7 +171,9 @@
       "id": "check-fires-most-sessions",
       "over": "check",
       "window": "28 days",
-      "floor": { "sessions": 10 },
+      "floor": {
+        "sessions": 10
+      },
       "when": "checkSessions / sessions >= 0.5",
       "cause": "probable",
       "causes": [
@@ -188,7 +190,9 @@
       "id": "advisory-ignored",
       "over": "check",
       "window": "28 days",
-      "floor": { "advisory": 10 },
+      "floor": {
+        "advisory": 10
+      },
       "when": "advisoryPersisted / advisory >= 0.8",
       "cause": "known",
       "causes": [
@@ -251,7 +255,10 @@
       "id": "checks-slower",
       "over": "checks",
       "window": "28 days",
-      "floor": { "runs": 20, "previous.runs": 20 },
+      "floor": {
+        "runs": 20,
+        "previous.runs": 20
+      },
       "when": "median(stopMs) / previous.median(stopMs) >= 1.25",
       "and": "median(stopMs) >= 2000",
       "cause": "known",
@@ -268,7 +275,9 @@
       "id": "guard-overruled",
       "over": "guard",
       "window": "28 days",
-      "floor": { "sessions": 10 },
+      "floor": {
+        "sessions": 10
+      },
       "when": "guardAdvisory / sessions >= 0.5",
       "cause": "probable",
       "causes": [

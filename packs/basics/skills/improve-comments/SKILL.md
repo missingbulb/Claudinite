@@ -4,7 +4,7 @@ description: Improve the comments in a repo's own source — delete the ones tha
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Improve a repo's comments

@@ -4,7 +4,7 @@ description: Method for finding where a repo's CI time actually goes and what is
 metadata:
   body: workflow
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # Evaluating CI performance

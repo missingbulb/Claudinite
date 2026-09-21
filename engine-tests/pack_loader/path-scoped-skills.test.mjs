@@ -185,19 +185,18 @@ test('parseFrontmatter: a map nests as deep as it is written, so metadata.usage.
 test('usageOf: the declared expectation, with the mis-declarations named rather than dropped', () => {
   const of = (lines) => usageOf(parseFrontmatter(['---', 'metadata:', ...lines, '---', ''].join('\n')));
   assert.equal(of([]), null, 'no block at all is undeclared, not a problem');
-  const routine = of(['  usage:', '    expect: routine', '    loads-per-sessions: 1 in 5']);
-  assert.deepEqual(routine.problems, []);
-  assert.equal(routine.expect, 'routine');
-  assert.equal(routine.perSessions, 5);
-  assert.equal(routine.declaredRate, 0.2);
-  const rare = of(['  usage:', '    expect: rare']);
-  assert.deepEqual(rare.problems, []);
-  assert.equal(rare.declaredRate, null);
+  for (const expect of ['adoption', 'triggered', 'judgment']) {
+    const read = of(['  usage:', `    expect: ${expect}`]);
+    assert.deepEqual(read, { expect, problems: [] }, expect);
+  }
   assert.match(of(['  usage:', '    expect: sometimes']).problems[0], /outside/);
-  assert.match(of(['  usage:', '    expect: routine']).problems[0], /1 in N/);
-  assert.match(of(['  usage:', '    expect: rare', '    loads-per-sessions: 1 in 5']).problems[0], /routine/);
-  assert.match(of(['  usage:', '    expect: routine', '    loads-per-sessions: often']).problems[0], /not "1 in N"/);
-  assert.match(of(['  usage: routine']).problems[0], /block of keys/);
+  assert.match(of(['  usage:', '    expect:']).problems[0], /expect is missing/);
+  // Each value names how the skill expects to be REACHED, never how often, so a
+  // rate is not a key the block has — and a retired one is refused rather than
+  // ignored, since a key nothing reads is a claim the record never tests.
+  assert.match(of(['  usage:', '    expect: judgment', '    loads-per-sessions: 1 in 5']).problems[0],
+    /loads-per-sessions is not a key/);
+  assert.match(of(['  usage: judgment']).problems[0], /block of keys/);
 });
 
 test('hits*: one predicate per moment, the shape a moment counter asks its question with', () => {

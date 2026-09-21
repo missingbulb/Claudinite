@@ -4,8 +4,8 @@ description: Method for investigating a bug and pinning down its root cause. Use
 metadata:
   body: workflow
   usage:
-    expect: routine
-    loads-per-sessions: 1 in 20
+    expect: judgment
+
 ---
 
 # Bug investigations

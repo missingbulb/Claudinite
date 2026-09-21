@@ -4,8 +4,8 @@ description: Architecture and practices for unattended, automation-invoked agent
 metadata:
   body: guidelines
   usage:
-    expect: routine
-    loads-per-sessions: 1 in 20
+    expect: judgment
+
 ---
 
 # Agent architecture principles

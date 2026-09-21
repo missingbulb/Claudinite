@@ -4,7 +4,7 @@ description: What a GitHub Actions `schedule:` trigger actually guarantees — l
 metadata:
   body: guidelines
   usage:
-    expect: rare
+    expect: judgment
 ---
 
 # GitHub Actions cron is best-effort

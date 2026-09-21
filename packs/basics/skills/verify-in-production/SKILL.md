@@ -4,8 +4,8 @@ description: Decide whether a change that has merged can only be proven in produ
 metadata:
   body: workflow
   usage:
-    expect: routine
-    loads-per-sessions: 1 in 10
+    expect: judgment
+
 ---
 
 # Verify in production
