@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  USAGE_FIELDS, USAGE_VERSION, COUNTER_GROUPS, encodeCounters, decodeCounters,
+  USAGE_FIELDS, USAGE_VERSION, COUNTER_GROUPS, BARE_MAPS, encodeCounters, decodeCounters,
   encodeRow, decodeRow, encodeUsageFile, decodeUsageFile, isTupleFormat, fieldsOf, renderUsageFile,
   withoutStamp, hourKey,
 } from '../../src/items/usage-format.mjs';
@@ -49,7 +49,10 @@ test('a row decodes against the FILE\'s declared vocabulary, not this code\'s', 
 test('a whole file round-trips, and version 1 decodes as itself', () => {
   // Every sub-map, empty — derived from the vocabulary so a newly appended counter
   // group is covered by this round-trip the day it exists.
-  const groups = { ...Object.fromEntries(COUNTER_GROUPS.map((g) => [g, {}])) };
+  const groups = {
+    ...Object.fromEntries(BARE_MAPS.map((m) => [m, {}])),
+    ...Object.fromEntries(COUNTER_GROUPS.map((g) => [g, {}])),
+  };
   const named = {
     generated: '2026-07-27T04:00:00Z',
     foldedThrough: '2026-07-26',
@@ -57,8 +60,8 @@ test('a whole file round-trips, and version 1 decodes as itself', () => {
     queueFoldedThrough: '2026-07-26T02:00:00Z',
     prsFoldedThrough: '2026-07-26T01:00:00Z',
     hours: { '2026-07-26T03': { scheduler: 2, executor: 1, agentic: 1, failed: 0, taskExec: {} } },
-    days: { '2026-07-26': { captures: 2, merges: 2, sessions: 1, userMessages: 9, userCommands: 0, skillLoads: { s: 1 }, ...groups } },
-    weeks: { '2026-W30': { days: 1, captures: 2, merges: 2, sessionDays: 1, userMessages: 9, userCommands: 0, skillLoads: { s: 1 }, ...groups } },
+    days: { '2026-07-26': { captures: 2, merges: 2, sessions: 1, userMessages: 9, userCommands: 0, ...groups, skillLoads: { s: 1 } } },
+    weeks: { '2026-W30': { days: 1, captures: 2, merges: 2, sessionDays: 1, userMessages: 9, userCommands: 0, ...groups, skillLoads: { s: 1 } } },
   };
   const file = encodeUsageFile(named);
   assert.equal(file.version, USAGE_VERSION);
@@ -66,7 +69,7 @@ test('a whole file round-trips, and version 1 decodes as itself', () => {
   // An hour row carries only its own group; the decode fills the rest in empty, since
   // every consumer folds them key-wise.
   const back = decodeUsageFile(file);
-  assert.deepEqual(back.hours['2026-07-26T03'], { ...named.hours['2026-07-26T03'], ...groups, skillLoads: {} });
+  assert.deepEqual(back.hours['2026-07-26T03'], { ...named.hours['2026-07-26T03'], ...groups });
   assert.deepEqual({ ...back, hours: named.hours }, named);
 
   const v1 = { version: 1, ...named };

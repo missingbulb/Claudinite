@@ -43,7 +43,7 @@ import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
 // The declaration as the loader sees it, defaults filled.
 const task = normalizeTaskDeclaration(taskJson);
 import {
-  countEntries, foldUsage, encodeUsage, decodeUsage, mountedSkillNames, DAY_WINDOW_DAYS,
+  countEntries, foldUsage, encodeUsage, decodeUsage, mountedCorpus, DAY_WINDOW_DAYS,
 } from './fold-usage.mjs';
 import { renderUsageFile, withoutStamp } from '../../src/items/usage-format.mjs';
 import { makeReader, readRuns } from './read-runs.mjs';
@@ -250,11 +250,11 @@ export async function main() {
 
   let config = {};
   try { config = JSON.parse(readFileSync(settingsPath(root), 'utf8')); } catch { /* no declaration */ }
-  const mounted = await mountedSkillNames(root, config);
+  const corpus = await mountedCorpus(root, config);
 
   const files = (found?.names ?? []).map((name) => ({
     ...parseLogName(name),
-    counts: countEntries(parseEntries(git(root, ['show', `${found.tip}:${name}`])), mounted),
+    counts: countEntries(parseEntries(git(root, ['show', `${found.tip}:${name}`])), corpus),
   }));
 
   // Prior state comes from the BASE TIP, never the working tree: the checkout may be
