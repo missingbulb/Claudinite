@@ -1,53 +1,8 @@
 // claudinite-canary-repo — the live proof that the canon can deliver a workflow file.
 //
-// THE THING IT PROVES. `.github/workflows/` is the one directory the nightly update
-// can never push to: it commits with the Action's `GITHUB_TOKEN`, which GitHub refuses
-// under that path, and the refusal rejects the whole ref rather than the one file. The
-// pack update flow used to answer that with the WITHHOLD lane — every write bound for
-// `.github/workflows/` diverted to `.claudinite/pending-workflows/`, staged into the
-// maintenance PR as an ordinary added file, with the update ending at `apply-stage` until
-// a session with an MCP credential moved it into place (#649).
-//
-// THAT LANE IS LIVE (#1509). It was retired in #1317 on the premise that a member's
-// workflow files are static after adoption, and reopened when #1494's executor line
-// proved otherwise. So the probe below exercises a delivery route that exists, which is
-// what this pack is for.
-//
-// That lane had one exercised caller: the scheduler workflow's own convergence. A
-// RECORD'S `materialize` shares the same `write`, and had never run against a live
-// member — which is the residual #649 reopened for. This pack is the thing that makes
-// it runnable: an inert workflow, delivered to a real repo by the real lane, whose
-// content the canon then changes so the delivery has to happen again.
-//
-// WHY A PACK AND NOT A FIXTURE. The lane's failure mode is precisely what a fixture
-// cannot see — a token's refusal, on a real push, against a real repository. A hermetic
-// rehearsal proves the staging directory got a file; only a member proves the file
-// arrives in `.github/workflows/`. So the probe has to be adoptable content that a
-// member really declares, and adoptable content in this corpus is a pack.
-//
-// OPT-IN, AND EXPECTED NOWHERE BUT THE CANARY. `seededByDefault: false` with no
-// fingerprint, so `--init` never seeds it and no scan ever suspects it: a repo carries
-// this only because someone declared it. The canary is the intended and only holder —
-// it is disposable by construction, which is the whole reason the fleet has one.
-//
-// THE WORKFLOW IT SHIPS IS INERT BY DESIGN. `workflow_dispatch` and nothing else: no
-// schedule, no push, no pull_request. What is under test is whether the FILE arrives,
-// not whether it runs, and a probe that consumed a member's Actions minutes on every
-// push would be paying for an answer it does not need.
-//
-// TWO DELIVERY ROUTES, DELIBERATELY. The `seedOps` entry below puts the workflow in at
-// ADOPTION — written by the install flow and committed by the adopting session, which
-// holds a credential the Action token is not. That is the easy half, and it is not the
-// thing #649 doubted. The hard half arrives with pack version 2 — a record whose
-// `materialize` re-vendors the same path through the withhold lane.
-//
-// THE VERSIONS ARE THE SEQUENCE, not bookkeeping. An install stamps the newest version
-// and runs no records (the install runner), so a record shipped in the version a repo
-// adopts at is a record that repo can never reach: `migrationApplies` is `want > have`.
-// The probe is therefore adopted at version 1, which seeds the file and nothing else,
-// and the record lands at version 2 so the update flow really has a gap to close. It
-// also means the record's job is to UPDATE a workflow that is already there — the exact
-// shape a fleet-wide workflow fix would take.
+// It ships one inert workflow and delivers it twice: `seedOps` writes the file at adoption,
+// and from pack version 2 on a record re-vendors the same path through the update flow's
+// withhold lane. Opt-in, hidden and unfingerprinted; the canary is the only intended holder.
 export default {
   version: '60920.1',
   minEngineVersion: '60822.1',
