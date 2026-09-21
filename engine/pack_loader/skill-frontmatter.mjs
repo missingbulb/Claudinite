@@ -42,6 +42,20 @@ export const TOOL_RESULT_KEY = 'force-load-on-tool-results-matching';
 export const BODY_KEY = 'body';
 export const BODIES = Object.freeze(['workflow', 'guidelines']);
 
+// What usage the skill expects of itself, under `metadata` too — the declaration
+// the usage review compares the record against, since without it zero loads is
+// equally "exactly right" and "broken":
+//   usage:
+//     expect: routine            # adoption | routine | triggered | rare
+//     loads-per-sessions: 1 in 5 # routine only
+// `adoption` expects loads while its pack is being adopted and none after,
+// `routine` at about the rate it states, `triggered` at its own force-load
+// moments and nowhere else, `rare` says only that it is wanted seldom.
+export const USAGE_KEY = 'usage';
+export const EXPECTS = Object.freeze(['adoption', 'routine', 'triggered', 'rare']);
+export const RATE_KEY = 'loads-per-sessions';
+const RE_RATE = /^1\s+in\s+(\d+)$/;
+
 const RE_FORM = /^\/(.*)\/([a-z]*)$/s;
 const toRegExp = (s) => { const m = RE_FORM.exec(String(s).trim()); try { return m ? new RegExp(m[1], m[2]) : null; } catch { return null; } };
 const listAt = (fm, key) => {
@@ -84,34 +98,34 @@ export function parseFrontmatter(text) {
   const end = text.indexOf('\n---', 3);
   if (end === -1) return out;
   const lines = text.slice(text.indexOf('\n') + 1, end).split('\n');
-  // The container the next indented line lands in: a list, or a nested map (one
-  // level, with its own lists), keyed by indentation so a dedent closes it.
-  let top = null;   // { key, indent } of the open top-level container
-  let inner = null; // { key, indent } of the open key inside a nested map
+  // The containers open at this line, outermost first: a key with an empty value
+  // opens one, and a line indented no further than the key that opened it closes
+  // it. A container starts as a list and becomes a map the first time a key lands
+  // inside it, which is what lets `metadata` hold both lists and nested maps, to
+  // whatever depth they are written — `metadata.usage.expect` is three.
+  const stack = []; // [{ key, indent, parent }]
   for (const line of lines) {
     if (!line.trim()) continue;
     const indent = line.length - line.trimStart().length;
+    while (stack.length && indent <= stack.at(-1).indent) stack.pop();
+    const open = stack.at(-1) ?? null;
     const item = /^\s+-\s*(.*)$/.exec(line);
-    if (item && indent > 0 && top) {
-      const target = inner && indent > inner.indent ? out[top.key][inner.key] : out[top.key];
+    if (item && open) {
+      const target = open.parent[open.key];
       if (Array.isArray(target)) target.push(unquote(item[1]));
       continue;
     }
     const kv = /^(\s*)([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
     if (!kv) continue;
     const [, , key, rest] = kv;
-    if (indent > 0 && top) {
-      // A key inside the open top-level container turns it into a map.
-      if (Array.isArray(out[top.key]) && !out[top.key].length) out[top.key] = {};
-      if (typeof out[top.key] !== 'object' || Array.isArray(out[top.key])) continue;
-      out[top.key][key] = rest.trim() === '' ? [] : scalar(rest);
-      inner = { key, indent };
-      continue;
+    let target = out;
+    if (open) {
+      if (Array.isArray(open.parent[open.key]) && !open.parent[open.key].length) open.parent[open.key] = {};
+      target = open.parent[open.key];
+      if (typeof target !== 'object' || Array.isArray(target)) continue;
     }
-    inner = null;
-    if (rest.trim() === '') { out[key] = []; top = { key, indent }; continue; }
-    top = null;
-    out[key] = scalar(rest);
+    target[key] = rest.trim() === '' ? [] : scalar(rest);
+    if (rest.trim() === '') stack.push({ key, indent, parent: target });
   }
   return out;
 }
@@ -130,7 +144,38 @@ export function bodyOf(fm) {
   return typeof v === 'string' && BODIES.includes(v.trim()) ? v.trim() : null;
 }
 
-// The metadata of the skill at `dir`: { name, description, body, forceLoadPaths,
+// The declared `usage` block: null where there is none — undeclared is a state of
+// its own, which the review lists rather than judges — else
+// { expect, perSessions, declaredRate, problems }. A mis-declaration keeps its
+// place here with `problems` naming what is wrong, so the authoring-time check and
+// the review read one vocabulary instead of two: the check reports the problems,
+// the review evaluates a block only when there are none.
+export function usageOf(fm) {
+  const md = fm?.metadata;
+  const v = md && typeof md === 'object' && !Array.isArray(md) ? md[USAGE_KEY] : undefined;
+  if (v === undefined) return null;
+  const none = { expect: null, perSessions: null, declaredRate: null };
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return { ...none, problems: [`${USAGE_KEY} is not a block of keys`] };
+  const problems = [];
+  const expect = typeof v.expect === 'string' ? v.expect.trim() : '';
+  if (!EXPECTS.includes(expect)) {
+    problems.push(expect ? `expect: ${expect} is outside ${EXPECTS.join(' | ')}` : `expect is missing — one of ${EXPECTS.join(' | ')}`);
+  }
+  const raw = typeof v[RATE_KEY] === 'string' ? v[RATE_KEY].trim() : '';
+  const m = RE_RATE.exec(raw);
+  if (raw && !m) problems.push(`${RATE_KEY}: ${raw} is not "1 in N"`);
+  if (raw && expect !== 'routine') problems.push(`${RATE_KEY} belongs to expect: routine alone`);
+  if (!raw && expect === 'routine') problems.push(`expect: routine states its rate as ${RATE_KEY}: 1 in N`);
+  const perSessions = m && expect === 'routine' ? Number(m[1]) : null;
+  return {
+    expect: EXPECTS.includes(expect) ? expect : null,
+    perSessions,
+    declaredRate: perSessions ? 1 / perSessions : null,
+    problems,
+  };
+}
+
+// The metadata of the skill at `dir`: { name, description, body, usage, forceLoadPaths,
 // toolCallTriggers, promptTriggers, toolResultTriggers }.
 // Unreadable is empty metadata, on the harness's own terms.
 export function skillMetadata(dir) {
@@ -140,6 +185,7 @@ export function skillMetadata(dir) {
     name: typeof fm.name === 'string' ? fm.name : '',
     description: typeof fm.description === 'string' ? fm.description : '',
     body: bodyOf(fm),
+    usage: usageOf(fm),
     forceLoadPaths: forceLoadPathsOf(fm),
     toolCallTriggers: toolCallTriggersOf(fm),
     promptTriggers: promptTriggersOf(fm),
