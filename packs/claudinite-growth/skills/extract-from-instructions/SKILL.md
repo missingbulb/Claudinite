@@ -47,7 +47,7 @@ Strip each rule along two axes and see what survives.
 
 | Survives | What it is | Where it goes |
 |---|---|---|
-| the repo swap only | a personal preference | that person's own pack - `claude-code-web-users-support` owns its shape and where it lives; follow that pack's rules, and never write a preference into this repository |
+| the repo swap only | one of that person's own rules | the pack that travels with them - `claude-code-web-users-support` owns where it lives and what it may hold; follow that pack's rules, and never write one of a person's rules into this repository |
 | the person swap only | this project's convention | the repo's own local pack under `.claudinite/local/packs/` |
 | both | portable, wanted by any repo sharing the facet | not yours to write: a member has no standing to author canon. Name it to the owner as a canon candidate and move on - `extract-packs-from-a-project` is the canon-side method if they take it up |
 | neither | it was about one moment: a past fix, a restatement of the code | drop it, and report that you did |
@@ -58,11 +58,13 @@ requirements document and never into a pack. And a rule that **describes** a mec
 than instructing a session belongs in a README or a module header, where no session pays for it
 every turn.
 
-**Ask whenever the two axes come out close.** A preference filed as a repo rule charges every
-contributor for one person's taste, and a repo rule filed as a preference goes missing the moment
-somebody else does the work; neither is visible in the result afterwards. Batch every doubtful
-rule into one `AskUserQuestion` pass, each quoted in its own words, rather than guessing or asking
-one at a time.
+**Ask whenever the two axes come out close.** A person's rule filed as the repo's charges every
+contributor for one person's taste, and a repo rule filed as a person's goes missing the moment
+somebody else does the work; neither is visible in the result afterwards. The person's pack is
+copied into every session they open on any project declaring that pack, so it may hold nothing a
+project owns - which is the same sort, enforced from the other side. Batch every doubtful rule
+into one `AskUserQuestion` pass, each quoted in its own words, rather than guessing or asking one
+at a time.
 
 ## 3. Put each kept rule on the mechanism ladder
 
@@ -70,7 +72,9 @@ Routing says whose pack; the ladder says which carrier inside it, and prose is i
 platform setting → schema → hook → check → skill → prose. A rule a script could decide becomes a
 check with a red-first fixture, a procedure with a nameable trigger becomes a skill that loads at
 that trigger, and recurring work with a cadence becomes a task. What is left - the in-flight
-judgment no check can hold - is the only thing that earns a line in a `RULES.md`.
+judgment no check can hold - is the only thing that earns a line in a `RULES.md`. The ladder runs
+in the person's pack as much as the repo's: it is an ordinary pack and takes a skill or a check of
+their own, so a personal rule is no reason to settle for prose.
 
 This is where a conversion pays. A `CLAUDE.md` has exactly one rung available to it, so everything
 in it was written as prose whether or not prose was right. Expect most of a long file to come out

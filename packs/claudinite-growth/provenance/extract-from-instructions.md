@@ -19,3 +19,14 @@
 - **Retire when:** members stop arriving with instruction prose written outside the pack system, or
   the routing becomes mechanical enough for a check.
 - **Landed:** #2191
+
+## 2026-09-21 · reworded · #2189 landed the person's pack while this was in flight (#2191)
+- **Reason:** the routing target was written against a preferences store holding prose, and it is
+  now an ordinary pack. Two consequences the sort had to carry: the vocabulary is "a person's
+  rules", not "a preference", and the ladder runs in that pack too, so a personal rule is no longer
+  a reason to settle for prose. The pack's own person-wanting-skill states the reciprocal constraint
+  - a person's pack may hold nothing a project owns - which is this skill's two-axis sort read from
+  the other side, so the skill now cites it rather than asserting the boundary alone.
+- **Actor:** @missingbulb (owner), asking that every assumption be re-checked after the rebase.
+- **Model:** claude-opus-5
+- **Landed:** #2191
