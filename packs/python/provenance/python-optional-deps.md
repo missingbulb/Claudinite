@@ -23,7 +23,7 @@
   pack, so that pointer sent nobody anywhere.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude, per the commit trailer.
-- **Landed:** #1647 (Refs #1646) · pack version 60903.1.
+- **Landed:** #1647 (Closes #1646) · pack version 60903.1.
 
 ## 2026-09-05 · trigger-changed · forced for the packaging files (#1667)
 - **Reason:** the rule moved in with it applies exactly when a packaging file is edited, and the
