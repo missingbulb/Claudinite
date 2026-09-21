@@ -37,7 +37,7 @@ not prose: the session that has lost its rules is the session least able to noti
 | `rules-index-current` | critical | correctness | check: blocking |
 | `claudinite-isolation` | high | complexity | check: blocking |
 | `shared-tree-edit-guard` | high | correctness | check: blocking |
-| `shared-tree-immutable` | high | correctness | check: blocking |
+| `shared-tree-immutable` | high | correctness | check: advisory |
 | `conformance-workflow` | high | correctness | check: advisory |
 | `conformance-work-scope` | high | correctness | check: advisory |
 | `seeded-file-stale` | high | correctness | check: advisory |
