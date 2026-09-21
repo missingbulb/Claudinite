@@ -2,12 +2,8 @@
 
 Active when the repo references a browser-automation driver in JS/TS source — a `playwright` /
 `playwright-core` / `puppeteer` / `puppeteer-core` module specifier, or a `.launch(` call site.
-Scanning source rather than a dependency manifest is deliberate: a repo can drive a browser its
-environment image already installs, with no dependency entry anywhere to find.
 
-Prose only. Every rule is a runtime browser behaviour or a judgment about a harness's shape,
-neither of which has a repo-state signature a check could read without asserting that a
-particular call still exists — the shape the corpus rejects outright.
+Prose only: the pack carries no checks, and declaring it is the project's call.
 
 ## Rules (`RULES.md`)
 
@@ -39,15 +35,4 @@ particular call still exists — the shape the corpus rejects outright.
 
 This pack is the browser itself. Which engine a UI golden should use, the tolerance it may carry,
 self-skipping where no browser is present, the re-baselining approval gate, and wiring the run into
-a workflow are all deliberately not here — the "zero-diff costs the whole recipe" rule is written to
-complement that testing guidance rather than restate or contradict it.
-
-Provenance: distilled from three fleet members that drive a browser from code, independently and
-for different reasons. `missingbulb/EdFringeNow` — a pinned-Chromium visual-requirements harness:
-fake-origin routing, the font jail, rasterisation flags, clip and bounding-box mechanics.
-`missingbulb/CrosswordChat` — browser rasterisation for both goldens and generated build
-artifacts: environment binary resolution, stripping runtime-dependent scripts.
-`missingbulb/ClaudiniteWebsite` — an interactive responsive check: the window-size-is-not-a-
-viewport footgun and the virtual-time budget. The first two solved the cross-machine rendering
-problem two different ways, which is what the pinning rules carry.
-`missingbulb/EdFringeAllocator` holds a vestigial fourth instance in a retired prototype.
+a workflow are all deliberately not here.

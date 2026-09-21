@@ -1,17 +1,8 @@
 // The headless-browser pack: driving a real browser from your own process —
 // resolving and pinning the build, replacing everything about the page's world
 // that would otherwise vary, and the capture mechanics. Prose only, and
-// deliberately so: every rule here is a RUNTIME browser behaviour (a secure
-// origin gating geolocation, font fallback deciding layout, a scroll dismissing
-// a hover state) or an authoring judgment about a harness's shape. Neither has a
-// repo-state signature a check could read without asserting that some particular
-// call still exists, which pins a point in time rather than a rule.
-//
-// Fingerprinted by an actual driver reference in JS/TS source — the module
-// specifier of a browser-automation package, or a `.launch(` call site — so a
-// repo that drives a browser from a globally-installed driver (no dependency
-// entry anywhere) is still recognised. The marker only *suspects* the pack;
-// declaring it is the project's call, like every pack.
+// fingerprinted by a driver reference in JS/TS source: the module specifier of a
+// browser-automation package, or a `.launch(` call site.
 
 const DRIVER_MODULE = /['"](playwright(?:-core)?|puppeteer(?:-core)?)['"]/;
 const LAUNCH_CALL = /\b(?:chromium|firefox|webkit|puppeteer)\.launch\s*\(/;
