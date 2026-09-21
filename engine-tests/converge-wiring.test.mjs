@@ -389,9 +389,13 @@ test('ensureHooks: the canon home registers its hooks at the repo root, not thro
   assert.equal(again.hooks.SessionStart.length, 1, 'one SessionStart group, not one per run');
 });
 
-test('ensureHooks: a member keeps the mount spelling even once its engine is vendored', () => {
+test('ensureHooks: the mount wins over a root engine/ that happens to sit beside it', () => {
+  // Both roots present is the only input the mount probe alone decides: with a mount
+  // and no root engine/, the "no engine here" fallback reaches the same answer, so a
+  // fixture missing engine/ never exercises the probe at all.
   const root = mkRepo();
   mkdirSync(join(root, '.claudinite/shared/engine/hooks'), { recursive: true });
+  mkdirSync(join(root, 'engine/hooks'), { recursive: true });
   ensureHooks(root);
   const settings = JSON.parse(readFileSync(join(root, SETTINGS_PATH), 'utf8'));
   assert.equal(settings.hooks.SessionStart[0].hooks[0].command, 'bash $CLAUDE_PROJECT_DIR/.claudinite/shared/engine/hooks/session-start-command.sh');

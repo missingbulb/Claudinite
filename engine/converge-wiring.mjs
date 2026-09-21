@@ -55,12 +55,12 @@ export const REQUIRED_HOOKS = [
 ];
 
 // The canon runs this same engine out of its own tree, where `.claudinite/shared/`
-// does not exist, so a mount-spelled command resolves to nothing there — and since
+// does not exist, so a mount-spelled command resolves to nothing there - and since
 // the command string is the registration's identity below, every run appended a
 // second, permanently broken group rather than recognising the one already wired.
 // Resolve the prefix against the root being converged: the mount wherever it is
 // present, the repo root only where the engine plainly sits there instead, and the
-// mount otherwise — a member whose vendoring has not run yet is still a member.
+// mount otherwise - a member whose vendoring has not run yet is still a member.
 const HOOK_MOUNT_PREFIX = `${MOUNT_ROOT}/${SHARED_NAME}/`;
 
 export function hooksFor(root) {
