@@ -19,3 +19,17 @@
   optional, and the canon cannot see which repos are active anyway.
 - **Actor:** @missingbulb (owner).
 - **Landed:** #1652 · pack version 60903.4.
+
+## 2026-09-21 · reaffirmed · the advisory outlives the constant it was named for
+- **Source:** the fourth of the residues #1643 lists, read while the `updates` mechanism alias left
+  `engine/served-by.mjs`.
+- **Reason:** the rule read the alias off `servedBy.LEGACY_MECHANISM`, so deleting that constant
+  would have made the advisory inert at the moment it became the only thing still watching for the
+  shape - retiring the warning together with the thing it warns about. A member file that still says
+  `updates` is exactly what the rule exists to find, and the value is historical and cannot move, so
+  it is carried as a literal instead of read from the engine. The remedy text changed with it: the
+  declaration no longer reads as one spelling of two the flows still serve, it reads as
+  unrecognised, resolving to the default rather than to anything the repo said.
+- **Actor:** @missingbulb (owner), through the queue item implementing #1643.
+- **Landed:** #1917 (Refs #1643; the work item's own converge closes that issue, so the body carries
+  no closing keyword).
