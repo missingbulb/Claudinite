@@ -1,15 +1,9 @@
 // numpy-image-processing pack: numeric image analysis in Python on the
-// NumPy + SciPy (`ndimage`) + scikit-image + Pillow stack — deriving a mask,
-// skeleton or threshold from an image array, and rendering the result. This
-// sits beside `python` (packaging/import conventions) and `research-project`
-// (the iterate-on-an-algorithm methodology): neither carries the array-level
-// mechanics here, and a project can run any of the three without the others.
+// NumPy + SciPy (`ndimage`) + scikit-image + Pillow stack - deriving a mask,
+// skeleton or threshold from an image array, and rendering the result.
 //
 // Fingerprint: `numpy` and `scipy` named together in a near-root Python
-// dependency manifest (`requirements*.txt` or `pyproject.toml`). Either alone
-// is too common to suspect this pack — numpy shows up in almost any Python
-// data code — but the pair is a reliable signal for exactly this stack. The
-// marker only *suspects* the pack; declaring it is the project's call.
+// dependency manifest (`requirements*.txt` or `pyproject.toml`).
 const MANIFEST = /(^|\/)(requirements[^/]*\.txt|pyproject\.toml)$/;
 const NUMPY = /\bnumpy\b/i;
 const SCIPY = /\bscipy\b/i;
