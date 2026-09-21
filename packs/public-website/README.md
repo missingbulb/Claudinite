@@ -1,12 +1,12 @@
 # public-website pack
 
-Being a public website, whatever serves it: the version the site carries and the stamp its pages show, and the ways a page that fetches its own data goes quietly stale. **Opt-in**: a project declares it when it publishes a site, beside the pack for whatever hosts the site. Nothing here builds, serves or releases anything, and nothing here names a host — a hosting pack's release reaches [`public/version.mjs`](public/version.mjs) to advance the version as part of cutting a release, and goes out without a bump when the file is absent.
+Being a public website, whatever serves it: the version the site carries and the stamp its pages show, and the ways a page that fetches its own data goes quietly stale. **Opt-in**: a project declares it when it publishes a site, beside the pack for whatever hosts the site. Nothing here builds, serves or releases anything, and nothing here names a host: a hosting pack's release reaches [`public/version.mjs`](public/version.mjs) to advance the version as part of cutting a release, and goes out without a bump when the file is absent.
 
-Fingerprint: a tracked page carrying a `title="version …"` stamp, the pack's own artifact. It only *suspects* the pack — declaring is the project's call.
+Fingerprint: a tracked page carrying a `title="version …"` stamp, the pack's own artifact. It only *suspects* the pack; declaring is the project's call.
 
 ## The version
 
-`<major>.<ymmdd>.<build>`, computed and never typed: the major is a generation statement raised by hand, the middle part is the UTC release date counted in years from 2025 so it never runs backwards at New Year, and the build is a monotonic counter. `package.json` is the one record; a page opts into showing the version by carrying `title="version …"` on the element that should show it, and the bump stamps every tracked page that does. The scheme, the stamp and the set of files a bump rewrites live in [`public/version.mjs`](public/version.mjs); [`bump-version.mjs`](bump-version.mjs) is its working-tree caller, with `--stamp-only` as the drift repair.
+`<major>.<ymmdd>.<build>`, computed and never typed: the major is a generation statement raised by hand, the middle part is the UTC release date counted in years from 2025, and the build is a monotonic counter. `package.json` is the one record; a page opts into showing the version by carrying `title="version …"` on the element that should show it, and the bump stamps every tracked page that does. The scheme, the stamp and the set of files a bump rewrites live in [`public/version.mjs`](public/version.mjs); [`bump-version.mjs`](bump-version.mjs) is its working-tree caller, with `--stamp-only` as the drift repair.
 
 ## Checks
 
@@ -26,4 +26,4 @@ What it holds: every tracked page carrying a stamp names `package.json`'s versio
 | Split caches join across generations | critical | correctness | prose: <100 words |
 | Follow missing data to the pixel | high | correctness | prose: <100 words |
 
-The last four are the client-side half: with no server to vary `Cache-Control` per file, the freshness policy moves into the page, and these are the four ways that goes wrong quietly.
+The last four are the client-side half: the four ways a page that fetches its own data goes stale quietly.

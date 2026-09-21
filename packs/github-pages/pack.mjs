@@ -2,19 +2,9 @@ import { adoptedPages, CONFIG_PATH } from './lib.mjs';
 
 // Serving a site from GitHub Pages: the nightly release that deploys the default
 // branch, the one vendored workflow that performs the deploy, the config naming what
-// is published, and the subpath the result is served from. The workflow is authored
-// once in this pack's stubs/ and vendored into each site repo's own .github/ (GitHub
-// runs a Pages deploy only from a workflow job in the repo's own tree), so a repo
-// hosts it without owning it.
-//
-// WHAT IS NOT HERE: the version. public-website owns the scheme and the page stamp,
-// and the release reaches that pack's `public/version.mjs` to advance it — when the
-// pack is declared. A repo that declares only this one is deployed unversioned. And
-// nothing here knows any other host: a site is served from Pages or from something
-// else, never both, so no other hosting pack is named.
-//
-// Fingerprinted by the site config, the pack's own central artifact — declaring is
-// still what activates the pack.
+// is published, and the subpath the result is served from. The version is not here:
+// public-website owns the scheme and the page stamp, and the release reaches that
+// pack's `public/version.mjs` to advance it when the pack is declared.
 export default {
   version: '60921.1',
   minEngineVersion: '60822.1',
