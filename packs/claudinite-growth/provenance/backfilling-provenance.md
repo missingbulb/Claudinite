@@ -62,3 +62,12 @@
 - **Actor:** @missingbulb (owner), who asked what the first run had taught the skill.
 - **Model:** Claude Opus 5.
 - **Landed:** #2169
+
+## 2026-09-21 · reworded · step 10 told the run to expect silence from a command that always prints
+- **Source:** a three-model comparison running this skill on `host-page`; two of the three runs
+  stopped to reconcile `check <pack>`'s file-to-carrier listing against the step's wording before
+  concluding the pack was clean.
+- **Reason:** `check` prints the listing on a clean pack as on a faulty one, so "reporting nothing"
+  is never true and a run reading it literally treats a pass as a failure.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude

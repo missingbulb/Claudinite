@@ -90,9 +90,10 @@ so the sections it prints without a draft under them are the run's work, not its
 9. **Candidates the history shows were turned down** - an extraction the owner declined, a
    conversion judged not checkable - go on `_declined.md`, kind `declined`, with `Source`,
    `Reason` and `Actor`, so the next pass reads them before nominating.
-10. **Finish with `provenance.mjs check <pack>` reporting nothing**, the repo's offline suite
-    green, and a pull request carrying the pack's provenance files, its trimmed README, its
-    trimmed manifest and nothing else, titled `Provenance: backfill <pack>` and referencing
+10. **Finish with `provenance.mjs check <pack>` reporting no fault** - it prints its
+    file-to-carrier listing either way, so the pass is that listing alone and exit 0, never
+    silence - the repo's offline suite green, and a pull request carrying the pack's
+    provenance files, its trimmed README, its trimmed manifest and nothing else, titled `Provenance: backfill <pack>` and referencing
     the tracking issue. One pack per pull request is the default, and a pack whose elements
     arrived across several pull requests stays one; what a run costs is the reading, so
     packs whose history is one pull request apiece batch into one. Predict the automerge
