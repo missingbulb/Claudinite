@@ -132,7 +132,10 @@ test('three different reasons a PR waits, told apart', () => {
 // A row's cadence fields come from the roster's own reader rather than being typed
 // here, so the fixture is what `buildRoster` would hand the board and not a copy that
 // can drift from it.
-const cadenced = (terms, declaration = {}) => ({ declaration: { preconditions: terms, ...declaration }, ...describeCadence(terms) });
+const cadenced = (terms, declaration = {}) => {
+  const decl = { trigger: 'schedule', preconditions: terms, ...declaration };
+  return { declaration: decl, ...describeCadence(terms, decl.trigger) };
+};
 const taskRow = (over = {}) => ({
   key: 'p/t', pack: 'p', task: 't', ...cadenced(['due:daily']),
   nextAsk: { kind: 'anchor', at: new Date(NOW + DAY) }, lastClosed: null, ...over,
@@ -197,7 +200,7 @@ test('everything on a longer cadence is one row — the question is whether it f
 test('no cadence term is a row with no prediction; unscheduled and unreadable tasks are off the grid', () => {
   const axis = axisOf(NOW, SCHEDULE);
   const grid = scheduleGrid([
-    taskRow({ key: 'p/lever', task: 'lever', ...cadenced([]), nextAsk: { kind: 'note', note: 'x' } }),
+    taskRow({ key: 'p/lever', task: 'lever', ...cadenced([], { trigger: 'request' }), nextAsk: { kind: 'note', note: 'x' } }),
     taskRow({ key: 'p/move', task: 'move', ...cadenced(['substantive-change']), nextAsk: { kind: 'note', note: 'x' } }),
     taskRow({ key: 'p/unread', task: 'unread', ...cadenced(null), nextAsk: { kind: 'note', note: 'x' } }),
   ], [], axis, { now: NOW, schedule: SCHEDULE });
@@ -221,7 +224,7 @@ test('tomorrow\'s workload is the declarations read against the schedule, never 
 test('the workload line counts a task with no cadence term apart, and an unscheduled one not at all', () => {
   const line = workloadLine(0, [
     taskRow({ key: 'p/move', task: 'move', ...cadenced(['substantive-change'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
-    taskRow({ key: 'p/lever', task: 'lever', ...cadenced([], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
+    taskRow({ key: 'p/lever', task: 'lever', ...cadenced([], { trigger: 'request', automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
     taskRow({ key: 'p/slow', task: 'slow', ...cadenced(['schedule:at-most-weekly'], { automerge: 'nothing' }), nextAsk: { kind: 'note', note: 'x' } }),
   ], { schedule: SCHEDULE, now: NOW });
   assert.match(line, /nothing waits for a person/);

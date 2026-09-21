@@ -33,22 +33,29 @@ test('a stated trigger beats what the expression looks like, in both directions'
   assert.equal(isScheduledTask(declare({ trigger: TRIGGER_SCHEDULE, preconditions: [] })), true);
 });
 
-test('a declaration stating no trigger is read the way the expression was read before the field', () => {
-  assert.equal(declare({ preconditions: ['due:daily'] }).trigger, TRIGGER_SCHEDULE);
-  assert.equal(declare({ preconditions: [] }).trigger, TRIGGER_REQUEST);
-  assert.equal(declare({}).trigger, TRIGGER_REQUEST);
-  // A term that reads the item itself: nothing to judge at a tick, so the task is
-  // off the schedule — but only where the term RESOLVES. Handed no terms the door
-  // cannot know that, and reads the condition as any other, which is what the
-  // predicate did before the field and so what a legacy declaration must keep doing.
-  const terms = new Map([['about-this-issue', { needsItem: true, signals: [] }]]);
-  assert.equal(normalizeTaskDeclaration({ ...base, preconditions: ['about-this-issue'] }, terms).trigger, TRIGGER_REQUEST);
-  assert.equal(declare({ preconditions: ['about-this-issue'] }).trigger, TRIGGER_SCHEDULE, 'unresolved, so unknowable');
+// The derivation that read the trigger off the shape of the expression is gone
+// (#1789): every shape it used to answer for is now a declaration the engine refuses
+// rather than one it guesses at, which is what makes `trigger` data a reader can audit.
+test('a declaration stating no trigger is rejected, never read off the shape of its conditions', () => {
+  // The two shapes the derivation told apart: conditions the scheduler could judge,
+  // and none at all. Neither answers now.
+  for (const preconditions of [['due:daily'], ['about-this-issue'], []]) {
+    assert.equal(declare({ preconditions }).trigger, undefined, JSON.stringify(preconditions));
+    assert.match(validateTaskDeclaration({ ...base, preconditions })[0].what, /declares no "trigger"/);
+  }
+  assert.match(validateTaskDeclaration(base)[0].what, /declares no "trigger"/, 'nor does stating no conditions either');
 });
 
-test('the retired frequency field derives the trigger it always meant', () => {
-  assert.equal(declare({ frequency: 'weekly' }).trigger, TRIGGER_SCHEDULE);
-  assert.equal(declare({ frequency: 'manual' }).trigger, TRIGGER_REQUEST);
+// The `frequency` tolerance stands on its own convergence window (#1732), and what it
+// carries is the CADENCE. It never spoke for the trigger, and a declaration on the old
+// field states today's one beside it.
+test('the retired frequency field folds into its cadence term and answers nothing about the trigger', () => {
+  assert.deepEqual(declare({ frequency: 'weekly' }).preconditions, ['schedule:at-most-weekly']);
+  assert.equal(declare({ frequency: 'weekly' }).trigger, undefined);
+  assert.match(validateTaskDeclaration({ ...base, frequency: 'weekly' })[0].what, /declares no "trigger"/);
+  assert.deepEqual(validateTaskDeclaration({ ...base, frequency: 'weekly', trigger: TRIGGER_SCHEDULE }), []);
+  // `manual` meant no schedule and adds no term; the declaration says the rest.
+  assert.deepEqual(declare({ frequency: 'manual', trigger: TRIGGER_REQUEST }).preconditions, []);
 });
 
 test('validateTaskDeclaration rejects a trigger outside the vocabulary', () => {

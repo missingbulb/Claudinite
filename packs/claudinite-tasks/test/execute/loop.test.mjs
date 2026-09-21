@@ -39,7 +39,7 @@ const term = (holds) => new Map([['gate', { signals: [], holds }]]);
 const RUNS = term(() => ({ holds: true }));
 const task = (id, decl = {}, terms = RUNS) => ({
   pack: 'p', id, taskDir: process.cwd(), taskPath: `packs/p/tasks/${id}/task.md`,
-  decl: normalizeTaskDeclaration({ id, frequency: 'daily', agent_model: 'sonnet', preconditions: ['gate'], expected_outcome: 'fresh_pr', ...decl }),
+  decl: normalizeTaskDeclaration({ id, trigger: 'schedule', frequency: 'daily', agent_model: 'sonnet', preconditions: ['gate'], expected_outcome: 'fresh_pr', ...decl }),
   terms,
 });
 

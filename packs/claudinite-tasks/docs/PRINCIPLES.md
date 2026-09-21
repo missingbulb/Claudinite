@@ -477,8 +477,9 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   `test/contract/legacy-precondition-retired.test.mjs: the executor seam never calls a precondition function`
 - The retired `frequency` field is read at exactly one door,
   `normalizeTaskDeclaration`: it becomes the cadence term it always meant
-  first in the expression (`manual` becomes `trigger: request` and no term at
-  all), and nothing downstream ever sees the field again.
+  first in the expression (`manual` becomes no term at all), and nothing
+  downstream ever sees the field again. The `trigger` it used to imply is not
+  supplied there: a declaration states its own, or fails validation.
   `test/rules/legacy-task-fields.test.mjs: legacy-task-fields: the retired frequency field is reported with the condition it reads as`,
   `test/rules/legacy-task-fields.test.mjs: legacy-task-fields: what it reports is exactly what the door normalizes away`
 - Bootstrap's whole wiring is idempotent and durable-state-free: labels

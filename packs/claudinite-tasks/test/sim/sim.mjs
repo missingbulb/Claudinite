@@ -184,21 +184,25 @@ export function makeSim({
       ...(spec.frequency !== undefined
         ? { frequency: spec.frequency, ...(spec.preconditions !== undefined ? { preconditions: stated } : {}) }
         : { preconditions: spec.precondition ? [...stated, 'gate'] : stated }),
-      // ON THE SCHEDULE is decided by the STATED cadence terms, never by the
-      // scenario's gate: a scenario whose task states no cadence is one the
-      // scheduler never asks, and it runs only from an item somebody created. A
-      // declaration stating its trigger outright keeps it, as the contract does.
-      ...(spec.trigger !== undefined ? { trigger: spec.trigger }
-        : spec.frequency !== undefined ? {} : { trigger: stated.length ? 'schedule' : 'request' }),
+      ...(spec.trigger !== undefined ? { trigger: spec.trigger } : {}),
       agent_model: spec.agentMinutes != null ? 'sonnet' : 'none',
       ...(spec.codeWorkMinutes != null ? { code_work: 'node worker.mjs', code_work_timeout: 50 } : {}),
       ...(spec.schedule_after ? { schedule_after: spec.schedule_after } : {}),
       expected_outcome: 'fresh_pr',
-    }, terms);
+    });
     // THE DOOR, as the contract runs it. A declaration that leaves the frequency
     // door naming a cadence no calendar has — a retired spelling — is refused
     // here, where the engine's own declaration check refuses it at author time.
     if (spec.precondition && !decl.preconditions.includes('gate')) decl.preconditions.push('gate');
+    // ON THE SCHEDULE is the declaration's own answer, and nothing at the door
+    // derives it (#1789) — so THIS FIXTURE writes it, not the contract. A scenario is
+    // shorthand rather than a declaration: one naming a trigger keeps it, and one
+    // that does not is read off the conditions IT states, which is what the scenarios
+    // below were written against. The scenario's own gate is not one of them — it says
+    // what the task answers when asked, never whether it is asked.
+    if (decl.trigger === undefined) {
+      decl.trigger = decl.preconditions.some((t) => t !== 'gate') ? 'schedule' : 'request';
+    }
     const problems = validatePreconditions(decl.preconditions, terms);
     if (problems.length) throw new Error(`${spec.id}: ${problems[0].what}`);
     return { pack, id, taskDir: ROOT, taskPath: `packs/${pack}/tasks/${id}/task.md`, decl, terms, spec };

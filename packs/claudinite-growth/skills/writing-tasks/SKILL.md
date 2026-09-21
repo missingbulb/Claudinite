@@ -325,11 +325,11 @@ built-in request implementer's `request-eligible` declares) has nothing to be ju
 against at a tick, so it would fail every hour rather than decline — such a task is
 `trigger: 'request'`.
 
-A declaration still carrying `frequency` is rewritten at the door into its cadence
-term plus `trigger: 'schedule'` (`manual` into `trigger: 'request'` and no
-expression), and one stating no `trigger` has it derived from the shape of its
-conditions; both are reported by `legacy-task-fields`, and the nightly update writes
-them into a member's own task files. Write both fields.
+`trigger` is required and stated: nothing reads it off the shape of the conditions,
+so a declaration naming none does not load. A declaration still carrying `frequency`
+is rewritten at the door into its cadence term (`manual` into no expression at all),
+which `legacy-task-fields` reports and the nightly update writes into a member's own
+task files. The `trigger` beside it is the author's.
 
 **`preconditions` is the only gate there is.** The `precondition` function and its
 `precondition_signals` companion are retired: both are rejected by name, and the

@@ -7,6 +7,7 @@ import rule from '../../worldRules/task-declaration-shape.mjs';
 const good = {
   id: 'growth-extract',
   description: 'Mines the window for durable lessons and folds them into the local packs.',
+  trigger: 'schedule',
   agent_model: 'opus',
   expected_outcome: 'fresh_pr',
   automerge: 'anything',
@@ -36,7 +37,7 @@ test('task-declaration-shape: is inert when no task declaration exists', () => {
 // carrying neither is a clean agentless task once it names its code work and when
 // it runs, and the two timeouts are never defaulted.
 test('task-declaration-shape: the minimal declaration is a code-work task, and needs its timeout', () => {
-  const minimal = { id: 'growth-extract', description: 'A minimal task.', preconditions: ['schedule:at-most-daily'], expected_outcome: 'fresh_pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
+  const minimal = { id: 'growth-extract', description: 'A minimal task.', trigger: 'schedule', preconditions: ['schedule:at-most-daily'], expected_outcome: 'fresh_pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
   assert.deepEqual(run({ [TASK]: json(minimal) }), []);
   const { code_work_timeout, ...noBound } = minimal;
   assert.match(whatsOf({ [TASK]: json(noBound) }), /no numeric "code_work_timeout"/);
@@ -144,7 +145,7 @@ test('task-declaration-shape: the legacy outcome ceilings are an advisory rename
 });
 
 const noneTask = {
-  id: 'growth-extract', description: 'An agentless task.', preconditions: ['schedule:at-most-daily'], agent_model: 'none', expected_outcome: 'no_code_changes',
+  id: 'growth-extract', description: 'An agentless task.', trigger: 'schedule', preconditions: ['schedule:at-most-daily'], agent_model: 'none', expected_outcome: 'no_code_changes',
   code_work: 'node w.mjs', code_work_timeout: 60,
 };
 
@@ -255,12 +256,17 @@ test('task-declaration-shape: legacy agent_preprocessing names satisfy the contr
 
 // --- the trigger (#1725) ---------------------------------------------------------
 
-test('task-declaration-shape: a stated trigger is checked; an unstated one is the advisory\'s', () => {
-  assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'schedule' }) }), []);
+test('task-declaration-shape: the trigger is required, and its value checked', () => {
   assert.deepEqual(run({ [TASK]: json({ ...good, trigger: 'request', preconditions: ['substantive-change'] }) }), []);
-  // Absent is legal here — the door derives it, and `legacy-task-fields` is what
-  // asks for it. This check must not double up on that as a blocking finding.
-  assert.deepEqual(run({ [TASK]: goodTask }), []);
+  // Nothing derives it any more, so a declaration stating none is one the contract
+  // refuses — caught here at the line an author edits rather than at the door, where
+  // it reads only as a task absent from the roster.
+  const { trigger, ...none } = good;
+  const missing = run({ [TASK]: json(none) });
+  assert.equal(missing.length, 1, JSON.stringify(missing));
+  assert.equal(missing[0].severity, 'blocking');
+  assert.match(missing[0].what, /declares no "trigger"/);
+  assert.match(missing[0].fix, /schedule, request/);
   assert.match(whatsOf({ [TASK]: json({ ...good, trigger: 'cron' }) }), /"trigger" is "cron", not a legal value/);
   assert.match(whatsOf({ [TASK]: json({ ...good, trigger: true }) }), /"trigger" is true, not a legal value/);
 });

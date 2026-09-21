@@ -147,7 +147,8 @@ test('parseDeclaration reads a task.json, defaults filled', () => {
 // The page cannot load the contract's door (it reaches into `node:` builtins), so
 // it spells the one rule of it the roster needs. Both run over one vector set here —
 // every shape the legacy field can arrive in — so the copy cannot drift from the
-// contract without this going red.
+// contract without this going red. The page spells its unknown `null` where the
+// contract simply leaves the key off, which is the one difference asserted across.
 test('the page\'s frequency and trigger doors agree with the contract\'s on every shape', () => {
   const vectors = [
     { id: 'a', frequency: 'daily' },
@@ -170,7 +171,7 @@ test('the page\'s frequency and trigger doors agree with the contract\'s on ever
     const contract = normalizeTaskDeclaration({ ...decl, expected_outcome: 'no_code_changes' });
     const page = parseDeclaration(JSON.stringify({ ...decl, expected_outcome: 'no_code_changes' }));
     assert.deepEqual(page.preconditions, contract.preconditions, `vector ${decl.id}`);
-    assert.equal(page.trigger, contract.trigger, `vector ${decl.id}: the two doors read one trigger`);
+    assert.equal(page.trigger, contract.trigger ?? null, `vector ${decl.id}: the two doors read one trigger`);
     assert.equal(page.frequency, contract.frequency, `vector ${decl.id}: neither side keeps the field`);
   }
 });
@@ -202,7 +203,7 @@ test('parseDeclaration survives a missing file', () => {
 // but no anchor, and NO CONDITIONS is off the schedule altogether.
 test('describeCadence reads each cadence shape off the preconditions', () => {
   const DAY = 86400e3;
-  const due = describeCadence(['schedule:at-most-weekly', 'substantive-change']);
+  const due = describeCadence(['schedule:at-most-weekly', 'substantive-change'], 'schedule');
   assert.equal(due.frequency, 'weekly');
   assert.deepEqual(due.cadence, { kind: 'period', cadence: 'weekly' });
   assert.equal(due.periodMs, 7 * DAY);
@@ -210,30 +211,41 @@ test('describeCadence reads each cadence shape off the preconditions', () => {
 
   // The retired spelling reads as the same cadence: the page lifts declarations out
   // of GitHub as text, so it meets it on any member that has not converged.
-  const legacy = describeCadence(['due:weekly', 'substantive-change']);
+  const legacy = describeCadence(['due:weekly', 'substantive-change'], 'schedule');
   assert.deepEqual(legacy.cadence, due.cadence);
   assert.equal(legacy.periodMs, due.periodMs);
 
-  const none = describeCadence(['substantive-change']);
+  const none = describeCadence(['substantive-change'], 'schedule');
   assert.equal(none.frequency, 'on movement');
   assert.equal(none.cadence, null);
   assert.equal(none.scheduled, true);
 
-  const off = describeCadence([]);
+  const off = describeCadence([], 'request');
   assert.equal(off.frequency, 'unscheduled');
   assert.equal(off.scheduled, false);
 
-  const unreadable = describeCadence(null);
+  const unreadable = describeCadence(null, 'schedule');
   assert.equal(unreadable.scheduled, null);
 });
 
 test('describeCadence keeps an unreadable declaration apart from one with no cadence term and from one with no conditions', () => {
-  const unread = describeCadence(null);
+  const unread = describeCadence(null, 'schedule');
   assert.equal(unread.frequency, null);
   assert.equal(unread.scheduled, null, 'unknown, not "not scheduled"');
   assert.match(unread.anchorNote, /unknown/);
-  assert.equal(describeCadence([]).scheduled, false, 'no conditions — not on the schedule');
-  assert.equal(describeCadence(['substantive-change']).scheduled, true, 'a condition — asked at every tick');
+  assert.equal(describeCadence([], 'request').scheduled, false, 'a task nothing asks — not on the schedule');
+  assert.equal(describeCadence(['substantive-change'], 'schedule').scheduled, true, 'a condition — asked at every tick');
+});
+
+// The third unknown, beside an unreadable expression and an entry with no declaration
+// at all: conditions that read fine on a declaration naming no trigger. Nothing derives
+// one (#1789), so the lane is unknown while the conditions are not.
+test('describeCadence reads a declaration stating no trigger as neither lane', () => {
+  const silent = describeCadence(['schedule:at-most-weekly'], undefined);
+  assert.equal(silent.scheduled, null, 'unknown, not "not scheduled"');
+  assert.equal(silent.cadence, null);
+  assert.match(silent.anchorNote, /states no trigger/);
+  assert.equal(describeCadence(['last-run-not-failed'], 'cron').scheduled, null, 'nor does a value outside the vocabulary');
 });
 
 // --- items ---------------------------------------------------------------------
@@ -357,8 +369,8 @@ test('a park\'s severity follows its triage lane', () => {
 // --- the roster ----------------------------------------------------------------
 
 const tasks = [
-  { pack: 'basics', task: 'ci-performance', path: 'packs/basics/tasks/ci-performance/task.json', declaration: { preconditions: ['due:weekly'], agent_model: 'sonnet' } },
-  { pack: 'claudinite-lifecycle', task: 'update', path: 'packs/claudinite-lifecycle/tasks/update/task.json', declaration: { preconditions: ['due:daily'] } },
+  { pack: 'basics', task: 'ci-performance', path: 'packs/basics/tasks/ci-performance/task.json', declaration: { trigger: 'schedule', preconditions: ['due:weekly'], agent_model: 'sonnet' } },
+  { pack: 'claudinite-lifecycle', task: 'update', path: 'packs/claudinite-lifecycle/tasks/update/task.json', declaration: { trigger: 'schedule', preconditions: ['due:daily'] } },
 ];
 
 test('every declared task gets a row, including one that has never run', () => {
@@ -390,8 +402,8 @@ test('a row picks up its open item and its closed history', () => {
 test('unscheduled and unknown cadences are distinguished, and neither invents an anchor', () => {
   const rows = buildRoster({
     tasks: [
-      { pack: 'p', task: 'lever', declaration: { id: 'lever' } },
-      { pack: 'p', task: 'unreadable', declaration: { preconditions: null } },
+      { pack: 'p', task: 'lever', declaration: { id: 'lever', trigger: 'request' } },
+      { pack: 'p', task: 'unreadable', declaration: { trigger: 'schedule', preconditions: null } },
       { pack: 'p', task: 'unread', declaration: null },
     ],
     items: [], now: NOW, schedule: SCHEDULE,
@@ -408,14 +420,19 @@ test('unscheduled and unknown cadences are distinguished, and neither invents an
   }
 });
 
-// An older repo's declaration still says `manual`; it meant no schedule, and reads as
-// exactly that through the door — the roster writes nothing in the old vocabulary.
-test('a legacy `manual` declaration reads as an unscheduled task', () => {
+// An older repo's declaration still says `manual` and states no trigger. The cadence
+// half still reads — the field becomes the term it meant, and the roster writes
+// nothing in the old vocabulary — but which lane the task is in is a thing that
+// declaration never said, and nothing derives it (#1789). It is also a declaration the
+// engine refuses, so a row claiming a lane would be a promise about a task that cannot
+// run; the roster says so instead.
+test('a legacy `manual` declaration is read for its cadence, and its lane is unknown', () => {
   const declaration = parseDeclaration('{ "id": "lever", "frequency": "manual", "expected_outcome": "no_code_changes" }', 'p/tasks/lever/task.json');
+  assert.deepEqual(declaration.preconditions, [], 'the field left at the door');
   const [row] = buildRoster({ tasks: [{ pack: 'p', task: 'lever', declaration }], items: [], now: NOW, schedule: SCHEDULE });
-  assert.equal(row.frequency, 'unscheduled');
-  assert.equal(row.scheduled, false);
-  assert.equal(row.nextAsk.kind, 'note');
+  assert.equal(row.scheduled, null, 'unknown, not "not scheduled"');
+  assert.equal(row.nextAnchor, null);
+  assert.match(row.anchorNote, /states no trigger/);
   assert.doesNotMatch(JSON.stringify(row), /manual|woken/);
 });
 
@@ -423,7 +440,7 @@ test('a legacy `manual` declaration reads as an unscheduled task', () => {
 // instant to promise and no period to count stale-ready in.
 test('a task with no cadence term is scheduled, with no anchor and no period', () => {
   const [row] = buildRoster({
-    tasks: [{ pack: 'p', task: 'move', declaration: { preconditions: ['substantive-change'] } }],
+    tasks: [{ pack: 'p', task: 'move', declaration: { trigger: 'schedule', preconditions: ['substantive-change'] } }],
     items: [], now: NOW, schedule: SCHEDULE,
   });
   assert.equal(row.frequency, 'on movement');
@@ -475,7 +492,7 @@ test('a rolled item\'s stamped wake outranks the computed anchor', () => {
 // declines. Anywhere else the scheduler files the next run around the park, so the
 // anchor stands.
 test('a failure park holds the schedule only where the declaration says so', () => {
-  const holding = [{ ...tasks[0], declaration: { preconditions: ['due:weekly', 'last-run-not-failed'] } }];
+  const holding = [{ ...tasks[0], declaration: { trigger: 'schedule', preconditions: ['due:weekly', 'last-run-not-failed'] } }];
   const held = buildRoster({ tasks: holding, items: [item({ labels: [NEEDS_HUMAN] })], now: NOW, schedule: SCHEDULE })[0];
   assert.equal(held.holdsOnFailure, true);
   assert.equal(held.nextAsk.kind, 'held');
@@ -503,7 +520,7 @@ test('with no open item the calendar answers, and an unscheduled task has only i
   assert.equal(ci.nextAsk.at.getTime(), ci.nextAnchor.getTime());
 
   const [unscheduled] = buildRoster({
-    tasks: [{ pack: 'p', task: 'lever', declaration: { preconditions: [] } }],
+    tasks: [{ pack: 'p', task: 'lever', declaration: { trigger: 'request', preconditions: [] } }],
     items: [], now: NOW, schedule: SCHEDULE,
   });
   assert.equal(unscheduled.nextAsk.kind, 'note');

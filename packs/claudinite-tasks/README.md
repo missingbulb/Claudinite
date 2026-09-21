@@ -121,7 +121,7 @@ written.
 
 The first two are relevance-first — inert until the repo carries a `tasks/<name>/task.json` of its own; the third is self-gating on the branch's own arming trailer.
 
-- `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal — no `preconditions` saying when it runs, an unknown condition, an illegal value — so the task never fires or fires wrong.
+- `task-declaration-shape` — a task declaration the scheduler reads is incomplete or illegal — no `trigger` saying who mints an occurrence, an unknown condition, an illegal value — so the task never fires or fires wrong.
 - `task-code-work-env` — a task reads a `CLAUDINITE_*` variable code-work never sets, so a parameter (a scope filter, a dry-run switch) silently never arrives and the run goes green in its most dangerous mode.
 - `executor-workflow-secrets` — the executor workflow does not pass a secret the tasks of this repo's packs declare, so the queue picks the item up and only the run finds out the secret is not there. The list is the tasks' alone; an invocation endpoint's `tokenSecret` is config, stamped by the converge and reported by the invocation call itself. Advisory because the remedy is a human-merged PR to `.github/workflows/`, the one fix a member's own machinery cannot make.
 - `automerge-policy-scope` — a branch that stamped the `Claudinite-Automerge-Policy` trailer (its run intends to land its own PR) carries a diff its declared policy does not cover, which is exactly the unreviewed change the policy exists to stop.

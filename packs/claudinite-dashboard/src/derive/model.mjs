@@ -116,20 +116,15 @@ export function taskDeclarationPaths(paths, config) {
 // (`cadenceTermFor` answers null for it), so what stood beside it is the whole
 // expression; nothing here writes the old word.
 const NONE = 'none';
-// THE TRIGGER DOOR, as the page runs it (#1725). `trigger` says whether the
-// scheduler asks a task; a declaration written before the field is read off the
-// shape of its conditions, exactly as the contract's door reads it. The one thing
-// the page cannot do is resolve a task's OWN terms, so a legacy declaration whose
-// condition reads the item itself is read here as scheduled — the engine's own door
-// is handed those terms and is not; no canon declaration is in that state, and one
-// stating its trigger never reaches this branch at all.
+// THE TRIGGER, as the page reads it (#1725). `trigger` says whether the scheduler
+// asks a task, and the declaration is the only thing that says so: nothing reads it
+// off the shape of the conditions, here or at the contract's own door (#1789). So a
+// declaration stating none reads as UNKNOWN rather than as either lane. It is one
+// the engine no longer loads, and a page that guessed would show a roster row for a
+// task that cannot run.
 export const TRIGGER_SCHEDULE = 'schedule';
 export const TRIGGER_REQUEST = 'request';
-const withTrigger = (trigger, preconditions) => {
-  if (trigger === TRIGGER_SCHEDULE || trigger === TRIGGER_REQUEST) return trigger;
-  if (!Array.isArray(preconditions)) return null;
-  return statesConditions(preconditions) ? TRIGGER_SCHEDULE : TRIGGER_REQUEST;
-};
+const withTrigger = (trigger) => (trigger === TRIGGER_SCHEDULE || trigger === TRIGGER_REQUEST ? trigger : null);
 function withCadenceTerm(frequency, preconditions) {
   // The cadence-spelling door, run first so a declaration carrying the retired
   // `due:<cadence>` reads the same here as it does through the contract's.
@@ -172,7 +167,7 @@ export function parseDeclaration(text) {
   const preconditions = withCadenceTerm(scalarOf(decl.frequency), stated);
   return {
     id: scalarOf(decl.id),
-    trigger: withTrigger(scalarOf(decl.trigger), preconditions),
+    trigger: withTrigger(scalarOf(decl.trigger)),
     agent_model: scalarOf(decl.agent_model),
     expected_outcome: scalarOf(decl.expected_outcome),
     interrupt_policy: scalarOf(decl.interrupt_policy),
@@ -210,9 +205,13 @@ export function describeCadence(preconditions, trigger) {
   }
   const holds = holdsOnFailure(preconditions);
   const holdsAnywhere = holdsOnAnyPark(preconditions);
-  // The door once more, so a caller handing over only the conditions — a fixture, a
-  // declaration written before the field — reads exactly as the roster's own entry does.
-  if (withTrigger(trigger, preconditions) !== TRIGGER_SCHEDULE) {
+  const stated = withTrigger(trigger);
+  // What the conditions say is known here; which lane the task is in is not, and the
+  // two are separate facts. A declaration stating no trigger names neither lane.
+  if (stated === null) {
+    return { frequency: null, cadence: null, periodMs: null, scheduled: null, holdsOnFailure: holds, holdsOnAnyPark: holdsAnywhere, anchorNote: 'states no trigger, so nothing says whether the scheduler asks it' };
+  }
+  if (stated !== TRIGGER_SCHEDULE) {
     return { frequency: 'unscheduled', cadence: null, periodMs: null, scheduled: false, holdsOnFailure: holds, holdsOnAnyPark: holdsAnywhere, anchorNote: 'not on the schedule — runs only from an item somebody creates' };
   }
   const cadence = cadenceOf(preconditions);
@@ -386,11 +385,11 @@ const statedPreconditions = (declaration) => {
   return declaration.preconditions === undefined ? [] : declaration.preconditions;
 };
 
-// The trigger the same entry states. A caller building the object by hand may state
-// only the conditions, so the door runs here too and the two reads stay one rule.
+// The trigger the same entry states. Null for an entry that never got a declaration,
+// and for one whose declaration names no legal trigger: neither lane is a fact here.
 const statedTrigger = (declaration) => {
   if (declaration === null || typeof declaration !== 'object') return null;
-  return withTrigger(declaration.trigger, statedPreconditions(declaration));
+  return withTrigger(declaration.trigger);
 };
 
 // One row per DECLARED task, whether or not it has ever run — a task that has never
