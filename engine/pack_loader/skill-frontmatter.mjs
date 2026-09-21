@@ -23,7 +23,7 @@ export const FORCE_LOAD_KEY = 'force-load-on-file-edits-paths';
 // quote it in the frontmatter, since a regex carries backslashes:
 //   force-load-on-tool-calls:          - 'mcp__github__create_pull_request'
 //                                      - 'Bash.command /(^|[;&|]\\s*)git\\s+commit\\b/'
-//   force-load-on-prompts-matching:    - '/\\bLGTM\\b/'
+//   force-load-on-prompts-matching:    - '/\\/do-later\\b/'
 //   force-load-on-tool-results-matching: - 'WebFetch /EGRESS_BLOCKED|\\b403\\b/'
 // A tool entry is the tool's exact name — optionally `.field`, the input field
 // the regex reads (`Bash.command`) — or a /regex/ over names, then optionally a
