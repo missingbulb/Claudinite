@@ -3,6 +3,7 @@
   entry in a project-type templates catalog and scrubbed of the one project-specific path it
   hardcoded.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a rule of the playbook template `templates/research-project.md`, triggered on "The
   owner's annotations are the ground truth.".
 - **Landed:** #116 (Closes #115).
@@ -13,4 +14,5 @@
   validates nothing. Kept as prose: in-flight judgment with no signature the check vocabulary can
   carry.
 - **Actor:** the growth-promote run, merged by @missingbulb (owner).
+- **Model:** Claude Fable 5.1, per the commit trailer.
 - **Landed:** #1671 (Refs #1202, #1308, #1408, #1435, #1657, #1672) · pack version 60906.1.

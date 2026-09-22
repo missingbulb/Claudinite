@@ -3,6 +3,7 @@
   entry in a project-type templates catalog and scrubbed of the one project-specific path it
   hardcoded.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a rule of the playbook template `templates/research-project.md`, triggered on "What
   was wrong".
 - **Landed:** #116 (Closes #115).

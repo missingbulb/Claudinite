@@ -3,6 +3,7 @@
   entry in a project-type templates catalog and scrubbed of the one project-specific path it
   hardcoded.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a rule of the playbook template `templates/research-project.md`, triggered on
   "Render documents with a library, not an assumed system binary.".
 - **Landed:** #116 (Closes #115).

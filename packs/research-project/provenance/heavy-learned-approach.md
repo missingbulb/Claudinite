@@ -3,6 +3,7 @@
   entry in a project-type templates catalog and scrubbed of the one project-specific path it
   hardcoded.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a rule of the playbook template `templates/research-project.md`, triggered on "When
   a heavy or learned approach is genuinely the right tool, treat it as a gated, isolated route".
 - **Landed:** #116 (Closes #115).

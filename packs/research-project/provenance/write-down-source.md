@@ -4,5 +4,6 @@
 - **Reason:** promoted at the prose rung - a reading discipline with no repo-state signature a check
   could read.
 - **Actor:** the growth-promote run, merged by @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "Write down what the source fails to say".
 - **Landed:** #751 (Refs #740) · pack version 1.

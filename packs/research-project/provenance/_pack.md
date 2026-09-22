@@ -7,6 +7,7 @@
   procedure for it existed only inside one project. A catalog of one playbook per class gave the
   class a home a fresh project is matched against at bootstrap.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a project-agnostic template under `templates/`, linked from a matching project's
   own CLAUDE.md at bootstrap and left the single source of truth for the class; packs, checks and
   skills did not exist yet.
@@ -20,6 +21,7 @@
   `tasks/` and `technologies/`. The playbook crossed unchanged: `packs/research-project/RULES.md` at
   this commit is byte-identical to the template it replaced.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5, per the commit trailer.
 - **Mechanism:** the pack manifest, declared and never fingerprinted - what a repository holds says
   nothing about whether the work in it is this class of research, so a project declares the pack the
   way it used to link the template. All fourteen sections stay prose: methodology and judgment, with
@@ -34,6 +36,7 @@
   against the two neighbours its subject is confused with: shipping an end-user product against a
   spec, and market research.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** `ruleRoutingGuidance` on the manifest - `belongs` naming the scoring, phases and
   session continuity of iterating an algorithm against annotated ground truth, `excludes` pointing
   product-against-a-spec at spec-driven-product and market research at product-wiki. The set renders
@@ -48,4 +51,5 @@
   paragraph-form instruction inside the numbered sections was left alone: it instructs, and
   rewriting it is a rewrite of substance rather than this sweep.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Landed:** #1634 (Closes #1632) · pack version 60902.1.

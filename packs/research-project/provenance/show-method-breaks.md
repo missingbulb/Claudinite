@@ -3,6 +3,7 @@
 - **Reason:** promoted at the prose rung - in-flight judgment about how a result is presented, with
   no repo-state signature a conformance check could carry.
 - **Actor:** the growth-promote run, merged by @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "Show where the method breaks, not only where it
   works.".
 - **Landed:** #497 (Refs #99) · pack version 1.

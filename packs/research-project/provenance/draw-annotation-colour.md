@@ -3,6 +3,7 @@
 - **Reason:** a mark in the signal's own colour disappears exactly on the objects it exists to mark,
   so the figure looks cleanest where the method is least verified.
 - **Actor:** the growth-promote run, merged by @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "Never draw an annotation in a colour the underlying
   signal itself carries.".
 - **Rejected:** a check - the grounded case is checkable, but only against a project's own render

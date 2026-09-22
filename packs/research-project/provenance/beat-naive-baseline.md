@@ -4,6 +4,7 @@
   structure unevenly, a “smarter” local correction can measurably lose to a plain uniform one,
   so the naive baseline is kept as the thing to beat rather than assumed beaten.
 - **Actor:** the growth-promote run, merged by @missingbulb (owner).
+- **Model:** Claude Opus 4.8, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "Beat the naive baseline, or drop it.".
 - **Rejected:** a check - every candidate of the run landed at the prose rung, each being judgment
   or platform knowledge with no clean static signature authorable and fixture-able unattended.
@@ -16,6 +17,7 @@
   words to 3,127, corpus-wide 17,127 to 15,220. No rule was merged or dropped, and every path,
   command and concrete detail stayed.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #467 (Closes #466) · pack version 1.
 
 ## 2026-09-01 · reaffirmed · Recover the rationale #467 cut from the shared packs into references.md (#1575)
@@ -25,6 +27,7 @@
   a failure mode a review can weigh, so it was restored as the rule's reference entry with the rule
   line left exactly as #467 set it.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Retire when:** reaffirm while the method is scored against a baseline; retire if no naive
   baseline is definable for the task.
 - **Landed:** #1575 (Closes #1571) · pack version 60901.1.

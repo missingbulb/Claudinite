@@ -3,6 +3,7 @@
   entry in a project-type templates catalog and scrubbed of the one project-specific path it
   hardcoded.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a rule of the playbook template `templates/research-project.md`, triggered on
   "Verify identity when an extracted image should match an existing input".
 - **Landed:** #116 (Closes #115).

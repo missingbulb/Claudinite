@@ -2,5 +2,6 @@
 - **Reason:** the interaction-cadence preamble was itself instruction, so it was re-keyed as rules
   rather than dropped with the rest of the framing.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "Keep the owner in the loop with pictures".
 - **Landed:** #1634 (Closes #1632) · pack version 60902.1.

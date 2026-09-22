@@ -3,6 +3,7 @@
   entry in a project-type templates catalog and scrubbed of the one project-specific path it
   hardcoded.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a rule of the playbook template `templates/research-project.md`, triggered on "When
   the owner asks for a different way to do something, capture the new way durably".
 - **Landed:** #116 (Closes #115).
@@ -14,4 +15,5 @@
   words to 3,127, corpus-wide 17,127 to 15,220. No rule was merged or dropped, and every path,
   command and concrete detail stayed.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #467 (Closes #466) · pack version 1.
