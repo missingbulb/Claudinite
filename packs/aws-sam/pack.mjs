@@ -1,6 +1,6 @@
 
-// Three of the pack's gotchas have structural checks (via the minimal YAML
-// parser); the rest are prose, in RULES.md or in the skill scoped to the file they concern.
+// The AWS Serverless Application Model and the API-Gateway/CloudFront stack it
+// deploys: the gotchas any SAM project hits, as checks, prose and two skills.
 export default {
   version: '60920.1',
   minEngineVersion: '60822.1',

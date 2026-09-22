@@ -13,14 +13,6 @@ Active when the repo has a SAM `template.yaml`/`.yml`.
 | A custom header preflights any GET | medium | correctness | prose: <100 words |
 | Reach AWS by CLI or boto3 | low | complexity | prose: <100 words |
 
-The template-shape gotchas (CloudFront `Authorization` forwarding, the CDN hit that skips the
-authorizer, TTL over invalidation, non-`http` CORS origins, GSI backfill) are the
-[`sam-template`](skills/sam-template/SKILL.md) skill, forced for `**/template.yaml` and
-`**/template.yml`, and the build dependencies (esbuild as a regular dependency, bundling the SDK) are
-[`sam-build-and-deps`](skills/sam-build-and-deps/SKILL.md), forced for `package.json` and the
-template. The `esbuild-dependency` and `cloudfront-authorization` checks below carry their rules'
-mechanical halves regardless.
-
 ## Skills
 
 | Skill | Trigger |
@@ -29,8 +21,6 @@ mechanical halves regardless.
 | [`sam-build-and-deps`](skills/sam-build-and-deps/SKILL.md) | any edit of `package.json` or the template — held by the guard until loaded |
 
 ## Checks
-
-Each SAM gotcha with a false-positive-free signature in the template or the package manifest (the last two read it through the minimal YAML parser in `engine/checks/helpers/`).
 
 | Check | Severity | Reason | Enforcement |
 |---|---|---|---|
