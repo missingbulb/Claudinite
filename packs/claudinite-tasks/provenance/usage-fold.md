@@ -105,3 +105,13 @@
   session.
 - **Model:** claude-opus-5
 - **Landed:** #1943
+
+## 2026-09-22 · reworded · the task's README drops a pointer at a deleted design doc (#1513)
+- **Reason:** the skill-usage-metrics design document described a pipeline that is now built, and
+  this repo deletes such a doc whole rather than maintaining a second description of working code. Its
+  substance already lives here and in `claudinite-growth`'s README, so the only thing the deletion
+  costs is the `§5` pointer this line carried - dropped rather than repointed, since the sentence
+  around it names the task and its shape without needing it.
+- **Actor:** owner session draining the open pull request backlog.
+- **Model:** claude-opus-5
+- **Landed:** #1513

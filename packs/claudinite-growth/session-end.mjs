@@ -1,4 +1,4 @@
-// This pack's SessionEnd step — the second capture EVENT. The engine's SessionEnd
+// This pack's SessionEnd step - the second capture EVENT. The engine's SessionEnd
 // runner (engine/hooks/session-end-command.mjs) invokes every active pack's
 // `session-end.mjs`; this one runs the same capture the merge-to-main step runs,
 // keyed to the issue the runner named (0 when it named none) where the merge step
