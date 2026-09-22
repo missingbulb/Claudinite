@@ -88,16 +88,16 @@ test('renderPending: prompts + distill notes, and the unattended self-defuse wor
   assert.match(out, /never a gate/);
 });
 
-test('integration: declaring executable-requirements pends its question until the entry answers it', async () => {
+test('integration: declaring executable-requirements pends its question until the entry answers it', async () => { // @real-entity the real pack whose adoption questions this pends on
   const packs = await loadPacks();
-  const unanswered = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['executable-requirements'] }) } });
+  const unanswered = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['executable-requirements'] }) } }); // @real-entity the real pack whose adoption questions this pends on
   const answered = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({
-    packs: [{ id: 'executable-requirements', answers: { ui_testing: 'Playwright', requirements_source: 'dev/requirements' } }],
+    packs: [{ id: 'executable-requirements', answers: { ui_testing: 'Playwright', requirements_source: 'dev/requirements' } }], // @real-entity the real pack whose adoption questions this pends on
   }) } });
   try {
     const p = interviewState(packs, loadConfig(unanswered)).pending;
     assert.equal(p.length, 1);
-    assert.equal(p[0].packId, 'executable-requirements');
+    assert.equal(p[0].packId, 'executable-requirements'); // @real-entity the real pack whose adoption questions this pends on
     assert.deepEqual(p[0].questions.map((q) => q.id), ['ui_testing', 'requirements_source']);
     assert.deepEqual(interviewState(packs, loadConfig(answered)).pending, []);
   } finally { cleanup(unanswered); cleanup(answered); }
@@ -111,7 +111,7 @@ test('integration: declaring executable-requirements pends its question until th
 // note reaches stdout, not merely that the exit code is 0, is deliberate — a
 // process that exits clean having printed nothing is the bug's own signature.
 test('CLI: `check` prints the pending note and exits clean (its import cycle must not deadlock)', () => {
-  const repo = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['executable-requirements'] }) } });
+  const repo = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({ packs: ['executable-requirements'] }) } }); // @real-entity the real pack whose adoption questions this pends on
   try {
     const r = spawnSync(process.execPath, [CLI, 'check'], {
       encoding: 'utf8',
@@ -126,7 +126,7 @@ test('CLI: `check` prints the pending note and exits clean (its import cycle mus
 
 test('CLI: a repo with nothing pending prints nothing and exits clean', () => {
   const repo = makeRepo({ base: { '.claudinite-settings.json': JSON.stringify({
-    packs: [{ id: 'executable-requirements', answers: { ui_testing: 'n/a — none wanted', requirements_source: 'n/a — none wanted' } }],
+    packs: [{ id: 'executable-requirements', answers: { ui_testing: 'n/a — none wanted', requirements_source: 'n/a — none wanted' } }], // @real-entity the real pack whose adoption questions this pends on
   }) } });
   try {
     const r = spawnSync(process.execPath, [CLI, 'check'], {

@@ -30,7 +30,7 @@ async function member(declaration, extraFiles = {}) {
   await mkdir(join(dir, '.claudinite/shared/packs'), { recursive: true });
   await cp(join(ROOT, 'engine'), join(dir, '.claudinite/shared/engine'), { recursive: true });
   // The queue modules the page reads through the tasks pack's published public/.
-  await cp(join(ROOT, 'packs/claudinite-tasks'), join(dir, '.claudinite/shared/packs/claudinite-tasks'), { recursive: true });
+  await cp(join(ROOT, 'packs/claudinite-tasks'), join(dir, '.claudinite/shared/packs/claudinite-tasks'), { recursive: true }); // @real-entity the pack whose public assets this publishes
   // As the vendor set lays it down: a pack's tests sit beside the files they cover and
   // are dropped on the way into a mount, so a fixture that copied them would be staging
   // a tree no member ever has.
@@ -71,7 +71,7 @@ test('the staged tree mirrors the mount, with the root a redirect', async (t) =>
     '_site/index.html',
     '_site/packs/claudinite-dashboard/index.html',
     '_site/packs/claudinite-dashboard/src/derive/model.mjs',
-    '_site/packs/claudinite-tasks/public/work-item-grammar.mjs',
+    '_site/packs/claudinite-tasks/public/work-item-grammar.mjs', // @real-entity the pack whose public assets this publishes
     '_site/engine/checks/helpers/code-scanning.mjs',
     '_site/.nojekyll',
   ]) assert.ok(existsSync(join(dir, p)), `missing from the staged site: ${p}`);
@@ -132,11 +132,11 @@ test('a roster file turns on the fleet view and publishes only the names', async
 
   const cfg = await readJson(join(dir, CONFIG_AT));
   assert.equal(cfg.mode, 'fleet');
-  assert.equal(cfg.rosterUrl, './fleet-roster.GENERATED.json');
+  assert.equal(cfg.rosterUrl, './fleet-roster.GENERATED.json'); // @real-entity the real generated roster artifact and the real installer this flow runs
   assert.equal(cfg.canonRepo, 'o/canon');
   assert.equal(cfg.defaultRepo, null, 'a fleet deployment lands on the overview, not inside one member');
 
-  const roster = await readJson(join(dir, '_site/packs/claudinite-dashboard/fleet-roster.GENERATED.json'));
+  const roster = await readJson(join(dir, '_site/packs/claudinite-dashboard/fleet-roster.GENERATED.json')); // @real-entity the real generated roster artifact and the real installer this flow runs
   assert.deepEqual(roster.repos, ['o/a', 'o/b']);
   assert.equal(JSON.stringify(roster).includes('tonnes'), false, 'only the names travel');
 });
@@ -268,7 +268,7 @@ test('the install flow reports the handover so adoption cannot miss it', async (
   await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
 
   const { stdout } = await runReporting('node',
-    [join(ROOT, 'packs/claudinite-lifecycle/updates/install.mjs'), '--target', dir, 'claudinite-dashboard'],
+    [join(ROOT, 'packs/claudinite-lifecycle/updates/install.mjs'), '--target', dir, 'claudinite-dashboard'], // @real-entity the real generated roster artifact and the real installer this flow runs
     { cwd: ROOT });
 
   assert.match(stdout, /only a human can do/, 'the handover is printed');
@@ -288,7 +288,7 @@ test('a pack with no handover prints none', async (t) => {
   await writeFile(join(dir, '.claudinite-settings.json'), JSON.stringify({ packs: [] }, null, 2));
 
   const { stdout } = await runReporting('node',
-    [join(ROOT, 'packs/claudinite-lifecycle/updates/install.mjs'), '--target', dir, 'html'],
+    [join(ROOT, 'packs/claudinite-lifecycle/updates/install.mjs'), '--target', dir, 'acme-pack-g'], // @real-entity the real generated roster artifact and the real installer this flow runs
     { cwd: ROOT });
   assert.doesNotMatch(stdout, /only a human can do/);
 });

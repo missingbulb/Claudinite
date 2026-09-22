@@ -23,7 +23,7 @@ test('resolveModel maps every family and rejects unknowns; none is agentless', (
 
 // --- task-contract ---
 const validTask = {
-  id: 'growth-extract',
+  id: 'acme-task-h',
   trigger: 'schedule',
   frequency: 'daily',
   agent_model: 'opus',
@@ -327,21 +327,21 @@ const caps = ({ existsPaths, declared = ['gcec'], task = validTask }) => ({
 });
 
 test('DISPATCH_PATH_RE accepts shared/, local/, and the canon root packs/ forms — nothing else', () => {
-  assert.ok(DISPATCH_PATH_RE.test('.claudinite/shared/packs/claudinite-lifecycle/tasks/update/task.md')); // consumer canon pack
+  assert.ok(DISPATCH_PATH_RE.test('.claudinite/shared/packs/acme-pack-b/tasks/acme-task-c/task.md')); // consumer canon pack
   assert.ok(DISPATCH_PATH_RE.test(goodPath));                                                    // local pack
-  assert.ok(DISPATCH_PATH_RE.test('packs/claudinite-growth/tasks/growth-extract/task.md'));   // the CANON's own root pack
+  assert.ok(DISPATCH_PATH_RE.test('packs/acme-pack-f/tasks/acme-task-h/task.md'));   // the CANON's own root pack
   assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.json')); // not task.md
   assert.ok(!DISPATCH_PATH_RE.test('src/packs/gcec/tasks/create-extractor/task.md'));            // prefix must be exactly a mount root or nothing
   assert.ok(!DISPATCH_PATH_RE.test('.claudinite/local/packs/gcec/tasks/create-extractor/task.md#x')); // trailing junk
 });
 
 test('validateDispatchBody resolves pack/task from the canon root packs/ form', () => {
-  const root = 'packs/claudinite-growth/tasks/growth-extract/task.md';
+  const root = 'packs/acme-pack-f/tasks/acme-task-h/task.md';
   const json = root.replace('task.md', 'task.json');
-  const v = validateDispatchBody(`${root}\n`, caps({ existsPaths: [root, json], declared: ['claudinite-growth'] }));
+  const v = validateDispatchBody(`${root}\n`, caps({ existsPaths: [root, json], declared: ['acme-pack-f'] }));
   assert.equal(v.ok, true);
-  assert.equal(v.pack, 'claudinite-growth');
-  assert.equal(v.task, 'growth-extract');
+  assert.equal(v.pack, 'acme-pack-f');
+  assert.equal(v.task, 'acme-task-h');
 });
 
 test('validateDispatchBody accepts a well-formed dispatch and resolves model + outcome', () => {
@@ -472,10 +472,10 @@ test('schedule_after / on_interrupt / invocation_endpoint are optional and valid
     code_work: 'node w.mjs', code_work_timeout: 60,
   };
   assert.deepEqual(validateTaskDeclaration(base), [], 'declaring none of them is legal');
-  assert.deepEqual(validateTaskDeclaration({ ...base, schedule_after: ['claudinite-lifecycle/update'], on_interrupt: 'needs-human', invocation_endpoint: 'fleet' }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...base, schedule_after: ['acme-pack-b/acme-task-c'], on_interrupt: 'needs-human', invocation_endpoint: 'fleet' }), []);
   // The legacy spelling still validates — the door renames it at load, so a member's own task
   // file keeps its ordering rather than silently losing it.
-  assert.deepEqual(validateTaskDeclaration({ ...base, after: ['claudinite-lifecycle/update'] }), []);
+  assert.deepEqual(validateTaskDeclaration({ ...base, after: ['acme-pack-b/acme-task-c'] }), []);
   // The secrets field's rename normalizes the same way.
   const secrets = normalizeTaskDeclaration({ required_secrets: ['X'] });
   assert.deepEqual(secrets.code_work_required_secrets, ['X']);
@@ -489,9 +489,9 @@ test('schedule_after / on_interrupt / invocation_endpoint are optional and valid
     assert.equal(problems.length, 1, JSON.stringify(patch));
     assert.match(problems[0].what, re);
   };
-  bad({ schedule_after: 'claudinite-lifecycle/update' }, /"schedule_after" is not an array/);
-  bad({ schedule_after: ['update'] }, /"schedule_after" is not an array/);   // a bare id names no pack
-  bad({ after: ['update'] }, /"schedule_after" is not an array/);            // reported post-rename
+  bad({ schedule_after: 'acme-pack-b/acme-task-c' }, /"schedule_after" is not an array/);
+  bad({ schedule_after: ['acme-task-c'] }, /"schedule_after" is not an array/);   // a bare id names no pack
+  bad({ after: ['acme-task-c'] }, /"schedule_after" is not an array/);            // reported post-rename
   bad({ on_interrupt: 'retry' }, /"on_interrupt"/);
   bad({ invocation_endpoint: 'https://example.invalid/x' }, /kebab-case endpoint name/);
 });

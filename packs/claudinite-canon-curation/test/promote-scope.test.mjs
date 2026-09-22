@@ -16,7 +16,7 @@ const settings = (writePaths) => JSON.stringify({
 
 test('promote-scope: silent when the branch touches only the canon shelf', () => {
   const root = makeRepo({
-    changed: { 'packs/node/RULES.md': '- new rule\n' },
+    changed: { 'packs/acme-pack/RULES.md': '- new rule\n' },
     commitMsg: 'promote Refs #1',
   });
   try {
@@ -29,7 +29,7 @@ test('promote-scope: silent when the branch touches only the canon shelf', () =>
 test('promote-scope: fires on a path outside the corpus roots', () => {
   const root = makeRepo({
     changed: {
-      'packs/node/RULES.md': '- new rule\n',
+      'packs/acme-pack/RULES.md': '- new rule\n',
       'engine/pack_loader/pack-registry.mjs': '// edited\n', // stray: engine machinery, off-limits to promote
     },
     commitMsg: 'promote Refs #1',
@@ -49,16 +49,16 @@ test('promote-scope: fires on a path outside the corpus roots', () => {
 test('promote-scope: a second corpus root counts only where the canon declares it', () => {
   const bare = makeRepo({
     base: { '.claudinite-settings.json': settings(null) },
-    changed: { 'skills/writing-tests/SKILL.md': 'updated\n' },
+    changed: { 'skills/acme-skill-t/SKILL.md': 'updated\n' },
     commitMsg: 'promote Refs #1',
   });
   const declared = makeRepo({
     base: { '.claudinite-settings.json': settings(['skills']) },
-    changed: { 'skills/writing-tests/SKILL.md': 'updated\n' },
+    changed: { 'skills/acme-skill-t/SKILL.md': 'updated\n' },
     commitMsg: 'promote Refs #1',
   });
   try {
-    assert.deepEqual(run(bare).map((f) => f.file), ['skills/writing-tests/SKILL.md']);
+    assert.deepEqual(run(bare).map((f) => f.file), ['skills/acme-skill-t/SKILL.md']);
     assert.deepEqual(run(declared), []);
   } finally {
     cleanup(bare); cleanup(declared);
@@ -85,7 +85,7 @@ test('promote-scope: a canon-side per-user preferences path is out of bounds', (
 test('promote-scope: a deletion outside the corpus roots is caught too', () => {
   const root = makeRepo({
     base: { 'engine/old.md': 'legacy\n' },
-    changed: { 'packs/node/RULES.md': '- new rule\n' },
+    changed: { 'packs/acme-pack/RULES.md': '- new rule\n' },
     commitMsg: 'promote Refs #1',
   });
   try {

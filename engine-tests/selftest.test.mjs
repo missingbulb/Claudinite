@@ -15,7 +15,7 @@ const io = (files, dangling = []) => ({
 
 const MEMBER = {
   [`${MOUNT}/engine/checks/check_the_world.mjs`]: '',
-  [CHECKS]: JSON.stringify({ packs: [{ id: 'basics', version: '60820.1' }], engineVersion: '60820.1' }),
+  [CHECKS]: JSON.stringify({ packs: [{ id: 'acme-pack', version: '60820.1' }], engineVersion: '60820.1' }),
 };
 
 // --- report ----------------------------------------------------------------
@@ -41,7 +41,7 @@ test('mount: the canon itself is not-applicable, never a failure', () => {
 });
 
 test('mount: a mount directory with no engine in it fails', () => {
-  const p = probeMount(io({ [`${MOUNT}/packs/basics/pack.mjs`]: '' }));
+  const p = probeMount(io({ [`${MOUNT}/packs/acme-pack/pack.mjs`]: '' }));
   assert.equal(p.ok, false);
   assert.match(p.detail, /carries no engine/);
 });
@@ -82,7 +82,7 @@ test('pack-manifests: discovering no packs at all is a failure, not a pass', () 
 });
 
 test('pack-manifests: a clean load passes', () => {
-  assert.equal(probePackManifests({ packs: [{ id: 'basics' }], errors: [] }).ok, true);
+  assert.equal(probePackManifests({ packs: [{ id: 'acme-pack' }], errors: [] }).ok, true);
 });
 
 // --- hook targets (#397) ---------------------------------------------------

@@ -144,7 +144,7 @@ test('a repo that folds no machinery file says which file and which task writes 
   assert.match(text, /tasks-usage\.GENERATED\.json/);
   assert.match(text, /tasks-usage-fold/);
   // It does not borrow the sessions' file to fill the gap.
-  assert.doesNotMatch(text, /usage-fold task writes[^]*sessions/);
+  assert.doesNotMatch(text, /acme-task-g task writes[^]*sessions/);
 });
 
 test('the fleet roll-up names the members folding nothing and counts them in nothing', () => {

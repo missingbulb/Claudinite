@@ -16,7 +16,7 @@ test('legacy-shape-in-use: inert in a repo that is not a member', () => {
 
 test('legacy-shape-in-use: silent on a declaration in today\'s shape', () => {
   assert.deepEqual(run({
-    packs: ['basics', { id: 'node', config: { dirs: ['.'] }, version: '60902.1' }, 'local/own'],
+    packs: ['acme-pack', { id: 'node', config: { dirs: ['.'] }, version: '60902.1' }, 'local/own'],
     engineVersion: '60902.1',
     taskScheduler: { agenticTaskInvocationEndpoints: {} },
     servedBy: { mechanism: 'versioned' },
@@ -29,7 +29,7 @@ test('legacy-shape-in-use: an unparsable or non-object declaration asserts nothi
 });
 
 test('legacy-shape-in-use: the retired declaration file name is reported by name', () => {
-  const findings = run({ packs: ['basics'] }, { name: LEGACY_SETTINGS_FILE });
+  const findings = run({ packs: ['acme-pack'] }, { name: LEGACY_SETTINGS_FILE });
   assert.equal(findings.length, 1);
   assert.equal(findings[0].file, LEGACY_SETTINGS_FILE);
   assert.match(findings[0].fix, new RegExp(`rename it to ${SETTINGS_FILE.replace('.', '\\.')}`));
@@ -37,7 +37,7 @@ test('legacy-shape-in-use: the retired declaration file name is reported by name
 
 test('legacy-shape-in-use: the retired top-level blocks and keys each get their own finding', () => {
   const findings = run({
-    packs: ['basics'],
+    packs: ['acme-pack'],
     claudinite: { note: 'no stamp here' },
     maintenance: { delivery: 'review' },
     packConfig: { node: {} },
@@ -75,9 +75,9 @@ test('legacy-shape-in-use: a local pack declared under the retired prefix names 
 });
 
 test('legacy-shape-in-use: integer versions are reported on the entry and on the engine stamp', () => {
-  const findings = run({ packs: [{ id: 'basics', version: 7 }], engineVersion: 6 });
+  const findings = run({ packs: [{ id: 'acme-pack', version: 7 }], engineVersion: 6 });
   assert.equal(findings.length, 2);
-  assert.match(whats(findings), /"basics" is stamped with the pre-2026-08-20 integer version 7/);
+  assert.match(whats(findings), /"acme-pack" is stamped with the pre-2026-08-20 integer version 7/);
   assert.match(whats(findings), /engineVersion is the pre-2026-08-20 integer 6/);
 });
 

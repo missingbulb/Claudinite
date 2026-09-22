@@ -17,8 +17,8 @@ import { RULES_INDEX_FILE } from '../engine/pack_loader/generate-rules-index.mjs
 import { CLAUDE_MD, MOUNT_ATTRIBUTES_FILE, SETTINGS_PATH } from '../engine/converge-wiring.mjs';
 
 test('a vendored pack tree is the one write nothing a member runs can see', () => {
-  assert.equal(isConvergeBookkeeping('.claudinite/shared/packs/basics/RULES.md'), true);
-  assert.equal(isConvergeBookkeeping('.claudinite/shared/packs/basics/workRules/x.mjs'), true);
+  assert.equal(isConvergeBookkeeping('.claudinite/shared/packs/acme-pack/RULES.md'), true);
+  assert.equal(isConvergeBookkeeping('.claudinite/shared/packs/acme-pack/workRules/x.mjs'), true);
   assert.equal(isConvergeBookkeeping('.claudinite/shared/engine/selftest.mjs'), false,
     'engine code is what a member\'s checks execute');
   assert.equal(isConvergeBookkeeping('.claudinite/local/packs/mine/RULES.md'), false,
@@ -34,18 +34,18 @@ test('the mount\'s own wiring rides with the packs — its content IS the pack s
 });
 
 test('a settings edit that moved only the installed stamp is bookkeeping, not configuration', () => {
-  const before = JSON.stringify({ packs: [{ id: 'basics', version: 3 }], engineVersion: 10 });
+  const before = JSON.stringify({ packs: [{ id: 'acme-pack', version: 3 }], engineVersion: 10 });
   assert.equal(stampOnlySettingsEdit(before, JSON.stringify({
-    packs: [{ id: 'basics', version: 4 }], engineVersion: 11,
+    packs: [{ id: 'acme-pack', version: 4 }], engineVersion: 11,
   })), true);
   assert.equal(stampOnlySettingsEdit(before, JSON.stringify({
-    packs: [{ id: 'basics', version: 4 }], engineVersion: 11, delivery: 'review',
+    packs: [{ id: 'acme-pack', version: 4 }], engineVersion: 11, delivery: 'review',
   })), false, 'a key a migration added is a configuration change');
   assert.equal(stampOnlySettingsEdit(before, JSON.stringify({
-    packs: [{ id: 'basics', version: 3 }, { id: 'jwt' }], engineVersion: 10,
+    packs: [{ id: 'acme-pack', version: 3 }, { id: 'acme-pack-j' }], engineVersion: 10,
   })), false, 'a newly declared pack changes which rules and checks the repo runs');
   assert.equal(stampOnlySettingsEdit(before, JSON.stringify({
-    packs: [{ id: 'basics', version: 3, config: { strict: true } }], engineVersion: 10,
+    packs: [{ id: 'acme-pack', version: 3, config: { strict: true } }], engineVersion: 10,
   })), false, 'a pack\'s own config sits on the same entry as its version');
   assert.equal(stampOnlySettingsEdit(before, '{'), false, 'unparseable on either side is never "just the stamp"');
   assert.equal(stampOnlySettingsEdit(null, before), false, 'a file that did not exist before is not a stamp move');
@@ -63,8 +63,8 @@ function gitMember() {
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 't@example.com');
   git('config', 'user.name', 't');
-  put('.claudinite-settings.json', `${JSON.stringify({ packs: [{ id: 'basics', version: 3 }], engineVersion: 10 }, null, 2)}\n`);
-  put('.claudinite/shared/packs/basics/RULES.md', 'old\n');
+  put('.claudinite-settings.json', `${JSON.stringify({ packs: [{ id: 'acme-pack', version: 3 }], engineVersion: 10 }, null, 2)}\n`);
+  put('.claudinite/shared/packs/acme-pack/RULES.md', 'old\n');
   put('.claudinite/shared/engine/selftest.mjs', 'export const a = 1;\n');
   put('src/app.mjs', 'code\n');
   git('add', '-A');
@@ -74,9 +74,9 @@ function gitMember() {
 
 test('a pure pack re-vendor, stamp and index included, is seen by nothing the member runs', () => {
   const { root, put } = gitMember();
-  put('.claudinite/shared/packs/basics/RULES.md', 'new\n');
+  put('.claudinite/shared/packs/acme-pack/RULES.md', 'new\n');
   put('.claudinite/claudinite-rules.GENERATED.md', 'index\n');
-  put('.claudinite-settings.json', `${JSON.stringify({ packs: [{ id: 'basics', version: 4 }], engineVersion: 10 }, null, 2)}\n`);
+  put('.claudinite-settings.json', `${JSON.stringify({ packs: [{ id: 'acme-pack', version: 4 }], engineVersion: 10 }, null, 2)}\n`);
   assert.deepEqual(changesTestsCouldSee(root), []);
   removeTree(root);
 });
@@ -89,7 +89,7 @@ test('engine code, a configuration key and a repo source file each surface', () 
   // The same file the stamp rides in — what makes this one visible is that a key a
   // record ADDED moved with it, which is a change to what this repo's checks run.
   put('.claudinite-settings.json', `${JSON.stringify({
-    packs: [{ id: 'basics', version: 4 }], engineVersion: 10, rules: { 'some-rule': 'blocking' },
+    packs: [{ id: 'acme-pack', version: 4 }], engineVersion: 10, rules: { 'some-rule': 'blocking' },
   }, null, 2)}\n`);
   put('src/app.mjs', 'rewritten by a migration\n');
   assert.deepEqual(changesTestsCouldSee(root), [

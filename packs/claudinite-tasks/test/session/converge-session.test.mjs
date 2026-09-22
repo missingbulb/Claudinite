@@ -125,8 +125,8 @@ const itemFile = (item) => {
 
 const cliItem = {
   number: 7,
-  title: '[claudinite-work] basics/task-janitor',
-  body: 'packs/basics/tasks/task-janitor/task.md\n',
+  title: '[claudinite-work] acme-pack/task-janitor',
+  body: 'packs/acme-pack/tasks/task-janitor/task.md\n',
   state: 'open',
   labels: [{ name: 'task:status:running-agent' }],
 };

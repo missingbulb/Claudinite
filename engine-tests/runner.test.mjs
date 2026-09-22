@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeRepo, cleanup, runScriptInProcess } from './helpers.mjs';
+import { makeRepo, cleanup, runScriptInProcess, A_CANON_PACK } from './helpers.mjs';
 
 const WORLD = join(dirname(fileURLToPath(import.meta.url)), '..', 'engine', 'checks', 'check_the_world.mjs');
 const WORK = join(dirname(fileURLToPath(import.meta.url)), '..', 'engine', 'checks', 'check_the_work.mjs');
@@ -37,7 +37,7 @@ function runWorkCli(root, ...args) {
 // reads `process.exitCode` and a captured console instead, neither of which is
 // what a Stop hook or a CI step actually observes.
 test('exit 1 with a rendered finding on a blocking violation; exit 0 when clean', () => {
-  const basics = { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) };
+  const basics = { '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK] }) };
   const bad = makeRepo({ changed: { 'doc.md': '[gone](missing.md)\n', ...basics } });
   const good = makeRepo({ changed: { 'doc.md': '[ok](README.md)\n', ...basics } });
   try {
@@ -52,7 +52,7 @@ test('exit 1 with a rendered finding on a blocking violation; exit 0 when clean'
 
 test('advisory findings alone do not fail the run', async () => {
   const root = makeRepo({
-    base: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) },
+    base: { '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK] }) },
     changed: { 'packs/demo/RULES.md': `- ${'x'.repeat(120)}\n` },
   });
   try {
@@ -66,7 +66,7 @@ test('a new suppression marker blocks the run (fail fast)', async () => {
   const root = makeRepo({
     changed: {
       'a.js': '// eslint-disable-next-line no-undef\ny();\n',
-      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
+      '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK] }),
     },
   });
   try {
@@ -83,7 +83,7 @@ test('interview: a stale answer is advisory (never run-failing); pending questio
   // and `ui_testing` itself stays unanswered — which must NOT surface in the sweep
   // (an unattended nightly run can't answer it; only SessionStart may nudge).
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['claudinite-lifecycle', { id: 'executable-requirements', answers: { 'old-id': 'kept intent' } }],
+    packs: ['claudinite-lifecycle', { id: 'executable-requirements', answers: { 'old-id': 'kept intent' } }], // @real-entity the pack whose own declared wall this runs
   }) } });
   try {
     const r = await world(root);
@@ -116,7 +116,7 @@ test('settings validity: an unknown pack name is a blocking config error', async
 });
 
 test('settings validity: an unknown top-level property is a blocking config error', async () => {
-  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], nonsense: 1 }) } });
+  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK], nonsense: 1 }) } });
   try {
     const r = await world(root);
     assert.equal(r.status, 1);
@@ -138,7 +138,7 @@ test('an acceptance with a reason silences its finding; without a reason it is i
     changed: {
       'doc.md': '[gone](missing.md)\n',
       '.claudinite-settings.json': JSON.stringify({
-        packs: ['basics'],
+        packs: [A_CANON_PACK],
         accept: [{ rule: 'reference-integrity', path: 'doc.md', reason: 'target lands in the next PR' }],
       }),
     },
@@ -147,7 +147,7 @@ test('an acceptance with a reason silences its finding; without a reason it is i
     changed: {
       'doc.md': '[gone](missing.md)\n',
       '.claudinite-settings.json': JSON.stringify({
-        packs: ['basics'],
+        packs: [A_CANON_PACK],
         accept: [{ rule: 'reference-integrity', path: 'doc.md' }],
       }),
     },
@@ -166,7 +166,7 @@ test('an acceptance path ending in "/" covers the whole subtree', async () => {
       'docs/a.md': '[gone](missing.md)\n',
       'docs/deep/b.md': '[gone](missing.md)\n',
       '.claudinite-settings.json': JSON.stringify({
-        packs: ['basics'],
+        packs: [A_CANON_PACK],
         accept: [{ rule: 'reference-integrity', path: 'docs/', reason: 'targets land in a follow-up PR' }],
       }),
     },
@@ -184,7 +184,7 @@ test('a pack entry object declares the pack and carries its own accept/rules', a
     changed: {
       'doc.md': '[gone](missing.md)\n',
       '.claudinite-settings.json': JSON.stringify({
-        packs: [{ id: 'basics', accept: [{ rule: 'reference-integrity', path: 'doc.md', reason: 'target lands in the next PR' }] }],
+        packs: [{ id: A_CANON_PACK, accept: [{ rule: 'reference-integrity', path: 'doc.md', reason: 'target lands in the next PR' }] }],
       }),
     },
   });
@@ -192,7 +192,7 @@ test('a pack entry object declares the pack and carries its own accept/rules', a
     changed: {
       'doc.md': '[gone](missing.md)\n',
       '.claudinite-settings.json': JSON.stringify({
-        packs: [{ id: 'basics', accept: [{ rule: 'reference-integrity', path: 'doc.md' }] }],
+        packs: [{ id: A_CANON_PACK, accept: [{ rule: 'reference-integrity', path: 'doc.md' }] }],
       }),
     },
   });
@@ -200,7 +200,7 @@ test('a pack entry object declares the pack and carries its own accept/rules', a
     changed: {
       'doc.md': '[gone](missing.md)\n',
       '.claudinite-settings.json': JSON.stringify({
-        packs: [{ id: 'basics', rules: { 'reference-integrity': 'advisory' } }],
+        packs: [{ id: A_CANON_PACK, rules: { 'reference-integrity': 'advisory' } }],
       }),
     },
   });
@@ -208,7 +208,7 @@ test('a pack entry object declares the pack and carries its own accept/rules', a
     assert.equal((await work(accepted)).status, 0);
     const r = await work(reasonless);
     assert.equal(r.status, 1);
-    assert.match(r.stdout, /on the "basics" pack entry.*has no reason/);
+    assert.match(r.stdout, /on the "basics" pack entry.*has no reason/); // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
     assert.equal((await world(overridden)).status, 0);
   } finally { cleanup(accepted); cleanup(reasonless); cleanup(overridden); }
 });
@@ -218,7 +218,7 @@ test('settings validity: an unknown pack name in an entry object, and conflictin
   const conflicted = makeRepo({
     changed: {
       '.claudinite-settings.json': JSON.stringify({
-        packs: [{ id: 'basics', rules: { 'reference-integrity': 'advisory' } }],
+        packs: [{ id: A_CANON_PACK, rules: { 'reference-integrity': 'advisory' } }],
         rules: { 'reference-integrity': 'off' },
       }),
     },
@@ -229,7 +229,7 @@ test('settings validity: an unknown pack name in an entry object, and conflictin
     assert.match(u.stdout, /unknown pack "no-such-pack"/);
     const c = await world(conflicted);
     assert.equal(c.status, 1);
-    assert.match(c.stdout, /rule "reference-integrity" is set to "off" by the top-level "rules" and "advisory" by the "basics" pack entry/);
+    assert.match(c.stdout, /rule "reference-integrity" is set to "off" by the top-level "rules" and "advisory" by the "basics" pack entry/); // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
   } finally { cleanup(unknown); cleanup(conflicted); }
 });
 
@@ -237,7 +237,7 @@ test('severity override in config demotes a blocking rule to advisory', async ()
   const root = makeRepo({
     changed: {
       'doc.md': '[gone](missing.md)\n',
-      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], rules: { 'reference-integrity': 'advisory' } }),
+      '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK], rules: { 'reference-integrity': 'advisory' } }),
     },
   });
   try {
@@ -258,9 +258,9 @@ test('--list emits the machine-readable rule catalog', () => {
     // the assertion below reports "this id is absent" and the run's own
     // explanation of why is thrown away.
     assert.equal(r.status, 0, `--list failed (signal ${r.signal}); stderr was:\n${r.stderr}`);
-    for (const id of ['reference-integrity', 'markdown-link-labels',
-                      'warning-suppression',
-                      'squash-merge-history']) {
+    for (const id of ['reference-integrity', 'markdown-link-labels', // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
+                      'warning-suppression', // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
+                      'squash-merge-history']) { // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
       assert.match(r.stdout, new RegExp(`^${id}\t`, 'm'),
         `${id} is absent from the catalog. stderr was:\n${r.stderr}`);
     }
@@ -304,10 +304,10 @@ test("a pack's rules run only when it is declared", async () => {
   // not — and declaring it turns them on. Whether to declare is the project's call.
   const wf = { '.github/workflows/x.yml': 'name: x\non: push\njobs:\n  t:\n    runs-on: ubuntu-latest\n    if: ${{ secrets.T }}\n    steps:\n      - run: echo hi\n' };
   const undeclared = makeRepo({
-    changed: { ...wf, '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) },
+    changed: { ...wf, '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK] }) },
   });
   const declared = makeRepo({
-    changed: { ...wf, '.claudinite-settings.json': JSON.stringify({ packs: ['basics', 'git-github'] }) },
+    changed: { ...wf, '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK, 'git-github'] }) }, // @real-entity the pack whose own gha rules this turns on
   });
   try {
     const u = await world(undeclared);
@@ -332,7 +332,7 @@ test('--init writes the pack declaration once and is idempotent', async () => {
     // provenance (`via`). core is seeded AND required, so it appears once, in the
     // seeded order, with no `via`.
     assert.deepEqual(JSON.parse(first).packs,
-      ['basics', 'claudinite-lifecycle', { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'claudinite-tasks']);
+      ['basics', 'claudinite-lifecycle', { id: 'git-github', via: ['basics'] }, 'claude-code-web-users-support', 'claudinite-growth', 'claudinite-tasks']); // @real-entity the real check ids the catalog must carry, and the real closure the seed writes
     // The declaration is the ONLY key seeded. The delivery preference used to be
     // materialized here too, but every project made the same selection, so the line
     // said nothing — it is an override now, written only by the project that wants
@@ -347,9 +347,9 @@ test('a declared forbidReferences wall runs via the runner, under its own id', a
   // product-wiki's isolation wall is declared data the ENGINE runs, so the pack
   // needs no other pack declared beside it — no cross-pack import anywhere.
   const root = makeRepo({ changed: {
-    'product-wiki/Users/README.md': '# Users\n',
+    'product-wiki/Users/README.md': '# Users\n', // @real-entity the pack whose own declared wall this runs
     'dev/notes.md': 'see product-wiki/Users/README.md\n',
-    '.claudinite-settings.json': JSON.stringify({ packs: ['product-wiki'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['product-wiki'] }), // @real-entity the pack whose own declared wall this runs
   } });
   try {
     const r = await world(root);
@@ -380,7 +380,7 @@ test('a skill-owned check rides its owning pack\'s activation, and is listed', a
   // (packs/claudinite-growth/skills/unattended-agents/): it runs when that
   // pack is declared and stays silent when no pack is.
   const artifact = { 'dev/routines/demo/routine.md': 'Run `bash dev/routines/demo/preconditions.sh`.\n' };
-  const declared = makeRepo({ changed: { ...artifact, '.claudinite-settings.json': JSON.stringify({ packs: ['claudinite-growth'] }) } });
+  const declared = makeRepo({ changed: { ...artifact, '.claudinite-settings.json': JSON.stringify({ packs: ['claudinite-growth'] }) } }); // @real-entity the pack whose own declared wall this runs
   const undeclared = makeRepo({ changed: { ...artifact } });
   try {
     const r = await world(declared);
@@ -463,7 +463,7 @@ test('a local pack declared by its namespaced token local_packs/<name> validates
 test('an undeclared local pack does not run, but is not an unknown-pack error either', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/proj/pack.mjs': LOCAL_PACK,
-    '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK] }),
     'src/TODO_MARKER': 'x\n',
   } });
   try {
@@ -476,7 +476,7 @@ test('an undeclared local pack does not run, but is not an unknown-pack error ei
 test('a broken local pack.mjs surfaces a blocking config diagnostic, not a silent drop', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/broken/pack.mjs': 'export default { id: "broken" } this is not valid(',
-    '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
+    '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK] }),
   } });
   try {
     const r = await world(root);
@@ -488,8 +488,8 @@ test('a broken local pack.mjs surfaces a blocking config diagnostic, not a silen
 
 test('a local pack may not shadow a canon id — collision is a blocking config error', async () => {
   const root = makeRepo({ changed: {
-    '.claudinite/local/packs/basics/pack.mjs': 'export default { id: "basics", rules: [] };',
-    '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
+    '.claudinite/local/packs/basics/pack.mjs': 'export default { id: "basics", rules: [] };', // @real-entity a local pack deliberately shadowing a canon id
+    '.claudinite-settings.json': JSON.stringify({ packs: [A_CANON_PACK] }),
   } });
   try {
     const r = await world(root);

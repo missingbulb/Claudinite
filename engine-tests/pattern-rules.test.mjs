@@ -1141,13 +1141,13 @@ test('checkParsedFiles: requireValueInArray flags a missing value, and matches a
     ...meta('fx-require-value'),
     checkParsedFiles: [{
       file: 'settings.json',
-      requireValueInArray: { atField: 'packs', value: 'claudinite-lifecycle', matchingEntryObjectsByField: 'id' },
+      requireValueInArray: { atField: 'packs', value: 'acme-pack-b', matchingEntryObjectsByField: 'id' },
       what: 'does not declare core', fix: 'add it',
     }],
   });
-  const missing = makeRepo({ changed: { 'settings.json': '{"packs":["basics"]}' } });
-  const asString = makeRepo({ changed: { 'settings.json': '{"packs":["basics","claudinite-lifecycle"]}' } });
-  const asObject = makeRepo({ changed: { 'settings.json': '{"packs":[{"id":"claudinite-lifecycle","config":{}}]}' } });
+  const missing = makeRepo({ changed: { 'settings.json': '{"packs":["acme-pack"]}' } });
+  const asString = makeRepo({ changed: { 'settings.json': '{"packs":["acme-pack","acme-pack-b"]}' } });
+  const asObject = makeRepo({ changed: { 'settings.json': '{"packs":[{"id":"acme-pack-b","config":{}}]}' } });
   const noField = makeRepo({ changed: { 'settings.json': '{"rules":{}}' } });
   const absent = makeRepo({ changed: { 'other.json': '{}' } });
   try {

@@ -45,11 +45,11 @@ test('a counter tuple decodes against the vocabulary the FILE declared, not this
 });
 
 test('a row expands its counter groups and passes everything else through', () => {
-  const row = { totals: [2, 1], skillLoads: { 'merge-to-main': 3 }, checks: { work: [9, 2] } };
+  const row = { totals: [2, 1], skillLoads: { 'acme-skill': 3 }, checks: { work: [9, 2] } };
   const out = decodeRow(row, ['captures', 'merges'], { checks: ['runs', 'failures'] });
   assert.equal(out.captures, 2);
   assert.deepEqual(out.checks.work, { runs: 9, failures: 2 });
-  assert.deepEqual(out.skillLoads, { 'merge-to-main': 3 }, 'a map with no declared vocabulary is not a counter group');
+  assert.deepEqual(out.skillLoads, { 'acme-skill': 3 }, 'a map with no declared vocabulary is not a counter group');
 });
 
 test('a version-1 file decodes as itself, and an absent one is null — never an empty repo', () => {

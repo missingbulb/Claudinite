@@ -12,31 +12,32 @@ import {
 } from '../../engine/pack_loader/pack-registry.mjs';
 import { canonicalPackVersions, RENAMED_PACKS } from '../../engine/pack_loader/renamed-packs.mjs';
 import { removeTree } from '../../engine/remove-tree.mjs';
+import { A_CANON_PACK } from '../helpers.mjs';
 
 // The import closure the declaration is written through (bootstrap `--init` and
 // the baselining backfill): declaring a pack materializes its `requires`.
 const PACKS = [
-  { id: 'basics' },
-  { id: 'executable-requirements' },
-  { id: 'spec-driven-product', requires: ['executable-requirements'] },
+  { id: 'acme-pack' },
+  { id: 'acme-pack-b' },
+  { id: 'acme-pack-c', requires: ['acme-pack-b'] },
   { id: 'a', requires: ['b'] },
   { id: 'b', requires: ['c'] },
   { id: 'c' },
 ];
 
 test('packEntryId: reads a string entry, an object entry, and rejects malformed ones', () => {
-  assert.equal(packEntryId('basics'), 'basics');
-  assert.equal(packEntryId({ id: 'product-wiki', config: {} }), 'product-wiki');
+  assert.equal(packEntryId('acme-pack'), 'acme-pack');
+  assert.equal(packEntryId({ id: 'acme-pack-d', config: {} }), 'acme-pack-d');
   assert.equal(packEntryId({ config: {} }), undefined);
   assert.equal(packEntryId(null), undefined);
   assert.equal(packEntryId(42), undefined);
 });
 
 test('isActive: activation matches both entry forms', () => {
-  assert.ok(isActive({ id: 'basics' }, { packs: ['basics'] }));
-  assert.ok(isActive({ id: 'product-wiki' }, { packs: ['basics', { id: 'product-wiki', config: {} }] }));
-  assert.ok(!isActive({ id: 'node' }, { packs: ['basics'] }));
-  assert.ok(!isActive({ id: 'node' }, {}));
+  assert.ok(isActive({ id: 'acme-pack' }, { packs: ['acme-pack'] }));
+  assert.ok(isActive({ id: 'acme-pack-d' }, { packs: ['acme-pack', { id: 'acme-pack-d', config: {} }] }));
+  assert.ok(!isActive({ id: 'acme-pack-e' }, { packs: ['acme-pack'] }));
+  assert.ok(!isActive({ id: 'acme-pack-e' }, {}));
 });
 
 test('packEntryId/isActive: a local-pack declaration may be namespaced local/<name>', () => {
@@ -56,14 +57,14 @@ test('packEntryId/isActive: a local-pack declaration may be namespaced local/<na
 
 test('declTokenFor: the writer-side token — canonical namespaced for a local pack, bare for a canon one', () => {
   assert.equal(declTokenFor({ id: 'proj', local: true }), 'local/proj');
-  assert.equal(declTokenFor({ id: 'basics', local: false }), 'basics');
+  assert.equal(declTokenFor({ id: 'acme-pack', local: false }), 'acme-pack');
   assert.equal(packEntryId(declTokenFor({ id: 'proj', local: true })), 'proj'); // round-trips
 });
 
 test('resolveDeclaredPacks: materializes a required pack right after its dependent, with via provenance', () => {
   assert.deepEqual(
-    resolveDeclaredPacks(['basics', 'spec-driven-product'], PACKS),
-    ['basics', 'spec-driven-product', { id: 'executable-requirements', via: ['spec-driven-product'] }],
+    resolveDeclaredPacks(['acme-pack', 'acme-pack-c'], PACKS),
+    ['acme-pack', 'acme-pack-c', { id: 'acme-pack-b', via: ['acme-pack-c'] }],
   );
 });
 
@@ -76,9 +77,9 @@ test('resolveDeclaredPacks: transitive — one declared pack pulls the whole cha
 });
 
 test('resolveDeclaredPacks: idempotent — an already-complete declaration is unchanged', () => {
-  const complete = ['executable-requirements', 'spec-driven-product'];
+  const complete = ['acme-pack-b', 'acme-pack-c'];
   assert.deepEqual(resolveDeclaredPacks(complete, PACKS), complete);
-  const materialized = ['spec-driven-product', { id: 'executable-requirements', via: ['spec-driven-product'] }];
+  const materialized = ['acme-pack-c', { id: 'acme-pack-b', via: ['acme-pack-c'] }];
   assert.deepEqual(resolveDeclaredPacks(materialized, PACKS), materialized);
 });
 
@@ -86,10 +87,10 @@ test('resolveDeclaredPacks: no duplicates when a dependency is also declared; a 
   // executable-requirements appears once even though it's both declared and required —
   // and because the project declared it itself (no `via`), it gets none added.
   assert.deepEqual(
-    resolveDeclaredPacks(['spec-driven-product', 'executable-requirements'], PACKS),
-    ['spec-driven-product', 'executable-requirements'],
+    resolveDeclaredPacks(['acme-pack-c', 'acme-pack-b'], PACKS),
+    ['acme-pack-c', 'acme-pack-b'],
   );
-  const configured = ['spec-driven-product', { id: 'executable-requirements', config: { x: 1 } }];
+  const configured = ['acme-pack-c', { id: 'acme-pack-b', config: { x: 1 } }];
   assert.deepEqual(resolveDeclaredPacks(configured, PACKS), configured);
 });
 
@@ -97,8 +98,8 @@ test('resolveDeclaredPacks: a via entry is recomputed as dependents come and go'
   // The dependent was dropped: the materialized entry stays (droppable, the
   // project's call) but its via empties, marking the orphan.
   assert.deepEqual(
-    resolveDeclaredPacks([{ id: 'executable-requirements', via: ['spec-driven-product'] }], PACKS),
-    [{ id: 'executable-requirements', via: [] }],
+    resolveDeclaredPacks([{ id: 'acme-pack-b', via: ['acme-pack-c'] }], PACKS),
+    [{ id: 'acme-pack-b', via: [] }],
   );
 });
 
@@ -113,15 +114,15 @@ test('resolveDeclaredPacks: keeps an unknown declared id verbatim, never materia
 test('resolveDeclaredPacks: keeps a namespaced local-pack entry verbatim — the backfill never rewrites the token', () => {
   // A local pack is never a canon `requires` target, so the entry just rides
   // through — in its declared (namespaced) form, not re-derived.
-  const declared = ['basics', 'local_packs/proj'];
+  const declared = ['acme-pack', 'local_packs/proj'];
   assert.deepEqual(resolveDeclaredPacks(declared, PACKS), declared);
 });
 
 test('resolveDeclaredPacks: preserves an entry it cannot interpret rather than dropping it', () => {
   // The writer must never destroy what settings validation will flag.
   assert.deepEqual(
-    resolveDeclaredPacks(['basics', { config: {} }], PACKS),
-    ['basics', { config: {} }],
+    resolveDeclaredPacks(['acme-pack', { config: {} }], PACKS),
+    ['acme-pack', { config: {} }],
   );
 });
 
@@ -142,7 +143,7 @@ function makeLocalRoot(packs) {
 test('discoverPacks: with no localRoot, finds only the canon packs (all non-local)', async () => {
   const { packs, errors } = await discoverPacks();
   assert.equal(errors.length, 0);
-  assert.ok(packs.some((p) => p.id === 'basics'));
+  assert.ok(packs.some((p) => p.id === A_CANON_PACK));
   assert.ok(packs.every((p) => p.local === false));
   // every canon pack is stamped with its own directory
   assert.ok(packs.every((p) => typeof p.dir === 'string' && p.dir.includes('/packs/')));
@@ -160,7 +161,7 @@ test('discoverPacks: finds a consumer local pack, stamped local with its own dir
     assert.equal(local.local, true);
     assert.equal(local.dir, join(root, '.claudinite', 'local', 'packs', 'proj'));
     // canon packs are still present and marked non-local
-    assert.ok(packs.some((p) => p.id === 'basics' && p.local === false));
+    assert.ok(packs.some((p) => p.id === A_CANON_PACK && p.local === false));
   } finally {
     removeTree(root);
   }
@@ -174,7 +175,7 @@ test('discoverPacks: a broken local pack.mjs is isolated — an error, not a thr
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root });
     assert.ok(packs.some((p) => p.id === 'ok'), 'the good local pack still loads');
-    assert.ok(packs.some((p) => p.id === 'basics'), 'canon packs still load');
+    assert.ok(packs.some((p) => p.id === A_CANON_PACK), 'canon packs still load');
     assert.ok(errors.some((e) => /local_packs\/broken/.test(e.fix) || /broken/.test(e.what)));
   } finally {
     removeTree(root);
@@ -188,7 +189,7 @@ test('discoverPacks: a non-directory at the local-packs path is a reported fault
   writeFileSync(join(root, '.claudinite', 'local', 'packs'), 'not a directory\n');
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root });
-    assert.ok(packs.some((p) => p.id === 'basics'), 'canon packs still load');
+    assert.ok(packs.some((p) => p.id === A_CANON_PACK), 'canon packs still load');
     assert.ok(errors.some((e) => /not a readable directory/.test(e.what)), 'the fault is reported');
   } finally {
     removeTree(root);
@@ -214,7 +215,7 @@ test('discoverPacks: a local pack may not shadow a canon id — collision report
   });
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root });
-    const basicsPacks = packs.filter((p) => p.id === 'basics');
+    const basicsPacks = packs.filter((p) => p.id === A_CANON_PACK);
     assert.equal(basicsPacks.length, 1, 'only one pack keeps the id');
     assert.equal(basicsPacks[0].local, false, 'the canon pack wins');
     assert.ok(errors.some((e) => /declared twice/.test(e.what)));
@@ -283,7 +284,7 @@ test('discoverPacks: a broken declared-checks.json is reported, and the pack sti
 test('loadPacks: thin array wrapper over discoverPacks', async () => {
   const packs = await loadPacks();
   assert.ok(Array.isArray(packs));
-  assert.ok(packs.some((p) => p.id === 'basics'));
+  assert.ok(packs.some((p) => p.id === A_CANON_PACK));
 });
 
 // --- renamed packs ---------------------------------------------------------
@@ -294,9 +295,9 @@ test('loadPacks: thin array wrapper over discoverPacks', async () => {
 // ones — that leaves the test asserting today's id maps to itself, which is green
 // and vacuous.
 test('packEntryId: a renamed pack resolves to its current id from either spelling', () => {
-  assert.equal(packEntryId('tidy-repo'), 'basics');
-  assert.equal(packEntryId({ id: 'barriers', config: {} }), 'basics');
-  assert.equal(packEntryId('basics'), 'basics');
+  assert.equal(packEntryId('tidy-repo'), 'basics'); // @real-entity the rename map under test carries these ids
+  assert.equal(packEntryId({ id: 'barriers', config: {} }), 'basics'); // @real-entity the rename map under test carries these ids
+  assert.equal(packEntryId('basics'), 'basics'); // @real-entity the rename map under test carries these ids
 });
 
 test('packEntryId: a local pack keeps its own namespace', () => {
@@ -304,18 +305,18 @@ test('packEntryId: a local pack keeps its own namespace', () => {
 });
 
 test('isActive: a declaration still carrying the old spelling activates the renamed pack', () => {
-  assert.equal(isActive({ id: 'basics' }, { packs: ['tidy-repo'] }), true);
-  assert.equal(isActive({ id: 'basics' }, { packs: [{ id: 'barriers' }] }), true);
+  assert.equal(isActive({ id: 'basics' }, { packs: ['tidy-repo'] }), true); // @real-entity the rename map under test carries these ids
+  assert.equal(isActive({ id: 'basics' }, { packs: [{ id: 'barriers' }] }), true); // @real-entity the rename map under test carries these ids
 });
 
 test('resolveDeclaredPacks: the old spelling pulls in the renamed pack requires', () => {
-  const packs = [{ id: 'basics', requires: ['product-wiki'] }, { id: 'product-wiki' }];
+  const packs = [{ id: 'basics', requires: ['product-wiki'] }, { id: 'product-wiki' }]; // @real-entity the rename map under test resolves this id
   const ids = resolveDeclaredPacks(['tidy-repo'], packs).map(packEntryId);
-  assert.deepEqual(ids, ['basics', 'product-wiki']);
+  assert.deepEqual(ids, ['basics', 'product-wiki']); // @real-entity the rename map under test resolves this id
 });
 
 test('canonicalPackVersions: a version stamped under the old key is not read as absent', () => {
-  assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 6, 'git-github': 3 }), { basics: 6, 'git-github': 3 });
+  assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 6, 'git-github': 3 }), { basics: 6, 'git-github': 3 }); // @real-entity the rename map under test carries these ids
   // Mid-converge a declaration can carry both; today's spelling is the one the
   // flows wrote, so it wins rather than being clobbered by the residue.
   assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 5, basics: 6 }), { basics: 6 });
@@ -344,14 +345,14 @@ test('discoverPacks: a mounted pack still announcing its old id activates under 
     cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   // Where a member's settings live: the loader resolves the declaration through it.
   for (const f of ['settings-file.mjs', 'settings-file-names.mjs']) cpSync(join(REPO_ROOT, 'engine', f), join(root, 'engine', f));
-    mkdirSync(join(root, 'packs', 'basics'), { recursive: true });
-    writeFileSync(join(root, 'packs', 'basics', 'pack.mjs'),
+    mkdirSync(join(root, 'packs', 'basics'), { recursive: true }); // @real-entity the rename map under test carries these ids
+    writeFileSync(join(root, 'packs', 'basics', 'pack.mjs'), // @real-entity the rename map under test carries these ids
       "export default { id: 'tidy-repo', detect: null, worldRules: [], ruleRoutingGuidance: { belongs: 'x', excludes: 'y' } };\n");
     const registry = await import(pathToFileURL(join(root, 'engine', 'pack_loader', 'pack-registry.mjs')).href);
     const { packs } = await registry.discoverPacks({});
-    assert.deepEqual(packs.map((p) => p.id), ['basics'],
+    assert.deepEqual(packs.map((p) => p.id), ['basics'], // @real-entity the rename map under test carries these ids
       'the stale id resolves to the pack it has become');
-    assert.equal(registry.isActive(packs[0], { packs: ['basics'] }), true);
+    assert.equal(registry.isActive(packs[0], { packs: ['basics'] }), true); // @real-entity the rename map under test carries these ids
     assert.equal(registry.isActive(packs[0], { packs: ['tidy-repo'] }), true,
       'and a declaration not yet converged still activates it');
   } finally { removeTree(root); }
@@ -427,7 +428,7 @@ test('discoverPacks: a copied pack may not shadow a pack the repository tracks',
   );
   try {
     const { packs, errors } = await discoverPacks({ localRoot: root, session: true });
-    assert.equal(packs.filter((p) => p.id === 'basics' && p.temp).length, 0, 'the canon keeps its name');
+    assert.equal(packs.filter((p) => p.id === 'basics' && p.temp).length, 0, 'the canon keeps its name'); // @real-entity the rename map under test carries these ids
     assert.equal(packs.find((p) => p.id === 'mine').local, true, 'the repo keeps its name');
     assert.equal(errors.filter((e) => /copied pack/.test(e.what)).length, 2);
   } finally { removeTree(root); }

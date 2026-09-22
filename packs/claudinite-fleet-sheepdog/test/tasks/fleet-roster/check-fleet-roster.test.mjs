@@ -16,7 +16,7 @@ const CANON = 'o/Claudinite';
 
 const CANON_SOURCE = {
   'engine/version.mjs': 'export const ENGINE_VERSION = 4;\n',
-  'packs/basics/pack.mjs': "export default {\n  id: 'basics',\n  version: 7,\n};\n",
+  'packs/acme-pack/pack.mjs': "export default {\n  id: 'acme-pack',\n  version: 7,\n};\n",
 };
 
 const repo = (name, over = {}) => ({ name, full_name: `o/${name}`, archived: false, fork: false, ...over });
@@ -58,8 +58,8 @@ const walk = (gh, repos, over = {}) => buildRoster(gh, repos, {
 });
 
 // `current` records exactly what CANON_SOURCE says; anything lower is a gap.
-const declOf = (over = {}, { engineVersion = 4, basics = 7 } = {}) => ({
-  packs: [{ id: 'basics', version: basics }],
+const declOf = (over = {}, { engineVersion = 4, packVersion = 7 } = {}) => ({
+  packs: [{ id: 'acme-pack', version: packVersion }],
   engineVersion,
   ...over,
 });
@@ -68,7 +68,7 @@ const declOf = (over = {}, { engineVersion = 4, basics = 7 } = {}) => ({
 // parameters live — on the tasks pack entry — which is the shape every reader resolves.
 const dormantDeclOf = (versions = {}) => {
   const d = declOf({}, versions);
-  return { ...d, packs: [...d.packs, { id: 'claudinite-tasks', config: { dormant: true } }] };
+  return { ...d, packs: [...d.packs, { id: 'claudinite-tasks', config: { dormant: true } }] }; // @real-entity dormancy is that pack's own setting
 };
 
 // --- the walk reads each repo once --------------------------------------------
@@ -84,7 +84,7 @@ test('buildRoster: the declaration is read once per repo, and both questions use
   // The per-member canon compare is gone with the ref it compared (#1252): freshness
   // is a version comparison, so a read per member for a state that can no longer
   // happen is a read nobody needs.
-  assert.equal(seen.length, 4, 'declaration + scheduler workflow + canon engine + canon basics');
+  assert.equal(seen.length, 4, 'declaration + scheduler workflow + canon engine + canon acme-pack');
 });
 
 // THE RENAME'S WINDOW (#1252). A member is a member under either settings-file name
@@ -94,7 +94,7 @@ test('buildRoster: the declaration is read once per repo, and both questions use
 test('buildRoster: a member still carrying the retired settings-file name is measured normally', async () => {
   const { gh } = fakeGh({
     legacyDeclarations: {
-      'o/old-name': { packs: [{ id: 'basics' }], claudinite: { engineVersion: 4, packVersions: { basics: 7 } } },
+      'o/old-name': { packs: [{ id: 'acme-pack' }], claudinite: { engineVersion: 4, packVersions: { 'acme-pack': 7 } } },
     },
     schedulers: ['o/old-name'],
   });
@@ -174,7 +174,7 @@ test('a dormant member is not measured for freshness, however far behind it is',
   // touches one, so an update verdict on its mount is a finding nobody owns. It is
   // named as dormant and nothing else is claimed.
   const { gh, seen } = fakeGh({
-    declarations: { 'o/asleep': dormantDeclOf({ engineVersion: 2, basics: 3 }) },
+    declarations: { 'o/asleep': dormantDeclOf({ engineVersion: 2, packVersion: 3 }) },
     schedulers: ['o/asleep'],
   });
   const f = freshnessView(await walk(gh, [repo('asleep')]));

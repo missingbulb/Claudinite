@@ -11,8 +11,8 @@ import { PARKED } from '../src/derive/model.mjs';
 
 const item = (over = {}) => ({
   number: 7,
-  title: '[claudinite-work] basics/baselining',
-  key: 'basics/baselining',
+  title: '[claudinite-work] acme-pack/baselining',
+  key: 'acme-pack/baselining',
   state: STATUS_READY,
   warnings: [],
   idleMs: 3600e3,
@@ -85,7 +85,7 @@ test('a held lane is read from the row, which the item cannot state about itself
 });
 
 test('an info-level fault is reported elsewhere and never prodded about', () => {
-  assert.equal(reasonCandidate('o/r', [{ kind: 'mount', level: 'info', text: 'mount behind canon on basics' }]), null);
+  assert.equal(reasonCandidate('o/r', [{ kind: 'mount', level: 'info', text: 'mount behind canon on acme-pack' }]), null);
 });
 
 test('a repo-level fault with no item behind it is a candidate, at the repo', () => {
@@ -134,9 +134,9 @@ test('a fleet ranks across its members, and skips the ones it could not read', (
 
 test('one repo ranks over the work table\'s own rows, so the block and the table agree', () => {
   const rows = [
-    { key: 'basics/baselining', current: parked({ number: 9 }) },
-    { key: 'basics/other', current: null },
-    { key: 'basics/held', current: item({ number: 4 }), nextAsk: { kind: 'held' } },
+    { key: 'acme-pack/baselining', current: parked({ number: 9 }) },
+    { key: 'acme-pack/other', current: null },
+    { key: 'acme-pack/held', current: item({ number: 4 }), nextAsk: { kind: 'held' } },
   ];
   const ranked = repoCandidates('o/r', rows);
   assert.deepEqual(ranked.map((c) => c.number), [4, 9]);

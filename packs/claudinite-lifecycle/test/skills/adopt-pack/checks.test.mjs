@@ -7,7 +7,7 @@ import checks from '../../../skills/adopt-pack/checks.mjs';
 
 const rule = checks[0];
 
-// A pack that asks two questions, standing in for product-wiki / executable-requirements.
+// A pack that asks two questions, standing in for acme-pack-e / acme-pack-r.
 const asking = (over = {}) => ({
   id: 'asker',
   questions: [
@@ -36,9 +36,9 @@ function run({ base, head, entries, packs }) {
 
 test('a pack newly declared with no answers yields one finding per unanswered question', () => {
   const f = run({
-    base: ['basics'],
-    head: ['basics', 'asker'],
-    entries: [{ id: 'basics' }, { id: 'asker' }],
+    base: ['acme-pack'],
+    head: ['acme-pack', 'asker'],
+    entries: [{ id: 'acme-pack' }, { id: 'asker' }],
     packs: [asking()],
   });
   assert.equal(f.length, 2);
@@ -48,9 +48,9 @@ test('a pack newly declared with no answers yields one finding per unanswered qu
 
 test('a newly declared pack with every answer recorded is clean', () => {
   const f = run({
-    base: ['basics'],
-    head: ['basics', 'asker'],
-    entries: [{ id: 'basics' }, { id: 'asker', answers: { product: 'x', market: 'y' } }],
+    base: ['acme-pack'],
+    head: ['acme-pack', 'asker'],
+    entries: [{ id: 'acme-pack' }, { id: 'asker', answers: { product: 'x', market: 'y' } }],
     packs: [asking()],
   });
   assert.deepEqual(f, []);
@@ -59,18 +59,18 @@ test('a newly declared pack with every answer recorded is clean', () => {
 test('a pack already in the base is never re-litigated, even unanswered', () => {
   const f = run({
     base: ['asker'],
-    head: ['asker', 'html'], // this branch adds html (no questions), not asker
-    entries: [{ id: 'asker' }, { id: 'html' }],
-    packs: [asking(), { id: 'html' }],
+    head: ['asker', 'acme-pack-g'], // this branch adds acme-pack-g (no questions), not asker
+    entries: [{ id: 'asker' }, { id: 'acme-pack-g' }],
+    packs: [asking(), { id: 'acme-pack-g' }],
   });
   assert.deepEqual(f, []);
 });
 
 test('a via-materialized dependency the project did not choose asks nothing', () => {
   const f = run({
-    base: ['basics'],
-    head: ['basics', 'asker'],
-    entries: [{ id: 'basics' }, { id: 'asker', via: ['other'] }],
+    base: ['acme-pack'],
+    head: ['acme-pack', 'asker'],
+    entries: [{ id: 'acme-pack' }, { id: 'asker', via: ['other'] }],
     packs: [asking()],
   });
   assert.deepEqual(f, []);

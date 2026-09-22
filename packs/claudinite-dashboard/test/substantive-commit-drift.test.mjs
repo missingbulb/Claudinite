@@ -13,8 +13,8 @@ const commit = (message, login = 'someone') => ({ author: { login }, commit: { m
 const COMMITS = [
   commit('Add the thing'), commit('Add the thing', 'dependabot[bot]'), commit('chore [skip ci]'),
   commit('Baseline the repo'), commit('  baselining\n'), commit('claudinite-maintenance: converge'),
-  commit('[claudinite-work] basics/x'), commit('seed default-on packs'),
-  commit('Regenerate\n\nClaudinite-Task: basics/ci-performance\n'), commit('Claudinite-Task:basics/x'),
+  commit('[claudinite-work] acme-pack/x'), commit('seed default-on packs'),
+  commit('Regenerate\n\nClaudinite-Task: acme-pack/acme-task\n'), commit('Claudinite-Task:acme-pack/x'),
   commit('Claudinite-Task: '), { message: 'flat shape', author: 'me' }, {}, null,
 ];
 const FILES = [null, [], ['.claudinite/local/x.md'], ['.claudinite/a', 'src/b'], ['src/b']];

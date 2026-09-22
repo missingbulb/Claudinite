@@ -16,7 +16,7 @@ const canon = { engine: async () => NEW, pack: async () => NEW };
 
 // A member declaration stamping the given version for the engine and its one declared
 // pack — so `at(NEW)` is current against the canon above and `at(OLD)` is behind.
-const at = (v) => ({ engineVersion: v, packs: [{ id: 'basics', version: v }] });
+const at = (v) => ({ engineVersion: v, packs: [{ id: 'acme-pack', version: v }] });
 
 // `gh` over a per-repo script: `versions` is the sequence of declarations successive
 // reads return (the last repeats), `runs` whether a dispatch run is visible.

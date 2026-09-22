@@ -184,7 +184,7 @@ test('a work list the member has already adopted keeps its machine block through
   const adopted = {
     number: 5,
     title: REQUESTED_TITLE,
-    body: `${withTargeting('OLD')}\n<!-- claudinite-item -->\npacks/claudinite-lifecycle/tasks/adopt-requested-packs/task.md\n\nRequest: #5\n<!-- /claudinite-item -->\n`,
+    body: `${withTargeting('OLD')}\n<!-- claudinite-item -->\npacks/claudinite-lifecycle/tasks/adopt-requested-packs/task.md\n\nRequest: #5\n<!-- /claudinite-item -->\n`, // @real-entity the real task this protocol addresses
     labels: [{ name: LABEL }, { name: MARK }, { name: 'task:status:needs-human-failure' }],
   };
   const gh = ghDouble({ open: [adopted] });

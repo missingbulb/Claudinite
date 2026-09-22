@@ -7,7 +7,7 @@ import rule from '../worldRules/skills-index-current.mjs';
 
 const SKILL = '---\nname: demo-skill\ndescription: demo\n---\n';
 const base = (extra = {}) => ({
-  '.claudinite-settings.json': JSON.stringify({ packs: ['basics', 'local/demo'] }),
+  '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack', 'local/demo'] }),
   '.claudinite/local/packs/demo/pack.mjs': 'export default {};\n',
   '.claudinite/local/packs/demo/skills/demo-skill/SKILL.md': SKILL,
   ...extra,
@@ -33,5 +33,5 @@ test('skills-index-current: an index that does not name a mounted skill is flagg
 });
 
 test('skills-index-current: a repo holding no skill for its declared packs demands nothing', () => {
-  assert.deepEqual(run({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) }), []);
+  assert.deepEqual(run({ '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'] }) }), []);
 });

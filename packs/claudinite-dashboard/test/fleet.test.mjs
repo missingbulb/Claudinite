@@ -19,14 +19,14 @@ import {
 } from '../../claudinite-tasks/public/task-constants.mjs';
 
 const NOW = Date.parse('2026-08-17T12:00:00Z');
-const CANON = { repo: 'o/canon', ref: 'canonsha', engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 } };
+const CANON = { repo: 'o/canon', ref: 'canonsha', engineVersion: 4, packVersions: { 'acme-pack-b': 3, 'acme-pack': 5 } };
 
 // The stamp's `ref` and `updated` are deliberately ANCIENT here: the versioned flows
 // stamp versions and nothing else, so those two hold the provenance of the last full
 // re-vendor — a healthy member's fixtures must look exactly like this, and every
 // test over `decl()` doubles as proof that neither field is ever judged.
 const decl = (over = {}) => ({
-  packs: [{ id: 'claudinite-lifecycle', version: 3 }, { id: 'basics', version: 5 }],
+  packs: [{ id: 'acme-pack-b', version: 3 }, { id: 'acme-pack', version: 5 }],
   taskScheduler: { dailyHour: 4 },
   engineVersion: 4,
   ...over,
@@ -34,8 +34,8 @@ const decl = (over = {}) => ({
 
 const item = (over = {}) => ({
   number: 1,
-  title: '[claudinite-work] basics/task-janitor',
-  body: 'packs/basics/tasks/task-janitor/task.md\n',
+  title: '[claudinite-work] acme-pack/acme-task-d',
+  body: 'packs/acme-pack/tasks/acme-task-d/task.md\n',
   state: 'open',
   labels: [STATUS_READY],
   created_at: '2026-08-17T04:00:00Z',
@@ -50,7 +50,7 @@ const read = (over = {}) => ({
   declaration: decl(),
   items: [],
   runs: [],
-  paths: ['packs/basics/tasks/task-janitor/task.json'],
+  paths: ['packs/acme-pack/tasks/acme-task-d/task.json'],
   ...over,
 });
 
@@ -141,7 +141,7 @@ test('a single scheduler failure is serious and a streak is critical', () => {
 
 // The signal no per-repo page can show you: the scheduler was never wired up at all.
 test('declared tasks with no work item ever is surfaced', () => {
-  const s = summariseMember(read({ items: [], paths: ['packs/basics/tasks/task-janitor/task.json'] }), { now: NOW, canon: CANON });
+  const s = summariseMember(read({ items: [], paths: ['packs/acme-pack/tasks/acme-task-d/task.json'] }), { now: NOW, canon: CANON });
   assert.equal(s.level, 'serious');
   assert.match(s.reasons.find((r) => /no work item/.test(r.text)).text, /1 task declared/);
 });
@@ -169,7 +169,7 @@ const member = (engineVersion, packVersions = {}) => ({
 // still carries them must be judged on its versions exactly as one that does not.
 test('freshness is judged on versions, and stray provenance keys change nothing', () => {
   const stamp = {
-    ...member(4, { 'claudinite-lifecycle': 3, basics: 5 }),
+    ...member(4, { 'acme-pack-b': 3, 'acme-pack': 5 }),
     ref: 'a-january-full-revendor-sha', updated: '2026-01-05T00:00:00Z',
   };
   assert.equal(mountState(stamp, CANON).state, 'current');
@@ -178,49 +178,53 @@ test('freshness is judged on versions, and stray provenance keys change nothing'
 // The rename's window: a member carries the retired block until its own converge runs
 // the record, and reading past it would call a current mount unversioned.
 test('a pre-rename member is judged from the retired block', () => {
-  const legacy = { claudinite: { engineVersion: 4, packVersions: { 'claudinite-lifecycle': 3, basics: 5 } } };
+  const legacy = { claudinite: { engineVersion: 4, packVersions: { 'acme-pack-b': 3, 'acme-pack': 5 } } };
   assert.equal(mountState(legacy, CANON).state, 'current');
 });
 
 test('an older engine version outranks pack lag', () => {
-  const s = mountState(member(3, { basics: 4 }), CANON);
+  const s = mountState(member(3, { 'acme-pack': 4 }), CANON);
   assert.equal(s.state, 'behind-engine');
   assert.equal(s.canonEngineVersion, 4);
 });
 
 test('a pack behind canon reads behind and names the pack', () => {
-  const s = mountState(member(4, { 'claudinite-lifecycle': 2, basics: 5 }), CANON);
+  const s = mountState(member(4, { 'acme-pack-b': 2, 'acme-pack': 5 }), CANON);
   assert.equal(s.state, 'behind');
-  assert.deepEqual(s.behindPacks, [{ pack: 'claudinite-lifecycle', version: 2, canonVersion: 3 }]);
+  assert.deepEqual(s.behindPacks, [{ pack: 'acme-pack-b', version: 2, canonVersion: 3 }]);
 });
 
 // The stored-data rename rule at this read: a stamp written before a pack rename
 // still keys the version under the old spelling, and must compare — not read as an
 // unknown pack.
+// Driven through a real entry of the rename map rather than an invented one: what
+// this pins is that the spellings the corpus actually ships are the ones compared,
+// so it needs its own canon reference keyed under today's ids.
 test('a renamed pack\'s stamped spelling still compares against canon', () => {
-  const s = mountState({ claudinite: { engineVersion: 4, packVersions: { 'tidy-repo': 2, 'claudinite-lifecycle': 3 } } }, CANON);
+  const canon = { ...CANON, packVersions: { basics: 5 } }; // @real-entity the rename map under test renames to this id
+  const s = mountState({ claudinite: { engineVersion: 4, packVersions: { 'tidy-repo': 2 } } }, canon); // @real-entity the retired spelling the map still resolves
   assert.equal(s.state, 'behind');
-  assert.deepEqual(s.behindPacks, [{ pack: 'basics', version: 2, canonVersion: 5 }]);
+  assert.deepEqual(s.behindPacks, [{ pack: 'basics', version: 2, canonVersion: 5 }]); // @real-entity the id the map renames to
 });
 
 // A pack the canon reference cannot price (the read failed, or it is a local pack)
 // is an unknown, never silently "current".
 test('a pack canon carries no version for is counted unknown, not judged', () => {
-  const s = mountState(member(4, { basics: 5, 'some-new-pack': 1 }), CANON);
+  const s = mountState(member(4, { 'acme-pack': 5, 'some-new-pack': 1 }), CANON);
   assert.equal(s.state, 'current');
   assert.equal(s.unknownPacks, 1);
   assert.equal(s.comparedPacks, 1);
 });
 
 test('with no canon configured freshness is unknown, not current', () => {
-  const s = mountState(member(4, { basics: 5 }), null);
+  const s = mountState(member(4, { 'acme-pack': 5 }), null);
   assert.equal(s.state, 'unknown');
 });
 
 // A stamp with no versions at all predates the versioned flows — that member has not
 // converged since they landed, which is worth a flag of its own.
 test('a stamp carrying no versions reads unversioned', () => {
-  assert.equal(mountState({ packs: ['basics'] }, CANON).state, 'unversioned');
+  assert.equal(mountState({ packs: ['acme-pack'] }, CANON).state, 'unversioned');
 });
 
 // The canon side of the comparison is lifted as text off the real files, so the
@@ -243,10 +247,10 @@ test('the version parsers answer null — never a guess — on text without the 
 // declares Claudinite and has never been converged. Before #1252 both were "no
 // stamp", because the versions lived in a block that could itself be missing.
 test('a member declaring Claudinite with no installed versions is flagged', () => {
-  const s = summariseMember(read({ declaration: { packs: ['basics'], taskScheduler: { dailyHour: 4 } } }),
+  const s = summariseMember(read({ declaration: { packs: ['acme-pack'], taskScheduler: { dailyHour: 4 } } }),
     { now: NOW, canon: CANON });
   assert.equal(mountState(undefined).state, 'none');
-  assert.equal(mountState({ packs: ['basics'] }).state, 'unversioned');
+  assert.equal(mountState({ packs: ['acme-pack'] }).state, 'unversioned');
   assert.ok(s.reasons.some((r) => /records no installed versions/.test(r.text)), JSON.stringify(s.reasons));
 });
 
@@ -350,25 +354,25 @@ test('rollUp never counts an unreadable member as healthy', () => {
 
 test('packSpread ranks packs by how many members carry them', () => {
   const spread = packSpread([
-    { packs: ['claudinite-lifecycle', 'basics'] }, { packs: ['claudinite-lifecycle'] }, { packs: ['claudinite-lifecycle', 'product-wiki'] },
+    { packs: ['acme-pack-b', 'acme-pack'] }, { packs: ['acme-pack-b'] }, { packs: ['acme-pack-b', 'acme-pack-e'] },
   ]);
-  assert.deepEqual(spread[0], { pack: 'claudinite-lifecycle', members: 3 });
-  assert.deepEqual(spread.map((p) => p.pack), ['claudinite-lifecycle', 'basics', 'product-wiki']);
+  assert.deepEqual(spread[0], { pack: 'acme-pack-b', members: 3 });
+  assert.deepEqual(spread.map((p) => p.pack), ['acme-pack-b', 'acme-pack', 'acme-pack-e']);
 });
 
 // The fleet-only view: one task, everywhere it runs. A shared pack's task parked in
 // several members at once is a canon problem that no single repo's page reveals.
 test('taskSpread aggregates one task across members, parked first', () => {
   const reads = [
-    { repo: 'o/a', items: [item({ title: '[claudinite-work] claudinite-lifecycle/update', labels: [NEEDS_HUMAN] })] },
-    { repo: 'o/b', items: [item({ title: '[claudinite-work] claudinite-lifecycle/update', labels: [NEEDS_HUMAN] })] },
-    { repo: 'o/c', items: [item({ title: '[claudinite-work] basics/task-janitor', state: 'closed', labels: [OUTCOME_DONE] })] },
+    { repo: 'o/a', items: [item({ title: '[claudinite-work] acme-pack-b/acme-task-c', labels: [NEEDS_HUMAN] })] },
+    { repo: 'o/b', items: [item({ title: '[claudinite-work] acme-pack-b/acme-task-c', labels: [NEEDS_HUMAN] })] },
+    { repo: 'o/c', items: [item({ title: '[claudinite-work] acme-pack/acme-task-d', state: 'closed', labels: [OUTCOME_DONE] })] },
   ];
   const spread = taskSpread(reads, NOW);
-  assert.equal(spread[0].key, 'claudinite-lifecycle/update');
+  assert.equal(spread[0].key, 'acme-pack-b/acme-task-c');
   assert.equal(spread[0].members, 2);
   assert.equal(spread[0].parked, 2);
-  assert.equal(spread[1].key, 'basics/task-janitor');
+  assert.equal(spread[1].key, 'acme-pack/acme-task-d');
   assert.equal(spread[1].done, 1);
 });
 
@@ -376,9 +380,9 @@ test('taskSpread counts a closed item with no outcome as failed, and obsolete as
   const reads = [{
     repo: 'o/a',
     items: [
-      item({ number: 1, title: '[claudinite-work] claudinite-lifecycle/update', state: 'closed', labels: [] }),
-      item({ number: 2, title: '[claudinite-work] claudinite-lifecycle/update', state: 'closed', labels: [OUTCOME_OBSOLETE] }),
-      item({ number: 3, title: '[claudinite-work] claudinite-lifecycle/update', state: 'closed', labels: [OUTCOME_DELIVERED] }),
+      item({ number: 1, title: '[claudinite-work] acme-pack-b/acme-task-c', state: 'closed', labels: [] }),
+      item({ number: 2, title: '[claudinite-work] acme-pack-b/acme-task-c', state: 'closed', labels: [OUTCOME_OBSOLETE] }),
+      item({ number: 3, title: '[claudinite-work] acme-pack-b/acme-task-c', state: 'closed', labels: [OUTCOME_DELIVERED] }),
     ],
   }];
   const [row] = taskSpread(reads, NOW);
@@ -429,16 +433,16 @@ test('the open state mix is counted per state, with unknown states kept apart', 
 
 test('a behind mount is a reason that names the packs, at routine severity', () => {
   const s = summariseMember(
-    read({ items: [item()], declaration: decl({ packs: [{ id: 'claudinite-lifecycle', version: 2 }, { id: 'basics', version: 5 }] }) }),
+    read({ items: [item()], declaration: decl({ packs: [{ id: 'acme-pack-b', version: 2 }, { id: 'acme-pack', version: 5 }] }) }),
     { now: NOW, canon: CANON },
   );
   const reason = s.reasons.find((r) => /behind canon/.test(r.text));
   assert.equal(reason.level, 'info', 'behind is routine — the nightly converge catches it up');
-  assert.match(reason.text, /claudinite-lifecycle/);
+  assert.match(reason.text, /acme-pack-b/);
 });
 
 test('one declared task is not "1 tasks"', () => {
-  const one = summariseMember(read({ items: [], paths: ['packs/basics/tasks/task-janitor/task.json'] }), { now: NOW, canon: CANON });
+  const one = summariseMember(read({ items: [], paths: ['packs/acme-pack/tasks/acme-task-d/task.json'] }), { now: NOW, canon: CANON });
   assert.match(one.reasons.find((r) => /no work item/.test(r.text)).text, /^1 task declared/);
 });
 
@@ -664,7 +668,7 @@ test('each breakdown row carries its kind and the count the short line reads', (
 // with no meaningful commits lately is marked sleepy but stays fully in the fleet.
 
 const dormantDecl = (over = {}) => decl({
-  packs: [{ id: 'claudinite-lifecycle', version: 3 }, { id: 'claudinite-tasks', config: { dormant: true } }],
+  packs: [{ id: 'acme-pack-b', version: 3 }, { id: 'claudinite-tasks', config: { dormant: true } }], // @real-entity dormancy is that pack's own setting
   ...over,
 });
 
@@ -738,7 +742,7 @@ test('sleepy is decided on MEANINGFUL commits, by the claudinite-tasks test', ()
     windowCommits: commitWindow([
       commitAt(1, { message: 'Claudinite maintenance: converge the mount' }),
       commitAt(2, { author: 'github-actions[bot]' }),
-      commitAt(3, { message: 'Regenerate the board\n\nClaudinite-Task: basics/usage-fold\n' }),
+      commitAt(3, { message: 'Regenerate the board\n\nClaudinite-Task: acme-pack/acme-task-g\n' }),
       commitAt(40),
     ]),
   }), { now: NOW, canon: CANON });

@@ -17,30 +17,30 @@ import { convergeOps, OUTCOMES } from '../../src/session/converge-item.mjs';
 // The title is the identity's readable half; the ISSUE NUMBER is the identity.
 // Nothing ever encodes a date here — that was the slot grammar.
 test('a work-item title round-trips, with and without a qualifier', () => {
-  assert.equal(workItemTitle({ pack: 'claudinite-lifecycle', task: 'update' }), '[claudinite-work] claudinite-lifecycle/update');
-  assert.deepEqual(parseWorkItemTitle('[claudinite-work] claudinite-lifecycle/update'), { pack: 'claudinite-lifecycle', task: 'update', qualifier: null });
-  assert.equal(workItemTitle({ pack: 'claudinite-fleet-sheepdog', task: 'fleet-baseline', qualifier: 'member-repo-x' }),
-    '[claudinite-work] claudinite-fleet-sheepdog/fleet-baseline member-repo-x');
-  assert.deepEqual(parseWorkItemTitle('[claudinite-work] claudinite-fleet-sheepdog/fleet-baseline member-repo-x'),
-    { pack: 'claudinite-fleet-sheepdog', task: 'fleet-baseline', qualifier: 'member-repo-x' });
+  assert.equal(workItemTitle({ pack: 'acme-pack-b', task: 'acme-task-c' }), '[claudinite-work] acme-pack-b/acme-task-c');
+  assert.deepEqual(parseWorkItemTitle('[claudinite-work] acme-pack-b/acme-task-c'), { pack: 'acme-pack-b', task: 'acme-task-c', qualifier: null });
+  assert.equal(workItemTitle({ pack: 'acme-pack-c', task: 'acme-task-k', qualifier: 'member-repo-x' }),
+    '[claudinite-work] acme-pack-c/acme-task-k member-repo-x');
+  assert.deepEqual(parseWorkItemTitle('[claudinite-work] acme-pack-c/acme-task-k member-repo-x'),
+    { pack: 'acme-pack-c', task: 'acme-task-k', qualifier: 'member-repo-x' });
 });
 
 test('the slot mechanism\'s titles are invisible here — the two families are disjoint (S29)', () => {
-  assert.equal(parseWorkItemTitle('[claudinite-task] claudinite-lifecycle/update d2026-08-14'), null);
+  assert.equal(parseWorkItemTitle('[claudinite-task] acme-pack-b/acme-task-c d2026-08-14'), null);
   assert.equal(isWorkItemTitle('Some ordinary issue'), false);
-  assert.equal(isWorkItemTitle(`${WORK_PREFIX} basics/task-janitor`), true);
+  assert.equal(isWorkItemTitle(`${WORK_PREFIX} acme-pack/task-janitor`), true);
 });
 
 test('the body carries the task path first and the two scheduling fields', () => {
   const body = workItemBody({
-    taskPath: 'packs/claudinite-lifecycle/tasks/update/task.md',
+    taskPath: 'packs/acme-pack-b/tasks/acme-task-c/task.md',
     notBefore: '2026-08-15T02:00:00.000Z',
     blockedBy: [812, 813],
     context: ['only the mount', 'nothing else'],
   });
-  assert.match(body.split('\n')[0], /^packs\/claudinite-lifecycle\/tasks\/update\/task\.md$/);
+  assert.match(body.split('\n')[0], /^packs\/acme-pack-b\/tasks\/acme-task-c\/task\.md$/);
   assert.deepEqual(parseWorkItemBody(body), {
-    taskPath: 'packs/claudinite-lifecycle/tasks/update/task.md',
+    taskPath: 'packs/acme-pack-b/tasks/acme-task-c/task.md',
     notBefore: '2026-08-15T02:00:00.000Z',
     blockedBy: [812, 813],
     request: null,

@@ -34,6 +34,16 @@ const GIT_ENV = {
   GIT_CONFIG_KEY_2: 'commit.gpgsign', GIT_CONFIG_VALUE_2: 'false',
 };
 
+// THE CANON PACKS A CASE REACHES FOR WHEN IT NEEDS *A* PACK RATHER THAN A
+// PARTICULAR ONE - laying a mount down on a member, planning an update, stamping
+// a version. Every such case holds for any id on the shelf, so the id is spelled
+// here once and a rename or retirement is an edit of these two lines instead of
+// every suite that happened to name it. A case that is genuinely ABOUT one pack
+// names that pack itself; a case whose pack is invented uses a fake id and comes
+// nowhere near here.
+export const A_CANON_PACK = 'basics';
+export const ANOTHER_CANON_PACK = 'claudinite-growth';
+
 export function git(root, ...args) {
   const r = spawnSync('git', args, { cwd: root, env: GIT_ENV, encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);

@@ -150,10 +150,10 @@ test('a park naming its task at a path it has moved off closes obsolete, naming 
     return gh(path, opts);
   };
   const out = await quiet(() => sweepQueue(spy, 'o/r', at('2026-07-10T00:00:00Z'), {
-    tasks: [{ pack: 'basics', id: 'a', taskPath: 'packs/basics/tasks/a/task.md' }],
+    tasks: [{ pack: 'basics', id: 'a', taskPath: 'packs/basics/tasks/a/task.md' }], // @real-entity the rename map under test resolves the retired spelling to this id
   }));
   assert.deepEqual(out.orphaned, [31]);
-  assert.ok(posted.some((b) => b.includes('packs/basics/tasks/a/task.md')), posted.join('|'));
+  assert.ok(posted.some((b) => b.includes('packs/basics/tasks/a/task.md')), posted.join('|')); // @real-entity the rename map under test resolves the retired spelling to this id
   assert.deepEqual(labelsOn(added, 31), ['task:status:rejected']);
 });
 

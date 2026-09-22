@@ -160,7 +160,7 @@ test('issues: dispatch issues and trackers are invisible; touched respects the w
       { number: 1, title: 'real feature request', updated_at: '2026-07-21T12:00:00Z', labels: [] },
       { number: 2, title: '[claudinite-task] p/t d2026-07-21', updated_at: '2026-07-21T12:00:00Z' },
       { number: 3, title: 'Claudinite tracker: Repo Tidy', updated_at: '2026-07-21T12:00:00Z' },
-      // ci-performance's tracker predates the naming convention (#904), so the
+      // acme-task's tracker predates the naming convention (#904), so the
       // prefix alone does not hide it and an issue-gated task took it as project work.
       { number: 8, title: '[claudinite] CI performance', updated_at: '2026-07-21T12:00:00Z' },
       // The schedule board (#1115): every rewrite bumps updated_at, so letting
@@ -249,26 +249,26 @@ test('sharedMount: only DECLARED packs whose vendored files changed are reported
   const gh = fakeGh([
     [/\/commits\?sha=/, { status: 200, json: [{ sha: 'a', commit: { message: 'Baseline' }, author: { login: 'x' } }] }],
     [/\/commits\/a$/, { status: 200, json: { files: [
-      { filename: '.claudinite/shared/packs/basics/RULES.md' },
-      { filename: '.claudinite/shared/packs/product-wiki/x.mjs' },
+      { filename: '.claudinite/shared/packs/acme-pack/RULES.md' },
+      { filename: '.claudinite/shared/packs/acme-pack-e/x.mjs' },
     ] } }],
   ]);
-  const out = await collectSignals(gh, ctx({ activePacks: ['basics'] }), ['sharedMount']);
-  assert.deepEqual(out.sharedMount.changedPacks, ['basics']); // product-wiki not declared → ignored
+  const out = await collectSignals(gh, ctx({ activePacks: ['acme-pack'] }), ['sharedMount']);
+  assert.deepEqual(out.sharedMount.changedPacks, ['acme-pack']); // acme-pack-e not declared → ignored
 });
 
 // The mount's own movement, never a datetime in the declaration: the one that used
 // to be stamped there recorded the last FULL re-vendor, so a member converging
 // nightly read as months overdue forever (#1252).
 test('stamp: the installed versions, and whether the mount moved in the window', async () => {
-  const config = { engineVersion: '60820.1', packVersions: { basics: '60819.1' } };
+  const config = { engineVersion: '60820.1', packVersions: { 'acme-pack': '60819.1' } };
   const moved = await collectSignals(fakeGh([]), ctx({
     config,
     commits: [{ files: ['.claudinite/shared/engine/version.mjs'] }],
   }), ['stamp']);
   assert.equal(moved.stamp.present, true);
   assert.equal(moved.stamp.engineVersion, '60820.1');
-  assert.deepEqual(moved.stamp.packVersions, { basics: '60819.1' });
+  assert.deepEqual(moved.stamp.packVersions, { 'acme-pack': '60819.1' });
   assert.equal(moved.stamp.convergedInWindow, true);
 
   const still = await collectSignals(fakeGh([]), ctx({ config, commits: [{ files: ['src/app.js'] }] }), ['stamp']);
@@ -289,7 +289,7 @@ test('a collector that throws is isolated under its key', async () => {
 // --- commits: Claudinite's own corpus is not project work --------------------
 // A commit touching nothing but `.claudinite/` moves the repo's working rules,
 // not the project. It implements no issue, ships no user-visible
-// change (store-release) and is not a lesson to extract (growth-extract) — yet a
+// change (acme-task-i) and is not a lesson to extract (acme-task-h) — yet a
 // human-authored one wearing an ordinary message passed every existing exclusion,
 // so the growth lifecycle's own landed output re-armed it the next night and a
 // repo could never go quiet (TLDR #319).
@@ -297,7 +297,7 @@ test('a collector that throws is isolated under its key', async () => {
 test('commits: a .claudinite/-only commit is not substantive', async () => {
   const gh = fakeGh([
     [/\/commits\?sha=/, { status: 200, json: [
-      { sha: 'e', commit: { message: 'Restore the pack-scope rule growth-dedup pruned' }, author: { login: 'dev' } },
+      { sha: 'e', commit: { message: 'Restore the pack-scope rule acme-task-n pruned' }, author: { login: 'dev' } },
     ] }],
     [/\/commits\/e$/, { status: 200, json: { files: [{ filename: '.claudinite/local/packs/tldr/RULES.md' }] } }],
   ]);
@@ -335,7 +335,7 @@ test('commits: an unreadable file list never reads as .claudinite/-only', async 
 
 // An open PR carries the paths it changes, so a precondition can rule on what is
 // pending rather than on a marker somebody has to remember to apply (wiki-growth
-// declines while a `product-wiki/` change waits for review).
+// declines while a `acme-pack-e/` change waits for review).
 test('prs: an open PR carries its changed paths, and an unreadable file list is unknown', async () => {
   const gh = fakeGh([
     [/\/pulls\?state=open/, { status: 200, json: [
@@ -344,13 +344,13 @@ test('prs: an open PR carries its changed paths, and an unreadable file list is 
     ] }],
     [/\/pulls\?state=closed/, { status: 200, json: [] }],
     [/\/pulls\/7\/files/, { status: 200, json: [
-      { filename: 'product-wiki/Market/README.md' },
-      { filename: 'product-wiki/sample-data/x.csv' },
+      { filename: 'acme-pack-e/Market/README.md' },
+      { filename: 'acme-pack-e/sample-data/x.csv' },
     ] }],
   ]);
   const out = await collectSignals(gh, ctx(), ['prs']);
   const by = Object.fromEntries(out.prs.open.map((p) => [p.number, p.changedPaths]));
-  assert.deepEqual(by[7], ['product-wiki/Market/README.md', 'product-wiki/sample-data/x.csv']);
+  assert.deepEqual(by[7], ['acme-pack-e/Market/README.md', 'acme-pack-e/sample-data/x.csv']);
   // Every PR changes at least one file, so nothing read is a read that failed —
   // `null`, the third state, never an empty list a path gate would read as "clear".
   assert.equal(by[8], null);
@@ -372,14 +372,14 @@ test('commits: a task-authored commit is not substantive, and records which task
   const gh = fakeGh([
     [/\/commits\?sha=/, { status: 200, json: [
       { sha: 'p', commit: { message: 'Improve the parser\n\nRefs #12' }, author: { login: 'dev' } },
-      { sha: 't', commit: { message: 'Improve the parser\n\nClaudinite-Task: basics/improve-comments' }, author: { login: 'dev' } },
+      { sha: 't', commit: { message: 'Improve the parser\n\nClaudinite-Task: acme-pack/acme-task-b' }, author: { login: 'dev' } },
     ] }],
     [/\/commits\/[pt]$/, { status: 200, json: { files: [{ filename: 'src/app.mjs' }] } }],
   ]);
   const out = await collectSignals(gh, ctx(), ['commits']);
   // Two commits with the SAME subject and the same author, one of them machinery.
   assert.deepEqual(out.commits.list.map((c) => c.substantive), [true, false]);
-  assert.deepEqual(out.commits.list.map((c) => c.task), [null, 'basics/improve-comments']);
+  assert.deepEqual(out.commits.list.map((c) => c.task), [null, 'acme-pack/acme-task-b']);
 });
 
 test('commits: a task-authored commit alone leaves the window non-substantive', async () => {
@@ -406,7 +406,7 @@ const trailerPrs = (routes) => fakeGh([
 test('prs: a task-authored PR moving is not a touch, and its head read is what says so', async () => {
   const out = await collectSignals(trailerPrs([
     [/\/commits\/human$/, { status: 200, json: { commit: { message: 'Improve the parser' } } }],
-    [/\/commits\/robot$/, { status: 200, json: { commit: { message: 'Sweep\n\nClaudinite-Task: basics/improve-comments' } } }],
+    [/\/commits\/robot$/, { status: 200, json: { commit: { message: 'Sweep\n\nClaudinite-Task: acme-pack/acme-task-b' } } }],
     [/\/pulls\/\d+\/files/, { status: 200, json: [{ filename: 'src/app.mjs' }] }],
   ]), ctx(), ['prs']);
   assert.deepEqual(out.prs.touched, [7]);
@@ -433,7 +433,7 @@ test('prs: a task-authored merged PR stays out of `merged` too', async () => {
       { number: 31, title: 'a title no regex knows', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dev' }, head: { sha: 'robot' } },
       { number: 32, title: 'a title no regex knows', updated_at: '2026-07-21T12:00:00Z', merged_at: '2026-07-21T12:00:00Z', user: { login: 'dev' }, head: { sha: 'human' } },
     ] }],
-    [/\/commits\/robot$/, { status: 200, json: { commit: { message: 'x\n\nClaudinite-Task: product-wiki/wiki-growth' } } }],
+    [/\/commits\/robot$/, { status: 200, json: { commit: { message: 'x\n\nClaudinite-Task: acme-pack-e/acme-task-r' } } }],
     [/\/commits\/human$/, { status: 200, json: { commit: { message: 'x' } } }],
   ]);
   const out = await collectSignals(gh, ctx(), ['prs']);

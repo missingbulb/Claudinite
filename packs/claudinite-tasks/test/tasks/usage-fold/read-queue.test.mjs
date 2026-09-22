@@ -20,7 +20,7 @@ const renderItemBody = (taskPath) =>
 // queue about what an item IS.
 const item = (over = {}) => ({
   number: 1,
-  title: `${WORK_PREFIX} claudinite-growth/usage-fold`,
+  title: `${WORK_PREFIX} acme-pack-b/usage-fold`,
   body: '',
   labels: [],
   state: 'closed',
@@ -44,7 +44,7 @@ test('an item is filed under the task its title names, and its outcome word', ()
   assert.deepEqual(recordFor(item({ labels: labelled(OUTCOME_DONE) }), null), {
     date: '2026-08-20',
     closedAt: '2026-08-20T10:00:00Z',
-    pack: 'claudinite-growth',
+    pack: 'acme-pack-b',
     task: 'usage-fold',
     outcome: 'done',
     number: 1,
@@ -65,10 +65,10 @@ test('an ADOPTED marked issue keeps the person\'s title and is found by its mach
   // would be counted as belonging to no task and silently dropped.
   const adopted = item({
     title: 'the growth extract is picking up merge commits',
-    body: renderItemBody('packs/claudinite-growth/tasks/growth-extract/task.json'),
+    body: renderItemBody('packs/acme-pack-b/tasks/acme-task/task.json'),
     labels: [{ name: ORIGIN_AD_HOC }, ...labelled(OUTCOME_DONE)],
   });
-  assert.deepEqual(taskOf(adopted), { pack: 'claudinite-growth', task: 'growth-extract' });
+  assert.deepEqual(taskOf(adopted), { pack: 'acme-pack-b', task: 'acme-task' });
 });
 
 test('an issue that is not a work item, or has not closed, is not this fold\'s business', () => {

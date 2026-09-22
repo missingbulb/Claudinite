@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import rule, { contractChanges, carriesConsumers } from '../workRules/consumer-safe-change.mjs';
 
 const SCHEMA = 'engine/pack_loader/pack-schema.mjs';
-const STUB = 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml';
-const EXECUTOR_STUB = 'packs/claudinite-tasks/stubs/claudinite-executor.yml';
+const STUB = 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml'; // @real-entity the real stubs and the pack record path the rule keys on
+const EXECUTOR_STUB = 'packs/claudinite-tasks/stubs/claudinite-executor.yml'; // @real-entity the real stubs and the pack record path the rule keys on
 const RECORD = 'engine/migrations/2026-08-01-thing/migration.mjs';
-const PACK_RECORD = 'packs/claudinite-fleet-sheepdog/migrations/2026-08-01-thing/migration.mjs';
+const PACK_RECORD = 'packs/acme-pack-c/migrations/2026-08-01-thing/migration.mjs';
 const FIXTURES = 'vendoring/rehearsal/fixtures.mjs';
 
 const BLOCKING_RULE = `import { finding } from '../x.mjs';
@@ -46,32 +46,32 @@ test('either workflow stub is a contract surface — members vendor both verbati
 });
 
 test('a rule promoted from advisory to blocking is a contract surface', () => {
-  const out = contractChanges(['packs/basics/demo.mjs'], () => BLOCKING_RULE, () => ADVISORY_RULE);
+  const out = contractChanges(['packs/acme-pack/demo.mjs'], () => BLOCKING_RULE, () => ADVISORY_RULE);
   assert.equal(out.length, 1);
   assert.match(out[0].what, /became blocking/);
 });
 
 test('a brand-new blocking rule is a contract surface — it has no base to have asked for', () => {
-  assert.equal(contractChanges(['packs/basics/demo.mjs'], () => BLOCKING_RULE, () => null).length, 1);
+  assert.equal(contractChanges(['packs/acme-pack/demo.mjs'], () => BLOCKING_RULE, () => null).length, 1);
 });
 
 test('editing a rule that was ALREADY blocking is not — it asks nothing new of a member', () => {
-  const edited = BLOCKING_RULE.replace("id: 'demo'", "id: 'demo', doc: 'packs/basics/RULES.md'");
-  assert.deepEqual(contractChanges(['packs/basics/demo.mjs'], () => edited, () => BLOCKING_RULE), []);
+  const edited = BLOCKING_RULE.replace("id: 'demo'", "id: 'demo', doc: 'packs/acme-pack/RULES.md'");
+  assert.deepEqual(contractChanges(['packs/acme-pack/demo.mjs'], () => edited, () => BLOCKING_RULE), []);
 });
 
 test('a changed rule that stays advisory is not — it cannot turn a member red', () => {
-  assert.deepEqual(contractChanges(['packs/basics/demo.mjs'], () => ADVISORY_RULE, () => ADVISORY_RULE), []);
+  assert.deepEqual(contractChanges(['packs/acme-pack/demo.mjs'], () => ADVISORY_RULE, () => ADVISORY_RULE), []);
 });
 
 // The narrowness is the point: a rule that fires on every canon commit gets
 // turned off, and is then worth nothing on the day it matters.
 test('ordinary engine and pack edits are not contract surfaces', () => {
-  assert.deepEqual(contractChanges(['packs/claudinite-tasks/src/execute/loop.mjs', 'packs/node/README.md'], () => 'whatever'), []);
+  assert.deepEqual(contractChanges(['packs/acme-pack-t/src/execute/loop.mjs', 'packs/acme-pack/README.md'], () => 'whatever'), []);
 });
 
 test('test files are never contract surfaces, even when they contain a blocking rule', () => {
-  assert.deepEqual(contractChanges(['packs/basics/x.test.mjs'], () => BLOCKING_RULE), []);
+  assert.deepEqual(contractChanges(['packs/acme-pack/x.test.mjs'], () => BLOCKING_RULE), []);
   assert.deepEqual(contractChanges(['engine-tests/x.test.mjs'], () => BLOCKING_RULE), []);
 });
 
@@ -116,7 +116,7 @@ test('a rule in the canon\'s own local packs is out of scope — no consumer can
   assert.deepEqual(contractChanges([local], () => BLOCKING_RULE, () => null), []);
   assert.deepEqual(rule.run(work([local], { [local]: BLOCKING_RULE })), []);
   // …while the same module under a shipped pack still counts.
-  const shipped = 'packs/basics/new-rule.mjs';
+  const shipped = 'packs/acme-pack/new-rule.mjs';
   assert.equal(contractChanges([shipped], () => BLOCKING_RULE, () => null).length, 1);
 });
 
@@ -172,7 +172,7 @@ test('a `#` inside a YAML value is not a comment — changing it is a real chang
 // --- a removed export: the #1750 shape --------------------------------------
 
 const WIRING = 'engine/converge-wiring.mjs';
-const PACK_MODULE = 'packs/claudinite-tasks/queue/schedule-board.mjs';
+const PACK_MODULE = 'packs/acme-pack-t/queue/schedule-board.mjs';
 
 test('an export dropped from an engine module is a contract surface — #1750\'s exact shape', () => {
   const before = "export const BADGE_ROW_END = '<!-- /claudinite:packs -->';\nexport function ensureHooks() {}\n";
@@ -235,12 +235,12 @@ test('a removed export outside the vendor set, or in a test, is not a surface', 
   // rewriting one of those helpers as a fleet migration.
   for (const f of ['.claudinite/local/packs/claudinite/x.mjs', 'engine/migrations/2026-08-01-thing/migration.mjs',
     'engine/x.test.mjs', 'engine-tests/x.mjs', 'bootstrap.mjs',
-    'packs/claudinite-tasks/test/sim/sim.mjs', 'packs/basics/test/fixtures/thing.mjs']) {
+    'packs/acme-pack-t/test/sim/sim.mjs', 'packs/acme-pack/test/fixtures/thing.mjs']) {
     assert.deepEqual(contractChanges([f], () => '', () => before), [], f);
   }
   // …and the exclusion is the directory, not the whole pack: a module beside it
   // is still the contract it always was.
-  assert.equal(contractChanges(['packs/claudinite-tasks/src/items/work-item.mjs'], () => '', () => before).length, 1);
+  assert.equal(contractChanges(['packs/acme-pack-t/src/items/work-item.mjs'], () => '', () => before).length, 1);
 });
 
 test('a removed export WITH a migration record or a fixture passes', () => {

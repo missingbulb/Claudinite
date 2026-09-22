@@ -98,46 +98,46 @@ test('isUserMessage excludes every non-human user-role shape', () => {
 // --- userCommands and skill loads ---------------------------------------------
 
 test('commandName reads the typed command out of its expansion, and only from there', () => {
-  assert.equal(commandName(slash('merge-to-main')), 'merge-to-main');
+  assert.equal(commandName(slash('acme-skill-h')), 'acme-skill-h');
   assert.equal(commandName(slash('model', 'claude-opus-5')), 'model');
   // prose that merely mentions a slash command is not a command
-  assert.equal(commandName(human('run /merge-to-main when you are done')), null);
+  assert.equal(commandName(human('run /acme-skill-h when you are done')), null);
   assert.equal(commandName(assistantText('use /review')), null);
 });
 
 test('skillToolLoads reads the Skill tool_use, ignoring every other tool', () => {
-  assert.deepEqual(skillToolLoads(skillCall('writing-tests')), ['writing-tests']);
+  assert.deepEqual(skillToolLoads(skillCall('acme-skill-i')), ['acme-skill-i']);
   assert.deepEqual(skillToolLoads(otherTool()), []);
   assert.deepEqual(skillToolLoads(human('hi')), []);
 });
 
 test('countEntries: a typed /command naming a mounted skill is a load; a built-in is not', () => {
-  const mounted = new Set(['merge-to-main', 'writing-tests']);
+  const mounted = new Set(['acme-skill-h', 'acme-skill-i']);
   const counts = countEntries([
-    slash('merge-to-main'),   // a skill — one event, two axes
+    slash('acme-skill-h'),   // a skill — one event, two axes
     slash('model', 'opus'),   // a built-in CLI command — never a skill load
     slash('clear'),
   ], mounted);
   assert.equal(counts.userCommands, 3, 'every typed command counts as a command');
-  assert.deepEqual(counts.skillLoads, { 'merge-to-main': 1 }, 'only the one naming a mounted skill is a load');
+  assert.deepEqual(counts.skillLoads, { 'acme-skill-h': 1 }, 'only the one naming a mounted skill is a load');
 });
 
 test('countEntries: subagent skill loads count — a subagent loading a skill is a load', () => {
-  const counts = countEntries([skillCall('writing-tests', { sidechain: true }), skillCall('writing-tests')]);
-  assert.deepEqual(counts.skillLoads, { 'writing-tests': 2 });
+  const counts = countEntries([skillCall('acme-skill-i', { sidechain: true }), skillCall('acme-skill-i')]);
+  assert.deepEqual(counts.skillLoads, { 'acme-skill-i': 2 });
 });
 
 test('countEntries: a whole session, every counter at once', () => {
   const counts = countEntries([
     human('start'), otherTool(), toolResult(),
-    skillCall('bug-investigation'), assistantText('found it'),
-    human('now merge'), slash('merge-to-main'), skillCall('merge-to-main'),
+    skillCall('acme-skill-f'), assistantText('found it'),
+    human('now merge'), slash('acme-skill-h'), skillCall('acme-skill-h'),
     scheduledFiring('automated'), meta('<system-reminder>'),
-  ], new Set(['merge-to-main', 'bug-investigation']));
+  ], new Set(['acme-skill-h', 'acme-skill-f']));
   assert.equal(counts.userMessages, 2);
   assert.equal(counts.userCommands, 1);
-  // the typed /merge-to-main AND the Skill tool_use are two separate loads
-  assert.deepEqual(counts.skillLoads, { 'bug-investigation': 1, 'merge-to-main': 2 });
+  // the typed /acme-skill-h AND the Skill tool_use are two separate loads
+  assert.deepEqual(counts.skillLoads, { 'acme-skill-f': 1, 'acme-skill-h': 2 });
 });
 
 // --- check activations --------------------------------------------------------
@@ -155,7 +155,7 @@ const HOOK_FAIL = 'Stop hook feedback:\n[node $CLAUDE_PROJECT_DIR/engine/hooks/s
   + '[BLOCKING] comment-classification  (conversation)\n'
   + '  the reply to the owner\'s latest comment ("lgtm…") declares no `Comment class:` line\n'
   + '  Fix: state the classification explicitly\n'
-  + '  More: packs/basics/RULES.md\n\n'
+  + '  More: packs/acme-pack/RULES.md\n\n'
   + '[BLOCKING] task-lifecycle  (branch)\n'
   + '  none of the 1 commit(s) since origin/main references an issue (#N)\n'
   + '  Fix: reference the issue in the commit message\n\n'
@@ -227,7 +227,7 @@ test('findingHeaders reads the rule id off each rendered finding', () => {
     { severity: 'blocking', rule: 'comment-classification' },
     { severity: 'blocking', rule: 'task-lifecycle' },
   ]);
-  assert.deepEqual(findingHeaders('[ADVISORY] file-placement  packs/x/y.mjs:3'), [{ severity: 'advisory', rule: 'file-placement' }]);
+  assert.deepEqual(findingHeaders('[ADVISORY] acme-skill-g  packs/x/y.mjs:3'), [{ severity: 'advisory', rule: 'acme-skill-g' }]);
 });
 
 test('checkInvocations counts runner invocations, and only actual invocations', () => {
@@ -256,7 +256,7 @@ test('checkOutputs takes Bash results and leaves every other tool result alone',
     bashResult('t1', '0 blocking, 7 advisory (world scope: all vs origin/main).'),
     // A Read of a file that merely CONTAINS this vocabulary is not a check run — in
     // the corpus that owns the runners, that is the ordinary case, not a corner one.
-    readResult('t2', '[BLOCKING] file-placement  x.mjs\n0 blocking, 1 advisory (world scope: all).'),
+    readResult('t2', '[BLOCKING] acme-skill-g  x.mjs\n0 blocking, 1 advisory (world scope: all).'),
   ]);
   assert.equal(outputs.length, 1);
   assert.equal(outputs[0].command, 'node engine/checks/check_the_world.mjs');
@@ -377,8 +377,8 @@ test('countChecks: a scope that never ran has no key — zeros stay implicit her
 });
 
 test('countEntries carries the check counts alongside the skill counts', () => {
-  const counts = countEntries([human('go'), skillCall('writing-tests'), hookFeedback(HOOK_FAIL)], new Set(['writing-tests']));
-  assert.deepEqual(counts.skillLoads, { 'writing-tests': 1 });
+  const counts = countEntries([human('go'), skillCall('acme-skill-i'), hookFeedback(HOOK_FAIL)], new Set(['acme-skill-i']));
+  assert.deepEqual(counts.skillLoads, { 'acme-skill-i': 1 });
   assert.equal(counts.checks.work.failures, 1);
   assert.equal(counts.checkFindings['task-lifecycle'].blocking, 1);
 });
@@ -433,7 +433,7 @@ test('foldDays sums the check activations across a day\'s capture files', () => 
     }),
     fileOf('2026-07-28', 13, 's2', {
       checks: { work: work({ runs: 2, failures: 1, blocking: 1 }) },
-      checkFindings: { 'task-lifecycle': { blocking: 1, advisory: 0 }, 'file-placement': { blocking: 0, advisory: 5 } },
+      checkFindings: { 'task-lifecycle': { blocking: 1, advisory: 0 }, 'acme-skill-g': { blocking: 0, advisory: 5 } },
     }),
   ]);
   assert.deepEqual(days['2026-07-28'].checks.work, work({ runs: 6, failures: 3, blocking: 4 }));
@@ -445,7 +445,7 @@ test('foldDays sums the check activations across a day\'s capture files', () => 
     // foldDays writes from the distinct sessions rather than summing: the rule both
     // files saw reads 2 where its blocking count reads 3.
     'task-lifecycle': { blocking: 3, advisory: 0, sessions: 2 },
-    'file-placement': { blocking: 0, advisory: 5, sessions: 1 },
+    'acme-skill-g': { blocking: 0, advisory: 5, sessions: 1 },
   });
 });
 
@@ -508,7 +508,7 @@ test('addDayToWeek extends a week folded BEFORE the checks were counted', () => 
 
 test('foldUsage: days recompute, weeks append once, watermark advances', () => {
   const files = [
-    fileOf('2026-07-26', 1, 's1', { userMessages: 3, skillLoads: { 'merge-to-main': 1 } }),
+    fileOf('2026-07-26', 1, 's1', { userMessages: 3, skillLoads: { 'acme-skill-h': 1 } }),
     fileOf('2026-07-27', 2, 's2', { userMessages: 5 }),
     fileOf('2026-07-28', 0, 's3', { userMessages: 1 }),
   ];
@@ -516,7 +516,7 @@ test('foldUsage: days recompute, weeks append once, watermark advances', () => {
   assert.equal(first.foldedThrough, '2026-07-27');
   assert.deepEqual(Object.keys(first.weeks), ['2026-W30', '2026-W31']);
   assert.equal(first.weeks['2026-W30'].days, 1);
-  assert.deepEqual(first.weeks['2026-W30'].skillLoads, { 'merge-to-main': 1 });
+  assert.deepEqual(first.weeks['2026-W30'].skillLoads, { 'acme-skill-h': 1 });
   assert.ok(first.days['2026-07-28'], 'today still has its day row — it just is not folded yet');
 
   // Same day, run again with a new capture landing on today. The closed days must NOT
@@ -569,15 +569,15 @@ test('the written file sorts every key, so an unchanged recompute is byte-identi
 
 test('foldUsage: a mounted skill that never loads has no key — the zero set is derived, not stored', () => {
   const folded = foldUsage({
-    files: [fileOf('2026-07-27', 1, 's1', { skillLoads: { 'merge-to-main': 1 } })],
+    files: [fileOf('2026-07-27', 1, 's1', { skillLoads: { 'acme-skill-h': 1 } })],
     prior: {}, today: '2026-07-28',
   });
-  assert.deepEqual(Object.keys(folded.days['2026-07-27'].skillLoads), ['merge-to-main']);
+  assert.deepEqual(Object.keys(folded.days['2026-07-27'].skillLoads), ['acme-skill-h']);
   // "never loads" is visible by diffing against the repo's mounted set, which is the
   // only way a skill with zero loads can be told from a skill that is not mounted.
-  const mounted = ['merge-to-main', 'writing-tests', 'bug-investigation'];
+  const mounted = ['acme-skill-h', 'acme-skill-i', 'acme-skill-f'];
   const never = mounted.filter((s) => !(s in folded.days['2026-07-27'].skillLoads));
-  assert.deepEqual(never, ['writing-tests', 'bug-investigation']);
+  assert.deepEqual(never, ['acme-skill-i', 'acme-skill-f']);
 });
 
 // --- what the session cost ----------------------------------------------------------
@@ -848,20 +848,20 @@ test('addDayToWeek adds nothing for a field the day has no opinion on', () => {
 // The successor to the retired slot scheduler's log lines (#994): every occurrence is
 // a work item, and a closed one wears the outcome it came to.
 
-const closed = (date, task, outcome, pack = 'claudinite-growth') => ({ date, pack, task, outcome });
+const closed = (date, task, outcome, pack = 'acme-pack-b') => ({ date, pack, task, outcome });
 
 test('foldQueueOutcomes counts each closed item under its task and outcome word', () => {
   const days = {};
   foldQueueOutcomes(days, {}, [
     closed('2026-08-20', 'usage-fold', 'done'),
     closed('2026-08-20', 'usage-fold', 'done'),
-    closed('2026-08-20', 'growth-extract', 'delivered'),
-    closed('2026-08-19', 'growth-extract', 'none'),
+    closed('2026-08-20', 'acme-task', 'delivered'),
+    closed('2026-08-19', 'acme-task', 'none'),
   ], '2026-08-20');
-  assert.deepEqual(days['2026-08-20'].queue['claudinite-growth/usage-fold'],
+  assert.deepEqual(days['2026-08-20'].queue['acme-pack-b/usage-fold'],
     { done: 2, delivered: 0, obsolete: 0, none: 0 });
-  assert.equal(days['2026-08-20'].queue['claudinite-growth/growth-extract'].delivered, 1);
-  assert.equal(days['2026-08-19'].queue['claudinite-growth/growth-extract'].none, 1);
+  assert.equal(days['2026-08-20'].queue['acme-pack-b/acme-task'].delivered, 1);
+  assert.equal(days['2026-08-19'].queue['acme-pack-b/acme-task'].none, 1);
   assert.equal(days['2026-08-19'].captures, 0, 'a day with queue activity and no captures still gets a row');
 });
 
@@ -970,7 +970,7 @@ test('foldUsage carries every watermark, and the stamp it was handed', () => {
   assert.equal(first.generated, '2026-08-21T11:00:00Z');
   assert.equal(first.runsFoldedThrough, '2026-08-21T10:03:00Z');
   assert.equal(first.queueFoldedThrough, '2026-08-20T22:00:00Z');
-  assert.equal(first.weeks['2026-W34'].queue['claudinite-growth/usage-fold'].done, 1,
+  assert.equal(first.weeks['2026-W34'].queue['acme-pack-b/usage-fold'].done, 1,
     'the day that closed carried its queue outcomes into its week');
 
   // A fold that read nothing new leaves both marks and both sets of counts alone.
@@ -980,7 +980,7 @@ test('foldUsage carries every watermark, and the stamp it was handed', () => {
   assert.equal(second.runsFoldedThrough, '2026-08-21T10:03:00Z');
   assert.equal(second.queueFoldedThrough, '2026-08-20T22:00:00Z');
   assert.deepEqual(second.days['2026-08-20'].queue, first.days['2026-08-20'].queue);
-  assert.equal(second.weeks['2026-W34'].queue['claudinite-growth/usage-fold'].done, 1,
+  assert.equal(second.weeks['2026-W34'].queue['acme-pack-b/usage-fold'].done, 1,
     'and the closed week is not folded a second time');
 });
 
@@ -1052,14 +1052,14 @@ test('countEntries carries taskExec beside the other counters', () => {
 test('a fold round-trips through the file unchanged', () => {
   const folded = foldUsage({
     files: [
-      fileOf('2026-07-26', 1, 's1', { skillLoads: { 'merge-to-main': 2 }, checks: { work: { runs: 5, failures: 1 } } }),
-      fileOf('2026-07-27', 2, 's2', { skillLoads: { 'writing-tests': 1 } }),
+      fileOf('2026-07-26', 1, 's1', { skillLoads: { 'acme-skill-h': 2 }, checks: { work: { runs: 5, failures: 1 } } }),
+      fileOf('2026-07-27', 2, 's2', { skillLoads: { 'acme-skill-i': 1 } }),
     ],
     prior: {}, today: '2026-07-28',
   });
   const reread = decodeUsage(JSON.parse(renderUsageFile(encodeUsage(folded))));
   assert.equal(reread.foldedThrough, folded.foldedThrough);
-  assert.deepEqual(reread.days['2026-07-26'].skillLoads, { 'merge-to-main': 2 });
+  assert.deepEqual(reread.days['2026-07-26'].skillLoads, { 'acme-skill-h': 2 });
   assert.equal(reread.days['2026-07-26'].checks.work.failures, 1);
   assert.equal(reread.weeks['2026-W30'].captures, 1);
   // …and folding again from the re-read prior lands in the same place, which is what
@@ -1099,12 +1099,12 @@ test('a version-1 file decodes as itself — the fold reads back weeks it froze 
     weeks: {
       '2026-W30': {
         days: 3, captures: 4, merges: 4, sessionDays: 3, userMessages: 40, userCommands: 1,
-        skillLoads: { 'merge-to-main': 3 }, checks: { work: { runs: 9, failures: 2 } }, checkFindings: {},
+        skillLoads: { 'acme-skill-h': 3 }, checks: { work: { runs: 9, failures: 2 } }, checkFindings: {},
       },
     },
   };
   const decoded = decodeUsage(v1);
-  assert.equal(decoded.weeks['2026-W30'].skillLoads['merge-to-main'], 3);
+  assert.equal(decoded.weeks['2026-W30'].skillLoads['acme-skill-h'], 3);
   // …and the next fold writes it out in the new shape without recounting anything.
   const folded = foldUsage({ files: [fileOf('2026-07-27', 1, 's1', {})], prior: decoded, today: '2026-07-28' });
   const file = encodeUsage(folded);
@@ -1124,7 +1124,7 @@ test('the first fold after the upgrade rewrites the whole file, losing nothing',
     days: {
       '2026-07-26': {
         captures: 2, merges: 2, sessions: 1, userMessages: 9, userCommands: 1,
-        skillLoads: { 'merge-to-main': 2 },
+        skillLoads: { 'acme-skill-h': 2 },
         checks: { work: { runs: 9, failures: 2, errors: 0, blocking: 3, advisory: 0, ciRuns: 0, ciFailures: 0 } },
         checkFindings: { 'task-lifecycle': { blocking: 3, advisory: 0 } },
         tasks: { 'tidy-repo/tidy-issues': { agent: 1, 'code-work': 0, skipped: 5, failed: 0, deferred: 0 } },
@@ -1134,7 +1134,7 @@ test('the first fold after the upgrade rewrites the whole file, losing nothing',
     weeks: {
       '2026-W30': {
         days: 3, captures: 4, merges: 4, sessionDays: 3, userMessages: 40, userCommands: 1,
-        skillLoads: { 'merge-to-main': 3 },
+        skillLoads: { 'acme-skill-h': 3 },
         checks: { work: { runs: 20, failures: 5, errors: 0, blocking: 8, advisory: 0, ciRuns: 0, ciFailures: 0 } },
         checkFindings: { 'task-lifecycle': { blocking: 8, advisory: 0 } },
         tasks: { 'tidy-repo/tidy-issues': { agent: 3, 'code-work': 0, skipped: 15, failed: 0, deferred: 0 } },

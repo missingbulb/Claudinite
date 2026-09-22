@@ -24,7 +24,7 @@ test('the two protocol copies are byte-identical', () => {
   // diff away from being a change to both, and review sees the protocol move once.
   assert.equal(
     at('packs/claudinite-fleet-sheepdog/tasks/fleet-add-missing-packs/protocol.mjs'),
-    at('packs/claudinite-lifecycle/tasks/adopt-requested-packs/protocol.mjs'),
+    at('packs/claudinite-lifecycle/tasks/adopt-requested-packs/protocol.mjs'), // @real-entity the real task this protocol addresses
   );
 });
 

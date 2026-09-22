@@ -15,8 +15,8 @@ import {
 // day (#1025). The verdict is the version gap and only the version gap.
 
 const ancestor = (status = 'identical') => ({ status });
-const stamp = (over = {}) => ({ engineVersion: 4, packVersions: { basics: 7 }, ...over });
-const canon = (over = {}) => ({ engineVersion: 4, packVersions: { basics: 7 }, ...over });
+const stamp = (over = {}) => ({ engineVersion: 4, packVersions: { 'acme-pack': 7 }, ...over });
+const canon = (over = {}) => ({ engineVersion: 4, packVersions: { 'acme-pack': 7 }, ...over });
 const classify = (over) => classifyFreshness({
   hasScheduler: true, installed: stamp(), canon: canon(), ...over,
 });
@@ -32,23 +32,23 @@ test('classifyFreshness: behind is a version gap, and the gap is named', () => {
   assert.equal(engine.state, 'behind');
   assert.match(engine.detail, /engine v3 → v4/);
 
-  const pack = classify({ installed: stamp({ packVersions: { basics: 5, core: 7 } }), canon: canon({ packVersions: { basics: 7, core: 7 } }) });
+  const pack = classify({ installed: stamp({ packVersions: { 'acme-pack': 5, core: 7 } }), canon: canon({ packVersions: { 'acme-pack': 7, core: 7 } }) });
   assert.equal(pack.state, 'behind');
-  assert.match(pack.detail, /basics v5 → v7/);
+  assert.match(pack.detail, /acme-pack v5 → v7/);
   assert.doesNotMatch(pack.detail, /core/, 'a pack already at canon is not part of the gap');
 
-  const both = classify({ installed: stamp({ engineVersion: 3, packVersions: { basics: 5 } }) });
-  assert.match(both.detail, /engine v3 → v4.*basics v5 → v7/);
+  const both = classify({ installed: stamp({ engineVersion: 3, packVersions: { 'acme-pack': 5 } }) });
+  assert.match(both.detail, /engine v3 → v4.*acme-pack v5 → v7/);
 });
 
 test('classifyFreshness: a pack ahead of canon, or gone from canon, is not a gap', () => {
   // A pack version above canon's happens mid-release; it is not "behind".
-  assert.equal(classify({ installed: stamp({ packVersions: { basics: 9 } }) }).state, FRESH);
+  assert.equal(classify({ installed: stamp({ packVersions: { 'acme-pack': 9 } }) }).state, FRESH);
   // A pack retired from canon has no manifest to compare against — canon carries no
   // entry for it, and an absent number must never read as zero.
-  assert.equal(classify({ installed: stamp({ packVersions: { basics: 7, retired: 3 } }) }).state, FRESH);
+  assert.equal(classify({ installed: stamp({ packVersions: { 'acme-pack': 7, retired: 3 } }) }).state, FRESH);
   // Neither does a stamped value that is not a number at all.
-  assert.equal(classify({ installed: stamp({ packVersions: { basics: 'seven' } }) }).state, FRESH);
+  assert.equal(classify({ installed: stamp({ packVersions: { 'acme-pack': 'seven' } }) }).state, FRESH);
 });
 
 // A member that records NEITHER number has never been written by an engine that
@@ -91,7 +91,7 @@ function textGh(files) {
 
 const CANON_FILES = {
   'o/canon:engine/version.mjs': '// a comment mentioning ENGINE_VERSION\nexport const ENGINE_VERSION = 4;\n',
-  'o/canon:packs/basics/pack.mjs': 'export default {\n  id: \'basics\',\n  version: 7,\n  minEngineVersion: 1,\n};\n',
+  'o/canon:packs/acme-pack/pack.mjs': 'export default {\n  id: \'acme-pack\',\n  version: 7,\n  minEngineVersion: 1,\n};\n',
 };
 
 test('canonVersions: reads engine and pack manifests once each, however many members ask', async () => {
@@ -99,8 +99,8 @@ test('canonVersions: reads engine and pack manifests once each, however many mem
   const v = canonVersions(gh, 'o/canon');
   assert.equal(await v.engine(), 4);
   assert.equal(await v.engine(), 4);
-  assert.equal(await v.pack('basics'), 7);
-  assert.equal(await v.pack('basics'), 7);
+  assert.equal(await v.pack('acme-pack'), 7);
+  assert.equal(await v.pack('acme-pack'), 7);
   assert.equal(seen.length, 2, 'a fleet of 30 members must not re-read canon 30 times');
 });
 
@@ -125,11 +125,11 @@ const probeOpts = (gh) => ({ canon: canonVersions(gh, 'o/canon') });
 
 test('probeMount: reads the scheduler and canon\'s versions, never the declaration again', async () => {
   const { gh, seen } = textGh(CANON_FILES);
-  const decl = { engineVersion: 3, packs: [{ id: 'basics', version: 7 }] };
+  const decl = { engineVersion: 3, packs: [{ id: 'acme-pack', version: 7 }] };
   const p = await probeMount(gh, 'o/awake', decl, probeOpts(gh));
   assert.equal(p.hasScheduler, false);           // the fake serves no workflow file
-  assert.deepEqual(p.installed, { engineVersion: 3, packVersions: { basics: 7 } });
-  assert.deepEqual(p.canon, { engineVersion: 4, packVersions: { basics: 7 } });
+  assert.deepEqual(p.installed, { engineVersion: 3, packVersions: { 'acme-pack': 7 } });
+  assert.deepEqual(p.canon, { engineVersion: 4, packVersions: { 'acme-pack': 7 } });
   assert.equal(seen.filter((s) => s.includes('.claudinite-settings.json')).length, 0);
 });
 
@@ -137,9 +137,9 @@ test('probeMount: reads the scheduler and canon\'s versions, never the declarati
 // retired block — read past it and a current mount reads as never vendored.
 test('probeMount: a pre-rename member is measured identically', async () => {
   const { gh } = textGh(CANON_FILES);
-  const decl = { claudinite: { updated: 'x', ref: 'abc', engineVersion: 3, packVersions: { basics: 7 } } };
+  const decl = { claudinite: { updated: 'x', ref: 'abc', engineVersion: 3, packVersions: { 'acme-pack': 7 } } };
   const p = await probeMount(gh, 'o/awake', decl, probeOpts(gh));
-  assert.deepEqual(p.installed, { engineVersion: 3, packVersions: { basics: 7 } });
+  assert.deepEqual(p.installed, { engineVersion: 3, packVersions: { 'acme-pack': 7 } });
 });
 
 test('probeMount: a member with no versions is never compared against canon', async () => {

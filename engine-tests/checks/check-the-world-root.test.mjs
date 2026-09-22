@@ -27,7 +27,7 @@ const CHECK_THE_WORLD = join(CANON, 'engine/checks/check_the_world.mjs');
 // on rather than crashing the test.
 function fromDeletedCwd(args, env = {}) {
   const box = mkdtempSync(join(tmpdir(), 'ctw-root-'));
-  const doomed = join(box, 'mount', 'packs', 'basics', 'tasks', 'baselining');
+  const doomed = join(box, 'mount', 'packs', 'acme-pack', 'tasks', 'baselining');
   mkdirSync(doomed, { recursive: true });
   // A minimal repo for the sweep to look at, OUTSIDE the directory that gets deleted.
   const repo = join(box, 'repo');

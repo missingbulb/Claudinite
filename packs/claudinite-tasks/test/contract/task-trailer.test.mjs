@@ -24,8 +24,8 @@ test('a writer with no task to name stamps nothing, and interpolates cleanly', (
 test('the trailer is never doubled — the lanes compose', () => {
   // A worker's own message, then the merge commit built from it: two stamps would
   // read as two tasks.
-  const once = withTaskTrailer('Sweep', 'basics/improve-comments');
-  assert.equal(withTaskTrailer(once, 'basics/improve-comments'), once);
+  const once = withTaskTrailer('Sweep', 'acme-pack/acme-task-b');
+  assert.equal(withTaskTrailer(once, 'acme-pack/acme-task-b'), once);
   assert.equal(once.split(TASK_TRAILER).length - 1, 1);
 });
 

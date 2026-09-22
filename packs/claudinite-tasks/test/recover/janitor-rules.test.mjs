@@ -247,7 +247,7 @@ test('the orphaned comment names the task that is gone', () => {
 
 // The gap ClaudiniteCanary#115 sat in for eleven days (#1461). Its task is carried, so an
 // id lookup alone reads it as live; what is dead is the PATH its body names, left behind
-// by the `grow_with_claudinite` → `claudinite-growth` rename. Nothing rewrites an item
+// by the `grow_with_claudinite` → `acme-pack-f` rename. Nothing rewrites an item
 // body, so the executor's path guard refuses it on every pick, forever — and because a
 // `failure` park holds the task's lane, the task stops being scheduled at all.
 test('a park naming a live task at a path it no longer lives at is orphaned', () => {
@@ -289,16 +289,16 @@ test('a park wearing only the two-label era sub-label is seen — the rule reads
 test('a pre-rename pack id in the title resolves to today\'s spelling before the lookup', () => {
   const preRename = {
     number: 115,
-    title: '[claudinite-work] tidy-repo/logs-prune',
+    title: '[claudinite-work] tidy-repo/acme-task-m',
     labels: ['needs-human', 'origin:schedule', 'task:needs-human-failure'],
     state: 'open',
-    body: '.claudinite/shared/packs/basics/tasks/logs-prune/task.md\n',
+    body: '.claudinite/shared/packs/basics/tasks/acme-task-m/task.md\n', // @real-entity the rename map under test resolves the retired spelling to this id
     created_at: '2026-08-10T04:00:00Z',
     updated_at: '2026-08-10T04:00:00Z',
   };
   assert.ok(isParked(preRename));
   assert.deepEqual(orphanedParkItems([preRename], {
-    tasks: [{ pack: 'basics', id: 'logs-prune', taskPath: '.claudinite/shared/packs/basics/tasks/logs-prune/task.md' }],
+    tasks: [{ pack: 'basics', id: 'acme-task-m', taskPath: '.claudinite/shared/packs/basics/tasks/acme-task-m/task.md' }], // @real-entity the rename map under test resolves the retired spelling to this id
   }), []);
 });
 
@@ -307,15 +307,15 @@ test('a pre-rename pack id in the title resolves to today\'s spelling before the
 test('ClaudiniteCanary#115 — a live task named at its pre-rename path — is orphaned', () => {
   const canary115 = {
     number: 115,
-    title: '[claudinite-work] grow_with_claudinite/logs-prune',
+    title: '[claudinite-work] grow_with_claudinite/acme-task-m',
     labels: ['needs-human', 'origin:schedule', 'task:needs-human-failure'],
     state: 'open',
-    body: '.claudinite/shared/packs/grow_with_claudinite/tasks/logs-prune/task.md\n\nNot-before: 2026-08-20T04:00:00.000Z\n',
+    body: '.claudinite/shared/packs/grow_with_claudinite/tasks/acme-task-m/task.md\n\nNot-before: 2026-08-20T04:00:00.000Z\n',
     created_at: '2026-08-19T03:55:44Z',
     updated_at: '2026-08-20T04:49:39Z',
   };
   assert.deepEqual(orphanedParkItems([canary115], {
-    tasks: [{ pack: 'claudinite-growth', id: 'logs-prune', taskPath: '.claudinite/shared/packs/claudinite-growth/tasks/logs-prune/task.md' }],
+    tasks: [{ pack: 'acme-pack-f', id: 'acme-task-m', taskPath: '.claudinite/shared/packs/acme-pack-f/tasks/acme-task-m/task.md' }],
   }).map((i) => i.number), [115]);
 });
 

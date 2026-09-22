@@ -29,7 +29,7 @@ const quiet = async (fn) => {
 
 test('sweep re-arms a lost trigger by removing and re-adding its own ready label', async () => {
   const { gh, calls } = janitorGh([
-    { number: 11, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: READY_FLEET_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
+    { number: 11, title: '[claudinite-task] acme-pack/baselining d2026-07-22', labels: [{ name: READY_FLEET_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
   ]);
   const out = await quiet(() => sweep(gh, 'o/r', '2026-07-22T02:00:00Z'));
   assert.deepEqual(out.rearmed, [11]);
@@ -45,7 +45,7 @@ test('sweep re-arms a lost trigger by removing and re-adding its own ready label
 
 test('sweep leaves a fresh, claimed, or commented issue completely alone', async () => {
   const { gh, calls } = janitorGh([
-    { number: 1, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:55:00Z', updated_at: '2026-07-22T01:55:00Z', comments: 0 }, // 5m old
+    { number: 1, title: '[claudinite-task] acme-pack/baselining d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:55:00Z', updated_at: '2026-07-22T01:55:00Z', comments: 0 }, // 5m old
     { number: 2, title: '[claudinite-task] p/b d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:58:00Z', comments: 1 }, // live claim
     { number: 3, title: '[claudinite-task] p/c d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:30:00Z', comments: 2 }, // engaged
   ]);
@@ -56,7 +56,7 @@ test('sweep leaves a fresh, claimed, or commented issue completely alone', async
 
 test('sweep escalates a stale issue and does NOT also re-arm it', async () => {
   const { gh, calls } = janitorGh([
-    { number: 21, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
+    { number: 21, title: '[claudinite-task] acme-pack/baselining d2026-07-22', labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T01:00:00Z', comments: 0 },
   ]);
   const out = await quiet(() => sweep(gh, 'o/r', '2026-07-25T05:00:00Z')); // ~3d → past 2 daily periods
   assert.deepEqual(out.stale, [21]);

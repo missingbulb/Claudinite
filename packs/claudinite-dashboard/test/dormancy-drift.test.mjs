@@ -12,15 +12,15 @@ import { isDormant as queueIsDormant } from '../../claudinite-tasks/src/contract
 const DECLARATIONS = [
   null, undefined, 42, 'dormant', {}, { dormant: true }, { dormant: false }, { dormant: 'true' },
   { raw: { dormant: true } }, { raw: { dormant: false }, dormant: true },
-  { packs: [] }, { packs: ['basics'] }, { packs: [{ id: 'claudinite-tasks' }] },
-  { packs: [{ id: 'claudinite-tasks', config: { dormant: true } }] },
-  { packs: [{ id: 'claudinite-tasks', config: { dormant: false } }], dormant: true },
-  { packs: [{ id: 'claudinite-tasks', config: { dormant: { since: 1 } } }] },
+  { packs: [] }, { packs: ['acme-pack'] }, { packs: [{ id: 'claudinite-tasks' }] }, // @real-entity dormancy is this pack's own setting; the drift guard reads its real key
+  { packs: [{ id: 'claudinite-tasks', config: { dormant: true } }] }, // @real-entity dormancy is this pack's own setting; the drift guard reads its real key
+  { packs: [{ id: 'claudinite-tasks', config: { dormant: false } }], dormant: true }, // @real-entity dormancy is this pack's own setting; the drift guard reads its real key
+  { packs: [{ id: 'claudinite-tasks', config: { dormant: { since: 1 } } }] }, // @real-entity dormancy is this pack's own setting; the drift guard reads its real key
   { packs: [{ id: 'tasks', config: { dormant: true } }] },
   { packs: [{ id: 'claudinite-scheduler', config: { dormant: true } }] },
-  { packConfig: { 'claudinite-tasks': { dormant: true } } },
-  { packConfig: { 'claudinite-tasks': {} }, packs: [{ id: 'claudinite-tasks', config: { dormant: true } }] },
-  { packConfig: { 'claudinite-tasks': null }, raw: { dormant: true } },
+  { packConfig: { 'claudinite-tasks': { dormant: true } } }, // @real-entity dormancy is this pack's own setting; the drift guard reads its real key
+  { packConfig: { 'claudinite-tasks': {} }, packs: [{ id: 'claudinite-tasks', config: { dormant: true } }] }, // @real-entity dormancy is this pack's own setting; the drift guard reads its real key
+  { packConfig: { 'claudinite-tasks': null }, raw: { dormant: true } }, // @real-entity dormancy is this pack's own setting; the drift guard reads its real key
 ];
 
 test('this pack reads the dormancy of every declaration exactly as the queue does', () => {

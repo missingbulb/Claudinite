@@ -114,7 +114,7 @@ test('the input fleet-api sends is one the scheduler run stub declares', async (
   const sent = [...apiSrc.matchAll(/inputs:\s*\{\s*([A-Za-z_][\w]*)\s*:/g)].map((m) => m[1]);
   assert.ok(sent.length, 'fleet-api must dispatch with at least one named input');
 
-  for (const stub of ['packs/claudinite-tasks/stubs/claudinite-scheduler.yml', '.github/workflows/claudinite-scheduler.yml']) {
+  for (const stub of ['packs/claudinite-tasks/stubs/claudinite-scheduler.yml', '.github/workflows/claudinite-scheduler.yml']) { // @real-entity the real stub and task this forces
     const yml = readFileSync(join(ROOT, stub), 'utf8');
     const block = yml.match(/workflow_dispatch:\s*\n\s+inputs:\s*\n([\s\S]*?)\n(?=\S|\n\S)/);
     assert.ok(block, `${stub} must declare workflow_dispatch inputs — a bare workflow_dispatch 422s every named input`);
@@ -135,15 +135,15 @@ test('the member-side scheduler run resolves the very id this lever sends', asyn
   const { readFileSync } = await import('node:fs');
   // The member's real declaration: a bare wake mints or wakes a SCHEDULED task's
   // standing item, where an unscheduled one has nothing standing to reach.
-  const decl = normalizeTaskDeclaration(JSON.parse(readFileSync(join(ROOT, 'packs/claudinite-lifecycle/tasks/update/task.json'), 'utf8')));
-  const tasks = [{ pack: 'claudinite-lifecycle', id: FORCED_TASK, decl }];
+  const decl = normalizeTaskDeclaration(JSON.parse(readFileSync(join(ROOT, 'packs/claudinite-lifecycle/tasks/update/task.json'), 'utf8'))); // @real-entity the real stub and task this forces
+  const tasks = [{ pack: 'claudinite-lifecycle', id: FORCED_TASK, decl }]; // @real-entity the real stub and task this forces
   const items = [{
     number: 1, state: 'open', labels: ['task:blocked'],
     title: `[claudinite-work] claudinite-lifecycle/${FORCED_TASK}`,
   }];
   const { wake, unmatched } = planWake(FORCED_TASK, tasks, items);
   assert.deepEqual(unmatched, [], `the scheduler run must resolve "${FORCED_TASK}" — this is the exact string fleet-baseline dispatches`);
-  assert.deepEqual(wake, [{ id: `claudinite-lifecycle/${FORCED_TASK}`, issue: 1 }]);
+  assert.deepEqual(wake, [{ id: `claudinite-lifecycle/${FORCED_TASK}`, issue: 1 }]); // @real-entity the real stub and task this forces
 });
 
 test('the 422 message names the stale-mount cause, not just the disabled-workflow one', () => {

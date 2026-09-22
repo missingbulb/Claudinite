@@ -23,11 +23,11 @@ test('a branch carries its date and a seed, so two runs on one day cannot collid
 test('the PR text leads with the terminal, then what moved', () => {
   const { title, body } = updatePullText(
     { action: 'needs-human', why: 'the converged tree FAILED its self-test' },
-    { engine: { from: 1, to: 2 }, packs: { plan: [{ id: 'basics', from: 1, to: 2 }, { id: 'claudinite-fleet-sheepdog', from: 3, to: 3 }] } },
+    { engine: { from: 1, to: 2 }, packs: { plan: [{ id: 'acme-pack', from: 1, to: 2 }, { id: 'acme-pack-c', from: 3, to: 3 }] } },
   );
   assert.equal(title, 'Claudinite update: engine v1 → v2 and 1 pack upgraded');
-  assert.ok(!title.includes('claudinite-fleet-sheepdog'), 'a pack that did not move is not news');
-  assert.match(body, /- basics 1 → 2/, 'the per-pack detail lives in the body');
+  assert.ok(!title.includes('acme-pack-c'), 'a pack that did not move is not news');
+  assert.match(body, /- acme-pack 1 → 2/, 'the per-pack detail lives in the body');
   assert.match(body.split('\n')[0], /needs-human/, 'the first line says which terminal fired');
   assert.match(body, /FAILED its self-test/);
   assert.match(body, /stays open/);
@@ -35,11 +35,11 @@ test('the PR text leads with the terminal, then what moved', () => {
 
 test('the title summarizes packs by count rather than naming every one', () => {
   const plan = [
-    { id: 'basics', from: 5, to: 7 },
+    { id: 'acme-pack', from: 5, to: 7 },
     { id: 'claudinite-lifecycle', from: 6, to: 8 },
-    { id: 'git-github', from: 3, to: 4 },
-    { id: 'claudinite-growth', from: 6, to: 7 },
-    { id: 'product-wiki', from: 4, to: 5 },
+    { id: 'acme-pack-d', from: 3, to: 4 },
+    { id: 'acme-pack-f', from: 6, to: 7 },
+    { id: 'acme-pack-e', from: 4, to: 5 },
   ];
   const { title, body } = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 4, to: 5 }, packs: { plan } });
   assert.equal(title, 'Claudinite update: engine v4 → v5 and 5 packs upgraded');
@@ -47,9 +47,9 @@ test('the title summarizes packs by count rather than naming every one', () => {
 });
 
 test('each half of the title appears only when that half moved', () => {
-  const engineOnly = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 4, to: 5 }, packs: { plan: [{ id: 'basics', from: 2, to: 2 }] } });
+  const engineOnly = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 4, to: 5 }, packs: { plan: [{ id: 'acme-pack', from: 2, to: 2 }] } });
   assert.equal(engineOnly.title, 'Claudinite update: engine v4 → v5');
-  const packsOnly = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 5, to: 5 }, packs: { plan: [{ id: 'basics', from: 1, to: 2 }, { id: 'product-wiki', from: 4, to: 5 }] } });
+  const packsOnly = updatePullText({ action: 'merge', why: 'green' }, { engine: { from: 5, to: 5 }, packs: { plan: [{ id: 'acme-pack', from: 1, to: 2 }, { id: 'acme-pack-e', from: 4, to: 5 }] } });
   assert.equal(packsOnly.title, 'Claudinite update: 2 packs upgraded');
 });
 

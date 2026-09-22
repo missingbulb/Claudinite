@@ -3,7 +3,7 @@
 // later in the same function, and a miss here is not a skipped dispatch but a
 // duplicate write: the block re-reads the queue, fails to see the standing item
 // the ops above filed seconds earlier, and mints a second one beside it. On
-// Shepherd a forced `claudinite-lifecycle/update` filed #577 and then #582
+// Shepherd a forced `acme-pack-b/acme-task-c` filed #577 and then #582
 // fifteen seconds later, and both claimed an executor (#1979).
 //
 // So the wake's view is a UNION, exactly as the gate's verdict is: what the list
@@ -17,9 +17,9 @@ import { planWake, withOwnWrites } from '../../src/schedule/run.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
 
 const task = {
-  pack: 'claudinite-lifecycle',
-  id: 'update',
-  taskPath: '.claudinite/shared/packs/claudinite-lifecycle/tasks/update/task.md',
+  pack: 'acme-pack-b',
+  id: 'acme-task-c',
+  taskPath: '.claudinite/shared/packs/acme-pack-b/tasks/acme-task-c/task.md',
   decl: normalizeTaskDeclaration({ trigger: 'schedule', preconditions: ['due:daily'] }),
 };
 
@@ -27,7 +27,7 @@ const task = {
 // `listWorkItems` projects — the two are read by the same planner.
 const minted = {
   number: 577,
-  title: '[claudinite-work] claudinite-lifecycle/update',
+  title: '[claudinite-work] acme-pack-b/acme-task-c',
   body: `${task.taskPath}\n\nExecute the Claudinite task above.\n`,
   state: 'open',
   labels: ['task:origin:planned', 'task:status:waiting-for-executor'],
@@ -38,7 +38,7 @@ const minted = {
 // instead was a second standing item, filed fifteen seconds after the first.
 test('a forced wake sees the standing item this run just filed, unseen by the list read', () => {
   const stale = []; // the read has not caught up
-  const { create, already } = planWake('claudinite-lifecycle/update', [task], withOwnWrites(stale, [minted]));
+  const { create, already } = planWake('acme-pack-b/acme-task-c', [task], withOwnWrites(stale, [minted]));
   assert.deepEqual(create, [], 'the force minted a second standing item beside the one this run just filed');
   assert.deepEqual(already.map((a) => a.issue), [577], 'the force did not see the item this run filed');
 });
@@ -47,7 +47,7 @@ test('a forced wake sees the standing item this run just filed, unseen by the li
 // the union now also carries into view.
 test('a forced wake still wakes a parked item this run just filed', () => {
   const parked = { ...minted, labels: ['task:origin:planned', 'task:status:needs-human-failure'] };
-  const { wake, create } = planWake('claudinite-lifecycle/update', [task], withOwnWrites([], [parked]));
+  const { wake, create } = planWake('acme-pack-b/acme-task-c', [task], withOwnWrites([], [parked]));
   assert.deepEqual(create, [], 'the force minted an item beside the parked one');
   assert.deepEqual(wake.map((w) => w.issue), [577], 'the force did not wake the parked item');
 });

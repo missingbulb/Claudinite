@@ -29,7 +29,7 @@ test('canonicalPackIdAmong: an absorbed leftover beside its survivor keeps its o
 });
 
 test('canonicalPackIdAmong: an id no entry renames is returned untouched', () => {
-  assert.equal(canonicalPackIdAmong('git-github', new Set(['git-github'])), 'git-github');
+  assert.equal(canonicalPackIdAmong('git-github', new Set(['git-github'])), 'git-github'); // @real-entity the rename map under test carries this id
 });
 
 test('canonicalPackIdAmong: resolving every id in a tree yields no duplicates', () => {

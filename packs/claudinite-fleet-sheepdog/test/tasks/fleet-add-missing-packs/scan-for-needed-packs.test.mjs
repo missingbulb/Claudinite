@@ -46,10 +46,10 @@ test('suspectedBody: names the fingerprints it could NOT decide, with the reason
   // member's agent — which CAN decide them from its checkout — would never look.
   const body = suspectedBody({
     fits: ['node'],
-    undecided: [{ id: 'jwt', why: 'the fingerprint wanted 300 file reads (budget 24)' }],
+    undecided: [{ id: 'acme-pack-j', why: 'the fingerprint wanted 300 file reads (budget 24)' }],
   });
   assert.match(body, /Not decided from outside/);
-  assert.match(body, /`jwt`/);
+  assert.match(body, /`acme-pack-j`/);
   assert.match(body, /300 file reads/);
   assert.match(body, /localFits/);
 });
@@ -57,7 +57,7 @@ test('suspectedBody: names the fingerprints it could NOT decide, with the reason
 test('suspectedBody: is a pure function of its inputs — the same finding renders identically', () => {
   // The convergence rewrites the issue only when the body CHANGES, so any instability
   // here (a date, a set iteration order) would rewrite every issue every week.
-  const args = { fits: ['firebase', 'node'], undecided: [{ id: 'jwt', why: 'x' }] };
+  const args = { fits: ['acme-pack-k', 'node'], undecided: [{ id: 'acme-pack-j', why: 'x' }] };
   assert.equal(suspectedBody(args), suspectedBody(args));
 });
 
@@ -135,11 +135,11 @@ test('renderFitSummary: names members with fits AND the ones that came back clea
   // The full-roster property: a reader must be able to tell "fine" from "fell out of
   // the report", so `fitted` is named as loudly as the findings.
   const s = summary({
-    findings: [finding('acme/app', { fits: ['node', 'firebase'] })],
+    findings: [finding('acme/app', { fits: ['node', 'acme-pack-k'] })],
     fitted: ['acme/site'], dormant: ['acme/old'], outOfScope: ['acme/fork (fork)'],
     fired: ['acme/app'],
   });
-  assert.match(s, /acme\/app` → node, firebase/);
+  assert.match(s, /acme\/app` → node, acme-pack-k/);
   assert.match(s, /\*\*Fitted:\*\* acme\/site/);
   assert.match(s, /acme\/old/);
   assert.match(s, /acme\/fork \(fork\)/);

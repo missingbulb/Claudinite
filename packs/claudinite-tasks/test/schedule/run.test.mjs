@@ -276,27 +276,27 @@ test('a dead claim on an ad-hoc item honours the request task\'s on_interrupt', 
 // Forcing across repos: the enforcer dispatches, the member wakes its own item.
 
 const wakeItems = [
-  item({ task: 'update', labels: ['task:status:blocked', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
-  item({ task: 'improve-comments', labels: ['task:status:running-executor', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
+  item({ task: 'acme-task-c', labels: ['task:status:blocked', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
+  item({ task: 'acme-task-b', labels: ['task:status:running-executor', 'origin:schedule'], created_at: '2026-08-16T00:00:00Z' }),
 ];
-const wakeTasks = [task('update', ['schedule:at-most-daily']), task('improve-comments', ['schedule:at-most-daily'])];
+const wakeTasks = [task('acme-task-c', ['schedule:at-most-daily']), task('acme-task-b', ['schedule:at-most-daily'])];
 
 test('a bare task id resolves against the repo\'s own declared packs', () => {
-  const { wake, unmatched } = planWake('update', wakeTasks, wakeItems);
+  const { wake, unmatched } = planWake('acme-task-c', wakeTasks, wakeItems);
   assert.deepEqual(unmatched, []);
-  assert.deepEqual(wake, [{ id: 'p/update', issue: wakeItems[0].number }]);
+  assert.deepEqual(wake, [{ id: 'p/acme-task-c', issue: wakeItems[0].number }]);
 });
 
 test('a pack-qualified id and several ids at once both resolve', () => {
-  const { wake } = planWake('p/update', wakeTasks, wakeItems);
-  assert.deepEqual(wake, [{ id: 'p/update', issue: wakeItems[0].number }]);
-  const both = planWake('update improve-comments', wakeTasks, wakeItems);
+  const { wake } = planWake('p/acme-task-c', wakeTasks, wakeItems);
+  assert.deepEqual(wake, [{ id: 'p/acme-task-c', issue: wakeItems[0].number }]);
+  const both = planWake('acme-task-c acme-task-b', wakeTasks, wakeItems);
   assert.equal(both.wake.length + both.already.length, 2);
 });
 
 test('an id naming nothing is REPORTED, never silently dropped', () => {
   // A fleet-wide force whose report counts only what it woke reads as coverage.
-  const { wake, unmatched } = planWake('update nonesuch', wakeTasks, wakeItems);
+  const { wake, unmatched } = planWake('acme-task-c nonesuch', wakeTasks, wakeItems);
   assert.equal(wake.length, 1);
   assert.equal(unmatched.length, 1);
   assert.equal(unmatched[0].id, 'nonesuch');
@@ -308,17 +308,17 @@ test('a task whose standing item is CLOSED is forced by minting a new one', () =
   // and the next appears only at its anchor, so a daily task has no item for most
   // of the day. A force that reported "nothing to wake" there would fail on most
   // members most of the time — which is exactly what a fleet converge lever cannot do.
-  const closed = [item({ task: 'update', labels: [], state: 'closed', created_at: '2026-08-16T00:00:00Z' })];
-  const { wake, create, unmatched } = planWake('update', wakeTasks, closed);
+  const closed = [item({ task: 'acme-task-c', labels: [], state: 'closed', created_at: '2026-08-16T00:00:00Z' })];
+  const { wake, create, unmatched } = planWake('acme-task-c', wakeTasks, closed);
   assert.deepEqual(wake, []);
   assert.deepEqual(unmatched, []);
   assert.equal(create.length, 1);
-  assert.equal(create[0].id, 'p/update');
-  assert.equal(create[0].taskPath, 'packs/p/tasks/update/task.md');
+  assert.equal(create[0].id, 'p/acme-task-c');
+  assert.equal(create[0].taskPath, 'packs/p/tasks/acme-task-c/task.md');
 });
 
 test('a task that has never had an item at all is also minted, not refused', () => {
-  const { create, unmatched } = planWake('update', wakeTasks, []);
+  const { create, unmatched } = planWake('acme-task-c', wakeTasks, []);
   assert.deepEqual(unmatched, []);
   assert.equal(create.length, 1);
 });
@@ -353,31 +353,31 @@ test('a minted item consumes the current occurrence, so the scheduler run does n
   // would let the next scheduler run create a second one beside it.
   const now = '2026-08-16T10:00:00Z';
   const minted = item({
-    task: 'update', labels: ['origin:schedule', 'task:status:waiting-for-executor'],
+    task: 'acme-task-c', labels: ['origin:schedule', 'task:status:waiting-for-executor'],
     created_at: now, updated_at: now,
   });
-  const { ops } = await planSchedulerRun({ tasks: [task('update', ['schedule:at-most-daily'])], items: [minted], now, schedule: SCHEDULE, evaluate: yes });
+  const { ops } = await planSchedulerRun({ tasks: [task('acme-task-c', ['schedule:at-most-daily'])], items: [minted], now, schedule: SCHEDULE, evaluate: yes });
   assert.deepEqual(kinds(ops, 'create'), [], 'the scheduler run must not mint a second standing item beside the forced one');
 });
 
 test('an item already in flight is left alone — waking it would drop an episode boundary on a live claim', () => {
   for (const label of ['task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent']) {
-    const live = [item({ task: 'update', labels: [label], created_at: '2026-08-16T00:00:00Z' })];
-    const { wake, already } = planWake('update', wakeTasks, live);
+    const live = [item({ task: 'acme-task-c', labels: [label], created_at: '2026-08-16T00:00:00Z' })];
+    const { wake, already } = planWake('acme-task-c', wakeTasks, live);
     assert.deepEqual(wake, [], `${label} must not be re-woken`);
     assert.equal(already.length, 1);
   }
 });
 
 test('a needs-human item IS wakeable — the force is the sanctioned road back from triage', () => {
-  const parked = [item({ task: 'update', labels: ['task:status:needs-human-failure'], created_at: '2026-08-16T00:00:00Z' })];
-  const { wake } = planWake('update', wakeTasks, parked);
+  const parked = [item({ task: 'acme-task-c', labels: ['task:status:needs-human-failure'], created_at: '2026-08-16T00:00:00Z' })];
+  const { wake } = planWake('acme-task-c', wakeTasks, parked);
   assert.equal(wake.length, 1);
 });
 
 test('an ambiguous bare id refuses rather than guessing which pack meant it', () => {
-  const twoPacks = [task('update', ['schedule:at-most-daily']), { ...task('update', ['schedule:at-most-daily']), pack: 'q' }];
-  const { wake, unmatched } = planWake('update', twoPacks, wakeItems);
+  const twoPacks = [task('acme-task-c', ['schedule:at-most-daily']), { ...task('acme-task-c', ['schedule:at-most-daily']), pack: 'q' }];
+  const { wake, unmatched } = planWake('acme-task-c', twoPacks, wakeItems);
   assert.deepEqual(wake, []);
   assert.match(unmatched[0].why, /name it as pack\/task/);
 });

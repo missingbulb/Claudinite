@@ -156,12 +156,12 @@ test('a scope list says how many it dropped rather than reading as the whole win
 
 test('a pending round is never stacked on: unknown paths count as pending', () => {
   const open = (prs) => ({ prs: { open: prs } });
-  assert.equal(evaluate(['no-open-pr-touching:product-wiki/'], open([])).run, true);
-  assert.equal(evaluate(['no-open-pr-touching:product-wiki/'], open([{ number: 1, changedPaths: ['src/a.mjs'] }])).run, true);
-  assert.equal(evaluate(['no-open-pr-touching:product-wiki/'], open([{ number: 2, changedPaths: ['product-wiki/M/README.md'] }])).run, false);
+  assert.equal(evaluate(['no-open-pr-touching:acme-pack-e/'], open([])).run, true);
+  assert.equal(evaluate(['no-open-pr-touching:acme-pack-e/'], open([{ number: 1, changedPaths: ['src/a.mjs'] }])).run, true);
+  assert.equal(evaluate(['no-open-pr-touching:acme-pack-e/'], open([{ number: 2, changedPaths: ['acme-pack-e/M/README.md'] }])).run, false);
   // A file list that could not be read is UNKNOWN, and a skipped round is cheaper
   // than an unreviewed one stacked on it.
-  const opaque = evaluate(['no-open-pr-touching:product-wiki/'], open([{ number: 3, changedPaths: null }]));
+  const opaque = evaluate(['no-open-pr-touching:acme-pack-e/'], open([{ number: 3, changedPaths: null }]));
   assert.equal(opaque.run, false);
   assert.match(opaque.reason, /#3.*unknown/);
 

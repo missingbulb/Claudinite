@@ -484,6 +484,12 @@ Below are rules on how to work on this repo.
 
 ## Proving a change
 
+- **Needing a pack, task, skill or check name in a test** - the invented ones here are
+  `acme-pack`, `acme-task`, `acme-skill`; a pack's own tests name its own elements freely, a case
+  that needs *a* canon pack rather than a particular one takes `A_CANON_PACK` from
+  `engine-tests/helpers.mjs`, and a line whose subject really is a real entity ends
+  `// @real-entity <why>`. (test-fixtures-use-fake-entities)
+
 - **Testing a change to a task's triggering** — drive the real `planSchedulerRun` from a clock at
   which the task's anchor has NOT come. Instantiation is decided before any precondition runs, so
   starting from a queued item proves only "works once instantiated". (testing-change-tasks)

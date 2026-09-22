@@ -13,21 +13,21 @@ import { execRecordLine } from '../../src/session/record-exec.mjs';
 // So the pins below are literal lines, not a round trip through a renderer that no
 // longer exists.
 test('a record of the shape the slot scheduler emitted parses to its four fields', () => {
-  assert.deepEqual(parseTaskRun(`${TASK_RUN_TAG} v1 claudinite-growth/usage-fold [d2026-07-29] agent`), {
-    pack: 'claudinite-growth', task: 'usage-fold', slotId: 'd2026-07-29', outcome: 'agent',
+  assert.deepEqual(parseTaskRun(`${TASK_RUN_TAG} v1 acme-pack-f/usage-fold [d2026-07-29] agent`), {
+    pack: 'acme-pack-f', task: 'usage-fold', slotId: 'd2026-07-29', outcome: 'agent',
   });
 });
 
 test('a line parses through the Actions timestamp prefix a fetched log carries', () => {
   // Without this the fold reads every downloaded run log as having printed nothing.
-  const line = `2026-07-29T04:44:12.3456789Z ${TASK_RUN_TAG} v1 basics/improve-comments [d2026-07-29] skipped`;
+  const line = `2026-07-29T04:44:12.3456789Z ${TASK_RUN_TAG} v1 acme-pack/acme-task-b [d2026-07-29] skipped`;
   assert.deepEqual(parseTaskRun(line), {
-    pack: 'basics', task: 'improve-comments', slotId: 'd2026-07-29', outcome: 'skipped',
+    pack: 'acme-pack', task: 'acme-task-b', slotId: 'd2026-07-29', outcome: 'skipped',
   });
 });
 
 test('a trailing carriage return does not defeat the parse', () => {
-  assert.ok(parseTaskRun(`${TASK_RUN_TAG} v1 basics/baselining [h2026-07-29T04] code-work\r`));
+  assert.ok(parseTaskRun(`${TASK_RUN_TAG} v1 acme-pack/baselining [h2026-07-29T04] code-work\r`));
 });
 
 test('both pre-rename outcome words still parse, normalized to code-work', () => {
@@ -38,7 +38,7 @@ test('both pre-rename outcome words still parse, normalized to code-work', () =>
 });
 
 test('anything that is not a record of this version parses to null', () => {
-  assert.equal(parseTaskRun('- claudinite-growth/usage-fold [d2026-07-29] run-inline — fold 3 logs'), null);
+  assert.equal(parseTaskRun('- acme-pack-f/usage-fold [d2026-07-29] run-inline — fold 3 logs'), null);
   assert.equal(parseTaskRun(`${TASK_RUN_TAG} v2 a/b [d2026-07-29] agent`), null, 'a future shape is not half-read');
   assert.equal(parseTaskRun(`${TASK_RUN_TAG} v1 a/b [d2026-07-29] exploded`), null, 'an unknown outcome mints no counter');
   assert.equal(parseTaskRun(''), null);
@@ -47,12 +47,12 @@ test('anything that is not a record of this version parses to null', () => {
 test('parseTaskRuns picks its own lines out of a whole job log', () => {
   const log = [
     '2026-07-29T04:44:01Z ## Claudinite scheduler',
-    '2026-07-29T04:44:01Z - basics/improve-comments [d2026-07-29] create — no dispatch issue yet',
-    `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 basics/improve-comments [d2026-07-29] agent`,
-    `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 claudinite-growth/usage-fold [d2026-07-29] code-work`,
+    '2026-07-29T04:44:01Z - acme-pack/acme-task-b [d2026-07-29] create — no dispatch issue yet',
+    `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 acme-pack/acme-task-b [d2026-07-29] agent`,
+    `2026-07-29T04:44:02Z ${TASK_RUN_TAG} v1 acme-pack-f/usage-fold [d2026-07-29] code-work`,
     '2026-07-29T04:44:03Z ##[endgroup]',
   ].join('\n');
-  assert.deepEqual(parseTaskRuns(log).map((r) => `${r.task}:${r.outcome}`), ['improve-comments:agent', 'usage-fold:code-work']);
+  assert.deepEqual(parseTaskRuns(log).map((r) => `${r.task}:${r.outcome}`), ['acme-task-b:agent', 'usage-fold:code-work']);
   assert.deepEqual(parseTaskRuns(''), []);
 });
 
@@ -65,8 +65,8 @@ test('emptyTaskRun carries every outcome at zero, so a row shape never depends o
 
 test('renderTaskExec/parseTaskExec round-trip for every status', () => {
   for (const status of TASK_EXEC_STATUSES) {
-    const line = renderTaskExec({ pack: 'basics', task: 'improve-comments', slotId: 'd2026-08-06', status });
-    assert.deepEqual(parseTaskExec(line), { pack: 'basics', task: 'improve-comments', slotId: 'd2026-08-06', status });
+    const line = renderTaskExec({ pack: 'acme-pack', task: 'acme-task-b', slotId: 'd2026-08-06', status });
+    assert.deepEqual(parseTaskExec(line), { pack: 'acme-pack', task: 'acme-task-b', slotId: 'd2026-08-06', status });
   }
 });
 
@@ -102,12 +102,12 @@ test('a queue-shaped record carries its item number through render and parse', (
   // item. The format has to survive an issue number in the bracketed field, because
   // that is the only join from a record back to the work it describes — the first
   // live queue session wrote `[unknown]` and lost it.
-  const line = renderTaskExec({ pack: 'basics', task: 'improve-comments', slotId: '#867', status: 'success' });
-  assert.equal(line, `${TASK_EXEC_TAG} v1 basics/improve-comments [#867] success`);
-  assert.deepEqual(parseTaskExec(line), { pack: 'basics', task: 'improve-comments', slotId: '#867', status: 'success' });
+  const line = renderTaskExec({ pack: 'acme-pack', task: 'acme-task-b', slotId: '#867', status: 'success' });
+  assert.equal(line, `${TASK_EXEC_TAG} v1 acme-pack/acme-task-b [#867] success`);
+  assert.deepEqual(parseTaskExec(line), { pack: 'acme-pack', task: 'acme-task-b', slotId: '#867', status: 'success' });
 
   // …and two items of the same task stay two records rather than collapsing, which is
   // exactly what a constant in that field costs the fold's (pack, task, slot, status) key.
-  const other = renderTaskExec({ pack: 'basics', task: 'improve-comments', slotId: '#901', status: 'success' });
+  const other = renderTaskExec({ pack: 'acme-pack', task: 'acme-task-b', slotId: '#901', status: 'success' });
   assert.notEqual(parseTaskExec(other).slotId, parseTaskExec(line).slotId);
 });

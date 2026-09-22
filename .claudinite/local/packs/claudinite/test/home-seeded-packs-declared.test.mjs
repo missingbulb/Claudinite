@@ -20,10 +20,10 @@ const settings = (packs) => `${JSON.stringify({ packs }, null, 2)}\n`;
 test('home-seeded-packs-declared: silent when every seeded pack is declared', () => {
   const root = makeRepo({
     base: {
-      'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
-      'packs/product-wiki/pack.mjs': packModule('product-wiki', { seeded: true }),
-      'packs/leaflet/pack.mjs': packModule('leaflet'),
-      '.claudinite-settings.json': settings(['basics', 'product-wiki', 'local/claudinite']),
+      'packs/acme-pack/pack.mjs': packModule('acme-pack', { seeded: true }),
+      'packs/acme-pack-e/pack.mjs': packModule('acme-pack-e', { seeded: true }),
+      'packs/acme-pack-l/pack.mjs': packModule('acme-pack-l'),
+      '.claudinite-settings.json': settings(['acme-pack', 'acme-pack-e', 'local/claudinite']),
     },
   });
   try {
@@ -36,19 +36,19 @@ test('home-seeded-packs-declared: silent when every seeded pack is declared', ()
 test('home-seeded-packs-declared: reports every undeclared seeded pack, not just the first', () => {
   const root = makeRepo({
     base: {
-      'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
-      // Newly seeded upstream; baselining is gated !isHome, so they never arrive here.
-      'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth', { seeded: true }),
-      'packs/product-wiki/pack.mjs': packModule('product-wiki', { seeded: true }),
-      '.claudinite-settings.json': settings(['basics']),
+      'packs/acme-pack/pack.mjs': packModule('acme-pack', { seeded: true }),
+      // Newly seeded upstream; acme-task-z is gated !isHome, so they never arrive here.
+      'packs/acme-pack-f/pack.mjs': packModule('acme-pack-f', { seeded: true }),
+      'packs/acme-pack-e/pack.mjs': packModule('acme-pack-e', { seeded: true }),
+      '.claudinite-settings.json': settings(['acme-pack']),
     },
   });
   try {
     const findings = run(root);
     assert.equal(findings.length, 2);
     const ids = findings.map((f) => f.what).join(' ');
-    assert.match(ids, /claudinite-growth/);
-    assert.match(ids, /product-wiki/);
+    assert.match(ids, /acme-pack-f/);
+    assert.match(ids, /acme-pack-e/);
     for (const finding of findings) {
       assert.equal(finding.file, '.claudinite-settings.json');
     }
@@ -60,8 +60,8 @@ test('home-seeded-packs-declared: reports every undeclared seeded pack, not just
 test('home-seeded-packs-declared: an entry object declares the pack just as a bare id does', () => {
   const root = makeRepo({
     base: {
-      'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth', { seeded: true }),
-      '.claudinite-settings.json': settings([{ id: 'claudinite-growth', config: { promote: false } }]),
+      'packs/acme-pack-f/pack.mjs': packModule('acme-pack-f', { seeded: true }),
+      '.claudinite-settings.json': settings([{ id: 'acme-pack-f', config: { promote: false } }]),
     },
   });
   try {
@@ -76,11 +76,11 @@ test('home-seeded-packs-declared: seededByDefault written in a comment is not a 
     base: {
       // The flag appears only in prose about it — parsing past comments is what
       // keeps a pack that merely *discusses* seeding out of the required set.
-      'packs/leaflet/pack.mjs':
+      'packs/acme-pack-l/pack.mjs':
         "// A technology pack is never seededByDefault: true — it is fingerprinted.\n" +
         "/* seededByDefault: true */\n" +
-        packModule('leaflet'),
-      '.claudinite-settings.json': settings(['basics']),
+        packModule('acme-pack-l'),
+      '.claudinite-settings.json': settings(['acme-pack']),
     },
   });
   try {
@@ -93,9 +93,9 @@ test('home-seeded-packs-declared: seededByDefault written in a comment is not a 
 test('home-seeded-packs-declared: a local pack is never required by this rule', () => {
   const root = makeRepo({
     base: {
-      'packs/basics/pack.mjs': packModule('basics', { seeded: true }),
+      'packs/acme-pack/pack.mjs': packModule('acme-pack', { seeded: true }),
       '.claudinite/local/packs/mine/pack.mjs': packModule('mine', { seeded: true }),
-      '.claudinite-settings.json': settings(['basics']),
+      '.claudinite-settings.json': settings(['acme-pack']),
     },
   });
   try {
@@ -108,8 +108,8 @@ test('home-seeded-packs-declared: a local pack is never required by this rule', 
 test('home-seeded-packs-declared: silent in a repo that carries no canon packs/ tree', () => {
   const root = makeRepo({
     base: {
-      '.claudinite/shared/packs/basics/pack.mjs': packModule('basics', { seeded: true }),
-      '.claudinite-settings.json': settings(['git-github']),
+      '.claudinite/shared/packs/acme-pack/pack.mjs': packModule('acme-pack', { seeded: true }),
+      '.claudinite-settings.json': settings(['acme-pack-d']),
     },
   });
   try {

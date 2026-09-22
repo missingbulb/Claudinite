@@ -69,7 +69,7 @@ test('mount-skills: mounts the union of the declared packs, nothing more', () =>
   });
   try {
     mount(corpus, project);
-    for (const [name, owner] of [['base-skill', 'basics'], ['tech-skill', 'tech']]) {
+    for (const [name, owner] of [['base-skill', 'basics'], ['tech-skill', 'tech']]) { // @real-entity the real corpus this mounts from
       const link = join(project, '.claude', 'skills', name);
       assert.ok(lstatSync(link).isSymbolicLink(), `${name} should be a symlink`);
       assert.equal(realpathSync(link), realpathSync(join(corpus, 'packs', owner, 'skills', name)));
@@ -146,7 +146,7 @@ test('mount-skills: removes a stale owned link, is idempotent, fails soft on a b
   try {
     // A leftover link into the corpus for a skill that no longer exists there.
     mkdirSync(join(project, '.claude', 'skills'), { recursive: true });
-    symlinkSync(join(corpus, 'packs', 'basics', 'skills', 'retired-skill'), join(project, '.claude', 'skills', 'retired-skill'));
+    symlinkSync(join(corpus, 'packs', 'basics', 'skills', 'retired-skill'), join(project, '.claude', 'skills', 'retired-skill')); // @real-entity the real corpus this mounts from
     mount(corpus, project);
     assert.ok(!existsSync(join(project, '.claude', 'skills', 'retired-skill')));
     const first = readFileSync(join(project, '.claude', 'skills', '.gitignore'), 'utf8');
@@ -204,7 +204,7 @@ test('mount-skills: mounts a local pack\'s bundled skill from the tracked pack d
 
     const baseLink = join(project, '.claude', 'skills', 'base-skill');
     assert.ok(lstatSync(baseLink).isSymbolicLink());
-    assert.equal(realpathSync(baseLink), realpathSync(join(corpus, 'packs', 'basics', 'skills', 'base-skill')));
+    assert.equal(realpathSync(baseLink), realpathSync(join(corpus, 'packs', 'basics', 'skills', 'base-skill'))); // @real-entity the real corpus this mounts from
 
     // the bundled skill mounts from the tracked local pack dir
     const projLink = join(project, '.claude', 'skills', 'proj-skill');
@@ -247,7 +247,7 @@ test('mount-skills: the real corpus mounts every basics skill into a consumer', 
       env: { ...process.env, CLAUDE_PROJECT_DIR: project },
     });
     assert.equal(r.status, 0, r.stderr);
-    const link = join(project, '.claude', 'skills', 'writing-tests');
+    const link = join(project, '.claude', 'skills', 'writing-tests'); // @real-entity the real corpus this mounts from
     assert.ok(lstatSync(link).isSymbolicLink());
     assert.ok(existsSync(join(link, 'SKILL.md')), 'the mounted link must resolve to a real SKILL.md');
     assert.equal(git(project, 'status', '--porcelain').trim(), '');

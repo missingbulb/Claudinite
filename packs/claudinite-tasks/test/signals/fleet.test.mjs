@@ -23,14 +23,14 @@ test('enumerates covered members, excluding the canon, forks and archived repos'
       { name: 'notmine', full_name: 'other/notmine', owner: { login: 'other' }, default_branch: 'main' },
     ] }],
     // app is a covered member; its declaration
-    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['basics', 'claudinite-growth'] })],
+    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['acme-pack', 'acme-pack-f'] })],
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local/, { status: 404, json: null }],
     [/\/repos\/acme\/app\/commits/, { status: 200, json: [] }],
   ]);
   const fleet = await readFleet(gh, opts());
   assert.equal(fleet.error, undefined);
   assert.deepEqual(fleet.members.map((m) => m.repo), ['acme/app']); // canon/fork/archived/other excluded
-  assert.deepEqual(fleet.members[0].activePacks, ['basics', 'claudinite-growth']);
+  assert.deepEqual(fleet.members[0].activePacks, ['acme-pack', 'acme-pack-f']);
 });
 
 // Dormancy is the member's own declaration that it is out of the RECURRING work,
@@ -45,10 +45,10 @@ test('a declared-dormant member is not enumerated', async () => {
       { name: 'app', full_name: 'acme/app', owner: { login: 'acme' }, default_branch: 'main' },
       { name: 'asleep', full_name: 'acme/asleep', owner: { login: 'acme' }, default_branch: 'main' },
     ] }],
-    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['basics'] })],
+    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['acme-pack'] })],
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local/, { status: 404, json: null }],
     [/\/repos\/acme\/app\/commits/, { status: 200, json: [] }],
-    [/\/repos\/acme\/asleep\/contents\/\.claudinite/, checksFile({ packs: ['basics', 'claudinite-growth'], dormant: true })],
+    [/\/repos\/acme\/asleep\/contents\/\.claudinite/, checksFile({ packs: ['acme-pack', 'acme-pack-f'], dormant: true })],
     // Anything past the declaration read is a probe this member must never pay for.
     [/\/repos\/acme\/asleep\//, () => { throw new Error('a dormant member must not be probed past its declaration'); }],
   ]);
@@ -65,7 +65,7 @@ test('only a literal true is dormant — a truthy stand-in still enumerates', as
       [/\/user\/repos\?affiliation=owner/, { status: 200, json: [
         { name: 'app', full_name: 'acme/app', owner: { login: 'acme' }, default_branch: 'main' },
       ] }],
-      [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['basics'], dormant })],
+      [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['acme-pack'], dormant })],
       [/\/repos\/acme\/app\/contents\/\.claudinite\/local/, { status: 404, json: null }],
       [/\/repos\/acme\/app\/commits/, { status: 200, json: [] }],
     ]);
@@ -80,7 +80,7 @@ test('an uncovered repo (no declaration file) is not a member', async () => {
       { name: 'app', full_name: 'acme/app', owner: { login: 'acme' }, default_branch: 'main' },
       { name: 'bare', full_name: 'acme/bare', owner: { login: 'acme' }, default_branch: 'main' },
     ] }],
-    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['basics'] })],
+    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['acme-pack'] })],
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local/, { status: 404, json: null }],
     [/\/repos\/acme\/app\/commits/, { status: 200, json: [] }],
     [/\/repos\/acme\/bare\/contents\/\.claudinite-checks\.json/, { status: 404, json: null }],
@@ -91,7 +91,7 @@ test('an uncovered repo (no declaration file) is not a member', async () => {
 
 test('reads pack configs, the scheduler marker, and the provenance stamp', async () => {
   const decl = {
-    packs: ['basics', { id: 'claudinite-growth', config: { promote: false } }],
+    packs: ['acme-pack', { id: 'acme-pack-f', config: { promote: false } }],
     taskScheduler: { dailyHour: 4 },
     claudinite: { updated: '2026-07-10T00:00:00Z', ref: 'abc123' },
   };
@@ -104,8 +104,8 @@ test('reads pack configs, the scheduler marker, and the provenance stamp', async
     [/\/repos\/acme\/app\/commits/, { status: 200, json: [] }],
   ]);
   const [m] = (await readFleet(gh, opts())).members;
-  assert.deepEqual(m.activePacks, ['basics', 'claudinite-growth']); // bare ids, both forms
-  assert.deepEqual(m.packConfigs['claudinite-growth'], { promote: false });
+  assert.deepEqual(m.activePacks, ['acme-pack', 'acme-pack-f']); // bare ids, both forms
+  assert.deepEqual(m.packConfigs['acme-pack-f'], { promote: false });
   assert.equal(m.schedulesItself, true);
   assert.deepEqual(m.stamp, { updated: '2026-07-10T00:00:00Z', ref: 'abc123' });
 });
@@ -115,7 +115,7 @@ test('localPacksChanged fires when a window commit touched a local-pack root (ei
     [/\/user\/repos\?affiliation=owner/, { status: 200, json: [
       { name: 'app', full_name: 'acme/app', owner: { login: 'acme' }, default_branch: 'main' },
     ] }],
-    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['claudinite-growth'] })],
+    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['acme-pack-f'] })],
     // Nothing probes whether the member HAS local packs — a `contents` read here
     // would be the cost this reader stopped paying, so the route throws.
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local/, () => { throw new Error('local-pack presence must not be probed'); }],
@@ -132,7 +132,7 @@ test('localPacksChanged stays false when the window touched only product code', 
     [/\/user\/repos\?affiliation=owner/, { status: 200, json: [
       { name: 'app', full_name: 'acme/app', owner: { login: 'acme' }, default_branch: 'main' },
     ] }],
-    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['claudinite-growth'] })],
+    [/\/repos\/acme\/app\/contents\/\.claudinite-checks\.json/, checksFile({ packs: ['acme-pack-f'] })],
     [/\/repos\/acme\/app\/contents\/\.claudinite\/local\/packs$/, { status: 200, json: [{ type: 'dir', name: 'app' }] }],
     [/\/repos\/acme\/app\/commits\?/, { status: 200, json: [{ sha: 'c1' }] }],
     [/\/repos\/acme\/app\/commits\/c1$/, { status: 200, json: { files: [{ filename: 'src/app.js' }] } }],

@@ -21,13 +21,13 @@ const repo = (files) => {
 };
 
 const MEMBER = {
-  '.claudinite-settings.json': '{ "packs": ["claudinite-growth", "local/mypack"] }\n',
+  '.claudinite-settings.json': '{ "packs": ["acme-pack-f", "local/mypack"] }\n',
   '.claudinite/local/packs/mypack/pack.mjs': 'export default {};\n',
   '.claudinite/local/packs/mypack/RULES.md': '- **Doing a thing** — the settled way. (3)\n\n- **Doing another** — plainly.\n',
   '.claudinite/local/packs/mypack/references.md': '- **(RULES-3)** The other way failed twice (#12). Retire when the platform accepts it.\n',
   '.claudinite/local/packs/mypack/skills/how/SKILL.md': '---\nname: how\n---\n\n1. First.\n2. Then.\n',
   '.claudinite/local/packs/notapack/README.md': 'no manifest here\n',
-  '.claudinite/shared/packs/basics/RULES.md': '- **Vendored** — never touched.\n',
+  '.claudinite/shared/packs/acme-pack/RULES.md': '- **Vendored** — never touched.\n',
 };
 
 test('markProvenance converts each local pack\'s references doc, marks its rules, declares its skills and creates its files', async () => {
@@ -47,7 +47,7 @@ test('markProvenance converts each local pack\'s references doc, marks its rules
     assert.match(entry, /Retire when:\*\* Retire when the platform accepts it\./);
     for (const f of ['doing-another', 'how', '_pack']) assert.ok(existsSync(join(root, `.claudinite/local/packs/mypack/provenance/${f}.md`)), f);
     assert.ok(!existsSync(join(root, '.claudinite/local/packs/notapack/provenance')), 'a folder with no manifest is not a pack');
-    assert.equal(readFileSync(join(root, '.claudinite/shared/packs/basics/RULES.md'), 'utf8'), MEMBER['.claudinite/shared/packs/basics/RULES.md'], 'the mount is never touched');
+    assert.equal(readFileSync(join(root, '.claudinite/shared/packs/acme-pack/RULES.md'), 'utf8'), MEMBER['.claudinite/shared/packs/acme-pack/RULES.md'], 'the mount is never touched');
     const audit = auditPack('.claudinite/local/packs/mypack', io);
     assert.deepEqual(audit.unmarked, []);
     assert.deepEqual(audit.dangling, []);

@@ -15,11 +15,11 @@ function run(rule, root, mode = 'changed') {
 // case below is one where a repo silently runs with no rules at all.
 
 const INDEX = '.claudinite/claudinite-rules.GENERATED.md';
-// A converged member: basics vendored, the index importing it, CLAUDE.md loading it.
+// A converged member: acme-pack vendored, the index importing it, CLAUDE.md loading it.
 const converged = (over = {}) => ({
-  '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
-  '.claudinite/shared/packs/basics/RULES.md': 'BASICS\n',
-  [INDEX]: '@shared/packs/basics/RULES.md\n',
+  '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'] }),
+  '.claudinite/shared/packs/acme-pack/RULES.md': 'BASICS\n',
+  [INDEX]: '@shared/packs/acme-pack/RULES.md\n',
   'CLAUDE.md': '@.claudinite/claudinite-rules.GENERATED.md\n',
   ...over,
 });
@@ -35,7 +35,7 @@ test('rules-index-current: inert when the repo holds no prose for any declared p
   // Relevance first. A declaration whose packs are not vendored yet is a mount that
   // has not converged — a different problem, already reported by the engine's own
   // unknown-pack error, and one this rule would only add noise to.
-  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) } });
+  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'] }) } });
   try {
     assert.deepEqual(run(rulesIndexCurrent, root, 'all'), []);
   } finally { cleanup(root); }
@@ -56,20 +56,20 @@ test('rules-index-current: a declared, held pack the index omits is blocking', (
   // The staleness case: a pack declared since the last converge. Its RULES.md is right
   // there in the mount, and nothing loads it.
   const root = makeRepo({ changed: converged({
-    '.claudinite-settings.json': JSON.stringify({ packs: ['basics', 'claudinite-growth'] }),
-    '.claudinite/shared/packs/claudinite-growth/RULES.md': 'TIDY\n',
+    '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack', 'acme-pack-f'] }),
+    '.claudinite/shared/packs/acme-pack-f/RULES.md': 'TIDY\n',
   }) });
   try {
     const f = run(rulesIndexCurrent, root, 'all');
     assert.equal(f.length, 1, JSON.stringify(f, null, 2));
-    assert.match(f[0].what, /claudinite-growth/);
+    assert.match(f[0].what, /acme-pack-f/);
   } finally { cleanup(root); }
 });
 
 test('rules-index-current: an import resolving to nothing is blocking', () => {
   // #807 in a new costume — the channel works, the rules still do not arrive.
   const root = makeRepo({ changed: converged({
-    [INDEX]: '@shared/packs/basics/RULES.md\n@shared/packs/gone/RULES.md\n',
+    [INDEX]: '@shared/packs/acme-pack/RULES.md\n@shared/packs/gone/RULES.md\n',
   }) });
   try {
     const f = run(rulesIndexCurrent, root, 'all');

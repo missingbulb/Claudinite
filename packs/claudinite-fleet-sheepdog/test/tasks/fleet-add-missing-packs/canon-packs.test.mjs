@@ -28,7 +28,7 @@ function fakeCanon({ full = true } = {}) {
     // Real packs, just too few of them — so the size guard is what fires, not
     // manifest validation on a hand-rolled stub.
     cpSync(join(canonRoot, 'engine'), join(dir, 'engine'), { recursive: true });
-    for (const id of ['basics', 'node', 'python']) {
+    for (const id of ['basics', 'node', 'python']) { // @real-entity asserted against the real canon shelf
       cpSync(join(canonRoot, 'packs', id), join(dir, 'packs', id), { recursive: true });
     }
   }
@@ -50,7 +50,7 @@ test('loadCanonPacks: returns the WHOLE canon corpus, not the caller\'s mount', 
   // corpus: a mount-scoped load would return a handful.
   assert.ok(packs.length >= 20, `expected the full corpus, got ${packs.length}`);
   const ids = new Set(packs.map((p) => p.id));
-  for (const id of ['node', 'python', 'firebase', 'jwt']) assert.ok(ids.has(id), `missing ${id}`);
+  for (const id of ['node', 'python', 'firebase', 'jwt']) assert.ok(ids.has(id), `missing ${id}`); // @real-entity asserted against the real canon shelf
   // And the fingerprints came with them — a corpus of manifests with no `detect` would
   // sweep the fleet and find nothing, by construction.
   assert.ok(packs.filter((p) => typeof p.detect === 'function').length >= 10);

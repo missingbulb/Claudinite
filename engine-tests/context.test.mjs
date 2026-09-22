@@ -8,44 +8,44 @@ import { buildContext, loadConfig, CONFIG_KEYS, isDormant } from '../engine/chec
 import { removeTree } from '../engine/remove-tree.mjs';
 
 test('loadConfig: clean settings validate with no errors; a missing file is empty and error-free', () => {
-  const ok = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], rules: {}, maintenance: { delivery: 'auto' } }) } });
+  const ok = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'], rules: {}, maintenance: { delivery: 'auto' } }) } });
   const none = makeRepo({ changed: {} });
   try {
     assert.deepEqual(loadConfig(ok).errors, []);
-    assert.deepEqual(loadConfig(ok).packs, ['basics']);
+    assert.deepEqual(loadConfig(ok).packs, ['acme-pack']);
     assert.deepEqual(loadConfig(none).errors, []);
   } finally { cleanup(ok); cleanup(none); }
 });
 
 test('loadConfig: an unknown top-level property is reported, valid keys still parse', () => {
-  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], nonsense: 1 }) } });
+  const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'], nonsense: 1 }) } });
   try {
     const cfg = loadConfig(root);
     assert.equal(cfg.errors.length, 1);
     assert.match(cfg.errors[0].what, /unknown setting "nonsense"/);
-    assert.deepEqual(cfg.packs, ['basics']); // the good keys still load
+    assert.deepEqual(cfg.packs, ['acme-pack']); // the good keys still load
   } finally { cleanup(root); }
 });
 
 test('loadConfig: a pack entry object normalizes — id into packs, config into the packConfig view, accept with provenance', () => {
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: [
-      'basics',
-      { id: 'product-wiki',
+      'acme-pack',
+      { id: 'acme-pack-b',
         config: { rules: [{ from: 'a', to: 'b' }] },
-        rules: { 'file-placement': 'advisory' },
+        rules: { 'acme-check': 'advisory' },
         accept: [{ rule: 'reference-integrity', path: 'x.md', reason: 'why' }] },
-      { id: 'executable-requirements', via: ['spec-driven-product'] },
+      { id: 'acme-pack-e', via: ['acme-pack-f'] },
     ],
   }) } });
   try {
     const cfg = loadConfig(root);
     assert.deepEqual(cfg.errors, []);
-    assert.deepEqual(cfg.packs, ['basics', 'product-wiki', 'executable-requirements']);
-    assert.deepEqual(cfg.packConfig, { 'product-wiki': { rules: [{ from: 'a', to: 'b' }] } });
-    assert.deepEqual(cfg.rules, { 'file-placement': 'advisory' });
+    assert.deepEqual(cfg.packs, ['acme-pack', 'acme-pack-b', 'acme-pack-e']);
+    assert.deepEqual(cfg.packConfig, { 'acme-pack-b': { rules: [{ from: 'a', to: 'b' }] } });
+    assert.deepEqual(cfg.rules, { 'acme-check': 'advisory' });
     // The entry-sourced acceptance carries its provenance: the pack that motivated it.
-    assert.deepEqual(cfg.accept, [{ rule: 'reference-integrity', path: 'x.md', reason: 'why', pack: 'product-wiki' }]);
+    assert.deepEqual(cfg.accept, [{ rule: 'reference-integrity', path: 'x.md', reason: 'why', pack: 'acme-pack-b' }]);
   } finally { cleanup(root); }
 });
 
@@ -55,7 +55,7 @@ test('loadConfig: a namespaced local-pack declaration normalizes to the bare id 
   // the packConfig view key by the pack's own id whichever form the file used.
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: [
-      'basics',
+      'acme-pack',
       { id: 'local_packs/proj', config: { knob: 1 }, answers: { q: 'a' } },
       'local_packs/other',
     ],
@@ -63,7 +63,7 @@ test('loadConfig: a namespaced local-pack declaration normalizes to the bare id 
   try {
     const cfg = loadConfig(root);
     assert.deepEqual(cfg.errors, []);
-    assert.deepEqual(cfg.packs, ['basics', 'proj', 'other']);
+    assert.deepEqual(cfg.packs, ['acme-pack', 'proj', 'other']);
     assert.deepEqual(cfg.packEntries.find((e) => e.id === 'proj').answers, { q: 'a' });
     assert.deepEqual(cfg.packConfig, { proj: { knob: 1 } });
   } finally { cleanup(root); }
@@ -71,31 +71,31 @@ test('loadConfig: a namespaced local-pack declaration normalizes to the bare id 
 
 test('loadConfig: entry config overlays the legacy top-level packConfig, which stays readable', () => {
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['node', { id: 'product-wiki', config: { rules: [] } }],
-    packConfig: { node: { dirs: ['fn'] }, 'product-wiki': { rules: [{ from: 'x', to: 'y' }] } },
+    packs: ['acme-pack-c', { id: 'acme-pack-b', config: { rules: [] } }],
+    packConfig: { node: { dirs: ['fn'] }, 'acme-pack-b': { rules: [{ from: 'x', to: 'y' }] } },
   }) } });
   try {
     const cfg = loadConfig(root);
     assert.deepEqual(cfg.errors, []);
     assert.deepEqual(cfg.packConfig.node, { dirs: ['fn'] }); // legacy still read
-    assert.deepEqual(cfg.packConfig['product-wiki'], { rules: [] }); // the entry wins
+    assert.deepEqual(cfg.packConfig['acme-pack-b'], { rules: [] }); // the entry wins
   } finally { cleanup(root); }
 });
 
 test('loadConfig: pack-entry answers — verbatim strings kept, wrong shapes a settings error', () => {
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: [
-      { id: 'product-wiki', answers: { goals: 'keep core off pack names' } },
-      { id: 'node', answers: ['nope'] },
-      { id: 'html', answers: { q: 7 } },
+      { id: 'acme-pack-b', answers: { goals: 'keep core off pack names' } },
+      { id: 'acme-pack-c', answers: ['nope'] },
+      { id: 'acme-pack-d', answers: { q: 7 } },
     ],
   }) } });
   try {
     const cfg = loadConfig(root);
-    assert.deepEqual(cfg.packEntries.find((e) => e.id === 'product-wiki').answers, { goals: 'keep core off pack names' });
+    assert.deepEqual(cfg.packEntries.find((e) => e.id === 'acme-pack-b').answers, { goals: 'keep core off pack names' });
     assert.equal(cfg.errors.length, 2);
-    assert.match(cfg.errors[0].what, /"answers" on the "node" pack entry must be/);
-    assert.match(cfg.errors[1].what, /"answers" on the "html" pack entry must be/);
+    assert.match(cfg.errors[0].what, /"answers" on the "acme-pack-c" pack entry must be/);
+    assert.match(cfg.errors[1].what, /"answers" on the "acme-pack-d" pack entry must be/);
   } finally { cleanup(root); }
 });
 
@@ -103,8 +103,8 @@ test('loadConfig: a malformed pack entry is a settings error — no id, unknown 
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
     packs: [
       { config: {} },
-      { id: 'basics', nonsense: 1 },
-      { id: 'node', config: [] },
+      { id: 'acme-pack', nonsense: 1 },
+      { id: 'acme-pack-c', config: [] },
       42,
     ],
   }) } });
@@ -112,28 +112,28 @@ test('loadConfig: a malformed pack entry is a settings error — no id, unknown 
     const cfg = loadConfig(root);
     assert.equal(cfg.errors.length, 4);
     assert.match(cfg.errors[0].what, /has no "id"/);
-    assert.match(cfg.errors[1].what, /unknown property "nonsense" on the "basics" pack entry/);
-    assert.match(cfg.errors[2].what, /"config" on the "node" pack entry must be/);
+    assert.match(cfg.errors[1].what, /unknown property "nonsense" on the "acme-pack" pack entry/);
+    assert.match(cfg.errors[2].what, /"config" on the "acme-pack-c" pack entry must be/);
     assert.match(cfg.errors[3].what, /neither a pack id nor an entry object/);
-    assert.deepEqual(cfg.packs, ['basics', 'node']); // the interpretable entries still load
+    assert.deepEqual(cfg.packs, ['acme-pack', 'acme-pack-c']); // the interpretable entries still load
   } finally { cleanup(root); }
 });
 
 test('loadConfig: conflicting severity overrides are a settings error, agreeing ones are not', () => {
   const conflicted = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: [{ id: 'basics', rules: { 'file-placement': 'advisory' } }],
-    rules: { 'file-placement': 'off' },
+    packs: [{ id: 'acme-pack', rules: { 'acme-check': 'advisory' } }],
+    rules: { 'acme-check': 'off' },
   }) } });
   const agreeing = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: [{ id: 'basics', rules: { 'file-placement': 'off' } }],
-    rules: { 'file-placement': 'off' },
+    packs: [{ id: 'acme-pack', rules: { 'acme-check': 'off' } }],
+    rules: { 'acme-check': 'off' },
   }) } });
   try {
     const bad = loadConfig(conflicted);
     assert.equal(bad.errors.length, 1);
-    assert.match(bad.errors[0].what, /rule "file-placement" is set to "off" by the top-level "rules" and "advisory" by the "basics" pack entry/);
+    assert.match(bad.errors[0].what, /rule "acme-check" is set to "off" by the top-level "rules" and "advisory" by the "acme-pack" pack entry/);
     assert.deepEqual(loadConfig(agreeing).errors, []);
-    assert.deepEqual(loadConfig(agreeing).rules, { 'file-placement': 'off' });
+    assert.deepEqual(loadConfig(agreeing).rules, { 'acme-check': 'off' });
   } finally { cleanup(conflicted); cleanup(agreeing); }
 });
 
@@ -168,7 +168,7 @@ test('engine: ctx.files excludes vendored/generated files; ctx.allFiles keeps th
 
 test('loadConfig: the claudinite vendored-mount stamp is a known setting', () => {
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['basics'], claudinite: { updated: '2026-07-17', ref: 'abc123' },
+    packs: ['acme-pack'], claudinite: { updated: '2026-07-17', ref: 'abc123' },
   }) } });
   try {
     assert.deepEqual(loadConfig(root).errors, []);
@@ -177,12 +177,12 @@ test('loadConfig: the claudinite vendored-mount stamp is a known setting', () =>
 
 test('loadConfig: a valid schedule anchor is a known setting and passes through unchanged', () => {
   const full = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['basics'], taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
+    packs: ['acme-pack'], taskScheduler: { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 },
   }) } });
   const partial = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['basics'], taskScheduler: { dailyHour: 9 },
+    packs: ['acme-pack'], taskScheduler: { dailyHour: 9 },
   }) } });
-  const none = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) } });
+  const none = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'] }) } });
   try {
     assert.deepEqual(loadConfig(full).errors, []);
     assert.deepEqual(loadConfig(full).taskScheduler, { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 });
@@ -197,14 +197,14 @@ test('loadConfig: a valid schedule anchor is a known setting and passes through 
 // checked — a member may disable a task in a pack it has not adopted yet, and the
 // question is answered where tasks are discovered.
 test('loadConfig: taskScheduler.disabledTasks is a known setting, validated as a shape', () => {
-  const settings = (taskScheduler) => makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], taskScheduler }) } });
-  const ok = settings({ dailyHour: 4, disabledTasks: ['claudinite-lifecycle/update'] });
+  const settings = (taskScheduler) => makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'], taskScheduler }) } });
+  const ok = settings({ dailyHour: 4, disabledTasks: ['acme-pack-g/acme-task'] });
   const empty = settings({ disabledTasks: [] });
-  const notList = settings({ disabledTasks: 'claudinite-lifecycle/update' });
-  const notIds = settings({ disabledTasks: ['update'] });
+  const notList = settings({ disabledTasks: 'acme-pack-g/acme-task' });
+  const notIds = settings({ disabledTasks: ['acme-task'] });
   try {
     assert.deepEqual(loadConfig(ok).errors, []);
-    assert.deepEqual(loadConfig(ok).taskScheduler.disabledTasks, ['claudinite-lifecycle/update']);
+    assert.deepEqual(loadConfig(ok).taskScheduler.disabledTasks, ['acme-pack-g/acme-task']);
     assert.deepEqual(loadConfig(empty).errors, []); // disabling nothing is legal, and means nothing is disabled
     for (const bad of [notList, notIds]) {
       const cfg = loadConfig(bad);
@@ -220,16 +220,16 @@ test('loadConfig: taskScheduler.disabledTasks is a known setting, validated as a
 // converge runs the record that strips them out. #2178 takes them off the list.
 test('loadConfig: an unknown schedule key is an error; the retired anchor keys are not', () => {
   const ranges = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['basics'], taskScheduler: { dailyHour: 24, weeklyDay: 'Sunday', monthlyDay: 0, nonsense: 1 },
+    packs: ['acme-pack'], taskScheduler: { dailyHour: 24, weeklyDay: 'Sunday', monthlyDay: 0, nonsense: 1 },
   }) } });
   const notObject = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['basics'], taskScheduler: [4],
+    packs: ['acme-pack'], taskScheduler: [4],
   }) } });
   try {
     const cfg = loadConfig(ranges);
     assert.equal(cfg.errors.length, 1, 'only the unknown key: the three retired ones pass through unread');
     assert.match(cfg.errors[0].what, /unknown "taskScheduler" setting "nonsense"/);
-    assert.deepEqual(cfg.packs, ['basics']); // the good keys still load
+    assert.deepEqual(cfg.packs, ['acme-pack']); // the good keys still load
     const arr = loadConfig(notObject);
     assert.equal(arr.errors.length, 1);
     assert.match(arr.errors[0].what, /"taskScheduler" must be an object/);
@@ -241,11 +241,11 @@ test('loadConfig: an unknown schedule key is an error; the retired anchor keys a
 // deleted `"slots"` — must be a settings error rather than a silent fall-back.
 test('loadConfig: taskScheduler.dispatch and the endpoint map are validated', () => {
   const good = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['basics'],
+    packs: ['acme-pack'],
     taskScheduler: { dispatch: 'queue', endpoints: { default: { url: 'https://x.invalid/s', tokenSecret: 'CCR_TOKEN' } } },
   }) } });
   const bad = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-    packs: ['basics'],
+    packs: ['acme-pack'],
     taskScheduler: { dispatch: 'queues', endpoints: { default: { url: 'https://x.invalid/s' } } },
   }) } });
   try {
@@ -257,7 +257,7 @@ test('loadConfig: taskScheduler.dispatch and the endpoint map are validated', ()
     // `slots` is not merely unknown, it is RETIRED: a member still declaring it must
     // hear so rather than get the queue under a declaration that says otherwise.
     const retired = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({
-      packs: ['basics'], taskScheduler: { dispatch: 'slots' },
+      packs: ['acme-pack'], taskScheduler: { dispatch: 'slots' },
     }) } });
     try {
       assert.match(loadConfig(retired).errors[0].what, /"taskScheduler\.dispatch" must be one of queue/);
@@ -273,7 +273,7 @@ test('loadConfig: taskScheduler.dispatch and the endpoint map are validated', ()
 test('buildContext: the shared mount is structurally out of scope; local packs stay in', () => {
   const root = makeRepo({ changed: {
     'src/app.js': 'x\n',
-    '.claudinite/shared/packs/basics/RULES.md': 'canon\n',
+    '.claudinite/shared/packs/acme-pack/RULES.md': 'canon\n',
     '.claudinite/shared/engine/checks/check_the_world.mjs': 'canon\n',
     '.claudinite/local/packs/mine/pack.mjs': 'export default { id: "mine" };\n',
   } });
@@ -468,7 +468,7 @@ test('every key in CONFIG_KEYS survives loadConfig — declarable implies readab
   try {
     writeFiles(root, {
       '.claudinite-settings.json': JSON.stringify({
-        packs: ['basics'],
+        packs: ['acme-pack'],
         rules: { 'some-rule': 'advisory' },
         accept: [{ rule: 'some-rule', path: 'x.md', reason: 'because' }],
         sharedConstants: [{ what: 'v', value: '1', counts: { 'a.json': 1 } }],
@@ -506,7 +506,7 @@ test('a top-level dormant is accepted but not interpreted', () => {
   // told its settings are wrong while the migration record reaches it.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-dormant-'));
   try {
-    writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], dormant: true }) + '\n' });
+    writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'], dormant: true }) + '\n' });
     const cfg = loadConfig(root);
     assert.deepEqual(cfg.errors, [], 'the retired key is tolerated, not reported as unknown');
     assert.equal(cfg.dormant, undefined, 'and it is not normalized into a field the engine would be answering with');
@@ -521,7 +521,7 @@ test('a non-boolean dormant is no longer the engine\'s error to raise', () => {
   // is who says so, and the engine must not report a second, differently-worded one.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-dormant-bad-'));
   try {
-    writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'], dormant: 'yes' }) + '\n' });
+    writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'], dormant: 'yes' }) + '\n' });
     assert.deepEqual(loadConfig(root).errors, []);
   } finally { removeTree(root); }
 });
@@ -531,7 +531,7 @@ test('the retired isDormant shim reads the old spelling and nothing else', () =>
   // version that still imports it, and a missing export there crashes the converge
   // that would have delivered the fix.
   assert.equal(isDormant({ dormant: true }), true);
-  assert.equal(isDormant({ packs: [{ id: 'claudinite-tasks', config: { dormant: true } }] }), false,
+  assert.equal(isDormant({ packs: [{ id: 'acme-pack-b', config: { dormant: true } }] }), false,
     'the current spelling is deliberately NOT resolved here — that is the pack\'s predicate, and this one answers only what its old callers can ask');
 });
 
@@ -541,7 +541,7 @@ test('an unversioned repo loads as null and {}, never as a zero', () => {
   // "installed, and ancient".
   const root = mkdtempSync(join(tmpdir(), 'claudinite-config-empty-'));
   try {
-    writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' });
+    writeFiles(root, { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'] }) + '\n' });
     const cfg = loadConfig(root);
     assert.equal(cfg.engineVersion, null);
     assert.deepEqual(cfg.packVersions, {});
@@ -558,7 +558,7 @@ test('a pre-rename member loads identically to a converged one', () => {
   try {
     writeFiles(root, {
       '.claudinite-checks.json': JSON.stringify({
-        packs: ['basics', { id: 'product-wiki', config: { k: 1 } }],
+        packs: ['acme-pack', { id: 'acme-pack-b', config: { k: 1 } }],
         maintenance: { delivery: 'review', mechanism: 'versioned' },
         claudinite: {
           updated: '2026-07-26T20:10:18.694Z',
@@ -566,18 +566,18 @@ test('a pre-rename member loads identically to a converged one', () => {
           engineVersion: '60820.1',
           // `tidy-repo` is a spelling `basics` absorbed: a version stamped under a
           // renamed pack's id must still price that pack, not read as never-installed.
-          packVersions: { 'git-github': '60801.1', 'tidy-repo': '60802.1' },
+          packVersions: { 'git-github': '60801.1', 'tidy-repo': '60802.1' }, // @real-entity the rename map under test carries these ids
         },
         taskScheduler: { endpoints: { default: { url: 'u', tokenSecret: 'S' } }, dailyHour: 4 },
       }, null, 2) + '\n',
     });
     const cfg = loadConfig(root);
     assert.deepEqual(cfg.errors, [], 'the retired shape is legal to READ — only nothing writes it');
-    assert.deepEqual(cfg.packs, ['basics', 'product-wiki']);
+    assert.deepEqual(cfg.packs, ['acme-pack', 'acme-pack-b']);
     assert.equal(cfg.engineVersion, '60820.1');
-    assert.deepEqual(cfg.packVersions, { 'git-github': '60801.1', basics: '60802.1' });
+    assert.deepEqual(cfg.packVersions, { 'git-github': '60801.1', basics: '60802.1' }); // @real-entity the rename map under test carries these ids
     assert.equal(cfg.dailyClaudiniteUpdatesRequirePrReview, true, 'the retired delivery preference still speaks');
-    assert.deepEqual(cfg.packConfig['product-wiki'], { k: 1 });
+    assert.deepEqual(cfg.packConfig['acme-pack-b'], { k: 1 });
   } finally { removeTree(root); }
 });
 
@@ -587,9 +587,9 @@ test('the current settings-file name wins over the retired one', () => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-config-both-'));
   try {
     writeFiles(root, {
-      '.claudinite-checks.json': JSON.stringify({ packs: ['basics'] }) + '\n',
-      '.claudinite-settings.json': JSON.stringify({ packs: ['product-wiki'] }) + '\n',
+      '.claudinite-checks.json': JSON.stringify({ packs: ['acme-pack'] }) + '\n',
+      '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack-b'] }) + '\n',
     });
-    assert.deepEqual(loadConfig(root).packs, ['product-wiki']);
+    assert.deepEqual(loadConfig(root).packs, ['acme-pack-b']);
   } finally { removeTree(root); }
 });

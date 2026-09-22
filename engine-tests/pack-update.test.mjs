@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renameSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { git as gitIn } from './helpers.mjs';
+import { git as gitIn, A_CANON_PACK, ANOTHER_CANON_PACK } from './helpers.mjs';
 import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, pendingExecutorWorkflow, PENDING_DIR } from '../packs/claudinite-lifecycle/updates/pack-update.mjs';
 import { terminalFor } from '../packs/claudinite-lifecycle/updates/terminals.mjs';
 import { SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW } from '../packs/claudinite-tasks/src/adopt/converge-workflows.mjs';
@@ -20,7 +20,7 @@ import { installedVersions, withInstalledVersions } from '../engine/installed-ve
 // on it, and a fixture corpus cannot answer that.
 const MOUNT = join('.claudinite', 'shared');
 
-function makeMember(declaration = { packs: ['basics'] }) {
+function makeMember(declaration = { packs: [A_CANON_PACK] }) {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-pkgmember-'));
   writeFileSync(join(root, '.claudinite-settings.json'), `${JSON.stringify(declaration, null, 2)}\n`);
   mkdirSync(join(root, 'src'), { recursive: true });
@@ -36,40 +36,40 @@ const setStamp = (root, patch) => {
 };
 
 test('a pack owns its own directory and nothing else', () => {
-  assert.equal(isPackFile('packs/basics/RULES.md', 'basics'), true);
-  assert.equal(isPackFile('packs/basics/migrations/2026-01-01-x/migration.mjs', 'basics'), true);
-  assert.equal(isPackFile('packs/claudinite-fleet-sheepdog/RULES.md', 'basics'), false);
-  assert.equal(isPackFile('engine/selftest.mjs', 'basics'), false, 'the engine tree is the engine flow\'s');
-  assert.equal(isPackFile('packs/directory.GENERATED.md', 'basics'), false, 'the catalog is no pack\'s');
+  assert.equal(isPackFile('packs/acme-pack/RULES.md', 'acme-pack'), true);
+  assert.equal(isPackFile('packs/acme-pack/migrations/2026-01-01-x/migration.mjs', 'acme-pack'), true);
+  assert.equal(isPackFile('packs/acme-pack-b/RULES.md', 'acme-pack'), false);
+  assert.equal(isPackFile('engine/selftest.mjs', 'acme-pack'), false, 'the engine tree is the engine flow\'s');
+  assert.equal(isPackFile('packs/directory.GENERATED.md', 'acme-pack'), false, 'the catalog is no pack\'s');
 });
 
 test('the plan names each declared pack\'s gap, and skips what is not a canon pack', async () => {
   const packs = await loadPacks();
-  const plan = planPackUpdates(packs, ['basics', 'local/mine', 'no-such-pack'], { packVersions: { basics: 0 } });
+  const plan = planPackUpdates(packs, [A_CANON_PACK, 'local/mine', 'no-such-pack'], { packVersions: { [A_CANON_PACK]: 0 } });
   const ids = plan.map((p) => p.id);
-  assert.ok(ids.includes('basics'), 'the declared pack is planned');
+  assert.ok(ids.includes(A_CANON_PACK), 'the declared pack is planned');
   assert.ok(!ids.includes('mine') && !ids.includes('local/mine'), 'a local pack has no version and no update flow');
   assert.ok(!ids.includes('no-such-pack'), 'an id naming no canon pack is skipped, not an error');
   // The requires closure comes with it — resolveDeclaredPacks is what decides that,
   // and the plan must cover every pack the repo will actually be running.
   assert.deepEqual(ids, [...new Set(ids)], 'no pack is planned twice');
   for (const id of ids) assert.ok(packs.some((p) => p.id === id), `${id} is not a canon pack`);
-  const basics = plan.find((p) => p.id === 'basics');
+  const basics = plan.find((p) => p.id === A_CANON_PACK);
   assert.equal(basics.from, 0);
-  assert.equal(basics.to, packs.find((p) => p.id === 'basics').version);
+  assert.equal(basics.to, packs.find((p) => p.id === A_CANON_PACK).version);
   assert.equal(basics.blocked, null);
 });
 
 test('an unstamped pack plans from null, not from zero', async () => {
   const packs = await loadPacks();
-  const [first] = planPackUpdates(packs, ['basics'], null);
+  const [first] = planPackUpdates(packs, [A_CANON_PACK], null);
   assert.equal(first.from, null, 'never converged under the versioned scheme is unknown, not version 0');
 });
 
 test('minEngineVersion is enforced against the TARGET\'s engine, and names both numbers', async () => {
-  const packs = await loadPacks().then((ps) => ps.map((p) => (p.id === 'basics' ? { ...p, minEngineVersion: 99 } : p)));
-  const plan = planPackUpdates(packs, ['basics'], { engineVersion: 3, packVersions: {} }, { engineVersion: 3 });
-  const basics = plan.find((p) => p.id === 'basics');
+  const packs = await loadPacks().then((ps) => ps.map((p) => (p.id === A_CANON_PACK ? { ...p, minEngineVersion: 99 } : p)));
+  const plan = planPackUpdates(packs, [A_CANON_PACK], { engineVersion: 3, packVersions: {} }, { engineVersion: 3 });
+  const basics = plan.find((p) => p.id === A_CANON_PACK);
   assert.match(basics.blocked, /needs engine 99/);
   assert.match(basics.blocked, /runs engine 3/);
 });
@@ -81,30 +81,30 @@ test('a blocked pack stops the run before any write — never a guess, never a s
   // floor the packs actually declare, read off the corpus rather than restated
   // here — a floor rises with every engine release the packs are gated behind.
   setStamp(root, { engineVersion: 0 });
-  const floor = (await loadPacks()).find((p) => p.id === 'basics').minEngineVersion;
-  const before = readFileSync(join(root, MOUNT, 'packs', 'basics', 'RULES.md'), 'utf8');
+  const floor = (await loadPacks()).find((p) => p.id === A_CANON_PACK).minEngineVersion;
+  const before = readFileSync(join(root, MOUNT, 'packs', A_CANON_PACK, 'RULES.md'), 'utf8');
 
   const r = await packUpdate(root, { fullName: 'o/r' });
   assert.equal(r.status, NEEDS_HUMAN);
   assert.ok(r.detail.includes(`needs engine ${floor}`), r.detail);
-  assert.equal(readFileSync(join(root, MOUNT, 'packs', 'basics', 'RULES.md'), 'utf8'), before);
+  assert.equal(readFileSync(join(root, MOUNT, 'packs', A_CANON_PACK, 'RULES.md'), 'utf8'), before);
   removeTree(root);
 });
 
 test('a real member\'s packs are replaced wholesale and stamped per pack', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0 } });
-  const rules = join(root, MOUNT, 'packs', 'basics', 'RULES.md');
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { [A_CANON_PACK]: 0 } });
+  const rules = join(root, MOUNT, 'packs', A_CANON_PACK, 'RULES.md');
   writeFileSync(rules, 'locally mangled\n');
-  writeFileSync(join(root, MOUNT, 'packs', 'basics', 'zzz-stale.mjs'), 'from a pack version that no longer exists\n');
+  writeFileSync(join(root, MOUNT, 'packs', A_CANON_PACK, 'zzz-stale.mjs'), 'from a pack version that no longer exists\n');
 
   const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   assert.equal(r.status, 'ok', r.detail);
   assert.notEqual(readFileSync(rules, 'utf8'), 'locally mangled\n', 'drift reverts');
-  assert.ok(!existsSync(join(root, MOUNT, 'packs', 'basics', 'zzz-stale.mjs')), 'a dropped file must not survive');
-  const latest = (await loadPacks()).find((p) => p.id === 'basics').version;
-  assert.equal(stampOf(root).packVersions.basics, latest, 'the stamp is the manifest version, whatever it is now');
+  assert.ok(!existsSync(join(root, MOUNT, 'packs', A_CANON_PACK, 'zzz-stale.mjs')), 'a dropped file must not survive');
+  const latest = (await loadPacks()).find((p) => p.id === A_CANON_PACK).version;
+  assert.equal(stampOf(root).packVersions[A_CANON_PACK], latest, 'the stamp is the manifest version, whatever it is now');
   assert.equal(stampOf(root).engineVersion, ENGINE_VERSION, 'the engine\'s stamp is not this flow\'s to move');
   removeTree(root);
 });
@@ -115,15 +115,15 @@ test('the pack flow converges the CLAUDE.md index, because it is what changed th
   // member would carry a stale index (and fall back to injecting the whole corpus
   // through the hook that #807 showed truncates it) until some later cycle happened
   // to touch the engine.
-  const root = makeMember({ packs: ['basics', 'claudinite-growth'] });
+  const root = makeMember({ packs: [A_CANON_PACK, ANOTHER_CANON_PACK] });
   assert.deepEqual((await applyVendor(root)).errors, []);
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0, 'claudinite-growth': 0 } });
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { [A_CANON_PACK]: 0, [ANOTHER_CANON_PACK]: 0 } });
 
   assert.equal((await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' })).status, 'ok');
   const index = readFileSync(join(root, '.claudinite', 'claudinite-rules.GENERATED.md'), 'utf8');
   // Every declared pack imported, off the mount this flow just wrote.
-  assert.match(index, /@shared\/packs\/basics\/RULES\.md/);
-  assert.match(index, /@shared\/packs\/claudinite-growth\/RULES\.md/);
+  assert.ok(index.includes(`@shared/packs/${A_CANON_PACK}/RULES.md`), index);
+  assert.ok(index.includes(`@shared/packs/${ANOTHER_CANON_PACK}/RULES.md`), index);
   // And the wiring that makes the file load for anyone.
   const claudeMd = readFileSync(join(root, 'CLAUDE.md'), 'utf8').split('\n');
   assert.ok(claudeMd.some((l) => !l.includes('`') && l.includes('@.claudinite/claudinite-rules.GENERATED.md')), claudeMd.join('\n'));
@@ -134,7 +134,7 @@ test('the pack flow converges the CLAUDE.md index, because it is what changed th
 test('the engine half of the mount is left alone — it belongs to the engine flow', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0 } });
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { [A_CANON_PACK]: 0 } });
   const engineFile = join(root, MOUNT, 'engine', 'selftest.mjs');
   writeFileSync(engineFile, 'an engine version this flow has no business replacing\n');
 
@@ -228,13 +228,13 @@ test('a pack version moving does NOT by itself buy a session (#798)', async () =
   // was the defect: a wholesale tree replacement is deterministic and idempotent, and
   // no session can improve on it.
   //
-  // `basics` now carries a record that DOES ask for a session, so the stage is needed
+  // The pack carries a record that DOES ask for a session, so the stage is needed
   // here — which is the better evidence, because it lets the test assert WHY. What
   // must never appear is a stage justified by the version plan: the reason names the
   // record, and the packs in scope are the ones that raised records, not the ones
   // whose numbers moved. The "moved but nothing asked" case is covered purely by
   // `applyStageFor` below, where no live record can drift into the fixture.
-  setStamp(root, { packVersions: { basics: 0 } });
+  setStamp(root, { packVersions: { [A_CANON_PACK]: 0 } });
   const moved = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   assert.ok(moved.plan.some((p) => p.from !== p.to), 'the fixture must actually move a version, or it proves nothing');
   if (moved.applyStage.needed) {
@@ -251,24 +251,24 @@ test('the records decide the apply stage, and what they say reaches the session'
   // record declaring a stage, and a test that could only pass while one happened to
   // exist would go quietly vacuous the day it aged out — which is the failure mode
   // that made the canary rehearsal worthless for a day (#768 Phase 5).
-  const mechanical = { dir: 'packs/basics/migrations/2026-08-13-rename', id: 'rename' };
+  const mechanical = { dir: 'packs/acme-pack/migrations/2026-08-13-rename', id: 'rename' };
   assert.deepEqual(applyStageFor([mechanical]), { needed: false },
     'a deterministic record must be deliverable without an agent');
 
   const asks = {
-    dir: 'packs/claudinite-fleet-sheepdog/migrations/2026-08-13-roster',
+    dir: 'packs/acme-pack-b/migrations/2026-08-13-roster',
     id: 'roster',
     applyStage: { why: 'the roster rules meet each member\'s own tasks', instructions: 'Re-home any task the new roster shape orphans.' },
   };
   const stage = applyStageFor([mechanical, asks]);
   assert.equal(stage.needed, true);
-  assert.deepEqual(stage.packs, ['claudinite-fleet-sheepdog'], 'only the pack that RAISED the record is in scope');
-  assert.deepEqual(stage.records, ['packs/claudinite-fleet-sheepdog/migrations/2026-08-13-roster']);
+  assert.deepEqual(stage.packs, ['acme-pack-b'], 'only the pack that RAISED the record is in scope');
+  assert.deepEqual(stage.records, ['packs/acme-pack-b/migrations/2026-08-13-roster']);
 
   // The record is NAMED, not quoted. Its instructions are on the branch, in the mount
   // the update just vendored; the reason carries an identifier so the session can find
   // them, because a request payload may not carry instructions (code-work.mjs).
-  assert.match(stage.why, /packs\/claudinite-fleet-sheepdog\/migrations\/2026-08-13-roster/, 'the session must be able to find the record');
+  assert.ok(stage.why.includes('packs/acme-pack-b/migrations/2026-08-13-roster'), 'the session must be able to find the record');
   assert.match(stage.why, /roster rules meet/);
   assert.ok(!stage.why.includes('Re-home any task'), 'the instructions travel through the repo, never the payload');
   assert.equal(terminalFor({ status: 'ok', applyStage: stage, decision: { action: 'merge', why: 'green' } }).why, stage.why);
@@ -276,11 +276,11 @@ test('the records decide the apply stage, and what they say reaches the session'
 
 test('two records asking together are one session, and both are named', () => {
   const stage = applyStageFor([
-    { dir: 'packs/basics/migrations/2026-08-13-a', id: 'a', applyStage: { why: 'first', instructions: 'Do A.' } },
-    { dir: 'packs/basics/migrations/2026-08-13-b', id: 'b', applyStage: { why: 'second' } },
+    { dir: 'packs/acme-pack/migrations/2026-08-13-a', id: 'a', applyStage: { why: 'first', instructions: 'Do A.' } },
+    { dir: 'packs/acme-pack/migrations/2026-08-13-b', id: 'b', applyStage: { why: 'second' } },
   ]);
-  assert.deepEqual(stage.packs, ['basics'], 'one pack, named once');
-  assert.deepEqual(stage.records, ['packs/basics/migrations/2026-08-13-a', 'packs/basics/migrations/2026-08-13-b']);
+  assert.deepEqual(stage.packs, ['acme-pack'], 'one pack, named once');
+  assert.deepEqual(stage.records, ['packs/acme-pack/migrations/2026-08-13-a', 'packs/acme-pack/migrations/2026-08-13-b']);
   // Both reasons reach the issue — a session nobody can explain is one nobody trusts.
   assert.match(stage.why, /first/);
   assert.match(stage.why, /second/);
@@ -289,7 +289,7 @@ test('two records asking together are one session, and both are named', () => {
 test('a red self-test is the same needs-human terminal the engine flow has', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  setStamp(root, { packVersions: { basics: 0 } });
+  setStamp(root, { packVersions: { [A_CANON_PACK]: 0 } });
   const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => { throw new Error('broken'); } });
   assert.equal(r.status, NEEDS_HUMAN);
   assert.equal(r.decision.action, 'needs-human');
@@ -299,8 +299,8 @@ test('a red self-test is the same needs-human terminal the engine flow has', asy
 test('dry run judges the whole plan and writes nothing', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  setStamp(root, { packVersions: { basics: 0 } });
-  const rules = join(root, MOUNT, 'packs', 'basics', 'RULES.md');
+  setStamp(root, { packVersions: { [A_CANON_PACK]: 0 } });
+  const rules = join(root, MOUNT, 'packs', A_CANON_PACK, 'RULES.md');
   writeFileSync(rules, 'mangled\n');
 
   const r = await packUpdate(root, { fullName: 'o/r', dryRun: true });
@@ -308,14 +308,14 @@ test('dry run judges the whole plan and writes nothing', async () => {
   assert.equal(r.dryRun, true);
   assert.ok(r.files > 0);
   assert.equal(readFileSync(rules, 'utf8'), 'mangled\n');
-  assert.equal(stampOf(root).packVersions.basics, 0);
+  assert.equal(stampOf(root).packVersions[A_CANON_PACK], 0);
   removeTree(root);
 });
 
 test('packRecordsInGap is that pack\'s records only', () => {
-  const behind = packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 0 } });
-  assert.ok(behind.every((d) => d.startsWith('packs/claudinite-fleet-sheepdog/migrations/')), behind.join(', '));
-  assert.deepEqual(packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 99 } }), []);
+  const behind = packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 0 } }); // @real-entity this pack's own records are the subject
+  assert.ok(behind.every((d) => d.startsWith('packs/claudinite-fleet-sheepdog/migrations/')), behind.join(', ')); // @real-entity this pack's own records are the subject
+  assert.deepEqual(packRecordsInGap('claudinite-fleet-sheepdog', { packVersions: { 'claudinite-fleet-sheepdog': 99 } }), []); // @real-entity this pack's own records are the subject
 });
 
 // The stamp is written as well as read, and both sides have to agree about a
@@ -325,12 +325,12 @@ test('packRecordsInGap is that pack\'s records only', () => {
 // authoritative, the older one permanent, and the rename never finishable.
 test('the stamp write drops a legacy pack key rather than carrying it forward', async () => {
   const { canonicalPackVersions } = await import('../engine/pack_loader/renamed-packs.mjs');
-  const raw = { 'git-github': 7, 'tidy-repo': 6, barriers: 6 };
-  const plan = [{ id: 'basics', to: 8 }];
+  const raw = { 'git-github': 7, 'tidy-repo': 6, barriers: 6 }; // @real-entity the rename map under test carries these ids
+  const plan = [{ id: 'basics', to: 8 }]; // @real-entity the rename map under test carries these ids
   // Exactly the expression the flow uses at its stamp step.
   const packVersions = { ...canonicalPackVersions(raw) };
   for (const p of plan) if (p.to !== null) packVersions[p.id] = p.to;
-  assert.deepEqual(packVersions, { 'git-github': 7, basics: 8 });
+  assert.deepEqual(packVersions, { 'git-github': 7, basics: 8 }); // @real-entity the rename map under test carries these ids
   assert.ok(!Object.hasOwn(packVersions, 'tidy-repo'), 'the old key must not survive the write');
   assert.ok(!Object.hasOwn(packVersions, 'barriers'), 'nor the other one');
 });
@@ -346,7 +346,7 @@ test('a pack the canon renamed takes its old mount directory with it', async () 
   // Driven through a REAL entry of the rename map (tidy-repo -> basics) rather than a
   // fixture map, because the property worth pinning is that the spellings this corpus
   // actually ships are the ones swept.
-  const root = makeMember({ packs: ['basics'] });
+  const root = makeMember({ packs: ['basics'] }); // @real-entity a real rename and absorption are what this converges
   assert.deepEqual((await applyVendor(root)).errors, []);
   const legacy = join(root, MOUNT, 'packs', 'tidy-repo');
   mkdirSync(legacy, { recursive: true });
@@ -359,7 +359,7 @@ test('a pack the canon renamed takes its old mount directory with it', async () 
   await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
 
   assert.ok(!existsSync(legacy), 'the abandoned directory is the second copy of a pack the member already has');
-  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.mjs')), 'and the live one is laid down');
+  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.mjs')), 'and the live one is laid down'); // @real-entity a real rename and absorption are what this converges
   removeTree(root);
 });
 
@@ -376,7 +376,7 @@ test('an absorbed pack takes its own leftover mount directory with it, the same 
   // exactly what `resolveDeclaredPacks` writes at adoption time, and what every
   // member still declaring the absorbed spelling actually has on disk.
   const root = makeMember({
-    packs: [{ id: 'barriers' }, { id: 'basics', via: ['barriers'] }],
+    packs: [{ id: 'barriers' }, { id: 'basics', via: ['barriers'] }], // @real-entity a real rename and absorption are what this converges
   });
   assert.deepEqual((await applyVendor(root)).errors, []);
 
@@ -394,7 +394,7 @@ test('an absorbed pack takes its own leftover mount directory with it, the same 
   // ever sees both directories at once.
   assert.equal(r.status, 'ok', r.detail);
   assert.ok(!existsSync(legacy), 'the absorbed pack\'s leftover directory is swept, same as a renamed one');
-  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.mjs')), 'and the surviving pack is laid down');
+  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.mjs')), 'and the surviving pack is laid down'); // @real-entity a real rename and absorption are what this converges
   removeTree(root);
 });
 
@@ -418,7 +418,7 @@ test('the update flow announces it can withhold, and stages a workflow write ins
     // FLOW rather than about whichever live record happens to carry a rewrite.
     extraRecords: [{
       id: 'test-workflow-rewrite',
-      dir: 'claudinite-tasks/migrations/test-workflow-rewrite',
+      dir: 'claudinite-tasks/migrations/test-workflow-rewrite', // @real-entity the pack whose records deliver the workflows is the subject
       rewrite: [{ file: EXECUTOR_WORKFLOW, replace: [{ from: '# MARKER', to: '# REWRITTEN' }] }],
       applyStage: { why: 'a workflow file was withheld and needs delivering' },
     }],
@@ -454,7 +454,7 @@ test('the staging sweep clears stale files without deleting what this run staged
     selfTestRun: () => 'ok',
     extraRecords: [{
       id: 'test-workflow-rewrite',
-      dir: 'claudinite-tasks/migrations/test-workflow-rewrite',
+      dir: 'claudinite-tasks/migrations/test-workflow-rewrite', // @real-entity the pack whose records deliver the workflows is the subject
       rewrite: [{ file: EXECUTOR_WORKFLOW, replace: [{ from: '# MARKER', to: '# REWRITTEN' }] }],
       applyStage: { why: 'a workflow file was withheld and needs delivering' },
     }],
@@ -472,27 +472,27 @@ test('the staging sweep clears stale files without deleting what this run staged
 // the content — the staged file — is swept as a leftover by the next cycle. Nothing
 // is red at any point. Five members lost the executor's CLAUDINITE_VARS line that way.
 test('a pack whose record withheld a file is NOT stamped, so the record still applies next cycle', async () => {
-  const root = makeMember({ packs: ['basics', 'claudinite-tasks'] });
+  const root = makeMember({ packs: [A_CANON_PACK, 'claudinite-tasks'] }); // @real-entity the packs whose records deliver the workflows are the subject
   assert.deepEqual((await applyVendor(root)).errors, []);
   // Below canon, so stamping is a real move this run either makes or withholds.
-  setStamp(root, { packVersions: { 'claudinite-tasks': '60831.5' } });
+  setStamp(root, { packVersions: { 'claudinite-tasks': '60831.5' } }); // @real-entity the pack whose records deliver the workflows is the subject
   mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
   writeFileSync(join(root, EXECUTOR_WORKFLOW), 'name: Claudinite executor\n# MARKER\n');
 
   const record = {
     id: 'test-workflow-rewrite',
-    dir: 'packs/claudinite-tasks/migrations/test-workflow-rewrite',
+    dir: 'packs/claudinite-tasks/migrations/test-workflow-rewrite', // @real-entity the pack whose records deliver the workflows is the subject
     rewrite: [{ file: EXECUTOR_WORKFLOW, replace: [{ from: '# MARKER', to: '# REWRITTEN' }] }],
     applyStage: { why: 'a workflow file was withheld and needs delivering' },
   };
   const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok', extraRecords: [record] });
 
   assert.deepEqual(r.withheld, [EXECUTOR_WORKFLOW], 'the file was withheld, so the delivery is still owed');
-  assert.equal(stampOf(root).packVersions['claudinite-tasks'], '60831.5',
+  assert.equal(stampOf(root).packVersions['claudinite-tasks'], '60831.5', // @real-entity the pack whose records deliver the workflows is the subject
     'stamping claims a delivery the apply stage has not made, and puts the record out of range forever');
   // The other packs this run really did converge are stamped as normal — the hold is
   // scoped to the one pack that owes a file, not to the whole run.
-  assert.equal(stampOf(root).packVersions.basics, (await loadPacks()).find((p) => p.id === 'basics').version,
+  assert.equal(stampOf(root).packVersions.basics, (await loadPacks()).find((p) => p.id === A_CANON_PACK).version,
     'a pack with nothing withheld is unaffected');
 
   // And because the stamp stayed put, a second cycle still stages the delivery rather
@@ -509,9 +509,9 @@ test('a pack whose record withheld a file is NOT stamped, so the record still ap
 // `withheld` would therefore stamp the pack whose delivery is the one still owed, which
 // is the original bug with an extra step. The attribution is made as each write happens.
 test('two packs staging the same workflow path are BOTH held back', async () => {
-  const root = makeMember({ packs: ['basics', 'claudinite-tasks', 'claudinite-lifecycle'] });
+  const root = makeMember({ packs: [A_CANON_PACK, 'claudinite-tasks', 'claudinite-lifecycle'] }); // @real-entity the packs whose records deliver the workflows are the subject
   assert.deepEqual((await applyVendor(root)).errors, []);
-  setStamp(root, { packVersions: { 'claudinite-tasks': '60831.5', 'claudinite-lifecycle': '60831.1' } });
+  setStamp(root, { packVersions: { 'claudinite-tasks': '60831.5', 'claudinite-lifecycle': '60831.1' } }); // @real-entity the pack whose records deliver the workflows is the subject
   mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
   writeFileSync(join(root, EXECUTOR_WORKFLOW), 'name: Claudinite executor\n# MARKER\n');
 
@@ -527,16 +527,16 @@ test('two packs staging the same workflow path are BOTH held back', async () => 
     extraRecords: [
       // Both read the LIVE file — the first one's write went to staging, not to the
       // destination — so both match the same anchor and the second's content wins.
-      record('claudinite-tasks', '# MARKER', '# FIRST'),
-      record('claudinite-lifecycle', '# MARKER', '# SECOND'),
+      record('claudinite-tasks', '# MARKER', '# FIRST'), // @real-entity the pack whose records deliver the workflows is the subject
+      record('claudinite-lifecycle', '# MARKER', '# SECOND'), // @real-entity the pack whose records deliver the workflows is the subject
     ],
   });
 
   // One path, so `withheld` holds a single entry — the exact shape a count misreads.
   assert.deepEqual(r.withheld, [EXECUTOR_WORKFLOW]);
   const stamped = stampOf(root).packVersions;
-  assert.equal(stamped['claudinite-tasks'], '60831.5', 'the first record owes its delivery');
-  assert.equal(stamped['claudinite-lifecycle'], '60831.1',
+  assert.equal(stamped['claudinite-tasks'], '60831.5', 'the first record owes its delivery'); // @real-entity the pack whose records deliver the workflows is the subject
+  assert.equal(stamped['claudinite-lifecycle'], '60831.1', // @real-entity the pack whose records deliver the workflows is the subject
     'and so does the second, whose content is the one actually staged');
   removeTree(root);
 });
@@ -564,7 +564,7 @@ test('the reason names a few of those files and counts the rest — it is a summ
 test('a record that wrote outside the vendored packs raises the stage from a real member', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0 } });
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { [A_CANON_PACK]: 0 } });
   // A checkout, because the predicate reads what the cycle wrote out of git — and
   // committed first, so only what packUpdate itself writes is in the answer.
   const git = (...args) => gitIn(root, ...args);
@@ -575,7 +575,7 @@ test('a record that wrote outside the vendored packs raises the stage from a rea
   git('commit', '-qm', 'the member before this cycle');
 
   const rewritesSource = {
-    dir: 'packs/basics/migrations/2026-09-11-rewrite',
+    dir: 'packs/acme-pack/migrations/2026-09-11-rewrite',
     id: 'rewrite',
     rewrite: [{ file: 'src/app.js', replace: [{ from: 'project code', to: 'rewritten by a record' }] }],
   };
@@ -590,7 +590,7 @@ test('a record that wrote outside the vendored packs raises the stage from a rea
 test('a pure re-vendor of the packs still merges itself — no session for a pack bump', async () => {
   const root = makeMember();
   assert.deepEqual((await applyVendor(root)).errors, []);
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: 0 } });
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { [A_CANON_PACK]: 0 } });
   const git = (...args) => gitIn(root, ...args);
   git('init', '-q', '-b', 'main');
   git('config', 'user.email', 't@example.com');

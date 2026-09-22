@@ -24,15 +24,15 @@ test("activeEnvs resolves the node env from the pack entry's config.dirs (functi
   const root = makeRepo({
     base: {
       '.claudinite-settings.json': JSON.stringify({
-        packs: [{ id: 'node', config: { dirs: ['firebase/functions'] } }],
+        packs: [{ id: 'node', config: { dirs: ['api/functions'] } }],
       }),
     },
   });
   try {
     const n = (await activeEnvs(root)).find((e) => e.id === 'node');
     assert.ok(n);
-    assert.match(n.setup, /cd "firebase\/functions" && npm ci/);
-    assert.match(n.probe, /firebase\/functions\/node_modules/);
+    assert.match(n.setup, /cd "api\/functions" && npm ci/);
+    assert.match(n.probe, /api\/functions\/node_modules/);
   } finally { cleanup(root); }
 });
 
@@ -41,14 +41,14 @@ test('activeEnvs still resolves per-repo params from the legacy top-level packCo
     base: {
       '.claudinite-settings.json': JSON.stringify({
         packs: ['node'],
-        packConfig: { node: { dirs: ['firebase/functions'] } },
+        packConfig: { node: { dirs: ['api/functions'] } },
       }),
     },
   });
   try {
     const n = (await activeEnvs(root)).find((e) => e.id === 'node');
     assert.ok(n);
-    assert.match(n.setup, /cd "firebase\/functions" && npm ci/);
+    assert.match(n.setup, /cd "api\/functions" && npm ci/);
   } finally { cleanup(root); }
 });
 

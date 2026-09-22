@@ -20,7 +20,7 @@ const coreDeclared = loadDeclaredChecks(
 // assert that on its own — it is three facts in three places, and this file holds
 // all three together so none of them can move without the others:
 //
-//   1. the requires EDGE that makes core reach every member (basics -> core),
+//   1. the requires EDGE that makes core reach every member (acme-pack -> core),
 //   2. the CLOSURE actually materializing the declaration from that edge, and
 //   3. the CHECK that reports a member whose declaration lacks it.
 //
@@ -33,15 +33,15 @@ const coreDeclared = loadDeclaredChecks(
 // why the check only has to catch a hand-deleted entry.
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
-test('the requires closure materializes core into a declaration that names only basics', async () => {
+test('the requires closure materializes core into a declaration that names only basics', async () => { // @real-entity resolved against the real shelf, so the id must be one it carries
   const { packs } = await registry.discoverPacks({ localRoot: REPO });
-  const resolved = resolveDeclaredPacks(['basics'], packs).map(packEntryId);
-  assert.ok(resolved.includes('claudinite-lifecycle'), `resolving ["basics"] gave ${JSON.stringify(resolved)} — core must be in the closure`);
+  const resolved = resolveDeclaredPacks(['basics'], packs).map(packEntryId); // @real-entity resolved against the real shelf, so the id must be one it carries
+  assert.ok(resolved.includes('claudinite-lifecycle'), `resolving ["basics"] gave ${JSON.stringify(resolved)} — core must be in the closure`); // @real-entity resolved against the real shelf, so the id must be one it carries
 });
 
 test('claudinite-lifecycle-declared: silent on a member that declares core, fires on one that does not', () => {
-  const withCore = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['claudinite-lifecycle', 'basics'] }) } });
-  const without = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) } });
+  const withCore = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['claudinite-lifecycle', 'acme-pack'] }) } });
+  const without = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack'] }) } });
   try {
     assert.equal(runRule(coreDeclared, buildContext({ root: withCore, mode: 'all' })).length, 0);
     const findings = runRule(coreDeclared, buildContext({ root: without, mode: 'all' }));
@@ -52,7 +52,7 @@ test('claudinite-lifecycle-declared: silent on a member that declares core, fire
 });
 
 test('claudinite-lifecycle-declared: an entry-object declaration counts, and a non-member is inert', () => {
-  const objectEntry = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: [{ id: 'claudinite-lifecycle', via: ['basics'] }] }) } });
+  const objectEntry = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: [{ id: 'claudinite-lifecycle', via: ['acme-pack'] }] }) } });
   const notAMember = makeRepo({ changed: { 'README.md': '# hi\n' } });
   try {
     assert.equal(runRule(coreDeclared, buildContext({ root: objectEntry, mode: 'all' })).length, 0);

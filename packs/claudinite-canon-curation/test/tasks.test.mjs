@@ -34,7 +34,7 @@ const promoteVerdict = (signals) => evaluatePrecondition({ decl: promote, terms:
 
 const member = (over = {}) => ({
   repo: 'acme/app', defaultBranch: 'main',
-  activePacks: ['claudinite-growth'], packConfigs: {},
+  activePacks: ['claudinite-growth'], packConfigs: {}, // @real-entity the pack the precondition under test reads membership of
   localPacksChanged: true, stamp: null, schedulesItself: false,
   ...over,
 });
@@ -55,7 +55,7 @@ test('growth-promote: fires on participating members whose local packs changed',
 
 test('growth-promote: skips a member that opted out of promotion', () => {
   const v = promoteVerdict({ fleet: { members: [
-    member({ repo: 'acme/opt', packConfigs: { 'claudinite-growth': { promote: false } } }),
+    member({ repo: 'acme/opt', packConfigs: { 'claudinite-growth': { promote: false } } }), // @real-entity the pack the precondition under test reads membership of
   ] } });
   assert.equal(v.run, false);
 });
@@ -63,7 +63,7 @@ test('growth-promote: skips a member that opted out of promotion', () => {
 // Membership is the whole participation test now: every member carries local packs
 // (seeded at adoption), so a repo not declaring the growth pack is the only skip.
 test('growth-promote: skips a member not declaring the growth pack', () => {
-  assert.equal(promoteVerdict({ fleet: { members: [member({ activePacks: ['basics'] })] } }).run, false);
+  assert.equal(promoteVerdict({ fleet: { members: [member({ activePacks: ['acme-pack'] })] } }).run, false);
 });
 
 test('growth-promote: an unproven fleet state ERRORS — it never reads as "nothing to promote"', () => {
@@ -96,7 +96,7 @@ test('pack-version-history: lands itself under a policy that covers only the ver
     entries: files.map((file) => ({ file, before: 'a\n', after: 'b\n' })),
     declaredRules: rules,
   });
-  assert.equal(verdict(['packs/basics/provenance/VERSIONS.md', 'packs/leaflet/provenance/VERSIONS.md']).mergeable, true);
-  assert.equal(verdict(['packs/basics/provenance/VERSIONS.md', 'packs/basics/pack.mjs']).mergeable, false);
+  assert.equal(verdict(['packs/acme-pack/provenance/VERSIONS.md', 'packs/acme-pack-l/provenance/VERSIONS.md']).mergeable, true);
+  assert.equal(verdict(['packs/acme-pack/provenance/VERSIONS.md', 'packs/acme-pack/pack.mjs']).mergeable, false);
   assert.equal(verdict(['.claudinite/local/packs/x/provenance/VERSIONS.md']).mergeable, false);
 });

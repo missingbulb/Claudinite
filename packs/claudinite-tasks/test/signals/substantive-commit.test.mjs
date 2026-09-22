@@ -15,7 +15,7 @@ test('genuine project work is substantive', () => {
 test('a bot, a housekeeping message and a task trailer are all machinery', () => {
   assert.equal(isSubstantiveCommit(commit({ author: { login: 'github-actions[bot]' } }), ['src/a.js']), false);
   assert.equal(isSubstantiveCommit(commit({ commit: { message: 'Claudinite baselining' } }), ['src/a.js']), false);
-  assert.equal(isSubstantiveCommit(commit({ commit: { message: 'Fold usage\n\nClaudinite-Task: basics/usage-fold\n' } }), ['src/a.js']), false);
+  assert.equal(isSubstantiveCommit(commit({ commit: { message: 'Fold usage\n\nClaudinite-Task: acme-pack/usage-fold\n' } }), ['src/a.js']), false);
 });
 
 test('a corpus-only commit is machinery where the file list was read', () => {

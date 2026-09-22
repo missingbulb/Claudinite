@@ -10,15 +10,15 @@ import { commandName } from '../../packs/claudinite-tasks/tasks/usage-fold/fold-
 import { removeTree } from '../../engine/remove-tree.mjs';
 
 test('globToRegExp: ** spans directories, * and ? stay inside a segment, braces expand, the rest is literal', () => {
-  const tree = globToRegExp('product-wiki/**');
-  assert.ok(tree.test('product-wiki/Market/README.md'));
-  assert.ok(tree.test('product-wiki/README.md'));
-  assert.ok(!tree.test('docs/product-wiki/README.md'));
+  const tree = globToRegExp('acme-pack-e/**');
+  assert.ok(tree.test('acme-pack-e/Market/README.md'));
+  assert.ok(tree.test('acme-pack-e/README.md'));
+  assert.ok(!tree.test('docs/acme-pack-e/README.md'));
   const anyDepth = globToRegExp('**/packs/*/RULES.md');
-  assert.ok(anyDepth.test('packs/basics/RULES.md'));
+  assert.ok(anyDepth.test('packs/acme-pack/RULES.md'));
   assert.ok(anyDepth.test('.claudinite/local/packs/claudinite/RULES.md'));
-  assert.ok(!anyDepth.test('packs/basics/skills/x/RULES.md'), '* does not cross a slash');
-  assert.ok(!anyDepth.test('packs/basics/RULESXmd'), 'the dot is literal');
+  assert.ok(!anyDepth.test('packs/acme-pack/skills/x/RULES.md'), '* does not cross a slash');
+  assert.ok(!anyDepth.test('packs/acme-pack/RULESXmd'), 'the dot is literal');
   assert.ok(globToRegExp('src/?.js').test('src/a.js'));
   assert.ok(!globToRegExp('src/?.js').test('src/ab.js'));
   assert.deepEqual(expandBraces('src/**/*.{ts,tsx}'), ['src/**/*.ts', 'src/**/*.tsx']);
@@ -163,7 +163,7 @@ test('bodyOf reads the body a skill declares under metadata — workflow or guid
 test('parseFrontmatter: a map nests as deep as it is written, so metadata.usage.expect reads', () => {
   const fm = parseFrontmatter([
     '---',
-    'name: writing-tasks',
+    'name: acme-skill-x',
     'metadata:',
     '  usage:',
     '    expect: routine',
@@ -174,7 +174,7 @@ test('parseFrontmatter: a map nests as deep as it is written, so metadata.usage.
     '---',
     'text',
   ].join('\n'));
-  assert.equal(fm.name, 'writing-tasks');
+  assert.equal(fm.name, 'acme-skill-x');
   assert.equal(fm.metadata.usage.expect, 'routine');
   assert.equal(fm.metadata.usage['loads-per-sessions'], '1 in 5');
   assert.deepEqual(fm.metadata['force-load-on-tool-calls'], ['Bash.command /git commit/'],
@@ -205,7 +205,7 @@ test('hits*: one predicate per moment, the shape a moment counter asks its quest
   assert.ok(!hitsCall(decl, { name: 'Bash', input: { command: 'git status' } }));
   assert.ok(!hitsCall(decl, { name: 'Read', input: { command: 'git commit' } }));
   assert.ok(hitsPrompt({ kind: 'prompt', pattern: /\/do-later/ }, 'please /do-later this'));
-  assert.ok(!hitsPrompt({ kind: 'toolCall', pattern: /\/do-later/ }, '/do-later'), 'a kind it is not never hits');
+  assert.ok(!hitsPrompt({ kind: 'toolCall', pattern: /\/acme-cmd/ }, '/acme-cmd'), 'a kind it is not never hits');
   assert.ok(hitsResult({ kind: 'toolResult', tool: 'WebFetch', field: null, pattern: /403/ }, { name: 'WebFetch' }, 'got 403'));
-  assert.ok(hitsPath({ re: globToRegExp('packs/**') }, 'packs/basics/RULES.md'));
+  assert.ok(hitsPath({ re: globToRegExp('packs/**') }, 'packs/acme-pack/RULES.md'));
 });
