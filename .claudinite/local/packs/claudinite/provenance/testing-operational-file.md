@@ -1,4 +1,7 @@
-## 2026-09-01 · born · converted from references.md (RULES-34)
-- **Reason:** #907: a test re-asserting only the file that broke needs a fresh edit for the next
-  file added beside it; one that walks the real directory does not.
-- **Mechanism:** prose
+## 2026-08-24 · born · Cut the local pack's RULES.md to one trigger and directive per rule (#1315)
+- **Reason:** split out of the vendor-set rule, which carried the shape of its test; a reader can
+  arrive at it without that one.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Mechanism:** a RULES.md rule, triggered on "Testing that an operational file still vendors".
+- **Landed:** #1315 (Closes #1312).

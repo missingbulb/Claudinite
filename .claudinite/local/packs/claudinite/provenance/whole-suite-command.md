@@ -9,3 +9,16 @@
 - **Mechanism:** prose, a guideline of the running-the-suite skill
 - **Retire when:** Retire the distinction if `node --test <dir>` starts recursing, or starts failing
   quietly.
+
+## 2026-09-06 · reworded · Rule revalidation: re-probe five harness claims at their live addresses (#1782)
+- **Reason:** the skill's own text named the failing form wrongly for the same reason.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Landed:** #1782 (Refs #1767).
+
+## 2026-09-20 · reworded · Claudinite growth: rule revalidation (#2161)
+- **Source:** the weekly revalidation's re-probe of this pack's environment claims.
+- **Reason:** the skill's own line named the root-level glob as the silent shape for the same
+  reason.
+- **Actor:** @missingbulb (owner).
+- **Landed:** #2161 (Refs #2150).

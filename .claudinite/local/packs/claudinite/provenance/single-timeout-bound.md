@@ -1,4 +1,19 @@
-## 2026-09-01 · born · converted from references.md (RULES-36)
-- **Reason:** #1027: one bound reintroduced the bug a prior fix closed, on whichever side crossed
-  the shorter phase's real need.
-- **Mechanism:** prose
+## 2026-08-20 · born · Claudinite growth: extract lessons (#1083)
+- **Source:** the growth-extract run over the window in #1035 - twenty-six commits, twenty-eight
+  merged pull requests and thirty-eight conversation captures; the run's own breakdown is on #370.
+- **Reason:** one bound covered both "has this started" and "is something already running about to
+  finish", and the give-up message read as a verdict on the work (#1027).
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Mechanism:** a RULES.md rule, triggered on "A single timeout bound covering two different
+  waits".
+- **Landed:** #1083 (Refs #1035).
+
+## 2026-08-24 · reworded · Cut the local pack's RULES.md to one trigger and directive per rule (#1315)
+- **Reason:** this file carried 63% of the repo's session rule tokens and was growing ~900 tokens a
+  day. Two passes: the per-rule incident archaeology comes out, then a rule carrying two situations
+  is split before it is cut. 8,435 to 5,359 words, at a mean of 35 words a rule; reasoning
+  is out and a measurement survives only where the number is the argument.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Landed:** #1315 (Closes #1312).

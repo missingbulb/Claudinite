@@ -1,5 +1,9 @@
-## 2026-09-06 · born · converted from references.md (running-the-suite-3)
-- **Reason:** Measured across three sessions' tool wall-clock: #993's spent 18 full-suite runs (18
-  min) and 22 world sweeps (7 min) of 26 min, #941's 22 (22 min) and 27 (12 min) of 33 min, #992's 7
-  and 8 of 14 min.
-- **Mechanism:** prose, a guideline of the running-the-suite skill
+## 2026-08-19 · born · Claudinite growth: extract lessons (#1015)
+- **Source:** the growth-extract run over the 2026-08-18 window.
+- **Reason:** measured: the session that landed #993 spent eighteen full-suite runs and twenty-two
+  world sweeps out of twenty-six minutes of tool wall-clock, and both are whole-tree aggregates
+  whose verdict cannot turn on one file of a sweep.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Mechanism:** a RULES.md rule, triggered on "Iterating on a sweep across many files".
+- **Landed:** #1015 (Refs #1014).
