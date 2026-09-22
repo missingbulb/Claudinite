@@ -325,14 +325,13 @@ test('packRecordsInGap is that pack\'s records only', () => {
 // authoritative, the older one permanent, and the rename never finishable.
 test('the stamp write drops a legacy pack key rather than carrying it forward', async () => {
   const { canonicalPackVersions } = await import('../engine/pack_loader/renamed-packs.mjs');
-  const raw = { 'git-github': 7, 'tidy-repo': 6, barriers: 6 }; // @real-entity the rename map under test carries these ids
-  const plan = [{ id: 'basics', to: 8 }]; // @real-entity the rename map under test carries these ids
+  const raw = { 'git-github': 7, 'static-website': 6 }; // @real-entity the rename map under test carries these ids
+  const plan = [{ id: 'public-website', to: 8 }]; // @real-entity the rename map under test carries these ids
   // Exactly the expression the flow uses at its stamp step.
   const packVersions = { ...canonicalPackVersions(raw) };
   for (const p of plan) if (p.to !== null) packVersions[p.id] = p.to;
-  assert.deepEqual(packVersions, { 'git-github': 7, basics: 8 }); // @real-entity the rename map under test carries these ids
-  assert.ok(!Object.hasOwn(packVersions, 'tidy-repo'), 'the old key must not survive the write');
-  assert.ok(!Object.hasOwn(packVersions, 'barriers'), 'nor the other one');
+  assert.deepEqual(packVersions, { 'git-github': 7, 'public-website': 8 }); // @real-entity the rename map under test carries these ids
+  assert.ok(!Object.hasOwn(packVersions, 'static-website'), 'the old key must not survive the write');
 });
 
 test('a pack the canon renamed takes its old mount directory with it', async () => {
@@ -343,58 +342,59 @@ test('a pack the canon renamed takes its old mount directory with it', async () 
   // live one has, and the member runs two packs of that name, one of them frozen at the
   // content it was renamed from.
   //
-  // Driven through a REAL entry of the rename map (tidy-repo -> basics) rather than a
-  // fixture map, because the property worth pinning is that the spellings this corpus
-  // actually ships are the ones swept.
-  const root = makeMember({ packs: ['basics'] }); // @real-entity a real rename and absorption are what this converges
+  // Driven through a REAL entry of the rename map (static-website -> public-website)
+  // rather than a fixture map, because the property worth pinning is that the
+  // spellings this corpus actually ships are the ones swept.
+  const root = makeMember({ packs: ['public-website'] }); // @real-entity a real rename is what this converges
   assert.deepEqual((await applyVendor(root)).errors, []);
-  const legacy = join(root, MOUNT, 'packs', 'tidy-repo');
+  const legacy = join(root, MOUNT, 'packs', 'static-website');
   mkdirSync(legacy, { recursive: true });
-  writeFileSync(join(legacy, 'pack.mjs'), "export default { id: 'tidy-repo', version: 1 };\n");
+  writeFileSync(join(legacy, 'pack.mjs'), "export default { id: 'static-website', version: 1 };\n");
 
   // A gap on the surviving pack and nothing else: a date-anchored version just below
   // its manifest's, above which it has no record, so this run is the vendor step and
   // only the vendor step.
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: '60907.1' } });
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { 'public-website': '60921.0' } }); // @real-entity the rename map under test renames to this id
   await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
 
   assert.ok(!existsSync(legacy), 'the abandoned directory is the second copy of a pack the member already has');
-  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.mjs')), 'and the live one is laid down'); // @real-entity a real rename and absorption are what this converges
+  assert.ok(existsSync(join(root, MOUNT, 'packs', 'public-website', 'pack.mjs')), 'and the live one is laid down'); // @real-entity a real rename is what this converges
   removeTree(root);
 });
 
-// #1188: an ABSORBED pack (barriers -> basics, #1681) is a different shape in the mount
-// than a rename — the leftover directory sits BESIDE its survivor's rather than alone —
-// but `legacySpellingsOf` reads both off the same `RENAMED_PACKS` map and sweeps them
-// identically. This pins that the composed rules already produce the right answer for
-// the shape that actually froze a fleet (#1186): no new migration-record delete op is
-// needed, because a converge that lays down the survivor already takes the absorbed
-// leftover with it, the same as a rename's.
-test('an absorbed pack takes its own leftover mount directory with it, the same as a rename', async () => {
-  // The declaration a member carried before the collapse: the absorbed pack declared
-  // explicitly, and its survivor materialized alongside it as its own entry (`via`) —
-  // exactly what `resolveDeclaredPacks` writes at adoption time, and what every
-  // member still declaring the absorbed spelling actually has on disk.
+// #1188: a member whose DECLARATION names both spellings is a different shape in the
+// mount than the case above — the leftover directory sits BESIDE its survivor's rather
+// than alone. It is what every member declaring an ABSORBED pack has, the survivor
+// being one the absorbed pack's `requires` already pulled in, and it is equally what a
+// declaration caught mid-converge has; `legacySpellingsOf` reads both off the same
+// `RENAMED_PACKS` map and sweeps them identically. This pins that the composed rules
+// already produce the right answer for the shape that actually froze a fleet (#1186):
+// no new migration-record delete op is needed, because a converge that lays down the
+// survivor already takes the leftover with it.
+test('a leftover directory sitting beside its survivor is swept too, not just one standing alone', async () => {
+  // Both ids declared, the survivor materialized alongside as its own entry — what
+  // `resolveDeclaredPacks` writes at adoption time, and what a member that has not
+  // converged its declaration actually has on disk.
   const root = makeMember({
-    packs: [{ id: 'barriers' }, { id: 'basics', via: ['barriers'] }], // @real-entity a real rename and absorption are what this converges
+    packs: [{ id: 'static-website' }, { id: 'public-website', via: ['static-website'] }], // @real-entity a real rename is what this converges
   });
   assert.deepEqual((await applyVendor(root)).errors, []);
 
-  // The leftover: a complete, loadable copy of the retired pack, exactly what a
-  // member frozen since before the collapse landed still carries (#1186).
-  const legacy = join(root, MOUNT, 'packs', 'barriers');
+  // The leftover: a complete, loadable copy of the pack under its old id, exactly what
+  // a member frozen since before the rename landed still carries (#1186).
+  const legacy = join(root, MOUNT, 'packs', 'static-website');
   mkdirSync(legacy, { recursive: true });
-  writeFileSync(join(legacy, 'pack.mjs'), "export default { id: 'barriers', version: 1 };\n");
+  writeFileSync(join(legacy, 'pack.mjs'), "export default { id: 'static-website', version: 1 };\n");
 
-  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { basics: '60907.1' } });
+  setStamp(root, { engineVersion: ENGINE_VERSION, packVersions: { 'public-website': '60921.0' } }); // @real-entity the rename map under test renames to this id
   const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
 
   // The contrast case: the converged tree self-tests clean rather than failing on the
   // duplicate-id collision #1186 describes — the leftover is gone BEFORE discovery
   // ever sees both directories at once.
   assert.equal(r.status, 'ok', r.detail);
-  assert.ok(!existsSync(legacy), 'the absorbed pack\'s leftover directory is swept, same as a renamed one');
-  assert.ok(existsSync(join(root, MOUNT, 'packs', 'basics', 'pack.mjs')), 'and the surviving pack is laid down'); // @real-entity a real rename and absorption are what this converges
+  assert.ok(!existsSync(legacy), 'the leftover directory beside the survivor is swept, same as one standing alone');
+  assert.ok(existsSync(join(root, MOUNT, 'packs', 'public-website', 'pack.mjs')), 'and the surviving pack is laid down'); // @real-entity a real rename is what this converges
   removeTree(root);
 });
 

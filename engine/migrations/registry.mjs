@@ -315,10 +315,10 @@ const LEGACY_LOCAL_DECL = 'local_packs/';
 // pack sharing a canon pack's old name is not this op's business. Idempotent, so a
 // repo already converged is a no-op, and it patches the parsed declaration back with
 // the same 2-space shape every other declaration writer here uses.
-// Two entries that were different packs and are now the same one. A rename can
-// merge two ids into one (a pack absorbed into another), and every member carrying
-// the absorbed pack carries the absorbing one too when the first `requires` the
-// second — so the collision is not an edge case there, it is every member.
+// Two entries that were different packs and are now the same one: a declaration
+// carrying both spellings of a rename, and — where the map holds one — an absorption,
+// whose survivor every member carrying the absorbed pack already declares when the
+// first `requires` the second, so the collision is not an edge case but every member.
 //
 // Dropping either side would drop what a member wrote: `config` answers it gave at
 // adoption, `rules` severities it chose, `accept` entries standing against findings
@@ -359,35 +359,6 @@ export function mergeDeclarationEntries(survivor, absorbed) {
   return Object.keys(base).length === 1 ? base.id : base;
 }
 
-// An ABSORBED pack's entry, reshaped for the pack that is about to swallow it.
-// Two things a plain id rename cannot get right on its own:
-//
-//   CONFIG COLLIDES. Both entries carry a flat `config`, and the merge below
-//   spreads one over the other — so an absorbed `{ rules: [...] }` would land as
-//   the survivor's own `config.rules`, a key the survivor may already mean
-//   something else by. Nesting it under the absorbed pack's own id keeps the
-//   parameters saying whose they are, which is also what the survivor's code then
-//   reads.
-//   ANSWERS OUTLIVE THEIR QUESTION. An answer is recorded against a question the
-//   absorbed pack declared; the survivor does not declare it, so the answer
-//   becomes an interview-hygiene finding the owner cannot act on. The record names
-//   the ids it drops rather than dropping every answer, because a RENAME (as
-//   opposed to an absorption) keeps asking its questions.
-//
-// Declared per record — `absorbedPackConfig: [{ id, dropAnswers? }]` — never
-// derived from the rename map, which cannot tell an absorption from a rename.
-function reshapeAbsorbed(entry, spec) {
-  if (typeof entry === 'string' || entry === null || typeof entry !== 'object') return entry;
-  const next = { ...entry };
-  if (next.config !== undefined && next.config !== null) next.config = { [spec.id]: next.config };
-  const drop = spec.dropAnswers ?? [];
-  if (drop.length && next.answers && typeof next.answers === 'object') {
-    const kept = Object.fromEntries(Object.entries(next.answers).filter(([k]) => !drop.includes(k)));
-    if (Object.keys(kept).length) next.answers = kept; else delete next.answers;
-  }
-  return next;
-}
-
 export async function applyPackRenames(migration, { read, write }) {
   if (!migration.renameDeclaredPacks) return [];
   if (migration.appliesTo && !(await migration.appliesTo(read))) return [];
@@ -400,14 +371,11 @@ export async function applyPackRenames(migration, { read, write }) {
   if (!Array.isArray(config.packs)) return [];
 
   const done = [];
-  const absorbed = new Map((migration.absorbedPackConfig ?? []).map((s) => [s.id, s]));
-  const renamed = config.packs.map((raw) => {
-    const id = typeof raw === 'string' ? raw : raw?.id;
-    if (typeof id !== 'string' || id.startsWith(LOCAL_DECL) || id.startsWith(LEGACY_LOCAL_DECL)) return raw;
+  const renamed = config.packs.map((entry) => {
+    const id = typeof entry === 'string' ? entry : entry?.id;
+    if (typeof id !== 'string' || id.startsWith(LOCAL_DECL) || id.startsWith(LEGACY_LOCAL_DECL)) return entry;
     const to = RENAMED_PACKS[id];
-    if (to === undefined) return raw;
-    const spec = absorbed.get(id);
-    const entry = spec ? reshapeAbsorbed(raw, spec) : raw;
+    if (to === undefined) return entry;
     done.push(`${file}: ${id} -> ${to}`);
     return typeof entry === 'string' ? to : { ...entry, id: to };
   });

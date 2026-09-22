@@ -295,31 +295,31 @@ test('loadPacks: thin array wrapper over discoverPacks', async () => {
 // ones — that leaves the test asserting today's id maps to itself, which is green
 // and vacuous.
 test('packEntryId: a renamed pack resolves to its current id from either spelling', () => {
-  assert.equal(packEntryId('tidy-repo'), 'basics'); // @real-entity the rename map under test carries these ids
-  assert.equal(packEntryId({ id: 'barriers', config: {} }), 'basics'); // @real-entity the rename map under test carries these ids
-  assert.equal(packEntryId('basics'), 'basics'); // @real-entity the rename map under test carries these ids
+  assert.equal(packEntryId('static-website'), 'public-website'); // @real-entity the rename map under test carries these ids
+  assert.equal(packEntryId({ id: 'static-website', config: {} }), 'public-website'); // @real-entity the rename map under test carries these ids
+  assert.equal(packEntryId('public-website'), 'public-website'); // @real-entity the rename map under test carries these ids
 });
 
 test('packEntryId: a local pack keeps its own namespace', () => {
-  assert.equal(packEntryId(`${LOCAL_DECL_PREFIX}barriers`), 'barriers');
+  assert.equal(packEntryId(`${LOCAL_DECL_PREFIX}static-website`), 'static-website');
 });
 
 test('isActive: a declaration still carrying the old spelling activates the renamed pack', () => {
-  assert.equal(isActive({ id: 'basics' }, { packs: ['tidy-repo'] }), true); // @real-entity the rename map under test carries these ids
-  assert.equal(isActive({ id: 'basics' }, { packs: [{ id: 'barriers' }] }), true); // @real-entity the rename map under test carries these ids
+  assert.equal(isActive({ id: 'public-website' }, { packs: ['static-website'] }), true); // @real-entity the rename map under test carries these ids
+  assert.equal(isActive({ id: 'public-website' }, { packs: [{ id: 'static-website' }] }), true); // @real-entity the rename map under test carries these ids
 });
 
 test('resolveDeclaredPacks: the old spelling pulls in the renamed pack requires', () => {
-  const packs = [{ id: 'basics', requires: ['product-wiki'] }, { id: 'product-wiki' }]; // @real-entity the rename map under test resolves this id
-  const ids = resolveDeclaredPacks(['tidy-repo'], packs).map(packEntryId);
-  assert.deepEqual(ids, ['basics', 'product-wiki']); // @real-entity the rename map under test resolves this id
+  const packs = [{ id: 'public-website', requires: ['html'] }, { id: 'html' }]; // @real-entity the rename map under test resolves this id
+  const ids = resolveDeclaredPacks(['static-website'], packs).map(packEntryId);
+  assert.deepEqual(ids, ['public-website', 'html']); // @real-entity the rename map under test resolves this id
 });
 
 test('canonicalPackVersions: a version stamped under the old key is not read as absent', () => {
-  assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 6, 'git-github': 3 }), { basics: 6, 'git-github': 3 }); // @real-entity the rename map under test carries these ids
+  assert.deepEqual(canonicalPackVersions({ 'static-website': 6, 'git-github': 3 }), { 'public-website': 6, 'git-github': 3 }); // @real-entity the rename map under test carries these ids
   // Mid-converge a declaration can carry both; today's spelling is the one the
   // flows wrote, so it wins rather than being clobbered by the residue.
-  assert.deepEqual(canonicalPackVersions({ 'tidy-repo': 5, basics: 6 }), { basics: 6 });
+  assert.deepEqual(canonicalPackVersions({ 'static-website': 5, 'public-website': 6 }), { 'public-website': 6 }); // @real-entity the rename map under test carries these ids
 });
 
 // Every legacy spelling maps STRAIGHT to a live pack id, never to another legacy
@@ -345,15 +345,15 @@ test('discoverPacks: a mounted pack still announcing its old id activates under 
     cpSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(root, 'engine', 'version.mjs'));
   // Where a member's settings live: the loader resolves the declaration through it.
   for (const f of ['settings-file.mjs', 'settings-file-names.mjs']) cpSync(join(REPO_ROOT, 'engine', f), join(root, 'engine', f));
-    mkdirSync(join(root, 'packs', 'basics'), { recursive: true }); // @real-entity the rename map under test carries these ids
-    writeFileSync(join(root, 'packs', 'basics', 'pack.mjs'), // @real-entity the rename map under test carries these ids
-      "export default { id: 'tidy-repo', detect: null, worldRules: [], ruleRoutingGuidance: { belongs: 'x', excludes: 'y' } };\n");
+    mkdirSync(join(root, 'packs', 'public-website'), { recursive: true }); // @real-entity the rename map under test carries these ids
+    writeFileSync(join(root, 'packs', 'public-website', 'pack.mjs'), // @real-entity the rename map under test carries these ids
+      "export default { id: 'static-website', detect: null, worldRules: [], ruleRoutingGuidance: { belongs: 'x', excludes: 'y' } };\n");
     const registry = await import(pathToFileURL(join(root, 'engine', 'pack_loader', 'pack-registry.mjs')).href);
     const { packs } = await registry.discoverPacks({});
-    assert.deepEqual(packs.map((p) => p.id), ['basics'], // @real-entity the rename map under test carries these ids
+    assert.deepEqual(packs.map((p) => p.id), ['public-website'], // @real-entity the rename map under test carries these ids
       'the stale id resolves to the pack it has become');
-    assert.equal(registry.isActive(packs[0], { packs: ['basics'] }), true); // @real-entity the rename map under test carries these ids
-    assert.equal(registry.isActive(packs[0], { packs: ['tidy-repo'] }), true,
+    assert.equal(registry.isActive(packs[0], { packs: ['public-website'] }), true); // @real-entity the rename map under test carries these ids
+    assert.equal(registry.isActive(packs[0], { packs: ['static-website'] }), true,
       'and a declaration not yet converged still activates it');
   } finally { removeTree(root); }
 });

@@ -482,15 +482,15 @@ test('a task deleted from the checkout mid-run closes obsolete rather than faili
 test('an item naming its own task at its pre-rename path closes obsolete, not to a human', async () => {
   const renamed = {
     ...workItem(1, 'acme-task-m', ['task:status:waiting-for-executor'],
-      'packs/tidy-repo/tasks/acme-task-m/task.md\n\nExecute the Claudinite task above.\n'),
-    title: '[claudinite-work] tidy-repo/acme-task-m',
+      'packs/static-website/tasks/acme-task-m/task.md\n\nExecute the Claudinite task above.\n'),
+    title: '[claudinite-work] static-website/acme-task-m',
   };
   const repo = fakeRepo([renamed]);
-  const moved = { ...task('acme-task-m'), pack: 'basics', taskPath: 'packs/basics/tasks/acme-task-m/task.md' }; // @real-entity the rename map under test resolves the retired spelling to this id
+  const moved = { ...task('acme-task-m'), pack: 'public-website', taskPath: 'packs/public-website/tasks/acme-task-m/task.md' }; // @real-entity the rename map under test resolves the retired spelling to this id
   const done = await drive(repo, [moved]);
   assert.deepEqual(done, [{ issue: 1, outcome: 'obsolete' }]);
   assert.equal(repo.find(1).state, 'closed');
-  assert.ok(repo.find(1).comments.some((c) => c.body.includes('packs/basics/tasks/acme-task-m/task.md'))); // @real-entity the rename map under test resolves the retired spelling to this id
+  assert.ok(repo.find(1).comments.some((c) => c.body.includes('packs/public-website/tasks/acme-task-m/task.md'))); // @real-entity the rename map under test resolves the retired spelling to this id
 });
 
 // …and the shape the guard actually exists for still parks. A path naming a DIFFERENT

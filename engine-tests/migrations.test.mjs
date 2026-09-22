@@ -596,7 +596,10 @@ test('pack-renames: the mount directories move, and only from the old path', asy
 // synthetic fixture and converged nothing in the field: the synthetic one had an
 // entry object with a plain config, the real one has entry objects with nested
 // `via` arrays, and the nesting was the whole bug. A fixture written from the same
-// understanding as the code can only ever agree with it.
+// understanding as the code can only ever agree with it. The one spelling it still
+// carries that the map resolves sits AFTER the first such object, which is what the
+// assertion below rests on; as each tolerance retires, the fixture takes a live
+// spelling in the retired one's place rather than losing the crossing.
 const REAL_DECLARATION = new URL('./fixtures/member-declaration-pre-rename.json', import.meta.url);
 
 test('applyPackRenames: converges a real member declaration, entry objects and all', async () => {
@@ -608,24 +611,23 @@ test('applyPackRenames: converges a real member declaration, entry objects and a
     read: async (f) => (f === '.claudinite-settings.json' ? before : null),
     write: async (_f, c) => { written = c; },
   });
-  assert.equal(done.length, 4, `expected every rename this map carries, plus a merge line per absorbed entry, got ${JSON.stringify(done)}`);
+  assert.equal(done.length, 1, `expected every rename this map still carries, got ${JSON.stringify(done)}`);
   const after = JSON.parse(written);
-  // `barriers` and `tidy-repo` were both absorbed into `basics`, which this
-  // declaration already carries, so their entries merge into that one — and the
-  // `via: ['basics']` barriers was pulled in by names the survivor itself, so it goes
-  // rather than leaving basics required by basics. What remains is the bare string a
-  // plainly-declared pack has.
+  // `static-website` is the one spelling the map resolves today, and it sits past the
+  // `via: ['basics']` entry object — the nesting the textual attempt could not cross.
   //
-  // THE 2026-08-19 SPELLINGS PASS STRAIGHT THROUGH, which is what retiring their map
-  // entries means in the field (#1641). This capture predates that rename, so a repo
+  // EVERY RETIRED SPELLING PASSES STRAIGHT THROUGH, which is what retiring a map entry
+  // means in the field (#1641, #1909). This capture predates those renames, so a repo
   // still frozen at it keeps a declaration naming ids nothing resolves and activates no
-  // packs at all — the cost the removal's convergence window was priced against, not a
+  // packs at all — the cost each removal's convergence window was priced against, not a
   // regression. The op reads its ids from the live map, so the record driving it here
   // converges only what the map still carries.
   assert.deepEqual(after.packs, [
     'basics', // @real-entity the record under test names this pack; that is its content
+    { id: 'barriers', via: ['basics'] },
     { id: 'git-github', via: ['basics'] }, // @real-entity the record under test names this pack; that is its content
     'grow_with_claudinite',
+    'public-website', // @real-entity the rename map under test carries this id
     'local/canary',
     { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } }, // @real-entity the record under test names this pack; that is its content
     'canary-probe',
@@ -643,89 +645,41 @@ test('applyPackRenames: idempotent, and blind to everything outside the packs ar
     });
     return { done, written };
   };
-  // A member whose own source tree has a barriers/ directory under a barrier rule, and
-  // a local pack that happens to share a retired pack's old name.
+  // A member whose own source tree has a static-website/ directory under a barrier
+  // rule, and a local pack that happens to share a renamed pack's old name.
   const declaration = JSON.stringify({
-    packs: ['barriers', 'local/barriers'],
-    config: { rules: [{ from: 'barriers', to: 'ui/*' }] },
+    packs: ['static-website', 'local/static-website'],
+    config: { rules: [{ from: 'static-website', to: 'ui/*' }] },
   }, null, 2);
   const first = await run(declaration);
   const parsed = JSON.parse(first.written);
-  assert.deepEqual(parsed.packs, ['basics', 'local/barriers']); // @real-entity the record under test names this pack; that is its content
-  assert.equal(parsed.config.rules[0].from, 'barriers', "a member's own barriers/ directory is untouched");
+  assert.deepEqual(parsed.packs, ['public-website', 'local/static-website']); // @real-entity the rename map under test carries these ids
+  assert.equal(parsed.config.rules[0].from, 'static-website', "a member's own static-website/ directory is untouched");
 
   const second = await run(first.written);
   assert.deepEqual(second.done, [], 'a converged declaration is a no-op');
   assert.equal(second.written, null, 'and is not rewritten at all');
 });
 
-// --- an ABSORBED pack: two declared ids that become one -----------------------
-// An absorption's target is a pack the member ALREADY declares — the absorbed pack's
-// content moved into one the member was carrying anyway, usually its own `requires` —
-// so the op has to merge rather than rename, and what it merges is the member's own
-// writing: the config it answered at adoption, the severities it chose, the
-// acceptances standing against findings that would otherwise come straight back.
-// The absorption the plain merge gets WRONG on its own. Two flat `config` objects
-// spread over each other, so the absorbed pack's parameters land under the
-// survivor's own key namespace — and an answer recorded against a question the
-// absorbed pack declared outlives that question. `absorbedPackConfig` is the record
-// saying which of its renames is an absorption, and what to do about both.
-test('absorbedPackConfig: the absorbed config nests under its own id and its stale answers go', async () => {
+// --- two declared ids that become one ----------------------------------------
+// A declaration mid-converge carries BOTH spellings of a rename: the flow wrote
+// today's id in one place and the member's own older entry is still sitting in
+// another. An absorption is the same collision arriving deliberately — the absorbed
+// pack's content moved into one the member was carrying anyway, usually through its
+// own `requires`, so the survivor is already declared — and the map holds none today
+// (#1909), which is why these cases are driven by the rename that is live.
+//
+// Either way the op has to merge rather than rename, because both sides are the
+// member's own writing: the config it answered at adoption, the severities it chose,
+// the acceptances standing against findings that would otherwise come straight back.
+test('applyPackRenames: a renamed pack merges into the entry that already exists', async () => {
   const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
+  const rec = (await import('../packs/public-website/migrations/2026-09-17-public-website-rename/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
   const declaration = JSON.stringify({
     packs: [
       'claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
-      'basics', // @real-entity the record under test names this pack; that is its content
-      { id: 'barriers', config: { rules: [{ from: 'engine', to: 'packs/*' }] }, answers: { goals: 'keep core generic' } },
-    ],
-  }, null, 2);
-  // The record probes the mounted registry for its op before doing anything, so the
-  // io has to answer that read as a capable mount does.
-  const read = async (f) => (f.endsWith('migrations/registry.mjs') ? 'absorbedPackConfig' : declaration);
-  let written = null;
-  const done = await applyPackRenames(rec, { read, write: async (_f, c) => { written = c; } });
-  assert.equal(done.length, 2, `expected the rename and the merge, got ${JSON.stringify(done)}`);
-  assert.deepEqual(JSON.parse(written).packs, [
-    'claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
-    { id: 'basics', config: { barriers: { rules: [{ from: 'engine', to: 'packs/*' }] } } }, // @real-entity the record under test names this pack; that is its content
-  ], 'the graph reaches the key the absorbed check reads, and the answer to the retired question is gone');
-});
-
-// An answer the record does NOT name is a live answer to a question the surviving
-// pack still asks — dropping every answer would lose it.
-test('absorbedPackConfig: only the named answers are dropped', async () => {
-  const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
-  let written = null;
-  await applyPackRenames(rec, {
-    read: async (f) => (f.endsWith('migrations/registry.mjs') ? 'absorbedPackConfig'
-      : JSON.stringify({ packs: [{ id: 'barriers', answers: { goals: 'gone', keep: 'stays' } }] })),
-    write: async (_f, c) => { written = c; },
-  });
-  assert.deepEqual(JSON.parse(written).packs, [{ id: 'basics', answers: { keep: 'stays' } }]); // @real-entity the record under test names this pack; that is its content
-});
-
-// The record is inert until the member's own mount carries the op, so a stale
-// engine cannot half-apply it — rename the id and leave the graph flat, where the
-// absorbed check does not look.
-test('the barriers-absorbed record stands down on a mount whose engine lacks the op', async () => {
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
-  assert.equal(await rec.appliesTo(async () => 'export function applyPackRenames() {}\n'), false);
-  assert.equal(await rec.appliesTo(async () => null), false);
-  assert.equal(await rec.appliesTo(async (f) => (f.startsWith('.claudinite/shared/') ? 'absorbedPackConfig' : null)), true);
-});
-
-test('applyPackRenames: an absorbed pack merges into the entry that already exists', async () => {
-  const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-06-tidy-repo-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
-  // The absorbed entry carries a `config` the record does not nest, which is the plain
-  // spread this case is about — `absorbedPackConfig`'s nesting is the two cases above.
-  const declaration = JSON.stringify({
-    packs: [
-      'claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
-      { id: 'basics', accept: [{ rule: 'improve-comments-scope', path: 'src/', reason: 'generated' }] }, // @real-entity the record under test names this pack; that is its content
-      { id: 'tidy-repo', config: { comment_pass: 'src/' }, accept: [{ rule: 'tr/readme-sections', path: 'README.md', reason: 'template lands later' }] },
+      { id: 'public-website', accept: [{ rule: 'acme/page-stamp', path: 'site/', reason: 'generated' }] }, // @real-entity the record under test names this pack; that is its content
+      { id: 'static-website', config: { stamp: 'strict' }, accept: [{ rule: 'acme/readme-sections', path: 'README.md', reason: 'template lands later' }] },
     ],
   }, null, 2);
   let written = null;
@@ -737,12 +691,12 @@ test('applyPackRenames: an absorbed pack merges into the entry that already exis
   assert.deepEqual(packs, [
     'claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
     {
-      id: 'basics', // @real-entity the record under test names this pack; that is its content
+      id: 'public-website', // @real-entity the record under test names this pack; that is its content
       accept: [
-        { rule: 'improve-comments-scope', path: 'src/', reason: 'generated' },
-        { rule: 'tr/readme-sections', path: 'README.md', reason: 'template lands later' },
+        { rule: 'acme/page-stamp', path: 'site/', reason: 'generated' },
+        { rule: 'acme/readme-sections', path: 'README.md', reason: 'template lands later' },
       ],
-      config: { comment_pass: 'src/' },
+      config: { stamp: 'strict' },
     },
   ], 'one entry, in the surviving id\'s original position, carrying both sides');
 
@@ -754,16 +708,16 @@ test('applyPackRenames: an absorbed pack merges into the entry that already exis
 
 test('applyPackRenames: a string entry absorbing an object keeps the object side', async () => {
   const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-06-tidy-repo-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
+  const rec = (await import('../packs/public-website/migrations/2026-09-17-public-website-rename/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
   let written = null;
   await applyPackRenames(rec, {
     read: async () => JSON.stringify({
-      packs: ['basics', { id: 'tidy-repo', config: { comment_pass: 'src/' } }], // @real-entity the record under test names this pack; that is its content
+      packs: ['public-website', { id: 'static-website', config: { stamp: 'strict' } }], // @real-entity the record under test names this pack; that is its content
     }, null, 2),
     write: async (_f, c) => { written = c; },
   });
-  assert.deepEqual(JSON.parse(written).packs, [{ id: 'basics', config: { comment_pass: 'src/' } }], // @real-entity the record under test names this pack; that is its content
-    'the survivor is promoted to an object rather than dropping the absorbed config');
+  assert.deepEqual(JSON.parse(written).packs, [{ id: 'public-website', config: { stamp: 'strict' } }], // @real-entity the record under test names this pack; that is its content
+    'the survivor is promoted to an object rather than dropping the older entry\'s config');
 });
 
 test('mergeDeclarationEntries: the survivor wins a conflict, arrays union', async () => {

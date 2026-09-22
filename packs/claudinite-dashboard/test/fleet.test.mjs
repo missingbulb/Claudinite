@@ -201,10 +201,10 @@ test('a pack behind canon reads behind and names the pack', () => {
 // this pins is that the spellings the corpus actually ships are the ones compared,
 // so it needs its own canon reference keyed under today's ids.
 test('a renamed pack\'s stamped spelling still compares against canon', () => {
-  const canon = { ...CANON, packVersions: { basics: 5 } }; // @real-entity the rename map under test renames to this id
-  const s = mountState({ claudinite: { engineVersion: 4, packVersions: { 'tidy-repo': 2 } } }, canon); // @real-entity the retired spelling the map still resolves
+  const canon = { ...CANON, packVersions: { 'public-website': 5 } }; // @real-entity the rename map under test renames to this id
+  const s = mountState({ claudinite: { engineVersion: 4, packVersions: { 'static-website': 2 } } }, canon); // @real-entity the retired spelling the map still resolves
   assert.equal(s.state, 'behind');
-  assert.deepEqual(s.behindPacks, [{ pack: 'basics', version: 2, canonVersion: 5 }]); // @real-entity the id the map renames to
+  assert.deepEqual(s.behindPacks, [{ pack: 'public-website', version: 2, canonVersion: 5 }]); // @real-entity the id the map renames to
 });
 
 // A pack the canon reference cannot price (the read failed, or it is a local pack)
