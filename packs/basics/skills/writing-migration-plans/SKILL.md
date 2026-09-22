@@ -174,7 +174,7 @@ below sets out.
 
 Everything after the approval is a run that arms the next run. The mechanism is the queue's own
 ad-hoc lane — the one `/do-later` and `verify-in-production` file into — and nothing here adds
-machinery beside it: an ordinary issue, marked for the queue, carrying its own brief.
+machinery beside it: an ordinary issue, marked `task:origin:ad-hoc`, carrying its own brief.
 
 **File the whole chain once the plan is approved** (above), not as each step falls due. One issue per
 execution step, each naming the previous in `Blocked-by:`, so the queue does the waiting: a

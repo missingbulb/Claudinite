@@ -30,3 +30,9 @@
   loads deterministically is untouched and only the model's judgment call reads different text.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5
+
+## 2026-09-22 · reworded · the queue mark it tells a session to apply is named literally
+- **Reason:** "for the queue" and "a tagged … issue" left the label to the reader, who invented
+  one; `task:origin:ad-hoc` is the spelling a scheduler run adopts.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5
