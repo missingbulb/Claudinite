@@ -17,3 +17,21 @@
 - **Retire when:** two months of the file's history show no rule firing that a person acted on, or
   the triage's merged proposals fall to zero out of several opened.
 - **Landed:** #2214
+
+## 2026-09-22 · policy-changed · an adoption date is not read off the clone's depth (#2214)
+- **Source:** the owner's note that a skill reached only at adoption is not strange to find
+  unloaded, 2026-09-22.
+- **Reason:** `packDeclaredAt` searched the settings file's history for the first commit naming a
+  pack, and its own comment claimed a shallow clone answered `null`. It did not: the search returns
+  the earliest commit the checkout REACHES, which is a real commit, so the adoption window started
+  at the clone's horizon. The canon declared these packs long before any practical fetch depth, so
+  the window read as closed and open on two checkouts of one repository - the same review over the
+  same record finding different things.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Mechanism:** the match is trusted only when the commit BEFORE it did not already carry the pack;
+  no parent plus a shallow repository is unknowable and answers null. The adoption rules then read
+  *not recorded*, which is what the comment always promised.
+- **Retire when:** members carry a declaration date of their own and no history walk is needed to
+  find one.
+- **Landed:** #2214

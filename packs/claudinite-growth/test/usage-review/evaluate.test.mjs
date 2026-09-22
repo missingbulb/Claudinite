@@ -107,6 +107,40 @@ test('a live predicate is the other half of the pair, and one that cannot be rea
     'a pair whose live half could not be read is stated, not silently dropped');
 });
 
+test('a predicate can be required absent, which is how two rules split one signature', () => {
+  // `check-never-fires` and `check-never-fires-with-prose-twin` read the same
+  // record half. Without the negation the twin case satisfies BOTH, and one check
+  // is reported twice in one review under two different causes.
+  const rule = (and) => ({
+    id: 'r', over: 'check', window: '28 days', floor: {},
+    when: 'checkFindings = 0', and,
+    cause: 'unknown', causes: ['x'], open: false, finding: 'f', recommendation: 'r',
+  });
+  const run = (and, twin) => evaluateRules([rule(and)], {
+    subjectsOf: () => [{ id: 'a-check' }],
+    figureOf: (s, name, opts) => reader({ checkFindings: 0 })(name, opts),
+    predicateOf: () => twin,
+  });
+  assert.equal(run('proseTwin', true).findings.length, 1);
+  assert.equal(run('!proseTwin', true).findings.length, 0, 'the twin case belongs to the other rule');
+  assert.equal(run('!proseTwin', false).findings.length, 1);
+  // Unknown still propagates through the negation rather than becoming `true`.
+  assert.equal(run('!proseTwin', null).findings.length, 0);
+  assert.deepEqual(run('!proseTwin', null).notEvaluated.map((n) => n.name), ['!proseTwin'],
+    'the pair is reported as it was written, negation included');
+  assert.match(ruleSentence(rule('!proseTwin')), /and not proseTwin/);
+});
+
+test('the two never-fires rules cannot both claim one check', () => {
+  const shippedById = Object.fromEntries(shipped.map((r) => [r.id, r]));
+  const plain = shippedById['check-never-fires'];
+  const twin = shippedById['check-never-fires-with-prose-twin'];
+  assert.equal(plain.when, twin.when, 'they read the same record half');
+  assert.equal(twin.and, 'proseTwin');
+  assert.equal(plain.and, '!proseTwin',
+    'so the plain one must exclude what the twin one claims, or a check is reported twice');
+});
+
 test('every shipped rule parses, and its sentence names the subject it judges', () => {
   assert.ok(shipped.length >= 16, 'the shelf ships the whole declared set');
   for (const rule of shipped) {
