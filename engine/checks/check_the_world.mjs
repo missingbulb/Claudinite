@@ -18,6 +18,7 @@ import { buildContext } from './helpers/repo-context.mjs';
 import { discoverPacks, packEntryId } from '../pack_loader/pack-registry.mjs';
 import { runActivePackRules, packRules } from './run-active-pack-rules.mjs';
 import { reportFindings } from './report-findings.mjs';
+import { ruleFailed } from './helpers/findings.mjs';
 
 const configError = (what, fix) => ({
   rule: 'config', severity: 'blocking', file: '.claudinite-settings.json', line: null,
@@ -126,11 +127,14 @@ async function sweep() {
   // in packErrors above. Neither names a pack here.)
 
   // The world rules: everything not scoped to the work. A broken contributedRules
-  // seam is a config-level fault surfaced here (the world runner owns diagnostics).
+  // seam is a config-level fault surfaced here (the world runner owns diagnostics);
+  // a rule that THREW is that rule's own finding, so the sweep reports every other
+  // rule's findings rather than dying on the first bad file in the tree.
   findings.push(...runActivePackRules(ctx, packs, {
     includeRule: (rule) => rule.scope !== 'work' && rule.scope !== 'action',
     onContributeError: (pack, e) => findings.push(configError(
       `the "${pack.id}" pack's contributedRules failed: ${e.message}`, 'fix the pack manifest, or the contribution it interprets')),
+    onRuleError: (pack, rule, e) => findings.push(ruleFailed({ pack, rule, error: e, root: ctx.root })),
   }));
   // No timing record here: a clean world run prints nothing and exits 0, which is
   // the contract its callers read silence against. The Stop hook's own sweep

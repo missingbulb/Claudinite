@@ -12,6 +12,7 @@ import { discoverPacks } from '../pack_loader/pack-registry.mjs';
 import { runActivePackRules } from './run-active-pack-rules.mjs';
 import { READS_THE_SESSION } from './helpers/work.mjs';
 import { reportFindings } from './report-findings.mjs';
+import { ruleFailed } from './helpers/findings.mjs';
 import { renderTiming } from './check-timing.mjs';
 
 const args = process.argv.slice(2);
@@ -29,7 +30,18 @@ const ctx = buildContext({
 
 const timings = [];
 const started = performance.now();
-const findings = runActivePackRules(ctx, packs, { includeRule: (rule) => READS_THE_SESSION.has(rule.scope), timings });
+// A rule that throws is that rule's own finding and costs nothing else: the Stop
+// hook reads this sweep to decide whether the session may end, so one rule tripping
+// over a half-written file in the working tree must not blank the other eighty.
+const failures = [];
+const findings = [
+  ...runActivePackRules(ctx, packs, {
+    includeRule: (rule) => READS_THE_SESSION.has(rule.scope),
+    onRuleError: (pack, rule, e) => failures.push(ruleFailed({ pack, rule, error: e, root: ctx.root })),
+    timings,
+  }),
+  ...failures,
+];
 const sweepMs = performance.now() - started;
 const blocking = reportFindings(findings, ctx.config, { scopeLabel: 'work', mode: ctx.mode, baseRef: ctx.baseRef });
 // The timing record last, on its own line: the Stop hook lifts it off stdout and
