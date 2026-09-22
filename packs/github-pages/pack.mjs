@@ -6,7 +6,7 @@ import { adoptedPages, CONFIG_PATH } from './lib.mjs';
 // public-website owns the scheme and the page stamp, and the release reaches that
 // pack's `public/version.mjs` to advance it when the pack is declared.
 export default {
-  version: '60922.1',
+  version: '60922.2',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'serving a site from GitHub Pages: the nightly release, the vendored deploy workflow, site.config, the serving subpath',
