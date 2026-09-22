@@ -47,7 +47,7 @@ const plural = (n, one, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n =
 const thousands = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 
 // Where a session's OTHER skills come from: the person's own directory, which a
-// marketplace nests its own tree inside. Read for one reason — a per-skill figure for
+// marketplace nests its own tree inside. Read for one reason: a per-skill figure for
 // the corpus's descriptions means nothing without a second one beside it, and this is
 // the only comparable set a session can actually see. Nothing here is ever written.
 const OUTSIDE_SKILLS_DEPTH = 4;
@@ -166,8 +166,8 @@ try {
     const outside = outsideSkillDescriptions(process.env.HOME || homedir());
     const outsideTokens = estimateTokens(outside.reduce((n, dir) => n + countWords(skillMetadata(dir).description), 0));
     // The comparison is reported, never acted on: what a session got from outside the
-    // corpus is the person's own business and no pack here can trim it. Absent — a CI
-    // runner, a fresh container — the corpus's own figure stands alone rather than
+    // corpus is the person's own business and no pack here can trim it. Absent (a CI
+    // runner, a fresh container), the corpus's own figure stands alone rather than
     // claiming a set nothing found costs nothing.
     const against = outside.length
       ? `; ${Math.round(outsideTokens / outside.length)} each for the ${plural(outside.length, 'skill')} from elsewhere`
@@ -198,7 +198,7 @@ try {
   // has ended right there, both obligations discharged and no work done.
   const repo = repoName(projectRoot);
   process.stdout.write(
-    'SESSION-START SUMMARY — an instruction, not text to repeat. '
+    'SESSION-START SUMMARY: an instruction, not text to repeat. '
     + 'Open your first reply with exactly this line and nothing before it, '
     + 'then go on to answer the owner in the same turn. The line:\n\n'
     + `Loaded Claudinite${repo ? ` from repo ${repo}` : ''}: ${facets.join(', ')}.\n`,

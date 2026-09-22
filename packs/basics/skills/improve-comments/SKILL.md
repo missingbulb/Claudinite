@@ -1,6 +1,6 @@
 ---
 name: improve-comments
-description: Improve a repo's own comments as a pass of their own — delete, correct, add the why. Use when working a repo's comments deliberately (the basics pack's improve-comments task), never as a side effect of another change.
+description: Improve a repo's own comments as a pass of their own: delete, correct, add the why. Use when working a repo's comments deliberately (the basics pack's improve-comments task), never as a side effect of another change.
 metadata:
   body: workflow
   usage:

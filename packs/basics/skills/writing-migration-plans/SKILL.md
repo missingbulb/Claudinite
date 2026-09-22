@@ -1,6 +1,6 @@
 ---
 name: writing-migration-plans
-description: How a plan's phases are ordered so nothing stalls mid-run. Use BEFORE writing any DESIGN.md, migration plan, phased implementation plan, rollout or cutover plan — including the moment you are about to create a docs/<initiative>/ file — when asked to run a plan as a chain of ad-hoc tasks, and when working through a plan's tracking issue.
+description: How a plan's phases are ordered so nothing stalls mid-run. Use BEFORE writing any DESIGN.md, migration plan, phased implementation plan, rollout or cutover plan (including the moment you are about to create a docs/<initiative>/ file), when asked to run a plan as a chain of ad-hoc tasks, and when working through a plan's tracking issue.
 metadata:
   body: workflow
   usage:
