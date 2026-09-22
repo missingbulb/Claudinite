@@ -34,6 +34,16 @@ A rule's `cause` says what its recommendation is worth. `known` means the arithm
 or the mechanism leaves one cause; `probable` means one is likeliest; `unknown` means
 the finding is evidence and nothing more.
 
+## What a check is judged against
+
+How often a check fired is counted from the record; whether it could have fired at
+all is read off the tree. Its **reach** is how many applications its own declaration
+has here - zero where its relevance gate declines this repository, or where its scan
+pattern selects no file in it - and that times the window's sweeps is the
+`opportunities` a finding volume of zero is weighed against. A check declaring no
+scan set has no reach here, so the rules floored on `opportunities` leave it *not
+evaluated* rather than report an unmeasurable check as a net that caught nothing.
+
 ## When it runs
 
 Daily, after the fold, and only when the fold has moved past what the last review

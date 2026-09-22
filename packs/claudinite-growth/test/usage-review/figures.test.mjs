@@ -58,3 +58,30 @@ test('activity over a window carrying nothing is not recorded', () => {
   assert.equal(read({}, window(day({}))), null,
     'an empty window cannot be judged busy, and must not read as quiet');
 });
+
+// A check that ran over two thousand files and caught nothing and a check whose
+// scan selects no file here carry the same finding volume. `reach` is what tells
+// them apart, and `opportunities` is what a volume of zero is judged against.
+const ranChecks = (runs) => day({ checks: { world: { runs } } });
+
+test('opportunities is how often THIS check could have fired: its reach times the runs', () => {
+  const read = FIGURES.get('opportunities');
+  assert.ok(read, 'a rule naming opportunities must find a reader for it');
+  assert.equal(read({ id: 'a-check', reach: 5 }, window(ranChecks(10), ranChecks(10))), 100);
+  assert.equal(read({ id: 'a-check', reach: 0 }, window(ranChecks(10))), 0,
+    'a check with nothing in scope had no opportunity, however often the sweeps ran');
+  assert.equal(FIGURES.get('reach')({ id: 'a-check', reach: 0 }), 0);
+});
+
+test('a reach nothing could answer is not recorded, and never a zero', () => {
+  const read = FIGURES.get('opportunities');
+  // A coded rule declares no scan set, and an engine older than the reader
+  // answers for none of them. Either way the subject carries no reach, and a
+  // rule floored on opportunities must leave it *not evaluated* rather than
+  // report an unmeasurable check as one that could never have fired.
+  assert.equal(FIGURES.get('reach')({ id: 'a-check' }), null);
+  assert.equal(read({ id: 'a-check' }, window(ranChecks(10))), null);
+  assert.equal(read({ id: 'a-check', reach: null }, window(ranChecks(10))), null);
+  // …and a window that recorded no runs cannot state the product either.
+  assert.equal(read({ id: 'a-check', reach: 5 }, window(day({}))), null);
+});

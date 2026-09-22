@@ -134,7 +134,8 @@
       "over": "check",
       "window": "28 days",
       "floor": {
-        "activity": 120
+        "activity": 120,
+        "opportunities": 1
       },
       "when": "checkFindings = 0",
       "and": "proseTwin",
@@ -153,13 +154,13 @@
       "over": "check",
       "window": "28 days",
       "floor": {
-        "activity": 120
+        "activity": 120,
+        "opportunities": 1
       },
       "when": "checkFindings = 0",
       "cause": "unknown",
       "causes": [
         "nobody does the thing at all here - the guarded files or calls are absent from the window",
-        "the check is unreachable - its scan pattern or scope selects nothing in this tree",
         "a sibling check catches the violation first - a check with overlapping scope fires instead",
         "the check's fixture is the only violator it has ever seen - a test that passes and nothing else"
       ],
@@ -167,6 +168,22 @@
       "finding": "never fires, and no RULES.md line states the same rule",
       "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
       "and": "!proseTwin"
+    },
+    {
+      "id": "check-cannot-reach",
+      "over": "check",
+      "window": "now",
+      "floor": {},
+      "when": "reach = 0",
+      "cause": "known",
+      "causes": [
+        "its relevance gate declines this repository - the gate names a path or a tracked file this tree does not have",
+        "its scan pattern selects no file here - the pattern names a layout this tree never had, or one a move retired under it",
+        "the tree carries none of what it guards yet - the guarded files are simply absent, and the pattern is right"
+      ],
+      "open": false,
+      "finding": "nothing in this tree is in its scope, so no run of it could have produced a finding",
+      "recommendation": "read the declaration against the tree: a gate or a pattern naming a layout this repo does not have is a defect in the check, and a check with nothing to guard here belongs to a pack this repo need not declare"
     },
     {
       "id": "check-fires-most-sessions",

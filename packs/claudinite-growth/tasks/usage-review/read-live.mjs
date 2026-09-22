@@ -1,8 +1,9 @@
 // The LIVE half of the review's inputs: what the tree says right now, which no
-// window applies to. Three questions the record cannot answer -
+// window applies to. Four questions the record cannot answer -
 //
 //   what does each mounted skill declare about itself, and what does its body cost;
 //   what does each active rule enforce, and does a RULES.md line say the same thing;
+//   how far does each declared check reach into this tree, if at all;
 //   what has this repo accepted away or overridden.
 //
 // …plus the one date an `adoption` rule needs: when this repo declared the pack.
@@ -61,10 +62,33 @@ export function hasProseTwin(pack, ruleId) {
   return prose.includes(`\`${ruleId}\``);
 }
 
+// How far each declared check reaches into this tree - the applications its own
+// declaration has here, which is what separates a check that swept the tree and
+// caught nothing from one whose scan selects no file in it. Read through the
+// ENGINE's own selection code rather than a second reading of the declarations,
+// so what the review counts as reachable is what a sweep would actually scan.
+//
+// Probed, like the skill readers above: an engine older than `reachOf` answers
+// for nothing, and so does a context that could not be built here. Every check
+// then carries no reach at all, which reads as *not recorded* rather than as a
+// tree in which no check can fire.
+export async function readReach(root) {
+  const unmeasured = () => null;
+  try {
+    const { reachOf } = await import(engine(root, 'checks/helpers/pattern-rules.mjs'));
+    if (typeof reachOf !== 'function') return unmeasured;
+    const { buildContext } = await import(engine(root, 'checks/helpers/repo-context.mjs'));
+    const ctx = buildContext({ root, mode: 'all' });
+    return (rule) => {
+      try { return rule?.spec ? reachOf(ctx, rule.spec) : null; } catch { return null; }
+    };
+  } catch { return unmeasured; }
+}
+
 // The active rules, split into the two subject kinds the rules judge apart: a guard
 // is a `scope: "action"` declaration, judged per tool call, and everything else is a
 // check the sweeps run.
-export function readRules(packs, packRules) {
+export function readRules(packs, packRules, reachOf = () => null) {
   const byPack = new Map(packs.map((p) => [p.id, p]));
   const out = { check: [], guard: [] };
   for (const rule of packRules) {
@@ -77,6 +101,7 @@ export function readRules(packs, packRules) {
       scope: rule.spec?.scope ?? rule.scope ?? null,
       ownerSkill: rule.ownerSkill ?? null,
       proseTwin: pack ? hasProseTwin(pack, rule.id) : false,
+      reach: reachOf(rule),
     };
     out[subject.scope === 'action' ? 'guard' : 'check'].push(subject);
   }
