@@ -393,11 +393,11 @@ test('pack-entry-config migration: legacyPresent reads the declaration (true iff
   assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
 });
 
-test('local-pack-namespace migration: legacyPresent = a bare declared id whose pack lives in the member\'s local_packs', async () => {
+test('local-pack-namespace migration: legacyPresent = a bare declared id whose pack lives in the member\'s local packs', async () => {
   const m = (await loadMigrations()).find((x) => x.id === 'local-pack-namespace');
   assert.ok(m, 'local-pack-namespace migration is discovered');
   const read = (packs) => async () => JSON.stringify({ packs });
-  const hasLocal = async (p) => p === '.claudinite/local_packs/proj/pack.mjs';
+  const hasLocal = async (p) => p === '.claudinite/local/packs/proj/pack.mjs';
   // A bare string or entry-object id naming the member's own local pack → still legacy.
   assert.equal(await m.legacyPresent(hasLocal, read(['acme-pack', 'proj'])), true, 'bare string -> legacy');
   assert.equal(await m.legacyPresent(hasLocal, read(['acme-pack', { id: 'proj', config: {} }])), true, 'bare entry object -> legacy');
@@ -442,9 +442,9 @@ test('installedVersions returns null for every shape that is not a version stamp
   assert.equal(installedVersions(() => null), null);
   assert.equal(installedVersions(() => 'not json'), null);
   assert.equal(installedVersions(() => '{"packs":[]}'), null);
-  assert.equal(installedVersions(() => '{"claudinite":{"updated":"2026-01-01T00:00:00Z"}}'), null,
-    'a pre-version stamp is unknown, not zero');
-  assert.deepEqual(installedVersions(() => '{"claudinite":{"engineVersion":2}}'), { engineVersion: 2, packVersions: {} });
+  assert.equal(installedVersions(() => '{"claudinite":{"engineVersion":2}}'), null,
+    'the retired stamp block is read by nothing — a member still carrying it is unknown, not zero');
+  assert.deepEqual(installedVersions(() => '{"engineVersion":2}'), { engineVersion: 2, packVersions: {} });
 });
 
 test('migrationApplies: version-ranged when known, date-windowed when not', () => {
@@ -512,11 +512,11 @@ test('applyRewrites: a global pattern rewrites every match; a non-global one is 
   await assert.rejects(() => applyRewrites(M({ rewrite: [{ file: 'f.txt', replace: [{ pattern: 'v1', to: 'V1' }] }] }), io({ 'f.txt': 'v1' })), /global RegExp/);
 });
 
-test('local declarations normalize to local/<id>, from both earlier forms', async () => {
+test('local declarations normalize to local/<id> from the bare id', async () => {
   const decl = {
     packs: ['acme-pack', 'mine', 'local_packs/older', { id: 'configured', config: { k: 1 } }, 'local/already'],
   };
-  const local = new Set(['.claudinite/local/packs/mine/pack.mjs', '.claudinite/local_packs/configured/pack.mjs']);
+  const local = new Set(['.claudinite/local/packs/mine/pack.mjs', '.claudinite/local/packs/configured/pack.mjs']);
   const w = io({ '.claudinite-settings.json': `${JSON.stringify(decl, null, 2)}\n` }, (p) => local.has(p));
   const done = await applyLocalDeclarationNormalization(M({ normalizeLocalDeclarations: true }), w);
 
@@ -524,11 +524,12 @@ test('local declarations normalize to local/<id>, from both earlier forms', asyn
   assert.deepEqual(after.packs, [
     'acme-pack',                                     // a canon id: untouched, though bare
     'local/mine',                                 // bare, and this repo has the pack
-    'local/older',                                // the earlier namespaced form
+    'local_packs/older',                          // the retired prefix is no longer read, so it
+                                                  // passes through and the settings gate names it
     { id: 'local/configured', config: { k: 1 } }, // an entry object keeps everything else
     'local/already',                              // already canonical
   ]);
-  assert.equal(done.length, 3);
+  assert.equal(done.length, 2);
   // Idempotent — the second pass finds nothing to do and writes nothing.
   const again = { ...w, written: { ...w.written } };
   assert.deepEqual(await applyLocalDeclarationNormalization(M({ normalizeLocalDeclarations: true }), { ...again, read: (p) => again.written[p] ?? null, write: (p, c) => { again.written[p] = c; }, exists: (p) => local.has(p) }), []);
