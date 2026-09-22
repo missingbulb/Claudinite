@@ -59,7 +59,7 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   `claudinite-scheduler.yml` carries a single cron: two ticks a day, twelve
   hours apart, every task asked at both, on a repo-hashed minute constrained to
   **:10-:50** and a repo-hashed hour (written once when the file is scaffolded,
-  and preserved by every converge after: `packs/claudinite-tasks/hash-minute.mjs`, a pure function of the repo full name that
+  and preserved by every converge after: `packs/claudinite-tasks/src/adopt/hash-minute.mjs`, a pure function of the repo full name that
   bootstrap stamps in and baselining re-derives), a `concurrency` group, a
   `workflow_dispatch` trigger (whose one `wake` input is how a task is forced,
   here or from another repo), and a call into the vendored scheduler run — no logic of its own
@@ -138,7 +138,7 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   scheduler run and executor read agent_model/expected_outcome/preconditions from this file — never from the work
   item — so an illegal or missing value means a task never fires, fires wrong,
   or writes past its declared ceiling. The same contract
-  (`packs/claudinite-tasks/task-contract.mjs`) is re-validated at run time, so the
+  (`packs/claudinite-tasks/src/contract/task-contract.mjs`) is re-validated at run time, so the
   static and runtime views can't drift. A task declares **no scope**: reach is a
   property of which endpoint the hand-off calls, `invocation_endpoint` below, and
   nothing else in the system has a concept of scope.
@@ -183,7 +183,7 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   code-work and passes the number to its agentic phase the ordinary way — the hand-off
   payload's `delivered.issue`, which the executor renders into the work item as an `Issue:` line
   the worker doc points at. The exact-title lookup and the create-then-close pair are
-  a library that code-work may call (`packs/claudinite-tasks/tracker.mjs`), never a phase:
+  a library that code-work may call (`packs/claudinite-tasks/public/github.mjs`), never a phase:
   whether a run with nothing to say should mint a tracker at all is the task's own
   judgment, and a task whose output is its PR answers no.
 
