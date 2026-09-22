@@ -160,11 +160,11 @@ export function stubsDir(root) {
 export async function runConvergeWorkflows() {
   const argv = process.argv.slice(2);
   const fullName = argv.find((a) => !a.startsWith('--')) || actionsEnv().GITHUB_REPOSITORY || actionsEnv().CLAUDINITE_REPO;
-  if (!fullName) { console.error('converge-workflows: need owner/repo (argv or GITHUB_REPOSITORY)'); process.exit(1); }
+  if (!fullName) { console.error('converge-workflows: need owner/repo (argv or GITHUB_REPOSITORY)'); process.exitCode = 1; return; }
   const root = actionsEnv().CLAUDINITE_REPO_ROOT || repoRoot();
   const stubs = stubsDir(root);
   const stubPath = join(stubs, 'claudinite-scheduler.yml');
-  if (!existsSync(stubPath)) { console.error(`converge-workflows: vendored stub not found at ${stubPath}`); process.exit(1); }
+  if (!existsSync(stubPath)) { console.error(`converge-workflows: vendored stub not found at ${stubPath}`); process.exitCode = 1; return; }
   const executorPath = join(stubs, 'claudinite-executor.yml');
   const config = loadConfig(root);
   const { changed } = convergeWorkflows(root, fullName, {

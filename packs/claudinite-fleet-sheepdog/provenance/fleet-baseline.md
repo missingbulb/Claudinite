@@ -41,3 +41,10 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #1855 (Closes #1854) · pack version 60907.2.
+
+## 2026-09-22 · reworded · print-then-exit swept out of this element (#2225)
+- **Reason:** a print immediately before `process.exit()` is discarded when stdout has not drained,
+  so the status survived and the output did not; the exit sets `process.exitCode` now and the flow
+  returns. No policy moved.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5

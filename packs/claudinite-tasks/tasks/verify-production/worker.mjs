@@ -84,7 +84,8 @@ export async function main() {
 
   if (verdict.outcome === 'invalid') {
     console.log(`claudinite-needs-human: action — this verification's probe spec is unreadable: ${verdict.problems.join('; ')}`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   if (verdict.outcome === 'not-live') {
     console.log(`claudinite-requeue: ${verdict.until} — ${verdict.reason}`);

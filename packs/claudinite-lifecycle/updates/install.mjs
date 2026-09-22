@@ -272,7 +272,8 @@ async function main() {
   const ids = argv.filter((a) => !a.startsWith('--') && !consumed.has(a));
   if (!ids.length) {
     console.error('install: name at least one pack id — `node install.mjs --target <dir> <pack-id>…`');
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const r = await installPacks(targetRoot, ids, { dryRun, delivery: flag('--delivery') ?? 'auto-merge' });
@@ -298,7 +299,7 @@ async function main() {
   // running an install over it would restamp the repo to the newest version while
   // skipping every record in between). Exiting 0 there would let a caller's `&&`
   // chain carry on as if the pack were adopted.
-  if (r.status === NEEDS_HUMAN || (r.refused ?? []).length) process.exit(1);
+  if (r.status === NEEDS_HUMAN || (r.refused ?? []).length) process.exitCode = 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

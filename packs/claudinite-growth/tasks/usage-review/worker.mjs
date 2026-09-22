@@ -161,5 +161,5 @@ async function syncIssues(file) {
 }
 
 if (process.argv[1] && process.argv[1].endsWith('worker.mjs')) {
-  main().catch((e) => { console.error(`claudinite-needs-human: failure - ${e.message}`); process.exit(1); });
+  main().catch((e) => { console.error(`claudinite-needs-human: failure - ${e.message}`); process.exitCode = 1; });
 }

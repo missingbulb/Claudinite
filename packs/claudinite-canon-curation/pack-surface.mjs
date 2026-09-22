@@ -223,6 +223,10 @@ function treeText(root, dir = root, files = new Map()) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const packDir = process.argv[2];
-  if (!packDir) { console.error('usage: node pack-surface.mjs <packs/<pack>>'); process.exit(2); }
-  process.stdout.write(renderSurfaceReport({ packDir, files: treeText(process.cwd()) }));
+  if (!packDir) {
+    console.error('usage: node pack-surface.mjs <packs/<pack>>');
+    process.exitCode = 2;
+  } else {
+    process.stdout.write(renderSurfaceReport({ packDir, files: treeText(process.cwd()) }));
+  }
 }

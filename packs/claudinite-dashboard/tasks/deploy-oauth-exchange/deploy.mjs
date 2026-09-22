@@ -267,6 +267,6 @@ if (isMain) {
     console.error(e instanceof NeedsAction
       ? `claudinite-needs-human: action — ${e.message}`
       : `deploy-oauth-exchange failed: ${e.stack ?? e.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   });
 }

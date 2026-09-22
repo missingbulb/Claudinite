@@ -43,3 +43,10 @@
 - **Mechanism:** the walk skips an excluded repo before its declaration is read and names it once
   under `ignored` with no verdict; a dormant member's mount probe is no longer paid for.
 - **Landed:** #1976 (Closes #1975) · pack version 60913.1.
+
+## 2026-09-22 · reworded · print-then-exit swept out of this element (#2225)
+- **Reason:** a print immediately before `process.exit()` is discarded when stdout has not drained,
+  so the status survived and the output did not; the exit sets `process.exitCode` now and the flow
+  returns. No policy moved.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5

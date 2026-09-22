@@ -125,7 +125,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const result = await applyVendor(opt('--target') ?? process.cwd(), { ref: opt('--ref') ?? null });
   if (result.errors.length) {
     for (const e of result.errors) console.error(`ERROR: ${e.what}\n  fix: ${e.fix}`);
-    process.exit(1);
+    process.exitCode = 1;
+  } else {
+    console.log(`vendored ${result.files} files into ${SHARED_SUBDIR}; stamp ${JSON.stringify(result.stamp)}`);
   }
-  console.log(`vendored ${result.files} files into ${SHARED_SUBDIR}; stamp ${JSON.stringify(result.stamp)}`);
 }
