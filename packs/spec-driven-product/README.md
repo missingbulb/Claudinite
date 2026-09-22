@@ -17,6 +17,7 @@ pointed at rather than restated here.
 | A leaf is what the harness asserts | medium | complexity | prose: <100 words |
 | Every leaf carries a stable id. | high | complexity | prose: <50 words |
 | Doc-first, red by default. | high | correctness | prose: <50 words |
+| A process change is never `feature` | high | correctness | prose: <100 words |
 | The spec drives the tests | high | correctness | prose: <100 words |
 | Enforce the bijection with a coverage gate | high | correctness | prose: <50 words |
 | A kind is one way to assert | low | complexity | prose: <50 words |

@@ -85,7 +85,7 @@ that will repeat on every tick until a person clears it. It is the `no-trigger` 
      yourself: `Supersedes:` names the ones the converge closes once yours exists.
    - **Never give the PR body a closing keyword (`Closes #<n>`) naming this item's own issue.**
      GitHub auto-closes it on merge regardless of the run's outcome, racing ahead of
-     `converge-item.mjs`'s comment-and-label transition — including overriding an intended
+     `converge-item.mjs`'s comment-and-label transition - including overriding an intended
      `needs-human-approval` park. Cite it with `Refs #<n>` if useful; the close is the
      convergence step's to make.
    - **An input the task file calls required and the issue does not carry stops the

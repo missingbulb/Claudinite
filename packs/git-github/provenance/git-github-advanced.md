@@ -24,3 +24,23 @@
 - **Actor:** the `growth-promote` task, which folded each lesson into the canon doc already owning
   the topic rather than minting a pack or a check.
 - **Landed:** #2206 (Refs #2194).
+
+## 2026-09-22 · reworded · four tool-surface traps promoted, and the page-size note corrected (#1886)
+- **Source:** GCEC, EdFringeNow, Shepherd and ClaudiniteWebsite runs.
+- **Reason:** four failures that cost a round-trip each and leave no error behind, which is what
+  earns them a place here: `list_pull_requests`'s `head` filter returns an unrelated pull request
+  for a bare branch name rather than declining; `search_code`'s index lags far enough behind a
+  repo's content to undercount a fleet sweep; the rendered pull request diff omits a new root-level
+  file that is genuinely in the commit; and a spilled overflow file for a search is GitHub's own
+  envelope rather than a bare list, so the first parse should index `items`.
+- **Mechanism:** sections and bullets on this workflow skill, whose body is the element - the traps
+  are only actionable while a run is already reaching for these tools.
+- **Rejected:** this branch also carried a claim that `list_workflow_runs` ignores the page size
+  entirely, contradicting the measurement already on this skill. The contradiction resolved in
+  favour of the measurement: the tool reads `perPage`, and the branch's evidence is what passing
+  `per_page` produces. One sentence naming that spelling was added to the surviving bullet, which
+  neither side had. The branch's own re-sharpening of the artifact-download note was dropped as
+  already landed.
+- **Actor:** claudinite-canon-curation growth-promote run, rebased and resolved in an owner session.
+- **Model:** claude-opus-5
+- **Landed:** #1886

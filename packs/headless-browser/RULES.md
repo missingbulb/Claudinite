@@ -31,10 +31,10 @@
   (page-depends-third)
 
 - **A sandboxed agent's egress proxy can deny the browser's own connection to a host that
-  `curl`/`WebFetch` reaches fine — they don't share a tunnel path through the proxy.** When a
+  `curl`/`WebFetch` reaches fine - they don't share a tunnel path through the proxy.** When a
   page needs one specific host's real, unstubbed asset, fetch it once with `curl`/`WebFetch` and
   serve it from disk via route interception; a fetch tool succeeding through the same proxy is
-  not evidence the browser can reach that host too.
+  not evidence the browser can reach that host too. (sandboxed-agents-egress)
 
 - **A committed pixel golden is only comparable under the exact build that rendered it.** Two
   browsers a version apart rasterise text and shadows differently, so a comparison across them

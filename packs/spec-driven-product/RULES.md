@@ -22,7 +22,7 @@
 - **A repo-tooling or process change is never `feature`.** It has no product requirement leaf to
   record, so classifying it `feature` arms doc-first against a target that cannot exist; classify
   it `process-change` or `correction` instead, and if it already armed the gate, don't launder the
-  mislabeling with a backdated token spec commit or a coverage-allowlist workaround — name the
+  mislabeling with a backdated token spec commit or a coverage-allowlist workaround - name the
   mistake and accept the resulting red. (repo-tooling-never-feature)
 
 - **The spec drives the tests, never the other way around.** A behavior change starts by editing the
