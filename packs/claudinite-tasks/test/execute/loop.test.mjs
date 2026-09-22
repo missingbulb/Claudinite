@@ -459,7 +459,7 @@ test('an item whose task the repo no longer carries closes obsolete, like exit-1
 });
 
 // …and the same fact learned LATER. One run drains several items from one checkout,
-// and an earlier item's own work rewrites it — the mount update deletes a retired
+// and an earlier item's own work rewrites it — the mount acme-task-c deletes a retired
 // task's directory out from under the items behind it. The task still resolves (the
 // set was built at run start) but its directory is gone, and running it would spawn
 // with a cwd that does not exist, which Node reports as a missing `/bin/sh`.
@@ -478,19 +478,19 @@ test('a task deleted from the checkout mid-run closes obsolete rather than faili
 // title's id is canonicalized, so an item open across the rename keeps naming the
 // pre-rename directory — and nothing ever rewrites an item body, so the mismatch is
 // permanent. Parking it stranded the item AND held the task's lane, which is what
-// stopped `logs-prune` being scheduled on ClaudiniteCanary for eleven days.
+// stopped `acme-task-m` being scheduled on ClaudiniteCanary for eleven days.
 test('an item naming its own task at its pre-rename path closes obsolete, not to a human', async () => {
   const renamed = {
-    ...workItem(1, 'logs-prune', ['task:status:waiting-for-executor'],
-      'packs/tidy-repo/tasks/logs-prune/task.md\n\nExecute the Claudinite task above.\n'),
-    title: '[claudinite-work] tidy-repo/logs-prune',
+    ...workItem(1, 'acme-task-m', ['task:status:waiting-for-executor'],
+      'packs/tidy-repo/tasks/acme-task-m/task.md\n\nExecute the Claudinite task above.\n'),
+    title: '[claudinite-work] tidy-repo/acme-task-m',
   };
   const repo = fakeRepo([renamed]);
-  const moved = { ...task('logs-prune'), pack: 'basics', taskPath: 'packs/basics/tasks/logs-prune/task.md' };
+  const moved = { ...task('acme-task-m'), pack: 'basics', taskPath: 'packs/basics/tasks/acme-task-m/task.md' }; // @real-entity the rename map under test resolves the retired spelling to this id
   const done = await drive(repo, [moved]);
   assert.deepEqual(done, [{ issue: 1, outcome: 'obsolete' }]);
   assert.equal(repo.find(1).state, 'closed');
-  assert.ok(repo.find(1).comments.some((c) => c.body.includes('packs/basics/tasks/logs-prune/task.md')));
+  assert.ok(repo.find(1).comments.some((c) => c.body.includes('packs/basics/tasks/acme-task-m/task.md'))); // @real-entity the rename map under test resolves the retired spelling to this id
 });
 
 // …and the shape the guard actually exists for still parks. A path naming a DIFFERENT

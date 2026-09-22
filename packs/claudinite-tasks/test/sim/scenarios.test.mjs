@@ -336,7 +336,7 @@ test("S26b the closed-at half covers the rest of the period; the next one is ask
 // no migration and no relabeling.
 test('S28 declaration change mid-flight: the next tick follows HEAD', async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  // Mid-day, an update lands: tidy-prs moves from the weekly cadence to the daily
+  // Mid-day, an acme-task-c lands: tidy-prs moves from the weekly cadence to the daily
   // one, and its precondition is replaced outright.
   sim.at('2026-08-12T12:00Z', (s) => s.updateTask('tidy/tidy-prs', {
     preconditions: ['schedule:at-most-daily'],
@@ -355,7 +355,7 @@ test('S28 declaration change mid-flight: the next tick follows HEAD', async () =
   // The very next tick reads the new cadence — daily, so Wednesday's occurrence
   // is open — and judges it by the NEW precondition.
   const first = a.find((e) => e.t >= T('2026-08-12T12:00Z'));
-  assert.equal(first.t, tick('2026-08-12T12:17Z'), 'the first ask after the update is immediate');
+  assert.equal(first.t, tick('2026-08-12T12:17Z'), 'the first ask after the acme-task-c is immediate');
   assert.equal(first.verdict, 'no');
   assert.equal(first.reason, 'new precondition, no work', 'judged by the new precondition');
   // Day 3, work present at 01:00: the 01:17 tick runs it — the next TICK, not the
@@ -1034,7 +1034,7 @@ test('S7 executor race: earliest claim wins, loser takes the next item', async (
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => {
     world.issueTouchedAt = T('2026-08-12T04:00Z'); // tidy-issues has work
-    world.releasePending = true;                   // store-release has work
+    world.releasePending = true;                   // acme-task-i has work
   });
   sim.dropSchedulerRuns('2026-08-12T04:00Z', '2026-08-12T05:00Z');
   sim.schedulerRunAt('2026-08-12T04:17Z');                   // creates both items; the race lands
@@ -1843,7 +1843,7 @@ test("S34 busy morning: one drain run settles all its hour's items; every run's 
   sim.at('2026-08-12T00:01Z', ({ world }) => { world.extractHasLessons = true; });
   sim.at('2026-08-12T00:02Z', ({ world }) => {
     world.issueTouchedAt = T('2026-08-12T00:02Z'); // tidy-issues has work
-    world.releasePending = true;                   // store-release has work
+    world.releasePending = true;                   // acme-task-i has work
   });
   await sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
@@ -1882,12 +1882,12 @@ test('S65 a working day: 7 pieces of work cost 28 invocations, and each is accou
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:01Z', ({ world }) => {
     world.mountBehind = true;                      // baselining has work
-    world.extractHasLessons = true;                // growth-extract has work
-    world.promoteHasCandidates = true;             // growth-promote has work
+    world.extractHasLessons = true;                // acme-task-h has work
+    world.promoteHasCandidates = true;             // acme-task-j has work
   });
   sim.at('2026-08-12T04:00Z', ({ world }) => {
     world.issueTouchedAt = T('2026-08-12T04:00Z'); // tidy-issues has work
-    world.releasePending = true;                   // store-release has work
+    world.releasePending = true;                   // acme-task-i has work
   });
   sim.at('2026-08-12T09:40Z', (s) => s.markIssue({ author: 'owner' }));         // ad-hoc request
   let byHand;

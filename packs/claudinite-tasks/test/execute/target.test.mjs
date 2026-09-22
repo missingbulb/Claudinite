@@ -12,7 +12,7 @@ import {
   resolveTarget, closeSuperseded, TARGET_MODES,
 } from '../../src/execute/target.mjs';
 
-const TASK = 'claudinite-lifecycle/update';
+const TASK = 'acme-pack-b/acme-task-c';
 const NOW = new Date('2026-09-04T04:10:00Z');
 const pull = (number, ref, sha = `sha${number}`) => ({ number, head: { ref, sha }, node_id: `node${number}` });
 
@@ -20,17 +20,17 @@ const pull = (number, ref, sha = `sha${number}`) => ({ number, head: { ref, sha 
 
 test('a task\'s open pull requests are the ones on its branch prefix, newest first', () => {
   const pulls = [
-    pull(3, 'claudinite/claudinite-lifecycle/update/2026-09-01-aaa'),
+    pull(3, 'claudinite/acme-pack-b/acme-task-c/2026-09-01-aaa'),
     pull(9, 'feature/unrelated'),
-    pull(5, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb'),
-    pull(4, 'claudinite/claudinite-lifecycle/updater/2026-09-02-ccc'),
+    pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb'),
+    pull(4, 'claudinite/acme-pack-b/updater/2026-09-02-ccc'),
   ];
   assert.deepEqual(taskPullsOf(pulls, TASK).map((p) => p.number), [5, 3]);
-  assert.equal(taskBranchPrefix(TASK), 'claudinite/claudinite-lifecycle/update/');
+  assert.equal(taskBranchPrefix(TASK), 'claudinite/acme-pack-b/acme-task-c/');
 });
 
 // A pull request the lanes opened before the executor minted branch names — the
-// update task's `claudinite/update-<day>-<seed>`, an agent session's own name — is
+// acme-task-c task's `claudinite/update-<day>-<seed>`, an agent session's own name — is
 // still this task's: its head commit carries the `Claudinite-Task:` trailer, which is
 // the same authority the movement signals read.
 test('a pull request off the prefix is recognised by the trailer on its head commit', () => {
@@ -43,13 +43,13 @@ test('a pull request off the prefix is recognised by the trailer on its head com
 
 test('a minted branch carries the task, the day and a seed, under the task\'s prefix', () => {
   const branch = mintBranch(TASK, NOW, 'ab12cd');
-  assert.equal(branch, 'claudinite/claudinite-lifecycle/update/2026-09-04-ab12cd');
+  assert.equal(branch, 'claudinite/acme-pack-b/acme-task-c/2026-09-04-ab12cd');
   assert.ok(branch.startsWith(taskBranchPrefix(TASK)));
 });
 
 // --- the planner's matrix ----------------------------------------------------------
 
-const branch = 'claudinite/claudinite-lifecycle/update/2026-09-04-fresh1';
+const branch = 'claudinite/acme-pack-b/acme-task-c/2026-09-04-fresh1';
 
 test('no_code_changes gets no branch and no pull request', () => {
   const t = planTarget({ outcome: 'no_code_changes', incumbents: [pull(3, 'x')], branch });
@@ -66,16 +66,16 @@ test('fresh_pr gets the minted branch and leaves the task\'s earlier pull reques
 });
 
 test('amend_existing_or_create_new_pr amends the newest open pull request when it has no conflicts', () => {
-  const incumbents = [pull(5, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb'), pull(3, 'older')];
+  const incumbents = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb'), pull(3, 'older')];
   const t = planTarget({ outcome: 'amend_existing_or_create_new_pr', incumbents, mergeable: true, branch });
   assert.equal(t.mode, 'amend');
-  assert.equal(t.branch, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb');
+  assert.equal(t.branch, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb');
   assert.equal(t.pr, 5);
   assert.deepEqual(t.supersedes, []);
 });
 
 test('amend falls back to a fresh branch on a conflicted incumbent, and on one whose mergeability could not be read', () => {
-  const incumbents = [pull(5, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb')];
+  const incumbents = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb')];
   for (const mergeable of [false, null]) {
     const t = planTarget({ outcome: 'amend_existing_or_create_new_pr', incumbents, mergeable, branch });
     assert.equal(t.mode, 'fresh', `mergeable=${mergeable}`);
@@ -166,16 +166,16 @@ const resolve = (gh, outcome, over = {}) => resolveTarget({
 });
 
 test('fresh_pr and no_code_changes read nothing at all', async () => {
-  const { gh, calls } = fakeGitHub({ pulls: [pull(3, 'claudinite/claudinite-lifecycle/update/2026-09-01-aaa')] });
+  const { gh, calls } = fakeGitHub({ pulls: [pull(3, 'claudinite/acme-pack-b/acme-task-c/2026-09-01-aaa')] });
   const fresh = await resolve(gh, 'fresh_pr');
   assert.equal(fresh.mode, 'fresh');
-  assert.equal(fresh.branch, 'claudinite/claudinite-lifecycle/update/2026-09-04-seed01');
+  assert.equal(fresh.branch, 'claudinite/acme-pack-b/acme-task-c/2026-09-04-seed01');
   assert.equal((await resolve(gh, 'no_code_changes')).mode, 'none');
   assert.deepEqual(calls, [], 'a target that involves no existing pull request costs no read');
 });
 
 test('amend reads the newest incumbent\'s mergeability, polling while GitHub is still computing it', async () => {
-  const pulls = [pull(5, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb')];
+  const pulls = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb')];
   const { gh, calls } = fakeGitHub({ pulls, mergeable: { 5: [null, null, true] } });
   const t = await resolve(gh, 'amend_existing_or_create_new_pr');
   assert.equal(t.mode, 'amend');
@@ -184,7 +184,7 @@ test('amend reads the newest incumbent\'s mergeability, polling while GitHub is 
 });
 
 test('amend on an incumbent GitHub never finishes judging takes a fresh branch, never a guess', async () => {
-  const pulls = [pull(5, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb')];
+  const pulls = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb')];
   const { gh } = fakeGitHub({ pulls, mergeable: { 5: [null, null, null, null] } });
   const t = await resolve(gh, 'amend_existing_or_create_new_pr');
   assert.equal(t.mode, 'fresh');
@@ -193,13 +193,13 @@ test('amend on an incumbent GitHub never finishes judging takes a fresh branch, 
 
 test('an incumbent off the prefix is found by the trailer on its head commit', async () => {
   const pulls = [pull(12, 'claudinite/update-2026-09-02-xyz', 'abc'), pull(13, 'feature/x', 'def')];
-  const { gh } = fakeGitHub({ pulls, heads: { abc: `Claudinite: update\n\nClaudinite-Task: ${TASK}\n` }, mergeable: { 12: [true] } });
+  const { gh } = fakeGitHub({ pulls, heads: { abc: `Claudinite: acme-task-c\n\nClaudinite-Task: ${TASK}\n` }, mergeable: { 12: [true] } });
   const t = await resolve(gh, 'amend_existing_or_create_new_pr');
   assert.equal(t.pr, 12);
 });
 
 test('supersede judges the newest incumbent by the runs on its head: red closes after the successor, green lands now', async () => {
-  const pulls = [pull(5, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb', 'shaB'), pull(3, 'claudinite/claudinite-lifecycle/update/2026-09-01-aaa', 'shaA')];
+  const pulls = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb', 'shaB'), pull(3, 'claudinite/acme-pack-b/acme-task-c/2026-09-01-aaa', 'shaA')];
   const red = fakeGitHub({ pulls, runs: { shaB: [{ name: 'ci', status: 'completed', conclusion: 'failure' }] } });
   const t = await resolve(red.gh, 'supersede_existing_pr');
   assert.deepEqual([t.mode, t.supersedes, t.landed], ['fresh', [5, 3], null]);
@@ -211,11 +211,11 @@ test('supersede judges the newest incumbent by the runs on its head: red closes 
   assert.equal(g.landed, 5);
   assert.deepEqual(g.supersedes, [3]);
   assert.ok(green.calls.includes('PUT /repos/o/r/pulls/5/merge'));
-  assert.ok(green.calls.includes('DELETE /repos/o/r/git/refs/heads/claudinite%2Fclaudinite-lifecycle%2Fupdate%2F2026-09-03-bbb'));
+  assert.ok(green.calls.includes('DELETE /repos/o/r/git/refs/heads/claudinite%2Facme-pack-b%2Facme-task-c%2F2026-09-03-bbb'));
 });
 
 test('a review member\'s green incumbent is superseded, never landed by the machinery', async () => {
-  const pulls = [pull(5, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb', 'shaB')];
+  const pulls = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb', 'shaB')];
   const { gh, calls } = fakeGitHub({ pulls, runs: { shaB: [{ name: 'ci', status: 'completed', conclusion: 'success' }] } });
   const t = await resolve(gh, 'supersede_existing_pr', { delivery: 'review' });
   assert.deepEqual([t.mode, t.supersedes, t.landed], ['fresh', [5], null]);
@@ -223,7 +223,7 @@ test('a review member\'s green incumbent is superseded, never landed by the mach
 });
 
 test('a merge that fails falls back to superseding — one open pull request either way', async () => {
-  const pulls = [pull(5, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb', 'shaB')];
+  const pulls = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb', 'shaB')];
   const { gh } = fakeGitHub({ pulls, runs: { shaB: [{ name: 'ci', status: 'completed', conclusion: 'success' }] }, mergeStatus: 405 });
   const t = await resolve(gh, 'supersede_existing_pr');
   assert.deepEqual([t.mode, t.supersedes, t.landed], ['fresh', [5], null]);
@@ -237,7 +237,7 @@ test('an unreadable pull request list is an error, not an empty one', async () =
 });
 
 test('closeSuperseded comments the successor, closes each and tidies its branch, best-effort', async () => {
-  const pulls = [pull(5, 'claudinite/claudinite-lifecycle/update/2026-09-03-bbb'), pull(3, 'claudinite/claudinite-lifecycle/update/2026-09-01-aaa')];
+  const pulls = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb'), pull(3, 'claudinite/acme-pack-b/acme-task-c/2026-09-01-aaa')];
   const { gh, calls } = fakeGitHub({ pulls });
   const said = [];
   await closeSuperseded({ gh, repo: 'o/r', numbers: [5, 3], successor: 9, log: (s) => said.push(s) });
@@ -245,7 +245,7 @@ test('closeSuperseded comments the successor, closes each and tidies its branch,
     assert.ok(calls.includes(`POST /repos/o/r/issues/${n}/comments`));
     assert.ok(calls.includes(`PATCH /repos/o/r/pulls/${n}`));
   }
-  assert.ok(calls.includes('DELETE /repos/o/r/git/refs/heads/claudinite%2Fclaudinite-lifecycle%2Fupdate%2F2026-09-01-aaa'));
+  assert.ok(calls.includes('DELETE /repos/o/r/git/refs/heads/claudinite%2Facme-pack-b%2Facme-task-c%2F2026-09-01-aaa'));
   assert.match(said.join('\n'), /#5 .*superseded by #9/);
   // Already closed, or unreadable: log and carry on — the successor is the deliverable.
   const gone = async () => ({ status: 404, json: null });

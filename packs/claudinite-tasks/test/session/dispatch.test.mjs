@@ -18,8 +18,8 @@ test('dispatch title and key follow the [claudinite-task] <pack>/<task> <slot> s
 });
 
 test('parseDispatchTitle round-trips a title and rejects non-dispatch titles', () => {
-  const t = dispatchTitle({ pack: 'basics', task: 'baselining', slotId: 'd2026-07-22' });
-  assert.deepEqual(parseDispatchTitle(t), { pack: 'basics', task: 'baselining', slotId: 'd2026-07-22' });
+  const t = dispatchTitle({ pack: 'acme-pack', task: 'baselining', slotId: 'd2026-07-22' });
+  assert.deepEqual(parseDispatchTitle(t), { pack: 'acme-pack', task: 'baselining', slotId: 'd2026-07-22' });
   assert.equal(parseDispatchTitle('Claudinite tracker: Repo Tidy'), null);
   assert.equal(parseDispatchTitle('[claudinite-task] malformed'), null);
   assert.equal(isDispatchTitle(t), true);
@@ -38,7 +38,7 @@ test('dispatchBody puts the task path first and includes Context only when prese
   assert.match(withCtx, /binding scope — do not re-decide it/);
   assert.match(withCtx, /### Context\n- Eligible requests: #123, #125\./);
 
-  const noCtx = dispatchBody({ taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-07-22' });
+  const noCtx = dispatchBody({ taskPath: 'p/task.md', pack: 'acme-pack', task: 'baselining', slotId: 'd2026-07-22' });
   assert.equal(noCtx.split('\n')[0], 'p/task.md');
   assert.doesNotMatch(noCtx, /### Context/);
   assert.doesNotMatch(noCtx, /binding scope/); // no scope sentence with nothing to bind
@@ -49,7 +49,7 @@ test('dispatchBody puts the task path first and includes Context only when prese
 
 test('dispatchBody names the artifacts code-work created, by identity', () => {
   const body = dispatchBody({
-    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
+    taskPath: 'p/task.md', pack: 'acme-pack', task: 'baselining', slotId: 'd2026-08-06',
     delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: false },
   });
   assert.match(body, /### Delivered by code-work/);
@@ -61,7 +61,7 @@ test('dispatchBody distinguishes a merged PR from an open one', () => {
   // On a repo with no pull_request CI, preprocessing merges in the same run — the agent
   // works on its own PR from there rather than the one named.
   const body = dispatchBody({
-    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
+    taskPath: 'p/task.md', pack: 'acme-pack', task: 'baselining', slotId: 'd2026-08-06',
     delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: true },
   });
   assert.match(body, /- PR: #71 \(already merged/);
@@ -70,7 +70,7 @@ test('dispatchBody distinguishes a merged PR from an open one', () => {
 
 test('dispatchBody omits the section entirely when nothing was created — absence is the signal', () => {
   for (const delivered of [null, undefined, {}, { branch: null, pr: null }]) {
-    const body = dispatchBody({ taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd', delivered });
+    const body = dispatchBody({ taskPath: 'p/task.md', pack: 'acme-pack', task: 'baselining', slotId: 'd', delivered });
     assert.doesNotMatch(body, /### Delivered/, JSON.stringify(delivered));
   }
   // No placeholder line either — absence is what says nothing was created.
@@ -84,7 +84,7 @@ test('dispatchBody omits the section entirely when nothing was created — absen
 
 test('dispatchBody names the condition that woke the agent', () => {
   const body = dispatchBody({
-    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd2026-08-06',
+    taskPath: 'p/task.md', pack: 'acme-pack', task: 'baselining', slotId: 'd2026-08-06',
     reason: { code: 'checks-not-green', detail: 'check_the_world reported findings on the converged tree' },
   });
   assert.match(body, /### Why the agent is here/);
@@ -94,7 +94,7 @@ test('dispatchBody names the condition that woke the agent', () => {
 
 test('dispatchBody puts why before what — the reason decides which artifacts matter', () => {
   const body = dispatchBody({
-    taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd',
+    taskPath: 'p/task.md', pack: 'acme-pack', task: 'baselining', slotId: 'd',
     reason: { code: 'withheld-workflows', detail: '1 workflow file(s) the Action token cannot push' },
     delivered: { branch: 'claudinite/maintenance-2026-08-06-l0i4gd', pr: 71, merged: false },
   });
@@ -105,7 +105,7 @@ test('dispatchBody omits the Why section when no reason was named — never a fa
   // An older vendored worker names no reason. Absence must read as "nothing asserted",
   // which is what lets the task file fall back to its own full sweep.
   for (const reason of [null, undefined, {}, { code: null, detail: null }]) {
-    const body = dispatchBody({ taskPath: 'p/task.md', pack: 'basics', task: 'baselining', slotId: 'd', reason });
+    const body = dispatchBody({ taskPath: 'p/task.md', pack: 'acme-pack', task: 'baselining', slotId: 'd', reason });
     assert.doesNotMatch(body, /### Why the agent is here/, JSON.stringify(reason));
   }
   assert.deepEqual(escalationLines({ code: null, detail: null }), []);
@@ -130,7 +130,7 @@ test('the self/fleet split: readyLabelForScope maps scope → label, and planDis
   assert.equal(readyLabelForScope('self'), READY_LABEL);
   assert.equal(readyLabelForScope('fleet'), READY_FLEET_LABEL);
   // a fleet task's dispatch carries the fleet label so the fleet executor runs it
-  const v = planDispatch({ existing: [], pack: 'claudinite-canon-curation', task: 'growth-promote', slotId: 'd2026-07-24', readyLabel: READY_FLEET_LABEL });
+  const v = planDispatch({ existing: [], pack: 'acme-pack-i', task: 'acme-task-j', slotId: 'd2026-07-24', readyLabel: READY_FLEET_LABEL });
   assert.equal(v.action, 'create');
   assert.equal(v.label, READY_FLEET_LABEL);
   // both ready labels are in the ensure-set the scheduler creates
@@ -157,10 +157,10 @@ test('planDispatch suppresses a new filing while any slot of the task is still o
 // repos filing nothing, the oldest since 2026-07-23.
 test('planDispatch files the next slot while an escalated (needs-human) issue stays open', () => {
   const existing = [{
-    number: 182, title: '[claudinite-task] basics/update d2026-08-13', state: 'open',
+    number: 182, title: '[claudinite-task] acme-pack/acme-task-c d2026-08-13', state: 'open',
     labels: [{ name: NEEDS_HUMAN }],
   }];
-  const v = planDispatch({ existing, pack: 'basics', task: 'update', slotId: 'd2026-08-14' });
+  const v = planDispatch({ existing, pack: 'acme-pack', task: 'acme-task-c', slotId: 'd2026-08-14' });
   assert.equal(v.action, 'create');
 });
 
@@ -180,11 +180,11 @@ test('planDispatch still suppresses on a live claim — agent-running, or a just
 
 test('planDispatch bounds the re-filing: escalations that accumulate unresolved stop the lane, and say so', () => {
   const escalated = (number, slotId) => ({
-    number, title: `[claudinite-task] basics/update ${slotId}`, state: 'open',
+    number, title: `[claudinite-task] acme-pack/acme-task-c ${slotId}`, state: 'open',
     labels: [{ name: NEEDS_HUMAN }],
   });
   const existing = [escalated(182, 'd2026-08-13'), escalated(190, 'd2026-08-14')];
-  const v = planDispatch({ existing, pack: 'basics', task: 'update', slotId: 'd2026-08-15' });
+  const v = planDispatch({ existing, pack: 'acme-pack', task: 'acme-task-c', slotId: 'd2026-08-15' });
   assert.equal(v.action, 'suppress');
   assert.equal(v.escalated, true); // held for triage, NOT "a session is working it"
   assert.match(v.reason, /triage/);
@@ -192,10 +192,10 @@ test('planDispatch bounds the re-filing: escalations that accumulate unresolved 
 
 test('planDispatch reports a live claim as a claim even when escalations are also open', () => {
   const existing = [
-    { number: 182, title: '[claudinite-task] basics/update d2026-08-13', state: 'open', labels: [{ name: NEEDS_HUMAN }] },
-    { number: 190, title: '[claudinite-task] basics/update d2026-08-14', state: 'open', labels: [{ name: AGENT_RUNNING_LABEL }] },
+    { number: 182, title: '[claudinite-task] acme-pack/acme-task-c d2026-08-13', state: 'open', labels: [{ name: NEEDS_HUMAN }] },
+    { number: 190, title: '[claudinite-task] acme-pack/acme-task-c d2026-08-14', state: 'open', labels: [{ name: AGENT_RUNNING_LABEL }] },
   ];
-  const v = planDispatch({ existing, pack: 'basics', task: 'update', slotId: 'd2026-08-15' });
+  const v = planDispatch({ existing, pack: 'acme-pack', task: 'acme-task-c', slotId: 'd2026-08-15' });
   assert.equal(v.action, 'suppress');
   assert.equal(v.openIssue, 190);
   assert.notEqual(v.escalated, true);
@@ -222,7 +222,7 @@ test('staleDispatchIssues flags issues older than 2 of their own period and spar
   const open = [
     { number: 1, title: '[claudinite-task] gcec/create-extractor h2026-07-22T09Z', created_at: '2026-07-22T09:05:00Z' }, // hourly, ~3h old > 2h → stale
     { number: 2, title: '[claudinite-task] gcec/create-extractor h2026-07-22T11Z', created_at: '2026-07-22T11:20:00Z' }, // hourly, <2h → fresh
-    { number: 3, title: '[claudinite-task] basics/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' }, // daily, ~34h < 48h → fresh
+    { number: 3, title: '[claudinite-task] acme-pack/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' }, // daily, ~34h < 48h → fresh
     { number: 4, title: 'unrelated feature request', created_at: '2020-01-01T00:00:00Z' }, // not a dispatch issue → ignored
   ];
   const stale = staleDispatchIssues(open, now);
@@ -231,7 +231,7 @@ test('staleDispatchIssues flags issues older than 2 of their own period and spar
 
 test('staleDispatchIssues respects a daily issue crossing the 2-day threshold', () => {
   const now = '2026-07-24T05:00:00Z';
-  const open = [{ number: 7, title: '[claudinite-task] basics/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' }]; // ~3d old > 2d
+  const open = [{ number: 7, title: '[claudinite-task] acme-pack/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' }]; // ~3d old > 2d
   assert.deepEqual(staleDispatchIssues(open, now).map((i) => i.number), [7]);
 });
 
@@ -240,7 +240,7 @@ test('staleDispatchIssues respects a daily issue crossing the 2-day threshold', 
 // ClaudiniteCanary#2 carried four of them, one per hourly run.
 test('staleDispatchIssues escalates an issue once — an already-escalated one is done', () => {
   const now = '2026-07-24T05:00:00Z';
-  const old = { number: 7, title: '[claudinite-task] basics/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' };
+  const old = { number: 7, title: '[claudinite-task] acme-pack/baselining d2026-07-21', created_at: '2026-07-21T02:00:00Z' };
   assert.deepEqual(staleDispatchIssues([old], now).map((i) => i.number), [7]); // first pass: escalate
   const escalated = { ...old, labels: [{ name: NEEDS_HUMAN }] };
   assert.deepEqual(staleDispatchIssues([escalated], now), []);                 // every pass after: silent
@@ -255,7 +255,7 @@ test('staleDispatchIssues leaves a CLAIMED issue to the claim sweep, which words
   const now = '2026-07-25T05:00:00Z';
   const claimed = {
     number: 8,
-    title: '[claudinite-task] basics/baselining d2026-07-21',
+    title: '[claudinite-task] acme-pack/baselining d2026-07-21',
     created_at: '2026-07-21T02:00:00Z',
     updated_at: '2026-07-21T02:00:00Z',
     labels: [{ name: AGENT_RUNNING_LABEL }],
@@ -277,7 +277,7 @@ test('staleEscalationComment names the task and the needs-human label', () => {
 // same N issues, so it moved here, into code that runs once per run.
 
 const armed = (over = {}) => ({
-  number: 1, title: '[claudinite-task] basics/baselining d2026-07-22',
+  number: 1, title: '[claudinite-task] acme-pack/baselining d2026-07-22',
   labels: [{ name: READY_LABEL }], created_at: '2026-07-22T01:00:00Z',
   updated_at: '2026-07-22T01:00:00Z', comments: 0, ...over,
 });
@@ -332,9 +332,9 @@ test('a stale issue is never re-armed — it is converging to triage, and re-arm
 test('staleClaimedDispatchIssues converges a claim left by a session that died mid-run', () => {
   const now = '2026-07-22T12:00:00Z';
   const open = [
-    { number: 1, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z' }, // 10h idle
-    { number: 2, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T11:00:00Z' }, // 1h idle → live
-    { number: 3, title: '[claudinite-task] basics/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }, { name: NEEDS_HUMAN }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z' }, // already triaged
+    { number: 1, title: '[claudinite-task] acme-pack/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z' }, // 10h idle
+    { number: 2, title: '[claudinite-task] acme-pack/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T11:00:00Z' }, // 1h idle → live
+    { number: 3, title: '[claudinite-task] acme-pack/baselining d2026-07-22', labels: [{ name: AGENT_RUNNING_LABEL }, { name: NEEDS_HUMAN }], created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z' }, // already triaged
   ];
   assert.deepEqual(staleClaimedDispatchIssues(open, now).map((i) => i.number), [1]);
 });
@@ -348,8 +348,8 @@ test('staleClaimedDispatchIssues never touches a claim on an issue a TASK owns',
 });
 
 test('staleClaimComment names the task and the needs-human label', () => {
-  const c = staleClaimComment({ number: 1, title: '[claudinite-task] basics/baselining d2026-07-22' });
-  assert.match(c, /basics\/baselining \(slot d2026-07-22\)/);
+  const c = staleClaimComment({ number: 1, title: '[claudinite-task] acme-pack/baselining d2026-07-22' });
+  assert.match(c, /acme-pack\/baselining \(slot d2026-07-22\)/);
   assert.match(c, new RegExp(NEEDS_HUMAN));
   assert.match(c, new RegExp(AGENT_RUNNING_LABEL));
 });
@@ -428,7 +428,7 @@ test("staleClaimedDispatchIssues measures the holder's own silence, not the issu
   // `updated_at`. Reading that clock reports a dead claim as live (#924).
   const now = '2026-07-22T12:00:00Z';
   const open = [{
-    number: 1, title: '[claudinite-task] basics/baselining d2026-07-22',
+    number: 1, title: '[claudinite-task] acme-pack/baselining d2026-07-22',
     labels: [{ name: AGENT_RUNNING_LABEL }],
     created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T11:00:00Z',
     livenessAt: '2026-07-22T02:00:00Z',
@@ -439,7 +439,7 @@ test("staleClaimedDispatchIssues measures the holder's own silence, not the issu
 test('staleClaimedDispatchIssues spares a beating holder whose issue looks untouched', () => {
   const now = '2026-07-22T12:00:00Z';
   const open = [{
-    number: 2, title: '[claudinite-task] basics/baselining d2026-07-22',
+    number: 2, title: '[claudinite-task] acme-pack/baselining d2026-07-22',
     labels: [{ name: AGENT_RUNNING_LABEL }],
     created_at: '2026-07-22T01:00:00Z', updated_at: '2026-07-22T02:00:00Z',
     livenessAt: '2026-07-22T11:30:00Z',

@@ -17,8 +17,8 @@ test('classifyPath names docs, tests and code', () => {
   assert.equal(classifyPath('README.md'), 'doc');
   assert.equal(classifyPath('packs/claudinite-tasks/docs/PRINCIPLES.md'), 'doc');
   assert.equal(classifyPath('packs/claudinite-tasks/test/scheduler-run.test.mjs'), 'test');
-  assert.equal(classifyPath('packs/basics/tests/fixture.json'), 'test');
-  assert.equal(classifyPath('packs/basics/test/pack.test.mjs'), 'test');
+  assert.equal(classifyPath('packs/acme-pack/tests/fixture.json'), 'test');
+  assert.equal(classifyPath('packs/acme-pack/test/pack.test.mjs'), 'test');
   assert.equal(classifyPath('app/test_parser.py'), 'test');
   assert.equal(classifyPath('packs/claudinite-tasks/src/schedule/run.mjs'), 'code');
   // A whole-segment match, so a directory that merely CONTAINS the word is code.
@@ -51,10 +51,10 @@ test('narrowVerdict: docs, tests, comments and one code directory are narrow', (
 test('narrowVerdict: code in two directories is not narrow, and says which', () => {
   const v = narrowVerdict([
     { file: 'engine/a.mjs', before: 'const a = 1;\n', after: 'const a = 2;\n' },
-    { file: 'packs/basics/b.mjs', before: 'const b = 1;\n', after: 'const b = 2;\n' },
+    { file: 'packs/acme-pack/b.mjs', before: 'const b = 1;\n', after: 'const b = 2;\n' },
   ]);
   assert.equal(v.narrow, false);
-  assert.deepEqual(v.codeDirs, ['engine', 'packs/basics']);
+  assert.deepEqual(v.codeDirs, ['engine', 'packs/acme-pack']);
   assert.match(v.why, /2 directories/);
 });
 

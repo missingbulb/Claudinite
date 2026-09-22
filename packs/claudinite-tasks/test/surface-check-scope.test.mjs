@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // consumers that can actually get it wrong are members: a canon pack lives beside the
 // barrier and is swept whenever the canon is, while a member's `.claudinite/local/packs/`
 // is the one tree no converge may rewrite, so a deep import written there survives every
-// update until it crashes.
+// acme-task-c until it crashes.
 //
 // It was written scanning `packs/` with an optional `.claudinite/shared/` prefix, and that
 // prefix is dead on arrival: repo-context strips every path under the shared mount from
@@ -38,7 +38,7 @@ test('the surface guard scopes to both trees a consumer can write in', () => {
   const scope = compile(rule.scanFiles);
 
   // The canon's own shelf — a sibling pack importing this one.
-  assert.ok(scope.test('packs/claudinite-dashboard/src/derive/model.mjs'),
+  assert.ok(scope.test('packs/claudinite-dashboard/src/derive/model.mjs'), // @real-entity the pack whose surface this scope must cover
     'a canon sibling must stay in scope');
 
   // A MEMBER'S OWN PACK. The tree no converge rewrites, and the only one where a bad
@@ -55,9 +55,9 @@ test('the surface guard scopes to both trees a consumer can write in', () => {
 
   // A CANON PACK'S OWN TEST may reach `src/` for a name only a test needs: it runs in
   // the same suite as the layout it reaches into, so a move fails in its own change.
-  assert.equal(scope.test('packs/claudinite-fleet-sheepdog/test/dormancy-drift.test.mjs'), false,
+  assert.equal(scope.test('packs/acme-pack-c/test/dormancy-drift.test.mjs'), false,
     "a canon pack's test is exempt — the suite catches the move");
-  assert.equal(scope.test('packs/basics/test/skills/x/checks.test.mjs'), false,
+  assert.equal(scope.test('packs/acme-pack/test/skills/x/checks.test.mjs'), false,
     'the exemption holds for a nested canon test');
   // A MEMBER'S test is not: it runs where no canon session reads, so the reach survives
   // until the layout moves under it.

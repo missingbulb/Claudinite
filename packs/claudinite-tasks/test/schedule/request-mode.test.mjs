@@ -547,7 +547,7 @@ test('the Merge field is fenced by policy shape', () => {
 
 test('the Merge fence canonicalizes an && term, so the body it writes is whitespace-free', () => {
   const at = (value) => parseWorkItemBody(`${TASK_PATH}\n\nRequest: #500\nMerge: ${value}\n`).merge;
-  assert.equal(at('under:product-wiki&&doc-changes'), 'under:product-wiki&&doc-changes');
+  assert.equal(at('under:acme-pack-e&&doc-changes'), 'under:acme-pack-e&&doc-changes');
   assert.equal(at('reject:under:docs/private'), null, 'a rejects-only list still allows nothing');
 });
 
@@ -562,8 +562,8 @@ test('the Merge fence and normalizePolicy agree on what is a policy expression',
   const matrix = ['anything', 'nothing', 'if-narrow', 'yes', 'true', 'narrow-diff',
     'doc-changes;readme-changes', 'anything;reject:js-code-changes', 'reject:js-code-changes',
     'no-such-rule', 'Bad_Term', 'a;;b',
-    'under:product-wiki', 'under:.claudinite/local/packs && doc-changes',
-    'under:product-wiki&&doc-changes;reject:javascript-changes',
+    'under:acme-pack-e', 'under:.claudinite/local/packs && doc-changes',
+    'under:acme-pack-e&&doc-changes;reject:javascript-changes',
     'under:', 'under:../elsewhere', 'narrow-diff && doc-changes', 'doc-changes &&'];
   for (const value of matrix) {
     const kept = at(value);

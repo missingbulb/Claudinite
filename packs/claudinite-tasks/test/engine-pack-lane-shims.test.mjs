@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 // module is therefore a stale caller of an instantly-current engine, and an engine
 // module it names may not simply vanish.
 //
-// It vanished once (#1004). `packs/claudinite-lifecycle/task-declaration-shape.mjs` imported
+// It vanished once (#1004). `packs/acme-pack-b/task-declaration-shape.mjs` imported
 // the engine's own `slots.mjs`, #974 renamed that to `calendar.mjs`, and the next
 // member to converge got a mount whose `core` pack would not load — which fails the
 // self-test, which makes the converge refuse to land AT ALL, so the member could not
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 // QUANTIFIED OVER HISTORY, NOT A LIST. Which symbols matter is a fact about the pack
 // versions members are actually carrying, and members carry old ones — so the
 // question is asked of every version of every pack file that ever REACHED the trunk,
-// not of HEAD and not of a list someone remembers to update.
+// not of HEAD and not of a list someone remembers to acme-task-c.
 //
 // The trunk, not `--all`: a member's pack version came from a release cut from the
 // default branch, so an import that only ever existed on an unmerged branch is not a

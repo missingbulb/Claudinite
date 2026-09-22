@@ -48,11 +48,18 @@ const ALSO_A_PROGRAM = new Set(['node', 'python']);
 function readEntityOwners(tracked) {
   const owners = new Map(); // "kind:name" -> owning pack id
   const packs = new Set();
+  const local = new Set();
   for (const f of tracked) {
     const pack = packOf(f);
-    if (pack) packs.add(pack);
+    if (!pack) continue;
+    packs.add(pack);
+    if (f.startsWith('.claudinite/local/packs/')) local.add(pack);
   }
-  for (const p of packs) owners.set(`pack:${p}`, p);
+  // A local pack is declared, and written about, under its `local/` namespace; its
+  // bare directory name is not an id anyone writes. Matching the bare name would
+  // read every `claudinite/<pack>/<task>/…` branch in this repo as the local pack
+  // `claudinite`, which is the namespace those branches share, not a reference.
+  for (const p of packs) owners.set(`pack:${local.has(p) ? `local/${p}` : p}`, p);
   for (const f of tracked) {
     const pack = packOf(f);
     if (!pack) continue;

@@ -26,11 +26,11 @@ test('the setting is read off the tasks pack entry', () => {
 test('another pack carrying the same word never speaks for the scheduler', () => {
   // The whole point of the move: `dormant` is the scheduler's parameter, so a pack
   // that is not the scheduler's cannot stop it.
-  assert.equal(isDormant(declaring({ id: 'basics', config: { dormant: true } })), false);
+  assert.equal(isDormant(declaring({ id: 'acme-pack', config: { dormant: true } })), false);
 });
 
 test('a repo with no tasks pack has no scheduler to be dormant', () => {
-  assert.equal(isDormant({ packs: ['basics', 'git-github'] }), false);
+  assert.equal(isDormant({ packs: ['acme-pack', 'acme-pack-d'] }), false);
 });
 
 test('the legacy top-level key still reads, underneath the pack entry', () => {

@@ -57,14 +57,14 @@ test('resolveDelivery still fails the run on an unrecognized value — never a s
 // deliveryFromChecks is the same resolution off the raw file text — the shape a
 // caller reading .claudinite-settings.json from a git blob has in hand.
 // THE OVERRIDE (#1252). One direction, and only `true` carries an intent: every
-// member wanted its update PR landed, so a preference materialized into every
+// member wanted its acme-task-c PR landed, so a preference materialized into every
 // declaration said nothing, and the repo that wants a human is the one that has to
 // say so. Absence is the normal shape and must never resolve to `review` — that
-// stalls a repo's daily update forever waiting for someone nobody told.
+// stalls a repo's daily acme-task-c forever waiting for someone nobody told.
 test('deliveryFor: only an explicit true withholds the PR', () => {
   assert.equal(deliveryFor({ dailyClaudiniteUpdatesRequirePrReview: true }), 'review');
   assert.equal(deliveryFor({ dailyClaudiniteUpdatesRequirePrReview: false }), DEFAULT_DELIVERY);
-  assert.equal(deliveryFor({ packs: ['basics'] }), DEFAULT_DELIVERY, 'absent is the normal shape');
+  assert.equal(deliveryFor({ packs: ['acme-pack'] }), DEFAULT_DELIVERY, 'absent is the normal shape');
   assert.equal(deliveryFor(null), DEFAULT_DELIVERY);
 });
 
@@ -95,7 +95,7 @@ test('deliveryFromChecks: an absent file, absent key, or unparsable text resolve
   // The file's integrity is check_the_world's problem; the delivery step just
   // needs an answer, and "no stated intent" is the default, not a failure.
   assert.deepEqual(deliveryFromChecks(null), { delivery: DEFAULT_DELIVERY, materialize: true });
-  assert.deepEqual(deliveryFromChecks('{"packs":["basics"]}'), { delivery: DEFAULT_DELIVERY, materialize: true });
+  assert.deepEqual(deliveryFromChecks('{"packs":["acme-pack"]}'), { delivery: DEFAULT_DELIVERY, materialize: true });
   assert.deepEqual(deliveryFromChecks('not json at all'), { delivery: DEFAULT_DELIVERY, materialize: true });
 });
 
@@ -377,20 +377,20 @@ test('failureSummary separates a check still in flight from nothing having succe
 
 // --- disposing of the previous cycle's delivery (#787) -----------------------
 // The promise "leaving it open for the next run to dispose of" had no
-// implementation: the update runner's quiet-cycle early return fired before
+// implementation: the acme-task-c runner's quiet-cycle early return fired before
 // anything looked at open PRs, so a stranded PR was superseded by a duplicate the
 // next cycle opened instead. These are the three outcomes that promise needs.
 
 test('openDeliveredPull finds the family by branch PREFIX, since the name carries a seed', () => {
   const pulls = [
     { number: 1, head: { ref: 'feature/something' } },
-    { number: 2, head: { ref: 'claudinite/update-2026-08-12-ja25ab' } },
+    { number: 2, head: { ref: 'claudinite/acme-task-c-2026-08-12-ja25ab' } },
   ];
-  assert.equal(openDeliveredPull(pulls, 'claudinite/update')?.number, 2);
+  assert.equal(openDeliveredPull(pulls, 'claudinite/acme-task-c')?.number, 2);
   assert.equal(openDeliveredPull(pulls, 'claudinite/maintenance'), null);
   // A caller with nothing to dispose of must get a clean null, not a throw.
-  assert.equal(openDeliveredPull(undefined, 'claudinite/update'), null);
-  assert.equal(openDeliveredPull([], 'claudinite/update'), null);
+  assert.equal(openDeliveredPull(undefined, 'claudinite/acme-task-c'), null);
+  assert.equal(openDeliveredPull([], 'claudinite/acme-task-c'), null);
 });
 
 // A fetch stub over the three endpoints disposal touches, recording the writes.

@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 //
 // It happened at #1478. `public/create-work-item.mjs` moved to `src/schedule/`, the canon's
 // own three docs were swept with it, and Shepherd's local pack — three call sites nobody
-// here could see — began failing `runnable-doc-commands` at BLOCKING on its next update.
+// here could see — began failing `runnable-doc-commands` at BLOCKING on its next acme-task-c.
 // Nothing went red in this repository, because this repository's copies were correct.
 //
 // QUANTIFIED OVER HISTORY, NOT A LIST, for the same reason as the engine-lane scan beside

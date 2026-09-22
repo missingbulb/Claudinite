@@ -10,7 +10,7 @@ import {
 // the shape of the expression; every case below is a pair the shape could not tell
 // apart.
 const base = {
-  id: 'growth-extract',
+  id: 'acme-task-h',
   description: 'Extract lessons from the window.',
   expected_outcome: 'no_code_changes',
   agent_model: 'none',

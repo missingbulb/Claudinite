@@ -29,7 +29,7 @@ import { swapStatus, clearStatus } from '../../src/items/apply-status.mjs';
 import { convergeOps, OUTCOMES } from '../../src/session/converge-item.mjs';
 import { reportWorkflowFailure } from '../../src/recover/workflow-failure.mjs';
 
-const item = (...labels) => ({ number: 1, title: '[claudinite-work] basics/task-janitor', state: 'open', labels });
+const item = (...labels) => ({ number: 1, title: '[claudinite-work] acme-pack/task-janitor', state: 'open', labels });
 
 // PRINCIPLES.md's legacy table, in full — the left column is every spelling any fielded
 // engine has written, the right is what a reader must see today.
@@ -279,8 +279,8 @@ import { staleReadyComment } from '../../src/recover/janitor-rules.mjs';
 import { LEGACY_BUILT_IN_TASK_PATH, LEGACY_BUILT_IN_TASK_PATH_MOUNTED } from '../legacy-protocol.mjs';
 
 test('a worker path names its task, in both homes and under either root', () => {
-  assert.deepEqual(taskIdFromPath('packs/basics/tasks/task-janitor/task.md'), { pack: 'basics', task: 'task-janitor' });
-  assert.deepEqual(taskIdFromPath('.claudinite/shared/packs/basics/tasks/task-janitor/task.md'), { pack: 'basics', task: 'task-janitor' });
+  assert.deepEqual(taskIdFromPath('packs/acme-pack/tasks/task-janitor/task.md'), { pack: 'acme-pack', task: 'task-janitor' });
+  assert.deepEqual(taskIdFromPath('.claudinite/shared/packs/acme-pack/tasks/task-janitor/task.md'), { pack: 'acme-pack', task: 'task-janitor' });
   assert.deepEqual(taskIdFromPath(LEGACY_BUILT_IN_TASK_PATH), { pack: 'engine', task: 'implement-request' });
   assert.deepEqual(taskIdFromPath(LEGACY_BUILT_IN_TASK_PATH_MOUNTED), { pack: 'engine', task: 'implement-request' });
   assert.equal(taskIdFromPath('please do the thing'), null);

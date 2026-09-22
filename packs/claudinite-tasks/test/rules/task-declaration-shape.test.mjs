@@ -5,7 +5,7 @@ import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs
 import rule from '../../worldRules/task-declaration-shape.mjs';
 
 const good = {
-  id: 'growth-extract',
+  id: 'acme-task-h',
   description: 'Mines the window for durable lessons and folds them into the local packs.',
   trigger: 'schedule',
   agent_model: 'opus',
@@ -17,7 +17,7 @@ const good = {
 };
 const json = (obj) => `${JSON.stringify(obj, null, 2)}\n`;
 const goodTask = json(good);
-const TASK = '.claudinite/local/packs/mypack/tasks/growth-extract/task.json';
+const TASK = '.claudinite/local/packs/mypack/tasks/acme-task-h/task.json';
 
 const run = (files) => {
   const root = makeRepo({ changed: files });
@@ -37,7 +37,7 @@ test('task-declaration-shape: is inert when no task declaration exists', () => {
 // carrying neither is a clean agentless task once it names its code work and when
 // it runs, and the two timeouts are never defaulted.
 test('task-declaration-shape: the minimal declaration is a code-work task, and needs its timeout', () => {
-  const minimal = { id: 'growth-extract', description: 'A minimal task.', trigger: 'schedule', preconditions: ['schedule:at-most-daily'], expected_outcome: 'fresh_pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
+  const minimal = { id: 'acme-task-h', description: 'A minimal task.', trigger: 'schedule', preconditions: ['schedule:at-most-daily'], expected_outcome: 'fresh_pr', code_work: 'node worker.mjs', code_work_timeout: 60 };
   assert.deepEqual(run({ [TASK]: json(minimal) }), []);
   const { code_work_timeout, ...noBound } = minimal;
   assert.match(whatsOf({ [TASK]: json(noBound) }), /no numeric "code_work_timeout"/);
@@ -80,7 +80,7 @@ test('task-declaration-shape: flags illegal enum values', () => {
 
 // The retired cadence field (docs/PRINCIPLES.md). ADVISORY, like every rename here: the
 // runtime reads the field as the cadence term it meant, a member's task file is its own data,
-// and the nightly update rewrites it — so this finding names the edit and its CI stays green.
+// and the nightly acme-task-c rewrites it — so this finding names the edit and its CI stays green.
 test('task-declaration-shape: the retired frequency field is an advisory rename to its cadence term', () => {
   const { preconditions, ...bare } = good;
   for (const [field, term] of [['daily', 'schedule:at-most-daily'], ['weekly', 'schedule:at-most-weekly'], ['monthly', 'schedule:at-most-monthly'], ['manual', null]]) {
@@ -102,7 +102,7 @@ test('task-declaration-shape: the retired frequency field is an advisory rename 
 // door forever, so a member's own task file keeps its ordering and its CI must not go red over a
 // declaration nobody has edited. The finding is what drives the fleet to the canonical spelling.
 test('task-declaration-shape: the legacy `after` ordering field is an advisory rename', () => {
-  const f = run({ [TASK]: json({ ...good, after: ['claudinite-lifecycle/update'] }) });
+  const f = run({ [TASK]: json({ ...good, after: ['acme-pack-b/acme-task-c'] }) });
   assert.equal(f.length, 1);
   assert.equal(f[0].severity, 'advisory', 'never blocking — the runtime still honours it');
   assert.match(f[0].what, /legacy name "after"/);
@@ -145,7 +145,7 @@ test('task-declaration-shape: the legacy outcome ceilings are an advisory rename
 });
 
 const noneTask = {
-  id: 'growth-extract', description: 'An agentless task.', trigger: 'schedule', preconditions: ['schedule:at-most-daily'], agent_model: 'none', expected_outcome: 'no_code_changes',
+  id: 'acme-task-h', description: 'An agentless task.', trigger: 'schedule', preconditions: ['schedule:at-most-daily'], agent_model: 'none', expected_outcome: 'no_code_changes',
   code_work: 'node w.mjs', code_work_timeout: 60,
 };
 
@@ -158,7 +158,7 @@ test('task-declaration-shape: a pr task without automerge lands nothing, and a n
 });
 
 test('task-declaration-shape: the canonical `schedule_after` is clean', () => {
-  assert.deepEqual(run({ [TASK]: json({ ...good, schedule_after: ['claudinite-lifecycle/update'] }) }), [],
+  assert.deepEqual(run({ [TASK]: json({ ...good, schedule_after: ['acme-pack-b/acme-task-c'] }) }), [],
     'the canonical spelling must not match the legacy pattern on its own tail');
 });
 
@@ -295,7 +295,7 @@ test('task-declaration-shape: a scheduled task may not gate on a condition that 
   ].join('\n');
   const files = (trigger) => ({
     [TASK]: json({ ...good, trigger, preconditions: ['about-this-issue'] }),
-    '.claudinite/local/packs/mypack/tasks/growth-extract/preconditions.mjs': terms,
+    '.claudinite/local/packs/mypack/tasks/acme-task-h/preconditions.mjs': terms,
   });
   assert.match(whatsOf(files('schedule')), /a "schedule" task states a condition that reads the item itself/);
   assert.deepEqual(run(files('request')), [], 'the same expression is exactly right for a task nothing asks');
@@ -313,7 +313,7 @@ test('task-declaration-shape: a task-local term may declare that it takes an arg
   ].join('\n');
   const files = (takesArg) => ({
     [TASK]: json({ ...good, preconditions: ['window-has-sessions:10'] }),
-    '.claudinite/local/packs/mypack/tasks/growth-extract/preconditions.mjs': terms(takesArg),
+    '.claudinite/local/packs/mypack/tasks/acme-task-h/preconditions.mjs': terms(takesArg),
   });
   assert.deepEqual(run(files(true)), [], 'a term that says it takes one may be given one');
   assert.match(whatsOf(files(false)), /takes no argument but was given "10"/,

@@ -62,7 +62,7 @@ test('runCodeWork: a command that cannot start is a failure, not a throw', async
 
 // A cwd that no longer exists is reported by Node as an ENOENT on the SHELL, which
 // names the one thing that is not missing. The task directory can vanish under a
-// run in flight (an earlier item's mount update deletes a retired task), so this
+// run in flight (an earlier item's mount acme-task-c deletes a retired task), so this
 // failure has to say which directory is gone.
 test('runCodeWork: a task directory that is gone names the directory, not the shell', async () => {
   const gone = join(process.cwd(), 'no-such-task-dir-2fbb1c');
@@ -122,10 +122,10 @@ test('codeWorkFailure: distinguishes a timeout from a non-zero exit', () => {
 });
 
 test('agentRequestPath is deterministic per (pack, task, slot)', () => {
-  const rec = { pack: 'basics', task: 'baselining', slotId: 'd2026-07-23' };
+  const rec = { pack: 'acme-pack', task: 'baselining', slotId: 'd2026-07-23' };
   assert.equal(agentRequestPath(rec), agentRequestPath({ ...rec }));
   assert.notEqual(agentRequestPath(rec), agentRequestPath({ ...rec, slotId: 'd2026-07-24' }));
-  assert.match(agentRequestPath(rec), /claudinite-request-agent-basics-baselining-d2026-07-23$/);
+  assert.match(agentRequestPath(rec), /claudinite-request-agent-acme-pack-baselining-d2026-07-23$/);
 });
 
 test('the request signal round-trips: written → requested, cleared → not (clearing an absent path is a no-op)', () => {

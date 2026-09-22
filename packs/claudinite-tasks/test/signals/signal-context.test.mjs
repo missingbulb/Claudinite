@@ -52,7 +52,7 @@ const withRepo = (files, fn) => {
 // A checkout that exercises all three: a manifest version, a local pack, and a
 // pack entry carrying `retention_days`.
 const CHECKS_JSON = JSON.stringify({
-  packs: ['basics', { id: 'claudinite-growth', config: { retention_days: 10 } }],
+  packs: ['basics', { id: 'claudinite-growth', config: { retention_days: 10 } }], // @real-entity the pack whose config this signal reads
 }, null, 2) + '\n';
 
 const FULL = {
@@ -133,12 +133,12 @@ test('buildSignalContext populates every ctx key the collectors read', () => {
     assert.equal(ctx.retentionDays, 10);
     // ...alongside the ones that always worked, so this is a whole-shape guard.
     assert.equal(ctx.repo, 'o/r');
-    assert.deepEqual(ctx.activePacks, ['basics', 'claudinite-growth']);
+    assert.deepEqual(ctx.activePacks, ['basics', 'claudinite-growth']); // @real-entity the pack whose config this signal reads
   });
 });
 
 test('buildSignalContext: absent manifest, no retention → the honest negatives', () => {
-  withRepo({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, (root) => {
+  withRepo({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, (root) => { // @real-entity the pack whose config this signal reads
     const ctx = ctxFor(root);
     assert.equal(ctx.manifestVersion, null);
     assert.equal(ctx.shipsReleasePipeline, false); // explicit false — the task's gate reads it
@@ -169,7 +169,7 @@ test('release.manifestVersion reaches store-release, so the manifest-ahead trigg
     // No release yet and NO substantive commit in the window: the only thing that
     // can fire this is the manifest version, which is precisely what was dead.
     assert.equal(signals.commits.substantiveChange, false);
-    const v = await verdictFor(storeRelease, 'chrome-extension/tasks/store-release', signals);
+    const v = await verdictFor(storeRelease, 'chrome-extension/tasks/store-release', signals); // @real-entity the real task whose term module this verdict loads from disk
     assert.equal(v.run, true);
     assert.match(v.reason, /manifest 1\.4\.0, and nothing released yet/);
   });
@@ -188,14 +188,14 @@ test('a local-pack commit reaches growth-dedup', async () => {
       ]);
       const signals = await collectSignals(gh, ctxFor(root), ['sharedMount', 'commits']);
       assert.ok(signals.commits.touchedPaths.includes(path), path);
-      assert.equal((await verdictFor(dedup, 'claudinite-growth/tasks/growth-dedup', signals)).run, true, path);
+      assert.equal((await verdictFor(dedup, 'claudinite-growth/tasks/growth-dedup', signals)).run, true, path); // @real-entity the real task whose term module this verdict loads from disk
     });
   }
   // …and a window that moved nothing local, with no canon movement either, declines.
   await withRepo(FULL, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['sharedMount', 'commits']);
     assert.deepEqual(signals.commits.touchedPaths, []);
-    assert.equal((await verdictFor(dedup, 'claudinite-growth/tasks/growth-dedup', signals)).run, false);
+    assert.equal((await verdictFor(dedup, 'claudinite-growth/tasks/growth-dedup', signals)).run, false); // @real-entity the real task whose term module this verdict loads from disk
   });
 });
 
@@ -206,7 +206,7 @@ test('conversationLogs.retentionDays reaches logs-prune, so the age-based prune 
     assert.equal(signals.conversationLogs.retentionDays, 10);
     assert.equal(signals.conversationLogs.oldestLogAgeDays, 21); // 2026-07-01 → 2026-07-22
     assert.equal(signals.commits.substantiveChange, false); // quiet repo — the regressed case
-    const v = await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals);
+    const v = await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals); // @real-entity the real task whose term module this verdict loads from disk
     assert.equal(v.run, true);
     assert.match(v.reason, /retention 10d/);
   });
@@ -223,7 +223,7 @@ test('conversationLogs.oldestLogAgeDays reaches logs-prune, so young logs keep i
     ];
     const signals = await collectSignals(fakeGh(routes), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.oldestLogAgeDays, 1);
-    assert.equal((await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals)).run, false);
+    assert.equal((await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals)).run, false); // @real-entity the real task whose term module this verdict loads from disk
   });
 });
 
@@ -232,10 +232,10 @@ test('conversationLogs.oldestLogAgeDays reaches logs-prune, so young logs keep i
 // policy and reports `null` for "nothing declared it". The TASK is what turns that
 // into 10 days (#1620), which is why the verdict runs here where it used to be silent.
 test('conversationLogs: the signal invents no retention default — the task supplies it', async () => {
-  await withRepo({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, async (root) => {
+  await withRepo({ '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }) + '\n' }, async (root) => { // @real-entity the pack whose config this signal reads
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.retentionDays, null, 'the signal reports what the declaration said, and it said nothing');
-    const v = await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals);
+    const v = await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals); // @real-entity the real task whose term module this verdict loads from disk
     assert.equal(v.run, true, 'and the undeclared repo prunes on the default rather than leaking forever');
     assert.match(v.reason, /retention 10d/);
   });
@@ -245,11 +245,11 @@ test('conversationLogs: the signal invents no retention default — the task sup
 // that wants it has to declare it — and that declaration must reach the precondition
 // and stop the item being filed at all.
 test('conversationLogs: a declared non-positive retention is the capture-only opt-out', async () => {
-  const settings = JSON.stringify({ packs: [{ id: 'claudinite-growth', config: { retention_days: 0 } }] }) + '\n';
+  const settings = JSON.stringify({ packs: [{ id: 'claudinite-growth', config: { retention_days: 0 } }] }) + '\n'; // @real-entity the real task whose term module this verdict loads from disk
   await withRepo({ '.claudinite-settings.json': settings }, async (root) => {
     const signals = await collectSignals(fakeGh(QUIET), ctxFor(root), ['commits', 'conversationLogs']);
     assert.equal(signals.conversationLogs.retentionDays, 0);
-    const v = await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals);
+    const v = await verdictFor(logsPrune, 'claudinite-growth/tasks/logs-prune', signals); // @real-entity the real task whose term module this verdict loads from disk
     assert.equal(v.run, false);
     assert.match(v.reason, /capture-only/);
   });
