@@ -1,5 +1,5 @@
-// The machine-readable records a task's execution leaves in an Actions log
-// (skill-usage-metrics DESIGN §4.2), and the parsers that read them back.
+// The machine-readable records a task's execution leaves in an Actions log,
+// and the parsers that read them back.
 //
 // THE SINGLE HOME OF THE RECORD FORMATS. Every line shape the machinery prints
 // about its own work is rendered and parsed here — the two execution families
