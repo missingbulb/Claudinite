@@ -111,24 +111,6 @@
   since a check must not execute a member's own module.
 - **Landed:** #2214
 
-## 2026-09-22 · strengthened · a second form of the work step, checked like the first (#2225)
-- **Source:** the owner: "it seems redundant to not take advantage of a centralized runner, which
-  would, at the very least, deal with process exit, error logging, timing, parameter passing" -
-  asked for as `code_worker_mjs`, a module with a `worker` entry point taking a parameters bag, with
-  the runner wrapping it and the two forms never declared together.
-- **Reason:** every worker re-implemented the same shell around its own work, and the sweep in this
-  same pull request is what that costs: 34 print-then-exit sites, each its own copy of an entry
-  point. The runner already owns the subprocess, so the wrapping is one module's rather than every
-  worker's.
-- **Mechanism:** the check learns the field beside the runtime contract, in the same change, because
-  the two read the same declaration from different sides - this one as text at author time, the
-  contract parsed at run time - and a check taught one of two identical surfaces reads as strictness
-  on the other. Both refuse the pair, and both name the field the declaration actually carries.
-- **Actor:** @missingbulb (owner).
-- **Model:** Claude Opus 5
-- **Retire when:** `code_work` is gone and the raw form has no callers left, at which point the
-  either-or branches collapse to one.
-
 ## 2026-09-22 · severity-changed · a retired outcome ceiling is illegal, not a rename (#1920)
 - **Reason:** the door that mapped `open-pr`, `merged-pr`, `pr` and `none` onto today's ceilings is
   gone, so the author-time surface has to say the same thing the runtime now does. An advisory
@@ -153,3 +135,21 @@
 - **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
 - **Model:** claude-opus-5
 - **Landed:** #2138
+
+## 2026-09-22 · strengthened · a second form of the work step, checked like the first (#2225)
+- **Source:** the owner: "it seems redundant to not take advantage of a centralized runner, which
+  would, at the very least, deal with process exit, error logging, timing, parameter passing" -
+  asked for as `code_worker_mjs`, a module with a `worker` entry point taking a parameters bag, with
+  the runner wrapping it and the two forms never declared together.
+- **Reason:** every worker re-implemented the same shell around its own work, and the sweep in this
+  same pull request is what that costs: 34 print-then-exit sites, each its own copy of an entry
+  point. The runner already owns the subprocess, so the wrapping is one module's rather than every
+  worker's.
+- **Mechanism:** the check learns the field beside the runtime contract, in the same change, because
+  the two read the same declaration from different sides - this one as text at author time, the
+  contract parsed at run time - and a check taught one of two identical surfaces reads as strictness
+  on the other. Both refuse the pair, and both name the field the declaration actually carries.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5
+- **Retire when:** `code_work` is gone and the raw form has no callers left, at which point the
+  either-or branches collapse to one.

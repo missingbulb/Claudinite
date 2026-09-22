@@ -128,16 +128,6 @@
 - **Model:** Claude, per the commit trailer.
 - **Landed:** #2039 (Refs #2038) · pack version 60915.1.
 
-## 2026-09-21 · policy-changed · entry points set exitCode instead of exiting hard
-- **Reason:** `process.exit(1)` in an entry point's catch discards whatever stdout has not drained;
-  measured here, a run piped to a slow reader delivered 309 of 200,000 lines, while
-  `process.exitCode = 1` delivered all of them. The exit status is unchanged; only the output
-  survives.
-- **Mechanism:** the guard already runs as the module's entry point, so letting the process end
-  naturally is enough; nothing waits on the event loop after the catch.
-- **Actor:** @missingbulb (owner), replacing #2082 whose diff predated the src/ layout move.
-- **Model:** Opus 5
-
 ## 2026-09-22 · policy-changed · the janitor asks whether the queue needs repairing (#2247)
 - **Source:** W38's fold: 7 janitor items a week, every one closed the same hour having found a
   healthy queue, against a gate of `schedule:at-most-daily` alone.
@@ -158,6 +148,16 @@
 - **Retire when:** the janitor's rules stop being pure functions over the open queue, so the term
   can no longer call them.
 - **Landed:** #2247
+
+## 2026-09-22 · policy-changed · entry points set exitCode instead of exiting hard
+- **Reason:** `process.exit(1)` in an entry point's catch discards whatever stdout has not drained;
+  measured here, a run piped to a slow reader delivered 309 of 200,000 lines, while
+  `process.exitCode = 1` delivered all of them. The exit status is unchanged; only the output
+  survives.
+- **Mechanism:** the guard already runs as the module's entry point, so letting the process end
+  naturally is enough; nothing waits on the event loop after the catch.
+- **Actor:** @missingbulb (owner), replacing #2082 whose diff predated the src/ layout move.
+- **Model:** Opus 5
 
 ## 2026-09-22 · converted · The work step is declared as `code_worker_mjs` and the runner wraps it
 - **Reason:** every worker re-implemented the same wrapping - the environment parsed by hand, the
