@@ -1,5 +1,7 @@
-## 2026-09-01 · born · converted from references.md (RULES-11)
-- **Reason:** #1008: windowing a stamp-derived figure — members that converged last week, counted
-  from each member's single last-converge date — reads a steady, healthy population as declining
-  purely from where the stamps fall relative to the window boundary.
-- **Mechanism:** prose
+## 2026-08-24 · born · Cut the local pack's RULES.md to one trigger and directive per rule (#1315)
+- **Reason:** split out of the report-card rule, which carried three situations; a reader can arrive
+  at it without that one.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Mechanism:** a RULES.md rule, triggered on "Windowing a count".
+- **Landed:** #1315 (Closes #1312).

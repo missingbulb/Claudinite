@@ -1,6 +1,27 @@
-## 2026-09-01 · born · converted from references.md (RULES-40)
+## 2026-08-01 · born · Claudinite growth: conversation extract (#617)
 - **Reason:** The target list is enumerated over `FLEET_GITHUB_TOKEN` while the routine's repo scope
   is hand-typed UI config no Action can read, so the drift completes silently and the run files a
   report that reads as a full sweep.
-- **Mechanism:** prose
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Mechanism:** a RULES.md rule.
 - **Retire when:** Retire the rule only if that scope becomes machine-readable.
+- **Landed:** #617.
+
+## 2026-08-16 · reworded · Rephrase the local pack's rules: trigger-keyed, and a third the words (#890)
+- **Reason:** the file had grown to 57 claim-first entries over 622 lines and ~8,900 words, most a
+  title followed by the narrative of the incident behind it. Every rule is re-keyed to the act that
+  brings a reader to it, grouped by surface, and cut to the directive plus what it takes to obey it:
+  622 lines / 8,870 words to 243 / 2,878, with no rule dropped, weakened or strengthened.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Landed:** #890 (Closes #889).
+
+## 2026-08-24 · reworded · Cut the local pack's RULES.md to one trigger and directive per rule (#1315)
+- **Reason:** this file carried 63% of the repo's session rule tokens and was growing ~900 tokens a
+  day. Two passes: the per-rule incident archaeology comes out, then a rule carrying two situations
+  is split before it is cut. 8,435 to 5,359 words, at a mean of 35 words a rule; reasoning
+  is out and a measurement survives only where the number is the argument.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Landed:** #1315 (Closes #1312).

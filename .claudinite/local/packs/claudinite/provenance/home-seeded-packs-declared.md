@@ -1,6 +1,12 @@
-## 2026-09-01 · born · converted from references.md (check:home-seeded-packs-declared)
-- **Reason:** Baselining lands a seeded pack on every member but is gated `!isHome`, so the canon's
-  own declaration is hand-maintained and a newly `seededByDefault` pack would reach the whole fleet
-  except this repo, invisibly.
-- **Mechanism:** a check
+## 2026-07-29 · born · prose-to-checks: the home declares every seededByDefault pack (home-seeded-packs-declared) (#540)
+- **Reason:** the prose named its own drift guard as future work and the precondition it set held -
+  all three seeded packs were already declared, so the check shipped at zero findings.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Sonnet 5, Claude Opus 5, per the commit trailer.
+- **Mechanism:** check home-seeded-packs-declared, in
+  .claudinite/local/packs/claudinite/home-seeded-packs-declared.mjs.
+- **Rejected:** a `git grep seededByDefault`, which also hits the prose about seeding and the engine
+  code that reads the flag; the rule parses the home's own `packs/*/pack.mjs` with comments blanked
+  out instead.
 - **Retire when:** Retire the check only if baselining stops skipping the home.
+- **Landed:** #540 (Refs #534).

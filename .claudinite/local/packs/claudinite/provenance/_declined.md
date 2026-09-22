@@ -19,3 +19,39 @@
   would have taught a mechanism that was not operating; the residue, that the flag can be a stale
   computation, is one run's inference and waits for a second sighting.
 - **Actor:** the `claudinite-growth/growth-extract` run on work item #2230.
+
+## 2026-09-22 · declined · a canon pack's RULES.md edit owes its README rule-index row
+- **Source:** #979 proposed it; the owner's review on #987 answered "drop this rule".
+- **Reason:** the owner turned it down outright.
+- **Actor:** @missingbulb (owner).
+
+## 2026-09-22 · declined · .github/workflows/ files can only arrive seeded at adoption
+- **Source:** #979 proposed it; the owner's review on #987 answered "incorrect".
+- **Reason:** the claim is false, so there was nothing to keep.
+- **Actor:** @missingbulb (owner).
+
+## 2026-09-22 · declined · tightening a vocabulary the engine and vendored packs share
+- **Source:** #979 proposed it; the owner's review on #987 answered "don't understand this".
+- **Reason:** the rule could not be read, and a rule a reader cannot follow costs every session and
+  buys nothing.
+- **Actor:** @missingbulb (owner).
+
+## 2026-09-22 · declined · where setup-time state or a new capability lives
+- **Source:** #979 proposed it; the owner's review on #987 answered "written similarly before".
+- **Reason:** already covered by the standing distribution-model rule.
+- **Actor:** @missingbulb (owner).
+
+## 2026-09-22 · declined · a test walking git history must guard a shallow clone, as a check
+- **Source:** the conversion pass in #1779, which authored `history-test-shallow-guard` and withdrew
+  it.
+- **Reason:** it fired on six real tests, every one walking the history of a fixture repo it created
+  itself, and fixture history cannot be told from the repository's by a static signature. The prose
+  bullet stays.
+- **Actor:** @missingbulb (owner).
+
+## 2026-09-22 · declined · a pack RULES.md bullet requires a co-changed README, as a check
+- **Source:** the upgrade pass in #2110.
+- **Reason:** measured over the 60 commits in the checkout, four touched a pack's `RULES.md` bullets
+  and one of those rewords a lead-in rather than adding a rule, needing no README change;
+  `requireCoChange` cannot see a net count, so the check would be wrong on one real case in four.
+- **Actor:** @missingbulb (owner).

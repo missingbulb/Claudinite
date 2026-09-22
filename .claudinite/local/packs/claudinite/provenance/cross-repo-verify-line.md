@@ -6,3 +6,12 @@
 - **Mechanism:** a check
 - **Retire when:** Retire the rule only if executor sessions gain cross-repo scope and probes gain a
   credential.
+
+## 2026-09-06 · scope-changed · Say the hold's unreadable variable once, and keep verifications inside this repo (#1793)
+- **Reason:** it watched the agentic `Verify:` line only; the coded form's
+  `Live-probe:`/`Verify-probe:` lines are the structurally identical sibling.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Mechanism:** `api.github.com` in either form's line; a member's public raw or Pages URL stays
+  fine and is pinned as a non-firing case.
+- **Landed:** #1793 (Closes #1791, Closes #1792).

@@ -1,5 +1,18 @@
-## 2026-09-01 · born · converted from references.md (RULES-39)
-- **Reason:** #1052: where the failure is conditional — a scope that 403s only against a private
-  repo — a probe run where that condition is not met reports a false-positive pass, so a real
-  observed 403 attributed to the permission that would fix it is worth more than the probe.
-- **Mechanism:** prose
+## 2026-08-20 · born · Claudinite growth: extract lessons (#1083)
+- **Source:** the growth-extract run over the window in #1035 - twenty-six commits, twenty-eight
+  merged pull requests and thirty-eight conversation captures; the run's own breakdown is on #370.
+- **Reason:** a probe run where the failure's condition is not met reports a false-positive pass
+  (#1052).
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
+- **Mechanism:** a RULES.md rule, triggered on "Preflighting a required grant or permission".
+- **Landed:** #1083 (Refs #1035).
+
+## 2026-08-24 · reworded · Cut the local pack's RULES.md to one trigger and directive per rule (#1315)
+- **Reason:** this file carried 63% of the repo's session rule tokens and was growing ~900 tokens a
+  day. Two passes: the per-rule incident archaeology comes out, then a rule carrying two situations
+  is split before it is cut. 8,435 to 5,359 words, at a mean of 35 words a rule; reasoning
+  is out and a measurement survives only where the number is the argument.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Landed:** #1315 (Closes #1312).

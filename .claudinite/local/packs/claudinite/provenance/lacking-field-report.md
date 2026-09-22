@@ -1,4 +1,7 @@
-## 2026-09-01 · born · converted from references.md (RULES-10)
-- **Reason:** Owner, #1001: no invented figure, "no estimated hours saved unless something actually
-  measures it".
-- **Mechanism:** prose
+## 2026-08-24 · born · Cut the local pack's RULES.md to one trigger and directive per rule (#1315)
+- **Reason:** split out of the report-card rule, which carried three situations; a reader can arrive
+  at it without that one.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Mechanism:** a RULES.md rule, triggered on "Lacking a field a report-card number needs".
+- **Landed:** #1315 (Closes #1312).

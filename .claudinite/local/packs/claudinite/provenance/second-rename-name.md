@@ -1,5 +1,7 @@
-## 2026-09-01 · born · converted from references.md (RULES-64)
-- **Reason:** #1013: chaining one normalization onto the last makes the oldest vocabulary take two
-  passes to reach today's, so a declaration written for it stops normalizing when a link in the
-  chain goes.
-- **Mechanism:** prose
+## 2026-08-24 · born · Cut the local pack's RULES.md to one trigger and directive per rule (#1315)
+- **Reason:** split out of the rename-a-stored-word rule, which carried it as a trailing clause; a
+  reader can arrive at it without that one.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Mechanism:** a RULES.md rule, triggered on "A second rename of one name".
+- **Landed:** #1315 (Closes #1312).
