@@ -484,7 +484,7 @@ Below are rules on how to work on this repo.
 
 ## Proving a change
 
-- **Needing a pack, task, skill or check name in a test** — spell a fake one (`acme-pack`,
+- **Needing a pack, task, skill or check name in a test** - spell a fake one (`acme-pack`,
   `acme-task`, `acme-skill`), and name the real thing only where it is what the case asserts
   about, ending that line with `// @real-entity <why>`; a pack's own tests name its own elements
   freely, and a case that needs *a* canon pack rather than a particular one takes `A_CANON_PACK`

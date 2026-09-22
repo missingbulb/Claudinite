@@ -35,7 +35,7 @@ const GIT_ENV = {
 };
 
 // THE CANON PACKS A CASE REACHES FOR WHEN IT NEEDS *A* PACK RATHER THAN A
-// PARTICULAR ONE — laying a mount down on a member, planning an update, stamping
+// PARTICULAR ONE - laying a mount down on a member, planning an update, stamping
 // a version. Every such case holds for any id on the shelf, so the id is spelled
 // here once and a rename or retirement is an edit of these two lines instead of
 // every suite that happened to name it. A case that is genuinely ABOUT one pack

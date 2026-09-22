@@ -2,7 +2,7 @@ import { finding } from '../../../../../engine/checks/helpers/findings.mjs';
 import { stripComments } from '../../../../../engine/checks/helpers/code-scanning.mjs';
 
 // A TEST THAT SPELLS A REAL PACK, TASK, SKILL OR CHECK NAME IN A FIXTURE IS A
-// TEST THAT HAS TO BE EDITED WHEN THAT THING IS RENAMED OR RETIRED — and the
+// TEST THAT HAS TO BE EDITED WHEN THAT THING IS RENAMED OR RETIRED - and the
 // edit has nothing to do with what the test asserts. The shelf moves constantly
 // (absorptions, renames, retirements), so each such literal is a standing tax on
 // every future rename, paid in unrelated diffs a reviewer has to read past to
@@ -40,8 +40,8 @@ const MARKER = /@real-entity\b/;
 const IMPORT = /(?:^|[\s;{(])(?:import|export)\s|\bimport\s*\(|^\s*\}?\s*from\s+['"]/;
 // A NAME THAT IS ONE PLAIN WORD IS ALSO ORDINARY VOCABULARY: `node` is a program
 // the suites spawn, `update` is what half the GitHub API calls its method. Such a
-// name is matched only where a path puts it beyond doubt — `packs/node/…`,
-// `tasks/update/…` — never as a literal standing on its own, which is the shape
+// name is matched only where a path puts it beyond doubt - `packs/node/…`,
+// `tasks/update/…` - never as a literal standing on its own, which is the shape
 // those collisions take. A hyphenated id has no such twin and is matched either way.
 const onePlainWord = (name) => !name.includes('-') && !name.includes('/');
 

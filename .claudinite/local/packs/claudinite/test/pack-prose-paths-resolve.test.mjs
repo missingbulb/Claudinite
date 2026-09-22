@@ -25,10 +25,10 @@ ruleTester(declaredCheck('.claudinite/local/packs/claudinite', 'pack-prose-paths
       files: {
         'packs/p/skills/s/SKILL.md': 'Load it from `packs/p/old-name.mjs` first.\n',
         '.claudinite/local/packs/q/RULES.md':
-          '- **Regenerating** - land it through `packs/claudinite-tasks/deliver-generated.mjs`. (regenerating)\n',
+          '- **Regenerating** - land it through `packs/acme-pack/deliver-generated.mjs`. (regenerating)\n',
       },
       at: [
-        { file: '.claudinite/local/packs/q/RULES.md', line: 1, what: /cites packs\/claudinite-tasks\/deliver-generated\.mjs, which is not a path/ },
+        { file: '.claudinite/local/packs/q/RULES.md', line: 1, what: /cites packs\/acme-pack\/deliver-generated\.mjs, which is not a path/ },
         { file: 'packs/p/skills/s/SKILL.md', line: 1, what: /cites packs\/p\/old-name\.mjs, which is not a path/ },
       ],
     },

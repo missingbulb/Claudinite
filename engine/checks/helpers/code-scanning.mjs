@@ -4,8 +4,8 @@
 // `fetch(` is describing the code, not doing it, and matching it is a false
 // positive that fails the build over an English sentence. Strip comments first.
 
-// A `/` opens a regex literal only where a value may begin. After a value —
-// an identifier, a number, a closing `)` or `]` — it is division. The keywords
+// A `/` opens a regex literal only where a value may begin. After a value - 
+// an identifier, a number, a closing `)` or `]` - it is division. The keywords
 // are the identifiers that are not values, so the `/` after them opens a regex.
 const VALUE_END = /[\w$)\]]$/;
 const NOT_A_VALUE = /\b(return|typeof|instanceof|in|of|new|delete|void|case|do|else|yield|await)$/;
@@ -17,11 +17,11 @@ function opensRegex(code) {
 }
 
 // Return `source` with its JS/TS comments removed, leaving everything else —
-// including string, template and regex literals — byte-for-byte intact.
+// including string, template and regex literals - byte-for-byte intact.
 // Literal-aware on purpose: a `//` inside "https://…" is not a comment, and
 // dropping the rest of that line would corrupt real code (and could hide a
 // genuine violation that follows on the same line). The same holds inside a
-// regex, whose `"`, `'` and `` ` `` are pattern characters — reading one as a
+// regex, whose `"`, `'` and `` ` `` are pattern characters - reading one as a
 // string's opening quote puts the scanner in string state for the rest of the
 // file, where every later comment survives and every later string reads as code.
 // Newlines inside block comments are kept so line numbers don't shift.

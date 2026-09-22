@@ -9,14 +9,14 @@
 - **Model:** Opus 5
 - **Mechanism:** a blocking world rule rather than prose, because the condition is fully decidable
   from the tree: a name's owning pack is read off where the tree keeps it and compared with the
-  test's own home. Three exemptions keep it from firing on what is not a fixture — an import
+  test's own home. Three exemptions keep it from firing on what is not a fixture - an import
   specifier (a dependency, and moving a module already rewrites its importers), a `@real-entity`
   marker on the line (the subject case), and a one-word id standing alone as a whole literal (`node`
   is a program the suites spawn, `update` is what half the GitHub API calls its method).
 - **Rejected:** a file-level opt-out, which would have let a mixed file readmit fixtures under the
   cover of its one genuine subject; and deriving every "any canon pack" id from `loadPacks()` at run
   time, which made each case depend on whichever pack happened to sort first and on properties it
-  does not declare — `A_CANON_PACK` in the test helpers names it once instead.
+  does not declare - `A_CANON_PACK` in the test helpers names it once instead.
 - **Retire when:** the shelf stops moving, or the blocking firings come to be dominated by cases
   where the fixture was already fake.
 - **Landed:** #2241
