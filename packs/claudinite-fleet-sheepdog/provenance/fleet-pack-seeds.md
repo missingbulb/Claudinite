@@ -20,3 +20,10 @@
 - **Mechanism:** the sweep reads the predicate the `claudinite-tasks` pack publishes through its
   shared-code surface, the one place the pack-independence barrier lets another pack import across.
 - **Landed:** #1851 (Closes #1845) · pack version 60907.1.
+
+## 2026-09-22 · reworded · the README stops naming a retired declaration field (#1920)
+- **Reason:** it described `session_scope` as deprecated-but-present. The field is gone from the
+  contract, so a doc that goes on describing behaviour the code no longer has is worse than silence.
+- **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
+- **Model:** claude-opus-5
+- **Landed:** #1920

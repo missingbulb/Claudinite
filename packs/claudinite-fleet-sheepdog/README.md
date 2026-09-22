@@ -68,7 +68,7 @@ CI from the moment they land, and gate the merge.
 **No agent anywhere here reaches another repo**, and that is the trust model rather than an
 implementation detail.
 What crosses a repo boundary is an issue and a `workflow_dispatch`, both over `FLEET_GITHUB_TOKEN`;
-the deprecated task-level `session_scope` ([the writing-tasks skill](../claudinite-growth/skills/writing-tasks/SKILL.md)) has no
+a task-level scope word ([the writing-tasks skill](../claudinite-growth/skills/writing-tasks/SKILL.md)) has no
 place here.
 
 A member whose **scheduler is dormant** (`dormant` on its own `claudinite-tasks` pack entry) is out of

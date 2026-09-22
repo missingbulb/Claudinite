@@ -112,9 +112,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DISPATCH_PATH_RE, dispatchFirstLine, validateDispatchBody } from './validate-dispatch.mjs';
-import { parseDispatchTitle, readyLabelForScope } from './dispatch.mjs';
+import { parseDispatchTitle, readyLabelForScope, EXECUTOR_SCOPES } from './dispatch.mjs';
 import { renderTaskExec } from '../items/run-record.mjs';
-import { SESSION_SCOPES, opensPullRequest } from '../contract/task-contract.mjs';
+import { opensPullRequest } from '../contract/task-contract.mjs';
 import { findTaskDeclaration, loadTaskDeclaration } from '../contract/task-declaration.mjs';
 import { policyExpression } from '../contract/merge-policy.mjs';
 import { SHARED_SUBDIR } from '../../../../engine/pack_loader/pack-registry.mjs';
@@ -132,7 +132,7 @@ export const EXIT = {
 // SCHEDULER files a dispatch under (`readyLabelForScope`), derived from it rather
 // than restated, so the two can never drift. `null` = not a ready label at all.
 export const scopeForLabel = (label) =>
-  SESSION_SCOPES.find((scope) => readyLabelForScope(scope) === label) ?? null;
+  EXECUTOR_SCOPES.find((scope) => readyLabelForScope(scope) === label) ?? null;
 
 // Which checkout do the task paths in a dispatch body resolve against? Answered
 // from where THIS engine copy is mounted, not from cwd — a consumer runs the
@@ -296,8 +296,8 @@ export async function resolveDispatch(argv = process.argv.slice(2), env = action
   const { positional, flags } = parseArgs(argv);
   const scopeGiven = positional.length > 0;
   const scope = positional[0] ?? 'self';
-  if (!SESSION_SCOPES.includes(scope)) {
-    return usage(`unknown scope "${scope}" — usage: node resolve-dispatch.mjs [${SESSION_SCOPES.join('|')}] [--issue-json <path> | --issue-body-file <path> --issue-labels <csv>]`);
+  if (!EXECUTOR_SCOPES.includes(scope)) {
+    return usage(`unknown scope "${scope}" - usage: node resolve-dispatch.mjs [${EXECUTOR_SCOPES.join('|')}] [--issue-json <path> | --issue-body-file <path> --issue-labels <csv>]`);
   }
 
   const { trigger, error: triggerError } = resolveTrigger(env);
