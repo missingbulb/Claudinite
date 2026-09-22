@@ -198,10 +198,9 @@ try {
   // has ended right there, both obligations discharged and no work done.
   const repo = repoName(projectRoot);
   process.stdout.write(
-    'SESSION-START SUMMARY — an instruction to you, not text to repeat. '
-    + 'Open your first reply of this session with exactly this line, and nothing before it. '
-    + 'It prefixes that reply and is never the whole of it: the same turn goes on to answer '
-    + 'the owner and act on what they asked. The line:\n\n'
+    'SESSION-START SUMMARY — an instruction, not text to repeat. '
+    + 'Open your first reply with exactly this line and nothing before it, '
+    + 'then go on to answer the owner in the same turn. The line:\n\n'
     + `Loaded Claudinite${repo ? ` from repo ${repo}` : ''}: ${facets.join(', ')}.\n`,
   );
 } catch {
