@@ -838,7 +838,7 @@ async function main() {
 
   const root = repoRoot();
   const { repo, defaultBranch } = actionRepoContext();
-  if (!repo) { console.error('GITHUB_REPOSITORY not set — not in an Actions context'); process.exitCode = 1; return; }
+  if (!repo) { console.error('GITHUB_REPOSITORY not set - not in an Actions context'); process.exitCode = 1; return; }
   const config = loadConfig(root);
 
   console.log('## Claudinite scheduler run\n');
