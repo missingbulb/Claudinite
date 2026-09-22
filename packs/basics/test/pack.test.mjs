@@ -8,9 +8,9 @@ import commentClassificationForm from '../workRules/comment-classification-form.
 import workRequestNotStarted from '../workRules/work-request-not-started.mjs';
 import linkLabels from '../worldRules/markdown-link-labels.mjs';
 import sharedConstants from '../worldRules/shared-constants.mjs';
+import claudeMdLength from '../worldRules/claude-md-length.mjs';
 
 const squashMergeHistory = declaredCheck('packs/basics', 'squash-merge-history');
-const claudeMdLength = declaredCheck('packs/basics', 'claude-md-length');
 const warningSuppression = declaredCheck('packs/basics', 'warning-suppression');
 const noConflictMarkers = declaredCheck('packs/basics', 'no-conflict-markers');
 const rulesLineLength = declaredCheck('packs/basics', 'rules-line-length');
@@ -518,20 +518,58 @@ test('changed-mode scoping: pre-existing violations elsewhere are not reported',
   } finally { cleanup(root); }
 });
 
-test('claude-md-length: flags a CLAUDE.md over 200 lines, passes a short one', () => {
-  const long = makeRepo({ changed: { 'CLAUDE.md': `${'x\n'.repeat(250)}` } });
-  const short = makeRepo({ changed: { 'CLAUDE.md': '# short\n\nfacts only\n' } });
+// What CLAUDE.md costs a session is what it BRINGS, not what it says: one `@` import
+// line pulls a whole tree into every window, and a repo on Claudinite has exactly that
+// — a CLAUDE.md of one line. Measuring the file alone is why the check could not fire
+// on the corpus it was written to bound.
+const budgetWords = (n) => `${Array.from({ length: n }, (_, i) => `w${i}`).join(' ')}\n`;
+
+test('claude-md-length: weighs what CLAUDE.md imports, not only what it holds', () => {
+  // A one-line CLAUDE.md pulling a tree well past the budget — the shape that was silent.
+  const imported = makeRepo({ changed: {
+    'CLAUDE.md': '@.claudinite/rules.md\n',
+    '.claudinite/rules.md': `@../packs/acme-pack/RULES.md\n${budgetWords(4000)}`,
+    'packs/acme-pack/RULES.md': budgetWords(14000),
+  } });
+  const small = makeRepo({ changed: {
+    'CLAUDE.md': '@.claudinite/rules.md\n',
+    '.claudinite/rules.md': budgetWords(200),
+  } });
   try {
-    const findings = run(claudeMdLength, long, 'all');
-    assert.equal(findings.length, 1);
-    assert.match(findings[0].what, /25[0-9]|251 lines/);
-    assert.equal(run(claudeMdLength, short, 'all').length, 0);
-  } finally { cleanup(long); cleanup(short); }
+    const found = run(claudeMdLength, imported, 'all');
+    assert.equal(found.length, 1);
+    assert.equal(found[0].file, 'CLAUDE.md');
+    // The finding names the tokens it counted, which is the unit the cost lands in.
+    // 18,002 words — the two `@` lines count as words too — is 24,003 tokens.
+    assert.match(found[0].what, /24,003 tokens \(budget 20,000\)/);
+    assert.equal(run(claudeMdLength, small, 'all').length, 0);
+  } finally { cleanup(imported); cleanup(small); }
+});
+
+test('claude-md-length: an import cycle is followed once, not forever', () => {
+  const root = makeRepo({ changed: {
+    'CLAUDE.md': '@a.md\n',
+    'a.md': `@b.md\n${budgetWords(9000)}`,
+    'b.md': `@a.md\n${budgetWords(9000)}`,
+  } });
+  try {
+    // Each file counted once: 18,003 words is 24,004 tokens, not an unbounded walk.
+    const found = run(claudeMdLength, root, 'all');
+    assert.equal(found.length, 1);
+    assert.match(found[0].what, /24,004 tokens/);
+  } finally { cleanup(root); }
+});
+
+test('claude-md-length: an import that resolves to nothing is skipped, never counted or thrown on', () => {
+  const root = makeRepo({ changed: { 'CLAUDE.md': `@gone/missing.md\n${budgetWords(100)}` } });
+  try {
+    assert.equal(run(claudeMdLength, root, 'all').length, 0);
+  } finally { cleanup(root); }
 });
 
 test('claude-md-length: a long NON-root CLAUDE.md is not flagged (FP fix)', () => {
   // a fixture/example CLAUDE.md that never loads must not be flagged
-  const root = makeRepo({ changed: { 'test/fixtures/CLAUDE.md': `${'x\n'.repeat(250)}` } });
+  const root = makeRepo({ changed: { 'test/fixtures/CLAUDE.md': budgetWords(30000) } });
   try {
     assert.equal(run(claudeMdLength, root, 'all').length, 0);
   } finally { cleanup(root); }
