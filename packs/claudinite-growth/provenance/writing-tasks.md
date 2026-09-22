@@ -71,3 +71,11 @@
   things an author cannot derive from the declaration alone.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5
+
+## 2026-09-22 · reworded · the worker bag names the Action token, and a returned triage fails the run
+- **Reason:** every converted worker needed the token the bag already carried, and the `{ triage }`
+  verdict had to be described as what it is - a failed run - because the executor reads a park's
+  routing only off a non-zero exit, so a worker that parked itself on a clean one would be
+  downgrading its own failure into a lane nobody watches.
+- **Actor:** @missingbulb (owner), converting every task to the wrapped form.
+- **Model:** Opus 5

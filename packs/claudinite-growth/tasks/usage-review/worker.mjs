@@ -18,10 +18,12 @@ import { captureFiles, sampleDigests } from './digests.mjs';
 import { reviewFile, dashboardValues, prBody, findingKey, REVIEW_PATH, DASHBOARD_PATH } from './report.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
-const repo = process.env.CLAUDINITE_REPO;
-const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
-const token = process.env.GITHUB_TOKEN;
+// The run's own coordinates. Module-level because the helpers below close over them,
+// and set once from the bag when the run starts.
+let root = null;
+let repo = null;
+let base = 'main';
+let token = null;
 const log = (m) => console.log(`usage-review: ${m}`);
 
 const engine = (mod) => join(root, '.claudinite', 'shared', 'engine', mod);
@@ -33,7 +35,9 @@ const engineOrLocal = async (mod) => {
 // that asks whether a skill should have loaded in a window where it did not.
 const WANTS_DIGESTS = new Set(['skill-adoption-not-reached']);
 
-async function main() {
+export async function worker(params) {
+  ({ root, repo, token } = params);
+  base = params.defaultBranch ?? 'main';
   const config = JSON.parse(readFileSync(join(root, '.claudinite-settings.json'), 'utf8'));
   const { loadPacks, isActive } = await engineOrLocal('pack_loader/pack-registry.mjs');
   const { packRules } = await engineOrLocal('checks/run-active-pack-rules.mjs');
@@ -108,8 +112,8 @@ async function main() {
 
   await deliverGenerated({
     root, repo, base, token,
-    branch: process.env.CLAUDINITE_TARGET_BRANCH || null,
-    pr: process.env.CLAUDINITE_TARGET_PR ? Number(process.env.CLAUDINITE_TARGET_PR) : null,
+    branch: params.target.branch,
+    pr: params.target.pr,
     branchPrefix: 'claudinite/usage-review',
     files: { [REVIEW_PATH]: `${JSON.stringify(file, null, 2)}\n`, [DASHBOARD_PATH]: dashboard },
     title: `Usage review: ${findings.length} findings in the 28 days to ${record.window.to}`,
@@ -158,8 +162,4 @@ async function syncIssues(file) {
     await api(`/repos/${repo}/issues/${issue.number}`, { method: 'PATCH', body: { state: 'closed', state_reason: 'completed' } });
     log(`closed #${issue.number} - the finding cleared`);
   }
-}
-
-if (process.argv[1] && process.argv[1].endsWith('worker.mjs')) {
-  main().catch((e) => { console.error(`claudinite-needs-human: failure - ${e.message}`); process.exitCode = 1; });
 }

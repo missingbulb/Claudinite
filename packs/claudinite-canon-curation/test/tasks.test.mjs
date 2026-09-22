@@ -83,7 +83,10 @@ test('growth-promote: an unproven fleet state ERRORS — it never reads as "noth
 
 test('pack-version-bump: the canon\'s push-to-main workflow runs the very worker the declaration names', () => {
   const workflow = readFileSync(join(PACK_DIR, '../../.github/workflows/pack-versions.yml'), 'utf8');
-  assert.match(workflow, new RegExp(`run: node packs/claudinite-canon-curation/tasks/pack-version-bump/${bump.code_work.replace(/^node /, '')}$`, 'm'));
+  // The workflow spawns the runner's entry point around the module the declaration
+  // names, from the task's own directory — the same two facts the executor uses.
+  assert.match(workflow, /^\s*working-directory: packs\/claudinite-canon-curation\/tasks\/pack-version-bump$/m);
+  assert.match(workflow, new RegExp(`worker-entry\\.mjs ${bump.code_worker_mjs}$`, 'm'));
 });
 
 test('pack-version-history: lands itself under a policy that covers only the version records', () => {

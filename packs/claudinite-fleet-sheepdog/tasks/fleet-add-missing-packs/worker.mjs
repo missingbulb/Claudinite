@@ -1,5 +1,5 @@
-// The fleet-add-missing-packs code-work entry point — the script the executor runs
-// as `node worker.mjs …` (cwd = this task dir, bounded by code_work_timeout). The
+// The fleet-add-missing-packs work step - the module the runner calls `worker` on
+// (cwd = this task dir, bounded by code_work_timeout). The
 // WHOLE task: `agent_model: 'none'`, no agent phase on the enforcer side.
 //
 // THE FAN-OUT MODEL (#749). This task used to end in an agent stage that ran
@@ -36,14 +36,17 @@
 // not report itself green.
 
 import { appendFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { fleetWorkerFailed } from '../../fleet-api.mjs';
 import { makeGh, paged, DECLARATION, fireScheduler } from '../../fleet-api.mjs';
 import { parseSheepdogConfig } from '../../fleet-config.mjs';
 import { missingFleetTokenError } from '../../fleet-token.mjs';
 import { MEMBER_TASK_ID } from './protocol.mjs';
 import { parseParams } from './params.mjs';
-import { parseParamBag, contextText } from '../../param-bag.mjs';
+import { parseParamBag } from '../../param-bag.mjs';
+
+// THE SCHEDULED RUN'S PARAMETERS, which were the declaration's own command-line flags
+// while the task spelled its `node worker.mjs …` itself. The runner owns the command
+// now, so they are stated here; a forced run's Context still overrides each of them.
+export const SCHEDULED_ARGV = ['--scan-for-needed-packs=true', '--repos=all-covered-members'];
 import { loadCanonPacks } from './canon-packs.mjs';
 import { runScan, renderFitSummary } from './scan-for-needed-packs.mjs';
 import {
@@ -56,37 +59,37 @@ import {
 // name is the other half of the coupling, pinned by the protocol test.
 export const MEMBER_TASK = MEMBER_TASK_ID.split('/')[1];
 
-const item = process.env.CLAUDINITE_ITEM || '';
+// The item this run belongs to, stamped on every line the task prints. Module-level
+// because the helpers below log too, and set once from the bag when the run starts.
+let item = '';
 const log = (s) => console.log(`fleet-add-missing-packs${item ? ` [#${item}]` : ''}: ${s}`);
 
 const emit = (text) => {
   console.log(text);
-  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${text}\n`);
+  if (params.stepSummary) appendFileSync(params.stepSummary, `${text}\n`);
 };
 
-export async function main() {
+export async function worker({ item: workItem, repo, context, secrets }) {
+  item = workItem.number ? String(workItem.number) : '';
   // GITHUB_REPOSITORY names the HOME repo — the one whose claudinite-fleet-sheepdog entry carries the
   // fleet config. Actions sets it; CLAUDINITE_REPO is code-work's own name for
   // the same fact, so fall back rather than depending on which is present.
-  if (!process.env.GITHUB_REPOSITORY && process.env.CLAUDINITE_REPO) {
-    process.env.GITHUB_REPOSITORY = process.env.CLAUDINITE_REPO;
+  if (!process.env.GITHUB_REPOSITORY && repo) {
+    process.env.GITHUB_REPOSITORY = repo;
   }
 
-  const params = parseParams({
-    argv: process.argv.slice(2),
-    params: parseParamBag(contextText()),
-  });
+  const params = parseParams({ argv: SCHEDULED_ARGV, params: parseParamBag(context.join('\n')) });
   log(params.forced
     ? `FORCED run — scan=${params.scan}, repos=${(params.repos ?? []).join(' ') || 'all-covered-members'}, packs=${params.addPacks.join(' ') || 'none'}`
     : `scheduled run — scan=${params.scan}, repos=${params.repos ? params.repos.join(' ') : 'all-covered-members'}`);
 
-  const token = process.env.FLEET_GITHUB_TOKEN;
-  const home = process.env.GITHUB_REPOSITORY;
+  const token = secrets.FLEET_GITHUB_TOKEN;
+  const home = repo;
   if (!token) {
     throw missingFleetTokenError('fleet-add-missing-packs',
       'The default GITHUB_TOKEN sees only this repo and cannot reach the fleet.');
   }
-  if (!home || !home.includes('/')) throw new Error('GITHUB_REPOSITORY is not set (owner/repo)');
+  if (!home || !home.includes('/')) throw new Error('the home repository is not set (owner/repo)');
   const gh = makeGh(token);
 
   const cfgRes = await gh(`/repos/${home}/contents/${DECLARATION}`);
@@ -212,11 +215,6 @@ async function run({ gh, home, owner, canonRepo, exclude, packs, params }) {
     throw new Error(`${problems.length} member(s) did not come through cleanly — ${problems.join('; ')} — `
       + 'the rest are reported above, and this run fails so the cause is escalated');
   }
-}
-
-// Run only when invoked directly (code-work's `node worker.mjs …`), never on import.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => fleetWorkerFailed('fleet-add-missing-packs', e));
 }
 
 // Re-exported for the tests and for a hand-run: `qualify` is how a name typed in the

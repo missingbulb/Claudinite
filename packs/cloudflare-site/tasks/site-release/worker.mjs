@@ -20,7 +20,6 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { removeTree } from '../../../../engine/remove-tree.mjs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 // Reading a branch tip without disturbing the executor's checkout, and stamping the
 // trailer that says which task wrote a commit, are claudinite-tasks' to own; a local
 // copy would be a second implementation of the one thing that must not have two. The
@@ -235,16 +234,13 @@ export async function reportServed(hostnames, { version = null, fetchImpl = fetc
   return served;
 }
 
-export async function main() {
-  const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
-  const repo = process.env.CLAUDINITE_REPO;
-  const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
-  const taskId = `${process.env.CLAUDINITE_PACK}/${process.env.CLAUDINITE_TASK}`;
-  const token = process.env.GITHUB_TOKEN;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+export async function worker({ root, repo, defaultBranch, pack, task, token, secrets }) {
+  const base = defaultBranch ?? 'main';
+  const taskId = `${pack}/${task}`;
+  const apiToken = secrets.CLOUDFLARE_API_TOKEN;
+  const accountId = secrets.CLOUDFLARE_ACCOUNT_ID;
 
-  if (!repo) throw new Error('CLAUDINITE_REPO is not set (owner/repo)');
+  if (!repo) throw new Error('the repository is not set (owner/repo)');
   if (!token) throw new Error('GITHUB_TOKEN is not set — the release cannot read the branch tip or push its bump');
   if (!apiToken || !accountId) {
     console.error('claudinite-needs-human: action — CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must both be configured as repository secrets before the site can be published');
@@ -274,6 +270,8 @@ export async function main() {
 
   withReleaseTree(root, commit, (dir) => {
     const published = deployment.tracked.filter((p) => p.startsWith(`${deployment.dir}/`));
+    // A repo VARIABLE, not a declared secret, so it rides the environment rather than
+    // the bag's `secrets` - every variable reaches code-work, none is declared.
     const live = injectBeacon(dir, published, process.env.CLOUDFLARE_ANALYTICS_TOKEN);
     log(live
       ? 'injected the Cloudflare Web Analytics beacon token — analytics is live on this release'
@@ -292,9 +290,4 @@ export async function main() {
     log(`https://${r.hostname}/ answered ${r.status}${stamp}`);
   }
   log(`published ${deployment.dir}${version ? ` at version ${version}` : ''}`);
-}
-
-// Run only when invoked directly (code-work's `node worker.mjs`), never on import.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`site-release failed: ${e.message}`); process.exitCode = 1; });
 }

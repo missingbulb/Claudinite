@@ -1,5 +1,5 @@
-// The tasks-usage-fold code-work entry point — the script the executor runs as
-// `node worker.mjs` (cwd = this task dir, bounded by code_work_timeout). The whole
+// The tasks-usage-fold work step - the module the runner calls `worker` on
+// (cwd = this task dir, bounded by code_work_timeout). The whole
 // task: no agent phase.
 //
 // It holds NO counting logic. The counting and folding are `fold-tasks-usage.mjs`,
@@ -32,7 +32,6 @@
 // own `.gitattributes`, whose `*GENERATED*` pattern the engine converges.
 
 import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
 import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../public/delivery.mjs';
 import { AUTOMERGE_TRAILER, policyExpression } from '../../src/contract/merge-policy.mjs';
 import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
@@ -50,7 +49,9 @@ const task = normalizeTaskDeclaration(taskJson);
 const PR_BRANCH_PREFIX = 'claudinite/tasks-usage-fold';
 const PACK_ID = 'claudinite-tasks';
 
-const item = process.env.CLAUDINITE_ITEM || '';
+// The item this run belongs to, stamped on every line the task prints. Module-level
+// because the helpers below log too, and set once from the bag when the run starts.
+let item = '';
 const log = (s) => console.log(`tasks-usage-fold${item ? ` [#${item}]` : ''}: ${s}`);
 
 // What a minute of Actions costs this repo, from the pack's own config. UNSET IS
@@ -62,11 +63,12 @@ export function minuteRateFrom(config, packId = PACK_ID) {
   return typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 ? rate : null;
 }
 
-export async function main() {
-  const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
-  const repo = process.env.CLAUDINITE_REPO || process.env.GITHUB_REPOSITORY;
-  const token = process.env.GITHUB_TOKEN;
-  const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
+export async function worker(params) {
+  item = params.item.number ? String(params.item.number) : '';
+  const root = params.root;
+  const repo = params.repo;
+  const token = params.token;
+  const base = params.defaultBranch ?? 'main';
   if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
   if (!token) throw new Error('GITHUB_TOKEN is not set — the fold can read neither the runs nor the queue');
   const remote = remoteUrl(repo, token);
@@ -119,8 +121,8 @@ export async function main() {
 
   const pr = await deliverGenerated({
     root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX, log,
-    branch: process.env.CLAUDINITE_TARGET_BRANCH || null,
-    pr: process.env.CLAUDINITE_TARGET_PR ? Number(process.env.CLAUDINITE_TARGET_PR) : null,
+    branch: params.target.branch,
+    pr: params.target.pr,
     task: `${PACK_ID}/tasks-usage-fold`,
     files: { [TASKS_USAGE_PATH]: text },
     message: `Claudinite: fold tasks usage\n\n${AUTOMERGE_TRAILER}: ${policyExpression(task.automerge)}`,
@@ -144,9 +146,4 @@ export async function main() {
   log(`${runs.runs.length} run(s) and ${items.records.length} closed item(s) folded — `
     + `${pr.reused ? 'updated' : 'opened'} PR ${pr.number !== null ? `#${pr.number}` : `on ${pr.branch}`}`
     + `${pr.merged ? ' (landed)' : pr.delivery === 'review' ? ' (left for review)' : ''}`);
-}
-
-// Run only when invoked directly (code-work's `node worker.mjs`), never on import.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`tasks-usage-fold failed: ${e.message}`); process.exitCode = 1; });
 }

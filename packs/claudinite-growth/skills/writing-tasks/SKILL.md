@@ -212,7 +212,7 @@ names the module - `"code_worker_mjs": "worker.mjs"` - and the runner supplies t
 entry point, so the module exports one function and nothing else:
 
 ```js
-export async function worker({ root, repo, defaultBranch, pack, task, item, context, target, secrets }) {
+export async function worker({ root, repo, defaultBranch, pack, task, item, context, target, token, secrets }) {
   // … the work. Return nothing, or a verdict:
   //   { triage: { kind, detail } }        the park's routing, for a run that must fail
   //   { requeue: { until, reason } }      come back later; the item blocks until then
@@ -221,12 +221,14 @@ export async function worker({ root, repo, defaultBranch, pack, task, item, cont
 ```
 
 The bag is the `CLAUDINITE_*` environment already parsed, so a worker reads no
-environment of its own and a test calls it with a bag it built; `secrets` holds the
-ones this task declared, and an unset value is absent rather than empty. A throw is
-the failure channel - the runner prints the failure line, the stack and the
-`.triage` an error carries, and sets the exit code. The raw `code_work` form still
-takes a whole command for a work step that is not a node module, and the two are
-never declared together.
+environment of its own and a test calls it with a bag it built; `token` is the
+Action's own `GITHUB_TOKEN`, `secrets` holds the ones this task declared, and an
+unset value is absent rather than empty. A throw is the failure channel - the runner
+prints the failure line, the stack and the `.triage` an error carries, and sets the
+exit code; a returned `triage` is that same failure by another road, since the queue
+reads a park's routing only off a non-zero exit. The raw `code_work` form still takes
+a whole command for a work step that is not a node module, and the two are never
+declared together.
 
 `task.md` is that spec and nothing else, so an agentless task must not carry one
 (`task-md-only-when-agentic`, blocking): the file's presence is what the rest of

@@ -21,7 +21,6 @@ import { execFileSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 // Reading a branch tip without disturbing the executor's checkout, stamping the
 // trailer that says which task wrote a commit, and reaching GitHub the way the
 // executor does are claudinite-tasks' to own; the published `public/` seam is the
@@ -199,14 +198,11 @@ export async function reportServed(url, { version = null, fetchImpl = fetch } = 
   }
 }
 
-export async function main() {
-  const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
-  const repo = process.env.CLAUDINITE_REPO;
-  const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
-  const taskId = `${process.env.CLAUDINITE_PACK}/${process.env.CLAUDINITE_TASK}`;
-  const token = process.env.GITHUB_TOKEN;
+export async function worker({ root, repo, defaultBranch, pack, task, token }) {
+  const base = defaultBranch ?? 'main';
+  const taskId = `${pack}/${task}`;
 
-  if (!repo) throw new Error('CLAUDINITE_REPO is not set (owner/repo)');
+  if (!repo) throw new Error('the repository is not set (owner/repo)');
   if (!token) throw new Error('GITHUB_TOKEN is not set — the release cannot read the branch tip, push its bump or dispatch the deploy');
   const gh = makeGh({ token });
 
@@ -237,9 +233,4 @@ export async function main() {
     }
   }
   log(`published ${commit.slice(0, 7)}${version ? ` at version ${version}` : ''}`);
-}
-
-// Run only when invoked directly (code-work's `node worker.mjs`), never on import.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`site-release failed: ${e.message}`); process.exitCode = 1; });
 }

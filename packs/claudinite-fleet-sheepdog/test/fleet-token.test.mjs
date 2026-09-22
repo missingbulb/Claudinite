@@ -10,17 +10,26 @@ import { classifyDispatch } from '../fleet-api.mjs';
 import { main as roster } from '../tasks/fleet-roster/check-fleet-roster.mjs';
 import { main as seeds } from '../tasks/fleet-pack-seeds/check-fleet-pack-seeds.mjs';
 import { main as baseline } from '../tasks/fleet-baseline/force-fleet-baseline.mjs';
-import { main as addPacks } from '../tasks/fleet-add-missing-packs/worker.mjs';
+import { worker as addPacks } from '../tasks/fleet-add-missing-packs/worker.mjs';
 
 // The token is granted ONCE, for the whole pack, so what any one sweep says when it is
 // missing has to be the union — defensible per-sweep messages are how a fleet went two
 // days without `Pull requests: read` (#1030). These tests hold the union.
 
+// fleet-add-missing-packs' sweep is reached through its worker, which the runner calls
+// with the parameters bag; the other three are the sweeps themselves.
+const BAG = {
+  root: '/repo', repo: 'owner/enforcer', defaultBranch: 'main', pack: 'claudinite-fleet-sheepdog',
+  task: 'fleet-add-missing-packs', item: { number: null }, target: { mode: null, branch: null, pr: null },
+  token: null, stepSummary: null, secrets: {},
+  context: ['SCAN_FOR_NEEDED_PACKS=true', 'REPOS=all-covered-members'],
+};
+
 const SWEEPS = [
   ['fleet-roster', roster],
   ['fleet-pack-seeds', seeds],
   ['fleet-baseline', baseline],
-  ['fleet-add-missing-packs', addPacks],
+  ['fleet-add-missing-packs', () => addPacks(BAG)],
 ];
 
 for (const [id, main] of SWEEPS) {
@@ -28,9 +37,6 @@ for (const [id, main] of SWEEPS) {
     const saved = { ...process.env };
     delete process.env.FLEET_GITHUB_TOKEN;
     process.env.GITHUB_REPOSITORY = 'owner/enforcer';
-    // fleet-add-missing-packs parses its parameters before it reaches the token; they
-    // have no defaults, so a run without them fails on the parameter, not the grant.
-    process.env.CLAUDINITE_CONTEXT = 'SCAN_FOR_NEEDED_PACKS=true\nREPOS=all-covered-members';
     try {
       await assert.rejects(async () => main(), (e) => {
         for (const p of FLEET_TOKEN_PERMISSIONS) {

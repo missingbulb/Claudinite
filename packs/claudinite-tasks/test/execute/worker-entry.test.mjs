@@ -234,7 +234,8 @@ test('runWorkerModule awaits an async worker, verdict and rejection alike', asyn
   const a = capture();
   const b = capture();
   try {
-    assert.equal((await runWorkerModule(done.file, { env: ENV, taskDir: done.dir, ...a.io, now: () => 0 })).ok, true);
+    assert.equal((await runWorkerModule(done.file, { env: ENV, taskDir: done.dir, ...a.io, now: () => 0 })).ok, false,
+      'a triage verdict is a failed run - the executor reads the marker only off a non-zero exit');
     assert.equal(a.log[0], 'claudinite-needs-human: decision');
     assert.equal((await runWorkerModule(failed.file, { env: ENV, taskDir: failed.dir, ...b.io, now: () => 0 })).ok, false);
     assert.match(b.err[0], /late/);

@@ -5,7 +5,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  main, pushSite, NeedsHuman, WORKFLOW_FILE, PAGES_BRANCH, STAMP_FILE,
+  publish, pushSite, NeedsHuman, WORKFLOW_FILE, PAGES_BRANCH, STAMP_FILE,
 } from '../../../tasks/publish-pages/worker.mjs';
 import declarationJson from '../../../tasks/publish-pages/task.json' with { type: 'json' };
 import updateJson from '../../../../claudinite-lifecycle/tasks/update/task.json' with { type: 'json' };
@@ -79,7 +79,7 @@ function fakeGh({ dispatch = 204, conclusion = 'success', pages = 403 } = {}) {
 
 const run = async (t, { gh, build = siteBuild }) => {
   const [bare, root] = [await remote(t), await source(t)];
-  const result = await main({ repoRoot: root, repo: REPO, ref: 'main', remote: bare, gh, build, followMs: 500, log: () => {} });
+  const result = await publish({ repoRoot: root, repo: REPO, ref: 'main', remote: bare, gh, build, followMs: 500, log: () => {} });
   return { result, bare, root };
 };
 
@@ -132,7 +132,7 @@ test('a failed deploy with the setting unreadable is a failure, with the run to 
 
 test('a workflow that never landed parks as an action, after the push', async (t) => {
   const gh = fakeGh({ dispatch: 404 });
-  await assert.rejects(main({ repoRoot: await source(t), repo: REPO, ref: 'main', remote: await remote(t), gh, build: siteBuild, log: () => {} }),
+  await assert.rejects(publish({ repoRoot: await source(t), repo: REPO, ref: 'main', remote: await remote(t), gh, build: siteBuild, log: () => {} }),
     (e) => e instanceof NeedsHuman && e.kind === 'action' && e.message.includes(WORKFLOW_FILE));
   assert.deepEqual(gh.calls, [`POST /repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`]);
 });

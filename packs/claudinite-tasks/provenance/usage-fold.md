@@ -105,7 +105,7 @@
   session.
 - **Model:** claude-opus-5
 - **Landed:** #1943
-## 2026-09-21 · policy-changed · entry points set exitCode instead of exiting hard
+## 2026-09-22 · policy-changed · entry points set exitCode instead of exiting hard
 - **Reason:** `process.exit(1)` in an entry point's catch discards whatever stdout has not drained;
   measured here, a run piped to a slow reader delivered 309 of 200,000 lines, while
   `process.exitCode = 1` delivered all of them. The exit status is unchanged; only the output
@@ -124,3 +124,16 @@
 - **Actor:** owner session draining the open pull request backlog.
 - **Model:** claude-opus-5
 - **Landed:** #1513
+
+## 2026-09-22 · converted · The work step is declared as `code_worker_mjs` and the runner wraps it
+- **Reason:** every worker re-implemented the same wrapping - the environment parsed by hand, the
+  exit code, the failure line, the elapsed time, the agent-request file - and each copy was free to
+  get it slightly differently wrong. The runner already owns the subprocess, so it owns the entry
+  point: the module exports `worker(params)` and holds the work and nothing else.
+- **Mechanism:** `code_worker_mjs` names the module beside the declaration; the executor spawns
+  `claudinite-tasks`' own `worker-entry.mjs` around it, hands the module the parsed `CLAUDINITE_*`
+  bag (the task's declared secrets and the Action token among it) and renders the verdict it returns
+  into the queue's triage, requeue and agent-request protocol. No behaviour of the task changes: the
+  same work runs, exits the same way and prints the same markers.
+- **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
+- **Model:** Opus 5

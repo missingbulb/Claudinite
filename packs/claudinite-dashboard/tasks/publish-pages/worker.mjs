@@ -1,5 +1,5 @@
-// The publish-pages code-work entry point — the script the executor runs as
-// `node worker.mjs` (cwd = this task dir, bounded by code_work_timeout).
+// The publish-pages work step - the module the runner calls `worker` on
+// (cwd = this task dir, bounded by code_work_timeout).
 //
 // Four steps, each of which has to succeed before the next is worth starting:
 //
@@ -22,13 +22,13 @@
 //      failure with the run's URL, where the trace is.
 //
 // Runnable by hand from anywhere, given a token that may push `gh-pages` and dispatch:
-//   GITHUB_TOKEN=… CLAUDINITE_REPO=owner/name CLAUDINITE_REPO_ROOT=/path/to/member node worker.mjs
+//   publish({ repoRoot: '/path/to/member', repo: 'owner/name', token: '…' })
 
 import { execFileSync, spawn } from 'node:child_process';
 import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { makeGh, dispatchWorkflow } from '../../../claudinite-tasks/public/github.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -50,10 +50,14 @@ export const STAMP_FILE = 'deployed.json';
 // printed decides the lane. `action` means something outside the code must change
 // before this can run; `decision` means the run stopped and the next step is a choice.
 export class NeedsHuman extends Error {
-  constructor(kind, message) { super(message); this.kind = kind; }
+  // `triage` is the name the runner's entry point reads to route the park; `kind` is
+  // kept because the tests and the callers here already ask for it by that name.
+  constructor(kind, message) { super(message); this.kind = kind; this.triage = kind; }
 }
 
-const item = process.env.CLAUDINITE_ITEM || '';
+// The item this run belongs to, stamped on every line the task prints. Module-level
+// because the helpers below log too, and set once from the bag when the run starts.
+let item = '';
 const defaultLog = (s) => console.log(`publish-pages${item ? ` [#${item}]` : ''}: ${s}`);
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
@@ -144,11 +148,13 @@ export async function pagesEnabled(gh, repo) {
   return null;
 }
 
-export async function main({
-  repoRoot = process.env.CLAUDINITE_REPO_ROOT,
-  repo = process.env.CLAUDINITE_REPO,
-  ref = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main',
-  token = process.env.GITHUB_TOKEN,
+// The publish itself, every edge injectable: `worker` below is the bag's thin end of
+// it, and a test drives this one with a fake remote and a fake `gh`.
+export async function publish({
+  repoRoot,
+  repo,
+  ref = 'main',
+  token = null,
   remote = null,
   gh = makeGh(),
   build = buildInto,
@@ -157,7 +163,7 @@ export async function main({
   // reported rather than killed mid-sentence.
   followMs = 8 * 60 * 1000,
 } = {}) {
-  if (!repoRoot || !repo) throw new Error('CLAUDINITE_REPO_ROOT and CLAUDINITE_REPO are required');
+  if (!repoRoot || !repo) throw new Error('the repository root and the repository are both required');
   if (!remote && !token) throw new Error('GITHUB_TOKEN is not set — the executor always provides it');
 
   const out = await mkdtemp(join(tmpdir(), 'claudinite-dashboard-'));
@@ -211,12 +217,7 @@ export async function main({
   throw new Error(`run ${done.html_url} concluded ${done.conclusion}`);
 }
 
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMain) {
-  main().catch((e) => {
-    console.error(e instanceof NeedsHuman
-      ? `claudinite-needs-human: ${e.kind} — ${e.message}`
-      : `publish-pages failed: ${e.stack ?? e.message}`);
-    process.exitCode = 1;
-  });
+export async function worker({ root, repo, defaultBranch, token, item: workItem }) {
+  item = workItem.number ? String(workItem.number) : '';
+  await publish({ repoRoot: root, repo, ref: defaultBranch ?? 'main', token });
 }

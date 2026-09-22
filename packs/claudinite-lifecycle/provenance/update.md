@@ -82,3 +82,16 @@
   returns. No policy moved.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5
+
+## 2026-09-22 · converted · The work step is declared as `code_worker_mjs` and the runner wraps it
+- **Reason:** every worker re-implemented the same wrapping - the environment parsed by hand, the
+  exit code, the failure line, the elapsed time, the agent-request file - and each copy was free to
+  get it slightly differently wrong. The runner already owns the subprocess, so it owns the entry
+  point: the module exports `worker(params)` and holds the work and nothing else.
+- **Mechanism:** `code_worker_mjs` names the module beside the declaration; the executor spawns
+  `claudinite-tasks`' own `worker-entry.mjs` around it, hands the module the parsed `CLAUDINITE_*`
+  bag (the task's declared secrets and the Action token among it) and renders the verdict it returns
+  into the queue's triage, requeue and agent-request protocol. No behaviour of the task changes: the
+  same work runs, exits the same way and prints the same markers.
+- **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
+- **Model:** Opus 5

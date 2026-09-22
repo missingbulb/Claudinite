@@ -57,7 +57,10 @@ export function workerParams(env, taskDir) {
   }
   return {
     root: text('CLAUDINITE_REPO_ROOT'),
-    repo: text('CLAUDINITE_REPO'),
+    // The executor always sets `CLAUDINITE_REPO`; the runner's own variable is the
+    // fallback every raw worker wrote for itself, kept so the bag answers the same
+    // question outside a code-work run as inside one.
+    repo: text('CLAUDINITE_REPO') ?? text('GITHUB_REPOSITORY'),
     defaultBranch: text('CLAUDINITE_DEFAULT_BRANCH'),
     pack: text('CLAUDINITE_PACK'),
     task: text('CLAUDINITE_TASK'),
@@ -75,6 +78,9 @@ export function workerParams(env, taskDir) {
     // is written rather than implied. A run outside Actions has none, and `null` says
     // so where a worker can report it.
     token: text('GITHUB_TOKEN'),
+    // Where the runner collects the job summary a person reads on the run's page.
+    // Absent outside Actions, which is a worker's cue to print instead of append.
+    stepSummary: text('GITHUB_STEP_SUMMARY'),
     secrets,
   };
 }
@@ -117,7 +123,11 @@ export async function runWorkerModule(file, {
     const verdict = await mod.worker(workerParams(env, taskDir));
     emitVerdict(verdict, { env, log });
     log(`${id}: worker done in ${((now() - started) / 1000).toFixed(1)}s`);
-    return { ok: true };
+    // A triage verdict IS a failed run. The executor reads the marker only off a
+    // non-zero exit - a worker that could park itself on a clean one would be
+    // downgrading its own failure into a lane nobody watches - so a worker asking
+    // for the park exits the way that park is reached.
+    return { ok: !verdict?.triage };
   } catch (e) {
     // The worker's own diagnosis, where it made one: the executor reads an exit code
     // and cannot tell a missing scope from a bug in the module.

@@ -1,5 +1,5 @@
 // store-release worker. This task is
-// `agent_model: 'none'` with `code_work: 'node worker.mjs'`, so the
+// `agent_model: 'none'` with `code_worker_mjs: 'worker.mjs'`, so the
 // scheduler runs THIS FILE as a subprocess (cwd = this task dir) bounded by
 // `code_work_timeout` — there is no agent phase on
 // success. Its one job is to TRIGGER the repo's vendored `Release to Chrome
@@ -18,7 +18,6 @@
 // non-204 dispatch, or a throw, exits non-zero — the scheduler then converges the
 // task to needs-human.
 
-import { pathToFileURL } from 'node:url';
 
 // The vendored orchestrator's file name and the dispatch mode that runs its daily
 // leg (release-workflows.mjs STUB_FILE / RELEASE.md §Workflow). Bare literals —
@@ -33,7 +32,7 @@ async function gh(path, { method = 'GET', body } = {}) {
   const res = await fetch(`${API}${path}`, {
     method,
     headers: {
-      authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+      authorization: `Bearer ${params.token}`,
       accept: 'application/vnd.github+json',
       'x-github-api-version': '2022-11-28',
       ...(body ? { 'content-type': 'application/json' } : {}),
@@ -43,12 +42,11 @@ async function gh(path, { method = 'GET', body } = {}) {
   return { status: res.status };
 }
 
-export async function main() {
-  const repo = process.env.CLAUDINITE_REPO || process.env.GITHUB_REPOSITORY;
-  const ref = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
-  const item = process.env.CLAUDINITE_ITEM || '';
-  if (!repo) { console.error('store-release: no repo in env (CLAUDINITE_REPO/GITHUB_REPOSITORY)'); process.exitCode = 1; return; }
-  if (!process.env.GITHUB_TOKEN) { console.error('store-release: no GITHUB_TOKEN in env'); process.exitCode = 1; return; }
+export async function worker({ repo, defaultBranch, token, item: workItem }) {
+  const ref = defaultBranch ?? 'main';
+  const item = workItem.number ?? '';
+  if (!repo) throw new Error('store-release: the repository is not set (owner/repo)');
+  if (!token) throw new Error('store-release: no GITHUB_TOKEN was handed in');
 
   // Fire the orchestrator's daily leg via workflow_dispatch — the orchestrator is
   // push + workflow_dispatch only now (its own cron retired), so this is the sole
@@ -58,9 +56,7 @@ export async function main() {
     body: { ref, inputs: { mode: DISPATCH_MODE } },
   });
   if (res.status !== 204) {
-    console.error(`store-release [#${item}]: dispatching ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref} returned ${res.status}`);
-    process.exitCode = 1;
-    return;
+    throw new Error(`store-release [#${item}]: dispatching ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref} returned ${res.status}`);
   }
   console.log(`store-release [#${item}]: dispatched ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref}`);
 
@@ -69,10 +65,4 @@ export async function main() {
   // (poll it to conclusion) and report at completion — now safe to add, because
   // the subprocess is bounded by code_work_timeout, but it needs a
   // generous timeout and is left as the next increment.
-}
-
-// Run only when invoked directly (the scheduler's `node worker.mjs`), never on
-// import — so a test can import { main } without firing a real dispatch.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
 }

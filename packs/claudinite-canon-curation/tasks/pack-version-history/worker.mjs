@@ -8,7 +8,6 @@
 // amends the task's pull request and lands it under the task's automerge policy.
 // A recompute that changes no record opens nothing.
 
-import { pathToFileURL } from 'node:url';
 import { deliverGenerated, remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
 import { AUTOMERGE_TRAILER } from '../../../claudinite-tasks/public/task-constants.mjs';
 import { policyExpression } from '../../../claudinite-tasks/public/task-declaration.mjs';
@@ -22,14 +21,17 @@ import taskJson from './task.json' with { type: 'json' };
 const task = normalizeTaskDeclaration(taskJson);
 export const TASK_ID = 'claudinite-canon-curation/pack-version-history';
 
-const item = process.env.CLAUDINITE_ITEM || '';
+// The item this run belongs to, stamped on every line the task prints. Module-level
+// because the helpers below log too, and set once from the bag when the run starts.
+let item = '';
 const log = (s) => console.log(`pack-version-history${item ? ` [#${item}]` : ''}: ${s}`);
 
-export async function main() {
-  const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
-  const repo = process.env.CLAUDINITE_REPO || process.env.GITHUB_REPOSITORY;
-  const token = process.env.GITHUB_TOKEN;
-  const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
+export async function worker(params) {
+  item = params.item.number ? String(params.item.number) : '';
+  const root = params.root;
+  const repo = params.repo;
+  const token = params.token;
+  const base = params.defaultBranch ?? 'main';
   if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
   if (!token) throw new Error('GITHUB_TOKEN is not set — the history cannot read the base branch or deliver its PR');
   const remote = remoteUrl(repo, token);
@@ -49,8 +51,8 @@ export async function main() {
     // Which branch and pull request this lands on is the executor's decision, handed
     // in as environment — the lane has no discovery of its own and refuses a run
     // that arrives without one.
-    branch: process.env.CLAUDINITE_TARGET_BRANCH || null,
-    pr: process.env.CLAUDINITE_TARGET_PR ? Number(process.env.CLAUDINITE_TARGET_PR) : null,
+    branch: params.target.branch,
+    pr: params.target.pr,
     task: TASK_ID,
     files,
     message: `Claudinite: pack version history\n\n${AUTOMERGE_TRAILER}: ${policyExpression(task.automerge)}`,
@@ -65,9 +67,4 @@ export async function main() {
   });
   log(`${changed.length} record(s) — ${pr.reused ? 'updated' : 'opened'} PR ${pr.number !== null ? `#${pr.number}` : `on ${pr.branch}`}`
     + `${pr.merged ? ' (landed)' : pr.delivery === 'review' ? ' (left for review)' : ''}`);
-}
-
-// Run only when invoked directly (`node worker.mjs`), never on import.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`pack-version-history failed: ${e.message}`); process.exitCode = 1; });
 }

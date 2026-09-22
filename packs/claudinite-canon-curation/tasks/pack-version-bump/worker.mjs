@@ -16,12 +16,13 @@ import { execFileSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
 import { withTaskTrailer } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 import { planBumps, bumpSubject, BUMP_TASK } from '../../pack-versions.mjs';
 
-const item = process.env.CLAUDINITE_ITEM || '';
+// The item this run belongs to, stamped on every line the task prints. Module-level
+// because the helpers below log too, and set once from the bag when the run starts.
+let item = '';
 const log = (s) => console.log(`pack-version-bump${item ? ` [#${item}]` : ''}: ${s}`);
 
 export const makeGit = (root) => (args, opts = {}) => execFileSync('git', ['-C', root, ...args], {
@@ -91,17 +92,13 @@ export async function run({ root, remote, base, today = new Date(), attempts = 3
   throw new Error(`${base} kept moving under ${attempts} pushes — run again`);
 }
 
-export async function main() {
-  const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
-  const repo = process.env.CLAUDINITE_REPO || process.env.GITHUB_REPOSITORY;
-  const token = process.env.GITHUB_TOKEN;
-  const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
+export async function worker(params) {
+  item = params.item.number ? String(params.item.number) : '';
+  const root = params.root;
+  const repo = params.repo;
+  const token = params.token;
+  const base = params.defaultBranch ?? 'main';
   if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
   if (!token) throw new Error('GITHUB_TOKEN is not set — the bump cannot push to the base branch');
   await run({ root, remote: remoteUrl(repo, token), base });
-}
-
-// Run only when invoked directly (`node worker.mjs`), never on import.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`pack-version-bump failed: ${e.message}`); process.exitCode = 1; });
 }

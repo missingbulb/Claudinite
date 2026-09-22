@@ -16,6 +16,10 @@ const decl = normalizeTaskDeclaration(declJson);
 
 const packRoot = join(dirname(fileURLToPath(import.meta.url)), '../../../../../packs/claudinite-fleet-sheepdog');
 const taskDir = join(packRoot, 'tasks/fleet-roster');
+// The runner's own entry point, which is what the executor spawns for a
+// `code_worker_mjs` task: spawning the module directly would prove nothing about the
+// command a real run uses.
+const WORKER_ENTRY = join(packRoot, '../claudinite-tasks/src/execute/worker-entry.mjs'); // @real-entity the entry point a real run spawns lives in that pack
 
 // --- the declaration ----------------------------------------------------------
 
@@ -29,7 +33,7 @@ test('fleet-roster: running the worker reaches the sweep, and its failure exits 
   const env = { ...process.env, GITHUB_REPOSITORY: 'acme/claudinite-fleet-sheepdog' };
   delete env.FLEET_GITHUB_TOKEN;
   const { code, stderr } = await new Promise((resolve) => {
-    execFile(process.execPath, ['worker.mjs'], { cwd: taskDir, env }, (err, _out, errOut) => {
+    execFile(process.execPath, [WORKER_ENTRY, decl.code_worker_mjs], { cwd: taskDir, env }, (err, _out, errOut) => {
       resolve({ code: err ? err.code : 0, stderr: errOut });
     });
   });
