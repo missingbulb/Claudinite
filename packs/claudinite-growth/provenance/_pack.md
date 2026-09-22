@@ -23,3 +23,14 @@
   never a finding", and two spellings of one state is what the declared-field rule forbids.
 - **Retire when:** a value in the set stops being contradictable by the record.
 - **Landed:** #2214
+
+## 2026-09-22 · reworded · the manifest header keeps what the pack is, and nothing else (#2169)
+- **Reason:** the header carried the pack's decisions rather than its shape - why the two extraction
+  halves are one task (#622), why retention is a task of its own (#992), why an unset retention
+  takes a default (#1620, #1621), why the task contract lives here and not in claudinite-lifecycle
+  (#1029), why the corpus is the repo's own local packs by construction (#2047), and why
+  seeding-by-default with removal as the opt-out is the enrolment mechanism (#242). Each now reads
+  from the file of the element it decided about; a reader of the code needs only what the pack is
+  and what it does not own. The README loses the same class of sentence.
+- **Actor:** @missingbulb (owner), through the provenance backfill.
+- **Model:** Claude Opus 5
