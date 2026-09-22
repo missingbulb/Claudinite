@@ -1,6 +1,6 @@
 # research-project pack
 
-A project-class pack (prose-only, declared — no fingerprint) for the recurring class: run an algorithm over similarly-formatted inputs, score against user ground truth, improve in reviewable iterations. Its 14 sections are all prose (methodology and judgment, no static signatures to check).
+A project-class pack (prose-only, declared - no fingerprint) for the recurring class: run an algorithm over similarly-formatted inputs, score against user ground truth, improve in reviewable iterations.
 
 ## Rules (`RULES.md`)
 
