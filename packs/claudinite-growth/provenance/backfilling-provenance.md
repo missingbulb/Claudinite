@@ -85,3 +85,13 @@
   by design.
 - **Actor:** @missingbulb (owner), who asked for the four tool issues fixed together.
 - **Landed:** #2248.
+
+## 2026-09-22 · trigger-changed · the description was carrying the body's summary, and every session paid for it
+- **Reason:** past 60 words the description had stopped being what decides whether to reach for the
+  skill and become a precis of the method, which the body already carries and which loads only when
+  the skill does.
+- **Mechanism:** the trigger half is kept whole — the moments, in the words somebody would use at
+  those moments — and the summary half dropped; no force-load path changed, so what the harness
+  loads deterministically is untouched and only the model's judgment call reads different text.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5
