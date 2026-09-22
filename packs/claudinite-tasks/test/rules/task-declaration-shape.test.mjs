@@ -51,7 +51,7 @@ test('task-declaration-shape: the minimal declaration is a code-work task, and n
 // strictness on the other.
 test('task-declaration-shape: code_worker_mjs is a work step, and is checked like one', () => {
   const wrapped = {
-    id: 'growth-extract',
+    id: 'acme-task-h',
     description: 'A minimal wrapped task.',
     trigger: 'schedule',
     preconditions: ['schedule:at-most-daily'],
