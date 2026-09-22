@@ -185,14 +185,13 @@ test("an earlier session's pack is gone before this one's is copied", () => {
   } finally { removeTree(root); }
 });
 
-test('the copied pack is weighed onto the engine facet channel', () => {
-  // The session's opening summary states how much loaded, and states it in TOKENS, because a
-  // context window is what every part of the load is spent against. This is the only thing in
-  // the session that can weigh it: the pack came from another repository.
+test('the copied pack is not weighed here — the summary counts it with every other pack', () => {
+  // It lands on disk before the summary step runs, and the summary reads it off the same
+  // registry as the rest, so a figure emitted here would be the one set of rules stated twice
+  // under two names. What this step still owes a reader is why a person HAS no pack, which no
+  // count can say.
   const root = project();
   try {
-    // 76 words: 2 in the title, 2 in the heading, 3 of bullet-and-bold markup, and 69 of prose,
-    // 101 tokens at the ratio, stated as 100 on the facet's rounding.
     storeHere(root, {
       'RULES.md': ['# Rules', '', '## Rules', '',
         `- **First** - ${Array.from({ length: 69 }, (_, i) => `w${i}`).join(' ')}`, ''].join('\n'),
@@ -200,7 +199,7 @@ test('the copied pack is weighed onto the engine facet channel', () => {
     run(PREPARE, root, { config: STORE });
     const r = run(START, root, { config: STORE });
     assert.equal(r.status, 0);
-    assert.match(r.stdout, /^CLAUDINITE-FACET: 100 personal pack tokens$/m);
+    assert.doesNotMatch(r.stdout, /personal pack tokens/);
     // The rules themselves ride the memory channel, so this step must not spend the context
     // window on them a second time (#807).
     assert.doesNotMatch(r.stdout, /## Rules/);

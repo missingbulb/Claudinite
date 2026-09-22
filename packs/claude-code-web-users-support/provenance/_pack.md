@@ -66,3 +66,18 @@
   `user_pack_address.mjs`, each named for what it does rather than for the shape it sits in. The
   store's own conversion is missingbulb/Shepherd#698.
 - **Landed:** #2189
+
+## 2026-09-22 · policy-changed · the person's pack is counted with every other pack, not beside them
+- **Source:** the owner, reading the session line, said the personal pack now loads like the others
+  and its tokens should be counted, so the separate "530 personal pack tokens" facet should go.
+- **Reason:** the copy is on disk before the summary step runs, off the same registry the summary
+  reads every other pack from, so the engine can weigh it and the step's claim to be the only thing
+  that could had gone stale. Two numbers for prose that loads identically also meant a reader
+  holding only the corpus figure was told a corpus smaller than the one they had.
+- **Mechanism:** the step stops emitting its `CLAUDINITE-FACET:` line, and the engine's summary
+  drops the filter that held a copied pack out of every count. What the step still owes a reader is
+  why a person HAS no pack, which no count can say, so that half stands.
+- **Retire when:** the copy stops landing before the summary step, or a person's pack stops reaching
+  the window through the same import as the rest.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5

@@ -177,6 +177,10 @@ test('directs the session to open its first reply with the summary line, unambig
     assert.match(out, /not text to repeat/i);
     // No deixis: nothing points at a line the reader has to resolve for itself.
     assert.doesNotMatch(out, /\bthat line\b/i);
+    // And it says the reply CONTINUES. A directive naming only what a reply opens with
+    // is satisfied by a reply that is nothing but its opening, and a first turn holding
+    // two such directives has then ended with no work done.
+    assert.match(out, /go on to answer|goes on to answer/i);
     // And the line to say is what the directive ends on — last in, first out.
     assert.match(out.trimEnd(), /:\n+Loaded Claudinite: 1 pack, 0 context tokens, 0 guards, 0 code checks, 0 auto-trigger skills, 0 regular skills\.$/);
   } finally { removeTree(corpus); removeTree(project); }
@@ -190,18 +194,20 @@ test('a repo that declares no pack runs no Claudinite, and hears nothing', () =>
   } finally { removeTree(corpus); removeTree(project); }
 });
 
-test('a pack copied for this session is left out of every count', () => {
-  // What it loaded is already stated, by the step that copied it, on the facet channel
-  // this line folds in — so counting it here would state one set of rules twice, under
-  // two names, and tell a reader their corpus grew when it did not.
+test('a pack copied for this session counts like every other one that loaded', () => {
+  // Its rules reach the window through the same import as the rest, so a reader asking
+  // what this session is carrying is told one number that covers all of it. Held out, it
+  // was a second number under a second name for prose that loads identically — and where
+  // that second number went missing, so did the only statement of what it cost.
   const corpus = makeCorpus({ alpha: { proseText: Array.from({ length: 150 }, (_, i) => `w${i}`).join(' ') } });
   const project = makeProject({ packs: ['alpha'] });
   const copied = join(project, '.claudinite', 'temp', 'packs', 'current_user');
   try {
-    const before = run(corpus, project);
+    assert.match(run(corpus, project), /: 1 pack, 200 context tokens, /);
     mkdirSync(copied, { recursive: true });
     writeFileSync(join(copied, 'pack.mjs'), 'export default { ruleRoutingGuidance: { belongs: "a person", excludes: "a project" } };\n');
     writeFileSync(join(copied, 'RULES.md'), Array.from({ length: 900 }, (_, i) => `x${i}`).join(' '));
-    assert.equal(run(corpus, project), before, 'the copied pack moves neither the pack count nor the token weight');
+    // 1,050 words over the two packs is 1,400 tokens, and the copied pack is a pack.
+    assert.match(run(corpus, project), /: 2 packs, 1\.4k context tokens, /);
   } finally { removeTree(corpus); removeTree(project); }
 });
