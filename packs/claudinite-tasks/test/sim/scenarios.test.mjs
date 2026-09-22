@@ -22,19 +22,19 @@ function cast() {
     {
       // The one task in the cast that declares it does not run past its own
       // failure: a broken mount is not something to re-run every morning.
-      id: 'basics/baselining', preconditions: ['schedule:at-most-daily', 'last-run-not-failed'],
+      id: 'acme/daily-base', preconditions: ['schedule:at-most-daily', 'last-run-not-failed'],
       codeWorkMinutes: 21, agentMinutes: 30,
       precondition: (w) => ({ run: !!w.mountBehind, reason: 'mount converged, no pending notes' }),
       requestsAgent: (w) => !!w.baseliningNeedsJudgment,
       codeWorkFails: (w) => !!w.mountBroken,
     },
     {
-      id: 'grow/growth-extract', preconditions: ['schedule:at-most-daily'], schedule_after: ['basics/baselining'],
+      id: 'grow/extract', preconditions: ['schedule:at-most-daily'], schedule_after: ['acme/daily-base'],
       codeWorkMinutes: 2, agentMinutes: 35,
       precondition: (w) => ({ run: !!w.extractHasLessons, reason: 'nothing new to extract' }),
     },
     {
-      id: 'grow/growth-promote', preconditions: ['schedule:at-most-daily'], schedule_after: ['grow/growth-extract'],
+      id: 'grow/promote', preconditions: ['schedule:at-most-daily'], schedule_after: ['grow/extract'],
       codeWorkMinutes: 1, agentMinutes: 2,
       precondition: (w) => ({ run: !!w.promoteHasCandidates, reason: 'nothing staged' }),
     },
@@ -49,7 +49,7 @@ function cast() {
       }),
     },
     {
-      id: 'chrome/store-release', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 3,
+      id: 'chrome/release', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 3,
       precondition: (w) => ({ run: !!w.releasePending, reason: 'nothing to release' }),
     },
     {
@@ -72,7 +72,7 @@ function cast() {
     // CANONICALIZES the pack half, so a cast id that collides with a real pack
     // rename is silently read as the renamed one and every item of it resolves to
     // a task this repo does not carry.
-    { id: 'fleet/fleet-baseline', codeWorkMinutes: 1, agentMinutes: 5 },
+    { id: 'fleet/rollout', codeWorkMinutes: 1, agentMinutes: 5 },
   ];
 }
 
@@ -110,7 +110,7 @@ test("S1' quiet night: asked at every tick, no items, nothing recorded", async (
   await sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
   assert.equal(ticks(sim).length, 24, 'the hourly cron ran all day');
-  for (const task of ['basics/baselining', 'tidy/tidy-issues', 'chrome/store-release', 'gcec/create-extractor']) {
+  for (const task of ['acme/daily-base', 'tidy/tidy-issues', 'chrome/release', 'gcec/create-extractor']) {
     assert.equal(asks(sim, task).length, 24, `${task} asked at every tick`);
     assert.ok(asks(sim, task).every((e) => e.verdict === 'no'), `${task} declined every time`);
     assert.equal(sim.standingItem(task), undefined, `${task} filed no item`);
@@ -122,8 +122,8 @@ test("S1' quiet night: asked at every tick, no items, nothing recorded", async (
   assert.ok(asks(sim, 'tidy/tidy-issues').every((e) => e.reason === 'no issue touched in window'),
     'the same nothing at every hour, not two different nothings either side of an anchor');
   // a task stating no cadence is off the schedule: never asked, never instantiated
-  assert.equal(asks(sim, 'fleet/fleet-baseline').length, 0);
-  assert.equal(own(sim, 'fleet/fleet-baseline').length, 0);
+  assert.equal(asks(sim, 'fleet/rollout').length, 0);
+  assert.equal(own(sim, 'fleet/rollout').length, 0);
   // the executor evaluated nothing: no item ever existed to pick
   assert.equal(sim.log.filter((e) => e.kind === 'evaluate').length, 0);
   assert.equal(sim.log.filter((e) => e.kind === 'create').length, 0);
@@ -179,16 +179,16 @@ test('S4 late fire: the chain completes the same morning, ordered', async () => 
   sim.schedulerRunAt('2026-08-12T05:41Z');
   await sim.run('2026-08-12T00:00Z', '2026-08-12T09:00Z');
 
-  const [base] = closedOf(sim, 'basics/baselining');
-  const [extract] = closedOf(sim, 'grow/growth-extract');
-  const [promote] = closedOf(sim, 'grow/growth-promote');
+  const [base] = closedOf(sim, 'acme/daily-base');
+  const [extract] = closedOf(sim, 'grow/extract');
+  const [promote] = closedOf(sim, 'grow/promote');
   assert.ok(base && extract && promote, 'all three converged');
   assert.ok(base.closedAt < extract.closedAt, 'baselining before extract');
   assert.ok(extract.closedAt < promote.closedAt, 'extract before promote');
   assert.ok(promote.closedAt < T('2026-08-12T09:00Z'), 'same morning, not tomorrow');
   // extract was never evaluated while baselining was live
-  const baseClaim = evals(sim, 'basics/baselining')[0];
-  const extractClaim = evals(sim, 'grow/growth-extract')[0];
+  const baseClaim = evals(sim, 'acme/daily-base')[0];
+  const extractClaim = evals(sim, 'grow/extract')[0];
   assert.ok(extractClaim.t >= base.closedAt, 'yield held while upstream ran');
   assert.ok(baseClaim.t >= T('2026-08-12T05:41Z'), 'nothing happened before the late scheduler run');
 });
@@ -265,10 +265,10 @@ test('S23 declined upstream leaves nothing to yield to; the dependent runs', asy
   sim.at('2026-08-12T00:01Z', ({ world }) => { world.extractHasLessons = true; }); // baselining stays quiet
   await sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
-  assert.equal(sim.standingItem('basics/baselining'), undefined,
+  assert.equal(sim.standingItem('acme/daily-base'), undefined,
     'the quiet upstream filed nothing — its declines are log lines');
-  assert.ok(asks(sim, 'basics/baselining').every((e) => e.verdict === 'no'));
-  const [extract] = closedOf(sim, 'grow/growth-extract');
+  assert.ok(asks(sim, 'acme/daily-base').every((e) => e.verdict === 'no'));
+  const [extract] = closedOf(sim, 'grow/extract');
   assert.ok(extract && extract.closedAt < T('2026-08-12T05:00Z'),
     'extract ran the same morning — a declined upstream is not a blocker');
 });
@@ -281,8 +281,8 @@ test('S23b needs-human upstream does not halt the chain', async () => {
   });
   await sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
-  assert.ok(sim.standingItem('basics/baselining').parked, 'upstream broke');
-  assert.equal(closedOf(sim, 'grow/growth-extract').length, 1, 'extract still ran');
+  assert.ok(sim.standingItem('acme/daily-base').parked, 'upstream broke');
+  assert.equal(closedOf(sim, 'grow/extract').length, 1, 'extract still ran');
 });
 
 // ---- S24 — retired with the roll (#1115). The trap it demonstrated — `schedule_after`
@@ -296,9 +296,9 @@ test('S24 three quiet-upstream days: the yield never holds the dependent', async
   sim.at('2026-08-12T00:01Z', ({ world }) => { world.extractHasLessons = true; });
   await sim.run('2026-08-12T00:00Z', '2026-08-15T00:00Z'); // three quiet-upstream days
 
-  assert.equal(closedOf(sim, 'grow/growth-extract').length, 3,
+  assert.equal(closedOf(sim, 'grow/extract').length, 3,
     'extract asked and run each of the three days');
-  assert.equal(own(sim, 'basics/baselining').length, 0,
+  assert.equal(own(sim, 'acme/daily-base').length, 0,
     'the quiet upstream filed nothing all week');
 });
 
@@ -712,14 +712,14 @@ test('S30 duplicate standing item: the next scheduler run self-heals (F16)', asy
 // are judged first, off the queue the run already holds.
 test('S55 signals unavailable for one task: fail-open item, executor decides; the cadence still gates', async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
-  sim.setSignalsUnavailable('basics/baselining');
+  sim.setSignalsUnavailable('acme/daily-base');
   // day 2 the executor-side read finds real work
   sim.at('2026-08-13T00:01Z', ({ world }) => { world.mountBehind = true; });
   await sim.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
 
-  const fam = own(sim, 'basics/baselining');
+  const fam = own(sim, 'acme/daily-base');
   assert.equal(fam.length, 2, 'an item per occurrence — fail-open never files fewer');
-  const a = asks(sim, 'basics/baselining');
+  const a = asks(sim, 'acme/daily-base');
   assert.deepEqual(a.filter((e) => e.verdict === 'fail-open').map((e) => e.t),
     [tick('2026-08-12T00:17Z'), tick('2026-08-13T00:17Z')],
     'failed open exactly where the cadence held — every other tick declined on the run history alone');
@@ -810,7 +810,7 @@ test('S29 old-vocabulary issues are invisible to the new mechanism', async () =>
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   let relic;
   sim.at('2026-08-12T00:05Z', (s) => {
-    relic = s.foreignIssue('[claudinite-task] basics/baselining d2026-08-11');
+    relic = s.foreignIssue('[claudinite-task] acme/daily-base d2026-08-11');
   });
   await sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
@@ -818,9 +818,9 @@ test('S29 old-vocabulary issues are invisible to the new mechanism', async () =>
   assert.equal(it.state, 'open', 'the relic is untouched');
   assert.deepEqual([...it.labels], ['agent-dispatch'], 'no label was added or removed');
   assert.equal(it.comments.length, 0);
-  assert.ok(asks(sim, 'basics/baselining').length >= 1,
+  assert.ok(asks(sim, 'acme/daily-base').length >= 1,
     'the new mechanism asked its own question beside the relic, undisturbed');
-  assert.ok(asks(sim, 'basics/baselining').every((e) => e.verdict === 'no'), 'and the relic is not a run of it');
+  assert.ok(asks(sim, 'acme/daily-base').every((e) => e.verdict === 'no'), 'and the relic is not a run of it');
 });
 
 // ---- M. The label vocabulary (#1119): the engine writes the canonical
@@ -860,7 +860,7 @@ test('S62 legacy-labeled items drain; the first write canonicalizes; a legacy pa
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   let legacy;
   sim.at('2026-08-12T05:00Z', (s) => {
-    legacy = s.legacyIssue('fleet/fleet-baseline', ['task:ready'], { qualifier: 'o/member' });
+    legacy = s.legacyIssue('fleet/rollout', ['task:ready'], { qualifier: 'o/member' });
   });
   await sim.run('2026-08-12T00:00Z', '2026-08-12T08:00Z');
 
@@ -923,15 +923,15 @@ test('backlog guard: a failure park holds the lane only for a task declaring las
   held.at('2026-08-12T00:01Z', ({ world }) => { world.mountBehind = true; world.mountBroken = true; });
   await held.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
 
-  const fam = own(held, 'basics/baselining');
+  const fam = own(held, 'acme/daily-base');
   assert.equal(fam.length, 1, 'no second item while the failure park sits open');
   assert.ok(fam[0].parked && fam[0].labels.has(NH('failure')));
-  assert.equal(evals(held, 'basics/baselining').length, 1, 'not re-run while broken');
+  assert.equal(evals(held, 'acme/daily-base').length, 1, 'not re-run while broken');
   // The park does not silence the ask: every later tick still asks. For the rest
   // of Wednesday `schedule:at-most-daily` declines first — the parked item IS this period's
   // run — and from Thursday's anchor on it is the task's own
   // `last-run-not-failed` that declines, reading the park.
-  const after = asks(held, 'basics/baselining').filter((e) => e.t > T('2026-08-12T05:00Z'));
+  const after = asks(held, 'acme/daily-base').filter((e) => e.t > T('2026-08-12T05:00Z'));
   assert.ok(after.length >= 40 && after.every((e) => e.verdict === 'no'));
   assert.ok(after.filter((e) => e.t < T('2026-08-13T00:00Z')).every((e) => /already ran in the daily period/.test(e.reason)));
   const thursday = after.filter((e) => e.t >= T('2026-08-13T00:00Z'));
@@ -941,11 +941,11 @@ test('backlog guard: a failure park holds the lane only for a task declaring las
   // parked item is not live, and nothing in the engine holds a lane by itself.
   const open = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   open.at('2026-08-12T00:01Z', (s) => {
-    s.updateTask('basics/baselining', { preconditions: ['schedule:at-most-daily'] });
+    s.updateTask('acme/daily-base', { preconditions: ['schedule:at-most-daily'] });
     s.world.mountBehind = true; s.world.mountBroken = true;
   });
   await open.run('2026-08-12T00:00Z', '2026-08-14T00:00Z');
-  const beside = own(open, 'basics/baselining');
+  const beside = own(open, 'acme/daily-base');
   assert.equal(beside.length, 2, "Thursday's occurrence was filed beside Wednesday's park");
   assert.ok(beside.every((i) => i.parked), 'and broke the same way — two parks, one cause');
 });
@@ -996,7 +996,7 @@ test('S72 a Not-before falling between ticks waits for the next tick, and is not
   // of a task off the schedule: its empty expression holds at pick, so the wait is
   // the only thing the pick has to say about it.
   sim.at('2026-08-12T04:30Z', (s) => {
-    deferred = s.createItem('fleet/fleet-baseline', { notBefore: T('2026-08-12T09:00Z'), qualifier: 'deferred' });
+    deferred = s.createItem('fleet/rollout', { notBefore: T('2026-08-12T09:00Z'), qualifier: 'deferred' });
   });
   await sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
@@ -1048,7 +1048,7 @@ test('S7 executor race: earliest claim wins, loser takes the next item', async (
     'the rival claimed the same item at the same instant');
   assert.equal(sim.log.filter((e) => e.kind === 'evaluate' && e.issue === raced.issue && e.t === raced.t).length,
     1, 'the raced item was executed once at that instant, by the winner');
-  assert.equal(closedOf(sim, 'tidy/tidy-issues').length + closedOf(sim, 'chrome/store-release').length,
+  assert.equal(closedOf(sim, 'tidy/tidy-issues').length + closedOf(sim, 'chrome/release').length,
     2, 'both items converged — the loser moved on, capacity added not lost');
 });
 
@@ -1079,7 +1079,7 @@ test('S15 force-while-executing: the mutex queues the twin', async () => {
 test('S16 lost label event: the poll picks it up within a scheduler run', async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   let it;
-  sim.at('2026-08-12T14:00Z', (s) => { it = s.createItem('fleet/fleet-baseline', { urgent: true, eventLost: true, qualifier: 'o/member' }); });
+  sim.at('2026-08-12T14:00Z', (s) => { it = s.createItem('fleet/rollout', { urgent: true, eventLost: true, qualifier: 'o/member' }); });
   await sim.run('2026-08-12T12:00Z', '2026-08-12T16:00Z');
 
   const evalAt = sim.log.find((e) => e.kind === 'evaluate' && e.issue === it.number);
@@ -1101,7 +1101,7 @@ test('S17 follow-up validates on day 3, closes obsolete when all landed', async 
   let followUp;
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.releasePending = true; });
   sim.at('2026-08-12T04:25Z', (s) => { // code_work delivered; create the follow-up
-    const parent = own(s, 'chrome/store-release')[0];
+    const parent = own(s, 'chrome/release')[0];
     followUp = s.createItem('chrome/store-validate', {
       blockedBy: [parent.number], notBefore: T('2026-08-14T04:00Z'),
     });
@@ -1124,7 +1124,7 @@ test('S17b follow-up finds the store rejected the release, and runs', async () =
   let followUp;
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.releasePending = true; });
   sim.at('2026-08-12T04:25Z', (s) => {
-    const parent = own(s, 'chrome/store-release')[0];
+    const parent = own(s, 'chrome/release')[0];
     followUp = s.createItem('chrome/store-validate', {
       blockedBy: [parent.number], notBefore: T('2026-08-14T04:00Z'),
     });
@@ -1146,7 +1146,7 @@ test('S18 fan-out: stuck member escalates, fan-in proceeds after the human acts'
   let fanIn;
   sim.at('2026-08-10T09:00Z', (s) => {
     for (const m of ['repo-a', 'repo-b', 'repo-x']) {
-      members.push(s.createItem('fleet/fleet-baseline', { qualifier: m }));
+      members.push(s.createItem('fleet/rollout', { qualifier: m }));
     }
     fanIn = s.createItem('fleet/fleet-status', { blockedBy: members.map((i) => i.number) });
     s.quarantine(members[2].number); // repo-x's executor is broken
@@ -1173,10 +1173,10 @@ test('S19 re-queue after a fix: needs-human -> ready -> normal run', async () =>
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:01Z', ({ world }) => { world.mountBehind = true; world.mountBroken = true; });
   // Tuesday: the owner fixes the mount and re-queues via the force lever
-  sim.at('2026-08-13T09:00Z', (s) => { s.world.mountBroken = false; return s.force('basics/baselining'); });
+  sim.at('2026-08-13T09:00Z', (s) => { s.world.mountBroken = false; return s.force('acme/daily-base'); });
   await sim.run('2026-08-12T00:00Z', '2026-08-13T12:00Z');
 
-  const fam = own(sim, 'basics/baselining');
+  const fam = own(sim, 'acme/daily-base');
   assert.equal(fam.length, 1);
   assert.equal(fam[0].woken, T('2026-08-13T09:00Z'), 'the wake is stamped on the item it woke');
   assert.equal(fam[0].state, 'closed');
@@ -1192,7 +1192,7 @@ test('S33 fan-in waits for the scheduler run to ready it, not the closing side',
   const members = [];
   let fanIn;
   sim.at('2026-08-12T09:00Z', (s) => {
-    for (const m of ['repo-a', 'repo-b']) members.push(s.createItem('fleet/fleet-baseline', { qualifier: m }));
+    for (const m of ['repo-a', 'repo-b']) members.push(s.createItem('fleet/rollout', { qualifier: m }));
     fanIn = s.createItem('fleet/fleet-status', { blockedBy: members.map((i) => i.number) });
   });
   await sim.run('2026-08-12T00:00Z', '2026-08-12T14:00Z');
@@ -1370,17 +1370,17 @@ test('S38 resume after a hold: clearing the variable + the next scheduler run re
 // only the post-claim re-verify serializes the pair.
 test('S32 twin-title race: post-claim re-verify serializes, later claim reverts', async () => {
   // scoped cast: the scenario is about one title's twins racing
-  const tasks = cast().filter((t) => t.id === 'fleet/fleet-baseline');
+  const tasks = cast().filter((t) => t.id === 'fleet/rollout');
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:16:20Z', (s) => {
-    s.createItem('fleet/fleet-baseline', { urgent: true, eventLost: true, qualifier: 'twin' });
-    s.createItem('fleet/fleet-baseline', { urgent: true, eventLost: true, qualifier: 'twin' }); // the twin
+    s.createItem('fleet/rollout', { urgent: true, eventLost: true, qualifier: 'twin' });
+    s.createItem('fleet/rollout', { urgent: true, eventLost: true, qualifier: 'twin' }); // the twin
   });
   sim.raceExecutorsAt('2026-08-12T04:16:35Z', ['E1', 'E2']); // before the 04:17 drain
   await sim.run('2026-08-12T00:00Z', '2026-08-12T12:00Z');
 
   // no instant ever had two same-title items in execution
-  const twinEvals = sim.log.filter((e) => e.kind === 'evaluate' && e.task === 'fleet/fleet-baseline');
+  const twinEvals = sim.log.filter((e) => e.kind === 'evaluate' && e.task === 'fleet/rollout');
   const times = twinEvals.map((e) => e.t);
   assert.equal(new Set(times).size, times.length, 'the twins were never evaluated at the same instant');
   // and BOTH still converged — a reverted or lost claim is re-claimed in a fresh
@@ -1397,7 +1397,7 @@ test('S32 twin-title race: post-claim re-verify serializes, later claim reverts'
 // (F24). The second attempt MUST come from a different executor: a single
 // executor beats its own stale claim by identity.
 test('S39b a parked item a human re-queues is claimable by another executor at once (F24)', async () => {
-  const tasks = cast().filter((t) => t.id === 'basics/baselining');
+  const tasks = cast().filter((t) => t.id === 'acme/daily-base');
   const sim = makeSim({ tasks }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T00:00Z', ({ world }) => { world.mountBehind = true; world.mountBroken = true; });
   await sim.run('2026-08-12T00:00Z', '2026-08-12T06:00Z');
@@ -1861,7 +1861,7 @@ test("S34 busy morning: one drain run settles all its hour's items; every run's 
   // work stays SERIAL inside the run — the occupancy model is unchanged, only the
   // run boundary moved — and both items converged the same hour
   const [tidy] = closedOf(sim, 'tidy/tidy-issues');
-  const [store] = closedOf(sim, 'chrome/store-release');
+  const [store] = closedOf(sim, 'chrome/release');
   assert.ok(tidy && store, 'both converged');
   assert.ok(store.closedAt < T('2026-08-12T05:00Z'), 'well before the next scheduler run could have helped');
   // and the quiet hours cost nothing: their scheduler runs skipped the drain
@@ -1891,12 +1891,12 @@ test('S65 a working day: 7 pieces of work cost 28 invocations, and each is accou
   });
   sim.at('2026-08-12T09:40Z', (s) => s.markIssue({ author: 'owner' }));         // ad-hoc request
   let byHand;
-  sim.at('2026-08-12T14:03Z', (s) => { byHand = s.createItem('fleet/fleet-baseline', { qualifier: 'o/member' }); });
+  sim.at('2026-08-12T14:03Z', (s) => { byHand = s.createItem('fleet/rollout', { qualifier: 'o/member' }); });
   await sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
 
   // the whole day's work converged…
-  for (const id of ['basics/baselining', 'grow/growth-extract', 'grow/growth-promote',
-    'tidy/tidy-issues', 'chrome/store-release']) {
+  for (const id of ['acme/daily-base', 'grow/extract', 'grow/promote',
+    'tidy/tidy-issues', 'chrome/release']) {
     const [done] = closedOf(sim, id);
     assert.ok(done && done.outcome === 'done', `${id} converged`);
   }
@@ -1920,8 +1920,8 @@ test('S65 a working day: 7 pieces of work cost 28 invocations, and each is accou
   assert.equal(sim.log.filter((e) => e.kind === 'drain-skipped').length + acct.executorByTrigger['scheduler-run-drain'], 24);
   // the ticks before the anchor asked and declined on the cadence; the ones after
   // the morning's runs, the same
-  assert.equal(asks(sim, 'chrome/store-release').length, 24, 'every tick — its three-minute run never spanned one');
-  assert.equal(goes(sim, 'chrome/store-release').length, 1);
+  assert.equal(asks(sim, 'chrome/release').length, 24, 'every tick — its three-minute run never spanned one');
+  assert.equal(goes(sim, 'chrome/release').length, 1);
 });
 
 // ---- S66 — the quiet day's floor: no signals, no items — the cron's 24
@@ -1956,8 +1956,8 @@ test('S67 twice-daily cron: a full day of work completes on a handful of billed 
     await s.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
     return s;
   };
-  const DAILY = ['basics/baselining', 'grow/growth-extract', 'grow/growth-promote',
-    'tidy/tidy-issues', 'chrome/store-release'];
+  const DAILY = ['acme/daily-base', 'grow/extract', 'grow/promote',
+    'tidy/tidy-issues', 'chrome/release'];
 
   const hourly = await day({});
   const twice = await day({ cronHours: [4, 16] });
@@ -1980,9 +1980,9 @@ test('S67 twice-daily cron: a full day of work completes on a handful of billed 
   // the SAME 04:17 tick — their staggered anchor hours no longer separate them —
   // and `schedule_after:` alone still settles them in declaration order.
   const closeAt = (s, task) => closedOf(s, task)[0].closedAt;
-  assert.ok(closeAt(twice, 'basics/baselining') < closeAt(twice, 'grow/growth-extract'));
-  assert.ok(closeAt(twice, 'grow/growth-extract') < closeAt(twice, 'grow/growth-promote'));
-  for (const task of ['basics/baselining', 'grow/growth-extract', 'grow/growth-promote']) {
+  assert.ok(closeAt(twice, 'acme/daily-base') < closeAt(twice, 'grow/extract'));
+  assert.ok(closeAt(twice, 'grow/extract') < closeAt(twice, 'grow/promote'));
+  for (const task of ['acme/daily-base', 'grow/extract', 'grow/promote']) {
     assert.equal(new Date(closedOf(twice, task)[0].createdAt).toISOString().slice(11, 16), '04:17');
   }
   // The hourly grid picks the same work up at the first tick after it arrives, and
@@ -2079,7 +2079,7 @@ test('S80 a simulated working day costs milliseconds and waits for nothing', asy
 
   // The day really happened: 24 ticks and a morning's chain, all of it converged.
   assert.equal(ticks(sim).length, 24);
-  assert.equal(closedOf(sim, 'grow/growth-promote').length, 1);
+  assert.equal(closedOf(sim, 'grow/promote').length, 1);
   // …and the clock ends exactly where the scenario put it, having run on nothing
   // but its own event queue.
   assert.equal(sim.clock.iso(), '2026-08-13T00:00:00.000Z');

@@ -36,7 +36,7 @@ test('the retired agentic field is REJECTED, not ignored (#768 Phase 5)', () => 
 });
 
 test('a pack record may ask for the apply stage; an engine record may not (#798)', () => {
-  const pack = (over) => ({ ...M(over), dir: 'packs/basics/migrations/2026-08-13-x' });
+  const pack = (over) => ({ ...M(over), dir: 'packs/acme-pack/migrations/2026-08-13-x' });
   const engine = (over) => ({ ...M(over), dir: 'engine/migrations/2026-08-13-x' });
 
   assert.equal(assertApplyStageDeclaration(pack()), undefined, 'declaring nothing is the common case');
@@ -167,14 +167,14 @@ test('applyRewrites: applies literal from->to replacements in place, idempotentl
 
 test('applyPackDeclarations: declares an absent pack, never overrides what the repo chose, gated by appliesTo', async () => {
   const decl = (o) => `${JSON.stringify(o, null, 2)}\n`;
-  const repo = new Map([['.claudinite-settings.json', decl({ packs: ['basics'], maintenance: { delivery: 'auto-merge' } })]]);
+  const repo = new Map([['.claudinite-settings.json', decl({ packs: ['acme-pack'], maintenance: { delivery: 'auto-merge' } })]]);
   const read = (p) => repo.get(p) ?? null;
   const write = (p, c) => repo.set(p, c);
   const m = M({ declarePacks: [{ id: 'NewPack', config: { repo: 'o/store' } }] });
 
   assert.deepEqual(await applyPackDeclarations(m, { read, write }), ['.claudinite-settings.json: declared NewPack']);
   const after = JSON.parse(repo.get('.claudinite-settings.json'));
-  assert.deepEqual(after.packs, ['basics', { id: 'NewPack', config: { repo: 'o/store' } }]);
+  assert.deepEqual(after.packs, ['acme-pack', { id: 'NewPack', config: { repo: 'o/store' } }]);
   assert.deepEqual(after.maintenance, { delivery: 'auto-merge' }, 'the rest of the declaration survives');
   assert.equal(repo.get('.claudinite-settings.json'), decl(after), 'canonical 2-space settings with a trailing newline');
 
@@ -187,13 +187,13 @@ test('applyPackDeclarations: declares an absent pack, never overrides what the r
 
   // A pack declared as a bare string, with no config, is the one entry still owed
   // something: it gets the config, in place, without losing its position.
-  const bare = new Map([['.claudinite-settings.json', decl({ packs: ['basics', 'NewPack', 'product-wiki'] })]]);
+  const bare = new Map([['.claudinite-settings.json', decl({ packs: ['acme-pack', 'NewPack', 'acme-pack-b'] })]]);
   assert.deepEqual(
     await applyPackDeclarations(m, { read: (p) => bare.get(p) ?? null, write: (p, c) => bare.set(p, c) }),
     ['.claudinite-settings.json: configured NewPack'],
   );
   assert.deepEqual(JSON.parse(bare.get('.claudinite-settings.json')).packs,
-    ['basics', { id: 'NewPack', config: { repo: 'o/store' } }, 'product-wiki']);
+    ['acme-pack', { id: 'NewPack', config: { repo: 'o/store' } }, 'acme-pack-b']);
 
   // appliesTo:false skips, and a non-member / unparsable declaration is left alone
   // (the world runner owns that finding; a migration must not guess at a repair).
@@ -212,7 +212,7 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
   // un-migrated, which is the exact failure mode a seed op is meant to prevent.
   const root = mkdtempSync(join(tmpdir(), 'claudinite-apply-'));
   try {
-    writeFileSync(join(root, '.claudinite-settings.json'), `${JSON.stringify({ packs: ['basics'] }, null, 2)}\n`);
+    writeFileSync(join(root, '.claudinite-settings.json'), `${JSON.stringify({ packs: ['acme-pack'] }, null, 2)}\n`);
     const canon = dirname(dirname(fileURLToPath(import.meta.url)));
     const out = execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
       encoding: 'utf8', env: { ...process.env, CLAUDE_PROJECT_DIR: root },
@@ -223,9 +223,9 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
     // Every seed record the corpus carries, applied in record order onto the
     // declaration the fixture started from.
     assert.deepEqual(after.packs, [
-      'basics',
-      { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } },
-      'claudinite-lifecycle',
+      'acme-pack',
+      { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } }, // @real-entity the record under test names this pack; that is its content
+      'claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
     ]);
     // …and running it again writes nothing at all.
     assert.equal(execFileSync(process.execPath, [join(canon, 'engine/migrations/apply.mjs')], {
@@ -235,12 +235,12 @@ test('apply.mjs really performs the pack-declaration op — the wire, not just t
 });
 
 test('claude-code-web-users-support migration: seeds the pack with the fleet\'s store, and tracks who still lacks it', async () => {
-  const m = (await loadMigrations()).find((x) => x.id === 'claude-code-web-users-support');
+  const m = (await loadMigrations()).find((x) => x.id === 'claude-code-web-users-support'); // @real-entity the record under test names this pack; that is its content
   assert.ok(m, 'claude-code-web-users-support migration is discovered');
   const read = (json) => async () => (json === null ? null : JSON.stringify(json));
-  assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), true, 'pack undeclared -> legacy');
-  assert.equal(await m.legacyPresent(() => false, read({ packs: ['claude-code-web-users-support'] })), false, 'declared -> done');
-  assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'claude-code-web-users-support', config: { repo: 'o/other' } }] })), false,
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['acme-pack'] })), true, 'pack undeclared -> legacy');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['claude-code-web-users-support'] })), false, 'declared -> done'); // @real-entity the record under test names this pack; that is its content
+  assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'claude-code-web-users-support', config: { repo: 'o/other' } }] })), false, // @real-entity the record under test names this pack; that is its content
     'declared with a store of its own -> done, whatever it names');
   assert.equal(await m.legacyPresent(() => false, read(null)), false, 'no declaration -> not a member, not held');
   assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
@@ -325,13 +325,13 @@ test('sheepdog-fleet-baseline migration: gated on declaring the pack, and on not
   const read = (decl) => async (p) => (p === '.claudinite-settings.json' ? decl : null);
 
   // Both declaration forms, since both are legal.
-  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: [{ id: 'claudinite-fleet-sheepdog', config: {} }] }))), true);
-  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['claudinite-fleet-sheepdog'] }))), true);
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: [{ id: 'claudinite-fleet-sheepdog', config: {} }] }))), true); // @real-entity the record under test names this pack; that is its content
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['claudinite-fleet-sheepdog'] }))), true); // @real-entity the record under test names this pack; that is its content
   // Not under the spelling an enforcer's declaration carried when the record landed:
   // that tolerance came out with the rest of the 2026-08-19 renames (#1641), and an
   // enforcer still declaring it has no pack for this record to apply to.
   assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['sheepdog'] }))), false);
-  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['basics'] }))), false);
+  assert.equal(await m.appliesTo(read(JSON.stringify({ packs: ['acme-pack'] }))), false);
   assert.equal(await m.appliesTo(read('not json')), false);
   assert.equal(await m.appliesTo(read(null)), false);   // canon itself
 
@@ -386,9 +386,9 @@ test('pack-entry-config migration: legacyPresent reads the declaration (true iff
   const m = (await loadMigrations()).find((x) => x.id === 'pack-entry-config');
   assert.ok(m, 'pack-entry-config migration is discovered');
   const read = (json) => async () => JSON.stringify(json);
-  assert.equal(await m.legacyPresent(() => false, read({ packs: ['node'], packConfig: { node: {} } })), true, 'top-level packConfig -> legacy');
-  assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'node', config: {} }] })), false, 'entry config -> done');
-  assert.equal(await m.legacyPresent(() => false, read({ packs: ['basics'] })), false, 'no params at all -> done');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['acme-pack'], packConfig: { node: {} } })), true, 'top-level packConfig -> legacy');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: [{ id: 'acme-pack', config: {} }] })), false, 'entry config -> done');
+  assert.equal(await m.legacyPresent(() => false, read({ packs: ['acme-pack'] })), false, 'no params at all -> done');
   assert.equal(await m.legacyPresent(() => false, async () => null), false, 'no declaration -> not held');
   assert.equal(await m.legacyPresent(() => false, async () => 'nope'), false, 'unparsable -> not held');
 });
@@ -399,11 +399,11 @@ test('local-pack-namespace migration: legacyPresent = a bare declared id whose p
   const read = (packs) => async () => JSON.stringify({ packs });
   const hasLocal = async (p) => p === '.claudinite/local_packs/proj/pack.mjs';
   // A bare string or entry-object id naming the member's own local pack → still legacy.
-  assert.equal(await m.legacyPresent(hasLocal, read(['basics', 'proj'])), true, 'bare string -> legacy');
-  assert.equal(await m.legacyPresent(hasLocal, read(['basics', { id: 'proj', config: {} }])), true, 'bare entry object -> legacy');
+  assert.equal(await m.legacyPresent(hasLocal, read(['acme-pack', 'proj'])), true, 'bare string -> legacy');
+  assert.equal(await m.legacyPresent(hasLocal, read(['acme-pack', { id: 'proj', config: {} }])), true, 'bare entry object -> legacy');
   // The namespaced form is converged, and a bare id that is no local pack is a canon declaration.
-  assert.equal(await m.legacyPresent(hasLocal, read(['basics', 'local_packs/proj'])), false, 'namespaced -> done');
-  assert.equal(await m.legacyPresent(async () => false, read(['basics', 'node'])), false, 'canon-only declaration -> done');
+  assert.equal(await m.legacyPresent(hasLocal, read(['acme-pack', 'local_packs/proj'])), false, 'namespaced -> done');
+  assert.equal(await m.legacyPresent(async () => false, read(['acme-pack', 'acme-pack-b'])), false, 'canon-only declaration -> done');
   assert.equal(await m.legacyPresent(hasLocal, async () => null), false, 'no declaration -> not held');
   assert.equal(await m.legacyPresent(hasLocal, async () => 'nope'), false, 'unparsable -> not held');
 });
@@ -425,13 +425,13 @@ test('every record lives under the flow that owns it — the engine, or one pack
 
 test('flowOf reads the owning flow off the path — no record declares which it is', () => {
   assert.deepEqual(flowOf('engine/migrations/2026-08-06-x'), { flow: 'engine' });
-  assert.deepEqual(flowOf('packs/claudinite-fleet-sheepdog/migrations/2026-08-11-y'), { flow: 'pack', pack: 'claudinite-fleet-sheepdog' });
+  assert.deepEqual(flowOf('packs/acme-pack/migrations/2026-08-11-y'), { flow: 'pack', pack: 'acme-pack' });
 });
 
 test('installedFor keeps "the stamp says nothing" distinct from a real number', () => {
-  const stamp = { engineVersion: 3, packVersions: { 'claudinite-fleet-sheepdog': 2, tidy: 0 } };
+  const stamp = { engineVersion: 3, packVersions: { 'acme-pack': 2, tidy: 0 } };
   assert.equal(installedFor('engine/migrations/2026-01-01-a', stamp), 3);
-  assert.equal(installedFor('packs/claudinite-fleet-sheepdog/migrations/2026-01-01-a', stamp), 2);
+  assert.equal(installedFor('packs/acme-pack/migrations/2026-01-01-a', stamp), 2);
   assert.equal(installedFor('packs/tidy/migrations/2026-01-01-a', stamp), 0, 'a real zero is a version, not an absence');
   assert.equal(installedFor('packs/never-heard-of/migrations/2026-01-01-a', stamp), undefined);
   assert.equal(installedFor('engine/migrations/2026-01-01-a', null), undefined);
@@ -514,7 +514,7 @@ test('applyRewrites: a global pattern rewrites every match; a non-global one is 
 
 test('local declarations normalize to local/<id>, from both earlier forms', async () => {
   const decl = {
-    packs: ['basics', 'mine', 'local_packs/older', { id: 'configured', config: { k: 1 } }, 'local/already'],
+    packs: ['acme-pack', 'mine', 'local_packs/older', { id: 'configured', config: { k: 1 } }, 'local/already'],
   };
   const local = new Set(['.claudinite/local/packs/mine/pack.mjs', '.claudinite/local_packs/configured/pack.mjs']);
   const w = io({ '.claudinite-settings.json': `${JSON.stringify(decl, null, 2)}\n` }, (p) => local.has(p));
@@ -522,7 +522,7 @@ test('local declarations normalize to local/<id>, from both earlier forms', asyn
 
   const after = JSON.parse(w.written['.claudinite-settings.json']);
   assert.deepEqual(after.packs, [
-    'basics',                                     // a canon id: untouched, though bare
+    'acme-pack',                                     // a canon id: untouched, though bare
     'local/mine',                                 // bare, and this repo has the pack
     'local/older',                                // the earlier namespaced form
     { id: 'local/configured', config: { k: 1 } }, // an entry object keeps everything else
@@ -576,15 +576,15 @@ test('pack-renames: leaves the declaration alone — that half is a record of it
 
 test('pack-renames: the mount directories move, and only from the old path', async () => {
   const rec = (await import('../engine/migrations/2026-08-19-pack-renames/migration.mjs')).default;
-  const present = new Set(['.claudinite/shared/packs/core', '.claudinite/shared/packs/grow_with_claudinite', '.claudinite/shared/packs/basics']);
+  const present = new Set(['.claudinite/shared/packs/core', '.claudinite/shared/packs/grow_with_claudinite', '.claudinite/shared/packs/basics']); // @real-entity the record under test names this pack; that is its content
   const move = (from, to) => { present.delete(from); present.add(to); };
   const done = await applyFileAliases(rec, { exists: (p) => present.has(p), move });
   assert.deepEqual(done.sort(), [
-    '.claudinite/shared/packs/core -> .claudinite/shared/packs/claudinite-lifecycle',
-    '.claudinite/shared/packs/grow_with_claudinite -> .claudinite/shared/packs/claudinite-growth',
+    '.claudinite/shared/packs/core -> .claudinite/shared/packs/claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
+    '.claudinite/shared/packs/grow_with_claudinite -> .claudinite/shared/packs/claudinite-growth', // @real-entity the record under test names this pack; that is its content
   ]);
   assert.deepEqual([...present].sort(), [
-    '.claudinite/shared/packs/basics', '.claudinite/shared/packs/claudinite-growth', '.claudinite/shared/packs/claudinite-lifecycle',
+    '.claudinite/shared/packs/basics', '.claudinite/shared/packs/claudinite-growth', '.claudinite/shared/packs/claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
   ]);
   // A converged mount has nothing left to move.
   assert.deepEqual(await applyFileAliases(rec, { exists: (p) => present.has(p), move }), []);
@@ -623,11 +623,11 @@ test('applyPackRenames: converges a real member declaration, entry objects and a
   // regression. The op reads its ids from the live map, so the record driving it here
   // converges only what the map still carries.
   assert.deepEqual(after.packs, [
-    'basics',
-    { id: 'git-github', via: ['basics'] },
+    'basics', // @real-entity the record under test names this pack; that is its content
+    { id: 'git-github', via: ['basics'] }, // @real-entity the record under test names this pack; that is its content
     'grow_with_claudinite',
     'local/canary',
-    { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } },
+    { id: 'claude-code-web-users-support', config: { repo: 'missingbulb/Shepherd' } }, // @real-entity the record under test names this pack; that is its content
     'canary-probe',
     'core',
   ], 'ids move; config, via and order do not');
@@ -651,7 +651,7 @@ test('applyPackRenames: idempotent, and blind to everything outside the packs ar
   }, null, 2);
   const first = await run(declaration);
   const parsed = JSON.parse(first.written);
-  assert.deepEqual(parsed.packs, ['basics', 'local/barriers']);
+  assert.deepEqual(parsed.packs, ['basics', 'local/barriers']); // @real-entity the record under test names this pack; that is its content
   assert.equal(parsed.config.rules[0].from, 'barriers', "a member's own barriers/ directory is untouched");
 
   const second = await run(first.written);
@@ -672,11 +672,11 @@ test('applyPackRenames: idempotent, and blind to everything outside the packs ar
 // saying which of its renames is an absorption, and what to do about both.
 test('absorbedPackConfig: the absorbed config nests under its own id and its stale answers go', async () => {
   const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default;
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
   const declaration = JSON.stringify({
     packs: [
-      'claudinite-lifecycle',
-      'basics',
+      'claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
+      'basics', // @real-entity the record under test names this pack; that is its content
       { id: 'barriers', config: { rules: [{ from: 'engine', to: 'packs/*' }] }, answers: { goals: 'keep core generic' } },
     ],
   }, null, 2);
@@ -687,8 +687,8 @@ test('absorbedPackConfig: the absorbed config nests under its own id and its sta
   const done = await applyPackRenames(rec, { read, write: async (_f, c) => { written = c; } });
   assert.equal(done.length, 2, `expected the rename and the merge, got ${JSON.stringify(done)}`);
   assert.deepEqual(JSON.parse(written).packs, [
-    'claudinite-lifecycle',
-    { id: 'basics', config: { barriers: { rules: [{ from: 'engine', to: 'packs/*' }] } } },
+    'claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
+    { id: 'basics', config: { barriers: { rules: [{ from: 'engine', to: 'packs/*' }] } } }, // @real-entity the record under test names this pack; that is its content
   ], 'the graph reaches the key the absorbed check reads, and the answer to the retired question is gone');
 });
 
@@ -696,21 +696,21 @@ test('absorbedPackConfig: the absorbed config nests under its own id and its sta
 // pack still asks — dropping every answer would lose it.
 test('absorbedPackConfig: only the named answers are dropped', async () => {
   const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default;
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
   let written = null;
   await applyPackRenames(rec, {
     read: async (f) => (f.endsWith('migrations/registry.mjs') ? 'absorbedPackConfig'
       : JSON.stringify({ packs: [{ id: 'barriers', answers: { goals: 'gone', keep: 'stays' } }] })),
     write: async (_f, c) => { written = c; },
   });
-  assert.deepEqual(JSON.parse(written).packs, [{ id: 'basics', answers: { keep: 'stays' } }]);
+  assert.deepEqual(JSON.parse(written).packs, [{ id: 'basics', answers: { keep: 'stays' } }]); // @real-entity the record under test names this pack; that is its content
 });
 
 // The record is inert until the member's own mount carries the op, so a stale
 // engine cannot half-apply it — rename the id and leave the graph flat, where the
 // absorbed check does not look.
 test('the barriers-absorbed record stands down on a mount whose engine lacks the op', async () => {
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default;
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-04-barriers-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
   assert.equal(await rec.appliesTo(async () => 'export function applyPackRenames() {}\n'), false);
   assert.equal(await rec.appliesTo(async () => null), false);
   assert.equal(await rec.appliesTo(async (f) => (f.startsWith('.claudinite/shared/') ? 'absorbedPackConfig' : null)), true);
@@ -718,13 +718,13 @@ test('the barriers-absorbed record stands down on a mount whose engine lacks the
 
 test('applyPackRenames: an absorbed pack merges into the entry that already exists', async () => {
   const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-06-tidy-repo-absorbed/migration.mjs')).default;
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-06-tidy-repo-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
   // The absorbed entry carries a `config` the record does not nest, which is the plain
   // spread this case is about — `absorbedPackConfig`'s nesting is the two cases above.
   const declaration = JSON.stringify({
     packs: [
-      'claudinite-lifecycle',
-      { id: 'basics', accept: [{ rule: 'improve-comments-scope', path: 'src/', reason: 'generated' }] },
+      'claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
+      { id: 'basics', accept: [{ rule: 'improve-comments-scope', path: 'src/', reason: 'generated' }] }, // @real-entity the record under test names this pack; that is its content
       { id: 'tidy-repo', config: { comment_pass: 'src/' }, accept: [{ rule: 'tr/readme-sections', path: 'README.md', reason: 'template lands later' }] },
     ],
   }, null, 2);
@@ -735,9 +735,9 @@ test('applyPackRenames: an absorbed pack merges into the entry that already exis
   assert.equal(done.length, 2, `expected the rename and the merge, got ${JSON.stringify(done)}`);
   const packs = JSON.parse(written).packs;
   assert.deepEqual(packs, [
-    'claudinite-lifecycle',
+    'claudinite-lifecycle', // @real-entity the record under test names this pack; that is its content
     {
-      id: 'basics',
+      id: 'basics', // @real-entity the record under test names this pack; that is its content
       accept: [
         { rule: 'improve-comments-scope', path: 'src/', reason: 'generated' },
         { rule: 'tr/readme-sections', path: 'README.md', reason: 'template lands later' },
@@ -754,15 +754,15 @@ test('applyPackRenames: an absorbed pack merges into the entry that already exis
 
 test('applyPackRenames: a string entry absorbing an object keeps the object side', async () => {
   const { applyPackRenames } = await import('../engine/migrations/registry.mjs');
-  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-06-tidy-repo-absorbed/migration.mjs')).default;
+  const rec = (await import('../packs/claudinite-lifecycle/migrations/2026-09-06-tidy-repo-absorbed/migration.mjs')).default; // @real-entity the record under test names this pack; that is its content
   let written = null;
   await applyPackRenames(rec, {
     read: async () => JSON.stringify({
-      packs: ['basics', { id: 'tidy-repo', config: { comment_pass: 'src/' } }],
+      packs: ['basics', { id: 'tidy-repo', config: { comment_pass: 'src/' } }], // @real-entity the record under test names this pack; that is its content
     }, null, 2),
     write: async (_f, c) => { written = c; },
   });
-  assert.deepEqual(JSON.parse(written).packs, [{ id: 'basics', config: { comment_pass: 'src/' } }],
+  assert.deepEqual(JSON.parse(written).packs, [{ id: 'basics', config: { comment_pass: 'src/' } }], // @real-entity the record under test names this pack; that is its content
     'the survivor is promoted to an object rather than dropping the absorbed config');
 });
 
@@ -770,10 +770,10 @@ test('mergeDeclarationEntries: the survivor wins a conflict, arrays union', asyn
   const { mergeDeclarationEntries } = await import('../engine/migrations/registry.mjs');
   assert.deepEqual(
     mergeDeclarationEntries(
-      { id: 'p', config: { a: 1, keep: 'survivor' }, via: ['basics'] },
-      { id: 'q', config: { b: 2, keep: 'absorbed' }, via: ['basics', 'other'] },
+      { id: 'p', config: { a: 1, keep: 'survivor' }, via: ['acme-pack'] },
+      { id: 'q', config: { b: 2, keep: 'absorbed' }, via: ['acme-pack', 'other'] },
     ),
-    { id: 'p', config: { a: 1, keep: 'survivor', b: 2 }, via: ['basics', 'other'] },
+    { id: 'p', config: { a: 1, keep: 'survivor', b: 2 }, via: ['acme-pack', 'other'] },
   );
   assert.deepEqual(mergeDeclarationEntries({ id: 'p', config: { a: 1 } }, 'q'), { id: 'p', config: { a: 1 } },
     'a plain-string entry carries an id and nothing else, so there is nothing to take from it');
@@ -839,7 +839,7 @@ test('executor-vars-bag: inserts the bag, preserves each member\'s stamped secre
     '          CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}',
     '          # claudinite:secrets',
     '          MEMBER_ONLY_TOKEN: ${{ secrets.MEMBER_ONLY_TOKEN }}',
-    '        run: node .claudinite/shared/packs/claudinite-tasks/src/execute/loop.mjs',
+    '        run: node .claudinite/shared/packs/claudinite-tasks/src/execute/loop.mjs', // @real-entity a real canon path this test reads
     '',
   ].join('\n');
   const EXECUTOR = '.github/workflows/claudinite-executor.yml';
@@ -930,8 +930,8 @@ test('no migration record imports another record', async () => {
 test('executor-vars-bag inserts exactly what the executor stub carries', async () => {
   const { readFileSync } = await import('node:fs');
   const canon = dirname(dirname(fileURLToPath(import.meta.url)));
-  const stub = readFileSync(join(canon, 'packs/claudinite-tasks/stubs/claudinite-executor.yml'), 'utf8');
-  const src = readFileSync(join(canon, 'packs/claudinite-tasks/migrations/2026-08-31-executor-vars-bag/migration.mjs'), 'utf8');
+  const stub = readFileSync(join(canon, 'packs/claudinite-tasks/stubs/claudinite-executor.yml'), 'utf8'); // @real-entity a real canon path this test reads
+  const src = readFileSync(join(canon, 'packs/claudinite-tasks/migrations/2026-08-31-executor-vars-bag/migration.mjs'), 'utf8'); // @real-entity a real canon path this test reads
   // Every line of the record's inserted block appears verbatim in the stub.
   const bag = src.slice(src.indexOf('const BAG = `') + 'const BAG = `'.length, src.indexOf('`;\n\nexport default'));
   for (const line of bag.split('\n').filter((l) => l.trim())) {
@@ -942,7 +942,7 @@ test('executor-vars-bag inserts exactly what the executor stub carries', async (
 
 // --- movePackOwnedSettings: a top-level key lands on the pack that owns it ------
 
-const DORMANT_RECORD = '../packs/claudinite-tasks/migrations/2026-09-07-dormant-is-a-scheduler-setting/migration.mjs';
+const DORMANT_RECORD = '../packs/claudinite-tasks/migrations/2026-09-07-dormant-is-a-scheduler-setting/migration.mjs'; // @real-entity a real canon path this test reads
 
 // The op is driven through the real record, so what is proved is the move this fleet
 // will actually run rather than a shape invented for the test.
@@ -959,42 +959,42 @@ const moveDormant = async (declaration) => {
 
 test('movePackOwnedSettings: dormant lands on the tasks pack entry and leaves the top level', async () => {
   const { done, after } = await moveDormant({
-    packs: ['basics', { id: 'claudinite-tasks', config: { other: 1 } }],
+    packs: ['acme-pack', { id: 'claudinite-tasks', config: { other: 1 } }], // @real-entity the record under test names this pack; that is its content
     dormant: true,
     rules: { 'some-rule': 'blocking' },
   });
   assert.equal(done.length, 1);
   assert.equal(after.dormant, undefined, 'the retired spelling is gone');
-  assert.deepEqual(after.packs[1], { id: 'claudinite-tasks', config: { other: 1, dormant: true } },
+  assert.deepEqual(after.packs[1], { id: 'claudinite-tasks', config: { other: 1, dormant: true } }, // @real-entity the record under test names this pack; that is its content
     'the entry keeps the parameters it already had');
   assert.deepEqual(after.rules, { 'some-rule': 'blocking' }, 'nothing else the member wrote is touched');
 });
 
 test('movePackOwnedSettings: a bare string entry is promoted to carry the parameter', async () => {
-  const { after } = await moveDormant({ packs: ['basics', 'claudinite-tasks'], dormant: true });
-  assert.deepEqual(after.packs, ['basics', { id: 'claudinite-tasks', config: { dormant: true } }]);
+  const { after } = await moveDormant({ packs: ['acme-pack', 'claudinite-tasks'], dormant: true }); // @real-entity the record under test names this pack; that is its content
+  assert.deepEqual(after.packs, ['acme-pack', { id: 'claudinite-tasks', config: { dormant: true } }]); // @real-entity the record under test names this pack; that is its content
 });
 
 test('movePackOwnedSettings: false moves too — it is an answer, not an absence', async () => {
   // Dropping it as "falsy, so it says nothing" loses a project's explicit statement that
   // it is awake, which is a different thing from never having been asked.
-  const { after } = await moveDormant({ packs: ['claudinite-tasks'], dormant: false });
-  assert.deepEqual(after.packs, [{ id: 'claudinite-tasks', config: { dormant: false } }]);
+  const { after } = await moveDormant({ packs: ['claudinite-tasks'], dormant: false }); // @real-entity the record under test names this pack; that is its content
+  assert.deepEqual(after.packs, [{ id: 'claudinite-tasks', config: { dormant: false } }]); // @real-entity the record under test names this pack; that is its content
 });
 
 test('movePackOwnedSettings: the key is dropped where the pack is not declared', async () => {
   // It governed nothing there, and leaving it keeps an unknown-setting error alive for
   // a repo that has no scheduler to stop. Inventing an entry would be worse still: it
   // would activate a pack nobody asked for.
-  const { done, after } = await moveDormant({ packs: ['basics'], dormant: true });
+  const { done, after } = await moveDormant({ packs: ['acme-pack'], dormant: true });
   assert.equal(after.dormant, undefined);
-  assert.deepEqual(after.packs, ['basics'], 'no entry conjured to hold it');
+  assert.deepEqual(after.packs, ['acme-pack'], 'no entry conjured to hold it');
   assert.match(done[0], /not declared here/);
 });
 
 test('movePackOwnedSettings: an entry that already answers is not overruled', async () => {
   const { done, after } = await moveDormant({
-    packs: [{ id: 'claudinite-tasks', config: { dormant: false } }],
+    packs: [{ id: 'claudinite-tasks', config: { dormant: false } }], // @real-entity the record under test names this pack; that is its content
     dormant: true,
   });
   assert.equal(after.packs[0].config.dormant, false, 'the current spelling stands');
@@ -1003,7 +1003,7 @@ test('movePackOwnedSettings: an entry that already answers is not overruled', as
 });
 
 test('movePackOwnedSettings: idempotent, and silent on a declaration without the key', async () => {
-  const once = await moveDormant({ packs: ['claudinite-tasks'], dormant: true });
+  const once = await moveDormant({ packs: ['claudinite-tasks'], dormant: true }); // @real-entity the record under test names this pack; that is its content
   const twice = await moveDormant(once.after);
   assert.deepEqual(twice.done, [], 'a converged member is a no-op');
   assert.equal(twice.after, null, 'and nothing is rewritten');
@@ -1013,7 +1013,7 @@ test('movePackOwnedSettings: packs keeps its position in the file', async () => 
   // The declaration is a file people read, and a rewrite that shuffles `packs` to the
   // bottom makes every future diff of it unreadable.
   const { text } = await moveDormant({
-    packs: ['claudinite-tasks'], dormant: true, rules: {}, accept: [],
+    packs: ['claudinite-tasks'], dormant: true, rules: {}, accept: [], // @real-entity the record under test names this pack; that is its content
   });
   assert.deepEqual(Object.keys(JSON.parse(text)), ['packs', 'rules', 'accept']);
 });
@@ -1134,8 +1134,8 @@ test('job-permissions-contents-read writes exactly the blocks the stubs carry, a
   assert.ok(m, 'discovered');
   const canon = dirname(dirname(fileURLToPath(import.meta.url)));
   const stubFor = {
-    '.github/workflows/claudinite-scheduler.yml': 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
-    '.github/workflows/claudinite-executor.yml': 'packs/claudinite-tasks/stubs/claudinite-executor.yml',
+    '.github/workflows/claudinite-scheduler.yml': 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml', // @real-entity a real canon path this test reads
+    '.github/workflows/claudinite-executor.yml': 'packs/claudinite-tasks/stubs/claudinite-executor.yml', // @real-entity a real canon path this test reads
   };
   assert.deepEqual(m.rewrite.map((r) => r.file).sort(), Object.keys(stubFor).sort(), 'both workflows, no other file');
   for (const { file, replace } of m.rewrite) {
