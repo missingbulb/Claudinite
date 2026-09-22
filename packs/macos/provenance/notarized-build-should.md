@@ -4,13 +4,13 @@
   `dev/procedures/mac-audio-lifecycle.md`.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
-- **Mechanism:** a RULES.md rule, triggered on "Do not enable the App Sandbox on the Developer ID
-  track.".
+- **Mechanism:** a RULES.md rule, triggered on "A notarized build should need none of that".
 - **Landed:** #756 (Closes #641) · pack version 1.
 
-## 2026-09-05 · moved · into the macos-entitlements-and-tcc skill (#1667)
+## 2026-09-05 · retired · the notarized-build line moves to the README (#1667)
+- **Reason:** it describes rather than instructs - it names the sign that the signing lane is not
+  running - so the audit moved it out of RULES.md, where every session in every declaring repo pays
+  for it, into the pack README beside the skills paragraph. No carrier has named it since.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Fable 5.1, per the commit trailer.
-- **Mechanism:** a guideline of the `macos-entitlements-and-tcc` skill, whose forced paths cover the
-  moment it is needed.
 - **Landed:** #1667 (Closes #1662) · pack version 60903.1.
