@@ -6,6 +6,7 @@
   come from inside the `platforms:` array's own brackets with Swift comments stripped, and the
   plist's XML comments are blanked length-preservingly so the finding still points at the real line.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a coded check, `packs/macos/minimum-system-version-agrees.mjs`, blocking. Coded
   rather than declared for the cross-file comparison.
 - **Rejected:** deleting the prose bullet it converts. Under the deletion test the bullet stays

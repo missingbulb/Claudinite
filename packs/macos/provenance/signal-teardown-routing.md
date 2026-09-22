@@ -9,6 +9,7 @@
   The prose bullet beside it was kept rather than deleted, since it also carries the residual risk
   and the NSException exit path.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** a coded check, `packs/macos/signal-teardown-routing.mjs`, blocking, scanning
   `*.swift` anywhere with comments stripped rather than assuming a `mac/` layout.
 - **Landed:** #756 (Closes #641) · pack version 1.

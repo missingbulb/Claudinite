@@ -3,6 +3,7 @@
   through GitHub Actions: its `mac/scripts/`, `mac/Resources/`, release workflow and
   `dev/procedures/mac-audio-lifecycle.md`.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "Say out loud, in a build annotation, which lane
   ran.".
 - **Landed:** #756 (Closes #641) · pack version 1.

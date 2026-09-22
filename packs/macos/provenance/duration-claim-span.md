@@ -3,5 +3,6 @@
   keying a presence span on the device UID, so that a replug or a swap is a new arrival rather than
   a continuation.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "A duration is a claim about a span you observed.".
 - **Landed:** #756 (Closes #641) · pack version 1.

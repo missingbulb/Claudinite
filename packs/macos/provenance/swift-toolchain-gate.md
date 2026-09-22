@@ -8,6 +8,7 @@
   the toolchain-less Mac a diagnostic script is meant to degrade on. Learned on LaughCounter, whose
   owner's Mac installs the DMG from CI and carries no Xcode tools.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "`command -v swift` does not test for a Swift
   toolchain.".
 - **Retire when:** reaffirm while the stub behaviour stands; retire if Apple stops shipping it or
@@ -20,6 +21,7 @@
 - **Reason:** the pack's prose already carried the rule; the check was the missing half. The probe
   must sit behind an `xcode-select -p` gate, which a scan over shell and workflow files can judge.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude, per the commit trailer.
 - **Mechanism:** a coded check, `packs/macos/worldRules/swift-toolchain-gate.mjs`, blocking. The
   RULES.md bullet stayed for now: the deletion test is applied only once a check exists, and it was
   applied the following day.
@@ -29,5 +31,6 @@
 - **Reason:** the deletion test, applied once the check existed: the finding's what, why and fix
   fully reproduce the bullet, so the bullet is deleted whole rather than trimmed.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Sonnet 5, per the commit trailer.
 - **Mechanism:** the RULES.md bullet is deleted; `swift-toolchain-gate` carries the rule alone.
 - **Landed:** #1781 · pack version 60906.1.

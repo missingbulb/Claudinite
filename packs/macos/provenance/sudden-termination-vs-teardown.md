@@ -8,6 +8,7 @@
   with nothing to run on the way out stays quiet. Its prose bullet was deleted whole under the
   deletion test, the finding's what/why/fix carrying it.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** a coded check, `packs/macos/sudden-termination-vs-teardown.mjs`, blocking,
   path-agnostic over `*.swift` and `*.plist`.
 - **Landed:** #756 (Closes #641) · pack version 1.
@@ -17,6 +18,7 @@
   relevance probe can ignore comments; keeping it coded left it the odd one out among the
   conversions that slice of the review asked for.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5, per the commit trailer.
 - **Mechanism:** the check moves out of `packs/macos/sudden-termination-vs-teardown.mjs` into
   `packs/macos/declared-checks.json`. It is the first customer of `ignoringComments` on
   `someTrackedFileContains`, added to the vocabulary rather than as a new key, so a Swift comment

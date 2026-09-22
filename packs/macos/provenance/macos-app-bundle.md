@@ -4,6 +4,7 @@
   alone is not predictable enough to carry a rule. The two plist keys are needed exactly when those
   files are edited, so they clear it.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Fable 5.1, per the commit trailer.
 - **Mechanism:** the `macos-app-bundle` skill, body guidelines, held by the guard for any edit of
   `**/Info.plist` or `**/Package.swift`.
 - **Landed:** #1667 (Closes #1662) · pack version 60903.1.

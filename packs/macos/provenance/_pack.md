@@ -6,6 +6,7 @@
   and `app-store-release` cover neighbouring axes and none covers a Developer-ID-signed, notarized,
   DMG-distributed Mac app.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** the pack manifest, fingerprinted on a `Package.swift` at the repo root or one
   directory down (a monorepo's `mac/` dir) and never deeper, so a nested fixture package cannot trip
   detection. The marker only suspects the pack, since a Swift package can equally be a library or an
@@ -23,6 +24,7 @@
   which fails the mount self-test, so `minEngineVersion` rises to the engine release that reads the
   conventions and the update flow's terminal holds the ordering.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** the manifest keeps `version`, `minEngineVersion`, `ruleRoutingGuidance`, `marker`
   and `detect`; `id`, `prose`, `badge`, `skills`, `worldRules` and `workRules` are resolved from the
   pack directory. The two coded checks move into `worldRules/` and the tests into `test/`, which no

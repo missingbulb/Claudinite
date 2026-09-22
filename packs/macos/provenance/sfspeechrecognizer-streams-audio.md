@@ -3,6 +3,7 @@
   check; `requiresOnDeviceRecognition` is a property of the request, so a call site added later
   starts out server-side.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "SFSpeechRecognizer streams audio to Apple's servers
   by default.".
 - **Landed:** #756 (Closes #641) · pack version 1.

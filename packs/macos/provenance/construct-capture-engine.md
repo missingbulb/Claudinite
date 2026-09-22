@@ -3,6 +3,7 @@
   the hidden aggregate's observable name (`CADefaultDeviceAggregate-<pid>-<n>`), which makes a
   retry ladder's real cost countable rather than arguable.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "Never construct a capture engine to ask whether a
   device exists.".
 - **Landed:** #756 (Closes #641) · pack version 1.

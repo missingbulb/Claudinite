@@ -6,6 +6,7 @@
   because it also carries the residual risk no check sees: `SIGKILL`, Force Quit and a crash stay
   uncoverable.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5, per the commit trailer.
 - **Mechanism:** a RULES.md rule, triggered on "NSApplication installs no signal handlers".
 - **Landed:** #756 (Closes #641) · pack version 1.
 
@@ -14,6 +15,7 @@
   the `SIG_IGN` remedy, so that half of the bullet goes; the residual-risk caveat stays, because
   `SIGKILL`, Force Quit and a crash are uncoverable by any check.
 - **Actor:** @missingbulb (owner).
+- **Model:** Claude Sonnet 5, per the commit trailer.
 - **Mechanism:** the rule is now carried jointly - the check for the routing, the RULES.md bullet
   for what the check cannot judge.
 - **Landed:** #1781 · pack version 60906.1.
