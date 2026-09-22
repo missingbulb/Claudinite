@@ -93,3 +93,15 @@
   reads it.
 - **Retire when:** a counter goes two months without a rule reading it.
 - **Landed:** #2214
+
+## 2026-09-22 · policy-changed · the delivery target is handed in, never discovered (#1943)
+- **Reason:** `deliverGenerated` kept a `branchPrefix`/`stamp` discovery path for the window in
+  which a member's vendored executor predated the target hand-off (#1695). This caller now hands in
+  the executor's resolved branch and nothing else, so there is one decision site for which branch a
+  run delivers on rather than two that can disagree.
+- **Mechanism:** the worker passes `branch` through from `CLAUDINITE_TARGET_BRANCH`; the delivery
+  seam requires it and the discovery parameters are gone.
+- **Actor:** claudinite/engine implement-request run, conflicts resolved and rebased in an owner
+  session.
+- **Model:** claude-opus-5
+- **Landed:** #1943

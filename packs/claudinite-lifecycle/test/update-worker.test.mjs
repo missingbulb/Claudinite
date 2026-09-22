@@ -3,22 +3,14 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { updateBranchName, updatePullText, main } from '../tasks/update/worker.mjs';
+import { updatePullText, main } from '../tasks/update/worker.mjs';
 import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { removeTree } from '../../../engine/remove-tree.mjs';
 
 // The update runner's git-free surface. Its clone/push/PR half is validated by the
-// live pilot, exactly as baselining's is — what is unit-testable is the naming, the
-// text a human reads when a run stops, and the stand-down that decides whether any
-// of it happens at all.
-
-test('a branch carries its date and a seed, so two runs on one day cannot collide', () => {
-  const a = updateBranchName('2026-08-12', 'abc123');
-  const b = updateBranchName('2026-08-12', 'def456');
-  assert.equal(a, 'claudinite/update-2026-08-12-abc123');
-  assert.notEqual(a, b);
-  assert.match(a, /2026-08-12/, 'a name a human can read a week later');
-});
+// live pilot, exactly as baselining's is — what is unit-testable is the text a human
+// reads when a run stops, and the stand-downs that decide whether any of it happens
+// at all.
 
 test('the PR text leads with the terminal, then what moved', () => {
   const { title, body } = updatePullText(
@@ -102,61 +94,43 @@ test('the terminal vocabulary the runner acts on is the flows\' own', async () =
   assert.equal(NEEDS_HUMAN, 'needs-human', 'the label and the terminal are one string');
 });
 
-test('the runner disposes of an open update PR BEFORE it converges (#787)', async () => {
-  // The defect this closes: disposal placed after the converge is unreachable on a
-  // quiet cycle, because `nothing changed — no branch, no PR` returns first. So the
-  // cycle that should have landed the stranded PR opened a duplicate instead.
-  // Asserted structurally, on the one ordering that makes the promise keepable.
-  const fs = await import('node:fs');
-  const src = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
-
-  const disposal = src.indexOf('disposeOpenPull(');
-  const clone = src.indexOf("'clone', '--depth'");
-  const quietReturn = src.indexOf('nothing changed — no branch, no PR');
-  assert.ok(disposal > 0 && clone > 0 && quietReturn > 0, 'the three landmarks still exist');
-  assert.ok(disposal < clone, 'disposal must precede the canon clone and the converge that follows it');
-  assert.ok(disposal < quietReturn, 'a cycle with nothing to converge must still dispose of the incumbent');
-
-  // And two of the three outcomes must END the cycle: treating either `kept` or
-  // `merged` as "carry on" is what puts a second PR on top of a live one, or
-  // re-delivers a diff that just landed. Counted between the disposal and the clone,
-  // so a handler that stops branching still has to stop the run.
-  const block = src.slice(disposal, clone);
-  assert.equal((block.match(/\breturn;/g) ?? []).length, 2,
-    'both cycle-ending outcomes must return before the converge begins');
-  for (const outcome of ['kept', 'merged']) {
-    assert.match(block, new RegExp(`disposal === '${outcome}'`), `the runner ignores the ${outcome} outcome`);
+// THE TARGET IS THE EXECUTOR'S, AND IT IS REQUIRED (#1698). Which branch this run
+// pushes to and which pull request it delivers on are resolved before the subprocess
+// starts and handed in as `CLAUDINITE_TARGET_BRANCH` / `CLAUDINITE_TARGET_PR`. The
+// runner used to dispose of its own incumbent and mint its own branch where none
+// arrived; both are gone, so an executor that predates the hand-off has to stop the
+// run rather than deliver somewhere nothing is watching.
+test('a converge with no target branch fails, naming the executor that did not hand one in', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claudinite-update-target-'));
+  const held = { ...process.env };
+  try {
+    writeFileSync(join(dir, '.claudinite-settings.json'), '{"packs":[]}\n');
+    Object.assign(process.env, { CLAUDINITE_REPO_ROOT: dir, CLAUDINITE_REPO: 'o/r', GITHUB_TOKEN: 't' });
+    for (const v of ['CLAUDINITE_TARGET_BRANCH', 'CLAUDINITE_TARGET_PR', 'CLAUDINITE_CANON_REF']) delete process.env[v];
+    // It must fail BEFORE the canon clone: a run that cannot deliver has no business
+    // spending minutes converging a tree it will then have nowhere to put — and a
+    // clone here would make this case a network test.
+    await assert.rejects(main(), /CLAUDINITE_TARGET_BRANCH/);
+  } finally {
+    for (const k of Object.keys(process.env)) if (!(k in held)) delete process.env[k];
+    Object.assign(process.env, held);
+    removeTree(dir);
   }
 });
 
-test('the runner finds its incumbent by the same prefix it delivers on', async () => {
-  // A prefix that drifted from the branch names would silently find nothing to
-  // dispose of, which reads exactly like a healthy cycle.
+test('the rehearsal is exempt from that requirement — the canary gate hands in no target', async () => {
+  // A two-artifact claim, and the reason the guard above is not unconditional: the
+  // canary workflow drives this worker directly, with no executor to resolve a
+  // target, and a rehearsal delivers nothing anyway. A guard that fired there would
+  // fail the release gate on every merge to main.
   const fs = await import('node:fs');
+  const workflow = fs.readFileSync('.github/workflows/canary-rehearsal.yml', 'utf8');
+  assert.ok(!workflow.includes('CLAUDINITE_TARGET_BRANCH'), 'the gate names no target — so the worker must not demand one');
   const src = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
-  assert.match(src, /openDeliveredPull\(open\.json, UPDATE_PREFIX\)/);
-  assert.ok(updateBranchName('2026-08-12', 'abc123').startsWith('claudinite/update'),
-    'the delivered branch and the searched prefix are the same family');
-});
-
-// THE TARGET. The executor resolves which branch this run pushes to and which
-// pull request it delivers on, and hands them in as `CLAUDINITE_TARGET_BRANCH`
-// and `CLAUDINITE_TARGET_PR`. Given one, the runner disposes of nothing and mints
-// nothing: that was the second decision site #1695 removed. The old path stands
-// only for an executor that predates the hand-off, until #1698 removes it.
-test('given a target branch, the runner neither disposes of an incumbent nor mints a branch of its own', async () => {
-  const fs = await import('node:fs');
-  const src = fs.readFileSync('packs/claudinite-lifecycle/tasks/update/worker.mjs', 'utf8');
-  const target = src.indexOf('CLAUDINITE_TARGET_BRANCH');
-  const disposal = src.indexOf('disposeOpenPull(');
-  const mint = src.indexOf('updateBranchName(day, seed)');
-  assert.ok(target > 0 && target < disposal, 'the target is read before the legacy disposal it guards');
-  // Both legacy sites sit under the guard on the target's absence.
-  const guardedDisposal = src.slice(src.lastIndexOf('if (!targetBranch)', disposal), disposal);
-  assert.ok(guardedDisposal.length > 0 && guardedDisposal.length < 1500, 'the disposal is inside the no-target branch');
-  assert.match(src.slice(mint - 200, mint + 40), /targetBranch \?\? updateBranchName\(day, seed\)/,
-    'the branch is the target when there is one, and the runner\'s own only when there is not');
-  assert.match(src.slice(target, disposal), /@legacy-tolerance advisory:none retire:#1698/, 'the held path names the link that removes it');
+  const refusal = src.indexOf('no CLAUDINITE_TARGET_BRANCH');
+  assert.ok(refusal > 0, 'the worker still refuses a converge with no target to deliver on');
+  assert.match(src.slice(src.lastIndexOf('if (', refusal), refusal), /rehearsalRef/,
+    'the target requirement must stand down for a rehearsal');
 });
 
 test('rehearsal mode announces that it converged, and the gate greps for it', async () => {

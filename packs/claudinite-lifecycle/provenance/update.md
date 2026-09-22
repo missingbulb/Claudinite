@@ -59,3 +59,20 @@
 - **Mechanism:** the task's apply stage and its pull-request disposal, with the diff's predicted
   shape stated as its automerge policy.
 - **Landed:** #1933 (Refs #1932, #1934) · pack version 60911.1.
+
+## 2026-09-22 · policy-changed · the executor's target is required, and the worker's two fallbacks are gone (#1943)
+- **Reason:** the worker kept a decision site of its own for the window in which a member's vendored
+  executor predated the `CLAUDINITE_TARGET_*` hand-off (#1695). That window has passed, so the
+  incumbent-by-branch-prefix disposal and the minted `claudinite/update-<day>-<seed>` name both go.
+  An absent target now fails the run naming the stale executor rather than delivering onto a branch
+  nothing is watching: for a member whose executor genuinely predates the hand-off this is a park,
+  and the update task is the very thing that would have delivered the newer executor, so the failure
+  has to be visible and name re-baselining as the remedy.
+- **Mechanism:** the worker reads `CLAUDINITE_TARGET_BRANCH` and throws behind a
+  `claudinite-needs-human: action` marker when it is absent; a rehearsal is exempt, since it
+  restores the tree, delivers nothing, and the canary gate drives this worker with no executor at
+  all.
+- **Actor:** claudinite/engine implement-request run, conflicts resolved and rebased in an owner
+  session.
+- **Model:** claude-opus-5
+- **Landed:** #1943
