@@ -16,3 +16,21 @@
   advised against, never refused.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude, per the commit trailer.
+
+## 2026-09-22 · reworded · the append-only rule, its one exception, and a kind for a scope change (#2248)
+- **Source:** #2221, #2222 and #2223, filed from six backfill runs across nineteen packs.
+- **Reason:** the skill said a provenance file is append-only and, a paragraph later, that the
+  backfill may rewrite what the conversion wrote - two sentences with nothing connecting them, and a
+  tool enforcing only the first. Every run hit the date-order refusal with no stated remedy and
+  worked one out, differently. The exception is now named as the lane it always was, `--backfill` on
+  both commands, with the two writes only it may make: replacing the conversion's own placeholder
+  born, and opening the file for an element retired before the marking pass. `_pack.md` is ruled out
+  for that second case because a retired entry seals the file it ends, and the pack's own file must
+  stay appendable forever. `scope-changed` closes the gap the vocabulary had for a manifest or check
+  change whose prose reads the same - runs were reaching for `reworded` on code changes because the
+  already-backfilled packs had.
+- **Actor:** @missingbulb (owner), who asked for the four tool issues fixed together.
+- **Retire when:** the backfill of #2169 is finished and no flow needs to write a dated-in-the-past
+  entry; the flag can then be withdrawn rather than explained.
+- **Landed:** #2248 · the vocabulary change is in the engine helper's KINDS, so a member reads it
+  only once its mount converges.

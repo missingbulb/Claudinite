@@ -22,8 +22,9 @@ so the sections it prints without a draft under them are the run's work, not its
    through the tool rather than `Edit`, and the pre-edit guard reads only `Edit`/`Write`, so
    nothing holds the run until the Stop hook, with every file already written.
 1. **Take one pack** and list what is owed: `node packs/claudinite-growth/provenance.mjs
-   check <pack>` prints what each file is named by and which are empty; a file holding only
-   the conversion's entry is owed too (in a member the tool is
+   check <pack>` prints what each file is named by, which are empty, which hold only the
+   conversion's entry and so owe history too, and how many candidates `_declined.md` already
+   holds. The listing is the whole pass: nothing owed is left off it (in a member the tool is
    `.claudinite/shared/packs/claudinite-growth/provenance.mjs`).
 2. **Write the brief**, source-first: `provenance.mjs brief <pack> > brief.md` (an element
    list after the pack narrows it to those files) reads every empty file's history out of
@@ -34,6 +35,17 @@ so the sections it prints without a draft under them are the run's work, not its
    each body names on GitHub; `history <pack> <element>` prints one element's raw evidence
    where the brief's derivation looks wrong. A shallow clone reads as no history: unshallow
    before trusting an empty brief.
+
+   Three things the brief hands over rather than answering, each printed where it arises.
+   **The issues a commit references** are listed beside the defaults fence and never written
+   into `Landed`: the trailer's keyword is the branch author's and the pull request body's is
+   usually a different one, `Closes` being what fills GitHub's Development panel where `Refs`
+   links nothing there - so read the body and write that keyword. **An element older than the
+   carrier it sits in** gets its own section: the birth is drafted at the earlier carrier the
+   pickaxe found and the later commit re-read as the move or conversion it is, which is a
+   derivation to verify against the old path (`git show <sha>:<old path>`), not to trust.
+   **A pack that has moved** says so under the header, and its inventory covers every path it
+   has lived at, so rows naming a file in full are from before the move.
 3. **Work the commit inventory before the drafts.** The drafts cover what a carrier's own
    text shows changing, which is less than the pack's history; the brief's *every commit that
    touched this pack* table is the rest, each row carrying the files it touched, the version
@@ -53,8 +65,10 @@ so the sections it prints without a draft under them are the run's work, not its
    version. Then one entry per decision the history shows: a rewording, a split, a move
    into a skill, a conversion to a check, a severity change, a policy change. A file the
    conversion filled from `references.md` is written the same way, its converted entry read as
-   evidence: the `Reason` and `Retire when` go on the entries they evidence, and the
-   placeholder `born` dated by the references write goes with the rest of the file.
+   evidence: the `Reason` and `Retire when` move by hand onto the entries they actually
+   evidence. The placeholder `born` itself is the tool's to resolve - `apply --backfill`
+   drops it where the derived birth is earlier and keeps it where its date *is* the birth -
+   so read each such file's own evidence rather than truncating them as a class.
 5. **Write only what the evidence carries.** A field with nothing behind it is omitted,
    never filled with a placeholder or a plausible guess: a fabricated rationale lets a
    future review reaffirm a rule on false grounds, which is worse than no rationale. An
@@ -70,10 +84,16 @@ so the sections it prints without a draft under them are the run's work, not its
    the commit's defaults fence where every element it bore shares them, and on one entry
    where they are its own; a draft the commit did not decide is deleted, and the kind a
    draft guessed (`reworded` for any later commit) is corrected to what the change was.
-   `provenance.mjs apply <pack> brief.md` validates every entry as one batch, appends each
-   once under its defaults, and writes nothing while any one is refused; run twice it
-   appends nothing. An entry the brief cannot carry - a split across files, a declined
-   candidate - goes through `append <pack> <element>`, the entry on stdin. A mechanism the
+   `provenance.mjs apply <pack> brief.md --backfill` validates every entry as one batch,
+   writes each file in date order under its defaults, and writes nothing while any one is
+   refused; run twice it writes nothing new. **`--backfill` is what this run is entitled to
+   and no other caller is**: a backfill derives history that already happened, so its entries
+   are dated before whatever the file holds, which the ordinary append lane refuses and
+   should. It is also what lets a run open the file for an element retired before the marking
+   pass, where the batch runs from `born` through `retired` - such a history never goes on
+   `_pack.md`, which a `retired` entry would seal. An entry the brief cannot carry - a split
+   across files, a declined candidate - goes through `append <pack> <element>`, the entry on
+   stdin. A mechanism the
    pack shares across elements - why a skill loads on these paths, why the release set
    vendors as stubs - is written once, on the element that owns it, and cited from the
    others.
@@ -84,7 +104,10 @@ so the sections it prints without a draft under them are the run's work, not its
    adopting the pack does with it. Work the brief's *README sections* list rather than its
    sentence tells: the tells find history that dates or numbers itself, while a section
    explaining why an element reads as it does carries neither and is the half most often
-   left behind. The header comment of `pack.mjs` is the pack-level
+   left behind. The list counts each section's tables separately, and a table is weighed
+   like any other prose rather than skipped: a table of evidence or of per-member findings
+   is history and moves onto the entries it evidences, while a catalog of what the pack
+   carries stays. In one pack the single largest piece of history was a table. The header comment of `pack.mjs` is the pack-level
    record `_pack.md` is written from - why the pack exists, why it fingerprints as it does
    or not at all, what it carries and why - so its decisions become `_pack` entries and the
    header keeps what a reader of the code needs: what the pack is, in a few lines. Report

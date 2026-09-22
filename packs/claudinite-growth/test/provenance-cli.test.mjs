@@ -230,7 +230,7 @@ test('brief reads each element\'s events from its carrier\'s history, sets a swe
   try {
     const { code, out } = await capture(['brief', 'alpha'], root);
     assert.equal(code, 0);
-    assert.match(out, /5 empty files · 4 pack-local commits · 1 sweep/);
+    assert.match(out, /5 pending files · 4 pack-local commits · 1 sweep/);
     assert.match(out, /```entry born-in-sweep\n## 2026-\d{2}-\d{2} · born · Hyphens everywhere \(#9\)/, 'the element a sweep bore is born there all the same');
     assert.match(out, /- #9 [^\n]* · sweep · /, 'the five-pack commit is marked a sweep on its row');
     assert.doesNotMatch(out, /```entry doing-thing\n## \d{4}-\d{2}-\d{2} · reworded · Hyphens/, 'a sweep is never drafted onto an element');
@@ -320,5 +320,158 @@ test('apply appends every drafted entry once, refuses the whole brief on one bad
     assert.equal(bad.code, 1);
     assert.match(bad.err, /doing-another/);
     assert.equal(readFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), 'utf8'), '', 'one bad entry and nothing is written');
+  } finally { removeTree(root); }
+});
+
+// --- the backfill's own lane, and what the brief may not guess ----------------------
+
+const CONVERTED_FILE = `## 2026-09-14 · born · converted from references.md (RULES-3)
+- **Reason:** it kept biting.
+- **Retire when:** the platform stops needing it.
+`;
+const BACKFILL_BRIEF = `\`\`\`entry doing-thing
+## 2026-07-01 · born · the rule arrives (#7)
+- **Mechanism:** a RULES.md rule.
+\`\`\`
+`;
+
+test('apply --backfill writes a conversion-filled file in date order and replaces the placeholder born; the append lane still refuses it', async () => {
+  const root = briefRepo();
+  const path = join(root, 'brief.md');
+  try {
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), CONVERTED_FILE);
+    writeFileSync(path, BACKFILL_BRIEF);
+
+    // The ordinary lane is append-only and says so: a change recorded now cannot have
+    // happened before the change recorded last.
+    const refused = await capture(['apply', 'alpha', path], root);
+    assert.equal(refused.code, 1);
+    assert.match(refused.err, /appended in date order/);
+
+    const done = await capture(['apply', 'alpha', path, '--backfill'], root);
+    assert.equal(done.code, 0, done.err);
+    assert.match(done.out, /placeholder replaced by an earlier born/);
+    const { entries } = parseEntries(readFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), 'utf8'));
+    assert.deepEqual(entries.map((e) => [e.date, e.kind]), [['2026-07-01', 'born']], 'the conversion\'s placeholder is the thing being corrected');
+    assert.equal(entries[0].fields['Retire when'], undefined, 'what the doc carried moves by hand onto the entry it evidences, never automatically');
+  } finally { removeTree(root); }
+});
+
+test('apply --backfill opens the file no carrier will ever name, for an element retired before the marking pass', async () => {
+  const root = briefRepo();
+  const path = join(root, 'brief.md');
+  const whole = `\`\`\`entry gone-task
+## 2026-06-01 · born · the task arrives (#5)
+- **Mechanism:** task gone-task.
+\`\`\`
+\`\`\`entry gone-task
+## 2026-08-01 · retired · folded into its sibling (#6)
+- **Reason:** a clean run wrote nothing.
+\`\`\`
+`;
+  try {
+    writeFileSync(path, whole);
+    const refused = await capture(['apply', 'alpha', path], root);
+    assert.equal(refused.code, 1);
+    assert.match(refused.err, /does not exist/);
+
+    const done = await capture(['apply', 'alpha', path, '--backfill'], root);
+    assert.equal(done.code, 0, done.err);
+    assert.match(done.out, /created: packs\/alpha\/provenance\/gone-task\.md/);
+    const { entries } = parseEntries(readFileSync(join(root, 'packs/alpha/provenance/gone-task.md'), 'utf8'));
+    assert.deepEqual(entries.map((e) => e.kind), ['born', 'retired']);
+
+    // Only a whole history opens a file - a lone later entry has no birth to stand on.
+    writeFileSync(path, '```entry never-was\n## 2026-08-01 · reworded · from nowhere (#6)\n```\n');
+    const half = await capture(['apply', 'alpha', path, '--backfill'], root);
+    assert.equal(half.code, 1);
+    assert.match(half.err, /does not open with born/);
+  } finally { removeTree(root); }
+});
+
+test('brief never writes a reference keyword into the defaults fence, and hands the pull request body over instead', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing a thing** - the settled way, said better again. (doing-thing)\n\n- **Doing another** - plainly. (doing-another)\n\n- **Born in a sweep** - so. (born-in-sweep)\n');
+    commitAs(root, 'Said better again (#20)\n\nRefs #180\n');
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), '');
+    const { out } = await capture(['brief', 'alpha'], root);
+    // The trailer's keyword is the branch author's; the pull request body's is usually a
+    // different one, and a defaults fence copies whatever it holds onto every entry under
+    // it - so one guessed keyword would fan out across the commit's whole set.
+    assert.doesNotMatch(out, /\*\*Landed:\*\* #20 \(Refs #180\)/);
+    assert.match(out, /- \*\*Landed:\*\* #20\.\n/);
+    assert.match(out, /the commit trailer references Refs #180 - READ THE PULL REQUEST BODY/);
+  } finally { removeTree(root); }
+});
+
+test('brief claims a version row whose text names no pull request from the commit whose diff added it', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/provenance/VERSIONS.md'), '| Version | Date | What changed |\n|---|---|---|\n| 4 | 2026-09-03 | The rule was said better. |\n| 2 | 2026-08-02 | Said better (#8) |\n| 1 | 2026-07-01 | seed (#7) |\n');
+    writeFileSync(join(root, 'packs/alpha/pack.mjs'), '// alpha: the pack for doing things.\n\nexport default {\n  version: 4,\n};\n');
+    commitAs(root, 'Say it better still (#21)');
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), '');
+    const { out } = await capture(['brief', 'alpha'], root);
+    assert.match(out, /- #21 [^\n]*version 4 "The rule was said better\."/, 'the commit that wrote the row is what claims it');
+    assert.doesNotMatch(out, /## version rows no commit here claims[\s\S]*?- 4 /, 'a row its own commit claims is not also reported unclaimed');
+  } finally { removeTree(root); }
+});
+
+test('brief follows an element back through a carrier change, so born is the birth and not the move', async () => {
+  const root = briefRepo();
+  try {
+    // The rule leaves RULES.md for a guidelines skill. Its current carrier's history
+    // begins at the move, which is what would otherwise be drafted as its birth.
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n- **Born in a sweep** - so. (born-in-sweep)\n');
+    mkdirSync(join(root, 'packs/alpha/skills/guide'), { recursive: true });
+    writeFileSync(join(root, 'packs/alpha/skills/guide/SKILL.md'), '---\nname: guide\ndescription: Guide. Use when guiding.\nmetadata:\n  body: guidelines\n---\n\n- **Doing a thing** - the settled way, said better. (doing-thing)\n');
+    commitAs(root, 'The rule moves into the guide skill (#30)');
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), '');
+    const { out } = await capture(['brief', 'alpha', 'doing-thing'], root);
+    assert.match(out, /## elements older than the carrier they sit in/);
+    assert.match(out, /doing-thing: moved into packs\/alpha\/skills\/guide\/SKILL\.md; carried by packs\/alpha\/RULES\.md/);
+    assert.match(out, /```entry doing-thing\n## \d{4}-\d{2}-\d{2} · born · seed \(#7\)/, 'the birth is where the rule first appeared, under its old carrier');
+    assert.match(out, /```entry doing-thing\n## \d{4}-\d{2}-\d{2} · moved · The rule moves into the guide skill \(#30\)/);
+  } finally { removeTree(root); }
+});
+
+test('brief drafts only the check whose own declaration changed, never every id sharing the file', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/declared-checks.json'), JSON.stringify([{ id: 'one', fix: 'do it' }, { id: 'two', fix: 'do that' }], null, 2));
+    writeFileSync(join(root, 'packs/alpha/provenance/one.md'), '');
+    writeFileSync(join(root, 'packs/alpha/provenance/two.md'), '');
+    commitAs(root, 'Two checks (#40)');
+    writeFileSync(join(root, 'packs/alpha/declared-checks.json'), JSON.stringify([{ id: 'one', fix: 'do it properly' }, { id: 'two', fix: 'do that' }], null, 2));
+    commitAs(root, 'Reword one of them (#41)');
+    const { out } = await capture(['brief', 'alpha', 'one', 'two'], root);
+    assert.match(out, /```entry one\n## \d{4}-\d{2}-\d{2} · reworded · Reword one of them \(#41\)/);
+    assert.doesNotMatch(out, /```entry two\n## [^\n]* · reworded/, 'a sibling the commit never touched is not reworded by sharing the file');
+  } finally { removeTree(root); }
+});
+
+test('Model reads the branch side of a merge, where the merge trailer names only the generic Claude', async () => {
+  const root = briefRepo();
+  try {
+    git(root, 'checkout', '-q', '-b', 'side');
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing a thing** - the settled way, said better once more. (doing-thing)\n\n- **Doing another** - plainly. (doing-another)\n\n- **Born in a sweep** - so. (born-in-sweep)\n');
+    commitAs(root, 'Reword on the branch\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\n');
+    git(root, 'checkout', '-q', '-');
+    git(root, 'merge', '-q', '--no-ff', 'side', '-m', 'Reword it once more (#50)\n\nCo-authored-by: Claude <noreply@anthropic.com>\n');
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), '');
+    const { out } = await capture(['brief', 'alpha', 'doing-thing'], root);
+    assert.match(out, /- \*\*Model:\*\* Claude Fable 5, per the commit trailer\./, 'a known attribution is not laundered into the generic one');
+  } finally { removeTree(root); }
+});
+
+test('check lists the declined log and marks a conversion-filled file, so the pass reads off the listing alone', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-thing.md'), CONVERTED_FILE);
+    writeFileSync(join(root, 'packs/alpha/provenance/_declined.md'), '## 2026-07-01 · declined · a check for it\n- **Reason:** nothing can see it.\n');
+    const { out } = await capture(['check', 'alpha'], root);
+    assert.match(out, /doing-thing\.md ← rule "Doing a thing" \(conversion only, history pending\)/);
+    assert.match(out, /_declined\.md ← 1 candidate turned down/);
   } finally { removeTree(root); }
 });

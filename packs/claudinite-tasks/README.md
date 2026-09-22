@@ -5,9 +5,9 @@ its signals, calendar/anchor math, run records, code-work, and the delivery lane
 lands through. Declaring this pack is what gives a repo scheduled work; a repo that does not
 declare it runs none, which is a supported state rather than a degraded one.
 
-The mechanism itself — the state machine, the generator, the executor's protocol, urgency and
-forcing, recovery — is the canon's own tasks-dispatch design document, and authoring a task is the
-`writing-tasks` skill's subject. This file is the pack's own map.
+The mechanism itself, from the state machine and the generator to the executor's protocol,
+urgency, forcing and recovery, is [`docs/PRINCIPLES.md`](docs/PRINCIPLES.md); authoring a task is
+the `writing-tasks` skill's subject. This file is the pack's own map.
 
 ## Layout
 

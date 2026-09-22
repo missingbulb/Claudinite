@@ -9,6 +9,7 @@ import {
   ruleBlocks, normalizeRuleText, skillShape, packCarriers, provenanceFiles, packDirsIn, auditPack,
   proposeSlug, withBody, markPack, parseReferencesDoc, convertReferences, reduceText, reduceFile, checkoutIo,
   KINDS, MECHANISM_KINDS, FIELDS, PACK_ELEMENT, DECLINED_FILE, elementIdOf,
+  backfilledText, checksOfModule, relativeModulesIn,
 } from '../../../engine/checks/helpers/provenance.mjs';
 
 const repo = (files) => {
@@ -433,4 +434,113 @@ test('the vocabulary is what the design states', () => {
   assert.deepEqual([...FIELDS], ['Source', 'Reason', 'Actor', 'Model', 'Mechanism', 'Rejected', 'Retire when', 'Landed']);
   assert.equal(PACK_ELEMENT, '_pack');
   assert.equal(DECLINED_FILE, '_declined.md');
+});
+
+// --- the aggregator, and the backfill's own lane ------------------------------------
+
+const AGGREGATOR = `export { lazy } from './optional-import-lazy.mjs';
+export * from './optional-import-install-hint.mjs';
+`;
+
+test('checksOfModule follows an aggregator checks.mjs to the modules that declare the ids', () => {
+  const root = repo({
+    'packs/py/skills/imports/checks.mjs': AGGREGATOR,
+    'packs/py/skills/imports/optional-import-lazy.mjs': "export const lazy = { id: 'optional-import-lazy', fix: 'x' };\n",
+    'packs/py/skills/imports/optional-import-install-hint.mjs': "export const hint = { id: 'optional-import-install-hint' };\n",
+    'packs/py/skills/imports/SKILL.md': '---\nname: imports\ndescription: Imports. Use when importing.\nmetadata:\n  body: workflow\n---\n\n1. Do.\n',
+    'packs/py/pack.mjs': 'export default {};\n',
+  });
+  try {
+    const carriers = packCarriers('packs/py', checkoutIo(root));
+    const byId = new Map(carriers.checks.map((c) => [c.id, c.file]));
+    // The id is carried by the module that DECLARES it, which is the file a decision
+    // about that check changes - not the aggregator that re-exports it.
+    assert.deepEqual([...byId.keys()].sort(), ['optional-import-install-hint', 'optional-import-lazy']);
+    assert.equal(byId.get('optional-import-lazy'), 'packs/py/skills/imports/optional-import-lazy.mjs');
+    assert.equal(byId.get('optional-import-install-hint'), 'packs/py/skills/imports/optional-import-install-hint.mjs');
+  } finally { removeTree(root); }
+});
+
+test('relativeModulesIn reads relative specifiers only', () => {
+  assert.deepEqual(relativeModulesIn(AGGREGATOR), ['./optional-import-lazy.mjs', './optional-import-install-hint.mjs']);
+  assert.deepEqual(relativeModulesIn("import x from 'node:fs';\nimport y from 'some-package/thing.mjs';\n"), []);
+});
+
+test('checksOfModule does not follow a module that declares an id of its own, which is a check and not an aggregator', () => {
+  // The discriminator matters: a checks.mjs that declares its own check imports helpers,
+  // and reading THEIR `id:` literals - a documented example, an unrelated key - mints a
+  // carrier no provenance file will ever name, in a pack nobody touched.
+  const files = {
+    'p/skills/s/checks.mjs': "import { finding } from '../../../engine/findings.mjs';\nimport { state } from './interview.mjs';\nconst rule = { id: 'interview-answer-stale' };\nexport default [rule];\n",
+    'p/skills/s/interview.mjs': "// questions: [{ id: 'goals', prompt: 'x' }]\nexport const state = 1;\n",
+  };
+  const io = { read: (f) => files[f] ?? null, exists: (f) => f in files, listDir: () => null };
+  assert.deepEqual(checksOfModule(io, 'p/skills/s/checks.mjs', 'p').map((c) => c.id), ['interview-answer-stale']);
+});
+
+test('checksOfModule stays inside the pack and survives a cycle between aggregators', () => {
+  const files = {
+    'p/skills/s/checks.mjs': "export * from './mid.mjs';\nexport * from '../../../engine/shared.mjs';\n",
+    'p/skills/s/mid.mjs': "export * from './leaf.mjs';\nexport * from './checks.mjs';\n",
+    'p/skills/s/leaf.mjs': "export const c = { id: 'leaf-check' };\n",
+    'engine/shared.mjs': "export const helper = { id: 'not-a-pack-carrier' };\n",
+  };
+  const io = { read: (f) => files[f] ?? null, exists: (f) => f in files, listDir: () => null };
+  assert.deepEqual(checksOfModule(io, 'p/skills/s/checks.mjs', 'p').map((c) => c.id), ['leaf-check'],
+    'shared engine code is never one of the pack\'s carriers, and the cycle terminates');
+});
+
+const CONVERTED = `## 2026-09-14 · born · converted from references.md (RULES-3)
+- **Reason:** it kept biting.
+- **Retire when:** the platform fixes it.
+`;
+
+test('provenanceFiles marks a file the conversion filled, which reads as filled to anything counting bytes', () => {
+  const root = repo({
+    'packs/a/pack.mjs': 'export default {};\n',
+    'packs/a/provenance/converted-rule.md': CONVERTED,
+    'packs/a/provenance/real.md': BORN,
+    'packs/a/provenance/empty.md': '',
+  });
+  try {
+    const files = provenanceFiles('packs/a', checkoutIo(root));
+    assert.equal(files.get('converted-rule').convertedOnly, true);
+    assert.equal(files.get('converted-rule').empty, false, 'it holds an entry, so byte-counting says nothing is owed');
+    assert.equal(files.get('real').convertedOnly, false);
+    assert.equal(files.get('empty').convertedOnly, false);
+  } finally { removeTree(root); }
+});
+
+const entry = (date, kind, title, fields = {}) => ({ date, kind, title, fields: { Mechanism: 'prose.', ...fields } });
+
+test('backfilledText writes the derived history in date order over a conversion-filled file, dropping the placeholder born', () => {
+  const r = backfilledText(CONVERTED, [
+    entry('2026-07-08', 'born', 'the rule arrives (#165)'),
+    entry('2026-08-02', 'reworded', 'said better (#900)'),
+  ]);
+  assert.deepEqual(r.problems, []);
+  assert.deepEqual(r.superseded, ['2026-09-14 · born · converted from references.md (RULES-3)']);
+  const { entries } = parseEntries(r.text);
+  assert.deepEqual(entries.map((e) => [e.date, e.kind]), [['2026-07-08', 'born'], ['2026-08-02', 'reworded']]);
+});
+
+test('backfilledText keeps a conversion placeholder whose date IS the birth, so the run never has to judge truncation', () => {
+  const r = backfilledText(CONVERTED, [entry('2026-09-20', 'strengthened', 'tightened (#1947)')]);
+  assert.deepEqual(r.problems, []);
+  assert.deepEqual(r.superseded, [], 'no earlier born arrived, so nothing is replaced');
+  const { entries } = parseEntries(r.text);
+  assert.deepEqual(entries.map((e) => e.date), ['2026-09-14', '2026-09-20']);
+});
+
+test('backfilledText refuses to leave a retired entry above another, or a file with two borns', () => {
+  const retired = `${CONVERTED}\n## 2026-09-15 · retired · gone (#2)\n- **Reason:** folded in.\n`;
+  const late = backfilledText(retired, [entry('2026-09-20', 'reworded', 'after the grave (#3)')]);
+  assert.match(late.problems.join('\n'), /retired entry is a file's last/);
+  const twice = backfilledText(BORN, [entry('2026-06-01', 'born', 'a second birth (#4)')]);
+  assert.match(twice.problems.join('\n'), /two born entries/);
+});
+
+test('appendedText still refuses the out-of-order entry every other caller would be writing', () => {
+  const { problems } = appendedText(CONVERTED, entry('2026-07-08', 'reworded', 'earlier than the file (#165)'));
+  assert.match(problems.join('\n'), /appended in date order/);
 });
