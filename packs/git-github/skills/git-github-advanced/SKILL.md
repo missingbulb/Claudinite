@@ -18,7 +18,7 @@ To post a **status update** on an issue (the lifecycle's "update the issue's sta
 
 ## Don't cite an issue or PR number before that object exists
 
-Issue and PR numbers share one counter per repo, so a comment or PR body written before its companion object is filed ("filed as a dedicated issue: #222") can end up citing the wrong number once that object actually lands and consumes a different one. Comments generally have no reliable edit path to fix a wrong citation afterward. File or create the referenced object first, read back the real number it returns, then write anything that cites it — or leave an explicit placeholder and patch it once the number is known.
+Issue and PR numbers share one counter per repo, so a comment or PR body written before its companion object is filed ("filed as a dedicated issue: #222") can end up citing the wrong number once that object actually lands and consumes a different one. Comments generally have no reliable edit path to fix a wrong citation afterward. File or create the referenced object first, read back the real number it returns, then write anything that cites it - or leave an explicit placeholder and patch it once the number is known.
 
 ## An auto-merge refusal is not a verdict — read the PR's state, then act
 
@@ -30,7 +30,7 @@ Issue and PR numbers share one counter per repo, so a comment or PR body written
 
 Never re-arm on a loop hoping the answer changes — observed runs answered "unstable" then "clean" seconds later with nothing changed in between, and one spent ~6 minutes of a 13-minute budget circling a single PR without merging it.
 
-## `merge_pull_request` right after a force-push to its head can 500 — retry, don't diagnose
+## `merge_pull_request` right after a force-push to its head can 500 - retry, don't diagnose
 
 The PR's mergeable-state recompute lags a force-push to its head branch, so a `merge_pull_request` call issued immediately after can 500 even though the merge is otherwise clean. Treat the first such 500 as a timing artifact and retry with backoff, rather than reading it as a real merge failure.
 
@@ -54,7 +54,7 @@ There's no cost to a branch carrying many commits when the project uses a **squa
 - **When a rebase or a review round drops part of a branch, amend the commit message in the same step** — then read it back against `git show --stat` before merging. Under a squash merge the branch's commit body *becomes* `main`'s permanent record, while the explanation of what was dropped, if it lives in a PR comment, is not carried by the squash at all. A commit describing a change to files it never touched sends the next reader of `git log -- <path>` hunting for work that isn't there.
 
 - **When a Stop-hook or CI finding names its own fix as a plain amend, take that fix** — a check whose message says "amend the latest commit" is answered by exactly that; scripting a `filter-branch`/rewrite pass to backdate the fix into every prior commit is needless risk (a wrong regex, a bad force-push) for no benefit over the one-line remedy.
-- **Fixing a trailer or arming auto-merge on a branch already pushed — add a commit, don't force-push.** The session's own permission classifier can deny `git push --force-with-lease` outright as a destructive rewrite of an already-pushed commit, even for the smallest edit, and a differently-phrased retry hits the same classifier. Skip the amend: make a new commit (`--allow-empty` if nothing in the tree actually changed) and push it as a plain fast-forward — it carries the fix forward with no force-push in the loop at all.
+- **Fixing a trailer or arming auto-merge on a branch already pushed - add a commit, don't force-push.** The session's own permission classifier can deny `git push --force-with-lease` outright as a destructive rewrite of an already-pushed commit, even for the smallest edit, and a differently-phrased retry hits the same classifier. Skip the amend: make a new commit (`--allow-empty` if nothing in the tree actually changed) and push it as a plain fast-forward - it carries the fix forward with no force-push in the loop at all.
 - Don't rewrite published/shared history to satisfy a tooling or authorship check (e.g. a hook flagging "unverified" commits): only amend your own un-pushed branch commits. Commits already on a shared branch — including ones merged in from `main` — belong to that history; reset-authoring or rebasing them forks your branch away from it.
 - After your commit is **squash-merged** to `main`, a *reused* feature branch still carries that original commit (the squash created a *new* commit on `main`, so the branch's own is unreachable from it) — and the next PR off the branch re-includes it in the diff, because the three-dot merge-base predates the squash. Sync the branch to `origin/main` before opening the next PR (`git rebase origin/main`, which drops the commit as an already-applied cherry-pick, or a hard reset): it's your own un-merged branch, so this is the amend-your-own-commits case above, not rewriting shared history.
   - **`git rebase origin/main` only drops the old commit cleanly when the branch carried a *single* squash-merged commit.** When it carried *several* commits that `main` squashed into *one* (then kept developing), git can't match them to the squash as already-applied, so it replays them and conflicts mid-rebase. Replant only the genuinely-new commits instead: `git rebase --onto origin/main <last-squash-merged-commit>` (then `git push --force-with-lease`). If the new work is small, a `git reset --hard origin/main` + redo beats fighting the replay.
@@ -254,9 +254,7 @@ A list or search API call that isn't bounded returns a full page of full-bodied 
 
 All of them, not one: a qualified query still returns a full page, a small page of unqualified matches is still the wrong records, and a small page of full-bodied records still overruns the cap.
 
-**The same cap catches a single large text result, not only a list.** `get_job_logs`'s `tail_lines` is not exempt — guessing a large value to pull enough context for a CI diagnosis can itself exceed the limit, independently of how many records a call returns. Pass a small `tail_lines` first; on overflow, read the tool's own saved-to-disk log path and grep that file for the failure marker (`not ok`, `FAIL`) rather than guessing a bigger number.
-
-**An overflowed `search_issues`/`search_code` result read back from its saved file is GitHub's own search envelope.** The shape is always `{total_count, incomplete_results, items: [...]}` — index `['items']` on the first parse rather than iterating the dict directly or guessing a bare list shape.
+**The same cap catches a single large text result, not only a list.** `get_job_logs`'s `tail_lines` is not exempt - guessing a large value to pull enough context for a CI diagnosis can itself exceed the limit, independently of how many records a call returns. Pass a small `tail_lines` first; on overflow, read the tool's own saved-to-disk log path and grep that file for the failure marker (`not ok`, `FAIL`) rather than guessing a bigger number.
 
 ## Merging gotchas
 

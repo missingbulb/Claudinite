@@ -62,11 +62,11 @@
   `; echo "EXIT:$?"` if in doubt, rather than a second pass of `--help`/`head`/`tail` hunting for
   confirmation that silence is safe. (running-checktheworld-mjs)
 
-- **Verifying "will the Stop hook block me" before committing** — run `check_the_work.mjs`, never
+- **Verifying "will the Stop hook block me" before committing** - run `check_the_work.mjs`, never
   `check_the_world.mjs`: the two share no code and cover disjoint rule scopes. `check_the_world`
   only sees `scope !== 'work'` rules and is what CI runs; the Stop hook runs `check_the_work`'s
-  `scope: 'work'` rules — the diff-plus-transcript checks. A clean `check_the_world` run says
-  nothing about what Stop will find.
+  `scope: 'work'` rules - the diff-plus-transcript checks. A clean `check_the_world` run says
+  nothing about what Stop will find. (stop-hook-not-world)
 
 - **Pushing a change that touches `.github/workflows/`, `.claudinite-checks.json` or pack config**
   — the world sweep runs in CI, not the Stop hook, so run it locally first rather than spend a
