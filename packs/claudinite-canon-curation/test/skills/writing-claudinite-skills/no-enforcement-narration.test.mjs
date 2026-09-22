@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
 import noEnforcementNarration from '../../../skills/writing-claudinite-skills/no-enforcement-narration.mjs';
+import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
-const run = (root) => noEnforcementNarration.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(noEnforcementNarration, buildContext({ root, mode: 'all' }));
 
 // Every fixture spells the REAL layout — a skill lives inside its owning pack,
 // `<pack>/skills/<name>/`. These fixtures previously spelled a root-level

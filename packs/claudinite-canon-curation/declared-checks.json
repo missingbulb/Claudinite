@@ -85,7 +85,7 @@
       {
         "setName": "newEngineExports",
         "forbidEveryFileMatching": {
-          "pathMatching": "/^packs\\/.*\\.mjs$/",
+          "pathMatching": "/^packs\\/(?!.*(?:\\/test\\/|\\.test\\.mjs$)).*\\.mjs$/",
           "text": "/import\\s*\\{[^}]*\\b{value}\\b[^}]*\\}\\s*from\\s*['\"][^'\"]*\\/engine\\//"
         },
         "what": "a pack imports the engine export {value} by name in the change that adds it",

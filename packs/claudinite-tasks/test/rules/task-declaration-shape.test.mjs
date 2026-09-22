@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
 import rule from '../../worldRules/task-declaration-shape.mjs';
+import { runRule } from '../../../../engine/checks/helpers/work.mjs';
 
 const good = {
   id: 'acme-task-h',
@@ -21,7 +22,7 @@ const TASK = '.claudinite/local/packs/mypack/tasks/acme-task-h/task.json';
 
 const run = (files) => {
   const root = makeRepo({ changed: files });
-  try { return rule.run(buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
+  try { return runRule(rule, buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
 };
 const whatsOf = (files) => run(files).map((f) => f.what).join(' | ');
 

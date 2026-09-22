@@ -1,5 +1,4 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
 import { BEACON_PLACEHOLDER, parseWranglerConfig, publishedDir, wranglerConfigPath } from '../lib.mjs';
 
 // WHY. The Cloudflare Web Analytics beacon token is public, but it is also the
@@ -27,16 +26,18 @@ const rule = {
   doc: 'packs/cloudflare-site/RULES.md',
   why: 'a committed token beacons from every checkout and fork into the production site\'s numbers, and the page looks identical either way',
 
-  run(ctx) {
-    const configPath = wranglerConfigPath(ctx.tracked);
-    const dir = configPath && publishedDir(parseWranglerConfig(ctx.read(configPath)), configPath);
+  run({ sources, tracked, read }) {
+    const configPath = wranglerConfigPath(tracked);
+    const dir = configPath && publishedDir(parseWranglerConfig(read(configPath)), configPath);
     if (!dir) return [];
 
     const out = [];
-    for (const file of ctx.tracked.filter((f) => f.startsWith(`${dir}/`))) {
-      const raw = ctx.read(file);
-      if (raw === null) continue;
-      const text = /\.(js|mjs|cjs)$/.test(file) ? stripComments(raw) : raw;
+    for (const source of sources((f) => f.startsWith(`${dir}/`), tracked)) {
+      const { file } = source;
+      // A committed token inside a JS comment is still committed, but a
+      // commented-out one is not a value the site carries - so the JS files are
+      // read as code and everything else as written.
+      const text = /\.(js|mjs|cjs)$/.test(file) ? source.code : source.text;
       text.split('\n').forEach((line, i) => {
         for (const [, token] of line.matchAll(TOKEN)) {
           out.push(finding(rule, {

@@ -45,16 +45,13 @@ const rule = {
   doc: 'packs/basics/README.md',
   why: 'a command in prose is opened only when an agent runs it, so a path left behind by a move goes on instructing every session that follows the doc, with nothing red anywhere',
 
-  run(ctx) {
+  run({ files, exists, sources }) {
     const out = [];
     // Suffix matching needs the whole tracked set, not just this doc's neighbours:
     // a mount path and a canon path are the same file reached two ways.
-    const paths = ctx.files;
-    const resolves = (suffix) => paths.some((f) => f === suffix || f.endsWith(`/${suffix}`));
+    const resolves = (suffix) => files.some((f) => f === suffix || f.endsWith(`/${suffix}`));
 
-    for (const file of ctx.files.filter((f) => AUTHORED_DOC.test(f) && !PACK_DOCS_DIR.test(f))) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources((f) => AUTHORED_DOC.test(f) && !PACK_DOCS_DIR.test(f))) {
       for (const [, path] of text.matchAll(COMMAND)) {
         if (PLACEHOLDER.test(path)) {
           const suffix = path.replace(PLACEHOLDER, '');
@@ -66,7 +63,7 @@ const rule = {
           }));
         } else if (MOUNT.test(path)) {
           const inCanon = path.replace(MOUNT, '');
-          if (ctx.exists(path) || ctx.exists(inCanon)) continue;
+          if (exists(path) || exists(inCanon)) continue;
           out.push(finding(rule, {
             file,
             what: `tells an agent to run \`node ${path}\`, which the mount does not carry`,

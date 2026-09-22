@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import rule from '../worldRules/task-worker-restores-main.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const DIR = '.claudinite/local/packs/mypack/tasks/refresh-data/';
 const WORKER = `${DIR}worker.sh`;
 
 const run = (files) => {
   const root = makeRepo({ changed: files });
-  try { return rule.run(buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
+  try { return runRule(rule, buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
 };
 
 test('task-worker-restores-main: a worker that checks out main before writing is clean', () => {

@@ -12,9 +12,9 @@ const rule = {
   doc: 'packs/github-pages/skills/github-pages-pipeline/SKILL.md',
   why: 'the published artifact is an explicit list, so a stale entry silently drops a page from the live site and an unknown key silently does nothing',
 
-  run(ctx) {
-    if (!adoptedPages(ctx)) return [];
-    const text = ctx.read(CONFIG_PATH);
+  run({ tracked, read }) {
+    if (!adoptedPages({ read })) return [];
+    const text = read(CONFIG_PATH);
     if (text === null) {
       return [finding(rule, {
         file: CONFIG_PATH,
@@ -45,7 +45,7 @@ const rule = {
         }));
         continue;
       }
-      if (!ctx.tracked.some((f) => f === full || f.startsWith(`${full}/`))) {
+      if (!tracked.some((f) => f === full || f.startsWith(`${full}/`))) {
         out.push(finding(rule, {
           file: CONFIG_PATH,
           what: `publish path "${p}" matches nothing tracked at "${full}" — the deploy fails on it, or quietly ships a smaller site than intended`,
@@ -58,7 +58,7 @@ const rule = {
     // at build time; catching it here means it never reaches main.
     const publishesIndex = paths.some((p) => {
       const full = fullOf(p);
-      return full === `${siteRoot}index.html` || ctx.tracked.includes(`${full === '.' ? '' : `${full}/`}index.html`);
+      return full === `${siteRoot}index.html` || tracked.includes(`${full === '.' ? '' : `${full}/`}index.html`);
     });
     if (paths.length && !publishesIndex) {
       out.push(finding(rule, {

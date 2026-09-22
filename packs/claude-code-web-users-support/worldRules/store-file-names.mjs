@@ -36,12 +36,12 @@ const rule = {
 
   // `ctx.files` is the tracked, non-vendored set - the store is committed content, and an
   // uncommitted file is not published to the fleet yet anyway.
-  run(ctx) {
-    const store = resolveStore(ctx.config.packConfig?.[PACK] ?? null);
+  run({ packConfig, filesMatching }) {
+    const store = resolveStore(packConfig(PACK) ?? null);
     if (!store) return []; // no usable store declared — store-configured reports that
 
     const prefix = `${store.path}/`;
-    const held = (ctx.files ?? []).filter((f) => f.startsWith(prefix));
+    const held = filesMatching((f) => f.startsWith(prefix));
     if (!held.length) return []; // this repo is not the store, whatever it points at
 
     // One finding per top-level entry, not per file: a misnamed directory holding a whole

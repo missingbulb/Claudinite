@@ -19,8 +19,8 @@ export function finding(rule, { file, line = null, what, fix, why = null, severi
 }
 
 // WHAT A RULE THAT THREW BECOMES. A rule is a function over a tree nobody chose
-// for it — a malformed manifest in a member repo, a file that is not the JSON its
-// extension claims — and before the runner isolated each one, a single throw
+// for it - a malformed manifest in a member repo, a file that is not the JSON its
+// extension claims - and before the runner isolated each one, a single throw
 // escaped the sweep and took every OTHER rule's findings with it: the run reported
 // nothing rather than everything else. So the failure is a finding like any other,
 // naming the rule that raised and the pack it came from, which is the pair that

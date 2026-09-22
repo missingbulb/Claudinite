@@ -16,9 +16,9 @@ const rule = {
   doc: 'packs/aws-sam/RULES.md',
   why: "esbuild's default outbase is the entry's own dir, so the subdir is stripped from the artifact and a subdir Handler fails at invoke",
 
-  run(ctx) {
+  run(world) {
     const out = [];
-    for (const { templatePath, name, resource } of samResources(ctx)) {
+    for (const { templatePath, name, resource } of samResources(world)) {
       if (resource.Type !== 'AWS::Serverless::Function') continue;
       const meta = resource.Metadata;
       if (!meta || meta.BuildMethod !== 'esbuild') continue;

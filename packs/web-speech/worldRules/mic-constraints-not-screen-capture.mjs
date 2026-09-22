@@ -1,6 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { isSource, lineOf, balanced } from '../lib.mjs';
+import { isSource, balanced } from '../lib.mjs';
 
 // `suppressLocalAudioPlayback` and `restrictOwnAudio` are `getDisplayMedia`
 // SCREEN-CAPTURE constraints. They filter the playout of a captured tab out of
@@ -65,13 +64,11 @@ const rule = {
   doc: 'packs/web-speech/RULES.md',
   why: 'suppressLocalAudioPlayback and restrictOwnAudio are getDisplayMedia screen-capture constraints — they filter a captured tab\'s own playout, not a microphone — so getUserMedia silently ignores them while the author believes self-echo is now handled at the capture layer and never writes the guard that would have handled it',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!isSource(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !DISPLAY_ONLY.some((name) => raw.includes(name))) continue;
-      const src = stripComments(raw);
+    for (const source of sources(isSource)) {
+      if (!DISPLAY_ONLY.some((name) => source.text.includes(name))) continue;
+      const { file, code: src, line: lineAt } = source;
       const seen = new Set();
       CALL.lastIndex = 0;
       for (let m = CALL.exec(src); m; m = CALL.exec(src)) {
@@ -83,7 +80,7 @@ const rule = {
           for (const name of DISPLAY_ONLY) {
             const at = region.search(new RegExp(`\\b${name}\\b`));
             if (at === -1) continue;
-            const line = lineOf(src, start + at);
+            const line = lineAt(start + at);
             if (seen.has(`${name}:${line}`)) continue;
             seen.add(`${name}:${line}`);
             out.push(finding(rule, {

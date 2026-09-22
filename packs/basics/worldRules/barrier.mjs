@@ -18,7 +18,8 @@ const rule = {
   description: "Folders must not reference across a declared barrier (the basics pack entry's config.barriers)",
   why: 'a declared folder barrier encodes an architectural boundary; a crossing reference erodes it silently',
 
-  run(ctx) {
+  run(world) {
+    const { config, mode } = world;
     // The graph moved onto the basics entry when the barriers pack was absorbed
     // into this one (#1681). A member reading its own OLD declaration is the
     // window between its mount converging and the record rewriting its
@@ -27,7 +28,7 @@ const rule = {
     // `legacy-shape-in-use` is the advisory that reaches the holder — the same
     // finding names the entry, and the same edit fixes both shapes.
     // @legacy-tolerance advisory:legacy-shape-in-use retire:#1682
-    const cfg = ctx.config?.packConfig?.basics?.barriers ?? ctx.config?.packConfig?.barriers;
+    const cfg = config?.packConfig?.basics?.barriers ?? config?.packConfig?.barriers;
     if (cfg === undefined || cfg === null) return []; // no graph declared — nothing to enforce
     if (typeof cfg !== 'object' || Array.isArray(cfg) || !('rules' in cfg)) {
       return [specFinding(rule, {
@@ -46,14 +47,14 @@ const rule = {
     const { edges, errors } = normalizeEdges(cfg.rules);
     out.push(...errors.map((e) => specFinding(rule, e)));
 
-    const { findings, stale } = barrierFindings(ctx, edges, rule);
+    const { findings, stale } = barrierFindings(world, edges, rule);
     out.push(...findings);
 
     // Staleness is trustworthy only on a whole-repo sweep with a clean config: a
     // --changed run sees only part of the findings, and any config/scan error
     // means the scan was incomplete.
     const scanErrors = findings.some((f) => f.resolved === undefined);
-    if (ctx.mode === 'all' && !unknown.length && !errors.length && !scanErrors) {
+    if (mode === 'all' && !unknown.length && !errors.length && !scanErrors) {
       out.push(...staleFindings(stale, rule));
     }
     return out;

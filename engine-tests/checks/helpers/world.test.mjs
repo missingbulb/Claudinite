@@ -122,7 +122,7 @@ test('world: filesMatching names the paths, and listDir the names one segment do
 test('world: activePacks is the discovered registry the declaration activates, and packConfig its parameters', () => {
   const root = makeRepo({ changed: { '.claudinite-settings.json': JSON.stringify({ packs: [{ id: A_CANON_PACK, config: { k: 1 } }] }) } });
   try {
-    const declared = { id: A_CANON_PACK, dir: '/canon/packs/basics' };
+    const declared = { id: A_CANON_PACK, dir: `/canon/packs/${A_CANON_PACK}` };
     const undeclared = { id: 'acme-pack', dir: '/canon/packs/acme-pack' };
     const { activePacks, packConfig } = world({ ...context(root), packs: [declared, undeclared] });
     assert.deepEqual(activePacks().map((p) => p.id), [A_CANON_PACK]);

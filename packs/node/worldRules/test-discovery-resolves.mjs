@@ -1,5 +1,4 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { workflowFiles } from '../../../engine/checks/helpers/github-workflows.mjs';
 
 // WHY. Node's default `--test` discovery skips dot-directories outright (see
 // RULES.md's "Test discovery" section), so an invocation naming no path finds
@@ -84,12 +83,12 @@ const rule = {
   doc: 'packs/node/RULES.md',
   why: "Node's test discovery ignores dot-directories, so an invocation naming no existing path (or a stale glob) runs zero tests and exits green — indistinguishable from a passing suite",
 
-  run(ctx) {
-    // Tracked ∪ scanned: `ctx.tracked` is the whole tree in either mode, and
-    // `ctx.files` adds the not-yet-committed ones — a test file added in the
-    // same change as the step that runs it must resolve, or the rule fires on
-    // the very commit that fixes it.
-    const paths = [...new Set([...ctx.tracked, ...(ctx.files || [])])]
+  run({ tracked, files, read, sources, workflows }) {
+    // Tracked ∪ scanned: `tracked` is the whole tree in either mode, and `files`
+    // adds the not-yet-committed ones - a test file added in the same change as
+    // the step that runs it must resolve, or the rule fires on the very commit
+    // that fixes it.
+    const paths = [...new Set([...tracked, ...(files || [])])]
       .filter((f) => !f.startsWith(VENDORED_PREFIX));
     const out = [];
 
@@ -100,7 +99,7 @@ const rule = {
       fix: "pass an explicit path or glob for the tests, e.g. `node --test 'test/**/*.test.mjs'`, and confirm the run's test count is non-zero",
     }));
 
-    const pkg = ctx.read('package.json');
+    const pkg = read('package.json');
     if (pkg !== null) {
       let scripts = {};
       try { scripts = JSON.parse(pkg).scripts || {}; } catch { scripts = {}; }
@@ -117,9 +116,7 @@ const rule = {
       }
     }
 
-    for (const wf of workflowFiles(ctx)) {
-      const text = ctx.read(wf);
-      if (text === null) continue;
+    for (const { file: wf, text } of sources(undefined, workflows())) {
       const lines = text.split('\n');
       for (let i = 0; i < lines.length; i += 1) {
         for (const command of commands(lines[i])) {

@@ -67,8 +67,11 @@ export const VENDORED_ACTIONS = ['read-release-config', 'bump-extension-patch', 
 export const SHIPS_PIPELINE_PATH_RE = /^\.github\/(?:workflows\/[^/]+\.ya?ml|release\.config)$/;
 export const SHIPS_PIPELINE_TEXT_RE = /^(?:name:\s*['"]?(?:Release to Chrome Store|Release)['"]?\s*|manifest_path=.*)$/m;
 
-export function shipsReleasePipeline(ctx) {
-  return ctx.tracked.some((f) => SHIPS_PIPELINE_PATH_RE.test(f) && SHIPS_PIPELINE_TEXT_RE.test(ctx.read(f) ?? ''));
+// Takes the two keys it reads rather than a whole run: it is called from a WORK
+// rule (version-bumped) as readily as from this world one, and those two keys are
+// what both surfaces answer for.
+export function shipsReleasePipeline({ tracked, read }) {
+  return tracked.some((f) => SHIPS_PIPELINE_PATH_RE.test(f) && SHIPS_PIPELINE_TEXT_RE.test(read(f) ?? ''));
 }
 
 const rule = {
@@ -78,13 +81,13 @@ const rule = {
   doc: 'packs/chrome-extension/skills/chrome-store-releases/SKILL.md',
   why: 'every extension repo ships the same pipeline entirely from its own .github/ — vendored from the pack, kept in sync by baselining, with no cross-repo @main dependency',
 
-  run(ctx) {
+  run({ tracked, read }) {
     // RELEVANCE FIRST: a repo that codes an extension but does not publish one
     // ships no pipeline and is asked for nothing here.
-    if (!shipsReleasePipeline(ctx)) return [];
+    if (!shipsReleasePipeline({ tracked, read })) return [];
 
     const path = `.github/workflows/${STUB_FILE}`;
-    const text = ctx.read(path);
+    const text = read(path);
     if (text === null) {
       // Shipping (some workflow carries the orchestrator's name) but not from the
       // contract's path — the set cannot be kept in sync where it is.
@@ -112,7 +115,7 @@ const rule = {
     // scheduler is the repo's only cron — so the orchestrator must be dispatch-only,
     // no `schedule:` at all. Gating on the scheduler's presence makes the flip travel
     // WITH the de-cron'd stub into a repo's mount, never before it.
-    const cutOver = ctx.read('.github/workflows/claudinite-scheduler.yml') !== null;
+    const cutOver = read('.github/workflows/claudinite-scheduler.yml') !== null;
     const cron = /^\s*-\s*cron:\s*['"]?([^'"\n]+?)['"]?\s*$/m.exec(text)?.[1];
     if (cutOver) {
       if (cron !== undefined) {
@@ -145,7 +148,7 @@ const rule = {
     }
     // …and every vendored reusable workflow + composite action must be present.
     for (const wf of VENDORED_WORKFLOWS) {
-      if (ctx.read(`.github/workflows/${wf}`) === null) {
+      if (read(`.github/workflows/${wf}`) === null) {
         out.push(finding(rule, {
           file: `.github/workflows/${wf}`,
           what: `vendored reusable workflow ${wf} is missing`,
@@ -154,7 +157,7 @@ const rule = {
       }
     }
     for (const act of VENDORED_ACTIONS) {
-      if (ctx.read(`.github/actions/${act}/action.yml`) === null) {
+      if (read(`.github/actions/${act}/action.yml`) === null) {
         out.push(finding(rule, {
           file: `.github/actions/${act}/action.yml`,
           what: `vendored composite action ${act} is missing`,

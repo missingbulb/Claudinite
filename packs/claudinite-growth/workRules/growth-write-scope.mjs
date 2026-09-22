@@ -2,7 +2,11 @@ import { sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { runRule } from '../../../engine/checks/helpers/work.mjs';
+// A NAMESPACE import of the dispatch seam, as its twin in claudinite-canon-curation
+// (promote-scope.mjs) takes: a pack file is vendored and the engine lands on its own
+// cadence, so naming an engine export in an import binds this pack's loadability to
+// which engine a member happens to hold.
+import * as seam from '../../../engine/checks/helpers/work.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { LOCAL_PACKS_SUBDIR } from '../../../engine/pack_loader/pack-registry.mjs';
 
@@ -74,7 +78,7 @@ export function runCli(root = process.cwd()) {
     console.log('growth-write-scope: no merge-base with the base branch — nothing to scope.');
     return;
   }
-  const findings = runRule(rule, ctx);
+  const findings = seam.runRule(rule, ctx);
   if (findings.length) {
     console.error(`growth-write-scope: FAIL — a growth run may write only under ${LOCAL_ROOT}, but this branch also touches ${findings.length} path(s):`);
     for (const f of findings) console.error(`  - ${f.file}`);

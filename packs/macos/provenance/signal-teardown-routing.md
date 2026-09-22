@@ -13,3 +13,11 @@
 - **Mechanism:** a coded check, `packs/macos/signal-teardown-routing.mjs`, blocking, scanning
   `*.swift` anywhere with comments stripped rather than assuming a `mac/` layout.
 - **Landed:** #756 (Closes #641) · pack version 1.
+
+## 2026-09-22 · reworded · the rule takes the run's surface rather than the raw context (#2261)
+- **Reason:** the world sweep gained a surface beside check-the-work's, so a rule destructures what
+  it reads and receives it preconfigured instead of re-deriving it off `ctx`. Mechanics only: the
+  sweep's findings are byte-identical.
+- **Actor:** the engine/implement-request run on #2261.
+- **Model:** claude-opus-5
+- **Landed:** #2268

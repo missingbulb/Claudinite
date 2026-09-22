@@ -1,5 +1,4 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
 import { CODE_WORK_ENV_VARS } from '../src/execute/code-work-run.mjs';
 
 // A task's code may read only the CLAUDINITE_* variables code-work is actually
@@ -32,14 +31,12 @@ const rule = {
   doc: 'packs/claudinite-tasks/README.md',
   why: 'a variable nothing sets reads as undefined and the run still goes green — a parameter channel that has stopped being delivered leaves the operation in its unscoped, unguarded mode with no signal at all',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files.filter((f) => TASK_FILE.test(f) && !TEST_FILE.test(f))) {
-      const text = ctx.read(file);
-      if (text === null) continue;
-      // Comments strip in BOTH directions: this rule's own prose names the retired
+    for (const { file, code } of sources((f) => TASK_FILE.test(f) && !TEST_FILE.test(f))) {
+      // Read as CODE in BOTH directions: this rule's own prose names the retired
       // variable, and so does any note explaining why a task stopped reading one.
-      const seen = new Set(stripComments(text).match(READS) ?? []);
+      const seen = new Set(code.match(READS) ?? []);
       for (const name of [...seen].sort()) {
         if (CODE_WORK_ENV_VARS.includes(name)) continue;
         out.push(finding(rule, {

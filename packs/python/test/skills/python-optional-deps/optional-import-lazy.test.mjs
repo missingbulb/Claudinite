@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
 import topLevel from '../../../skills/python-optional-deps/optional-import-lazy.mjs';
+import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
-const run = (root) => topLevel.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(topLevel, buildContext({ root, mode: 'all' }));
 
 // A pyproject.toml declaring numpy/tensorflow/tensorflow-hub optional — the gate
 // that makes a top-level import of one of these a false-positive-free signal.

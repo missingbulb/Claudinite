@@ -1,5 +1,4 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { workflowFiles } from '../../../engine/checks/helpers/github-workflows.mjs';
 import { adoptedPages, DEPLOY_WORKFLOW_FILE, DEPLOY_WORKFLOW_NAME, DEPLOY_WORKFLOW_PATH } from '../lib.mjs';
 
 // WHY. The deploy workflow is VENDORED into each Pages repo's own .github/ — GitHub
@@ -24,10 +23,10 @@ const rule = {
   doc: 'packs/github-pages/skills/github-pages-pipeline/SKILL.md',
   why: 'the release task dispatches this workflow at the commit it released; a second publisher or a push trigger deploys a tree with no version cut and no park lane',
 
-  run(ctx) {
-    if (!adoptedPages(ctx)) return [];
+  run({ sources, read, workflows }) {
+    if (!adoptedPages({ read })) return [];
     const out = [];
-    const text = ctx.read(DEPLOY_WORKFLOW_PATH);
+    const text = read(DEPLOY_WORKFLOW_PATH);
 
     if (text === null) {
       out.push(finding(rule, {
@@ -53,10 +52,7 @@ const rule = {
       }
     }
 
-    for (const file of workflowFiles(ctx)) {
-      if (file === DEPLOY_WORKFLOW_PATH) continue;
-      const wf = ctx.read(file);
-      if (wf === null) continue;
+    for (const { file, text: wf } of sources((f) => f !== DEPLOY_WORKFLOW_PATH, workflows())) {
       wf.split('\n').forEach((line, i) => {
         if (/^\s*#/.test(line) || !PUBLISHES.test(line)) return;
         out.push(finding(rule, {

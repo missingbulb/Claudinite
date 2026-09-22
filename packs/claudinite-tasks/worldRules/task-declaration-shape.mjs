@@ -31,8 +31,8 @@ import { TASK_DECLARATION_PATH_RE, readDeclarationFields } from '../src/contract
 // all, and `takesArg`, which decides whether the declaration may carry one after
 // the colon. Either quote style, because a member's file is its author's.
 const TERM_NAME = /^ {2}['"]([^'"]+)['"]:/gm;
-function siblingTerms(ctx, taskFile) {
-  const text = ctx.read(taskFile.replace(/task\.json$/, 'preconditions.mjs'));
+function siblingTerms(read, taskFile) {
+  const text = read(taskFile.replace(/task\.json$/, 'preconditions.mjs'));
   if (text === null) return new Map();
   const body = stripComments(text);
   const start = body.indexOf('export const terms');
@@ -56,11 +56,9 @@ const rule = {
   doc: 'packs/claudinite-tasks/README.md',
   why: 'the scheduler run and executor read agent_model/expected_outcome/preconditions from this file, not the work item — an illegal or missing value means a task never fires, fires wrong, or writes past its ceiling',
 
-  run(ctx) {
+  run({ sources, read }) {
     const out = [];
-    for (const file of ctx.files.filter((f) => TASK_DECLARATION_PATH_RE.test(f))) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources(TASK_DECLARATION_PATH_RE)) {
       const flag = (what, fix) => out.push(finding(rule, { file, what, fix }));
       const advise = (what, fix) => out.push(finding(rule, { file, severity: 'advisory', what, fix }));
 
@@ -109,7 +107,7 @@ const rule = {
           flag(`"trigger" is ${JSON.stringify(decl.scalar('trigger') ?? null)}, not a legal value`,
             `use one of: ${TRIGGERS.join(', ')} — "${TRIGGER_SCHEDULE}" is asked by the scheduler at every tick, "${TRIGGER_REQUEST}" runs only from an item somebody creates`);
         } else if (trigger === TRIGGER_SCHEDULE && decl.list('preconditions')
-          && preconditionNeedsItem(decl.list('preconditions'), siblingTerms(ctx, file))) {
+          && preconditionNeedsItem(decl.list('preconditions'), siblingTerms(read, file))) {
           flag('a "schedule" task states a condition that reads the item itself',
             `write "trigger": "${TRIGGER_REQUEST}" — a condition about one item can only be judged once an item exists, and the scheduler's ask at a tick has none, so this task would fail every tick instead of declining`);
         } else if (trigger === TRIGGER_REQUEST && cadenceOf(decl.list('preconditions'))) {
@@ -177,7 +175,7 @@ const rule = {
           flag('"preconditions" is not a literal list of condition strings', 'write it as a literal, e.g. "preconditions": ["due:daily", "substantive-change"] — a computed expression is unreadable to this check and to the next person');
         } else {
           const expression = normalizeTaskDeclaration({ preconditions: stated }).preconditions;
-          for (const problem of validatePreconditions(expression, siblingTerms(ctx, file))) flag(problem.what, problem.fix);
+          for (const problem of validatePreconditions(expression, siblingTerms(read, file))) flag(problem.what, problem.fix);
         }
       }
 

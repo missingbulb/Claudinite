@@ -48,22 +48,20 @@ const rule = {
   doc: 'bootstrap.md',
   why: 'the work scope is the only one that can see what a change did rather than what the repo now contains, and it ran at a session\'s Stop hook or not at all — so a rule about the change was enforced only where a session happened to be',
 
-  run(ctx) {
-    if (!ctx.files.includes(MOUNT_ENTRY)) return [];       // no mount, or a mount without the entry point — inert
+  run({ files, read, sources }) {
+    if (!files.includes(MOUNT_ENTRY)) return [];       // no mount, or a mount without the entry point - inert
 
     // Judged only where the world sweep is already gated on pull requests: a repo
     // with no such gate has conformance-workflow's finding instead, and adding a
     // second one about the same missing workflow would be noise.
-    const workflows = ctx.files.filter((f) => f.startsWith(WORKFLOW_DIR) && /\.ya?ml$/.test(f));
-    const gate = workflows.find((f) => {
-      const text = ctx.read(f);
-      if (text === null || !text.includes(WORLD_SWEEP)) return false;
+    const gate = sources((f) => f.startsWith(WORKFLOW_DIR) && /\.ya?ml$/.test(f)).find(({ text }) => {
+      if (!text.includes(WORLD_SWEEP)) return false;
       const { pull, filtered } = gatesEveryPull(text);
       return pull && !filtered;
-    });
+    })?.file;
     if (!gate) return [];
 
-    if (invokesEntry(ctx.files, (f) => ctx.read(f))) return [];
+    if (invokesEntry(files, read)) return [];
 
     return [finding(rule, {
       file: gate,

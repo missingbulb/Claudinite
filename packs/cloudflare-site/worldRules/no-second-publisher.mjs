@@ -1,5 +1,4 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { workflowFiles } from '../../../engine/checks/helpers/github-workflows.mjs';
 import { parseWranglerConfig, publishedDir, wranglerConfigPath } from '../lib.mjs';
 
 // WHY. The release task is the one path to production: it cuts the version, gates on
@@ -28,12 +27,10 @@ const rule = {
   doc: 'packs/cloudflare-site/RULES.md',
   why: 'a second publisher ships the tree with no version cut, no gate and no park lane — and its green run looks exactly like success',
 
-  run(ctx) {
+  run({ sources, tracked, read, workflows }) {
     const out = [];
 
-    for (const file of workflowFiles(ctx)) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources(undefined, workflows())) {
       text.split('\n').forEach((line, i) => {
         if (/^\s*#/.test(line) || !PUBLISHES.test(line)) return;
         out.push(finding(rule, {
@@ -45,10 +42,10 @@ const rule = {
       });
     }
 
-    const configPath = wranglerConfigPath(ctx.tracked);
-    const dir = configPath && publishedDir(parseWranglerConfig(ctx.read(configPath)), configPath);
+    const configPath = wranglerConfigPath(tracked);
+    const dir = configPath && publishedDir(parseWranglerConfig(read(configPath)), configPath);
     if (dir) {
-      for (const file of ctx.tracked.filter((f) => f === `${dir}/CNAME`)) {
+      for (const file of tracked.filter((f) => f === `${dir}/CNAME`)) {
         out.push(finding(rule, {
           file,
           what: `${file} claims the domain for GitHub Pages`,

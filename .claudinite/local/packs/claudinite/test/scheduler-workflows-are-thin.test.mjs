@@ -5,8 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
 import rule from '../worldRules/scheduler-workflows-are-thin.mjs';
+import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => rule.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(rule, buildContext({ root, mode: 'all' }));
 const CANON = join(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 
 const THIN = `name: Claudinite scheduler

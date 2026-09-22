@@ -1,6 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { isSource, lineOf } from '../lib.mjs';
+import { isSource } from '../lib.mjs';
 
 // A DOM observer you start on a page you do not own runs until you disconnect it
 // or the document dies — and the document of a single-page app you are a guest in
@@ -35,13 +34,11 @@ const rule = {
   doc: 'packs/host-page/RULES.md',
   why: 'an observer on a host page outlives whatever started it — the single-page app never unloads, so "stopped" work keeps waking on every host mutation and the guest is never really inert',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!isSource(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !OBSERVER.test(raw)) continue;
-      const src = stripComments(raw);
+    for (const source of sources(isSource)) {
+      if (!OBSERVER.test(source.text)) continue;
+      const { file, code: src, line } = source;
       CONSTRUCT.lastIndex = 0;
       const first = CONSTRUCT.exec(src);
       if (!first) continue;
@@ -49,7 +46,7 @@ const rule = {
       if (STOPPED.test(src)) continue;
       out.push(finding(rule, {
         file,
-        line: lineOf(src, first.index),
+        line: line(first.index),
         what: 'starts a DOM observer on the page but never disconnects one',
         fix: 'call observer.disconnect() on every path that ends the work it was watching for — the moment a one-shot observer sees what it was waiting for, and in the teardown of anything session-scoped',
       }));

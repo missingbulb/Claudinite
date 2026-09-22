@@ -1,6 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { isSource, lineOf, balanced } from '../lib.mjs';
+import { isSource, balanced } from '../lib.mjs';
 
 // The Web Speech error-name set is OPEN. `SpeechRecognitionErrorEvent.error` is a
 // spec enum today, but browsers extend it — Chrome has shipped names outside the
@@ -96,14 +95,11 @@ const rule = {
   doc: 'packs/web-speech/RULES.md',
   why: 'the Web Speech error-name set is open — browsers extend it — so a mapping switch with no catch-all returns undefined for a name it does not enumerate; the dialog policy then compares undefined against every kind it knows, takes its do-nothing arm, and the session dies without throwing, logging, or changing the UI',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!isSource(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null) continue;
-      if (ERROR_NAMES.filter((name) => raw.includes(name)).length < 2) continue;
-      const src = stripComments(raw);
+    for (const source of sources(isSource)) {
+      if (ERROR_NAMES.filter((name) => source.text.includes(name)).length < 2) continue;
+      const { file, code: src, line } = source;
       SWITCH.lastIndex = 0;
       for (let m = SWITCH.exec(src); m; m = SWITCH.exec(src)) {
         const parenAt = m.index + m[0].length - 1;
@@ -125,7 +121,7 @@ const rule = {
 
         out.push(finding(rule, {
           file,
-          line: lineOf(src, m.index),
+          line: line(m.index),
           what: `a switch mapping Web Speech recognition error names (${known.join(', ')}) has no default arm, so any other name maps to undefined`,
           fix: 'give the switch a `default:` arm returning your catch-all kind (or `return` that kind straight after the switch) — the taxonomy the dialog policy reasons over has to name "some other error" explicitly, so a name this browser build invented degrades to a handled kind instead of silently becoming undefined',
         }));

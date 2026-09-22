@@ -170,13 +170,13 @@ const rule = {
   doc: 'packs/leaflet/RULES.md',
   why: 'the provider\'s attribution is a licence term, not decoration — an unattributed tile layer uses the tiles outside their terms, and nothing about the running map looks wrong, so a UI tidy-up drops it and no one notices',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!SOURCE.test(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !raw.includes('L.tileLayer')) continue;
-      const src = codeView(file, raw);
+    for (const { file, text } of sources(SOURCE)) {
+      if (!text.includes('L.tileLayer')) continue;
+      // `codeView` picks the comment syntax off the extension - this rule reads
+      // HTML as readily as JS, where the surface's `code` models JS alone.
+      const src = codeView(file, text);
       if (OUT_OF_BAND.test(src)) continue;
 
       CALL.lastIndex = 0;

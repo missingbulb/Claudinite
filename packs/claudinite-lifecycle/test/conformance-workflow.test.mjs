@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import rule, { onBlock, gatesEveryPull } from '../worldRules/conformance-workflow.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const MOUNT = '.claudinite/shared/engine/checks/check_the_world.mjs';
 const SWEEP_STEP = 'run: node .claudinite/shared/engine/checks/check_the_world.mjs';
@@ -48,17 +49,17 @@ test('gatesEveryPull flags the trap: a sweep behind a path filter', () => {
 });
 
 test('the rule is inert in a repo that is not a Claudinite member', () => {
-  assert.deepEqual(rule.run(ctx({ '.github/workflows/ci.yml': pathFiltered })), []);
+  assert.deepEqual(runRule(rule, ctx({ '.github/workflows/ci.yml': pathFiltered })), []);
 });
 
 test('an unfiltered conformance workflow satisfies the rule', () => {
-  assert.deepEqual(rule.run(ctx({ [MOUNT]: '', '.github/workflows/checks.yml': unfiltered })), []);
+  assert.deepEqual(runRule(rule, ctx({ [MOUNT]: '', '.github/workflows/checks.yml': unfiltered })), []);
 });
 
 // The TLDR shape, and the reason this rule exists: the arm succeeds, no check
 // ever runs, the maintenance PR waits forever.
 test('a path-filtered sweep is flagged, naming the file', () => {
-  const out = rule.run(ctx({ [MOUNT]: '', '.github/workflows/test-extension.yml': pathFiltered }));
+  const out = runRule(rule, ctx({ [MOUNT]: '', '.github/workflows/test-extension.yml': pathFiltered }));
   assert.equal(out.length, 1);
   // Advisory on purpose: blocking would red every member lacking the workflow on
   // its next baselining — the #555 failure mode this rule guards against.
@@ -70,7 +71,7 @@ test('a path-filtered sweep is flagged, naming the file', () => {
 // One good gate is enough — a repo may keep any number of path-filtered product
 // workflows alongside it.
 test('an unfiltered gate wins even when path-filtered workflows also exist', () => {
-  assert.deepEqual(rule.run(ctx({
+  assert.deepEqual(runRule(rule, ctx({
     [MOUNT]: '',
     '.github/workflows/test-extension.yml': pathFiltered,
     '.github/workflows/checks.yml': unfiltered,
@@ -80,14 +81,14 @@ test('an unfiltered gate wins even when path-filtered workflows also exist', () 
 // #588's coherent shape: nothing runs on a pull request, so baselining merges
 // the maintenance PR directly. Not a finding.
 test('a member with no pull_request workflow at all is not flagged', () => {
-  assert.deepEqual(rule.run(ctx({
+  assert.deepEqual(runRule(rule, ctx({
     [MOUNT]: '',
     '.github/workflows/release.yml': 'name: r\non:\n  workflow_dispatch:\njobs: {}\n',
   })), []);
 });
 
 test('pull_request workflows that never run the sweep are flagged as an ungated repo', () => {
-  const out = rule.run(ctx({
+  const out = runRule(rule, ctx({
     [MOUNT]: '',
     '.github/workflows/test.yml': 'name: t\non:\n  pull_request:\njobs:\n  t:\n    steps:\n      - run: npm test\n',
   }));

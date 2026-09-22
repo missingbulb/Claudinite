@@ -5,8 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import runnableDocCommands from '../worldRules/runnable-doc-commands.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => runnableDocCommands.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(runnableDocCommands, buildContext({ root, mode: 'all' }));
 const CANON = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 test('runnable-doc-commands: a placeholder-rooted command whose suffix names no file is caught', () => {

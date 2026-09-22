@@ -76,14 +76,12 @@ const rule = {
   doc: 'packs/claudinite-growth/skills/writing-tasks/SKILL.md',
   why: 'auto-merge is a queue for checks — a path-filtered conformance flow arms successfully and then never runs, so the nightly delivery waits forever and the repo silently stops updating',
 
-  run(ctx) {
-    if (!ctx.files.includes(MOUNT)) return [];  // not a member — inert
-    const workflows = ctx.files.filter((f) => f.startsWith(WORKFLOW_DIR) && /\.ya?ml$/.test(f));
+  run({ files, sources }) {
+    if (!files.includes(MOUNT)) return [];  // not a member - inert
+    const workflows = sources((f) => f.startsWith(WORKFLOW_DIR) && /\.ya?ml$/.test(f));
 
     const filtered = [];
-    for (const file of workflows) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of workflows) {
       const { pull, filtered: hasFilter, sweeps } = gatesEveryPull(text);
       if (!pull || !sweeps) continue;
       if (!hasFilter) return [];              // a real gate exists — done
@@ -93,7 +91,7 @@ const rule = {
     // A repo with NO pull_request workflow at all is not flagged: the delivery
     // merges its maintenance PR directly (#588), which is a coherent shape. The
     // finding is for the trap — a sweep that exists but cannot run.
-    if (!filtered.length && !workflows.some((f) => /^\s+pull_request:/m.test(ctx.read(f) ?? ''))) return [];
+    if (!filtered.length && !workflows.some(({ text }) => /^\s+pull_request:/m.test(text))) return [];
 
     return [finding(rule, {
       file: filtered[0] ?? WORKFLOW_DIR,

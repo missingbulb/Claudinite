@@ -1,5 +1,4 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
 
 // Converted from the chrome-extension prose: a `chrome.declarativeContent.SetIcon`
 // action built with `path` silently leaves the icon unset. The rules are evaluated
@@ -80,20 +79,18 @@ const rule = {
   doc: 'packs/chrome-extension/README.md',
   why: 'declarativeContent rules are evaluated by the browser process, so the icon must already be raw pixels at registration time — the documented path option can silently leave the icon unset, with no throw and no console error to notice',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!SOURCE.test(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !raw.includes('declarativeContent')) continue;
-      const src = stripComments(raw);
+    for (const source of sources(SOURCE)) {
+      if (!source.text.includes('declarativeContent')) continue;
+      const { file, code: src, line } = source;
       CALL.lastIndex = 0;
       for (let m = CALL.exec(src); m; m = CALL.exec(src)) {
         const obj = objectLiteral(src, m.index + m[0].length - 1);
         if (obj === null || !topLevelKeys(obj).includes('path')) continue;
         out.push(finding(rule, {
           file,
-          line: src.slice(0, m.index).split('\n').length,
+          line: line(m.index),
           what: 'builds a declarativeContent.SetIcon action from a path',
           fix: "pass imageData instead — a service worker has no DOM, so decode the packaged icon yourself: fetch(chrome.runtime.getURL(icon)) → blob → createImageBitmap → OffscreenCanvas.drawImage → getImageData",
         }));

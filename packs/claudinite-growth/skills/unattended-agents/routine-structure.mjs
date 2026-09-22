@@ -35,9 +35,8 @@ const rule = {
   doc: 'packs/claudinite-growth/skills/unattended-agents/SKILL.md',
   why: 'a routine is prose (read) + scripts (executed); a dangling invocation or an orphan/entry-less script means the agent runs the wrong thing or the job hides where it is never read',
 
-  run(ctx) {
+  run({ files, read, exists }) {
     const out = [];
-    const files = ctx.files;
 
     // dir -> its entry file name (routine.md or task.md). A folder carries one or
     // the other; if it somehow had both, the first wins (they wire the same scripts).
@@ -49,7 +48,7 @@ const rule = {
     const routineDirs = new Set(entryOf.keys());
 
     for (const [dir, ENTRY] of entryOf) {
-      const text = ctx.read(join(dir, ENTRY));
+      const text = read(join(dir, ENTRY));
       if (text === null) continue;
       const lines = text.split('\n');
       const scripts = children(files, dir, (rel) => rel.endsWith('.sh'));
@@ -59,7 +58,7 @@ const rule = {
         const m = /\b(?:bash|sh)\s+(\S+\.sh)\b/.exec(ln);
         if (!m) return;
         const p = m[1];
-        if (ctx.exists(p) || ctx.exists(join(dir, p))) return;
+        if (exists(p) || exists(join(dir, p))) return;
         out.push(finding(rule, {
           file: join(dir, ENTRY), line: i + 1,
           what: `invokes ${p}, which does not exist`,
@@ -80,7 +79,7 @@ const rule = {
 
       // 3. Each script must be a real executable script (shebang first line).
       for (const s of scripts) {
-        const body = ctx.read(s);
+        const body = read(s);
         if (body === null || body.startsWith('#!')) continue;
         out.push(finding(rule, {
           file: s, line: 1, severity: 'advisory',
@@ -98,7 +97,7 @@ const rule = {
     for (const dir of phaseDirs) {
       if (routineDirs.has(dir)) continue;
       out.push(finding(rule, {
-        file: join(dir, PHASE_SCRIPTS.find((n) => ctx.exists(join(dir, n))) || PHASE_SCRIPTS[0]),
+        file: join(dir, PHASE_SCRIPTS.find((n) => exists(join(dir, n))) || PHASE_SCRIPTS[0]),
         line: null,
         what: `sits in a routine folder with no ${ENTRY_NAMES.join(' / ')} entry point`,
         fix: `add ${ENTRY_NAMES.join(' or ')} as the folder's entry point (it invokes these scripts), or move the scripts out`,

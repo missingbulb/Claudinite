@@ -23,9 +23,9 @@ const rule = {
   doc: 'packs/README.md',
   why: 'a stale answer silently stops matching its question, so the stored intent goes unread and the interview re-asks',
 
-  run(ctx) {
-    if (!ctx.packs) return [];
-    const { stale } = interviewState(ctx.packs, ctx.config);
+  run({ packs, config }) {
+    if (!packs.length) return [];
+    const { stale } = interviewState(packs, config);
     return stale.map(({ packId, answerId }) => finding(rule, {
       file: '.claudinite-settings.json',
       what: `the "${packId}" pack entry stores an answer for "${answerId}", a question the pack no longer declares`,

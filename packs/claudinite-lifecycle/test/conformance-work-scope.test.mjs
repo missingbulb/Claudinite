@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import rule, { invokesEntry } from '../worldRules/conformance-work-scope.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const MOUNT_ENTRY = '.claudinite/shared/engine/checks/ci-work-scope.mjs';
 const WORLD_STEP = 'run: node .claudinite/shared/engine/checks/check_the_world.mjs';
@@ -38,7 +39,7 @@ const member = (extra = {}) => ({
 });
 
 test('a member gating the tree but not the change is reported, with the one-line remedy', () => {
-  const findings = rule.run(ctx(member()));
+  const findings = runRule(rule, ctx(member()));
   assert.equal(findings.length, 1);
   assert.equal(findings[0].severity, 'advisory');
   assert.equal(findings[0].file, '.github/workflows/checks.yml');
@@ -48,27 +49,27 @@ test('a member gating the tree but not the change is reported, with the one-line
 
 test('the step beside the world sweep satisfies it', () => {
   const files = member({ '.github/workflows/checks.yml': workflow([WORLD_STEP, WORK_STEP]) });
-  assert.deepEqual(rule.run(ctx(files)), []);
+  assert.deepEqual(runRule(rule, ctx(files)), []);
 });
 
 test('a project wiring its sweeps into a make target or npm script satisfies it too', () => {
   assert.ok(invokesEntry(['Makefile'], () => 'check:\n\tnode .claudinite/shared/engine/checks/ci-work-scope.mjs\n'));
   const files = member({ Makefile: 'check:\n\tnode .claudinite/shared/engine/checks/ci-work-scope.mjs\n' });
-  assert.deepEqual(rule.run(ctx(files)), []);
+  assert.deepEqual(runRule(rule, ctx(files)), []);
 });
 
 test('a repo with no mount is inert — this is a member rule, not a rule about repos', () => {
-  assert.deepEqual(rule.run(ctx({ '.github/workflows/checks.yml': workflow([WORLD_STEP]) })), []);
+  assert.deepEqual(runRule(rule, ctx({ '.github/workflows/checks.yml': workflow([WORLD_STEP]) })), []);
 });
 
 test('a member whose mount predates the entry point is inert — it cannot run what it does not have', () => {
   const files = member();
   delete files[MOUNT_ENTRY];
   files['.claudinite/shared/engine/checks/check_the_world.mjs'] = 'x\n';
-  assert.deepEqual(rule.run(ctx(files)), []);
+  assert.deepEqual(runRule(rule, ctx(files)), []);
 });
 
 test('a repo whose tree gate is missing or path-filtered is left to conformance-workflow', () => {
-  assert.deepEqual(rule.run(ctx({ [MOUNT_ENTRY]: 'x\n' })), []);
-  assert.deepEqual(rule.run(ctx({ [MOUNT_ENTRY]: 'x\n', '.github/workflows/checks.yml': filtered })), []);
+  assert.deepEqual(runRule(rule, ctx({ [MOUNT_ENTRY]: 'x\n' })), []);
+  assert.deepEqual(runRule(rule, ctx({ [MOUNT_ENTRY]: 'x\n', '.github/workflows/checks.yml': filtered })), []);
 });

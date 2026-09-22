@@ -26,7 +26,7 @@ import * as provenance from '../../../engine/checks/helpers/provenance.mjs';
 //
 // RELEVANCE-FIRST: inert in a repo that carries no pack under either root.
 const PACK = 'claudinite-growth';
-const toolPath = (ctx) => (ctx.exists(`packs/${PACK}/provenance.mjs`) ? `packs/${PACK}/provenance.mjs` : `.claudinite/shared/packs/${PACK}/provenance.mjs`);
+const toolPath = (exists) => (exists(`packs/${PACK}/provenance.mjs`) ? `packs/${PACK}/provenance.mjs` : `.claudinite/shared/packs/${PACK}/provenance.mjs`);
 const packId = (dir) => dir.slice(dir.lastIndexOf('/') + 1);
 
 const rule = {
@@ -37,13 +37,15 @@ const rule = {
   description: 'Every pack carrier names a live provenance file, and every provenance file parses',
   why: 'a rule with no file has no id an override can name and no log a review can reaffirm it against, and a file nothing names is history of an element that is gone',
 
-  run(ctx) {
+  run({ files, read, exists, listDir }) {
     if (typeof provenance.auditPack !== 'function') return []; // an engine that predates the helper
     const { auditPack, packDirsIn, fileOfId, PROVENANCE_DIR } = provenance;
-    const packs = packDirsIn(ctx.files);
+    const packs = packDirsIn(files);
     if (!packs.length) return [];
-    const io = { exists: (p) => ctx.exists(p), read: (p) => ctx.read(p), listDir: (p) => listFrom(ctx.files, p) };
-    const tool = toolPath(ctx);
+    // The audit walks exactly what the run scans: `listDir` is the surface's
+    // listing off the run's own file list.
+    const io = { exists, read, listDir };
+    const tool = toolPath(exists);
     const out = [];
     for (const dir of packs) {
       const a = auditPack(dir, io);
@@ -117,17 +119,5 @@ const rule = {
     return out;
   },
 };
-
-// A directory listing off the run's file list, so the audit walks exactly what the
-// run scans: names one segment below `p`, or null where nothing is under it.
-function listFrom(files, p) {
-  const names = new Set();
-  const prefix = `${p}/`;
-  for (const f of files) {
-    const n = f.replace(/\\/g, '/');
-    if (n.startsWith(prefix)) names.add(n.slice(prefix.length).split('/')[0]);
-  }
-  return names.size ? [...names] : null;
-}
 
 export default rule;

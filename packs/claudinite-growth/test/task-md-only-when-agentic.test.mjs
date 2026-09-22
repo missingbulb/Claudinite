@@ -4,6 +4,7 @@ import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { DEFAULT_AGENT_MODEL } from '../../claudinite-tasks/public/task-constants.mjs';
 import rule, { runsAgent } from '../worldRules/task-md-only-when-agentic.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const decl = (extra) => `${JSON.stringify({
   id: 'acme-task-g', preconditions: ['due:daily'], expected_outcome: 'fresh_pr', automerge: 'nothing', ...extra,
@@ -16,7 +17,7 @@ const DIR = '.claudinite/local/packs/mypack/tasks/acme-task-g/';
 
 const run = (files) => {
   const root = makeRepo({ changed: files });
-  try { return rule.run(buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
+  try { return runRule(rule, buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
 };
 
 test('task-md-only-when-agentic: an agentic task with a task.md is clean', () => {

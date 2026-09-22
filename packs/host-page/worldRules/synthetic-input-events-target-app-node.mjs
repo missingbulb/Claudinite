@@ -1,6 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { isSource, lineOf, balanced, inputEventCtors } from '../lib.mjs';
+import { isSource, balanced, inputEventCtors } from '../lib.mjs';
 
 // A host page delegates input handling to ONE listener near its own root — a
 // descendant of `<body>` — so a bubbling event only reaches it when the event's
@@ -61,13 +60,11 @@ const rule = {
   doc: 'packs/host-page/RULES.md',
   why: 'a host page handles input by delegation, one listener near its own root — an event dispatched at document or document.body bubbles past that root and never arrives, silently, and reads exactly like "the app ignores untrusted events"',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!isSource(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !raw.includes('dispatchEvent')) continue;
-      const src = stripComments(raw);
+    for (const source of sources(isSource)) {
+      if (!source.text.includes('dispatchEvent')) continue;
+      const { file, code: src, line } = source;
       const ctors = inputEventCtors(src);
 
       DISPATCH.lastIndex = 0;
@@ -82,7 +79,7 @@ const rule = {
 
         out.push(finding(rule, {
           file,
-          line: lineOf(src, m.index),
+          line: line(m.index),
           what: `dispatches a ${ctorName} at ${docExpr}, outside the app's own subtree`,
           fix: 'dispatch at a node inside the app — the selected/focused element if there is one, otherwise a known node under the app root — never document or document.body: a host page delegates input handling near its own root, and an event dispatched above that root bubbles past it and is never seen',
         }));

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
 import rule from '../worldRules/test-fixtures-use-fake-entities.mjs';
+import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => rule.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(rule, buildContext({ root, mode: 'all' }));
 
 // A shelf the fixtures own, so no case depends on what the real canon carries: a
 // canon pack with a task, a skill and a declared check, a second canon pack whose

@@ -13,11 +13,9 @@ const rule = {
   doc: 'packs/basics/skills/repo-text-sweeps/SKILL.md',
   why: 'a Markdown link carries its path twice — an href-only rewrite leaves the doc pointing right but reading wrong',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files.filter((f) => f.endsWith('.md'))) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources((f) => f.endsWith('.md'))) {
       for (const { label, target, line } of extractLinks(text)) {
         const cleanLabel = label.split('#')[0];
         if (!PATH_LIKE.test(cleanLabel)) continue;

@@ -31,13 +31,16 @@ const TESTISH = /(^|\/)(tests?|__tests__)\/|(^|\/)(test_[^/]*|conftest)\.py$|_te
 const PYPROJECT = /(^|\/)pyproject\.toml$/;
 const TOP_LEVEL_IMPORT = /^(import|from)\s/; // column 0 — no leading whitespace
 
-function optionalImportNames(ctx) {
+function optionalImportNames(sources) {
   const optional = new Set();
-  for (const f of ctx.files.filter((f) => !f.startsWith(SELF) && PYPROJECT.test(f))) {
-    for (const n of optionalDistNames(ctx.read(f) ?? '')) optional.add(n);
+  for (const { text } of sources((f) => !f.startsWith(SELF) && PYPROJECT.test(f))) {
+    for (const n of optionalDistNames(text)) optional.add(n);
   }
   return optional.size ? importNamesFor(optional) : null;
 }
+
+// The project's own Python, excluding this pack's fixtures and its tests.
+export const isProjectPython = (f) => !f.startsWith(SELF) && PY_EXT.test(f) && !TESTISH.test(f);
 
 const rule = {
   id: 'python-optional-import-top-level',
@@ -46,14 +49,11 @@ const rule = {
   doc: 'packs/python/skills/python-optional-deps/SKILL.md',
   why: 'a top-level import runs at `import <pkg>` time, so a package the project itself declared optional drags its heavy/native stack into the dependency-free core and breaks every path for anyone who installed without that extra',
 
-  run(ctx) {
-    const importNames = optionalImportNames(ctx);
+  run({ sources }) {
+    const importNames = optionalImportNames(sources);
     if (!importNames) return [];
     const out = [];
-    const pyFiles = ctx.files.filter((f) => !f.startsWith(SELF) && PY_EXT.test(f) && !TESTISH.test(f));
-    for (const file of pyFiles) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources(isProjectPython)) {
       text.split('\n').forEach((ln, i) => {
         if (!TOP_LEVEL_IMPORT.test(ln)) return;
         const pkg = topPackagesOf(ln.split('#')[0]).find((p) => importNames.has(p));

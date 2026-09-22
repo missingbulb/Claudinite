@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup, declaredCheck } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import functionsPredeployBuild from '../worldRules/functions-predeploy-build.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const functionsNodePin = declaredCheck('packs/firebase', 'firebase/functions-node-pin');
 
-const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
+const run = (rule, root) => runRule(rule, buildContext({ root, mode: 'all' }));
 
 const json = (o) => JSON.stringify(o, null, 2);
 

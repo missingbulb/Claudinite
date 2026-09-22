@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import rule from '../worldRules/legacy-shape-in-use.mjs';
 import { SETTINGS_FILE } from '../../../engine/settings-file-names.mjs';
 import { RENAMED_PACKS } from '../../../engine/pack_loader/renamed-packs.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 // A ctx over an in-memory file map — no git, no fixture tree.
 const ctx = (files) => ({ files: Object.keys(files), read: (f) => files[f] ?? null });
-const run = (declaration) => rule.run(ctx({ [SETTINGS_FILE]: JSON.stringify(declaration) }));
+const run = (declaration) => runRule(rule, ctx({ [SETTINGS_FILE]: JSON.stringify(declaration) }));
 const whats = (findings) => findings.map((f) => f.what).join('\n');
 
 test('legacy-shape-in-use: inert in a repo that is not a member', () => {
-  assert.deepEqual(rule.run(ctx({ 'package.json': '{}' })), []);
+  assert.deepEqual(runRule(rule, ctx({ 'package.json': '{}' })), []);
 });
 
 test('legacy-shape-in-use: silent on a declaration in today\'s shape', () => {
@@ -23,8 +24,8 @@ test('legacy-shape-in-use: silent on a declaration in today\'s shape', () => {
 });
 
 test('legacy-shape-in-use: an unparsable or non-object declaration asserts nothing', () => {
-  assert.deepEqual(rule.run(ctx({ [SETTINGS_FILE]: 'not json' })), []);
-  assert.deepEqual(rule.run(ctx({ [SETTINGS_FILE]: '[]' })), []);
+  assert.deepEqual(runRule(rule, ctx({ [SETTINGS_FILE]: 'not json' })), []);
+  assert.deepEqual(runRule(rule, ctx({ [SETTINGS_FILE]: '[]' })), []);
 });
 
 test('legacy-shape-in-use: the shapes #1640 removed are no longer this advisory\'s', () => {

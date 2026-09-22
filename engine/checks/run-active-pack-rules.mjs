@@ -35,7 +35,7 @@ export function packRules(packs) {
 // Every finding from the active packs' rules that `includeRule` admits. A rule
 // turned `off` in settings is skipped. `onContributeError(pack, err)` is invoked
 // when a pack's contributedRules seam throws, and `onRuleError(pack, rule, err)`
-// when a RULE does — in both cases the caller decides whether that becomes a
+// when a RULE does - in both cases the caller decides whether that becomes a
 // finding. `timings`, when a caller passes an array, collects `{ id, ms }` per
 // rule run - what the runner renders its timing record from.
 export function runActivePackRules(ctx, packs, {

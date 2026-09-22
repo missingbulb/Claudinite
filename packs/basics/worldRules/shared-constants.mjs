@@ -54,9 +54,9 @@ const rule = {
   doc: 'packs/basics/RULES.md',
   why: 'a value duplicated across files that can\'t share an import drifts silently when a rename or bump lands in some but not all',
 
-  run(ctx) {
+  run({ config, read }) {
     const out = [];
-    const cases = ctx.config.sharedConstants ?? [];
+    const cases = config.sharedConstants ?? [];
 
     cases.forEach((entry, i) => {
       const label = entry && typeof entry.value === 'string' && entry.value ? `"${entry.value}"` : `entry #${i + 1}`;
@@ -116,7 +116,7 @@ const rule = {
           }));
           continue;
         }
-        const text = ctx.read(rel);
+        const text = read(rel);
         if (text === null) {
           out.push(finding(rule, {
             file: '.claudinite-settings.json',

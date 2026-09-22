@@ -69,11 +69,9 @@ const rule = {
   doc: 'packs/macos/RULES.md',
   why: '/usr/bin/swift is a stub present on every Mac that prompts an 8 GB command-line-tools install when run without a developer directory, so `command -v swift` reports success on exactly the toolchain-less Mac the script is meant to degrade on',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files.filter(inScope)) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources(inScope)) {
       let gated = false;
       for (const { line, text: raw } of logicalLines(text)) {
         const command = stripComment(raw);

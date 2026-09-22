@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
 import usageDeclared from '../../../skills/writing-claudinite-skills/usage-declared.mjs';
+import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => usageDeclared.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(usageDeclared, buildContext({ root, mode: 'all' }));
 
 // The real layout — a skill lives inside its owning pack.
 const SKILL = 'packs/demo/skills/demo/SKILL.md';
@@ -64,6 +65,6 @@ test('skill-usage-declared: a skill outside a pack\'s skills/ is not its busines
 test('skill-usage-declared: every skill on this shelf satisfies it', () => {
   // The real tree, not a fixture: the sweep is what proves the check silent where
   // it should be, and a fixture spelling the same gap would only prove its matching.
-  const found = usageDeclared.run(buildContext({ root: process.cwd(), mode: 'all' }));
+  const found = runRule(usageDeclared, buildContext({ root: process.cwd(), mode: 'all' }));
   assert.deepEqual(found.map((f) => `${f.file}: ${f.what}`), []);
 });

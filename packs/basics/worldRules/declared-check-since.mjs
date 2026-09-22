@@ -35,13 +35,11 @@ const rule = {
   description: 'Every blocking action-scope check carries a `since` date the grace window can read',
   why: 'a blocking action check with no usable `since` convicts the tool calls a session made before the check existed, and a past call has no clearing move',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files.filter((f) => DECLARED.test(f))) {
-      const text = ctx.read(file);
-      if (text === null) continue;
-      let specs;
-      try { specs = JSON.parse(text); } catch { continue; } // unparsable is the loader's finding
+    // An unparsable declaration reads as no specs at all - that is the loader's
+    // finding to make, never this one's.
+    for (const { file, text, json: specs } of sources(DECLARED)) {
       if (!Array.isArray(specs)) continue;
       for (const spec of specs) {
         if (!spec || typeof spec !== 'object' || typeof spec.id !== 'string') continue;

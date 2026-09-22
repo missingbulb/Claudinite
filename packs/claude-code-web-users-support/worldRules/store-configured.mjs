@@ -17,9 +17,9 @@ const rule = {
   doc: 'packs/claude-code-web-users-support/RULES.md',
   why: 'a declared pack with no store injects nobody\'s preferences and says so only in a fail-soft note nobody reads twice',
 
-  run(ctx) {
+  run({ packConfig }) {
     // The pack's own entry config, through the engine's normalized per-pack view.
-    const config = ctx.config.packConfig?.['claude-code-web-users-support'];
+    const config = packConfig('claude-code-web-users-support');
     if (resolveStore(config ?? null)) return [];
     return [finding(rule, {
       file: '.claudinite-settings.json',

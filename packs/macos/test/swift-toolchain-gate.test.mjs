@@ -9,11 +9,12 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import toolchainGate from '../worldRules/swift-toolchain-gate.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const runOn = (files) => {
   const root = makeRepo({ changed: files });
   try {
-    return toolchainGate.run(buildContext({ root, mode: 'all' }));
+    return runRule(toolchainGate, buildContext({ root, mode: 'all' }));
   } finally { cleanup(root); }
 };
 

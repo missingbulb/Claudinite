@@ -1,5 +1,4 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
 
 // Converted from this pack's exit-path prose: `NSApplication` installs no signal
 // handlers, so a bare SIGTERM (Activity Monitor's Quit, `killall`), SIGINT or
@@ -58,18 +57,14 @@ const rule = {
   doc: 'packs/macos/RULES.md',
   why: 'NSApplication installs no signal handlers, so an unrouted SIGTERM/SIGINT/SIGHUP kills the process with no teardown and abandons the capture tap\'s IOProc on the device — the state that wedges some USB input devices until they are re-plugged',
 
-  run(ctx) {
-    const sources = new Map();
-    for (const file of ctx.files.filter((f) => SWIFT.test(f))) {
-      const text = ctx.read(file);
-      if (text !== null) sources.set(file, stripComments(text));
-    }
+  run({ sources }) {
+    const swift = new Map(sources(SWIFT).map((s) => [s.file, s.code]));
 
-    const isApp = [...sources.values()].some((t) => APPKIT.test(t));
-    const tapSite = [...sources.entries()].find(([, t]) => TAP.test(t));
+    const isApp = [...swift.values()].some((t) => APPKIT.test(t));
+    const tapSite = [...swift.entries()].find(([, t]) => TAP.test(t));
     if (!isApp || !tapSite) return [];
 
-    const routingFiles = [...sources.entries()].filter(([, t]) => ROUTING.some((r) => r.test(t)));
+    const routingFiles = [...swift.entries()].filter(([, t]) => ROUTING.some((r) => r.test(t)));
 
     if (routingFiles.length === 0) {
       const [file, text] = tapSite;
@@ -85,7 +80,7 @@ const rule = {
 
     // Arm 2: a signal named nowhere in the sources is a signal nothing routes.
     const unrouted = SIGNALS.filter(
-      (s) => ![...sources.values()].some((t) => new RegExp(`\\b${s}\\b`).test(t))
+      (s) => ![...swift.values()].some((t) => new RegExp(`\\b${s}\\b`).test(t))
     );
     if (unrouted.length > 0) {
       const [file, text] = routingFiles[0];

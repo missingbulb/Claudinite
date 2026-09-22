@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import rule from '../worldRules/task-declaration-matches-folder.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const decl = (id, extra = {}) => `${JSON.stringify({
   id, preconditions: ['due:daily'], agent_model: 'opus', expected_outcome: 'fresh_pr', automerge: 'nothing',
@@ -13,7 +14,7 @@ const DIR = '.claudinite/local/packs/mypack/tasks/growth-extract/';
 
 const run = (files) => {
   const root = makeRepo({ changed: files });
-  try { return rule.run(buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
+  try { return runRule(rule, buildContext({ root, mode: 'all' })); } finally { cleanup(root); }
 };
 
 test('task-declaration-matches-folder: a task whose id and worker doc match its folder is clean', () => {

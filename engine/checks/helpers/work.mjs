@@ -12,8 +12,8 @@ import { world } from './world.mjs';
 // A rule declaring `scope: 'work'` receives this object as its `run` argument
 // (runRule dispatches); every other rule receives the world surface beside it
 // (world.mjs). The raw surface a work rule still needs (files, read, exists, …)
-// is delegated here, so a work rule — and the structural helpers it calls, e.g.
-// findExtensionManifest — never touches ctx itself.
+// is delegated here, so a work rule - and the structural helpers it calls, e.g.
+// findExtensionManifest - never touches ctx itself.
 export const work = (ctx) => new Work(ctx);
 
 // The single dispatch seam: the runner and every rule test invoke rules through

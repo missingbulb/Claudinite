@@ -10,7 +10,7 @@ import { normalizeEdges, barrierFindings, staleFindings } from './reference-scan
 // A pack's declarations live in `packs/<pack>/declared-checks.json` (a skill's
 // in `<pack>/skills/<name>/declared-checks.json`), an array of specs the pack
 // registry discovers structurally and compiles here into ordinary
-// `{ id, severity, why, run(ctx) }` rule objects the runner treats like any
+// `{ id, severity, why, run(surface) }` rule objects the runner treats like any
 // other. Nothing wires them: dropping a declaration into the file adds it.
 //
 // The format admits no comments — the pattern plus its failureMessage/what/fix

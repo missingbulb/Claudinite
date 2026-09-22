@@ -5,8 +5,9 @@ import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { loadDeclaredChecks } from '../../../engine/checks/helpers/pattern-rules.mjs';
 import specKeys, { unplacedKeysWith } from '../worldRules/declared-check-spec-keys.mjs';
 import * as patternRules from '../../../engine/checks/helpers/pattern-rules.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => specKeys.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(specKeys, buildContext({ root, mode: 'all' }));
 
 const declaration = (extra) => JSON.stringify([{
   id: 'fx-keys',

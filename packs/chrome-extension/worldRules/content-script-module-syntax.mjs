@@ -118,18 +118,14 @@ const rule = {
   doc: 'packs/chrome-extension/RULES.md',
   why: 'static `content_scripts` and `chrome.scripting.registerContentScripts` inject their files as CLASSIC scripts — there is no module mode — so a top-level import throws "Cannot use import statement outside a module" and the script never runs, and the error lands in the host page\'s console rather than the extension\'s, so nothing in your own devtools says why',
 
-  run(ctx) {
+  run({ sources, tracked, read }) {
     // The extension roots — a manifest.json declaring manifest_version. No
     // manifest, no extension: the rule self-gates to [] on every unrelated repo.
     const roots = [];
     const targets = new Map(); // repo path -> the manifest/source that named it
 
-    for (const file of ctx.tracked) {
-      if (!MANIFEST.test(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !raw.includes('"manifest_version"')) continue;
-      let manifest;
-      try { manifest = JSON.parse(raw); } catch { continue; }
+    for (const { file, text, json: manifest } of sources(MANIFEST, tracked)) {
+      if (!text.includes('"manifest_version"') || manifest === null) continue;
       roots.push(dirOf(file));
       for (const entry of Array.isArray(manifest.content_scripts) ? manifest.content_scripts : []) {
         for (const js of Array.isArray(entry?.js) ? entry.js : []) {
@@ -140,22 +136,21 @@ const rule = {
     }
     if (!roots.length) return [];
 
-    for (const file of ctx.files) {
-      if (!SOURCE.test(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !raw.includes('registerContentScripts')) continue;
+    for (const source of sources(SOURCE)) {
+      if (!source.text.includes('registerContentScripts')) continue;
+      const { file } = source;
       // Comments stripped (a commented-out registration is not a registration);
       // literals kept, because the paths themselves ARE the literals.
-      for (const js of registeredScriptPaths(stripComments(raw))) {
+      for (const js of registeredScriptPaths(source.code)) {
         // Resolve against each extension root; the tracked one is the file meant.
-        const path = roots.map((r) => resolveFromRoot(r, js)).find((p) => p && ctx.tracked.includes(p));
+        const path = roots.map((r) => resolveFromRoot(r, js)).find((p) => p && tracked.includes(p));
         if (path && !targets.has(path)) targets.set(path, file);
       }
     }
 
     const out = [];
     for (const [path, declaredIn] of [...targets].sort()) {
-      const text = ctx.read(path);
+      const text = read(path);
       if (text === null) continue; // a build output that isn't tracked — nothing to read
       const hit = moduleSyntax(text);
       if (!hit) continue;

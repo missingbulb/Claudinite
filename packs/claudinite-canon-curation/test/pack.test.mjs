@@ -5,8 +5,9 @@ import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { loadDeclaredChecks } from '../../../engine/checks/helpers/pattern-rules.mjs';
 import noEnforcementNarration from '../worldRules/no-enforcement-narration.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => noEnforcementNarration.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(noEnforcementNarration, buildContext({ root, mode: 'all' }));
 
 const DEMO_PACK = {
   'packs/demo/pack.mjs': "export default { id: 'demo', prose: 'RULES.md', rules: [] };\n",
@@ -87,7 +88,7 @@ test('pack-independence: a cross-pack import fires; own files, the engine surfac
     'engine/pack_loader/pack-registry.mjs': 'export const loadPacks = 1;\n',
   } });
   try {
-    const findings = packIndependence.run(buildContext({ root, mode: 'all' }));
+    const findings = runRule(packIndependence, buildContext({ root, mode: 'all' }));
     assert.equal(findings.length, 1);
     assert.equal(findings[0].file, 'packs/a/pack.mjs');
     assert.equal(findings[0].line, 1);
@@ -110,9 +111,9 @@ test('pack-independence: an import outside the engine surface fires; inert witho
     'src/lib.mjs': 'export default 1;\n',
   } });
   try {
-    const f = packIndependence.run(buildContext({ root: crossing, mode: 'all' }));
+    const f = runRule(packIndependence, buildContext({ root: crossing, mode: 'all' }));
     assert.equal(f.length, 1);
     assert.match(f[0].what, /vendoring\/compute-vendor-set\.mjs/);
-    assert.equal(packIndependence.run(buildContext({ root: consumer, mode: 'all' })).length, 0);
+    assert.equal(runRule(packIndependence, buildContext({ root: consumer, mode: 'all' })).length, 0);
   } finally { cleanup(crossing); cleanup(consumer); }
 });

@@ -2,7 +2,7 @@ import { stripComments } from './code-scanning.mjs';
 import { workflowFiles } from './github-workflows.mjs';
 import { isActive } from '../../pack_loader/pack-registry.mjs';
 
-// The check-the-world surface over ctx — what a rule that audits repo state is
+// The check-the-world surface over ctx - what a rule that audits repo state is
 // handed, the way `work.mjs` is what a rule that judges the change is handed.
 // `runRule` dispatches on the rule's scope, so which surface a rule receives is
 // decided in exactly one place.
@@ -15,7 +15,7 @@ import { isActive } from '../../pack_loader/pack-registry.mjs';
 //
 //   - THE READINGS are ctx's own surface, delegated unchanged. They are here so
 //     the bag is a superset of the context it wraps: a rule this canon has never
-//     seen — a member's own local pack, written against `ctx` — keeps working
+//     seen - a member's own local pack, written against `ctx` - keeps working
 //     verbatim, and the surface's conformance test pins that.
 //   - THE INSTRUMENTS are what every rule was building for itself out of those
 //     readings: the scanned corpus with its comments already stripped, the active
@@ -24,11 +24,25 @@ import { isActive } from '../../pack_loader/pack-registry.mjs';
 //     a rule that re-derives one is a rule that can get it subtly wrong.
 //
 // Mechanism only: a rule still owns its patterns, its file filters and its
-// failure text, and nothing here decides anything about a finding — severity,
+// failure text, and nothing here decides anything about a finding - severity,
 // grace and whether a finding blocks stay the runner's and the reporter's.
+//
+// ONE SURFACE PER CONTEXT, which is what makes it a RUN's instruments rather
+// than a rule's. Its own derivations (the stripped sources) are then shared by
+// every rule in the sweep instead of recomputed per rule - and so are the
+// per-run memos the scanning helpers keep, which key a WeakMap on the object
+// they are handed (reference-scanning's index, pattern-rules' scans). Handing
+// each rule a fresh bag would silently rebuild the reference index once per
+// barrier rule.
+const surfaces = new WeakMap();
 export const world = (ctx) => {
+  if (!surfaces.has(ctx)) surfaces.set(ctx, build(ctx));
+  return surfaces.get(ctx);
+};
+
+const build = (ctx) => {
   // Stripping comments is a character walk over the whole file, and sixteen rules
-  // ask for the same source files — so the answer is computed once per file per
+  // ask for the same source files - so the answer is computed once per file per
   // run. `ctx.read` is already cached the same way; this is the derivation beside
   // it.
   const code = new Map();
@@ -63,7 +77,7 @@ export const world = (ctx) => {
     get branch() { return ctx.branch; },
     get commits() { return ctx.commits; },
     get config() { return ctx.config; },
-    // The discovered pack objects, attached by the runner — checks run
+    // The discovered pack objects, attached by the runner - checks run
     // synchronously and cannot re-discover packs themselves.
     get packs() { return ctx.packs ?? []; },
     // The clock, where a caller injected one (a declared check's age windows read
@@ -91,7 +105,7 @@ export const world = (ctx) => {
     // Each record carries four views of the same file, the last three computed
     // only if asked for:
     //   `text`  the file as written
-    //   `code`  the same file with its comments stripped — the view a rule
+    //   `code`  the same file with its comments stripped - the view a rule
     //           matching a forbidden token must scan, since a comment that merely
     //           NAMES the token is describing the code, not doing it
     //   `json`  it parsed, or null where it is not JSON
@@ -114,7 +128,7 @@ export const world = (ctx) => {
       return out;
     },
 
-    // The paths `select` admits — `sources` for a rule that wants the names alone.
+    // The paths `select` admits - `sources` for a rule that wants the names alone.
     filesMatching: (select, from) => (from ?? ctx.files).filter(admits(select)),
 
     // One file parsed as JSON: null where it is absent, unreadable or unparsable,
@@ -122,7 +136,7 @@ export const world = (ctx) => {
     // loader's finding, never a scanning rule's).
     json: (path) => parse(ctx.read(path)),
 
-    // The packs this repo's declaration actually activates — the registry the
+    // The packs this repo's declaration actually activates - the registry the
     // runner discovered, filtered the way the runner filters it.
     activePacks: () => (ctx.packs ?? []).filter((p) => isActive(p, ctx.config)),
 
@@ -133,7 +147,7 @@ export const world = (ctx) => {
     workflows: () => workflowFiles(ctx),
 
     // The names one segment below `path`, drawn from the run's own file list so a
-    // walk sees exactly what the sweep sees — or null where nothing is under it.
+    // walk sees exactly what the sweep sees - or null where nothing is under it.
     listDir: (path) => {
       const names = new Set();
       const prefix = `${path}/`;
