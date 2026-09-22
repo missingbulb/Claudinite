@@ -21,7 +21,7 @@ import { isSuspended, suspendedNotice } from '../world/hold.mjs';
 import { HEARTBEAT_MS, heartbeatComment, withHeartbeat, realTimers } from '../items/heartbeat.mjs';
 import { renderTaskExec, startRunCost } from '../items/run-record.mjs';
 import { evaluatePrecondition } from '../contract/precondition.mjs';
-import { isScheduledTask } from '../contract/task-contract.mjs';
+import { declaresCodeWork, isScheduledTask } from '../contract/task-contract.mjs';
 import { swapStatus, clearStatus } from '../items/apply-status.mjs';
 import { pickOrder, taskIdOf, titleOf, running } from '../items/pick-order.mjs';
 import { resolveTarget, closeSuperseded } from './target.mjs';
@@ -410,7 +410,7 @@ async function executeItem({
     return STATUS_DONE;
   }
 
-  if (task.decl.code_work) {
+  if (declaresCodeWork(task.decl)) {
     // The work step may legitimately run for hours (PRINCIPLES.md). While it does, the
     // item's only sign of life is this beat — which is also what the scheduler run's leash
     // measures, so a long run is legal rather than reclaimed underneath itself.

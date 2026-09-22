@@ -4,6 +4,7 @@ import { MODEL_FAMILIES, MODEL_MAP, resolveModel, isAgentless } from '../../src/
 import {
   validateTaskDeclaration, normalizeTaskDeclaration, taskSignalNames, OUTCOMES, SIGNAL_NAMES,
   DEFAULT_AGENT_MODEL, DEFAULT_AUTOMERGE, DESCRIPTION_MAX_WORDS, taskCadence, isScheduledTask,
+  declaresCodeWork,
 } from '../../src/contract/task-contract.mjs';
 import {
   FREQUENCIES, cadenceTermFor,
@@ -49,8 +50,8 @@ test('validateTaskDeclaration: an agentless (none) task needs preprocessing but 
   const none = { ...validTask, agent_model: 'none', expected_outcome: 'no_code_changes' };
   delete none.agent_execution_timeout;
   delete none.automerge;
-  // a bare none task with no preprocessing does nothing → flagged
-  assert.match(validateTaskDeclaration(none)[0].what, /declares no "code_work"/);
+  // a bare none task with no work step does nothing → flagged
+  assert.match(validateTaskDeclaration(none)[0].what, /declares no work step/);
   // with preprocessing + its timeout it is clean, and needs no execution bound
   assert.deepEqual(
     validateTaskDeclaration({ ...none, code_work: 'node worker.mjs', code_work_timeout: 120 }),
@@ -74,7 +75,7 @@ test('normalizeTaskDeclaration fills the defaults, and only where absent', () =>
   assert.equal(filled.agent_execution_timeout, undefined);
   assert.equal(filled.code_work, undefined);
   // …so the minimal declaration is an agentless task with no code work, which does nothing.
-  assert.match(validateTaskDeclaration(minimal)[0].what, /declares no "code_work"/);
+  assert.match(validateTaskDeclaration(minimal)[0].what, /declares no work step/);
   assert.deepEqual(validateTaskDeclaration({ ...minimal, code_work: 'node w.mjs', code_work_timeout: 60 }), []);
   // A declared field is kept; a none task takes no automerge default.
   assert.equal(normalizeTaskDeclaration({ ...minimal, agent_model: 'opus' }).agent_model, 'opus');
@@ -132,6 +133,59 @@ test('validateTaskDeclaration validates code_work + its required timeout and con
       `code_work: ${JSON.stringify(empty)} is refused`,
     );
   }
+});
+
+// The WRAPPED work step: `code_worker_mjs` names a module, and its rejection branches
+// are the ways a field meant to hold a file name ends up holding something else.
+test('validateTaskDeclaration: code_worker_mjs is a task-local .mjs file name, bounded like code_work', () => {
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
+  delete none.agent_execution_timeout;
+  delete none.automerge;
+
+  // It satisfies the agentless task's need for a work step, exactly as code_work does.
+  assert.deepEqual(validateTaskDeclaration({ ...none, code_worker_mjs: 'worker.mjs', code_work_timeout: 120 }), []);
+
+  // The same bound, named for the field that is actually declared.
+  assert.match(
+    validateTaskDeclaration({ ...none, code_worker_mjs: 'worker.mjs' })[0].what,
+    /"code_worker_mjs" is set but "code_work_timeout" is not a positive integer/,
+  );
+
+  const what = (decl) => validateTaskDeclaration({ ...none, code_work_timeout: 120, ...decl })[0].what;
+  // A command where a file name belongs: the runner supplies the node invocation.
+  assert.match(what({ code_worker_mjs: 'node worker.mjs' }), /is a command rather than a file name/);
+  // Something the runner cannot import as an ES module.
+  assert.match(what({ code_worker_mjs: 'worker.js' }), /does not name a \.mjs module/);
+  assert.match(what({ code_worker_mjs: 'worker' }), /does not name a \.mjs module/);
+  // The same containment code_work has.
+  assert.match(what({ code_worker_mjs: '/opt/evil.mjs' }), /reaches outside the task directory/);
+  assert.match(what({ code_worker_mjs: '../evil.mjs' }), /reaches outside the task directory/);
+  // Present but unusable, the branch between absent and valid.
+  for (const empty of ['', '   ']) {
+    assert.match(what({ code_worker_mjs: empty }), /"code_worker_mjs" is present but not a non-empty string/,
+      `code_worker_mjs: ${JSON.stringify(empty)} is refused`);
+  }
+});
+
+// The two forms answer the same question about the same phase, so a declaration
+// carrying both leaves which one runs to whoever reads it.
+test('validateTaskDeclaration: code_work and code_worker_mjs are alternatives, never both', () => {
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', code_work_timeout: 120 };
+  delete none.agent_execution_timeout;
+  delete none.automerge;
+  assert.match(
+    validateTaskDeclaration({ ...none, code_work: 'node worker.mjs', code_worker_mjs: 'worker.mjs' })[0].what,
+    /both "code_work" and "code_worker_mjs" are declared/,
+  );
+});
+
+// One reader for "is there a work step here", so the two forms cannot drift into one
+// being honoured and the other silently skipped.
+test('declaresCodeWork reads either form, and neither when there is none', () => {
+  assert.equal(declaresCodeWork({ code_work: 'node worker.mjs' }), true);
+  assert.equal(declaresCodeWork({ code_worker_mjs: 'worker.mjs' }), true);
+  assert.equal(declaresCodeWork({ agent_model: 'opus' }), false);
+  assert.equal(declaresCodeWork(null), false);
 });
 
 // `model_from_request` is a one-value field: declaring it at all means "take the

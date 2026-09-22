@@ -63,3 +63,11 @@
 - **Actor:** owner session, reconciling #1920 and #2138.
 - **Model:** claude-opus-5
 - **Landed:** #2138
+
+## 2026-09-22 · reworded · the wrapped work step, and what a worker module holds (#2225)
+- **Reason:** the skill taught `code_work` as the only way to declare a work step, so an author
+  reading it would keep writing the entry point the runner now supplies. The section says what the
+  module exports, what the bag carries and what a returned verdict does, because those are the three
+  things an author cannot derive from the declaration alone.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5

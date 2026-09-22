@@ -5,10 +5,13 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { deliveredLines, missingSecrets, taskEnv, codeWorkEnv, CODE_WORK_ENV_VARS } from '../../src/execute/code-work-run.mjs';
+import { pathToFileURL } from 'node:url';
+import { removeTree } from '../../../../engine/remove-tree.mjs';
+import { runCodeWork } from '../../src/execute/code-work.mjs';
+import { deliveredLines, missingSecrets, taskEnv, codeWorkEnv, CODE_WORK_ENV_VARS, codeWorkCommand } from '../../src/execute/code-work-run.mjs';
 import { SECRETS_BAG_ENV } from '../../src/world/secrets-bag.mjs';
 import { VARS_BAG_ENV } from '../../src/world/vars-bag.mjs';
 
@@ -115,4 +118,63 @@ test('taskEnv selects the declared secrets and delivers every repo variable', ()
   // Neither raw blob is itself handed on.
   assert.equal(out[SECRETS_BAG_ENV], undefined);
   assert.equal(out[VARS_BAG_ENV], undefined);
+});
+
+// WHICH COMMAND THE PHASE SPAWNS, for each of the two forms a work step is declared
+// in. A `code_work` declaration is the command; a `code_worker_mjs` one names a module
+// and the command is the runner's own entry point around it, which is what makes the
+// wrapping the runner's to write once.
+test('codeWorkCommand spawns a code_work declaration as it stands', () => {
+  assert.equal(codeWorkCommand({ code_work: 'node worker.mjs --flag' }), 'node worker.mjs --flag');
+});
+
+test('codeWorkCommand wraps a code_worker_mjs module in the runner entry point', async () => {
+  const cmd = codeWorkCommand({ code_worker_mjs: 'worker.mjs' });
+  // The module is passed as an argument, and the entry point is addressed absolutely
+  // because the subprocess runs with the TASK directory as cwd.
+  assert.match(cmd, /^node "\/.*\/worker-entry\.mjs" "worker\.mjs"$/);
+  // The path it names is really there: a wrapper the runner cannot find fails every
+  // wrapped task at once, and a moved file would otherwise show up only in production.
+  const entry = cmd.match(/^node "([^"]+)"/)[1];
+  const mod = await import(pathToFileURL(entry).href);
+  assert.equal(typeof mod.runWorkerModule, 'function');
+});
+
+// The real spawn path, end to end: a task directory with a module in it, run through
+// the same runCodeWork the executor uses, and the worker's own output on stdout.
+test('runCodeWork runs a wrapped worker module, bag and all', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claudinite-wrapped-'));
+  writeFileSync(join(dir, 'task.json'), JSON.stringify({ id: 'p/t' }));
+  writeFileSync(join(dir, 'worker.mjs'),
+    'export const worker = (p) => { console.log(`worker saw ${p.repo} #${p.item.number}`); };\n');
+  try {
+    const result = await runCodeWork(codeWorkCommand({ code_worker_mjs: 'worker.mjs' }), {
+      taskDir: dir,
+      env: { ...process.env, CLAUDINITE_REPO: 'owner/name', CLAUDINITE_ITEM: '9', CLAUDINITE_PACK: 'p', CLAUDINITE_TASK: 't' },
+      timeoutSeconds: 60,
+      echo: () => {},
+    });
+    assert.equal(result.ok, true, result.stderr);
+    assert.match(result.stdout, /worker saw owner\/name #9/);
+    assert.match(result.stdout, /p\/t: worker done in/);
+  } finally { removeTree(dir); }
+});
+
+// A throwing worker is a failed run: the exit status is what the executor reads, and
+// the failure line is what its park comment is built from.
+test('runCodeWork reports a wrapped worker that threw as a failed run', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'claudinite-wrapped-'));
+  writeFileSync(join(dir, 'task.json'), JSON.stringify({ id: 'p/t' }));
+  writeFileSync(join(dir, 'worker.mjs'), 'export const worker = () => { throw new Error("nope"); };\n');
+  try {
+    const result = await runCodeWork(codeWorkCommand({ code_worker_mjs: 'worker.mjs' }), {
+      taskDir: dir,
+      env: { ...process.env, CLAUDINITE_PACK: 'p', CLAUDINITE_TASK: 't' },
+      timeoutSeconds: 60,
+      echo: () => {},
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /p\/t failed after .*: nope/);
+  } finally { removeTree(dir); }
 });

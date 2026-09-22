@@ -58,6 +58,10 @@ export function makeActions({
     EXECUTOR_WORKFLOW_FILE,
     actionsEnv: () => (current ? { ...bag, ...current.env } : bag),
     repoRoot: () => root,
+    // The simulator runs no subprocess, so nothing here ever runs with a task
+    // directory as its cwd; the name exists so the parity check can see it, and it
+    // answers what the real port would outside one.
+    taskDir: () => root,
     actionRepoContext: (e = port.actionsEnv()) => ({
       repo: e.GITHUB_REPOSITORY || null,
       defaultBranch: e.GITHUB_REF_NAME || 'main',

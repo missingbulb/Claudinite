@@ -106,7 +106,8 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   close once its own exists; a green, unlanded one on an auto-merge repo is landed
   instead). Any other word is rejected outright, retired spellings included.
   Everything else has a default or is conditional: `agent_model`
-  (`opus | sonnet | haiku | none`) is `none`, no agent; `code_work` is no code work.
+  (`opus | sonnet | haiku | none`) is `none`, no agent; neither work-step field is
+  declared, and there is no code work.
   The two timeouts have **no default**: an agent declares `agent_execution_timeout`
   and code work declares `code_work_timeout`, because a running phase always has a
   bound. An agent also declares `agent_instructions`, its worker file — nothing
@@ -205,6 +206,27 @@ authoring a workflow for it. An agentic task adds **`task.md`**, the spec its
 session follows, and may still do its own code-work first — escalating the
 remainder for **work code-work could not do**, never for a re-check of whether
 the run should have happened.
+
+**Declare that worker as `code_worker_mjs`, and write only the work.** The field
+names the module - `"code_worker_mjs": "worker.mjs"` - and the runner supplies the
+entry point, so the module exports one function and nothing else:
+
+```js
+export async function worker({ root, repo, defaultBranch, pack, task, item, context, target, secrets }) {
+  // … the work. Return nothing, or a verdict:
+  //   { triage: { kind, detail } }        the park's routing, for a run that must fail
+  //   { requeue: { until, reason } }      come back later; the item blocks until then
+  //   { requestAgent: { delivered, reason } }   hand off to the agentic phase
+}
+```
+
+The bag is the `CLAUDINITE_*` environment already parsed, so a worker reads no
+environment of its own and a test calls it with a bag it built; `secrets` holds the
+ones this task declared, and an unset value is absent rather than empty. A throw is
+the failure channel - the runner prints the failure line, the stack and the
+`.triage` an error carries, and sets the exit code. The raw `code_work` form still
+takes a whole command for a work step that is not a node module, and the two are
+never declared together.
 
 `task.md` is that spec and nothing else, so an agentless task must not carry one
 (`task-md-only-when-agentic`, blocking): the file's presence is what the rest of

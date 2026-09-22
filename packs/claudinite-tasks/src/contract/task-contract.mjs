@@ -38,6 +38,13 @@ export const TRIGGER_SCHEDULE = 'schedule';
 export const TRIGGER_REQUEST = 'request';
 export const TRIGGERS = Object.freeze([TRIGGER_SCHEDULE, TRIGGER_REQUEST]);
 
+// Does this task have a deterministic work step at all, in either of the forms it
+// may be declared in? Every reader asking "is there code-work here" asks through
+// this, so the two forms cannot drift apart into one being honoured and the other
+// silently skipped.
+export const declaresCodeWork = (decl) =>
+  decl?.code_work !== undefined || decl?.code_worker_mjs !== undefined;
+
 // The cadence a task keeps, as the term it states — `null` where it states none.
 export const taskCadence = (decl) => cadenceOf(decl?.preconditions);
 export const isScheduledTask = (decl) => decl?.trigger === TRIGGER_SCHEDULE;
@@ -236,18 +243,43 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
       'drop the field — only the engine\'s built-in request task reads a model off its item, and every other task names its own agent_model');
   }
 
-  // Code-work (docs/PRINCIPLES.md) — OPTIONAL. The deterministic first phase
-  // of task execution, a command the scheduler runs as a subprocess. When present
-  // it must be a non-empty, task-local command AND carry a positive-integer
-  // code_work_timeout — the hard kill that bounds the subprocess.
+  // Code-work (docs/PRINCIPLES.md) - OPTIONAL, and declared in one of two
+  // forms. `code_worker_mjs` names the module; `code_work` names a whole command.
+  // Never both: they answer the same question about the same phase, so a
+  // declaration carrying each would leave which one runs to the reader.
+  if (decl.code_work !== undefined && decl.code_worker_mjs !== undefined) {
+    bad('both "code_work" and "code_worker_mjs" are declared', 'keep one - "code_worker_mjs" for a module the runner wraps, "code_work" for a command it only spawns');
+  }
   if (decl.code_work !== undefined) {
     if (typeof decl.code_work !== 'string' || decl.code_work.trim() === '') {
       bad('"code_work" is present but not a non-empty string', 'set it to a command whose executable is a script beside task.json, e.g. "node prepare.mjs"');
     } else if (escapesTaskDir(decl.code_work)) {
       bad('"code_work" reaches outside the task directory (absolute path or "..")', 'reference a sibling script only, e.g. "node prepare.mjs"');
     }
+  }
+  // The WRAPPED form (owner, 2026-09-22): a module beside task.json exporting
+  // `worker`, which the runner's own entry point imports and calls. What every raw
+  // worker re-implemented - reading the CLAUDINITE_* environment, the exit code, the
+  // failure line, the timing, the queue's markers - the runner supplies, so the
+  // module is the work and nothing else. A file name, never a command: the runner
+  // builds the command, and a second executable in this field would be two answers
+  // to who runs the module.
+  if (decl.code_worker_mjs !== undefined) {
+    if (typeof decl.code_worker_mjs !== 'string' || decl.code_worker_mjs.trim() === '') {
+      bad('"code_worker_mjs" is present but not a non-empty string', 'name the module beside task.json that exports `worker`, e.g. "worker.mjs"');
+    } else if (/\s/.test(decl.code_worker_mjs.trim())) {
+      bad('"code_worker_mjs" is a command rather than a file name', 'name the module alone, e.g. "worker.mjs" - the runner supplies the node invocation');
+    } else if (!decl.code_worker_mjs.endsWith('.mjs')) {
+      bad('"code_worker_mjs" does not name a .mjs module', 'the runner imports it and calls its `worker` export, so it is an ES module beside task.json');
+    } else if (escapesTaskDir(decl.code_worker_mjs)) {
+      bad('"code_worker_mjs" reaches outside the task directory (absolute path or "..")', 'name a sibling module only, e.g. "worker.mjs"');
+    }
+  }
+  // Either form is a subprocess, so either carries the same hard bound.
+  if (declaresCodeWork(decl)) {
+    const field = decl.code_worker_mjs !== undefined ? 'code_worker_mjs' : 'code_work';
     if (!isPositiveInt(decl.code_work_timeout)) {
-      bad('"code_work" is set but "code_work_timeout" is not a positive integer', 'add "code_work_timeout": the seconds after which the subprocess is killed and the task fails');
+      bad(`"${field}" is set but "code_work_timeout" is not a positive integer`, 'add "code_work_timeout": the seconds after which the subprocess is killed and the task fails');
     } else if (decl.code_work_timeout * 1000 >= EXECUTING_LEASH_MS) {
       // F17: a code-work legally allowed to outlive the executing leash is reclaimed
       // WHILE ALIVE, and the failure is not one duplicate run but a livelock —
@@ -255,7 +287,7 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
       // cycle, the occurrence never converging. The leash is the engine's, so the
       // comparison is made where a declaration is judged.
       bad(`"code_work_timeout" (${decl.code_work_timeout}s) reaches the executor's ${EXECUTING_LEASH_MS / 60e3}-minute claim leash`,
-        `bound code_work under ${EXECUTING_LEASH_MS / 60e3} minutes — a code_work that can outlive the leash is reclaimed while still running, and the item livelocks`);
+        `bound the work step under ${EXECUTING_LEASH_MS / 60e3} minutes - one that can outlive the leash is reclaimed while still running, and the item livelocks`);
     }
   }
 
@@ -336,8 +368,8 @@ export function validateTaskDeclaration(raw, terms = new Map()) {
   // An agentless task (agent_model: none) runs no agent, so its ONLY work is
   // code-work — a `none` task with no code-work does nothing (PRINCIPLES.md, retiring
   // the in-process inline path). Require the command.
-  if (decl.agent_model === 'none' && decl.code_work === undefined) {
-    bad('an agentless task (agent_model: "none") declares no "code_work"', 'add "code_work" (a none task does its work in that subprocess) — or give the task an agent_model');
+  if (decl.agent_model === 'none' && !declaresCodeWork(decl)) {
+    bad('an agentless task (agent_model: "none") declares no work step', 'add "code_worker_mjs" (a none task does its work in that subprocess) - or give the task an agent_model');
   }
 
   return problems;
