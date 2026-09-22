@@ -4,7 +4,7 @@
 //
 // WHAT ONLY THIS RECORD COULD DO was converge the declaration. The rename map
 // resolved the id at read time, so a member read correctly whether or not this had
-// run; what the record bought was the day the map could come out — and that day came
+// run; what the record bought was the day the map could come out, and that day came
 // (#1909), so a member that never ran it now declares a pack directory nothing holds
 // and activates nothing under it.
 //

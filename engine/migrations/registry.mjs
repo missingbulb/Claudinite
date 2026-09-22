@@ -316,7 +316,7 @@ const LEGACY_LOCAL_DECL = 'local_packs/';
 // repo already converged is a no-op, and it patches the parsed declaration back with
 // the same 2-space shape every other declaration writer here uses.
 // Two entries that were different packs and are now the same one: a declaration
-// carrying both spellings of a rename, and — where the map holds one — an absorption,
+// carrying both spellings of a rename, and, where the map holds one, an absorption,
 // whose survivor every member carrying the absorbed pack already declares when the
 // first `requires` the second, so the collision is not an edge case but every member.
 //
