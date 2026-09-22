@@ -41,16 +41,16 @@ test('allows ordinary pushes and non-Bash tools', () => {
 
 // --- path-scoped skills ---------------------------------------------------------
 
-// A project declaring one local pack whose skill forces itself for product-wiki/**.
+// A project declaring one local pack whose skill forces itself for acme-pack-e/**.
 function scopedRepo() {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-guard-'));
   const pack = join(root, '.claudinite', 'local', 'packs', 'demo');
-  mkdirSync(join(pack, 'skills', 'writing-wiki-pages'), { recursive: true });
+  mkdirSync(join(pack, 'skills', 'acme-skill-w'), { recursive: true });
   writeFileSync(join(pack, 'pack.mjs'), `export default {
   ruleRoutingGuidance: { belongs: 'demo', excludes: 'nothing' },
 };
 `);
-  writeFileSync(join(pack, 'skills', 'writing-wiki-pages', 'SKILL.md'), '---\nname: writing-wiki-pages\ndescription: demo\nmetadata:\n  force-load-on-file-edits-paths:\n    - "product-wiki/**"\n---\n');
+  writeFileSync(join(pack, 'skills', 'acme-skill-w', 'SKILL.md'), '---\nname: acme-skill-w\ndescription: demo\nmetadata:\n  force-load-on-file-edits-paths:\n    - "acme-pack-e/**"\n---\n');
   writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: ['local/demo'] }));
   return root;
 }
@@ -61,30 +61,30 @@ const edit = (root, file_path, transcript_path) => ({ tool_name: 'Edit', tool_in
 test('a file tool on a scoped path is blocked until the skill is loaded, then allowed', () => {
   const root = scopedRepo();
   const bare = makeTranscript([{ type: 'user', message: { content: 'go' } }]);
-  const loaded = makeTranscript([skillLoad('writing-wiki-pages')]);
+  const loaded = makeTranscript([skillLoad('acme-skill-w')]);
   try {
-    const blocked = runGuard(edit(root, 'product-wiki/Market/README.md', bare.path), { CLAUDE_PROJECT_DIR: root });
+    const blocked = runGuard(edit(root, 'acme-pack-e/Market/README.md', bare.path), { CLAUDE_PROJECT_DIR: root });
     assert.equal(blocked.status, 2, blocked.stderr);
-    assert.match(blocked.stderr, /product-wiki\/Market\/README\.md is edited only with the `writing-wiki-pages` skill loaded/);
-    assert.match(blocked.stderr, /skill: "writing-wiki-pages"/);
+    assert.match(blocked.stderr, /acme-pack-e\/Market\/README\.md is edited only with the `acme-skill-w` skill loaded/);
+    assert.match(blocked.stderr, /skill: "acme-skill-w"/);
 
-    assert.match(blocked.stderr, /or Read \.claudinite\/local\/packs\/demo\/skills\/writing-wiki-pages\/SKILL\.md/);
+    assert.match(blocked.stderr, /or Read \.claudinite\/local\/packs\/demo\/skills\/acme-skill-w\/SKILL\.md/);
 
-    const allowed = runGuard(edit(root, 'product-wiki/Market/README.md', loaded.path), { CLAUDE_PROJECT_DIR: root });
+    const allowed = runGuard(edit(root, 'acme-pack-e/Market/README.md', loaded.path), { CLAUDE_PROJECT_DIR: root });
     assert.equal(allowed.status, 0, allowed.stderr);
-    const readLoaded = makeTranscript([{ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: join(root, '.claude/skills/writing-wiki-pages/SKILL.md') } }] } }]);
+    const readLoaded = makeTranscript([{ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: join(root, '.claude/skills/acme-skill-w/SKILL.md') } }] } }]);
     try {
-      assert.equal(runGuard(edit(root, 'product-wiki/Market/README.md', readLoaded.path), { CLAUDE_PROJECT_DIR: root }).status, 0, 'a Read of the SKILL.md is a load');
+      assert.equal(runGuard(edit(root, 'acme-pack-e/Market/README.md', readLoaded.path), { CLAUDE_PROJECT_DIR: root }).status, 0, 'a Read of the SKILL.md is a load');
     } finally { readLoaded.cleanup(); }
 
     // Write and NotebookEdit name their file the same way; a path outside every
     // pattern, and one outside the project, are never the guard's business.
-    const write = runGuard({ tool_name: 'Write', tool_input: { file_path: join(root, 'product-wiki/README.md') }, transcript_path: bare.path }, { CLAUDE_PROJECT_DIR: root });
+    const write = runGuard({ tool_name: 'Write', tool_input: { file_path: join(root, 'acme-pack-e/README.md') }, transcript_path: bare.path }, { CLAUDE_PROJECT_DIR: root });
     assert.equal(write.status, 2, write.stderr);
-    const notebook = runGuard({ tool_name: 'NotebookEdit', tool_input: { notebook_path: join(root, 'product-wiki/x.ipynb') }, transcript_path: bare.path }, { CLAUDE_PROJECT_DIR: root });
+    const notebook = runGuard({ tool_name: 'NotebookEdit', tool_input: { notebook_path: join(root, 'acme-pack-e/x.ipynb') }, transcript_path: bare.path }, { CLAUDE_PROJECT_DIR: root });
     assert.equal(notebook.status, 2, notebook.stderr);
     assert.equal(runGuard(edit(root, 'src/app.mjs', bare.path), { CLAUDE_PROJECT_DIR: root }).status, 0);
-    assert.equal(runGuard({ tool_name: 'Edit', tool_input: { file_path: '/elsewhere/product-wiki/README.md' }, transcript_path: bare.path }, { CLAUDE_PROJECT_DIR: root }).status, 0);
+    assert.equal(runGuard({ tool_name: 'Edit', tool_input: { file_path: '/elsewhere/acme-pack-e/README.md' }, transcript_path: bare.path }, { CLAUDE_PROJECT_DIR: root }).status, 0);
   } finally {
     bare.cleanup(); loaded.cleanup(); removeTree(root);
   }
@@ -96,16 +96,16 @@ test('a subagent that loaded the skill in its own stream is not blocked', () => 
   // load a subagent made is visible only in its own `subagents/` stream.
   const delegated = makeTranscript(
     [{ type: 'user', message: { content: 'go' } }],
-    { abc123: [skillLoad('writing-wiki-pages')] },
+    { abc123: [skillLoad('acme-skill-w')] },
   );
   const unrelated = makeTranscript(
     [{ type: 'user', message: { content: 'go' } }],
     { abc123: [skillLoad('some-other-skill')] },
   );
   try {
-    const allowed = runGuard(edit(root, 'product-wiki/Market/README.md', delegated.path), { CLAUDE_PROJECT_DIR: root });
+    const allowed = runGuard(edit(root, 'acme-pack-e/Market/README.md', delegated.path), { CLAUDE_PROJECT_DIR: root });
     assert.equal(allowed.status, 0, allowed.stderr);
-    const blocked = runGuard(edit(root, 'product-wiki/Market/README.md', unrelated.path), { CLAUDE_PROJECT_DIR: root });
+    const blocked = runGuard(edit(root, 'acme-pack-e/Market/README.md', unrelated.path), { CLAUDE_PROJECT_DIR: root });
     assert.equal(blocked.status, 2, 'a subagent stream that loaded some other skill still blocks');
   } finally {
     delegated.cleanup(); unrelated.cleanup(); removeTree(root);
@@ -115,7 +115,7 @@ test('a subagent that loaded the skill in its own stream is not blocked', () => 
 test('a project declaring no scoped skill, or one with no transcript, lets every edit through', () => {
   const root = mkdtempSync(join(tmpdir(), 'claudinite-guard-'));
   try {
-    writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: ['basics'] }));
-    assert.equal(runGuard(edit(root, 'product-wiki/README.md', '/nonexistent.jsonl'), { CLAUDE_PROJECT_DIR: root }).status, 0);
+    writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify({ packs: ['acme-pack'] }));
+    assert.equal(runGuard(edit(root, 'acme-pack-e/README.md', '/nonexistent.jsonl'), { CLAUDE_PROJECT_DIR: root }).status, 0);
   } finally { removeTree(root); }
 });

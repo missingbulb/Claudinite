@@ -179,7 +179,7 @@ const PACK = {
   'packs/alpha/worldRules/coded.mjs': "const rule = { id: 'cer/coded-check', severity: 'blocking' };\nexport default rule;\n",
   'packs/alpha/worldRules/coded.test.mjs': "const rule = { id: 'not-a-rule' };\n",
   'packs/alpha/declared-checks.json': '[{ "id": "declared-check", "severity": "advisory" }]\n',
-  'packs/alpha/tasks/store-release/task.json': '{}\n',
+  'packs/alpha/tasks/acme-task-i/task.json': '{}\n',
   'packs/alpha/provenance/worker-absolute-paths.md': BORN,
   'packs/alpha/provenance/cdp-worker-value.md': '',
   'packs/alpha/provenance/orphan.md': BORN,
@@ -198,7 +198,7 @@ test('packCarriers enumerates rules, guidelines, skills with bodies, checks by i
     assert.deepEqual(c.guidelines.map((g) => [g.skill, g.line, g.slug, g.numeric]), [['g', 7, 'doing-x', null], ['g', 8, null, '7']]);
     assert.deepEqual(c.skills.map((s) => [s.name, s.body, s.proposed]), [['g', 'guidelines', 'guidelines'], ['nobody', null, 'guidelines'], ['w', 'workflow', 'workflow']]);
     assert.deepEqual(c.checks.map((x) => x.id), ['cer/coded-check', 'declared-check'], 'a test module is not a rule module');
-    assert.deepEqual(c.tasks.map((t) => t.id), ['store-release']);
+    assert.deepEqual(c.tasks.map((t) => t.id), ['acme-task-i']);
     assert.equal(c.manifest, true);
     assert.equal(elementIdOf('cer/coded-check'), 'cer-coded-check');
     const files = provenanceFiles('packs/alpha', checkoutIo(root));
@@ -221,7 +221,7 @@ test('auditPack reports every fact the integrity check judges, and nothing a cle
     assert.deepEqual(a.dangling.map((d) => [d.carrier, d.id, d.retired]).sort(), [
       ['check cer/coded-check', 'cer-coded-check', false], ['check declared-check', 'declared-check', false],
       ['guideline "Doing X"', 'doing-x', false], ['skill g', 'g', false], ['skill nobody', 'nobody', false], ['skill w', 'w', false],
-      ['task store-release', 'store-release', false],
+      ['task acme-task-i', 'acme-task-i', false],
     ].sort());
     assert.deepEqual(a.unnamed.map((u) => u.id), ['orphan'], 'a retired file no carrier names is not a fault');
     assert.deepEqual(a.noBody.map((n) => n.skill), ['nobody']);
@@ -268,7 +268,7 @@ test('markPack marks every unmarked rule, declares every body, creates every mis
     assert.ok(!/\(unmarked-guideline\)/.test(nobody), 'a skill whose body is proposed as guidelines keeps its bullets unmarked: they are the skill\'s until one earns a file of its own');
     const w = readFileSync(join(root, 'packs/alpha/skills/w/SKILL.md'), 'utf8');
     assert.ok(!/\(a-gotcha\)/.test(w) && /\(2\)/.test(w), 'a workflow skill\'s bullets are not marked and its numeric marker is the conversion\'s to remove');
-    for (const f of ['wanting-import-export', 'assembling-shared-global', 'g', 'w', 'nobody', 'cer-coded-check', 'declared-check', 'store-release']) {
+    for (const f of ['wanting-import-export', 'assembling-shared-global', 'g', 'w', 'nobody', 'cer-coded-check', 'declared-check', 'acme-task-i']) {
       assert.ok(existsSync(join(root, `packs/alpha/provenance/${f}.md`)), `${f}.md created`);
       assert.equal(readFileSync(join(root, `packs/alpha/provenance/${f}.md`), 'utf8'), '', 'created empty - history is the backfill\'s');
     }
@@ -301,10 +301,10 @@ test('markPack puts a marker that would pass the width on a continuation line of
 });
 
 test('parseReferencesDoc reads RULES-n, <skill>-n, check: and task: keys with their continuation lines', () => {
-  const refs = parseReferencesDoc('# refs\n\n- **(RULES-3)** First reason,\n  continued. Retire when X.\n- **(writing-tests-2)** A skill reason.\n- **(check:cer/coded-check)** Why the check.\n- **(weird)** Unknown.\n- **(task:nightly)** Why the task.\n- **(RULES-2a)** A suffixed key.\n');
-  assert.deepEqual(refs.map((r) => [r.kind, r.kind === 'rule' ? r.n : r.target ?? null]), [['rule', '3'], ['skill', 'writing-tests'], ['check', 'cer/coded-check'], ['unknown', null], ['task', 'nightly'], ['rule', '2a']]);
+  const refs = parseReferencesDoc('# refs\n\n- **(RULES-3)** First reason,\n  continued. Retire when X.\n- **(acme-skill-t-2)** A skill reason.\n- **(check:cer/coded-check)** Why the check.\n- **(weird)** Unknown.\n- **(task:nightly)** Why the task.\n- **(RULES-2a)** A suffixed key.\n');
+  assert.deepEqual(refs.map((r) => [r.kind, r.kind === 'rule' ? r.n : r.target ?? null]), [['rule', '3'], ['skill', 'acme-skill-t'], ['check', 'cer/coded-check'], ['unknown', null], ['task', 'nightly'], ['rule', '2a']]);
   assert.equal(refs[0].text, 'First reason, continued. Retire when X.');
-  assert.equal(refs[1].target, 'writing-tests');
+  assert.equal(refs[1].target, 'acme-skill-t');
   assert.equal(refs[1].n, '2');
 });
 

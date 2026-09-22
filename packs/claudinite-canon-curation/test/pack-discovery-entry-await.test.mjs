@@ -24,17 +24,17 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
 test('pack-discovery-entry-await: fires on a top-level await in a module a skill checks.mjs imports', () => {
   const root = makeRepo({
     base: {
-      'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth'),
-      'packs/claudinite-growth/skills/adopt/checks.mjs':
+      'packs/acme-pack-f/pack.mjs': packModule('acme-pack-f'),
+      'packs/acme-pack-f/skills/adopt/checks.mjs':
         "import { state } from './interview.mjs';\nexport default [state];\n",
-      'packs/claudinite-growth/skills/adopt/interview.mjs': cliModule('await check();'),
+      'packs/acme-pack-f/skills/adopt/interview.mjs': cliModule('await check();'),
     },
   });
   try {
     const findings = run(root);
     assert.equal(findings.length, 1);
     assert.equal(findings[0].severity, 'blocking');
-    assert.equal(findings[0].file, 'packs/claudinite-growth/skills/adopt/interview.mjs');
+    assert.equal(findings[0].file, 'packs/acme-pack-f/skills/adopt/interview.mjs');
     assert.match(findings[0].fix, /\.catch\(/);
   } finally {
     cleanup(root);
@@ -44,8 +44,8 @@ test('pack-discovery-entry-await: fires on a top-level await in a module a skill
 test('pack-discovery-entry-await: follows the graph transitively through a pack.mjs', () => {
   const root = makeRepo({
     base: {
-      'packs/basics/pack.mjs': packModule('basics', "import './cli.mjs';\n"),
-      'packs/basics/cli.mjs': cliModule('await check();'),
+      'packs/acme-pack/pack.mjs': packModule('acme-pack', "import './cli.mjs';\n"),
+      'packs/acme-pack/cli.mjs': cliModule('await check();'),
     },
   });
   try {
@@ -58,10 +58,10 @@ test('pack-discovery-entry-await: follows the graph transitively through a pack.
 test('pack-discovery-entry-await: the safe form — work started after evaluation — is quiet', () => {
   const root = makeRepo({
     base: {
-      'packs/claudinite-growth/pack.mjs': packModule('claudinite-growth'),
-      'packs/claudinite-growth/skills/adopt/checks.mjs':
+      'packs/acme-pack-f/pack.mjs': packModule('acme-pack-f'),
+      'packs/acme-pack-f/skills/adopt/checks.mjs':
         "import { state } from './interview.mjs';\nexport default [state];\n",
-      'packs/claudinite-growth/skills/adopt/interview.mjs':
+      'packs/acme-pack-f/skills/adopt/interview.mjs':
         cliModule("check().catch((e) => process.stderr.write(`${e.message}\\n`));"),
     },
   });
@@ -75,10 +75,10 @@ test('pack-discovery-entry-await: the safe form — work started after evaluatio
 test('pack-discovery-entry-await: a CLI worker outside the discovery graph may await at top level', () => {
   const root = makeRepo({
     base: {
-      'packs/basics/pack.mjs': packModule('basics'),
+      'packs/acme-pack/pack.mjs': packModule('acme-pack'),
       // Nothing in the pack tree imports it — the scheduler spawns it as a process.
-      'packs/claudinite-lifecycle/tasks/update/worker.mjs': cliModule('await check();'),
-      'packs/claudinite-tasks/src/execute/loop.mjs': cliModule('await check();'),
+      'packs/acme-pack-b/tasks/acme-task-c/worker.mjs': cliModule('await check();'),
+      'packs/acme-pack-t/src/execute/loop.mjs': cliModule('await check();'),
     },
   });
   try {
@@ -92,7 +92,7 @@ test('pack-discovery-entry-await: a dynamic import is not followed — it is wha
   const root = makeRepo({
     base: {
       'packs/basics/pack.mjs': packModule('basics', "const load = () => import('./cli.mjs');\n"),
-      'packs/basics/cli.mjs': cliModule('await check();'),
+      'packs/acme-pack/cli.mjs': cliModule('await check();'),
     },
   });
   try {
@@ -105,8 +105,8 @@ test('pack-discovery-entry-await: a dynamic import is not followed — it is wha
 test('pack-discovery-entry-await: prose and code samples about the trap cannot fire it', () => {
   const root = makeRepo({
     base: {
-      'packs/basics/pack.mjs': packModule('basics', "import './cli.mjs';\n"),
-      'packs/basics/cli.mjs': `import { pathToFileURL } from 'node:url';
+      'packs/acme-pack/pack.mjs': packModule('acme-pack', "import './cli.mjs';\n"),
+      'packs/acme-pack/cli.mjs': `import { pathToFileURL } from 'node:url';
 async function check() { return []; }
 // NEVER write \`await check()\` here — if (import.meta.url === ...) { await check(); }
 const sample = \`if (import.meta.url === x) { await check(); }\`;

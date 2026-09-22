@@ -45,12 +45,12 @@ test('every import path is relative to the INDEX, not the project root', () => {
   // import, not the working directory". The index lives one level down in
   // .claudinite/, so a path written off the root would resolve one directory too
   // shallow and silently import nothing.
-  const root = makeMember({ canon: ['basics'], local: ['proj'] });
+  const root = makeMember({ canon: ['acme-pack'], local: ['proj'] });
   const out = renderRulesIndex(imports(root, [
-    pack('basics'),
+    pack('acme-pack'),
     pack('proj', { local: true, dir: join(root, '.claudinite', 'local', 'packs', 'proj') }),
   ]));
-  assert.match(out, /^@shared\/packs\/basics\/RULES\.md$/m);
+  assert.match(out, /^@shared\/packs\/acme-pack\/RULES\.md$/m);
   assert.match(out, /^@local\/packs\/proj\/RULES\.md$/m);
   assert.doesNotMatch(out, /@\.claudinite\//, 'a path written off the project root resolves one level too shallow');
 });
@@ -60,10 +60,10 @@ test('the canon, which mounts nothing, imports its own packs/ through ..', () =>
   // repo root and the index reaches it by going up out of .claudinite/. It still
   // resolves INSIDE the working directory, so it triggers no external-import dialog.
   const root = tmp('canon');
-  mkdirSync(join(root, 'packs', 'basics'), { recursive: true });
-  writeFileSync(join(root, 'packs', 'basics', 'RULES.md'), 'basics prose\n');
+  mkdirSync(join(root, 'packs', 'acme-pack'), { recursive: true });
+  writeFileSync(join(root, 'packs', 'acme-pack', 'RULES.md'), 'acme-pack prose\n');
   assert.equal(corpusRootFor(root), root);
-  assert.match(renderRulesIndex(imports(root, [pack('basics')])), /^@\.\.\/packs\/basics\/RULES\.md$/m);
+  assert.match(renderRulesIndex(imports(root, [pack('acme-pack')])), /^@\.\.\/packs\/acme-pack\/RULES\.md$/m);
 });
 
 test('a canon pack is re-rooted onto the TARGET corpus, not the loaded one', () => {
@@ -71,12 +71,12 @@ test('a canon pack is re-rooted onto the TARGET corpus, not the loaded one', () 
   // the clone's directories while the index is being written for the member. Writing
   // pack.dir there would emit an import traversing to a checkout that exists only on
   // the runner. Simulated by handing a pack whose `dir` is somewhere else entirely.
-  const root = makeMember({ canon: ['basics'] });
+  const root = makeMember({ canon: ['acme-pack'] });
   const elsewhere = tmp('canon-clone');
-  mkdirSync(join(elsewhere, 'packs', 'basics'), { recursive: true });
-  writeFileSync(join(elsewhere, 'packs', 'basics', 'RULES.md'), 'basics prose\n');
-  const out = renderRulesIndex(imports(root, [pack('basics', { dir: join(elsewhere, 'packs', 'basics') })]));
-  assert.match(out, /@shared\/packs\/basics\/RULES\.md/);
+  mkdirSync(join(elsewhere, 'packs', 'acme-pack'), { recursive: true });
+  writeFileSync(join(elsewhere, 'packs', 'acme-pack', 'RULES.md'), 'acme-pack prose\n');
+  const out = renderRulesIndex(imports(root, [pack('acme-pack', { dir: join(elsewhere, 'packs', 'acme-pack') })]));
+  assert.match(out, /@shared\/packs\/acme-pack\/RULES\.md/);
   assert.doesNotMatch(out, /canon-clone/);
 });
 
@@ -85,9 +85,9 @@ test('a pack with no prose, or whose prose is not vendored yet, is skipped', () 
   // content until the next refresh (vendoring/DESIGN.md's accepted edge), and an
   // import the harness cannot resolve is worse than an absent one. `prose: null` is
   // the same answer from the other direction — several canon packs carry no prose.
-  const root = makeMember({ canon: ['basics'] });
-  const out = renderRulesIndex(imports(root, [pack('basics'), pack('notyet'), pack('quiet', { prose: null })]));
-  assert.match(out, /basics\/RULES\.md/);
+  const root = makeMember({ canon: ['acme-pack'] });
+  const out = renderRulesIndex(imports(root, [pack('acme-pack'), pack('notyet'), pack('quiet', { prose: null })]));
+  assert.match(out, /acme-pack\/RULES\.md/);
   assert.doesNotMatch(out, /notyet/);
   assert.doesNotMatch(out, /quiet/);
 });
@@ -96,21 +96,21 @@ test('the file holds nothing but imports and one stripped comment', () => {
   // "ONLY the hard imports" (owner, #807). The banner is an HTML comment on purpose:
   // block comments are stripped before a memory file enters context, so it costs
   // nothing every session while staying visible to anything that Reads the file.
-  const root = makeMember({ canon: ['basics', 'other'] });
-  const lines = renderRulesIndex(imports(root, [pack('basics'), pack('other')])).trim().split('\n');
+  const root = makeMember({ canon: ['acme-pack', 'other'] });
+  const lines = renderRulesIndex(imports(root, [pack('acme-pack'), pack('other')])).trim().split('\n');
   assert.match(lines[0], /^<!-- GENERATED/);
-  assert.deepEqual(lines.slice(1), ['@shared/packs/basics/RULES.md', '@shared/packs/other/RULES.md']);
+  assert.deepEqual(lines.slice(1), ['@shared/packs/acme-pack/RULES.md', '@shared/packs/other/RULES.md']);
   // No routing table, no prose, no per-pack labels — those duplicated
   // packs/directory.GENERATED.md, which every mount already carries.
-  const text = renderRulesIndex(imports(root, [pack('basics')]));
+  const text = renderRulesIndex(imports(root, [pack('acme-pack')]));
   assert.doesNotMatch(text, /routing|Belongs|\|/);
 });
 
 test('an import is never wrapped in backticks', () => {
   // The harness skips `@` mentions inside code spans, so a quoted import is one it
   // never follows — a file that looks right and loads nothing.
-  const root = makeMember({ canon: ['basics'] });
-  for (const line of renderRulesIndex(imports(root, [pack('basics')])).split('\n')) {
+  const root = makeMember({ canon: ['acme-pack'] });
+  for (const line of renderRulesIndex(imports(root, [pack('acme-pack')])).split('\n')) {
     if (line.includes('@')) assert.ok(!line.includes('`'), line);
   }
 });
@@ -122,8 +122,8 @@ test('a repo with nothing to import gets no index at all', async () => {
 });
 
 test('writeRulesIndex is idempotent, and never truncates on a fail-soft empty', async () => {
-  const root = makeMember({ canon: ['basics'] });
-  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n');
+  const root = makeMember({ canon: ['basics'] }); // @real-entity writeRulesIndex discovers packs off the real corpus, so the id must be one it carries
+  writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["basics"] }\n'); // @real-entity writeRulesIndex discovers packs off the real corpus, so the id must be one it carries
   assert.equal(await writeRulesIndex(root), true, 'first write lands the file');
   const first = readFileSync(join(root, RULES_INDEX_FILE), 'utf8');
   assert.equal(await writeRulesIndex(root), false, 'a converge over an unchanged declaration is a no-op');
@@ -147,7 +147,7 @@ test('the index names exactly the packs a repo declares, and every import resolv
   // The end-to-end property, and the one #807 is ultimately about: the channel is only
   // worth having if what arrives on it is this repo's actual rule set. An import that
   // resolves to nothing is the same failure in a new costume — delivered, and empty.
-  const root = makeMember({ canon: ['basics'], local: ['proj'] });
+  const root = makeMember({ canon: ['acme-pack'], local: ['proj'] });
   writeFileSync(join(root, '.claudinite', 'local', 'packs', 'proj', 'pack.mjs'), "export default { id: 'proj', rules: [], prose: 'RULES.md' };\n");
   writeFileSync(join(root, '.claudinite-settings.json'), '{ "packs": ["local/proj"] }\n');
   await writeRulesIndex(root);
@@ -172,15 +172,15 @@ test('the index names exactly the packs a repo declares, and every import resolv
 const copying = (id, dir) => ({ ...pack(id, { dir }), dir });
 
 test('the index carries the copied pack\'s prose when, and only when, a pack copies', () => {
-  const root = makeMember({ canon: ['basics', 'web'] });
-  const plain = join(root, '.claudinite', 'shared', 'packs', 'basics');
+  const root = makeMember({ canon: ['acme-pack', 'web'] });
+  const plain = join(root, '.claudinite', 'shared', 'packs', 'acme-pack');
   const copies = join(root, '.claudinite', 'shared', 'packs', 'web');
   writeFileSync(join(copies, 'session-prepare.mjs'), 'process.exit(0);\n');
 
-  const without = imports(root, [pack('basics', { dir: plain })]).map((i) => i.id);
+  const without = imports(root, [pack('acme-pack', { dir: plain })]).map((i) => i.id);
   assert.ok(!without.includes('current_user'), 'a repo whose packs copy nothing imports nothing copied');
 
-  const withCopy = imports(root, [pack('basics', { dir: plain }), copying('web', copies)]);
+  const withCopy = imports(root, [pack('acme-pack', { dir: plain }), copying('web', copies)]);
   const line = withCopy.at(-1);
   assert.equal(line.id, 'current_user');
   // LAST: a person's own rules are read against the project's, so they follow them.

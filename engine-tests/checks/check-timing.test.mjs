@@ -38,7 +38,7 @@ test('parseTimings picks the records out of a block holding both runners and oth
   const block = [
     'claudinite conformance checks failed',
     renderTiming('work', 10, [{ id: 'a', ms: 4 }]),
-    '[BLOCKING] some-rule  packs/basics/RULES.md',
+    '[BLOCKING] some-rule  packs/acme-pack/RULES.md',
     renderTiming('world', 20, [{ id: 'b', ms: 9 }]),
   ].join('\n');
   assert.deepEqual(parseTimings(block).map((r) => [r.scope, r.totalMs]), [['work', 10], ['world', 20]]);

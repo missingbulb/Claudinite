@@ -26,8 +26,8 @@ function makeCorpus({ packStart = '', skills = '', env = '', interview = '', sel
   writeFileSync(join(root, 'engine', 'pack_loader', 'env-requirements.mjs'), env);
   writeFileSync(join(root, 'engine', 'pack_loader', 'session-summary.mjs'), summary);
   // The interview machinery is the adoption skill's, bundled in the claudinite-lifecycle pack.
-  mkdirSync(join(root, 'packs', 'claudinite-lifecycle', 'skills', 'adopt-claudinite'), { recursive: true });
-  writeFileSync(join(root, 'packs', 'claudinite-lifecycle', 'skills', 'adopt-claudinite', 'interview.mjs'), interview);
+  mkdirSync(join(root, 'packs', 'claudinite-lifecycle', 'skills', 'adopt-claudinite'), { recursive: true }); // @real-entity the real skill the interview-check step looks for
+  writeFileSync(join(root, 'packs', 'claudinite-lifecycle', 'skills', 'adopt-claudinite', 'interview.mjs'), interview); // @real-entity the real skill the interview-check step looks for
   return root;
 }
 

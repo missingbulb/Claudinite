@@ -8,7 +8,7 @@ import { renderSurfaceReport, publishedNames, consumerBucket, readSurfaceUse } f
 // The report is rendered on demand (`node pack-surface.mjs <packDir>`), never committed;
 // what is pinned here is the renderer over the real tree and over fixtures.
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const PACK_DIR = 'packs/claudinite-tasks';
+const PACK_DIR = 'packs/acme-pack-t';
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', '.claudinite-cache']);
 
@@ -66,8 +66,8 @@ test('publishedNames keeps a wildcard separate from the names beside it', () => 
 test('consumerBucket separates a live dependency from the canon proving its own contract', () => {
   const b = (p) => consumerBucket(p, PACK_DIR);
   assert.equal(b('.github/workflows/claudinite-executor.yml'), 'workflow');
-  assert.equal(b('packs/claudinite-dashboard/src/derive/board.mjs'), 'pack');
-  assert.equal(b('packs/claudinite-dashboard/test/board.test.mjs'), 'pack (test)');
+  assert.equal(b('packs/acme-pack-s/src/derive/board.mjs'), 'pack');
+  assert.equal(b('packs/acme-pack-s/test/board.test.mjs'), 'pack (test)');
   assert.equal(b('.claudinite/local/packs/claudinite/RULES.md'), 'pack');
   assert.equal(b('bootstrap.md'), 'canon');
   assert.equal(b('engine-tests/migrations.test.mjs'), 'canon (test)');
@@ -97,9 +97,9 @@ test('the pack reached through the mount is still the pack itself', () => {
 test('readSurfaceUse counts every spelling of the same module, and ignores the pack itself', () => {
   const files = new Map([
     [`${PACK_DIR}/public/work-item-grammar.mjs`, "export { isQueueItem, unreadName } from '../src/items/work-item.mjs';"],
-    ['packs/claudinite-dashboard/src/derive/board.mjs', "import { isQueueItem } from '../../../claudinite-tasks/public/work-item-grammar.mjs';"],
-    ['packs/other/test/a.test.mjs', "import { isQueueItem } from '../../claudinite-tasks/public/work-item-grammar.mjs';"],
-    ['docs/guide.md', 'node .claudinite/shared/packs/claudinite-tasks/public/work-item-grammar.mjs'],
+    ['packs/acme-pack-s/src/derive/board.mjs', "import { isQueueItem } from '../../../acme-pack-t/public/work-item-grammar.mjs';"],
+    ['packs/other/test/a.test.mjs', "import { isQueueItem } from '../../acme-pack-t/public/work-item-grammar.mjs';"],
+    ['docs/guide.md', 'node .claudinite/shared/packs/acme-pack-t/public/work-item-grammar.mjs'],
     [`${PACK_DIR}/src/execute/loop.mjs`, "import { unreadName } from '../../public/work-item-grammar.mjs';"],
   ]);
   const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('work-item-grammar.mjs');
@@ -108,7 +108,7 @@ test('readSurfaceUse counts every spelling of the same module, and ignores the p
 
   const rendered = renderSurfaceReport({ packDir: PACK_DIR, files });
   assert.match(rendered, /\| `work-item-grammar\.mjs` \| 2 \| 1 \| `unreadName` \|/, 'the unread name is named in its own column');
-  assert.match(rendered, /pack: claudinite-dashboard/);
+  assert.match(rendered, /pack: acme-pack-s/);
 });
 
 // A path named in a comment costs the pack nothing to move, so counting it as a reader
@@ -117,9 +117,9 @@ test('readSurfaceUse counts every spelling of the same module, and ignores the p
 test('a path named only in prose is a mention, never a reader', () => {
   const files = new Map([
     [`${PACK_DIR}/public/delivery.mjs`, "export { landDelivery } from '../src/deliver/land-pr.mjs';"],
-    ['packs/other/worker.mjs', '// hands off to the landing lane (packs/claudinite-tasks/public/delivery.mjs) instead'],
-    ['packs/other/declared-checks.json', '"fix": "run node .claudinite/shared/packs/claudinite-tasks/public/delivery.mjs"'],
-    ['.github/workflows/x.yml', '        run: node packs/claudinite-tasks/public/delivery.mjs'],
+    ['packs/other/worker.mjs', '// hands off to the landing lane (packs/acme-pack-t/public/delivery.mjs) instead'],
+    ['packs/other/declared-checks.json', '"fix": "run node .claudinite/shared/packs/acme-pack-t/public/delivery.mjs"'],
+    ['.github/workflows/x.yml', '        run: node packs/acme-pack-t/public/delivery.mjs'],
   ]);
   const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('delivery.mjs');
   assert.deepEqual([...mod.consumers.keys()], ['workflow'], 'only the workflow actually runs it');
@@ -134,8 +134,8 @@ test('a path named only in prose is a mention, never a reader', () => {
 test('a document in public/ counts every reference as a reader', () => {
   const files = new Map([
     [`${PACK_DIR}/public/instructions.md`, '# the work-item routine'],
-    ['bootstrap.md', 'Execute: `.claudinite/shared/packs/claudinite-tasks/public/instructions.md`.'],
-    ['packs/other/tasks/update/task.md', '(`.claudinite/shared/packs/claudinite-tasks/public/instructions.md`): everything a task'],
+    ['bootstrap.md', 'Execute: `.claudinite/shared/packs/acme-pack-t/public/instructions.md`.'],
+    ['packs/other/tasks/acme-task-c/task.md', '(`.claudinite/shared/packs/acme-pack-t/public/instructions.md`): everything a task'],
   ]);
   const mod = readSurfaceUse({ files, packDir: PACK_DIR }).get('instructions.md');
   assert.equal(mod.mentions.size, 0, 'prose naming a document is how a document is read');

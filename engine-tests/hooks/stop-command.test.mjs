@@ -29,7 +29,7 @@ test('the Stop hook runs the WORK scope only — a world finding does not fire h
     changed: {
       'doc.md': '[gone](missing.md)\n',
       'a.js': '// eslint-disable-next-line no-undef\ny();\n',
-      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
+      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }), // @real-entity the real corpus the hook resolves its checks from
     },
   });
   try {
@@ -46,7 +46,7 @@ test('the Stop hook exits 0 when the work scope is clean, even with an outstandi
   const root = makeRepo({
     changed: {
       'a.js': '// eslint-disable-next-line no-undef\ny();\n',
-      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }),
+      '.claudinite-settings.json': JSON.stringify({ packs: ['basics'] }), // @real-entity the real corpus the hook resolves its checks from
     },
   });
   try {

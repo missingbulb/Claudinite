@@ -10,15 +10,15 @@ import { commandName } from '../../packs/claudinite-tasks/tasks/usage-fold/fold-
 import { removeTree } from '../../engine/remove-tree.mjs';
 
 test('globToRegExp: ** spans directories, * and ? stay inside a segment, braces expand, the rest is literal', () => {
-  const tree = globToRegExp('product-wiki/**');
-  assert.ok(tree.test('product-wiki/Market/README.md'));
-  assert.ok(tree.test('product-wiki/README.md'));
-  assert.ok(!tree.test('docs/product-wiki/README.md'));
+  const tree = globToRegExp('acme-pack-e/**');
+  assert.ok(tree.test('acme-pack-e/Market/README.md'));
+  assert.ok(tree.test('acme-pack-e/README.md'));
+  assert.ok(!tree.test('docs/acme-pack-e/README.md'));
   const anyDepth = globToRegExp('**/packs/*/RULES.md');
-  assert.ok(anyDepth.test('packs/basics/RULES.md'));
+  assert.ok(anyDepth.test('packs/acme-pack/RULES.md'));
   assert.ok(anyDepth.test('.claudinite/local/packs/claudinite/RULES.md'));
-  assert.ok(!anyDepth.test('packs/basics/skills/x/RULES.md'), '* does not cross a slash');
-  assert.ok(!anyDepth.test('packs/basics/RULESXmd'), 'the dot is literal');
+  assert.ok(!anyDepth.test('packs/acme-pack/skills/x/RULES.md'), '* does not cross a slash');
+  assert.ok(!anyDepth.test('packs/acme-pack/RULESXmd'), 'the dot is literal');
   assert.ok(globToRegExp('src/?.js').test('src/a.js'));
   assert.ok(!globToRegExp('src/?.js').test('src/ab.js'));
   assert.deepEqual(expandBraces('src/**/*.{ts,tsx}'), ['src/**/*.ts', 'src/**/*.tsx']);
@@ -207,5 +207,5 @@ test('hits*: one predicate per moment, the shape a moment counter asks its quest
   assert.ok(hitsPrompt({ kind: 'prompt', pattern: /\/do-later/ }, 'please /do-later this'));
   assert.ok(!hitsPrompt({ kind: 'toolCall', pattern: /\/do-later/ }, '/do-later'), 'a kind it is not never hits');
   assert.ok(hitsResult({ kind: 'toolResult', tool: 'WebFetch', field: null, pattern: /403/ }, { name: 'WebFetch' }, 'got 403'));
-  assert.ok(hitsPath({ re: globToRegExp('packs/**') }, 'packs/basics/RULES.md'));
+  assert.ok(hitsPath({ re: globToRegExp('packs/**') }, 'packs/acme-pack/RULES.md'));
 });

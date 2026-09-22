@@ -52,7 +52,7 @@ const run = (root, branch) => {
 
 test('an engine-authored branch is not judged as work — auto-merge is a queue for checks', () => {
   assert.ok(isAutomationBranch('claudinite/update-2026-08-12-ja25ab'));
-  assert.ok(isAutomationBranch('claudinite/usage-fold/2026-08-17'));
+  assert.ok(isAutomationBranch('claudinite/acme-task-g/2026-08-17'));
 });
 
 test('a person\'s branch that merely starts with the word is judged', () => {

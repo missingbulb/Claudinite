@@ -49,16 +49,16 @@ test('promote-scope: fires on a path outside the corpus roots', () => {
 test('promote-scope: a second corpus root counts only where the canon declares it', () => {
   const bare = makeRepo({
     base: { '.claudinite-settings.json': settings(null) },
-    changed: { 'skills/writing-tests/SKILL.md': 'updated\n' },
+    changed: { 'skills/acme-skill-t/SKILL.md': 'updated\n' },
     commitMsg: 'promote Refs #1',
   });
   const declared = makeRepo({
     base: { '.claudinite-settings.json': settings(['skills']) },
-    changed: { 'skills/writing-tests/SKILL.md': 'updated\n' },
+    changed: { 'skills/acme-skill-t/SKILL.md': 'updated\n' },
     commitMsg: 'promote Refs #1',
   });
   try {
-    assert.deepEqual(run(bare).map((f) => f.file), ['skills/writing-tests/SKILL.md']);
+    assert.deepEqual(run(bare).map((f) => f.file), ['skills/acme-skill-t/SKILL.md']);
     assert.deepEqual(run(declared), []);
   } finally {
     cleanup(bare); cleanup(declared);

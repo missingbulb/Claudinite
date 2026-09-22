@@ -17,7 +17,7 @@ test('a repo that says nothing gets the only mechanism there is, by its current 
 });
 
 test('the pre-rename spelling is out of the vocabulary, and the repo carrying it is still served', () => {
-  // The alias retired with #1643, a convergence window after the `basics` record took
+  // The alias retired with #1643, a convergence window after the `acme-pack` record took
   // the old spelling out of declarations. The repo that somehow still says it is not
   // WEDGED by that: `updates` reads as invalid, invalid resolves to the default, and
   // the default is `versioned` — the mechanism that repo meant all along. What it
@@ -80,11 +80,11 @@ test('exactly one mechanism serves a repo, whatever the declaration says', () =>
 });
 
 test('the flip writes the mechanism explicitly and touches nothing else', () => {
-  const before = { packs: ['basics'], [MAINTENANCE]: { delivery: 'auto-merge' }, claudinite: { engineVersion: 2 } };
+  const before = { packs: ['acme-pack'], [MAINTENANCE]: { delivery: 'auto-merge' }, claudinite: { engineVersion: 2 } };
   const after = withMechanism(before, VERSIONED_MECHANISM);
   assert.equal(after[MAINTENANCE][MECHANISM_KEY], VERSIONED_MECHANISM);
   assert.equal(after[MAINTENANCE].delivery, 'auto-merge', 'the sibling setting survives');
-  assert.deepEqual(after.packs, ['basics']);
+  assert.deepEqual(after.packs, ['acme-pack']);
   assert.deepEqual(after.claudinite, { engineVersion: 2 });
   assert.equal(before[MAINTENANCE][MECHANISM_KEY], undefined, 'and the input is not mutated');
   // Declared, and now readable as such — which is what makes the inferred case above
