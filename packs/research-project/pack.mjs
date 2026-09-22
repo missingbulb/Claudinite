@@ -1,7 +1,5 @@
-// A project-CLASS pack (prose-only, no fingerprint): a project of this class
-// declares it, the way a project used to link the research-project template.
-// No detect — declaration is authoritative. Natural seams for future splitting
-// (session-continuity, reading-source-articles) are noted in RULES.md.
+// A project-class pack for research work: prose only, declared by a project of
+// this class rather than fingerprinted from its tree.
 export default {
   version: '60920.1',
   minEngineVersion: '60822.1',
