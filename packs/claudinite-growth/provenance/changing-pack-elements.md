@@ -34,3 +34,11 @@
   entry; the flag can then be withdrawn rather than explained.
 - **Landed:** #2248 · the vocabulary change is in the engine helper's KINDS, so a member reads it
   only once its mount converges.
+
+## 2026-09-22 · strengthened · an entry is sized to the decision, not to the work
+- **Source:** the owner, on a regex repoint whose entry ran 25 lines.
+- **Reason:** nothing here rationed length, and the field list read as a form to fill. The size norm
+  sat in `writing-pack-prose`, which a check edit never loads.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5.
+- **Retire when:** entries are terse without it.
