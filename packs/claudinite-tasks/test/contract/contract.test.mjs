@@ -138,7 +138,7 @@ test('validateTaskDeclaration validates code_work + its required timeout and con
 // The WRAPPED work step: `code_worker_mjs` names a module, and its rejection branches
 // are the ways a field meant to hold a file name ends up holding something else.
 test('validateTaskDeclaration: code_worker_mjs is a task-local .mjs file name, bounded like code_work', () => {
-  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none' };
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'no_code_changes' };
   delete none.agent_execution_timeout;
   delete none.automerge;
 
@@ -170,7 +170,7 @@ test('validateTaskDeclaration: code_worker_mjs is a task-local .mjs file name, b
 // The two forms answer the same question about the same phase, so a declaration
 // carrying both leaves which one runs to whoever reads it.
 test('validateTaskDeclaration: code_work and code_worker_mjs are alternatives, never both', () => {
-  const none = { ...validTask, agent_model: 'none', expected_outcome: 'none', code_work_timeout: 120 };
+  const none = { ...validTask, agent_model: 'none', expected_outcome: 'no_code_changes', code_work_timeout: 120 };
   delete none.agent_execution_timeout;
   delete none.automerge;
   assert.match(

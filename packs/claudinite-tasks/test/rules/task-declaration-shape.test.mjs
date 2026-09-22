@@ -146,7 +146,7 @@ test('task-declaration-shape: a retired code-work field name declares no code_wo
   const { code_work, code_work_timeout, ...rest } = noneTask;
   for (const [field, timeout] of [['agent_preprocessing', 'agent_preprocessing_timeout'], ['prework', 'prework_timeout']]) {
     const whats = whatsOf({ [TASK]: json({ ...rest, [field]: 'node worker.mjs', [timeout]: 120 }) });
-    assert.match(whats, /declares no "code_work"/, field);
+    assert.match(whats, /declares no work step/, field);
   }
   // The other two renames simply go unread — nothing here is wrong with the file.
   assert.deepEqual(run({ [TASK]: json({ ...good, after: ['acme-pack-b/acme-task-c'] }) }), []);
