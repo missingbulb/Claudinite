@@ -79,6 +79,48 @@ export function dailyStopMs(days) {
   return out;
 }
 
+// HOW BUSY THE REPOSITORY WAS, as one number - the denominator every rule's
+// "is there enough here to judge" floor is read against.
+//
+// No single counter answers it. A window can carry many prompts and no merges, or
+// many merges and few prompts, and a floor reading either one alone calls the other
+// kind of week quiet. So four counters answer it together, each approaching the
+// same question from a different side: what the owner asked for, what the
+// conversation cost, what shipped, and what closed.
+//
+// `per` is the unit that puts a term on the same scale as the others, so a typical
+// window contributes comparably from each. The WEIGHTS are then the only bias in
+// the blend, and they are deliberately uneven: a person's own prompts are the most
+// direct evidence that work happened here, so they carry the most. Both halves are
+// cheap to re-examine from the record, and the retrospective brief says so.
+//
+// `tokensOut` rather than `tokensIn`: input is dominated by cache reads (fifteen
+// billion against forty-eight million in the window this was chosen from), so it
+// measures the harness's caching far more than it measures the work.
+export const ACTIVITY_TERMS = Object.freeze({
+  userMessages: Object.freeze({ weight: 0.4, per: 1 }),
+  tokensOut: Object.freeze({ weight: 0.2, per: 100_000 }),
+  merges: Object.freeze({ weight: 0.2, per: 1 }),
+  itemsClosed: Object.freeze({ weight: 0.2, per: 1 }),
+});
+
+// The blend, given a reader for one term's window total. A term the record does not
+// carry is DROPPED and the remaining weights re-normalized over what was recorded -
+// never counted as a zero, which would report a window nobody could measure as a
+// window in which nothing happened. No term recorded at all is `null`, and a term
+// that really is zero still counts as zero.
+export function activityOf(readTerm) {
+  let weighted = 0;
+  let covered = 0;
+  for (const [name, { weight, per }] of Object.entries(ACTIVITY_TERMS)) {
+    const value = readTerm(name);
+    if (value === null || value === undefined || !Number.isFinite(value)) continue;
+    weighted += weight * (value / per);
+    covered += weight;
+  }
+  return covered === 0 ? null : weighted / covered;
+}
+
 // name → (subject, window, live) → number | null.
 //
 // `window` is `{ days: [row] }` for whichever of the two windows the atom named;
@@ -87,6 +129,12 @@ export function dailyStopMs(days) {
 export const FIGURES = new Map(Object.entries({
   // --- denominators every subject kind shares ---
   sessions: (subject, w) => sumScalar(w.days, 'sessions'),
+  // The blend above, read off the window. Every rule whose floor asks "was the
+  // repository busy enough to judge this" reads this one figure, whatever kind of
+  // subject it judges; the THRESHOLD differs by kind, the measure does not.
+  activity: (subject, w) => activityOf((name) => (name === 'itemsClosed'
+    ? sumEveryKey(w.days, 'queue', 'done')
+    : sumScalar(w.days, name))),
 
   // --- a skill against the record ---
   skillSessions: (s, w) => sumBare(w.days, 'skillSessions', s.id),

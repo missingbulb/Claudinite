@@ -87,7 +87,7 @@ export function ruleSentence(rule) {
     `over every ${rule.over}${rule.expect ? ` expecting ${rule.expect}` : ''}`,
     rule.window === 'now' ? 'as the tree stands' : `in the ${rule.window} window`,
     floor ? `where ${floor}` : 'with no floor',
-    `flag ${rule.when}${rule.and ? ` and ${rule.and}` : ''}`,
+    `flag ${rule.when}${rule.and ? ` and ${rule.and.startsWith('!') ? `not ${rule.and.slice(1)}` : rule.and}` : ''}`,
     `- cause ${rule.cause}`,
   ].join(', ');
 }
@@ -106,8 +106,11 @@ export function evaluateRules(rules, { subjectsOf, figureOf, predicateOf }) {
   const notEvaluated = [];
   for (const rule of rules) {
     const when = parseComparison(rule.when);
-    // `and` is either one more comparison or the name of a live predicate. Parsed
-    // once per rule so a malformed one fails on the rule rather than per subject.
+    // `and` is either one more comparison, the name of a live predicate, or a
+    // predicate name prefixed `!` for "and this is NOT true of the subject" - which
+    // is how two rules reading one record half split the subjects between them
+    // instead of both claiming all of them. Parsed once per rule so a malformed one
+    // fails on the rule rather than per subject.
     const andComparison = rule.and && /(>=|<=|=)/.test(rule.and) ? parseComparison(rule.and) : null;
     for (const subject of subjectsOf(rule)) {
       const read = (name, opts) => figureOf(subject, name, { ...opts, window: rule.window });
@@ -123,7 +126,13 @@ export function evaluateRules(rules, { subjectsOf, figureOf, predicateOf }) {
       }
       if (!hit) continue;
       if (rule.and) {
-        const also = andComparison ? holds(andComparison, read) : predicateOf(subject, rule.and);
+        const negated = !andComparison && rule.and.startsWith('!');
+        const raw = andComparison
+          ? holds(andComparison, read)
+          : predicateOf(subject, negated ? rule.and.slice(1) : rule.and);
+        // Unknown survives the negation: a predicate that could not be read is
+        // still unread when the rule asked for its absence.
+        const also = negated && raw !== null ? !raw : raw;
         // A live half that cannot be read is not a finding and not a silence: the
         // record's half held, and the review says the pair could not be judged.
         if (also === null) {

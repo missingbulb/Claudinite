@@ -107,11 +107,30 @@ export const acceptanceReasons = (config, ruleId) => (Array.isArray(config?.acce
 // clone that does not reach it answers null, and the `adoption` rules then read
 // *not recorded* rather than judging against a date that is really the clone's.
 export function packDeclaredAt(root, packId) {
+  const run = (args) => execFileSync('git', args,
+    { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   try {
-    const out = execFileSync('git', [
-      'log', '--reverse', '--format=%aI', '-S', `"${packId}"`, '--', '.claudinite-settings.json',
-    ], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    return out.trim().split('\n')[0] || null;
+    const first = run(['log', '--reverse', '--format=%H %aI',
+      '-S', `"${packId}"`, '--', '.claudinite-settings.json']).trim().split('\n')[0];
+    if (!first) return null;
+    const [sha, at] = first.split(' ');
+    // The earliest commit that MENTIONS the pack is the one that declared it only
+    // if the commit before it did not already carry it. Without that second read
+    // the search answers with the earliest commit the checkout happens to reach,
+    // which on a shallow clone is the clone's own horizon - and the adoption
+    // window then becomes a property of how deeply this checkout was fetched, so
+    // one review over one record finds different things on two checkouts.
+    let parent = null;
+    try { parent = run(['rev-parse', '--verify', '-q', `${sha}^`]).trim(); } catch { parent = null; }
+    if (!parent) {
+      // No parent here: either the repository's own first commit, which is a real
+      // answer, or a shallow boundary, where the declaration predates everything
+      // we can see and its date is simply not knowable.
+      return run(['rev-parse', '--is-shallow-repository']).trim() === 'true' ? null : at;
+    }
+    let before = '';
+    try { before = run(['show', `${parent}:.claudinite-settings.json`]); } catch { before = ''; }
+    return before.includes(`"${packId}"`) ? null : at;
   } catch { return null; }
 }
 

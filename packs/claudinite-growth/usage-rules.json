@@ -6,7 +6,7 @@
       "over": "skill",
       "window": "28 days",
       "floor": {
-        "sessions": 10
+        "activity": 60
       },
       "when": "skillSessions / sessions >= 0.75",
       "cause": "known",
@@ -16,7 +16,7 @@
       ],
       "open": false,
       "finding": "loads in three of every four sessions - it is context wearing a skill's clothes",
-      "recommendation": "move its body to the owning pack's RULES.md; the cost either way is stated: tokens × sessions loaded against tokens × all sessions"
+      "recommendation": "move its body to the owning pack's RULES.md; the cost either way is stated: tokens \u00d7 sessions loaded against tokens \u00d7 all sessions"
     },
     {
       "id": "skill-adoption-not-reached",
@@ -134,7 +134,7 @@
       "over": "check",
       "window": "28 days",
       "floor": {
-        "runs": 20
+        "activity": 120
       },
       "when": "checkFindings = 0",
       "and": "proseTwin",
@@ -153,7 +153,7 @@
       "over": "check",
       "window": "28 days",
       "floor": {
-        "runs": 20
+        "activity": 120
       },
       "when": "checkFindings = 0",
       "cause": "unknown",
@@ -164,15 +164,16 @@
         "the check's fixture is the only violator it has ever seen - a test that passes and nothing else"
       ],
       "open": true,
-      "finding": "never fires and has no prose twin",
-      "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named"
+      "finding": "never fires, and no RULES.md line states the same rule",
+      "recommendation": "none - a net that has caught nothing is not evidence of a hole; carried forward, with the fixture test that proves it can fire named",
+      "and": "!proseTwin"
     },
     {
       "id": "check-fires-most-sessions",
       "over": "check",
       "window": "28 days",
       "floor": {
-        "sessions": 10
+        "activity": 120
       },
       "when": "checkSessions / sessions >= 0.5",
       "cause": "probable",
@@ -256,8 +257,8 @@
       "over": "checks",
       "window": "28 days",
       "floor": {
-        "runs": 20,
-        "previous.runs": 20
+        "activity": 120,
+        "previous.activity": 120
       },
       "when": "median(stopMs) / previous.median(stopMs) >= 1.25",
       "and": "median(stopMs) >= 2000",
@@ -276,7 +277,7 @@
       "over": "guard",
       "window": "28 days",
       "floor": {
-        "sessions": 10
+        "activity": 90
       },
       "when": "guardAdvisory / sessions >= 0.5",
       "cause": "probable",
