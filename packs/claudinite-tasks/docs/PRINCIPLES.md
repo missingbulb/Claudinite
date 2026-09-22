@@ -24,7 +24,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 - A task with no `preconditions`, or whose one term reads the item itself
   (`request-eligible`), is off the schedule: never asked, and it runs only
   from an item somebody created.
-  `S76`, `S1'`, `S70`, `S44`,
+  `S76`, `S1'`, `S44`,
   `test/schedule/run.test.mjs: every task on the schedule is asked, in declaration order; one stating no condition, or one reading the item, never is`
 - `trigger`, not the presence of a cadence term, decides whether the
   scheduler asks a task at all: a `request` task's precondition cannot hold
@@ -482,13 +482,11 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   not silently ignored, so an old declaration is told what replaced it.
   `test/contract/legacy-precondition-retired.test.mjs: a declaration carrying only the retired function is rejected by name`,
   `test/contract/legacy-precondition-retired.test.mjs: the executor seam never calls a precondition function`
-- The retired `frequency` field is read at exactly one door,
-  `normalizeTaskDeclaration`: it becomes the cadence term it always meant
-  first in the expression (`manual` becomes no term at all), and nothing
-  downstream ever sees the field again. The `trigger` it used to imply is not
-  supplied there: a declaration states its own, or fails validation.
-  `test/rules/legacy-task-fields.test.mjs: legacy-task-fields: the retired frequency field is reported with the condition it reads as`,
-  `test/rules/legacy-task-fields.test.mjs: legacy-task-fields: what it reports is exactly what the door normalizes away`
+- The retired `frequency` field is rejected by name, naming the cadence term
+  to write in its place (`manual` becomes `trigger: request` and no term at
+  all), rather than ignored as a key nothing reads.
+  `test/contract/contract.test.mjs: a declaration carrying the retired frequency field is rejected, naming the term to write`,
+  `test/rules/task-declaration-shape.test.mjs: task-declaration-shape: the retired frequency field blocks, naming the cadence term to write`
 - Bootstrap's whole wiring is idempotent and durable-state-free: labels
   created if missing, the two vendored workflows, and `taskScheduler` config
   — no seed items, no ledger, no board; the first scheduler run after wiring

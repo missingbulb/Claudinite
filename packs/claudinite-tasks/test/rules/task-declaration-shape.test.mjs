@@ -81,21 +81,24 @@ test('task-declaration-shape: flags illegal enum values', () => {
 // The retired cadence field (docs/PRINCIPLES.md). ADVISORY, like every rename here: the
 // runtime reads the field as the cadence term it meant, a member's task file is its own data,
 // and the nightly acme-task-c rewrites it — so this finding names the edit and its CI stays green.
-test('task-declaration-shape: the retired frequency field is an advisory rename to its cadence term', () => {
+test('task-declaration-shape: the retired frequency field blocks, naming the cadence term to write', () => {
   const { preconditions, ...bare } = good;
   for (const [field, term] of [['daily', 'schedule:at-most-daily'], ['weekly', 'schedule:at-most-weekly'], ['monthly', 'schedule:at-most-monthly'], ['manual', null]]) {
-    const findings = run({ [TASK]: json({ ...bare, frequency: field, preconditions: ['none'] }) });
-    assert.equal(findings.length, 1, `${field}: the field is the one finding — the none beside it is what the door strips`);
-    assert.equal(findings[0].severity, 'advisory');
-    assert.match(findings[0].what, /retired field "frequency"/);
-    // `manual` meant no schedule, which a declaration says by stating nothing.
-    assert.match(findings[0].fix, term === null ? /no "preconditions" at all/ : new RegExp(`\\["${term}", …\\]`));
+    const findings = run({ [TASK]: json({ ...bare, frequency: field, preconditions: [term ?? 'substantive-change'] }) });
+    assert.equal(findings.length, 1, `${field}: the field is the one finding`);
+    assert.equal(findings[0].severity, 'blocking');
+    assert.match(findings[0].what, /"frequency", which is retired/);
+    // `manual` meant no schedule at all, which a declaration now says outright.
+    assert.match(findings[0].fix, term === null ? /"trigger": "request"/ : new RegExp(`\\["${term}", …\\]`));
   }
-  // A field the door cannot read is still reported as the illegal condition it becomes.
-  const findings = run({ [TASK]: json({ ...bare, frequency: 'hourly' }) });
-  assert.ok(findings.some((f) => f.severity === 'blocking' && /"schedule" takes one of at-most-daily, at-most-weekly, at-most-monthly, not "at-most-hourly"/.test(f.what)), 'hourly blocks');
-  // …and a well-formed expression beside the field is judged as the door reads it: no double term.
-  assert.deepEqual(run({ [TASK]: json({ ...bare, frequency: 'daily', preconditions: ['schedule:at-most-daily', 'substantive-change'] }) }).map((f) => f.severity), ['advisory']);
+  // A value the field never accepted is the same rejection — it is retired whatever it holds —
+  // and the remedy falls back to the vocabulary rather than naming a term nothing accepts.
+  const hourly = run({ [TASK]: json({ ...bare, frequency: 'hourly', preconditions: ['schedule:at-most-daily'] }) });
+  assert.equal(hourly.length, 1);
+  assert.match(hourly[0].fix, /schedule:at-most-<daily\|weekly\|monthly>/);
+  // The expression beside it is still the author's, judged term by term and never widened.
+  const withTerm = run({ [TASK]: json({ ...bare, frequency: 'daily', preconditions: ['schedule:at-most-daily', 'no-such-thing'] }) });
+  assert.match(withTerm.map((f) => f.what).join(' | '), /unknown condition "no-such-thing"/);
 });
 
 // The field and ceiling renames came out on #1642's window. A declaration still

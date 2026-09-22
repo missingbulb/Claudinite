@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { basename, join } from 'node:path';
-import { FREQUENCIES } from '../../src/contract/calendar.mjs';
 import { MODEL_FAMILIES } from '../../src/contract/model-map.mjs';
 import { OUTCOMES, INTERRUPT_POLICIES, validateTaskDeclaration, normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
 import { loadTaskTerms } from '../../src/contract/task-terms.mjs';
@@ -16,7 +15,6 @@ const schema = JSON.parse(readFileSync(join(root, 'packs/claudinite-tasks/task.s
 // validates against. Neither generates the other, so the enums are pinned equal.
 test('task.schema.json: its enums are the contract\'s lists', () => {
   const p = schema.properties;
-  assert.deepEqual(p.frequency.enum, FREQUENCIES);
   assert.deepEqual(p.agent_model.enum, MODEL_FAMILIES);
   assert.deepEqual(p.expected_outcome.enum, OUTCOMES);
   assert.deepEqual(p.on_interrupt.enum, INTERRUPT_POLICIES);

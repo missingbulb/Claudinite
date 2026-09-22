@@ -234,7 +234,7 @@ test('the executor picks up an item readied in either spelling, and yields to a 
 });
 
 test('the scheduler run reclaims a dead claim written in either spelling', async () => {
-  const tasks = [{ pack: 'p', id: 'daily1', taskPath: 'packs/p/tasks/daily1/task.md', decl: { id: 'daily1', frequency: 'daily' } }];
+  const tasks = [{ pack: 'p', id: 'daily1', taskPath: 'packs/p/tasks/daily1/task.md', decl: { id: 'daily1', preconditions: ['schedule:at-most-daily'] } }];
   for (const label of [LEGACY_EXECUTING, STATUS_RUNNING_EXECUTOR]) {
     const { ops } = await planSchedulerRun({
       tasks, items: [workItem(1, [label])], now: '2026-08-14T05:30:00Z',

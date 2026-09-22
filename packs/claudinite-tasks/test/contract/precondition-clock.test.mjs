@@ -31,7 +31,7 @@ test('a term is handed the instant the verdict is being taken at', () => {
 // The seam production goes through — a term that reads the clock must work there
 // too, or the capability exists only in a direct call.
 test('the executor seam passes its own evaluation instant through', () => {
-  const task = { decl: { preconditions: ['in-august'], frequency: 'weekly' }, terms: clockTerms };
+  const task = { decl: { preconditions: ['in-august'] }, terms: clockTerms };
   assert.equal(evaluatePrecondition(task, {}, {}, null, new Date('2026-08-14T09:00:00Z')).run, true);
   assert.equal(evaluatePrecondition(task, {}, {}, null, new Date('2026-09-02T09:00:00Z')).run, false);
 });

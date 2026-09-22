@@ -50,8 +50,8 @@ export default {
 
   // The telemetry hook cannot list directories, and what this record retires — a
   // `frequency` line, and an unstated `trigger`, under the member's local packs — is
-  // only visible by listing. The fleet-visible signal is the `legacy-task-fields`
-  // advisory on each; the doors' removal is gated on that advisory's convergence
-  // window (#1732 for the field, #1789 for the derivation).
+  // only visible by listing. The fleet-visible signal is now `task-declaration-shape`,
+  // which blocks on each; the field's own door is gone (#1732), and the trigger
+  // derivation's removal is still gated on its convergence window (#1789).
   legacyPresent: async () => false,
 };

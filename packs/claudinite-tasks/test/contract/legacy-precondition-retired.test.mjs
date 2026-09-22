@@ -14,7 +14,7 @@ import { evaluatePrecondition } from '../../src/contract/precondition.mjs';
 // path that no longer exists.
 
 const base = {
-  id: 'x', trigger: 'schedule', frequency: 'daily', agent_model: 'none', expected_outcome: 'no_code_changes', code_work: 'node worker.mjs', code_work_timeout: 60,
+  id: 'x', trigger: 'schedule', agent_model: 'none', expected_outcome: 'no_code_changes', code_work: 'node worker.mjs', code_work_timeout: 60,
 };
 const whats = (decl) => validateTaskDeclaration(decl, new Map()).map((p) => p.what).join(' | ');
 
@@ -27,16 +27,16 @@ test('a declaration carrying only the retired function is rejected by name', () 
 });
 
 test('"precondition_signals" is rejected wherever it appears', () => {
-  assert.match(whats({ ...base, preconditions: ['none'], precondition_signals: ['commits'] }), /precondition_signals/);
-  assert.match(whats({ ...base, preconditions: ['none'], precondition_signals: [] }), /precondition_signals/);
+  assert.match(whats({ ...base, preconditions: ['due:daily'], precondition_signals: ['commits'] }), /precondition_signals/);
+  assert.match(whats({ ...base, preconditions: ['due:daily'], precondition_signals: [] }), /precondition_signals/);
 });
 
 test('a "precondition" property is rejected even beside a valid expression', () => {
-  assert.match(whats({ ...base, preconditions: ['none'], precondition: () => ({ run: true }) }), /precondition/);
+  assert.match(whats({ ...base, preconditions: ['due:daily'], precondition: () => ({ run: true }) }), /precondition/);
 });
 
 test('the declarative form is the one that passes', () => {
-  assert.deepEqual(validateTaskDeclaration({ ...base, preconditions: ['none'] }, new Map()), []);
+  assert.deepEqual(validateTaskDeclaration({ ...base, preconditions: ['due:daily'] }, new Map()), []);
 });
 
 // The signal union has one source: the terms the expression names. A declared
@@ -49,7 +49,7 @@ test('the signal union is derived, never read off a declared list', () => {
 
 // The seam production goes through must not reach for a function any more.
 test('the executor seam never calls a precondition function', () => {
-  const task = { decl: { frequency: 'daily', precondition: () => { throw new Error('the retired form was called'); } }, terms: new Map() };
+  const task = { decl: { precondition: () => { throw new Error('the retired form was called'); } }, terms: new Map() };
   const verdict = evaluatePrecondition(task, {}, {}, null, new Date());
   assert.ok(verdict.error, 'a declaration with no expression must be a run failure, not a silent verdict');
   assert.match(verdict.error, /preconditions/);

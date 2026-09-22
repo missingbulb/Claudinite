@@ -950,41 +950,6 @@ test('backlog guard: a failure park holds the lane only for a task declaring las
   assert.ok(beside.every((i) => i.parked), 'and broke the same way — two parks, one cause');
 });
 
-// ---- S70 — THE DOOR, for a retired FIELD (#1725). `frequency` is retired: a
-// task's cadence is one of its own preconditions. A member's task file is its own
-// data that no vendoring pass rewrites, so a declaration still carrying the field
-// must keep working — it reads, where it LOADS, as the cadence term it always
-// meant, and nothing downstream ever sees the field.
-test('S70 the door: a retired `frequency` field reads as its cadence term at load; a retired spelling is refused', async () => {
-  const sim = makeSim({ tasks: [
-    { id: 'x/daily', frequency: 'daily', codeWorkMinutes: 1, precondition: () => ({ run: true }) },
-    { id: 'x/weekly', frequency: 'weekly', preconditions: ['none', 'last-run-not-failed'], codeWorkMinutes: 1 },
-    { id: 'x/manual', frequency: 'manual', codeWorkMinutes: 1 },
-    { id: 'x/stated', frequency: 'daily', preconditions: ['schedule:at-most-daily'], codeWorkMinutes: 1 },
-  ] }).seedSteadyState('2026-08-12T00:00Z');
-  await sim.run('2026-08-12T00:00Z', '2026-08-13T00:00Z');
-
-  // what passed the door: the term first, the empty `none` gone, the field gone
-  assert.deepEqual(sim.task('x/daily').decl.preconditions, ['schedule:at-most-daily', 'gate']);
-  assert.deepEqual(sim.task('x/weekly').decl.preconditions, ['schedule:at-most-weekly', 'last-run-not-failed']);
-  assert.deepEqual(sim.task('x/manual').decl.preconditions, [], '`manual` meant no schedule and adds no term');
-  assert.deepEqual(sim.task('x/stated').decl.preconditions, ['schedule:at-most-daily'], 'a term already stated is not doubled');
-  for (const id of ['x/daily', 'x/weekly', 'x/manual', 'x/stated']) assert.equal(sim.task(id).decl.frequency, undefined);
-  // and the loaded declaration behaves as its term: a daily task asked at every
-  // tick and run once at its anchor, a `manual` one — stating nothing — never asked
-  assert.equal(goes(sim, 'x/daily').length, 1);
-  assert.equal(closedOf(sim, 'x/daily').length, 1);
-  assert.equal(asks(sim, 'x/manual').length, 0);
-  assert.equal(sim.family('x/manual').length, 0);
-
-  // The door passes no retired spelling: the legacy map is empty, and a token the
-  // calendar has no anchor for is refused where the declaration loads.
-  for (const retired of ['hourly', 'daily-2h', 'daily-1h', 'daily+1h']) {
-    assert.throws(() => makeSim({ tasks: [{ id: 'x/r', frequency: retired }] }),
-      new RegExp(retired.replace('+', '\\+')), `${retired} is refused`);
-  }
-});
-
 // ---- S72 — a `Not-before` releasing BETWEEN ticks. Deferred work is stamped
 // with an instant, not an anchor, so it can fall anywhere in the gap. It waits
 // for the next tick — and must not be escalated for waiting, since the janitor's

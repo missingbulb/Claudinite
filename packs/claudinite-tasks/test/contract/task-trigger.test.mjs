@@ -46,16 +46,19 @@ test('a declaration stating no trigger is rejected, never read off the shape of 
   assert.match(validateTaskDeclaration(base)[0].what, /declares no "trigger"/, 'nor does stating no conditions either');
 });
 
-// The `frequency` tolerance stands on its own convergence window (#1732), and what it
-// carries is the CADENCE. It never spoke for the trigger, and a declaration on the old
-// field states today's one beside it.
-test('the retired frequency field folds into its cadence term and answers nothing about the trigger', () => {
-  assert.deepEqual(declare({ frequency: 'weekly' }).preconditions, ['schedule:at-most-weekly']);
+// The `frequency` field is retired (#1732). It never spoke for the trigger either, so
+// a declaration carrying it is rejected for the field and still has to state its own.
+test('the retired frequency field is rejected, and still answers nothing about the trigger', () => {
+  assert.deepEqual(declare({ frequency: 'weekly' }).preconditions, []);
   assert.equal(declare({ frequency: 'weekly' }).trigger, undefined);
-  assert.match(validateTaskDeclaration({ ...base, frequency: 'weekly' })[0].what, /declares no "trigger"/);
-  assert.deepEqual(validateTaskDeclaration({ ...base, frequency: 'weekly', trigger: TRIGGER_SCHEDULE }), []);
-  // `manual` meant no schedule and adds no term; the declaration says the rest.
-  assert.deepEqual(declare({ frequency: 'manual', trigger: TRIGGER_REQUEST }).preconditions, []);
+  const whats = validateTaskDeclaration({ ...base, frequency: 'weekly' }).map((p) => p.what).join(' | ');
+  assert.match(whats, /declares no "trigger"/);
+  assert.match(whats, /"frequency", which is retired/);
+  // Stating the trigger does not rescue the field: it is retired whatever stands beside it.
+  assert.match(
+    validateTaskDeclaration({ ...base, frequency: 'weekly', trigger: TRIGGER_SCHEDULE }).map((p) => p.what).join(' | '),
+    /"frequency", which is retired/,
+  );
 });
 
 test('validateTaskDeclaration rejects a trigger outside the vocabulary', () => {

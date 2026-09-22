@@ -106,14 +106,22 @@ test('parseDeclaration lifts the declarative preconditions; a cadence term and `
     'a run-history gate is a gate; only the cadence term is exempt');
 });
 
-// The retired `frequency` field is still read — another repo's declaration, rendered
-// over the API, may carry it — and it reads as exactly the cadence term the contract's
-// door makes of it: first in the list, the `none` beside it dropped, the field gone.
-test('a legacy `frequency` goes through the door', () => {
-  const d = parseDeclaration('{ "id": "update", "frequency": "daily", "preconditions": ["none"] }');
+// A declaration another repo still writes the retired `frequency` in carries no cadence
+// onto the roster: the contract rejects such a declaration, so the task does not run at
+// all in the repo that owns it, and a cadence read off the dead field would promise a
+// next anchor nothing will ever reach. What the page shows is the expression as stated.
+test('a legacy `frequency` carries no cadence onto the roster', () => {
+  const d = parseDeclaration('{ "id": "update", "frequency": "daily", "preconditions": ["substantive-change"] }');
+  assert.deepEqual(d.preconditions, ['substantive-change'], 'the field adds no term');
+  assert.equal(d.frequency, undefined, 'the field is not a thing the page reads');
+});
+
+// The cadence SPELLING door is a different thing and stays: `due:<cadence>` is the
+// current term under the name it was introduced with, and the page runs the same
+// rewrite the contract's door runs so both read one spelling.
+test('the retired cadence SPELLING still reads, on the page as at the contract door', () => {
+  const d = parseDeclaration('{ "id": "update", "preconditions": ["due:daily"] }');
   assert.deepEqual(d.preconditions, ['schedule:at-most-daily']);
-  assert.equal(d.frequency, undefined, 'the field does not survive the door');
-  assert.equal(d.has_precondition, false);
 });
 
 // An ABSENT `preconditions` is another fact from an unreadable one: the declaration
@@ -144,15 +152,16 @@ test('parseDeclaration reads a task.json, defaults filled', () => {
   assert.equal(broken.preconditions, null);
 });
 
-// The page cannot load the contract's door (it reaches into `node:` builtins), so
-// it spells the one rule of it the roster needs. Both run over one vector set here —
-// every shape the legacy field can arrive in — so the copy cannot drift from the
-// contract without this going red. The page spells its unknown `null` where the
-// contract simply leaves the key off, which is the one difference asserted across.
-test('the page\'s frequency and trigger doors agree with the contract\'s on every shape', () => {
+// The page cannot load the contract's door (it reaches into `node:` builtins), so it
+// spells the one rule of it the roster needs: the cadence SPELLING rewrite, which is
+// permanent. Both run over one vector set here — the retired field still among the
+// shapes, so a declaration carrying it is proven to add no cadence on either side —
+// and the copy cannot drift from the contract without this going red. The page spells
+// its unknown `null` where the contract simply leaves the key off.
+test('the page\'s cadence and trigger doors agree with the contract\'s on every shape', () => {
   const vectors = [
     { id: 'a', frequency: 'daily' },
-    { id: 'b', frequency: 'weekly', preconditions: ['none'] },
+    { id: 'b', frequency: 'weekly', preconditions: [] },
     { id: 'c', frequency: 'monthly', preconditions: [' none ', 'substantive-change'] },
     { id: 'd', frequency: 'manual', preconditions: ['substantive-change'] },
     { id: 'e', frequency: 'daily', preconditions: ['schedule:at-most-daily', 'commits-outside:.claudinite/'] },
@@ -160,7 +169,6 @@ test('the page\'s frequency and trigger doors agree with the contract\'s on ever
     { id: 'g', preconditions: ['schedule:at-most-daily', 'none'] },
     { id: 'h', preconditions: ['due:monthly'] },
     { id: 'i' },
-    { id: 'j', frequency: 'manual' },
     // Stated, in both directions and against the shape the door would have read.
     { id: 'k', trigger: 'schedule', preconditions: ['schedule:at-most-daily'] },
     { id: 'l', trigger: 'request', preconditions: [] },
@@ -172,8 +180,9 @@ test('the page\'s frequency and trigger doors agree with the contract\'s on ever
     const page = parseDeclaration(JSON.stringify({ ...decl, expected_outcome: 'no_code_changes' }));
     assert.deepEqual(page.preconditions, contract.preconditions, `vector ${decl.id}`);
     assert.equal(page.trigger, contract.trigger ?? null, `vector ${decl.id}: the two doors read one trigger`);
-    assert.equal(page.frequency, contract.frequency, `vector ${decl.id}: neither side keeps the field`);
+    assert.equal(page.frequency, undefined, `vector ${decl.id}: neither side reads the retired field`);
   }
+  assert.equal(vectors.filter((v) => v.frequency !== undefined).length, 6, 'the retired field is still among the shapes');
 });
 
 // The roster's own read of the field, which the shape can no longer answer for it.

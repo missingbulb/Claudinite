@@ -14,7 +14,7 @@ const settings = (endpoints = null) => `${JSON.stringify({
 }, null, 2)}\n`;
 
 const taskJson = (over = {}) => `${JSON.stringify({
-  id: 'alpha', description: 'A task.', frequency: 'daily', expected_outcome: 'no_code_changes',
+  id: 'alpha', description: 'A task.', preconditions: ['due:daily'], expected_outcome: 'no_code_changes',
   code_work: 'node worker.mjs', code_work_timeout: 60, ...over,
 }, null, 2)}\n`;
 

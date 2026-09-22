@@ -121,3 +121,17 @@
 - **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
 - **Model:** claude-opus-5
 - **Landed:** #1920
+
+## 2026-09-22 · severity-changed · the retired `frequency` field blocks where it used to advise (#2138)
+- **Reason:** the runtime contract rejects a declaration carrying the field, so the author-time
+  surface has to say the same thing: a check that only advised would let a member's `task.json` pass
+  CI and then fail at load. The two validate one contract, which is what stops them drifting.
+- **Mechanism:** the field is flagged blocking and by NAME, carrying the cadence term to write
+  (`trigger: request` for `manual`, which meant no schedule at all), so its author is told the
+  replacement rather than reading as a task that simply forgot its cadence.
+- **Rejected:** leaving the check silent on the field, which the brief's "delete the acceptance"
+  could also have meant. A silent check is the shape that lets the declaration through to a
+  load-time failure.
+- **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
+- **Model:** claude-opus-5
+- **Landed:** #2138

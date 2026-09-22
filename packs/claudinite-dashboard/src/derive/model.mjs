@@ -14,8 +14,8 @@
 
 import { parseTaskDeclaration, applyTaskDefaults } from './declaration-text.mjs';
 import {
-  mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, cadenceTermFor, normalizeCadenceTerms,
-  holdsOnFailure, holdsOnAnyPark, statesConditions,
+  mostRecentAnchor, nextAnchor, periodMs, taskPeriodMs, cadenceOf, normalizeCadenceTerms,
+  holdsOnFailure, holdsOnAnyPark,
   DUE_TERM, SCHEDULE_TERM,
 } from './task-calendar.mjs';
 import {
@@ -104,17 +104,17 @@ export function taskDeclarationPaths(paths, config) {
 // reads as `[]`. An absent `trigger` is not unread either — it is derived, as the
 // contract's own door derives it.
 
-// THE FREQUENCY DOOR, as the page runs it (#1725). `frequency` is retired: a task's
-// cadence is a term in its own `preconditions`. A declaration still carrying the
-// field — another repo's, read over the API — reads as the cadence term it always
-// meant, first in the list, with the `none` it used to need beside it dropped; the
-// field itself does not survive, and nothing downstream reads it. This is the
-// contract's own rule (`normalizeTaskDeclaration` in `task-contract.mjs`), spelled
-// again through the same `cadenceTermFor` because that module reaches into `node:`
-// builtins the page cannot load; `model.test.mjs` runs both over one vector set so
-// the two cannot drift apart unseen. `manual` meant no schedule and adds no term
-// (`cadenceTermFor` answers null for it), so what stood beside it is the whole
-// expression; nothing here writes the old word.
+// A declaration another repo still writes the retired `frequency` in carries no
+// cadence onto the roster (#1732): the contract rejects such a declaration, so the
+// task does not run at all in the repo that owns it, and a cadence read off the dead
+// field would promise a next anchor nothing will ever reach.
+//
+// The cadence SPELLING door is a different thing and stays: `due:<cadence>` is the
+// current term under the name it was introduced with, permanently accepted because a
+// task declaration is member-owned data no vendoring pass rewrites. The page runs the
+// same rewrite the contract's door runs, so both read one spelling.
+
+// The retired empty precondition, which a declaration may still spell.
 const NONE = 'none';
 // THE TRIGGER, as the page reads it (#1725). `trigger` says whether the scheduler
 // asks a task, and the declaration is the only thing that says so: nothing reads it
@@ -125,15 +125,6 @@ const NONE = 'none';
 export const TRIGGER_SCHEDULE = 'schedule';
 export const TRIGGER_REQUEST = 'request';
 const withTrigger = (trigger) => (trigger === TRIGGER_SCHEDULE || trigger === TRIGGER_REQUEST ? trigger : null);
-function withCadenceTerm(frequency, preconditions) {
-  // The cadence-spelling door, run first so a declaration carrying the retired
-  // `due:<cadence>` reads the same here as it does through the contract's.
-  const current = normalizeCadenceTerms(preconditions);
-  if (frequency == null) return current;
-  const term = cadenceTermFor(frequency);
-  const stated = (current ?? []).filter((c) => String(c).trim() !== NONE);
-  return term === null || stated.some((c) => String(c).trim() === term) ? stated : [term, ...stated];
-}
 
 // A task may decline to run; whether it CAN is the difference between "did not run"
 // being routine and being a fault, so the roster shows it. The cadence terms say WHEN
@@ -164,7 +155,7 @@ export function parseDeclaration(text) {
   const stated = !read ? null
     : decl.preconditions === undefined ? []
       : Array.isArray(decl.preconditions) && decl.preconditions.every((c) => typeof c === 'string') ? decl.preconditions : null;
-  const preconditions = withCadenceTerm(scalarOf(decl.frequency), stated);
+  const preconditions = normalizeCadenceTerms(stated);
   return {
     id: scalarOf(decl.id),
     trigger: withTrigger(scalarOf(decl.trigger)),
