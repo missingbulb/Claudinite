@@ -127,3 +127,24 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude, per the commit trailer.
 - **Landed:** #2039 (Refs #2038) · pack version 60915.1.
+
+## 2026-09-22 · policy-changed · the janitor asks whether the queue needs repairing (#2247)
+- **Source:** W38's fold: 7 janitor items a week, every one closed the same hour having found a
+  healthy queue, against a gate of `schedule:at-most-daily` alone.
+- **Reason:** the janitor is the fallback lane - every run of it claims something already went
+  wrong, and on most days nothing has. A cadence cannot decline, so the task was paying an issue, an
+  executor run and a receipt per day to report that.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5
+- **Mechanism:** a task-local `queue-needs-sweep` term over a new `queue` signal, the open work-item
+  set that the `issues` collector deliberately hides. The term CALLS the janitor's own pure rules
+  rather than restating their clocks, so the gate cannot drift from the sweep; the three rules
+  needing a read a precondition must not make all act on a parked item, so any park holds. Every
+  default lookup is permissive, making the term's claim set a superset of the sweep's - a spurious
+  run costs one issue, a wrong decline costs a repair nobody is asked to make.
+- **Rejected:** restating the rules' conditions in the term (a copied clock drifts, and this gate
+  going quiet is silent); a standing rewritten issue for the health review (the work item is the run
+  record every cadence term reads).
+- **Retire when:** the janitor's rules stop being pure functions over the open queue, so the term
+  can no longer call them.
+- **Landed:** #2247

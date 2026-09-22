@@ -74,15 +74,29 @@ test('amend_existing_or_create_new_pr amends the newest open pull request when i
   assert.deepEqual(t.supersedes, []);
 });
 
-test('amend falls back to a fresh branch on a conflicted incumbent, and on one whose mergeability could not be read', () => {
+// A task declared to amend has no prerogative to open a second pull request
+// (owner, 2026-09-22): "create new" is what it does when there is NOTHING to
+// amend, and nothing else. A conflicted incumbent is the run's to fix, and a
+// mergeability nobody could read is a failure, never a quiet fork that leaves
+// the first pull request open and accumulating beside the second.
+test('amend keeps a conflicted incumbent as the target, and opens no second pull request', () => {
   const incumbents = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb')];
-  for (const mergeable of [false, null]) {
-    const t = planTarget({ outcome: 'amend_existing_or_create_new_pr', incumbents, mergeable, branch });
-    assert.equal(t.mode, 'fresh', `mergeable=${mergeable}`);
-    assert.equal(t.branch, branch);
-    assert.equal(t.pr, null);
-    assert.match(t.reason, mergeable === false ? /conflict/ : /could not be read/);
-  }
+  const t = planTarget({ outcome: 'amend_existing_or_create_new_pr', incumbents, mergeable: false, branch });
+  assert.equal(t.mode, 'amend');
+  assert.equal(t.pr, 5, 'the same pull request, not a fresh branch beside it');
+  assert.equal(t.branch, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb');
+  assert.match(t.reason, /conflict/, 'the run is told what it must resolve');
+});
+
+test('amend on an incumbent whose mergeability could not be read is an error, not a fresh branch', () => {
+  const incumbents = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb')];
+  const t = planTarget({ outcome: 'amend_existing_or_create_new_pr', incumbents, mergeable: null, branch });
+  assert.ok(t.error, 'the executor parks the item; a read that failed is not a licence to fork');
+  assert.match(t.error, /#5/, 'the park names the pull request it could not judge');
+  assert.equal(t.mode, undefined, 'no plan is handed out beside the error');
+});
+
+test('amend with nothing to amend takes the fresh branch, the one case "create new" names', () => {
   const none = planTarget({ outcome: 'amend_existing_or_create_new_pr', incumbents: [], branch });
   assert.deepEqual([none.mode, none.branch, none.pr], ['fresh', branch, null]);
 });
@@ -183,12 +197,12 @@ test('amend reads the newest incumbent\'s mergeability, polling while GitHub is 
   assert.equal(calls.filter((c) => c === 'GET /repos/o/r/pulls/5').length, 3);
 });
 
-test('amend on an incumbent GitHub never finishes judging takes a fresh branch, never a guess', async () => {
+test('amend on an incumbent GitHub never finishes judging fails the run, never a guess and never a fork', async () => {
   const pulls = [pull(5, 'claudinite/acme-pack-b/acme-task-c/2026-09-03-bbb')];
   const { gh } = fakeGitHub({ pulls, mergeable: { 5: [null, null, null, null] } });
   const t = await resolve(gh, 'amend_existing_or_create_new_pr');
-  assert.equal(t.mode, 'fresh');
-  assert.match(t.reason, /could not be read/);
+  assert.ok(t.error, 'the executor parks it, which is the shape every other unreadable read in this module already takes');
+  assert.equal(t.mode, undefined);
 });
 
 test('an incumbent off the prefix is found by the trailer on its head commit', async () => {
