@@ -609,3 +609,16 @@ test('search-code-lower-bound: every code search, and nothing else', () => {
     ['mcp__github__search_issues', { query: 'q', fields: ['number'] }],
   ]), ['a code search whose result is read as a complete enumeration']);
 });
+
+test('branch-from-bare-main: a new branch off bare main, never off origin/main or a delete', () => {
+  assert.deepEqual(judge('branch-from-bare-main', [
+    ['Bash', { command: 'git checkout -b feature/x main' }],
+    ['Bash', { command: 'git branch feature/y main' }],
+    ['Bash', { command: 'git checkout -b feature/z origin/main' }],
+    ['Bash', { command: 'git branch -d main' }],
+    ['Bash', { command: 'git checkout -b feature/w' }],
+  ]), [
+    'a branch created from bare "main" ("git checkout -b feature/x main")',
+    'a branch created from bare "main" ("git branch feature/y main")',
+  ]);
+});

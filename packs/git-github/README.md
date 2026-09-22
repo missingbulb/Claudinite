@@ -40,3 +40,4 @@ run — and carry the platform behaviour that makes the call wrong.
 | `pull-request-head-unqualified` | high | correctness | guard: blocking |
 | `codeload-tarball-fetch` | medium | correctness | guard: blocking |
 | `search-code-lower-bound` | medium | correctness | guard: advisory |
+| `branch-from-bare-main` | high | correctness | guard: blocking |

@@ -44,3 +44,19 @@
 - **Actor:** claudinite-canon-curation growth-promote run, rebased and resolved in an owner session.
 - **Model:** claude-opus-5
 - **Landed:** #1886
+## 2026-09-22 · reworded · four more tool-surface traps, from a later promotion cycle (#2032)
+- **Source:** Shepherd, EdFringeNow and GCEC runs.
+- **Reason:** four failures that each cost a round-trip and leave no usable error: citing an issue
+  or pull request number before the object exists, since both share one counter per repo and the
+  number you guessed belongs to something else; `merge_pull_request` returning 500 immediately after
+  a force-push to the head, because the mergeable-state recompute lags the push and a retry is the
+  whole remedy; force-pushing to fix a trailer or arm auto-merge on an already-pushed branch, where
+  adding a commit avoids discarding the checks already run; and the output cap applying to one large
+  text result, `get_job_logs`'s `tail_lines` included, not only to lists.
+- **Mechanism:** sections and bullets on this workflow skill, whose body is the element.
+- **Rejected:** this cycle also re-promoted the search-overflow envelope shape, which #1886 promotes
+  from another member into the same skill. Dropped here; one lesson, one bullet.
+- **Actor:** claudinite-canon-curation growth-promote run, rebased and deduplicated in an owner
+  session.
+- **Model:** claude-opus-5
+- **Landed:** #2032
