@@ -116,6 +116,11 @@
       "rule": "barrier",
       "path": ".github/workflows/canary-rehearsal.yml",
       "reason": "the live canary gate names packs/claudinite-lifecycle/tasks/update because the worker is ITSELF vendored content, so a release that changes the worker cannot be rehearsed by the canary's vendored copy — that copy predates the release by definition, and a rehearsal driving it would ignore CLAUDINITE_CANON_REF entirely and run a real cycle against main, opening a PR on the canary instead of qualifying the ref. The crossing buys the one property the gate exists for: the code under test is the code every member runs the moment the release reaches them. The workflow names no pack CONTENT — only the entry point of the task that performs the converge"
+    },
+    {
+      "rule": "consumer-safe-change",
+      "path": "packs/chrome-extension/tasks/store-release/worker.mjs",
+      "reason": "every task's work step moved from a `code_work` command to a `code_worker_mjs` module, so the 17 workers that exported `main` as their entry point now export `worker` instead. None of the three discharges fits. A task's worker is spawned BY PATH and never imported, and the old `main` took no arguments and read the whole code-work environment, so it is unusable outside the subprocess the executor starts: no member can hold a consumer of that name, which is what the rule's harm (a local pack failing to load and wedging the converge) requires. A re-export shim would keep the name resolvable while giving it an incompatible signature, trading a loud load-time error for a quiet runtime one. A rehearsal fixture cannot prove anything about a name that is gone. A migration record would spend an agent session in every member converging to a no-op. Owner's call, taken in session on 2026-09-22 with all three alternatives on the table"
     }
   ],
   "taskScheduler": {
