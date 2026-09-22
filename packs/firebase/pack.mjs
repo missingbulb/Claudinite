@@ -10,7 +10,7 @@ const hasMarkerNearRoot = (ctx, marker) =>
   });
 
 export default {
-  version: '60922.2',
+  version: '60922.3',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'building on Firebase: Firestore rules, callable Cloud Function patterns, FCM, emulator testing, deploy layout, dev/prod release split',
