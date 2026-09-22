@@ -20,3 +20,12 @@
 - **Retire when:** the shelf stops moving, or the blocking firings come to be dominated by cases
   where the fixture was already fake.
 - **Landed:** #2241
+
+## 2026-09-22 · split · the general half went to the canon, the mechanics stayed here
+- **Reason:** the principle - invent the name where the case holds for any name at all - holds in
+  any repo, so it became `basics`' `fixture-names-invented` on the testing skill. What stays is what
+  only this repo has: the `acme-*` vocabulary its check names, the `A_CANON_PACK` helper, and the
+  `@real-entity` marker.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5
+- **Landed:** #2241
