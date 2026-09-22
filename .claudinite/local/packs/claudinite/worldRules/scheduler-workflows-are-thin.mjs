@@ -38,8 +38,8 @@ const rule = {
   doc: 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
   why: 'a converge cannot push to .github/workflows/, so logic left in these two files can only be changed by a human-merged PR in every member repo, while the engine module it belongs in converges nightly',
 
-  run(ctx) {
-    const files = ctx.tracked.filter((f) => WORKFLOW.test(f)).sort();
+  run({ sources, tracked }) {
+    const files = sources(WORKFLOW, tracked).sort((a, b) => a.file.localeCompare(b.file));
     const out = [];
     // A pattern that matches nothing reads as live and catches nothing. These two
     // workflows are core, present in this repo by construction, so an empty scope
@@ -52,9 +52,7 @@ const rule = {
       }));
       return out;
     }
-    for (const file of files) {
-      const source = ctx.read(file);
-      if (source === null) continue;
+    for (const { file, text: source } of files) {
       source.split('\n').forEach((text, i) => {
         const line = i + 1;
         if (GITHUB_SCRIPT.test(text)) {

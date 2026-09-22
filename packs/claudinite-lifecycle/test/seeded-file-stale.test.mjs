@@ -4,6 +4,7 @@ import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import { loadPacks } from '../../../engine/pack_loader/pack-registry.mjs';
 import rule from '../worldRules/seeded-file-stale.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const PACK = '.claudinite/local/packs/mypack';
 const DEST = '.github/workflows/mypack.yml';
@@ -50,7 +51,7 @@ async function run(files) {
   try {
     const ctx = buildContext({ root, mode: 'all' });
     ctx.packs = await loadPacks({ localRoot: root });
-    return rule.run(ctx);
+    return runRule(rule, ctx);
   } finally { cleanup(root); }
 }
 

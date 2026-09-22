@@ -22,18 +22,18 @@ const rule = {
   doc: 'packs/claudinite-canon-curation/README.md',
   why: 'a reader trusts a VERSIONS.md row\'s position to say its age; once the tail drifts out of sequence a number near the bottom could be old or merely misplaced, and nothing short of re-deriving the order from the numbers themselves can tell which (#1542)',
 
-  run(ctx) {
+  run({ sources }) {
     const findings = [];
-    const logs = ctx.files.filter((f) => {
+    const logs = sources((f) => {
       const parts = f.split('/');
       return parts.length === 4 && parts[0] === 'packs' && parts[2] === PROVENANCE_DIR && parts[3] === VERSIONS_FILENAME;
     });
-    for (const file of logs) {
+    for (const { file, text: log } of logs) {
       // Row by row rather than over the whole text: `rowVersions` reads a record's
       // rows without their positions, and a finding has to name the line the
       // misplaced row sits on.
       const claims = [];
-      (ctx.read(file) ?? '').split('\n').forEach((text, i) => {
+      log.split('\n').forEach((text, i) => {
         const [row] = rowVersions(text);
         if (row && parseVersion(row.version)) claims.push({ version: row.version, line: i + 1 });
       });

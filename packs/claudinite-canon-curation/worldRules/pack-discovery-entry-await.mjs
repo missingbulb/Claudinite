@@ -107,10 +107,10 @@ const rule = {
   doc: 'packs/claudinite-canon-curation/RULES.md',
   why: 'pack discovery imports every pack.mjs and skills/*/checks.mjs on disk before activation is consulted, so such a module is re-imported mid-evaluation when it is also the entry point — the top-level await then never settles and Node exits 13 having run nothing, silently (#581)',
 
-  run(ctx) {
-    const seeds = ctx.tracked.filter((f) => SEED.test(f)).sort();
+  run({ tracked: trackedFiles, read }) {
+    const seeds = trackedFiles.filter((f) => SEED.test(f)).sort();
     if (seeds.length === 0) return []; // no pack tree here — nothing to judge
-    const tracked = new Set(ctx.tracked);
+    const tracked = new Set(trackedFiles);
 
     const seen = new Set();
     const queue = [...seeds];
@@ -119,7 +119,7 @@ const rule = {
       const file = queue.shift();
       if (seen.has(file)) continue;
       seen.add(file);
-      const source = ctx.read(file);
+      const source = read(file);
       if (source === null) continue;
       const code = blank(source);
 

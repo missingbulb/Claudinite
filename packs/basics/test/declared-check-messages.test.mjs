@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import declaredCheckMessages from '../worldRules/declared-check-messages.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => declaredCheckMessages.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(declaredCheckMessages, buildContext({ root, mode: 'all' }));
 
 const LONG = Array.from({ length: 40 }, (_, i) => `word${i}`).join(' ');
 

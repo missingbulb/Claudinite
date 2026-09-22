@@ -1,6 +1,5 @@
 import { relative, sep } from 'node:path';
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { isActive } from '../../../engine/pack_loader/pack-registry.mjs';
 
 // A pack's `seedOps` file is written ONCE, at adoption, and owned by the repo from
 // there. When the pack later reshapes the template, nothing carries the new shape to a
@@ -41,16 +40,16 @@ const rule = {
   doc: 'packs/claudinite-lifecycle/README.md',
   why: 'a seeded file is written once and never converged, so a pack that reshapes its template leaves every existing member running the adoption-era copy — which fails wherever the pack has since moved, with nothing anywhere saying so',
 
-  run(ctx) {
+  run({ root, read, activePacks }) {
     const out = [];
-    for (const pack of (ctx.packs ?? []).filter((p) => isActive(p, ctx.config))) {
+    for (const pack of activePacks()) {
       for (const { template, dest } of pack.seedOps ?? []) {
         // The template as THIS repo holds it: the mount's copy in a member, the pack's
         // own directory in the canon. `pack.dir` is where the pack was discovered, so
         // one expression covers both roots.
-        const from = relative(ctx.root, `${pack.dir}${sep}${template.split('/').join(sep)}`).split(sep).join('/');
-        const want = ctx.read(from);
-        const have = ctx.read(dest);
+        const from = relative(root, `${pack.dir}${sep}${template.split('/').join(sep)}`).split(sep).join('/');
+        const want = read(from);
+        const have = read(dest);
         // No template is a broken mount, not a stale member, and a missing dest is a
         // repo that never adopted this pack's seed — neither is this rule's finding.
         if (want === null || have === null) continue;

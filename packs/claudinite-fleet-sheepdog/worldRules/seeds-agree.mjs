@@ -55,12 +55,12 @@ const rule = {
   doc: 'packs/claudinite-fleet-sheepdog/RULES.md',
   why: 'the pack-seed sweep writes a seed into every member and never overrides an existing entry, so a seed that disagrees with what the enforcer runs reaches the whole fleet once and sticks',
 
-  run(ctx) {
+  run({ read, config }) {
     // Read the enforcer's file the way the SWEEP reads a repo's file — raw, through
     // fleet-config's one parser — so the seeds judged here are exactly the seeds that
     // would be written (it drops the malformed ones), and so a finding can point at a
     // line. `home` only feeds the owner default and the throw message; neither is used.
-    const text = ctx.read(SETTINGS_FILE);
+    const text = read(SETTINGS_FILE);
     if (text == null) return [];
     let seeds;
     try {
@@ -71,8 +71,8 @@ const rule = {
 
     // Read the LOCAL side the way this repo's own engine reads it: the normalized
     // per-pack view, which is what actually configures the pack in a session here.
-    const declared = new Set(ctx.config.packs ?? []);
-    const local = ctx.config.packConfig ?? {};
+    const declared = new Set(config.packs ?? []);
+    const local = config.packConfig ?? {};
 
     return seeds.flatMap((seed) => {
       if (!declared.has(seed.id)) return []; // seeded to the fleet, not run here

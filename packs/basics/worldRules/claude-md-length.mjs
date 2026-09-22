@@ -30,7 +30,7 @@ const BUDGET_TOKENS = 20000;
 // The tree under the root file, each file counted once. A cycle is ordinary rather
 // than exceptional (two rule files that point at each other still load once each),
 // so the seen set is what bounds the walk, not a depth limit.
-function importedTree(ctx, entry) {
+function importedTree(read, entry) {
   const seen = new Set();
   const queue = [entry];
   let words = 0;
@@ -38,7 +38,7 @@ function importedTree(ctx, entry) {
     const path = queue.shift();
     if (seen.has(path)) continue;
     seen.add(path);
-    const text = ctx.read(path);
+    const text = read(path);
     // An import resolving to nothing is not this check's finding to make: it costs a
     // session no tokens, which is the only question being asked here.
     if (text === null) continue;
@@ -57,9 +57,9 @@ const rule = {
   description: 'Everything CLAUDE.md pulls into the window, counted together, stays under the context budget',
   why: 'every session in the repo pays for the whole import tree before it reads a line of the work, and the file that names it is often one line long',
 
-  run(ctx) {
-    if (!ctx.files.includes(ROOT)) return [];
-    const tokens = estimateTokens(importedTree(ctx, ROOT));
+  run({ files, read }) {
+    if (!files.includes(ROOT)) return [];
+    const tokens = estimateTokens(importedTree(read, ROOT));
     if (tokens <= BUDGET_TOKENS) return [];
     return [finding(rule, {
       file: ROOT,

@@ -48,17 +48,13 @@ const rule = {
   doc: 'packs/claudinite-growth/skills/writing-tasks/SKILL.md',
   why: 'task.md is the spec a task\'s session follows, and the corpus reads its presence as "an agent runs here" — on an agentless task it is prose no session will ever open, judged by the routine contract and named by every work item as the file the run is about',
 
-  run(ctx) {
+  run({ sources, exists }) {
     const out = [];
-    for (const file of ctx.files) {
-      const m = TASK_DECLARATION.exec(file);
-      if (!m) continue;
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources(TASK_DECLARATION)) {
       if (runsAgent(fields(text))) continue;
 
       const taskDir = file.slice(0, file.lastIndexOf('/') + 1);
-      if (!ctx.exists(`${taskDir}task.md`)) continue;
+      if (!exists(`${taskDir}task.md`)) continue;
       out.push(finding(rule, {
         file: `${taskDir}task.md`,
         what: `sits beside a task declaration that runs no agent (agent_model 'none'), so no session will ever read it`,

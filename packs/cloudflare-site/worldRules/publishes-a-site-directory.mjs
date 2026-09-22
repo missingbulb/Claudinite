@@ -19,8 +19,8 @@ const rule = {
   doc: 'packs/cloudflare-site/RULES.md',
   why: 'assets.directory is the only boundary between the published site and the repo holding the mount, the packs and the queue workers',
 
-  run(ctx) {
-    const configPath = wranglerConfigPath(ctx.tracked);
+  run({ tracked, read }) {
+    const configPath = wranglerConfigPath(tracked);
     if (!configPath) {
       return [finding(rule, {
         file: WRANGLER_CONFIGS[0],
@@ -29,7 +29,7 @@ const rule = {
       })];
     }
 
-    const config = parseWranglerConfig(ctx.read(configPath));
+    const config = parseWranglerConfig(read(configPath));
     if (config === null) {
       return [finding(rule, {
         file: configPath,
@@ -52,7 +52,7 @@ const rule = {
         what: `assets.directory publishes ${dir === '' || dir === '.' ? 'the repo root' : dir}`,
         fix: 'point assets.directory at a subdirectory holding the site and nothing else — publishing the tree that holds it publishes the vendored mount, the packs and the queue workers to a public URL',
       }));
-    } else if (!ctx.tracked.some((f) => f.startsWith(`${dir}/`))) {
+    } else if (!tracked.some((f) => f.startsWith(`${dir}/`))) {
       out.push(finding(rule, {
         file: configPath,
         what: `assets.directory names ${dir}, which holds no tracked file`,

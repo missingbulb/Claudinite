@@ -36,15 +36,11 @@ const rule = {
   doc: 'packs/claudinite-dashboard/dashboard-descriptor.schema.json',
   why: 'a descriptor the reader rejects renders as an apology on a card in someone else\'s browser — the pack ships, converges, and reports nothing, with nothing going red anywhere the author looks',
 
-  run(ctx) {
+  run({ sources, allFiles }) {
     const out = [];
-    for (const file of ctx.allFiles) {
-      if (file.startsWith(MOUNT)) continue;   // read-only canon mount, not a member's to police
-      const m = DESCRIPTOR.exec(file);
-      if (!m) continue;
-      const pack = m[2];
-      const text = ctx.read(file);
-      if (text === null) continue;
+    // The mount is read-only canon, not a member's to police.
+    for (const { file, text, json: doc } of sources((f) => !f.startsWith(MOUNT) && DESCRIPTOR.test(f), allFiles)) {
+      const pack = DESCRIPTOR.exec(file)[2];
 
       const d = parseDescriptor(text, pack);
       if (d.fault) {
@@ -60,7 +56,6 @@ const rule = {
       // member may run a pack version whose widget list is shorter — so this is the
       // one place the difference between "dropped for a good reason" and "typo" can
       // be told apart: in the canon, the descriptor and its widgets are the same file.
-      const doc = JSON.parse(text);
       const declared = new Set(d.widgets.keys());
       const dangling = [
         ...(Array.isArray(doc.repo) ? doc.repo : []),

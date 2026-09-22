@@ -53,13 +53,13 @@ const rule = {
   doc: 'packs/leaflet/RULES.md',
   why: 'an un-pinned or un-hashed third-party script runs with the page\'s full authority, so whatever the CDN serves tomorrow is what your users execute — and the hole is usually a plugin tag left bare beside a correctly wired core bundle',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!HTML.test(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !LEAFLET.test(raw)) continue;
-      const src = stripHtmlComments(raw);
+    for (const { file, text } of sources(HTML)) {
+      if (!LEAFLET.test(text)) continue;
+      // Not the surface's `code`, which models JS comments: what has to go here is
+      // an HTML comment, and the two are different syntaxes over one file.
+      const src = stripHtmlComments(text);
       TAG.lastIndex = 0;
       for (let m = TAG.exec(src); m; m = TAG.exec(src)) {
         const attrs = attributes(m[2]);

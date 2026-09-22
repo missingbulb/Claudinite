@@ -14,6 +14,11 @@
 // promote PR's branch prefix is the signal CI keys on.
 import { buildContext } from '../../engine/checks/helpers/repo-context.mjs';
 import { finding } from '../../engine/checks/helpers/findings.mjs';
+// A NAMESPACE import of the dispatch seam, like this pack's other engine readers:
+// a pack file is vendored and the engine lands on its own cadence, so naming an
+// engine export in an import binds this pack's loadability to which engine a member
+// happens to hold.
+import * as seam from '../../engine/checks/helpers/work.mjs';
 import { readCorpusRoots } from './canon-config.mjs';
 
 export const BRANCH_PREFIX = 'growth-promote';
@@ -29,10 +34,10 @@ const rule = {
   // (allFiles in changed mode) plus deletions — that is outside the corpus roots is
   // one finding. No merge-base ⇒ no diff to scope ⇒ nothing to certify; the CLI
   // wrapper treats that as a hard refusal rather than a silent pass.
-  run(ctx) {
-    if (!ctx.mergeBase) return [];
-    const roots = readCorpusRoots((p) => ctx.read(p));
-    const touched = [...new Set([...ctx.allFiles, ...ctx.deleted])];
+  run({ mergeBase, read, allFiles, deleted }) {
+    if (!mergeBase) return [];
+    const roots = readCorpusRoots(read);
+    const touched = [...new Set([...allFiles, ...deleted])];
     return touched
       .filter((p) => !roots.some((root) => p.startsWith(root)))
       .sort()
@@ -62,7 +67,7 @@ export function runCli(root = process.cwd()) {
     return;
   }
   const roots = readCorpusRoots((p) => ctx.read(p));
-  const findings = rule.run(ctx);
+  const findings = seam.runRule(rule, ctx);
   if (findings.length) {
     console.error(`promote-scope: FAIL — the promote phase may write only under ${roots.join(', ')}, but this branch also touches ${findings.length} path(s):`);
     for (const f of findings) console.error(`  - ${f.file}`);

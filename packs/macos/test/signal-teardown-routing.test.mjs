@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import signalRouting from '../worldRules/signal-teardown-routing.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => signalRouting.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(signalRouting, buildContext({ root, mode: 'all' }));
 
 const DELEGATE = `import AppKit
 

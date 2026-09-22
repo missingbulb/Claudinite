@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../../engine/checks/helpers/repo-context.mjs';
 import installHint from '../../../skills/python-optional-deps/optional-import-install-hint.mjs';
+import { runRule } from '../../../../../engine/checks/helpers/work.mjs';
 
 // Co-located with the check it exercises (skills own their check-the-work rules).
-const run = (root) => installHint.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(installHint, buildContext({ root, mode: 'all' }));
 
 const PYPROJECT =
   '[project]\nname = "pkg"\ndependencies = []\n\n' +

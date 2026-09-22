@@ -27,3 +27,11 @@
 - **Mechanism:** the tolerance now fires an advisory naming the window its tolerance ends on, annotated `@legacy-tolerance advisory:cer/release-workflows retire:#1643`, so the holder is told in its own repo and the removal is a dated link rather than a census.
 - **Rejected:** gating the removal on "no repo still makes those calls" - a census the canon cannot take, since it cannot see which members are live, inert or stale.
 - **Landed:** #1645 (Refs #1637), #1653 (Refs #1652) · pack versions 60903.3 and 60903.4; the removal issue #1643.
+
+## 2026-09-22 · reworded · the rule takes the run's surface rather than the raw context (#2261)
+- **Reason:** the world sweep gained a surface beside check-the-work's, so a rule destructures what
+  it reads and receives it preconfigured instead of re-deriving it off `ctx`. Mechanics only: the
+  sweep's findings are byte-identical.
+- **Actor:** the engine/implement-request run on #2261.
+- **Model:** claude-opus-5
+- **Landed:** #2268

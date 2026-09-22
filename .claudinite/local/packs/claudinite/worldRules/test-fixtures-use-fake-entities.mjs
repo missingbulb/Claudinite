@@ -1,5 +1,4 @@
 import { finding } from '../../../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../../../engine/checks/helpers/code-scanning.mjs';
 
 // A TEST THAT SPELLS A REAL PACK, TASK, SKILL OR CHECK NAME IN A FIXTURE IS A
 // TEST THAT HAS TO BE EDITED WHEN THAT THING IS RENAMED OR RETIRED - and the
@@ -87,15 +86,9 @@ function packOf(file) {
   return m ? m[1] : null;
 }
 
-function addDeclaredCheckOwners(ctx, tracked, owners) {
-  for (const f of tracked) {
-    if (!f.endsWith('declared-checks.json')) continue;
+function addDeclaredCheckOwners(sources, tracked, owners) {
+  for (const { file: f, json: declared } of sources((p) => p.endsWith('declared-checks.json') && packOf(p) !== null, tracked)) {
     const pack = packOf(f);
-    if (!pack) continue;
-    const source = ctx.read(f);
-    if (source === null) continue;
-    let declared;
-    try { declared = JSON.parse(source); } catch { continue; }
     for (const c of Array.isArray(declared) ? declared : []) {
       if (!c || typeof c.id !== 'string') continue;
       const key = `check:${c.id}`;
@@ -132,8 +125,9 @@ const rule = {
   doc: '.claudinite/local/packs/claudinite/RULES.md',
   why: 'a real name written as arbitrary fixture data turns every rename or retirement on the shelf into an edit of unrelated tests, and the diff a reviewer reads is mostly that churn',
 
-  run(ctx) {
-    const tests = ctx.tracked.filter((f) => TEST_FILE.test(f) && !f.startsWith('.claudinite/shared/')).sort();
+  run({ sources, tracked }) {
+    const tests = sources((f) => TEST_FILE.test(f) && !f.startsWith('.claudinite/shared/'), tracked)
+      .sort((a, b) => a.file.localeCompare(b.file));
     const out = [];
     // The scope is the repo's own test corpus, large by construction. A pattern
     // that selects nothing reads as live and catches nothing, so an empty set is
@@ -147,19 +141,17 @@ const rule = {
       return out;
     }
 
-    const owners = readEntityOwners(ctx.tracked);
-    addDeclaredCheckOwners(ctx, ctx.tracked, owners);
+    const owners = readEntityOwners(tracked);
+    addDeclaredCheckOwners(sources, tracked, owners);
     const entities = [...owners.entries()].map(([key, packs]) => {
       const i = key.indexOf(':');
       return { kind: key.slice(0, i), name: key.slice(i + 1), packs };
     });
 
-    for (const file of tests) {
-      const source = ctx.read(file);
-      if (source === null) continue;
+    for (const { file, text: source, code: stripped } of tests) {
       const home = packOf(file);
       const raw = source.split('\n');
-      const code = stripComments(source).split('\n');
+      const code = stripped.split('\n');
       code.forEach((text, i) => {
         if (MARKER.test(raw[i] ?? '') || IMPORT.test(text)) return;
         const literals = readStringLiterals(text);

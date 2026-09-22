@@ -48,8 +48,8 @@ const rule = {
   doc: 'vendoring/DESIGN.md',
   why: 'it is the only channel a pack\'s rules reach a session on; missing, stale or unimported means the session silently runs with none',
 
-  run(ctx) {
-    const declared = Array.isArray(ctx.config?.packs) ? ctx.config.packs : [];
+  run({ config, exists, read }) {
+    const declared = Array.isArray(config?.packs) ? config.packs : [];
 
     // RELEVANCE FIRST, like the scheduling guards beside it: the subject of this rule
     // is the index that OUGHT to exist, so if nothing would go in it there is nothing
@@ -65,13 +65,13 @@ const rule = {
       `.claudinite/shared/packs/${id}/RULES.md`, // a consumer's vendored mount
       `packs/${id}/RULES.md`,                    // the canon, which mounts nothing
       `.claudinite/local/packs/${id}/RULES.md`,  // the repo's own packs
-    ].some((p) => ctx.exists(p)));
+    ].some((p) => exists(p)));
     if (!heldIds.length) return [];
 
     const regenerate = 'run `node .claudinite/shared/engine/pack_loader/generate-rules-index.mjs --write` (canon-side: `node engine/pack_loader/generate-rules-index.mjs --write`) and commit the result';
     const findings = [];
 
-    const index = ctx.read(RULES_INDEX_FILE);
+    const index = read(RULES_INDEX_FILE);
     if (index === null) {
       findings.push(finding(rule, {
         file: RULES_INDEX_FILE,
@@ -98,7 +98,7 @@ const rule = {
         // nobody tracks. Judged against the committed tree it would read as dangling in
         // every repo that has the feature at all.
         if (path.startsWith(`${COPIED_ROOT}/`)) continue;
-        if (!ctx.exists(path)) {
+        if (!exists(path)) {
           findings.push(finding(rule, {
             file: RULES_INDEX_FILE,
             what: `the index imports \`${rel}\`, which does not exist — that pack's rules load as nothing`,
@@ -124,7 +124,7 @@ const rule = {
     // The import must be matched OUTSIDE code spans: the harness skips `@` mentions in
     // backticks, so a CLAUDE.md that merely documents the line is one it never follows —
     // and reading that as wired would be the silent failure again in a new place.
-    const claudeMd = ctx.read('CLAUDE.md');
+    const claudeMd = read('CLAUDE.md');
     const imported = claudeMd !== null && claudeMd.split('\n')
       .some((line) => !line.includes('`') && line.includes(RULES_INDEX_IMPORT));
     if (!imported) {

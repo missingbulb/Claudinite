@@ -41,14 +41,10 @@ const rule = {
   doc: 'packs/claudinite-growth/skills/writing-tasks/SKILL.md',
   why: 'task discovery is fail-soft per task — a declaration that disagrees with its folder is dropped into errors and the task silently never runs, while every scheduler run keeps reporting healthy',
 
-  run(ctx) {
+  run({ sources, exists }) {
     const out = [];
-    for (const file of ctx.files) {
-      const m = TASK_DECLARATION.exec(file);
-      if (!m) continue;
-      const dirName = m[2];
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources(TASK_DECLARATION)) {
+      const dirName = TASK_DECLARATION.exec(file)[2];
       const flag = (what, fix) => out.push(finding(rule, { file, what, fix }));
       const field = stringFields(text);
 
@@ -73,7 +69,7 @@ const rule = {
             `declares agent_instructions "${worker}", which reaches outside the task directory`,
             `keep the worker doc beside the declaration (conventionally "task.md") — a task folder is self-contained`,
           );
-        } else if (!ctx.exists(`${taskDir}${worker}`)) {
+        } else if (!exists(`${taskDir}${worker}`)) {
           flag(
             `declares agent_instructions "${worker}", which does not exist in ${taskDir}`,
             `add ${taskDir}${worker}, or point agent_instructions at the worker doc that is there (conventionally "task.md")`,

@@ -25,18 +25,13 @@ const rule = {
   doc: 'packs/public-website/RULES.md',
   why: 'the stamp is the only place a visitor can read which build they are on, and a stale copy names a build that was never served',
 
-  run(ctx) {
-    const record = ctx.read(VERSION_RECORD);
-    if (record === null) return [];
-    let version;
-    try { version = JSON.parse(record).version; } catch { return []; }
+  run({ tracked, files, json, sources }) {
+    const version = json(VERSION_RECORD)?.version;
     if (!version) return [];
 
     const out = [];
-    const pages = [...new Set([...ctx.tracked, ...(ctx.files || [])])].filter(isPage);
-    for (const page of pages) {
-      const text = ctx.read(page);
-      if (text === null) continue;
+    const pages = [...new Set([...tracked, ...(files || [])])];
+    for (const { file: page, text } of sources(isPage, pages)) {
       text.split('\n').forEach((line, i) => {
         for (const [stamp] of line.matchAll(STAMP)) {
           const stamped = stamp.slice('title="version '.length, -1);

@@ -1,7 +1,9 @@
 import { parseYaml } from './minimal-yaml.mjs';
 
 // Every resource across the repo's tracked SAM templates, parsed.
-// Returns [{ templatePath, name, resource }].
+// Returns [{ templatePath, name, resource }]. Takes the RUN's surface, whichever
+// one its caller was handed (helpers/world.mjs, helpers/work.mjs) - both answer
+// for the two readings below.
 export function samResources(ctx) {
   const out = [];
   for (const f of ctx.tracked.filter((p) => /(^|\/)template\.ya?ml$/.test(p))) {

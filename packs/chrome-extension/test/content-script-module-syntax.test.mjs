@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import moduleSyntax from '../worldRules/content-script-module-syntax.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => moduleSyntax.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(moduleSyntax, buildContext({ root, mode: 'all' }));
 
 const MANIFEST = JSON.stringify({
   manifest_version: 3,

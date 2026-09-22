@@ -16,15 +16,15 @@ const rule = {
   doc: 'engine/pack_loader/generate-skills-index.mjs',
   why: 'the index is the one readable answer to which skill loads when — a stale one sends a reader, and a session whose edit was held, to a skill that is not there or past one that is',
 
-  run(ctx) {
+  run({ config, tracked, read }) {
     if (typeof index.SKILLS_INDEX_FILE !== 'string') return []; // an engine that predates the index
-    const declared = Array.isArray(ctx.config?.packs) ? ctx.config.packs : [];
+    const declared = Array.isArray(config?.packs) ? config.packs : [];
     // RELEVANCE FIRST: the skills the declared packs HOLD here, by the tree — a pack
     // whose files are not vendored yet is the unknown-pack error's finding, not this.
     const held = [];
     for (const id of declared.map(packEntryId).filter(Boolean)) {
       for (const root of [`.claudinite/shared/packs/${id}`, `packs/${id}`, `.claudinite/local/packs/${id}`]) {
-        for (const f of ctx.tracked) {
+        for (const f of tracked) {
           const m = new RegExp(`^${root.replace(/[.]/g, '\\.')}/skills/([^/]+)/SKILL\\.md$`).exec(f);
           if (m) held.push(m[1]);
         }
@@ -32,7 +32,7 @@ const rule = {
     }
     if (!held.length) return [];
     const regenerate = 'run `node .claudinite/shared/engine/pack_loader/generate-skills-index.mjs --write` (canon-side: `node engine/pack_loader/generate-skills-index.mjs --write`) and commit the result';
-    const text = ctx.read(SKILLS_INDEX_FILE);
+    const text = read(SKILLS_INDEX_FILE);
     if (text === null) {
       return [finding(rule, { file: SKILLS_INDEX_FILE, what: 'the skills index is missing', fix: regenerate })];
     }

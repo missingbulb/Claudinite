@@ -473,6 +473,65 @@ test('an undeclared local pack does not run, but is not an unknown-pack error ei
   } finally { cleanup(root); }
 });
 
+// A pack whose first rule RAISES on the tree it is given and whose second one
+// works — the shape a member hits when a rule meets a file it did not anticipate.
+// Two rules, and the order matters: the throwing one runs first (rules run in the
+// order the pack lists them), so a sweep that did not isolate it never reached the
+// second at all.
+const THROWING_PACK = (scope) => `export default {
+  id: 'proj', prose: 'RULES.md',
+  ruleRoutingGuidance: { belongs: 'this demo project pack', excludes: 'anything portable' },
+  ${scope === 'work' ? 'workRules' : 'worldRules'}: [{
+    id: 'acme-raiser', severity: 'blocking', scope: ${JSON.stringify(scope)},
+    description: 'raises on the tree it is given', doc: '.claudinite/local/packs/proj/RULES.md',
+    why: 'demo',
+    run() { throw new Error('the manifest is not what I assumed'); },
+  }, {
+    id: 'acme-survivor', severity: 'blocking', scope: ${JSON.stringify(scope)},
+    description: 'no TODO_MARKER files', doc: '.claudinite/local/packs/proj/RULES.md',
+    why: 'demo',
+    run(given) {
+      return (given.${scope === 'work' ? 'changedFiles' : 'files'}).filter((f) => f.endsWith('TODO_MARKER')).map((f) => ({
+        rule: 'acme-survivor', severity: 'blocking', file: f, line: null,
+        what: 'TODO_MARKER present', why: 'demo', fix: 'remove it',
+        doc: '.claudinite/local/packs/proj/RULES.md',
+      }));
+    },
+  }],
+};`;
+
+test('a world rule that throws costs its own findings and nothing else', async () => {
+  const root = makeRepo({ changed: {
+    '.claudinite/local/packs/proj/pack.mjs': THROWING_PACK('world'),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['proj'] }),
+    'src/TODO_MARKER': 'x\n',
+  } });
+  try {
+    const r = await world(root);
+    assert.equal(r.status, 1, r.stdout);
+    // the throw became a finding that names the rule and carries what it raised
+    assert.match(r.stdout, /acme-raiser/);
+    assert.match(r.stdout, /the manifest is not what I assumed/);
+    // and the rule after it still reported — the whole point
+    assert.match(r.stdout, /TODO_MARKER present/);
+  } finally { cleanup(root); }
+});
+
+test('a work rule that throws costs its own findings and nothing else', async () => {
+  const root = makeRepo({ changed: {
+    '.claudinite/local/packs/proj/pack.mjs': THROWING_PACK('work'),
+    '.claudinite-settings.json': JSON.stringify({ packs: ['proj'] }),
+    'src/TODO_MARKER': 'x\n',
+  } });
+  try {
+    const r = await work(root);
+    assert.equal(r.status, 1, r.stdout);
+    assert.match(r.stdout, /acme-raiser/);
+    assert.match(r.stdout, /the manifest is not what I assumed/);
+    assert.match(r.stdout, /TODO_MARKER present/);
+  } finally { cleanup(root); }
+});
+
 test('a broken local pack.mjs surfaces a blocking config diagnostic, not a silent drop', async () => {
   const root = makeRepo({ changed: {
     '.claudinite/local/packs/broken/pack.mjs': 'export default { id: "broken" } this is not valid(',

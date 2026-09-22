@@ -13,11 +13,12 @@ import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import observersDisconnected from '../worldRules/page-observers-disconnected.mjs';
 import eventsBubble from '../worldRules/synthetic-input-events-bubble.mjs';
 import eventsTargetAppNode from '../worldRules/synthetic-input-events-target-app-node.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const runOn = (rule, files) => {
   const root = makeRepo({ changed: files });
   try {
-    return rule.run(buildContext({ root, mode: 'all' }));
+    return runRule(rule, buildContext({ root, mode: 'all' }));
   } finally { cleanup(root); }
 };
 

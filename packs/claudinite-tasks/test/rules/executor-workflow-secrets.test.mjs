@@ -4,6 +4,7 @@ import { makeRepo, cleanup } from '../../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../../engine/checks/helpers/repo-context.mjs';
 import { loadPacks } from '../../../../engine/pack_loader/pack-registry.mjs';
 import rule from '../../worldRules/executor-workflow-secrets.mjs';
+import { runRule } from '../../../../engine/checks/helpers/work.mjs';
 
 const EXECUTOR = '.github/workflows/claudinite-executor.yml';
 const PACK = '.claudinite/local/packs/mypack';
@@ -35,7 +36,7 @@ async function run(files) {
   try {
     const ctx = buildContext({ root, mode: 'all' });
     ctx.packs = await loadPacks({ localRoot: root });
-    return rule.run(ctx);
+    return runRule(rule, ctx);
   } finally { cleanup(root); }
 }
 const whatsOf = (findings) => findings.map((f) => f.what).join(' | ');

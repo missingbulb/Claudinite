@@ -9,3 +9,11 @@
 - **Mechanism:** world check `node/test-discovery-resolves`, blocking, stamped `since: 2026-09-06`
   so its advisory grace runs from when it reaches members rather than from its branch's date.
 - **Landed:** #1828 (Refs #1715, #1690, #1419, #1303) · pack version 60906.2.
+
+## 2026-09-22 · reworded · the rule takes the run's surface rather than the raw context (#2261)
+- **Reason:** the world sweep gained a surface beside check-the-work's, so a rule destructures what
+  it reads and receives it preconfigured instead of re-deriving it off `ctx`. Mechanics only: the
+  sweep's findings are byte-identical.
+- **Actor:** the engine/implement-request run on #2261.
+- **Model:** claude-opus-5
+- **Landed:** #2268

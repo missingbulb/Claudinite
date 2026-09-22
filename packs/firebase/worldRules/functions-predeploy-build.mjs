@@ -16,9 +16,9 @@ const rule = {
   doc: 'packs/firebase/skills/firebase-functions/SKILL.md',
   why: 'without the hook a deploy ships whatever compiled output happens to be on disk — a local `firebase deploy` after an edit silently publishes the previous build',
 
-  run(ctx) {
+  run({ sources, tracked, json }) {
     const out = [];
-    for (const { configFile, entry, source, manifest } of functionsCodebases(ctx)) {
+    for (const { configFile, entry, source, manifest } of functionsCodebases({ sources, tracked, json })) {
       if (!manifest.scripts?.build) continue;
       if (hasHook(entry.predeploy)) continue;
       out.push(finding(rule, {

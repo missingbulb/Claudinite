@@ -32,32 +32,32 @@ const rule = {
   doc: 'packs/claude-code-web-users-support/RULES.md',
   why: 'a rule with no file has no record of when it was set or what prompted it, and the session that changes it next is the only reader who could have written that down',
 
-  run(ctx) {
+  run({ packConfig, sources, exists }) {
     if (typeof provenance.ruleBlocks !== 'function') return []; // an engine that predates the helper
     const { ruleBlocks } = provenance;
-    const store = resolveStore(ctx.config.packConfig?.[PACK] ?? null);
+    const store = resolveStore(packConfig(PACK) ?? null);
     if (!store) return [];
     const prefix = `${store.path}/`;
     // One prose file per person, at the pack's own `RULES.md` - the only file in a person's
     // directory this check has anything to say about.
-    const held = (ctx.files ?? []).filter((f) => {
+    const held = sources((f) => {
       const rest = f.startsWith(prefix) ? f.slice(prefix.length) : null;
       return rest !== null && rest.endsWith('/RULES.md') && rest.split('/').length === 2;
     });
     if (!held.length) return [];
     const out = [];
-    for (const file of held) {
+    for (const { file, text } of held) {
       const email = file.slice(prefix.length, -'/RULES.md'.length);
       if (!isUsableIdentity(email)) continue; // store-file-names reports the name
       const dir = `${prefix}${email}/provenance`;
-      for (const b of ruleBlocks(ctx.read(file) ?? '')) {
+      for (const b of ruleBlocks(text)) {
         if (!b.slug) {
           out.push(finding(rule, {
             file, line: b.start + 1,
             what: `the rule "${b.trigger}" ends with no marker naming its provenance file`,
             fix: `end it with a slug marker, e.g. (${b.trigger.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').split('-').slice(0, 3).join('-')}), and write that file under ${dir}/ with a born entry saying when the rule was set and what prompted it`,
           }));
-        } else if (!ctx.exists(`${dir}/${b.slug}.md`)) {
+        } else if (!exists(`${dir}/${b.slug}.md`)) {
           out.push(finding(rule, {
             file, line: b.lastLine + 1,
             what: `the rule "${b.trigger}" names ${dir}/${b.slug}.md, which does not exist`,

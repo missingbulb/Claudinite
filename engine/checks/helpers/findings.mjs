@@ -1,3 +1,6 @@
+import { relative, sep } from 'node:path';
+import { SETTINGS_FILE } from '../../settings-file-names.mjs';
+
 export function finding(rule, { file, line = null, what, fix, why = null, severity = null }) {
   return {
     rule: rule.id,
@@ -12,6 +15,33 @@ export function finding(rule, { file, line = null, what, fix, why = null, severi
     // window below can be applied by the scope-blind reporter, which never sees
     // the rules themselves. Undefined on a rule that declared none — see `applyGrace`.
     since: rule.since,
+  };
+}
+
+// WHAT A RULE THAT THREW BECOMES. A rule is a function over a tree nobody chose
+// for it - a malformed manifest in a member repo, a file that is not the JSON its
+// extension claims - and before the runner isolated each one, a single throw
+// escaped the sweep and took every OTHER rule's findings with it: the run reported
+// nothing rather than everything else. So the failure is a finding like any other,
+// naming the rule that raised and the pack it came from, which is the pair that
+// leads to the module to fix.
+//
+// BLOCKING, and carrying no `since`: a rule that cannot run reports no findings,
+// which reads exactly like a rule that found nothing, and grace would hide the one
+// difference. The project can still name the rule in `rules` to turn it off, the
+// same move it has for the findings that rule makes when it works.
+export function ruleFailed({ pack, rule, error, root }) {
+  return {
+    rule: rule.id,
+    severity: 'blocking',
+    // The pack's own directory: a rule carries no path of its own, and the pack
+    // that contributed it is the shortest way to the module.
+    file: pack?.dir && root ? relative(root, pack.dir).split(sep).join('/') : (pack?.id ?? '(unknown pack)'),
+    line: null,
+    what: `the "${rule.id}" rule threw: ${error?.message ?? error}`,
+    why: 'a rule that cannot run makes no findings, which is indistinguishable from a rule that found nothing',
+    fix: `fix ${rule.id} so it tolerates whatever this repo holds, or set "${rule.id}": "off" under "rules" in ${SETTINGS_FILE} until it is`,
+    doc: rule.doc,
   };
 }
 

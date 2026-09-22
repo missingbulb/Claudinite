@@ -30,15 +30,12 @@ const rule = {
     'that failure unnoticed for days',
   doc: 'packs/claudinite-growth/skills/writing-tasks/SKILL.md',
 
-  run(ctx) {
+  run({ sources }) {
     const findings = [];
 
-    for (const file of ctx.files) {
-      if (!WORKER.test(file)) continue;
-
-      const src = ctx.read(file);
-      if (src === null) continue; // relevance-first: unreadable, not this check's business
-
+    // An unreadable worker is simply absent from the scan - relevance-first: not
+    // this check's business.
+    for (const { file, text: src } of sources(WORKER)) {
       const write = WRITES.exec(src);
       if (!write) continue; // a read-only worker cannot lose a commit to the wrong branch
 

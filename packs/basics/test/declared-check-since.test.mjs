@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import declaredCheckSince from '../worldRules/declared-check-since.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => declaredCheckSince.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(declaredCheckSince, buildContext({ root, mode: 'all' }));
 
 const spec = (over) => ({
   id: 'fx',

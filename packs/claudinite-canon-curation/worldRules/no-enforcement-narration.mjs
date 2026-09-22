@@ -19,21 +19,20 @@ const rule = {
   doc: 'engine/checks/DESIGN.md',
   why: 'checks run automatically at every Stop and in CI, and each failure message carries its rule — prose narrating its own enforcement duplicates the mechanism and drifts from it',
 
-  run(ctx) {
-    const docs = ctx.files
-      .filter((f) => /^packs\/[^/]+\/pack\.mjs$/.test(f))
-      .flatMap((f) => {
-        const m = /\bprose:\s*'([^']+)'/.exec(ctx.read(f) ?? '');
-        return m ? [join(dirname(f), m[1])] : [];
+  run(world) {
+    const docs = world.sources(/^packs\/[^/]+\/pack\.mjs$/)
+      .flatMap(({ file, text }) => {
+        const m = /\bprose:\s*'([^']+)'/.exec(text);
+        return m ? [join(dirname(file), m[1])] : [];
       });
     return [
-      ...matchingLines(ctx, docs, RUNNER).map(({ file, line }) => finding(rule, {
+      ...matchingLines(world, docs, RUNNER).map(({ file, line }) => finding(rule, {
         file, line,
         what: 'tells the reader to run the checks runner',
         fix: 'delete the instruction — the Stop hook and CI run every check on their own',
       })),
-      ...docs.flatMap((doc) => [...ruleIdsIn(ctx, dirname(doc))].sort().flatMap((id) =>
-        matchingLines(ctx, [doc], asWord(id)).map(({ file, line }) => finding(rule, {
+      ...docs.flatMap((doc) => [...ruleIdsIn(world, dirname(doc))].sort().flatMap((id) =>
+        matchingLines(world, [doc], asWord(id)).map(({ file, line }) => finding(rule, {
           file, line,
           what: `names its own check rule "${id}"`,
           fix: 'remove the mention — the rule announces itself when it fires, and its failure message carries the instruction',

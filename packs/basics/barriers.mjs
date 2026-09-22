@@ -42,13 +42,13 @@ function contributedRule({ id, edges, severity = 'blocking', doc = DEFAULT_DOC, 
     // barrier names its real excusal lever too.
     crossingRemedy,
     crossingExcuse,
-    run(ctx) {
-      if (gateDir && !existsSync(join(ctx.root, gateDir))) return [];
+    run(world) {
+      if (gateDir && !existsSync(join(world.root, gateDir))) return [];
       const out = norm.errors.map((e) => specFinding(rule, e));
-      const { findings, stale } = barrierFindings(ctx, norm.edges, rule);
+      const { findings, stale } = barrierFindings(world, norm.edges, rule);
       out.push(...findings);
       const scanErrors = findings.some((f) => f.resolved === undefined);
-      if (ctx.mode === 'all' && !norm.errors.length && !scanErrors) out.push(...staleFindings(stale, rule));
+      if (world.mode === 'all' && !norm.errors.length && !scanErrors) out.push(...staleFindings(stale, rule));
       return out;
     },
   };

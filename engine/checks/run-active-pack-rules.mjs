@@ -34,10 +34,13 @@ export function packRules(packs) {
 
 // Every finding from the active packs' rules that `includeRule` admits. A rule
 // turned `off` in settings is skipped. `onContributeError(pack, err)` is invoked
-// when a pack's contributedRules seam throws (the caller decides whether that
-// becomes a finding). `timings`, when a caller passes an array, collects
-// `{ id, ms }` per rule run - what the runner renders its timing record from.
-export function runActivePackRules(ctx, packs, { includeRule, onContributeError = null, timings = null }) {
+// when a pack's contributedRules seam throws, and `onRuleError(pack, rule, err)`
+// when a RULE does - in both cases the caller decides whether that becomes a
+// finding. `timings`, when a caller passes an array, collects `{ id, ms }` per
+// rule run - what the runner renders its timing record from.
+export function runActivePackRules(ctx, packs, {
+  includeRule, onContributeError = null, onRuleError = null, timings = null,
+}) {
   const findings = [];
   // Expose the discovered packs to any rule that reasons about pack metadata
   // (e.g. the adoption-interview hygiene check reads each active pack's declared
@@ -51,8 +54,14 @@ export function runActivePackRules(ctx, packs, { includeRule, onContributeError 
       if (!includeRule(rule)) continue;
       if (ctx.config.rules[rule.id] === 'off') continue;
       const started = timings ? performance.now() : 0;
-      findings.push(...runRule(rule, ctx));
-      if (timings) timings.push({ id: rule.id, ms: performance.now() - started });
+      // ISOLATED PER RULE, exactly as a pack's contributedRules seam above is. A
+      // rule runs over a tree nobody chose for it, so one raising - over a file
+      // that is not the JSON its name claims, say - used to take down every other
+      // rule's findings with it and report nothing rather than everything else.
+      // What the throw BECOMES is the caller's: this file knows no policy.
+      try { findings.push(...runRule(rule, ctx)); }
+      catch (e) { onRuleError?.(pack, rule, e); }
+      finally { if (timings) timings.push({ id: rule.id, ms: performance.now() - started }); }
     }
   }
   return findings;

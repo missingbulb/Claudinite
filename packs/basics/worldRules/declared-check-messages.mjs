@@ -37,13 +37,11 @@ const rule = {
   description: 'Every declared check\'s message fields stay within the word caps, with no fix repeated inside one rule',
   why: 'a declaration has no comments or doc pointer — its messages are the whole check, and a message that runs to a paragraph (or a remedy pasted per assertion) stops being readable as one',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files.filter((f) => DECLARED.test(f))) {
-      const text = ctx.read(file);
-      if (text === null) continue;
-      let specs;
-      try { specs = JSON.parse(text); } catch { continue; } // unparsable is the loader's finding
+    // An unparsable declaration reads as no specs at all - that is the loader's
+    // finding to make, never this one's.
+    for (const { file, text, json: specs } of sources(DECLARED)) {
       if (!Array.isArray(specs)) continue;
       for (const spec of specs) {
         if (!spec || typeof spec !== 'object' || typeof spec.id !== 'string') continue;

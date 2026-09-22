@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import assetIntegrity from '../worldRules/asset-integrity.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
+const run = (rule, root) => runRule(rule, buildContext({ root, mode: 'all' }));
 
 const page = (body) => makeRepo({ changed: { 'index.html': body } });
 

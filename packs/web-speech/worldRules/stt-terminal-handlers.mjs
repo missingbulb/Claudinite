@@ -1,6 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { isSource, lineOf, wires } from '../lib.mjs';
+import { isSource, wires } from '../lib.mjs';
 
 // The mirror of tts-speak-settles on the input side. A recognition cycle has
 // three ways to finish, only one of which is `result`:
@@ -33,19 +32,17 @@ const rule = {
   doc: 'packs/web-speech/RULES.md',
   why: 'a recognition cycle that ends with no transcript fires only `end`, so a recognizer wired for result alone leaves the listen promise pending forever — the UI shows a live mic while nothing is listening, with no error anywhere',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!isSource(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !raw.includes('result')) continue;
-      const src = stripComments(raw);
+    for (const source of sources(isSource)) {
+      if (!source.text.includes('result')) continue;
+      const { file, code: src, line } = source;
       if (!wires(src, 'result')) continue;
       const missing = ['end', 'error'].filter((event) => !wires(src, event));
       if (missing.length === 0) continue;
       out.push(finding(rule, {
         file,
-        line: lineOf(src, src.search(/\.\s*onresult\s*=|addEventListener\s*\(\s*['"`]result['"`]/)),
+        line: line(src.search(/\.\s*onresult\s*=|addEventListener\s*\(\s*['"`]result['"`]/)),
         what: `a speech recognizer handles result but never ${missing.join(' or ')}`,
         fix: `handle ${missing.join(' and ')} on the recognizer and settle the listen cycle from every one of them — map end (the "closed with nothing" case) to a no-speech outcome and error through a named taxonomy, so exactly one outcome always reaches the caller`,
       }));

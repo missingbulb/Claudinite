@@ -14,13 +14,9 @@ const isProjectConfig = (f) => {
 
 // Every tracked firebase.json at the pack's marker depth, parsed. An unparsable
 // config yields nothing: a syntax error is the CLI's complaint to make, not ours.
-export function projectConfigs(ctx) {
+export function projectConfigs({ sources, tracked }) {
   const out = [];
-  for (const file of ctx.tracked.filter(isProjectConfig)) {
-    const text = ctx.read(file);
-    if (text === null) continue;
-    let config;
-    try { config = JSON.parse(text); } catch { continue; }
+  for (const { file, json: config } of sources(isProjectConfig, tracked)) {
     if (config === null || typeof config !== 'object' || Array.isArray(config)) continue;
     const slash = file.lastIndexOf('/');
     out.push({ file, dir: slash === -1 ? '' : file.slice(0, slash), config });
@@ -33,9 +29,9 @@ export function projectConfigs(ctx) {
 // codebases; `source` defaults to "functions" (the CLI's own default).
 // Codebases whose package.json isn't in the repo are dropped — the relevance
 // gate: nothing to say about a codebase this checkout doesn't carry.
-export function functionsCodebases(ctx) {
+export function functionsCodebases({ sources, tracked, json }) {
   const out = [];
-  for (const { file, dir, config } of projectConfigs(ctx)) {
+  for (const { file, dir, config } of projectConfigs({ sources, tracked })) {
     if (config.functions === undefined || config.functions === null) continue;
     const declared = Array.isArray(config.functions) ? config.functions : [config.functions];
     for (const entry of declared) {
@@ -43,10 +39,7 @@ export function functionsCodebases(ctx) {
       const source = typeof entry.source === 'string' && entry.source ? entry.source : 'functions';
       const sourceDir = [dir, source].filter(Boolean).join('/');
       const manifestPath = `${sourceDir}/package.json`;
-      const text = ctx.read(manifestPath);
-      if (text === null) continue;
-      let manifest;
-      try { manifest = JSON.parse(text); } catch { continue; }
+      const manifest = json(manifestPath);
       if (manifest === null || typeof manifest !== 'object' || Array.isArray(manifest)) continue;
       out.push({ configFile: file, entry, source, sourceDir, manifestPath, manifest });
     }

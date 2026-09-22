@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import tileAttribution from '../worldRules/tile-attribution.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (root) => tileAttribution.run(buildContext({ root, mode: 'all' }));
+const run = (root) => runRule(tileAttribution, buildContext({ root, mode: 'all' }));
 const repo = (files) => makeRepo({ changed: files });
 
 const OSM = "'&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors'";

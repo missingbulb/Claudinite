@@ -1,6 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { isSource, lineOf, balanced, inputEventCtors, eventConstructions, hasSpread } from '../lib.mjs';
+import { isSource, balanced, inputEventCtors, eventConstructions, hasSpread } from '../lib.mjs';
 
 // A real click or keystroke bubbles. A synthetic one only bubbles if you say so:
 // `bubbles` defaults to FALSE on every DOM event constructor, so
@@ -43,13 +42,11 @@ const rule = {
   doc: 'packs/host-page/RULES.md',
   why: 'bubbles defaults to false on every event constructor, and a host page handles input by delegation near its own root — a non-bubbling synthetic event never reaches the handler, silently, and reads as "the app ignores untrusted events"',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!isSource(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !raw.includes('dispatchEvent')) continue;
-      const src = stripComments(raw);
+    for (const source of sources(isSource)) {
+      if (!source.text.includes('dispatchEvent')) continue;
+      const { file, code: src, line } = source;
       const ctors = inputEventCtors(src);
 
       // Where the dispatches are: the argument span of every dispatchEvent call
@@ -74,7 +71,7 @@ const rule = {
         if (init === null) {
           out.push(finding(rule, {
             file,
-            line: lineOf(src, index),
+            line: line(index),
             what: `dispatches a ${name} constructed with no init, so it does not bubble`,
             fix: `pass { bubbles: true, cancelable: true, composed: true } to the ${name} constructor — a real user event carries all three, and a page that handles input by delegation only ever sees the ones that bubble`,
           }));
@@ -84,7 +81,7 @@ const rule = {
         if (hasSpread(init) && !BUBBLES_ANY.test(init)) continue; // spread may set it: unreadable, so silent
         out.push(finding(rule, {
           file,
-          line: lineOf(src, index),
+          line: line(index),
           what: `dispatches a ${name} that does not set bubbles: true`,
           fix: `set bubbles: true in the ${name} init — without it the event stops at the node you dispatched it on and never reaches the delegated handler the host page listens with`,
         }));

@@ -43,12 +43,11 @@ const rule = {
   description: 'This repo\'s Claudinite declaration and stamp use no shape the engine only tolerates',
   why: 'every legacy shape here is read through a tolerance that comes out one convergence window after this advisory ships (#1638) - the canon cannot see which repos still carry the old shape, so a repo that does not act inside that window loses its mount rather than holding the removal up',
 
-  run(ctx) {
+  run({ files, json }) {
     const file = settingsNames.SETTINGS_FILE;
-    if (!ctx.files.includes(file)) return [];              // not a member - inert
+    if (!files.includes(file)) return [];              // not a member - inert
 
-    let raw;
-    try { raw = JSON.parse(ctx.read(file) ?? ''); } catch { return []; }
+    const raw = json(file);
     if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return [];
 
     const out = [];

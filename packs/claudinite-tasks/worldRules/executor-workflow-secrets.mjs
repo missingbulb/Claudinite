@@ -1,6 +1,5 @@
 import { relative, sep } from 'node:path';
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { isActive } from '../../../engine/pack_loader/pack-registry.mjs';
 import { taskDeclarationFiles } from '../src/contract/discover.mjs';
 import { parseTaskDeclaration } from '../src/contract/task-declaration.mjs';
 import { normalizeTaskDeclaration } from '../src/contract/task-contract.mjs';
@@ -42,10 +41,10 @@ const rule = {
   doc: 'packs/claudinite-tasks/README.md',
   why: 'a secret the executor does not name statically never reaches the job, and the task fails only once the queue has already picked its item up',
 
-  run(ctx) {
-    const expected = taskSecretNames(taskDeclarations(ctx));
+  run({ root, read, activePacks }) {
+    const expected = taskSecretNames(taskDeclarations(root, read, activePacks()));
     if (!expected.length) return [];
-    const text = ctx.read(EXECUTOR_WORKFLOW);
+    const text = read(EXECUTOR_WORKFLOW);
     const missing = text === null ? expected : expected.filter((name) => !passesSecret(text, name));
     if (!missing.length) return [];
     return [finding(rule, {
@@ -61,12 +60,12 @@ const rule = {
 
 // Every ACTIVE pack's task declarations, parsed but not validated — this rule asks
 // one field of them, and a declaration another check will reject still tells the
-// truth about which secret it needs. `ctx.packs` is what the runner discovered.
-function taskDeclarations(ctx) {
-  const { found } = taskDeclarationFiles(ctx.root, (ctx.packs ?? []).filter((p) => isActive(p, ctx.config)));
+// truth about which secret it needs.
+function taskDeclarations(root, read, packs) {
+  const { found } = taskDeclarationFiles(root, packs);
   const out = [];
   for (const { file } of found) {
-    const text = ctx.read(relative(ctx.root, file).split(sep).join('/'));
+    const text = read(relative(root, file).split(sep).join('/'));
     if (text === null) continue;
     try { out.push(normalizeTaskDeclaration(parseTaskDeclaration(text))); } catch { /* the declaration checks own a file that will not parse */ }
   }

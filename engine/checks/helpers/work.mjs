@@ -2,6 +2,7 @@ import { dirname, join, normalize } from 'node:path';
 import { humanTurns, assistantTextAfter, classificationLine, classesIn, skillLoads, toolCalls } from './session-transcript.mjs';
 import { addedLines } from './line-scanning.mjs';
 import { extractLinks } from './markdown.mjs';
+import { world } from './world.mjs';
 
 // The fluent check-the-work surface over ctx. Every accessor is null-safe — no
 // transcript, no merge-base, an empty branch all yield empty results — so a rule
@@ -9,16 +10,17 @@ import { extractLinks } from './markdown.mjs';
 // its patterns, file filters, and failure text.
 //
 // A rule declaring `scope: 'work'` receives this object as its `run` argument
-// (runRule dispatches); check-the-world rules keep the raw ctx until a fluent
-// world object exists. The raw surface a work rule still needs (files, read,
-// exists, …) is delegated here, so a work rule — and the structural helpers it
-// calls, e.g. findExtensionManifest — never touches ctx itself.
+// (runRule dispatches); every other rule receives the world surface beside it
+// (world.mjs). The raw surface a work rule still needs (files, read, exists, …)
+// is delegated here, so a work rule - and the structural helpers it calls, e.g.
+// findExtensionManifest - never touches ctx itself.
 export const work = (ctx) => new Work(ctx);
 
 // The single dispatch seam: the runner and every rule test invoke rules through
-// this, so a rule's scope decides its context in exactly one place. Extra args
+// this, so a rule's scope decides its surface in exactly one place. Extra args
 // pass through (some rules take test-only options after the context).
-export const runRule = (rule, ctx, ...args) => rule.run(READS_THE_SESSION.has(rule.scope) ? work(ctx) : ctx, ...args);
+export const runRule = (rule, ctx, ...args) =>
+  rule.run(READS_THE_SESSION.has(rule.scope) ? work(ctx) : world(ctx), ...args);
 
 // The scopes handed the fluent surface: a work rule reads the change and the
 // session, an action rule the session's tool calls — both at Stop.

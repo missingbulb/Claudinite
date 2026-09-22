@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import rule from '../worldRules/store-file-names.mjs';
 import { packDirFor, resolveStore } from '../user_pack_address.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 // See-it-fail proof for preferences-store-file-names. The violating fixtures are
 // directories the reader provably never opens; the clean one is exactly what user_pack_address.mjs
@@ -16,7 +17,7 @@ const ctx = (files, config = STORE) => ({
 });
 
 test('a directory not named for an identity is found — and really is unaddressable', () => {
-  const found = rule.run(ctx(['preferences/README.md', 'preferences/ariel/RULES.md']));
+  const found = runRule(rule, ctx(['preferences/README.md', 'preferences/ariel/RULES.md']));
   assert.equal(found.length, 1);
   assert.equal(found[0].file, 'preferences/ariel');
   assert.equal(found[0].severity, 'advisory');
@@ -33,23 +34,23 @@ test('the identity form is clean — and is exactly what the reader copies', () 
     'preferences/arielra@gmail.com/RULES.md',
     'preferences/arielra@gmail.com/skills/pep-talk/SKILL.md',
   ];
-  assert.deepEqual(rule.run(ctx(files)), []);
+  assert.deepEqual(runRule(rule, ctx(files)), []);
   assert.ok(files[1].startsWith(`${packDirFor(resolveStore(STORE), 'arielra@gmail.com')}/`));
 });
 
 test('a file loose in the store is found — a person is a directory now', () => {
   // The address a reader of the retired layout would have used, which nothing opens.
-  const found = rule.run(ctx(['preferences/arielra@gmail.com.md']));
+  const found = runRule(rule, ctx(['preferences/arielra@gmail.com.md']));
   assert.equal(found.length, 1);
   assert.match(found[0].what, /sits loose in preferences\//);
 });
 
 test('other unaddressable names are found too, one finding per directory', () => {
-  assert.equal(rule.run(ctx(['preferences/notes.txt'])).length, 1, 'a loose file of any kind');
-  assert.equal(rule.run(ctx(['preferences/a b@c/RULES.md'])).length, 1, 'whitespace is not a usable identity');
-  assert.equal(rule.run(ctx(['preferences/x/RULES.md', 'preferences/y/RULES.md'])).length, 2, 'one finding per person');
+  assert.equal(runRule(rule, ctx(['preferences/notes.txt'])).length, 1, 'a loose file of any kind');
+  assert.equal(runRule(rule, ctx(['preferences/a b@c/RULES.md'])).length, 1, 'whitespace is not a usable identity');
+  assert.equal(runRule(rule, ctx(['preferences/x/RULES.md', 'preferences/y/RULES.md'])).length, 2, 'one finding per person');
   assert.equal(
-    rule.run(ctx(['preferences/x/RULES.md', 'preferences/x/pack.mjs', 'preferences/x/skills/s/SKILL.md'])).length,
+    runRule(rule, ctx(['preferences/x/RULES.md', 'preferences/x/pack.mjs', 'preferences/x/skills/s/SKILL.md'])).length,
     1,
     'one mistake with one fix, however many files sit under it',
   );
@@ -57,16 +58,16 @@ test('other unaddressable names are found too, one finding per directory', () =>
 
 test('a non-default store path is honoured', () => {
   const config = { repo: 'owner/store', path: 'people' };
-  assert.deepEqual(rule.run(ctx(['preferences/ariel/RULES.md'], config)), [], 'preferences/ is not the store here');
-  assert.equal(rule.run(ctx(['people/ariel/RULES.md'], config)).length, 1);
+  assert.deepEqual(runRule(rule, ctx(['preferences/ariel/RULES.md'], config)), [], 'preferences/ is not the store here');
+  assert.equal(runRule(rule, ctx(['people/ariel/RULES.md'], config)).length, 1);
 });
 
 test('inert where it does not apply', () => {
-  assert.deepEqual(rule.run(ctx(['preferences/ariel/RULES.md'], null)), [],
+  assert.deepEqual(runRule(rule, ctx(['preferences/ariel/RULES.md'], null)), [],
     'the pack is declared with no store — store-configured owns that half');
-  assert.deepEqual(rule.run(ctx(['preferences/ariel/RULES.md'], { repo: 'ownername' })), [],
+  assert.deepEqual(runRule(rule, ctx(['preferences/ariel/RULES.md'], { repo: 'ownername' })), [],
     'a store that does not resolve — store-configured owns that half too');
-  assert.deepEqual(rule.run(ctx(['README.md', 'preferences.md'])), [],
+  assert.deepEqual(runRule(rule, ctx(['README.md', 'preferences.md'])), [],
     'a member that declares the pack but holds no store directory');
-  assert.deepEqual(rule.run(ctx([])), [], 'no files at all');
+  assert.deepEqual(runRule(rule, ctx([])), [], 'no files at all');
 });

@@ -47,6 +47,15 @@ ruleTester(check('named-import-of-new-engine-export'), {
       base: { 'engine/h.mjs': 'export function old() {}\n', 'packs/p/pack.mjs': "import { old } from '../../engine/h.mjs';\n" },
       files: { 'packs/p/pack.mjs': "import { old } from '../../engine/h.mjs';\nold();\n" },
     },
+    // A pack's tests are dropped from every vendor set, so no member ever holds
+    // one and its import cannot fault a member's pack load.
+    'a named import from a pack test, which no member holds': {
+      base: { 'engine/h.mjs': 'export function old() {}\n' },
+      files: {
+        'engine/h.mjs': 'export function old() {}\nexport function fresh() {}\n',
+        'packs/p/test/p.test.mjs': "import { fresh } from '../../../engine/h.mjs';\n",
+      },
+    },
   },
   flagged: {
     'a named import of the export the same change adds': {

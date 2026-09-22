@@ -9,8 +9,9 @@ import { CONFIG_PATH, DEPLOY_WORKFLOW_PATH, parseConfig, publishSet } from '../l
 import { assemble, main as buildSite, resolveBuildVars } from '../build-site.mjs';
 import siteConfig from '../worldRules/site-config.mjs';
 import deployWorkflow from '../worldRules/deploy-workflow.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
-const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
+const run = (rule, root) => runRule(rule, buildContext({ root, mode: 'all' }));
 
 const CONFIG = 'publish_root=.\npublish_paths=index.html assets\nbuild_command=\n';
 const DEPLOY = readFileSync(new URL('../stubs/workflows/github-pages-deploy.yml', import.meta.url), 'utf8');
@@ -41,7 +42,7 @@ test('the pack fingerprints a repo carrying the site config, and is inert withou
   try {
     const ctx = buildContext({ root: plain, mode: 'all' });
     assert.equal(pack.detect(ctx), false);
-    for (const rule of [siteConfig, deployWorkflow]) assert.deepEqual(rule.run(ctx), [], `${rule.id} fired on a repo that never adopted the standard`);
+    for (const rule of [siteConfig, deployWorkflow]) assert.deepEqual(runRule(rule, ctx), [], `${rule.id} fired on a repo that never adopted the standard`);
   } finally { cleanup(plain); }
 });
 

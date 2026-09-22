@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import rule from '../worldRules/descriptor-usable.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 // A context over an in-memory tree. `allFiles` is what the real runner hands a rule,
 // so a fixture is a path→text map and nothing here touches disk.
@@ -16,22 +17,22 @@ const ok = JSON.stringify({
 });
 
 test('a usable descriptor is silent, in the canon and in a local pack', () => {
-  assert.deepEqual(rule.run(ctx({ 'packs/acme-pack-d/dashboard.json': ok })), []);
-  assert.deepEqual(rule.run(ctx({ '.claudinite/local/packs/mine/dashboard.json': ok })), []);
+  assert.deepEqual(runRule(rule, ctx({ 'packs/acme-pack-d/dashboard.json': ok })), []);
+  assert.deepEqual(runRule(rule, ctx({ '.claudinite/local/packs/mine/dashboard.json': ok })), []);
 });
 
 // The vendored mount is read-only to a member: a canon descriptor's fault is the
 // canon's to fix, and blocking a member on it would leave them nothing to do.
 test('a descriptor in the vendored mount is not the member\'s to police', () => {
-  assert.deepEqual(rule.run(ctx({ '.claudinite/shared/packs/acme-pack-d/dashboard.json': '{ broken' })), []);
+  assert.deepEqual(runRule(rule, ctx({ '.claudinite/shared/packs/acme-pack-d/dashboard.json': '{ broken' })), []);
 });
 
 test('a file that is not a pack descriptor is not scanned', () => {
-  assert.deepEqual(rule.run(ctx({ 'packs/x/dashboard.json.bak': '{ broken', 'dashboard.json': '{ broken' })), []);
+  assert.deepEqual(runRule(rule, ctx({ 'packs/x/dashboard.json.bak': '{ broken', 'dashboard.json': '{ broken' })), []);
 });
 
 test('a descriptor the reader rejects is a finding naming why', () => {
-  const out = rule.run(ctx({ 'packs/p/dashboard.json': '{ broken' }));
+  const out = runRule(rule, ctx({ 'packs/p/dashboard.json': '{ broken' }));
   assert.equal(out.length, 1);
   assert.match(out[0].what, /not valid JSON/);
 });
@@ -40,7 +41,7 @@ test('a descriptor the reader rejects is a finding naming why', () => {
 // version — so the canon, where descriptor and widgets are one file, is the only place
 // a typo can be told from that.
 test('a view selecting a widget the descriptor does not declare is caught', () => {
-  const out = rule.run(ctx({ 'packs/p/dashboard.json': JSON.stringify({
+  const out = runRule(rule, ctx({ 'packs/p/dashboard.json': JSON.stringify({
     widgets: [{ id: 'a', kind: 'stat', label: 'a', noun: 'a' }], repo: ['a', 'ghost'], fleet: { member: 'a' },
   }) }));
   assert.equal(out.length, 1);
@@ -48,7 +49,7 @@ test('a view selecting a widget the descriptor does not declare is caught', () =
 });
 
 test('a list named as the fleet mini-card is caught', () => {
-  const out = rule.run(ctx({ 'packs/p/dashboard.json': JSON.stringify({
+  const out = runRule(rule, ctx({ 'packs/p/dashboard.json': JSON.stringify({
     widgets: [{ id: 'r', kind: 'list', label: 'r' }], fleet: { member: 'r' },
   }) }));
   assert.equal(out.length, 1);
@@ -57,7 +58,7 @@ test('a list named as the fleet mini-card is caught', () => {
 
 // A bare number in a column of bare numbers says nothing about what it counts.
 test('a fleet mini-card with no noun is caught', () => {
-  const out = rule.run(ctx({ 'packs/p/dashboard.json': JSON.stringify({
+  const out = runRule(rule, ctx({ 'packs/p/dashboard.json': JSON.stringify({
     widgets: [{ id: 'a', kind: 'stat', label: 'a' }], fleet: { member: 'a' },
   }) }));
   assert.equal(out.length, 1);
@@ -78,5 +79,5 @@ test('the check is silent on the real corpus, and its scope is not empty', () =>
   assert.ok(descriptors.length > 0, 'no pack descriptor is tracked — the check would match nothing and read as live');
 
   const real = { allFiles: files, read: (f) => { try { return readFileSync(join(root, f), 'utf8'); } catch { return null; } } };
-  assert.deepEqual(rule.run(real), []);
+  assert.deepEqual(runRule(rule, real), []);
 });

@@ -1,6 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { isSource, lineOf } from '../lib.mjs';
+import { isSource } from '../lib.mjs';
 
 // Interim hypotheses arrive on the SAME `result` event as the finished
 // utterance. Turning `interimResults` on does not open a second channel: the
@@ -77,13 +76,11 @@ const rule = {
   doc: 'packs/web-speech/RULES.md',
   why: 'interim hypotheses are delivered on the same result event as the final transcript, so a handler that never checks isFinal treats every half-formed guess as a finished utterance — the app acts on words the user has not said yet and repeats itself as the guess is revised, with nothing thrown and nothing logged',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!isSource(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !raw.includes('interimResults')) continue;
-      const src = stripComments(raw);
+    for (const source of sources(isSource)) {
+      if (!source.text.includes('interimResults')) continue;
+      const { file, code: src, line } = source;
       // Handled elsewhere: the gate belongs wherever the handler is written.
       if (!handlesResultInline(src)) continue;
       if (/\bisFinal\b/.test(src)) continue;
@@ -93,7 +90,7 @@ const rule = {
         if (OFF.test(m[1].trim())) continue;
         out.push(finding(rule, {
           file,
-          line: lineOf(src, m.index),
+          line: line(m.index),
           what: 'this file turns on interim results and handles the result event, but never checks isFinal',
           fix: 'test `isFinal` on each result in the handler and deliver only a final one to the caller — use the interim results solely as the "still speaking" signal (they are what a mid-utterance pause monitor watches); if interim hypotheses are not wanted at all, leave interimResults off rather than filtering them downstream',
         }));

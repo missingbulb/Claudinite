@@ -65,13 +65,16 @@ function offendingGuards(text, importNames) {
   return hits;
 }
 
-function optionalImportNames(ctx) {
+function optionalImportNames(sources) {
   const optional = new Set();
-  for (const f of ctx.files.filter((f) => !f.startsWith(SELF) && PYPROJECT.test(f))) {
-    for (const n of optionalDistNames(ctx.read(f) ?? '')) optional.add(n);
+  for (const { text } of sources((f) => !f.startsWith(SELF) && PYPROJECT.test(f))) {
+    for (const n of optionalDistNames(text)) optional.add(n);
   }
   return optional.size ? importNamesFor(optional) : null;
 }
+
+// The project's own Python, excluding this pack's fixtures and its tests.
+const isProjectPython = (f) => !f.startsWith(SELF) && PY_EXT.test(f) && !TESTISH.test(f);
 
 const rule = {
   id: 'python-optional-import-install-hint',
@@ -80,14 +83,11 @@ const rule = {
   doc: 'packs/python/skills/python-optional-deps/SKILL.md',
   why: 'a `try/except ImportError` guard that re-raises without an install hint leaves the user a bare ModuleNotFoundError from deep inside a backend instead of the exact `pip install pkg[extra]` that fixes it',
 
-  run(ctx) {
-    const importNames = optionalImportNames(ctx);
+  run({ sources }) {
+    const importNames = optionalImportNames(sources);
     if (!importNames) return [];
     const out = [];
-    const pyFiles = ctx.files.filter((f) => !f.startsWith(SELF) && PY_EXT.test(f) && !TESTISH.test(f));
-    for (const file of pyFiles) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources(isProjectPython)) {
       for (const { line } of offendingGuards(text, importNames)) {
         out.push(finding(rule, {
           file, line,

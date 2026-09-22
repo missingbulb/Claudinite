@@ -139,4 +139,4 @@ export function publishSet(values) {
 // because the artifact the checks most need to catch missing IS one of them. Gating
 // on the config alone would let a repo that vendored the workflow and never wrote
 // its config pass silently, which is the one case `gp/site-config` exists to report.
-export const adoptedPages = (ctx) => ctx.read(CONFIG_PATH) !== null || ctx.read(DEPLOY_WORKFLOW_PATH) !== null;
+export const adoptedPages = ({ read }) => read(CONFIG_PATH) !== null || read(DEPLOY_WORKFLOW_PATH) !== null;

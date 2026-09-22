@@ -1,5 +1,4 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
 
 // Converted from this pack's app-bundle prose: `Package.swift`'s `platforms:`
 // floor and `Info.plist`'s `LSMinimumSystemVersion` are two independent claims
@@ -86,14 +85,11 @@ const rule = {
   doc: 'packs/macos/skills/macos-app-bundle/SKILL.md',
   why: 'the two are independent claims about the same minimum OS and only one of them is enforced at launch, so a drift ships a floor nobody chose and no build step compares them',
 
-  run(ctx) {
+  run({ sources }) {
     // Every macOS floor the near-root package manifests declare, keyed by its
     // canonical form so 14 / 14.0 / 14.0.0 collapse to one answer.
     const floors = new Map();
-    for (const file of ctx.files.filter(isPackageManifest)) {
-      const raw = ctx.read(file);
-      if (raw === null) continue;
-      const text = stripComments(raw);
+    for (const { file, code: text } of sources(isPackageManifest)) {
       const at = text.search(PLATFORMS_KEY);
       if (at < 0) continue;
       const list = bracketSpan(text, at);
@@ -106,9 +102,8 @@ const rule = {
     if (floors.size === 0) return [];
 
     const out = [];
-    for (const file of ctx.files.filter((f) => PLIST.test(f))) {
-      const raw = ctx.read(file);
-      if (raw === null) continue;
+    for (const { file, text: raw } of sources(PLIST)) {
+      // An XML comment, not a JS one, so the surface's `code` is the wrong view.
       const text = blankXmlComments(raw);
       const claim = LS_MINIMUM.exec(text);
       if (!claim || !VERSION_LITERAL.test(claim[1])) continue;

@@ -173,8 +173,18 @@ the change in front of the session, one about the repo as a whole:
 
 One module per rule under `../packs/<pack>/worldRules/` (audits the repo as it stands) or
 `../packs/<pack>/workRules/` (judges the change in front of you), default-exporting
-`{ id, severity, description, doc, why, run(ctx) }`. The directory is the declaration —
-there is no manifest line to add. The failure message *is* the instruction: `what` states the
+`{ id, severity, description, doc, why, run(surface) }`. The directory is the declaration -
+there is no manifest line to add.
+
+**`run` is handed the run's surface, and destructures what it reads.** Which surface the
+directory decides: a `worldRules/` module gets the world bag ([helpers/world.mjs](helpers/world.mjs)),
+a `workRules/` one the fluent work view ([helpers/work.mjs](helpers/work.mjs)); `runRule` in the
+latter is the single dispatch seam, and a rule test invokes rules through it too. Each surface
+carries the run's readings *and* its instruments - `sources` (the scanned corpus, each file with
+its comments already stripped), `activePacks`, `workflows`, `json` - so `run({ sources })` names
+the rule's whole appetite in its signature and a rule re-derives nothing.
+
+The failure message *is* the instruction: `what` states the
 violation, `why` the one-line motivation, `fix` the exact remedy, `doc` the corpus doc that owns
 the depth. Write the fixture test first and see it fail — each pack carries one
 `<pack>/test/pack.test.mjs`, inside the pack's own `test/` directory (which no vendor set ships), sharing the scratch-git-repo harness
@@ -208,10 +218,10 @@ writing the declaration adds the check. One file to read for a pack's declared s
 that admits no comments and no `doc` pointer, so a declaration carries its own case: `id`,
 `severity`, the optional `since` above, the `failureMessage` every finding prints, and the
 assertions with their `what`/`fix`.
-Regexes are strings in `/pattern/flags` form. A rule needing a hand-written `run(ctx)` stays its own
+Regexes are strings in `/pattern/flags` form. A rule needing a hand-written `run` stays its own
 module, listed in the manifest as before. The engine runs every pattern rule in
 ONE shared pass — each file read once, its lines walked once for all subscribing rules — so a
-declared rule costs nothing extra however many exist. Reach for a hand-written `run(ctx)` only
+declared rule costs nothing extra however many exist. Reach for a hand-written `run` only
 when the check needs what patterns can't say: real parsing (balanced braces, HTML attributes,
 TOML), git/diff/conversation state beyond the work assertions, or a cross-file comparison the
 two-pass keys cannot state (`extractValueSets` derives a named set from lines, paths or parsed
@@ -238,7 +248,7 @@ drop the rule module and a `checks.mjs` (default export = an array of rules) in 
 `<pack>/skills/<name>/`, keep its test beside it, and the pack registry gathers it onto the pack
 (`skillChecks`), run when the pack is active. **But relevance still isn't free.** The pack gate
 only says the project opted into the pack — not that this skill's action ever happened in this
-repo — so `run(ctx)` must still **detect relevance first, cheaply and specifically, and
+repo - so `run` must still **detect relevance first, cheaply and specifically, and
 return `[]` when the artifact is absent** (`routine-structure` keys off a `routine.md` existing
 before it asserts anything). Getting this wrong doesn't cost a little — it fires false findings
 on every unrelated repo the corpus is mounted in, so make the relevance signal narrow and put it

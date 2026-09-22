@@ -23,17 +23,14 @@ const rule = {
   doc: 'engine/checks/README.md',
   why: 'the schema a document points at is its contract, and a document that drifts from it is read by an editor as wrong and by the engine as nothing — so the drift only surfaces when the reader that consumes the document breaks',
 
-  run(ctx) {
+  run({ sources, read }) {
     if (typeof jsonSchema.validate !== 'function') return [];
     const out = [];
-    for (const file of ctx.files) {
-      if (!file.endsWith('.json') || file.endsWith('.schema.json')) continue;
-      const text = ctx.read(file);
-      let doc;
-      try { doc = JSON.parse(text); } catch { continue; } // an unparsable document is another rule's finding
+    // An unparsable document reads as no document - that is another rule's finding.
+    for (const { file, text, json: doc } of sources((f) => f.endsWith('.json') && !f.endsWith('.schema.json'))) {
       if (!doc || typeof doc !== 'object' || typeof doc.$schema !== 'string' || /^[a-z]+:/i.test(doc.$schema)) continue;
       const schemaPath = normalize(join(dirname(file), doc.$schema)).split('\\').join('/');
-      const schemaText = ctx.read(schemaPath);
+      const schemaText = read(schemaPath);
       if (schemaText === null) {
         out.push(finding(rule, {
           file, line: lineOf(text, '$schema'),

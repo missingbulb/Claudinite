@@ -38,12 +38,10 @@ const rule = {
   doc: 'packs/claudinite-canon-curation/skills/writing-claudinite-skills/SKILL.md',
   why: 'without a declared expectation, a skill that never loads and one that is never needed read the same zero, and the usage review cannot tell a broken skill from a healthy one',
 
-  run(ctx) {
+  run({ sources }) {
     if (!canRead()) return [];
     const out = [];
-    for (const file of ctx.files.filter((f) => SKILL_DOC.test(f))) {
-      const text = ctx.read(file);
-      if (text === null) continue;
+    for (const { file, text } of sources(SKILL_DOC)) {
       const usage = frontmatter.usageOf(frontmatter.parseFrontmatter(text));
       if (usage === null) {
         out.push(finding(rule, {

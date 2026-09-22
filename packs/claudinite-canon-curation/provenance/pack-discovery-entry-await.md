@@ -23,3 +23,11 @@
   The canon-home rehearsal fixture gains a CLI module inside the shelf pack's own import graph, in
   the safe form, so the rule's silence on a second canon is rehearsed rather than assumed.
 - **Landed:** #1674 (Closes #1673) · pack version 60904.1.
+
+## 2026-09-22 · reworded · the rule takes the run's surface rather than the raw context (#2261)
+- **Reason:** the world sweep gained a surface beside check-the-work's, so a rule destructures what
+  it reads and receives it preconfigured instead of re-deriving it off `ctx`. Mechanics only: the
+  sweep's findings are byte-identical.
+- **Actor:** the engine/implement-request run on #2261.
+- **Model:** claude-opus-5
+- **Landed:** #2268

@@ -1,6 +1,5 @@
 import { finding } from '../../../engine/checks/helpers/findings.mjs';
-import { stripComments } from '../../../engine/checks/helpers/code-scanning.mjs';
-import { isSource, lineOf } from '../lib.mjs';
+import { isSource } from '../lib.mjs';
 
 // A getUserMedia stream is only released when its TRACKS are stopped. Dropping
 // the reference, closing an AudioContext, unsetting a srcObject, or letting the
@@ -33,20 +32,18 @@ const rule = {
   doc: 'packs/web-speech/RULES.md',
   why: 'a media stream is freed only by stopping its tracks — dropping the reference leaves the browser and OS microphone indicators lit and the device claimed, which on anything voice-driven reads to the user as "it is still listening to me"',
 
-  run(ctx) {
+  run({ sources }) {
     const out = [];
-    for (const file of ctx.files) {
-      if (!isSource(file)) continue;
-      const raw = ctx.read(file);
-      if (raw === null || !raw.includes('getUserMedia')) continue;
-      const src = stripComments(raw);
+    for (const source of sources(isSource)) {
+      if (!source.text.includes('getUserMedia')) continue;
+      const { file, code: src, line } = source;
       CALL.lastIndex = 0;
       const first = CALL.exec(src);
       if (!first) continue;
       if (RELEASE.test(src) && STOP.test(src)) continue;
       out.push(finding(rule, {
         file,
-        line: lineOf(src, first.index),
+        line: line(first.index),
         what: 'opens a microphone capture but never stops its tracks',
         fix: 'release the capture with stream.getTracks().forEach((t) => t.stop()), and put that call in a `finally` so no early return, rejection, or throw from the code in between can leave the device held',
       }));

@@ -7,6 +7,7 @@ import {
   normalizeEdges, resolveRef, candidatesOn, buildIndex, under, normPrefix,
 } from '../../../engine/checks/helpers/reference-scanning.mjs';
 import { contributedBarrierRules } from '../barriers.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 // Run the config-driven check with the given graph and repo files, from where a
 // converged member carries it: `config.barriers` on the basics entry.
@@ -19,7 +20,7 @@ function runCheckAt(packConfig, files) {
   try {
     const ctx = buildContext({ root, mode: 'all' });
     ctx.config = { ...ctx.config, packConfig };
-    return barrier.run(ctx);
+    return runRule(barrier, ctx);
   } finally { cleanup(root); }
 }
 
@@ -216,7 +217,7 @@ test('unconfigured barriers is a no-op', () => {
   const root = makeRepo({ changed: { 'a/x.js': '1\n' } });
   try {
     const ctx = buildContext({ root, mode: 'all' }); // no packConfig at all
-    assert.deepEqual(barrier.run(ctx), []);
+    assert.deepEqual(runRule(barrier, ctx), []);
   } finally { cleanup(root); }
 });
 
@@ -265,7 +266,7 @@ test('a contributed barrier becomes a first-class rule under its own id', () => 
     'src/a.js': 'export default 1;\n',
   } });
   try {
-    const out = rule.run(buildContext({ root, mode: 'all' }));
+    const out = runRule(rule, buildContext({ root, mode: 'all' }));
     assert.equal(out.length, 1);
     assert.equal(out[0].rule, 'requirements-isolation');
     assert.equal(out[0].why, 'requirements is a pure sink');
@@ -287,8 +288,8 @@ test('gateDir keeps a contributed barrier inert until the gate directory exists'
   const closed = makeRepo({ changed: files });
   const open = makeRepo({ changed: { ...files, 'the-gate/marker.txt': 'x\n' } });
   try {
-    assert.deepEqual(rule.run(buildContext({ root: closed, mode: 'all' })), []);
-    assert.equal(rule.run(buildContext({ root: open, mode: 'all' })).length, 1);
+    assert.deepEqual(runRule(rule, buildContext({ root: closed, mode: 'all' })), []);
+    assert.equal(runRule(rule, buildContext({ root: open, mode: 'all' })).length, 1);
   } finally { cleanup(closed); cleanup(open); }
 });
 
@@ -817,7 +818,7 @@ test('the index sees in-scope untracked files: untracked import targets and untr
   try {
     const ctx = buildContext({ root, mode: 'all' });
     ctx.config = { ...ctx.config, packConfig: { barriers: { rules: [{ siblings: 'content', to: 'content/*', scope: 'imports' }] } } };
-    const f = barrier.run(ctx);
+    const f = runRule(barrier, ctx);
     const files = f.map((x) => x.file).sort();
     assert.deepEqual(files, ['content/a/mod.mjs', 'content/c/rogue.mjs'], JSON.stringify(f, null, 1));
   } finally { cleanup(root); }

@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { makeRepo, cleanup, declaredCheck } from '../../../engine-tests/helpers.mjs';
 import { buildContext } from '../../../engine/checks/helpers/repo-context.mjs';
 import handlerPath from '../worldRules/handler-path.mjs';
+import { runRule } from '../../../engine/checks/helpers/work.mjs';
 
 const cloudfrontAuth = declaredCheck('packs/aws-sam', 'aws-sam/cloudfront-authorization');
 const esbuildDependency = declaredCheck('packs/aws-sam', 'aws-sam/esbuild-dependency');
 
-const run = (rule, root) => rule.run(buildContext({ root, mode: 'all' }));
+const run = (rule, root) => runRule(rule, buildContext({ root, mode: 'all' }));
 
 const fn = (extra) => `Resources:
   Fn:

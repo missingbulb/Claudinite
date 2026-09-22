@@ -12,3 +12,11 @@
   adopters teaches its reader to skim the list that exists to stop them skimming.
 - **Retire when:** the release becomes idempotent against a second publisher.
 - **Landed:** #1982 (Closes #1981) · pack version 60913.1.
+
+## 2026-09-22 · reworded · the rule takes the run's surface rather than the raw context (#2261)
+- **Reason:** the world sweep gained a surface beside check-the-work's, so a rule destructures what
+  it reads and receives it preconfigured instead of re-deriving it off `ctx`. Mechanics only: the
+  sweep's findings are byte-identical.
+- **Actor:** the engine/implement-request run on #2261.
+- **Model:** claude-opus-5
+- **Landed:** #2268

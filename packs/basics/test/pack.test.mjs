@@ -306,7 +306,7 @@ test('rules-line-length: one advisory per RULES.md whose lines run past 100 byte
     'docs/notes.md': `${'x'.repeat(120)}\n`,
   } });
   try {
-    const findings = rulesLineLength.run(buildContext({ root, mode: 'all' }));
+    const findings = runRule(rulesLineLength, buildContext({ root, mode: 'all' }));
     assert.deepEqual(findings.map((f) => [f.file, f.line]), [['packs/demo/RULES.md', 2]]);
     assert.match(findings[0].what, /1 line\(s\) over 100 bytes, longest 122/);
   } finally { cleanup(root); }
@@ -327,7 +327,7 @@ test('skill-description-length: flags a description past 60 words, and reads no 
     'packs/acme-pack/skills/acme-other/SKILL.md': skillFile('acme-other', 40, 400),
   } });
   try {
-    const found = skillDescriptionLength.run(buildContext({ root, mode: 'all' }));
+    const found = runRule(skillDescriptionLength, buildContext({ root, mode: 'all' }));
     assert.deepEqual(found.map((f) => [f.file, f.line]), [['packs/acme-pack/skills/acme-skill/SKILL.md', 3]]);
   } finally { cleanup(root); }
 });
@@ -339,7 +339,7 @@ test('skill-description-length: 60 words is inside the cap, 61 is over it', () =
     'packs/acme-pack/skills/acme-at-cap/SKILL.md': skillFile('acme-at-cap', 60, 5),
   } });
   try {
-    assert.equal(skillDescriptionLength.run(buildContext({ root, mode: 'all' })).length, 0);
+    assert.equal(runRule(skillDescriptionLength, buildContext({ root, mode: 'all' })).length, 0);
   } finally { cleanup(root); }
 });
 
