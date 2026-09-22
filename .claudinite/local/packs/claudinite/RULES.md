@@ -54,6 +54,11 @@ Below are rules on how to work on this repo.
   sanctioned holdout saying why it still carries the field. Never a bespoke conformance check for a
   deprecation; keep the contract validating it. (retiring-field-option)
 
+- **Designing a standing mechanism that detects a problem and could act on it** - ship the
+  detection alone: a finding names its probable causes, says when that set is open, and
+  recommends; the fix stays a gated step, since a mitigation chosen from an inferred cause
+  reapplies itself every cycle. (designing-standing-mechanism)
+
 - **Surfacing a number a human reads as a report card** — report a window against the previous
   window. Never a monotonic cumulative total, never a figure nothing measures.
   (surfacing-number-human)
@@ -423,8 +428,8 @@ Below are rules on how to work on this repo.
 - **Scoping a task whose verdict is relative to the rest of a set** — the gate is not the scope:
   newness gates, and the full set stays the scope. (scoping-task-verdict)
 
-- **Writing a task whose output is a regenerated file** — land it through
-  `packs/claudinite-tasks/deliver-generated.mjs`, reading prior state from the fetched base, not
+- **Writing a task whose output is a regenerated file** - land it through `deliverGenerated` in
+  `packs/claudinite-tasks/public/delivery.mjs`, reading prior state from the fetched base, not
   local HEAD. (`basics/baselining` is the deliberate exception.) (writing-task-output)
 
 - **A worker that checks out a branch or leaves an index behind** — one executor run drains

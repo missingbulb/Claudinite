@@ -9,3 +9,13 @@
   calling-anything-claudecoderemote states for the tool it was measured on. The next pass that sees
   it again has two data points and should land it.
 - **Actor:** the claudinite-growth/growth-extract run on work item #2196.
+
+## 2026-09-22 · declined · a local merge is no evidence about GitHub's mergeability
+- **Source:** the capture behind #2001, 2026-09-21, session c4f829ba-759d-5a25-9310-f1684119a48b.
+- **Reason:** the run read `mergeable_state: dirty` on four PRs that merged cleanly under local git,
+  and blamed the `merge=ours` driver this repo's session-start hook configures, which GitHub does
+  not honour. Re-measuring with the drivers off merged cleanly too, so the driver was not the cause
+  and the flag was stale against a base sha from Sept 13. A rule written from the first reading
+  would have taught a mechanism that was not operating; the residue, that the flag can be a stale
+  computation, is one run's inference and waits for a second sighting.
+- **Actor:** the `claudinite-growth/growth-extract` run on work item #2230.
