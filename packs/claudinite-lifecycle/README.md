@@ -24,7 +24,6 @@ reports it.
 | Judging canon's current behavior | high | correctness | prose: <200 words |
 | An engine comment citing a design doc | low | complexity | prose: <100 words |
 | A silent check run is clean | low | complexity | prose: <50 words |
-| World sweep green, Stop hook unproven | medium | correctness | prose: <100 words |
 | Pushing a change the world sweep scans | medium | complexity | prose: <50 words |
 
 ## Checks
