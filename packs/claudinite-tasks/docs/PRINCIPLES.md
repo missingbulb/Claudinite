@@ -238,10 +238,17 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   `test/execute/target.test.mjs: fresh_pr gets the minted branch and leaves the task's earlier pull requests alone`
 - `amend_existing_or_create_new_pr` targets the task's newest open pull
   request — found by branch prefix or by the `Claudinite-Task:` trailer on
-  its head commit — while it has no conflicts with its base; a conflicted or
-  unreadable incumbent gets a fresh branch instead of a guess.
+  its head commit - and "create new" names one situation only: the task has no
+  open pull request at all. A conflicted incumbent stays the target, with the
+  conflict named in the reason for the run to resolve; an incumbent whose
+  mergeability nobody could read fails the run. Neither forks.
   `test/execute/target.test.mjs: amend_existing_or_create_new_pr amends the newest open pull request when it has no conflicts`,
-  `test/execute/target.test.mjs: amend falls back to a fresh branch on a conflicted incumbent, and on one whose mergeability could not be read`
+  `test/execute/target.test.mjs: amend keeps a conflicted incumbent as the target, and opens no second pull request`,
+  `test/execute/target.test.mjs: amend on an incumbent whose mergeability could not be read is an error, not a fresh branch`,
+  `test/execute/target.test.mjs: amend with nothing to amend takes the fresh branch, the one case "create new" names`
+  - Rejected: forking to a fresh branch on a conflict (owner, 2026-09-22) - a
+    task declared to amend has no prerogative to open a second pull request, and
+    the fork left the first one open and accumulating beside the second.
 - `supersede_existing_pr` mints a fresh branch and closes every earlier open
   pull request of the task once its own exists; a green, already-mergeable
   incumbent is landed instead of re-cut, and that landing ends the occurrence
