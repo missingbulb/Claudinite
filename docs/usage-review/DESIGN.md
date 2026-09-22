@@ -1,6 +1,6 @@
 # Usage review — expectations, observations, and the rules between them (design)
 
-> **Status: built, not yet proven in production.** Every section below is implemented - the
+> **Status: in flight.** Every section below is built but none is proven in production - the
 > counters in [usage-fold](../../packs/claudinite-tasks/tasks/usage-fold/README.md), the rules in
 > [`usage-rules.json`](../../packs/claudinite-growth/usage-rules.json), the review and the triage in
 > [claudinite-growth](../../packs/claudinite-growth/README.md). What no test can show is the part
