@@ -30,6 +30,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeGh, dispatchWorkflow } from '../../../claudinite-tasks/public/github.mjs';
+import { remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -62,7 +63,9 @@ let defaultLog = console.log;
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export const remoteUrl = (repo, token) => `https://x-access-token:${token}@github.com/${repo}.git`;
+// The delivery lane's own, re-exported rather than re-spelled: two copies of the
+// token-bearing remote URL is two places to get the credential's shape wrong.
+export { remoteUrl };
 
 // --- 1. build --------------------------------------------------------------------
 
