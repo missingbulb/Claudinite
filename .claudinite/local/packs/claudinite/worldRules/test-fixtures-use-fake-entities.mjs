@@ -38,15 +38,24 @@ const MARKER = /@real-entity\b/;
 // be the real one, and moving a module is already a change that rewrites everyone
 // who imports it. Only invented values are this rule's business.
 const IMPORT = /(?:^|[\s;{(])(?:import|export)\s|\bimport\s*\(|^\s*\}?\s*from\s+['"]/;
-// Two pack ids are also the name of a program the suites spawn, so `run('node', …)`
-// reads as the `node` pack under any matching this rule could do. The id loses its
-// cover here rather than every such call needing a marker; a pack named after a
-// runtime is the one place where a fixture may still spell a real id.
-const ALSO_A_PROGRAM = new Set(['node', 'python']);
+// A NAME THAT IS ONE PLAIN WORD IS ALSO ORDINARY VOCABULARY: `node` is a program
+// the suites spawn, `update` is what half the GitHub API calls its method. Such a
+// name is matched only where a path puts it beyond doubt — `packs/node/…`,
+// `tasks/update/…` — never as a literal standing on its own, which is the shape
+// those collisions take. A hyphenated id has no such twin and is matched either way.
+const onePlainWord = (name) => !name.includes('-') && !name.includes('/');
 
-// A name's owner, read off where the tree keeps it. Pack ids own themselves.
+// A name's owners, read off where the tree keeps them. Pack ids own themselves, and
+// a task or skill name can belong to more than one pack (`site-release` is both
+// `cloudflare-site`'s and `github-pages`'), so each name carries a set: its own
+// pack's tests may spell it whichever pack the last read happened to find.
 function readEntityOwners(tracked) {
-  const owners = new Map(); // "kind:name" -> owning pack id
+  const owners = new Map(); // "kind:name" -> Set of owning pack ids
+  const own = (key, pack) => {
+    const at = owners.get(key);
+    if (at) at.add(pack);
+    else owners.set(key, new Set([pack]));
+  };
   const packs = new Set();
   const local = new Set();
   for (const f of tracked) {
@@ -59,16 +68,16 @@ function readEntityOwners(tracked) {
   // bare directory name is not an id anyone writes. Matching the bare name would
   // read every `claudinite/<pack>/<task>/…` branch in this repo as the local pack
   // `claudinite`, which is the namespace those branches share, not a reference.
-  for (const p of packs) owners.set(`pack:${local.has(p) ? `local/${p}` : p}`, p);
+  for (const p of packs) own(`pack:${local.has(p) ? `local/${p}` : p}`, p);
   for (const f of tracked) {
     const pack = packOf(f);
     if (!pack) continue;
     let m = /(?:^|\/)tasks\/([^/]+)\/task\.json$/.exec(f);
-    if (m) owners.set(`task:${m[1]}`, pack);
+    if (m) own(`task:${m[1]}`, pack);
     m = /(?:^|\/)skills\/([^/]+)\/SKILL\.md$/.exec(f);
-    if (m) owners.set(`skill:${m[1]}`, pack);
+    if (m) own(`skill:${m[1]}`, pack);
     m = /(?:^|\/)worldRules\/([^/]+)\.mjs$/.exec(f);
-    if (m) owners.set(`check:${m[1]}`, pack);
+    if (m) own(`check:${m[1]}`, pack);
   }
   return owners;
 }
@@ -88,7 +97,11 @@ function addDeclaredCheckOwners(ctx, tracked, owners) {
     let declared;
     try { declared = JSON.parse(source); } catch { continue; }
     for (const c of Array.isArray(declared) ? declared : []) {
-      if (c && typeof c.id === 'string') owners.set(`check:${c.id}`, pack);
+      if (!c || typeof c.id !== 'string') continue;
+      const key = `check:${c.id}`;
+      const at = owners.get(key);
+      if (at) at.add(pack);
+      else owners.set(key, new Set([pack]));
     }
   }
 }
@@ -106,7 +119,7 @@ function readStringLiterals(text) {
 // A literal names `entity` when it IS the name, or carries it as a whole path
 // segment. Anything looser reads English words and `node:test` as entity names.
 function literalNames(literal, name) {
-  if (literal === name) return true;
+  if (literal === name) return !onePlainWord(name);
   if (!literal.includes(name)) return false;
   return new RegExp(`(?:^|/)${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:/|$)`).test(literal);
 }
@@ -136,12 +149,10 @@ const rule = {
 
     const owners = readEntityOwners(ctx.tracked);
     addDeclaredCheckOwners(ctx, ctx.tracked, owners);
-    const entities = [...owners.entries()]
-      .map(([key, owner]) => {
-        const i = key.indexOf(':');
-        return { kind: key.slice(0, i), name: key.slice(i + 1), owner };
-      })
-      .filter((e) => !ALSO_A_PROGRAM.has(e.name));
+    const entities = [...owners.entries()].map(([key, packs]) => {
+      const i = key.indexOf(':');
+      return { kind: key.slice(0, i), name: key.slice(i + 1), packs };
+    });
 
     for (const file of tests) {
       const source = ctx.read(file);
@@ -153,13 +164,13 @@ const rule = {
         if (MARKER.test(raw[i] ?? '') || IMPORT.test(text)) return;
         const literals = readStringLiterals(text);
         if (literals.length === 0) return;
-        for (const { kind, name, owner } of entities) {
-          if (owner === home) continue;
+        for (const { kind, name, packs } of entities) {
+          if (home !== null && packs.has(home)) continue;
           if (!literals.some((l) => literalNames(l, name))) continue;
           out.push(finding(rule, {
             file,
             line: i + 1,
-            what: `this fixture spells the real ${kind} \`${name}\`, which ${owner} owns`,
+            what: `this fixture spells the real ${kind} \`${name}\`, which ${[...packs].sort().join(' and ')} owns`,
             fix: `use a fake name - \`acme-${kind}\`, or a distinguishable variant where the test needs several - so a rename of \`${name}\` never reaches this file; where the real ${kind} genuinely is what this line asserts about, end the line with \`// @real-entity <why>\``,
           }));
           break;

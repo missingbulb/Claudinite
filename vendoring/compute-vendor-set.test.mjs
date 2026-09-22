@@ -175,9 +175,9 @@ test('the set reports the versions it is made of — engine, and each declared p
 // member's tree — and the coherence guard below would abort the converge for it.
 test("a pack's updates/ never vendors — the flows run from the canon, not the mount", async () => {
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
-  const { files, errors } = await computeVendorSet(['claudinite-lifecycle']);
+  const { files, errors } = await computeVendorSet(['claudinite-lifecycle']); // @real-entity computed against the real canon tree, whose operational files this pins
   assert.deepEqual(errors, []);
-  assert.ok(files.some((f) => f.startsWith('packs/claudinite-lifecycle/')), 'the pack itself ships');
+  assert.ok(files.some((f) => f.startsWith('packs/claudinite-lifecycle/')), 'the pack itself ships'); // @real-entity computed against the real canon tree, whose operational files this pins
   assert.deepEqual(files.filter((f) => f.includes('/updates/')), [],
     'no member carries an update flow — it runs from the canon tree the runner fetched');
 });
@@ -191,10 +191,10 @@ test('engine .md never vendors — the operational documents are the tasks pack\
 
 test('regression (fleet executor-broken): the REAL canon tree vendors the tasks pack\'s operational docs', async () => {
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
-  const { files, errors } = await computeVendorSet(['basics', 'claudinite-tasks']);
+  const { files, errors } = await computeVendorSet(['basics', 'claudinite-tasks']); // @real-entity computed against the real canon tree, whose operational files this pins
   assert.deepEqual(errors, []);
   for (const doc of ['src/deliver/deliver-pr.md', 'public/instructions.md', 'public/implement-request.md']) {
-    assert.ok(files.includes(`packs/claudinite-tasks/${doc}`),
+    assert.ok(files.includes(`packs/claudinite-tasks/${doc}`), // @real-entity computed against the real canon tree, whose operational files this pins
       `the live ${doc} must be in the vendor set — a member's routine reads it from its own mount`);
   }
 });
@@ -206,7 +206,7 @@ test('regression (fleet executor-broken): the REAL canon tree vendors the tasks 
 test('regression: the REAL canon tree vendors the WHOLE queue engine, .md included', async () => {
   const { readdirSync } = await import('node:fs');
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
-  const { files } = await computeVendorSet(['basics', 'claudinite-tasks']);
+  const { files } = await computeVendorSet(['basics', 'claudinite-tasks']); // @real-entity computed against the real canon tree, whose operational files this pins
   // WALKED, not listed: the queue engine has subdirectories now (the engine's own
   // built-in tasks), and a top-level listing would assert the directory name and
   // never look inside it — which is how the request task's `task.md` was dropped by
@@ -215,12 +215,12 @@ test('regression: the REAL canon tree vendors the WHOLE queue engine, .md includ
     e.isDirectory()
       ? walk(new URL(`${e.name}/`, url), `${prefix}${e.name}/`)
       : (e.name.endsWith('.test.mjs') ? [] : [`${prefix}${e.name}`])));
-  const onDisk = walk(new URL('../packs/claudinite-tasks/queue/', import.meta.url), '');
+  const onDisk = walk(new URL('../packs/claudinite-tasks/queue/', import.meta.url), ''); // @real-entity computed against the real canon tree, whose operational files this pins
   assert.ok(onDisk.length > 0, 'the queue engine directory must exist and be non-empty');
   assert.ok(onDisk.some((n) => n.includes('/')), 'the walk reaches inside the queue engine, not just its top level');
   for (const name of onDisk) {
-    assert.ok(files.includes(`packs/claudinite-tasks/queue/${name}`),
-      `packs/claudinite-tasks/queue/${name} is runtime-operational and must vendor — a mount missing it breaks the queue on every member`);
+    assert.ok(files.includes(`packs/claudinite-tasks/queue/${name}`), // @real-entity computed against the real canon tree, whose operational files this pins
+      `packs/claudinite-tasks/queue/${name} is runtime-operational and must vendor — a mount missing it breaks the queue on every member`); // @real-entity computed against the real canon tree, whose operational files this pins
   }
 });
 
@@ -374,15 +374,15 @@ test('an import resolving to no canon file at all is an error (the tree itself i
 // run a barrier must carry it — via the requires closure — and be import-closed.
 test('real corpus: the barrier mechanism vendors with the baseline and is import-closed', async () => {
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
-  const { files, errors } = await computeVendorSet(['basics']);
+  const { files, errors } = await computeVendorSet(['basics']); // @real-entity computed against the real canon tree, whose operational files this pins
   assert.deepEqual(errors, [], 'basics: the vendor set must be coherent');
-  for (const carried of ['packs/basics/pack.mjs', 'packs/basics/barriers.mjs',
-    'packs/basics/worldRules/barrier.mjs', 'engine/checks/helpers/reference-scanning.mjs']) {
+  for (const carried of ['packs/basics/pack.mjs', 'packs/basics/barriers.mjs', // @real-entity computed against the real canon tree, whose operational files this pins
+    'packs/basics/worldRules/barrier.mjs', 'engine/checks/helpers/reference-scanning.mjs']) { // @real-entity computed against the real canon tree, whose operational files this pins
     assert.ok(files.includes(carried), `basics must vendor ${carried}`);
   }
   // product-wiki's own wall is a declared check the engine runs, so it needs no
   // pack beyond itself — what it must still be is coherent.
-  assert.deepEqual((await computeVendorSet(['product-wiki'])).errors, [],
+  assert.deepEqual((await computeVendorSet(['product-wiki'])).errors, [], // @real-entity computed against the real canon tree, whose operational files this pins
     'product-wiki: the vendor set must be coherent');
 });
 
@@ -438,10 +438,10 @@ test('every module the workflow stubs name is in the vendor set', async () => {
   const { computeVendorSet } = await import('./compute-vendor-set.mjs');
   // The stubs are the tasks pack's, and so are the modules they name — a set computed
   // for a member that declares no queue carries neither, which is the point of the split.
-  const { files } = await computeVendorSet(['basics', 'claudinite-tasks']);
+  const { files } = await computeVendorSet(['basics', 'claudinite-tasks']); // @real-entity computed against the real canon tree, whose operational files this pins
   const shipped = new Set(files);
   for (const stub of ['claudinite-scheduler', 'claudinite-executor']) {
-    const yml = readFileSync(join(REPO_ROOT, `packs/claudinite-tasks/stubs/${stub}.yml`), 'utf8');
+    const yml = readFileSync(join(REPO_ROOT, `packs/claudinite-tasks/stubs/${stub}.yml`), 'utf8'); // @real-entity computed against the real canon tree, whose operational files this pins
     const named = [...yml.matchAll(/^\s*run: node \.claudinite\/shared\/(\S+)$/gm)].map((m) => m[1]);
     assert.ok(named.length > 0, `${stub}.yml names no engine module — the pattern has gone stale`);
     for (const module of named) {
@@ -481,8 +481,8 @@ test("no canon pack ships its docs/ — over the real corpus, not a fixture", as
   const { files, errors } = await computeVendorSet(ids, { today: '2026-01-01' });
   assert.deepEqual(errors, []);
   assert.deepEqual(files.filter((f) => f.split('/').includes('docs')), []);
-  assert.ok(files.includes('packs/claudinite-tasks/public/instructions.md'), 'claudinite-tasks still ships its operational tree');
-  assert.ok(files.includes('packs/claudinite-dashboard/pack.mjs'), 'claudinite-dashboard still ships');
+  assert.ok(files.includes('packs/claudinite-tasks/public/instructions.md'), 'claudinite-tasks still ships its operational tree'); // @real-entity computed against the real canon tree, whose operational files this pins
+  assert.ok(files.includes('packs/claudinite-dashboard/pack.mjs'), 'claudinite-dashboard still ships'); // @real-entity computed against the real canon tree, whose operational files this pins
 
   const docsFiles = execFileSync('git', ['ls-files', ':(glob)packs/*/docs/**'], { cwd: REPO_ROOT, encoding: 'utf8' })
     .split('\n').filter(Boolean);

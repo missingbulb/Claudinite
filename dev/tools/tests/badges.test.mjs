@@ -90,6 +90,6 @@ test('shading is clamped, so a near-black tile still renders a valid colour', ()
 });
 
 test('a badge takes its id from the directory it sits in', () => {
-  assert.equal(idForBadge('packs/product-wiki/badge.svg'), 'product-wiki');
+  assert.equal(idForBadge('packs/acme-pack-e/badge.svg'), 'acme-pack-e');
   assert.equal(idForBadge('.claudinite/local/packs/claudinite/badge.svg'), 'claudinite');
 });

@@ -163,7 +163,7 @@ test('bodyOf reads the body a skill declares under metadata — workflow or guid
 test('parseFrontmatter: a map nests as deep as it is written, so metadata.usage.expect reads', () => {
   const fm = parseFrontmatter([
     '---',
-    'name: writing-tasks',
+    'name: acme-skill-x',
     'metadata:',
     '  usage:',
     '    expect: routine',
@@ -174,7 +174,7 @@ test('parseFrontmatter: a map nests as deep as it is written, so metadata.usage.
     '---',
     'text',
   ].join('\n'));
-  assert.equal(fm.name, 'writing-tasks');
+  assert.equal(fm.name, 'acme-skill-x');
   assert.equal(fm.metadata.usage.expect, 'routine');
   assert.equal(fm.metadata.usage['loads-per-sessions'], '1 in 5');
   assert.deepEqual(fm.metadata['force-load-on-tool-calls'], ['Bash.command /git commit/'],
@@ -205,7 +205,7 @@ test('hits*: one predicate per moment, the shape a moment counter asks its quest
   assert.ok(!hitsCall(decl, { name: 'Bash', input: { command: 'git status' } }));
   assert.ok(!hitsCall(decl, { name: 'Read', input: { command: 'git commit' } }));
   assert.ok(hitsPrompt({ kind: 'prompt', pattern: /\/do-later/ }, 'please /do-later this'));
-  assert.ok(!hitsPrompt({ kind: 'toolCall', pattern: /\/do-later/ }, '/do-later'), 'a kind it is not never hits');
+  assert.ok(!hitsPrompt({ kind: 'toolCall', pattern: /\/acme-cmd/ }, '/acme-cmd'), 'a kind it is not never hits');
   assert.ok(hitsResult({ kind: 'toolResult', tool: 'WebFetch', field: null, pattern: /403/ }, { name: 'WebFetch' }, 'got 403'));
   assert.ok(hitsPath({ re: globToRegExp('packs/**') }, 'packs/acme-pack/RULES.md'));
 });

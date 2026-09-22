@@ -11,6 +11,7 @@ import { validateManifest } from '../engine/pack_loader/pack-schema.mjs';
 import { isDeclaredVersion } from '../engine/version.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 import { installedVersions, withInstalledVersions } from '../engine/installed-versions.mjs';
+import { A_CANON_PACK } from './helpers.mjs';
 
 const MOUNT = join('.claudinite', 'shared');
 const makeRepo = (declaration = { packs: [] }) => {
@@ -23,33 +24,33 @@ const settingsOf = (root) => JSON.parse(readFileSync(join(root, '.claudinite-set
 
 test('an install refuses a pack the repo already has a version for', async () => {
   const packs = await loadPacks();
-  const { install, refused } = planInstall(packs, ['basics'], { packVersions: { basics: 1 } });
+  const { install, refused } = planInstall(packs, [A_CANON_PACK], { packVersions: { [A_CANON_PACK]: 1 } });
   assert.deepEqual(install, []);
   assert.match(refused[0].why, /already installed at version 1 — that is an update, not an install/);
 });
 
 test('an install refuses a pack this repo\'s engine is too old for, and an unknown id', async () => {
-  const packs = await loadPacks().then((ps) => ps.map((p) => (p.id === 'basics' ? { ...p, minEngineVersion: 99 } : p)));
-  const { install, refused } = planInstall(packs, ['basics', 'not-a-pack'], null, { engineVersion: 2 });
+  const packs = await loadPacks().then((ps) => ps.map((p) => (p.id === A_CANON_PACK ? { ...p, minEngineVersion: 99 } : p)));
+  const { install, refused } = planInstall(packs, [A_CANON_PACK, 'not-a-pack'], null, { engineVersion: 2 });
   assert.deepEqual(install, []);
-  assert.deepEqual(refused.map((r) => r.id).sort(), ['basics', 'not-a-pack']);
-  assert.match(refused.find((r) => r.id === 'basics').why, /needs engine 99/);
+  assert.deepEqual(refused.map((r) => r.id).sort(), [A_CANON_PACK, 'not-a-pack']);
+  assert.match(refused.find((r) => r.id === A_CANON_PACK).why, /needs engine 99/);
 });
 
 test('an install stamps the latest version and fetches NO migration records', async () => {
   const root = makeRepo();
-  const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
+  const r = await installPacks(root, [A_CANON_PACK], { selfTestRun: () => 'ok' });
   assert.notEqual(r.status, undefined);
 
   const packs = await loadPacks();
-  const latest = packs.find((p) => p.id === 'basics').version;
-  assert.equal(installedVersions(settingsOf(root)).packVersions.basics, latest, 'the install claims the newest version directly');
-  assert.ok(settingsOf(root).packs.some((e) => (typeof e === 'string' ? e : e.id) === 'basics'),
+  const latest = packs.find((p) => p.id === A_CANON_PACK).version;
+  assert.equal(installedVersions(settingsOf(root)).packVersions[A_CANON_PACK], latest, 'the install claims the newest version directly');
+  assert.ok(settingsOf(root).packs.some((e) => (typeof e === 'string' ? e : e.id) === A_CANON_PACK),
     'and declares the pack it installed — as an entry, which is what now carries its version');
 
   // The correctness rule, asserted as an absence: a record assumes the shapes its own
   // era produced, and an empty repo is not one of them.
-  const mounted = join(root, MOUNT, 'packs', 'basics');
+  const mounted = join(root, MOUNT, 'packs', A_CANON_PACK);
   assert.ok(existsSync(join(mounted, 'RULES.md')), 'the content is there');
   assert.ok(!existsSync(join(mounted, 'migrations')), 'and not one migration record with it');
   removeTree(root);
@@ -78,7 +79,7 @@ test('versionsInEffect: a pending record above the manifest lifts the number; no
 
 test('an install never runs a record even for a pack that has them', async () => {
   const root = makeRepo();
-  const r = await installPacks(root, ['claudinite-fleet-sheepdog'], { dryRun: true });
+  const r = await installPacks(root, ['claudinite-fleet-sheepdog'], { dryRun: true }); // @real-entity the real pack this dry run pulls, and the real modules the flow names
   assert.equal(r.dryRun, true);
   assert.equal(r.records, 0, 'claudinite-fleet-sheepdog carries records; a fresh install fetches none of them');
   removeTree(root);
@@ -125,9 +126,9 @@ test('a pack the repo already declares is never re-interviewed by a later instal
 
 test('an install always wants the apply stage — the rules meet the repo for the first time', async () => {
   const root = makeRepo();
-  const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
+  const r = await installPacks(root, [A_CANON_PACK], { selfTestRun: () => 'ok' });
   assert.equal(r.applyStage.needed, true);
-  assert.ok(r.applyStage.packs.includes('basics'));
+  assert.ok(r.applyStage.packs.includes(A_CANON_PACK));
   removeTree(root);
 });
 
@@ -139,12 +140,12 @@ test('the requires closure is installed and STAMPED, not just vendored', async (
   // failure the install runner exists to prevent, one level down.
   //
   // Real member stamps already assume this: the canary carries `git-github: 1` without
-  // declaring it, pulled in through basics.
+  // declaring it, pulled in through it.
   const root = makeRepo();
-  const r = await installPacks(root, ['basics'], { selfTestRun: () => 'ok' });
+  const r = await installPacks(root, [A_CANON_PACK], { selfTestRun: () => 'ok' });
   const stamped = installedVersions(settingsOf(root)).packVersions;
-  const pulled = r.install.map((i) => i.id).filter((id) => id !== 'basics');
-  assert.ok(pulled.length, 'basics pulls a closure in — otherwise this test proves nothing');
+  const pulled = r.install.map((i) => i.id).filter((id) => id !== A_CANON_PACK);
+  assert.ok(pulled.length, 'the pack pulls a closure in — otherwise this test proves nothing');
   for (const id of pulled) {
     assert.ok(isDeclaredVersion(stamped[id]), `${id} was vendored but left unversioned`);
   }
@@ -154,7 +155,7 @@ test('the requires closure is installed and STAMPED, not just vendored', async (
   // its version lives now (#1252) — and because being unversioned was the exact hole
   // this test was written to close.
   const packs = settingsOf(root).packs;
-  assert.deepEqual(packs.filter((e) => typeof e === 'string' || !e.via).map((e) => e.id ?? e), ['basics'],
+  assert.deepEqual(packs.filter((e) => typeof e === 'string' || !e.via).map((e) => e.id ?? e), [A_CANON_PACK],
     'only the named pack is a declaration the repo made');
   for (const id of pulled) {
     const entry = packs.find((e) => e?.id === id);
@@ -172,9 +173,9 @@ test('needs-human outranks everything, including a repo that would auto-merge', 
 });
 
 test('the apply stage outranks a merge — landing first would call the repair optional', () => {
-  const t = terminalFor({ status: 'ok', applyStage: { needed: true, packs: ['basics'] }, decision: { action: 'merge', why: 'green' } });
+  const t = terminalFor({ status: 'ok', applyStage: { needed: true, packs: [A_CANON_PACK] }, decision: { action: 'merge', why: 'green' } });
   assert.equal(t.action, 'apply-stage');
-  assert.deepEqual(t.packs, ['basics']);
+  assert.deepEqual(t.packs, [A_CANON_PACK]);
 });
 
 test('an outcome that decided nothing is not a merge', () => {
@@ -213,9 +214,9 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
   // `packs/claudinite-lifecycle/updates/*` and none carries `updates/` in its mount, so
   // the re-exports that stood at the old root are gone (#1328).
   const fielded = {
-    'packs/claudinite-lifecycle/updates/terminals.mjs': ['terminalFor'],
-    'packs/claudinite-lifecycle/updates/engine-update.mjs': ['engineUpdate'],
-    'packs/claudinite-lifecycle/updates/pack-update.mjs': ['packUpdate'],
+    'packs/claudinite-lifecycle/updates/terminals.mjs': ['terminalFor'], // @real-entity the real pack this dry run pulls, and the real modules the flow names
+    'packs/claudinite-lifecycle/updates/engine-update.mjs': ['engineUpdate'], // @real-entity the real pack this dry run pulls, and the real modules the flow names
+    'packs/claudinite-lifecycle/updates/pack-update.mjs': ['packUpdate'], // @real-entity the real pack this dry run pulls, and the real modules the flow names
   };
   for (const [mod, names] of Object.entries(fielded)) {
     const loaded = await import(`../${mod}`);
@@ -238,7 +239,7 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
   const { ENGINE_VERSION } = await import('../engine/version.mjs');
   const SHIMS = [
     {
-      module: 'packs/claudinite-lifecycle/updates/engine-update.mjs',
+      module: 'packs/claudinite-lifecycle/updates/engine-update.mjs', // @real-entity the real pack this dry run pulls, and the real modules the flow names
       name: 'LEGACY_SHIM_TARGET',
       since: '60902.1',
       reviewAt: '61008.1',
@@ -279,12 +280,12 @@ test('an install seeds a declared op, and never overwrites what the repo already
   // path is only reachable through a manifest that declares one and the canon has
   // none yet. The template is a file that really exists in the pack.
   const packs = await loadPacks();
-  const patched = packs.map((p) => (p.id === 'basics'
+  const patched = packs.map((p) => (p.id === A_CANON_PACK
     ? { ...p, seedOps: [{ template: 'RULES.md', dest: 'SEEDED.md' }] }
     : p));
 
   const root = makeRepo();
-  const first = await installPacks(root, ['basics'], { packs: patched, selfTestRun: () => 'ok' });
+  const first = await installPacks(root, [A_CANON_PACK], { packs: patched, selfTestRun: () => 'ok' });
   assert.deepEqual(first.seeded, ['SEEDED.md']);
   assert.ok(existsSync(join(root, 'SEEDED.md')));
 
@@ -293,7 +294,7 @@ test('an install seeds a declared op, and never overwrites what the repo already
   writeFileSync(join(root, 'SEEDED.md'), 'the repo edited this\n');
   const second = makeRepo();
   writeFileSync(join(second, 'SEEDED.md'), 'this repo already had one\n');
-  const again = await installPacks(second, ['basics'], { packs: patched, selfTestRun: () => 'ok' });
+  const again = await installPacks(second, [A_CANON_PACK], { packs: patched, selfTestRun: () => 'ok' });
   assert.deepEqual(again.seeded, [], 'a dest that exists is never overwritten');
   assert.equal(readFileSync(join(second, 'SEEDED.md'), 'utf8'), 'this repo already had one\n');
   assert.equal(readFileSync(join(root, 'SEEDED.md'), 'utf8'), 'the repo edited this\n');
@@ -308,12 +309,12 @@ test('an UPDATE never seeds — the run-once guarantee is structural, not a flag
   // leaves it exactly as the repo left it.
   const { packUpdate } = await import('../packs/claudinite-lifecycle/updates/pack-update.mjs');
   const { applyVendor } = await import('../vendoring/apply-vendor-set.mjs');
-  const root = makeRepo({ packs: ['basics'] });
+  const root = makeRepo({ packs: [A_CANON_PACK] });
   assert.deepEqual((await applyVendor(root)).errors, []);
   writeFileSync(join(root, 'SEEDED.md'), 'seeded once, then edited by the repo\n');
   const settings = settingsOf(root);
   writeFileSync(join(root, '.claudinite-settings.json'),
-    `${JSON.stringify(withInstalledVersions(settings, { packVersions: { basics: 0 } }), null, 2)}\n`);
+    `${JSON.stringify(withInstalledVersions(settings, { packVersions: { [A_CANON_PACK]: 0 } }), null, 2)}\n`);
 
   const r = await packUpdate(root, { fullName: 'o/r', selfTestRun: () => 'ok' });
   assert.equal(r.status, 'ok', r.detail);

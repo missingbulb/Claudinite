@@ -72,7 +72,7 @@ test('editing version.mjs without moving the version is an ordinary engine edit'
 });
 
 test('a change that does not touch the version file says nothing', () => {
-  assert.deepEqual(rule.run(work(['packs/basics/RULES.md'])), []);
+  assert.deepEqual(rule.run(work(['packs/acme-pack/RULES.md'])), []);
   assert.deepEqual(rule.run(work([])), []);
 });
 

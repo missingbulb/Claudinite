@@ -45,15 +45,15 @@ const at = (root, rel) => readFileSync(join(root, rel), 'utf8');
 
 test('bootstrap converges a fresh repo in one invocation', () => {
   const root = freshRepo();
-  const out = run(root, '--packs', 'product-wiki', '--answer', 'product-wiki/product=A widget catalog app');
+  const out = run(root, '--packs', 'product-wiki', '--answer', 'product-wiki/product=A widget catalog app'); // @real-entity the real pack whose adoption questions the CLI asks
 
   // Declaration: seeded defaults plus the requested pack, its answer recorded,
   // and the vendor stamp.
   const decl = json(root);
   const ids = decl.packs.map((p) => (typeof p === 'string' ? p : p.id));
   assert.ok(ids.includes('basics'), `basics seeded (got ${ids.join(', ')})`);
-  assert.ok(ids.includes('product-wiki'), 'requested pack declared');
-  const wiki = decl.packs.find((p) => p?.id === 'product-wiki');
+  assert.ok(ids.includes('product-wiki'), 'requested pack declared'); // @real-entity the real pack whose adoption questions the CLI asks
+  const wiki = decl.packs.find((p) => p?.id === 'product-wiki'); // @real-entity the real pack whose adoption questions the CLI asks
   assert.equal(wiki.answers.product, 'A widget catalog app');
   // Bootstrap materializes no scheduling anchor: a cadence measures whole UTC periods
   // and the cron's own hours went into the workflow file below (#1995).
@@ -65,7 +65,7 @@ test('bootstrap converges a fresh repo in one invocation', () => {
 
   // The mount.
   assert.ok(existsSync(join(root, '.claudinite/shared/engine/checks/check_the_world.mjs')));
-  assert.ok(existsSync(join(root, '.claudinite/shared/packs/product-wiki/RULES.md')));
+  assert.ok(existsSync(join(root, '.claudinite/shared/packs/product-wiki/RULES.md'))); // @real-entity the real pack whose adoption questions the CLI asks
 
   // The wiring: hooks, ignore lines, both workflows (scheduler at the repo's
   // hashed minute), the rules index and its CLAUDE.md import, the seeded local
@@ -90,8 +90,8 @@ test('bootstrap converges a fresh repo in one invocation', () => {
   // The report: answered questions are settled, unanswered ones surface once,
   // batched for a single interview pass — never one popup per pack.
   assert.ok(!/PENDING.*\n(.|\n)*product-wiki\/product:/.test(out), 'answered question not re-asked');
-  assert.ok(out.includes('product-wiki/users'), 'unanswered question listed');
-  assert.ok(out.includes('product-wiki/market'), 'unanswered question listed');
+  assert.ok(out.includes('product-wiki/users'), 'unanswered question listed'); // @real-entity the real pack whose adoption questions the CLI asks
+  assert.ok(out.includes('product-wiki/market'), 'unanswered question listed'); // @real-entity the real pack whose adoption questions the CLI asks
   assert.ok(/selftest: ok/.test(out), `selftest ran green in:\n${out}`);
 
   // The adoption session starts with no Claudinite loaded, so no SessionEnd hook
@@ -101,17 +101,17 @@ test('bootstrap converges a fresh repo in one invocation', () => {
 
 test('bootstrap re-run is idempotent and records late answers', () => {
   const root = freshRepo();
-  run(root, '--packs', 'product-wiki');
+  run(root, '--packs', 'product-wiki'); // @real-entity the real pack whose adoption questions the CLI asks
 
   const before = json(root);
-  const out = run(root, '--answer', 'product-wiki/users=Widget shoppers');
+  const out = run(root, '--answer', 'product-wiki/users=Widget shoppers'); // @real-entity the real pack whose adoption questions the CLI asks
   const after = json(root);
 
-  const wiki = after.packs.find((p) => p?.id === 'product-wiki');
+  const wiki = after.packs.find((p) => p?.id === 'product-wiki'); // @real-entity the real pack whose adoption questions the CLI asks
   assert.equal(wiki.answers.users, 'Widget shoppers');
   // Nothing but the new answer (which upgrades the string entry to an object)
   // and the refreshed stamp moves.
-  before.packs = before.packs.map((p) => (p === 'product-wiki' || p?.id === 'product-wiki' ? wiki : p));
+  before.packs = before.packs.map((p) => (p === 'product-wiki' || p?.id === 'product-wiki' ? wiki : p)); // @real-entity the real pack whose adoption questions the CLI asks
   before.engineVersion = after.engineVersion;
   assert.deepEqual(after, before);
   assert.ok(/wiring: already converged/.test(out), `second run reports converged:\n${out}`);
@@ -120,7 +120,7 @@ test('bootstrap re-run is idempotent and records late answers', () => {
 test('bootstrap refuses an answer that names no question', () => {
   const root = freshRepo();
   assert.throws(
-    () => run(root, '--packs', 'product-wiki', '--answer', 'product-wiki/nope=x'),
+    () => run(root, '--packs', 'product-wiki', '--answer', 'product-wiki/nope=x'), // @real-entity the real pack whose adoption questions the CLI asks
     (e) => e.status === 1 && /nope/.test(`${e.stdout}${e.stderr}`),
   );
 });
@@ -132,7 +132,7 @@ test('bootstrap refuses an answer that names no question', () => {
 // script) reached the owner as a line in a PR body, if at all.
 test('the report hands over the executor secret in every adoption, and the web Setup script wherever that pack is on', () => {
   const root = freshRepo();
-  const out = run(root, '--packs', 'product-wiki');
+  const out = run(root, '--packs', 'product-wiki'); // @real-entity the real pack whose adoption questions the CLI asks
 
   const block = out.slice(out.indexOf('\nHANDOVER'), out.indexOf('\nNEXT:'));
   assert.ok(block.startsWith('\nHANDOVER'), `report carries a HANDOVER block:\n${out}`);

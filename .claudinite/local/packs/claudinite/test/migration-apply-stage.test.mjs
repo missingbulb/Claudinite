@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import rule, { MEMBER_DECLARATION_CODEMODS, recordsMissingApplyStage } from '../workRules/migration-apply-stage.mjs';
 
-const PACK_RECORD = 'packs/claudinite-tasks/migrations/2026-09-05-thing/migration.mjs';
+const PACK_RECORD = 'packs/acme-pack-t/migrations/2026-09-05-thing/migration.mjs';
 const ENGINE_RECORD = 'engine/migrations/2026-07-19-thing/migration.mjs';
 
 const record = ({ codemod = 'updateTaskSchedulingFields', applyStage = false } = {}) => `
@@ -74,9 +74,9 @@ test('a codemod already declared at the base is not re-flagged when the record i
 });
 
 test('a file that is not a dated migration record is out of scope', () => {
-  const other = 'packs/claudinite-tasks/src/execute/loop.mjs';
+  const other = 'packs/acme-pack-t/src/execute/loop.mjs';
   assert.deepEqual(recordsMissingApplyStage([other], () => record(), () => null), []);
-  const undated = 'packs/claudinite-tasks/migrations/registry.mjs';
+  const undated = 'packs/acme-pack-t/migrations/registry.mjs';
   assert.deepEqual(recordsMissingApplyStage([undated], () => record(), () => null), []);
 });
 

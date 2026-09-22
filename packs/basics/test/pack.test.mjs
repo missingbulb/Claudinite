@@ -563,9 +563,9 @@ test('catalog-completeness: flags a pack dir missing from the catalog README', (
 test('catalog-completeness: silent when the catalog lists every pack', () => {
   const root = makeRepo({ changed: {
     ...CORPUS_MARKERS,
-    'packs/README.md': '# packs\n\n[basics](basics/README.md) [node](node/README.md)\n',
+    'packs/README.md': '# packs\n\n[basics](basics/README.md) [acme-pack](acme-pack/README.md)\n',
     'packs/basics/pack.mjs': 'export default { id: "basics" };\n',
-    'packs/node/pack.mjs': 'export default { id: "node" };\n',
+    'packs/acme-pack/pack.mjs': 'export default { id: "acme-pack" };\n',
     'packs/basics/skills/writing-tests/SKILL.md': '---\nname: writing-tests\n---\nbody\n',
   } });
   try {

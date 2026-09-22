@@ -23,8 +23,8 @@ jobs:
 
 // All four, so a fixture never trips the blind-scope guard by accident.
 const four = (overrides = {}) => ({
-  'packs/claudinite-tasks/stubs/claudinite-scheduler.yml': THIN,
-  'packs/claudinite-tasks/stubs/claudinite-executor.yml': THIN,
+  'packs/claudinite-tasks/stubs/claudinite-scheduler.yml': THIN, // @real-entity the real stubs this rule matches by name
+  'packs/claudinite-tasks/stubs/claudinite-executor.yml': THIN, // @real-entity the real stubs this rule matches by name
   '.github/workflows/claudinite-scheduler.yml': THIN,
   '.github/workflows/claudinite-executor.yml': THIN,
   ...overrides,
@@ -40,19 +40,19 @@ test('silent when every copy is a thin wrapper', () => {
 });
 
 test('fires on github-script, in the stub and in the canon copy alike', () => {
-  const withScript = THIN.replace('      - run: node packs/claudinite-tasks/src/schedule/run.mjs',
+  const withScript = THIN.replace('      - run: node packs/claudinite-tasks/src/schedule/run.mjs', // @real-entity the real stubs this rule matches by name
     `      - uses: actions/github-script@v7
         with:
           script: |
             core.info('hello');`);
   withFixture(four({
-    'packs/claudinite-tasks/stubs/claudinite-executor.yml': withScript,
+    'packs/claudinite-tasks/stubs/claudinite-executor.yml': withScript, // @real-entity the real stubs this rule matches by name
     '.github/workflows/claudinite-executor.yml': withScript,
   }), (findings) => {
     assert.equal(findings.length, 2, 'both vendored copies are watched, not just one');
     assert.deepEqual(findings.map((f) => f.file).sort(), [
       '.github/workflows/claudinite-executor.yml',
-      'packs/claudinite-tasks/stubs/claudinite-executor.yml',
+      'packs/claudinite-tasks/stubs/claudinite-executor.yml', // @real-entity the real stubs this rule matches by name
     ]);
     for (const f of findings) {
       assert.equal(f.severity, 'blocking');
@@ -65,9 +65,9 @@ test('fires on github-script, in the stub and in the canon copy alike', () => {
 test('fires on a block `run:` — a shell script is a program too', () => {
   for (const scalar of ['|', '>', '|-', '|+']) {
     withFixture(four({
-      'packs/claudinite-tasks/stubs/claudinite-scheduler.yml':
-        THIN.replace('- run: node packs/claudinite-tasks/src/schedule/run.mjs',
-          `- run: ${scalar}\n          node packs/claudinite-tasks/src/schedule/run.mjs\n          echo done`),
+      'packs/claudinite-tasks/stubs/claudinite-scheduler.yml': // @real-entity the real stubs this rule matches by name
+        THIN.replace('- run: node packs/claudinite-tasks/src/schedule/run.mjs', // @real-entity the real stubs this rule matches by name
+          `- run: ${scalar}\n          node packs/claudinite-tasks/src/schedule/run.mjs\n          echo done`), // @real-entity the real stubs this rule matches by name
     }), (findings) => {
       assert.equal(findings.length, 1, `\`run: ${scalar}\` is a block scalar`);
       assert.match(findings[0].what, /block `run:`/);
@@ -77,16 +77,16 @@ test('fires on a block `run:` — a shell script is a program too', () => {
 
 test('a single-line `run: node …` is the sanctioned form and stays silent', () => {
   withFixture(four({
-    'packs/claudinite-tasks/stubs/claudinite-scheduler.yml':
-      THIN.replace('node packs/claudinite-tasks/src/schedule/run.mjs',
-        'node .claudinite/shared/packs/claudinite-tasks/src/schedule/run.mjs'),
+    'packs/claudinite-tasks/stubs/claudinite-scheduler.yml': // @real-entity the real stubs this rule matches by name
+      THIN.replace('node packs/claudinite-tasks/src/schedule/run.mjs', // @real-entity the real stubs this rule matches by name
+        'node .claudinite/shared/packs/claudinite-tasks/src/schedule/run.mjs'), // @real-entity the real stubs this rule matches by name
   }), (findings) => assert.deepEqual(findings, []));
 });
 
 // A pattern left behind by a layout change matches nothing, reads as live and
 // catches nothing. The rule says so instead of passing.
 test('a scope it can no longer see is reported, not passed', () => {
-  withFixture({ 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml': THIN }, (findings) => {
+  withFixture({ 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml': THIN }, (findings) => { // @real-entity the real stubs this rule matches by name
     assert.equal(findings.length, 1);
     assert.match(findings[0].what, /expected the 4 that exist/);
   });
