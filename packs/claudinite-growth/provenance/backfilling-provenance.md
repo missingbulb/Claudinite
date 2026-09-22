@@ -71,3 +71,17 @@
   is never true and a run reading it literally treats a pass as a failure.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude
+
+## 2026-09-22 · reworded · what the tool now answers, and what it deliberately hands over (#2248)
+- **Source:** #2221, #2222 and #2223, and the six runs whose corrections they record.
+- **Reason:** the method carried remedies the tool should have: every run re-derived the
+  trailer-versus-body keyword problem, the truncate-then-apply move for a conversion-filled file,
+  and the check that a `born` is really a birth. Those move into the tool, so the steps now describe
+  reading its output rather than repairing it. Three things stay the run's, and the skill says which
+  and why: the reference keyword, because git cannot see a pull request body and guessing it fans
+  out through the defaults fence; a followed-back birth, because a pickaxe is evidence to verify
+  against the old path rather than a fact; and which sentences of a README are history, tables
+  included, because one pack's largest piece of history was a table the printed list used to exclude
+  by design.
+- **Actor:** @missingbulb (owner), who asked for the four tool issues fixed together.
+- **Landed:** #2248.
