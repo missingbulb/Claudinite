@@ -141,6 +141,41 @@ test('the two never-fires rules cannot both claim one check', () => {
     'so the plain one must exclude what the twin one claims, or a check is reported twice');
 });
 
+test('an unreachable check belongs to the rule that names it, not to never-fires', () => {
+  // Both read a check that produced nothing. The floor is what splits them: a
+  // check whose scan selects no file here had no opportunity, so never-fires
+  // cannot judge it and `check-cannot-reach` is the finding that says why.
+  const shippedById = Object.fromEntries(shipped.map((r) => [r.id, r]));
+  const rules = ['check-never-fires', 'check-never-fires-with-prose-twin', 'check-cannot-reach']
+    .map((id) => shippedById[id]);
+  const run = (subject, figures) => evaluateRules(rules, {
+    subjectsOf: () => [subject],
+    figureOf: (s, name, opts) => reader(figures)(name, opts),
+    predicateOf: (s, name) => (name === 'proseTwin' ? s.proseTwin : null),
+  });
+
+  const swept = run({ id: 'a-check', proseTwin: false },
+    { activity: 500, opportunities: 2000, checkFindings: 0, reach: 4 });
+  assert.deepEqual(swept.findings.map((f) => f.rule), ['check-never-fires'],
+    'a check with real reach and no findings is the never-fires case and only that');
+
+  const inert = run({ id: 'a-check', proseTwin: false },
+    { activity: 500, opportunities: 0, checkFindings: 0, reach: 0 });
+  assert.deepEqual(inert.findings.map((f) => f.rule), ['check-cannot-reach'],
+    'and one with nothing in scope is reported once, by the rule that knows why');
+
+  // A check nothing could measure is neither: it is stated as not evaluated
+  // rather than reported as a net that has caught nothing.
+  const unmeasurable = run({ id: 'a-check', proseTwin: false },
+    { activity: 500, checkFindings: 0 });
+  assert.deepEqual(unmeasurable.findings, []);
+  assert.deepEqual(unmeasurable.notEvaluated.map((n) => [n.rule, n.name]), [
+    ['check-never-fires', 'opportunities'],
+    ['check-never-fires-with-prose-twin', 'opportunities'],
+    ['check-cannot-reach', 'reach = 0'],
+  ]);
+});
+
 test('every shipped rule parses, and its sentence names the subject it judges', () => {
   assert.ok(shipped.length >= 16, 'the shelf ships the whole declared set');
   for (const rule of shipped) {

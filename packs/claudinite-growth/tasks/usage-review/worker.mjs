@@ -13,7 +13,7 @@ import { deliverGenerated, baseTip, remoteUrl, readAt } from '../../../claudinit
 import { evaluateRules } from './evaluate.mjs';
 import { figureReader } from './figures.mjs';
 import { readWindows } from './read-record.mjs';
-import { readSkills, readRules, acceptanceReader, acceptanceReasons, packDeclaredAt, adoptionWindow } from './read-live.mjs';
+import { readSkills, readRules, readReach, acceptanceReader, acceptanceReasons, packDeclaredAt, adoptionWindow } from './read-live.mjs';
 import { captureFiles, sampleDigests } from './digests.mjs';
 import { reviewFile, dashboardValues, prBody, findingKey, REVIEW_PATH, DASHBOARD_PATH } from './report.mjs';
 
@@ -44,7 +44,9 @@ async function main() {
   if (!record) { log('no usage fold to review yet - nothing to do'); return; }
 
   const skills = await readSkills(root, packs);
-  const { check, guard } = readRules(packs, packRules(packs));
+  const { check, guard } = readRules(packs, packRules(packs), await readReach(root));
+  const unmeasured = check.filter((c) => typeof c.reach !== 'number').length;
+  if (unmeasured) log(`${unmeasured} of ${check.length} checks declare no scan set to measure - their opportunity count is not recorded`);
   const acceptancesOf = acceptanceReader(config);
   const live = { acceptancesOf };
 

@@ -28,3 +28,20 @@
   filed rather than built.
 - **Retire when:** a window's findings turn out uncorrelated with the blend.
 - **Landed:** #2214
+
+## 2026-09-22 · scope-changed · it judges only the checks that had an opportunity to fire (#2246)
+- **Source:** the owner's #2246, deferred from #2214 with a window of evidence behind it.
+- **Reason:** `activity` answers whether the repository was busy enough to judge anything; it never
+  answered whether THIS check could have fired. 13 of the first production review's findings were
+  checks that never applied here at all - structurally gated, or scanning a directory that does not
+  exist - and they read as evidence exactly like the checks that swept thousands of files and caught
+  nothing.
+- **Actor:** the Claudinite queue, run as work item missingbulb/Claudinite#2246.
+- **Mechanism:** `opportunities` on the floor beside `activity` - the window's sweeps times the
+  check's own reach into the tree. The unreachable go to `check-cannot-reach`, which says why; a
+  check whose reach nothing could measure (it declares no scan set) reads *not recorded* and lands
+  in `notEvaluated`, which is what the review says when it cannot judge rather than when it found
+  nothing. The floor also puts the figure in every surviving finding's evidence, so a reader can see
+  the breadth the zero was measured over.
+- **Retire when:** a window's findings turn out uncorrelated with the blend, which is the test #2214
+  already set for the floor beside it.

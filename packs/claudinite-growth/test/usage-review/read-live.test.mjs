@@ -2,10 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { git } from '../../../../engine-tests/helpers.mjs';
 import { removeTree } from '../../../../engine/remove-tree.mjs';
-import { packDeclaredAt, adoptionWindow } from '../../tasks/usage-review/read-live.mjs';
+import { packDeclaredAt, adoptionWindow, readReach, readRules } from '../../tasks/usage-review/read-live.mjs';
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 
 // A throwaway repo whose settings file gains a pack at a known commit.
 function repoDeclaring(packs) {
@@ -56,4 +59,30 @@ test('a declaration older than the checkout is unknowable, never the clone\'s ow
 test('an unknowable declaration date leaves the adoption window unjudgeable', () => {
   assert.equal(adoptionWindow(null, '2026-09-22T00:00:00Z'), null,
     'which is what keeps an adoption-time skill out of the findings rather than in them');
+});
+
+// The reach reader resolves the engine by path, and a path that stops resolving
+// answers `null` for every check forever - silently, and looking exactly like a
+// repository whose checks are all unmeasurable. Only a run against a real engine
+// tree can tell the two apart, so this case uses this repository's own.
+test('the reach reader reaches the engine, and answers per declaration', async () => {
+  const reachOf = await readReach(repoRoot);
+  const { loadDeclaredChecks } = await import('../../../../engine/checks/helpers/pattern-rules.mjs');
+  const declared = loadDeclaredChecks(join(repoRoot, 'packs', 'claudinite-growth'));
+  assert.ok(declared.length >= 1, 'the fixture is this pack\'s own declared checks, and it must have some');
+  for (const rule of declared) {
+    assert.equal(typeof reachOf(rule), 'number',
+      `${rule.id} declares a scan set, so how far it reaches into this tree is answerable`);
+  }
+  assert.equal(reachOf({ id: 'a-coded-check' }), null,
+    'a rule with no declaration is unmeasurable, which is not a reach of zero');
+});
+
+test('readRules carries each check\'s reach onto the subject the figures read it from', () => {
+  const pack = { id: 'acme-pack', dir: join(repoRoot, 'packs', 'claudinite-growth'), rules: [] };
+  const scanning = { id: 'acme-scanning-check', spec: {} };
+  const coded = { id: 'acme-coded-check' };
+  pack.rules = [scanning, coded];
+  const { check } = readRules([pack], pack.rules, (rule) => (rule.spec ? 7 : null));
+  assert.deepEqual(check.map((c) => [c.id, c.reach]), [['acme-scanning-check', 7], ['acme-coded-check', null]]);
 });

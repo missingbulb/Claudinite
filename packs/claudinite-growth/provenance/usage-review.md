@@ -35,3 +35,19 @@
 - **Retire when:** members carry a declaration date of their own and no history walk is needed to
   find one.
 - **Landed:** #2214
+
+## 2026-09-22 · policy-changed · the review reads how far each check reaches into the tree (#2246)
+- **Source:** the owner's #2246.
+- **Reason:** the record says how often a check fired and nothing about whether it could have; the
+  first production review read 51 checks as nets that had caught nothing, 13 of which had never
+  applied here at all. The missing half of that question is a property of the tree, not of a window,
+  so it belongs with the review's other live reads.
+- **Actor:** the Claudinite queue, run as work item missingbulb/Claudinite#2246.
+- **Mechanism:** `readReach` beside the skill and acceptance readers, probing the engine for
+  `reachOf` exactly as `readSkills` probes it for its own helpers, and two figures over it - `reach`
+  and `opportunities`, the window's sweeps times that reach. An engine that cannot answer leaves
+  every check without the key, which the figures read as *not recorded*; the review's log says how
+  many checks that was, so a probe that silently stopped resolving is visible in the run rather than
+  only in a review where nothing is evaluated.
+- **Retire when:** the reach read costs more than the findings it enables - the context build is the
+  review's own, and a review that has to fetch or deepen to answer it is paying too much.

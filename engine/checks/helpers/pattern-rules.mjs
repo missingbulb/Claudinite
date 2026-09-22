@@ -1301,6 +1301,54 @@ function scanPaths(ctx, j) {
     !excluded(p, j.spec.excludeMatchers));
 }
 
+// A memoized path → parsed document (YAML or JSON by extension, null where the
+// file is absent or neither parses). One per sweep, and one per reach read.
+function parsedReader(ctx) {
+  const docs = new Map();
+  return (path) => {
+    if (!docs.has(path)) {
+      const text = ctx.read(path);
+      let doc = null;
+      if (text !== null) {
+        if (/\.ya?ml$/.test(path)) doc = parseYaml(text);
+        else { try { doc = JSON.parse(text); } catch { doc = null; } }
+      }
+      docs.set(path, doc);
+    }
+    return docs.get(path);
+  };
+}
+
+// HOW FAR A DECLARED CHECK REACHES INTO THIS TREE: how many applications its own
+// declaration has here, and therefore whether it could have produced a finding at
+// all. A finding volume of zero says nothing on its own: a check that ran over
+// two thousand files and caught nothing and a check whose scan selects no file
+// here are the same number, and this is the denominator that tells them apart.
+//
+// Zero is a real answer, and it is the interesting one: the relevance gate
+// declined this repository, or the scan set selected nothing in it.
+//
+// A rule with no scan set asserts over the tree as a whole and applies once, so it
+// reaches 1; an exact-path scanFiles reaches 1 when the file is there, or when the
+// declaration says what to do about its absence, and 0 otherwise.
+//
+// Guards are not the subject: a `scope: 'action'` rule applies per tool call, and
+// nothing in the tree bounds how many a session makes, so it answers `null`, as
+// a rule with no declaration at all does, which is *not recorded* and never zero.
+export function reachOf(ctx, spec) {
+  if (!spec || spec.scope === 'action') return null;
+  if (!relevant(ctx, spec.relevantWhen)) return 0;
+  // `repoContains` is the one relevance gate the sweep resolves after its pass
+  // rather than before it (it only pays for the read when a rule has findings to
+  // discard); here it is the same gate as the rest, so it is asked directly.
+  const marker = spec.relevantWhen?.repoContains;
+  if (marker && !ctx.files.some((f) => !excluded(f, spec.excludeMatchers) && marker.test(ctx.read(f) ?? ''))) return 0;
+  if (typeof spec.scanFiles === 'string') return ctx.exists(spec.scanFiles) || spec.whenMissing ? 1 : 0;
+  if (!spec.scanMatchers?.length && !spec.namedScan) return 1;
+  const named = spec.namedScan ? namedScanSet(ctx, spec, parsedReader(ctx)) : null;
+  return scanPaths(ctx, { spec, named }).length;
+}
+
 // The structured-data assertions — they read a few named or tracked documents
 // through the scan's shared parse cache, so like the tree assertions they run
 // directly per rule rather than riding the content pass.
@@ -1793,19 +1841,7 @@ function results(ctx) {
     });
   }
 
-  const parsedDocs = new Map();
-  const parsed = (path) => {
-    if (!parsedDocs.has(path)) {
-      const text = ctx.read(path);
-      let doc = null;
-      if (text !== null) {
-        if (/\.ya?ml$/.test(path)) doc = parseYaml(text);
-        else { try { doc = JSON.parse(text); } catch { doc = null; } }
-      }
-      parsedDocs.set(path, doc);
-    }
-    return parsedDocs.get(path);
-  };
+  const parsed = parsedReader(ctx);
 
   // Resolved before any assertion runs: a field-named scan set is both the
   // sweep's membership test and what `everyScannedFile` asserts over; a

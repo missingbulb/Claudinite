@@ -5,7 +5,7 @@ import { buildContext } from '../engine/checks/helpers/repo-context.mjs';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { patternRule, loadDeclaredChecks, unplacedSpecKeys, guardFindings } from '../engine/checks/helpers/pattern-rules.mjs';
+import { patternRule, loadDeclaredChecks, unplacedSpecKeys, guardFindings, reachOf } from '../engine/checks/helpers/pattern-rules.mjs';
 import { runRule } from '../engine/checks/helpers/work.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 
@@ -2072,4 +2072,92 @@ test('action scope: the authoring errors', () => {
   assert.throws(() => patternRule({ ...meta('fx-a4'), scope: 'action', guardToolCalls: [{ tool: 'Bash', what: 'w', fix: 'f' }] }), /names a condition/);
   assert.throws(() => patternRule({ ...meta('fx-a5'), scope: 'action', guardToolCalls: [{ tool: 'Bash', match: /x/, what: 'w', fix: 'f' }] }), /name the field/);
   assert.throws(() => patternRule({ ...meta('fx-a6'), scope: 'action', guardToolCalls: [{ tool: 'Bash', atMostPerSession: 0, what: 'w', fix: 'f' }] }), /positive whole number/);
+});
+
+// --- reach: whether a declared check could have fired here at all -------------
+
+test('reachOf counts the files a rule scans, and zero where its scan selects none', () => {
+  const rule = patternRule({
+    ...meta('fx-reach-scan'),
+    scanFiles: /\.txt$/,
+    excludeFiles: /^vendor\//,
+    matchLines: [{ match: /x/, what: 'w', fix: 'f' }],
+  });
+  const two = makeRepo({ changed: { 'a.txt': 'x\n', 'b.txt': 'y\n', 'vendor/c.txt': 'x\n', 'd.mjs': 'x\n' } });
+  const none = makeRepo({ changed: { 'd.mjs': 'x\n' } });
+  try {
+    assert.equal(reachOf(ctxOf(two), rule.spec), 2, 'the excluded file and the unmatched suffix are out of scope');
+    assert.equal(reachOf(ctxOf(none), rule.spec), 0,
+      'a tree with nothing in scope is what "never fires" cannot otherwise be told apart from');
+  } finally { cleanup(two); cleanup(none); }
+});
+
+test('reachOf is zero where the relevance gate declines the repository', () => {
+  const rule = patternRule({
+    ...meta('fx-reach-gate'),
+    relevantWhen: { pathExists: 'marker.cfg' },
+    scanFiles: /\.txt$/,
+    matchLines: [{ match: /x/, what: 'w', fix: 'f' }],
+  });
+  const bare = makeRepo({ changed: { 'a.txt': 'x\n' } });
+  const armed = makeRepo({ changed: { 'a.txt': 'x\n', 'marker.cfg': '1\n' } });
+  try {
+    assert.equal(reachOf(ctxOf(bare), rule.spec), 0, 'the gate declined, so no run of it could have fired');
+    assert.equal(reachOf(ctxOf(armed), rule.spec), 1);
+  } finally { cleanup(bare); cleanup(armed); }
+});
+
+test('reachOf asks repoContains as a gate, though the sweep resolves it after its pass', () => {
+  const rule = patternRule({
+    ...meta('fx-reach-marker'),
+    relevantWhen: { repoContains: /GOOGLE-MARK/ },
+    scanFiles: /\.mjs$/,
+    matchLines: [{ match: /danger/, what: 'w', fix: 'f' }],
+  });
+  const gated = makeRepo({ changed: { 'a.mjs': 'danger\n' } });
+  const marked = makeRepo({ changed: { 'a.mjs': 'danger\n', 'conf.yml': 'GOOGLE-MARK\n' } });
+  try {
+    assert.equal(reachOf(ctxOf(gated), rule.spec), 0);
+    assert.equal(reachOf(ctxOf(marked), rule.spec), 1);
+  } finally { cleanup(gated); cleanup(marked); }
+});
+
+test('reachOf: an exact path reaches only where the file is there, or the rule says what its absence means', () => {
+  const plain = patternRule({
+    ...meta('fx-reach-exact'),
+    scanFiles: 'config.json',
+    matchLines: [{ match: /x/, what: 'w', fix: 'f' }],
+  });
+  const missing = patternRule({
+    ...meta('fx-reach-exact-missing'),
+    scanFiles: 'config.json',
+    whenMissing: { what: 'no config', fix: 'write one' },
+    matchLines: [{ match: /x/, what: 'w', fix: 'f' }],
+  });
+  const without = makeRepo({ changed: { 'a.txt': 'x\n' } });
+  const present = makeRepo({ changed: { 'config.json': '{}\n' } });
+  try {
+    assert.equal(reachOf(ctxOf(without), plain.spec), 0);
+    assert.equal(reachOf(ctxOf(present), plain.spec), 1);
+    assert.equal(reachOf(ctxOf(without), missing.spec), 1, "an absent file IS this rule's application");
+  } finally { cleanup(without); cleanup(present); }
+});
+
+test('reachOf: a whole-tree assertion applies once, and a guard answers not-recorded', () => {
+  const tree = patternRule({
+    ...meta('fx-reach-tree'),
+    requireTrackedFileMatching: [{ pattern: /^README\.md$/, what: 'w', fix: 'f' }],
+  });
+  const guard = patternRule({
+    ...meta('fx-reach-guard'),
+    scope: 'action',
+    guardToolCalls: [{ tool: 'Bash', inputField: 'command', match: /x/, what: 'w', fix: 'f' }],
+  });
+  const root = makeRepo({ changed: { 'a.txt': 'x\n' } });
+  try {
+    assert.equal(reachOf(ctxOf(root), tree.spec), 1, 'it asserts over the tree, so the tree is its one application');
+    assert.equal(reachOf(ctxOf(root), guard.spec), null,
+      'a guard fires per tool call, and nothing in the tree bounds how many a session makes');
+    assert.equal(reachOf(ctxOf(root), null), null, 'a rule with no declaration is unmeasurable, not unreachable');
+  } finally { cleanup(root); }
 });

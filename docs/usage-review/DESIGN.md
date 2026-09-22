@@ -374,6 +374,12 @@ recorded as *not sampled*; the rules still evaluate from the fold.
 
 - the mounted skill catalog: each skill's estimated tokens (the session summary's estimator),
   its `usage` block, its triggers;
+- each declared check's **reach**: how many applications its own declaration has in this tree,
+  read through the engine's own selection code rather than a second reading of the declarations.
+  Zero where its relevance gate declines the repository, or where its scan pattern selects no file
+  in it - the two shapes a check that could never have fired takes, and what `opportunities` (this
+  times the window's sweeps) is for. A check declaring no scan set has no reach at all, which is
+  *not recorded* rather than a reach of zero;
 - the active rule catalog (`packRules`): severity, scope, owning skill, and the **prose twin** —
   a `RULES.md` bullet in the same pack naming the rule id in backticks. A twin expressed any
   other way is not seen, and the report counts the rules judged twin-less, because the

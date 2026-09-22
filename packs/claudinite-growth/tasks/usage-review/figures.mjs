@@ -59,6 +59,11 @@ function sumEveryKey(days, group, field) {
   return total;
 }
 
+// How often the sweeps ran in the window, both scopes together - the one run
+// count the record carries, read by `runs` and by the per-subject denominator
+// built on it.
+const windowRuns = (w) => sumEveryKey(w.days, 'checks', 'runs');
+
 export function median(values) {
   const sorted = values.filter((v) => typeof v === 'number' && Number.isFinite(v)).sort((a, b) => a - b);
   if (!sorted.length) return null;
@@ -164,7 +169,23 @@ export const FIGURES = new Map(Object.entries({
   // --- a check ---
   // `runs` is how often the scopes ran at all: a rule runs whenever its scope does,
   // and there is no per-rule run counter to have instead.
-  runs: (s, w) => sumEveryKey(w.days, 'checks', 'runs'),
+  runs: (s, w) => windowRuns(w),
+  // What THIS check could have fired on: the applications its own declaration has
+  // in the tree (`reach`, read live) across the runs the window saw. `runs` alone
+  // is one global number identical in every finding, so a finding volume of zero
+  // against it cannot tell a check that swept two thousand files from one whose
+  // scan selects nothing here.
+  //
+  // Either half unread leaves the figure unread. A rule with no declaration - a
+  // coded one - has no reach, and so does every rule where the live reader could
+  // not answer at all; a rule floored on this then leaves those subjects *not
+  // evaluated*, which is the honest answer where a zero would report every
+  // unmeasurable check as one that could never have fired.
+  reach: (s) => (typeof s.reach === 'number' ? s.reach : null),
+  opportunities: (s, w) => {
+    const runs = windowRuns(w);
+    return typeof s.reach === 'number' && runs !== null ? runs * s.reach : null;
+  },
   checkFindings: (s, w) => {
     const blocking = sumGroup(w.days, 'checkFindings', s.id, 'blocking');
     const advisory = sumGroup(w.days, 'checkFindings', s.id, 'advisory');
