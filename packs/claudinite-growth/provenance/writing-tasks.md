@@ -107,3 +107,13 @@
   guarded.
 - **Actor:** @missingbulb (owner).
 - **Model:** Opus 5
+
+## 2026-09-22 · reworded · the machinery's third responsibility is a phase, not a task
+- **Reason:** the skill taught three separated responsibilities, the third of them a daily task that
+  owned everything about the queue that is nobody's task. That task is gone and its rules run first
+  inside the scheduler run, so a reader following this skill would otherwise look for a declaration
+  that is not there. The separation itself survives as a module boundary rather than a task
+  boundary.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5
+- **Landed:** #2262

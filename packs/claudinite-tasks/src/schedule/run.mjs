@@ -108,7 +108,7 @@ export async function planSchedulerRun({
   // what the jobs below read: a park it closes releases the task's lane for job 1,
   // and an item it returns to the queue is counted by the drain gate that ends the
   // run. Its threaded effects are applied to `items` in place, so every job after
-  // this line — and every cadence term the ask evaluates — judges this run's world
+  // this line - and every cadence term the ask evaluates - judges this run's world
   // rather than the listing it started from.
   const repair = planRepair({ items, tasks, now, progressAt, resolutionOf, doneAfter,
     isRequest: (n) => requests.some((r) => r.number === n), stateOf });
@@ -299,7 +299,7 @@ export async function planSchedulerRun({
     const silentFor = nowMs - lastSign;
     if (silentFor < executingLeashMs) continue;
     // WHICH TASK, on a marked issue: its title is the person's own, so the id comes
-    // from the worker path its machine block names — the same fallback the repair phase's
+    // from the worker path its machine block names - the same fallback the repair phase's
     // rules use. Without it every ad-hoc item reads as an unknown task and re-queues,
     // and `implement-request`, the one task that declares `needs-human`, is exactly
     // the task every ad-hoc item runs.
@@ -357,7 +357,7 @@ export async function applyRepairOp({ gh, repo, op, now, tasks, agentComments, a
   if (op.confirm) {
     const { readIssue } = await import('../world/github.mjs');
     if (!stillHolds(op, await readIssue(gh, repo, op.issue), { now, tasks })) {
-      log(`- #${op.issue} settled between this run's read and its write — left alone`);
+      log(`- #${op.issue} settled between this run's read and its write - left alone`);
       return false;
     }
   }
@@ -379,7 +379,7 @@ export async function applyRepairOp({ gh, repo, op, now, tasks, agentComments, a
   }
   log(op.kind === 'note'
     ? `- noted #${op.issue} (${op.rule})`
-    : `- repaired #${op.issue} (${op.rule})${op.to ? ` -> ${op.to}` : ''}${op.close ? ` — closed ${op.close}` : ''}`);
+    : `- repaired #${op.issue} (${op.rule})${op.to ? ` -> ${op.to}` : ''}${op.close ? ` - closed ${op.close}` : ''}`);
   return true;
 }
 
@@ -641,7 +641,7 @@ export async function schedulerRun({
   const endList = phase('list');
   // TWO LISTINGS, and the split is load-bearing. `since` filters on UPDATED time,
   // so a single horizoned listing cannot see an item nobody has touched since the
-  // horizon — a blocked item sleeping on a far `Not-before`, a claim that went
+  // horizon - a blocked item sleeping on a far `Not-before`, a claim that went
   // silent and stayed silent. The OPEN half is therefore listed whole, however old
   // its youngest write, and the horizon is applied only to the CLOSED half, where
   // it is the run-history window the cadence terms actually read. The open half is
@@ -668,8 +668,8 @@ export async function schedulerRun({
 
   // THE REPAIR PHASE'S OWN READS, and the only two the merge added. Both are
   // bounded by a handful of items in one state rather than by the queue: a comment
-  // read per item holding an AGENT — the leash measures the holder's own progress,
-  // which only its comments carry — and one issue read per park naming an
+  // read per item holding an AGENT - the leash measures the holder's own progress,
+  // which only its comments carry - and one issue read per park naming an
   // `Ends-when:` target, of which there are as many as there are approval parks.
   // Everything else the repair rules need is already in the two listings above.
   const agentComments = new Map();
@@ -761,7 +761,7 @@ export async function schedulerRun({
   const endRepair = phase('repair');
   const repairOps = ops.filter((o) => REPAIR_KINDS.includes(o.kind));
   if (repairOps.length) {
-    // Applying a label 422s when it does not exist, so guarantee them first — but
+    // Applying a label 422s when it does not exist, so guarantee them first - but
     // only where this run actually writes one: a pass whose whole output is a
     // comment pays nothing for the labels it never touches.
     if (repairOps.some((o) => o.to)) await ensureLabels(gh, repo, QUEUE_LABELS);

@@ -96,7 +96,7 @@
 // prevent, reached from the other direction: one scheduler run files every due
 // dispatch seconds apart, so every session that cannot name its own trigger builds
 // the SAME work list and races over it. A session that does not know its issue
-// must run nothing — the next scheduler run files the occurrence again if the work
+// must run nothing - the next scheduler run files the occurrence again if the work
 // is still owed, so stopping costs a delay while guessing costs duplicated work.
 //
 // Usage: `node <engine>/scheduler/resolve-dispatch.mjs [self|fleet]`
@@ -303,7 +303,7 @@ export async function resolveDispatch(argv = process.argv.slice(2), env = action
   const { trigger, error: triggerError } = resolveTrigger(env);
   if (triggerError) {
     return done(EXIT.noTrigger, { dispatch: 'no-trigger', scope, reason: triggerError },
-      `${triggerError}. No trigger source names an issue, so this session cannot know which dispatch it was started for. STOP: run nothing, change nothing, comment nothing, end the session. There is NO fallback — never pick an issue by listing ${readyLabelForScope(scope)}; every dispatch in that list already has its own session, and the next scheduler run files the occurrence again if the work is still owed.`);
+      `${triggerError}. No trigger source names an issue, so this session cannot know which dispatch it was started for. STOP: run nothing, change nothing, comment nothing, end the session. There is NO fallback - never pick an issue by listing ${readyLabelForScope(scope)}; every dispatch in that list already has its own session, and the next scheduler run files the occurrence again if the work is still owed.`);
   }
 
   let { label, number, body } = trigger;

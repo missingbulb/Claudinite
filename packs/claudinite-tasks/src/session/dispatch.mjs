@@ -284,7 +284,7 @@ export function staleEscalationComment(issue) {
 // label, add it back — which emits a new event.
 //
 // This is the recovery that used to live in the executor's drain sweep, then in
-// the scheduler's own pass, where it runs again as the repair phase —
+// the scheduler's own pass, where it runs again as the repair phase -
 // still deterministic code, still decided by the pure rules here. The sweep had EVERY triggered session also process every
 // OTHER armed issue, so one scheduler run filing N dispatches produced N sessions
 // each racing over the same N issues, and the claim swap could not stop it (every
@@ -348,7 +348,7 @@ export function staleClaimedDispatchIssues(openIssues = [], now, { idleMs = 3 * 
   });
 }
 
-// The claims a sweep must read comments for before it can judge them —
+// The claims a sweep must read comments for before it can judge them -
 // `livenessAt`'s scope. Every open dispatch claim, so a candidate set narrowed by
 // the very clock the rule stopped trusting cannot narrow it wrongly; the count is
 // the health line's `running`, a handful.

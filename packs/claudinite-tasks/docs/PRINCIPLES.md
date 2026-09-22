@@ -279,10 +279,10 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 ## Recover
 
 - Recovery is a PHASE of the scheduler run, first, before it asks any task
-  whether it wants to run — and still a fallback: every rule repairs
+  whether it wants to run - and still a fallback: every rule repairs
   something that already went wrong, no stage of a task's healthy flow passes
   through it, and an item somebody closed is finished, not a state to repair.
-  It runs first because what it frees is what the jobs after it read — a park
+  It runs first because what it frees is what the jobs after it read - a park
   it closes releases the task's lane, and an item it returns to the queue is
   counted by the drain gate that ends the run. Its effects are threaded into
   the item list the ask reads, so every cadence term judges this run's world
@@ -304,14 +304,14 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   term at HEAD — never from title parsing. `S18`, `S21` (never fires on a
   quiet task, which has no item to escalate)
 - The stuck-dependency sweep notes a `blocked` item whose blockers have not
-  resolved for ~2 IDLE days with a comment only — labels untouched, so the item
+  resolved for ~2 IDLE days with a comment only - labels untouched, so the item
   still proceeds by itself the moment its blockers resolve. The bound is read
   from the item's last activity rather than its creation, which makes the
   comment its own guard: posting one moves `updated_at`, so the next is two
   idle days out rather than one per pass forever. `S18`,
   `test/schedule/repair-rules.test.mjs: the stuck-dependency bound is read from the item's last activity, not its age`
 - An open item wearing neither a status label nor a park — a torn label
-  swap's leavings — is repaired to `needs-human-decision` by the repair phase's
+  swap's leavings - is repaired to `needs-human-decision` by the repair phase's
   stateless-item rule, on a fresh re-read so an item that settled between the
   sweep's read and its write is left alone.
   `test/schedule/repair-phase.test.mjs: a stateless item parks at failure — a torn swap is breakage, not a judgement`,

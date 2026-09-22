@@ -38,8 +38,8 @@ Three responsibilities, strictly separated (owner, 2026-08-06):
    and a `labeled`-event run for latency) that picks the next ready item, claims
    it, evaluates **that one task's** precondition, runs its code-work, and either
    converges the item or hands off to an agent session.
-3. **The repair phase** — the first thing the scheduler run does, before it asks
-   any task: everything about the queue that is *nobody's task* — items stuck
+3. **The repair phase** - the first thing the scheduler run does, before it asks
+   any task: everything about the queue that is *nobody's task* - items stuck
    ready past their period, items wearing no state label after a torn transition,
    parks their own world has since answered, and a health review of the open set.
    It runs first because what it frees is what the ask and the drain gate read.

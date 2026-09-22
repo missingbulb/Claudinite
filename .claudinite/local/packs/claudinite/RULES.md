@@ -384,10 +384,10 @@ Below are rules on how to work on this repo.
 
 ## Scheduled tasks
 
-- **Reaching for a repair rule to make a flow work** — the scheduler run's repair phase is the
+- **Reaching for a repair rule to make a flow work** - the scheduler run's repair phase is the
   fallback lane, so every rule there repairs something that already went wrong and no healthy
   path may depend on one to complete; fix what leaves the mess, and never write a rule over
-  closed items — a park a person closed is answered. (reaching-janitor-rule)
+  closed items - a park a person closed is answered. (reaching-janitor-rule)
 
 - **Filing a verification for a change whose effect first shows in a repo that merely uses
   Claudinite** — a run here reads only this repository: its sessions carry no member's scope and

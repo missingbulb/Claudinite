@@ -1,10 +1,10 @@
-// THE REPAIR PHASE of the scheduler run (docs/PRINCIPLES.md) — the recovery that
+// THE REPAIR PHASE of the scheduler run (docs/PRINCIPLES.md) - the recovery that
 // used to run once a day as a task of its own, planned here as ops the same run
 // applies before it asks any task whether it wants to run.
 //
 // IT IS STILL A FALLBACK. Every rule below repairs something that already went
-// wrong — a label swap that tore, a session that died, a park nobody answered, a
-// terminal nobody closed — and the healthy flow of a task never passes through
+// wrong - a label swap that tore, a session that died, a park nobody answered, a
+// terminal nobody closed - and the healthy flow of a task never passes through
 // here: an item the machinery handled correctly is settled by whoever handled it,
 // before any of this runs. A new rule here is a claim that a failure mode exists
 // and that nothing nearer to it can close it out; the alternative to writing one
@@ -18,7 +18,7 @@
 // WHY IT RUNS BEFORE THE ASK. Repair frees what the ask then reads: closing an
 // abandoned failure park releases the task's lane, and the occurrence the task is
 // owed is filed in the same run rather than one tick later. That ordering is the
-// whole reason this is a phase of the run and not a task behind it — a task's own
+// whole reason this is a phase of the run and not a task behind it - a task's own
 // repair could only ever land after the tick that filed it, and could never feed
 // the drain gate that dispatches an executor for what it freed.
 //
@@ -49,8 +49,8 @@ import {
 //   { kind: 'note', issue, body }                      a comment and nothing else
 //
 // `confirm` names the pure predicate the shell must see hold on a FRESH read before
-// it writes. Only the three rules whose premise is a TRANSIENT carry one — "this
-// looks torn", "nobody has touched this" — because a swap in flight is
+// it writes. Only the three rules whose premise is a TRANSIENT carry one - "this
+// looks torn", "nobody has touched this" - because a swap in flight is
 // indistinguishable from one that tore and `items` is a snapshot seconds old (#1104:
 // #1101 closed `task:done` at 12:50:13Z and was escalated at 12:50:21Z). The rules
 // that turn on a clock over a stable label need no second read.
@@ -65,7 +65,7 @@ import {
 const threadable = (op) => !op.confirm;
 
 // Apply an op's effect to the in-memory item, mirroring exactly what the shell
-// writes — status cleared of EVERY spelling, the new label added, and for a retire
+// writes - status cleared of EVERY spelling, the new label added, and for a retire
 // the close itself. The cadence terms read these items (`signals/index.mjs` folds
 // `ctx.items` into each task's run history), so an effect that is written to GitHub
 // but not to the snapshot leaves the ask judging a world one write out of date.
@@ -123,7 +123,7 @@ export function planRepair({
   }
 
   // THE RESOLUTION DECIDES THE OUTCOME; BOTH OUTCOMES CLOSE. A merged target means
-  // the work landed and an unmerged one that it was rejected — and a person who
+  // the work landed and an unmerged one that it was rejected - and a person who
   // closed the pull request has already given their answer, so leaving their issue
   // open asks them to come back and say it a second time.
   for (const item of endedParkItems(open, { resolutionOf })) {
@@ -172,7 +172,7 @@ export function planRepair({
 
   // FAILURE, not decision: a dead session is something the machine noticed, never a
   // choice a person made. The kind carries two consequences that both want that
-  // reading — it is the only park a later clean run can supersede, and the only one
+  // reading - it is the only park a later clean run can supersede, and the only one
   // that holds the task's lane, so the generator stops filing a fresh occurrence
   // each anchor behind a run nobody has looked at.
   for (const item of deadAgentItems(open, now, { progressAt })) {
@@ -190,7 +190,7 @@ export function planRepair({
   // COMMENT ONLY, deliberately: labels untouched means the item still proceeds by
   // itself the moment its blockers resolve, and a human who decides it is dead
   // closes it by hand. It claims nothing, so an item this rule notes can still be
-  // escalated or closed by a rule above — the note is about the wait, not the item's
+  // escalated or closed by a rule above - the note is about the wait, not the item's
   // state.
   for (const item of stuckBlockedItems(open, now, { stateOf })) {
     if (taken.has(item.number)) continue;
@@ -200,7 +200,7 @@ export function planRepair({
 
   // A TORN ADOPTION IS NOT A TORN ITEM. Adoption writes the machine block and then
   // the status (`run.mjs` job 4), so a block with no status is the shape a failed
-  // label call leaves — and it is exactly what job 4 re-adopts on the next run. It
+  // label call leaves - and it is exactly what job 4 re-adopts on the next run. It
   // reaches this rule looking identical to a swap that tore, so the issues job 4
   // owns are excluded here rather than parked out from under it.
   for (const item of statelessItems(open)) {
@@ -221,8 +221,8 @@ export function planRepair({
   // What lived here until the merge: the slot scheduler's `[claudinite-task]`
   // dispatch issues (#974), escalated when stale, re-armed when their trigger event
   // was lost. All three of its rules went when the task did. The re-arm and the
-  // dead-claim were already no-ops — re-emitting a ready label for a trigger nothing
-  // listens to arms nothing, and no session claims a dispatch issue any more — and
+  // dead-claim were already no-ops - re-emitting a ready label for a trigger nothing
+  // listens to arms nothing, and no session claims a dispatch issue any more - and
   // the escalation's population is a closed set that only shrinks. A member still
   // holding one closes it by hand, which is one issue, once.
   //
