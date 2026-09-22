@@ -48,7 +48,6 @@ import { schedulerRun } from '../../src/schedule/run.mjs';
 import { dispatchDrain } from '../../src/schedule/drain-dispatch.mjs';
 import { runExecutor } from '../../src/execute/loop.mjs';
 import { continueOrEscalate, nextDepth } from '../../src/recover/continuation.mjs';
-import { sweepQueue } from '../../tasks/task-janitor/queue-sweep.mjs';
 import { convergeOps, refusal } from '../../src/session/converge-item.mjs';
 import { normalizeTaskDeclaration, taskCadence } from '../../src/contract/task-contract.mjs';
 import { mostRecentAnchor } from '../../src/items/anchors.mjs';
@@ -373,7 +372,14 @@ export function makeSim({
     });
     for (const a of result.asked) record('ask', { task: a.task, verdict: a.verdict, reason: a.reason });
     for (const op of result.ops) {
-      if (op.kind === 'create') record('create', { task: `${op.pack}/${op.task}` });
+      // The repair phase's verdicts, recorded where the janitor workflow's were: the
+      // scenarios that assert "no escalation happened" mean nothing unless the
+      // merged pass reports the same outcomes the separate sweep used to.
+      if (op.rule === 'stale-ready') record('escalate', { issue: op.issue, task: taskIdOfIssue(op.issue), rule: 'stale-ready' });
+      else if (op.rule === 'dead-agent') record('agent-reclaim', { issue: op.issue, task: taskIdOfIssue(op.issue) });
+      else if (op.rule === 'stateless') record('repair-stateless', { issue: op.issue });
+      else if (op.rule) record('janitor-close', { issue: op.issue });
+      else if (op.kind === 'create') record('create', { task: `${op.pack}/${op.task}` });
       else if (op.kind === 'ready') record('ready', { issue: op.issue });
       else if (op.kind === 'reclaim') record('reclaim', { issue: op.issue, task: taskIdOfIssue(op.issue), to: op.to });
       else if (op.kind === 'dedupe') record('dedupe', { issue: op.issue, task: `${op.pack}/${op.task}` });
@@ -418,18 +424,6 @@ export function makeSim({
       // runner. Its own decision — continue or escalate — is the engine's.
       const depth = nextDepth(fired?.inputs?.continuation_depth);
       await continueOrEscalate(github.gh, REPO, DEFAULT_BRANCH, depth).catch(() => {});
-    }
-  };
-
-  const janitorBody = async () => {
-    if (suspended()) { record('suspended-skip', { workflow: 'janitor' }); return; }
-    const result = await sweepQueue(github.gh, REPO, clock.port.now(), { tasks: taskList(), log: () => {} });
-    for (const n of result.staleReady) record('escalate', { issue: n, task: taskIdOfIssue(n), rule: 'stale-ready' });
-    for (const n of result.deadAgents) record('agent-reclaim', { issue: n, task: taskIdOfIssue(n) });
-    for (const n of result.stuck) record('escalate', { issue: n, task: taskIdOfIssue(n), rule: 'stuck-dependency' });
-    for (const n of result.stateless) record('repair-stateless', { issue: n });
-    for (const n of [...result.superseded, ...result.orphaned, ...result.ended, ...result.abandoned, ...result.unclosed]) {
-      record('janitor-close', { issue: n });
     }
   };
 
@@ -736,16 +730,14 @@ export function makeSim({
       };
     },
 
-    // Run the clock: the cron grid across the window, a daily janitor, then every
-    // event in order.
+    // Run the clock: the cron grid across the window, then every event in order.
+    // There is no separate janitor tick — recovery is a phase of the scheduler run,
+    // so the grid below is the whole of this world's machinery.
     async run(fromIso, toIso) {
       const restore = installClock(() => clock.ms());
       try {
         if (!started) { started = true; scriptSessions(); }
         actions.cron(fromIso, toIso, schedulerBody(), { concurrency: 'claudinite-scheduler', measure: true });
-        for (let t = Math.ceil(T(fromIso) / DAY) * DAY + 4 * HOUR + 3 * MINUTE; t < T(toIso); t += DAY) {
-          if (t >= T(fromIso)) clock.at(t, janitorBody);
-        }
         await clock.runUntil(T(toIso));
       } finally { restore(); }
       return sim;

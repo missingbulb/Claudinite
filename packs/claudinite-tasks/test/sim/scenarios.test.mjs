@@ -1124,8 +1124,13 @@ test('S18 fan-out: stuck member escalates, fan-in proceeds after the human acts'
   assert.equal(sim.item(members[1].number).state, 'closed', 'distinct qualifiers ran in parallel (no mutex)');
   assert.ok(sim.log.some((e) => e.rule === 'stale-ready' && e.issue === members[2].number),
     'the unreachable member came out of the queue as a human problem');
-  assert.ok(sim.log.some((e) => e.rule === 'stuck-dependency' && e.issue === fanIn.number),
-    'the starving fan-in was surfaced too (F14)');
+  // NOTHING SURFACES THE STARVING FAN-IN ANY MORE. The stuck-dependency rule that
+  // used to comment on it was deleted with the janitor (owner, 2026-09-22): its
+  // bound was measured from the item's CREATION and it carried no once-only guard,
+  // so it re-posted on every pass forever. What is left is the mechanism working —
+  // the fan-in proceeds by itself the moment its blocker resolves — and silence
+  // while it waits, however long that is.
+  assert.equal(sim.log.filter((e) => e.rule === 'stuck-dependency').length, 0);
   assert.equal(sim.item(fanIn.number).state, 'closed');
   assert.equal(sim.item(fanIn.number).outcome, 'done', 'and proceeded by itself once the human closed the member');
 });
@@ -1515,9 +1520,16 @@ test('S10b unanswered and no session: the agent leash brings it to triage', asyn
   assert.ok(sim.item(it.number).parked, 'triage — no retry ever risked a duplicate session');
 });
 
-// ---- S11 — agent dies mid-run: the janitor's 3h agent leash converges the item
+// ---- S11 — agent dies mid-run: the 3h agent leash converges the item
 // needs-human, naming the dead session.
-test('S11 dead agent: janitor leash converges needs-human, names the session', async () => {
+//
+// WHAT THE MERGE CHANGED HERE, and it is a real change rather than a timing detail:
+// recovery runs at every scheduler tick now, not once a day, so the park the leash
+// files is visible to rule E — a later clean run of the same task supersedes it —
+// within hours instead of a day. The incident is still recorded and still names its
+// session; what shrank is how long the report stands before the next good run
+// answers it. That is rule E's stated intent arriving sooner, not a new rule.
+test('S11 dead agent: the leash converges needs-human, names the session', async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
   sim.at('2026-08-12T04:10Z', (s) => s.crashNextAgentOf('tidy/tidy-issues'));
@@ -1528,14 +1540,16 @@ test('S11 dead agent: janitor leash converges needs-human, names the session', a
   const reclaim = sim.log.find((e) => e.kind === 'agent-reclaim');
   assert.ok(reclaim, 'the leash fired');
   const it = sim.item(reclaim.issue);
-  assert.ok(it.parked);
-  assert.match(it.comments.at(-1).body, /nonce/, 'the dead session is named by the nonce it was fired with');
+  assert.ok(it.comments.some((c) => /nonce/.test(c.body)), 'the dead session is named by the nonce it was fired with');
   // A park is not LIVE: nothing in the engine holds a lane on its own, so the next
   // day's occurrence is asked and filed beside it.
   const beside = own(sim, 'tidy/tidy-issues').filter((i) => i.createdAt >= T('2026-08-13T04:00Z'));
   assert.equal(beside.length, 1, "the next day's occurrence was filed around the park");
   assert.equal(beside[0].outcome, 'done', 'and ran normally while the incident waited');
-  assert.equal(it.state, 'open', 'the park itself still waits for its person');
+  // …and that clean run is what answers the park (rule E), which the merged pass
+  // notices at its next tick rather than at the next day's janitor.
+  assert.equal(it.state, 'closed');
+  assert.equal(it.outcome, 'obsolete', 'superseded by the run that proved the fault gone');
 });
 
 // ---- S12' — agent did the work, died before converging; the human re-queue

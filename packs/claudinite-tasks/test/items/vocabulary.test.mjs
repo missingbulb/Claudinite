@@ -212,7 +212,7 @@ test('a workflow-failure issue is filed wearing the platform origin and a lane-h
 
 import { pickOrder } from '../../src/items/pick-order.mjs';
 import { planSchedulerRun } from '../../src/schedule/run.mjs';
-import { staleReadyItems, deadAgentItems, statelessItems, statelessComment } from '../../src/recover/janitor-rules.mjs';
+import { staleReadyItems, deadAgentItems, statelessItems, statelessComment } from '../../src/schedule/repair-rules.mjs';
 import { isReleasable } from '../../src/schedule/readiness.mjs';
 
 const workItem = (n, labels, extra = {}) => ({
@@ -275,7 +275,7 @@ test('a blocked item is releasable in either spelling, and a parked one never is
 // rule which would otherwise skip every request run does not.
 
 import { taskIdFromPath, withMachineBlock } from '../../public/work-item-grammar.mjs';
-import { staleReadyComment } from '../../src/recover/janitor-rules.mjs';
+import { staleReadyComment } from '../../src/schedule/repair-rules.mjs';
 import { LEGACY_BUILT_IN_TASK_PATH, LEGACY_BUILT_IN_TASK_PATH_MOUNTED } from '../legacy-protocol.mjs';
 
 test('a worker path names its task, in both homes and under either root', () => {

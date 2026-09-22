@@ -1,9 +1,9 @@
-// The janitor's queue rules (docs/PRINCIPLES.md) — the recovery that needs
-// judgment or a longer horizon than the scheduler run's hourly label mechanics. Each rule is
+// The queue's repair rules (docs/PRINCIPLES.md) — the recovery that needs
+// judgment or a longer horizon than the run's own deterministic label mechanics. Each rule is
 // pure, returning the items it claims plus the comment it would post; the
-// janitor task's worker is the only I/O shell over them.
+// scheduler run is the only I/O shell over them.
 //
-// THE JANITOR IS A FALLBACK (owner, 2026-09-06). Every rule below repairs something
+// REPAIR IS A FALLBACK (owner, 2026-09-06). Every rule below repairs something
 // that already went wrong — a label swap that tore, a session that died, a park
 // nobody answered, a terminal nobody closed — and the healthy flow of a task never
 // passes through here: an item the machinery handled correctly is settled by
@@ -15,11 +15,10 @@
 // label and all: a person ending a park by closing its issue is an answer, not a
 // state to repair, and nothing here reopens, re-labels or re-nags one.
 //
-// What is NOT here: the executing-leash reclaim, which rides the scheduler run (a
-// deterministic label rule, serialized and hourly, recovering a dead executor's
-// item in ~2h instead of ~25h). That amends the single-recovery-site split in
-// siting, not in principle — recovery still happens once, in one place per rule,
-// in code, and never as a sweep inside a session that is executing something.
+// What is NOT here: the executing-leash reclaim, which is a deterministic label
+// rule the run applies directly. Recovery still happens once, in one place per
+// rule, in code, and never as a sweep inside a session that is executing
+// something.
 
 import { taskPeriodMs } from '../items/anchors.mjs';
 import { isScheduledTask } from '../contract/task-contract.mjs';
@@ -45,7 +44,6 @@ export const STALE_READY_PERIODS = 2;
 // torn rather than in flight. A converge writes the label and the close within
 // seconds of each other, so an hour is far past any live transition.
 export const TERMINAL_OPEN_MS = 3600e3;
-export const STUCK_BLOCKED_MS = 2 * 86400e3;
 
 const ms = (t) => (t == null ? null : new Date(t).getTime());
 const idle = (item, now) => ms(now) - (ms(item.updated_at) ?? ms(item.created_at) ?? ms(now));
@@ -101,29 +99,6 @@ export const deadAgentComment = (item, sessionNote = null, { wedged = false } = 
   `This work item has carried \`${STATUS_RUNNING_AGENT}\` for over ${Math.round(AGENT_LEASH_MS / 3600e3)}h `
   + `${wedged ? 'without the work moving — the session kept beating, but every beat said the same thing' : 'with no activity'} — `
   + `the agent session that claimed it${sessionNote ? ` (${sessionNote})` : ''} never converged it. Parking it for a human.`;
-
-// Rule C — THE STUCK-DEPENDENCY SWEEP (F14). The stale-ready rule cannot see this
-// at all: a blocked item is never ready. So a blocked item whose blockers have not
-// resolved past the bound gets an escalation COMMENT and nothing else — labels
-// untouched, so the item still proceeds by itself the moment its blockers resolve,
-// and a human who decides it is dead closes it by hand.
-//
-// Sleeping items (a future `Not-before`, blockers closed) never match: waiting for
-// a time is the mechanism working.
-export function stuckBlockedItems(open = [], now, { stateOf = () => null, boundMs = STUCK_BLOCKED_MS } = {}) {
-  return open.filter((i) => {
-    if (!isStatus(i, STATUS_BLOCKED)) return false;
-    const { blockedBy } = parseWorkItemBody(i.body);
-    if (!blockedBy.length) return false;
-    if (blockedBy.every((n) => stateOf(n) === 'closed')) return false;
-    return ms(now) - ms(i.created_at) >= boundMs;
-  });
-}
-
-export const stuckBlockedComment = (item, unresolved) =>
-  `This work item has been blocked on ${unresolved.map((n) => `#${n}`).join(', ')} for over `
-  + `${Math.round(STUCK_BLOCKED_MS / 86400e3)} days. Nothing here is stuck mechanically — it will proceed by itself the moment those close — `
-  + 'but if they are never going to, close this item by hand.';
 
 // Rule D — THE STATELESS-ITEM REPAIR. An open work item whose labels decode to no
 // status at all is off the state machine entirely: a torn label swap's
@@ -352,3 +327,24 @@ export const scheduledForTasks = (tasks = []) => {
   const byId = new Map(tasks.map((t) => [`${t.pack}/${t.id}`, t]));
   return (id) => (byId.has(id) ? isScheduledTask(byId.get(id).decl) : null);
 };
+
+// The closed half of the queue, indexed for rule E: the task's newest run that
+// converged clean AFTER a given moment, or null. Built from the items the run has
+// already listed, so it costs no read of its own.
+export function doneRunLookup(done = []) {
+  const byTask = new Map();
+  for (const d of done) {
+    const p = parseWorkItemTitle(d.title) ?? taskIdFromPath(parseWorkItemBody(d.body).taskPath);
+    if (!p) continue;
+    const id = `${p.pack}/${p.task}`;
+    if (!byTask.has(id)) byTask.set(id, []);
+    byTask.get(id).push(d);
+  }
+  return (id, since) => {
+    const at = new Date(since).getTime();
+    const runs = (byTask.get(id) ?? [])
+      .filter((d) => new Date(d.closed_at ?? d.updated_at).getTime() > at)
+      .sort((a, b) => new Date(a.closed_at ?? a.updated_at) - new Date(b.closed_at ?? b.updated_at));
+    return runs.at(-1) ?? null;
+  };
+}

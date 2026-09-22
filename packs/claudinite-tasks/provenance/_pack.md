@@ -84,3 +84,20 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Fable 5.1, per the commit trailer.
 - **Landed:** #2167 (Closes #2115) · pack version 60920.2.
+
+## 2026-09-22 · policy-changed · recovery is a phase of the run, not a task behind it
+- **Reason:** the three-responsibility split (owner, 2026-08-06 - scheduler creates, executor
+  executes, janitor cleans up) held while recovery could afford a day's latency. It could not: the
+  janitor's repairs landed a tick late by construction, and the scheduler had already taken the
+  executing-leash reclaim back for that reason. The split survives as a module boundary -
+  `src/schedule/repair-rules.mjs` stays pure and is the only home for a repair verdict - rather than
+  as a task boundary, so the pack no longer carries `task-janitor`.
+- **Mechanism:** a phase of `planSchedulerRun`, before the ask, its effects threaded into the item
+  list the ask reads. A verdict the shell may decline on a fresh read is not threaded, so the plan
+  never hands the ask a world the run did not write.
+- **Rejected:** moving only the two pickup-restoring rules and leaving the rest a daily task - it
+  keeps the moving part the merge was for, and the remaining rules are indifferent to where they
+  run.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5
+- **Landed:** #2262
