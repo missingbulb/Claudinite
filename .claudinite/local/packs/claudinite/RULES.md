@@ -425,7 +425,7 @@ Below are rules on how to work on this repo.
 - **A precondition signal that is true most days** — let it only *widen* an already-triggered run.
   (precondition-signal-true)
 
-- **Writing a backstop, a fallback lane or a sweep** — one whose healthy run finds nothing —
+- **Writing a backstop, a fallback lane or a sweep** - one whose healthy run finds nothing -
   give it a term that asks its own question, calling the same rules its worker does rather than
   restating their clocks; a cadence alone cannot decline, so it files an item, a run and a
   closed-the-same-hour receipt every period to report that all is well.

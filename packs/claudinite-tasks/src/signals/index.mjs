@@ -487,15 +487,15 @@ const COLLECTORS = {
     return { list, horizonDays: RUN_HORIZON_DAYS };
   },
 
-  // THE OPEN QUEUE — every open work item in the repo, whichever task it belongs
+  // THE OPEN QUEUE - every open work item in the repo, whichever task it belongs
   // to, in the shape the janitor's rules read. Deliberately the one dimension
   // `issues` hides: that collector drops work items so the queue's own churn
   // cannot wake an issue-gated task (F8), which leaves the queue itself
-  // unobservable — and a task whose subject IS the queue then has nothing to gate
+  // unobservable - and a task whose subject IS the queue then has nothing to gate
   // on. Only a term naming `queue` sees it, so the exclusion above stands for
   // everyone else.
   //
-  // Served off `ctx.items` where the caller already holds the queue — the
+  // Served off `ctx.items` where the caller already holds the queue - the
   // scheduler run listed it before asking anybody, so this costs no read at the
   // tick, which is what makes it affordable on a daily task's gate. The executor
   // at pick holds none and reads the open list.

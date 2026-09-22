@@ -46,5 +46,5 @@ would claim: `queue-needs-sweep` in `preconditions.mjs` asks the sweep's own
 question off the open work-item list, so a healthy queue files no item at all. A
 park of any kind holds it, as does an item off the state machine, a terminal status
 standing open, a dead agent claim, a ready item nobody picked, or a blocked one past
-its bound. A queue that could not be read is an error and parks the run — never a
+its bound. A queue that could not be read is an error and parks the run - never a
 decline.
