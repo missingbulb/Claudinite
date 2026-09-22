@@ -16,13 +16,13 @@ import { execFileSync } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
 import { withTaskTrailer } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 import { planBumps, bumpSubject, BUMP_TASK } from '../../pack-versions.mjs';
 
-const item = process.env.CLAUDINITE_ITEM || '';
-const log = (s) => console.log(`pack-version-bump${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
 
 export const makeGit = (root) => (args, opts = {}) => execFileSync('git', ['-C', root, ...args], {
   encoding: 'utf8',
@@ -91,17 +91,8 @@ export async function run({ root, remote, base, today = new Date(), attempts = 3
   throw new Error(`${base} kept moving under ${attempts} pushes — run again`);
 }
 
-export async function main() {
-  const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
-  const repo = process.env.CLAUDINITE_REPO || process.env.GITHUB_REPOSITORY;
-  const token = process.env.GITHUB_TOKEN;
-  const base = process.env.CLAUDINITE_DEFAULT_BRANCH || 'main';
-  if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
-  if (!token) throw new Error('GITHUB_TOKEN is not set — the bump cannot push to the base branch');
+export async function worker({ root, repo, token, defaultBranch, log: runLog }) {
+  log = runLog;
+  const base = defaultBranch ?? 'main';
   await run({ root, remote: remoteUrl(repo, token), base });
-}
-
-// Run only when invoked directly (`node worker.mjs`), never on import.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((e) => { console.error(`pack-version-bump failed: ${e.message}`); process.exit(1); });
 }

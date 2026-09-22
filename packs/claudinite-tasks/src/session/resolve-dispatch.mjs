@@ -463,6 +463,6 @@ export function emitResult({ code, fields, advice }) {
 // never on import — the exported helpers above are unit-testable without it.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   resolveDispatch()
-    .then((result) => process.exit(emitResult(result)))
-    .catch((e) => { console.error(`resolve-dispatch: ${e.stack || e}`); process.exit(EXIT.internal); });
+    .then((result) => { process.exitCode = emitResult(result); })
+    .catch((e) => { console.error(`resolve-dispatch: ${e.stack || e}`); process.exitCode = EXIT.internal; });
 }

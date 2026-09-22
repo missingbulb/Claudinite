@@ -110,7 +110,8 @@ server.on('error', (e) => {
   // happens when the last run is still up.
   if (e.code === 'EADDRINUSE') {
     process.stderr.write(`Port ${port} is busy — another copy may be running. Try PORT=8100 node ${process.argv[1]}\n`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   throw e;
 });

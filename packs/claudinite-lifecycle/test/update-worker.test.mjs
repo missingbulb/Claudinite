@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { updatePullText, main } from '../tasks/update/worker.mjs';
+import { updatePullText, worker } from '../tasks/update/worker.mjs';
 import { NEEDS_HUMAN } from '../updates/engine-update.mjs';
 import { removeTree } from '../../../engine/remove-tree.mjs';
 
@@ -105,12 +105,14 @@ test('a converge with no target branch fails, naming the executor that did not h
   const held = { ...process.env };
   try {
     writeFileSync(join(dir, '.claudinite-settings.json'), '{"packs":[]}\n');
-    Object.assign(process.env, { CLAUDINITE_REPO_ROOT: dir, CLAUDINITE_REPO: 'o/r', GITHUB_TOKEN: 't' });
-    for (const v of ['CLAUDINITE_TARGET_BRANCH', 'CLAUDINITE_TARGET_PR', 'CLAUDINITE_CANON_REF']) delete process.env[v];
+    delete process.env.CLAUDINITE_CANON_REF;
     // It must fail BEFORE the canon clone: a run that cannot deliver has no business
     // spending minutes converging a tree it will then have nowhere to put — and a
     // clone here would make this case a network test.
-    await assert.rejects(main(), /CLAUDINITE_TARGET_BRANCH/);
+    await assert.rejects(worker({
+      root: dir, repo: 'o/r', defaultBranch: 'main', token: 't',
+      item: { number: 1 }, context: [], target: { mode: 'fresh', branch: null, pr: null }, secrets: {},
+    }), /CLAUDINITE_TARGET_BRANCH/);
   } finally {
     for (const k of Object.keys(process.env)) if (!(k in held)) delete process.env[k];
     Object.assign(process.env, held);
@@ -235,7 +237,7 @@ test('the "nothing changed" guard never swallows an apply-stage terminal', async
   assert.match(body, /terminal\.action !== 'apply-stage'/,
     'an apply-stage terminal owes a delivery, so it must reach the PR that requests it');
   // And the request really does sit after the PR, which is what makes the guard fatal.
-  assert.ok(src.indexOf("'agent-requested'") > src.indexOf('/repos/${repo}/pulls'),
+  assert.ok(src.indexOf('requestAgent:') > src.indexOf('/repos/${repo}/pulls'),
     'if the request ever moves above PR creation, this guard stops being load-bearing');
 });
 

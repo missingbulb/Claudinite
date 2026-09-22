@@ -257,5 +257,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const result = await runSelfTest(root);
   console.log(result.summary);
   for (const f of result.failures) console.log(`  - ${f.id}: ${f.detail}\n    fix: ${f.fix}`);
-  process.exit(strict && !result.ok ? 1 : 0);
+  process.exitCode = strict && !result.ok ? 1 : 0;
 }

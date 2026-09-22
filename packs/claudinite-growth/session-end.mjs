@@ -49,4 +49,4 @@ const run = spawnSync(process.execPath, [
 
 process.stdout.write(run.stdout ?? '');
 process.stderr.write(run.stderr ?? '');
-process.exit(run.status ?? 1);
+process.exitCode = run.status ?? 1;

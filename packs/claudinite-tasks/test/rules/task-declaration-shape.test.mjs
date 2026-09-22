@@ -42,7 +42,30 @@ test('task-declaration-shape: the minimal declaration is a code-work task, and n
   const { code_work_timeout, ...noBound } = minimal;
   assert.match(whatsOf({ [TASK]: json(noBound) }), /no numeric "code_work_timeout"/);
   const { code_work, ...nothing } = noBound;
-  assert.match(whatsOf({ [TASK]: json(nothing) }), /declares no "code_work"/);
+  assert.match(whatsOf({ [TASK]: json(nothing) }), /declares no work step/);
+});
+
+// The second form of the same field, at the author-time surface. This check reads the
+// declaration as TEXT while the runtime contract reads it parsed, so each form has to
+// be taught here too: a check watching one of two identical surfaces reads as
+// strictness on the other.
+test('task-declaration-shape: code_worker_mjs is a work step, and is checked like one', () => {
+  const wrapped = {
+    id: 'acme-task-h',
+    description: 'A minimal wrapped task.',
+    trigger: 'schedule',
+    preconditions: ['schedule:at-most-daily'],
+    expected_outcome: 'fresh_pr',
+    code_worker_mjs: 'worker.mjs',
+    code_work_timeout: 60,
+  };
+  assert.deepEqual(run({ [TASK]: json(wrapped) }), []);
+  const { code_work_timeout, ...noBound } = wrapped;
+  assert.match(whatsOf({ [TASK]: json(noBound) }), /no numeric "code_work_timeout"/);
+  assert.match(whatsOf({ [TASK]: json({ ...wrapped, code_worker_mjs: 'node worker.mjs' }) }), /is a command rather than a file name/);
+  assert.match(whatsOf({ [TASK]: json({ ...wrapped, code_worker_mjs: 'worker.js' }) }), /does not name a \.mjs module/);
+  assert.match(whatsOf({ [TASK]: json({ ...wrapped, code_worker_mjs: '../evil.mjs' }) }), /reaches outside the task directory/);
+  assert.match(whatsOf({ [TASK]: json({ ...wrapped, code_work: 'node worker.mjs' }) }), /both "code_work" and "code_worker_mjs" are declared/);
 });
 
 test('task-declaration-shape: an agent carries its own worker file and bound — neither defaults', () => {
@@ -123,7 +146,7 @@ test('task-declaration-shape: a retired code-work field name declares no code_wo
   const { code_work, code_work_timeout, ...rest } = noneTask;
   for (const [field, timeout] of [['agent_preprocessing', 'agent_preprocessing_timeout'], ['prework', 'prework_timeout']]) {
     const whats = whatsOf({ [TASK]: json({ ...rest, [field]: 'node worker.mjs', [timeout]: 120 }) });
-    assert.match(whats, /declares no "code_work"/, field);
+    assert.match(whats, /declares no work step/, field);
   }
   // The other two renames simply go unread — nothing here is wrong with the file.
   assert.deepEqual(run({ [TASK]: json({ ...good, after: ['acme-pack-b/acme-task-c'] }) }), []);
@@ -210,7 +233,7 @@ test('task-declaration-shape: a none task needs no execution bound but flags cod
 });
 
 test('task-declaration-shape: flags an agentless (none) task that declares no code_work', () => {
-  assert.match(whatsOf({ [TASK]: json({ id: 'x', preconditions: ['schedule:at-most-daily'], agent_model: 'none', expected_outcome: 'none' }) }), /declares no "code_work"/);
+  assert.match(whatsOf({ [TASK]: json({ id: 'x', preconditions: ['schedule:at-most-daily'], agent_model: 'none', expected_outcome: 'none' }) }), /declares no work step/);
 });
 
 test('task-declaration-shape: a none task with no agent_instructions is clean — the field is not applicable', () => {

@@ -106,7 +106,8 @@ outage self-heals by looking at the queue rather than by replaying a ledger.
   close once its own exists; a green, unlanded one on an auto-merge repo is landed
   instead). Any other word is rejected outright, retired spellings included.
   Everything else has a default or is conditional: `agent_model`
-  (`opus | sonnet | haiku | none`) is `none`, no agent; `code_work` is no code work.
+  (`opus | sonnet | haiku | none`) is `none`, no agent; neither work-step field is
+  declared, and there is no code work.
   The two timeouts have **no default**: an agent declares `agent_execution_timeout`
   and code work declares `code_work_timeout`, because a running phase always has a
   bound. An agent also declares `agent_instructions`, its worker file — nothing
@@ -205,6 +206,55 @@ authoring a workflow for it. An agentic task adds **`task.md`**, the spec its
 session follows, and may still do its own code-work first — escalating the
 remainder for **work code-work could not do**, never for a re-check of whether
 the run should have happened.
+
+**Declare that worker as `code_worker_mjs`, and write only the work.** The field
+names the module - `"code_worker_mjs": "worker.mjs"` - and the runner supplies the
+entry point, so the module exports one function and nothing else:
+
+```js
+export async function worker({ gh, log, deliver, root, repo, defaultBranch, item, context, target, secrets }) {
+  // … the work. Return nothing, or a verdict:
+  //   { triage: { kind, detail } }        the park's routing, for a run that must fail
+  //   { requeue: { until, reason } }      come back later; the item blocks until then
+  //   { requestAgent: { delivered, reason } }   hand off to the agentic phase
+}
+```
+
+The bag is the `CLAUDINITE_*` environment already parsed, so a worker reads no
+environment of its own and a test calls it with a bag it built. Beside the parsed
+values it carries the run's **instruments**, already built, so a worker never
+assembles one for itself:
+
+- **`gh`** - a REST client on the Action's own token. There is no run without one
+  (the executor's workflow always sets `GITHUB_TOKEN`), so never guard on the
+  token before using it. A client on a DIFFERENT credential is a different object
+  and stays the worker's own: a declared secret really can be missing, and the
+  worker is what says so in the terms of its whole grant.
+- **`log`** - one line under this task's name and its item.
+- **`deliver`** - the generated-file delivery with the checkout, the repository,
+  the base branch, the token, the branch and pull request the executor resolved,
+  the task that is writing and the logger already bound. Pass what is your own:
+  `files`, `title`, `body`, `message`.
+- **`automerge`** - what this task authorizes to land unreviewed, as the arming
+  trailer's own expression, for a worker that pushes a commit itself.
+- **`token`**, **`stepSummary`** - the raw readings, for the few that need them.
+
+**Name what you take, and take the contract at its word.** Destructure the fields
+this worker reads rather than accepting the bag whole - the signature is where a
+reader learns what the run needs - and do not re-check them. The executor resolves
+the repository, the checkout, the item and the target before it spawns anything, so
+`if (!repo) throw` is a guard on a case that cannot occur: it reads as a real
+possibility, and the reader spends time deciding whether the run has a path where it
+is null. What a worker does validate is the world - an API that answered 404, a file
+that is not there - never the shape of what it was handed.
+
+`secrets` holds the ones this task declared, and an unset value is absent rather
+than empty. A throw is the failure channel - the runner prints the failure line,
+the stack and the `.triage` an error carries, and sets the exit code; a returned
+`triage` is that same failure by another road, since the queue reads a park's
+routing only off a non-zero exit. The raw `code_work` form still takes a whole
+command for a work step that is not a node module, and the two are never declared
+together.
 
 `task.md` is that spec and nothing else, so an agentless task must not carry one
 (`task-md-only-when-agentic`, blocking): the file's presence is what the rest of

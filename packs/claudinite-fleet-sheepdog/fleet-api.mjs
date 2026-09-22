@@ -72,7 +72,7 @@ export function grantError(message) {
 export function fleetWorkerFailed(name, e) {
   console.error(`${name} failed: ${e.message}`);
   if (e?.triage) console.error(`claudinite-needs-human: ${e.triage} — ${e.message}`);
-  process.exit(1);
+  process.exitCode = 1;
 }
 
 export async function paged(gh, path) {

@@ -19,7 +19,8 @@ import { fileURLToPath } from 'node:url';
 const target = join(dirname(fileURLToPath(import.meta.url)), '..', 'public-website', 'bump-version.mjs');
 if (!existsSync(target)) {
   console.error('bump-version: the version scheme is the public-website pack\'s now — declare public-website and run `node .claudinite/shared/packs/public-website/bump-version.mjs` instead');
-  process.exit(1);
+  process.exitCode = 1;
+} else {
+  const { status } = spawnSync(process.execPath, [target, ...process.argv.slice(2)], { stdio: 'inherit' });
+  process.exitCode = status ?? 1;
 }
-const { status } = spawnSync(process.execPath, [target, ...process.argv.slice(2)], { stdio: 'inherit' });
-process.exit(status ?? 1);

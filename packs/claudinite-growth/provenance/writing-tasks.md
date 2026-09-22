@@ -63,3 +63,47 @@
 - **Actor:** owner session, reconciling #1920 and #2138.
 - **Model:** claude-opus-5
 - **Landed:** #2138
+
+## 2026-09-22 · reworded · the wrapped work step, and what a worker module holds (#2225)
+- **Reason:** the skill taught `code_work` as the only way to declare a work step, so an author
+  reading it would keep writing the entry point the runner now supplies. The section says what the
+  module exports, what the bag carries and what a returned verdict does, because those are the three
+  things an author cannot derive from the declaration alone.
+- **Actor:** @missingbulb (owner).
+- **Model:** Claude Opus 5
+
+## 2026-09-22 · reworded · the worker bag names the Action token, and a returned triage fails the run
+- **Reason:** every converted worker needed the token the bag already carried, and the `{ triage }`
+  verdict had to be described as what it is - a failed run - because the executor reads a park's
+  routing only off a non-zero exit, so a worker that parked itself on a clean one would be
+  downgrading its own failure into a lane nobody watches.
+- **Actor:** @missingbulb (owner), converting every task to the wrapped form.
+- **Model:** Opus 5
+
+## 2026-09-22 · reworded · the bag carries the run's instruments, not just its readings
+- **Source:** the owner, reading a converted worker's `if (!token) throw` and asking whether a
+  configured client could not simply be handed in.
+- **Reason:** the executor's workflow sets `GITHUB_TOKEN` on every code-work step, so no run exists
+  in which a client cannot be built and every guard on it was a check on a case that cannot occur.
+  The same held for three more shapes each worker rebuilt: the logger (fourteen copies of one
+  expression), the generated-file delivery (eight arguments the runner already holds, one of them a
+  hand-written `<pack>/<task>` literal that a rename leaves stale with no error), and the automerge
+  expression (three workers importing their own `task.json` for one string).
+- **Mechanism:** `gh`, `log`, `deliver` and `automerge` join the bag. A client on a DIFFERENT
+  credential stays the worker's own, and the skill says why: a declared secret can be missing, and
+  only the worker can report that in the terms of its whole grant.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5
+
+## 2026-09-22 · strengthened · a worker names what it takes, and never re-checks the contract
+- **Source:** the owner, on a converted worker: "the contract is that repo isn't null, don't check",
+  and "let's be explicit on what the worker function takes as parameters".
+- **Reason:** fourteen workers guarded values the executor resolves before it spawns anything, and
+  nine took the bag whole. Both cost the reader: a guard on an impossible case reads as a real
+  possibility and has to be reasoned about before it can be dismissed, and an opaque `params` hides
+  what the run actually needs until every use of it has been found.
+- **Mechanism:** the rule names the line - validate the world, never the shape of what you were
+  handed - so it covers the next field added to the bag rather than the ones that happened to be
+  guarded.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5

@@ -128,7 +128,10 @@ jobs:
           CLAUDINITE_REPO: ${{ steps.cfg.outputs.repo }}
           GITHUB_TOKEN: ${{ secrets.FLEET_GITHUB_TOKEN }}
         working-directory: packs/claudinite-lifecycle/tasks/update
-        run: node worker.mjs | tee "$RUNNER_TEMP/rehearsal.log"
+        # Through the runner's own entry point, which is what the executor spawns for a
+        # `code_worker_mjs` task: the worker exports the work and nothing else, so the
+        # environment set above is parsed into its parameters there.
+        run: node ../../../claudinite-tasks/src/execute/worker-entry.mjs worker.mjs | tee "$RUNNER_TEMP/rehearsal.log"
 
       # A green step is not evidence; the marker is. Without this, every way of
       # exiting 0 without converging — a stand-down, an early return, a worker whose

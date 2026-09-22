@@ -301,5 +301,5 @@ export function runVerdict({ fired, followed, failed }) {
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  main().catch((e) => { console.error(`fleet-baseline failed: ${e.message}`); process.exit(1); });
+  main().catch((e) => { console.error(`fleet-baseline failed: ${e.message}`); process.exitCode = 1; });
 }

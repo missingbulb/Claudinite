@@ -59,11 +59,12 @@ test('every canon task.json satisfies the schema, points at it, and validates ag
     // than in a handful of per-task suites, which is where they used to live — the
     // ones that had a suite were held and the rest were not.
     assert.equal(decl.id, basename(dir), `${f}: the id and the directory it is discovered by disagree`);
-    // The script is found by extension, not by position: `node --flag worker.mjs` is
+    // A `code_worker_mjs` declaration IS the module's name. In a `code_work` command
+    // the script is found by extension, not by position: `node --flag worker.mjs` is
     // as legal a command as `node worker.mjs`, and taking the second token would fail
     // it for the wrong reason.
-    const script = decl.code_work?.split(/\s+/).find((t) => t.endsWith('.mjs'));
-    if (script) { workers++; assert.ok(existsSync(join(dir, script)), `${f}: code_work names ${script}, which is not beside the declaration`); }
+    const script = decl.code_worker_mjs ?? decl.code_work?.split(/\s+/).find((t) => t.endsWith('.mjs'));
+    if (script) { workers++; assert.ok(existsSync(join(dir, script)), `${f}: the declaration names ${script}, which is not beside it`); }
   }
   // The guard above is the one assertion here that a task can sit out, so the outer
   // count does not cover it: were `.mjs` to stop being how a worker is spelled, every

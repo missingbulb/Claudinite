@@ -181,14 +181,30 @@ const rule = {
         }
       }
 
-      // The code-work/timeout guards (docs/PRINCIPLES.md).
-      const hasCodeWork = str('code_work') !== null;
+      // The code-work/timeout guards (docs/PRINCIPLES.md). Either form of the work
+      // step: the runtime contract reads both through `declaresCodeWork`, and a check
+      // watching one of two structurally-identical surfaces reads as strictness on
+      // the other.
+      const hasCodeWork = str('code_work') !== null || str('code_worker_mjs') !== null;
       // No default for the bound: a running agent always has one.
       if (model !== 'none' && !hasNum('agent_execution_timeout')) {
         flag('an agentic task (agent_model !== "none") declares no numeric "agent_execution_timeout"', 'add "agent_execution_timeout": seconds bounding the agentic run');
       }
       if (model === 'none' && !hasCodeWork) {
-        flag('an agentless task (agent_model: "none") declares no "code_work"', 'add "code_work" (a none task does its work in that subprocess) — or give the task an agent_model');
+        flag('an agentless task (agent_model: "none") declares no work step', 'add "code_worker_mjs" (a none task does its work in that subprocess) - or give the task an agent_model');
+      }
+      if (str('code_work') !== null && str('code_worker_mjs') !== null) {
+        flag('both "code_work" and "code_worker_mjs" are declared', 'keep one - "code_worker_mjs" for a module the runner wraps, "code_work" for a command it only spawns');
+      }
+      const workerModule = str('code_worker_mjs');
+      if (workerModule !== null) {
+        if (/\s/.test(workerModule)) {
+          flag('"code_worker_mjs" is a command rather than a file name', 'name the module alone, e.g. "worker.mjs" - the runner supplies the node invocation');
+        } else if (!workerModule.endsWith('.mjs')) {
+          flag('"code_worker_mjs" does not name a .mjs module', 'the runner imports it and calls its `worker` export, so it is an ES module beside task.json');
+        } else if (/(^|\s)\//.test(workerModule) || workerModule.includes('..')) {
+          flag('"code_worker_mjs" reaches outside the task directory (absolute path or "..")', 'name a sibling module only, e.g. "worker.mjs"');
+        }
       }
       if (hasCodeWork) {
         const prep = str('code_work');
@@ -196,7 +212,7 @@ const rule = {
           flag('"code_work" reaches outside the task directory (absolute path or "..")', 'reference a sibling script only, e.g. "node prepare.mjs"');
         }
         if (!hasNum('code_work_timeout')) {
-          flag('"code_work" is set but declares no numeric "code_work_timeout"', 'add "code_work_timeout": seconds after which the subprocess is killed');
+          flag('a work step is declared but no numeric "code_work_timeout" is', 'add "code_work_timeout": seconds after which the subprocess is killed');
         }
       }
     }

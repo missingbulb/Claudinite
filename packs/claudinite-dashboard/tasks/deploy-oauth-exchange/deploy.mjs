@@ -53,7 +53,11 @@ export const COMPATIBILITY_DATE = '2024-01-01';
 // A park the operator can act on, in the executor's own vocabulary: the last marker
 // printed decides the lane, and `action` means something outside the code must
 // change before this can run.
-export class NeedsAction extends Error {}
+export class NeedsAction extends Error {
+  // A setting somebody changes, not a trace somebody reads: `triage` is the name the
+  // runner's entry point reads to route the park.
+  constructor(message) { super(message); this.triage = 'action'; }
+}
 
 const originOf = (url) => { try { return new URL(url).origin; } catch { return null; } };
 
@@ -267,6 +271,6 @@ if (isMain) {
     console.error(e instanceof NeedsAction
       ? `claudinite-needs-human: action — ${e.message}`
       : `deploy-oauth-exchange failed: ${e.stack ?? e.message}`);
-    process.exit(1);
+    process.exitCode = 1;
   });
 }

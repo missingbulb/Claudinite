@@ -403,7 +403,7 @@ async function main() {
   const argv = process.argv.slice(2);
   const seedLocalPack = argv.includes('--seed-local-pack');
   const fullName = argv.find((a) => !a.startsWith('--')) || process.env.GITHUB_REPOSITORY || process.env.CLAUDINITE_REPO;
-  if (!fullName) { console.error('converge-wiring: need owner/repo (argv or GITHUB_REPOSITORY)'); process.exit(1); }
+  if (!fullName) { console.error('converge-wiring: need owner/repo (argv or GITHUB_REPOSITORY)'); process.exitCode = 1; return; }
   const root = process.env.CLAUDINITE_REPO_ROOT || process.cwd();
   const { changed, error } = await convergeWiring(root, fullName, { seedLocalPack });
   if (error) console.log(`! ${error}`);

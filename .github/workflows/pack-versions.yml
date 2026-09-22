@@ -33,7 +33,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+      # Through the runner's own entry point, which is what the executor spawns for a
+      # `code_worker_mjs` task: the worker exports the work and nothing else, so the
+      # checkout it walks is named here rather than inferred from the process.
       - name: Cut a version for every pack whose content moved
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node packs/claudinite-canon-curation/tasks/pack-version-bump/worker.mjs
+          CLAUDINITE_REPO_ROOT: ${{ github.workspace }}
+        working-directory: packs/claudinite-canon-curation/tasks/pack-version-bump
+        run: node ../../../claudinite-tasks/src/execute/worker-entry.mjs worker.mjs

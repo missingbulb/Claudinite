@@ -101,5 +101,5 @@ export function main(root = process.cwd(), env = process.env) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  try { main(); } catch (e) { console.error(`::error::${e.message}`); process.exit(1); }
+  try { main(); } catch (e) { console.error(`::error::${e.message}`); process.exitCode = 1; }
 }
