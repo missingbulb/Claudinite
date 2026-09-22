@@ -2,7 +2,7 @@
 // The AWS Serverless Application Model and the API-Gateway/CloudFront stack it
 // deploys: the gotchas any SAM project hits, as checks, prose and two skills.
 export default {
-  version: '60920.1',
+  version: '60922.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'serverless AWS stacks: SAM template shape, Lambda handler paths, esbuild bundling, API Gateway and CloudFront gotchas',
