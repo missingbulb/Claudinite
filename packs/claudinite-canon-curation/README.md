@@ -53,6 +53,7 @@ why.
 | `pack-version-history` | weekly, when commits landed under `packs/` | a self-landing PR touching only `packs/*/provenance/VERSIONS.md` |
 | `canon-prose-to-checks` | weekly, on a canon somebody worked in that week | a PR converting the shelf's always-testable prose into checks |
 | `canon-rule-revalidation` | weekly | corrections to shelf rules whose environment claim no longer probes true |
+| `usage-triage` | weekly, when a usage-review finding has stood two weeks with a cause a diff can argue from | one PR per subject carrying the proposed edit to the shelf, automerge `nothing` |
 
 ### Rules (`RULES.md`)
 
@@ -96,6 +97,7 @@ What a canon session follows when it names, configures, writes or polices a pack
 | `pack-discovery-entry-await` | critical | correctness | check: blocking |
 | `pack-version-log-ordered` | high | correctness | check: blocking |
 | `skill-no-enforcement-narration` | medium | complexity | check: blocking |
+| `skill-usage-declared` | high | correctness | check: blocking |
 | `pack-independence` | high | correctness | declared check: blocking |
 | `pack-directory-kebab-case` | high | correctness | declared check: blocking |
 | `corpus-count-in-prose` | low | complexity | declared check: advisory |

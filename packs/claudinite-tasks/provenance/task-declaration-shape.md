@@ -99,3 +99,14 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude, per the commit trailer.
 - **Landed:** #1795 (Refs #1656, #1633) · pack version 60906.15.
+
+## 2026-09-21 · weakened · a task-local term may declare that it takes an argument (#2214)
+- **Reason:** the check reads a task's own `preconditions.mjs` as text and recognised only
+  `needsItem` on a term, so every task-local term read as taking no argument and a declaration
+  carrying one was rejected. No task-local term could be parameterised at all; the usage review's
+  own `window-has-sessions:10` was the first to want it, and the gap would have blocked every future
+  one the same way.
+- **Mechanism:** the text parser widened to read `takesArg` beside `needsItem`, which are the two
+  properties of a term a declaration can be wrong about. Still read as text and never imported,
+  since a check must not execute a member's own module.
+- **Landed:** #2214

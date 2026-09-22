@@ -3,6 +3,8 @@ name: sam-template
 description: Shaping a SAM template's CloudFront, API Gateway CORS, cache and DynamoDB index resources — forwarding Authorization, non-http origins, what a CDN hit skips, TTL over invalidation, GSI backfill. Use when editing a SAM template.yaml or template.yml.
 metadata:
   body: guidelines
+  usage:
+    expect: triggered
   force-load-on-file-edits-paths:
     - "**/template.yaml"
     - "**/template.yml"

@@ -3,6 +3,8 @@ name: changing-pack-elements
 description: What a change to a pack's element owes - the entry on its provenance file, which kind, and how to append it - and what a pack's README carries. Loaded for any edit of a pack's RULES.md, skills, checks, tasks, manifest, README or provenance folder, in a repo's local pack or on a canon's shelf.
 metadata:
   body: workflow
+  usage:
+    expect: triggered
   force-load-on-file-edits-paths:
     - "**/packs/*/RULES.md"
     - "**/packs/*/skills/**"

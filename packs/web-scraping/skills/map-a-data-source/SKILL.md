@@ -3,6 +3,8 @@ name: map-a-data-source
 description: Reconnaissance on a website you want data from but don't control — locate the real data surface (hydration blob, client API, or markup) and write the findings down before any parser exists. Use when adding a new source to a scraper, or when an existing source stops parsing and you suspect the site changed shape.
 metadata:
   body: workflow
+  usage:
+    expect: judgment
 ---
 
 # Map a data source before you parse it

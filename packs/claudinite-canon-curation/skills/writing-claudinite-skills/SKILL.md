@@ -3,6 +3,8 @@ name: writing-claudinite-skills
 description: Authoring or changing a skill in the Claudinite corpus — SKILL.md conventions, where a skill's checks and tests live, catalog and pack wiring. Use when creating or editing a pack's skills/<name>/ in the canon; a consumer project's own agent docs are authoring-agent-docs' turf.
 metadata:
   body: workflow
+  usage:
+    expect: triggered
   force-load-on-file-edits-paths:
     - "packs/*/skills/**"
 ---

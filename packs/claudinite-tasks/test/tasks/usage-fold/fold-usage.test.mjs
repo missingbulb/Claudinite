@@ -10,7 +10,7 @@ import {
   TOKENS_BY_MODEL_UNKNOWN, TASK_COST_NONE, TASK_COST_UNRESOLVED,
 } from '../../../tasks/usage-fold/fold-usage.mjs';
 import {
-  USAGE_FIELDS, USAGE_VERSION, QUEUE_OUTCOMES, COUNTER_GROUPS, renderUsageFile,
+  USAGE_FIELDS, USAGE_VERSION, QUEUE_OUTCOMES, COUNTER_GROUPS, BARE_MAPS, renderUsageFile,
 } from '../../../src/items/usage-format.mjs';
 import {
   OUTCOME_DONE, OUTCOME_DELIVERED, OUTCOME_OBSOLETE,
@@ -23,15 +23,20 @@ import { LEGACY_EXECUTOR_DOC } from '../../legacy-protocol.mjs';
 // to build a row by hand and accidentally assert its own construction.
 const blankDay = () => ({
   captures: 0, merges: 0, sessions: 0, userMessages: 0, userCommands: 0,
-  skillLoads: {}, ...emptyGroups(),
+  ...emptyGroups(),
 });
 
 // Every sub-map a row carries, all empty — the shape a row has before any source
 // speaks for it. Derived from the vocabulary rather than listed, so appending a
 // counter group does not silently leave a test asserting the shape it replaced.
 const emptyGroups = () => ({
+  ...Object.fromEntries(BARE_MAPS.map((m) => [m, {}])),
   ...Object.fromEntries(COUNTER_GROUPS.map((g) => [g, {}])),
 });
+
+// One rule's findings row with every slot present, so a case names only the slots
+// it is about. Derived from the vocabulary, like emptyGroups above.
+const findingRow = (over) => ({ ...Object.fromEntries(USAGE_FIELDS.checkFindings.map((f) => [f, 0])), ...over });
 
 // --- entry fixtures -----------------------------------------------------------
 // Every shape below is copied from real captured transcripts on a conversation-logs
@@ -267,8 +272,8 @@ test('countChecks: a failing hook run is one activation, one failure, and its ru
   const { checks, checkFindings } = countChecks([hookFeedback(HOOK_FAIL), hookSummary(HOOK_FAIL)]);
   assert.deepEqual(checks.work, scopeRow({ runs: 1, failures: 1, blocking: 2 }));
   assert.deepEqual(checkFindings, {
-    'comment-classification': { blocking: 1, advisory: 0 },
-    'task-lifecycle': { blocking: 1, advisory: 0 },
+    'comment-classification': findingRow({ blocking: 1, sessions: 1 }),
+    'task-lifecycle': findingRow({ blocking: 1, sessions: 1 }),
   });
 });
 
@@ -333,7 +338,7 @@ test('countChecks: a CI run the session pulled the log for IS counted', () => {
   // the Stop hook's, one turn wider, and its failures are the same kind of win.
   const { checks, checkFindings } = countChecks([ciFetch('c1'), ciResult('c1', CI_LOG)]);
   assert.deepEqual(checks.world, scopeRow({ runs: 1, failures: 1, blocking: 1, advisory: 4, ciRuns: 1, ciFailures: 1 }));
-  assert.deepEqual(checkFindings, { 'task-lifecycle': { blocking: 1, advisory: 0 } });
+  assert.deepEqual(checkFindings, { 'task-lifecycle': findingRow({ blocking: 1, sessions: 1 }) });
 });
 
 test('countChecks: the CI share stays separable, because CI can only see runs that PRINTED', () => {
@@ -408,8 +413,8 @@ test('foldDays: captures, merges and DISTINCT sessions per day', () => {
     sessions: 2,        // s1 captured twice
     userMessages: 11,
     userCommands: 1,
-    skillLoads: { a: 2, b: 3 },
     ...emptyGroups(),
+    skillLoads: { a: 2, b: 3 },
     // The per-task cost split counts SESSIONS, not captures: s1 captured twice and is
     // one session. Both sessions name an issue and attest no execution record, so both
     // are `(unresolved)` — s1's issue-0 tail capture does not demote it to `(none)`,
@@ -434,8 +439,13 @@ test('foldDays sums the check activations across a day\'s capture files', () => 
   assert.deepEqual(days['2026-07-28'].checks.work, work({ runs: 6, failures: 3, blocking: 4 }));
   assert.deepEqual(days['2026-07-28'].checks.world, work({ runs: 1 }), 'a scope only one file saw still folds');
   assert.deepEqual(days['2026-07-28'].checkFindings, {
-    'task-lifecycle': { blocking: 3, advisory: 0 },
-    'file-placement': { blocking: 0, advisory: 5 },
+    // `sessions` is DISTINCT sessions, so the rule both files saw reads 2 where its
+    // blocking count reads 3 — the count a rate against the day's sessions needs.
+    // The slots these files had an opinion about, summed — plus `sessions`, which
+    // foldDays writes from the distinct sessions rather than summing: the rule both
+    // files saw reads 2 where its blocking count reads 3.
+    'task-lifecycle': { blocking: 3, advisory: 0, sessions: 2 },
+    'file-placement': { blocking: 0, advisory: 5, sessions: 1 },
   });
 });
 
@@ -471,8 +481,9 @@ test('addDayToWeek sums the counters and declares how many days it absorbed', ()
   };
   const week = addDayToWeek(addDayToWeek(undefined, day), day);
   assert.deepEqual(week, {
-    days: 2, captures: 4, merges: 2, sessionDays: 4, userMessages: 20, userCommands: 2, skillLoads: { a: 2 },
+    days: 2, captures: 4, merges: 2, sessionDays: 4, userMessages: 20, userCommands: 2,
     ...emptyGroups(),
+    skillLoads: { a: 2 },
     checks: { work: { runs: 6, failures: 2, errors: 0, blocking: 2, advisory: 0 } },
     checkFindings: { 'task-lifecycle': { blocking: 2, advisory: 0 } },
   });

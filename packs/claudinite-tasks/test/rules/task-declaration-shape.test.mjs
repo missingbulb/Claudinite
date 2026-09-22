@@ -300,3 +300,22 @@ test('task-declaration-shape: a scheduled task may not gate on a condition that 
   assert.match(whatsOf(files('schedule')), /a "schedule" task states a condition that reads the item itself/);
   assert.deepEqual(run(files('request')), [], 'the same expression is exactly right for a task nothing asks');
 });
+
+test('task-declaration-shape: a task-local term may declare that it takes an argument', () => {
+  const terms = (takesArg) => [
+    'export const terms = {',
+    '  "window-has-sessions": {',
+    '    signals: [],',
+    ...(takesArg ? ['    takesArg: true,'] : []),
+    '    holds: () => ({ holds: true }),',
+    '  },',
+    '};',
+  ].join('\n');
+  const files = (takesArg) => ({
+    [TASK]: json({ ...good, preconditions: ['window-has-sessions:10'] }),
+    '.claudinite/local/packs/mypack/tasks/growth-extract/preconditions.mjs': terms(takesArg),
+  });
+  assert.deepEqual(run(files(true)), [], 'a term that says it takes one may be given one');
+  assert.match(whatsOf(files(false)), /takes no argument but was given "10"/,
+    'and one that does not say so still cannot — the declaration is what a reader checks against');
+});

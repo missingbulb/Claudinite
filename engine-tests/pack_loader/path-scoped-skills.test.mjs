@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { globToRegExp, expandBraces, pathScopedSkills, missingSkillsFor, triggeredSkills, missingSkillsForCall, missingSkillsForPrompt, missingSkillsForResult } from '../../engine/pack_loader/path-scoped-skills.mjs';
-import { parseFrontmatter, skillMetadata, forceLoadPathsOf, parseToolTrigger, bodyOf } from '../../engine/pack_loader/skill-frontmatter.mjs';
+import { globToRegExp, expandBraces, pathScopedSkills, missingSkillsFor, triggeredSkills, missingSkillsForCall, missingSkillsForPrompt, missingSkillsForResult, hitsPath, hitsCall, hitsPrompt, hitsResult } from '../../engine/pack_loader/path-scoped-skills.mjs';
+import { parseFrontmatter, skillMetadata, forceLoadPathsOf, parseToolTrigger, bodyOf, usageOf } from '../../engine/pack_loader/skill-frontmatter.mjs';
 import { skillLoads } from '../../engine/checks/helpers/session-transcript.mjs';
 import { commandName } from '../../packs/claudinite-tasks/tasks/usage-fold/fold-usage.mjs';
 import { removeTree } from '../../engine/remove-tree.mjs';
@@ -46,7 +46,7 @@ test('pathScopedSkills reads each active pack\'s bundled skills\' forced scope; 
     skill('a', 's1', '---\nname: s1\ndescription: d\nmetadata:\n  force-load-on-file-edits-paths: wiki/**, wiki/*.md\n---\n');
     skill('a', 'plain', '---\nname: plain\ndescription: unscoped\n---\n');
     skill('b', 's2', '---\nname: s2\ndescription: d\nmetadata:\n  force-load-on-file-edits-paths:\n    - wiki/**\n---\n');
-    assert.deepEqual(skillMetadata(join(root, 'a', 'skills', 's1')), { name: 's1', description: 'd', body: null, forceLoadPaths: ['wiki/**', 'wiki/*.md'], toolCallTriggers: [], promptTriggers: [], toolResultTriggers: [] });
+    assert.deepEqual(skillMetadata(join(root, 'a', 'skills', 's1')), { name: 's1', description: 'd', body: null, usage: null, forceLoadPaths: ['wiki/**', 'wiki/*.md'], toolCallTriggers: [], promptTriggers: [], toolResultTriggers: [] });
     const decls = pathScopedSkills([
       { id: 'a', dir: join(root, 'a'), skills: ['s1', 'plain'] },
       { id: 'b', dir: join(root, 'b'), skills: ['s2'] },
@@ -158,4 +158,54 @@ test('bodyOf reads the body a skill declares under metadata — workflow or guid
   assert.equal(skillMetadata(dir).body, 'workflow');
   assert.equal(skillMetadata(mkdtempSync(join(tmpdir(), 'claudinite-nobody-'))).body, null, 'no SKILL.md is empty metadata, body included');
   removeTree(dir);
+});
+
+test('parseFrontmatter: a map nests as deep as it is written, so metadata.usage.expect reads', () => {
+  const fm = parseFrontmatter([
+    '---',
+    'name: writing-tasks',
+    'metadata:',
+    '  usage:',
+    '    expect: routine',
+    '    loads-per-sessions: 1 in 5',
+    '  force-load-on-tool-calls:',
+    "    - 'Bash.command /git commit/'",
+    'body: ignored-at-top-level',
+    '---',
+    'text',
+  ].join('\n'));
+  assert.equal(fm.name, 'writing-tasks');
+  assert.equal(fm.metadata.usage.expect, 'routine');
+  assert.equal(fm.metadata.usage['loads-per-sessions'], '1 in 5');
+  assert.deepEqual(fm.metadata['force-load-on-tool-calls'], ['Bash.command /git commit/'],
+    'a dedent back to metadata reopens it rather than closing it');
+  assert.equal(fm.body, 'ignored-at-top-level');
+});
+
+test('usageOf: the declared expectation, with the mis-declarations named rather than dropped', () => {
+  const of = (lines) => usageOf(parseFrontmatter(['---', 'metadata:', ...lines, '---', ''].join('\n')));
+  assert.equal(of([]), null, 'no block at all is undeclared, not a problem');
+  for (const expect of ['adoption', 'triggered', 'judgment']) {
+    const read = of(['  usage:', `    expect: ${expect}`]);
+    assert.deepEqual(read, { expect, problems: [] }, expect);
+  }
+  assert.match(of(['  usage:', '    expect: sometimes']).problems[0], /outside/);
+  assert.match(of(['  usage:', '    expect:']).problems[0], /expect is missing/);
+  // Each value names how the skill expects to be REACHED, never how often, so a
+  // rate is not a key the block has — and a retired one is refused rather than
+  // ignored, since a key nothing reads is a claim the record never tests.
+  assert.match(of(['  usage:', '    expect: judgment', '    loads-per-sessions: 1 in 5']).problems[0],
+    /loads-per-sessions is not a key/);
+  assert.match(of(['  usage: judgment']).problems[0], /block of keys/);
+});
+
+test('hits*: one predicate per moment, the shape a moment counter asks its question with', () => {
+  const decl = { kind: 'toolCall', skill: 's', tool: 'Bash', field: 'command', pattern: /git commit/, source: 'x' };
+  assert.ok(hitsCall(decl, { name: 'Bash', input: { command: 'git commit -m x' } }));
+  assert.ok(!hitsCall(decl, { name: 'Bash', input: { command: 'git status' } }));
+  assert.ok(!hitsCall(decl, { name: 'Read', input: { command: 'git commit' } }));
+  assert.ok(hitsPrompt({ kind: 'prompt', pattern: /\/do-later/ }, 'please /do-later this'));
+  assert.ok(!hitsPrompt({ kind: 'toolCall', pattern: /\/do-later/ }, '/do-later'), 'a kind it is not never hits');
+  assert.ok(hitsResult({ kind: 'toolResult', tool: 'WebFetch', field: null, pattern: /403/ }, { name: 'WebFetch' }, 'got 403'));
+  assert.ok(hitsPath({ re: globToRegExp('packs/**') }, 'packs/basics/RULES.md'));
 });

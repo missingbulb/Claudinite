@@ -3,6 +3,8 @@ name: releasing-a-cloudflare-site
 description: How a site served from Cloudflare is released — the version contract, the guards that stop a release loop or a half-release, forcing one, rolling one back, and which parts of Cloudflare only a person can change. Use when changing the release task, the wrangler config or the analytics loader, and when a release parks.
 metadata:
   body: workflow
+  usage:
+    expect: triggered
   force-load-on-file-edits-paths:
     - "**/wrangler.json"
     - "**/wrangler.jsonc"

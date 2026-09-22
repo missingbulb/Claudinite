@@ -26,9 +26,10 @@ import { TASK_DECLARATION_PATH_RE, readDeclarationFields } from '../src/contract
 // rather than spells is not found, and its declaration reads as unknown — which
 // is the same "write it so a reader can see it" the literal rule above states.
 // Read as TEXT, never imported: a check must not execute a member's own module. So
-// each term is its name plus the one property of it a declaration can be wrong
+// each term is its name plus the two properties of it a declaration can be wrong
 // about — `needsItem`, which decides whether the term can be judged at a tick at
-// all. Either quote style, because a member's file is its author's.
+// all, and `takesArg`, which decides whether the declaration may carry one after
+// the colon. Either quote style, because a member's file is its author's.
 const TERM_NAME = /^ {2}['"]([^'"]+)['"]:/gm;
 function siblingTerms(ctx, taskFile) {
   const text = ctx.read(taskFile.replace(/task\.json$/, 'preconditions.mjs'));
@@ -40,7 +41,11 @@ function siblingTerms(ctx, taskFile) {
   const named = [...section.matchAll(TERM_NAME)];
   return termsMap(Object.fromEntries(named.map((m, i) => {
     const block = section.slice(m.index, named[i + 1]?.index ?? section.length);
-    return [m[1], { signals: [], needsItem: /\bneedsItem\s*:\s*true\b/.test(block) }];
+    return [m[1], {
+      signals: [],
+      needsItem: /\bneedsItem\s*:\s*true\b/.test(block),
+      takesArg: /\btakesArg\s*:\s*true\b/.test(block),
+    }];
   })));
 }
 

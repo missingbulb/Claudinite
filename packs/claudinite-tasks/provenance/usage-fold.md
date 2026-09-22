@@ -75,3 +75,21 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #2046 (Refs #1869, #1872) · pack version 60915.4.
+
+## 2026-09-21 · policy-changed · the fold counts what the corpus did to a session (#2214)
+- **Source:** docs/usage-review/DESIGN.md §4.1, the owner's design of 2026-09-21.
+- **Reason:** the usage review's rules compare a declared expectation against a record, and the
+  record carried loads but not why they happened, not how many moments a declared trigger actually
+  had, not which guards fired, and not what the checks cost. Without those the rules could be
+  written but not evaluated.
+- **Mechanism:** ten counters and a format bump to version 4, counted in the fold's existing
+  per-capture pass. The counting splits in two modules - what the session produced, and what the
+  corpus did to it - because they answer different questions of the same entries. The engine's
+  moment predicates and its `ownerSkill` stamp are probed rather than imported by name: they land on
+  a different cycle from this pack, so a member holding an older engine records no key instead of
+  failing to load, and a missing key reads as *not recorded* rather than as zero.
+- **Rejected:** deduping a moment to the hook's once-per-session behaviour, which would compare a
+  number to itself; the counter is occasions, and the artifact is named as a cause on the rule that
+  reads it.
+- **Retire when:** a counter goes two months without a rule reading it.
+- **Landed:** #2214

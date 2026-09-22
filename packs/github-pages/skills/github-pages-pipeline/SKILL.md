@@ -3,6 +3,8 @@ name: github-pages-pipeline
 description: Wiring, operating or debugging the GitHub Pages release of a site repo — the site-release task, the one vendored deploy workflow it dispatches, .github/site.config, the two repository settings, forcing a release, rolling one back, and reading a park. Use when setting a Pages repo up, when a gp/ check fires, when a release parks, or when asked to deploy a Pages site now.
 metadata:
   body: workflow
+  usage:
+    expect: triggered
   force-load-on-file-edits-paths:
     - ".github/site.config"
     - ".github/workflows/github-pages-*.yml"
