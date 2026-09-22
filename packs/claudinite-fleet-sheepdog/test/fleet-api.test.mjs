@@ -26,7 +26,7 @@ const ghServing = (body, status = 200) => async () =>
   (status === 200 ? { status, json: { content: Buffer.from(body).toString('base64') } } : { status, json: null });
 
 test('readDeclaration: parses the member\'s declaration, null for uncovered, throws on anything indeterminate', async () => {
-  assert.deepEqual(await readDeclaration(ghServing('{"packs":["basics"]}'), 'o/member'), { packs: ['basics'] });
+  assert.deepEqual(await readDeclaration(ghServing('{"packs":["acme-pack"]}'), 'o/member'), { packs: ['acme-pack'] });
   assert.equal(await readDeclaration(ghServing('', 404), 'o/vanilla'), null);
   // "I could not read it" must never become "it says nothing" — that is how a
   // dormant repo would get swept anyway, and an unreadable one silently dropped.

@@ -9,12 +9,12 @@ import rule from '../workRules/skill-loaded-before-editing.mjs';
 // Two packs on disk, each bundling one path-scoped skill; only `demo` is declared.
 const scopedSkill = (name, paths) => `---\nname: ${name}\ndescription: d\nmetadata:\n  force-load-on-file-edits-paths:\n    - "${paths}"\n---\n`;
 const SETTINGS = {
-  '.claudinite-settings.json': JSON.stringify({ packs: ['basics', 'demo'] }),
-  'packs/demo/skills/writing-wiki-pages/SKILL.md': scopedSkill('writing-wiki-pages', 'product-wiki/**'),
+  '.claudinite-settings.json': JSON.stringify({ packs: ['acme-pack', 'demo'] }),
+  'packs/demo/skills/acme-skill-w/SKILL.md': scopedSkill('acme-skill-w', 'acme-pack-e/**'),
   'packs/other/skills/other-skill/SKILL.md': scopedSkill('other-skill', 'src/**'),
 };
 const packsIn = (root) => [
-  { id: 'demo', dir: join(root, 'packs', 'demo'), skills: ['writing-wiki-pages'] },
+  { id: 'demo', dir: join(root, 'packs', 'demo'), skills: ['acme-skill-w'] },
   { id: 'other', dir: join(root, 'packs', 'other'), skills: ['other-skill'] },
 ];
 
@@ -35,16 +35,16 @@ function run({ changed, entries, subagents }) {
 }
 
 test('skill-loaded-before-editing: a scoped file changed with no load of its skill is flagged, naming the skill', () => {
-  const findings = run({ changed: { 'product-wiki/Market/README.md': '# Market\n' }, entries: [ownerTurn] });
+  const findings = run({ changed: { 'acme-pack-e/Market/README.md': '# Market\n' }, entries: [ownerTurn] });
   assert.equal(findings.length, 1);
-  assert.equal(findings[0].file, 'product-wiki/Market/README.md');
-  assert.match(findings[0].what, /product-wiki\/\*\*.*writing-wiki-pages/);
-  assert.match(findings[0].fix, /skill: "writing-wiki-pages"/);
+  assert.equal(findings[0].file, 'acme-pack-e/Market/README.md');
+  assert.match(findings[0].what, /acme-pack-e\/\*\*.*acme-skill-w/);
+  assert.match(findings[0].fix, /skill: "acme-skill-w"/);
 });
 
 test('skill-loaded-before-editing: silent once the session loaded the skill — a subagent load counts', () => {
-  for (const load of [skillLoad('writing-wiki-pages'), { ...skillLoad('writing-wiki-pages'), isSidechain: true }]) {
-    assert.deepEqual(run({ changed: { 'product-wiki/Market/README.md': '# Market\n' }, entries: [ownerTurn, load] }), []);
+  for (const load of [skillLoad('acme-skill-w'), { ...skillLoad('acme-skill-w'), isSidechain: true }]) {
+    assert.deepEqual(run({ changed: { 'acme-pack-e/Market/README.md': '# Market\n' }, entries: [ownerTurn, load] }), []);
   }
 });
 
@@ -52,12 +52,12 @@ test('skill-loaded-before-editing: silent when the load is in a subagent\'s own 
   // A delegated edit loads the skill in the subagent's transcript, which the
   // session file never carries (#1735) — the diff is the same either way.
   assert.deepEqual(run({
-    changed: { 'product-wiki/Market/README.md': '# Market\n' },
+    changed: { 'acme-pack-e/Market/README.md': '# Market\n' },
     entries: [ownerTurn],
-    subagents: { abc123: [skillLoad('writing-wiki-pages')] },
+    subagents: { abc123: [skillLoad('acme-skill-w')] },
   }), []);
   assert.equal(run({
-    changed: { 'product-wiki/Market/README.md': '# Market\n' },
+    changed: { 'acme-pack-e/Market/README.md': '# Market\n' },
     entries: [ownerTurn],
     subagents: { abc123: [skillLoad('some-other-skill')] },
   }).length, 1);
@@ -68,5 +68,5 @@ test('skill-loaded-before-editing: a file outside every pattern, and a pattern o
 });
 
 test('skill-loaded-before-editing: no transcript (CI, a manual run) is silent', () => {
-  assert.deepEqual(run({ changed: { 'product-wiki/Market/README.md': '# Market\n' }, entries: null }), []);
+  assert.deepEqual(run({ changed: { 'acme-pack-e/Market/README.md': '# Market\n' }, entries: null }), []);
 });

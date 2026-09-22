@@ -14,14 +14,14 @@ const onBranch = (changed, commitMsg) => {
 
 test('shared-tree-immutable flags a branch commit inside the mount', () => {
   assert.deepEqual(onBranch({
-    '.claudinite/shared/packs/basics/RULES.md': '# edited\n',
+    '.claudinite/shared/packs/acme-pack/RULES.md': '# edited\n',
     'docs/notes.md': 'x\n',
-  }), ['.claudinite/shared/packs/basics/RULES.md']);
+  }), ['.claudinite/shared/packs/acme-pack/RULES.md']);
 });
 
 test('shared-tree-immutable exempts the update flow, which owns that tree', () => {
   assert.deepEqual(onBranch(
-    { '.claudinite/shared/packs/basics/RULES.md': '# converged\n' },
+    { '.claudinite/shared/packs/acme-pack/RULES.md': '# converged\n' },
     'Claudinite update: engine v1 → v2 and 1 pack upgraded',
   ), []);
 });
@@ -45,7 +45,7 @@ const guarded = (calls) => {
 
 test('shared-tree-edit-guard denies a file write into the mount', () => {
   assert.equal(guarded([
-    ['Edit', { file_path: '/r/.claudinite/shared/packs/basics/RULES.md', old_string: 'a', new_string: 'b' }],
+    ['Edit', { file_path: '/r/.claudinite/shared/packs/acme-pack/RULES.md', old_string: 'a', new_string: 'b' }],
     ['Write', { file_path: '.claudinite/shared/engine/x.mjs', content: 'y' }],
     ['NotebookEdit', { file_path: '/r/.claudinite/shared/nb.ipynb' }],
   ]), 3);
@@ -54,14 +54,14 @@ test('shared-tree-edit-guard denies a file write into the mount', () => {
 test('shared-tree-edit-guard leaves a write beside the mount alone', () => {
   assert.equal(guarded([
     ['Edit', { file_path: '/r/.claudinite/local/packs/mine/RULES.md', old_string: 'a', new_string: 'b' }],
-    ['Write', { file_path: '/r/packs/basics/RULES.md', content: 'y' }],
+    ['Write', { file_path: '/r/packs/acme-pack/RULES.md', content: 'y' }],
     ['Write', { file_path: '/r/docs/shared/notes.md', content: 'y' }],
   ]), 0);
 });
 
 test('shared-tree-edit-guard denies a shell write into the mount', () => {
   assert.equal(guarded([
-    ['Bash', { command: "sed -i 's/a/b/' .claudinite/shared/packs/basics/RULES.md" }],
+    ['Bash', { command: "sed -i 's/a/b/' .claudinite/shared/packs/acme-pack/RULES.md" }],
     ['Bash', { command: 'echo x > .claudinite/shared/engine/x.mjs' }],
     ['Bash', { command: 'rm -rf .claudinite/shared' }],
     ['Bash', { command: 'cat x | tee .claudinite/shared/a' }],
@@ -75,7 +75,7 @@ test('shared-tree-edit-guard leaves every read of the mount alone', () => {
     ['Bash', { command: 'node .claudinite/shared/engine/checks/check_the_world.mjs' }],
     ['Bash', { command: 'node .claudinite/shared/engine/converge-wiring.mjs owner/repo --badges' }],
     ['Bash', { command: 'grep -rn doc: .claudinite/shared/packs > /tmp/out.txt' }],
-    ['Bash', { command: 'sed -n "1,20p" .claudinite/shared/packs/basics/RULES.md' }],
+    ['Bash', { command: 'sed -n "1,20p" .claudinite/shared/packs/acme-pack/RULES.md' }],
     ['Bash', { command: 'cat .claudinite/shared/VERSION && ls .claudinite/shared/' }],
     ['Bash', { command: 'rm -rf /tmp/scratch && node .claudinite/shared/engine/x.mjs' }],
   ]), 0);

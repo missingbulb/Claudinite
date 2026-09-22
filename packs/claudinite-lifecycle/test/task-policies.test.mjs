@@ -34,12 +34,12 @@ test('the pack\'s merge-rules.json compiles cleanly', () => {
 
 test('an adoption-shaped diff lands: declaration, re-vendored mount (its policy files included), rules index', () => {
   const v = verdict([
-    { file: '.claudinite-settings.json', before: '{"packs":["basics"]}\n', after: '{"packs":["basics","jwt"]}\n' },
-    { file: '.claudinite/shared/packs/jwt/pack.mjs', before: null, after: 'export default {};\n' },
+    { file: '.claudinite-settings.json', before: '{"packs":["acme-pack"]}\n', after: '{"packs":["acme-pack","acme-pack-j"]}\n' },
+    { file: '.claudinite/shared/packs/acme-pack-j/pack.mjs', before: null, after: 'export default {};\n' },
     // The vendored tree carries canon-authored policy files — the exact case
     // coversMountPolicySources exists for.
-    { file: '.claudinite/shared/packs/basics/tasks/improve-comments/task.json', before: null, after: '{}\n' },
-    { file: '.claudinite/shared/packs/claudinite-growth/merge-rules.json', before: '[]\n', after: '[{"name":"x"}]\n' },
+    { file: '.claudinite/shared/packs/acme-pack/tasks/acme-task-b/task.json', before: null, after: '{}\n' },
+    { file: '.claudinite/shared/packs/acme-pack-f/merge-rules.json', before: '[]\n', after: '[{"name":"x"}]\n' },
     { file: '.claudinite/claudinite-rules.GENERATED.md', before: 'old\n', after: 'new\n' },
   ]);
   assert.equal(v.mergeable, true, v.why);
@@ -60,9 +60,9 @@ test('what an adoption does not write parks: repo source, workflows, repo-owned 
 test('an update-shaped diff lands: the converged mount, the stamp, a staged workflow', () => {
   const v = updateVerdict([
     { file: '.claudinite/shared/engine/selftest.mjs', before: 'a\n', after: 'b\n' },
-    { file: '.claudinite/shared/packs/basics/RULES.md', before: 'a\n', after: 'b\n' },
+    { file: '.claudinite/shared/packs/acme-pack/RULES.md', before: 'a\n', after: 'b\n' },
     // The mount carries canon-authored policy files — the case coversMountPolicySources exists for.
-    { file: '.claudinite/shared/packs/basics/tasks/improve-comments/task.json', before: '{}\n', after: '{"a":1}\n' },
+    { file: '.claudinite/shared/packs/acme-pack/tasks/acme-task-b/task.json', before: '{}\n', after: '{"a":1}\n' },
     { file: '.claudinite/pending-workflows/claudinite-executor.yml', before: null, after: 'name: x\n' },
     { file: '.claudinite/claudinite-rules.GENERATED.md', before: 'old\n', after: 'new\n' },
     { file: '.claudinite-settings.json', before: '{"engineVersion":1}\n', after: '{"engineVersion":2}\n' },

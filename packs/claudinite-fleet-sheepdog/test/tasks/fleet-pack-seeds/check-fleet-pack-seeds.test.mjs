@@ -51,10 +51,10 @@ test('the mount gate outranks the write — a member is never handed a pack it d
 // --- the edit -----------------------------------------------------------------
 
 test('withSeeds: declares the pack, keeps everything else, writes canonical settings', () => {
-  const before = decl({ packs: ['basics'], maintenance: { delivery: 'auto-merge' } });
+  const before = decl({ packs: ['acme-pack'], maintenance: { delivery: 'auto-merge' } });
   const after = withSeeds(before, [SEED]);
   const parsed = JSON.parse(after);
-  assert.deepEqual(parsed.packs[0], 'basics', 'the packs already declared survive, in order');
+  assert.deepEqual(parsed.packs[0], 'acme-pack', 'the packs already declared survive, in order');
   assert.deepEqual(parsed.packs[1], { id: SEED.id, config: { repo: 'o/store' } });
   assert.deepEqual(parsed.maintenance, { delivery: 'auto-merge' });
   // 2-space with a trailing newline — the shape `--init` writes, because the file is
@@ -65,7 +65,7 @@ test('withSeeds: declares the pack, keeps everything else, writes canonical sett
 });
 
 test('withSeeds: completes an existing entry in place, and never touches a config the repo set', () => {
-  const before = decl({ packs: ['basics', { id: SEED.id, answers: { store: 'n/a' } }, 'product-wiki'] });
+  const before = decl({ packs: ['acme-pack', { id: SEED.id, answers: { store: 'n/a' } }, 'acme-pack-e'] });
   const parsed = JSON.parse(withSeeds(before, [SEED]));
   assert.equal(parsed.packs.length, 3, 'the entry is completed, never duplicated');
   assert.deepEqual(parsed.packs[1], { id: SEED.id, config: { repo: 'o/store' }, answers: { store: 'n/a' } },
