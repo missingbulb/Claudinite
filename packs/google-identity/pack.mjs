@@ -3,7 +3,7 @@
 // google-id-token-validation skill, whose check-the-work rules carry the
 // teaching in their failure messages.
 export default {
-  version: '60921.1',
+  version: '60922.1',
   minEngineVersion: '60822.1',
   ruleRoutingGuidance: {
     belongs: 'server-side Google Sign-In ID token validation: audience pinning, issuer and email_verified checks, JWT authorizer/OIDC verifier config',
