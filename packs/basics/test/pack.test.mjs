@@ -14,6 +14,7 @@ const claudeMdLength = declaredCheck('packs/basics', 'claude-md-length');
 const warningSuppression = declaredCheck('packs/basics', 'warning-suppression');
 const noConflictMarkers = declaredCheck('packs/basics', 'no-conflict-markers');
 const rulesLineLength = declaredCheck('packs/basics', 'rules-line-length');
+const skillDescriptionLength = declaredCheck('packs/basics', 'skill-description-length');
 const generatedMergeDriver = declaredCheck('packs/basics', 'generated-merge-driver');
 const catalogCompleteness = declaredCheck('packs/basics', 'catalog-completeness');
 
@@ -308,6 +309,37 @@ test('rules-line-length: one advisory per RULES.md whose lines run past 100 byte
     const findings = rulesLineLength.run(buildContext({ root, mode: 'all' }));
     assert.deepEqual(findings.map((f) => [f.file, f.line]), [['packs/demo/RULES.md', 2]]);
     assert.match(findings[0].what, /1 line\(s\) over 100 bytes, longest 122/);
+  } finally { cleanup(root); }
+});
+
+// The description is the one part of a skill that is in the window before anything asks
+// for it, so the check has to reach the description LINE and nothing else in the file —
+// a skill whose body runs long costs a session nothing until the skill loads.
+const descWords = (n) => Array.from({ length: n }, (_, i) => `w${i}`).join(' ');
+const skillFile = (name, words, bodyWords) => `---\nname: ${name}\ndescription: ${descWords(words)}\n---\n\n# ${name}\n\n${descWords(bodyWords)}\n`;
+
+test('skill-description-length: flags a description past 60 words, and reads no other line in the file', () => {
+  const root = makeRepo({ changed: {
+    'packs/acme-pack/skills/acme-skill/SKILL.md': skillFile('acme-skill', 61, 10),
+    // A short description over a long body: the body is what loads on demand, so it is
+    // not this check's business and a finding here would be the check reading the file
+    // rather than the declaration.
+    'packs/acme-pack/skills/acme-other/SKILL.md': skillFile('acme-other', 40, 400),
+  } });
+  try {
+    const found = skillDescriptionLength.run(buildContext({ root, mode: 'all' }));
+    assert.deepEqual(found.map((f) => [f.file, f.line]), [['packs/acme-pack/skills/acme-skill/SKILL.md', 3]]);
+  } finally { cleanup(root); }
+});
+
+// 60 and 61 are the only two inputs that tell `>60` apart from `>=60`, so they are the
+// cases; sampling either side comfortably agrees with both and pins neither.
+test('skill-description-length: 60 words is inside the cap, 61 is over it', () => {
+  const root = makeRepo({ changed: {
+    'packs/acme-pack/skills/acme-at-cap/SKILL.md': skillFile('acme-at-cap', 60, 5),
+  } });
+  try {
+    assert.equal(skillDescriptionLength.run(buildContext({ root, mode: 'all' })).length, 0);
   } finally { cleanup(root); }
 });
 

@@ -92,6 +92,7 @@ The working-discipline rules with a deterministic signature. The world rules rea
 | `no-conflict-markers` | high | correctness | check: blocking |
 | `rules-line-length` | low | complexity | check: advisory |
 | `claude-md-length` | medium | performance | check: advisory |
+| `skill-description-length` | medium | performance | check: advisory |
 | `generated-merge-driver` | medium | correctness | check: advisory |
 | `catalog-completeness` | medium | complexity | check: blocking |
 | `comment-classification-form` | medium | complexity | check: advisory |

@@ -90,6 +90,20 @@
     }
   },
   {
+    "id": "skill-description-length",
+    "severity": "advisory",
+    "failureMessage": "a skill's description is in every session's context window whether the skill ever loads or not, so a description written as a summary charges every session for a method almost none of them need",
+    "scanTracked": true,
+    "scanFiles": "/(^|\\/)SKILL\\.md$/",
+    "matchLines": [
+      {
+        "match": "/^description:(?:\\s+\\S+){61}/",
+        "what": "this description runs past 60 words",
+        "fix": "cut it to what decides whether to reach for the skill — the moment it applies to, in the words somebody would use at that moment — and leave the method to the body, which loads only when the skill does"
+      }
+    ]
+  },
+  {
     "id": "generated-merge-driver",
     "severity": "advisory",
     "failureMessage": "without merge=ours a conflicting merge on a generated file gets hand-resolved and desyncs from its source",
