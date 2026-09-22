@@ -6,11 +6,13 @@
 // rename map (canonicalPackVersions), so the gap this ranges against is the gap the
 // enforcer really has.
 //
-// NOTHING DEPENDS ON THIS HAVING RUN. `RENAMED_PACKS` resolves the old spelling, so
-// the enforcer activates the pack whichever half reaches it first, its sweeps read the
-// fleet config off an entry under either spelling, and the pack flow sweeps the
-// abandoned mount directory as a property of renaming. What this buys is the day that
-// map entry can be retired.
+// NOTHING DEPENDED ON THIS HAVING RUN while the tolerance stood: `RENAMED_PACKS`
+// resolved the old spelling, so the enforcer activated the pack whichever half reached
+// it first, its sweeps read the fleet config off an entry under either spelling, and
+// the pack flow swept the abandoned mount directory as a property of renaming. What it
+// bought was the day that map entry could be retired — and that day came (#1641), so an
+// enforcer that never ran this record activates nothing under the old spelling and its
+// config reader no longer finds that entry (fleet-config.mjs).
 //
 // Structural, and the ids come from the engine's rename map rather than from this
 // record — see applyPackRenames in engine/migrations/registry.mjs.

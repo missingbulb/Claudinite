@@ -6,10 +6,12 @@
 // rename map (canonicalPackVersions), so the gap this ranges against is the gap the
 // member really has.
 //
-// NOTHING DEPENDS ON THIS HAVING RUN. `RENAMED_PACKS` resolves the old spelling, so a
-// member activates the pack whichever half reaches it first, and the pack flow sweeps
-// the abandoned mount directory as a property of renaming. What this buys is the day
-// that map entry can be retired.
+// NOTHING DEPENDED ON THIS HAVING RUN while the tolerance stood: `RENAMED_PACKS`
+// resolved the old spelling, so a member activated the pack whichever half reached it
+// first, and the pack flow swept the abandoned mount directory as a property of
+// renaming. What it bought was the day that map entry could be retired — and that day
+// came (#1641), so a member that never ran this record activates nothing under the old
+// spelling.
 //
 // Structural, and the ids come from the engine's rename map rather than from this
 // record — see applyPackRenames in engine/migrations/registry.mjs.
