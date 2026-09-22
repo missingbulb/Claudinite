@@ -82,10 +82,10 @@ export async function worker({ repo, context, secrets, log: runLog, stepSummary:
     process.env.GITHUB_REPOSITORY = repo;
   }
 
-  const params = parseParams({ argv: SCHEDULED_ARGV, params: parseParamBag(context.join('\n')) });
-  log(params.forced
-    ? `FORCED run — scan=${params.scan}, repos=${(params.repos ?? []).join(' ') || 'all-covered-members'}, packs=${params.addPacks.join(' ') || 'none'}`
-    : `scheduled run — scan=${params.scan}, repos=${params.repos ? params.repos.join(' ') : 'all-covered-members'}`);
+  const runParams = parseParams({ argv: SCHEDULED_ARGV, params: parseParamBag(context.join('\n')) });
+  log(runParams.forced
+    ? `FORCED run - scan=${runParams.scan}, repos=${(runParams.repos ?? []).join(' ') || 'all-covered-members'}, packs=${runParams.addPacks.join(' ') || 'none'}`
+    : `scheduled run - scan=${runParams.scan}, repos=${runParams.repos ? runParams.repos.join(' ') : 'all-covered-members'}`);
 
   const token = secrets.FLEET_GITHUB_TOKEN;
   const home = repo;
@@ -112,7 +112,7 @@ export async function worker({ repo, context, secrets, log: runLog, stepSummary:
   // would reject a perfectly real pack id as unknown. See canon-packs.mjs.
   const { packs, dispose } = await loadCanonPacks({ canonRepo, token });
   try {
-    await run({ gh, home, owner, canonRepo, exclude, packs, params });
+    await run({ gh, home, owner, canonRepo, exclude, packs, runParams });
   } finally {
     dispose();
   }
@@ -121,27 +121,27 @@ export async function worker({ repo, context, secrets, log: runLog, stepSummary:
 // The run proper, with the corpus in hand. Split out so the scratch clone has exactly
 // one disposal site whatever happens inside — including the deliberate throw at the
 // foot, which must still fail the run.
-async function run({ gh, home, owner, canonRepo, exclude, packs, params }) {
+async function run({ gh, home, owner, canonRepo, exclude, packs, runParams }) {
   const packsById = new Map(packs.map((p) => [p.id, p]));
 
   // VALIDATE THE FORCE FIRST, before a single member is touched. A force is
   // all-or-nothing (force-add-packs.mjs), and the cheapest place to refuse one is
   // before anything has happened at all.
-  if (params.addPacks.length) {
+  if (runParams.addPacks.length) {
     // An IGNORED repo is out of every aspect of the fleet, and a force is not an
     // exception to that: the fleet was told to leave it alone, so the remedy is to
     // stop ignoring it rather than to write around the list.
-    const ignored = params.repos.map((n) => qualify(n, owner)).filter((n) => exclude.has(n));
+    const ignored = runParams.repos.map((n) => qualify(n, owner)).filter((n) => exclude.has(n));
     if (ignored.length) {
       throw new Error(`${ignored.join(', ')} — ignored by this fleet (the claudinite-fleet-sheepdog pack entry's `
         + 'config.exclude), and nothing was written. Take the repo off that list to bring it back into the fleet.');
     }
-    const unknown = unknownPacks(params.addPacks, packs);
+    const unknown = unknownPacks(runParams.addPacks, packs);
     if (unknown.length) {
       throw new Error(`unknown pack id(s): ${unknown.join(', ')} — not in the ${packs.length}-pack corpus at ${canonRepo}. `
         + 'An unknown id in a member\'s declaration is a BLOCKING settings error there, so nothing was written.');
     }
-    const unanswered = unansweredQuestions(params.addPacks, packs, params.packAnswers);
+    const unanswered = unansweredQuestions(runParams.addPacks, packs, runParams.packAnswers);
     if (unanswered.length) {
       throw new Error(`${unanswered.length} adoption-interview question(s) were not answered, so this run was refused entirely: `
         + `${unanswered.map((u) => `${u.pack}.${u.question} ("${u.prompt}")`).join('; ')}. `
@@ -170,10 +170,10 @@ async function run({ gh, home, owner, canonRepo, exclude, packs, params }) {
 
   // A name typed bare in the override box is qualified against the configured owner
   // here, once, so the two halves can never disagree about what was named.
-  const scopedRepos = params.repos ? params.repos.map((n) => qualify(n, owner)) : null;
+  const scopedRepos = runParams.repos ? runParams.repos.map((n) => qualify(n, owner)) : null;
 
   let scanUnknown = [];
-  if (params.scan) {
+  if (runParams.scan) {
     log('scanning the fleet for packs a member\'s shape suspects but its declaration does not carry');
     const scanned = await runScan({ gh, home, owner, canonRepo, exclude, packs, repos: scopedRepos });
     scanUnknown = scanned.unknown;
@@ -186,17 +186,17 @@ async function run({ gh, home, owner, canonRepo, exclude, packs, params }) {
     if (fired.length) log(`fired ${fired.length} member scheduler(s): ${fired.join(', ')}`);
   }
 
-  if (params.addPacks.length) {
-    log(`requesting ${params.addPacks.join(', ')} in ${params.repos.length} named repo(s)`);
+  if (runParams.addPacks.length) {
+    log(`requesting ${runParams.addPacks.join(', ')} in ${runParams.repos.length} named repo(s)`);
     const { targets, alreadyDeclared } = await resolveTargets(gh, {
-      repos: params.repos, owner, addPacks: params.addPacks, reposByName,
+      repos: runParams.repos, owner, addPacks: runParams.addPacks, reposByName,
     });
     const actions = []; const fired = [];
     for (const target of targets) {
       const body = requestedBody({
         addPacks: target.missing,
-        packConfig: params.packConfig,
-        packAnswers: params.packAnswers,
+        packConfig: runParams.packConfig,
+        packAnswers: runParams.packAnswers,
         packsById,
         enforcer: home,
       });
@@ -205,7 +205,7 @@ async function run({ gh, home, owner, canonRepo, exclude, packs, params }) {
       const ok = await fire(target);
       if (ok) fired.push(ok);
     }
-    emit(renderForceSummary({ owner, addPacks: params.addPacks, targets, alreadyDeclared, actions, fired }));
+    emit(renderForceSummary({ owner, addPacks: runParams.addPacks, targets, alreadyDeclared, actions, fired }));
   }
 
   // Unknown is not fitted: a member the scan could not read was not measured, and

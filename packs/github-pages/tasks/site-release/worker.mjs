@@ -202,7 +202,6 @@ export async function worker({ root, repo, defaultBranch, pack, task, token, gh 
   const base = defaultBranch ?? 'main';
   const taskId = `${pack}/${task}`;
 
-  if (!repo) throw new Error('the repository is not set (owner/repo)');
 
   const versioning = await loadVersioning();
   log(versioning

@@ -75,7 +75,6 @@ export async function runVerification({ gh, repo, itemNumber, fetchUrl, now = ()
 
 export async function worker({ repo, item, gh }) {
   const itemNumber = item.number;
-  if (!repo || !itemNumber) throw new Error('the repository and the item are not both set - not running under the executor');
   const verdict = await runVerification({ gh, repo, itemNumber, fetchUrl: fetchOnce });
 
   if (verdict.outcome === 'invalid') {

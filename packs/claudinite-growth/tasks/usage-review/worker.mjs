@@ -35,9 +35,11 @@ const engineOrLocal = async (mod) => {
 // that asks whether a skill should have loaded in a window where it did not.
 const WANTS_DIGESTS = new Set(['skill-adoption-not-reached']);
 
-export async function worker(params) {
-  ({ root, repo, token } = params);
-  base = params.defaultBranch ?? 'main';
+export async function worker({ root: runRoot, repo: runRepo, defaultBranch, token: runToken, deliver }) {
+  root = runRoot;
+  repo = runRepo;
+  token = runToken;
+  base = defaultBranch ?? 'main';
   const config = JSON.parse(readFileSync(join(root, '.claudinite-settings.json'), 'utf8'));
   const { loadPacks, isActive } = await engineOrLocal('pack_loader/pack-registry.mjs');
   const { packRules } = await engineOrLocal('checks/run-active-pack-rules.mjs');
@@ -110,7 +112,7 @@ export async function worker(params) {
 
   if (!token || !repo) { log('no token - the file is written, nothing delivered'); return; }
 
-  await params.deliver({
+  await deliver({
     branchPrefix: 'claudinite/usage-review',
     files: { [REVIEW_PATH]: `${JSON.stringify(file, null, 2)}\n`, [DASHBOARD_PATH]: dashboard },
     title: `Usage review: ${findings.length} findings in the 28 days to ${record.window.to}`,

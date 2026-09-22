@@ -226,13 +226,9 @@ export function dayLadder(nowIso, days = DAY_WINDOW_DAYS) {
 
 // --- main ---------------------------------------------------------------------
 
-export async function worker(params) {
-  log = params.log;
-  const root = params.root;
-  const repo = params.repo;
-  const token = params.token;
-  const base = params.defaultBranch ?? 'main';
-  if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
+export async function worker({ root, repo, token, defaultBranch, automerge, deliver, log: runLog }) {
+  log = runLog;
+  const base = defaultBranch ?? 'main';
   const remote = remoteUrl(repo, token);
 
   // No logs branch is no longer "nothing to do": the capture-derived half of the
@@ -317,13 +313,13 @@ export async function worker(params) {
     return;
   }
 
-  const pr = await params.deliver({
+  const pr = await deliver({
     files: { [USAGE_PATH]: text },
     // The arming trailer carries the task's own automerge, so the
     // automerge-policy-scope check re-measures this delivery's diff wherever the
     // PR's CI runs check_the_work — the code lane's equivalent of the agent
     // lane's stamp-before-merge.
-    message: `Claudinite: fold usage metrics\n\n${AUTOMERGE_TRAILER}: ${params.automerge}`,
+    message: `Claudinite: fold usage metrics\n\n${AUTOMERGE_TRAILER}: ${automerge}`,
     title: 'Claudinite: usage fold',
     body: [
       `Regenerated \`${USAGE_PATH}\` from this repo's captured conversation logs, its`,

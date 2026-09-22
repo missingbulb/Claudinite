@@ -213,7 +213,6 @@ async function windowCommits(gh, repo, branch, sinceIso) {
 }
 
 export async function worker({ repo, root, defaultBranch, gh, item: workItem, log }) {
-  if (!repo || !repo.includes('/')) throw new Error('the repository is not set (owner/repo)');
   const branch = defaultBranch ?? 'main';
 
   const sinceIso = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString();
@@ -229,7 +228,6 @@ export async function worker({ repo, root, defaultBranch, gh, item: workItem, lo
   // number; without it there is nowhere to put the brief and the agentic phase would
   // start from nothing, so this is a hard failure.
   const item = workItem.number;
-  if (!item) throw new Error('this run carries no work item - nowhere to post the window brief');
   const posted = await gh(`/repos/${repo}/issues/${item}/comments`, {
     method: 'POST',
     body: { body: renderBrief(summary, { sinceIso }) },

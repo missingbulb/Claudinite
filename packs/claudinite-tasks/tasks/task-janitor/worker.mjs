@@ -118,19 +118,16 @@ export async function sweep(gh, repo, now) {
 // find nothing in one of them and a janitor that ran the wrong one would find
 // nothing at all — and report a clean bill of health either way. One repo, one
 // mechanism, one sweep.
-export async function worker(params) {
-  log = params.log;
-  const repo = params.repo;
-  if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
-  const root = params.root;
+export async function worker({ root, repo, gh, log: runLog }) {
+  log = runLog;
   const { loadConfig } = await import('../../../../engine/checks/helpers/repo-context.mjs');
   const config = loadConfig(root);
   const { sweepQueue } = await import('./queue-sweep.mjs');
   const { discoverTasks } = await import('../../src/contract/discover.mjs');
   const { tasks } = await discoverTasks(root, config);
-  await sweepQueue(params.gh, repo, new Date(), { tasks, log });
+  await sweepQueue(gh, repo, new Date(), { tasks, log });
   // The slot dispatch-issue sweep still runs BESIDE the queue's: the slot scheduler
   // is retired (#974) but the `[claudinite-task]` issues its last runs filed are
   // still open in members, and nothing else closes them out.
-  await sweep(params.gh, repo, new Date());
+  await sweep(gh, repo, new Date());
 }

@@ -94,3 +94,16 @@
   only the worker can report that in the terms of its whole grant.
 - **Actor:** @missingbulb (owner).
 - **Model:** Opus 5
+
+## 2026-09-22 · strengthened · a worker names what it takes, and never re-checks the contract
+- **Source:** the owner, on a converted worker: "the contract is that repo isn't null, don't check",
+  and "let's be explicit on what the worker function takes as parameters".
+- **Reason:** fourteen workers guarded values the executor resolves before it spawns anything, and
+  nine took the bag whole. Both cost the reader: a guard on an impossible case reads as a real
+  possibility and has to be reasoned about before it can be dismissed, and an opaque `params` hides
+  what the run actually needs until every use of it has been found.
+- **Mechanism:** the rule names the line - validate the world, never the shape of what you were
+  handed - so it covers the next field added to the bag rather than the ones that happened to be
+  guarded.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5

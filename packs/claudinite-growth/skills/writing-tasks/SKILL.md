@@ -239,6 +239,15 @@ assembles one for itself:
   trailer's own expression, for a worker that pushes a commit itself.
 - **`token`**, **`stepSummary`** - the raw readings, for the few that need them.
 
+**Name what you take, and take the contract at its word.** Destructure the fields
+this worker reads rather than accepting the bag whole - the signature is where a
+reader learns what the run needs - and do not re-check them. The executor resolves
+the repository, the checkout, the item and the target before it spawns anything, so
+`if (!repo) throw` is a guard on a case that cannot occur: it reads as a real
+possibility, and the reader spends time deciding whether the run has a path where it
+is null. What a worker does validate is the world - an API that answered 404, a file
+that is not there - never the shape of what it was handed.
+
 `secrets` holds the ones this task declared, and an unset value is absent rather
 than empty. A throw is the failure channel - the runner prints the failure line,
 the stack and the `.triage` an error carries, and sets the exit code; a returned

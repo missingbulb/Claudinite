@@ -107,18 +107,14 @@ export function updatePullText(terminal, { engine, packs }) {
 
 // --- I/O shell (validated by the live pilot, not unit tests) ----------------
 
-export async function worker(params) {
-  const root = params.root;
-  const repo = params.repo;
-  const base = params.defaultBranch ?? 'main';
-  const token = params.token;
+export async function worker({ root, repo, defaultBranch, token, target }) {
+  const base = defaultBranch ?? 'main';
   // REHEARSAL MODE (the live canary): converge this repo against a NAMED canon ref,
   // report, and restore the working tree — no branch, no commit, no PR, and above
   // all no stamp. A stamped branch head would leave the canary pointing off trunk,
   // which is exactly what the next converge's anti-rewind guard refuses: a rehearsal
   // that wedges its own canary.
   const rehearsalRef = process.env.CLAUDINITE_CANON_REF || null;
-  if (!repo) throw new Error('update: the repository is not set (owner/repo)');
 
   // Either settings-file name, in the rename's read order: this worker is VENDORED,
   // so the copy running on a member may predate the record that renamed its own
@@ -150,8 +146,8 @@ export async function worker(params) {
   // on are gone with the window they were held for (#1698). A REHEARSAL is exempt —
   // it restores the tree and delivers nothing, and the canary gate drives this worker
   // with no executor at all.
-  const branch = params.target.branch;
-  const targetPr = params.target.pr;
+  const branch = target.branch;
+  const targetPr = target.pr;
   if (!rehearsalRef && !branch) {
     console.error('claudinite-needs-human: action — this mount is too far behind to converge itself;'
       + ' re-baseline it against the canon');

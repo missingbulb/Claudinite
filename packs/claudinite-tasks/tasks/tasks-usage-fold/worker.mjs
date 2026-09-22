@@ -59,13 +59,9 @@ export function minuteRateFrom(config, packId = PACK_ID) {
   return typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 ? rate : null;
 }
 
-export async function worker(params) {
-  log = params.log;
-  const root = params.root;
-  const repo = params.repo;
-  const token = params.token;
-  const base = params.defaultBranch ?? 'main';
-  if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
+export async function worker({ root, repo, token, defaultBranch, automerge, deliver, log: runLog }) {
+  log = runLog;
+  const base = defaultBranch ?? 'main';
   const remote = remoteUrl(repo, token);
 
   let config = {};
@@ -114,10 +110,10 @@ export async function worker(params) {
     return;
   }
 
-  const pr = await params.deliver({
+  const pr = await deliver({
     stamp: today, branchPrefix: PR_BRANCH_PREFIX,
     files: { [TASKS_USAGE_PATH]: text },
-    message: `Claudinite: fold tasks usage\n\n${AUTOMERGE_TRAILER}: ${params.automerge}`,
+    message: `Claudinite: fold tasks usage\n\n${AUTOMERGE_TRAILER}: ${automerge}`,
     title: 'Claudinite: tasks usage fold',
     body: [
       `Regenerated \`${TASKS_USAGE_PATH}\` from this repo's scheduler and executor run`,

@@ -12,7 +12,7 @@ import { main as runDeploy } from './deploy.mjs';
 // helpers below log too; `worker` takes the one the runner built.
 let log = console.log;
 
-export async function worker(params) {
-  log = params.log;
+export async function worker({ log: runLog }) {
+  log = runLog;
   await runDeploy({ log });
 }

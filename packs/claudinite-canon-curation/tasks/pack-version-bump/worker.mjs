@@ -91,12 +91,8 @@ export async function run({ root, remote, base, today = new Date(), attempts = 3
   throw new Error(`${base} kept moving under ${attempts} pushes — run again`);
 }
 
-export async function worker(params) {
-  log = params.log;
-  const root = params.root;
-  const repo = params.repo;
-  const token = params.token;
-  const base = params.defaultBranch ?? 'main';
-  if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
+export async function worker({ root, repo, token, defaultBranch, log: runLog }) {
+  log = runLog;
+  const base = defaultBranch ?? 'main';
   await run({ root, remote: remoteUrl(repo, token), base });
 }

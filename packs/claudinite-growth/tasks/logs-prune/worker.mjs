@@ -78,12 +78,8 @@ function pushRemovals(root, { remote, tip, paths, message }) {
   } finally { rmSync(index, { force: true }); }
 }
 
-export async function worker(params) {
-  log = params.log;
-  const root = params.root;
-  const repo = params.repo;
-  const token = params.token;
-  if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
+export async function worker({ root, repo, token, log: runLog }) {
+  log = runLog;
   const remote = `https://x-access-token:${token}@github.com/${repo}.git`;
 
   const declared = readRetentionDays(root);

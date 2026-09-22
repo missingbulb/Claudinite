@@ -19,13 +19,9 @@ export const TASK_ID = 'claudinite-canon-curation/pack-version-history';
 // helpers below log too; `worker` takes the one the runner built.
 let log = console.log;
 
-export async function worker(params) {
-  log = params.log;
-  const root = params.root;
-  const repo = params.repo;
-  const token = params.token;
-  const base = params.defaultBranch ?? 'main';
-  if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
+export async function worker({ root, repo, token, defaultBranch, automerge, deliver, log: runLog }) {
+  log = runLog;
+  const base = defaultBranch ?? 'main';
   const remote = remoteUrl(repo, token);
 
   const git = makeGit(root);
@@ -38,9 +34,9 @@ export async function worker(params) {
   }
   for (const path of changed) log(`${path}: regenerated`);
 
-  const pr = await params.deliver({
+  const pr = await deliver({
     files,
-    message: `Claudinite: pack version history\n\n${AUTOMERGE_TRAILER}: ${params.automerge}`,
+    message: `Claudinite: pack version history\n\n${AUTOMERGE_TRAILER}: ${automerge}`,
     title: 'Claudinite: pack version history',
     body: [
       'Regenerated each pack\'s `VERSIONS.md` from the base branch\'s history: a row per version',

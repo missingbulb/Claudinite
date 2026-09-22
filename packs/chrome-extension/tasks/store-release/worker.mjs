@@ -25,7 +25,6 @@ const DISPATCH_MODE = 'daily';
 
 export async function worker({ repo, defaultBranch, gh, log }) {
   const ref = defaultBranch ?? 'main';
-  if (!repo) throw new Error('store-release: the repository is not set (owner/repo)');
 
   // Fire the orchestrator's daily leg via workflow_dispatch — the orchestrator is
   // push + workflow_dispatch only now (its own cron retired), so this is the sole

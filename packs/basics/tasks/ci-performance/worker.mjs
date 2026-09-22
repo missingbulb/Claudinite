@@ -125,7 +125,6 @@ export function reportBody(summary, { repo, nowIso, steps = [] }) {
 export const TRACKER_TITLE = '[claudinite] CI performance';
 
 export async function worker({ repo, gh, log }) {
-  if (!repo || !repo.includes('/')) throw new Error('the repository is not set (owner/repo)');
 
   const { status, json } = await gh(`/repos/${repo}/actions/runs?per_page=100&status=completed`);
   if (status !== 200) throw new Error(`run ledger unreadable: GET actions/runs returned ${status}`);
