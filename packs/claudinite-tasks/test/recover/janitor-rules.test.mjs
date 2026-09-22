@@ -289,16 +289,16 @@ test('a park wearing only the two-label era sub-label is seen — the rule reads
 test('a pre-rename pack id in the title resolves to today\'s spelling before the lookup', () => {
   const preRename = {
     number: 115,
-    title: '[claudinite-work] tidy-repo/acme-task-m',
+    title: '[claudinite-work] static-website/acme-task-m',
     labels: ['needs-human', 'origin:schedule', 'task:needs-human-failure'],
     state: 'open',
-    body: '.claudinite/shared/packs/basics/tasks/acme-task-m/task.md\n', // @real-entity the rename map under test resolves the retired spelling to this id
+    body: '.claudinite/shared/packs/public-website/tasks/acme-task-m/task.md\n', // @real-entity the rename map under test resolves the retired spelling to this id
     created_at: '2026-08-10T04:00:00Z',
     updated_at: '2026-08-10T04:00:00Z',
   };
   assert.ok(isParked(preRename));
   assert.deepEqual(orphanedParkItems([preRename], {
-    tasks: [{ pack: 'basics', id: 'acme-task-m', taskPath: '.claudinite/shared/packs/basics/tasks/acme-task-m/task.md' }], // @real-entity the rename map under test resolves the retired spelling to this id
+    tasks: [{ pack: 'public-website', id: 'acme-task-m', taskPath: '.claudinite/shared/packs/public-website/tasks/acme-task-m/task.md' }], // @real-entity the rename map under test resolves the retired spelling to this id
   }), []);
 });
 

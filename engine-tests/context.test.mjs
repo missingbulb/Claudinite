@@ -564,9 +564,10 @@ test('a pre-rename member loads identically to a converged one', () => {
           updated: '2026-07-26T20:10:18.694Z',
           ref: 'deadbeef',
           engineVersion: '60820.1',
-          // `tidy-repo` is a spelling `basics` absorbed: a version stamped under a
-          // renamed pack's id must still price that pack, not read as never-installed.
-          packVersions: { 'git-github': '60801.1', 'tidy-repo': '60802.1' }, // @real-entity the rename map under test carries these ids
+          // `static-website` is the spelling `public-website` was renamed from: a
+          // version stamped under a renamed pack's id must still price that pack, not
+          // read as never-installed.
+          packVersions: { 'git-github': '60801.1', 'static-website': '60802.1' }, // @real-entity the rename map under test carries these ids
         },
         taskScheduler: { endpoints: { default: { url: 'u', tokenSecret: 'S' } }, dailyHour: 4 },
       }, null, 2) + '\n',
@@ -575,7 +576,7 @@ test('a pre-rename member loads identically to a converged one', () => {
     assert.deepEqual(cfg.errors, [], 'the retired shape is legal to READ — only nothing writes it');
     assert.deepEqual(cfg.packs, ['acme-pack', 'acme-pack-b']);
     assert.equal(cfg.engineVersion, '60820.1');
-    assert.deepEqual(cfg.packVersions, { 'git-github': '60801.1', basics: '60802.1' }); // @real-entity the rename map under test carries these ids
+    assert.deepEqual(cfg.packVersions, { 'git-github': '60801.1', 'public-website': '60802.1' }); // @real-entity the rename map under test carries these ids
     assert.equal(cfg.dailyClaudiniteUpdatesRequirePrReview, true, 'the retired delivery preference still speaks');
     assert.deepEqual(cfg.packConfig['acme-pack-b'], { k: 1 });
   } finally { removeTree(root); }

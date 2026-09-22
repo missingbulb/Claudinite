@@ -140,8 +140,8 @@ test('an item still stateless on the second read is repaired', async () => {
 test('a park naming its task at a path it has moved off closes obsolete, naming the new path', async () => {
   const moved = {
     ...workItem(31, ['task:status:needs-human-failure']),
-    body: 'packs/tidy-repo/tasks/a/task.md\n',
-    title: '[claudinite-work] tidy-repo/a',
+    body: 'packs/static-website/tasks/a/task.md\n',
+    title: '[claudinite-work] static-website/a',
   };
   const { gh, added } = janitorGh([moved]);
   const posted = [];
@@ -150,10 +150,10 @@ test('a park naming its task at a path it has moved off closes obsolete, naming 
     return gh(path, opts);
   };
   const out = await quiet(() => sweepQueue(spy, 'o/r', at('2026-07-10T00:00:00Z'), {
-    tasks: [{ pack: 'basics', id: 'a', taskPath: 'packs/basics/tasks/a/task.md' }], // @real-entity the rename map under test resolves the retired spelling to this id
+    tasks: [{ pack: 'public-website', id: 'a', taskPath: 'packs/public-website/tasks/a/task.md' }], // @real-entity the rename map under test resolves the retired spelling to this id
   }));
   assert.deepEqual(out.orphaned, [31]);
-  assert.ok(posted.some((b) => b.includes('packs/basics/tasks/a/task.md')), posted.join('|')); // @real-entity the rename map under test resolves the retired spelling to this id
+  assert.ok(posted.some((b) => b.includes('packs/public-website/tasks/a/task.md')), posted.join('|')); // @real-entity the rename map under test resolves the retired spelling to this id
   assert.deepEqual(labelsOn(added, 31), ['task:status:rejected']);
 });
 

@@ -28,25 +28,17 @@
 // no member still declares it" is a condition nothing can ever answer — and until it
 // is answered the map is load-bearing for exactly the repos that stopped converging.
 // The seven spellings the 2026-08-19 renames and collapses left shared one window and
-// came out together (#1641); what is here now landed after that advisory shipped, so
-// each waits out its own week (#1909).
+// came out together (#1641); the two absorptions that landed after that advisory
+// shipped each waited out its own week and came out next (#1909).
 //
 // A pack ABSORBED into another is the same map entry: its id resolves to the pack
 // that now carries its rules, so a member declaring the absorbed one activates the
 // survivor instead of activating nothing. The declaration then holds two ids that
-// resolve to one, which is what `applyPackRenames` merges (registry.mjs).
-// @legacy-tolerance advisory:legacy-shape-in-use retire:#1909
+// resolve to one, which is what `applyPackRenames` merges (registry.mjs). No entry
+// here is one today, which is why the op carries no absorption-specific reshaping;
+// the next absorption brings that back with it.
+// @legacy-tolerance advisory:legacy-shape-in-use retire:#2254
 export const RENAMED_PACKS = Object.freeze({
-  // Absorbed, not renamed (#1681): the folder-access graph was never a pack anyone chose —
-  // it carried no fingerprint and arrived through `requires` in every member that
-  // declares the baseline — so its check, its contribution seam and its guide moved
-  // into the pack that was already carrying it in.
-  barriers: 'basics',
-  // Absorbed too (#1839): the issue and PR sweeps were retired and the one tidy
-  // dimension left — the weekly comment pass and the gate that bounds it — moved
-  // into the baseline, so a member declaring the retired pack activates the pack
-  // that now carries the pass rather than activating nothing.
-  'tidy-repo': 'basics',
   // Renamed (#2101): the pack stopped carrying anything about how a site is built,
   // served or released and took the name of what it is about.
   'static-website': 'public-website',

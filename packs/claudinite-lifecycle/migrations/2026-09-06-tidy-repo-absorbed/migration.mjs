@@ -2,19 +2,20 @@
 // were retired with the two per-object skills they applied; its comment pass, that
 // pass's skill and the `improve-comments-scope` gate moved into the baseline.
 //
-// WHAT ONLY THIS RECORD CAN DO is converge the declaration. The rename map resolves
-// the id at read time, so a member reads correctly whether or not this has run; what
-// the record buys is the day the map can come out — and, before that, a declaration
-// that says what is actually on the shelf rather than a pack directory nothing holds.
+// WHAT ONLY THIS RECORD COULD DO was converge the declaration. The rename map
+// resolved the id at read time, so a member read correctly whether or not this had
+// run; what the record bought was the day the map could come out, and that day came
+// (#1909), so a member that never ran it now declares a pack directory nothing holds
+// and activates nothing under it.
 //
-// NO `absorbedPackConfig`. That op nests an absorbed entry's parameters under the
-// survivor's `config`, which is what a pack with parameters needs. `tidy-repo` asked
-// no adoption question and read no config, so its entry is a bare id everywhere and
-// the rename plus the duplicate-merge in `applyPackRenames` is the whole change.
+// NO `absorbedPackConfig`, even while that op existed. It nested an absorbed entry's
+// parameters under the survivor's `config`, which is what a pack with parameters
+// needs. `tidy-repo` asked no adoption question and read no config, so its entry was a
+// bare id everywhere and the rename plus the duplicate-merge in `applyPackRenames` was
+// the whole change.
 //
 // NO `appliesTo` GATE either. `renameDeclaredPacks` is an op every engine in the
-// vendoring window already runs, so there is no capability to probe for — unlike the
-// `barriers` absorption (#1681), whose nesting op was new in the same release.
+// vendoring window already runs, so there was no capability to probe for.
 //
 // IT LIVES IN THIS PACK, not in the one that absorbed the content, for the same
 // reason that absorption's record does: what it rewrites is the member's declaration,
