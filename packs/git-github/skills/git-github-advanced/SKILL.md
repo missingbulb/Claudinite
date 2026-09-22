@@ -174,6 +174,10 @@ A workflow that regenerates and commits derived files and runs longer than a com
 
 Its `merged`/`merged_at` fields can read `false`/empty for a PR that has genuinely landed by squash-merge, even with `fields` narrowed. Confirm landed-ness by grepping the base branch's commit subjects for the squash's `(#N)`, or call `pull_request_read` `get` on the one PR you care about.
 
+## `list_pull_requests`'s `head` filter silently returns the wrong PR on a bare branch name
+
+Passing a bare branch name in `head` (no `owner:` prefix) does not filter - it can hand back an unrelated PR as if it matched, for every branch queried, with no error to flag the miss. Qualify it as `owner:branch-name`, or skip the lookup and confirm status with a git-based check (`merge-base`/`diff --stat` against the branch) instead.
+
 ## `issue_read`'s `get_*` methods are split on a PR number, so one that answers proves nothing about the next
 
 `issue_read` `get` resolves a PR number and returns the pull request, while `get_labels` on that same number errors "Could not resolve to an Issue with the number of N" — the method set is not uniform, so a read that succeeded is no licence to reach for a sibling method. Read a PR's labels, comments or metadata through `pull_request_read`, which answers for all of them.
@@ -181,6 +185,14 @@ Its `merged`/`merged_at` fields can read `false`/empty for a PR that has genuine
 ## Leaving several PRs open after one sweep, subscribe every one of them
 
 An unsubscribed PR gets noticed only on a manual re-poll, while a subscribed one's merge or comment arrives as an activity event the moment it happens. When a run's output is more than one open PR, subscribe all of them before ending the session, not a sample.
+
+## `search_code`'s index can lag - don't trust it alone to enumerate affected repos
+
+Scoping a sweep across many repos by `search_code` alone can silently undercount: its index has been observed to lag well behind a repo's actual content, returning a fraction of the repos a direct check turns up for the identical pattern. Before scoping a fleet-wide sweep on a search result, cross-check against a direct, structural enumeration (fetch each candidate repo's own relevant file rather than relying on the search index to have seen it).
+
+## The rendered PR-diff view can silently omit a new file - confirm with git, not the UI
+
+A GitHub PR's rendered diff view has been observed to drop a new root-level file or directory addition from what it displays, even though the file is genuinely present in the commit. Confirm whether a file landed with `git ls-files` / `git diff --stat` against the branch, never by reading the rendered diff - a false "it's missing" read costs a round-trip and an unnecessary re-push.
 
 ## A deleted workflow's old runs outlive it, and no session tool can clear them
 
@@ -228,7 +240,8 @@ A list or search API call that isn't bounded returns a full page of full-bodied 
 - **When you already know the exact title, don't search at all — list and match it yourself.** Field anchoring is a *GitHub search API* feature, and an MCP layer in front of it may match **semantically** instead, ranking by resemblance and honouring no qualifier: the title you named can then rank below unrelated issues or be absent from the page entirely, and `in:title` changes nothing. Enumerate with `list_issues` (a narrow field list, a large page size, no state filter — a log issue is often deliberately closed) and compare the string in-session. Reserve search for what it is good at: finding items you can only *describe*.
 - **Trim the fields, not just the page size.** The per-object field set is what governs the payload, so capping the page can leave the response byte-identical — measured, the same call at two page sizes returned output identical to the character. Ask for the fields you need (`["number","title","state"]` covers most lookups); dropping the body alone is usually the whole difference. Where a tool offers no field selection, narrow the query instead, or take the overflow as the answer and read the spilled result file directly rather than retrying it smaller.
 - **Pass a small explicit page size.** Default page sizes are tuned for a browser, not a tool result; when the answer wanted is one issue or one run, ask for 5–10, never a bare unpaged call.
-- **`actions_list`'s `list_workflow_runs` does honour `perPage`.** On a repo holding 4,175 runs it returned exactly one and exactly two records at those page sizes, both unfiltered and scoped to one workflow file — so an overflow there means the records are fat, not that the bound was ignored, and the remedy is a smaller page plus a run-id or head-SHA scope rather than giving up on the page size.
+- **`actions_list`'s `list_workflow_runs` does honour `perPage`.** On a repo holding 4,175 runs it returned exactly one and exactly two records at those page sizes, both unfiltered and scoped to one workflow file - so an overflow there means the records are fat, not that the bound was ignored, and the remedy is a smaller page plus a run-id or head-SHA scope rather than giving up on the page size. The bound is spelled `perPage`: `per_page` is not a key the tool reads, so passing it changes nothing and reads as the page size being ignored.
+- **The spilled overflow file for a search call is GitHub's own response envelope** - `{ total_count, incomplete_results, items: [...] }` - not a bare list. Index `['items']` on the first parse instead of guessing the shape across several failed attempts.
 
 All of them, not one: a qualified query still returns a full page, a small page of unqualified matches is still the wrong records, and a small page of full-bodied records still overruns the cap.
 

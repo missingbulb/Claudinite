@@ -12,6 +12,7 @@ Prose only: the pack carries no checks, and declaring it is the project's call.
 | Resolve binary, never download | high | correctness | prose: <200 words |
 | Reinstalling the driver repeats the download danger | high | correctness | prose: <200 words |
 | Stub an unvendored CDN library's API | medium | correctness | prose: <200 words |
+| Browser egress differs from `curl` | medium | correctness | prose: <100 words |
 | Pin the build for pixels | high | correctness | prose: <100 words |
 | Zero-diff costs whole recipe | medium | correctness | prose: <100 words |
 | Fake origin, abort by default | high | correctness | prose: <100 words |
