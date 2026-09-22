@@ -40,7 +40,7 @@ function optionalImportNames(sources) {
 }
 
 // The project's own Python, excluding this pack's fixtures and its tests.
-export const isProjectPython = (f) => !f.startsWith(SELF) && PY_EXT.test(f) && !TESTISH.test(f);
+const isProjectPython = (f) => !f.startsWith(SELF) && PY_EXT.test(f) && !TESTISH.test(f);
 
 const rule = {
   id: 'python-optional-import-top-level',
