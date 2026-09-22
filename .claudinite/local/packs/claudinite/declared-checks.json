@@ -510,5 +510,28 @@
         "fix": "call the shared runner - `import { git } from '<relative>/engine-tests/helpers.mjs'`, then `git(root, 'init', '-q')` - or spawn with its GIT_CONFIG env, which holds gc.autoDetach and maintenance.auto off"
       }
     ]
+  },
+  {
+    "id": "pack-prose-paths-resolve",
+    "severity": "blocking",
+    "since": "2026-09-22",
+    "failureMessage": "reference-integrity is work-scoped and sees only a path the same branch deletes, so a citation an earlier move stranded sends every later session into nothing",
+    "scanIgnoringMarkdownFences": true,
+    "extractValueSets": [
+      {
+        "setName": "citedCanonPaths",
+        "fromLinesMatching": "/`(?<value>(?:packs|engine)\\/[A-Za-z0-9_.-]+(?:\\/[A-Za-z0-9_.-]+)*\\.(?:mjs|json|md|ya?ml|sh))`/",
+        "inFilesMatching": "/(^|\\/)(?:packs|\\.claudinite\\/local\\/packs)\\/[^/]+\\/(?:RULES\\.md|skills\\/[^/]+\\/SKILL\\.md)$/",
+        "whenSetEmpty": "assertNothing"
+      }
+    ],
+    "checkSetValues": [
+      {
+        "setName": "citedCanonPaths",
+        "requirePathExists": "{value}",
+        "what": "the prose cites {value}, which is not a path in this tree",
+        "fix": "repoint it at the file's current path, or drop the citation where the sentence reads without one"
+      }
+    ]
   }
 ]
