@@ -9,9 +9,8 @@
   is exactly what made that tolerance invisible.
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
-- **Mechanism:** a world check, `packs/claudinite-tasks/worldRules/legacy-task-fields.mjs`, advisory
-  permanently: the old shape works, so it may never stop a member's build, and it names the edit
-  that moves the repo forward.
+- **Mechanism:** a world check of this pack's own, advisory permanently: the old shape works, so it
+  may never stop a member's build, and it names the edit that moves the repo forward.
 - **Landed:** #1645 (Closes #1637) · pack version 60903.1.
 
 ## 2026-09-03 · reworded · A tolerance retires on a convergence window, not on a census of who still holds it (#1653)

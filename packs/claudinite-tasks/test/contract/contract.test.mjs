@@ -478,8 +478,8 @@ test('every task this repo carries declares a code_work bound under the leash', 
 
 // --- the retired frequency field (docs/PRINCIPLES.md) --------------------
 //
-// The door that read `frequency` as the cadence term it meant closed one convergence window
-// after `legacy-task-fields` shipped (#1732). What replaces it is a rejection BY NAME: the
+// The door that read `frequency` as the cadence term it meant is closed (#1732). What
+// replaces it is a rejection BY NAME: the
 // field carries no cadence any more, so a declaration still holding one has to be told the
 // term to write rather than quietly read as a task that never stated a cadence at all.
 

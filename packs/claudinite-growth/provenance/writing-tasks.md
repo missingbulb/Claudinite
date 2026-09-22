@@ -51,3 +51,15 @@
 - **Actor:** claudinite/engine implement-request run, rebased and reconciled in an owner session.
 - **Model:** claude-opus-5
 - **Landed:** #1920
+
+## 2026-09-22 · reworded · the retired `frequency` field is rejected, not rewritten (#2138)
+- **Reason:** the skill told an author that a declaration still carrying `frequency` is rewritten at
+  the door into its cadence term, and named the advisory that reported it. Both halves stopped being
+  true in the same change: the door is gone, the field is rejected by name, and the advisory had no
+  subject left once #1920 removed its other branch, so it was retired with it. Left as it was, the
+  skill would have taught the one spelling the contract now refuses.
+- **Mechanism:** the paragraph says the field is rejected and told the term to write, with `manual`
+  named as the `trigger: 'request'` it always meant; the reference to the retired advisory goes.
+- **Actor:** owner session, reconciling #1920 and #2138.
+- **Model:** claude-opus-5
+- **Landed:** #2138
