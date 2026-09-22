@@ -96,6 +96,8 @@ test('in-session-github-access: the scope names real migration records in this t
   assert.ok(inScope.length >= 20, `the migration records are the scope, matched ${inScope.length}`);
   assert.ok(inScope.some((p) => p.startsWith('engine/migrations/')), 'the engine flow owns records');
   assert.ok(inScope.some((p) => /^packs\/[^/]+\/migrations\//.test(p)), 'so does each pack');
+  // Silence proved against those real records, not only against a clean fixture.
+  assert.deepEqual(run(process.cwd()), []);
 });
 
 test('in-session-github-access: a comment mentioning GITHUB_TOKEN does not false-positive', () => {

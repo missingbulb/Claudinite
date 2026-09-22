@@ -42,3 +42,9 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5.
 - **Retire when:** entries are terse without it.
+
+## 2026-09-22 · reworded · the size rule contradicted the field it bounds
+- **Reason:** it said a required `Mechanism` names the carrier and stops, while the field list three
+  lines above defines it as the carrier and why. A probe run wrote the why-clause and was right to.
+- **Actor:** @missingbulb (owner), whose probe surfaced it.
+- **Model:** Claude Opus 5.
