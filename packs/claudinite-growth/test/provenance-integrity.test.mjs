@@ -142,7 +142,7 @@ test('provenance-change-recorded: a new rule, a changed skill body, a changed ch
     [`${PACK}worldRules/my-rule.mjs`]: "const rule = { id: 'my/rule', severity: 'advisory' };\nexport default rule;\n",
     [`${PACK}declared-checks.json`]: '[{ "id": "declared-one", "severity": "blocking", "failureMessage": "m" }]\n',
     [`${PACK}tasks/nightly/task.json`]: '{ "automerge": ["nothing"] }\n',
-    [`${PACK}pack.mjs`]: 'export default { requires: ["basics"] };\n',
+    [`${PACK}pack.mjs`]: 'export default { requires: ["acme-pack"] };\n',
   });
   const whats = findings.map((f) => f.what);
   assert.equal(findings.length, 6, whats.join('\n'));

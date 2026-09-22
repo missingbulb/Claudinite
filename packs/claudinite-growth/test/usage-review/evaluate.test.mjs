@@ -80,13 +80,13 @@ test('a finding carries every figure its rule named, both windows where it asked
   }];
   const figures = { runs: 40, 'previous.runs': 30, 'median(stopMs)': 3000, 'previous.median(stopMs)': 2000 };
   const { findings } = evaluateRules(rules, {
-    subjectsOf: () => [{ id: 'checks', pack: 'basics' }],
+    subjectsOf: () => [{ id: 'checks', pack: 'acme-pack' }],
     figureOf: (s, name, opts) => reader(figures)(name, opts),
     predicateOf: () => null,
   });
   assert.equal(findings.length, 1);
   assert.deepEqual(findings[0].figures, figures);
-  assert.equal(findings[0].pack, 'basics');
+  assert.equal(findings[0].pack, 'acme-pack');
 });
 
 test('a live predicate is the other half of the pair, and one that cannot be read is not a finding', () => {

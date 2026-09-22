@@ -31,7 +31,7 @@ test('in-session-github-access: flags a GITHUB_TOKEN read in migration-pass code
 test('in-session-github-access: flags a REST client (makeGh / fleet-api) in a migration pass', () => {
   const file = 'migrations/some-pass.mjs';
   const root = makeRepo({ changed: {
-    [file]: "import { makeGh } from '../packs/claudinite-fleet-sheepdog/fleet-api.mjs';\nexport const gh = makeGh('t');\n",
+    [file]: "import { makeGh } from '../packs/acme-pack-c/fleet-api.mjs';\nexport const gh = makeGh('t');\n",
   } });
   try {
     const f = run(root);
@@ -59,7 +59,7 @@ test('in-session-github-access: a scheduled task\'s preprocessing worker keeps i
   // GITHUB_TOKEN — the one sanctioned non-MCP surface — so tasks/ is deliberately
   // outside the in-session scope.
   const root = makeRepo({ changed: {
-    'packs/claudinite-lifecycle/tasks/update/worker.mjs': "const t = process.env.GITHUB_TOKEN;\nconst r = await fetch('https://api.github.com/repos/x');\nexport const y = [t, r];\n",
+    'packs/acme-pack-b/tasks/acme-task-c/worker.mjs': "const t = process.env.GITHUB_TOKEN;\nconst r = await fetch('https://api.github.com/repos/x');\nexport const y = [t, r];\n",
   } });
   try {
     assert.equal(run(root).length, 0, 'a task worker is Action-side code, not in-session code');
@@ -79,7 +79,7 @@ test('in-session-github-access: flags a raw api.github.com fetch in a migration'
 
 test('in-session-github-access: a dispatch-only executor outside the in-session trees is not scanned', () => {
   const root = makeRepo({ changed: {
-    'packs/claudinite-fleet-sheepdog/tasks/fleet-roster/check-fleet-roster.mjs': 'const token = process.env.FLEET_GITHUB_TOKEN;\nexport const t = token;\n',
+    'packs/acme-pack-c/tasks/acme-task-e/check-fleet-roster.mjs': 'const token = process.env.FLEET_GITHUB_TOKEN;\nexport const t = token;\n',
   } });
   try {
     assert.equal(run(root).length, 0, 'the roster sweep (a workflow-invoked executor) keeps its REST client');

@@ -47,7 +47,7 @@ test('readRetentionDays takes this pack own entry config, and nothing else', asy
   const root = mkdtempSync(join(tmpdir(), 'claudinite-prune-test-'));
   const write = (config) => writeFileSync(join(root, '.claudinite-settings.json'), JSON.stringify(config));
 
-  write({ packs: ['basics', { id: 'claudinite-growth', config: { retention_days: 10 } }] });
+  write({ packs: ['acme-pack', { id: 'claudinite-growth', config: { retention_days: 10 } }] });
   assert.equal(readRetentionDays(root), 10);
 
   // No miss reads as a number: the prune's one failure direction is deleting what

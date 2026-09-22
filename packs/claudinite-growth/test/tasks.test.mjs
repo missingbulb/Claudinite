@@ -37,10 +37,10 @@ test('growth-dedup: local-pack movement alone fires it, with no presence questio
 });
 
 test('growth-dedup: a declared pack moving in the mount fires it (and names the packs)', async () => {
-  const v = await verdictFor(dedup, { commits: { touchedPaths: [] }, sharedMount: { changedPacks: ['basics'] } });
+  const v = await verdictFor(dedup, { commits: { touchedPaths: [] }, sharedMount: { changedPacks: ['acme-pack'] } });
   assert.equal(v.run, true);
-  assert.match(v.reason, /basics/);
-  assert.match(v.context.join(' '), /basics/);
+  assert.match(v.reason, /acme-pack/);
+  assert.match(v.context.join(' '), /acme-pack/);
 });
 
 // --- logs-prune (retention on the conversation-logs branch) ------------------

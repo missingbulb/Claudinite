@@ -44,7 +44,7 @@ test('growth-extract may land local-pack prose and checks, nothing outside the l
 
   // A lesson landed outside the repo's own Claudinite tree is not this task's
   // write surface — the canon shelf above all, which reaches every member.
-  for (const file of ['packs/basics/RULES.md', 'README.md', 'CLAUDE.md']) {
+  for (const file of ['packs/acme-pack/RULES.md', 'README.md', 'CLAUDE.md']) {
     assert.equal(verdict(extract.automerge, [
       { file, before: '- a\n', after: '- a\n- b\n' },
     ]).mergeable, false, file);
@@ -64,7 +64,7 @@ test('rule-revalidation may land any local-pack correction, never a canon one', 
 
   // The canon shelf is the owner's review, whatever the file: a rule this repo
   // publishes to every member is not a correction one run lands on its own.
-  for (const file of ['packs/basics/RULES.md', 'packs/basics/workRules/some-rule.mjs']) {
+  for (const file of ['packs/acme-pack/RULES.md', 'packs/acme-pack/workRules/some-rule.mjs']) {
     assert.equal(verdict(revalidation.automerge, [
       { file, before: '- a\n', after: '- b\n' },
     ]).mergeable, false, file);
@@ -72,7 +72,7 @@ test('rule-revalidation may land any local-pack correction, never a canon one', 
   // …and a run that reached both surfaces parks whole, on the canon half.
   assert.equal(verdict(revalidation.automerge, [
     { file: RULES_MD, before: '- a\n', after: '- b\n' },
-    { file: 'packs/basics/RULES.md', before: '- a\n', after: '- b\n' },
+    { file: 'packs/acme-pack/RULES.md', before: '- a\n', after: '- b\n' },
   ]).mergeable, false);
 });
 
@@ -93,7 +93,7 @@ test('growth-dedup may land any prune inside the local packs, nothing outside th
 
   // …and a prune is only this task's to land inside the local packs: the same
   // edit to the repo's own prose is somebody else's document.
-  for (const file of ['README.md', 'CLAUDE.md', 'packs/basics/RULES.md']) {
+  for (const file of ['README.md', 'CLAUDE.md', 'packs/acme-pack/RULES.md']) {
     assert.equal(verdict(dedup.automerge, [
       { file, before: '- a\n- b\n', after: '- a\n' },
     ]).mergeable, false, file);
@@ -108,7 +108,7 @@ test('prose-to-checks-sweep may land a local-pack prose deletion beside the chec
 
   // A conversion that wrote outside the repo's own Claudinite tree parks.
   assert.equal(verdict(sweep.automerge, [
-    { file: 'packs/basics/declared-checks.json', before: '[]\n', after: '[{"id":"x"}]\n' },
+    { file: 'packs/acme-pack/declared-checks.json', before: '[]\n', after: '[{"id":"x"}]\n' },
   ]).mergeable, false, 'the canon-home sweep still parks for the owner');
 });
 

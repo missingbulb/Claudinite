@@ -6,13 +6,13 @@ import { DEFAULT_AGENT_MODEL } from '../../claudinite-tasks/public/task-constant
 import rule, { runsAgent } from '../worldRules/task-md-only-when-agentic.mjs';
 
 const decl = (extra) => `${JSON.stringify({
-  id: 'usage-fold', preconditions: ['due:daily'], expected_outcome: 'fresh_pr', automerge: 'nothing', ...extra,
+  id: 'acme-task-g', preconditions: ['due:daily'], expected_outcome: 'fresh_pr', automerge: 'nothing', ...extra,
 }, null, 2)}\n`;
 
 const AGENTIC = { agent_instructions: 'task.md', agent_execution_timeout: 1800 };
 const CODE_WORK = { code_work: 'node worker.mjs', code_work_timeout: 600 };
 
-const DIR = '.claudinite/local/packs/mypack/tasks/usage-fold/';
+const DIR = '.claudinite/local/packs/mypack/tasks/acme-task-g/';
 
 const run = (files) => {
   const root = makeRepo({ changed: files });

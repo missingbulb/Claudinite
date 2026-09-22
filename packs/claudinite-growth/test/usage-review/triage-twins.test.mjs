@@ -55,7 +55,7 @@ test('the gate admits a lasting finding a diff can argue from, and nothing else'
 test('both tasks declare the same policy, since a proposal is the owner\'s to take either way', () => {
   const decl = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8'));
   const mine = decl('../../tasks/usage-triage/task.json');
-  const shelf = decl('../../../claudinite-canon-curation/tasks/usage-triage/task.json');
+  const shelf = decl('../../../claudinite-canon-curation/tasks/usage-triage/task.json'); // @real-entity the twin task this policy must agree with
   // The fields that decide what a run may do to the repository without a person —
   // a drift between the two twins here is the one that matters.
   for (const field of ['automerge', 'expected_outcome', 'agent_model', 'preconditions']) {

@@ -5,7 +5,7 @@ import { filingsFor, closuresFor, issueTitle, issueBody, parseTitle } from '../.
 import { buildWindow, windowDates, decodeRow, dayBefore } from '../../tasks/usage-review/read-record.mjs';
 
 const finding = (over) => ({
-  rule: 'skill-forced-only-small', subject: 'searching-for-a-tool', pack: 'basics',
+  rule: 'skill-forced-only-small', subject: 'zzz-other-subject', pack: 'acme-pack',
   cause: 'known', causes: ['the guard does the loading'], open: false,
   finding: 'only ever loaded because a guard held a call', recommendation: 'carry the lines in the block text',
   figures: { skillBlocks: 11, skillLoads: 11, tokens: 190 },
@@ -24,7 +24,7 @@ const build = (findings, over = {}) => reviewFile({
 
 test('a finding is identified by the pair it is about, so rewording its rule keeps its age', () => {
   assert.equal(findingKey(finding()), findingKey(finding({ finding: 'rewritten', figures: {} })));
-  assert.notEqual(findingKey(finding()), findingKey(finding({ subject: 'committing' })));
+  assert.notEqual(findingKey(finding()), findingKey(finding({ subject: 'acme-skill' })));
 });
 
 test('a finding lasts once it has stood two weeks, counted from the review it first appeared in', () => {
@@ -97,7 +97,7 @@ test('no findings is a result only when nothing went unevaluated', () => {
 test('the pull request body groups by how well the cause is known', () => {
   const body = prBody(build([finding({ cause: 'known' }), finding({ subject: 'b', cause: 'unknown' })]));
   assert.ok(body.indexOf('Cause known') < body.indexOf('Cause unknown'), 'the actionable half is read first');
-  assert.match(body, /searching-for-a-tool/);
+  assert.match(body, /zzz-other-subject/);
 });
 
 test('the window ends yesterday, because today is still arriving', () => {
