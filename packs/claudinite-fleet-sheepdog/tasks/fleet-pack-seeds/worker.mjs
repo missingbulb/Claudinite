@@ -15,13 +15,12 @@
 
 import { main as sweep } from './check-fleet-pack-seeds.mjs';
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const log = (s) => console.log(`fleet-pack-seeds${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
 
-export async function worker({ item: workItem, repo }) {
-  item = workItem.number ? String(workItem.number) : '';
+export async function worker({ repo, log: runLog }) {
+  log = runLog;
   // The sweep resolves the HOME repo — the one whose claudinite-fleet-sheepdog pack entry carries
   // `{ owner, exclude, packSeeds }` — from GITHUB_REPOSITORY. Actions sets it and the
   // subprocess inherits it; CLAUDINITE_REPO is the scheduler's own name for the same

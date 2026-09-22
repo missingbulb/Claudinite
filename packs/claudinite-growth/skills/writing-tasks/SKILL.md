@@ -212,7 +212,7 @@ names the module - `"code_worker_mjs": "worker.mjs"` - and the runner supplies t
 entry point, so the module exports one function and nothing else:
 
 ```js
-export async function worker({ root, repo, defaultBranch, pack, task, item, context, target, token, secrets }) {
+export async function worker({ gh, log, deliver, root, repo, defaultBranch, item, context, target, secrets }) {
   // … the work. Return nothing, or a verdict:
   //   { triage: { kind, detail } }        the park's routing, for a run that must fail
   //   { requeue: { until, reason } }      come back later; the item blocks until then
@@ -221,14 +221,31 @@ export async function worker({ root, repo, defaultBranch, pack, task, item, cont
 ```
 
 The bag is the `CLAUDINITE_*` environment already parsed, so a worker reads no
-environment of its own and a test calls it with a bag it built; `token` is the
-Action's own `GITHUB_TOKEN`, `secrets` holds the ones this task declared, and an
-unset value is absent rather than empty. A throw is the failure channel - the runner
-prints the failure line, the stack and the `.triage` an error carries, and sets the
-exit code; a returned `triage` is that same failure by another road, since the queue
-reads a park's routing only off a non-zero exit. The raw `code_work` form still takes
-a whole command for a work step that is not a node module, and the two are never
-declared together.
+environment of its own and a test calls it with a bag it built. Beside the parsed
+values it carries the run's **instruments**, already built, so a worker never
+assembles one for itself:
+
+- **`gh`** - a REST client on the Action's own token. There is no run without one
+  (the executor's workflow always sets `GITHUB_TOKEN`), so never guard on the
+  token before using it. A client on a DIFFERENT credential is a different object
+  and stays the worker's own: a declared secret really can be missing, and the
+  worker is what says so in the terms of its whole grant.
+- **`log`** - one line under this task's name and its item.
+- **`deliver`** - the generated-file delivery with the checkout, the repository,
+  the base branch, the token, the branch and pull request the executor resolved,
+  the task that is writing and the logger already bound. Pass what is your own:
+  `files`, `title`, `body`, `message`.
+- **`automerge`** - what this task authorizes to land unreviewed, as the arming
+  trailer's own expression, for a worker that pushes a commit itself.
+- **`token`**, **`stepSummary`** - the raw readings, for the few that need them.
+
+`secrets` holds the ones this task declared, and an unset value is absent rather
+than empty. A throw is the failure channel - the runner prints the failure line,
+the stack and the `.triage` an error carries, and sets the exit code; a returned
+`triage` is that same failure by another road, since the queue reads a park's
+routing only off a non-zero exit. The raw `code_work` form still takes a whole
+command for a work step that is not a node module, and the two are never declared
+together.
 
 `task.md` is that spec and nothing else, so an agentless task must not carry one
 (`task-md-only-when-agentic`, blocking): the file's presence is what the rest of

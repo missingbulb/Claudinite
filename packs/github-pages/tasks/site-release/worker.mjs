@@ -28,7 +28,7 @@ import { join } from 'node:path';
 // from the canon and from a member's mount.
 import { baseTip, readAt, remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
 import { withTaskTrailer } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
-import { dispatchWorkflow, listWorkflowRuns, makeGh, readPagesSite, readWorkflowRun } from '../../../claudinite-tasks/public/github.mjs';
+import { dispatchWorkflow, listWorkflowRuns, readPagesSite, readWorkflowRun } from '../../../claudinite-tasks/public/github.mjs';
 import { CONFIG_PATH, DEPLOY_WORKFLOW_FILE, DEPLOY_WORKFLOW_PATH, parseConfig, publishSet } from '../../lib.mjs';
 
 // public-website's seam, resolved beside this pack on whatever tree runs the worker.
@@ -198,13 +198,11 @@ export async function reportServed(url, { version = null, fetchImpl = fetch } = 
   }
 }
 
-export async function worker({ root, repo, defaultBranch, pack, task, token }) {
+export async function worker({ root, repo, defaultBranch, pack, task, token, gh }) {
   const base = defaultBranch ?? 'main';
   const taskId = `${pack}/${task}`;
 
   if (!repo) throw new Error('the repository is not set (owner/repo)');
-  if (!token) throw new Error('GITHUB_TOKEN is not set — the release cannot read the branch tip, push its bump or dispatch the deploy');
-  const gh = makeGh({ token });
 
   const versioning = await loadVersioning();
   log(versioning

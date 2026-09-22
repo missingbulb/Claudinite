@@ -11,12 +11,9 @@
 // the scheduler is the repo's only cron, and this is the surface
 // that fires the daily release.
 //
-// Self-contained — imports only node builtins (the pack-independence barrier
-// forbids reaching into the engine). It reads its context from the CLAUDINITE_* /
-// GITHUB_* env the scheduler injects and calls the Actions REST API directly over
-// the injected GITHUB_TOKEN, the one sanctioned non-MCP surface. A
-// non-204 dispatch, or a throw, exits non-zero — the scheduler then converges the
-// task to needs-human.
+// It reads nothing for itself: the runner hands it the repository, the branch and a
+// REST client already carrying the Action's token. A non-204 dispatch, or a throw,
+// exits non-zero - the scheduler then converges the task to needs-human.
 
 
 // The vendored orchestrator's file name and the dispatch mode that runs its daily
@@ -25,28 +22,10 @@
 // conformance-pinned fingerprint.
 const ORCHESTRATOR_FILE = 'chrome-extension-release.yml';
 const DISPATCH_MODE = 'daily';
-const API = 'https://api.github.com';
 
-// A minimal Actions-REST call over the injected GITHUB_TOKEN. Returns { status }.
-async function gh(path, { method = 'GET', body } = {}) {
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: {
-      authorization: `Bearer ${params.token}`,
-      accept: 'application/vnd.github+json',
-      'x-github-api-version': '2022-11-28',
-      ...(body ? { 'content-type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  return { status: res.status };
-}
-
-export async function worker({ repo, defaultBranch, token, item: workItem }) {
+export async function worker({ repo, defaultBranch, gh, log }) {
   const ref = defaultBranch ?? 'main';
-  const item = workItem.number ?? '';
   if (!repo) throw new Error('store-release: the repository is not set (owner/repo)');
-  if (!token) throw new Error('store-release: no GITHUB_TOKEN was handed in');
 
   // Fire the orchestrator's daily leg via workflow_dispatch — the orchestrator is
   // push + workflow_dispatch only now (its own cron retired), so this is the sole
@@ -56,9 +35,9 @@ export async function worker({ repo, defaultBranch, token, item: workItem }) {
     body: { ref, inputs: { mode: DISPATCH_MODE } },
   });
   if (res.status !== 204) {
-    throw new Error(`store-release [#${item}]: dispatching ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref} returned ${res.status}`);
+    throw new Error(`dispatching ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref} returned ${res.status}`);
   }
-  console.log(`store-release [#${item}]: dispatched ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref}`);
+  log(`dispatched ${ORCHESTRATOR_FILE} (mode ${DISPATCH_MODE}) on ${ref}`);
 
   // STUB (unchanged from the pre-conversion worker): this triggers the daily
   // release and hands off. The full Stage-2 would then AWAIT the dispatched run

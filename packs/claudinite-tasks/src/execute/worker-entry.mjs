@@ -27,22 +27,27 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { actionsEnv, taskDir as cwdTaskDir } from '../world/actions.mjs';
+import { makeGh } from '../world/github.mjs';
 import { nowMs } from '../world/clock.mjs';
+import { policyExpression } from '../contract/merge-policy.mjs';
 
 // The declaration beside the module. Read for the one thing the environment does not
 // carry - which secrets this task asked for - rather than passed in a channel of its
 // own: the module sits in its task directory, so the declaration is already here.
-function declaredSecretNames(taskDir) {
+function taskDeclaration(taskDir) {
   try {
-    const decl = JSON.parse(readFileSync(resolve(taskDir, 'task.json'), 'utf8'));
-    const names = decl.code_work_required_secrets ?? decl.required_secrets;
-    return Array.isArray(names) ? names.filter((n) => typeof n === 'string') : [];
+    return JSON.parse(readFileSync(resolve(taskDir, 'task.json'), 'utf8'));
   } catch {
     // A task whose declaration cannot be read here is one the executor validated
     // before spawning this process, so the file is present and parseable in every
-    // real run; an empty bag is the honest answer for the cases that are not.
-    return [];
+    // real run; an empty one is the honest answer for the cases that are not.
+    return {};
   }
+}
+
+function declaredSecretNames(decl) {
+  const names = decl.code_work_required_secrets ?? decl.required_secrets;
+  return Array.isArray(names) ? names.filter((n) => typeof n === 'string') : [];
 }
 
 // The bag a worker is called with. Absence is preserved rather than defaulted: a
@@ -51,39 +56,90 @@ function declaredSecretNames(taskDir) {
 export function workerParams(env, taskDir) {
   const text = (name) => (env[name] === undefined || env[name] === '' ? null : env[name]);
   const number = (name) => (text(name) === null ? null : Number(text(name)));
+  const decl = taskDeclaration(taskDir);
   const secrets = {};
-  for (const name of declaredSecretNames(taskDir)) {
+  for (const name of declaredSecretNames(decl)) {
     if (env[name] !== undefined) secrets[name] = env[name];
   }
-  return {
-    root: text('CLAUDINITE_REPO_ROOT'),
+  const token = text('GITHUB_TOKEN');
+  const pack = text('CLAUDINITE_PACK');
+  const task = text('CLAUDINITE_TASK');
+  const item = { number: number('CLAUDINITE_ITEM') };
+  const root = text('CLAUDINITE_REPO_ROOT');
+  const repo = text('CLAUDINITE_REPO') ?? text('GITHUB_REPOSITORY');
+  const base = text('CLAUDINITE_DEFAULT_BRANCH') ?? 'main';
+  const target = {
+    mode: text('CLAUDINITE_TARGET_MODE'),
+    branch: text('CLAUDINITE_TARGET_BRANCH'),
+    pr: number('CLAUDINITE_TARGET_PR'),
+  };
+  // Every line this run prints, under the task's own name and its item. Fourteen
+  // workers built this same expression for themselves; the runner knows all three
+  // parts of it.
+  const log = (s) => console.log(`${task ?? 'task'}${item.number ? ` [#${item.number}]` : ''}: ${s}`);
+  const bag = {
+    root,
     // The executor always sets `CLAUDINITE_REPO`; the runner's own variable is the
     // fallback every raw worker wrote for itself, kept so the bag answers the same
     // question outside a code-work run as inside one.
-    repo: text('CLAUDINITE_REPO') ?? text('GITHUB_REPOSITORY'),
+    repo,
     defaultBranch: text('CLAUDINITE_DEFAULT_BRANCH'),
-    pack: text('CLAUDINITE_PACK'),
-    task: text('CLAUDINITE_TASK'),
-    item: { number: number('CLAUDINITE_ITEM') },
+    pack,
+    task,
+    item,
     // One entry per Context bullet: the item's binding scope, and the channel an
     // operator's parameters ride.
     context: text('CLAUDINITE_CONTEXT') === null ? [] : text('CLAUDINITE_CONTEXT').split('\n'),
-    target: {
-      mode: text('CLAUDINITE_TARGET_MODE'),
-      branch: text('CLAUDINITE_TARGET_BRANCH'),
-      pr: number('CLAUDINITE_TARGET_PR'),
-    },
-    // The Action's own token, which every worker that talks to GitHub needs and each
-    // one used to reach into the environment for: handed over so `makeGh({ token })`
-    // is written rather than implied. A run outside Actions has none, and `null` says
-    // so where a worker can report it.
-    token: text('GITHUB_TOKEN'),
+    target,
+    // The Action's own token, which the executor's workflow sets on every code-work
+    // step. `gh` below is what a worker actually wants; the raw token stays for the
+    // few that build a remote URL out of it.
+    token,
+    // THE REST CLIENT, READY. There is no run in which one cannot be built - the
+    // executor's workflow sets `GITHUB_TOKEN` unconditionally - so a worker that
+    // checked for the token before making its own was guarding a case that does not
+    // occur. A client on a DIFFERENT credential is a different object and stays the
+    // worker's own: `FLEET_GITHUB_TOKEN` is a declared secret that really can be
+    // missing, and the fleet's own `makeGh` says so in the terms of its whole grant.
+    gh: makeGh({ token }),
+    log,
     // Where the runner collects the job summary a person reads on the run's page.
     // Absent outside Actions, which is a worker's cue to print instead of append.
     stepSummary: text('GITHUB_STEP_SUMMARY'),
+    // What this task authorizes to land unreviewed, as the trailer's own expression,
+    // for a worker that writes the arming trailer onto a commit it pushes itself.
+    // Read off the declaration beside the module rather than imported from it - three
+    // workers were loading their own `task.json` for this one string.
+    automerge: policyExpression(decl.automerge),
+    // THE GENERATED-FILE DELIVERY, with everything the runner already knows filled
+    // in. A caller passes what is its own - the files, the title, the body, the
+    // commit message - and may override any of the bound arguments.
+    deliver: async (opts) => {
+      const { deliverGenerated } = await import('../../public/delivery.mjs');
+      return deliverGenerated({ ...deliveryArguments(bag), ...opts });
+    },
     secrets,
   };
+  return bag;
 }
+
+// What the runner binds into a worker's `deliver`: the checkout, the repository, the
+// base branch, the token, the branch and pull request the executor resolved, the task
+// that is writing, and the run's logger. Named rather than inlined because ONE of them
+// cannot be checked by reading the call: the task id was a hand-written
+// `'<pack>/<task>'` literal at every delivery, and a rename leaves that literal stale
+// with no error at all - the commit stops reading as machinery and starts waking every
+// movement-gated task in the repo.
+export const deliveryArguments = ({ root, repo, defaultBranch, token, target, pack, task, log }) => ({
+  root,
+  repo,
+  base: defaultBranch ?? 'main',
+  token,
+  branch: target.branch,
+  pr: target.pr,
+  task: `${pack}/${task}`,
+  log,
+});
 
 // A worker's returned verdict, rendered into the protocol the executor reads. Every
 // key is optional, and a worker that returns nothing at all has simply done its work.

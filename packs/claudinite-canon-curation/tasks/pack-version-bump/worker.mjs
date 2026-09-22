@@ -20,10 +20,9 @@ import { remoteUrl } from '../../../claudinite-tasks/public/delivery.mjs';
 import { withTaskTrailer } from '../../../claudinite-tasks/public/work-item-grammar.mjs';
 import { planBumps, bumpSubject, BUMP_TASK } from '../../pack-versions.mjs';
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const log = (s) => console.log(`pack-version-bump${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
 
 export const makeGit = (root) => (args, opts = {}) => execFileSync('git', ['-C', root, ...args], {
   encoding: 'utf8',
@@ -93,12 +92,11 @@ export async function run({ root, remote, base, today = new Date(), attempts = 3
 }
 
 export async function worker(params) {
-  item = params.item.number ? String(params.item.number) : '';
+  log = params.log;
   const root = params.root;
   const repo = params.repo;
   const token = params.token;
   const base = params.defaultBranch ?? 'main';
   if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
-  if (!token) throw new Error('GITHUB_TOKEN is not set — the bump cannot push to the base branch');
   await run({ root, remote: remoteUrl(repo, token), base });
 }

@@ -59,18 +59,22 @@ import {
 // name is the other half of the coupling, pinned by the protocol test.
 export const MEMBER_TASK = MEMBER_TASK_ID.split('/')[1];
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const log = (s) => console.log(`fleet-add-missing-packs${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
+
+// Where the runner collects the job summary a person reads on the run's page, set
+// beside the logger for the same reason: the report builders below reach it.
+let stepSummary = null;
 
 const emit = (text) => {
   console.log(text);
-  if (params.stepSummary) appendFileSync(params.stepSummary, `${text}\n`);
+  if (stepSummary) appendFileSync(stepSummary, `${text}\n`);
 };
 
-export async function worker({ item: workItem, repo, context, secrets }) {
-  item = workItem.number ? String(workItem.number) : '';
+export async function worker({ repo, context, secrets, log: runLog, stepSummary: summaryPath }) {
+  log = runLog;
+  stepSummary = summaryPath;
   // GITHUB_REPOSITORY names the HOME repo — the one whose claudinite-fleet-sheepdog entry carries the
   // fleet config. Actions sets it; CLAUDINITE_REPO is code-work's own name for
   // the same fact, so fall back rather than depending on which is present.

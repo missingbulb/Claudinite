@@ -79,3 +79,18 @@
   downgrading its own failure into a lane nobody watches.
 - **Actor:** @missingbulb (owner), converting every task to the wrapped form.
 - **Model:** Opus 5
+
+## 2026-09-22 · reworded · the bag carries the run's instruments, not just its readings
+- **Source:** the owner, reading a converted worker's `if (!token) throw` and asking whether a
+  configured client could not simply be handed in.
+- **Reason:** the executor's workflow sets `GITHUB_TOKEN` on every code-work step, so no run exists
+  in which a client cannot be built and every guard on it was a check on a case that cannot occur.
+  The same held for three more shapes each worker rebuilt: the logger (fourteen copies of one
+  expression), the generated-file delivery (eight arguments the runner already holds, one of them a
+  hand-written `<pack>/<task>` literal that a rename leaves stale with no error), and the automerge
+  expression (three workers importing their own `task.json` for one string).
+- **Mechanism:** `gh`, `log`, `deliver` and `automerge` join the bag. A client on a DIFFERENT
+  credential stays the worker's own, and the skill says why: a declared secret can be missing, and
+  only the worker can report that in the terms of its whole grant.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5

@@ -31,14 +31,12 @@ import {
   SCHEDULER_LABELS,
 } from '../../src/session/dispatch.mjs';
 import { lastLivenessAt } from '../../src/items/heartbeat.mjs';
-import { makeGh } from '../../src/world/github.mjs';
 import { ensureLabels } from '../../src/world/github.mjs';
 import { searchIssues, comment, addLabel, removeLabel, listComments } from '../../src/world/github.mjs';
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const log = (s) => console.log(`task-janitor${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
 
 // Every OPEN dispatch issue in the repo, with the labels / age / comment count
 // the rules read. Repo-wide and open-only — the scheduler's own per-family
@@ -121,19 +119,18 @@ export async function sweep(gh, repo, now) {
 // nothing at all — and report a clean bill of health either way. One repo, one
 // mechanism, one sweep.
 export async function worker(params) {
-  item = params.item.number ? String(params.item.number) : '';
+  log = params.log;
   const repo = params.repo;
   if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
-  if (!params.token) throw new Error('GITHUB_TOKEN is not set - the janitor cannot read or write issues');
   const root = params.root;
   const { loadConfig } = await import('../../../../engine/checks/helpers/repo-context.mjs');
   const config = loadConfig(root);
   const { sweepQueue } = await import('./queue-sweep.mjs');
   const { discoverTasks } = await import('../../src/contract/discover.mjs');
   const { tasks } = await discoverTasks(root, config);
-  await sweepQueue(makeGh(), repo, new Date(), { tasks, log });
+  await sweepQueue(params.gh, repo, new Date(), { tasks, log });
   // The slot dispatch-issue sweep still runs BESIDE the queue's: the slot scheduler
   // is retired (#974) but the `[claudinite-task]` issues its last runs filed are
   // still open in members, and nothing else closes them out.
-  await sweep(makeGh(), repo, new Date());
+  await sweep(params.gh, repo, new Date());
 }

@@ -73,12 +73,10 @@ export async function runVerification({ gh, repo, itemNumber, fetchUrl, now = ()
   return { outcome: 'fail', originalIssue: spec.originalIssue };
 }
 
-export async function worker({ repo, item, token }) {
+export async function worker({ repo, item, gh }) {
   const itemNumber = item.number;
   if (!repo || !itemNumber) throw new Error('the repository and the item are not both set - not running under the executor');
-  if (!token) throw new Error('GITHUB_TOKEN is not set - the verification cannot read its item');
-  const { makeGh } = await import('../../src/world/github.mjs');
-  const verdict = await runVerification({ gh: makeGh(), repo, itemNumber, fetchUrl: fetchOnce });
+  const verdict = await runVerification({ gh, repo, itemNumber, fetchUrl: fetchOnce });
 
   if (verdict.outcome === 'invalid') {
     return { triage: { kind: 'action', detail: `this verification's probe spec is unreadable: ${verdict.problems.join('; ')}` } };

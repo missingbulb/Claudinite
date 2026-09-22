@@ -8,12 +8,11 @@
 
 import { main as runDeploy } from './deploy.mjs';
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const log = (s) => console.log(`deploy-oauth-exchange${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
 
 export async function worker(params) {
-  item = params.item.number ? String(params.item.number) : '';
+  log = params.log;
   await runDeploy({ log });
 }

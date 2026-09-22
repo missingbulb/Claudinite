@@ -33,10 +33,9 @@ import { settingsPath } from '../../../../engine/settings-file.mjs';
 
 const PUSH_ATTEMPTS = 3;
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const log = (s) => console.log(`logs-prune${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
 
 const git = (root, args, opts = {}) => execFileSync('git', ['-C', root, ...args], {
   encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts,
@@ -80,12 +79,11 @@ function pushRemovals(root, { remote, tip, paths, message }) {
 }
 
 export async function worker(params) {
-  item = params.item.number ? String(params.item.number) : '';
+  log = params.log;
   const root = params.root;
   const repo = params.repo;
   const token = params.token;
   if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
-  if (!token) throw new Error('GITHUB_TOKEN is not set — the prune cannot read or write the logs branch');
   const remote = `https://x-access-token:${token}@github.com/${repo}.git`;
 
   const declared = readRetentionDays(root);

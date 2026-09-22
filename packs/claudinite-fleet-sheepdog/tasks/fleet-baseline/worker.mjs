@@ -20,13 +20,12 @@
 import { main as sweep } from './force-fleet-baseline.mjs';
 import { parseParamBag } from '../../param-bag.mjs';
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const log = (s) => console.log(`fleet-baseline${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
 
-export async function worker({ item: workItem, repo, context }) {
-  item = workItem.number ? String(workItem.number) : '';
+export async function worker({ repo, context, log: runLog }) {
+  log = runLog;
   // The sweep resolves the HOME repo from GITHUB_REPOSITORY; the bag's `repo` is the
   // scheduler's own name for the same fact, so fall back rather than depending on
   // which of the two happens to be present.

@@ -119,7 +119,6 @@ export async function worker(params) {
   // that wedges its own canary.
   const rehearsalRef = process.env.CLAUDINITE_CANON_REF || null;
   if (!repo) throw new Error('update: the repository is not set (owner/repo)');
-  if (!token) throw new Error('update: no GITHUB_TOKEN was handed in');
 
   // Either settings-file name, in the rename's read order: this worker is VENDORED,
   // so the copy running on a member may predate the record that renamed its own

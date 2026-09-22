@@ -55,10 +55,9 @@ export class NeedsHuman extends Error {
   constructor(kind, message) { super(message); this.kind = kind; this.triage = kind; }
 }
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const defaultLog = (s) => console.log(`publish-pages${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let defaultLog = console.log;
 
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -159,6 +158,9 @@ export async function publish({
   gh = makeGh(),
   build = buildInto,
   log = defaultLog,
+  // The work item this publish belongs to, named in the commit so the pages branch
+  // says which run built it. Absent for a hand-run, which is why it is not required.
+  item = null,
   // Well inside `code_work_timeout`, so a run still going when this gives up is
   // reported rather than killed mid-sentence.
   followMs = 8 * 60 * 1000,
@@ -217,7 +219,7 @@ export async function publish({
   throw new Error(`run ${done.html_url} concluded ${done.conclusion}`);
 }
 
-export async function worker({ root, repo, defaultBranch, token, item: workItem }) {
-  item = workItem.number ? String(workItem.number) : '';
-  await publish({ repoRoot: root, repo, ref: defaultBranch ?? 'main', token });
+export async function worker({ root, repo, defaultBranch, token, gh, item, log: runLog }) {
+  defaultLog = runLog;
+  await publish({ repoRoot: root, repo, ref: defaultBranch ?? 'main', token, gh, item: item.number });
 }

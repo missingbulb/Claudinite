@@ -32,10 +32,8 @@
 // own `.gitattributes`, whose `*GENERATED*` pattern the engine converges.
 
 import { readFileSync } from 'node:fs';
-import { deliverGenerated, baseTip, readAt, remoteUrl } from '../../public/delivery.mjs';
-import { AUTOMERGE_TRAILER, policyExpression } from '../../src/contract/merge-policy.mjs';
-import { normalizeTaskDeclaration } from '../../src/contract/task-contract.mjs';
-import taskJson from './task.json' with { type: 'json' };
+import { baseTip, readAt, remoteUrl } from '../../public/delivery.mjs';
+import { AUTOMERGE_TRAILER } from '../../src/contract/merge-policy.mjs';
 import {
   encodeTasksUsageFile, decodeTasksUsageFile, renderTasksUsageFile, withoutStamp, TASKS_USAGE_PATH,
 } from '../../src/items/tasks-usage-format.mjs';
@@ -44,15 +42,13 @@ import { makeReader, readRunCosts } from './read-run-costs.mjs';
 import { readClosedItems } from './read-items.mjs';
 import { settingsPath } from '../../../../engine/settings-file.mjs';
 
-const task = normalizeTaskDeclaration(taskJson);
 
 const PR_BRANCH_PREFIX = 'claudinite/tasks-usage-fold';
 const PACK_ID = 'claudinite-tasks';
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const log = (s) => console.log(`tasks-usage-fold${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
 
 // What a minute of Actions costs this repo, from the pack's own config. UNSET IS
 // NOT ZERO: a public repo bills nothing and a private one bills something, and a
@@ -64,13 +60,12 @@ export function minuteRateFrom(config, packId = PACK_ID) {
 }
 
 export async function worker(params) {
-  item = params.item.number ? String(params.item.number) : '';
+  log = params.log;
   const root = params.root;
   const repo = params.repo;
   const token = params.token;
   const base = params.defaultBranch ?? 'main';
   if (!repo) throw new Error('CLAUDINITE_REPO / GITHUB_REPOSITORY is not set (owner/repo)');
-  if (!token) throw new Error('GITHUB_TOKEN is not set — the fold can read neither the runs nor the queue');
   const remote = remoteUrl(repo, token);
 
   let config = {};
@@ -119,13 +114,10 @@ export async function worker(params) {
     return;
   }
 
-  const pr = await deliverGenerated({
-    root, repo, base, token, stamp: today, branchPrefix: PR_BRANCH_PREFIX, log,
-    branch: params.target.branch,
-    pr: params.target.pr,
-    task: `${PACK_ID}/tasks-usage-fold`,
+  const pr = await params.deliver({
+    stamp: today, branchPrefix: PR_BRANCH_PREFIX,
     files: { [TASKS_USAGE_PATH]: text },
-    message: `Claudinite: fold tasks usage\n\n${AUTOMERGE_TRAILER}: ${policyExpression(task.automerge)}`,
+    message: `Claudinite: fold tasks usage\n\n${AUTOMERGE_TRAILER}: ${params.automerge}`,
     title: 'Claudinite: tasks usage fold',
     body: [
       `Regenerated \`${TASKS_USAGE_PATH}\` from this repo's scheduler and executor run`,

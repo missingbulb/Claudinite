@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { removeTree } from '../../../../engine/remove-tree.mjs';
-import { workerParams, emitVerdict, runWorkerModule } from '../../src/execute/worker-entry.mjs';
+import { workerParams, emitVerdict, runWorkerModule, deliveryArguments } from '../../src/execute/worker-entry.mjs';
 import { readTriageMarker, readRequeueMarker, readAgentRequest, agentRequested } from '../../src/execute/code-work.mjs';
 
 // A task directory holding a declaration and a worker module, the shape the runner
@@ -240,4 +240,62 @@ test('runWorkerModule awaits an async worker, verdict and rejection alike', asyn
     assert.equal((await runWorkerModule(failed.file, { env: ENV, taskDir: failed.dir, ...b.io, now: () => 0 })).ok, false);
     assert.match(b.err[0], /late/);
   } finally { removeTree(done.dir); removeTree(failed.dir); }
+});
+
+// --- the instruments the bag hands over ------------------------------------------
+
+// A client is always buildable: the executor's workflow sets GITHUB_TOKEN on every
+// code-work step, so a worker that checked for the token before making one was
+// guarding a case that cannot occur. The bag hands the client over already made.
+test('workerParams hands over a REST client, with or without a token', () => {
+  const { dir } = taskDir();
+  try {
+    assert.equal(typeof workerParams(ENV, dir).gh, 'function');
+    assert.equal(typeof workerParams({}, dir).gh, 'function',
+      'a run outside Actions still gets a client - it answers 401, which is a failure the worker reports');
+  } finally { removeTree(dir); }
+});
+
+test('the bag\'s log names the task and the item it belongs to', () => {
+  const { dir } = taskDir();
+  const out = [];
+  const held = console.log;
+  console.log = (l) => out.push(l);
+  try {
+    workerParams(ENV, dir).log('done');
+    workerParams({ ...ENV, CLAUDINITE_ITEM: '' }, dir).log('done');
+  } finally { console.log = held; removeTree(dir); }
+  assert.deepEqual(out, ['t [#42]: done', 't: done'], 'and drops the bracket where there is no item');
+});
+
+// The policy is read off the declaration beside the module: three workers were
+// importing their own `task.json` for this one string.
+test('workerParams carries the declared automerge as its trailer expression', () => {
+  const declared = taskDir({ decl: { automerge: ['under:docs && doc-changes'] } });
+  const bare = taskDir();
+  try {
+    assert.equal(workerParams(ENV, declared.dir).automerge, 'under:docs&&doc-changes');
+    assert.equal(workerParams(ENV, bare.dir).automerge, 'nothing',
+      'a task that declares none authorizes nothing, which is what the trailer must say');
+  } finally { removeTree(declared.dir); removeTree(bare.dir); }
+});
+
+// THE TASK ID IS THE ONE A READER CANNOT CHECK. Every delivery used to name it as a
+// literal, and a rename leaves that literal stale with no error: the commit stops
+// carrying the trailer the movement conditions read as machinery, so one task's
+// delivery starts waking every movement-gated task in the repo.
+test('deliveryArguments binds the run\'s own coordinates, task id included', () => {
+  const { dir } = taskDir();
+  try {
+    const bound = deliveryArguments(workerParams(ENV, dir));
+    assert.equal(bound.task, 'p/t');
+    assert.equal(bound.root, '/checkout');
+    assert.equal(bound.repo, 'owner/name');
+    assert.equal(bound.base, 'main');
+    assert.equal(bound.branch, 'p/t-2026-09-22');
+    assert.equal(bound.pr, 77);
+    assert.equal(typeof bound.log, 'function');
+    // A run whose default branch the executor did not name still delivers onto one.
+    assert.equal(deliveryArguments(workerParams({ ...ENV, CLAUDINITE_DEFAULT_BRANCH: '' }, dir)).base, 'main');
+  } finally { removeTree(dir); }
 });

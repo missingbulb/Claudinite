@@ -241,7 +241,6 @@ export async function worker({ root, repo, defaultBranch, pack, task, token, sec
   const accountId = secrets.CLOUDFLARE_ACCOUNT_ID;
 
   if (!repo) throw new Error('the repository is not set (owner/repo)');
-  if (!token) throw new Error('GITHUB_TOKEN is not set — the release cannot read the branch tip or push its bump');
   if (!apiToken || !accountId) {
     console.error('claudinite-needs-human: action — CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must both be configured as repository secrets before the site can be published');
     throw new Error('the Cloudflare credentials are not configured');

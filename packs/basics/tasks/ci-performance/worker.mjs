@@ -11,7 +11,6 @@
 // regression is decided in one place and tested there rather than inferred from a
 // live repo's weather.
 
-import { makeGh } from '../../../claudinite-tasks/public/github.mjs';
 import { findOrCreateTracker, writeTracker } from '../../../claudinite-tasks/public/github.mjs';
 
 export const WINDOW_DAYS = 7;
@@ -125,11 +124,8 @@ export function reportBody(summary, { repo, nowIso, steps = [] }) {
 // The standing record this task keeps. Its own, named here and nowhere else.
 export const TRACKER_TITLE = '[claudinite] CI performance';
 
-export async function worker({ repo, item, token }) {
-  const log = (s) => console.log(`ci-performance${item.number ? ` [#${item.number}]` : ''}: ${s}`);
+export async function worker({ repo, gh, log }) {
   if (!repo || !repo.includes('/')) throw new Error('the repository is not set (owner/repo)');
-  if (!token) throw new Error('GITHUB_TOKEN is not set - the scheduler always provides it');
-  const gh = makeGh({ token });
 
   const { status, json } = await gh(`/repos/${repo}/actions/runs?per_page=100&status=completed`);
   if (status !== 200) throw new Error(`run ledger unreadable: GET actions/runs returned ${status}`);

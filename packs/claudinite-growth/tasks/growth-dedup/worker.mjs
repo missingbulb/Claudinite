@@ -21,7 +21,6 @@
 // is the whole life the brief has. A standing issue would outlive it by a week and
 // then hold a stale window.
 
-import { makeGh } from '../../../claudinite-tasks/public/github.mjs';
 import { loadConfig } from '../../../../engine/checks/helpers/repo-context.mjs';
 
 const log = (s) => console.log(`growth-dedup code_work: ${s}`);
@@ -213,11 +212,9 @@ async function windowCommits(gh, repo, branch, sinceIso) {
   return out;
 }
 
-export async function worker({ repo, root, defaultBranch, token, item: workItem }) {
+export async function worker({ repo, root, defaultBranch, gh, item: workItem, log }) {
   if (!repo || !repo.includes('/')) throw new Error('the repository is not set (owner/repo)');
-  if (!token) throw new Error('GITHUB_TOKEN is not set - the scheduler always provides it');
   const branch = defaultBranch ?? 'main';
-  const gh = makeGh();
 
   const sinceIso = new Date(Date.now() - WINDOW_DAYS * 86400000).toISOString();
   // The repo's OWN declaration decides which packs are the yardstick: a canon

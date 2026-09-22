@@ -9,7 +9,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deliverGenerated, baseTip, remoteUrl, readAt } from '../../../claudinite-tasks/public/delivery.mjs';
+import { baseTip, remoteUrl, readAt } from '../../../claudinite-tasks/public/delivery.mjs';
 import { evaluateRules } from './evaluate.mjs';
 import { figureReader } from './figures.mjs';
 import { readWindows } from './read-record.mjs';
@@ -110,17 +110,12 @@ export async function worker(params) {
 
   if (!token || !repo) { log('no token - the file is written, nothing delivered'); return; }
 
-  await deliverGenerated({
-    root, repo, base, token,
-    branch: params.target.branch,
-    pr: params.target.pr,
+  await params.deliver({
     branchPrefix: 'claudinite/usage-review',
     files: { [REVIEW_PATH]: `${JSON.stringify(file, null, 2)}\n`, [DASHBOARD_PATH]: dashboard },
     title: `Usage review: ${findings.length} findings in the 28 days to ${record.window.to}`,
     body: prBody(file),
     message: `Usage review for the 28 days to ${record.window.to}`,
-    task: 'claudinite-growth/usage-review',
-    log,
   });
 
   await syncIssues(file);

@@ -15,13 +15,12 @@
 
 import { main as sweep } from './check-fleet-roster.mjs';
 
-// The item this run belongs to, stamped on every line the task prints. Module-level
-// because the helpers below log too, and set once from the bag when the run starts.
-let item = '';
-const log = (s) => console.log(`fleet-roster${item ? ` [#${item}]` : ''}: ${s}`);
+// The run's own logger, under the task's name and its item. Module-level because the
+// helpers below log too; `worker` takes the one the runner built.
+let log = console.log;
 
-export async function worker({ item: workItem, repo }) {
-  item = workItem.number ? String(workItem.number) : '';
+export async function worker({ repo, log: runLog }) {
+  log = runLog;
   // The sweep resolves the HOME repo — the one whose claudinite-fleet-sheepdog pack entry carries
   // `{ owner, exclude, canonRepo }`, and the one both issue families land
   // in — from GITHUB_REPOSITORY. Actions sets it and the subprocess inherits it;
