@@ -302,12 +302,13 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   `needs-human-action`, the period read from the task's own declared cadence
   term at HEAD — never from title parsing. `S18`, `S21` (never fires on a
   quiet task, which has no item to escalate)
-- Nothing surfaces a `blocked` item whose blockers never resolve. The
-  stuck-dependency sweep that used to comment on one went with the janitor: it
-  measured its bound from the item's CREATION and carried no once-only guard, so
-  it re-posted on every pass for as long as the item stood. The item still
-  proceeds by itself the moment its blockers resolve, and waits silently until
-  they do. `S18`
+- The stuck-dependency sweep notes a `blocked` item whose blockers have not
+  resolved for ~2 IDLE days with a comment only — labels untouched, so the item
+  still proceeds by itself the moment its blockers resolve. The bound is read
+  from the item's last activity rather than its creation, which makes the
+  comment its own guard: posting one moves `updated_at`, so the next is two
+  idle days out rather than one per pass forever. `S18`,
+  `test/schedule/repair-rules.test.mjs: the stuck-dependency bound is read from the item's last activity, not its age`
 - An open item wearing neither a status label nor a park — a torn label
   swap's leavings — is repaired to `needs-human-decision` by the repair phase's
   stateless-item rule, on a fresh re-read so an item that settled between the

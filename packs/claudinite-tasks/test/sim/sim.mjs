@@ -378,6 +378,7 @@ export function makeSim({
       if (op.rule === 'stale-ready') record('escalate', { issue: op.issue, task: taskIdOfIssue(op.issue), rule: 'stale-ready' });
       else if (op.rule === 'dead-agent') record('agent-reclaim', { issue: op.issue, task: taskIdOfIssue(op.issue) });
       else if (op.rule === 'stateless') record('repair-stateless', { issue: op.issue });
+      else if (op.rule === 'stuck-dependency') record('escalate', { issue: op.issue, task: taskIdOfIssue(op.issue), rule: 'stuck-dependency' });
       else if (op.rule) record('janitor-close', { issue: op.issue });
       else if (op.kind === 'create') record('create', { task: `${op.pack}/${op.task}` });
       else if (op.kind === 'ready') record('ready', { issue: op.issue });

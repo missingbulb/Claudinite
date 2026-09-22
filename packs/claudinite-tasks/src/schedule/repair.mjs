@@ -29,6 +29,7 @@
 import {
   staleReadyItems, staleReadyComment, deadAgentItems, deadAgentComment,
   statelessItems, statelessComment, supersededItems, supersededComment, taskPathIndex,
+  stuckBlockedItems, stuckBlockedComment,
   orphanedParkItems, orphanedParkComment, endedParkItems, endedParkComment,
   abandonedParkItems, abandonedParkComment, unclosedTerminalItems, unclosedTerminalComment,
   periodForTasks, scheduledForTasks,
@@ -45,6 +46,7 @@ import {
 //   { kind: 'escalate', issue, from, to, body }        status -> a park, item stays open
 //   { kind: 'retire',   issue, from, to, body, close } status -> a terminal, issue closes
 //   { kind: 'close-terminal', issue, body, close }     the close a torn transition never made
+//   { kind: 'note', issue, body }                      a comment and nothing else
 //
 // `confirm` names the pure predicate the shell must see hold on a FRESH read before
 // it writes. Only the three rules whose premise is a TRANSIENT carry one — "this
@@ -86,9 +88,10 @@ function threadEffect(item, op) {
 //   resolutionOf(n)    'merged' | 'closed' | null for a park's `Ends-when:` target
 //   doneAfter(id, at)  the task's newest clean run closed after `at`, or null
 //   isRequest(number)  true where job 4 owns this issue (below)
+//   stateOf(n)         the state of a `Blocked-by` target, which need not be an item
 export function planRepair({
   items = [], tasks = [], now, progressAt = () => null, resolutionOf = () => null,
-  doneAfter = () => null, isRequest = () => false,
+  doneAfter = () => null, isRequest = () => false, stateOf = () => null,
 }) {
   const open = items.filter((i) => i.state === 'open');
   const ops = [];
@@ -182,6 +185,17 @@ export function planRepair({
       to: STATUS_NEEDS_HUMAN_FAILURE, body: null, note: 'dead-agent',
       wedged: progressAt(item) != null,
     });
+  }
+
+  // COMMENT ONLY, deliberately: labels untouched means the item still proceeds by
+  // itself the moment its blockers resolve, and a human who decides it is dead
+  // closes it by hand. It claims nothing, so an item this rule notes can still be
+  // escalated or closed by a rule above — the note is about the wait, not the item's
+  // state.
+  for (const item of stuckBlockedItems(open, now, { stateOf })) {
+    if (taken.has(item.number)) continue;
+    const unresolved = parseWorkItemBody(item.body).blockedBy.filter((n) => stateOf(n) !== 'closed');
+    ops.push({ kind: 'note', rule: 'stuck-dependency', issue: item.number, body: stuckBlockedComment(item, unresolved) });
   }
 
   // A TORN ADOPTION IS NOT A TORN ITEM. Adoption writes the machine block and then

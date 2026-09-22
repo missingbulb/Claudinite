@@ -111,7 +111,7 @@ export async function planSchedulerRun({
   // this line — and every cadence term the ask evaluates — judges this run's world
   // rather than the listing it started from.
   const repair = planRepair({ items, tasks, now, progressAt, resolutionOf, doneAfter,
-    isRequest: (n) => requests.some((r) => r.number === n) });
+    isRequest: (n) => requests.some((r) => r.number === n), stateOf });
   ops.push(...repair.ops);
   for (const n of repair.closed) closedByThisRun.add(n);
 
@@ -323,7 +323,7 @@ export async function planSchedulerRun({
   return { ops, asked };
 }
 
-export const REPAIR_KINDS = ['escalate', 'retire', 'close-terminal'];
+export const REPAIR_KINDS = ['escalate', 'retire', 'close-terminal', 'note'];
 
 // The hand-off comment names the session, so a dead-agent escalation can say WHICH
 // one died rather than merely that one did. Absent (a torn hand-off), it says less
@@ -377,7 +377,9 @@ export async function applyRepairOp({ gh, repo, op, now, tasks, agentComments, a
       problems.push(`could not clear ${op.clearInReview.label} on #${op.clearInReview.issue} (${res.status})`);
     }
   }
-  log(`- repaired #${op.issue} (${op.rule})${op.to ? ` -> ${op.to}` : ''}${op.close ? ` — closed ${op.close}` : ''}`);
+  log(op.kind === 'note'
+    ? `- noted #${op.issue} (${op.rule})`
+    : `- repaired #${op.issue} (${op.rule})${op.to ? ` -> ${op.to}` : ''}${op.close ? ` — closed ${op.close}` : ''}`);
   return true;
 }
 
@@ -759,9 +761,10 @@ export async function schedulerRun({
   const endRepair = phase('repair');
   const repairOps = ops.filter((o) => REPAIR_KINDS.includes(o.kind));
   if (repairOps.length) {
-    // Applying a label 422s when it does not exist, so guarantee them first — a
-    // quiet repo never gets here, so this costs nothing on the common path.
-    await ensureLabels(gh, repo, QUEUE_LABELS);
+    // Applying a label 422s when it does not exist, so guarantee them first — but
+    // only where this run actually writes one: a pass whose whole output is a
+    // comment pays nothing for the labels it never touches.
+    if (repairOps.some((o) => o.to)) await ensureLabels(gh, repo, QUEUE_LABELS);
     let repaired = 0;
     for (const op of repairOps) {
       if (await applyRepairOp({

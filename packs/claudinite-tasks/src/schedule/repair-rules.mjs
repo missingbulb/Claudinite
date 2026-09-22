@@ -44,6 +44,7 @@ export const STALE_READY_PERIODS = 2;
 // torn rather than in flight. A converge writes the label and the close within
 // seconds of each other, so an hour is far past any live transition.
 export const TERMINAL_OPEN_MS = 3600e3;
+export const STUCK_BLOCKED_MS = 2 * 86400e3;
 
 const ms = (t) => (t == null ? null : new Date(t).getTime());
 const idle = (item, now) => ms(now) - (ms(item.updated_at) ?? ms(item.created_at) ?? ms(now));
@@ -99,6 +100,37 @@ export const deadAgentComment = (item, sessionNote = null, { wedged = false } = 
   `This work item has carried \`${STATUS_RUNNING_AGENT}\` for over ${Math.round(AGENT_LEASH_MS / 3600e3)}h `
   + `${wedged ? 'without the work moving — the session kept beating, but every beat said the same thing' : 'with no activity'} — `
   + `the agent session that claimed it${sessionNote ? ` (${sessionNote})` : ''} never converged it. Parking it for a human.`;
+
+// Rule C — THE STUCK-DEPENDENCY SWEEP (F14). The stale-ready rule cannot see this
+// at all: a blocked item is never ready. So a blocked item whose blockers have not
+// resolved past the bound gets an escalation COMMENT and nothing else — labels
+// untouched, so the item still proceeds by itself the moment its blockers resolve,
+// and a human who decides it is dead closes it by hand.
+//
+// THE BOUND IS IDLENESS, NEVER AGE (owner, 2026-09-22). Measured from `created_at`
+// the rule had no terminating condition: once an item crossed two days it matched
+// on every pass for the rest of its life, and the sweep carried no once-only guard,
+// so a chain link waiting on a long review collected one comment per run forever.
+// Measured from the item's own last activity, the comment this rule posts resets
+// the clock it is read from, which makes the comment its own guard: the next one is
+// two idle days away, and a person or a run touching the item pushes it further out.
+//
+// Sleeping items (a future `Not-before`, blockers closed) never match: waiting for
+// a time is the mechanism working.
+export function stuckBlockedItems(open = [], now, { stateOf = () => null, boundMs = STUCK_BLOCKED_MS } = {}) {
+  return open.filter((i) => {
+    if (!isStatus(i, STATUS_BLOCKED)) return false;
+    const { blockedBy } = parseWorkItemBody(i.body);
+    if (!blockedBy.length) return false;
+    if (blockedBy.every((n) => stateOf(n) === 'closed')) return false;
+    return idle(i, now) >= boundMs;
+  });
+}
+
+export const stuckBlockedComment = (item, unresolved) =>
+  `This work item has been blocked on ${unresolved.map((n) => `#${n}`).join(', ')} for over `
+  + `${Math.round(STUCK_BLOCKED_MS / 86400e3)} days. Nothing here is stuck mechanically — it will proceed by itself the moment those close — `
+  + 'but if they are never going to, close this item by hand.';
 
 // Rule D — THE STATELESS-ITEM REPAIR. An open work item whose labels decode to no
 // status at all is off the state machine entirely: a torn label swap's

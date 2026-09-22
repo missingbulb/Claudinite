@@ -1124,13 +1124,8 @@ test('S18 fan-out: stuck member escalates, fan-in proceeds after the human acts'
   assert.equal(sim.item(members[1].number).state, 'closed', 'distinct qualifiers ran in parallel (no mutex)');
   assert.ok(sim.log.some((e) => e.rule === 'stale-ready' && e.issue === members[2].number),
     'the unreachable member came out of the queue as a human problem');
-  // NOTHING SURFACES THE STARVING FAN-IN ANY MORE. The stuck-dependency rule that
-  // used to comment on it was deleted with the janitor (owner, 2026-09-22): its
-  // bound was measured from the item's CREATION and it carried no once-only guard,
-  // so it re-posted on every pass forever. What is left is the mechanism working —
-  // the fan-in proceeds by itself the moment its blocker resolves — and silence
-  // while it waits, however long that is.
-  assert.equal(sim.log.filter((e) => e.rule === 'stuck-dependency').length, 0);
+  assert.ok(sim.log.some((e) => e.rule === 'stuck-dependency' && e.issue === fanIn.number),
+    'the starving fan-in was surfaced too (F14)');
   assert.equal(sim.item(fanIn.number).state, 'closed');
   assert.equal(sim.item(fanIn.number).outcome, 'done', 'and proceeded by itself once the human closed the member');
 });

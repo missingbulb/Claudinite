@@ -57,7 +57,7 @@ const labelsOn = (added, issue) => added.filter((a) => a.issue === issue).flatMa
 // through the real write paths. The seams are built here exactly as `run.mjs` builds
 // them from its own reads, so a case exercises the wiring rather than a paraphrase
 // of it.
-async function repair(issues, { now, tasks = [], comments = {}, fresh = {}, targets = {}, closed = [] } = {}) {
+async function repair(issues, { now, tasks = [], comments = {}, fresh = {}, targets = {}, closed = [], blockers = {} } = {}) {
   const { gh, added, patched, posted } = repairGh(issues, fresh);
   const items = [...issues, ...closed];
   const agentComments = new Map(Object.entries(comments).map(([n, c]) => [Number(n), c]));
@@ -66,6 +66,7 @@ async function repair(issues, { now, tasks = [], comments = {}, fresh = {}, targ
     progressAt: (item) => lastProgressAt(agentComments.get(item.number) ?? []),
     resolutionOf: (n) => targets[n] ?? null,
     doneAfter: doneRunLookup(closed.filter((i) => isStatus(i, STATUS_DONE))),
+    stateOf: (n) => blockers[n] ?? 'open',
   });
   const written = [];
   for (const op of plan.ops) {
@@ -80,7 +81,7 @@ async function repair(issues, { now, tasks = [], comments = {}, fresh = {}, targ
     added, patched, posted, ops: plan.ops, threadedClosed: plan.closed,
     staleReady: by('stale-ready'), deadAgents: by('dead-agent'), stateless: by('stateless'),
     superseded: by('superseded'), orphaned: by('orphaned'), ended: by('ended'),
-    abandoned: by('abandoned'), unclosed: by('unclosed'),
+    abandoned: by('abandoned'), unclosed: by('unclosed'), stuck: by('stuck-dependency'),
   };
 }
 
@@ -325,4 +326,17 @@ test('a confirm-gated verdict is not threaded, because the write may not happen'
   assert.deepEqual(plan.ops.map((o) => o.rule), ['abandoned']);
   assert.equal(items[0].state, 'open');
   assert.deepEqual([...plan.closed], []);
+});
+
+// The stuck-dependency rule is COMMENT ONLY on purpose — the item still proceeds
+// the moment its blockers resolve — so it must not park anything, and it must not
+// stop a rule above from acting on the same item.
+test('a stuck dependency is surfaced without parking the item', async () => {
+  const out = await quiet(() => repair([
+    workItem(41, ['task:status:blocked'], { created: '2026-07-01T00:00:00Z', body: 'packs/p/tasks/a/task.md\n\nBlocked-by: #99\n' }),
+  ], { now: at('2026-07-10T00:00:00Z'), blockers: { 99: 'open' } }));
+  assert.deepEqual(out.stuck, [41]);
+  assert.deepEqual(labelsOn(out.added, 41), []);
+  assert.deepEqual(out.patched, []);
+  assert.ok(out.posted.some((b) => b.includes('#99')), 'the note names what it is waiting on');
 });
