@@ -121,8 +121,45 @@ test('counts the mounted skill set from the registry, split by whether a hook lo
   try {
     // "two" is bundled by both packs and mounts once — the union, not the sum — and
     // the one skill carrying a force-load trigger is the auto-trigger one.
-    assert.match(run(corpus, project), /1 auto-trigger skill, 2 regular skills\./);
+    assert.match(run(corpus, project), /1 auto-trigger skill, 2 regular skills, /);
   } finally { removeTree(corpus); removeTree(project); }
+});
+
+// A mounted skill's DESCRIPTION is in the window from the session's first token, whether
+// or not the skill is ever loaded — the body is not. So a description is a cost the corpus
+// imposes the way its prose is, and the one cost a reader can compare against something:
+// the skills the same session got from outside the corpus, priced the same way, which no
+// pack here controls and which the line therefore reports rather than acts on.
+test('prices the skill descriptions it mounts, per skill, against the ones from elsewhere', () => {
+  const corpus = makeCorpus({ alpha: { skills: ['one', 'two'] } });
+  const skill = (name, descWords) => `---\nname: ${name}\ndescription: ${words(descWords).replace(/\n/g, ' ')}\n---\n# skill\n`;
+  for (const name of ['one', 'two']) {
+    mkdirSync(join(corpus, 'packs', 'alpha', 'skills', name), { recursive: true });
+    writeFileSync(join(corpus, 'packs', 'alpha', 'skills', name, 'SKILL.md'), skill(name, 15));
+  }
+  const project = makeProject({ packs: ['alpha'] });
+  // The skills a session carries that the corpus did not put there live under the person's
+  // own `~/.claude/skills`, at whatever depth a marketplace nests them.
+  const home = mkdtempSync(join(tmpdir(), 'claudinite-home-'));
+  const outside = join(home, '.claude', 'skills', 'synced', 'acme-marketplace', 'acme-skill');
+  mkdirSync(outside, { recursive: true });
+  writeFileSync(join(outside, 'SKILL.md'), skill('acme-skill', 60));
+  const bare = mkdtempSync(join(tmpdir(), 'claudinite-home-'));
+  try {
+    // 30 description words over two skills is 40 tokens at the corpus's ratio, 20 each;
+    // the one skill from elsewhere carries 60 words, 80 tokens. The per-skill pair is the
+    // point of the facet — the aggregate alone says nothing about whether it is a lot.
+    assert.match(
+      run(corpus, project, { HOME: home }),
+      /2 regular skills, 40 skill-description tokens \(20 each; 80 each for the 1 skill from elsewhere\)\./,
+    );
+    // Nothing readable outside leaves the corpus's own figure standing alone. A zero there
+    // would read as "they cost nothing", which is a claim about a set that was never found.
+    assert.match(
+      run(corpus, project, { HOME: bare }),
+      /2 regular skills, 40 skill-description tokens \(20 each\)\./,
+    );
+  } finally { removeTree(corpus); removeTree(project); removeTree(home); removeTree(bare); }
 });
 
 test('names the repo off the checkout\'s origin remote, else the runner\'s environment, else not at all', () => {
@@ -177,6 +214,10 @@ test('directs the session to open its first reply with the summary line, unambig
     assert.match(out, /not text to repeat/i);
     // No deixis: nothing points at a line the reader has to resolve for itself.
     assert.doesNotMatch(out, /\bthat line\b/i);
+    // And it says the reply CONTINUES. A directive naming only what a reply opens with
+    // is satisfied by a reply that is nothing but its opening, and a first turn holding
+    // two such directives has then ended with no work done.
+    assert.match(out, /go on to answer|goes on to answer/i);
     // And the line to say is what the directive ends on — last in, first out.
     assert.match(out.trimEnd(), /:\n+Loaded Claudinite: 1 pack, 0 context tokens, 0 guards, 0 code checks, 0 auto-trigger skills, 0 regular skills\.$/);
   } finally { removeTree(corpus); removeTree(project); }
