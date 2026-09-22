@@ -121,45 +121,8 @@ test('counts the mounted skill set from the registry, split by whether a hook lo
   try {
     // "two" is bundled by both packs and mounts once — the union, not the sum — and
     // the one skill carrying a force-load trigger is the auto-trigger one.
-    assert.match(run(corpus, project), /1 auto-trigger skill, 2 regular skills, /);
+    assert.match(run(corpus, project), /1 auto-trigger skill, 2 regular skills\./);
   } finally { removeTree(corpus); removeTree(project); }
-});
-
-// A mounted skill's DESCRIPTION is in the window from the session's first token, whether
-// or not the skill is ever loaded — the body is not. So a description is a cost the corpus
-// imposes the way its prose is, and the one cost a reader can compare against something:
-// the skills the same session got from outside the corpus, priced the same way, which no
-// pack here controls and which the line therefore reports rather than acts on.
-test('prices the skill descriptions it mounts, per skill, against the ones from elsewhere', () => {
-  const corpus = makeCorpus({ alpha: { skills: ['one', 'two'] } });
-  const skill = (name, descWords) => `---\nname: ${name}\ndescription: ${words(descWords).replace(/\n/g, ' ')}\n---\n# skill\n`;
-  for (const name of ['one', 'two']) {
-    mkdirSync(join(corpus, 'packs', 'alpha', 'skills', name), { recursive: true });
-    writeFileSync(join(corpus, 'packs', 'alpha', 'skills', name, 'SKILL.md'), skill(name, 15));
-  }
-  const project = makeProject({ packs: ['alpha'] });
-  // The skills a session carries that the corpus did not put there live under the person's
-  // own `~/.claude/skills`, at whatever depth a marketplace nests them.
-  const home = mkdtempSync(join(tmpdir(), 'claudinite-home-'));
-  const outside = join(home, '.claude', 'skills', 'synced', 'acme-marketplace', 'acme-skill');
-  mkdirSync(outside, { recursive: true });
-  writeFileSync(join(outside, 'SKILL.md'), skill('acme-skill', 60));
-  const bare = mkdtempSync(join(tmpdir(), 'claudinite-home-'));
-  try {
-    // 30 description words over two skills is 40 tokens at the corpus's ratio, 20 each;
-    // the one skill from elsewhere carries 60 words, 80 tokens. The per-skill pair is the
-    // point of the facet — the aggregate alone says nothing about whether it is a lot.
-    assert.match(
-      run(corpus, project, { HOME: home }),
-      /2 regular skills, 40 skill-description tokens \(20 each; 80 each for the 1 skill from elsewhere\)\./,
-    );
-    // Nothing readable outside leaves the corpus's own figure standing alone. A zero there
-    // would read as "they cost nothing", which is a claim about a set that was never found.
-    assert.match(
-      run(corpus, project, { HOME: bare }),
-      /2 regular skills, 40 skill-description tokens \(20 each\)\./,
-    );
-  } finally { removeTree(corpus); removeTree(project); removeTree(home); removeTree(bare); }
 });
 
 test('names the repo off the checkout\'s origin remote, else the runner\'s environment, else not at all', () => {
@@ -231,18 +194,20 @@ test('a repo that declares no pack runs no Claudinite, and hears nothing', () =>
   } finally { removeTree(corpus); removeTree(project); }
 });
 
-test('a pack copied for this session is left out of every count', () => {
-  // What it loaded is already stated, by the step that copied it, on the facet channel
-  // this line folds in — so counting it here would state one set of rules twice, under
-  // two names, and tell a reader their corpus grew when it did not.
+test('a pack copied for this session counts like every other one that loaded', () => {
+  // Its rules reach the window through the same import as the rest, so a reader asking
+  // what this session is carrying is told one number that covers all of it. Held out, it
+  // was a second number under a second name for prose that loads identically — and where
+  // that second number went missing, so did the only statement of what it cost.
   const corpus = makeCorpus({ alpha: { proseText: Array.from({ length: 150 }, (_, i) => `w${i}`).join(' ') } });
   const project = makeProject({ packs: ['alpha'] });
   const copied = join(project, '.claudinite', 'temp', 'packs', 'current_user');
   try {
-    const before = run(corpus, project);
+    assert.match(run(corpus, project), /: 1 pack, 200 context tokens, /);
     mkdirSync(copied, { recursive: true });
     writeFileSync(join(copied, 'pack.mjs'), 'export default { ruleRoutingGuidance: { belongs: "a person", excludes: "a project" } };\n');
     writeFileSync(join(copied, 'RULES.md'), Array.from({ length: 900 }, (_, i) => `x${i}`).join(' '));
-    assert.equal(run(corpus, project), before, 'the copied pack moves neither the pack count nor the token weight');
+    // 1,050 words over the two packs is 1,400 tokens, and the copied pack is a pack.
+    assert.match(run(corpus, project), /: 2 packs, 1\.4k context tokens, /);
   } finally { removeTree(corpus); removeTree(project); }
 });

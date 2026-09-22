@@ -2,9 +2,8 @@
 // SessionStart step: state, in one line, WHAT ACTUALLY LOADED this session —
 // which repo, the active packs, the token weight of the prose injected, the guards
 // and checks they arm, the skills mounted (the ones the hooks load on their own
-// apart from the rest) and what their descriptions cost per skill beside the skills
-// that came from outside the corpus, plus whatever facet an active pack contributes
-// about itself. Its stdout becomes session context, and it carries the directive that
+// apart from the rest), plus whatever facet an active pack contributes about
+// itself. Its stdout becomes session context, and it carries the directive that
 // makes the session open with the line, so the person in front of it sees the
 // load stated back rather than having to trust that it happened.
 //
@@ -29,8 +28,7 @@
 //
 // Fails soft to silence, and exits 0 always — a non-zero exit makes Claude Code
 // DISCARD the orchestrator's whole stdout, including the steps that did work.
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { settingsPath } from '../settings-file.mjs';
@@ -45,27 +43,6 @@ import { countWords, estimateTokens } from './token-estimate.mjs';
 const TOKEN_ROUNDING = 100;
 const plural = (n, one, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 const thousands = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
-
-// Where a session's OTHER skills come from: the person's own directory, which a
-// marketplace nests its own tree inside. Read for one reason: a per-skill figure for
-// the corpus's descriptions means nothing without a second one beside it, and this is
-// the only comparable set a session can actually see. Nothing here is ever written.
-const OUTSIDE_SKILLS_DEPTH = 4;
-function outsideSkillDescriptions(home) {
-  const root = join(home, '.claude', 'skills');
-  const found = [];
-  const walk = (dir, depth) => {
-    if (depth > OUTSIDE_SKILLS_DEPTH) return;
-    let entries = [];
-    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
-    for (const entry of entries) {
-      if (entry.isDirectory()) walk(join(dir, entry.name), depth + 1);
-      else if (entry.name === 'SKILL.md') found.push(dir);
-    }
-  };
-  walk(root, 0);
-  return found;
-}
 
 // Which repo this is, as `owner/repo`: the checkout's own origin remote, or the
 // Actions environment naming it. Neither known is no facet — the line never guesses
@@ -92,10 +69,11 @@ try {
 
   const { loadPacks, isActive, bundledSkillSources } = await import(join(loaderDir, 'pack-registry.mjs'));
   const packs = await loadPacks({ localRoot: projectRoot, session: true });
-  // A pack COPIED for the person in this session is left out of every count here. What it
-  // loaded is already stated, by the step that copied it, on the facet channel this line
-  // folds in - counting it again would state one set of rules twice, under two names.
-  const active = packs.filter((pack) => isActive(pack, { packs: declared }) && !pack.temp);
+  // A pack COPIED for the person in this session counts like any other that loaded: its
+  // rules reach the window through the same import as the rest, so one number covers all
+  // of it. Held out, it needed a second number under a second name for prose that loads
+  // identically - and a reader with only the first was told a corpus smaller than theirs.
+  const active = packs.filter((pack) => isActive(pack, { packs: declared }));
   // Nothing active means this repo runs no Claudinite. Nothing loaded, so there
   // is nothing to state — the same silence the prose injector keeps.
   if (!active.length) process.exit(0);
@@ -136,19 +114,12 @@ try {
   const { skillMetadata } = await import(join(loaderDir, 'skill-frontmatter.mjs'));
   let autoTrigger = 0;
   let regular = 0;
-  // A description is in the window from the session's first token whether or not the
-  // skill is ever loaded, so it is priced here beside the prose; a body is not, and is
-  // not counted. The per-skill figure is what the line carries, because an aggregate
-  // alone cannot say whether the corpus writes its descriptions lean or fat.
-  let skillDescWords = 0;
   for (const dir of bundledSkillSources(active).values()) {
     const m = skillMetadata(dir);
     const triggers = m.forceLoadPaths.length + m.toolCallTriggers.length + m.promptTriggers.length + m.toolResultTriggers.length;
     if (triggers > 0) autoTrigger += 1;
     else regular += 1;
-    skillDescWords += countWords(m.description);
   }
-  const mountedSkills = autoTrigger + regular;
 
   const facets = [
     plural(active.length, 'pack'),
@@ -158,22 +129,6 @@ try {
     plural(autoTrigger, 'auto-trigger skill'),
     plural(regular, 'regular skill'),
   ];
-
-  // Priced only where something was mounted: a zero here would read as "the skills cost
-  // nothing" rather than "there are none", and the per-skill figure has no denominator.
-  if (mountedSkills > 0) {
-    const skillTokens = estimateTokens(skillDescWords);
-    const outside = outsideSkillDescriptions(process.env.HOME || homedir());
-    const outsideTokens = estimateTokens(outside.reduce((n, dir) => n + countWords(skillMetadata(dir).description), 0));
-    // The comparison is reported, never acted on: what a session got from outside the
-    // corpus is the person's own business and no pack here can trim it. Absent (a CI
-    // runner, a fresh container), the corpus's own figure stands alone rather than
-    // claiming a set nothing found costs nothing.
-    const against = outside.length
-      ? `; ${Math.round(outsideTokens / outside.length)} each for the ${plural(outside.length, 'skill')} from elsewhere`
-      : '';
-    facets.push(`${thousands(skillTokens)} skill-description tokens (${Math.round(skillTokens / mountedSkills)} each${against})`);
-  }
 
   // Whatever the active packs' steps said about themselves, in the order the
   // runner ran them. Absent file, unreadable file, no channel at all: the engine
