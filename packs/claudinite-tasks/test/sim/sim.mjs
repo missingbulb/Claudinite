@@ -379,7 +379,7 @@ export function makeSim({
       else if (op.rule === 'dead-agent') record('agent-reclaim', { issue: op.issue, task: taskIdOfIssue(op.issue) });
       else if (op.rule === 'stateless') record('repair-stateless', { issue: op.issue });
       else if (op.rule === 'stuck-dependency') record('escalate', { issue: op.issue, task: taskIdOfIssue(op.issue), rule: 'stuck-dependency' });
-      else if (op.rule) record('janitor-close', { issue: op.issue });
+      else if (op.rule) record('repair-close', { issue: op.issue });
       else if (op.kind === 'create') record('create', { task: `${op.pack}/${op.task}` });
       else if (op.kind === 'ready') record('ready', { issue: op.issue });
       else if (op.kind === 'reclaim') record('reclaim', { issue: op.issue, task: taskIdOfIssue(op.issue), to: op.to });
@@ -805,9 +805,9 @@ export function makeSim({
 
   // A quarantined item is one NO EXECUTOR EVER CLAIMS — a member whose runner is
   // broken, from the queue's point of view. It is hidden from the listings an
-  // EXECUTOR RUN reads and from nothing else: the janitor's stale-ready rule exists
-  // precisely to notice such an item, so hiding it from the sweep as well would be
-  // hiding the thing under test. Applied to the TRANSPORT the run is handed, not to
+  // EXECUTOR RUN reads and from nothing else: the repair phase's stale-ready rule
+  // exists precisely to notice such an item, so hiding it from the phase as well
+  // would be hiding the thing under test. Applied to the TRANSPORT the run is handed, not to
   // the port object — every stage reaches the store through `gh`, and a port method
   // replaced here is one nothing calls.
   const executorGh = async (path, opts) => {

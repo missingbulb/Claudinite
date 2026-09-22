@@ -288,6 +288,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   the item list the ask reads, so every cadence term judges this run's world
   rather than the listing it started from, except where a verdict may still be
   declined on its fresh read.
+  `S81` (the tick that escalates a stale item files the occurrence it freed),
   `test/schedule/repair-phase.test.mjs: an ended park is threaded closed, so the ask judges this run's world`,
   `test/schedule/repair-phase.test.mjs: a confirm-gated verdict is not threaded, because the write may not happen`
 - The executing-leash reclaim rides the scheduler run: `running-executor`
