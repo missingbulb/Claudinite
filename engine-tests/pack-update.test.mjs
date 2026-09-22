@@ -4,10 +4,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, renam
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { git as gitIn, A_CANON_PACK, ANOTHER_CANON_PACK } from './helpers.mjs';
-import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, pendingExecutorWorkflow, PENDING_DIR } from '../packs/claudinite-lifecycle/updates/pack-update.mjs'; // @real-entity the module this test imports
-import { terminalFor } from '../packs/claudinite-lifecycle/updates/terminals.mjs'; // @real-entity the module this test imports
-import { SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW } from '../packs/claudinite-tasks/src/adopt/converge-workflows.mjs'; // @real-entity the module this test imports
-import { NEEDS_HUMAN } from '../packs/claudinite-lifecycle/updates/engine-update.mjs'; // @real-entity the module this test imports
+import { packUpdate, planPackUpdates, packRecordsInGap, isPackFile, applyStageFor, pendingSchedulerWorkflow, pendingExecutorWorkflow, PENDING_DIR } from '../packs/claudinite-lifecycle/updates/pack-update.mjs';
+import { terminalFor } from '../packs/claudinite-lifecycle/updates/terminals.mjs';
+import { SCHEDULER_WORKFLOW, EXECUTOR_WORKFLOW } from '../packs/claudinite-tasks/src/adopt/converge-workflows.mjs';
+import { NEEDS_HUMAN } from '../packs/claudinite-lifecycle/updates/engine-update.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
 import { applyVendor } from '../vendoring/apply-vendor-set.mjs';
 import { loadPacks } from '../engine/pack_loader/pack-registry.mjs';

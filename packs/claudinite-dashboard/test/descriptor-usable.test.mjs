@@ -16,14 +16,14 @@ const ok = JSON.stringify({
 });
 
 test('a usable descriptor is silent, in the canon and in a local pack', () => {
-  assert.deepEqual(rule.run(ctx({ 'packs/git-github/dashboard.json': ok })), []);
+  assert.deepEqual(rule.run(ctx({ 'packs/acme-pack-d/dashboard.json': ok })), []);
   assert.deepEqual(rule.run(ctx({ '.claudinite/local/packs/mine/dashboard.json': ok })), []);
 });
 
 // The vendored mount is read-only to a member: a canon descriptor's fault is the
 // canon's to fix, and blocking a member on it would leave them nothing to do.
 test('a descriptor in the vendored mount is not the member\'s to police', () => {
-  assert.deepEqual(rule.run(ctx({ '.claudinite/shared/packs/git-github/dashboard.json': '{ broken' })), []);
+  assert.deepEqual(rule.run(ctx({ '.claudinite/shared/packs/acme-pack-d/dashboard.json': '{ broken' })), []);
 });
 
 test('a file that is not a pack descriptor is not scanned', () => {

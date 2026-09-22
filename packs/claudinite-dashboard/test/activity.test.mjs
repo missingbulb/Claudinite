@@ -12,7 +12,7 @@ const DAY = 86400e3;
 
 const closedWork = (closedAt, labels = [OUTCOME_DONE]) => ({
   number: 1,
-  title: '[claudinite-work] basics/task-janitor',
+  title: '[claudinite-work] acme-pack/acme-task-d',
   state: 'closed',
   labels,
   created_at: new Date(Date.parse(closedAt) - DAY).toISOString(),
@@ -171,8 +171,8 @@ test('an outcome-less closure is not counted as completed work', () => {
 // someone who notices a missing number.
 test('no converged figure is invented from what the settings can no longer say', () => {
   const b = fleetBenefits([
-    read({ repo: 'o/fresh', declaration: { packs: [{ id: 'basics', version: '60820.1' }] } }),
-    read({ repo: 'o/stopped', declaration: { packs: ['basics'] } }),
+    read({ repo: 'o/fresh', declaration: { packs: [{ id: 'acme-pack', version: '60820.1' }] } }),
+    read({ repo: 'o/stopped', declaration: { packs: ['acme-pack'] } }),
   ], { now: NOW, windowDays: 7 });
   assert.equal(b.converged, undefined);
   assert.equal(b.members, 2);

@@ -37,18 +37,18 @@ test('hookMarks reads the log lines out of whatever entry shape carried them, on
 });
 
 test('readMark classifies the four marks a guard leaves, and nothing else', () => {
-  assert.deepEqual(readMark({ hook: 'PreToolUse', message: 'done exit=2 skill-not-loaded packs/a/RULES.md needs writing-pack-prose,changing-pack-elements' }),
-    { kind: 'block', cause: 'blockedEdit', skills: ['writing-pack-prose', 'changing-pack-elements'] });
-  assert.deepEqual(readMark({ hook: 'PreToolUse', message: 'done exit=2 skill-not-loaded-for-call Bash needs committing' }),
-    { kind: 'block', cause: 'blockedCall', skills: ['committing'] });
+  assert.deepEqual(readMark({ hook: 'PreToolUse', message: 'done exit=2 skill-not-loaded packs/a/RULES.md needs acme-skill-b,acme-skill-c' }),
+    { kind: 'block', cause: 'blockedEdit', skills: ['acme-skill-b', 'acme-skill-c'] });
+  assert.deepEqual(readMark({ hook: 'PreToolUse', message: 'done exit=2 skill-not-loaded-for-call Bash needs acme-skill' }),
+    { kind: 'block', cause: 'blockedCall', skills: ['acme-skill'] });
   assert.deepEqual(readMark({ hook: 'PreToolUse', message: 'done exit=2 action-guard no-pr-polling,ask-already-decided' }),
     { kind: 'guard', severity: 'blocking', rules: ['no-pr-polling', 'ask-already-decided'] });
-  assert.deepEqual(readMark({ hook: 'PreToolUse', message: 'advisory action-guard pipe-tail-hides-exit' }),
-    { kind: 'guard', severity: 'advisory', rules: ['pipe-tail-hides-exit'] });
-  assert.deepEqual(readMark({ hook: 'PostToolUse', message: 'skill-trigger WebFetch fetching-from-the-web' }),
-    { kind: 'trigger', cause: 'resultTrigger', skills: ['fetching-from-the-web'] });
-  assert.deepEqual(readMark({ hook: 'UserPromptSubmit', message: 'skill-trigger do-later' }),
-    { kind: 'trigger', cause: 'promptTrigger', skills: ['do-later'] });
+  assert.deepEqual(readMark({ hook: 'PreToolUse', message: 'advisory action-guard acme-check' }),
+    { kind: 'guard', severity: 'advisory', rules: ['acme-check'] });
+  assert.deepEqual(readMark({ hook: 'PostToolUse', message: 'skill-trigger WebFetch acme-skill-d' }),
+    { kind: 'trigger', cause: 'resultTrigger', skills: ['acme-skill-d'] });
+  assert.deepEqual(readMark({ hook: 'UserPromptSubmit', message: 'skill-trigger acme-skill-e' }),
+    { kind: 'trigger', cause: 'promptTrigger', skills: ['acme-skill-e'] });
   for (const not of [
     { hook: 'PreToolUse', message: 'done exit=0 allowed' },
     { hook: 'Stop', message: 'done exit=0 checks-passed' },
@@ -58,59 +58,59 @@ test('readMark classifies the four marks a guard leaves, and nothing else', () =
 
 test('a load is attributed to the mark that caused it, and to nothing once that mark is spent', () => {
   const { skillLoadsBy, skillBlocks } = countCorpusUse([
-    hookTurn(mark('PreToolUse', 'done exit=2 skill-not-loaded-for-call Bash needs committing', '2026-09-21T10:00:00Z', '1')),
-    assistant(skill('committing')),
+    hookTurn(mark('PreToolUse', 'done exit=2 skill-not-loaded-for-call Bash needs acme-skill', '2026-09-21T10:00:00Z', '1')),
+    assistant(skill('acme-skill')),
     // …and a second load of the same skill, with no new mark before it, is the
     // session reaching for it rather than the first block firing twice.
-    assistant(skill('committing')),
+    assistant(skill('acme-skill')),
   ]);
-  assert.deepEqual(skillLoadsBy.committing, causes({ blockedCall: 1, voluntary: 1 }));
-  assert.deepEqual(skillBlocks, { committing: 1 });
+  assert.deepEqual(skillLoadsBy['acme-skill'], causes({ blockedCall: 1, voluntary: 1 }));
+  assert.deepEqual(skillBlocks, { 'acme-skill': 1 });
 });
 
 test('a load nothing preceded is voluntary, and the way the body arrived names itself', () => {
   const { skillLoadsBy } = countCorpusUse([
-    assistant(skill('bug-investigation')),
-    assistant(call('Read', { file_path: 'packs/basics/skills/file-placement/SKILL.md' })),
-    { type: 'user', message: { content: '<command-name>/merge-to-main</command-name>' } },
-    assistant(call('Read', { file_path: 'docs/usage-review/DESIGN.md' })),
-  ], new Set(['bug-investigation', 'file-placement', 'merge-to-main']));
-  assert.deepEqual(skillLoadsBy['bug-investigation'], causes({ voluntary: 1 }));
-  assert.deepEqual(skillLoadsBy['file-placement'], causes({ read: 1 }));
-  assert.deepEqual(skillLoadsBy['merge-to-main'], causes({ command: 1 }));
+    assistant(skill('acme-skill-f')),
+    assistant(call('Read', { file_path: 'packs/acme-pack/skills/acme-skill-g/SKILL.md' })),
+    { type: 'user', message: { content: '<command-name>/acme-skill-h</command-name>' } },
+    assistant(call('Read', { file_path: 'docs/acme-doc/DESIGN.md' })),
+  ], new Set(['acme-skill-f', 'acme-skill-g', 'acme-skill-h']));
+  assert.deepEqual(skillLoadsBy['acme-skill-f'], causes({ voluntary: 1 }));
+  assert.deepEqual(skillLoadsBy['acme-skill-g'], causes({ read: 1 }));
+  assert.deepEqual(skillLoadsBy['acme-skill-h'], causes({ command: 1 }));
   assert.equal(Object.keys(skillLoadsBy).length, 3, 'a Read of something that is not a mounted skill is not a load');
 });
 
 test('a trigger that fired is followed only by a load after it, and an unfollowed fire stays unfollowed', () => {
   const followed = countCorpusUse([
-    hookTurn(mark('PostToolUse', 'skill-trigger WebFetch fetching-from-the-web')),
-    assistant(skill('fetching-from-the-web')),
+    hookTurn(mark('PostToolUse', 'skill-trigger WebFetch acme-skill-d')),
+    assistant(skill('acme-skill-d')),
   ]).triggerFires;
-  assert.deepEqual(followed['fetching-from-the-web'], { fired: 1, followed: 1 });
+  assert.deepEqual(followed['acme-skill-d'], { fired: 1, followed: 1 });
 
   const ignored = countCorpusUse([
-    hookTurn(mark('PostToolUse', 'skill-trigger WebFetch fetching-from-the-web')),
+    hookTurn(mark('PostToolUse', 'skill-trigger WebFetch acme-skill-d')),
     assistant(call('Bash', { command: 'echo on with the work' })),
   ]).triggerFires;
-  assert.deepEqual(ignored['fetching-from-the-web'], { fired: 1, followed: 0 },
+  assert.deepEqual(ignored['acme-skill-d'], { fired: 1, followed: 0 },
     'the fire nobody acted on is the whole of the unfollowed-trigger rule\'s evidence');
 
   // A load BEFORE the fire does not follow it — order is what the counter means.
   const before = countCorpusUse([
-    assistant(skill('fetching-from-the-web')),
-    hookTurn(mark('PostToolUse', 'skill-trigger WebFetch fetching-from-the-web')),
+    assistant(skill('acme-skill-d')),
+    hookTurn(mark('PostToolUse', 'skill-trigger WebFetch acme-skill-d')),
   ]).triggerFires;
-  assert.deepEqual(before['fetching-from-the-web'], { fired: 1, followed: 0 });
+  assert.deepEqual(before['acme-skill-d'], { fired: 1, followed: 0 });
 });
 
 test('guard firings are counted per rule, by what the call was told', () => {
   const { guardFires } = countCorpusUse([
-    hookTurn(mark('PreToolUse', 'advisory action-guard pipe-tail-hides-exit', '2026-09-21T10:00:00Z', '1')),
-    hookTurn(mark('PreToolUse', 'advisory action-guard pipe-tail-hides-exit', '2026-09-21T10:00:01Z', '2')),
+    hookTurn(mark('PreToolUse', 'advisory action-guard acme-check', '2026-09-21T10:00:00Z', '1')),
+    hookTurn(mark('PreToolUse', 'advisory action-guard acme-check', '2026-09-21T10:00:01Z', '2')),
     hookTurn(mark('PreToolUse', 'done exit=2 action-guard no-pr-polling', '2026-09-21T10:00:02Z', '3')),
   ]);
   assert.deepEqual(guardFires, {
-    'pipe-tail-hides-exit': { blocking: 0, advisory: 2 },
+    'acme-check': { blocking: 0, advisory: 2 },
     'no-pr-polling': { blocking: 1, advisory: 0 },
   });
 });
@@ -125,38 +125,38 @@ test('countToolCalls counts every call, a subagent\'s included, and names no ski
 
 test('moments count every occasion a declaration named, loaded or not', () => {
   const declarations = [
-    { skill: 'committing', kind: 'toolCall', tool: 'Bash', field: 'command', pattern: /git commit/ },
-    { skill: 'do-later', kind: 'prompt', pattern: /\/do-later/ },
-    { skill: 'writing-tests', re: globToRegExp('**/*.test.mjs') },
+    { skill: 'acme-skill', kind: 'toolCall', tool: 'Bash', field: 'command', pattern: /git commit/ },
+    { skill: 'acme-skill-e', kind: 'prompt', pattern: /\/acme-skill-e/ },
+    { skill: 'acme-skill-i', re: globToRegExp('**/*.test.mjs') },
   ];
   const hits = { call: hitsCall, prompt: hitsPrompt, path: hitsPath };
   const entries = [
     assistant(call('Bash', { command: 'git commit -m one' })),
-    assistant(skill('committing')),
+    assistant(skill('acme-skill')),
     // The second commit is still a moment — the denominator is occasions, not
     // occasions the hook would have spoken up for.
     assistant(call('Bash', { command: 'git commit -m two' })),
-    human('please /do-later this'),
+    human('please /acme-skill-e this'),
     assistant(call('Edit', { file_path: 'engine-tests/a.test.mjs' })),
     assistant(call('Edit', { file_path: 'engine/a.mjs' })),
   ];
-  assert.deepEqual(countMoments(entries, declarations, hits), { committing: 2, 'do-later': 1, 'writing-tests': 1 });
+  assert.deepEqual(countMoments(entries, declarations, hits), { 'acme-skill': 2, 'acme-skill-e': 1, 'acme-skill-i': 1 });
 });
 
 test('moments record NO key where the engine could not resolve the declarations', () => {
   const entries = [assistant(call('Bash', { command: 'git commit -m one' }))];
-  const declarations = [{ skill: 'committing', kind: 'toolCall', tool: 'Bash', field: 'command', pattern: /git commit/ }];
+  const declarations = [{ skill: 'acme-skill', kind: 'toolCall', tool: 'Bash', field: 'command', pattern: /git commit/ }];
   assert.deepEqual(countMoments(entries, declarations, {}), {},
     'an absent predicate is *not recorded*, never zero moments');
   assert.deepEqual(countMoments(entries, declarations, { call: hitsCall }), {}, 'a partial set is no set');
 });
 
 test('the timing reader reads what the engine\'s renderer writes — the two lanes ship apart', () => {
-  const line = renderTiming('work', 1175, [{ id: 'squash-merge-history', ms: 928 }, { id: 'reference-integrity', ms: 132 }]);
+  const line = renderTiming('work', 1175, [{ id: 'acme-check-b', ms: 928 }, { id: 'acme-check-c', ms: 132 }]);
   assert.deepEqual(parseTiming(line), {
     scope: 'work',
     totalMs: 1175,
-    rules: [{ id: 'squash-merge-history', ms: 928 }, { id: 'reference-integrity', ms: 132 }],
+    rules: [{ id: 'acme-check-b', ms: 928 }, { id: 'acme-check-c', ms: 132 }],
   });
   assert.equal(parseTiming('0 blocking, 1 advisory (work scope: all).'), null);
 });

@@ -34,6 +34,15 @@ import { stripComments } from '../../../../../engine/checks/helpers/code-scannin
 
 const TEST_FILE = /\.test\.mjs$/;
 const MARKER = /@real-entity\b/;
+// An import specifier is a DEPENDENCY, not a fixture: the module it names has to
+// be the real one, and moving a module is already a change that rewrites everyone
+// who imports it. Only invented values are this rule's business.
+const IMPORT = /(?:^|[\s;{(])(?:import|export)\s|\bimport\s*\(|^\s*\}?\s*from\s+['"]/;
+// Two pack ids are also the name of a program the suites spawn, so `run('node', …)`
+// reads as the `node` pack under any matching this rule could do. The id loses its
+// cover here rather than every such call needing a marker; a pack named after a
+// runtime is the one place where a fixture may still spell a real id.
+const ALSO_A_PROGRAM = new Set(['node', 'python']);
 
 // A name's owner, read off where the tree keeps it. Pack ids own themselves.
 function readEntityOwners(tracked) {
@@ -120,10 +129,12 @@ const rule = {
 
     const owners = readEntityOwners(ctx.tracked);
     addDeclaredCheckOwners(ctx, ctx.tracked, owners);
-    const entities = [...owners.entries()].map(([key, owner]) => {
-      const i = key.indexOf(':');
-      return { kind: key.slice(0, i), name: key.slice(i + 1), owner };
-    });
+    const entities = [...owners.entries()]
+      .map(([key, owner]) => {
+        const i = key.indexOf(':');
+        return { kind: key.slice(0, i), name: key.slice(i + 1), owner };
+      })
+      .filter((e) => !ALSO_A_PROGRAM.has(e.name));
 
     for (const file of tests) {
       const source = ctx.read(file);
@@ -132,7 +143,7 @@ const rule = {
       const raw = source.split('\n');
       const code = stripComments(source).split('\n');
       code.forEach((text, i) => {
-        if (MARKER.test(raw[i] ?? '')) return;
+        if (MARKER.test(raw[i] ?? '') || IMPORT.test(text)) return;
         const literals = readStringLiterals(text);
         if (literals.length === 0) return;
         for (const { kind, name, owner } of entities) {

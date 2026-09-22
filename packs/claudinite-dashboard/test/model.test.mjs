@@ -21,8 +21,8 @@ const SCHEDULE = { dailyHour: 4, weeklyDay: 'Sun', monthlyDay: 1 };
 
 const item = (over = {}) => ({
   number: 1,
-  title: '[claudinite-work] basics/ci-performance',
-  body: 'packs/basics/tasks/ci-performance\n\nExecute the Claudinite task above.\n',
+  title: '[claudinite-work] acme-pack/acme-task',
+  body: 'packs/acme-pack/tasks/acme-task\n\nExecute the Claudinite task above.\n',
   state: 'open',
   labels: [],
   created_at: '2026-08-16T04:00:00Z',
@@ -47,36 +47,36 @@ test('the page states no queue label of its own', async () => {
 // --- declarations --------------------------------------------------------------
 
 test('declaredPackDirs maps shared and local packs to both roots', () => {
-  const dirs = declaredPackDirs({ packs: ['basics', { id: 'claudinite-lifecycle' }, 'local/claudinite'] });
-  assert.deepEqual(dirs.get('basics'), ['packs/basics', '.claudinite/shared/packs/basics']);
-  assert.deepEqual(dirs.get('claudinite-lifecycle'), ['packs/claudinite-lifecycle', '.claudinite/shared/packs/claudinite-lifecycle']);
-  assert.deepEqual(dirs.get('local/claudinite'), ['.claudinite/local/packs/claudinite']);
+  const dirs = declaredPackDirs({ packs: ['acme-pack', { id: 'acme-pack-b' }, 'local/acme-local'] });
+  assert.deepEqual(dirs.get('acme-pack'), ['packs/acme-pack', '.claudinite/shared/packs/acme-pack']);
+  assert.deepEqual(dirs.get('acme-pack-b'), ['packs/acme-pack-b', '.claudinite/shared/packs/acme-pack-b']);
+  assert.deepEqual(dirs.get('local/acme-local'), ['.claudinite/local/packs/acme-local']);
 });
 
 test('taskDeclarationPaths takes only declared packs, from either root', () => {
   const paths = [
-    'packs/basics/tasks/ci-performance/task.json',
-    'packs/basics/tasks/ci-performance/worker.mjs',       // not a declaration
-    'packs/claudinite-fleet-sheepdog/tasks/fleet-roster/task.json',          // pack not declared
-    '.claudinite/shared/packs/claudinite-lifecycle/tasks/update/task.json',
-    '.claudinite/local/packs/claudinite/tasks/growth/task.json',
-    'packs/basics/tasks/ci-performance/task.test.mjs',     // the test beside it, not the declaration
+    'packs/acme-pack/tasks/acme-task/task.json',
+    'packs/acme-pack/tasks/acme-task/worker.mjs',       // not a declaration
+    'packs/acme-pack-c/tasks/acme-task-e/task.json',          // pack not declared
+    '.claudinite/shared/packs/acme-pack-b/tasks/acme-task-c/task.json',
+    '.claudinite/local/packs/acme-local/tasks/growth/task.json',
+    'packs/acme-pack/tasks/acme-task/task.test.mjs',     // the test beside it, not the declaration
   ];
-  const found = taskDeclarationPaths(paths, { packs: ['basics', 'claudinite-lifecycle', 'local/claudinite'] });
+  const found = taskDeclarationPaths(paths, { packs: ['acme-pack', 'acme-pack-b', 'local/acme-local'] });
   assert.deepEqual(found.map((f) => `${f.pack}/${f.task}`), [
-    'basics/ci-performance', 'claudinite-lifecycle/update', 'local/claudinite/growth',
+    'acme-pack-b/acme-task-c', 'acme-pack/acme-task', 'local/acme-local/growth',
   ]);
 });
 
 test('parseDeclaration lifts the scalar fields', () => {
   const d = parseDeclaration(JSON.stringify({
-    id: 'ci-performance',
+    id: 'acme-task',
     agent_model: 'sonnet',
     expected_outcome: 'fresh_pr',
     code_work_timeout: 300,
     preconditions: ['due:weekly', 'substantive-change'],
   }));
-  assert.equal(d.id, 'ci-performance');
+  assert.equal(d.id, 'acme-task');
   assert.deepEqual(d.preconditions, ['schedule:at-most-weekly', 'substantive-change']);
   assert.equal(d.agent_model, 'sonnet');
   assert.equal(d.expected_outcome, 'fresh_pr');
@@ -88,7 +88,7 @@ test('parseDeclaration lifts the scalar fields', () => {
 // precondition — so a task carrying only those has no gate, which is what they mean.
 test('parseDeclaration lifts the declarative preconditions; a cadence term and `none` are no gate', () => {
   const gated = parseDeclaration(JSON.stringify({
-    id: 'improve-comments',
+    id: 'acme-task-b',
     preconditions: ['due:weekly', 'substantive-change', 'commits-outside:.claudinite/'],
     agent_model: 'sonnet',
   }));
@@ -129,8 +129,8 @@ test('parseDeclaration reads an absent `preconditions` as the empty expression, 
 // read (a broken parse) comes back null, never a default — a confident wrong
 // cadence would put a wrong next-anchor on the roster.
 test('parseDeclaration reads a task.json, defaults filled', () => {
-  const d = parseDeclaration('{ "$schema": "x", "id": "improve-comments", "preconditions": ["due:weekly", "substantive-change"], "expected_outcome": "no_code_changes" }');
-  assert.equal(d.id, 'improve-comments');
+  const d = parseDeclaration('{ "$schema": "x", "id": "acme-task-b", "preconditions": ["due:weekly", "substantive-change"], "expected_outcome": "no_code_changes" }');
+  assert.equal(d.id, 'acme-task-b');
   assert.deepEqual(d.preconditions, ['schedule:at-most-weekly', 'substantive-change']);
   assert.equal(d.agent_model, 'none');
   assert.equal(d.agent_execution_timeout, null);
@@ -188,8 +188,8 @@ test('describeCadence follows a stated trigger against what the conditions look 
 });
 
 test('taskDeclarationPaths selects only a task.json', () => {
-  const paths = ['packs/basics/tasks/a/task.json', 'packs/basics/tasks/b/task.yaml', 'packs/basics/tasks/c/task.md'];
-  assert.deepEqual(taskDeclarationPaths(paths, { packs: ['basics'] }).map((t) => t.task), ['a']);
+  const paths = ['packs/acme-pack/tasks/a/task.json', 'packs/acme-pack/tasks/b/task.yaml', 'packs/acme-pack/tasks/c/task.md'];
+  assert.deepEqual(taskDeclarationPaths(paths, { packs: ['acme-pack'] }).map((t) => t.task), ['a']);
 });
 
 test('parseDeclaration survives a missing file', () => {
@@ -251,18 +251,18 @@ test('describeCadence reads a declaration stating no trigger as neither lane', (
 // --- items ---------------------------------------------------------------------
 
 test('isWorkItem keeps only the queue family', () => {
-  assert.equal(isWorkItem({ title: '[claudinite-work] basics/x' }), true);
-  assert.equal(isWorkItem({ title: '[claudinite-task] basics/x 2026-08-16' }), false);
+  assert.equal(isWorkItem({ title: '[claudinite-work] acme-pack/x' }), true);
+  assert.equal(isWorkItem({ title: '[claudinite-task] acme-pack/x 2026-08-16' }), false);
   assert.equal(isWorkItem({ title: 'Claudinite tracker: Tidy Issues' }), false);
 });
 
 test('describeItem reads state, outcome and the body fields', () => {
   const d = describeItem(item({
     labels: [STATUS_BLOCKED],
-    body: 'packs/basics/tasks/ci-performance\n\nNot-before: 2026-08-17T04:00:00Z\nBlocked-by: #12, #13\n',
+    body: 'packs/acme-pack/tasks/acme-task\n\nNot-before: 2026-08-17T04:00:00Z\nBlocked-by: #12, #13\n',
   }), NOW);
-  assert.equal(d.pack, 'basics');
-  assert.equal(d.task, 'ci-performance');
+  assert.equal(d.pack, 'acme-pack');
+  assert.equal(d.task, 'acme-task');
   assert.equal(d.state, STATUS_BLOCKED);
   assert.equal(d.notBefore, '2026-08-17T04:00:00Z');
   assert.deepEqual(d.blockedBy, [12, 13]);
@@ -272,7 +272,7 @@ test('describeItem reads state, outcome and the body fields', () => {
 // An item somebody created or force-woke carries the moment; the page surfaces it so
 // a run outside the cadence reads as asked for rather than as the scheduler misfiring.
 test('describeItem surfaces the Woken stamp', () => {
-  const d = describeItem(item({ body: 'packs/basics/tasks/ci-performance\n\nWoken: 2026-08-16T05:00:00Z\n' }), NOW);
+  const d = describeItem(item({ body: 'packs/acme-pack/tasks/acme-task\n\nWoken: 2026-08-16T05:00:00Z\n' }), NOW);
   assert.equal(d.woken, '2026-08-16T05:00:00Z');
 });
 
@@ -369,8 +369,8 @@ test('a park\'s severity follows its triage lane', () => {
 // --- the roster ----------------------------------------------------------------
 
 const tasks = [
-  { pack: 'basics', task: 'ci-performance', path: 'packs/basics/tasks/ci-performance/task.json', declaration: { trigger: 'schedule', preconditions: ['due:weekly'], agent_model: 'sonnet' } },
-  { pack: 'claudinite-lifecycle', task: 'update', path: 'packs/claudinite-lifecycle/tasks/update/task.json', declaration: { trigger: 'schedule', preconditions: ['due:daily'] } },
+  { pack: 'acme-pack', task: 'acme-task', path: 'packs/acme-pack/tasks/acme-task/task.json', declaration: { trigger: 'schedule', preconditions: ['due:weekly'], agent_model: 'sonnet' } },
+  { pack: 'acme-pack-b', task: 'acme-task-c', path: 'packs/acme-pack-b/tasks/acme-task-c/task.json', declaration: { trigger: 'schedule', preconditions: ['due:daily'] } },
 ];
 
 test('every declared task gets a row, including one that has never run', () => {
@@ -385,14 +385,14 @@ test('a row picks up its open item and its closed history', () => {
     item({ number: 900, labels: [STATUS_READY] }),
     item({ number: 880, state: 'closed', labels: [OUTCOME_DONE], created_at: '2026-08-09T04:00:00Z', closed_at: '2026-08-09T06:00:00Z' }),
     item({ number: 860, state: 'closed', labels: [OUTCOME_DELIVERED], created_at: '2026-08-02T04:00:00Z', closed_at: '2026-08-02T06:00:00Z' }),
-    item({ number: 700, title: '[claudinite-work] claudinite-lifecycle/update', state: 'closed', labels: [OUTCOME_DONE] }),
+    item({ number: 700, title: '[claudinite-work] acme-pack-b/acme-task-c', state: 'closed', labels: [OUTCOME_DONE] }),
   ];
   const rows = buildRoster({ tasks, items, now: NOW, schedule: SCHEDULE });
-  const ci = rows.find((r) => r.task === 'ci-performance');
+  const ci = rows.find((r) => r.task === 'acme-task');
   assert.equal(ci.current.number, 900);
   assert.equal(ci.history.length, 2);
   assert.equal(ci.lastClosed.number, 880, 'the most recent closed item is the last outcome');
-  assert.equal(rows.find((r) => r.task === 'update').history.length, 1, 'items route by title, not by order');
+  assert.equal(rows.find((r) => r.task === 'acme-task-c').history.length, 1, 'items route by title, not by order');
 });
 
 // A task with no conditions has no anchor and an unreadable declaration has no anchor,

@@ -21,7 +21,7 @@ const NOW = Date.parse('2026-08-21T11:30:00Z');
 // wrote.
 const issue = (number, task, labels, over = {}) => ({
   number,
-  title: `${WORK_PREFIX} claudinite-growth/${task}`,
+  title: `${WORK_PREFIX} acme-pack-f/${task}`,
   body: '',
   state: 'open',
   labels: labels.map((name) => ({ name })),
@@ -34,8 +34,8 @@ const issue = (number, task, labels, over = {}) => ({
 const described = (i) => describeItem(i, NOW, { periodFor: () => 86400e3, isOpen: () => null });
 
 const taskRow = (task, over = {}) => ({
-  key: `claudinite-growth/${task}`,
-  pack: 'claudinite-growth',
+  key: `acme-pack-f/${task}`,
+  pack: 'acme-pack-f',
   task,
   declaration: { preconditions: ['due:daily'], agent_model: 'none', expected_outcome: 'fresh_pr', automerge: 'anything' },
   ...describeCadence(['due:daily']),
@@ -48,24 +48,24 @@ const taskRow = (task, over = {}) => ({
 });
 
 test('a healthy task is neither stuck nor pending — it is simply waiting for its anchor', () => {
-  const row = taskRow('usage-fold');
+  const row = taskRow('acme-task-g');
   assert.deepEqual(troubles(row), []);
   assert.equal(classify(row), 'idle');
 });
 
 test('a parked item is stuck, at the severity its park kind earns', () => {
-  const broken = taskRow('growth-extract', { current: described(issue(9, 'growth-extract', [STATUS_NEEDS_HUMAN_FAILURE, parkStatus('failure')])) });
+  const broken = taskRow('acme-task-h', { current: described(issue(9, 'acme-task-h', [STATUS_NEEDS_HUMAN_FAILURE, parkStatus('failure')])) });
   assert.equal(classify(broken), 'stuck');
   assert.equal(troubles(broken)[0].level, 'critical', 'a failure park is a broken run');
 
-  const approval = taskRow('usage-fold', { current: described(issue(10, 'usage-fold', [STATUS_NEEDS_HUMAN_APPROVAL, parkStatus('approval')])) });
+  const approval = taskRow('acme-task-g', { current: described(issue(10, 'acme-task-g', [STATUS_NEEDS_HUMAN_APPROVAL, parkStatus('approval')])) });
   assert.equal(classify(approval), 'stuck');
   assert.equal(troubles(approval)[0].level, 'warning', 'a PR waiting on a reviewer is not a broken lane');
 });
 
 test('a held lane is said once, as a fact about the TASK', () => {
-  const row = taskRow('growth-extract', {
-    current: described(issue(9, 'growth-extract', [STATUS_NEEDS_HUMAN_FAILURE, parkStatus('failure')])),
+  const row = taskRow('acme-task-h', {
+    current: described(issue(9, 'acme-task-h', [STATUS_NEEDS_HUMAN_FAILURE, parkStatus('failure')])),
     nextAsk: { kind: 'held' },
   });
   const said = troubles(row).map((t) => t.text);
@@ -73,12 +73,12 @@ test('a held lane is said once, as a fact about the TASK', () => {
 });
 
 test('an item that is moving is pending, and one off the state machine is stuck', () => {
-  const ready = taskRow('usage-fold', { current: described(issue(11, 'usage-fold', [STATUS_READY])) });
+  const ready = taskRow('acme-task-g', { current: described(issue(11, 'acme-task-g', [STATUS_READY])) });
   assert.equal(classify(ready), 'pending');
 
   // No state label at all is the torn-label-swap leaving the janitor repairs — not a
   // display quirk, and not something to fold into "blocked".
-  const unlabelled = taskRow('usage-fold', { current: described(issue(12, 'usage-fold', [])) });
+  const unlabelled = taskRow('acme-task-g', { current: described(issue(12, 'acme-task-g', [])) });
   assert.equal(classify(unlabelled), 'stuck');
 });
 
@@ -86,7 +86,7 @@ test('an open item whose task this repo no longer declares gets a row of its own
   // The case a roster-only table cannot show and an item-only table cannot explain:
   // nothing will ever pick this up, and no recovery rule will say so.
   const orphan = described(issue(20, 'retired-task', [STATUS_READY]));
-  const all = workRows([taskRow('usage-fold')], [orphan]);
+  const all = workRows([taskRow('acme-task-g')], [orphan]);
   const row = all.find((r) => r.task === 'retired-task');
   assert.ok(row, 'the item is a row even though no task declares it');
   assert.equal(row.view, 'stuck');
@@ -144,7 +144,7 @@ test('workRows keeps a declared task that has never run', () => {
   // The row a list built from items alone would omit silently — and a task that never
   // fired looks identical to one with nothing to do until you can see it at all.
   const all = workRows(buildRoster({
-    tasks: [{ pack: 'claudinite-growth', task: 'never-ran', path: 'packs/claudinite-growth/tasks/never-ran/task.json', declaration: { preconditions: ['due:weekly'] } }],
+    tasks: [{ pack: 'acme-pack-f', task: 'never-ran', path: 'packs/acme-pack-f/tasks/never-ran/task.json', declaration: { preconditions: ['due:weekly'] } }],
     items: [],
     now: NOW,
     schedule: null,

@@ -27,20 +27,20 @@ const descriptor = (over = {}) => JSON.stringify({
 // vendored mount, so a pattern anchored to either alone works everywhere except the
 // tree it was written in.
 test('a descriptor is found under both the canon root and a vendored mount', () => {
-  assert.equal(descriptorPathIn(['packs/git-github/dashboard.json'], 'git-github'), 'packs/git-github/dashboard.json');
+  assert.equal(descriptorPathIn(['packs/acme-pack-d/dashboard.json'], 'acme-pack-d'), 'packs/acme-pack-d/dashboard.json');
   assert.equal(
-    descriptorPathIn(['.claudinite/shared/packs/git-github/dashboard.json'], 'git-github'),
-    '.claudinite/shared/packs/git-github/dashboard.json',
+    descriptorPathIn(['.claudinite/shared/packs/acme-pack-d/dashboard.json'], 'acme-pack-d'),
+    '.claudinite/shared/packs/acme-pack-d/dashboard.json',
   );
-  assert.equal(descriptorPathIn(['packs/git-github/pack.mjs'], 'git-github'), null);
+  assert.equal(descriptorPathIn(['packs/acme-pack-d/pack.mjs'], 'acme-pack-d'), null);
   // Not a prefix match: a pack whose id is a prefix of another's must not claim it.
-  assert.equal(descriptorPathIn(['packs/git-github-extra/dashboard.json'], 'git-github'), null);
+  assert.equal(descriptorPathIn(['packs/git-github-extra/dashboard.json'], 'acme-pack-d'), null);
 });
 
 test('declared pack ids read both entry shapes', () => {
   assert.deepEqual(
-    declaredPackIds({ packs: ['basics', { id: 'git-github', config: {} }, { noId: true }, null] }),
-    ['basics', 'git-github'],
+    declaredPackIds({ packs: ['acme-pack', { id: 'acme-pack-d', config: {} }, { noId: true }, null] }),
+    ['acme-pack', 'acme-pack-d'],
   );
 });
 
@@ -218,12 +218,12 @@ test('only declared packs with a descriptor in the tree are read', async () => {
   };
   const out = await readContributions({
     repo: 'o/r', sha: 'sha1', token: 't', gh,
-    declaration: { packs: ['git-github', 'basics'] },
-    // `basics` is declared but ships no descriptor; nothing is asked about it.
-    paths: ['packs/git-github/dashboard.json', 'packs/basics/pack.mjs'],
+    declaration: { packs: ['acme-tools', 'acme-pack'] },
+    // `acme-pack` is declared but ships no descriptor; nothing is asked about it.
+    paths: ['packs/acme-tools/dashboard.json', 'packs/acme-pack/pack.mjs'],
   });
-  assert.deepEqual(out.map((c) => c.pack), ['git-github']);
-  assert.ok(!asked.some((p) => p.includes('basics')), asked.join(','));
+  assert.deepEqual(out.map((c) => c.pack), ['acme-tools']);
+  assert.ok(!asked.some((p) => p.includes('acme-pack')), asked.join(','));
 });
 
 test('a values file is read only when some widget actually asks for one', async () => {
@@ -232,9 +232,9 @@ test('a values file is read only when some widget actually asks for one', async 
   const gh = { getTextAtSha: async (_r, _s, path) => { asked.push(path); return path.endsWith('dashboard.json') ? liveOnly : null; } };
   await readContributions({
     repo: 'o/r', sha: 's', token: 't', gh,
-    declaration: { packs: ['git-github'] }, paths: ['packs/git-github/dashboard.json'],
+    declaration: { packs: ['acme-pack-d'] }, paths: ['packs/acme-pack-d/dashboard.json'],
   });
-  assert.ok(!asked.some((p) => p.includes(valuesPath('git-github'))), asked.join(','));
+  assert.ok(!asked.some((p) => p.includes(valuesPath('acme-pack-d'))), asked.join(','));
 });
 
 // A read the budget declined is not a pack with nothing to say.
@@ -242,7 +242,7 @@ test('a withheld descriptor read reports itself as withheld', async () => {
   const gh = { getTextAtSha: async () => { throw new Error('budget'); } };
   const [c] = await readContributions({
     repo: 'o/r', sha: 's', token: 't', gh,
-    declaration: { packs: ['git-github'] }, paths: ['packs/git-github/dashboard.json'],
+    declaration: { packs: ['acme-pack-d'] }, paths: ['packs/acme-pack-d/dashboard.json'],
   });
   assert.equal(c.withheld, true);
   assert.equal(c.descriptor, undefined);
@@ -273,7 +273,7 @@ test('a pack that reads a values file gets it parsed', async () => {
 // The first caller, and the one that proves the contract carries its own weight: the
 // star count the dashboard used to draw itself.
 test('git-github contributes stars, and it composes', () => {
-  const d = parseDescriptor(readFileSync(new URL('../../git-github/dashboard.json', import.meta.url), 'utf8'), 'git-github');
+  const d = parseDescriptor(readFileSync(new URL('../../git-github/dashboard.json', import.meta.url), 'utf8'), 'git-github'); // @real-entity the pack that actually ships the descriptor this reads
   assert.equal(d.fault, null);
   const w = d.widgets.get(d.member);
   assert.equal(phraseText(fleetPhrase(w, valueOf(w, { live: { stars: 18 } }).value, NOW)), '18 stars');

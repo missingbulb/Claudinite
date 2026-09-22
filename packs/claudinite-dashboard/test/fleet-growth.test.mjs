@@ -86,13 +86,13 @@ const CORPUS_FIELDS = {
 
 // A member whose every day in range looks the same: `work` and `world` scopes, two
 // rules firing, one skill loading, and a tree mounting two skills from one declared pack.
-const corpusMember = (repo, { days = 10, work = [4, 1, 0, 2, 0, 0, 0], world = [1, 0, 0, 0, 9, 0, 0], loads = { 'merge-to-main': 2 }, packs = ['basics'], paths = ['.claudinite/shared/packs/basics/skills/merge-to-main/SKILL.md', '.claudinite/shared/packs/basics/skills/bug-investigation/SKILL.md'] } = {}) => {
+const corpusMember = (repo, { days = 10, work = [4, 1, 0, 2, 0, 0, 0], world = [1, 0, 0, 0, 9, 0, 0], loads = { 'acme-skill': 2 }, packs = ['acme-pack'], paths = ['.claudinite/shared/packs/acme-pack/skills/acme-skill/SKILL.md', '.claudinite/shared/packs/acme-pack/skills/acme-skill-c/SKILL.md'] } = {}) => {
   const rows = {};
   for (let d = 0; d < days; d += 1) {
     rows[dayKey(d * 86400e3)] = {
       totals: [3, 2, 2, 5, 1],
       checks: Object.fromEntries(Object.entries({ work, world }).filter(([, v]) => v)),
-      checkFindings: { 'reference-integrity': [2, 0], 'file-placement': [0, 9] },
+      checkFindings: { 'acme-check': [2, 0], 'acme-skill-b': [0, 9] },
       skillLoads: loads,
     };
   }
@@ -122,7 +122,7 @@ test('a scope no member recorded is unseen, and its rate is null rather than zer
 
 test('rules are ranked by what they caught, with how many members each fired in', () => {
   const c = fleetCorpus([corpusMember('o/a'), corpusMember('o/b', { days: 2 })], { now: NOW, days: 10 });
-  assert.deepEqual(c.rules.map((r) => r.rule), ['file-placement', 'reference-integrity']);
+  assert.deepEqual(c.rules.map((r) => r.rule), ['acme-skill-b', 'acme-check']);
   assert.equal(c.rules[0].advisory, 108, 'ten days plus two, nine each');
   assert.equal(c.rules[1].blocking, 24);
   assert.equal(c.rules[1].members, 2);
@@ -131,20 +131,20 @@ test('rules are ranked by what they caught, with how many members each fired in'
 
 test('skills: loads per skill against where it is mounted, and the mounted-never-loaded list', () => {
   const c = fleetCorpus([corpusMember('o/a'), corpusMember('o/b', { loads: {} })], { now: NOW, days: 3 });
-  assert.deepEqual(c.skills.loaded, [{ skill: 'merge-to-main', loads: 6, members: 1, mountedIn: 2 }]);
-  assert.deepEqual(c.skills.neverLoaded, [{ skill: 'bug-investigation', mountedIn: 2 }]);
+  assert.deepEqual(c.skills.loaded, [{ skill: 'acme-skill', loads: 6, members: 1, mountedIn: 2 }]);
+  assert.deepEqual(c.skills.neverLoaded, [{ skill: 'acme-skill-c', mountedIn: 2 }]);
   assert.equal(c.skills.mountedDistinct, 2);
   assert.equal(c.skills.treesRead, 2);
 });
 
 test('a skill from a pack the member has on disk but does not declare is not mounted', () => {
   const paths = [
-    'packs/basics/skills/one/SKILL.md',
+    'packs/acme-pack/skills/one/SKILL.md',
     'packs/undeclared/skills/two/SKILL.md',
     '.claudinite/local/packs/mine/skills/three/SKILL.md',
     '.claudinite/shared/packs/mine/skills/four/SKILL.md',
   ];
-  const got = mountedSkills(paths, { packs: ['basics', { id: 'local/mine' }] });
+  const got = mountedSkills(paths, { packs: ['acme-pack', { id: 'local/mine' }] });
   assert.deepEqual([...got].sort(), ['one', 'three'], 'the canon root and the local root each count; the undeclared pack and the wrong root do not');
 });
 

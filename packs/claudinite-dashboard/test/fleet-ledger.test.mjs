@@ -103,7 +103,7 @@ test('a PR that never merged, or merged outside the window, is not this window\'
 // --- what is stuck, and what closed --------------------------------------------------
 
 const item = (over = {}) => ({
-  number: 5, title: `${WORK_PREFIX} basics/baselining`, state: 'open', labels: [],
+  number: 5, title: `${WORK_PREFIX} acme-pack/baselining`, state: 'open', labels: [],
   created_at: '2026-08-01T00:00:00Z', updated_at: new Date(NOW - 5 * DAY).toISOString(), ...over,
 });
 
@@ -233,7 +233,7 @@ test('updates are UNKNOWN with no canon, and never read as current', () => {
 const CANON = { engineVersion: '60907.1', packVersions: {} };
 const fleet = (total, stale) => Array.from({ length: total }, (_, i) =>
   summary(`o/m${i}`, { everRan: true, lastAt: NOW, inFlight: 0 },
-    { mount: { state: i < stale ? 'behind' : 'current', behindPacks: [{ pack: 'basics' }] } }));
+    { mount: { state: i < stale ? 'behind' : 'current', behindPacks: [{ pack: 'acme-pack' }] } }));
 
 test('the bound SCALES with the fleet — the same count is fleet-wide on a small one', () => {
   // Owner, 2026-09-07: past sqrt(members) stale it is the fleet that has stopped
