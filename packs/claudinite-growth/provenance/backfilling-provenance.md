@@ -95,3 +95,19 @@
   loads deterministically is untouched and only the model's judgment call reads different text.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5
+
+## 2026-09-22 · reworded · the carrier follow reads content, and names the births it cannot derive (#2253)
+- **Source:** #2251, where two of macos's rules were drafted born at the commit that moved them, one
+  flagged for verification and one reading as settled.
+- **Reason:** the follow was a `-S` pickaxe on the trigger, and a trigger is read with its markup
+  already dropped - so it matched no carrier that spells the rule with backticks, and the one thing
+  it did match was the README index row that names every rule by construction. It now compares whole
+  carrier texts with markup and wrapping normalised out of both sides, and a table row is evidence
+  the element was listed, never carried.
+- **Rejected:** deriving a birth from a looser, fuzzier match. An element reworded on its way across
+  is unfollowable by its text at all, so the brief gets a fourth hand-over section naming the
+  evidence against the drafted birth - the listing, or the carrier the birth commit took text out of
+  - rather than a second wrong answer.
+- **Actor:** @missingbulb (owner), who asked for #2253.
+- **Model:** Claude Opus 5, per the commit trailer.
+- **Landed:** #2253

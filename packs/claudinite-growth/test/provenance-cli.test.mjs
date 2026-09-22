@@ -432,6 +432,7 @@ test('brief follows an element back through a carrier change, so born is the bir
     assert.match(out, /## elements older than the carrier they sit in/);
     assert.match(out, /doing-thing: moved into packs\/alpha\/skills\/guide\/SKILL\.md; carried by packs\/alpha\/RULES\.md/);
     assert.match(out, /```entry doing-thing\n## \d{4}-\d{2}-\d{2} · born · seed \(#7\)/, 'the birth is where the rule first appeared, under its old carrier');
+    assert.match(out, /born · seed \(#7\)\n- \*\*Mechanism:\*\* a RULES\.md rule, triggered on "Doing a thing"\./, 'the birth predates the move, so the mechanism is the carrier it was born in');
     assert.match(out, /```entry doing-thing\n## \d{4}-\d{2}-\d{2} · moved · The rule moves into the guide skill \(#30\)/);
   } finally { removeTree(root); }
 });
@@ -473,5 +474,40 @@ test('check lists the declined log and marks a conversion-filled file, so the pa
     const { out } = await capture(['check', 'alpha'], root);
     assert.match(out, /doing-thing\.md ← rule "Doing a thing" \(conversion only, history pending\)/);
     assert.match(out, /_declined\.md ← 1 candidate turned down/);
+  } finally { removeTree(root); }
+});
+
+// The carrier follow's two blind spots, both live when macos was backfilled (#2253): an
+// index row names every element by construction, so it is the pickaxe's earliest hit and
+// never the carrier; and a needle carrying no markup misses the same rule spelled with
+// backticks at the old path, which reads as "born here" rather than as a failed search.
+test('brief never follows a birth back to an index row, which names the element without carrying it', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/README.md'), '# alpha\n\n| Rule | Words |\n|---|---|\n| Doing a third thing | 12 |\n');
+    commitAs(root, 'Index every pack\'s rules (#60)');
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n- **Born in a sweep** - so. (born-in-sweep)\n\n- **Doing a third thing** - so. (doing-a-third-thing)\n');
+    writeFileSync(join(root, 'packs/alpha/provenance/doing-a-third-thing.md'), '');
+    commitAs(root, 'A third rule (#61)');
+    const { out } = await capture(['brief', 'alpha', 'doing-a-third-thing'], root);
+    assert.doesNotMatch(out, /doing-a-third-thing: \w+ into/, 'a table row is evidence the element was listed, never that it was carried there');
+    assert.match(out, /```entry doing-a-third-thing\n## \d{4}-\d{2}-\d{2} · born · A third rule \(#61\)/);
+    assert.match(out, /## births the search could not go behind[\s\S]*?- doing-a-third-thing:[^\n]*packs\/alpha\/README\.md listed it[^\n]*\(#60\), a table row that carries nothing/, 'the row is the evidence the run has to weigh, so it is named rather than acted on');
+  } finally { removeTree(root); }
+});
+
+test('brief follows a birth back through a carrier that spelled the rule with markup the trigger drops', async () => {
+  const root = briefRepo();
+  try {
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n- **Born in a sweep** - so. (born-in-sweep)\n\n- **Pin `theKey` to the same value** - so. (pin-thekey-same)\n');
+    writeFileSync(join(root, 'packs/alpha/provenance/pin-thekey-same.md'), '');
+    commitAs(root, 'The key rule (#70)');
+    writeFileSync(join(root, 'packs/alpha/RULES.md'), '- **Doing another** - plainly. (doing-another)\n\n- **Born in a sweep** - so. (born-in-sweep)\n');
+    mkdirSync(join(root, 'packs/alpha/skills/guide'), { recursive: true });
+    writeFileSync(join(root, 'packs/alpha/skills/guide/SKILL.md'), '---\nname: guide\ndescription: Guide. Use when guiding.\nmetadata:\n  body: guidelines\n---\n\n- **Pin `theKey` to the same\n  value** - so. (pin-thekey-same)\n');
+    commitAs(root, 'The key rule moves into the guide skill (#71)');
+    const { out } = await capture(['brief', 'alpha', 'pin-thekey-same'], root);
+    assert.match(out, /pin-thekey-same: moved into packs\/alpha\/skills\/guide\/SKILL\.md; carried by packs\/alpha\/RULES\.md/, 'backticks at the old path and a wrap at the new one are the same rule');
+    assert.match(out, /```entry pin-thekey-same\n## \d{4}-\d{2}-\d{2} · born · The key rule \(#70\)/);
   } finally { removeTree(root); }
 });
