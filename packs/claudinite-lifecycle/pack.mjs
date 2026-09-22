@@ -10,9 +10,8 @@
 // MANDATORY. `basics` requires this pack, which both vendors its content and
 // materializes its declaration wherever a declaration is written; the
 // migrations/2026-08-14-core-seed record declares it into members that already
-// exist. Both run outside any check — activation reads the literal declaration,
-// so `claudinite-lifecycle-declared` reports a member that has lost the entry rather
-// than being what puts it there.
+// exist. Both run outside any check, because activation reads the literal
+// declaration.
 export default {
   version: '60921.4',
   minEngineVersion: '60822.1',

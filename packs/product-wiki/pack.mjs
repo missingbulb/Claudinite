@@ -1,9 +1,6 @@
-// Project-aspect standard pack: the self-growing product research wiki
-// (compile-once/refine-in-place, cited, dated, isolated behind the reviewed
-// product-requirements crossing point). The folder is the classifier: the two
-// reserved names (product-requirements/, sample-data/) have fixed meaning;
-// everything else under product-wiki/ is wiki space. Fingerprinted by the
-// standard's one structural constant — the sink.
+// Project-aspect standard pack: the self-growing product research wiki under
+// product-wiki/, isolated behind the reviewed product-requirements crossing
+// point, and fingerprinted on that sink.
 import { SINK_README } from './lib.mjs';
 
 export default {
@@ -16,21 +13,13 @@ export default {
   marker: SINK_README,
   detect: (ctx) => ctx.tracked.includes(SINK_README),
   // The isolation wall (product-wiki-isolation) and the skeleton check
-  // (product-wiki-layout) are both declared checks in this pack's
-  // declared-checks.json. They are a designed pair: the barrier's glob target
-  // fails closed on an empty product-wiki/ expansion, and layout owns the
-  // missing-skeleton complaint. A declared check is run by the engine, so this
-  // pack needs nothing else declared for its wall to stand (#1681 dropped the
-  // `barriers` requirement, vestigial since the wall stopped being code).
-  // Editing the wiki tree is the writing-wiki-pages skill's territory — its own
-  // `force-load-on-file-edits-paths` names product-wiki/**, and the guard holds a file tool aimed
-  // there until the session has loaded it — so the page rules are read once, by
-  // the session that edits, rather than carried as prose by every session.
-  // Adoption interview: the standard takes no config (the layout IS the config),
-  // but a wiki with no research scope is a hollow skeleton — the answers frame
-  // WHICH wikis get seeded and what the competitor set is measured against. They
-  // record as intent on the entry (`answers`), never as config. Read the repo's
-  // own product brief/spec first and confirm, rather than re-asking cold.
+  // (product-wiki-layout) are a designed pair, both declared in this pack's
+  // declared-checks.json: the wall's glob target fails closed on an empty
+  // product-wiki/ expansion, and layout owns the missing-skeleton complaint.
+  // Adoption interview: the answers frame WHICH wikis get seeded and what the
+  // competitor set is measured against, and record as intent on the entry
+  // (`answers`), never as config. Read the repo's own product brief or spec
+  // first and confirm, rather than re-asking cold.
   questions: [
     {
       id: 'product',

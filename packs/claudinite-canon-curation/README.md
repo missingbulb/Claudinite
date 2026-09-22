@@ -6,20 +6,18 @@ promoting its members' lessons onto the shelf, sweeping the fleet's stacks for t
 shelf does not yet home, keeping what the shelf already teaches current with those technologies,
 and policing the shelf's own content.
 
-Nothing in the pack names a particular canon. The shelf is `packs/` because that is where the
-engine reads a canon's packs from, so every rule and task here is anchored there and is inert in a
-repo that keeps no shelf. `hidden`, never seeded, no fingerprint: a canon home is a role somebody
-assigns, so the pack is declared by hand.
+Nothing in the pack names a particular canon. Every rule and task here is anchored on the `packs/`
+shelf and is inert in a repo that keeps no shelf. `hidden`, never seeded, no fingerprint: the pack
+is declared by hand.
 
 A canon that runs Claudinite as an ordinary member reads its own packs from the mount, so its shelf
 is content it *publishes* rather than content it runs — and the rules here are what police it. The
 Claudinite home repo is the one exception, running the engine from its own root, and that changes
 nothing about this pack.
 
-**Declaration cardinality is the mechanism.** A pack's tasks run once per *declaring* repo, so a
-canon declared by its one home repo yields exactly one work item per task per occurrence — "central,
-once" with no bespoke orchestrator step. Un-declaring the pack freezes canon absorption without
-touching the members' side ([claudinite-growth](../claudinite-growth/README.md)).
+A canon declared by its one home repo yields exactly one work item per task per occurrence.
+Un-declaring the pack freezes canon absorption without touching the members' side
+([claudinite-growth](../claudinite-growth/README.md)).
 
 ## Configuration
 
@@ -135,10 +133,8 @@ scanning. The [barrier guide](../basics/barriers.md) documents the edge vocabula
   technology, minted as a seed; this task authors from the whole fleet's usage.)
 - **[tasks/revalidate-from-source/](tasks/revalidate-from-source/task.md)** — the monthly reconciliation of the
   shelf against the technologies it teaches: read what each declared source has published since its
-  anchor, correct the packs that were dated by it, and advance the anchors. **Keeping a pack current
-  is the canon's duty, not the pack's** — a pack's tasks are work a member repo runs, so a pack
-  watching its own technology would put the duty on every consumer and make it unrepeatable. It
-  reads no member and no member's dependency versions; the shelf is the whole subject.
+  anchor, correct the packs that were dated by it, and advance the anchors. It reads no member and
+  no member's dependency versions; the shelf is the whole subject.
 
   A pack opts in with an `## Upstream` section in its `README.md`, one line per source:
 
