@@ -111,3 +111,11 @@
 - **Actor:** @missingbulb (owner), who asked for #2253.
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #2253
+
+## 2026-09-23 · reworded · the brief refuses a shallow checkout rather than reading short (#2277)
+- **Reason:** the step told the reader to unshallow before trusting an EMPTY brief, but a shallow
+  clone does not empty the walks - it answers them from its own horizon, so the brief reads full and
+  wrong. `brief`, `history` and `convert-references` now refuse outright, and the step says so.
+- **Actor:** the implement-request run on #2277.
+- **Model:** Claude Opus 5.
+- **Landed:** #2277
