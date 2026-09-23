@@ -17,6 +17,23 @@ ruleTester(check('author-association-as-permission'), {
   flagged: { 'code deciding on the field': { files: { 'packs/p/x.mjs': "const ok = payload.author_association === 'OWNER';\n" }, at: [{ file: 'packs/p/x.mjs', line: 1, what: /reads author_association/ }] } },
 });
 
+ruleTester(check('history-search-on-shallow-clone'), {
+  clean: {
+    'a walk bounded by a range, and one whose file probes the clone': {
+      files: {
+        'packs/acme-pack/range.mjs': "const out = git('log', '--reverse', `${base}..HEAD`);\n",
+        'packs/acme-pack/guarded.mjs': "const shallow = git('rev-parse', '--is-shallow-repository');\nconst at = git('log', '--reverse', '-S', key);\n",
+      },
+    },
+  },
+  flagged: {
+    'an unbounded pickaxe with no probe': {
+      files: { 'packs/acme-pack/first.mjs': "const at = git(root, 'log', '--reverse', '--format=%as', `-S${key}`, '--', doc);\n" },
+      at: [{ file: 'packs/acme-pack/first.mjs', line: 1, what: /asks history for its earliest hit/ }],
+    },
+  },
+});
+
 ruleTester(check('year-last-digit-rollover'), {
   clean: { 'an epoch subtraction': { files: { 'engine/v.mjs': 'const y = year - 2020;\nconst m = month % 12;\n' } } },
   flagged: { 'a year taken modulo ten': { files: { 'engine/v.mjs': 'const y = fullYear % 10;\n' }, at: [{ file: 'engine/v.mjs', line: 1, what: /anchors a year on its last digit/ }] } },

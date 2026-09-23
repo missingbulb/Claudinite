@@ -552,5 +552,23 @@
         "fix": "set process.exitCode and let the process end, adding a `return` where the exit was also ending the flow - or exit from the write's own callback, as hook-runner.mjs does"
       }
     ]
+  },
+  {
+    "id": "history-search-on-shallow-clone",
+    "severity": "blocking",
+    "since": "2026-09-23",
+    "failureMessage": "a pickaxe or --reverse walk answers with the earliest commit the CHECKOUT reaches, so on a shallow clone it hands back the clone's own horizon as the repository's history",
+    "scanFiles": "/\\.mjs$/",
+    "scanIgnoringComments": true,
+    "matchLines": [
+      {
+        "match": "/['\"`](?:log|rev-list)['\"`][^\\n]*(?:--reverse|['\"`\\s]-S)/",
+        "unlessLineMatches": "/[^.]\\.\\.[^.]/",
+        "unlessIndentedBlockBelowMatches": "/[^.]\\.\\.[^.]/",
+        "unlessFileMatches": "/--is-shallow-repository|--unshallow/",
+        "what": "asks history for its earliest hit: {match}",
+        "fix": "probe `git rev-parse --is-shallow-repository` and say so rather than answering from the horizon, or `git fetch --unshallow` first; a walk bounded by a `<ref>..<ref>` range is out of scope"
+      }
+    ]
   }
 ]
