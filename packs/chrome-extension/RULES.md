@@ -126,3 +126,8 @@
 - **Attaching to a dormant worker** — poll for the global rather than reading it once immediately
   after attaching. A dormant worker has no globals until it re-runs its top level, and attaching to
   it is what starts that. (cdp-poll-dormant-worker)
+
+- **`declarativeContent`/`UrlFilter` host-matching can't be proven by CDP introspection or a
+  jsdom-style harness** — the actual URL→condition match runs inside Chrome's own matching engine,
+  invisible to both. Only a real, loaded-extension browser test exercises it; route this one
+  assertion to that heavy lane rather than trying to unit-test it. (declarativecontent-real-chrome-only)
