@@ -55,6 +55,7 @@ import { validatePreconditions } from '../../src/contract/precondition-policy.mj
 import { collectSignalsForTask } from '../../src/signals/for-task.mjs';
 import { EXECUTING_LEASH_MS } from '../../public/task-constants.mjs';
 import { HEARTBEAT_MS, HEARTBEAT_MARKER } from '../../src/items/heartbeat.mjs';
+import { RUN_PHASES } from '../../src/items/run-record.mjs';
 import { REQUEST_TASK_ID, REQUEST_TASK, BUILT_IN_PACK } from '../../src/contract/built-in-tasks.mjs';
 import { terms as requestTerms } from '../../queue/tasks/implement-request/preconditions.mjs';
 import {
@@ -369,6 +370,13 @@ export function makeSim({
         }
       },
       setOutput: () => true,
+      // A phase the run record has no word for is timed and then dropped from the
+      // printed record, so the fold never sees what it cost: refuse it here, where
+      // every scenario drives the real run.
+      phase: (name) => {
+        if (!RUN_PHASES.scheduler.includes(name)) throw new Error(`scheduler run timed phase "${name}", which RUN_PHASES.scheduler does not name`);
+        return () => {};
+      },
     });
     for (const a of result.asked) record('ask', { task: a.task, verdict: a.verdict, reason: a.reason });
     for (const op of result.ops) {
