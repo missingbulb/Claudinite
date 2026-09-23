@@ -30,3 +30,10 @@
 - **Make that console request a snippet, not an essay.** Send exactly one code block to paste into
   the console and ask the user to paste its output back. Skip the prose explaining what you're
   hoping to learn. (make-console-request)
+
+- **Diagnosing a "the live page shows wrong data" report — gather the browser's own evidence
+  before building a repro.** Ask for a screenshot of DevTools' Network tab and, where caching is in
+  play, the Application/Storage panel, as the first response — before writing a speculative local
+  reproduction. A locally-built repro can converge on a plausible-but-wrong root cause that
+  produces the identical visible symptom, and a fix built on it lands for a bug that isn't the one
+  reported. (gather-evidence-before-repro)
