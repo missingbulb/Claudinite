@@ -1,70 +1,70 @@
 {
   "usage-findings": {
-    "value": 54,
-    "previous": null,
-    "note": "2026-08-25 to 2026-09-21"
+    "value": 70,
+    "previous": 54,
+    "note": "2026-08-26 to 2026-09-22"
   },
   "usage-newest": {
     "rows": [
       {
-        "subject": "adopt-claudinite",
-        "rule": "skill-adoption-not-reached",
-        "cause": "unknown",
-        "since": "2026-09-22"
+        "subject": "changing-pack-elements",
+        "rule": "skill-triggered-missing-moments",
+        "cause": "known",
+        "since": "2026-09-23"
       },
       {
-        "subject": "adoption-answers-pending",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-22"
+        "subject": "checkout-restores-index",
+        "rule": "guard-overruled",
+        "cause": "probable",
+        "since": "2026-09-23"
       },
       {
-        "subject": "author-association-as-permission",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-22"
+        "subject": "committing",
+        "rule": "skill-triggered-missing-moments",
+        "cause": "known",
+        "since": "2026-09-23"
       },
       {
-        "subject": "claude-md-length",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-22"
+        "subject": "fetching-from-the-web",
+        "rule": "skill-forced-only-small",
+        "cause": "known",
+        "since": "2026-09-23"
       },
       {
-        "subject": "claudinite-lifecycle-declared",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-22"
+        "subject": "fetching-from-the-web",
+        "rule": "skill-triggered-missing-moments",
+        "cause": "known",
+        "since": "2026-09-23"
       },
       {
-        "subject": "conformance-work-scope",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-22"
+        "subject": "fetching-from-the-web",
+        "rule": "trigger-fires-unfollowed",
+        "cause": "probable",
+        "since": "2026-09-23"
       },
       {
-        "subject": "conformance-workflow",
+        "subject": "history-search-on-shallow-clone",
         "rule": "check-never-fires",
         "cause": "unknown",
-        "since": "2026-09-22"
+        "since": "2026-09-23"
       },
       {
-        "subject": "declared-check-since",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-22"
+        "subject": "merge-to-main",
+        "rule": "skill-triggered-missing-moments",
+        "cause": "known",
+        "since": "2026-09-23"
       },
       {
-        "subject": "declared-check-spec-keys",
-        "rule": "check-never-fires",
-        "cause": "unknown",
-        "since": "2026-09-22"
+        "subject": "pipe-tail-hides-exit",
+        "rule": "guard-overruled",
+        "cause": "probable",
+        "since": "2026-09-23"
       },
       {
-        "subject": "dedup-prune-integrity",
+        "subject": "queue-mark-named-literally",
         "rule": "check-never-fires",
         "cause": "unknown",
-        "since": "2026-09-22"
+        "since": "2026-09-23"
       }
     ]
   }
