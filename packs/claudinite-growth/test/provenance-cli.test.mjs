@@ -466,6 +466,34 @@ test('Model reads the branch side of a merge, where the merge trailer names only
   } finally { removeTree(root); }
 });
 
+// A pickaxe and a `--reverse` walk both answer with the earliest commit the CHECKOUT
+// reaches, so on a shallow clone every walk here answers from the clone's own horizon:
+// the brief comes back short and reads as "this element has no history", and the
+// conversion dates an entry by where the clone starts rather than by when the key was
+// added. There is no partial answer worth printing, so the walking commands refuse.
+test('a command that walks history refuses on a shallow checkout rather than answering from its horizon', async () => {
+  const root = briefRepo();
+  const shallow = mkdtempSync(join(tmpdir(), 'claudinite-prov-shallow-'));
+  try {
+    git(shallow, 'clone', '-q', '--depth', '1', `file://${root}`, 'copy');
+    const copy = join(shallow, 'copy');
+    assert.equal(git(copy, 'rev-parse', '--is-shallow-repository').trim(), 'true',
+      'the fixture must actually be shallow or it proves nothing');
+    const walkers = [['brief', 'alpha'], ['history', 'alpha', 'doing-thing'], ['convert-references', 'alpha']];
+    for (const argv of walkers) {
+      const { code, out, err } = await capture(argv, copy);
+      assert.equal(code, 2, `${argv[0]} answered anyway: ${out}`);
+      assert.match(err, /shallow/, `${argv[0]} says why it cannot answer`);
+      assert.match(err, /git fetch --unshallow/, `${argv[0]} names the remedy`);
+    }
+    assert.equal(walkers.length, 3, 'every command that walks history is covered');
+    // The commands that read the tree rather than its history are untouched by the depth.
+    const listed = await capture(['check', 'alpha'], copy);
+    assert.doesNotMatch(listed.err, /shallow/);
+    assert.match(listed.out, /doing-thing\.md ← rule "Doing a thing"/);
+  } finally { removeTree(root); removeTree(shallow); }
+});
+
 test('check lists the declined log and marks a conversion-filled file, so the pass reads off the listing alone', async () => {
   const root = briefRepo();
   try {

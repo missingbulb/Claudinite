@@ -33,8 +33,8 @@ so the sections it prints without a draft under them are the run's work, not its
    the carrier as `Mechanism`, `Landed` with the version - and the commit's shared fields in
    one `entry-defaults` fence ahead of its entries. Read the tracker comments and the issues
    each body names on GitHub; `history <pack> <element>` prints one element's raw evidence
-   where the brief's derivation looks wrong. A shallow clone reads as no history: unshallow
-   before trusting an empty brief.
+   where the brief's derivation looks wrong. Both refuse outright on a shallow checkout,
+   which cannot answer a history walk at all: `git fetch --unshallow` first.
 
    Four things the brief hands over rather than answering, each printed where it arises.
    **The issues a commit references** are listed beside the defaults fence and never written

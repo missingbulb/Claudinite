@@ -100,6 +100,20 @@ export function overlayIo(base) {
 
 const git = (root, ...args) => { try { return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch { return ''; } };
 
+// A pickaxe and a `--reverse` walk both answer with the earliest commit the CHECKOUT
+// reaches, which on a shallow clone is the clone's own horizon rather than the
+// repository's history: every birth lands on the boundary commit, the carrier follow
+// finds nothing behind it, and a brief comes back short and reads as "this element has
+// no history". None of it fails, so nothing says the answer is really a fact about how
+// deeply this checkout was fetched. There is no partial answer worth printing here, so
+// the commands that walk refuse until the history is whole - `tasks/usage-review/read-live.mjs`
+// takes the other half of the same rule, where one date can be answered "not knowable"
+// instead of refusing the run.
+const isShallow = (root) => git(root, 'rev-parse', '--is-shallow-repository').trim() === 'true';
+// The commands whose answers come out of a history walk. Every other one reads the
+// working tree or HEAD, which a shallow checkout answers correctly.
+const WALKS_HISTORY = ['convert-references', 'history', 'brief'];
+
 // --- the commands ------------------------------------------------------------------
 
 export function mark(root, packs, { dryRun = false } = {}) {
@@ -243,7 +257,7 @@ export function history(root, pack, element) {
   for (const f of files) {
     lines.push(`\n## commits touching ${f}`);
     const log = git(root, 'log', '--follow', '--format=%h %as %s', '--', f);
-    lines.push(log.trim() || '(none - is the clone shallow?)');
+    lines.push(log.trim() || '(none)');
     note(log);
   }
   for (const t of triggers) {
@@ -801,7 +815,7 @@ export function brief(root, pack, wanted = []) {
     lines.push('', '## version rows no commit here claims', 'the row names the decision and the pull request that made it; neither reached a commit subject, so this is history the drafts below cannot carry');
     for (const r of orphans) lines.push(`- ${r.version} ${r.date} ${r.what}`);
   }
-  if (unknown.length) { lines.push('', '## no history found', `git holds no commit for: ${unknown.join(', ')} (is the clone shallow?)`); }
+  if (unknown.length) { lines.push('', '## no history found', `git holds no commit for: ${unknown.join(', ')}`); }
   const followed = elements.filter((el) => el.followed);
   if (followed.length) {
     lines.push('', '## elements older than the carrier they sit in', 'the birth below is drafted at the EARLIER carrier the pickaxe found, and the commit that would otherwise have read as the birth is drafted as the move or conversion it is. verify each against the old path before trusting it - `git show <sha>:<old path>`');
@@ -967,6 +981,10 @@ export async function main(argv = process.argv.slice(2), { root = process.env.CL
   const valueOf = (flag) => { const i = rest.indexOf(flag); return i === -1 ? null : rest[i + 1]; };
   const positional = rest.filter((a, i) => !a.startsWith('--') && rest[i - 1] !== '--kind' && rest[i - 1] !== '--date');
   const io = checkoutIo(root);
+  if (WALKS_HISTORY.includes(command) && isShallow(root)) {
+    console.error(`${command} reads this repository's history, and the checkout is shallow: every walk would answer with the earliest commit the clone reaches rather than with the repository's own. run \`git fetch --unshallow\` and try again`);
+    return 2;
+  }
   const packsFor = (id) => {
     if (flags.has('--all')) return allPacks(io);
     const dir = id && resolvePack(root, id, io);
