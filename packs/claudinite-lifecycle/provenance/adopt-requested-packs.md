@@ -40,3 +40,9 @@
 - **Actor:** @missingbulb (owner).
 - **Mechanism:** the task's automerge policy, stated as a prediction of the diff.
 - **Landed:** #1459 · pack version 60830.3.
+
+## 2026-09-22 · reworded · the queue mark it tells a session to apply is named literally
+- **Reason:** "for the queue" and "a tagged … issue" left the label to the reader, who invented
+  one; `task:origin:ad-hoc` is the spelling a scheduler run adopts.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5

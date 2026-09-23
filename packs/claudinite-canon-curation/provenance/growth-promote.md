@@ -47,3 +47,9 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #2191 · pack version 60921.2.
+
+## 2026-09-22 · reworded · the queue mark it tells a session to apply is named literally
+- **Reason:** "for the queue" and "a tagged … issue" left the label to the reader, who invented
+  one; `task:origin:ad-hoc` is the spelling a scheduler run adopts.
+- **Actor:** @missingbulb (owner).
+- **Model:** Opus 5
