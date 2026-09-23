@@ -1275,7 +1275,7 @@ module.exports = { issue, check };
   },
   {
     name: 'cloudflare-site-consumer',
-    why: "a member serving a static site from Cloudflare: its four checks are blocking and every one of them reads the repo's own wrangler config, so the shape they can turn red is a repo that keeps one — which this canon does not",
+    why: "a member serving a static site from Cloudflare: its four checks are blocking and every one of them reads the repo's own wrangler config, so the shape they can turn red is a repo that keeps one - which this canon does not. A second page, linked from the first, is what gives the link check a link to be silent about",
     files: {
       'README.md': '# fixture-cloudflare-site-consumer\n\nA rehearsal fixture.\n',
       '.claudinite-settings.json': checks(['basics', 'claudinite-tasks', 'cloudflare-site']),
@@ -1293,8 +1293,10 @@ module.exports = { issue, check };
       'package.json': JSON.stringify({ name: 'fixture-site', version: '1.0908.3', private: true }, null, 2) + '\n',
       // The stamp agrees with package.json, and the loader still carries the
       // placeholder the release substitutes at upload time — the two states a
-      // member is in between releases.
-      'site/index.html': '<!doctype html>\n<p class="copyright" title="version 1.0908.3">fixture</p>\n',
+      // member is in between releases. The internal link is spelled the way
+      // `html_handling: auto-trailing-slash` serves the page, without the `.html`.
+      'site/index.html': '<!doctype html>\n<p class="copyright" title="version 1.0908.3">fixture</p>\n<a href="/about">about</a>\n',
+      'site/about.html': '<!doctype html>\n<p class="copyright" title="version 1.0908.3">about</p>\n',
       'site/assets/analytics.js': "var TOKEN = 'REPLACE_WITH_CLOUDFLARE_WEB_ANALYTICS_TOKEN';\n",
     },
   },
