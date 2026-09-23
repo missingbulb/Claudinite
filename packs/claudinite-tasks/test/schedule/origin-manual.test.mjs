@@ -4,7 +4,7 @@ import {
   ORIGIN_MANUAL, ORIGIN_AD_HOC, ORIGIN_PLANNED, ORIGIN_LABELS, QUEUE_LABELS,
 } from '../../public/task-constants.mjs';
 import { originOf, itemFacts, workItemBody } from '../../public/work-item-grammar.mjs';
-import { supersededItems } from '../../src/recover/janitor-rules.mjs';
+import { supersededItems } from '../../src/schedule/repair-rules.mjs';
 
 // WHY THIS ITEM EXISTS, told apart from WHO IT IS ABOUT. `ad-hoc` used to carry
 // two unlike things: a person's own issue adopted as itself, and an occurrence of

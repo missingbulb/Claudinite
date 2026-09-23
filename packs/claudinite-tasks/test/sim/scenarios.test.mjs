@@ -1515,9 +1515,16 @@ test('S10b unanswered and no session: the agent leash brings it to triage', asyn
   assert.ok(sim.item(it.number).parked, 'triage — no retry ever risked a duplicate session');
 });
 
-// ---- S11 — agent dies mid-run: the janitor's 3h agent leash converges the item
+// ---- S11 — agent dies mid-run: the 3h agent leash converges the item
 // needs-human, naming the dead session.
-test('S11 dead agent: janitor leash converges needs-human, names the session', async () => {
+//
+// WHAT THE MERGE CHANGED HERE, and it is a real change rather than a timing detail:
+// recovery runs at every scheduler tick now, not once a day, so the park the leash
+// files is visible to rule E — a later clean run of the same task supersedes it —
+// within hours instead of a day. The incident is still recorded and still names its
+// session; what shrank is how long the report stands before the next good run
+// answers it. That is rule E's stated intent arriving sooner, not a new rule.
+test('S11 dead agent: the leash converges needs-human, names the session', async () => {
   const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
   sim.at('2026-08-12T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-12T04:00Z'); });
   sim.at('2026-08-12T04:10Z', (s) => s.crashNextAgentOf('tidy/tidy-issues'));
@@ -1528,14 +1535,16 @@ test('S11 dead agent: janitor leash converges needs-human, names the session', a
   const reclaim = sim.log.find((e) => e.kind === 'agent-reclaim');
   assert.ok(reclaim, 'the leash fired');
   const it = sim.item(reclaim.issue);
-  assert.ok(it.parked);
-  assert.match(it.comments.at(-1).body, /nonce/, 'the dead session is named by the nonce it was fired with');
+  assert.ok(it.comments.some((c) => /nonce/.test(c.body)), 'the dead session is named by the nonce it was fired with');
   // A park is not LIVE: nothing in the engine holds a lane on its own, so the next
   // day's occurrence is asked and filed beside it.
   const beside = own(sim, 'tidy/tidy-issues').filter((i) => i.createdAt >= T('2026-08-13T04:00Z'));
   assert.equal(beside.length, 1, "the next day's occurrence was filed around the park");
   assert.equal(beside[0].outcome, 'done', 'and ran normally while the incident waited');
-  assert.equal(it.state, 'open', 'the park itself still waits for its person');
+  // …and that clean run is what answers the park (rule E), which the merged pass
+  // notices at its next tick rather than at the next day's janitor.
+  assert.equal(it.state, 'closed');
+  assert.equal(it.outcome, 'obsolete', 'superseded by the run that proved the fault gone');
 });
 
 // ---- S12' — agent did the work, died before converging; the human re-queue
@@ -2049,4 +2058,46 @@ test('S80 a simulated working day costs milliseconds and waits for nothing', asy
   // but its own event queue.
   assert.equal(sim.clock.iso(), '2026-08-13T00:00:00.000Z');
   assert.ok(realMs < 2000, `a simulated day cost ${Math.round(realMs)}ms of real time`);
+});
+
+// ---- S81 — the merge's own claim, in the world model. Recovery is a PHASE of the
+// scheduler run rather than a task behind it, so the lane a repair frees is refilled
+// by the very same run: the escalation and the next occurrence are one tick, not
+// two machines a day apart.
+//
+// The lane here is held by an item no executor can reach — a member whose runner is
+// broken — which is what the stale-ready rule exists to notice. Before the merge the
+// escalation was the janitor's, at its own daily tick, and the occurrence it freed
+// waited for whichever scheduler tick came next.
+test("S81 the tick that escalates a stale item files the occurrence it freed", async () => {
+  const sim = makeSim({ tasks: cast() }).seedSteadyState('2026-08-12T00:00Z');
+  let stuckNumber;
+  sim.at('2026-08-12T04:00Z', (s) => {
+    // The task's standing occurrence, and a runner that will never reach it. Created
+    // by hand rather than filed by a tick, so the quarantine lands before any
+    // executor can pick it — the race the scenario is not about.
+    stuckNumber = s.createItem('tidy/tidy-issues').number;
+    s.quarantine(stuckNumber);
+  });
+  // The work is still there two days later, so the ask says yes the moment the lane
+  // is free — which is the point: what frees it is this same run's repair phase.
+  sim.at('2026-08-14T04:00Z', ({ world }) => { world.issueTouchedAt = T('2026-08-14T04:00Z'); });
+  await sim.run('2026-08-12T00:00Z', '2026-08-15T12:00Z');
+
+  const stuck = { number: stuckNumber };
+  const escalated = sim.log.findIndex((e) => e.kind === 'escalate' && e.rule === 'stale-ready' && e.issue === stuck.number);
+  assert.ok(escalated >= 0, 'the unreachable item came out of the queue');
+  const refilled = sim.log.findIndex((e, i) => i > escalated && e.kind === 'create' && e.task === 'tidy/tidy-issues');
+  assert.ok(refilled >= 0, 'and the task was asked again');
+
+  // SAME TICK: no `scheduler-run` entry separates the two, which is the whole claim.
+  const between = sim.log.slice(escalated, refilled).filter((e) => e.kind === 'scheduler-run');
+  assert.deepEqual(between, [], 'the escalation and the refill are one run of the scheduler');
+
+  // …and the loop closes itself: the occurrence that tick filed runs clean, which is
+  // what rule E reads to answer the park the same tick raised. The unreachable item
+  // is a human problem for as long as the fault is unproven, and no longer.
+  assert.ok(sim.log.some((e) => e.kind === 'repair-close' && e.issue === stuck.number),
+    'a later clean run of the task superseded the escalation');
+  assert.equal(sim.item(stuck.number).state, 'closed');
 });

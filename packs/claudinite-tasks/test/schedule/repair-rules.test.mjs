@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  staleReadyItems, deadAgentItems, stuckBlockedItems, statelessItems, periodForTasks,
+  staleReadyItems, deadAgentItems, statelessItems, periodForTasks, stuckBlockedItems,
   supersededItems, supersededComment, orphanedParkItems, orphanedParkComment,
   endedParkItems, endedParkComment, unclosedTerminalItems, unclosedTerminalComment,
   abandonedParkItems, abandonedParkComment, scheduledForTasks,
-} from '../../src/recover/janitor-rules.mjs';
+} from '../../src/schedule/repair-rules.mjs';
 import { periodMs } from '../../src/items/anchors.mjs';
 import { isParked } from '../../public/work-item-grammar.mjs';
 import { FREQUENCIES } from '../../src/contract/calendar.mjs';
@@ -80,20 +80,6 @@ test('an item with no beats at all is judged off the issue clock, as before', ()
   assert.deepEqual(deadAgentItems([dead, live], NOW, { progressAt }).map((i) => i.number), [dead.number]);
 });
 
-// F14 — the stale-ready rule cannot see this at all: a blocked item is never
-// ready, so a dependency that never resolves had no rule watching it.
-test('a blocked item whose blockers never resolve is surfaced; a sleeping one is not (F14)', () => {
-  const stuck = it({ labels: ['task:blocked'], created_at: '2026-08-01T00:00:00Z', body: 'p/t.md\n\nBlocked-by: #10\n' });
-  const settled = it({ labels: ['task:blocked'], created_at: '2026-08-01T00:00:00Z', body: 'p/t.md\n\nBlocked-by: #11\n' });
-  const sleeping = it({ labels: ['task:blocked'], created_at: '2026-08-01T00:00:00Z', body: 'p/t.md\n\nNot-before: 2026-09-01T04:00:00Z\n' });
-  const stateOf = (n) => (n === 11 ? 'closed' : 'open');
-  assert.deepEqual(stuckBlockedItems([stuck, settled, sleeping], NOW, { stateOf }).map((i) => i.number), [stuck.number]);
-});
-
-test('a rolling item is never stuck — waiting for its own next anchor is the mechanism working', () => {
-  const rolling = it({ labels: ['task:blocked'], created_at: '2026-06-01T00:00:00Z', body: 'p/t.md\n\nNot-before: 2026-08-15T04:00:00Z\n' });
-  assert.deepEqual(stuckBlockedItems([rolling], NOW), []);
-});
 
 // PRINCIPLES.md — a torn label swap leaves an open item outside the state machine, and
 // every rule that filters by state is blind to it.
@@ -444,4 +430,37 @@ test('only a standing occurrence is abandoned', () => {
 test('an unreadable task set claims nothing', () => {
   const item = parked({ kind: 'failure', updated_at: '2026-08-10T04:00:00Z' });
   assert.deepEqual(abandonedParkItems([item], LATER, { scheduledFor: scheduledForTasks([]) }), []);
+});
+
+// F14 — the stale-ready rule cannot see this at all: a blocked item is never
+// ready, so a dependency that never resolves had no rule watching it.
+test('a blocked item whose blockers never resolve is surfaced; a sleeping one is not (F14)', () => {
+  const stuck = it({ labels: ['task:blocked'], created_at: '2026-08-01T00:00:00Z', body: 'p/t.md\n\nBlocked-by: #10\n' });
+  const settled = it({ labels: ['task:blocked'], created_at: '2026-08-01T00:00:00Z', body: 'p/t.md\n\nBlocked-by: #11\n' });
+  const sleeping = it({ labels: ['task:blocked'], created_at: '2026-08-01T00:00:00Z', body: 'p/t.md\n\nNot-before: 2026-09-01T04:00:00Z\n' });
+  const stateOf = (n) => (n === 11 ? 'closed' : 'open');
+  assert.deepEqual(stuckBlockedItems([stuck, settled, sleeping], NOW, { stateOf }).map((i) => i.number), [stuck.number]);
+});
+
+test('a rolling item is never stuck — waiting for its own next anchor is the mechanism working', () => {
+  const rolling = it({ labels: ['task:blocked'], created_at: '2026-06-01T00:00:00Z', body: 'p/t.md\n\nNot-before: 2026-08-15T04:00:00Z\n' });
+  assert.deepEqual(stuckBlockedItems([rolling], NOW), []);
+});
+
+// THE BOUND IS IDLENESS, NEVER AGE. Measured from creation the rule matched on every
+// pass for the rest of a long-blocked item's life, and the phase has no once-only
+// guard, so a chain link waiting on a long review collected a comment per run
+// forever. Measured from the item's last activity, the comment this rule posts is
+// its own guard: posting it moves `updated_at`, and the next one is two idle days
+// out.
+test('the stuck-dependency bound is read from the item\'s last activity, not its age', () => {
+  const body = 'p/t.md\n\nBlocked-by: #10\n';
+  const old = it({ labels: ['task:blocked'], created_at: '2026-07-01T00:00:00Z', updated_at: '2026-07-01T00:00:00Z', body });
+  assert.deepEqual(stuckBlockedItems([old], NOW).map((i) => i.number), [old.number], 'idle past the bound');
+
+  // …and the same ancient item, commented on an hour ago, is silent until it goes
+  // quiet for another two days.
+  const justNoted = { ...old, updated_at: '2026-08-14T03:00:00Z' };
+  assert.deepEqual(stuckBlockedItems([justNoted], NOW), []);
+  assert.deepEqual(stuckBlockedItems([justNoted], '2026-08-16T04:00:00Z').map((i) => i.number), [old.number]);
 });

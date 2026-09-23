@@ -171,3 +171,17 @@
   same work runs, exits the same way and prints the same markers.
 - **Actor:** @missingbulb (owner), who asked why every task re-implements one runner's job.
 - **Model:** Opus 5
+
+## 2026-09-22 · retired · the queue's recovery becomes a phase of the scheduler run
+- **Reason:** the task's rules were dispatcher work wearing a task's clothes. Being a work item
+  itself, its repair could only land after the tick that filed it, could never feed the drain gate
+  that dispatches an executor for what it freed, and was wedged by exactly the pickup path it
+  existed to repair. Folded into `planSchedulerRun` as a phase that runs before the ask, so a park
+  it closes releases the task's lane in the same pass. Its verdicts stay pure in
+  `src/schedule/repair-rules.mjs`; the declaration, its worker, its precondition module and its
+  queue-sweep shell are gone. The legacy slot-dispatch sweep the worker also carried went with it:
+  its trigger has been retired since #974, so its re-arm and dead-claim rules were already no-ops
+  and its escalation's population is a closed set that only shrinks.
+- **Actor:** @missingbulb (owner), who asked for the merge and chose the scope.
+- **Model:** claude-opus-5
+- **Landed:** #2262

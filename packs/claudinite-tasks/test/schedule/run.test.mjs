@@ -114,14 +114,29 @@ test('a run with a task to ask and no seam is a fixture that has not said what t
 });
 
 // ONE LIVE ITEM PER TASK — the engine's one invariant of its own.
-test('a live standing item suppresses the ask however long it has stood, in every live status', async () => {
+test('a live standing item suppresses the ask, in every live status', async () => {
   for (const status of ['task:status:blocked', 'task:status:waiting-for-executor', 'task:status:running-executor', 'task:status:running-agent']) {
-    const standing = item({ task: 'daily1', labels: ['task:origin:planned', status], created_at: '2026-06-01T04:10:00Z' });
+    // Fresh enough that no leash has run out: the repair phase runs before the ask
+    // now, so an item old enough to be escalated no longer holds its task's lane.
+    const standing = item({ task: 'daily1', labels: ['task:origin:planned', status], created_at: '2026-08-14T09:30:00Z' });
     const { seen, evaluate } = askedIds();
     const { ops } = await planSchedulerRun({ tasks: [task('daily1', ['schedule:at-most-daily'])], items: [standing], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, evaluate });
     assert.deepEqual(seen, [], status);
     assert.equal(kinds(ops, 'create').length, 0, status);
   }
+});
+
+// …but not for however long it has stood, which is what the merge changed. The
+// repair phase runs before the ask, so an item nobody picked for ~2 of its own
+// periods leaves the queue as a human problem AND the occurrence it was holding is
+// filed in the same pass. Before the merge that took two machines and up to a day.
+test('a stale-ready item is escalated and its lane freed in one pass', async () => {
+  const standing = item({ task: 'daily1', labels: ['task:origin:planned', 'task:status:waiting-for-executor'], created_at: '2026-06-01T04:10:00Z' });
+  const { seen, evaluate } = askedIds();
+  const { ops } = await planSchedulerRun({ tasks: [task('daily1', ['schedule:at-most-daily'])], items: [standing], now: '2026-08-14T10:00:00Z', schedule: SCHEDULE, evaluate });
+  assert.deepEqual(ops.filter((o) => o.rule).map((o) => o.rule), ['stale-ready']);
+  assert.deepEqual(seen, ['daily1'], 'the ask ran in the same pass, on the lane the escalation just freed');
+  assert.equal(kinds(ops, 'create').length, 1);
 });
 
 test('a parked item is not live: the task is asked beside it, whatever the park\'s kind', async () => {

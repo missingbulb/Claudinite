@@ -52,7 +52,7 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   item is open in a live status, the task is not asked, and the item is its
   current occurrence; a parked item is not live, so the task is asked beside
   it. `S57`, `S6`, `S11`, `S42`,
-  `test/schedule/run.test.mjs: a live standing item suppresses the ask however long it has stood, in every live status`,
+  `test/schedule/run.test.mjs: a live standing item suppresses the ask, in every live status`,
   `test/schedule/run.test.mjs: a parked item is not live: the task is asked beside it, whatever the park's kind`
 - A second live unqualified item of one task, however it arose, is closed
   obsolete, oldest kept. `S30`,
@@ -278,13 +278,23 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
 
 ## Recover
 
-- The janitor is a fallback: every rule it runs repairs something that
-  already went wrong, no stage of a task's healthy flow passes through it,
-  and an item somebody closed is finished, not a state to repair.
+- Recovery is a PHASE of the scheduler run, first, before it asks any task
+  whether it wants to run - and still a fallback: every rule repairs
+  something that already went wrong, no stage of a task's healthy flow passes
+  through it, and an item somebody closed is finished, not a state to repair.
+  It runs first because what it frees is what the jobs after it read - a park
+  it closes releases the task's lane, and an item it returns to the queue is
+  counted by the drain gate that ends the run. Its effects are threaded into
+  the item list the ask reads, so every cadence term judges this run's world
+  rather than the listing it started from, except where a verdict may still be
+  declined on its fresh read.
+  `S81` (the tick that escalates a stale item files the occurrence it freed),
+  `test/schedule/repair-phase.test.mjs: an ended park is threaded closed, so the ask judges this run's world`,
+  `test/schedule/repair-phase.test.mjs: a confirm-gated verdict is not threaded, because the write may not happen`
 - The executing-leash reclaim rides the scheduler run: `running-executor`
   silent past ~1h strips to `waiting-for-executor` with a comment, so a dead
-  executor's item is back in the queue within ~2h rather than a day. `S8`
-- The janitor's agent leash (~3h) converges a silent `running-agent` item to
+  executor's item is back in the queue at the next tick rather than a day. `S8`
+- The agent leash (~3h) converges a silent `running-agent` item to
   `needs-human-decision`, naming which session died. `S11`
 - A run that dies mid-queue is caught first by the failure-continuation job
   (a fresh runner, ~a minute); the scheduler run's own drain is the backstop
@@ -293,38 +303,42 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   `needs-human-action`, the period read from the task's own declared cadence
   term at HEAD — never from title parsing. `S18`, `S21` (never fires on a
   quiet task, which has no item to escalate)
-- The stuck-dependency sweep escalates a `blocked` item whose blockers have
-  not resolved for ~2 days with a comment only — labels untouched, so the
-  item still proceeds by itself the moment its blockers resolve. `S18`
+- The stuck-dependency sweep notes a `blocked` item whose blockers have not
+  resolved for ~2 IDLE days with a comment only - labels untouched, so the item
+  still proceeds by itself the moment its blockers resolve. The bound is read
+  from the item's last activity rather than its creation, which makes the
+  comment its own guard: posting one moves `updated_at`, so the next is two
+  idle days out rather than one per pass forever. `S18`,
+  `test/schedule/repair-rules.test.mjs: the stuck-dependency bound is read from the item's last activity, not its age`
 - An open item wearing neither a status label nor a park — a torn label
-  swap's leavings — is repaired to `needs-human-decision` by the janitor's
+  swap's leavings - is repaired to `needs-human-decision` by the repair phase's
   stateless-item rule, on a fresh re-read so an item that settled between the
   sweep's read and its write is left alone.
-  `test/tasks/task-janitor-queue-sweep.test.mjs: a stateless item parks at failure — a torn swap is breakage, not a judgement`,
-  `test/tasks/task-janitor-queue-sweep.test.mjs: an item that settled between the sweep's read and its write is left alone`,
-  `test/tasks/task-janitor-queue-sweep.test.mjs: an item still stateless on the second read is repaired`
+  `test/schedule/repair-phase.test.mjs: a stateless item parks at failure — a torn swap is breakage, not a judgement`,
+  `test/schedule/repair-phase.test.mjs: an item that settled between the sweep's read and its write is left alone`,
+  `test/schedule/repair-phase.test.mjs: an item still stateless on the second read is repaired`
 - `Ends-when: #<n> closed`, stamped by the converge on any park given a `--pr`,
-  is what lets a park end itself: the janitor reads the named issue or pull
+  is what lets a park end itself: the repair phase reads the named issue or pull
   request's resolution and closes the item accordingly — merged closes
   `done`, closed unmerged closes `rejected`, and a condition it cannot
   evaluate reads as not yet met.
-  `test/tasks/task-janitor-queue-sweep.test.mjs: a park whose pull request MERGED closes done — the work landed`,
-  `test/tasks/task-janitor-queue-sweep.test.mjs: a park whose pull request was closed unmerged closes rejected — nothing landed`,
-  `test/tasks/task-janitor-queue-sweep.test.mjs: a park whose pull request is still open is the machinery working`,
-  `test/tasks/task-janitor-queue-sweep.test.mjs: an ended park on a marked issue whose PR merged closes it done`,
-  `test/tasks/task-janitor-queue-sweep.test.mjs: an ended park on a marked issue whose PR was closed unmerged closes it rejected`
+  `test/schedule/repair-phase.test.mjs: a park whose pull request MERGED closes done — the work landed`,
+  `test/schedule/repair-phase.test.mjs: a park whose pull request was closed unmerged closes rejected — nothing landed`,
+  `test/schedule/repair-phase.test.mjs: a park whose pull request is still open is the machinery working`,
+  `test/schedule/repair-phase.test.mjs: an ended park on a marked issue whose PR merged closes it done`,
+  `test/schedule/repair-phase.test.mjs: an ended park on a marked issue whose PR was closed unmerged closes it rejected`
 - A terminal — `done` or `rejected` alike — closes the issue it stands on,
   marked or filed; a pull request closed unmerged says the task was
   rejected, and the item says so and closes exactly as an executor decline
   does. `S45` (a refused request is disarmed and closed on the issue itself),
-  `test/tasks/task-janitor-queue-sweep.test.mjs: an unclosed terminal is closed at its own outcome, with no relabelling`
+  `test/schedule/repair-phase.test.mjs: an unclosed terminal is closed at its own outcome, with no relabelling`
 - A failure park nobody has answered past its bound closes obsolete, and a
   superseded park is closed as superseded, never as abandoned.
-  `test/tasks/task-janitor-queue-sweep.test.mjs: a failure park nobody has answered past the bound closes obsolete`,
-  `test/tasks/task-janitor-queue-sweep.test.mjs: a superseded park is closed as superseded, not as abandoned`
+  `test/schedule/repair-phase.test.mjs: a failure park nobody has answered past the bound closes obsolete`,
+  `test/schedule/repair-phase.test.mjs: a superseded park is closed as superseded, not as abandoned`
 - A park naming a task at a path it has since moved off closes obsolete,
   naming the new path, rather than stranding on a dead reference.
-  `test/tasks/task-janitor-queue-sweep.test.mjs: a park naming its task at a path it has moved off closes obsolete, naming the new path`
+  `test/schedule/repair-phase.test.mjs: a park naming its task at a path it has moved off closes obsolete, naming the new path`
 
 ## Requests
 
@@ -349,8 +363,8 @@ cost, contract — the same cut the pack's own folders take. Run the suite from
   block or the status beside the mark — never the mark alone. The mark is a
   label a person can take off at any moment, and an adopted item gated on it
   drops out of every read of the queue the instant they do: never picked,
-  never declined, and invisible to the janitor's rules, which cannot sweep
-  what they cannot list. `S48`
+  never declined, and invisible to the repair phase's rules, which cannot
+  sweep what they cannot list. `S48`
 - A live prior item of the same mark makes a re-ask wait; a parked one is
   superseded rather than blocking it forever. `S49`, `S51`
 - The precondition is the security check, evaluated once, at pickup: it
@@ -537,7 +551,7 @@ dropped cron fire and a job killed at its timeout ceiling.
   can tear one
   (`test/sim/world/world.test.mjs: a torn label swap leaves the item wearing neither label`).
   What is defended structurally rather than exercised end to end is the
-  janitor repairing a tear it finds mid-flight; no scenario yet tears a swap
+  repair phase fixing a tear it finds mid-flight; no scenario yet tears a swap
   underneath a running queue.
 - **Comment list consistency** — the design assumes a comment list read after
   posting includes every earlier-id comment; GitHub's own consistency
