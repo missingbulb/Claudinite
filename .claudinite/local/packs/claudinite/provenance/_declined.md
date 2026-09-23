@@ -55,3 +55,23 @@
   and one of those rewords a lead-in rather than adding a rule, needing no README change;
   `requireCoChange` cannot see a net count, so the check would be wrong on one real case in four.
 - **Actor:** @missingbulb (owner).
+
+## 2026-09-23 · declined · promoting `pipe-tail-hides-exit` out of advisory
+- **Source:** it fired in five of the 2026-09-22 window's captures, several calls each, and no
+  session acted on it.
+- **Reason:** the check is the canon `basics` pack's, and this run writes only local packs; the
+  severity call is the usage-review's.
+- **Actor:** the growth-extract run over the 2026-09-22 window.
+
+## 2026-09-23 · declined · a shape for a state-transition table put to the owner
+- **Source:** #2262, where the owner reshaped one table over three rounds - full label names,
+  conditions as pseudocode naming the surface read, writes as `+ label`, one clause per line.
+- **Reason:** how a summary is shaped is the owner's own preference, which is injected per session
+  and goes stale the moment a pack copies it.
+- **Actor:** the growth-extract run over the 2026-09-22 window.
+
+## 2026-09-23 · declined · converting `changing-guidance-produced` to a check
+- **Source:** the upgrade pass over this run's own additions.
+- **Reason:** class G - the trigger is "guidance that produced a bad artifact", a judgment; a work
+  rule reading "prose edited, no Agent dispatch" fires on every rewording and guesses intent.
+- **Actor:** the growth-extract run over the 2026-09-22 window.

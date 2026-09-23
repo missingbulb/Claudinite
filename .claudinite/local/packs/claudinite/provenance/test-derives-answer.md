@@ -17,3 +17,11 @@
 - **Actor:** @missingbulb (owner).
 - **Model:** Claude Opus 5, per the commit trailer.
 - **Landed:** #1315 (Closes #1312).
+
+## 2026-09-23 · scope-changed · Claudinite growth: extract lessons (#2271)
+- **Source:** #2244 fixed exactly this in `packDeclaredAt`, which is a tool and not a test.
+- **Reason:** the rule named only tests, so every history-reading tool here sat outside it.
+- **Actor:** the growth-extract run over the 2026-09-22 window.
+- **Model:** Claude Opus 5.
+- **Mechanism:** the same RULES.md rule, its trigger widened from "A test that derives its answer"
+  to "Deriving an answer"; `history-search-on-shallow-clone` checks the code half.

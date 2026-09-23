@@ -530,9 +530,14 @@ Below are rules on how to work on this repo.
   sentence-matching test stays green even while a sibling doc states the opposite, certifying the
   contradiction instead of catching it. (writing-regression-test)
 
-- **A test that derives its answer by walking git history** — guard explicitly against a shallow
-  clone and fail loudly. It otherwise passes vacuously exactly when the real answer needs history
-  it doesn't have. (test-derives-answer)
+- **Deriving an answer by walking git history** - in a test or in a tool alike, guard explicitly
+  against a shallow clone and fail loudly; it otherwise answers from the clone's own horizon
+  exactly when the real answer needs history it doesn't reach. (test-derives-answer)
+
+
+- **Changing the guidance that produced a bad artifact** - prove the rewrite by reverting that
+  artifact and having a fresh subagent redo the same task against the new text, then reading what
+  it writes; nothing else sees the prose fail. (changing-guidance-produced)
 
 
 - **Restoring source after a deliberate see-it-fail mutation** — `git checkout -- <file>` at the
