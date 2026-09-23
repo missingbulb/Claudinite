@@ -57,3 +57,10 @@
   a real browser.** A `textContent` read looks clean under test but splices the `<noscript>` markup
   into the value in Chrome, which keeps `<noscript>` as raw text. Parse a script-free fragment with
   `runScripts: "dangerously"` to reproduce the browser. (runscripts-outside-only)
+
+- **The same divergence is a production bug, not only a testing gotcha, wherever production code
+  itself parses foreign HTML without a real browser** (a Node-side scraper, a DOM-emulation
+  library). Reading an element's user-facing text off such a parse or clone inherits the identical
+  `<noscript>`/`<script>`/`<style>` leakage — strip those tags before reading `textContent`, rather
+  than treating the divergence as something only a test harness has to work around.
+  (jsdom-divergence-hits-production)
