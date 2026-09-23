@@ -24,7 +24,7 @@ still publishing is a check's finding.
 | Rule | Severity | Reason | Enforcement |
 |---|---|---|---|
 | Only the published tree reaches the site | high | correctness | prose: <100 words |
-| Internal links omit `.html` | low | performance | prose: <50 words |
+| Internal links omit `.html` | low | performance | prose: <100 words + check (`cloudflare-site/internal-links-omit-html-extension`) |
 | One path to production | high | correctness | prose: <50 words + check (`cloudflare-site/no-second-publisher`) |
 | What a parked release is asking for | medium | correctness | prose: <100 words |
 
@@ -41,6 +41,7 @@ still publishing is a check's finding.
 | `cloudflare-site/publishes-a-site-directory` | critical | correctness | check: blocking |
 | `cloudflare-site/no-second-publisher` | high | correctness | check: blocking |
 | `cloudflare-site/beacon-token-is-not-committed` | high | legal | check: blocking |
+| `cloudflare-site/internal-links-omit-html-extension` | low | performance | check: blocking, silent where `html_handling` is `none` |
 
 ## Tasks
 
