@@ -150,11 +150,25 @@ test('the vendored stubs stamp what the readers in this pack actually read', () 
   convergeWorkflows(root, REPO, { schedulerStub: schedulerRun, executorStub: executor, secretNames: ['STORE_TOKEN'] });
   assert.match(readFileSync(join(root, EXECUTOR_WORKFLOW), 'utf8'), /STORE_TOKEN: \$\{\{ secrets\.STORE_TOKEN \}\}/);
   assert.doesNotMatch(readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8'), /secrets\.STORE_TOKEN/);
-  // The variable bag the executor's task env unpacks (vars-bag.mjs), and the hold both
-  // entry points gate on (suspend.mjs), under the names those readers import.
+  // The variable bag the executor's task env and its hold read from (vars-bag.mjs,
+  // hold.mjs), and the hold the scheduler, which carries no bag, stamps by name.
   assert.match(executor, new RegExp(`${VARS_BAG_ENV}: \\$\\{\\{ toJSON\\(vars\\) \\}\\}`));
-  for (const text of [schedulerRun, executor]) {
-    assert.match(text, new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`));
+  assert.match(schedulerRun, new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`));
+});
+
+// Adoption scaffolds the executor before the endpoint's `tokenSecret` reaches the config,
+// so the stub passes the default endpoint's token itself. A repo whose config already
+// names it at scaffold must still get the key once: Actions refuses a duplicate env key.
+test('the scaffolded executor passes the default endpoint token exactly once, config or none', () => {
+  const executor = readFileSync(join(CANON_ROOT, 'packs/claudinite-tasks/stubs/claudinite-executor.yml'), 'utf8');
+  const TOKEN = 'CCR_ROUTINE_TOKEN'; // @real-entity the default endpoint's secret adoption hands over
+  const line = new RegExp(`^ {10}${TOKEN}: \\$\\{\\{ secrets\\.${TOKEN} \\}\\}$`, 'gm');
+  for (const names of [[], [TOKEN], ['A_KEY', TOKEN, 'Z_KEY']]) {
+    const root = mkRepo();
+    convergeWorkflows(root, REPO, { schedulerStub: SCHEDULER_STUB, executorStub: executor, secretNames: names });
+    const written = readFileSync(join(root, EXECUTOR_WORKFLOW), 'utf8');
+    assert.equal((written.match(line) ?? []).length, 1, `stamped with [${names}]`);
+    for (const other of names.filter((n) => n !== TOKEN)) assert.match(written, new RegExp(`${other}: \\$\\{\\{ secrets\\.${other} \\}\\}`));
   }
 });
 

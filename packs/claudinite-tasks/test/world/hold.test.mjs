@@ -41,20 +41,28 @@ test('a held run says why it did nothing, and how to resume', () => {
 // and does nothing. Both halves are asserted here because the failure mode is
 // silence on either side (#974): the workflows against the constant the reader
 // imports, and each entry point by running it under the hold.
+// The scheduler carries the hold by name; the executor carries it inside its vars bag
+// and nowhere else, so each entry point is run held through the one channel its own
+// workflow gives it.
 test('every workflow stamps the hold, and every entry point exits on it before reading anything', () => {
-  for (const wf of [
-    '.github/workflows/claudinite-scheduler.yml',
-    '.github/workflows/claudinite-executor.yml',
-    'packs/claudinite-tasks/stubs/claudinite-scheduler.yml',
-    'packs/claudinite-tasks/stubs/claudinite-executor.yml',
-  ]) {
-    assert.match(read(wf), new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`), wf);
+  const named = new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`);
+  const bag = new RegExp(`${VARS_BAG_ENV}: \\$\\{\\{ toJSON\\(vars\\) \\}\\}`);
+  for (const wf of ['.github/workflows/claudinite-scheduler.yml', 'packs/claudinite-tasks/stubs/claudinite-scheduler.yml']) {
+    assert.match(read(wf), named, wf);
+  }
+  for (const wf of ['.github/workflows/claudinite-executor.yml', 'packs/claudinite-tasks/stubs/claudinite-executor.yml']) {
+    assert.match(read(wf), bag, wf);
+    assert.doesNotMatch(read(wf), named, `${wf}: the bag already carries the hold`);
   }
   // FIRST ACT means before the config load and before the first API call: with no
   // token and no repository in the environment, a run that read anything would fail
   // — a held one exits clean, saying why.
-  for (const entry of ['packs/claudinite-tasks/src/schedule/run.mjs', 'packs/claudinite-tasks/src/execute/loop.mjs']) {
-    const env = { ...process.env, [SUSPEND_ALL_VAR]: 'true', GITHUB_TOKEN: '', GITHUB_REPOSITORY: '' };
+  const held = {
+    'packs/claudinite-tasks/src/schedule/run.mjs': { [SUSPEND_ALL_VAR]: 'true' },
+    'packs/claudinite-tasks/src/execute/loop.mjs': { [VARS_BAG_ENV]: JSON.stringify({ [SUSPEND_ALL_VAR]: 'true' }) },
+  };
+  for (const [entry, hold] of Object.entries(held)) {
+    const env = { ...process.env, [SUSPEND_ALL_VAR]: '', [VARS_BAG_ENV]: '', ...hold, GITHUB_TOKEN: '', GITHUB_REPOSITORY: '' };
     const r = spawnSync(process.execPath, [join(CANON, entry)], { encoding: 'utf8', env });
     assert.equal(r.status, 0, `${entry}: ${r.stdout}${r.stderr}`);
     assert.ok(r.stdout.includes(suspendedNotice()), `${entry}: a held run must say it is held`);
