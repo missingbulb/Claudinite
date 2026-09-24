@@ -36,6 +36,9 @@ function makeCanon({ packs = [], skills = [], packDirectory = true } = {}) {
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-conventions.mjs'), join(root, 'engine', 'pack_loader', 'pack-conventions.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'renamed-packs.mjs'), join(root, 'engine', 'pack_loader', 'renamed-packs.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
+  // The provenance parser the vendor writers strip markers with, on the way into a mount.
+  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'provenance.mjs'), join(root, 'engine', 'checks', 'helpers', 'provenance.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'skill-frontmatter.mjs'), join(root, 'engine', 'pack_loader', 'skill-frontmatter.mjs'));
   // The recency predicate the migrations walk shares with check-tolerance.
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(root, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   // The engine version the set reports beside the files — the real module, so the
@@ -126,6 +129,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/checks/helpers/module-imports.mjs',
     'engine/checks/helpers/pattern-rules.mjs',
     'engine/checks/helpers/active-migrations.mjs',
+    'engine/checks/helpers/provenance.mjs',
     'engine/checks/check_the_world.mjs',
     'engine/hooks/session-start-command.sh',
     'engine/pack_loader/env-requirements.mjs',
@@ -135,6 +139,7 @@ test('structural set: engine roots + machinery + declared pack + its skills, exa
     'engine/pack_loader/pack-conventions.mjs',
     'engine/pack_loader/renamed-packs.mjs',
     'engine/pack_loader/mount-skills.mjs',
+    'engine/pack_loader/skill-frontmatter.mjs',
     'engine/version.mjs',
     'engine/settings-file.mjs',
     'engine/settings-file-names.mjs',
@@ -517,3 +522,64 @@ test('no canon pack ships its provenance/ — over the real corpus, not a fixtur
   assert.ok(logs.length > 100, `only ${logs.length} provenance files tracked - this assertion has lost its subject`);
 });
 
+
+// --- in transit: the one edit a member's copy carries -------------------------------
+
+test('in transit, the REAL shelf loses its provenance markers and nothing else, and the canon is untouched', async () => {
+  const { computeVendorSet, vendoredContent } = await import(pathToFileURL(join(MOUNT_DIR, 'compute-vendor-set.mjs')));
+  const { loadPacks } = await import(pathToFileURL(join(REPO_ROOT, 'engine/pack_loader/pack-registry.mjs')));
+  const { packCarriers, checkoutIo } = await import(pathToFileURL(join(REPO_ROOT, 'engine/checks/helpers/provenance.mjs')));
+  const ids = (await loadPacks()).map((p) => p.id);
+  const { files, errors } = await computeVendorSet(ids, { today: '2026-01-01' });
+  assert.deepEqual(errors, []);
+  const statusBefore = execFileSync('git', ['status', '--porcelain', '--', 'packs', 'engine'], { cwd: REPO_ROOT, encoding: 'utf8' });
+
+  // The slugs each carrier file really holds, read by the provenance convention's own
+  // parser: a line may lose a marker only where that parser says a carrier ends.
+  const io = checkoutIo(REPO_ROOT);
+  const slugsOf = new Map();
+  for (const id of ids) {
+    const c = packCarriers(`packs/${id}`, io);
+    for (const r of [...c.rules, ...c.guidelines]) {
+      if (!r.slug) continue;
+      if (!slugsOf.has(r.file)) slugsOf.set(r.file, new Set());
+      slugsOf.get(r.file).add(r.slug);
+    }
+  }
+
+  // An independent spelling of "a trailing marker", so the proof does not borrow the
+  // regex it is proving.
+  const TRAILING = /\s*\(([a-z][a-z0-9]*(?:-[a-z0-9]+)+)\)\s*$/;
+  const faults = [];
+  let edited = 0;
+  let removed = 0;
+  let identical = 0;
+  for (const file of files) {
+    const canon = readFileSync(join(REPO_ROOT, file));
+    const sent = Buffer.from(vendoredContent(file));
+    if (canon.equals(sent)) { identical++; continue; }
+    edited++;
+    const from = canon.toString('utf8').split('\n');
+    const to = sent.toString('utf8').split('\n');
+    const allowed = slugsOf.get(file) ?? new Set();
+    let j = 0;
+    for (const line of from) {
+      if (to[j] === line) { j++; continue; }
+      const m = TRAILING.exec(line);
+      if (!m || !allowed.has(m[1])) { faults.push(`${file}: "${line}" changed, and it does not end with a carrier's marker`); break; }
+      const kept = line.replace(TRAILING, '');
+      removed++;
+      if (!kept.trim()) continue; // a marker alone on its line leaves with it
+      if (to[j] !== kept) { faults.push(`${file}: "${line}" became "${to[j]}", not the line without its marker`); break; }
+      j++;
+    }
+    if (j !== to.length) faults.push(`${file}: the copy carries ${to.length - j} line(s) the canon does not`);
+  }
+  assert.deepEqual(faults, []);
+  const markers = [...slugsOf.values()].reduce((n, s) => n + s.size, 0);
+  assert.equal(removed, markers, 'every carrier marker on the shelf leaves in transit');
+  assert.ok(removed > 300, `only ${removed} markers removed - this assertion has lost its subject`);
+  assert.ok(edited > 20 && identical > 500, `${edited} edited / ${identical} identical files - the sweep lost its subject`);
+  assert.equal(execFileSync('git', ['status', '--porcelain', '--', 'packs', 'engine'], { cwd: REPO_ROOT, encoding: 'utf8' }), statusBefore,
+    'reading the vendored content edits nothing in the canon');
+});

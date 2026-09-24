@@ -9,7 +9,7 @@ import {
   ruleBlocks, normalizeRuleText, skillShape, packCarriers, provenanceFiles, packDirsIn, auditPack,
   proposeSlug, withBody, markPack, parseReferencesDoc, convertReferences, reduceText, reduceFile, checkoutIo,
   KINDS, MECHANISM_KINDS, FIELDS, PACK_ELEMENT, DECLINED_FILE, elementIdOf,
-  backfilledText, checksOfModule, relativeModulesIn,
+  backfilledText, checksOfModule, relativeModulesIn, unmarkedProse, unmarkedSkill,
 } from '../../../engine/checks/helpers/provenance.mjs';
 
 const repo = (files) => {
@@ -543,4 +543,55 @@ test('backfilledText refuses to leave a retired entry above another, or a file w
 test('appendedText still refuses the out-of-order entry every other caller would be writing', () => {
   const { problems } = appendedText(CONVERTED, entry('2026-07-08', 'reworded', 'earlier than the file (#165)'));
   assert.match(problems.join('\n'), /appended in date order/);
+});
+
+// --- in transit to a member -----------------------------------------------------------
+
+test('unmarkedProse drops the marker ending each rule and nothing else', () => {
+  const prose = [
+    '# pack',
+    '',
+    '- **Doing X** - do it, (canon) and see (#12). (doing-x)',
+    '',
+    '- **Doing Y** - a lead paragraph that wraps',
+    '  onto a second line. (doing-y)',
+    '  1. a nested step (not-a-marker)',
+    '',
+    '- **Doing Z** - marked after its list:',
+    '  - one',
+    '  - two',
+    '  (doing-z)',
+    '',
+    '- **Doing W** - unmarked, ending on a kebab (word-like) aside.',
+    '',
+    '```',
+    '- **Example** - inside a fence. (fenced-example)',
+    '```',
+    '',
+    'Closing prose (trailing-kebab).',
+    '',
+  ].join('\n');
+  const out = unmarkedProse(prose).split('\n');
+  assert.equal(out[2], '- **Doing X** - do it, (canon) and see (#12).');
+  assert.equal(out[5], '  onto a second line.');
+  assert.equal(out[6], '  1. a nested step (not-a-marker)');
+  assert.deepEqual(out.slice(8, 12), ['- **Doing Z** - marked after its list:', '  - one', '  - two', '']);
+  assert.ok(out.includes('- **Example** - inside a fence. (fenced-example)'));
+  assert.ok(out.includes('Closing prose (trailing-kebab).'));
+  assert.equal(out.length, prose.split('\n').length - 1, 'only the marker-only line is gone');
+});
+
+test('unmarkedProse is the identity on prose with no markers, and idempotent', () => {
+  const plain = '# p\n\n- **A rule** - no marker.\n';
+  assert.equal(unmarkedProse(plain), plain);
+  const once = unmarkedProse('- **A** - x. (a-rule)\n- **B** - y. (b-rule)\n');
+  assert.equal(once, '- **A** - x.\n- **B** - y.\n');
+  assert.equal(unmarkedProse(once), once);
+});
+
+test('unmarkedSkill strips a guidelines skill\'s bullets and leaves a workflow skill whole', () => {
+  const guidelines = '---\nname: g\nmetadata:\n  body: guidelines\n---\n\n# g\n\n- **Doing X** - do it. (doing-x)\n- **Doing Y** - do it.\n';
+  assert.equal(unmarkedSkill(guidelines), guidelines.replace(' (doing-x)', ''));
+  const workflow = '---\nname: w\n---\n\n1. First do this.\n\n- **A gotcha** - mind it. (a-gotcha)\n';
+  assert.equal(unmarkedSkill(workflow), workflow);
 });

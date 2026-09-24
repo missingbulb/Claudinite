@@ -8,7 +8,7 @@ is [DESIGN.md](DESIGN.md); the adoption procedure that first runs this machinery
 
 | File | Role |
 |---|---|
-| [`compute-vendor-set.mjs`](compute-vendor-set.mjs) | The **vendor-set computation**: a repo's pack declaration → the corpus file set that repo persists under `.claudinite/shared/` (the `engine/` root minus tests and root docs, plus the declared packs with their `requires` closure — each pack's bundled skills riding its own tree). Verified import-closed before it is returned. |
+| [`compute-vendor-set.mjs`](compute-vendor-set.mjs) | The **vendor-set computation**: a repo's pack declaration → the corpus file set that repo persists under `.claudinite/shared/` (the `engine/` root minus tests and root docs, plus the declared packs with their `requires` closure, each pack's bundled skills riding its own tree). Verified import-closed before it is returned. Also where a set file's *content* comes from (`vendoredContent`, landed by `copyIntoMount`): the canon's bytes, except that a pack's rule prose and guidelines skills cross without their provenance markers. |
 | [`apply-vendor-set.mjs`](apply-vendor-set.mjs) | The **vendor writer**: whole-set convergence of a target's `.claudinite/shared/` plus the provenance stamp (`claudinite.updated` / `claudinite.ref`, and the versions the set reports — `claudinite.engineVersion` / `claudinite.packVersions`), erroring **before any write** — with the #328 anti-rewind guards (a passed `--ref` must equal the canon checkout's HEAD; the target's prior stamped ref must be an ancestor). |
 
 Both run **from the canon tree** (a checkout or a fetched snapshot) *against* a consumer

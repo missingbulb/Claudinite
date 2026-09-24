@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, copyFileSync, existsSync, readFileSync, chmodSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -36,6 +36,9 @@ function makeCanon() {
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-conventions.mjs'), join(root, 'engine', 'pack_loader', 'pack-conventions.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'renamed-packs.mjs'), join(root, 'engine', 'pack_loader', 'renamed-packs.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(root, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
+  // The provenance parser the vendor writers strip markers with, on the way into a mount.
+  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'provenance.mjs'), join(root, 'engine', 'checks', 'helpers', 'provenance.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'skill-frontmatter.mjs'), join(root, 'engine', 'pack_loader', 'skill-frontmatter.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(root, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   // The pattern-check engine the registry reaches for when a pack carries
   // declared-checks.json — a stub here: the fixture packs declare none, but the
@@ -173,6 +176,8 @@ test('#328: a canon tree nested in a FOREIGN git repo is rootless — upward .gi
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'pack-conventions.mjs'), join(canon, 'engine', 'pack_loader', 'pack-conventions.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'renamed-packs.mjs'), join(canon, 'engine', 'pack_loader', 'renamed-packs.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'module-imports.mjs'), join(canon, 'engine', 'checks', 'helpers', 'module-imports.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'provenance.mjs'), join(canon, 'engine', 'checks', 'helpers', 'provenance.mjs'));
+  copyFileSync(join(REPO_ROOT, 'engine', 'pack_loader', 'skill-frontmatter.mjs'), join(canon, 'engine', 'pack_loader', 'skill-frontmatter.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'checks', 'helpers', 'active-migrations.mjs'), join(canon, 'engine', 'checks', 'helpers', 'active-migrations.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'version.mjs'), join(canon, 'engine', 'version.mjs'));
   copyFileSync(join(REPO_ROOT, 'engine', 'remove-tree.mjs'), join(canon, 'engine', 'remove-tree.mjs'));
@@ -262,4 +267,23 @@ test('#768: converging an ALREADY-STAMPED target advances every pack PAST record
   assert.equal(installedVersions(settingsOf(target)).packVersions.alpha, 4,
     'the writer stamps the newest version, records or no records');
   assert.equal(applies(target), false, 'and the record it never applied is now permanently out of range');
+});
+
+test('the mount receives rules without their provenance markers; the canon keeps its own file byte for byte', async () => {
+  const canon = makeCanon();
+  const rules = '# alpha\n\n- **Doing X** - do it, see (#12). (doing-x)\n- **Doing Y** - do it.\n';
+  const skill = '---\nname: s1\nmetadata:\n  body: guidelines\n---\n\n- **Minding Z** - mind it. (minding-z)\n';
+  writeAt(canon, 'packs/alpha/RULES.md', rules);
+  writeAt(canon, 'packs/alpha/skills/s1/SKILL.md', skill);
+  writeAt(canon, 'engine/hooks/start.sh', '#!/bin/sh\n');
+  chmodSync(join(canon, 'engine/hooks/start.sh'), 0o755);
+  const target = makeTarget();
+  const r = await applyAt(canon, target);
+  assert.deepEqual(r.errors, []);
+  const mount = (f) => join(target, '.claudinite', 'shared', f);
+  assert.equal(readFileSync(mount('packs/alpha/RULES.md'), 'utf8'), '# alpha\n\n- **Doing X** - do it, see (#12).\n- **Doing Y** - do it.\n');
+  assert.equal(readFileSync(mount('packs/alpha/skills/s1/SKILL.md'), 'utf8'), skill.replace(' (minding-z)', ''));
+  assert.equal(statSync(mount('engine/hooks/start.sh')).mode & 0o777, 0o755, 'a copied script keeps its mode');
+  assert.equal(readFileSync(join(canon, 'packs/alpha/RULES.md'), 'utf8'), rules);
+  assert.equal(readFileSync(join(canon, 'packs/alpha/skills/s1/SKILL.md'), 'utf8'), skill);
 });

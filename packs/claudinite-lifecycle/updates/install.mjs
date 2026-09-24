@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { computeVendorSet, SHARED_SUBDIR } from '../../../vendoring/compute-vendor-set.mjs';
+import { computeVendorSet, copyIntoMount, SHARED_SUBDIR } from '../../../vendoring/compute-vendor-set.mjs';
 import { loadPacks, resolveDeclaredPacks, packEntryId } from '../../../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../../../engine/version.mjs';
 import { isVersion, versionAbove } from '../../../engine/version.mjs';
@@ -149,9 +149,7 @@ export async function installPacks(targetRoot, ids, {
 
   const sharedDir = join(targetRoot, SHARED_SUBDIR);
   for (const file of ourFiles) {
-    const dest = join(sharedDir, file);
-    mkdirSync(dirname(dest), { recursive: true });
-    copyFileSync(join(canonRoot, file), dest);
+    copyIntoMount(file, sharedDir);
   }
 
   // Stamp the LATEST version directly — the install's whole claim. Nothing is

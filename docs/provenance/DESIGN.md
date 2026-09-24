@@ -42,9 +42,10 @@ to its file, and the stable id by which a member's override or `accept` entry ca
 and survive its rewording — the one obligation the layering design places on the corpus, paid
 once. The marker is the only thing this design adds to injected prose, and it is rationed like the
 prose: a slug of two to four words, so a rewording never has to touch it. It costs a few tokens
-per rule, two to three times what a numeric marker costs — on the order of a thousand tokens
-across a member that loads two hundred rules, out of a budget of fifteen thousand — and nothing
-cheaper carries both the reference and the id.
+per rule, two to three times what a numeric marker costs, and nothing cheaper carries both the
+reference and the id. A member pays it only for its own local packs: the vendor writers strip the
+marker from a canon pack's prose on the way into the mount (`vendoredContent` in
+`vendoring/compute-vendor-set.mjs`), since the file it names never ships.
 
 One file normally covers one carrier. It covers several when they are one guideline - a prose rule
 and the check that enforces its checkable half, a rule and the skill it delegates to, two rules
@@ -196,7 +197,8 @@ rejection is settled.
   A member mounting a canon pack receives the guidelines, not the reasoning, and never another
   organisation's decision log.
 - **Never loaded.** No `@` import, no skill mount, no session-summary token count. The marker at
-  the end of a rule is the whole of what reaches a session, and it invites the reader nowhere: no
+  the end of a rule is the whole of what reaches a session on the pack's own repo, a member's
+  mount carrying none, and it invites the reader nowhere: no
   rule names the folder, links it, or asks anyone to follow anything.
 - **Never barrier-scanned.** A provenance file references what it explains — other packs, `docs/`,
   member repositories, retired mechanisms — so the barrier config carves `provenance/` out of every
