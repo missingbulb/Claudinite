@@ -1,8 +1,8 @@
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { computeVendorSet, SHARED_SUBDIR } from './compute-vendor-set.mjs';
+import { computeVendorSet, copyIntoMount, SHARED_SUBDIR } from './compute-vendor-set.mjs';
 import { removeTree } from '../engine/remove-tree.mjs';
 import { settingsPath, SETTINGS_FILE } from '../engine/settings-file.mjs';
 import { installedVersions, withInstalledVersions } from '../engine/installed-versions.mjs';
@@ -99,9 +99,7 @@ export async function applyVendor(targetRoot, { ref = null } = {}) {
   const sharedDir = join(targetRoot, SHARED_SUBDIR);
   removeTree(sharedDir);
   for (const file of files) {
-    const dest = join(sharedDir, file);
-    mkdirSync(dirname(dest), { recursive: true });
-    copyFileSync(join(canonRoot, file), dest);
+    copyIntoMount(file, sharedDir);
   }
 
   // WHAT this mount is, and nothing about when it was taken. The datetime and the

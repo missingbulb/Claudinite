@@ -1,8 +1,8 @@
-import { copyFileSync, mkdirSync, rmSync, renameSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
+import { mkdirSync, rmSync, renameSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { computeVendorSet, SHARED_SUBDIR } from '../../../vendoring/compute-vendor-set.mjs';
+import { computeVendorSet, copyIntoMount, SHARED_SUBDIR } from '../../../vendoring/compute-vendor-set.mjs';
 import { PACK_DIRECTORY_FILE } from '../../../engine/pack_loader/pack-registry.mjs';
 import { ENGINE_VERSION } from '../../../engine/version.mjs';
 import { isVersion } from '../../../engine/version.mjs';
@@ -180,9 +180,7 @@ export async function engineUpdate(targetRoot, {
   rmSync(join(sharedDir, 'engine'), { recursive: true, force: true });
   const written = [];
   for (const file of files.filter(isEngineFile)) {
-    const dest = join(sharedDir, file);
-    mkdirSync(dirname(dest), { recursive: true });
-    copyFileSync(join(canonRoot, file), dest);
+    copyIntoMount(file, sharedDir);
     written.push(file);
   }
 

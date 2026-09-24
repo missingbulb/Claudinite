@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync, copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPacks, resolveDeclaredPacks, packEntryId, SHARED_SUBDIR, PACK_DIRECTORY_FILE } from '../engine/pack_loader/pack-registry.mjs';
@@ -6,6 +6,7 @@ import { PROVENANCE_DIR } from '../engine/pack_loader/pack-conventions.mjs';
 import { relativeImports, resolveRelative, ENGINE_DIR_ROOTS } from '../engine/checks/helpers/module-imports.mjs';
 import { migrationApplies, MIGRATIONS_SUBDIR } from '../engine/checks/helpers/active-migrations.mjs';
 import { ENGINE_VERSION } from '../engine/version.mjs';
+import { unmarkedProse, unmarkedSkill } from '../engine/checks/helpers/provenance.mjs';
 
 // The vendor-set computation for the vendored mount (DESIGN.md): given a repo's
 // pack declaration, the minimal corpus file set that repo persists under
@@ -136,6 +137,34 @@ function walk(relDir, files, errors, { engine = false, today, installed = null, 
       files.add(rel);
     }
   }
+}
+
+// THE ONE EDIT A MEMBER'S COPY CARRIES. The set leaves a pack's provenance/ behind
+// (above), so the marker ending each rule names a file the member never receives:
+// the rule prose and a guidelines skill's bullets cross without it, and every other
+// file crosses byte for byte. The edit is made on the way into the mount and never
+// on the canon's own tree, which keeps its markers for the curation that reads them.
+const IN_TRANSIT = [
+  [/^packs\/[^/]+\/RULES\.md$/, unmarkedProse],
+  [/^packs\/[^/]+\/skills\/[^/]+\/SKILL\.md$/, unmarkedSkill],
+];
+
+// A set file's content as a member receives it: a string where the edit applies, the
+// canon's own bytes otherwise.
+export function vendoredContent(file) {
+  const bytes = readFileSync(join(canonRoot, file));
+  const edit = IN_TRANSIT.find(([pattern]) => pattern.test(file))?.[1];
+  return edit ? edit(bytes.toString('utf8')) : bytes;
+}
+
+// Every writer of a mount lands a set file through here. The copy keeps the canon
+// file's mode (a hook script stays executable); an edited file is then rewritten.
+export function copyIntoMount(file, sharedDir) {
+  const dest = join(sharedDir, file);
+  mkdirSync(dirname(dest), { recursive: true });
+  copyFileSync(join(canonRoot, file), dest);
+  const content = vendoredContent(file);
+  if (typeof content === 'string') writeFileSync(dest, content);
 }
 
 // declaredEntries: the raw `packs` array from .claudinite-settings.json (id
