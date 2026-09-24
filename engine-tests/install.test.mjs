@@ -252,6 +252,19 @@ test('the flow surface a FIELDED worker calls stays callable, whatever this ref\
       // anywhere. So it is held until somebody reads that, and this is what brings
       // the question back.
     },
+    {
+      module: 'engine/pack_loader/token-estimate.mjs',
+      name: 'countWords',
+      since: '60902.1',
+      reviewAt: '61101.1',
+      // #2285 moved the estimate from words to characters and renamed the counter.
+      // `packs/basics/worldRules/claude-md-length.mjs` is the only caller, and it
+      // rides the PACK lane: a member whose engine has moved and whose packs have not
+      // holds a copy still importing the old name, and a missing named export fails
+      // that pack, which is what the engine flow's self-test gate refuses to land
+      // over. Removed by #2295, once no member's `packVersions["basics"]` is below
+      // the version carrying the `countChars` call.
+    },
   ];
   for (const s of SHIMS) {
     assert.ok(ENGINE_VERSION < s.reviewAt,

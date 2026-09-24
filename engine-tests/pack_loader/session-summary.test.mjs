@@ -72,15 +72,15 @@ function run(corpus, project, env = {}) {
 const ruleSource = (n, spec) => JSON.stringify(Array.from({ length: n }, (_, i) => ({ id: `${spec ? 'g' : 'r'}${i}`, ...(spec ? { spec } : {}) })));
 const rules = (n, guards = 0) => ({ manifestSource: (json) => `const rules = [...${ruleSource(n)}, ...${ruleSource(guards, { scope: 'action' })}].map((r) => ({ ...r, run: () => {} }));\nexport default { ...${json}, workRules: rules };\n` });
 
-// Prose is estimated through WORDS (roughly 0.75 of them per token), so a fixture
-// says how many words it is, not how many bytes.
-const words = (n) => Array.from({ length: n }, (_, i) => `word${i}${i % 12 === 11 ? '\n' : ''}`).join(' ');
+// Prose is estimated through CHARACTERS (roughly 4.2 of them per token), so a fixture
+// says how many characters it is, and the figures below are that count over the ratio.
+const chars = (n) => 'x'.repeat(n);
 
 test('counts the active packs, their checks and their prose, and says so in one line', () => {
   const corpus = makeCorpus({
-    alpha: { prose: 'RULES.md', proseText: words(1500), ...rules(3) },
-    beta: { prose: 'RULES.md', proseText: words(750), ...rules(2) },
-    gamma: { prose: 'RULES.md', proseText: words(90000), ...rules(9) },
+    alpha: { prose: 'RULES.md', proseText: chars(8400), ...rules(3) },
+    beta: { prose: 'RULES.md', proseText: chars(4200), ...rules(2) },
+    gamma: { prose: 'RULES.md', proseText: chars(500000), ...rules(9) },
   });
   const project = makeProject({ packs: ['alpha', 'beta'] });
   try {
@@ -199,15 +199,15 @@ test('a pack copied for this session counts like every other one that loaded', (
   // what this session is carrying is told one number that covers all of it. Held out, it
   // was a second number under a second name for prose that loads identically — and where
   // that second number went missing, so did the only statement of what it cost.
-  const corpus = makeCorpus({ alpha: { proseText: Array.from({ length: 150 }, (_, i) => `w${i}`).join(' ') } });
+  const corpus = makeCorpus({ alpha: { proseText: chars(840) } });
   const project = makeProject({ packs: ['alpha'] });
   const copied = join(project, '.claudinite', 'temp', 'packs', 'current_user');
   try {
     assert.match(run(corpus, project), /: 1 pack, 200 context tokens, /);
     mkdirSync(copied, { recursive: true });
     writeFileSync(join(copied, 'pack.mjs'), 'export default { ruleRoutingGuidance: { belongs: "a person", excludes: "a project" } };\n');
-    writeFileSync(join(copied, 'RULES.md'), Array.from({ length: 900 }, (_, i) => `x${i}`).join(' '));
-    // 1,050 words over the two packs is 1,400 tokens, and the copied pack is a pack.
+    writeFileSync(join(copied, 'RULES.md'), chars(5040));
+    // 5,880 characters over the two packs is 1,400 tokens, and the copied pack is a pack.
     assert.match(run(corpus, project), /: 2 packs, 1\.4k context tokens, /);
   } finally { removeTree(corpus); removeTree(project); }
 });

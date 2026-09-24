@@ -12,3 +12,11 @@
   have produced no merged proposal - either says the threshold is wrong or the rule is not worth
   the reading.
 - **Landed:** #2214
+
+## 2026-09-24 · severity-changed · the token bound moved with the estimator beneath it (#2285)
+- **Reason:** the bound says "a few lines", and the estimate it is read against moved from words to
+  characters. Left at 300 it would have quietly tightened by a tenth; 330 is the same body of text
+  in the new unit.
+- **Mechanism:** the `and` clause in `usage-rules.json`, unchanged in shape.
+- **Actor:** run of the `implement-request` task on item #2285.
+- **Model:** claude-opus-5
