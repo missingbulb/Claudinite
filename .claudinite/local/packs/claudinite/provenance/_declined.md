@@ -75,3 +75,18 @@
 - **Reason:** class G - the trigger is "guidance that produced a bad artifact", a judgment; a work
   rule reading "prose edited, no Agent dispatch" fires on every rewording and guesses intent.
 - **Actor:** the growth-extract run over the 2026-09-22 window.
+
+## 2026-09-24 · declined · proving a text transform with an independent matcher
+- **Source:** #2286, whose real-shelf sweep deliberately used its own regex rather than the one
+  `unmarkedProse` applies, so the proof could disagree with the transform.
+- **Reason:** `building-simulator-stateful` already carries the correct-by-construction failure, and
+  what is left is the generic "do not test a function with itself".
+- **Actor:** the growth-extract run over the 2026-09-23 window.
+
+## 2026-09-24 · declined · requiring every write into the mount to go through `copyIntoMount`
+- **Source:** #2286 routed four vendor writers through it; a fifth added later would ship the
+  provenance markers it strips, and only `apply-vendor-set` has a writer test.
+- **Reason:** the check would have to assert that particular copy calls still read a particular way,
+  which pins a point in time; the carrier is a writer test beside the other three, and those live
+  under `packs/`, outside this task's write scope.
+- **Actor:** the growth-extract run over the 2026-09-23 window.
