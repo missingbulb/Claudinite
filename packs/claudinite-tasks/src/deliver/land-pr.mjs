@@ -417,11 +417,16 @@ export const LAND_POLL_MS = 5_000;
 // a POLL, never a verdict. Without it, the first read 0.3s after the dispatch
 // found an empty list and judged "nothing will ever verify this", stranding
 // seven members' green PRs in one forced fleet pass (2026-08-07).
+// A run parked at `action_required` is not one this delivery started: GitHub can
+// register a held pull_request run before the dispatched one, and counting it met
+// `expected` early and judged a PR whose real run had not appeared (#861 on
+// EdFringeNow, 2026-09-24).
 export function landAttempt({
   delivery, runs, expected = 0, elapsedMs = 0,
   timeoutMs = LAND_TIMEOUT_MS, inflightTimeoutMs = LAND_INFLIGHT_TIMEOUT_MS,
 }) {
-  if ((runs ?? []).length < expected) return elapsedMs >= timeoutMs ? 'give-up' : 'poll';
+  const visible = (runs ?? []).filter((r) => r && r.conclusion !== 'action_required');
+  if (visible.length < expected) return elapsedMs >= timeoutMs ? 'give-up' : 'poll';
   const disposition = pullDisposition({ delivery, runs });
   if (disposition === 'merge') return 'merge';
   // `wait` is precisely "a run is not `completed`" — the seen-it-executing case,
