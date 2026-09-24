@@ -118,10 +118,7 @@ The working-discipline rules with a deterministic signature. The world rules rea
 **directed folder-access graph** the repo declares on this pack's entry as `config.barriers.rules`,
 and a repo that declares none is silent rather than failing. [barriers.md](barriers.md) is the whole
 vocabulary — the rule forms, how a reference is resolved against the tree, the exception kinds, and
-how another pack ships a fixed barrier of its own as manifest data. It arrived here when the
-`barriers` pack was absorbed (#1681): no project ever chose that pack, it rode in on the baseline's
-`requires` closure, and a separate identity for a mechanism everyone already has bought only a
-second catalog row and an adoption question nobody had asked for.
+how another pack ships a fixed barrier of its own as manifest data.
 
 `improve-comments-scope` is owned by the
 [improve-comments](skills/improve-comments/checks.mjs) skill rather than by this pack's rule
@@ -130,6 +127,4 @@ branch whose commit subject is `Claudinite tidy: improve comments` it strips the
 sides of every changed file and reds anything left over, plus any change at all under
 `.claudinite/` — the mount is not the repo's own source. Silent everywhere else, so an ordinary
 branch pays nothing for it. The [improve-comments](tasks/improve-comments/README.md) task is what
-writes under it, weekly, over the files the window's commits touched. Both arrived here when the
-`tidy-repo` pack was retired (#1839): its issue and PR sweeps had been outgrown, and the comment
-pass was the one dimension left — baseline housekeeping, with no second declaration to earn.
+writes under it, weekly, over the files the window's commits touched.

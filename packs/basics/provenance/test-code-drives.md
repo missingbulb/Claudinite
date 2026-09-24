@@ -1,4 +1,7 @@
-## 2026-09-01 · born · converted from references.md (writing-tests-2)
-- **Reason:** The SPA-render fallback's CI test renders a `data:` URL whose script fills an empty
-  root, not a live SPA (#310) — the live target was bot-blocked from CI.
-- **Mechanism:** prose, a guideline of the writing-tests skill
+## 2026-06-20 · born · Add portable Claude rules docs (5235b9d3)
+- **Source:** the testing bullets of `engineeringPractices.md`.
+- **Reason:** the SPA-render fallback's CI test rendered a `data:` URL whose script filled an empty
+  root rather than a live SPA (#310), the live target being bot-blocked from CI.
+- **Actor:** @missingbulb (owner).
+- **Mechanism:** prose, as a testing-discipline bullet.
+- **Landed:** commit 5235b9d3.
