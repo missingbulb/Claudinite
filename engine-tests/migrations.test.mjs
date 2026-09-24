@@ -906,6 +906,47 @@ test('executor-vars-redelivery re-issues the same rewrite above where the strand
   assert.equal((files.get(EXECUTOR).match(/CLAUDINITE_VARS:/g) ?? []).length, 1);
 });
 
+// The executor reads the hold out of its vars bag, so a member's named copy is dead
+// weight — but only where the bag is there to carry it. What matters is that the rewrite
+// never strands a member without a hold, and leaves its stamped secrets alone.
+test('executor-hold-through-the-bag drops the named hold only where the bag carries it', async () => {
+  const m = (await loadMigrations()).find((x) => x.id === 'executor-hold-through-the-bag');
+  assert.ok(m, 'discovered');
+  const { isSuspended } = await import('../packs/claudinite-tasks/src/world/hold.mjs'); // @real-entity the reader this record's premise rests on
+
+  const EXECUTOR = '.github/workflows/claudinite-executor.yml';
+  const hold = '          CLAUDINITE_TASKS_SUSPEND_ALL: ${{ vars.CLAUDINITE_TASKS_SUSPEND_ALL }}\n';
+  const bag = '          CLAUDINITE_VARS: ${{ toJSON(vars) }}\n';
+  const member = (lines) => `name: Claudinite executor\n        env:\n          GITHUB_TOKEN: \${{ github.token }}\n${lines}`
+    + '          # claudinite:secrets\n          MEMBER_ONLY_TOKEN: ${{ secrets.MEMBER_ONLY_TOKEN }}\n';
+  const io = (files) => ({ read: async (p) => files.get(p) ?? null, write: async (p, c) => { files.set(p, c); },
+    env: { CLAUDINITE_CAN_WITHHOLD_WORKFLOWS: '1' } });
+
+  const files = new Map([[EXECUTOR, member(hold + bag)]]);
+  assert.equal(await m.appliesTo(io(files).read), true, 'a member carrying both');
+  assert.deepEqual(await applyRewrites(m, io(files)), [EXECUTOR]);
+  const after = files.get(EXECUTOR);
+  assert.equal(after, member(bag), 'only the named hold goes; the bag, the marker and the member\'s secret stay');
+  // The executor's reader still sees a hold set in repo settings, now through the bag alone.
+  assert.equal(isSuspended({ CLAUDINITE_VARS: JSON.stringify({ CLAUDINITE_TASKS_SUSPEND_ALL: 'true' }) }), true);
+  assert.equal(await m.appliesTo(io(files).read), false, 'a re-run is inert');
+
+  // A member whose executor never received the bag keeps the named hold: it is that
+  // member's only channel, and dropping it would leave the queue unstoppable there.
+  const bagless = new Map([[EXECUTOR, member(hold)]]);
+  assert.equal(await m.appliesTo(io(bagless).read), false);
+  assert.deepEqual(await applyRewrites(m, io(bagless)), []);
+  assert.equal(bagless.get(EXECUTOR), member(hold));
+
+  // A caller that cannot deliver a workflow file reports the skip rather than writing it.
+  const unable = new Map([[EXECUTOR, member(hold + bag)]]);
+  const skipped = await applyRewrites(m, { ...io(unable), env: {} });
+  assert.match(skipped[0], /^SKIPPED /);
+  assert.equal(unable.get(EXECUTOR), member(hold + bag));
+
+  assert.equal(await m.appliesTo(async () => null), false, 'a repo that does not run the queue');
+});
+
 // A record is read on a member whose mount carries only the records that still APPLY to
 // it, never the canon's whole set — so a record importing a sibling record is a dangling
 // import on exactly the repo that needs it, and `pack-independence` then stops the whole

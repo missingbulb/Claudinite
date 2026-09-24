@@ -150,11 +150,14 @@ test('the vendored stubs stamp what the readers in this pack actually read', () 
   convergeWorkflows(root, REPO, { schedulerStub: schedulerRun, executorStub: executor, secretNames: ['STORE_TOKEN'] });
   assert.match(readFileSync(join(root, EXECUTOR_WORKFLOW), 'utf8'), /STORE_TOKEN: \$\{\{ secrets\.STORE_TOKEN \}\}/);
   assert.doesNotMatch(readFileSync(join(root, SCHEDULER_WORKFLOW), 'utf8'), /secrets\.STORE_TOKEN/);
-  // The variable bag the executor's task env unpacks (vars-bag.mjs), and the hold both
-  // entry points gate on (suspend.mjs), under the names those readers import.
+  // The variable bag the executor's task env and its hold read from (vars-bag.mjs,
+  // hold.mjs), and the hold the scheduler, which carries no bag, stamps by name.
   assert.match(executor, new RegExp(`${VARS_BAG_ENV}: \\$\\{\\{ toJSON\\(vars\\) \\}\\}`));
-  for (const text of [schedulerRun, executor]) {
-    assert.match(text, new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`));
+  assert.match(schedulerRun, new RegExp(`${SUSPEND_ALL_VAR}: \\$\\{\\{ vars\\.${SUSPEND_ALL_VAR} \\}\\}`));
+});
+    const written = readFileSync(join(root, EXECUTOR_WORKFLOW), 'utf8');
+    assert.equal((written.match(line) ?? []).length, 1, `stamped with [${names}]`);
+    for (const other of names.filter((n) => n !== TOKEN)) assert.match(written, new RegExp(`${other}: \\$\\{\\{ secrets\\.${other} \\}\\}`));
   }
 });
 
