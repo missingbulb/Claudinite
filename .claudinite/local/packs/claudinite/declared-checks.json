@@ -570,5 +570,41 @@
         "fix": "probe `git rev-parse --is-shallow-repository` and say so rather than answering from the horizon, or `git fetch --unshallow` first; a walk bounded by a `<ref>..<ref>` range is out of scope"
       }
     ]
+  },
+  {
+    "id": "timed-phase-named-in-vocabulary",
+    "severity": "blocking",
+    "since": "2026-09-24",
+    "failureMessage": "renderRunCost prints only the words RUN_PHASES names, so a phase timed under any other word is measured and then dropped, and the fold never sees what it cost",
+    "scanIgnoringComments": true,
+    "extractValueSets": [
+      {
+        "setName": "phasesTimed",
+        "fromLinesMatching": "/\\b(?:phase\\(|timed\\([A-Za-z_$][\\w$]*,\\s*)'(?<value>[a-z][a-z-]*)'/",
+        "inFilesMatching": "/^packs\\/claudinite-tasks\\/src\\/.+\\.mjs$/",
+        "whenSetEmpty": {
+          "what": "nothing under packs/claudinite-tasks/src/ opens a run phase under a literal word",
+          "fix": "the timer's call shape moved, so repoint \"phasesTimed\" at how a phase is opened now, or retire this check if no run times itself any more"
+        }
+      },
+      {
+        "setName": "phasesNamed",
+        "fromLinesMatching": "/^\\s*(?:scheduler|executor): Object\\.freeze\\(\\[(?<value>[^\\]]*)\\]\\)/",
+        "inFilesMatching": "/(^|\\/)run-record\\.mjs$/",
+        "splitValuesOn": "/[',\\s]+/",
+        "whenSetEmpty": {
+          "what": "RUN_PHASES names no phase word, so every timed phase would read as one this vocabulary does not have",
+          "fix": "the declaration's shape moved, so repoint \"phasesNamed\" at where the per-workflow phase lists are spelled now"
+        }
+      }
+    ],
+    "checkSetPairs": [
+      {
+        "everyValueOf": "phasesTimed",
+        "mustAlsoBeIn": "phasesNamed",
+        "what": "the run times a phase under '{value}', which RUN_PHASES does not name",
+        "fix": "add '{value}' to that workflow's list in RUN_PHASES, in the order the run executes it, or time the phase under a word the vocabulary already carries"
+      }
+    ]
   }
 ]
