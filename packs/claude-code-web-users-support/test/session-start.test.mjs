@@ -117,6 +117,22 @@ test('nothing copied still leaves a pack the engine can load', () => {
   } finally { removeTree(root); }
 });
 
+test('what a session copies in never shows up as a change to commit', () => {
+  // The member's own .gitignore may say nothing about the session root, so the root has to
+  // ignore itself, on the copy path and on the placeholder path alike.
+  for (const email of ['me@example.com', 'nobody@example.com']) {
+    const root = project();
+    try {
+      assert.equal(spawnSync('git', ['init', '-q', root]).status, 0);
+      storeHere(root, { 'RULES.md': 'x\n' });
+      assert.equal(run(PREPARE, root, { email, config: STORE }).status, 0);
+      assert.ok(existsSync(join(root, COPIED, 'RULES.md')));
+      const status = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: root, encoding: 'utf8' });
+      assert.doesNotMatch(status.stdout, /\.claudinite/, email);
+    } finally { removeTree(root); }
+  }
+});
+
 test('every miss is a soft note from the start step, never a halt', () => {
   const root = project();
   try {

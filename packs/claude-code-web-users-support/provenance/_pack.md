@@ -81,3 +81,16 @@
   the window through the same import as the rest.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5
+
+## 2026-09-24 · scope-changed · the session root ignores itself
+- **Source:** the owner asked for `.claudinite/temp/` to be gitignored by this pack, at adoption and
+  in the members already running it.
+- **Reason:** a member's own `.gitignore` may not cover the copied pack, so it showed up as
+  untracked files that could be committed.
+- **Mechanism:** the prepare step writes `.claudinite/temp/.gitignore` (`*`) every session, which
+  reaches new and existing members alike on their next session, the same way the engine keeps
+  `.claude/skills/` mounts out of git.
+- **Rejected:** a root `.gitignore` line planted by an adoption scaffold plus a migration record: it
+  needs a new migration op, and existing members wait for a converge PR to get it.
+- **Actor:** @missingbulb (owner).
+- **Model:** claude-opus-5-5
