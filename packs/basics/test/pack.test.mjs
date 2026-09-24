@@ -522,26 +522,26 @@ test('changed-mode scoping: pre-existing violations elsewhere are not reported',
 // line pulls a whole tree into every window, and a repo on Claudinite has exactly that
 // — a CLAUDE.md of one line. Measuring the file alone is why the check could not fire
 // on the corpus it was written to bound.
-const budgetWords = (n) => `${Array.from({ length: n }, (_, i) => `w${i}`).join(' ')}\n`;
+const budgetChars = (n) => `${'x'.repeat(n - 1)}\n`;
 
 test('claude-md-length: weighs what CLAUDE.md imports, not only what it holds', () => {
   // A one-line CLAUDE.md pulling a tree well past the budget — the shape that was silent.
   const imported = makeRepo({ changed: {
     'CLAUDE.md': '@.claudinite/rules.md\n',
-    '.claudinite/rules.md': `@../packs/acme-pack/RULES.md\n${budgetWords(4000)}`,
-    'packs/acme-pack/RULES.md': budgetWords(14000),
+    '.claudinite/rules.md': `@../packs/acme-pack/RULES.md\n${budgetChars(30000)}`,
+    'packs/acme-pack/RULES.md': budgetChars(80000),
   } });
   const small = makeRepo({ changed: {
     'CLAUDE.md': '@.claudinite/rules.md\n',
-    '.claudinite/rules.md': budgetWords(200),
+    '.claudinite/rules.md': budgetChars(2000),
   } });
   try {
     const found = run(claudeMdLength, imported, 'all');
     assert.equal(found.length, 1);
     assert.equal(found[0].file, 'CLAUDE.md');
     // The finding names the tokens it counted, which is the unit the cost lands in.
-    // 18,002 words — the two `@` lines count as words too — is 24,003 tokens.
-    assert.match(found[0].what, /24,003 tokens \(budget 20,000\)/);
+    // 110,051 characters — the two `@` lines are characters too — is 26,203 tokens.
+    assert.match(found[0].what, /26,203 tokens \(budget 24,000\)/);
     assert.equal(run(claudeMdLength, small, 'all').length, 0);
   } finally { cleanup(imported); cleanup(small); }
 });
@@ -549,19 +549,19 @@ test('claude-md-length: weighs what CLAUDE.md imports, not only what it holds', 
 test('claude-md-length: an import cycle is followed once, not forever', () => {
   const root = makeRepo({ changed: {
     'CLAUDE.md': '@a.md\n',
-    'a.md': `@b.md\n${budgetWords(9000)}`,
-    'b.md': `@a.md\n${budgetWords(9000)}`,
+    'a.md': `@b.md\n${budgetChars(55000)}`,
+    'b.md': `@a.md\n${budgetChars(55000)}`,
   } });
   try {
-    // Each file counted once: 18,003 words is 24,004 tokens, not an unbounded walk.
+    // Each file counted once: 110,018 characters is 26,195 tokens, not an unbounded walk.
     const found = run(claudeMdLength, root, 'all');
     assert.equal(found.length, 1);
-    assert.match(found[0].what, /24,004 tokens/);
+    assert.match(found[0].what, /26,195 tokens/);
   } finally { cleanup(root); }
 });
 
 test('claude-md-length: an import that resolves to nothing is skipped, never counted or thrown on', () => {
-  const root = makeRepo({ changed: { 'CLAUDE.md': `@gone/missing.md\n${budgetWords(100)}` } });
+  const root = makeRepo({ changed: { 'CLAUDE.md': `@gone/missing.md\n${budgetChars(1000)}` } });
   try {
     assert.equal(run(claudeMdLength, root, 'all').length, 0);
   } finally { cleanup(root); }
@@ -569,7 +569,7 @@ test('claude-md-length: an import that resolves to nothing is skipped, never cou
 
 test('claude-md-length: a long NON-root CLAUDE.md is not flagged (FP fix)', () => {
   // a fixture/example CLAUDE.md that never loads must not be flagged
-  const root = makeRepo({ changed: { 'test/fixtures/CLAUDE.md': budgetWords(30000) } });
+  const root = makeRepo({ changed: { 'test/fixtures/CLAUDE.md': budgetChars(200000) } });
   try {
     assert.equal(run(claudeMdLength, root, 'all').length, 0);
   } finally { cleanup(root); }

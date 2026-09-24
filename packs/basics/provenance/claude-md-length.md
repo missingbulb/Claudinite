@@ -29,3 +29,13 @@
   always-on prose stops arriving through it.
 - **Actor:** @missingbulb (owner).
 - **Model:** claude-opus-5
+
+## 2026-09-24 · severity-changed · the gate counted words, and this corpus is not words (#2285)
+- **Reason:** paths, backticked ids and code fences tokenize far more finely than the words they sit
+  inside, so the old estimate read this repo's own import tree about 17% smaller than a tokenizer
+  does. The check was measuring in a unit that flattered whatever it was bounding.
+- **Mechanism:** the shared estimator moved to characters at a ratio measured against `cl100k_base`,
+  and the budget moved with it, 20,000 to 24,000, so the ceiling stays the tree size it has
+  always stood at rather than tightening by an accident of arithmetic.
+- **Actor:** run of the `implement-request` task on item #2285.
+- **Model:** claude-opus-5
