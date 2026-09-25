@@ -105,7 +105,9 @@ it once this repo's required checks pass.
   evidence, exactly as the code lane's landing pass does. Read the workflow runs on the
   PR's **head sha**:
   - A run parked at `action_required` **never ran** — it is neither a pass nor a failure;
-    ignore it and judge by the runs that actually executed.
+    ignore it and judge by the runs that actually executed. It can register before the
+    runs that will execute, so a head whose only runs are parked is not yet judgeable:
+    keep waiting for the real ones to appear.
   - Wait (within your run's time budget) for the real runs to conclude. Everything
     concluded, nothing failed, at least one succeeded → merge (squash).
   - Anything genuinely failed (`failure`, `timed_out`, `cancelled`, `startup_failure`),

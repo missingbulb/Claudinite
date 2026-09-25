@@ -343,6 +343,23 @@ test('landAttempt waits for the runs it knows were dispatched before judging', (
   assert.equal(landAttempt({ delivery: 'auto-merge', runs: [], expected: 0 }), 'give-up');
 });
 
+// A HELD RUN IS NOT A DISPATCHED ONE (EdFringeNow #861, 2026-09-24): a
+// workflow-approval requirement parked the PR's own pull_request run at
+// `action_required` a second before the delivery's dispatch, so the one visible
+// run met `expected: 1` and the poll judged before the dispatched run had
+// registered — giving up on a PR that went green 36 seconds later.
+test('landAttempt does not count a run parked at action_required toward what it dispatched', () => {
+  const held = done('action_required');
+  assert.equal(landAttempt({ delivery: 'auto-merge', runs: [held], expected: 1, elapsedMs: 0 }), 'poll');
+  // Contrast: once the dispatched run is there and green, the held run beside it doesn't block the merge.
+  assert.equal(landAttempt({
+    delivery: 'auto-merge',
+    runs: [held, done('success')],
+    expected: 1,
+    elapsedMs: 40_000,
+  }), 'merge');
+});
+
 test('landAttempt leaves a review member\'s PR alone', () => {
   assert.equal(landAttempt({ delivery: 'review', runs: [done('success')] }), 'give-up');
 });
